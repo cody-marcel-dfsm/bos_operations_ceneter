@@ -1,4 +1,0 @@
-interface:
-  display_name: "BOS Review"
-  short_description: "Review BOS changes against platform invariants"
-  default_prompt: "Use $review to review this BOS platform change."
