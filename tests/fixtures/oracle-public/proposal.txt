@@ -1,3 +1,0 @@
-Problem: A synthetic example configuration omits its explicit catalog field, leaving its test selection ambiguous.
-Cause: The example predates the explicit catalog input contract.
-Recommended change: Correct the example to declare the existing catalog field and cover missing or unknown catalog entries with the maintained public configuration tests, preserving the existing format and all runtime boundaries.
