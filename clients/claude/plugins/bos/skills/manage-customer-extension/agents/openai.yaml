@@ -1,4 +1,0 @@
-interface:
-  display_name: "Manage Customer Extensions"
-  short_description: "Safely customize packaged skills for one customer"
-  default_prompt: "Use $manage-customer-extension to update this packaged skill for my customer with a preserved extension."
