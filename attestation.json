@@ -1,0 +1,63 @@
+{
+  "candidate_commit": "e670840594e40ef37cd0f6951ba05d36a5d67d03",
+  "candidate_tree": "49cd3ac83ffba2279480b98017405fce331f2861",
+  "kind": "boc-native-attestation-v1",
+  "repository": "cody-marcel-dfsm/bos_operations_ceneter",
+  "statuses": [
+    {
+      "context": "oracle/native-approval",
+      "description": "tree:49cd3ac83ffba2279480b98017405fce331f2861 receipt:e8baef50457d2ef21f4b4dd401ae22a4dbe44e16e313c6a55801cf590509a173",
+      "state": "success",
+      "target_url": "https://github.com/cody-marcel-dfsm/bos_operations_ceneter/commit/e670840594e40ef37cd0f6951ba05d36a5d67d03"
+    },
+    {
+      "context": "validation/native-command/625fd004d59883e80e75cfbe792bf10961d08338cee0d52aa8a493318687597c",
+      "description": "tree:49cd3ac83ffba2279480b98017405fce331f2861 coverage:2d97444cc91c476b2e0c53287e282927e2e4fae8f4ed012885f964e08d033c1b",
+      "state": "success",
+      "target_url": "https://github.com/cody-marcel-dfsm/bos_operations_ceneter/commit/e670840594e40ef37cd0f6951ba05d36a5d67d03"
+    },
+    {
+      "context": "validation/native-command/9329cf788b201317bdadeaf9036da5073bc455a282e25e751eea4d8adacdbaa4",
+      "description": "tree:49cd3ac83ffba2279480b98017405fce331f2861 coverage:2d97444cc91c476b2e0c53287e282927e2e4fae8f4ed012885f964e08d033c1b",
+      "state": "success",
+      "target_url": "https://github.com/cody-marcel-dfsm/bos_operations_ceneter/commit/e670840594e40ef37cd0f6951ba05d36a5d67d03"
+    },
+    {
+      "context": "validation/native-command/cb187bbc86163c6ef760ee6efe392a7ebbeb3a07b3ba4b4c185f8f063bb58999",
+      "description": "tree:49cd3ac83ffba2279480b98017405fce331f2861 coverage:2d97444cc91c476b2e0c53287e282927e2e4fae8f4ed012885f964e08d033c1b",
+      "state": "success",
+      "target_url": "https://github.com/cody-marcel-dfsm/bos_operations_ceneter/commit/e670840594e40ef37cd0f6951ba05d36a5d67d03"
+    },
+    {
+      "context": "validation/native-environment/2d97444cc91c476b2e0c53287e282927e2e4fae8f4ed012885f964e08d033c1b/625fd004d59883e80e75cfbe792bf10961d08338cee0d52aa8a493318687597c",
+      "description": "origins:2 sha256:cb91257db6b7429897dd2ce9bfb5bdb1fb5a77e7b409b2b889998fde995bd47e",
+      "state": "success",
+      "target_url": "https://github.com/cody-marcel-dfsm/bos_operations_ceneter/commit/e670840594e40ef37cd0f6951ba05d36a5d67d03"
+    },
+    {
+      "context": "validation/native-environment/2d97444cc91c476b2e0c53287e282927e2e4fae8f4ed012885f964e08d033c1b/9329cf788b201317bdadeaf9036da5073bc455a282e25e751eea4d8adacdbaa4",
+      "description": "origins:2 sha256:cb91257db6b7429897dd2ce9bfb5bdb1fb5a77e7b409b2b889998fde995bd47e",
+      "state": "success",
+      "target_url": "https://github.com/cody-marcel-dfsm/bos_operations_ceneter/commit/e670840594e40ef37cd0f6951ba05d36a5d67d03"
+    },
+    {
+      "context": "validation/native-environment/2d97444cc91c476b2e0c53287e282927e2e4fae8f4ed012885f964e08d033c1b/cb187bbc86163c6ef760ee6efe392a7ebbeb3a07b3ba4b4c185f8f063bb58999",
+      "description": "origins:2 sha256:cb91257db6b7429897dd2ce9bfb5bdb1fb5a77e7b409b2b889998fde995bd47e",
+      "state": "success",
+      "target_url": "https://github.com/cody-marcel-dfsm/bos_operations_ceneter/commit/e670840594e40ef37cd0f6951ba05d36a5d67d03"
+    },
+    {
+      "context": "validation/native-environment/cb91257db6b7429897dd2ce9bfb5bdb1fb5a77e7b409b2b889998fde995bd47e/53c9ae5418960b00369f74d32ff33e04c55d729a35380cc4ea0d941a264eedd6",
+      "description": "origin:Darwin python:3.12.7 node:v22.11.0 npm:unknown",
+      "state": "success",
+      "target_url": "https://github.com/cody-marcel-dfsm/bos_operations_ceneter/commit/e670840594e40ef37cd0f6951ba05d36a5d67d03"
+    },
+    {
+      "context": "validation/native-environment/cb91257db6b7429897dd2ce9bfb5bdb1fb5a77e7b409b2b889998fde995bd47e/b499d8c169bbe529574ded3610c1da068f05a7006ff3ef19e5f74c043ff411f5",
+      "description": "origin:Darwin python:3.12.7 node:unknown npm:unknown",
+      "state": "success",
+      "target_url": "https://github.com/cody-marcel-dfsm/bos_operations_ceneter/commit/e670840594e40ef37cd0f6951ba05d36a5d67d03"
+    }
+  ],
+  "technical_receipt_sha256": "e8baef50457d2ef21f4b4dd401ae22a4dbe44e16e313c6a55801cf590509a173"
+}

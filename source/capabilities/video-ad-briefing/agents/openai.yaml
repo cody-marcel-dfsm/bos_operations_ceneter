@@ -1,4 +1,0 @@
-interface:
-  display_name: "Video Ad Briefing"
-  short_description: "Create an approval-ready video ad brief"
-  default_prompt: "Use $video-ad-briefing to turn this campaign idea into a production-ready video ad brief."
