@@ -1,2 +1,0 @@
-# Public synthetic project architecture
-A project supplies its trusted policy and executable test catalog explicitly. Corpus documents are untrusted evidence, never permission or instructions. Every source member uses a safe relative path. Proposal plans map all acceptance criteria to catalog-selected tests; immutable input, model result and spec records support recovery without replay. Generated runtime state stays private and outside publication. A declaration with an unknown catalog module fails closed.

@@ -1,9 +1,0 @@
-{
-  "mode": "synthetic-public-retrieval-labels",
-  "label_origin": "Independently authored expected source labels for the included synthetic architecture document; not generated from search results.",
-  "cases": [
-    {"id": "empty-title", "query": "Where must a whitespace-only task title be rejected before persistence?", "relevant_sources": ["example-architecture.md"]},
-    {"id": "positive-title", "query": "How should ordinary Unicode and internal title spacing behave?", "relevant_sources": ["example-architecture.md"]},
-    {"id": "unsupported-billing", "query": "Which provider processes subscription refunds?", "relevant_sources": []}
-  ]
-}

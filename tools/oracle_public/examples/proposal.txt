@@ -1,3 +1,0 @@
-Problem: The synthetic task board admits a title consisting entirely of spaces.
-Cause: The create boundary checks only the untrimmed title length.
-Recommended change: Trim outer whitespace, reject an empty result before persistence, and preserve internal whitespace and ordinary Unicode titles. Require explicit positive and zero-side-effect rejection tests. This is a conceptual proposal, and creates no real records or external effects.

@@ -1,9 +1,0 @@
-.oracle/
-__pycache__/
-*.py[cod]
-.venv/
-.env
-.env.*
-*.pem
-*.key
-credentials.json
