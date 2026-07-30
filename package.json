@@ -1,0 +1,17 @@
+{
+  "name": "icode-operations-center",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Cross-client source repository for iCode Operations Center Agent Skills.",
+  "author": "Infinite State Machines LLC",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-packages.mjs",
+    "check": "node scripts/check-package.mjs",
+    "release:check": "npm run build && npm run check"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

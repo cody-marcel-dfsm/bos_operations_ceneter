@@ -1,0 +1,8 @@
+{
+  "name": "icode-operations-center",
+  "version": "0.1.0",
+  "description": "Secure iCode operations through the tenant-scoped BOS MCP.",
+  "author": {
+    "name": "Infinite State Machines LLC"
+  }
+}

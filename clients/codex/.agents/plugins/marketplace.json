@@ -1,0 +1,21 @@
+{
+  "name": "icode-operations-center",
+  "interface": {
+    "displayName": "iCode Operations Center",
+    "developerName": "Infinite State Machines LLC"
+  },
+  "plugins": [
+    {
+      "name": "icode-operations-center",
+      "source": {
+        "source": "local",
+        "path": "./plugins/icode-operations-center"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

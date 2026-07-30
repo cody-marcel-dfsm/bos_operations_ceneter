@@ -1,0 +1,4 @@
+interface:
+  display_name: "iCode Trial Reconciliation"
+  short_description: "Reconcile trials and prepare accurate drafts"
+  default_prompt: "Use $icode-trial-reconciliation to find every trial in the next seven days, identify confirmation or follow-up needs, and prepare drafts."
