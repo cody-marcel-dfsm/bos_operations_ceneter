@@ -255,28 +255,23 @@ capabilities and providers it needs.
 
 **Dependencies:** BOSPKG-002, BOSPKG-008.
 
-### BOSPKG-010 — Add the Lead Director product skeleton
+### BOSPKG-010 — Validate Lead Director repository composition
 
-**Outcome:** A second product proves that manifest composition and reusable
-capabilities work across products.
+**Outcome:** Lead Director consumes BOS foundations without republishing them.
 
 **Scope:**
 
-- Add `products/lead-director/product.json`.
-- Include the platform skill and currently available reusable capabilities.
-- Add application-neutral `bos:planning`, `bos:implementation`, and
-  `bos:review` foundations where their capability contracts are complete.
 - Define the contract used by repository-local `lead-director-*` skills to
   apply the corresponding `bos:*` foundations.
-- Add placeholder-free Lead Director capability skills only where an executable
-  BOS contract exists.
-- Generate supported client packages with distinct product identity.
+- Reject legacy repository skills that duplicate BOS foundation
+  responsibilities.
+- Reject any Lead Director companion product that republishes BOS foundations.
 
 **Acceptance criteria:**
 
-- Lead Director distributions exclude iCode-only skills.
-- iCode distributions exclude Lead Director-only skills.
-- Shared capabilities are generated from the same canonical source.
+- Lead Director repository skills remain visible to every agent in the
+  repository.
+- Lead Director has no redundant generated plugin distribution.
 - BOS foundation skills contain no Lead Director repository paths, Vault
   requirements, application-only commands, or release gates.
 - Composition checks confirm that each Lead Director specialization names its

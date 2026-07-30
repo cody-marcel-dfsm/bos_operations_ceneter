@@ -111,6 +111,8 @@ lead_director/
         ├── lead-director-planning/
         ├── lead-director-implementation/
         ├── lead-director-review/
+        ├── lead-director-authentication-context-integrity/
+        ├── lead-director-po-go-boundary-enforcement/
         ├── lead-director-runtime-operations/
         ├── lead-director-reconciliation/
         └── lead-director-performance-testing/
@@ -137,6 +139,10 @@ bos:review
     + Lead Director constitution and architecture evidence
     + Lead Director deployment readiness
     = lead-director-review
+
+bos:po-go-boundary-enforcement
+    + Lead Director router, PO, GO, repository, and test ownership
+    = lead-director-po-go-boundary-enforcement
 ```
 
 Other applications follow the same pattern:
@@ -286,6 +292,8 @@ After package installation and composition tests pass:
 - remove manually maintained client copies;
 - generate client distributions from canonical package source;
 - keep Lead Director specializations in its repository; and
+- remove legacy repository skills that duplicate BOS foundation
+  responsibilities;
 - preserve user-global skills that genuinely apply across unrelated projects.
 
 ### Phase 6: Enforce boundaries
@@ -295,6 +303,9 @@ Add validation that fails when:
 - a generated client skill differs from canonical source;
 - a BOS foundation contains an application-specific repository path or gate;
 - an application specialization omits its required qualified BOS foundation;
+- a Lead Director legacy BOS workflow directory remains;
+- a companion product republishes BOS foundation skills under another plugin
+  namespace;
 - a packaged skill also exists as an independently maintained global copy;
 - product manifests reference unknown skills or capabilities;
 - two package entries expose the same qualified identity; or

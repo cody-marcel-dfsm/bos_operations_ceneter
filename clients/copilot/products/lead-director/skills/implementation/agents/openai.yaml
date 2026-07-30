@@ -1,4 +1,0 @@
-interface:
-  display_name: "BOS Implementation"
-  short_description: "Implement BOS changes with platform invariants"
-  default_prompt: "Use $implementation to implement this BOS platform change."

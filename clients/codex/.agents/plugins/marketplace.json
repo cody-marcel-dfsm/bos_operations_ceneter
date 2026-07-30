@@ -27,18 +27,6 @@
         "authentication": "ON_USE"
       },
       "category": "Productivity"
-    },
-    {
-      "name": "lead-director",
-      "source": {
-        "source": "local",
-        "path": "./plugins/lead-director"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_USE"
-      },
-      "category": "Developer Tools"
     }
   ]
 }
