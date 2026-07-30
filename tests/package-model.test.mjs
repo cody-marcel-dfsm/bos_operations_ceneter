@@ -10,7 +10,7 @@ import {
 
 test("all product manifests validate and resolve unique skills", async () => {
   const products = await listProducts();
-  assert.equal(products.length, 3);
+  assert.equal(products.length, 2);
   for (const { path, manifest } of products) {
     assert.deepEqual(validateProduct(manifest, path), []);
     const skills = await resolveProductSkills(manifest);
@@ -18,20 +18,16 @@ test("all product manifests validate and resolve unique skills", async () => {
   }
 });
 
-test("iCode and Lead Director compositions stay isolated", async () => {
+test("iCode composition contains no BOS foundation copies", async () => {
   const products = await listProducts();
   const byName = Object.fromEntries(
     products.map(({ manifest }) => [manifest.name, manifest])
   );
   const iCode = await resolveProductSkills(byName["icode-operations-center"]);
-  const leadDirector = await resolveProductSkills(byName["lead-director"]);
   assert(iCode.some((skill) => skill.name === "icode-class-operations"));
-  assert(
-    leadDirector.every((skill) => !skill.name.startsWith("icode-"))
-  );
-  assert(
-    leadDirector.some((skill) => skill.name === "planning")
-  );
+  const bos = await resolveProductSkills(byName.bos);
+  const bosNames = new Set(bos.map((skill) => skill.name));
+  assert(iCode.every((skill) => !bosNames.has(skill.name)));
 });
 
 test("the packaged BOS broker compiles with the system Python runtime", () => {

@@ -120,9 +120,7 @@ belong in a customer-facing product:
 products/
 ├── icode-operations-center/
 │   └── product.json
-├── lead-director/
-│   └── product.json
-└── bos-operations/
+└── bos/
     └── product.json
 ```
 
@@ -144,21 +142,6 @@ An iCode product definition can select:
 }
 ```
 
-A Lead Director product definition can select:
-
-```json
-{
-  "name": "lead-director",
-  "includes": [
-    "platform/bos-mcp-client",
-    "capabilities/lead-management",
-    "capabilities/paid-attribution",
-    "capabilities/meta-ads",
-    "capabilities/appointment-reconciliation"
-  ]
-}
-```
-
 Product selection prevents unrelated skills from appearing in a user's client
 and allows one canonical capability to support multiple products.
 
@@ -168,6 +151,8 @@ installed for a user. An application repository can then provide
 repository-local skills that apply those foundations to its source,
 architecture, tests, and release gates. Lead Director follows this pattern by
 composing `bos:*` foundation skills with `lead-director-*` repository skills.
+Lead Director therefore has no companion plugin that republishes BOS
+foundations.
 
 Install the `bos` foundation plugin once per client. It owns the single BOS MCP
 connection. Companion product plugins such as iCode Operations Center package

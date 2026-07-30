@@ -7,7 +7,7 @@ ready for client testing.
 
 - Canonical layered skill sources under `source/platform`,
   `source/capabilities`, and `source/verticals`.
-- Product manifests for BOS, iCode Operations Center, and Lead Director.
+- Product manifests for BOS and iCode Operations Center.
 - One BOS-owned MCP runtime, with companion products consuming BOS through
   skill composition.
 - Deterministic Codex, Claude, and Copilot package generation.
@@ -21,6 +21,8 @@ ready for client testing.
 - Lead Director repository specializations that explicitly compose the
   application-neutral BOS planning, implementation, review, authentication, and
   boundary foundations.
+- Removal of legacy Lead Director BOS workflow copies and the redundant Lead
+  Director plugin product.
 - Local BOS and iCode plugin installation through the personal marketplace.
 - Retirement of superseded flat global BOS/iCode skills into a recoverable
   backup.

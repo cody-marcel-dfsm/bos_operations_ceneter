@@ -98,6 +98,14 @@ async function validateProducts() {
   const identities = new Set();
   for (const { path, manifest } of products) {
     failures.push(...validateProduct(manifest, path));
+    if (
+      manifest.name !== "bos" &&
+      manifest.includes.some((include) => include.startsWith("platform/"))
+    ) {
+      failures.push(
+        `${path}: only the bos product may publish platform foundation skills`
+      );
+    }
     if (identities.has(manifest.name)) {
       failures.push(`Duplicate product identity: ${manifest.name}`);
     }

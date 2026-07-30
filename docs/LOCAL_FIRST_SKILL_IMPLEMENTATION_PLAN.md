@@ -298,17 +298,18 @@ application requirements.
 | `bos-planning` | `bos:planning` | `lead-director-planning` |
 | `bos-implementation` | `bos:implementation` | `lead-director-implementation` |
 | `bos-review` | `bos:review` | `lead-director-review` |
-| `bos-po-go-boundary-enforcement` | `bos:po-go-boundary-enforcement` | `lead-director-runtime-operations` and focused boundary references |
+| `bos-po-go-boundary-enforcement` | `bos:po-go-boundary-enforcement` | `lead-director-po-go-boundary-enforcement` |
 | `authentication-context-integrity` | `bos:authentication-context-integrity` | `lead-director-authentication-context-integrity` |
 
 **Work:**
 
-- Create each new specialization beside the existing skill.
+- Create each new specialization and remove the superseded mixed skill after
+  validation.
 - State the required qualified BOS foundation in the description.
 - Direct the workflow to apply the BOS foundation first.
 - Add Lead Director component ownership, architecture, Vault, tests, and Oracle
   review requirements.
-- Keep existing mixed skills enabled during the comparison period.
+- Keep exactly one callable specialization for each responsibility.
 
 **Acceptance:**
 
