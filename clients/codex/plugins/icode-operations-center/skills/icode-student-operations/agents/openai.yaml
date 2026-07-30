@@ -1,0 +1,13 @@
+interface:
+  display_name: "iCode Student Operations"
+  short_description: "Handle enrollment and progress through BOS"
+  default_prompt: "Use $icode-student-operations to handle an enrollment or student progress request through BOS."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "bos_icode"
+      description: "BOS remote agent gateway for iCode organization"
+      transport: "streamable_http"
+      url: "https://dfsm.ai/mcp"
+policy:
+  allow_implicit_invocation: true

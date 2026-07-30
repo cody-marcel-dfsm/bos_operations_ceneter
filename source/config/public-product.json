@@ -1,0 +1,7 @@
+{
+  "product": "iCode Operations Center",
+  "publisher": "Infinite State Machines LLC",
+  "mcp_server_name": "bos",
+  "authentication": "bos-hosted",
+  "credential_packaging": "prohibited"
+}

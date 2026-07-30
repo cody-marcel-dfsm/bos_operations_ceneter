@@ -1,0 +1,25 @@
+name: Validate package
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm run release:check
+      - name: Reject tracked credential files
+        run: |
+          if git ls-files | grep -Ei '(^|/)(\.env($|\.)|credentials\.json$|service-account\.json$|id_rsa$|id_ed25519$|.*\.(pem|p12|pfx|key)$)'; then
+            echo "Credential-like file is tracked."
+            exit 1
+          fi

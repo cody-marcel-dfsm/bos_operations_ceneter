@@ -1,0 +1,13 @@
+interface:
+  display_name: "iCode Invoice Operations"
+  short_description: "Create BH invoices or reconcile invoice evidence"
+  default_prompt: "Use $icode-invoice-operations to create a Bright Horizons attendance invoice for a specified period through BOS. Run cancellation reconciliation only when I explicitly request it."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "bos_icode"
+      description: "BOS remote agent gateway for iCode organization"
+      transport: "streamable_http"
+      url: "https://dfsm.ai/mcp"
+policy:
+  allow_implicit_invocation: true
