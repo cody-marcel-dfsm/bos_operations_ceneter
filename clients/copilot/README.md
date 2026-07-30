@@ -1,5 +1,4 @@
-# GitHub Copilot package
+# BOS Operations Center Copilot Packages
 
-Generated Agent Skills are placed in `skills/`. Install them into a supported
-personal or repository Agent Skills directory. BOS MCP configuration and
-authentication remain client-managed and credential-free in this repository.
+Select a product under `products/<product>/skills` and install those
+skills into the target repository's `.agents/skills` directory.

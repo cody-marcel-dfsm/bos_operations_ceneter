@@ -1,0 +1,4 @@
+interface:
+  display_name: "BOS Authentication Context"
+  short_description: "Preserve tenant and application auth scope"
+  default_prompt: "Use $authentication-context-integrity to validate this BOS authentication design."

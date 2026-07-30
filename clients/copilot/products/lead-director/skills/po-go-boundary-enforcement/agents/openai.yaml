@@ -1,0 +1,4 @@
+interface:
+  display_name: "BOS PO/GO Boundaries"
+  short_description: "Enforce BOS orchestration and data boundaries"
+  default_prompt: "Use $po-go-boundary-enforcement to validate this BOS runtime path."

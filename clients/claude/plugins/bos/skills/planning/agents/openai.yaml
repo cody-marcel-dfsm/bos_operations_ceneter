@@ -1,0 +1,4 @@
+interface:
+  display_name: "BOS Planning"
+  short_description: "Plan application-neutral BOS platform work"
+  default_prompt: "Use $planning to plan this BOS platform change."

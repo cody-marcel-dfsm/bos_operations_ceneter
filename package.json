@@ -1,6 +1,6 @@
 {
-  "name": "icode-operations-center",
-  "version": "0.1.0",
+  "name": "bos-operations-center",
+  "version": "0.2.0",
   "private": false,
   "description": "Cross-client source repository for iCode Operations Center Agent Skills.",
   "author": "Infinite State Machines LLC",
@@ -9,7 +9,14 @@
   "scripts": {
     "build": "node scripts/build-packages.mjs",
     "check": "node scripts/check-package.mjs",
-    "release:check": "npm run build && npm run check"
+    "inventory": "node scripts/inventory-skills.mjs",
+    "install:inspect": "node scripts/install-package.mjs inspect",
+    "install:plan": "node scripts/install-package.mjs plan",
+    "install:apply": "node scripts/install-package.mjs apply",
+    "install:verify": "node scripts/install-package.mjs verify",
+    "release": "npm run release:check && python3 scripts/create_release.py",
+    "test": "node --test tests/*.test.mjs",
+    "release:check": "npm run build && npm run check && npm test"
   },
   "engines": {
     "node": ">=20"
