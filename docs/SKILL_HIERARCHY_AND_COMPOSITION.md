@@ -273,9 +273,10 @@ selected BOS foundation, capability, and vertical skills from this repository.
 Preserve product-specific display names through product manifests.
 
 Use the plugin namespace for package ownership and product manifests for skill
-selection. An iCode package can select `bos` foundations plus iCode vertical
-skills. A Lead Director installation can select BOS foundations while the Lead
-Director source repository contributes its local specializations.
+selection. Install the `bos` plugin once to supply foundations and the single
+BOS MCP connection. An iCode companion plugin supplies iCode vertical skills
+and uses that connection. The Lead Director source repository contributes its
+local specializations and applies the installed BOS foundations.
 
 ### Phase 5: Remove duplicate exposure
 

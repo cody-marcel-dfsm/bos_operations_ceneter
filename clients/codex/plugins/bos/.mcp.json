@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "bos": {
+      "command": "python3",
+      "args": [
+        "./scripts/bos_mcp_broker.py"
+      ],
+      "cwd": ".",
+      "required": false
+    }
+  }
+}

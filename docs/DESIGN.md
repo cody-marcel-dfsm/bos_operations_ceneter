@@ -169,6 +169,11 @@ repository-local skills that apply those foundations to its source,
 architecture, tests, and release gates. Lead Director follows this pattern by
 composing `bos:*` foundation skills with `lead-director-*` repository skills.
 
+Install the `bos` foundation plugin once per client. It owns the single BOS MCP
+connection. Companion product plugins such as iCode Operations Center package
+vertical and capability skills and use the BOS connection without registering
+a second server with the same name.
+
 ### Customer configuration
 
 Customer configuration supplies the final operating context:
@@ -238,9 +243,9 @@ scripts/
 docs/
 ```
 
-The current `source/skills/` directory remains canonical during migration.
-Skill instructions and supporting resources are edited only in the canonical
-source layer.
+`source/platform/`, `source/capabilities/`, and `source/verticals/` are the
+canonical skill sources. Skill instructions and supporting resources are
+edited only in their owning canonical layer.
 
 `clients/codex/`, `clients/claude/`, and `clients/copilot/` are generated
 distributions. The build resolves each product manifest, selects its platform,
@@ -289,9 +294,8 @@ credential files, and local user paths. A successful build proves that the
 distribution can be assembled. Platform installation tests and authenticated
 end-to-end tests remain separate release checks.
 
-The current builder copies the iCode skill set into three clients. The target
-builder adds product-manifest selection while retaining deterministic,
-single-source generation.
+The builder reads every product manifest, resolves its selected canonical
+skills, and generates deterministic Codex, Claude, and Copilot distributions.
 
 ## MCP and API capability model
 

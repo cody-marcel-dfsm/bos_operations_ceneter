@@ -1,7 +1,8 @@
-# iCode Operations Center
+# BOS Operations Center Packages
 
-This repository is the source for the portable iCode Operations Center Agent
-Skills package and its Codex, Claude, and GitHub Copilot distributions.
+This repository is the canonical source, builder, installer, and release
+system for portable BOS foundation, product, and vertical Agent Skills
+distributed to Codex, Claude, and GitHub Copilot.
 
 The skills are useful as readable operating procedures on their own. Connecting
 them to BOS adds tenant-scoped data access, managed integrations, secure
@@ -25,6 +26,9 @@ See
 for the dependency-ordered local rollout, Lead Director composition tests,
 package promotion, and idempotent installer/reconciler design.
 
+See [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) for completed
+capabilities, local validation evidence, and the remaining client smoke tests.
+
 ## Build
 
 Run:
@@ -33,9 +37,10 @@ Run:
 npm run build
 ```
 
-Building assembles the three client distributions from the canonical skills in
-`source/skills/`. It does not install a package, configure a customer,
-authenticate BOS, access organization data, or publish a release.
+Building assembles every declared product/client distribution from canonical
+skills in `source/platform`, `source/capabilities`, and `source/verticals`.
+It does not install a package, configure a customer, authenticate BOS, access
+organization data, or publish a release.
 
 Run `npm run release:check` to rebuild all client packages and validate package
 structure and credential safety.
@@ -46,23 +51,42 @@ structure and credential safety.
 
 1. Download or clone this repository.
 2. Run `npm run release:check`.
-3. Add `clients/codex` as a local marketplace and install
-   `icode-operations-center`.
-4. Select **Connect BOS** when Codex first needs organization data.
+3. Inspect the local installation:
+
+   ```bash
+   npm run install:inspect -- --product bos
+   ```
+
+4. Preview the convergence plan:
+
+   ```bash
+   npm run install:plan -- --product bos
+   ```
+
+5. Apply and verify:
+
+   ```bash
+   npm run install:apply -- --product bos
+   npm run install:verify -- --product bos
+   ```
+
+6. Run `codex plugin add bos@personal` when using the default personal
+   marketplace.
+7. Start a new Codex task and select **Connect BOS** when organization data is
+   first required.
 
 ### Claude
 
-1. Download or clone this repository.
-2. Run `npm run release:check`.
-3. Install `clients/claude` as a local Claude plugin.
-4. Select **Connect BOS** when Claude first needs organization data.
+1. Run `npm run release:check`.
+2. Install the selected package from `clients/claude/plugins/<product>`.
+3. Select **Connect BOS** when Claude first needs organization data.
 
 ### GitHub Copilot
 
-1. Download or clone this repository.
-2. Run `npm run release:check`.
-3. Copy `clients/copilot/skills` to `.agents/skills` in the target repository.
-4. Connect the BOS MCP server using the client’s secure authentication flow.
+1. Run `npm run release:check`.
+2. Copy `clients/copilot/products/<product>/skills` to `.agents/skills` in the
+   target repository.
+3. Connect the BOS MCP server using the client’s secure authentication flow.
 
 The checked-in client directories contain credential-free adapters. A release
 may also publish those three directories as downloadable archives for customers
@@ -101,7 +125,11 @@ branding, billing, quota, or compliance.
 
 ## Repository layout
 
-- `source/skills/`: canonical Open Agent Skills source.
+- `source/platform/`: canonical application-neutral BOS foundation skills.
+- `source/capabilities/`: canonical reusable business capability skills.
+- `source/verticals/`: canonical industry and franchise adaptations.
+- `source/runtime/`: credential-free client runtime components.
+- `products/`: versioned product composition manifests.
 - `source/config/`: public, credential-free product metadata.
 - `clients/codex/`: Codex plugin and marketplace package.
 - `clients/claude/`: Claude plugin package.
@@ -110,8 +138,20 @@ branding, billing, quota, or compliance.
 - `dist/`: generated release archives; ignored by Git.
 - `tests/`: package, security, and portability tests.
 
-Client packages are generated from `source/skills`. Client directories contain
-only platform adapters and generated skill copies.
+Client packages are generated from layered canonical source. Client directories
+contain platform adapters and generated skill copies.
+
+## Release
+
+Run:
+
+```bash
+npm run release
+```
+
+The release command validates the complete package and writes deterministic
+product/client archives plus `dist/release-manifest.json` containing SHA-256
+checksums.
 
 ## Security invariant
 

@@ -1,10 +1,21 @@
 {
-  "name": "icode-operations-center",
+  "name": "bos-operations-center",
   "interface": {
-    "displayName": "iCode Operations Center",
-    "developerName": "Infinite State Machines LLC"
+    "displayName": "BOS Operations Center"
   },
   "plugins": [
+    {
+      "name": "bos",
+      "source": {
+        "source": "local",
+        "path": "./plugins/bos"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Productivity"
+    },
     {
       "name": "icode-operations-center",
       "source": {
@@ -13,9 +24,21 @@
       },
       "policy": {
         "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
+        "authentication": "ON_USE"
       },
       "category": "Productivity"
+    },
+    {
+      "name": "lead-director",
+      "source": {
+        "source": "local",
+        "path": "./plugins/lead-director"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Developer Tools"
     }
   ]
 }

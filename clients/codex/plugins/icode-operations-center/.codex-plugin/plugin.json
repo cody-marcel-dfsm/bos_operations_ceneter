@@ -1,6 +1,6 @@
 {
   "name": "icode-operations-center",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Secure iCode operations through the tenant-scoped BOS MCP.",
   "author": {
     "name": "Infinite State Machines LLC"
@@ -8,16 +8,18 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "iCode Operations Center",
-    "shortDescription": "Run secure iCode operations through BOS.",
-    "longDescription": "Connect Codex to tenant-scoped BOS workflows for classes, students, instructors, invoices, parents, outreach, and reporting.",
+    "shortDescription": "Secure iCode operations through the tenant-scoped BOS MCP.",
+    "longDescription": "Secure iCode operations through the tenant-scoped BOS MCP.",
     "developerName": "Infinite State Machines LLC",
     "category": "Productivity",
-    "capabilities": ["Interactive", "Read", "Write"],
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
     "defaultPrompt": [
       "Create today's iCode operations plan.",
       "Show integrations that need authorization.",
       "Reconcile upcoming classes and trials."
     ]
-  },
-  "mcpServers": "./.mcp.json"
+  }
 }

@@ -1,0 +1,25 @@
+{
+  "schema_version": "1",
+  "name": "bos",
+  "version": "0.2.0",
+  "display_name": "BOS",
+  "description": "Tenant-neutral Business Operating System foundations and MCP access.",
+  "publisher": "Infinite State Machines LLC",
+  "category": "Productivity",
+  "authentication": "ON_USE",
+  "clients": ["codex", "claude", "copilot"],
+  "includes": [
+    "platform/use-bos",
+    "platform/planning",
+    "platform/implementation",
+    "platform/review",
+    "platform/po-go-boundary-enforcement",
+    "platform/authentication-context-integrity"
+  ],
+  "runtime": "bos",
+  "default_prompts": [
+    "Plan this BOS platform change.",
+    "Review this BOS implementation.",
+    "Use BOS to complete this business operation."
+  ]
+}

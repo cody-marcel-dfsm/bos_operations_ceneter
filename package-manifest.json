@@ -1,9 +1,14 @@
 {
   "schema_version": "1",
-  "package": "icode-operations-center",
-  "version": "0.1.0",
+  "package": "bos-operations-center",
+  "version": "0.2.0",
   "publisher": "Infinite State Machines LLC",
-  "canonical_skills": "./source/skills",
+  "canonical_skills": [
+    "./source/platform",
+    "./source/capabilities",
+    "./source/verticals"
+  ],
+  "products": "./products",
   "clients": {
     "codex": "./clients/codex",
     "claude": "./clients/claude",

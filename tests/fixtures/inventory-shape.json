@@ -1,0 +1,20 @@
+{
+  "schema_version": "1",
+  "records": [
+    {
+      "scope": "local-bos-plugin",
+      "path": "<home>/plugins/bos/skills/use-bos/SKILL.md",
+      "relative_path": "use-bos/SKILL.md",
+      "name": "use-bos",
+      "description": "Tenant-neutral BOS workflow."
+    },
+    {
+      "scope": "lead-director-repository",
+      "path": "<workspace>/lead_director/.agents/skills/lead-director-planning/SKILL.md",
+      "relative_path": "lead-director-planning/SKILL.md",
+      "name": "lead-director-planning",
+      "description": "Lead Director specialization of bos:planning."
+    }
+  ],
+  "duplicate_names": {}
+}

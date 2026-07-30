@@ -1,0 +1,16 @@
+{
+  "date_range": "2026-07-25/2026-08-01",
+  "gmail_search_completed": false,
+  "candidates": [
+    {
+      "name": "Testy Patience",
+      "email": "testy@example.com",
+      "classification": "Needs scheduling follow-up",
+      "sources": ["gmail"],
+      "gmail_thread_hydrated": false,
+      "matched_event_id": null,
+      "match_basis": "last_name",
+      "targeted_searches": []
+    }
+  ]
+}
