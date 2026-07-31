@@ -86,6 +86,19 @@ install_prompt=$(printf '%s\n' \
   "Stop after installation so a fresh Codex process can discover the new MCP server.")
 printf '%s' "${install_prompt}" | /usr/local/bin/codex exec --ephemeral --dangerously-bypass-approvals-and-sandbox -
 
+# Codex starts plugin MCP servers from their declared configuration and does not
+# forward arbitrary parent-shell variables. Pin the disposable acceptance clone
+# to the explicitly configured test endpoint without changing the public package.
+installed_mcp=$(/usr/bin/find \
+  "$HOME/.codex/plugins/cache/bos-operations-center/bos" \
+  -mindepth 2 -maxdepth 2 -name .mcp.json -print | /usr/bin/head -n 1)
+test -f "${installed_mcp}"
+mcp_staging="${installed_mcp}.staging.$$"
+/usr/bin/jq --arg url "${BOS_MCP_URL}" \
+  '.mcpServers.bos.env.BOS_MCP_URL = $url' \
+  "${installed_mcp}" >"${mcp_staging}"
+/bin/mv "${mcp_staging}" "${installed_mcp}"
+
 acceptance_prompt=$(printf '%s\n' \
   "Use the installed BOS MCP and call bos_authenticate with this credential: ${BOS_TEST_API_KEY}" \
   "Select the test organization ${BOS_TEST_ORG_ID}." \
