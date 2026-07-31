@@ -35,7 +35,7 @@ vm_pid=$!
 ip=""
 cleanup() {
   if [ -n "${ip}" ]; then
-    ${SSH} "admin@${ip}" 'rm -f /tmp/.env /tmp/vm-acceptance.env /tmp/bos-acceptance.raw /tmp/bos-acceptance.out' 2>/dev/null || true
+    ${SSH} "admin@${ip}" 'rm -f /tmp/.env /tmp/vm-acceptance.env /tmp/bos-handoff-urls /tmp/bos-acceptance.raw /tmp/bos-acceptance.out' 2>/dev/null || true
   fi
   kill "${vm_pid}" 2>/dev/null || true
   tart stop "${RUN_VM}" 2>/dev/null || true
@@ -107,7 +107,7 @@ installed_mcp=$(/usr/bin/find \
 test -f "${installed_mcp}"
 mcp_staging="${installed_mcp}.staging.$$"
 /usr/bin/jq --arg url "${BOS_MCP_URL}" \
-  '.mcpServers.bos.env.BOS_MCP_URL = $url | .mcpServers.bos.env.BOS_ALLOW_INSECURE_TEST_URL = "1"' \
+  '.mcpServers.bos.env.BOS_MCP_URL = $url | .mcpServers.bos.env.BOS_ALLOW_INSECURE_TEST_URL = "1" | .mcpServers.bos.env.BOS_TEST_HANDOFF_URL_FILE = "/tmp/bos-handoff-urls"' \
   "${installed_mcp}" >"${mcp_staging}"
 /bin/mv "${mcp_staging}" "${installed_mcp}"
 
@@ -127,7 +127,7 @@ wait_for_handoff() {
   handoff_pattern=$1
   attempt=0
   while [ "${attempt}" -lt 180 ]; do
-    handoff_url=$(/usr/bin/grep -Eo "http://127\\.0\\.0\\.1:[0-9]+/${handoff_pattern}/[A-Za-z0-9_-]+" /tmp/bos-acceptance.raw | /usr/bin/tail -n 1 || true)
+    handoff_url=$(/usr/bin/awk -F= -v kind="${handoff_pattern}" '$1 == kind { print substr($0, length(kind) + 2) }' /tmp/bos-handoff-urls 2>/dev/null | /usr/bin/tail -n 1 || true)
     if [ -n "${handoff_url}" ]; then
       printf '%s' "$2" | /usr/bin/curl --fail --silent --show-error \
         --data-urlencode credential@- "${handoff_url}" >/dev/null
@@ -166,7 +166,7 @@ if ! /usr/bin/grep -Eq "^BOS_VM_ACCEPTANCE_PASS org_id=${BOS_TEST_ORG_ID} record
   echo "Acceptance success marker missing" >&2
   exit 1
 fi
-rm -f /tmp/.env /tmp/vm-acceptance.env /tmp/bos-acceptance.raw /tmp/bos-acceptance.out
+rm -f /tmp/.env /tmp/vm-acceptance.env /tmp/bos-handoff-urls /tmp/bos-acceptance.raw /tmp/bos-acceptance.out
 GUEST
 
 echo "macOS Codex acceptance flow completed in ${RUN_VM}"

@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import os
 import secrets
+import stat
 import sys
 import threading
 import webbrowser
@@ -303,6 +304,28 @@ def _shutdown_server(server: HTTPServer) -> None:
         server.server_close()
 
 
+def _publish_test_handoff_url(kind: str, url: str) -> None:
+    """Expose a handoff URL only to the explicit, insecure VM test harness."""
+    path = os.environ.get("BOS_TEST_HANDOFF_URL_FILE", "")
+    target = Path(path)
+    if (
+        os.environ.get("BOS_ALLOW_INSECURE_TEST_URL") != "1"
+        or target.parent != Path("/tmp")
+        or not target.name
+    ):
+        return
+    flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(target, flags, 0o600)
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise OSError("test handoff target must be a regular file")
+        os.fchmod(descriptor, 0o600)
+        os.write(descriptor, f"{kind}={url}\n".encode("utf-8"))
+    finally:
+        os.close(descriptor)
+
+
 def _start_authentication_handoff() -> dict[str, Any]:
     global auth_handoff
     if _upstreams():
@@ -388,6 +411,7 @@ def _start_authentication_handoff() -> dict[str, Any]:
         expiry_timer.daemon = True
         expiry_timer.start()
     webbrowser.open(url)
+    _publish_test_handoff_url("bos-auth", url)
     return _text_result({"status": "authorization_pending", "handoff_id": handoff_id, "authorization_url": url, "expires_in_seconds": AUTH_HANDOFF_TTL_SECONDS, "instruction": "Enter the credential only in the local BOS window, then call bos_get_authentication_status."})
 
 
@@ -491,6 +515,7 @@ def _start_provider_credential_handoff(arguments: dict[str, Any]) -> dict[str, A
         expiry_timer.daemon = True
         expiry_timer.start()
     webbrowser.open(url)
+    _publish_test_handoff_url("bos-provider", url)
     return _text_result({"status": "authorization_pending", "handoff_id": handoff_id, "authorization_url": url, "expires_in_seconds": AUTH_HANDOFF_TTL_SECONDS, "instruction": "Enter the provider credential only in the local BOS window, then call bos_get_provider_credential_handoff_status."})
 
 

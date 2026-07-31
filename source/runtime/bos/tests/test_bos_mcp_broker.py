@@ -1,7 +1,10 @@
 import importlib.util
 import json
+import os
 from pathlib import Path
+import stat
 import sys
+import tempfile
 from time import sleep
 from urllib.parse import urlencode
 from urllib.error import HTTPError, URLError
@@ -30,6 +33,48 @@ class FakeUpstream:
     def request(self, method, params=None):
         self.calls.append((method, params))
         return {"result": {"content": [{"type": "text", "text": self.name}]}}
+
+
+def test_test_handoff_url_file_is_locked_and_test_mode_only(monkeypatch):
+    descriptor, raw_path = tempfile.mkstemp(prefix="bos-handoff-test-", dir="/tmp")
+    os.close(descriptor)
+    path = Path(raw_path)
+    try:
+        path.write_text("")
+        path.chmod(0o666)
+        monkeypatch.setenv("BOS_TEST_HANDOFF_URL_FILE", str(path))
+        monkeypatch.delenv("BOS_ALLOW_INSECURE_TEST_URL", raising=False)
+        broker._publish_test_handoff_url("bos-auth", "http://127.0.0.1:1/bos-auth/test")
+        assert path.read_text() == ""
+
+        monkeypatch.setenv("BOS_ALLOW_INSECURE_TEST_URL", "1")
+        broker._publish_test_handoff_url("bos-auth", "http://127.0.0.1:1/bos-auth/test")
+        assert path.read_text() == "bos-auth=http://127.0.0.1:1/bos-auth/test\n"
+        assert stat.S_IMODE(path.stat().st_mode) == 0o600
+    finally:
+        path.unlink(missing_ok=True)
+
+
+def test_test_handoff_url_file_rejects_traversal_and_symlinks(monkeypatch):
+    monkeypatch.setenv("BOS_ALLOW_INSECURE_TEST_URL", "1")
+    descriptor, raw_target = tempfile.mkstemp(prefix="bos-handoff-target-", dir="/tmp")
+    os.close(descriptor)
+    target = Path(raw_target)
+    link = Path(f"/tmp/bos-handoff-link-{os.getpid()}")
+    try:
+        target.write_text("unchanged")
+        monkeypatch.setenv("BOS_TEST_HANDOFF_URL_FILE", f"/tmp/../tmp/{target.name}")
+        broker._publish_test_handoff_url("bos-auth", "http://127.0.0.1:1/test")
+        assert target.read_text() == "unchanged"
+
+        link.symlink_to(target)
+        monkeypatch.setenv("BOS_TEST_HANDOFF_URL_FILE", str(link))
+        with pytest.raises(OSError):
+            broker._publish_test_handoff_url("bos-auth", "http://127.0.0.1:1/test")
+        assert target.read_text() == "unchanged"
+    finally:
+        link.unlink(missing_ok=True)
+        target.unlink(missing_ok=True)
 
 
 def test_initialize_is_local_and_does_not_touch_upstreams(monkeypatch):
