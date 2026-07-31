@@ -5,8 +5,8 @@
 A customer starts from a supported Apple-silicon Mac with Codex installed,
 gives Codex a GitHub release ZIP URL, and asks Codex to install it. Codex
 downloads, verifies, extracts, and installs the BOS and selected product
-plugins. On the first secured request, Codex asks for the BOS credential and
-passes it directly to MCP. The customer runs no shell command.
+plugins. On the first secured request, MCP opens a one-time local credential
+page. The customer enters the credential there and runs no shell command.
 
 Git, Node.js, npm, Python, Xcode, Homebrew, and repository access are not
 customer prerequisites.
@@ -18,8 +18,8 @@ Codex authentication and BOS authentication are separate:
 - Codex owns ChatGPT or OpenAI API-key login through its supported login UI.
 - Before authentication, MCP exposes only authentication and sanitized status
   tools.
-- Codex asks for the BOS credential only when a secured request requires it and
-  passes it directly to `bos_authenticate`.
+- Codex calls `bos_start_authentication` only when a secured request requires
+  it; the customer enters the credential in the MCP-owned loopback page.
 - The credential remains only in MCP session memory. It never appears in a
   process argument, environment variable, generated MCP configuration, plugin
   file, log, shell history, or release artifact.
@@ -52,7 +52,7 @@ The shell bootstrap:
 5. Installs `bos` and the selected product through `codex plugin add`.
 6. Directs the customer to start a new Codex task.
 7. Exposes MCP bootstrap authentication when the first secured request occurs.
-8. Guides OAuth login or direct API-key submission automatically when BOS
+8. Guides OAuth login or local one-time API-key submission automatically when BOS
    reports a required provider credential.
 9. Verifies authorization and resumes the original operation once.
 
@@ -92,12 +92,12 @@ installer disk image, and records:
 - Installation succeeds without Git, npm, Node.js, Python, Homebrew, or Xcode.
 - The BOS key is present only in MCP session memory.
 - Generated MCP and Codex configuration contain no secret value.
-- Missing or invalid BOS authentication fails closed and prompts
-  `bos_authenticate`.
+- Missing or invalid BOS authentication fails closed and starts
+  `bos_start_authentication` without requesting a secret in chat.
 - Missing, expired, revoked, or insufficient OAuth authorization automatically
   starts provider login, polls completion, and resumes once.
-- Missing API-key credentials automatically prompt the customer, pass the
-  secret through MCP, store it encrypted in BOS, verify it, and resume once.
+- Missing API-key credentials open a one-time local MCP page, store the submitted
+  secret encrypted in BOS, verify it, and resume once.
 - Plugin installation is idempotent.
 - Package-owned files are replaced during upgrade.
 - Customer extension files remain unchanged during upgrade.

@@ -8,8 +8,10 @@ credential.
 The harness clones `bos-vanilla` to the disposable `bos-acceptance` VM, launches
 Codex, supplies the public GitHub ZIP URL, authenticates through MCP, provisions
 the required Calimatic credential through MCP, and performs one read-only
-Calimatic query. Secret values travel to the guest over SSH and are deleted
-after the run. They are never committed or printed by the harness.
+Calimatic query. Codex receives no secret in its prompt. The harness submits
+each secret to the broker's one-time guest-loopback page, then deletes the
+temporary test environment after the run. Secrets are never committed, printed,
+or included in task history.
 
 ## Host setup
 

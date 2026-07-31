@@ -35,7 +35,7 @@ vm_pid=$!
 ip=""
 cleanup() {
   if [ -n "${ip}" ]; then
-    ${SSH} "admin@${ip}" 'rm -f /tmp/.env /tmp/vm-acceptance.env /tmp/bos-acceptance.out' 2>/dev/null || true
+    ${SSH} "admin@${ip}" 'rm -f /tmp/.env /tmp/vm-acceptance.env /tmp/bos-acceptance.raw /tmp/bos-acceptance.out' 2>/dev/null || true
   fi
   kill "${vm_pid}" 2>/dev/null || true
   tart stop "${RUN_VM}" 2>/dev/null || true
@@ -107,20 +107,44 @@ installed_mcp=$(/usr/bin/find \
 test -f "${installed_mcp}"
 mcp_staging="${installed_mcp}.staging.$$"
 /usr/bin/jq --arg url "${BOS_MCP_URL}" \
-  '.mcpServers.bos.env.BOS_MCP_URL = $url' \
+  '.mcpServers.bos.env.BOS_MCP_URL = $url | .mcpServers.bos.env.BOS_ALLOW_INSECURE_TEST_URL = "1"' \
   "${installed_mcp}" >"${mcp_staging}"
 /bin/mv "${mcp_staging}" "${installed_mcp}"
 
 acceptance_prompt=$(printf '%s\n' \
-  "Use the installed BOS MCP and call bos_authenticate with this credential: ${BOS_TEST_API_KEY}" \
+  "Use the installed BOS MCP. When authentication is required, call bos_start_authentication and wait for its local handoff to complete. Never ask for a credential in chat." \
   "Select the test organization ${BOS_TEST_ORG_ID}." \
-  "I explicitly authorize configuring installed app ${BOS_TEST_INSTALLED_APP_ID}, plugin ${BOS_TEST_PLUGIN_ID}, through bos_set_provider_credential using provider calimatic, credential name api_key, configuration_authority_confirmed true, and this credential value: ${CALIMATIC_API_TOKEN}" \
+  "I explicitly authorize configuring installed app ${BOS_TEST_INSTALLED_APP_ID}, plugin ${BOS_TEST_PLUGIN_ID}, using provider calimatic and credential name api_key. Call bos_start_provider_credential_handoff with configuration_authority_confirmed true and wait for its local handoff. Never ask for the key in chat." \
   "Then run one read-only Calimatic query and report only sanitized organization scope and record count." \
   "Only after every step succeeds, end with exactly: BOS_VM_ACCEPTANCE_PASS org_id=${BOS_TEST_ORG_ID} record_count=<integer>" \
   "Never print, persist, or repeat either credential.")
 printf '%s' "${acceptance_prompt}" |
-  /usr/local/bin/codex exec --ephemeral --dangerously-bypass-approvals-and-sandbox - 2>&1 |
-  /usr/bin/awk '
+  /usr/local/bin/codex exec --ephemeral --dangerously-bypass-approvals-and-sandbox - \
+  >/tmp/bos-acceptance.raw 2>&1 &
+codex_pid=$!
+
+wait_for_handoff() {
+  handoff_pattern=$1
+  attempt=0
+  while [ "${attempt}" -lt 180 ]; do
+    handoff_url=$(/usr/bin/grep -Eo "http://127\\.0\\.0\\.1:[0-9]+/${handoff_pattern}/[A-Za-z0-9_-]+" /tmp/bos-acceptance.raw | /usr/bin/tail -n 1 || true)
+    if [ -n "${handoff_url}" ]; then
+      printf '%s' "$2" | /usr/bin/curl --fail --silent --show-error \
+        --data-urlencode credential@- "${handoff_url}" >/dev/null
+      return 0
+    fi
+    if ! kill -0 "${codex_pid}" 2>/dev/null; then return 1; fi
+    attempt=$((attempt + 1))
+    sleep 1
+  done
+  return 1
+}
+
+wait_for_handoff bos-auth "${BOS_TEST_API_KEY}"
+wait_for_handoff bos-provider "${CALIMATIC_API_TOKEN}"
+wait "${codex_pid}"
+
+/usr/bin/awk '
     function redact(value, secret, before, after, position) {
       if (!length(secret)) return value
       while ((position = index(value, secret)) > 0) {
@@ -132,7 +156,7 @@ printf '%s' "${acceptance_prompt}" |
     }
     BEGIN { bos = ENVIRON["BOS_TEST_API_KEY"]; provider = ENVIRON["CALIMATIC_API_TOKEN"] }
     { print redact(redact($0, bos), provider) }
-  ' | /usr/bin/tee /tmp/bos-acceptance.out
+  ' /tmp/bos-acceptance.raw | /usr/bin/tee /tmp/bos-acceptance.out
 if /usr/bin/grep -Fq "${BOS_TEST_API_KEY}" /tmp/bos-acceptance.out ||
    /usr/bin/grep -Fq "${CALIMATIC_API_TOKEN}" /tmp/bos-acceptance.out; then
   echo "Credential redaction assertion failed" >&2
@@ -142,7 +166,7 @@ if ! /usr/bin/grep -Eq "^BOS_VM_ACCEPTANCE_PASS org_id=${BOS_TEST_ORG_ID} record
   echo "Acceptance success marker missing" >&2
   exit 1
 fi
-rm -f /tmp/.env /tmp/vm-acceptance.env /tmp/bos-acceptance.out
+rm -f /tmp/.env /tmp/vm-acceptance.env /tmp/bos-acceptance.raw /tmp/bos-acceptance.out
 GUEST
 
 echo "macOS Codex acceptance flow completed in ${RUN_VM}"

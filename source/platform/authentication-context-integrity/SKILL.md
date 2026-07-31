@@ -34,13 +34,13 @@ configuration as distinct validated dimensions.
 - Background jobs carry the same validated scope as interactive operations.
 - Advertise the stable BOS tool contract when the MCP process starts so clients
   that snapshot tools can complete authentication and recovery in one session.
-  Before BOS authentication, every secured call fails closed. Accept the BOS
-  credential through `bos_authenticate`, retain it only for the MCP session,
-  and never write or echo it.
+  Before BOS authentication, every secured call fails closed. Collect the BOS
+  credential only through the one-time loopback handoff, retain it only for the
+  MCP session, and never place it in chat, write it, or echo it.
 - When a domain call returns `authorization_required`, automatically complete
   the provider-specific recovery flow, verify it, and resume the original
   operation at most once.
 - For OAuth providers, open the server-returned authorization URL, let the
   customer sign in directly with the provider, and poll the BOS transaction.
-- For API-key providers, request the secret once and pass it directly to
-  `bos_set_provider_credential`; BOS owns encrypted credential persistence.
+- For API-key providers, open the broker's one-time local credential handoff;
+  BOS owns encrypted credential persistence. Never accept the key in chat.

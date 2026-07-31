@@ -5,16 +5,23 @@ from __future__ import annotations
 
 import json
 import os
+import secrets
 import sys
+import threading
+import webbrowser
 from dataclasses import dataclass
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from time import time
 from typing import Any
+from urllib.parse import parse_qs, urlsplit
 
 import httpx
 
 
 BOS_URL = (os.environ.get("BOS_MCP_URL") or "https://dfsm.ai/mcp").rstrip("/")
+if urlsplit(BOS_URL).scheme != "https" and os.environ.get("BOS_ALLOW_INSECURE_TEST_URL") != "1":
+    raise RuntimeError("BOS_MCP_URL must use HTTPS")
 PROTOCOL_VERSION = "2025-06-18"
 DISCOVERY_TOOLS = {
     "bos_get_context",
@@ -24,15 +31,17 @@ DISCOVERY_TOOLS = {
 }
 LOCAL_TOOL_NAMES = {
     "bos_authenticate",
+    "bos_start_authentication",
+    "bos_get_authentication_status",
     "bos_get_connection_status",
 }
 BOOTSTRAP_TOOLS = {
     "bos_authenticate": {
         "name": "bos_authenticate",
         "description": (
-            "Authenticate this in-memory BOS MCP session. Ask the customer for "
-            "their BOS credential and pass it immediately. Never repeat, log, or "
-            "store the credential in a file, prompt, or configuration."
+            "Legacy programmatic authentication for controlled test harnesses. "
+            "Never ask a customer to place a credential in chat. Interactive "
+            "clients must call bos_start_authentication instead."
         ),
         "inputSchema": {
             "type": "object",
@@ -44,6 +53,28 @@ BOOTSTRAP_TOOLS = {
                 }
             },
             "required": ["credential"],
+            "additionalProperties": False,
+        },
+    },
+    "bos_start_authentication": {
+        "name": "bos_start_authentication",
+        "description": (
+            "Open a one-time local credential page owned by this MCP process. "
+            "The customer enters the BOS credential there, never in chat."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": False,
+        },
+    },
+    "bos_get_authentication_status": {
+        "name": "bos_get_authentication_status",
+        "description": "Return sanitized status for the local BOS authentication handoff.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"handoff_id": {"type": "string"}},
+            "required": ["handoff_id"],
             "additionalProperties": False,
         },
     },
@@ -70,6 +101,28 @@ DISCOVERY_CONTRACT_TOOLS = {
     for name in sorted(DISCOVERY_TOOLS)
 }
 PROVIDER_CONTRACT_TOOLS = {
+    "bos_start_provider_credential_handoff": {
+        "name": "bos_start_provider_credential_handoff",
+        "description": "Open a one-time local page for an explicitly authorized provider API key. Never request the key in chat.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "org_id": {"type": "string"},
+                "installed_app_id": {"type": "string"},
+                "plugin_id": {"type": "string"},
+                "provider": {"type": "string"},
+                "credential_name": {"type": "string"},
+                "configuration_authority_confirmed": {"type": "boolean", "const": True},
+            },
+            "required": ["org_id", "installed_app_id", "plugin_id", "provider", "credential_name", "configuration_authority_confirmed"],
+            "additionalProperties": False,
+        },
+    },
+    "bos_get_provider_credential_handoff_status": {
+        "name": "bos_get_provider_credential_handoff_status",
+        "description": "Return sanitized status for the local provider-credential handoff.",
+        "inputSchema": {"type": "object", "properties": {"handoff_id": {"type": "string"}}, "required": ["handoff_id"], "additionalProperties": False},
+    },
     "bos_start_provider_authorization": {
         "name": "bos_start_provider_authorization",
         "description": (
@@ -214,6 +267,241 @@ CALIMATIC_CONTRACT_TOOLS = {
 LOG_PATH = Path.home() / ".codex" / "cache" / "bos-broker-events.jsonl"
 active_tools: list[dict[str, Any]] | None = None
 pending_tools_changed = False
+AUTH_HANDOFF_TTL_SECONDS = 300
+auth_handoff: dict[str, Any] = {"status": "idle"}
+auth_handoff_lock = threading.Lock()
+provider_handoff: dict[str, Any] = {"status": "idle"}
+provider_handoff_lock = threading.Lock()
+
+
+def _handoff_page(action: str, heading: str, field_label: str, disclosure: str, message: str = "") -> bytes:
+    notice = f'<p role="alert">{message}</p>' if message else ""
+    return f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<meta name="referrer" content="no-referrer"><title>{heading}</title>
+<style>body{{font:16px system-ui;max-width:32rem;margin:4rem auto;padding:0 1rem}}label,input,button{{display:block;width:100%;box-sizing:border-box}}input,button{{font:inherit;padding:.75rem;margin-top:.5rem}}button{{margin-top:1rem}}</style></head>
+<body><h1>{heading}</h1><p>{disclosure}</p>{notice}
+<form method="post" action="{action}" autocomplete="off"><label>{field_label}<input name="credential" type="password" required autofocus autocomplete="off"></label><button type="submit">Connect</button></form></body></html>""".encode()
+
+
+def _valid_loopback_request(handler: BaseHTTPRequestHandler, expected_host: str) -> bool:
+    if handler.headers.get("Host") != expected_host:
+        return False
+    origin = handler.headers.get("Origin")
+    if origin and origin != f"http://{expected_host}":
+        return False
+    fetch_site = handler.headers.get("Sec-Fetch-Site")
+    if fetch_site and fetch_site not in {"same-origin", "none"}:
+        return False
+    return True
+
+
+def _shutdown_server(server: HTTPServer) -> None:
+    try:
+        server.shutdown()
+    finally:
+        server.server_close()
+
+
+def _start_authentication_handoff() -> dict[str, Any]:
+    global auth_handoff
+    if _upstreams():
+        return _text_result({"status": "connected", "credential_storage": "mcp_session_memory"})
+
+    with auth_handoff_lock:
+        if auth_handoff.get("status") == "pending" and auth_handoff.get("expires_at", 0) > time():
+            return _text_result({"status": "authorization_pending", "handoff_id": auth_handoff["id"], "authorization_url": auth_handoff["url"], "expires_in_seconds": max(0, int(auth_handoff["expires_at"] - time()))})
+
+        nonce = secrets.token_urlsafe(32)
+        handoff_id = secrets.token_urlsafe(18)
+        path = f"/bos-auth/{nonce}"
+        expires_at = time() + AUTH_HANDOFF_TTL_SECONDS
+
+        class HandoffHandler(BaseHTTPRequestHandler):
+            def log_message(self, format: str, *args: Any) -> None:
+                return
+
+            def _headers(self, status: int, length: int) -> None:
+                self.send_response(status)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(length))
+                self.send_header("Cache-Control", "no-store, max-age=0")
+                self.send_header("Pragma", "no-cache")
+                self.send_header("Referrer-Policy", "no-referrer")
+                self.send_header("X-Frame-Options", "DENY")
+                self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'")
+                self.end_headers()
+
+            def do_GET(self) -> None:
+                with auth_handoff_lock:
+                    valid = auth_handoff.get("id") == handoff_id and auth_handoff.get("status") == "pending"
+                if not valid or urlsplit(self.path).path != path or time() >= expires_at or not _valid_loopback_request(self, expected_host):
+                    body = b"Authentication link is invalid or expired."
+                    self._headers(404, len(body)); self.wfile.write(body); return
+                body = _handoff_page(path, "Connect BOS", "BOS credential", "The local BOS broker receives this credential outside ChatGPT and transmits it to the configured BOS service over TLS for authentication. It remains only in broker session memory.")
+                self._headers(200, len(body)); self.wfile.write(body)
+
+            def do_POST(self) -> None:
+                global auth_handoff
+                if urlsplit(self.path).path != path or not _valid_loopback_request(self, expected_host):
+                    body = b"Authentication link is invalid or expired."
+                    self._headers(404, len(body)); self.wfile.write(body); return
+                if not self.headers.get("Content-Type", "").startswith("application/x-www-form-urlencoded"):
+                    body = b"Invalid request."
+                    self._headers(415, len(body)); self.wfile.write(body); return
+                with auth_handoff_lock:
+                    valid = auth_handoff.get("id") == handoff_id and auth_handoff.get("status") == "pending"
+                    if valid and time() < expires_at:
+                        auth_handoff["status"] = "processing"
+                    else:
+                        valid = False
+                if not valid:
+                    body = b"Authentication link is invalid, expired, or already used."
+                    self._headers(410, len(body)); self.wfile.write(body); return
+                submitted = ""
+                connected = False
+                try:
+                    length = int(self.headers.get("Content-Length", "0"))
+                    if length < 1 or length > 8192:
+                        raise ValueError("invalid length")
+                    submitted = parse_qs(self.rfile.read(length).decode("utf-8", "strict"), keep_blank_values=True).get("credential", [""])[0]
+                    result = _authenticate({"credential": submitted})
+                    connected = not result.get("isError")
+                    body = (b"<h1>BOS connected</h1><p>You can close this window and return to ChatGPT.</p>" if connected else b"Credential was not accepted. Return to ChatGPT and request a new link.")
+                    self._headers(200 if connected else 401, len(body)); self.wfile.write(body)
+                except Exception:
+                    body = b"Authentication failed. Return to ChatGPT and request a new link."
+                    self._headers(400, len(body)); self.wfile.write(body)
+                finally:
+                    submitted = ""
+                    with auth_handoff_lock:
+                        if auth_handoff.get("id") == handoff_id:
+                            auth_handoff = {"id": handoff_id, "status": "connected" if connected else "failed"}
+                    threading.Thread(target=_shutdown_server, args=(self.server,), daemon=True).start()
+
+        server = HTTPServer(("127.0.0.1", 0), HandoffHandler)
+        expected_host = f"127.0.0.1:{server.server_port}"
+        url = f"http://127.0.0.1:{server.server_port}{path}"
+        auth_handoff = {"id": handoff_id, "status": "pending", "url": url, "expires_at": expires_at, "server": server}
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        expiry_timer = threading.Timer(AUTH_HANDOFF_TTL_SECONDS, _shutdown_server, args=(server,))
+        expiry_timer.daemon = True
+        expiry_timer.start()
+    webbrowser.open(url)
+    return _text_result({"status": "authorization_pending", "handoff_id": handoff_id, "authorization_url": url, "expires_in_seconds": AUTH_HANDOFF_TTL_SECONDS, "instruction": "Enter the credential only in the local BOS window, then call bos_get_authentication_status."})
+
+
+def _authentication_handoff_status(arguments: dict[str, Any]) -> dict[str, Any]:
+    with auth_handoff_lock:
+        if arguments.get("handoff_id") != auth_handoff.get("id"):
+            return _text_result({"status": "unknown", "credential_storage": "none"}, is_error=True)
+        status = auth_handoff.get("status", "idle")
+        if status == "pending" and auth_handoff.get("expires_at", 0) <= time():
+            status = "expired"
+    if _upstreams() and status == "connected":
+        return _text_result({"status": "connected", "credential_storage": "mcp_session_memory"})
+    return _text_result({"status": status, "credential_storage": "none"})
+
+
+def _start_provider_credential_handoff(arguments: dict[str, Any]) -> dict[str, Any]:
+    global provider_handoff
+    upstream = _select_upstream("bos_set_provider_credential", arguments)
+    safe_arguments = dict(arguments)
+    with provider_handoff_lock:
+        if provider_handoff.get("status") == "pending" and provider_handoff.get("expires_at", 0) > time():
+            if provider_handoff.get("scope") != safe_arguments:
+                return _text_result({"status": "handoff_scope_conflict"}, is_error=True)
+            return _text_result({"status": "authorization_pending", "handoff_id": provider_handoff["id"], "authorization_url": provider_handoff["url"], "expires_in_seconds": max(0, int(provider_handoff["expires_at"] - time()))})
+        nonce = secrets.token_urlsafe(32)
+        handoff_id = secrets.token_urlsafe(18)
+        path = f"/bos-provider/{nonce}"
+        expires_at = time() + AUTH_HANDOFF_TTL_SECONDS
+
+        class ProviderHandoffHandler(BaseHTTPRequestHandler):
+            def log_message(self, format: str, *args: Any) -> None:
+                return
+
+            def _headers(self, status: int, length: int) -> None:
+                self.send_response(status)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(length))
+                self.send_header("Cache-Control", "no-store, max-age=0")
+                self.send_header("Pragma", "no-cache")
+                self.send_header("Referrer-Policy", "no-referrer")
+                self.send_header("X-Frame-Options", "DENY")
+                self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'")
+                self.end_headers()
+
+            def do_GET(self) -> None:
+                with provider_handoff_lock:
+                    valid = provider_handoff.get("id") == handoff_id and provider_handoff.get("status") == "pending"
+                if not valid or urlsplit(self.path).path != path or time() >= expires_at or not _valid_loopback_request(self, expected_host):
+                    body = b"Credential link is invalid or expired."
+                    self._headers(404, len(body)); self.wfile.write(body); return
+                body = _handoff_page(path, "Connect provider", "Provider credential", "The local BOS broker receives this credential outside ChatGPT and transmits it to the configured BOS service over TLS for validation and encrypted tenant-scoped storage.")
+                self._headers(200, len(body)); self.wfile.write(body)
+
+            def do_POST(self) -> None:
+                global provider_handoff
+                if urlsplit(self.path).path != path or not _valid_loopback_request(self, expected_host):
+                    body = b"Credential link is invalid or expired."
+                    self._headers(404, len(body)); self.wfile.write(body); return
+                if not self.headers.get("Content-Type", "").startswith("application/x-www-form-urlencoded"):
+                    body = b"Invalid request."
+                    self._headers(415, len(body)); self.wfile.write(body); return
+                with provider_handoff_lock:
+                    valid = provider_handoff.get("id") == handoff_id and provider_handoff.get("status") == "pending" and provider_handoff.get("scope") == safe_arguments
+                    if valid and time() < expires_at:
+                        provider_handoff["status"] = "processing"
+                    else:
+                        valid = False
+                if not valid:
+                    body = b"Credential link is invalid, expired, or already used."
+                    self._headers(410, len(body)); self.wfile.write(body); return
+                submitted = ""
+                forwarded: dict[str, Any] = {}
+                connected = False
+                try:
+                    length = int(self.headers.get("Content-Length", "0"))
+                    if length < 1 or length > 8192:
+                        raise ValueError("invalid length")
+                    submitted = parse_qs(self.rfile.read(length).decode("utf-8", "strict"), keep_blank_values=True).get("credential", [""])[0]
+                    forwarded = {**safe_arguments, "credential_value": submitted}
+                    payload = upstream.request("tools/call", {"name": "bos_set_provider_credential", "arguments": forwarded})
+                    result = payload.get("result", {})
+                    connected = "error" not in payload and not result.get("isError")
+                    body = (b"<h1>Provider connected</h1><p>You can close this window and return to ChatGPT.</p>" if connected else b"Provider credential was not accepted. Return to ChatGPT and request a new link.")
+                    self._headers(200 if connected else 400, len(body)); self.wfile.write(body)
+                except Exception:
+                    body = b"Provider configuration failed. Return to ChatGPT and request a new link."
+                    self._headers(400, len(body)); self.wfile.write(body)
+                finally:
+                    submitted = ""; forwarded.clear()
+                    with provider_handoff_lock:
+                        if provider_handoff.get("id") == handoff_id:
+                            provider_handoff = {"id": handoff_id, "status": "configured" if connected else "failed", "scope": safe_arguments}
+                    threading.Thread(target=_shutdown_server, args=(self.server,), daemon=True).start()
+
+        server = HTTPServer(("127.0.0.1", 0), ProviderHandoffHandler)
+        expected_host = f"127.0.0.1:{server.server_port}"
+        url = f"http://127.0.0.1:{server.server_port}{path}"
+        provider_handoff = {"id": handoff_id, "status": "pending", "scope": safe_arguments, "url": url, "expires_at": expires_at, "server": server}
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        expiry_timer = threading.Timer(AUTH_HANDOFF_TTL_SECONDS, _shutdown_server, args=(server,))
+        expiry_timer.daemon = True
+        expiry_timer.start()
+    webbrowser.open(url)
+    return _text_result({"status": "authorization_pending", "handoff_id": handoff_id, "authorization_url": url, "expires_in_seconds": AUTH_HANDOFF_TTL_SECONDS, "instruction": "Enter the provider credential only in the local BOS window, then call bos_get_provider_credential_handoff_status."})
+
+
+def _provider_credential_handoff_status(arguments: dict[str, Any]) -> dict[str, Any]:
+    with provider_handoff_lock:
+        if arguments.get("handoff_id") != provider_handoff.get("id"):
+            return _text_result({"status": "unknown"}, is_error=True)
+        status = provider_handoff.get("status", "idle")
+        if status == "pending" and provider_handoff.get("expires_at", 0) <= time():
+            status = "expired"
+    return _text_result({"status": status})
 def _log(event: str, **details: Any) -> None:
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with LOG_PATH.open("a") as handle:
@@ -435,8 +723,8 @@ def _select_upstream(name: str, arguments: dict[str, Any]) -> Upstream:
     candidates = list(_upstreams())
     if not candidates:
         raise RuntimeError(
-            "BOS authentication is required. Ask the customer for their BOS "
-            "credential and call bos_authenticate."
+            "BOS authentication is required. Call bos_start_authentication and "
+            "have the customer use the local BOS window; never request the credential in chat."
         )
     org_id = arguments.get("org_id")
     if isinstance(org_id, str):
@@ -464,8 +752,10 @@ def _handle(message: dict[str, Any]) -> dict[str, Any] | None:
                 "capabilities": {"tools": {"listChanged": True}},
                 "serverInfo": {"name": "bos", "version": "0.1.0"},
                 "instructions": (
-                    "If BOS is disconnected, ask the customer for their BOS credential "
-                    "and call bos_authenticate. Then call bos_get_context and pass exact "
+                    "If BOS is disconnected, call bos_start_authentication. The customer "
+                    "enters the credential only in the local BOS window; never request it "
+                    "in chat. Poll bos_get_authentication_status, then call bos_get_context "
+                    "and pass exact "
                     "server-returned scope on every domain call. When BOS returns "
                     "authorization_required, automatically guide OAuth login or request "
                     "the provider key, verify authorization, and resume the original "
@@ -485,12 +775,20 @@ def _handle(message: dict[str, Any]) -> dict[str, Any] | None:
         arguments = params.get("arguments") or {}
         if name == "bos_authenticate":
             result = _authenticate(arguments)
+        elif name == "bos_start_authentication":
+            result = _start_authentication_handoff()
+        elif name == "bos_get_authentication_status":
+            result = _authentication_handoff_status(arguments)
         elif name == "bos_get_connection_status":
             result = _connection_status()
+        elif name == "bos_start_provider_credential_handoff":
+            result = _start_provider_credential_handoff(arguments)
+        elif name == "bos_get_provider_credential_handoff_status":
+            result = _provider_credential_handoff_status(arguments)
         elif name in DISCOVERY_TOOLS:
             if not _upstreams():
                 raise RuntimeError(
-                    "BOS authentication is required. Call bos_authenticate first."
+                    "BOS authentication is required. Call bos_start_authentication first."
                 )
             result = _call_all(name, arguments)
             if name == "bos_get_context":
