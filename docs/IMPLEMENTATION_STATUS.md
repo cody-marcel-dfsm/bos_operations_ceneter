@@ -58,7 +58,7 @@ The implementation is ready for these environment-specific smoke tests:
 2. Install the generated Copilot bundle in a clean Copilot environment and
    verify repository instruction discovery.
 3. Run one authenticated read-only BOS domain operation from a clean client.
-4. Exercise an upgrade from version `0.3.0` to `0.4.0` and confirm managed
+4. Exercise an upgrade from version `0.4.0` to `0.4.1` and confirm managed
    files are replaced while customer extension files remain unchanged.
 
 These gates validate client environments; they require no additional package
