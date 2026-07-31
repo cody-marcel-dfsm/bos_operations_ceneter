@@ -67,13 +67,12 @@ dist/bos-operations-center-macos-<version>.zip
 dist/bos-operations-center-macos.zip
 ```
 
-The ZIP includes the Codex marketplace, BOS and iCode plugins, install and
-secure Keychain connection scripts, and a self-contained BOS MCP broker.
-Customers need macOS and a signed-in Codex installation. Give Codex the public
-GitHub release URL and ask it to download the ZIP, inspect
-`README_INSTALL.md`, run `install.sh`, and launch `connect-bos.sh` for the
-native secure key-entry dialog. The BOS key must never be pasted into the
-Codex conversation.
+The ZIP includes the Codex marketplace, BOS and iCode plugins, a Codex-executed
+installer, and a self-contained BOS MCP broker. Customers need macOS and a
+signed-in Codex installation. Give Codex the public GitHub release URL and ask
+it to download, verify, extract, inspect `README_INSTALL.md`, and install the
+package. On the first secured request, Codex asks for the BOS credential and
+passes it directly through the MCP bootstrap tool.
 
 Tags matching `v*` run the customer-release workflow on GitHub's Apple-silicon
 macOS runner and attach the versioned and stable ZIP names to the GitHub
@@ -168,29 +167,33 @@ who do not use Git.
 
 ## Customer onboarding
 
-Installing the package grants no organization access. On first use, the client
-loads its customer configuration, the user completes **Connect BOS**, and BOS
-resolves the authorized tenant, capabilities, and provider credential states.
+Installing the package grants no organization access. On the first secured
+request, Codex asks for the BOS credential, passes it to `bos_authenticate`,
+and BOS resolves the authorized tenant, capabilities, and provider credential
+states.
 Every secured organization operation requires that authenticated BOS path.
 There is no unauthenticated or alternate-provider fallback.
 
 ### API-key service such as Calimatic
 
-1. Install the client package and choose **Connect BOS**.
-2. Select the organization and Calimatic integration.
-3. Open the secure BOS setup page and enter the Calimatic API key there.
-4. Return to the assistant; it verifies the connection and retries the request.
+1. Request an operation that requires Calimatic.
+2. BOS returns `authorization_required` with a sensitive API-key field.
+3. Codex asks for the key and immediately passes it to
+   `bos_set_provider_credential`.
+4. BOS validates and encrypts the key, then Codex verifies the connection and
+   resumes the original request once.
 
-The API key must never be pasted into chat, a prompt, an MCP tool argument, a
-configuration file, or this repository.
+The API key must never be echoed, logged, written to configuration, or stored
+in this repository.
 
 ### Google service such as Gmail
 
-1. Install the client package and choose **Connect BOS**.
-2. Select the organization and Gmail integration.
-3. Open the secure BOS authorization page, sign in to Google, and approve the
-   requested scopes.
-4. Return to the assistant; it verifies the connection and retries the request.
+1. Request an operation that requires Gmail.
+2. BOS returns `authorization_required` with an OAuth transaction and URL.
+3. Codex opens the URL; the customer signs in directly with Google and approves
+   the requested scopes.
+4. BOS receives the callback and stores the resulting tokens. Codex polls the
+   transaction, verifies the connection, and resumes the original request once.
 
 Each organization receives its own tenant-scoped provider credential in BOS.
 For shared BOS integrations, customers use the BOS Google Cloud project and do
@@ -236,8 +239,10 @@ The repository contains no BOS API key, provider API key, OAuth client secret,
 access token, refresh token, password, service-account key, private signing
 key, customer data, or reusable bootstrap authority.
 
-Customers authenticate after installation through BOS. Provider OAuth and
-API-key entry occur only through secure BOS-hosted onboarding pages.
+Customers authenticate after installation through MCP. OAuth login occurs
+directly with the provider through a BOS-created transaction. Customer-supplied
+API keys pass once through a sensitive MCP tool field and are encrypted and
+stored by BOS.
 
 Run `npm run release:check` before every release. See [SECURITY.md](SECURITY.md)
 for disclosure and credential-response procedures.

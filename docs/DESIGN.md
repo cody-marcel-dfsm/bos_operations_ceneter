@@ -357,12 +357,14 @@ Customer-owned extension skills may consume this non-secret configuration to
 specialize a packaged operating procedure. Extensions cannot grant tenant,
 organization, application, role, plugin, capability, or provider authority.
 
-Credentials and access authority are not customer configuration. BOS client
-keys, provider API keys, OAuth client secrets, access tokens, refresh tokens,
-passwords, cookies, service-account files, and private keys must never be
-written into skill files, generated packages, prompts, chat messages, MCP
-arguments, or ordinary client configuration. They are handled through the
-client's secure BOS connection and BOS-hosted provider setup.
+Credentials and access authority are not customer configuration. They must
+never be written into skill files, generated packages, logs, or ordinary client
+configuration. A customer supplies a BOS credential or provider API key only
+when Codex prompts for a required MCP call. Codex passes the secret directly to
+MCP without echoing it. BOS owns encrypted provider-credential persistence.
+OAuth passwords, authorization codes, access tokens, and refresh tokens never
+pass through Codex; the customer signs in directly with the provider and BOS
+handles the callback and token exchange.
 
 ## Authentication and authorization
 
@@ -403,10 +405,11 @@ state available from BOS and starts the applicable recovery flow.
 
 ### 1. Install the client distribution
 
-The user installs a named product, such as iCode Operations Center or Lead
-Director, for Codex, Claude, or GitHub Copilot. The installation contains only
-the capabilities and vertical modules selected for that product. Installation
-alone grants no organization access.
+The customer gives Codex a GitHub release ZIP URL. Codex downloads, verifies,
+extracts, and installs the named product without asking the customer to run a
+shell command. The installation contains only the capabilities and vertical
+modules selected for that product. Installation alone grants no organization
+access.
 
 ### 2. Load customer configuration
 
@@ -416,10 +419,11 @@ authenticate BOS and does not authorize provider access.
 
 ### 3. Connect the account
 
-The user selects **Connect your account** and completes the client's secure BOS
-authentication flow. The resulting BOS client authorization must be handled by
-the client connection mechanism and must never be pasted into chat or written
-into the package.
+Before authentication, the packaged MCP exposes only `bos_authenticate` and
+`bos_get_connection_status`. When the first secured operation requires BOS
+access, Codex asks the customer for the BOS credential and immediately passes
+it to `bos_authenticate`. The broker keeps it only in MCP session memory. It is
+never written to the package, configuration, shell history, or logs.
 
 ### 4. Resolve tenant and capabilities
 
@@ -431,22 +435,31 @@ select the intended scope.
 
 ### 5. Authorize required providers
 
-When a workflow requires an unconfigured provider:
+When a domain request requires a missing, expired, revoked, or insufficient
+provider credential, BOS returns a structured `authorization_required` result
+with an original operation identifier.
 
-- Calimatic or another API-key provider opens the secure BOS-hosted
-  credential-entry flow.
-- Gmail or another Google OAuth provider opens the BOS-hosted Google
-  authorization flow.
-- Another supported provider uses its published BOS-hosted authorization
-  flow.
+- Gmail, Calendar, Drive, Outlook, and other OAuth providers return a
+  short-lived authorization URL and transaction identifier. Codex opens the
+  URL, the customer signs in directly with the provider, BOS receives the
+  callback and stores the tokens, and Codex polls
+  `bos_get_authorization_status`.
+- Calimatic, SendGrid, and other API-key providers return a sensitive-field
+  request. Codex asks the customer once and passes the value directly to
+  `bos_set_provider_credential`. BOS validates, encrypts, and stores it within
+  server-validated tenant, installed-app, plugin, provider, and credential
+  scope.
 
-Provider credentials never pass through the conversation or skill arguments.
+Neither flow echoes credential values. OAuth passwords and tokens never enter
+the conversation or MCP arguments.
 
 ### 6. Verify and run
 
 The client verifies connection and capability status, then runs the requested
-operation within the resolved tenant and location scope. The result should name
-the operational scope clearly enough for the user to verify it.
+operation within the resolved tenant and location scope. After successful
+credential recovery, Codex calls `bos_resume_operation` and retries the original
+operation exactly once. The result names the operational scope clearly enough
+for the user to verify it.
 
 ## Authentication recovery
 
@@ -457,8 +470,8 @@ When BOS client authentication or provider authorization fails:
    or provider credential authorization.
 3. Report the exact tenant, plugin, capability, and credential state returned
    by BOS.
-4. Direct the user to **Connect your account** or the appropriate BOS-hosted
-   setup flow.
+4. Call `bos_authenticate`, start provider OAuth, or request the provider API
+   key according to the structured recovery response.
 5. Verify the connection after the user completes authorization.
 6. Retry the affected operation once.
 7. Stop and report the unresolved state if verification or the retry fails.

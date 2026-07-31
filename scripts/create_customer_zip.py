@@ -90,12 +90,7 @@ def main() -> None:
             ignore_errors=True,
         )
         shutil.copy2(ROOT / "installer" / "macos" / "install.sh", stage)
-        shutil.copy2(ROOT / "installer" / "macos" / "connect-bos.sh", stage)
         shutil.copy2(ROOT / "installer" / "macos" / "README_INSTALL.md", stage)
-        shutil.copy2(
-            ROOT / "installer" / "macos" / "connect-bos.sh",
-            marketplace / "connect-bos.sh",
-        )
         manifest = payload_manifest(stage)
         (stage / "PAYLOAD_MANIFEST.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n"

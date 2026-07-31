@@ -11,7 +11,7 @@ import pytest
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("BOS_BROKER_LIVE_TEST") != "1",
-    reason="requires the two authorized BOS Keychain credentials",
+    reason="requires authenticated BOS MCP test sessions",
 )
 
 MODULE_PATH = Path(__file__).parents[1] / "scripts" / "bos_mcp_broker.py"

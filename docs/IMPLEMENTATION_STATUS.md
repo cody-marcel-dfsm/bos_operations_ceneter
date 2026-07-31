@@ -23,8 +23,8 @@ ready for client testing.
 - Machine-local Codex developer linking with pre-link backups and idempotent
   canonical-source symlinks.
 - Deterministic macOS customer ZIP generation with an embedded marketplace,
-  shell bootstrap, secure Keychain dialog, and self-contained Apple-silicon
-  BOS broker.
+  Codex-executed shell bootstrap, MCP-session authentication, and a
+  self-contained Apple-silicon BOS broker.
 - Tag-triggered GitHub release workflow for versioned and stable ZIP assets.
 - Source-to-generated drift validation, skill validation, secret/path scanning,
   installer tests, broker compilation, and release checks.
@@ -58,7 +58,7 @@ The implementation is ready for these environment-specific smoke tests:
 2. Install the generated Copilot bundle in a clean Copilot environment and
    verify repository instruction discovery.
 3. Run one authenticated read-only BOS domain operation from a clean client.
-4. Exercise an upgrade from version `0.2.0` to `0.3.0` and confirm managed
+4. Exercise an upgrade from version `0.3.0` to `0.4.0` and confirm managed
    files are replaced while customer extension files remain unchanged.
 
 These gates validate client environments; they require no additional package

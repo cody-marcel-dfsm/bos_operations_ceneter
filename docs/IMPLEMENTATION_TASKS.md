@@ -316,7 +316,8 @@ scope resolution, provider setup, verification, and retry sequence.
 
 - Represent BOS client authorization, tenant resolution, capability
   authorization, and provider credential health as distinct states.
-- Add client-facing connect/setup actions without exposing credentials.
+- Add client-facing MCP authentication, OAuth, and sensitive API-key actions
+  without persisting or echoing credentials.
 - Implement the recovery sequence defined in the design.
 - Permit one retry after verified recovery.
 
@@ -327,8 +328,9 @@ scope resolution, provider setup, verification, and retry sequence.
 - Missing authentication stops the affected operation and starts the correct
   recovery action.
 - Recovery verifies state before retrying and retries no more than once.
-- No credential value appears in prompts, logs, skill arguments, generated
-  files, or configuration.
+- Direct credentials appear only in the customer's transient answer and the
+  immediately following sensitive MCP argument. They never appear in logs,
+  responses, generated files, configuration, or retries.
 
 **Dependencies:** BOSPKG-009, BOSPKG-011.
 

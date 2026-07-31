@@ -11,11 +11,13 @@ required for installation.
 
 ## Install
 
-1. Extract the ZIP.
-2. Run `install.sh`.
-3. Run `connect-bos.sh`. macOS displays a secure dialog for the BOS client key.
-4. Start a new Codex task.
-5. Ask Codex to call `bos_get_context`.
+1. Give Codex the GitHub release ZIP URL and ask it to install the package.
+2. Codex downloads, verifies, extracts, and runs the included `install.sh`.
+3. Start a new Codex task.
+4. Request a BOS operation. Codex asks for the BOS credential and passes it
+   directly to the packaged MCP bootstrap tool.
+5. Codex calls `bos_get_context` after authentication.
 
-The key is stored in macOS Keychain. It is absent from the plugin files, MCP
-configuration, shell history, and Codex conversation.
+The BOS credential remains in MCP session memory and is absent from plugin
+files, MCP configuration, shell history, and release files. Provider OAuth
+tokens and API keys are encrypted and stored by BOS.

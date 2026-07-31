@@ -65,6 +65,5 @@ fi
 
 echo
 echo "BOS Operations Center is installed."
-echo "Run the secure connection command next:"
-echo "  ${DESTINATION}/connect-bos.sh"
-echo "Then start a new Codex task."
+echo "Start a new Codex task. Codex will request BOS authentication through MCP"
+echo "when the first secured BOS operation is requested."
