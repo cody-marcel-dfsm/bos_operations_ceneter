@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import {
+  chmod,
   cp,
   mkdir,
   mkdtemp,
   readFile,
+  readdir,
+  stat,
   writeFile
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -14,6 +17,7 @@ import {
   inspectInstallation,
   verifyInstallation
 } from "../scripts/install-package.mjs";
+import { createCustomerExtension } from "../scripts/create-extension.mjs";
 import { hashFile, root } from "../scripts/lib/package-model.mjs";
 
 async function temporaryHome() {
@@ -61,18 +65,90 @@ test("apply preserves unrelated marketplace entries and plugin files", async () 
   assert.equal(updated.plugins[0].name, "other");
 });
 
-test("modified managed file produces conflict without overwrite", async () => {
+test("managed package files are installed read-only", async () => {
   const home = await temporaryHome();
   await applyInstallation({ home, product: "bos" });
   const skill = join(home, "plugins", "bos", "skills", "planning", "SKILL.md");
+  const mode = (await stat(skill)).mode & 0o777;
+  assert.equal(mode, 0o444);
+});
+
+test("customer extension composes a base skill and survives package apply", async () => {
+  const home = await temporaryHome();
+  await applyInstallation({ home, product: "bos" });
+  const created = await createCustomerExtension({
+    home,
+    product: "bos",
+    baseSkill: "planning",
+    site: "cherry-creek"
+  });
+  const extensionSkill = join(created.path, "SKILL.md");
+  const before = await readFile(extensionSkill, "utf8");
+  assert.match(before, /\$bos:planning/);
+
+  const inspected = await inspectInstallation({ home, product: "bos" });
+  assert.deepEqual(inspected.extensions, [
+    {
+      name: "planning-cherry-creek",
+      product: "bos",
+      skill: "planning",
+      tested_version: created.tested_version
+    }
+  ]);
+  assert.deepEqual(inspected.warnings, []);
+
+  await applyInstallation({ home, product: "bos" });
+  assert.equal(await readFile(extensionSkill, "utf8"), before);
+});
+
+test("customer extension reports base version compatibility warnings", async () => {
+  const home = await temporaryHome();
+  await applyInstallation({ home, product: "bos" });
+  const created = await createCustomerExtension({
+    home,
+    product: "bos",
+    baseSkill: "planning",
+    site: "cherry-creek"
+  });
+  const manifestPath = join(created.path, ".bos-extension.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  manifest.extends.tested_version = "0.1.0";
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+  const report = await inspectInstallation({ home, product: "bos" });
+  assert.deepEqual(report.warnings, [
+    `planning-cherry-creek: tested with 0.1.0; installing ${created.tested_version}`
+  ]);
+});
+
+test("modified managed file is backed up and replaced", async () => {
+  const home = await temporaryHome();
+  await applyInstallation({ home, product: "bos" });
+  const skill = join(home, "plugins", "bos", "skills", "planning", "SKILL.md");
+  await chmod(skill, 0o644);
   await writeFile(skill, "local modification\n");
   const report = await inspectInstallation({ home, product: "bos" });
-  assert.equal(report.state, "conflict");
-  await assert.rejects(
-    applyInstallation({ home, product: "bos" }),
-    /Installation state is conflict/
+  assert.equal(report.state, "managed-modified");
+  assert.deepEqual(report.actions.replace, ["skills/planning/SKILL.md"]);
+  await applyInstallation({ home, product: "bos" });
+  assert.notEqual(await readFile(skill, "utf8"), "local modification\n");
+  const backups = await readdir(join(home, ".agents", "bos-backups"));
+  assert.equal(backups.length, 1);
+  assert.equal(
+    await readFile(
+      join(
+        home,
+        ".agents",
+        "bos-backups",
+        backups[0],
+        "skills",
+        "planning",
+        "SKILL.md"
+      ),
+      "utf8"
+    ),
+    "local modification\n"
   );
-  assert.equal(await readFile(skill, "utf8"), "local modification\n");
 });
 
 test("verify reports current installation", async () => {
@@ -98,6 +174,7 @@ test("stale managed file updates when prior hash proves ownership", async () => 
   const home = await temporaryHome();
   await applyInstallation({ home, product: "bos" });
   const skill = join(home, "plugins", "bos", "skills", "planning", "SKILL.md");
+  await chmod(skill, 0o644);
   await writeFile(skill, "managed old version\n");
   const statePath = join(
     home,
@@ -105,6 +182,7 @@ test("stale managed file updates when prior hash proves ownership", async () => 
     "bos",
     ".bos-package-state.json"
   );
+  await chmod(statePath, 0o644);
   const state = JSON.parse(await readFile(statePath, "utf8"));
   state.managed_hashes["skills/planning/SKILL.md"] = await hashFile(skill);
   await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`);
@@ -169,6 +247,7 @@ test("stale package-owned files are removed while user files remain", async () =
   await writeFile(removedPath, "old managed content\n");
   await writeFile(userPath, "user content\n");
   const statePath = join(target, ".bos-package-state.json");
+  await chmod(statePath, 0o644);
   const state = JSON.parse(await readFile(statePath, "utf8"));
   state.managed_paths.push("obsolete-managed.txt");
   state.managed_hashes["obsolete-managed.txt"] = await hashFile(removedPath);

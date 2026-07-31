@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 import {
+  chmod,
   cp,
   mkdir,
   readFile,
+  readdir,
   rename,
   rm,
   writeFile
@@ -117,6 +119,7 @@ async function inspectTarget(paths, desired) {
       state: "missing",
       create: Object.keys(desired.hashes),
       update: [],
+      replace: [],
       remove: [],
       preserve: [],
       conflicts: []
@@ -128,6 +131,7 @@ async function inspectTarget(paths, desired) {
   const currentFiles = await hashTree(paths.target, new Set([stateFileName]));
   const create = [];
   const update = [];
+  const replace = [];
   const conflicts = [];
   let preserve = Object.keys(currentFiles).filter(
     (path) => !(path in desired.hashes)
@@ -143,6 +147,7 @@ async function inspectTarget(paths, desired) {
         state: "invalid",
         create,
         update,
+        replace,
         remove,
         preserve,
         conflicts: [stateFileName]
@@ -157,6 +162,7 @@ async function inspectTarget(paths, desired) {
         state: "invalid",
         create,
         update,
+        replace,
         remove,
         preserve,
         conflicts: [stateFileName]
@@ -173,6 +179,9 @@ async function inspectTarget(paths, desired) {
     if (currentHash === desiredHash) continue;
     const priorHash = previousState?.managed_hashes?.[path];
     if (priorHash && priorHash === currentHash) update.push(path);
+    else if (hasState && previousState.managed_paths.includes(path)) {
+      replace.push(path);
+    }
     else if (!hasState && path === ".codex-plugin/plugin.json") {
       try {
         const currentManifest = await readJson(
@@ -190,17 +199,21 @@ async function inspectTarget(paths, desired) {
   if (previousState) {
     for (const path of previousState.managed_paths) {
       if (path in desired.hashes || !(path in currentFiles)) continue;
-      if (currentFiles[path] === previousState.managed_hashes[path]) {
-        remove.push(path);
-      } else {
-        conflicts.push(path);
-      }
+      remove.push(path);
     }
     preserve = preserve.filter((path) => !remove.includes(path));
   }
 
   if (conflicts.length) {
-    return { state: "conflict", create, update, remove, preserve, conflicts };
+    return {
+      state: "conflict",
+      create,
+      update,
+      replace,
+      remove,
+      preserve,
+      conflicts
+    };
   }
   if (!hasState) {
     return {
@@ -208,19 +221,40 @@ async function inspectTarget(paths, desired) {
         create.length || update.length ? "partial" : "compatible-unmanaged",
       create,
       update,
+      replace,
       remove,
       preserve,
       conflicts
     };
   }
   if (create.length) {
-    return { state: "partial", create, update, remove, preserve, conflicts };
+    return {
+      state: "partial",
+      create,
+      update,
+      replace,
+      remove,
+      preserve,
+      conflicts
+    };
+  }
+  if (replace.length) {
+    return {
+      state: "managed-modified",
+      create,
+      update,
+      replace,
+      remove,
+      preserve,
+      conflicts
+    };
   }
   if (update.length || remove.length) {
     return {
       state: "managed-stale",
       create,
       update,
+      replace,
       remove,
       preserve,
       conflicts
@@ -230,9 +264,52 @@ async function inspectTarget(paths, desired) {
     state: "managed-current",
     create,
     update,
+    replace,
     remove,
     preserve,
     conflicts
+  };
+}
+
+async function inspectCustomerExtensions(paths, desiredManifest) {
+  const skillsRoot = join(paths.target, "skills");
+  if (!(await pathExists(skillsRoot))) return { items: [], warnings: [] };
+  const entries = await readdir(skillsRoot, { withFileTypes: true });
+  const items = [];
+  const warnings = [];
+  for (const entry of entries.filter((candidate) => candidate.isDirectory())) {
+    const manifestPath = join(skillsRoot, entry.name, ".bos-extension.json");
+    if (!(await pathExists(manifestPath))) continue;
+    try {
+      const manifest = await readJson(manifestPath);
+      const extension = manifest.extends ?? {};
+      const item = {
+        name: entry.name,
+        product: extension.product,
+        skill: extension.skill,
+        tested_version: extension.tested_version
+      };
+      items.push(item);
+      if (
+        manifest.schema_version !== "1" ||
+        manifest.ownership !== "customer" ||
+        extension.product !== desiredManifest.name ||
+        typeof extension.skill !== "string" ||
+        !(await pathExists(join(skillsRoot, extension.skill, "SKILL.md")))
+      ) {
+        warnings.push(`${entry.name}: invalid or missing base skill reference`);
+      } else if (extension.tested_version !== desiredManifest.version) {
+        warnings.push(
+          `${entry.name}: tested with ${extension.tested_version}; installing ${desiredManifest.version}`
+        );
+      }
+    } catch {
+      warnings.push(`${entry.name}: invalid .bos-extension.json`);
+    }
+  }
+  return {
+    items: items.sort((left, right) => left.name.localeCompare(right.name)),
+    warnings: warnings.sort()
   };
 }
 
@@ -246,6 +323,7 @@ export async function inspectInstallation(rawOptions = {}) {
   const paths = pathsFor(options);
   const desired = await desiredState(options, paths);
   const target = await inspectTarget(paths, desired);
+  const extensions = await inspectCustomerExtensions(paths, desired.manifest);
   const marketplace = await marketplaceStatus(
     options,
     paths,
@@ -264,9 +342,12 @@ export async function inspectInstallation(rawOptions = {}) {
     paths,
     state: target.state,
     marketplace: marketplace.state,
+    extensions: extensions.items,
+    warnings: extensions.warnings,
     actions: {
       create: target.create,
       update: target.update,
+      replace: target.replace,
       remove: target.remove,
       preserve: target.preserve,
       conflicts: target.conflicts
@@ -347,6 +428,9 @@ export async function applyInstallation(rawOptions = {}) {
       paths.desired,
       new Set([stateFileName])
     );
+    for (const managedPath of Object.keys(managedHashes)) {
+      await chmod(join(stagedPlugin, managedPath), 0o444);
+    }
     await writeJson(join(stagedPlugin, stateFileName), {
       schema_version: "1",
       package: "bos-operations-center",
@@ -398,6 +482,7 @@ function printReport(report, asJson) {
     for (const [key, values] of Object.entries(report.actions)) {
       if (values.length) console.log(`${key}: ${values.join(", ")}`);
     }
+    for (const warning of report.warnings) console.log(`warning: ${warning}`);
   }
 }
 

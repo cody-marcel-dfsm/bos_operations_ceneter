@@ -1,4 +1,5 @@
 import importlib.util
+import json
 from pathlib import Path
 import sys
 
@@ -41,6 +42,32 @@ def test_initialize_is_local_and_does_not_touch_upstreams(monkeypatch):
         }
     )
     assert response["result"]["serverInfo"]["name"] == "bos"
+
+
+def test_credential_profiles_are_loaded_without_secret_values(
+    monkeypatch, tmp_path
+):
+    profile = tmp_path / "credentials.json"
+    profile.write_text(
+        json.dumps(
+            {
+                "schema_version": "1",
+                "profiles": [
+                    {
+                        "name": "default",
+                        "keychain_service": "com.example.bos.default",
+                        "keychain_account": "bos-client",
+                    }
+                ],
+            }
+        )
+    )
+    monkeypatch.setattr(broker, "CONFIG_PATH", profile)
+    configured = broker._load_configured_upstreams()
+    assert len(configured) == 1
+    assert configured[0].name == "default"
+    assert configured[0].keychain_service == "com.example.bos.default"
+    assert configured[0].keychain_account == "bos-client"
 
 
 def test_tools_list_exposes_authorized_union_on_initial_discovery(monkeypatch):

@@ -5,7 +5,8 @@ import {
   listProducts,
   resolveProductSkills,
   root,
-  validateProduct
+  validateProduct,
+  walkFiles
 } from "../scripts/lib/package-model.mjs";
 
 test("all product manifests validate and resolve unique skills", async () => {
@@ -41,4 +42,16 @@ test("the packaged BOS broker compiles with the system Python runtime", () => {
     }
   );
   assert.equal(result.status, 0, result.stderr || result.stdout);
+});
+
+test("generated clients exclude Python cache and bytecode files", async () => {
+  for (const client of ["codex", "claude", "copilot"]) {
+    const files = await walkFiles(`${root}/clients/${client}`);
+    assert.equal(
+      files.some(
+        (path) => path.includes("/__pycache__/") || path.endsWith(".pyc")
+      ),
+      false
+    );
+  }
 });
