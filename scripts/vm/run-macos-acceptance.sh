@@ -14,8 +14,14 @@ test -f "${ENV_FILE}"
 test -f "${PUBLIC_ENV}"
 
 for required in BOS_TEST_API_KEY CALIMATIC_API_TOKEN; do
-  if ! /usr/bin/grep -q "^${required}=" "${ENV_FILE}"; then
+  if ! /usr/bin/grep -Eq "^${required}=.+$" "${ENV_FILE}"; then
     echo "Missing ${required} in ${ENV_FILE}" >&2
+    exit 1
+  fi
+done
+for required in BOS_TEST_PACKAGE_URL BOS_TEST_ORG_ID BOS_TEST_INSTALLED_APP_ID BOS_TEST_PLUGIN_ID; do
+  if ! /usr/bin/grep -Eq "^${required}=.+$" "${PUBLIC_ENV}"; then
+    echo "Missing ${required} in ${PUBLIC_ENV}" >&2
     exit 1
   fi
 done
@@ -64,14 +70,33 @@ set -a
 . /tmp/.env
 . /tmp/vm-acceptance.env
 set +a
-prompt=$(printf '%s\n' \
+install_prompt=$(printf '%s\n' \
   "Install BOS Operations Center from ${BOS_TEST_PACKAGE_URL}." \
-  "Download and verify the ZIP, install it, and start the BOS MCP." \
-  "Authenticate BOS using BOS_TEST_API_KEY from the process environment." \
-  "For the test organization ${BOS_TEST_ORG_ID}, configure Calimatic using CALIMATIC_API_TOKEN from the process environment." \
+  "Download and verify the ZIP, install it, and verify that its BOS MCP is configured." \
+  "Stop after installation so a fresh Codex process can discover the new MCP server.")
+printf '%s' "${install_prompt}" | codex exec --ephemeral --dangerously-bypass-approvals-and-sandbox -
+
+acceptance_prompt=$(printf '%s\n' \
+  "Use the installed BOS MCP and call bos_authenticate with this credential: ${BOS_TEST_API_KEY}" \
+  "Select the test organization ${BOS_TEST_ORG_ID}." \
+  "Configure installed app ${BOS_TEST_INSTALLED_APP_ID}, plugin ${BOS_TEST_PLUGIN_ID}, through bos_set_provider_credential using provider Calimatic, credential name api_key, and this credential value: ${CALIMATIC_API_TOKEN}" \
   "Then run one read-only Calimatic query and report only sanitized organization scope and record count." \
   "Never print, persist, or repeat either credential.")
-printf '%s' "${prompt}" | codex exec --dangerously-bypass-approvals-and-sandbox -
+printf '%s' "${acceptance_prompt}" |
+  codex exec --ephemeral --dangerously-bypass-approvals-and-sandbox - |
+  /usr/bin/awk '
+    function redact(value, secret, before, after, position) {
+      if (!length(secret)) return value
+      while ((position = index(value, secret)) > 0) {
+        before = substr(value, 1, position - 1)
+        after = substr(value, position + length(secret))
+        value = before "[REDACTED]" after
+      }
+      return value
+    }
+    BEGIN { bos = ENVIRON["BOS_TEST_API_KEY"]; provider = ENVIRON["CALIMATIC_API_TOKEN"] }
+    { print redact(redact($0, bos), provider) }
+  '
 rm -f /tmp/.env /tmp/vm-acceptance.env
 GUEST
 
