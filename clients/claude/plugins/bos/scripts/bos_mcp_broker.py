@@ -30,28 +30,6 @@ DISCOVERY_TOOLS = {
 LOG_PATH = Path.home() / ".codex" / "cache" / "bos-broker-events.jsonl"
 active_tools: list[dict[str, Any]] | None = None
 pending_tools_changed = False
-BOOTSTRAP_TOOLS = [
-    {
-        "name": "bos_get_context",
-        "description": (
-            "Authenticate BOS and return the currently authorized organization, "
-            "application, installation, role, plugin, and capability contexts."
-        ),
-        "inputSchema": {
-            "type": "object",
-            "properties": {},
-            "additionalProperties": False,
-        },
-        "annotations": {
-            "readOnlyHint": True,
-            "destructiveHint": False,
-            "idempotentHint": True,
-            "openWorldHint": True,
-        },
-    }
-]
-
-
 def _log(event: str, **details: Any) -> None:
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with LOG_PATH.open("a") as handle:
@@ -211,10 +189,13 @@ upstreams = [
 
 
 def _all_tools() -> list[dict[str, Any]]:
-    return active_tools if active_tools is not None else BOOTSTRAP_TOOLS
+    if active_tools is None:
+        _activate_tools(notify=False)
+    assert active_tools is not None
+    return active_tools
 
 
-def _activate_tools() -> None:
+def _activate_tools(*, notify: bool = True) -> None:
     global active_tools, pending_tools_changed
     merged: dict[str, dict[str, Any]] = {}
     for upstream in upstreams:
@@ -224,7 +205,7 @@ def _activate_tools() -> None:
                 raise RuntimeError(f"BOS tool schema differs across contexts: {name}")
             merged[name] = tool
     active_tools = [merged[name] for name in sorted(merged)]
-    pending_tools_changed = True
+    pending_tools_changed = notify
 
 
 def _call_all(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
