@@ -44,30 +44,49 @@ def test_initialize_is_local_and_does_not_touch_upstreams(monkeypatch):
     assert response["result"]["serverInfo"]["name"] == "bos"
 
 
-def test_credential_profiles_are_loaded_without_secret_values(
-    monkeypatch, tmp_path
-):
-    profile = tmp_path / "credentials.json"
-    profile.write_text(
-        json.dumps(
-            {
-                "schema_version": "1",
-                "profiles": [
-                    {
-                        "name": "default",
-                        "keychain_service": "com.example.bos.default",
-                        "keychain_account": "bos-client",
-                    }
-                ],
-            }
-        )
+def test_unauthenticated_tools_expose_only_mcp_bootstrap(monkeypatch):
+    monkeypatch.setattr(broker, "upstreams", [])
+    monkeypatch.setattr(broker, "active_tools", None)
+
+    response = broker._handle(
+        {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
     )
-    monkeypatch.setattr(broker, "CONFIG_PATH", profile)
-    configured = broker._load_configured_upstreams()
-    assert len(configured) == 1
-    assert configured[0].name == "default"
-    assert configured[0].keychain_service == "com.example.bos.default"
-    assert configured[0].keychain_account == "bos-client"
+
+    assert [tool["name"] for tool in response["result"]["tools"]] == [
+        "bos_authenticate",
+        "bos_get_connection_status",
+    ]
+
+
+def test_authentication_accepts_secret_through_mcp_without_logging_it(monkeypatch):
+    events = []
+
+    class AuthenticatedUpstream:
+        def __init__(self, name, credential):
+            self.name = name
+            self.credential = credential
+            self.client = None
+
+        def initialize(self):
+            events.append(("initialized", self.credential))
+
+        def load_tools(self):
+            return {"bos_get_context": {"name": "bos_get_context", "inputSchema": {}}}
+
+        def load_org_ids(self):
+            return {"org-dfsm"}
+
+    monkeypatch.setattr(broker, "Upstream", AuthenticatedUpstream)
+    monkeypatch.setattr(broker, "upstreams", [])
+    monkeypatch.setattr(broker, "active_tools", None)
+    arguments = {"credential": "bos-secret-value"}
+
+    result = broker._authenticate(arguments)
+
+    assert result["isError"] is False
+    assert arguments == {}
+    assert broker.upstreams[0].credential == "bos-secret-value"
+    assert "bos-secret-value" not in json.dumps(result)
 
 
 def test_tools_list_exposes_authorized_union_on_initial_discovery(monkeypatch):
@@ -100,7 +119,13 @@ def test_tools_list_exposes_authorized_union_on_initial_discovery(monkeypatch):
     )
 
     assert [tool["name"] for tool in response["result"]["tools"]] == [
+        "bos_authenticate",
+        "bos_get_authorization_status",
+        "bos_get_connection_status",
         "bos_get_context",
+        "bos_resume_operation",
+        "bos_set_provider_credential",
+        "bos_start_provider_authorization",
         "gmail_search",
     ]
     assert broker.pending_tools_changed is False
@@ -140,7 +165,13 @@ def test_activation_replaces_bootstrap_with_current_authorized_union(monkeypatch
     broker._activate_tools()
 
     assert [tool["name"] for tool in broker._all_tools()] == [
+        "bos_authenticate",
+        "bos_get_authorization_status",
+        "bos_get_connection_status",
         "bos_get_context",
+        "bos_resume_operation",
+        "bos_set_provider_credential",
+        "bos_start_provider_authorization",
         "gmail_search",
     ]
     assert broker.pending_tools_changed is True
@@ -167,3 +198,96 @@ def test_discovery_combines_context_without_selecting_credentials(monkeypatch):
 
     assert [item["text"] for item in result["content"]] == ["dfsm", "icode"]
     assert len(first.calls) == len(second.calls) == 1
+
+
+def test_missing_authentication_fails_closed(monkeypatch):
+    monkeypatch.setattr(broker, "upstreams", [])
+
+    with pytest.raises(RuntimeError, match="authentication is required"):
+        broker._select_upstream("gmail_search", {})
+
+
+def test_provider_secret_contract_marks_value_write_only():
+    schema = broker.PROVIDER_CONTRACT_TOOLS["bos_set_provider_credential"][
+        "inputSchema"
+    ]
+
+    assert schema["properties"]["credential_value"]["writeOnly"] is True
+    assert "credential_value" in schema["required"]
+
+
+def test_provider_api_key_is_forwarded_once_and_never_echoed(monkeypatch):
+    upstream = FakeUpstream("dfsm", {"org-dfsm"})
+    monkeypatch.setattr(broker, "upstreams", [upstream])
+    arguments = {
+        "org_id": "org-dfsm",
+        "installed_app_id": "install-1",
+        "plugin_id": "calimatic",
+        "provider": "calimatic",
+        "credential_name": "api_key",
+        "credential_value": "provider-secret",
+    }
+
+    response = broker._handle(
+        {
+            "jsonrpc": "2.0",
+            "id": 8,
+            "method": "tools/call",
+            "params": {
+                "name": "bos_set_provider_credential",
+                "arguments": arguments,
+            },
+        }
+    )
+
+    assert upstream.calls == [
+        (
+            "tools/call",
+            {"name": "bos_set_provider_credential", "arguments": arguments},
+        )
+    ]
+    assert "provider-secret" not in json.dumps(response)
+
+
+def test_oauth_start_and_status_are_forwarded_to_scoped_bos(monkeypatch):
+    upstream = FakeUpstream("dfsm", {"org-dfsm"})
+    monkeypatch.setattr(broker, "upstreams", [upstream])
+
+    broker._handle(
+        {
+            "jsonrpc": "2.0",
+            "id": 9,
+            "method": "tools/call",
+            "params": {
+                "name": "bos_start_provider_authorization",
+                "arguments": {
+                    "org_id": "org-dfsm",
+                    "installed_app_id": "install-1",
+                    "plugin_id": "google",
+                    "provider": "google",
+                    "required_scopes": ["gmail.readonly", "calendar.readonly"],
+                },
+            },
+        }
+    )
+    broker._handle(
+        {
+            "jsonrpc": "2.0",
+            "id": 10,
+            "method": "tools/call",
+            "params": {
+                "name": "bos_get_authorization_status",
+                "arguments": {
+                    "org_id": "org-dfsm",
+                    "installed_app_id": "install-1",
+                    "plugin_id": "google",
+                    "transaction_id": "auth-1",
+                },
+            },
+        }
+    )
+
+    assert [call[1]["name"] for call in upstream.calls] == [
+        "bos_start_provider_authorization",
+        "bos_get_authorization_status",
+    ]

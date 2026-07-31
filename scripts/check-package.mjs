@@ -1,5 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { extname, join } from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import {
   hashTree,
   listProducts,
@@ -47,10 +49,12 @@ const ignoredDirectories = new Set([
   "__pycache__"
 ]);
 const failures = [];
+const execFileAsync = promisify(execFile);
 
 async function scan(directory) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     if (ignoredDirectories.has(entry.name)) continue;
+    if (directory === root && entry.name === ".env") continue;
     const path = join(directory, entry.name);
     if (entry.isDirectory()) {
       await scan(path);
@@ -72,6 +76,17 @@ async function scan(directory) {
     for (const pattern of secretPatterns) {
       if (pattern.test(content)) failures.push(`Credential pattern in ${path}`);
     }
+  }
+}
+
+async function validateTrackedCredentialFiles() {
+  const { stdout } = await execFileAsync(
+    "git",
+    ["ls-files", ".env", ".env.*", "*.pem", "*.key", "credentials.json"],
+    { cwd: root }
+  );
+  for (const path of stdout.split(/\r?\n/).filter(Boolean)) {
+    failures.push(`Tracked credential file: ${path}`);
   }
 }
 
@@ -156,6 +171,7 @@ async function validateProducts() {
 }
 
 await scan(root);
+await validateTrackedCredentialFiles();
 await validateProducts();
 
 if (failures.length) {

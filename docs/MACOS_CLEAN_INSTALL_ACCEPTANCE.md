@@ -3,10 +3,10 @@
 ## Customer outcome
 
 A customer starts from a supported Apple-silicon Mac with Codex installed,
-opens one signed and notarized Infinite State Machines installer, enters one
-BOS client key in a native secure field, and finishes with the BOS and selected
-product plugins installed and enabled. A new Codex task discovers the packaged
-skills and can call `bos_get_context`.
+gives Codex a GitHub release ZIP URL, and asks Codex to install it. Codex
+downloads, verifies, extracts, and installs the BOS and selected product
+plugins. On the first secured request, Codex asks for the BOS credential and
+passes it directly to MCP. The customer runs no shell command.
 
 Git, Node.js, npm, Python, Xcode, Homebrew, and repository access are not
 customer prerequisites.
@@ -16,31 +16,16 @@ customer prerequisites.
 Codex authentication and BOS authentication are separate:
 
 - Codex owns ChatGPT or OpenAI API-key login through its supported login UI.
-- The Infinite State Machines installer accepts only a BOS client key.
-- The BOS key exists in installer memory only long enough to write it to macOS
-  Keychain.
-- The key never appears in a process argument, environment variable, generated
-  MCP configuration, plugin file, log, shell history, crash report, or
-  clipboard operation performed by the installer.
-- The bundled MCP runtime reads the key from Keychain at execution time.
+- Before authentication, MCP exposes only authentication and sanitized status
+  tools.
+- Codex asks for the BOS credential only when a secured request requires it and
+  passes it directly to `bos_authenticate`.
+- The credential remains only in MCP session memory. It never appears in a
+  process argument, environment variable, generated MCP configuration, plugin
+  file, log, shell history, or release artifact.
 - BOS resolves tenant, organization, application, installation, role, plugin,
   capability, and provider scope from the authenticated key and canonical
   server records.
-
-The customer credential profile contains non-secret Keychain lookup metadata:
-
-```json
-{
-  "schema_version": "1",
-  "profiles": [
-    {
-      "name": "default",
-      "keychain_service": "com.infinitestatemachines.bos.default",
-      "keychain_account": "bos-client"
-    }
-  ]
-}
-```
 
 ## Current ZIP bootstrap artifact
 
@@ -65,11 +50,11 @@ The shell bootstrap:
    staging, validation, backup, and atomic replacement.
 4. Adds that marketplace through `codex plugin marketplace add`.
 5. Installs `bos` and the selected product through `codex plugin add`.
-6. Launches the separate secure connection command.
-7. Accepts the BOS key through a hidden native macOS dialog and pipes it
-   directly to the Keychain command.
-8. Writes the non-secret credential-profile file with mode `0600`.
-9. Directs the customer to start a new Codex task.
+6. Directs the customer to start a new Codex task.
+7. Exposes MCP bootstrap authentication when the first secured request occurs.
+8. Guides OAuth login or direct API-key submission automatically when BOS
+   reports a required provider credential.
+9. Verifies authorization and resumes the original operation once.
 
 The bootstrap retains the previous marketplace payload in a timestamped backup
 for manual recovery when a later Codex registration step fails.
@@ -105,10 +90,14 @@ installer disk image, and records:
 
 - The VM receives no repository checkout or developer home-directory files.
 - Installation succeeds without Git, npm, Node.js, Python, Homebrew, or Xcode.
-- The BOS key is present only as a Keychain item.
+- The BOS key is present only in MCP session memory.
 - Generated MCP and Codex configuration contain no secret value.
-- A missing, invalid, or unauthorized key fails closed and provides a reconnect
-  action.
+- Missing or invalid BOS authentication fails closed and prompts
+  `bos_authenticate`.
+- Missing, expired, revoked, or insufficient OAuth authorization automatically
+  starts provider login, polls completion, and resumes once.
+- Missing API-key credentials automatically prompt the customer, pass the
+  secret through MCP, store it encrypted in BOS, verify it, and resume once.
 - Plugin installation is idempotent.
 - Package-owned files are replaced during upgrade.
 - Customer extension files remain unchanged during upgrade.

@@ -6,6 +6,7 @@ __pycache__/
 .DS_Store
 .env
 .env.*
+config/vm-acceptance.env
 *.pem
 *.key
 *.p12
