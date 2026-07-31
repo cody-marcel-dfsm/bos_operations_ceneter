@@ -127,6 +127,14 @@ PROVIDER_CONTRACT_TOOLS = {
                 "provider": {"type": "string"},
                 "credential_name": {"type": "string"},
                 "credential_value": {"type": "string", "writeOnly": True},
+                "configuration_authority_confirmed": {
+                    "type": "boolean",
+                    "const": True,
+                    "description": (
+                        "True only after the authenticated user explicitly supplies "
+                        "or authorizes configuration of this provider credential."
+                    ),
+                },
             },
             "required": [
                 "org_id",
@@ -135,6 +143,7 @@ PROVIDER_CONTRACT_TOOLS = {
                 "provider",
                 "credential_name",
                 "credential_value",
+                "configuration_authority_confirmed",
             ],
             "additionalProperties": False,
         },

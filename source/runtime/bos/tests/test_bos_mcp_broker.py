@@ -226,6 +226,8 @@ def test_provider_secret_contract_marks_value_write_only():
 
     assert schema["properties"]["credential_value"]["writeOnly"] is True
     assert "credential_value" in schema["required"]
+    assert schema["properties"]["configuration_authority_confirmed"]["const"] is True
+    assert "configuration_authority_confirmed" in schema["required"]
 
 
 def test_provider_api_key_is_forwarded_once_and_never_echoed(monkeypatch):
@@ -238,6 +240,7 @@ def test_provider_api_key_is_forwarded_once_and_never_echoed(monkeypatch):
         "provider": "calimatic",
         "credential_name": "api_key",
         "credential_value": "provider-secret",
+        "configuration_authority_confirmed": True,
     }
 
     response = broker._handle(
