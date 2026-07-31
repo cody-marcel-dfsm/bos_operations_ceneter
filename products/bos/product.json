@@ -1,13 +1,17 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.5",
+  "version": "0.4.6",
   "display_name": "BOS",
   "description": "Tenant-neutral Business Operating System foundations and MCP access.",
   "publisher": "Infinite State Machines LLC",
   "category": "Productivity",
   "authentication": "ON_USE",
-  "clients": ["codex", "claude", "copilot"],
+  "clients": [
+    "codex",
+    "claude",
+    "copilot"
+  ],
   "includes": [
     "platform/use-bos",
     "platform/planning",
