@@ -1,5 +1,21 @@
 # BOS Operations Center Packages
 
+## Install in Codex on macOS
+
+Requirements: Apple-silicon Mac, Codex installed, and Codex signed in.
+
+1. Open a new Codex task.
+2. Paste this instruction into Codex:
+
+   > Install BOS Operations Center from https://github.com/cody-marcel-dfsm/bos_operations_ceneter/releases/latest/download/bos-operations-center-macos.zip. Download and verify the ZIP, follow its README_INSTALL.md, install it, and verify that the BOS MCP is configured.
+
+3. Let Codex complete the installation, then start a new Codex task.
+4. Ask Codex to perform a BOS operation. When authentication is required,
+   enter your credential in the local **Connect BOS** window that opens.
+
+Keep credentials and API keys out of Codex chat. BOS collects them only through
+the local secure handoff window.
+
 This repository is the canonical source, builder, installer, and release
 system for portable BOS foundation, product, and vertical Agent Skills
 distributed to Codex, Claude, and GitHub Copilot.
