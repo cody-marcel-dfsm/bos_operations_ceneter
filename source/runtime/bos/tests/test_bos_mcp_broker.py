@@ -43,20 +43,40 @@ def test_initialize_is_local_and_does_not_touch_upstreams(monkeypatch):
     assert response["result"]["serverInfo"]["name"] == "bos"
 
 
-def test_tools_list_exposes_only_local_bootstrap_without_upstream_auth(monkeypatch):
-    class ForbiddenUpstream:
-        def load_tools(self):
-            raise AssertionError("tools/list must not authenticate BOS")
+def test_tools_list_exposes_authorized_union_on_initial_discovery(monkeypatch):
+    class ToolUpstream:
+        def __init__(self, tools):
+            self.tools = tools
 
-    monkeypatch.setattr(broker, "upstreams", [ForbiddenUpstream()])
+        def load_tools(self):
+            return self.tools
+
+    context_tool = {"name": "bos_get_context", "inputSchema": {"type": "object"}}
+    gmail_tool = {"name": "gmail_search", "inputSchema": {"type": "object"}}
+    monkeypatch.setattr(
+        broker,
+        "upstreams",
+        [
+            ToolUpstream({"bos_get_context": context_tool}),
+            ToolUpstream(
+                {
+                    "bos_get_context": context_tool,
+                    "gmail_search": gmail_tool,
+                }
+            ),
+        ],
+    )
     monkeypatch.setattr(broker, "active_tools", None)
+    monkeypatch.setattr(broker, "pending_tools_changed", False)
     response = broker._handle(
         {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
     )
 
     assert [tool["name"] for tool in response["result"]["tools"]] == [
-        "bos_get_context"
+        "bos_get_context",
+        "gmail_search",
     ]
+    assert broker.pending_tools_changed is False
 
 
 def test_explicit_org_routes_to_exactly_one_scoped_upstream(monkeypatch):
