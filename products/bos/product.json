@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "display_name": "BOS",
   "description": "Tenant-neutral Business Operating System foundations and MCP access.",
   "publisher": "Infinite State Machines LLC",

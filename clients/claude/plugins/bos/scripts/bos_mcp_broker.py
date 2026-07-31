@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,7 +14,7 @@ from typing import Any
 import httpx
 
 
-BOS_URL = "https://dfsm.ai/mcp"
+BOS_URL = (os.environ.get("BOS_MCP_URL") or "https://dfsm.ai/mcp").rstrip("/")
 PROTOCOL_VERSION = "2025-06-18"
 DISCOVERY_TOOLS = {
     "bos_get_context",
