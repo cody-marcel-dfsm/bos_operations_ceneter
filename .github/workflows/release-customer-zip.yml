@@ -1,0 +1,28 @@
+name: Release customer ZIP
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Build and validate customer ZIP
+        run: npm run release:customer
+      - name: Publish GitHub release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            dist/bos-operations-center-macos-*.zip \
+            dist/bos-operations-center-macos.zip \
+            --generate-notes

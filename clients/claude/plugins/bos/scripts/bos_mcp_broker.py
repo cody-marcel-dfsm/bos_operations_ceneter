@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -16,11 +17,17 @@ import httpx
 
 BOS_URL = "https://dfsm.ai/mcp"
 PROTOCOL_VERSION = "2025-06-18"
-KEYCHAIN_ACCOUNT = "[REDACTED_NAME]"
-UPSTREAMS = {
-    "dfsm": "ai.dfsm.bos.agent.dfsm",
-    "icode": "ai.dfsm.bos.agent.icode",
-}
+CONFIG_PATH = Path(
+    os.environ.get(
+        "BOS_BROKER_CONFIG",
+        Path.home()
+        / "Library"
+        / "Application Support"
+        / "Infinite State Machines"
+        / "BOS"
+        / "credentials.json",
+    )
+)
 DISCOVERY_TOOLS = {
     "bos_get_context",
     "bos_get_source_capabilities",
@@ -39,13 +46,13 @@ def _log(event: str, **details: Any) -> None:
     LOG_PATH.chmod(0o600)
 
 
-def _keychain_password(service: str) -> str:
+def _keychain_password(service: str, account: str) -> str:
     result = subprocess.run(
         [
             "/usr/bin/security",
             "find-generic-password",
             "-a",
-            KEYCHAIN_ACCOUNT,
+            account,
             "-s",
             service,
             "-w",
@@ -80,6 +87,7 @@ def _decode_response(response: httpx.Response) -> dict[str, Any]:
 class Upstream:
     name: str
     keychain_service: str
+    keychain_account: str
     client: httpx.Client | None = None
     session_id: str | None = None
     tools: dict[str, dict[str, Any]] | None = None
@@ -109,7 +117,7 @@ class Upstream:
 
     def initialize(self) -> None:
         _log("upstream_initialize_started", upstream=self.name)
-        token = _keychain_password(self.keychain_service)
+        token = _keychain_password(self.keychain_service, self.keychain_account)
         self.client = httpx.Client(
             timeout=30,
             headers={
@@ -182,10 +190,47 @@ def _collect_org_ids(value: Any, found: set[str]) -> None:
             _collect_org_ids(child, found)
 
 
-upstreams = [
-    Upstream(name=name, keychain_service=service)
-    for name, service in UPSTREAMS.items()
-]
+upstreams: list[Upstream] | None = None
+
+
+def _load_configured_upstreams() -> list[Upstream]:
+    try:
+        config = json.loads(CONFIG_PATH.read_text())
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            "BOS authentication is not configured. Run the packaged "
+            "connect-bos.sh command, then start a new Codex task."
+        ) from exc
+    if config.get("schema_version") != "1" or not isinstance(
+        config.get("profiles"), list
+    ):
+        raise RuntimeError(f"Invalid BOS credential profile: {CONFIG_PATH}")
+    configured = []
+    for profile in config["profiles"]:
+        required = {
+            "name": profile.get("name"),
+            "keychain_service": profile.get("keychain_service"),
+            "keychain_account": profile.get("keychain_account"),
+        }
+        if not all(isinstance(value, str) and value for value in required.values()):
+            raise RuntimeError(f"Invalid BOS credential profile: {CONFIG_PATH}")
+        configured.append(
+            Upstream(
+                name=required["name"],
+                keychain_service=required["keychain_service"],
+                keychain_account=required["keychain_account"],
+            )
+        )
+    if not configured:
+        raise RuntimeError(f"BOS credential profile contains no profiles: {CONFIG_PATH}")
+    return configured
+
+
+def _upstreams() -> list[Upstream]:
+    global upstreams
+    if upstreams is None:
+        upstreams = _load_configured_upstreams()
+    return upstreams
 
 
 def _all_tools() -> list[dict[str, Any]]:
@@ -198,7 +243,7 @@ def _all_tools() -> list[dict[str, Any]]:
 def _activate_tools(*, notify: bool = True) -> None:
     global active_tools, pending_tools_changed
     merged: dict[str, dict[str, Any]] = {}
-    for upstream in upstreams:
+    for upstream in _upstreams():
         for name, tool in upstream.load_tools().items():
             existing = merged.get(name)
             if existing and existing.get("inputSchema") != tool.get("inputSchema"):
@@ -211,7 +256,7 @@ def _activate_tools(*, notify: bool = True) -> None:
 def _call_all(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     content: list[dict[str, Any]] = []
     is_error = False
-    for upstream in upstreams:
+    for upstream in _upstreams():
         result = upstream.request(
             "tools/call", {"name": name, "arguments": arguments}
         ).get("result", {})
@@ -221,7 +266,7 @@ def _call_all(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
 
 
 def _select_upstream(name: str, arguments: dict[str, Any]) -> Upstream:
-    candidates = list(upstreams)
+    candidates = list(_upstreams())
     org_id = arguments.get("org_id")
     if isinstance(org_id, str):
         candidates = [u for u in candidates if org_id in u.load_org_ids()]

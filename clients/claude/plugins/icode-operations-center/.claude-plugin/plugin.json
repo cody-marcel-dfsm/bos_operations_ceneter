@@ -1,6 +1,6 @@
 {
   "name": "icode-operations-center",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Secure iCode operations through the tenant-scoped BOS MCP.",
   "author": {
     "name": "Infinite State Machines LLC"

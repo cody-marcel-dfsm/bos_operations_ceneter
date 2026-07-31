@@ -29,6 +29,11 @@ package promotion, and idempotent installer/reconciler design.
 See [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) for completed
 capabilities, local validation evidence, and the remaining client smoke tests.
 
+See
+[docs/MACOS_CLEAN_INSTALL_ACCEPTANCE.md](docs/MACOS_CLEAN_INSTALL_ACCEPTANCE.md)
+for the native installer security contract and resettable clean-macOS
+acceptance environment.
+
 ## Build
 
 Run:
@@ -46,6 +51,33 @@ Run `npm run release:check` to rebuild all client packages and validate package
 structure and credential safety.
 
 ## Install
+
+### Customer ZIP for macOS
+
+Create the self-contained Apple-silicon customer archive:
+
+```bash
+npm run release:customer
+```
+
+This produces:
+
+```text
+dist/bos-operations-center-macos-<version>.zip
+dist/bos-operations-center-macos.zip
+```
+
+The ZIP includes the Codex marketplace, BOS and iCode plugins, install and
+secure Keychain connection scripts, and a self-contained BOS MCP broker.
+Customers need macOS and a signed-in Codex installation. Give Codex the public
+GitHub release URL and ask it to download the ZIP, inspect
+`README_INSTALL.md`, run `install.sh`, and launch `connect-bos.sh` for the
+native secure key-entry dialog. The BOS key must never be pasted into the
+Codex conversation.
+
+Tags matching `v*` run the customer-release workflow on GitHub's Apple-silicon
+macOS runner and attach the versioned and stable ZIP names to the GitHub
+release.
 
 ### Codex
 
@@ -74,6 +106,48 @@ structure and credential safety.
    marketplace.
 7. Start a new Codex task and select **Connect BOS** when organization data is
    first required.
+
+### Customer extensions
+
+Installed product skills are package-owned, read-only operating procedures.
+Package updates back up and replace every managed file. Customer terminology,
+defaults, policies, and exceptions belong in customer-owned extension skills,
+which updates preserve.
+
+Create an extension beside the packaged skills:
+
+```bash
+npm run extension:create -- \
+  --product icode-operations-center \
+  --base-skill icode-class-operations \
+  --site cherry-creek
+```
+
+The extension explicitly composes the qualified packaged skill and contains
+only customer additions. `install:inspect`, `install:plan`, and
+`install:verify` report extension compatibility warnings when the packaged
+version changes. Review and retest the extension after such a warning.
+
+Direct edits to package-owned files are temporary. The next package apply
+creates a recoverable backup and restores the released content.
+
+### Machine-local developer links
+
+On an authorized development machine, the active Codex cache can link directly
+to canonical skill directories:
+
+```bash
+npm run dev:link:codex
+```
+
+The command backs up each active skill directory and replaces it with a
+directory symlink to its canonical `source/` directory. Edits made through the
+active Codex path or repository path then change the same files. Repeated runs
+are idempotent.
+
+This mode is local developer infrastructure. It is absent from release
+archives, customer installation behavior, and package ownership rules. Re-run
+the command after Codex installs or replaces a cached plugin version.
 
 ### Claude
 
@@ -132,6 +206,8 @@ branding, billing, quota, or compliance.
 - `products/`: versioned product composition manifests.
 - `source/config/`: public, credential-free product metadata.
 - `clients/codex/`: Codex plugin and marketplace package.
+- `~/plugins/<product>/skills/*-<site>/`: customer-owned extension skills
+  preserved across local package updates.
 - `clients/claude/`: Claude plugin package.
 - `clients/copilot/`: GitHub Copilot Agent Skills package.
 - `scripts/`: deterministic validation and packaging tools.

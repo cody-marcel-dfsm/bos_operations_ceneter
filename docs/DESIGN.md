@@ -250,6 +250,43 @@ workflow is:
 
 This keeps all clients synchronized without manually copying individual files.
 
+## Installed skill ownership and customer extensions
+
+Generated and installed product skills are immutable, package-owned files.
+Installers mark managed files read-only, create a recoverable backup, and
+replace managed content with the selected release. A direct modification to a
+managed file is treated as disposable local state and is restored from the
+package during the next apply.
+
+Customer behavior is expressed through customer-owned extension skills beside
+the installed product skills. An extension:
+
+- has its own distinct skill name;
+- declares the qualified product and base skill it extends;
+- records the base product version it was tested against;
+- invokes the base skill as its operating procedure;
+- contains only customer terminology, defaults, policies, and exceptions; and
+- defers unspecified behavior to the base skill.
+
+The installer preserves files absent from its managed-path inventory. It
+validates extension references and reports a compatibility warning when the
+installed base version differs from the extension's tested version. Package
+updates never merge prose with an LLM and never alter customer-owned extension
+content.
+
+Official product development changes the canonical source layers. Customer
+experimentation changes an extension skill. A generally useful customer
+behavior is promoted deliberately into canonical source and released through
+the normal build.
+
+An authorized package developer may opt into machine-local Codex development
+links. The local link command backs up active cached skill directories and
+symlinks them to canonical source directories. This makes the active Codex
+skill and repository skill one filesystem object and removes local
+reconciliation from the developer loop. The mode is deliberately outside
+release artifacts and customer installation; a Codex plugin reinstall may
+replace its cache and requires the developer to re-run the link command.
+
 ## What build means
 
 Building is deterministic package assembly. `npm run build` runs
@@ -315,6 +352,10 @@ Copilot.
 Customer configuration remains outside the generic package source and generated
 public distribution. Updating the generic package does not overwrite the
 client's customer configuration.
+
+Customer-owned extension skills may consume this non-secret configuration to
+specialize a packaged operating procedure. Extensions cannot grant tenant,
+organization, application, role, plugin, capability, or provider authority.
 
 Credentials and access authority are not customer configuration. BOS client
 keys, provider API keys, OAuth client secrets, access tokens, refresh tokens,

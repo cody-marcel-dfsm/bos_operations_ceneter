@@ -12,7 +12,8 @@ The package system must converge safely on the desired structure:
 - recognize a correct existing installation and perform a no-op;
 - update an older managed installation atomically;
 - preserve unrelated user-owned skills and marketplace entries;
-- report conflicts before changing user-owned or locally modified files; and
+- replace package-owned files through recoverable backups while preserving
+  customer-owned extension files; and
 - produce deterministic evidence for every inspection, build, install, update,
   and verification.
 
@@ -126,7 +127,7 @@ bos:authentication-context-integrity
 | Product-specific skill selection | Versioned product manifest |
 | Existing-installation handling | Inspect/plan/apply reconciler |
 | Safe updates | Managed-path inventory, content hashes, staging directory, atomic replacement |
-| User-content preservation | Ownership marker plus conflict classification |
+| User-content preservation | Managed ownership plus customer extension boundary |
 | Local iteration pickup | Cachebuster update, plugin reinstall, new Codex thread |
 | Repeatable validation | Fixture matrix plus live discovery smoke tests |
 
@@ -473,7 +474,8 @@ products/
 | `managed-current` | Managed files match desired version and hashes | No-op |
 | `managed-stale` | Managed files match prior hashes and a package update exists | Atomic update |
 | `partial` | Some required managed paths are absent | Create missing paths after conflict scan |
-| `conflict` | A managed path has local modifications or incompatible ownership | Stop and report |
+| `managed-modified` | A package-owned path has local modifications | Back up and replace |
+| `conflict` | Marketplace identity or incompatible ownership is ambiguous | Stop and report |
 | `invalid` | Manifest, marketplace, or directory structure violates schema | Stop and report |
 
 The phrase “already in place” maps to `compatible-unmanaged` or
@@ -536,7 +538,7 @@ npm run install:plan -- --client codex --product bos
 1. Resolve explicit client, product, marketplace, and target paths.
 2. Validate every path remains within the selected installation root.
 3. Inspect marketplace, plugin, managed state, and current hashes.
-4. Stop on conflicts.
+4. Stop on marketplace or ownership-identity conflicts.
 5. Assemble desired output in a temporary directory.
 6. Validate the staged plugin.
 7. Back up replaced managed files to a timestamped recoverable directory.
@@ -553,6 +555,7 @@ npm run install:plan -- --client codex --product bos
 - Applying to `partial` creates required missing managed paths.
 - Applying to `managed-current` changes zero bytes.
 - Applying to `managed-stale` updates only managed paths.
+- Applying to `managed-modified` backs up and replaces package-owned files.
 - Applying to `conflict` changes zero bytes.
 - Unrelated marketplace entries and user-owned plugin files remain unchanged.
 

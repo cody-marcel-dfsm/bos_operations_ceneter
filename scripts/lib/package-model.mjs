@@ -165,8 +165,17 @@ export async function resolveProductSkills(product, base = root) {
 export async function copyProductSkills(skills, target) {
   await mkdir(target, { recursive: true });
   for (const skill of skills) {
-    await cp(skill.sourcePath, join(target, skill.name), { recursive: true });
+    await cp(skill.sourcePath, join(target, skill.name), {
+      recursive: true,
+      filter: publicPackagePath
+    });
   }
+}
+
+function publicPackagePath(path) {
+  const parts = resolve(path).split(sep);
+  const name = basename(path);
+  return !parts.includes("__pycache__") && !name.endsWith(".pyc");
 }
 
 export async function copyRuntime(product, pluginRoot, base = root) {
@@ -175,7 +184,8 @@ export async function copyRuntime(product, pluginRoot, base = root) {
   await cp(join(runtimeRoot, ".mcp.json"), join(pluginRoot, ".mcp.json"));
   try {
     await cp(join(runtimeRoot, "scripts"), join(pluginRoot, "scripts"), {
-      recursive: true
+      recursive: true,
+      filter: publicPackagePath
     });
   } catch (error) {
     if (error.code !== "ENOENT") throw error;

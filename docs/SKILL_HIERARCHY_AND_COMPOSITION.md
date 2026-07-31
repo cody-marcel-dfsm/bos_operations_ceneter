@@ -32,6 +32,7 @@ directory receives the skills visible from that directory.
 | System | Bundled with Codex | Every user and project | Codex |
 | User-global | `~/.agents/skills/<skill>/SKILL.md` | The user in every working directory | User |
 | Installed package | BOS plugin `skills/<skill>/SKILL.md` | Users with the BOS plugin installed | BOS package |
+| Customer extension | Installed plugin `skills/<base>-<site>/SKILL.md` | Customer installation | Customer |
 | Repository root | `<repo>/.agents/skills/<skill>/SKILL.md` | Every agent working anywhere in the repository | Repository |
 | Nested directory | `<repo>/<subtree>/.agents/skills/<skill>/SKILL.md` | Every agent working inside that subtree | Subtree owner |
 
@@ -45,6 +46,9 @@ Use each scope for one purpose:
 - Keep personal workflows that apply across unrelated repositories in the
   user-global scope.
 - Distribute reusable BOS workflows and BOS MCP access through the BOS plugin.
+- Express customer terminology, defaults, policies, and exceptions in a
+  distinct customer-owned extension skill that invokes a qualified packaged
+  skill.
 - Keep application-specific source, architecture, runtime, test, and deployment
   workflows at the application repository root.
 - Use nested skills only when a module needs a workflow that should remain
@@ -81,6 +85,12 @@ bos:authentication-context-integrity
 Qualified identities preserve package ownership and allow application
 repositories to define complementary local skills without colliding with the
 BOS foundation.
+
+Installed package skills are read-only managed files. A customer extension has
+a distinct name, declares its qualified base skill in
+`.bos-extension.json`, and contains only the customer's additions. Package
+updates back up and replace managed files while preserving extension
+directories absent from the package inventory.
 
 Packaged BOS skills must remain application-neutral. They may define:
 

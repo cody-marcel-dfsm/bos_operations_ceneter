@@ -16,6 +16,16 @@ ready for client testing.
 - Safe adoption of compatible unmanaged installations.
 - Managed upgrades, package-owned stale-path removal, conflict detection,
   marketplace reconciliation, and recoverable backups.
+- Immutable, read-only managed skill installation with recoverable replacement
+  of locally modified package files.
+- Customer-owned extension skill scaffolding, preservation, base-skill
+  composition metadata, and version compatibility warnings.
+- Machine-local Codex developer linking with pre-link backups and idempotent
+  canonical-source symlinks.
+- Deterministic macOS customer ZIP generation with an embedded marketplace,
+  shell bootstrap, secure Keychain dialog, and self-contained Apple-silicon
+  BOS broker.
+- Tag-triggered GitHub release workflow for versioned and stable ZIP assets.
 - Source-to-generated drift validation, skill validation, secret/path scanning,
   installer tests, broker compilation, and release checks.
 - Lead Director repository specializations that explicitly compose the
@@ -48,8 +58,8 @@ The implementation is ready for these environment-specific smoke tests:
 2. Install the generated Copilot bundle in a clean Copilot environment and
    verify repository instruction discovery.
 3. Run one authenticated read-only BOS domain operation from a clean client.
-4. Exercise an upgrade from version `0.2.0` to the next test version and confirm
-   user-owned files remain unchanged.
+4. Exercise an upgrade from version `0.2.0` to `0.3.0` and confirm managed
+   files are replaced while customer extension files remain unchanged.
 
 These gates validate client environments; they require no additional package
 architecture work.
