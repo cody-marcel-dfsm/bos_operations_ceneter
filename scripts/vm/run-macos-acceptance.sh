@@ -51,8 +51,20 @@ while [ "${attempt}" -lt 90 ]; do
 done
 test -n "${ip}"
 
-sshpass -p admin scp -q -o PubkeyAuthentication=no -o PreferredAuthentications=password -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  "${ENV_FILE}" "${PUBLIC_ENV}" "admin@${ip}:/tmp/"
+transfer_attempt=0
+while ! sshpass -p admin scp -q \
+  -o PubkeyAuthentication=no \
+  -o PreferredAuthentications=password \
+  -o StrictHostKeyChecking=no \
+  -o UserKnownHostsFile=/dev/null \
+  "${ENV_FILE}" "${PUBLIC_ENV}" "admin@${ip}:/tmp/"; do
+  transfer_attempt=$((transfer_attempt + 1))
+  if [ "${transfer_attempt}" -ge 5 ]; then
+    echo "VM credential transfer failed after ${transfer_attempt} attempts" >&2
+    exit 1
+  fi
+  sleep 2
+done
 
 ${SSH} "admin@${ip}" '/bin/zsh -s' <<'GUEST'
 set -eu
@@ -102,7 +114,7 @@ mcp_staging="${installed_mcp}.staging.$$"
 acceptance_prompt=$(printf '%s\n' \
   "Use the installed BOS MCP and call bos_authenticate with this credential: ${BOS_TEST_API_KEY}" \
   "Select the test organization ${BOS_TEST_ORG_ID}." \
-  "I explicitly authorize configuring installed app ${BOS_TEST_INSTALLED_APP_ID}, plugin ${BOS_TEST_PLUGIN_ID}, through bos_set_provider_credential using provider Calimatic, credential name api_key, configuration_authority_confirmed true, and this credential value: ${CALIMATIC_API_TOKEN}" \
+  "I explicitly authorize configuring installed app ${BOS_TEST_INSTALLED_APP_ID}, plugin ${BOS_TEST_PLUGIN_ID}, through bos_set_provider_credential using provider calimatic, credential name api_key, configuration_authority_confirmed true, and this credential value: ${CALIMATIC_API_TOKEN}" \
   "Then run one read-only Calimatic query and report only sanitized organization scope and record count." \
   "Only after every step succeeds, end with exactly: BOS_VM_ACCEPTANCE_PASS org_id=${BOS_TEST_ORG_ID} record_count=<integer>" \
   "Never print, persist, or repeat either credential.")
