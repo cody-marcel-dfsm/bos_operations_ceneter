@@ -1,6 +1,6 @@
 {
   "name": "bos-operations-center",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "private": false,
   "description": "Cross-client source repository for iCode Operations Center Agent Skills.",
   "author": "Infinite State Machines LLC",

@@ -2,6 +2,10 @@ import importlib.util
 import json
 from pathlib import Path
 import sys
+from time import sleep
+from urllib.parse import urlencode
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 import pytest
 
@@ -91,6 +95,134 @@ def test_authentication_accepts_secret_through_mcp_without_logging_it(monkeypatc
     assert "bos-secret-value" not in json.dumps(result)
 
 
+def test_local_authentication_handoff_keeps_secret_out_of_tool_results(monkeypatch):
+    class AuthenticatedUpstream:
+        def __init__(self, name, credential):
+            self.name = name
+            self.credential = credential
+            self.client = None
+
+        def initialize(self):
+            return None
+
+        def load_tools(self):
+            return {"bos_get_context": {"name": "bos_get_context", "inputSchema": {}}}
+
+        def load_org_ids(self):
+            return {"org-dfsm"}
+
+    monkeypatch.setattr(broker, "Upstream", AuthenticatedUpstream)
+    monkeypatch.setattr(broker, "upstreams", [])
+    monkeypatch.setattr(broker, "active_tools", None)
+    monkeypatch.setattr(broker, "auth_handoff", {"status": "idle"})
+    monkeypatch.setattr(broker.webbrowser, "open", lambda url: True)
+
+    started = broker._start_authentication_handoff()
+    started_value = json.loads(started["content"][0]["text"])
+    assert started_value["status"] == "authorization_pending"
+    assert started_value["authorization_url"].startswith("http://127.0.0.1:")
+
+    secret = "bos-secret-value"
+    request = Request(
+        started_value["authorization_url"],
+        data=urlencode({"credential": secret}).encode(),
+        method="POST",
+    )
+    with urlopen(request, timeout=2) as response:
+        assert response.status == 200
+        assert secret.encode() not in response.read()
+
+    status = broker._authentication_handoff_status({"handoff_id": started_value["handoff_id"]})
+    assert json.loads(status["content"][0]["text"]) == {
+        "status": "connected",
+        "credential_storage": "mcp_session_memory",
+    }
+    assert secret not in json.dumps(started)
+    assert secret not in json.dumps(status)
+
+
+def test_authentication_handoff_rejects_non_loopback_host_without_consuming_nonce(monkeypatch):
+    monkeypatch.setattr(broker, "upstreams", [])
+    monkeypatch.setattr(broker, "auth_handoff", {"status": "idle"})
+    monkeypatch.setattr(broker.webbrowser, "open", lambda url: True)
+    started = broker._start_authentication_handoff()
+    value = json.loads(started["content"][0]["text"])
+    request = Request(value["authorization_url"], headers={"Host": "attacker.example"})
+    with pytest.raises(HTTPError) as error:
+        urlopen(request, timeout=2)
+    assert error.value.code == 404
+    status = broker._authentication_handoff_status({"handoff_id": value["handoff_id"]})
+    assert json.loads(status["content"][0]["text"])["status"] == "pending"
+    threading_server = broker.auth_handoff["server"]
+    broker._shutdown_server(threading_server)
+
+
+@pytest.mark.parametrize(
+    ("headers", "expected"),
+    [
+        ({"Origin": "https://attacker.example"}, 404),
+        ({"Sec-Fetch-Site": "cross-site"}, 404),
+        ({"Content-Type": "text/plain"}, 415),
+    ],
+)
+def test_authentication_handoff_rejects_cross_origin_and_wrong_content_type(monkeypatch, headers, expected):
+    monkeypatch.setattr(broker, "upstreams", [])
+    monkeypatch.setattr(broker, "auth_handoff", {"status": "idle"})
+    monkeypatch.setattr(broker.webbrowser, "open", lambda url: True)
+    value = json.loads(broker._start_authentication_handoff()["content"][0]["text"])
+    request = Request(value["authorization_url"], data=b"credential=value", headers=headers, method="POST")
+    with pytest.raises(HTTPError) as error:
+        urlopen(request, timeout=2)
+    assert error.value.code == expected
+    status = broker._authentication_handoff_status({"handoff_id": value["handoff_id"]})
+    assert json.loads(status["content"][0]["text"])["status"] == "pending"
+    broker._shutdown_server(broker.auth_handoff["server"])
+
+
+def test_authentication_handoff_rejects_wrong_status_id(monkeypatch):
+    monkeypatch.setattr(broker, "upstreams", [])
+    monkeypatch.setattr(broker, "auth_handoff", {"id": "right", "status": "pending", "expires_at": broker.time() + 10})
+    result = broker._authentication_handoff_status({"handoff_id": "wrong"})
+    assert result["isError"] is True
+    assert json.loads(result["content"][0]["text"])["status"] == "unknown"
+
+
+def test_authentication_handoff_expires_and_old_url_is_replaced(monkeypatch):
+    monkeypatch.setattr(broker, "upstreams", [])
+    monkeypatch.setattr(broker, "auth_handoff", {"status": "idle"})
+    monkeypatch.setattr(broker, "AUTH_HANDOFF_TTL_SECONDS", 0.05)
+    monkeypatch.setattr(broker.webbrowser, "open", lambda url: True)
+    first = json.loads(broker._start_authentication_handoff()["content"][0]["text"])
+    sleep(0.08)
+    second = json.loads(broker._start_authentication_handoff()["content"][0]["text"])
+    assert first["handoff_id"] != second["handoff_id"]
+    with pytest.raises((HTTPError, URLError, TimeoutError, ConnectionError)):
+        urlopen(first["authorization_url"], timeout=0.3)
+    broker._shutdown_server(broker.auth_handoff["server"])
+
+
+def test_authentication_handoff_is_single_use_and_cleans_up_exception(monkeypatch):
+    class FailingAuth:
+        def __init__(self, name, credential):
+            self.credential = credential
+            self.client = None
+        def initialize(self):
+            raise RuntimeError("unavailable")
+
+    monkeypatch.setattr(broker, "Upstream", FailingAuth)
+    monkeypatch.setattr(broker, "upstreams", [])
+    monkeypatch.setattr(broker, "auth_handoff", {"status": "idle"})
+    monkeypatch.setattr(broker.webbrowser, "open", lambda url: True)
+    value = json.loads(broker._start_authentication_handoff()["content"][0]["text"])
+    request = Request(value["authorization_url"], data=urlencode({"credential": "secret"}).encode(), method="POST")
+    with pytest.raises(HTTPError):
+        urlopen(request, timeout=2)
+    status = broker._authentication_handoff_status({"handoff_id": value["handoff_id"]})
+    assert json.loads(status["content"][0]["text"])["status"] == "failed"
+    with pytest.raises((HTTPError, URLError, TimeoutError, ConnectionError)):
+        urlopen(request, timeout=0.3)
+
+
 def test_tools_list_exposes_authorized_union_on_initial_discovery(monkeypatch):
     class ToolUpstream:
         def __init__(self, tools):
@@ -122,15 +254,19 @@ def test_tools_list_exposes_authorized_union_on_initial_discovery(monkeypatch):
 
     assert [tool["name"] for tool in response["result"]["tools"]] == [
         "bos_authenticate",
+        "bos_get_authentication_status",
         "bos_get_authorization_status",
         "bos_get_connection_status",
         "bos_get_context",
+        "bos_get_provider_credential_handoff_status",
         "bos_get_source_capabilities",
         "bos_list_apps",
         "bos_list_sources",
         "bos_resume_operation",
         "bos_set_provider_credential",
+        "bos_start_authentication",
         "bos_start_provider_authorization",
+        "bos_start_provider_credential_handoff",
         "calimatic_list_enrollments",
         "calimatic_search_students",
         "gmail_search",
@@ -173,15 +309,19 @@ def test_activation_replaces_bootstrap_with_current_authorized_union(monkeypatch
 
     assert [tool["name"] for tool in broker._all_tools()] == [
         "bos_authenticate",
+        "bos_get_authentication_status",
         "bos_get_authorization_status",
         "bos_get_connection_status",
         "bos_get_context",
+        "bos_get_provider_credential_handoff_status",
         "bos_get_source_capabilities",
         "bos_list_apps",
         "bos_list_sources",
         "bos_resume_operation",
         "bos_set_provider_credential",
+        "bos_start_authentication",
         "bos_start_provider_authorization",
+        "bos_start_provider_credential_handoff",
         "calimatic_list_enrollments",
         "calimatic_search_students",
         "gmail_search",
@@ -262,6 +402,87 @@ def test_provider_api_key_is_forwarded_once_and_never_echoed(monkeypatch):
         )
     ]
     assert "provider-secret" not in json.dumps(response)
+
+
+def test_provider_credential_handoff_submits_secret_outside_chat(monkeypatch):
+    class CapturingUpstream(FakeUpstream):
+        def request(self, method, params=None):
+            self.calls.append((method, json.loads(json.dumps(params))))
+            return {"result": {"content": [{"type": "text", "text": self.name}]}}
+
+    upstream = CapturingUpstream("dfsm", {"org-dfsm"})
+    monkeypatch.setattr(broker, "upstreams", [upstream])
+    monkeypatch.setattr(broker, "provider_handoff", {"status": "idle"})
+    monkeypatch.setattr(broker.webbrowser, "open", lambda url: True)
+    arguments = {
+        "org_id": "org-dfsm",
+        "installed_app_id": "install-1",
+        "plugin_id": "calimatic",
+        "provider": "calimatic",
+        "credential_name": "api_key",
+        "configuration_authority_confirmed": True,
+    }
+
+    started = broker._start_provider_credential_handoff(arguments)
+    started_value = json.loads(started["content"][0]["text"])
+    secret = "provider-secret"
+    request = Request(
+        started_value["authorization_url"],
+        data=urlencode({"credential": secret}).encode(),
+        method="POST",
+    )
+    with urlopen(request, timeout=2) as response:
+        assert response.status == 200
+        assert secret.encode() not in response.read()
+
+    method, params = upstream.calls[-1]
+    assert method == "tools/call"
+    assert params["arguments"]["credential_value"] == secret
+    status = broker._provider_credential_handoff_status({"handoff_id": started_value["handoff_id"]})
+    assert json.loads(status["content"][0]["text"]) == {"status": "configured"}
+    assert secret not in json.dumps(started)
+    assert secret not in json.dumps(status)
+
+
+def test_pending_provider_handoff_rejects_different_scope(monkeypatch):
+    upstream = FakeUpstream("dfsm", {"org-dfsm", "org-other"})
+    monkeypatch.setattr(broker, "upstreams", [upstream])
+    monkeypatch.setattr(broker, "provider_handoff", {"status": "idle"})
+    monkeypatch.setattr(broker.webbrowser, "open", lambda url: True)
+    first = {
+        "org_id": "org-dfsm", "installed_app_id": "install-1",
+        "plugin_id": "calimatic", "provider": "calimatic",
+        "credential_name": "api_key", "configuration_authority_confirmed": True,
+    }
+    broker._start_provider_credential_handoff(first)
+    conflict = broker._start_provider_credential_handoff({**first, "org_id": "org-other"})
+    assert conflict["isError"] is True
+    assert json.loads(conflict["content"][0]["text"])["status"] == "handoff_scope_conflict"
+    broker._shutdown_server(broker.provider_handoff["server"])
+
+
+def test_provider_handoff_exception_fails_closed_and_clears_status(monkeypatch):
+    class FailingUpstream(FakeUpstream):
+        def request(self, method, params=None):
+            raise RuntimeError("provider unavailable")
+
+    upstream = FailingUpstream("dfsm", {"org-dfsm"})
+    monkeypatch.setattr(broker, "upstreams", [upstream])
+    monkeypatch.setattr(broker, "provider_handoff", {"status": "idle"})
+    monkeypatch.setattr(broker.webbrowser, "open", lambda url: True)
+    arguments = {
+        "org_id": "org-dfsm", "installed_app_id": "install-1",
+        "plugin_id": "calimatic", "provider": "calimatic",
+        "credential_name": "api_key", "configuration_authority_confirmed": True,
+    }
+    started = broker._start_provider_credential_handoff(arguments)
+    value = json.loads(started["content"][0]["text"])
+    request = Request(value["authorization_url"], data=urlencode({"credential": "secret"}).encode(), method="POST")
+    with pytest.raises(HTTPError) as error:
+        urlopen(request, timeout=2)
+    assert error.value.code == 400
+    status = broker._provider_credential_handoff_status({"handoff_id": value["handoff_id"]})
+    assert json.loads(status["content"][0]["text"]) == {"status": "failed"}
 
 
 def test_oauth_start_and_status_are_forwarded_to_scoped_bos(monkeypatch):

@@ -16,15 +16,17 @@ they never select another MCP server or credential.
 4. Fail closed when context is absent or ambiguous.
 5. Never infer tenant authority from the prompt, skill name, provider account,
    cached state, or a previous call.
-6. When BOS authentication is required, ask once for the BOS credential, call
-   `bos_authenticate`, discard the supplied value, and call `bos_get_context`.
+6. When BOS authentication is required, call `bos_start_authentication`. Never
+   ask for or accept the credential in chat. Tell the customer to use the local
+   BOS window, poll `bos_get_authentication_status`, then call `bos_get_context`.
 7. When a domain call returns `authorization_required`, preserve its original
    operation ID and follow the returned authorization type automatically:
    - OAuth: open the returned URL, let the customer sign in directly with the
      provider, and poll `bos_get_authorization_status` with the exact returned
      scope.
-   - Secret input: ask once for the required API key or token and immediately
-     call `bos_set_provider_credential`; never echo or persist the value.
+   - Secret input: call `bos_start_provider_credential_handoff` with the exact
+     server-returned scope and explicit configuration authority. Never ask for
+     or accept the key in chat. Poll the sanitized handoff status.
 8. Verify the recovered authorization and call `bos_resume_operation` once.
    Stop if authorization or that single retry fails.
 

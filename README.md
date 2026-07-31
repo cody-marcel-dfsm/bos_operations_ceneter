@@ -71,8 +71,8 @@ The ZIP includes the Codex marketplace, BOS and iCode plugins, a Codex-executed
 installer, and a self-contained BOS MCP broker. Customers need macOS and a
 signed-in Codex installation. Give Codex the public GitHub release URL and ask
 it to download, verify, extract, inspect `README_INSTALL.md`, and install the
-package. On the first secured request, Codex asks for the BOS credential and
-passes it directly through the MCP bootstrap tool.
+package. On the first secured request, the BOS MCP opens a one-time loopback
+credential page. The customer enters the credential there, outside chat.
 
 Tags matching `v*` run the customer-release workflow on GitHub's Apple-silicon
 macOS runner and attach the versioned and stable ZIP names to the GitHub
@@ -168,9 +168,9 @@ who do not use Git.
 ## Customer onboarding
 
 Installing the package grants no organization access. On the first secured
-request, Codex asks for the BOS credential, passes it to `bos_authenticate`,
-and BOS resolves the authorized tenant, capabilities, and provider credential
-states.
+request, Codex calls `bos_start_authentication`. The MCP opens a one-time local
+page, receives the credential directly into MCP session memory, and BOS resolves
+the authorized tenant, capabilities, and provider credential states.
 Every secured organization operation requires that authenticated BOS path.
 There is no unauthenticated or alternate-provider fallback.
 
@@ -178,8 +178,8 @@ There is no unauthenticated or alternate-provider fallback.
 
 1. Request an operation that requires Calimatic.
 2. BOS returns `authorization_required` with a sensitive API-key field.
-3. Codex asks for the key and immediately passes it to
-   `bos_set_provider_credential`.
+3. Codex calls `bos_start_provider_credential_handoff`; the customer enters the
+   key in the one-time local page rather than the chat composer.
 4. BOS validates and encrypts the key, then Codex verifies the connection and
    resumes the original request once.
 
