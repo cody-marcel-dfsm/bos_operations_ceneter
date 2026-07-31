@@ -57,6 +57,18 @@ BOOTSTRAP_TOOLS = {
         },
     },
 }
+DISCOVERY_CONTRACT_TOOLS = {
+    name: {
+        "name": name,
+        "description": "Return authenticated, tenant-scoped BOS discovery data.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": False,
+        },
+    }
+    for name in sorted(DISCOVERY_TOOLS)
+}
 PROVIDER_CONTRACT_TOOLS = {
     "bos_start_provider_authorization": {
         "name": "bos_start_provider_authorization",
@@ -146,6 +158,45 @@ PROVIDER_CONTRACT_TOOLS = {
                 "installed_app_id",
                 "plugin_id",
                 "operation_id",
+            ],
+            "additionalProperties": False,
+        },
+    },
+}
+SCOPED_READ_PROPERTIES = {
+    "org_id": {"type": "string", "format": "uuid"},
+    "app_code": {"type": "string"},
+    "installed_app_id": {"type": "string", "format": "uuid"},
+    "delegated_role_id": {"type": "string"},
+    "query": {"type": "object"},
+}
+CALIMATIC_CONTRACT_TOOLS = {
+    "calimatic_search_students": {
+        "name": "calimatic_search_students",
+        "description": "Search Calimatic students in exact server-returned BOS scope.",
+        "inputSchema": {
+            "type": "object",
+            "properties": SCOPED_READ_PROPERTIES,
+            "required": [
+                "org_id",
+                "app_code",
+                "installed_app_id",
+                "delegated_role_id",
+            ],
+            "additionalProperties": False,
+        },
+    },
+    "calimatic_list_enrollments": {
+        "name": "calimatic_list_enrollments",
+        "description": "List Calimatic enrollments in exact server-returned BOS scope.",
+        "inputSchema": {
+            "type": "object",
+            "properties": SCOPED_READ_PROPERTIES,
+            "required": [
+                "org_id",
+                "app_code",
+                "installed_app_id",
+                "delegated_role_id",
             ],
             "additionalProperties": False,
         },
@@ -298,8 +349,12 @@ def _all_tools() -> list[dict[str, Any]]:
 def _activate_tools(*, notify: bool = True) -> None:
     global active_tools, pending_tools_changed
     merged: dict[str, dict[str, Any]] = dict(BOOTSTRAP_TOOLS)
-    if _upstreams():
-        merged.update(PROVIDER_CONTRACT_TOOLS)
+    # Codex snapshots MCP tools at process startup. Advertise the stable BOS
+    # contract immediately, while call routing below continues to fail closed
+    # until authentication and exact tenant scope are established.
+    merged.update(DISCOVERY_CONTRACT_TOOLS)
+    merged.update(PROVIDER_CONTRACT_TOOLS)
+    merged.update(CALIMATIC_CONTRACT_TOOLS)
     for upstream in _upstreams():
         for name, tool in upstream.load_tools().items():
             merged[name] = tool

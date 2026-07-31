@@ -32,9 +32,11 @@ configuration as distinct validated dimensions.
 - Provider credentials remain scoped to their installed app and plugin.
 - Reconnect replaces the scoped grant and preserves application configuration.
 - Background jobs carry the same validated scope as interactive operations.
-- Before BOS authentication, expose only MCP bootstrap and connection-status
-  tools. Accept the BOS credential through `bos_authenticate`, retain it only
-  for the MCP session, and never write or echo it.
+- Advertise the stable BOS tool contract when the MCP process starts so clients
+  that snapshot tools can complete authentication and recovery in one session.
+  Before BOS authentication, every secured call fails closed. Accept the BOS
+  credential through `bos_authenticate`, retain it only for the MCP session,
+  and never write or echo it.
 - When a domain call returns `authorization_required`, automatically complete
   the provider-specific recovery flow, verify it, and resume the original
   operation at most once.

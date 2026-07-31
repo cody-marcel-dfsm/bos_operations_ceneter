@@ -44,7 +44,7 @@ def test_initialize_is_local_and_does_not_touch_upstreams(monkeypatch):
     assert response["result"]["serverInfo"]["name"] == "bos"
 
 
-def test_unauthenticated_tools_expose_only_mcp_bootstrap(monkeypatch):
+def test_unauthenticated_tools_expose_stable_fail_closed_contract(monkeypatch):
     monkeypatch.setattr(broker, "upstreams", [])
     monkeypatch.setattr(broker, "active_tools", None)
 
@@ -52,10 +52,12 @@ def test_unauthenticated_tools_expose_only_mcp_bootstrap(monkeypatch):
         {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
     )
 
-    assert [tool["name"] for tool in response["result"]["tools"]] == [
-        "bos_authenticate",
-        "bos_get_connection_status",
-    ]
+    names = [tool["name"] for tool in response["result"]["tools"]]
+    assert "bos_authenticate" in names
+    assert "bos_get_context" in names
+    assert "bos_set_provider_credential" in names
+    assert "calimatic_list_enrollments" in names
+    assert "calimatic_search_students" in names
 
 
 def test_authentication_accepts_secret_through_mcp_without_logging_it(monkeypatch):
@@ -123,9 +125,14 @@ def test_tools_list_exposes_authorized_union_on_initial_discovery(monkeypatch):
         "bos_get_authorization_status",
         "bos_get_connection_status",
         "bos_get_context",
+        "bos_get_source_capabilities",
+        "bos_list_apps",
+        "bos_list_sources",
         "bos_resume_operation",
         "bos_set_provider_credential",
         "bos_start_provider_authorization",
+        "calimatic_list_enrollments",
+        "calimatic_search_students",
         "gmail_search",
     ]
     assert broker.pending_tools_changed is False
@@ -169,9 +176,14 @@ def test_activation_replaces_bootstrap_with_current_authorized_union(monkeypatch
         "bos_get_authorization_status",
         "bos_get_connection_status",
         "bos_get_context",
+        "bos_get_source_capabilities",
+        "bos_list_apps",
+        "bos_list_sources",
         "bos_resume_operation",
         "bos_set_provider_credential",
         "bos_start_provider_authorization",
+        "calimatic_list_enrollments",
+        "calimatic_search_students",
         "gmail_search",
     ]
     assert broker.pending_tools_changed is True
