@@ -1,7 +1,7 @@
 interface:
   display_name: "iCode Class Operations"
-  short_description: "Handle classes and camp assignment in BOS"
-  default_prompt: "Use $icode-class-operations to analyze classes or camp assignments through BOS."
+  short_description: "Handle classes, camps, and Care.com enrollments"
+  default_prompt: "Use $icode-class-operations to analyze classes, camp assignments, and Care.com enrollment confirmations."
 dependencies:
   tools:
     - type: "mcp"
