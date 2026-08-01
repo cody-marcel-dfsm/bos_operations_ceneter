@@ -1,7 +1,7 @@
 interface:
   display_name: "iCode Student Operations"
-  short_description: "Handle enrollment and progress through BOS"
-  default_prompt: "Use $icode-student-operations to handle an enrollment or student progress request through BOS."
+  short_description: "Reconcile BOS and Care.com enrollments"
+  default_prompt: "Use $icode-student-operations to handle an enrollment, Care.com confirmation, or student progress request."
 dependencies:
   tools:
     - type: "mcp"

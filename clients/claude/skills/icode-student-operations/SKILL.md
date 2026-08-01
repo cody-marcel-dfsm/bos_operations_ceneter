@@ -1,6 +1,6 @@
 ---
 name: icode-student-operations
-description: Handle iCode student enrollment and progress-report workflows through the tenant-scoped BOS MCP. Use when asked to find students, inspect or reconcile enrollments, compare Lead Director and Calimatic state, locate progress reports, summarize progress evidence, or identify missing student-data capabilities.
+description: Handle iCode student enrollment and progress-report workflows across tenant-scoped BOS data and Care.com confirmation emails in [REDACTED_NAME] connected iCode Gmail. Use when asked to find students, produce or reconcile enrollment reports, compare Lead Director and Calimatic state, include Care.com Backup Care enrollments, locate progress reports, summarize progress evidence, or identify missing student-data capabilities.
 ---
 
 # iCode Student Operations
@@ -21,6 +21,15 @@ service-specific secure BOS browser flow.
 - Use Calimatic student and enrollment tools as the enrolled-student source.
 - Use Lead Director for prospect and lead state.
 - Use BOS Gmail only as correspondence/source evidence.
+- For Care.com messages addressed to `[REDACTED_NAME]@icodeschool.com`, follow
+  `email-account-routing` and use regular Gmail with exact sender
+  `[REDACTED_EMAIL]`.
+- Dedupe Care.com request and confirmation notices by numeric job ID. Count only
+  a confirmation with body status `Confirmed` as active enrollment; keep a
+  `New` request as pending. Expand each confirmed service date to one child-day.
+- Preserve child, job ID, site, date/time, estimated payment, age, parent,
+  comments, and message timestamp. Exclude a child-day only when a later
+  message explicitly cancels that job ID/date.
 - Reconcile with stable provider IDs first, then normalized name plus another
   strong field. Keep ambiguous matches separate.
 
