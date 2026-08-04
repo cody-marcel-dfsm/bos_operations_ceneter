@@ -115,7 +115,10 @@ async function validateProducts() {
     failures.push(...validateProduct(manifest, path));
     if (
       manifest.name !== "bos" &&
-      manifest.includes.some((include) => include.startsWith("platform/"))
+      manifest.includes.some(
+        (include) =>
+          include.startsWith("platform/") && include !== "platform/submit-feedback"
+      )
     ) {
       failures.push(
         `${path}: only the bos product may publish platform foundation skills`

@@ -226,6 +226,125 @@ PROVIDER_CONTRACT_TOOLS = {
         },
     },
 }
+FEEDBACK_TARGET_PROPERTIES = {
+    "type": {
+        "type": "string",
+        "enum": [
+            "package",
+            "skill",
+            "plugin",
+            "mcp-tool",
+            "installation",
+            "general",
+        ],
+    },
+    "product_name": {"type": "string", "maxLength": 100},
+    "product_version": {"type": "string", "maxLength": 50},
+    "skill_name": {"type": "string", "maxLength": 100},
+    "plugin_name": {"type": "string", "maxLength": 100},
+    "tool_name": {"type": "string", "maxLength": 150},
+}
+FEEDBACK_TARGET_SCHEMA = {
+    "type": "object",
+    "properties": FEEDBACK_TARGET_PROPERTIES,
+    "required": ["type"],
+    "additionalProperties": False,
+}
+FEEDBACK_RELATED_TARGET_SCHEMA = {
+    "type": "object",
+    "properties": {
+        **FEEDBACK_TARGET_PROPERTIES,
+        "type": {
+            "type": "string",
+            "enum": ["package", "skill", "plugin", "mcp-tool", "installation"],
+        },
+    },
+    "required": ["type"],
+    "additionalProperties": False,
+}
+FEEDBACK_CONTRACT_TOOLS = {
+    "bos_submit_feedback": {
+        "name": "bos_submit_feedback",
+        "description": (
+            "Submit sanitized customer feedback about a BOS package, skill, "
+            "plugin, installation, or MCP tool in exact server-returned tenant "
+            "scope. Returns a durable receipt."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "org_id": {"type": "string", "format": "uuid"},
+                "app_code": {"type": "string", "minLength": 1, "maxLength": 100},
+                "installed_app_id": {"type": "string", "format": "uuid"},
+                "delegated_role_id": {"type": "string", "minLength": 1, "maxLength": 200},
+                "client_submission_id": {"type": "string", "format": "uuid"},
+                "category": {
+                    "type": "string",
+                    "enum": [
+                        "bug",
+                        "enhancement",
+                        "usability",
+                        "documentation",
+                        "incorrect-result",
+                        "missing-capability",
+                        "other",
+                    ],
+                },
+                "severity": {
+                    "type": "string",
+                    "enum": ["low", "medium", "high", "blocking"],
+                },
+                "target": FEEDBACK_TARGET_SCHEMA,
+                "related_targets": {
+                    "type": "array",
+                    "maxItems": 20,
+                    "items": FEEDBACK_RELATED_TARGET_SCHEMA,
+                },
+                "title": {"type": "string", "minLength": 1, "maxLength": 200},
+                "message": {"type": "string", "minLength": 1, "maxLength": 8000},
+                "expected_behavior": {"type": "string", "maxLength": 4000},
+                "actual_behavior": {"type": "string", "maxLength": 4000},
+                "reproduction_summary": {"type": "string", "maxLength": 4000},
+                "session_context": {
+                    "type": "object",
+                    "properties": {
+                        "trigger": {"type": "string", "enum": ["report-session"]},
+                        "session_goal": {"type": "string", "maxLength": 2000},
+                        "observed_behavior": {"type": "string", "maxLength": 4000},
+                        "edits_summary": {"type": "string", "maxLength": 6000},
+                        "validation_summary": {"type": "string", "maxLength": 2000},
+                        "unresolved_items": {"type": "string", "maxLength": 4000},
+                    },
+                    "required": ["trigger", "session_goal"],
+                    "additionalProperties": False,
+                },
+                "client_context": {
+                    "type": "object",
+                    "properties": {
+                        "client_name": {"type": "string", "maxLength": 100},
+                        "client_version": {"type": "string", "maxLength": 50},
+                        "platform": {"type": "string", "maxLength": 50},
+                        "correlation_id": {"type": "string", "maxLength": 200},
+                    },
+                    "additionalProperties": False,
+                },
+            },
+            "required": [
+                "org_id",
+                "app_code",
+                "installed_app_id",
+                "delegated_role_id",
+                "client_submission_id",
+                "category",
+                "severity",
+                "target",
+                "title",
+                "message",
+            ],
+            "additionalProperties": False,
+        },
+    }
+}
 SCOPED_READ_PROPERTIES = {
     "org_id": {"type": "string", "format": "uuid"},
     "app_code": {"type": "string"},
@@ -383,6 +502,8 @@ def _start_authentication_handoff() -> dict[str, Any]:
                     self._headers(410, len(body)); self.wfile.write(body); return
                 submitted = ""
                 connected = False
+                response_status = 400
+                body = b"Authentication failed. Return to ChatGPT and request a new link."
                 try:
                     length = int(self.headers.get("Content-Length", "0"))
                     if length < 1 or length > 8192:
@@ -391,15 +512,15 @@ def _start_authentication_handoff() -> dict[str, Any]:
                     result = _authenticate({"credential": submitted})
                     connected = not result.get("isError")
                     body = (b"<h1>BOS connected</h1><p>You can close this window and return to ChatGPT.</p>" if connected else b"Credential was not accepted. Return to ChatGPT and request a new link.")
-                    self._headers(200 if connected else 401, len(body)); self.wfile.write(body)
+                    response_status = 200 if connected else 401
                 except Exception:
                     body = b"Authentication failed. Return to ChatGPT and request a new link."
-                    self._headers(400, len(body)); self.wfile.write(body)
                 finally:
                     submitted = ""
                     with auth_handoff_lock:
                         if auth_handoff.get("id") == handoff_id:
                             auth_handoff = {"id": handoff_id, "status": "connected" if connected else "failed"}
+                    self._headers(response_status, len(body)); self.wfile.write(body)
                     threading.Thread(target=_shutdown_server, args=(self.server,), daemon=True).start()
 
         server = HTTPServer(("127.0.0.1", 0), HandoffHandler)
@@ -485,6 +606,8 @@ def _start_provider_credential_handoff(arguments: dict[str, Any]) -> dict[str, A
                 submitted = ""
                 forwarded: dict[str, Any] = {}
                 connected = False
+                response_status = 400
+                body = b"Provider configuration failed. Return to ChatGPT and request a new link."
                 try:
                     length = int(self.headers.get("Content-Length", "0"))
                     if length < 1 or length > 8192:
@@ -495,15 +618,15 @@ def _start_provider_credential_handoff(arguments: dict[str, Any]) -> dict[str, A
                     result = payload.get("result", {})
                     connected = "error" not in payload and not result.get("isError")
                     body = (b"<h1>Provider connected</h1><p>You can close this window and return to ChatGPT.</p>" if connected else b"Provider credential was not accepted. Return to ChatGPT and request a new link.")
-                    self._headers(200 if connected else 400, len(body)); self.wfile.write(body)
+                    response_status = 200 if connected else 400
                 except Exception:
                     body = b"Provider configuration failed. Return to ChatGPT and request a new link."
-                    self._headers(400, len(body)); self.wfile.write(body)
                 finally:
                     submitted = ""; forwarded.clear()
                     with provider_handoff_lock:
                         if provider_handoff.get("id") == handoff_id:
                             provider_handoff = {"id": handoff_id, "status": "configured" if connected else "failed", "scope": safe_arguments}
+                    self._headers(response_status, len(body)); self.wfile.write(body)
                     threading.Thread(target=_shutdown_server, args=(self.server,), daemon=True).start()
 
         server = HTTPServer(("127.0.0.1", 0), ProviderHandoffHandler)
@@ -676,6 +799,7 @@ def _activate_tools(*, notify: bool = True) -> None:
     # until authentication and exact tenant scope are established.
     merged.update(DISCOVERY_CONTRACT_TOOLS)
     merged.update(PROVIDER_CONTRACT_TOOLS)
+    merged.update(FEEDBACK_CONTRACT_TOOLS)
     merged.update(CALIMATIC_CONTRACT_TOOLS)
     for upstream in _upstreams():
         for name, tool in upstream.load_tools().items():

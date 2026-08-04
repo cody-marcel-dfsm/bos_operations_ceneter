@@ -19,7 +19,7 @@ test("all product manifests validate and resolve unique skills", async () => {
   }
 });
 
-test("iCode composition contains no BOS foundation copies", async () => {
+test("iCode composition contains only the shared feedback foundation", async () => {
   const products = await listProducts();
   const byName = Object.fromEntries(
     products.map(({ manifest }) => [manifest.name, manifest])
@@ -28,7 +28,10 @@ test("iCode composition contains no BOS foundation copies", async () => {
   assert(iCode.some((skill) => skill.name === "icode-class-operations"));
   const bos = await resolveProductSkills(byName.bos);
   const bosNames = new Set(bos.map((skill) => skill.name));
-  assert(iCode.every((skill) => !bosNames.has(skill.name)));
+  const shared = iCode
+    .filter((skill) => bosNames.has(skill.name))
+    .map((skill) => skill.name);
+  assert.deepEqual(shared, ["submit-feedback"]);
 });
 
 test("the packaged BOS broker compiles with the system Python runtime", () => {
