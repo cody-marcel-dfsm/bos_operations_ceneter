@@ -117,8 +117,8 @@ release.
    npm run install:verify -- --product bos
    ```
 
-6. Run `codex plugin add bos@personal` when using the default personal
-   marketplace.
+6. Run `codex plugin add bos@bos-icode` and
+   `codex plugin add icode-operations-center@bos-icode`.
 7. Start a new Codex task and select **Connect BOS** when organization data is
    first required.
 

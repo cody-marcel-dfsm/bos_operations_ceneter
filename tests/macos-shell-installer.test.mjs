@@ -38,7 +38,7 @@ test(
         `printf '%s\\n' \"$*\" >> '${calls}'`,
         'if [ "$1 $2 $3" = "plugin marketplace list" ]; then',
         `  if [ -f '${marketplaceState}' ]; then`,
-        `    printf '%s\\n' '{"marketplaces":[{"name":"bos-operations-center","root":"${home}/Library/Application Support/Infinite State Machines/BOS Marketplace"}]}'`,
+        `    printf '%s\\n' '{"marketplaces":[{"name":"bos-icode","root":"${home}/Library/Application Support/Infinite State Machines/BOS Marketplace"}]}'`,
         "  else",
         "    printf '%s\\n' '{\"marketplaces\":[]}'",
         "  fi",
@@ -73,7 +73,7 @@ test(
         join(installed, ".agents", "plugins", "marketplace.json"),
         "utf8"
       ),
-      /bos-operations-center/
+      /bos-icode/
     );
     const recorded = await readFile(calls, "utf8");
     assert.equal(

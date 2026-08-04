@@ -298,7 +298,7 @@ Description:
   "target": {
     "type": "skill",
     "product_name": "icode-operations-center",
-    "product_version": "0.4.7",
+    "product_version": "0.4.8",
     "skill_name": "icode-class-operations"
   },
   "correlation_id": "req_01K1..."

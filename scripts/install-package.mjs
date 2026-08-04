@@ -361,8 +361,8 @@ async function mergeMarketplace(options, paths, desiredManifest) {
     marketplace = await readJson(paths.marketplace);
   } else {
     marketplace = {
-      name: "personal",
-      interface: { displayName: "Personal" },
+      name: "bos-icode",
+      interface: { displayName: "BOS + iCode" },
       plugins: []
     };
   }

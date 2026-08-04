@@ -5,7 +5,7 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 SOURCE_MARKETPLACE="${SCRIPT_DIR}/marketplace"
 DESTINATION="${HOME}/Library/Application Support/Infinite State Machines/BOS Marketplace"
 BACKUP_ROOT="${HOME}/Library/Application Support/Infinite State Machines/BOS Backups"
-MARKETPLACE_NAME="bos-operations-center"
+MARKETPLACE_NAME="bos-icode"
 
 if [ "$(uname -s)" != "Darwin" ]; then
   echo "This installer supports macOS." >&2

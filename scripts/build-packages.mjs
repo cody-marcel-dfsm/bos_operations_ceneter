@@ -32,8 +32,8 @@ await rm(stage, { recursive: true, force: true });
 await mkdir(stagedClients, { recursive: true });
 
 const marketplace = {
-  name: "bos-operations-center",
-  interface: { displayName: "BOS Operations Center" },
+  name: "bos-icode",
+  interface: { displayName: "BOS + iCode" },
   plugins: []
 };
 

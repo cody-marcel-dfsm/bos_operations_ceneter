@@ -201,7 +201,7 @@ test("conflicting marketplace entry stops installation", async () => {
     marketplacePath,
     `${JSON.stringify(
       {
-        name: "personal",
+        name: "bos-icode",
         plugins: [
           {
             name: "bos",

@@ -33,7 +33,7 @@ ready for client testing.
   boundary foundations.
 - Removal of legacy Lead Director BOS workflow copies and the redundant Lead
   Director plugin product.
-- Local BOS and iCode plugin installation through the personal marketplace.
+- Local BOS and iCode plugin installation through the `bos-icode` marketplace.
 - Retirement of superseded flat global BOS/iCode skills into a recoverable
   backup.
 

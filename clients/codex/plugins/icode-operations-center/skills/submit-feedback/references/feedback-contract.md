@@ -49,7 +49,7 @@ Unknown properties are invalid. Send plain text only.
   "target": {
     "type": "package",
     "product_name": "icode-operations-center",
-    "product_version": "0.4.7"
+    "product_version": "0.4.8"
   },
   "related_targets": [
     {

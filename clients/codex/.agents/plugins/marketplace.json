@@ -1,7 +1,7 @@
 {
-  "name": "bos-operations-center",
+  "name": "bos-icode",
   "interface": {
-    "displayName": "BOS Operations Center"
+    "displayName": "BOS + iCode"
   },
   "plugins": [
     {
