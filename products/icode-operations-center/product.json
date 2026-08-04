@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "icode-operations-center",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "display_name": "iCode Operations Center",
   "description": "Secure iCode operations through the tenant-scoped BOS MCP.",
   "publisher": "Infinite State Machines LLC",
@@ -13,8 +13,10 @@
     "copilot"
   ],
   "includes": [
+    "platform/submit-feedback",
     "capabilities/review-outreach",
     "verticals/icode/icode-class-operations",
+    "verticals/icode/icode-service-routing",
     "verticals/icode/icode-director-daily-planner",
     "verticals/icode/icode-instructor-operations",
     "verticals/icode/icode-invoice-operations",

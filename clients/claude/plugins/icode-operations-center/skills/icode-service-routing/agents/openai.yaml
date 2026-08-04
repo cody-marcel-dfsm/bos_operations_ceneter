@@ -1,0 +1,4 @@
+interface:
+  display_name: "iCode Service Routing"
+  short_description: "Route iCode requests by service and preference"
+  default_prompt: "Use $icode-service-routing to choose the requested provider through the exact tenant-scoped BOS capability."

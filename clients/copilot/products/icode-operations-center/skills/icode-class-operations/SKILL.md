@@ -5,23 +5,25 @@ description: Handle iCode class rosters, schedules, capacity, and camp-assignmen
 
 # iCode Class Operations
 
-Use `bos_icode` and follow the `bos-mcp-client` context workflow. Use Calimatic
-for class/enrollment state and Calendar only as schedule evidence.
+Use the tenant-neutral `bos` MCP and follow the `use-bos` context workflow.
+Use Calimatic for class/enrollment state and Calendar only as schedule evidence.
 For Care.com Backup Care evidence addressed to
 `[REDACTED_NAME]@icodeschool.com`, follow `email-account-routing` and use the
 regular connected Gmail plugin. Do not route that mailbox through BOS Gmail.
 Use `bos-visual-output` for multi-class schedules, capacity, attendance, and
 camp-assignment results.
-Use BOS MCP or published BOS backend APIs with the iCode organization's plugin
-credentials for every source except the exact Care.com Gmail route above.
-Browser sessions provide no authorization, evidence, or fallback.
-When BOS or Calimatic reports an authentication or credential error, follow
-`bos-mcp-client` authentication recovery and prompt the user to enter the API
-key only through the secure BOS setup page.
+When the user requests Calimatic, select the authorized BOS context exposing
+the Calimatic capability and copy `org_id`, `app_code`, `installed_app_id`, and
+`delegated_role_id` exactly into the call. Never use a direct provider client or
+browser session as a fallback. When BOS reports an authentication or credential
+error, follow its secure handoff flow and never request a secret in chat. If a
+required capability is unavailable, return a useful partial result from other
+authorized BOS capabilities and the exact missing capability, scope, and source
+freshness.
 
 ## Classes and rosters
 
-- Use the enrollment-listing tool for date-bound rosters.
+- Use the authorized BOS enrollment-listing capability for date-bound rosters.
 - Search the connected iCode Gmail mailbox for messages from
   `[REDACTED_EMAIL]` in the requested date window.
 - Group Care.com messages by numeric job ID. Count a `Backup Care Job

@@ -104,6 +104,7 @@ def test_unauthenticated_tools_expose_stable_fail_closed_contract(monkeypatch):
     names = [tool["name"] for tool in response["result"]["tools"]]
     assert "bos_authenticate" in names
     assert "bos_get_context" in names
+    assert "bos_submit_feedback" in names
     assert "bos_set_provider_credential" in names
     assert "calimatic_list_enrollments" in names
     assert "calimatic_search_students" in names
@@ -312,6 +313,7 @@ def test_tools_list_exposes_authorized_union_on_initial_discovery(monkeypatch):
         "bos_start_authentication",
         "bos_start_provider_authorization",
         "bos_start_provider_credential_handoff",
+        "bos_submit_feedback",
         "calimatic_list_enrollments",
         "calimatic_search_students",
         "gmail_search",
@@ -367,6 +369,7 @@ def test_activation_replaces_bootstrap_with_current_authorized_union(monkeypatch
         "bos_start_authentication",
         "bos_start_provider_authorization",
         "bos_start_provider_credential_handoff",
+        "bos_submit_feedback",
         "calimatic_list_enrollments",
         "calimatic_search_students",
         "gmail_search",
@@ -402,6 +405,62 @@ def test_missing_authentication_fails_closed(monkeypatch):
 
     with pytest.raises(RuntimeError, match="authentication is required"):
         broker._select_upstream("gmail_search", {})
+
+
+def test_feedback_contract_is_bounded_and_session_aware():
+    schema = broker.FEEDBACK_CONTRACT_TOOLS["bos_submit_feedback"]["inputSchema"]
+
+    assert schema["additionalProperties"] is False
+    assert set(schema["required"]) >= {
+        "org_id",
+        "app_code",
+        "installed_app_id",
+        "delegated_role_id",
+        "client_submission_id",
+        "target",
+        "title",
+        "message",
+    }
+    assert schema["properties"]["related_targets"]["maxItems"] == 20
+    assert schema["properties"]["session_context"]["properties"]["trigger"] == {
+        "type": "string",
+        "enum": ["report-session"],
+    }
+    assert schema["properties"]["session_context"]["additionalProperties"] is False
+
+
+def test_feedback_routes_once_in_exact_scope(monkeypatch):
+    upstream = FakeUpstream("icode", {"org-icode"})
+    monkeypatch.setattr(broker, "upstreams", [upstream])
+    arguments = {
+        "org_id": "org-icode",
+        "app_code": "icode",
+        "installed_app_id": "install-1",
+        "delegated_role_id": "director",
+        "client_submission_id": "00000000-0000-4000-8000-000000000003",
+        "category": "enhancement",
+        "severity": "medium",
+        "target": {"type": "package", "product_name": "icode-operations-center"},
+        "title": "Report session feedback",
+        "message": "Submit a sanitized summary of the active task.",
+    }
+
+    response = broker._handle(
+        {
+            "jsonrpc": "2.0",
+            "id": 9,
+            "method": "tools/call",
+            "params": {"name": "bos_submit_feedback", "arguments": arguments},
+        }
+    )
+
+    assert upstream.calls == [
+        (
+            "tools/call",
+            {"name": "bos_submit_feedback", "arguments": arguments},
+        )
+    ]
+    assert response["result"]["content"][0]["text"] == "icode"
 
 
 def test_provider_secret_contract_marks_value_write_only():
