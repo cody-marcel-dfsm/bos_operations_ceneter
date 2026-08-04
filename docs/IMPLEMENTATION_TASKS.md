@@ -459,7 +459,7 @@ public release.
 
 Complete LOCAL-000 through LOCAL-104 from the local-first plan before
 BOSPKG-001. This establishes the source-control baseline, inventories existing
-skills, adopts the installed `bos@personal` prototype, extracts the first BOS
+skills, adopts the installed `bos@bos-icode` prototype, extracts the first BOS
 foundations, and verifies their discovery in a new Codex thread.
 
 Complete LOCAL-200 through LOCAL-203 next to prove Lead Director composition.

@@ -40,7 +40,7 @@ The current machine already has:
 
 ```text
 ~/.agents/plugins/marketplace.json
-└── bos@personal → ./plugins/bos
+└── bos@bos-icode → ./plugins/bos
 
 ~/plugins/bos/
 ├── .codex-plugin/plugin.json
@@ -50,7 +50,7 @@ The current machine already has:
 └── tests/
 ```
 
-`codex plugin list` reports `bos@personal` as installed and enabled. The plugin
+`codex plugin list` reports `bos@bos-icode` as installed and enabled. The plugin
 has the identity `bos`, a tenant-neutral `use-bos` skill, and a local BOS MCP
 broker. This is the local prototype to inspect, test, and adopt into the
 package source.
@@ -176,7 +176,7 @@ source-control baseline.
 
 - Every discovered `SKILL.md` appears exactly once in the inventory.
 - Duplicate skill names and divergent copies are reported.
-- The inventory identifies the current `bos@personal` plugin as an adoptable
+- The inventory identifies the current `bos@bos-icode` plugin as an adoptable
   local prototype.
 
 ## Stage 1: Implement the BOS foundation locally
@@ -201,7 +201,7 @@ local development target.
 
 - Plugin validation passes.
 - The MCP broker unit tests pass.
-- `codex plugin list` resolves `bos@personal` to `~/plugins/bos`.
+- `codex plugin list` resolves `bos@bos-icode` to `~/plugins/bos`.
 - A second adoption run reports `managed-current` and makes no file changes.
 
 ### LOCAL-101 — Extract `bos:planning`
@@ -270,13 +270,13 @@ invariants.
 ### LOCAL-104 — Reinstall the local plugin
 
 **Outcome:** Codex loads the extracted foundation skills through the existing
-personal marketplace.
+`bos-icode` marketplace.
 
 **Work:**
 
 - Validate the completed local plugin.
 - Update the Codex cachebuster through the supported helper.
-- Reinstall `bos@personal`.
+- Reinstall `bos@bos-icode`.
 - Start a new Codex thread for discovery testing.
 
 **Acceptance:**
@@ -371,7 +371,7 @@ duplicated BOS content.
 - Compare old and new behavior using the activation matrix.
 - Transfer any missing Lead Director delta into specializations.
 - Disable or remove superseded mixed skills.
-- Remove independent global copies of skills now supplied by `bos@personal`.
+- Remove independent global copies of skills now supplied by `bos@bos-icode`.
 - Preserve a recoverable inventory and backup.
 
 **Acceptance:**
@@ -582,7 +582,7 @@ npm run install:plan -- --client codex --product bos
 **Required fixtures:**
 
 - empty home;
-- existing personal marketplace with unrelated plugins;
+- existing `bos-icode` marketplace with unrelated plugins;
 - existing correct unmanaged BOS plugin;
 - current managed BOS plugin;
 - stale managed BOS plugin;
@@ -631,7 +631,7 @@ Add validation for:
 3. Plan adoption or update.
 4. Apply through the package installer.
 5. Update the cachebuster.
-6. Reinstall `bos@personal`.
+6. Reinstall `bos@bos-icode`.
 7. Start a new Codex thread.
 8. Run BOS-only and Lead Director composition prompts.
 9. Exercise one read-only BOS MCP operation.
@@ -642,7 +642,7 @@ Add validation for:
 Run the complete flow against an isolated temporary home before another client
 machine:
 
-- create personal marketplace;
+- create `bos-icode` marketplace;
 - create `~/plugins/bos`;
 - install plugin;
 - verify skill discovery;
@@ -702,7 +702,7 @@ After Codex local testing passes:
 ```text
 LOCAL-000 baseline
     → LOCAL-001 inventory
-    → LOCAL-100 adopt existing bos@personal
+    → LOCAL-100 adopt existing bos@bos-icode
     → LOCAL-101..103 extract foundations
     → LOCAL-104 reinstall
     → LOCAL-200..203 Lead Director specialization tests
@@ -733,7 +733,7 @@ local state before expanding the remaining foundations.
 ## Definition of done
 
 - The local hierarchy matches the documented scope model.
-- The existing `bos@personal` installation is safely adopted.
+- The existing `bos@bos-icode` installation is safely adopted.
 - BOS foundations are reusable across applications.
 - Lead Director skills specialize BOS foundations repository-wide.
 - The package is the single canonical source for managed BOS plugin files.

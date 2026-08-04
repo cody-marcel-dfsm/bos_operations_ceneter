@@ -102,7 +102,7 @@ printf '%s' "${install_prompt}" | /usr/local/bin/codex exec --ephemeral --danger
 # forward arbitrary parent-shell variables. Pin the disposable acceptance clone
 # to the explicitly configured test endpoint without changing the public package.
 installed_mcp=$(/usr/bin/find \
-  "$HOME/.codex/plugins/cache/bos-operations-center/bos" \
+  "$HOME/.codex/plugins/cache/bos-icode/bos" \
   -mindepth 2 -maxdepth 2 -name .mcp.json -print | /usr/bin/head -n 1)
 test -f "${installed_mcp}"
 mcp_staging="${installed_mcp}.staging.$$"

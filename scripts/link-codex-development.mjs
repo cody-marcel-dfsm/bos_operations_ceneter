@@ -19,7 +19,7 @@ import {
 
 function parseArgs(argv) {
   const options = {
-    cacheRoot: join(homedir(), ".codex", "plugins", "cache", "personal"),
+    cacheRoot: join(homedir(), ".codex", "plugins", "cache", "bos-icode"),
     backupRoot: join(
       homedir(),
       ".agents",
@@ -86,7 +86,7 @@ async function linkOne({ target, source, backup }) {
 
 export async function linkCodexDevelopment(rawOptions = {}) {
   const options = {
-    cacheRoot: join(homedir(), ".codex", "plugins", "cache", "personal"),
+    cacheRoot: join(homedir(), ".codex", "plugins", "cache", "bos-icode"),
     backupRoot: join(
       homedir(),
       ".agents",
