@@ -20,7 +20,26 @@ from urllib.parse import parse_qs, urlsplit
 import httpx
 
 
-BOS_URL = (os.environ.get("BOS_MCP_URL") or "https://dfsm.ai/mcp").rstrip("/")
+def _profile_argument(arguments: list[str]) -> str | None:
+    if not arguments:
+        return None
+    if len(arguments) != 2 or arguments[0] != "--profile":
+        raise RuntimeError("usage: bos_mcp_broker.py [--profile <profile-id>]")
+    profile = arguments[1].strip()
+    if not profile or not all(
+        character.islower() or character.isdigit() or character == "-"
+        for character in profile
+    ):
+        raise RuntimeError("BOS MCP profile must be lowercase hyphen-case")
+    return profile
+
+
+MCP_PROFILE = _profile_argument(sys.argv[1:]) if __name__ == "__main__" else None
+if MCP_PROFILE:
+    bos_base_url = (os.environ.get("BOS_MCP_BASE_URL") or "https://dfsm.ai").rstrip("/")
+    BOS_URL = f"{bos_base_url}/mcp/{MCP_PROFILE}"
+else:
+    BOS_URL = (os.environ.get("BOS_MCP_URL") or "https://dfsm.ai/mcp").rstrip("/")
 if urlsplit(BOS_URL).scheme != "https" and os.environ.get("BOS_ALLOW_INSECURE_TEST_URL") != "1":
     raise RuntimeError("BOS_MCP_URL must use HTTPS")
 PROTOCOL_VERSION = "2025-06-18"
@@ -384,6 +403,14 @@ CALIMATIC_CONTRACT_TOOLS = {
         },
     },
 }
+PROFILE_SUPPRESSED_TOOLS = frozenset(
+    BOOTSTRAP_TOOLS
+    |
+    DISCOVERY_CONTRACT_TOOLS
+    | PROVIDER_CONTRACT_TOOLS
+    | FEEDBACK_CONTRACT_TOOLS
+    | CALIMATIC_CONTRACT_TOOLS
+)
 LOG_PATH = Path.home() / ".codex" / "cache" / "bos-broker-events.jsonl"
 active_tools: list[dict[str, Any]] | None = None
 pending_tools_changed = False
@@ -793,14 +820,17 @@ def _all_tools() -> list[dict[str, Any]]:
 
 def _activate_tools(*, notify: bool = True) -> None:
     global active_tools, pending_tools_changed
-    merged: dict[str, dict[str, Any]] = dict(BOOTSTRAP_TOOLS)
+    merged: dict[str, dict[str, Any]] = (
+        dict(BOOTSTRAP_TOOLS) if MCP_PROFILE is None else {}
+    )
     # Codex snapshots MCP tools at process startup. Advertise the stable BOS
     # contract immediately, while call routing below continues to fail closed
     # until authentication and exact tenant scope are established.
-    merged.update(DISCOVERY_CONTRACT_TOOLS)
-    merged.update(PROVIDER_CONTRACT_TOOLS)
-    merged.update(FEEDBACK_CONTRACT_TOOLS)
-    merged.update(CALIMATIC_CONTRACT_TOOLS)
+    if MCP_PROFILE is None:
+        merged.update(DISCOVERY_CONTRACT_TOOLS)
+        merged.update(PROVIDER_CONTRACT_TOOLS)
+        merged.update(FEEDBACK_CONTRACT_TOOLS)
+        merged.update(CALIMATIC_CONTRACT_TOOLS)
     for upstream in _upstreams():
         for name, tool in upstream.load_tools().items():
             merged[name] = tool
@@ -839,7 +869,8 @@ def _authenticate(arguments: dict[str, Any]) -> dict[str, Any]:
     try:
         candidate.initialize()
         candidate.load_tools()
-        candidate.load_org_ids()
+        if MCP_PROFILE is None:
+            candidate.load_org_ids()
     except Exception:
         candidate.credential = ""
         if candidate.client is not None:
@@ -851,12 +882,37 @@ def _authenticate(arguments: dict[str, Any]) -> dict[str, Any]:
     upstreams = [candidate]
     active_tools = None
     _activate_tools()
+    message = (
+        "BOS authenticated. Call bos_get_context before domain work."
+        if MCP_PROFILE is None
+        else (
+            f"BOS authenticated for the {MCP_PROFILE} profile. Use one exact "
+            "authorized scope from the returned profile tool metadata."
+        )
+    )
     return _text_result(
         {
             "status": "connected",
-            "message": "BOS authenticated. Call bos_get_context before domain work.",
+            "message": message,
         }
     )
+
+
+def _authenticate_profile_from_client_configuration() -> None:
+    """Connect a scoped product profile with its single client-owned API key."""
+    if MCP_PROFILE is None or _upstreams():
+        return
+    api_key = os.environ.get("BOS_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError(
+            f"The {MCP_PROFILE} client is missing its configured BOS API key. "
+            "Configure BOS_API_KEY in the client environment."
+        )
+    result = _authenticate({"credential": api_key})
+    if result.get("isError"):
+        raise RuntimeError(
+            f"The {MCP_PROFILE} client's configured BOS API key was rejected."
+        )
 
 
 def _connection_status() -> dict[str, Any]:
@@ -871,17 +927,29 @@ def _connection_status() -> dict[str, Any]:
 def _select_upstream(name: str, arguments: dict[str, Any]) -> Upstream:
     candidates = list(_upstreams())
     if not candidates:
+        if MCP_PROFILE is not None:
+            raise RuntimeError(
+                f"The {MCP_PROFILE} client is not connected with its configured BOS API key."
+            )
         raise RuntimeError(
             "BOS authentication is required. Call bos_start_authentication and "
             "have the customer use the local BOS window; never request the credential in chat."
         )
     org_id = arguments.get("org_id")
-    if isinstance(org_id, str):
+    if MCP_PROFILE is None and isinstance(org_id, str):
         candidates = [u for u in candidates if org_id in u.load_org_ids()]
     if len(candidates) != 1:
+        guidance = (
+            "Call bos_get_context, then pass the exact server-returned org_id and "
+            "app/install/role selectors."
+            if MCP_PROFILE is None
+            else (
+                "Use one exact authorized org/app/install/role scope from the "
+                "profile tool metadata."
+            )
+        )
         raise RuntimeError(
-            "BOS context is missing or ambiguous. Call bos_get_context, then pass "
-            "the exact server-returned org_id and app/install/role selectors."
+            f"BOS context is missing or ambiguous. {guidance}"
         )
     return candidates[0]
 
@@ -893,26 +961,40 @@ def _handle(message: dict[str, Any]) -> dict[str, Any] | None:
     if request_id is None:
         return None
     if method == "initialize":
+        if MCP_PROFILE is None:
+            instructions = (
+                "If BOS is disconnected, call bos_start_authentication. The customer "
+                "enters the credential only in the local BOS window; never request it "
+                "in chat. Poll bos_get_authentication_status, then call bos_get_context "
+                "and pass exact server-returned scope on every domain call. When BOS "
+                "returns authorization_required, guide the server-returned secure "
+                "authorization workflow and resume the original operation once."
+            )
+        else:
+            instructions = (
+                f"Use this scoped {MCP_PROFILE} service only when the user's request "
+                f"explicitly requires {MCP_PROFILE} operations. The client authenticates "
+                "with its configured BOS API key; never start or request another BOS "
+                "login. Use only server-returned profile tools. When an operation reports "
+                "authorization_required for an underlying provider, follow the exact "
+                "server-returned recovery flow in the agent interface and resume once."
+            )
         return {
             "jsonrpc": "2.0",
             "id": request_id,
             "result": {
                 "protocolVersion": PROTOCOL_VERSION,
                 "capabilities": {"tools": {"listChanged": True}},
-                "serverInfo": {"name": "bos", "version": "0.1.0"},
-                "instructions": (
-                    "If BOS is disconnected, call bos_start_authentication. The customer "
-                    "enters the credential only in the local BOS window; never request it "
-                    "in chat. Poll bos_get_authentication_status, then call bos_get_context "
-                    "and pass exact "
-                    "server-returned scope on every domain call. When BOS returns "
-                    "authorization_required, automatically guide OAuth login or request "
-                    "the provider key, verify authorization, and resume the original "
-                    "operation once. Never repeat or log credential values."
-                ),
+                "serverInfo": {
+                    "name": "bos" if MCP_PROFILE is None else f"bos-{MCP_PROFILE}",
+                    "version": "0.1.0",
+                },
+                "instructions": instructions,
             },
         }
     if method == "tools/list":
+        if MCP_PROFILE is not None:
+            _authenticate_profile_from_client_configuration()
         return {
             "jsonrpc": "2.0",
             "id": request_id,
@@ -922,6 +1004,31 @@ def _handle(message: dict[str, Any]) -> dict[str, Any] | None:
         params = message.get("params") or {}
         name = params.get("name")
         arguments = params.get("arguments") or {}
+        if MCP_PROFILE is not None and name in PROFILE_SUPPRESSED_TOOLS:
+            return {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "error": {
+                    "code": -32601,
+                    "message": f"Tool unavailable in MCP profile: {name}",
+                },
+            }
+        if MCP_PROFILE is not None:
+            _authenticate_profile_from_client_configuration()
+            allowed_tools = {
+                tool_name
+                for upstream in _upstreams()
+                for tool_name in upstream.load_tools()
+            }
+            if name not in allowed_tools:
+                return {
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "error": {
+                        "code": -32601,
+                        "message": f"Tool unavailable in MCP profile: {name}",
+                    },
+                }
         if name == "bos_authenticate":
             result = _authenticate(arguments)
         elif name == "bos_start_authentication":

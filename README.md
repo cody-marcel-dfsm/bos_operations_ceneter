@@ -24,9 +24,13 @@ The skills are useful as readable operating procedures on their own. Connecting
 them to BOS adds tenant-scoped data access, managed integrations, secure
 authentication, and authorized execution.
 
-See [docs/DESIGN.md](docs/DESIGN.md) for the canonical architecture, build
-meaning, customer-configuration boundary, authenticated access policy,
-first-time user flow, and release requirements.
+See [docs/DESIGN.md](docs/DESIGN.md) for detailed build meaning,
+customer-configuration boundaries, authenticated access policy, first-time
+user flow, and release requirements.
+
+Project architecture, constitutional rules, specifications, and durable
+decisions live in [Vault/README.md](Vault/README.md). The packaged `bos:oracle`
+skill grounds architecture guidance and repository reviews in that evidence.
 
 See [docs/IMPLEMENTATION_TASKS.md](docs/IMPLEMENTATION_TASKS.md) for the
 dependency-ordered implementation backlog and acceptance criteria.
@@ -219,6 +223,8 @@ branding, billing, quota, or compliance.
 ## Repository layout
 
 - `source/platform/`: canonical application-neutral BOS foundation skills.
+- `Vault/`: canonical architecture, specifications, decisions, and review
+  evidence for this repository.
 - `source/capabilities/`: canonical reusable business capability skills.
 - `source/verticals/`: canonical industry and franchise adaptations.
 - `source/runtime/`: credential-free client runtime components.

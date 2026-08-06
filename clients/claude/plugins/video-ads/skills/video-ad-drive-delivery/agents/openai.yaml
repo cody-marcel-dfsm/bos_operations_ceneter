@@ -1,0 +1,4 @@
+interface:
+  display_name: "Video Ad Drive Delivery"
+  short_description: "Store approved video ads in authorized Google Drive"
+  default_prompt: "Use $video-ad-drive-delivery to save this approved video ad and its production metadata to the selected Google Drive folder."
