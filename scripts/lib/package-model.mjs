@@ -54,6 +54,7 @@ export function validateProduct(manifest, path = "product.json") {
     "clients",
     "includes",
     "runtime",
+    "mcp_profile",
     "default_prompts"
   ]);
   for (const field of Object.keys(manifest)) {
@@ -116,6 +117,15 @@ export function validateProduct(manifest, path = "product.json") {
     )
   ) {
     failures.push(`${path}: default_prompts must contain up to 3 strings`);
+  }
+  if (
+    manifest.mcp_profile !== undefined &&
+    !productNamePattern.test(manifest.mcp_profile)
+  ) {
+    failures.push(`${path}: invalid mcp_profile`);
+  }
+  if (manifest.mcp_profile && !manifest.runtime) {
+    failures.push(`${path}: mcp_profile requires runtime`);
   }
   return failures;
 }
@@ -182,6 +192,16 @@ export async function copyRuntime(product, pluginRoot, base = root) {
   if (!product.runtime) return;
   const runtimeRoot = join(base, "source", "runtime", product.runtime);
   await cp(join(runtimeRoot, ".mcp.json"), join(pluginRoot, ".mcp.json"));
+  if (product.mcp_profile) {
+    const configPath = join(pluginRoot, ".mcp.json");
+    const config = await readJson(configPath);
+    const server = config.mcpServers?.bos;
+    if (!server || !Array.isArray(server.args)) {
+      throw new Error(`Runtime ${product.runtime} has no BOS MCP server args`);
+    }
+    server.args.push("--profile", product.mcp_profile);
+    await writeJson(configPath, config);
+  }
   try {
     await cp(join(runtimeRoot, "scripts"), join(pluginRoot, "scripts"), {
       recursive: true,

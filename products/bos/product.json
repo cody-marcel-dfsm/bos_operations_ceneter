@@ -18,6 +18,7 @@
     "platform/planning",
     "platform/implementation",
     "platform/review",
+    "platform/oracle",
     "platform/po-go-boundary-enforcement",
     "platform/authentication-context-integrity"
   ],
