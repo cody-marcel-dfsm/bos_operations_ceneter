@@ -1,0 +1,27 @@
+{
+  "schema_version": "1",
+  "name": "video-ads",
+  "version": "0.1.0",
+  "display_name": "Video Ads",
+  "description": "Create, review, and deliver video ads through tenant-scoped BOS capabilities.",
+  "publisher": "Infinite State Machines LLC",
+  "category": "Marketing",
+  "authentication": "ON_USE",
+  "clients": [
+    "codex",
+    "claude",
+    "copilot"
+  ],
+  "includes": [
+    "capabilities/video-ad-briefing",
+    "capabilities/video-ad-generation",
+    "capabilities/video-ad-drive-delivery"
+  ],
+  "runtime": "bos",
+  "mcp_profile": "video-ads",
+  "default_prompts": [
+    "Turn this offer into a production-ready video ad brief.",
+    "Generate a video ad from this approved brief.",
+    "Save the approved video ad and its metadata to Google Drive."
+  ]
+}

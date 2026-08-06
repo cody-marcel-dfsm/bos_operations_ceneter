@@ -1,0 +1,27 @@
+{
+  "indexed_at": "20260805T161316.751618Z",
+  "schema_version": "bos-vault-manifest/v1",
+  "source_count": 5,
+  "sources": {
+    "Vault/README.md": {
+      "bytes": 1015,
+      "sha256": "a4690b839d46eb359bc03d73375fc9009cf4dd847abf8acce9078da6487acf6c"
+    },
+    "Vault/docs/CONSTITUTION.md": {
+      "bytes": 1424,
+      "sha256": "7c729866924da0fe31674b04349f6800765c77d99a5b3e913cb07c7e5062d029"
+    },
+    "Vault/docs/architecture.md": {
+      "bytes": 2471,
+      "sha256": "729856a894d50880dff4d58465f3daa22d27a0c4947ca5840dec4ef878ada787"
+    },
+    "Vault/schemas/decision-record.md": {
+      "bytes": 439,
+      "sha256": "3922907624221572a243f58b3684dc8a2eb7b7d221b4a3d6ac5dd1317b9baef4"
+    },
+    "Vault/specs/oracle-and-vault.md": {
+      "bytes": 1447,
+      "sha256": "f89550e26510554849b63ed5e6578a9446cac58c8011586566a860be775aa60a"
+    }
+  }
+}
