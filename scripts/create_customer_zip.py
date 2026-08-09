@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create a deterministic, self-contained macOS customer installation ZIP."""
+"""Create a deterministic, cross-platform customer distribution ZIP."""
 
 from __future__ import annotations
 
@@ -40,11 +40,7 @@ def payload_manifest(root: Path) -> dict:
 
 def add_file(archive: zipfile.ZipFile, path: Path, name: str) -> None:
     info = zipfile.ZipInfo(name, FIXED_ZIP_TIME)
-    mode = (
-        0o755
-        if path.name.endswith(".sh") or path.name == "bos-mcp-broker"
-        else 0o644
-    )
+    mode = 0o644
     info.external_attr = (stat.S_IFREG | mode) << 16
     info.compress_type = zipfile.ZIP_DEFLATED
     archive.writestr(info, path.read_bytes())
@@ -54,43 +50,15 @@ def main() -> None:
     package = json.loads((ROOT / "package.json").read_text())
     version = package["version"]
     DIST.mkdir(parents=True, exist_ok=True)
-    destination = DIST / f"bos-operations-center-macos-{version}.zip"
-    stable_destination = DIST / "bos-operations-center-macos.zip"
+    for old in DIST.glob("bos-operations-center*.zip"):
+        old.unlink()
+    destination = DIST / f"bos-operations-center-{version}.zip"
+    stable_destination = DIST / "bos-operations-center.zip"
 
     with tempfile.TemporaryDirectory(prefix="bos-customer-zip-") as temporary:
         stage = Path(temporary) / "bos-operations-center"
-        marketplace = stage / "marketplace"
-        shutil.copytree(ROOT / "clients" / "codex", marketplace)
-        broker = ROOT / "tmp" / "macos-broker" / "dist" / "bos-mcp-broker"
-        if not broker.is_file():
-            raise SystemExit(
-                "Missing self-contained broker. Run scripts/build_macos_broker.sh."
-            )
-        broker_target = marketplace / "plugins" / "bos" / "bin" / "bos-mcp-broker"
-        broker_target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(broker, broker_target)
-        (marketplace / "plugins" / "bos" / ".mcp.json").write_text(
-            json.dumps(
-                {
-                    "mcpServers": {
-                        "bos": {
-                            "command": "./bin/bos-mcp-broker",
-                            "args": [],
-                            "cwd": ".",
-                            "required": False,
-                        }
-                    }
-                },
-                indent=2,
-            )
-            + "\n"
-        )
-        shutil.rmtree(
-            marketplace / "plugins" / "bos" / "scripts",
-            ignore_errors=True,
-        )
-        shutil.copy2(ROOT / "installer" / "macos" / "install.sh", stage)
-        shutil.copy2(ROOT / "installer" / "macos" / "README_INSTALL.md", stage)
+        shutil.copytree(ROOT / "clients", stage / "clients")
+        shutil.copy2(ROOT / "installer" / "README_INSTALL.md", stage)
         manifest = payload_manifest(stage)
         (stage / "PAYLOAD_MANIFEST.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n"

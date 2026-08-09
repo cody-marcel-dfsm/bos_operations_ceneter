@@ -1,5 +1,9 @@
 # Local-First Skill and Package Implementation Plan
 
+> Historical foundation plan. Current transport and release requirements are
+> controlled by `DESIGN.md` and `IMPLEMENTATION_TASKS.md`: native remote
+> Streamable HTTP, one client-configured BOS API key, and OS-neutral packages.
+
 ## Objective
 
 Establish the complete BOS and Lead Director skill hierarchy locally, validate
@@ -45,15 +49,13 @@ The current machine already has:
 ~/plugins/bos/
 ├── .codex-plugin/plugin.json
 ├── .mcp.json
-├── scripts/bos_mcp_broker.py
 ├── skills/use-bos/SKILL.md
 └── tests/
 ```
 
 `codex plugin list` reports `bos@bos-icode` as installed and enabled. The plugin
-has the identity `bos`, a tenant-neutral `use-bos` skill, and a local BOS MCP
-broker. This is the local prototype to inspect, test, and adopt into the
-package source.
+has the identity `bos`, a tenant-neutral `use-bos` skill, and an MCP
+configuration. This was the local prototype used to establish package source.
 
 The Lead Director repository already has `.agents/skills`, including mixed
 Lead Director/BOS planning, implementation, review, boundary, and
@@ -84,8 +86,6 @@ The BOS Operations Center repository currently has:
     │   └── plugin.json
     ├── .mcp.json
     ├── .bos-package-state.json
-    ├── scripts/
-    │   └── bos_mcp_broker.py
     └── skills/
         ├── use-bos/
         ├── planning/
@@ -191,7 +191,7 @@ local development target.
 - Validate folder name, manifest name, semantic version, skills path, MCP
   configuration, and marketplace entry.
 - Run the plugin validator.
-- Run the existing broker unit tests.
+- Validate the native remote MCP definition.
 - Remove generated `__pycache__` content from the managed artifact set.
 - Add a provisional `.bos-package-state.json` that records managed paths and
   hashes without claiming unrelated files.
@@ -200,7 +200,7 @@ local development target.
 **Acceptance:**
 
 - Plugin validation passes.
-- The MCP broker unit tests pass.
+- The remote MCP configuration tests pass.
 - `codex plugin list` resolves `bos@bos-icode` to `~/plugins/bos`.
 - A second adoption run reports `managed-current` and makes no file changes.
 
@@ -391,7 +391,7 @@ local plugin.
 **Work:**
 
 - Compare `~/plugins/bos` against package sources by path and content.
-- Import the tenant-neutral plugin manifest, MCP broker, tests, and foundation
+- Import the tenant-neutral plugin manifest, MCP configuration, tests, and foundation
   skills into canonical package directories.
 - Preserve provenance in the package inventory.
 - Generate the local plugin from package source and compare it with the tested
@@ -400,7 +400,7 @@ local plugin.
 **Acceptance:**
 
 - Package output reproduces the tested local plugin.
-- The generated plugin passes the same validator and broker tests.
+- The generated plugin passes the same validator and remote MCP tests.
 - The local plugin contains no independently edited managed file.
 
 ### PKG-301 — Establish layered canonical source

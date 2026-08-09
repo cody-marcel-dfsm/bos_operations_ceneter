@@ -28,7 +28,7 @@ repository's reviewer or external approval service.
 
 - tenant neutrality and explicit authorization scope;
 - absence of secrets and customer data;
-- secure MCP credential handoff and log redaction;
+- native remote MCP authentication, provider recovery, and log redaction;
 - product-manifest completeness;
 - canonical-source to generated-client parity;
 - deterministic build, package validation, and tests;

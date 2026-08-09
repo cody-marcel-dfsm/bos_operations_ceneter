@@ -1,14 +1,11 @@
 {
   "mcpServers": {
-    "bos": {
-      "command": "python3",
-      "args": [
-        "./scripts/bos_mcp_broker.py",
-        "--profile",
-        "video-ads"
-      ],
-      "cwd": ".",
-      "required": false
+    "video-ads": {
+      "type": "http",
+      "url": "https://dfsm.ai/mcp/video-ads",
+      "headers": {
+        "Authorization": "Bearer ${BOS_API_KEY}"
+      }
     }
   }
 }

@@ -134,13 +134,13 @@ never grant authority.
 
 ### 6.3 Stable MCP contract
 
-Add `bos_submit_feedback` to the broker's startup-advertised contract tools.
-Codex snapshots MCP tools at process startup, so this mutation must appear in
-`tools/list` before BOS authentication while calls continue to fail closed
-until authentication and exact tenant scope exist.
+Add `bos_submit_feedback` to the BOS service's advertised contract tools. The
+tool appears in `tools/list` for authorized endpoints and calls fail closed
+until the API key and exact tenant scope are valid.
 
-The broker forwards the request to the authenticated BOS upstream. It does not
-store feedback locally, log request bodies, or rewrite tenant authority.
+The BOS service stores feedback through its authenticated application path. It
+keeps request bodies out of transport logs and derives authority from canonical
+server context.
 
 Add `bos_get_feedback_receipt` only if backend processing can change the record
 after acceptance during this release. A successful synchronous create response
@@ -500,8 +500,8 @@ Rollback:
 - Keep the table and accepted records intact for recovery and audit.
 - The client skill reports capability unavailability and preserves only a
   conversation-local draft.
-- Remove the advertised broker contract in a later client release only after
-  all supported servers have completed rollback.
+- Remove the advertised server contract in a later service release only after
+  all supported clients have completed rollback.
 
 ## 13. Open decisions for the backend agent
 

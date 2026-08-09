@@ -1,7 +1,7 @@
 {
-  "indexed_at": "20260809T155711.762174Z",
+  "indexed_at": "20260809T155524.374179Z",
   "schema_version": "bos-vault-manifest/v1",
-  "source_count": 6,
+  "source_count": 5,
   "sources": {
     "Vault/README.md": {
       "bytes": 1015,
@@ -14,10 +14,6 @@
     "Vault/docs/architecture.md": {
       "bytes": 3869,
       "sha256": "d6e6c948ac9e8d9dc8c8d196ed00bdc4d2527ddf9d892ec3ad5fcedb3a94667e"
-    },
-    "Vault/reviews/2026-08-09-remote-mcp-cross-platform.md": {
-      "bytes": 1756,
-      "sha256": "02181403aa65116d3f3f52a397bc5f7827356c6dc4b4bb494513aa4e5d606c0f"
     },
     "Vault/schemas/decision-record.md": {
       "bytes": 439,

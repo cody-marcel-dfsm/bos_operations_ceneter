@@ -154,10 +154,11 @@ composing `bos:*` foundation skills with `lead-director-*` repository skills.
 Lead Director therefore has no companion plugin that republishes BOS
 foundations.
 
-Install the `bos` foundation plugin once per client. It owns the single BOS MCP
-connection. Companion product plugins such as iCode Operations Center package
-vertical and capability skills and use the BOS connection without registering
-a second server with the same name.
+Install the `bos` foundation plugin once per client. It owns the general BOS
+MCP connection. Companion skill-only products such as iCode Operations Center
+use that connection. Products requiring a restricted tool surface register a
+uniquely named server and a BOS-owned profile endpoint, such as
+`video-ads` at `/mcp/video-ads`.
 
 ### Customer configuration
 
@@ -289,8 +290,8 @@ replace its cache and requires the developer to re-run the link command.
 
 ## What build means
 
-Building is deterministic package and deployment-artifact assembly. On
-Apple-silicon macOS, `npm run build`:
+Building is deterministic, OS-neutral package and deployment-artifact
+assembly. `npm run build`:
 
 1. Reads the canonical platform, capability, and vertical skills.
 2. Reads the product manifests.
@@ -300,10 +301,10 @@ Apple-silicon macOS, `npm run build`:
 5. Assembles the selected skills into Codex, Claude, and Copilot package
    layouts.
 6. Creates deterministic per-product/client archives and a checksum manifest.
-7. Builds the self-contained macOS MCP broker.
-8. Creates versioned and stable customer installation ZIPs.
+7. Creates versioned and stable cross-platform customer ZIPs containing the
+   generated Codex, Claude, and Copilot distributions.
 
-`npm run build:packages` performs steps 1–5 for cross-platform development.
+`npm run build:packages` performs steps 1–5 for development.
 
 A build does not:
 
@@ -384,14 +385,41 @@ Customer-owned extension skills may consume this non-secret configuration to
 specialize a packaged operating procedure. Extensions cannot grant tenant,
 organization, application, role, plugin, capability, or provider authority.
 
-Credentials and access authority are not customer configuration. They must
-never be written into skill files, generated packages, logs, ordinary client
-configuration, or chat. The MCP opens a nonce-bearing, expiring loopback page
-for BOS credentials and provider API keys. The customer submits the secret
-directly to the MCP process. BOS owns encrypted provider-credential persistence.
-OAuth passwords, authorization codes, access tokens, and refresh tokens never
-pass through Codex; the customer signs in directly with the provider and BOS
-handles the callback and token exchange.
+Credentials and access authority remain outside customer configuration. The
+client receives its single `BOS_API_KEY` through the approved GCP-managed
+client configuration and forwards it as a Bearer header over HTTPS. Skill
+files, generated packages, logs, customer settings, command arguments, and
+chat remain credential-free. BOS owns encrypted provider-credential
+persistence. For a missing provider grant, BOS returns a short-lived HTTPS
+authorization or credential-collection URL. The customer completes that flow
+with BOS through the active agent interface, and BOS handles validation,
+callback processing, token exchange, and storage.
+
+## MCP transport and client boundary
+
+BOS runs as an independently deployed Streamable HTTP MCP server. Codex and
+Claude use their native remote MCP transports. Copilot packages contain skills
+and configure the same remote endpoint through the host's supported MCP
+settings. The distribution contains configuration and skills; it contains no
+proxy executable, Python runtime, subprocess server, loopback listener, mobile
+client, or OS-specific transport adapter.
+
+The general BOS endpoint is `https://dfsm.ai/mcp`. Restricted products use a
+dedicated endpoint below that path. The BOS service authenticates the API key,
+resolves tenant and installation context, and advertises only the tools
+authorized for that endpoint. Tool discovery, routing, administrative-tool
+suppression, and provider recovery are server responsibilities.
+
+This follows the transport guidance published by OpenAI, Anthropic, and the
+MCP maintainers: Streamable HTTP serves remote integrations; stdio serves
+local process integrations that require direct machine access.
+
+Controlling external references:
+
+- [OpenAI Model Context Protocol](https://learn.chatgpt.com/docs/extend/mcp)
+- [Anthropic Claude Code MCP](https://code.claude.com/docs/en/mcp)
+- [MCP transport specification](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports)
+- [Official MCP TypeScript SDK server guidance](https://ts.sdk.modelcontextprotocol.io/server)
 
 ## Authentication and authorization
 
@@ -446,12 +474,11 @@ authenticate BOS and does not authorize provider access.
 
 ### 3. Connect the account
 
-Before authentication, the packaged MCP advertises a stable fail-closed tool
-contract. When the first secured operation requires BOS access, Codex calls
-`bos_start_authentication`. The broker opens an expiring one-time page bound to
-`127.0.0.1`; the customer enters the credential there. The broker keeps it only
-in MCP session memory. It never enters chat or is written to the package,
-configuration, shell history, or logs.
+The client loads `BOS_API_KEY` from its approved GCP-managed environment and
+connects directly to the product's HTTPS MCP endpoint. BOS validates the key
+on every secured request and fails closed when it is absent, invalid, expired,
+or outside the endpoint's authorized product scope. The customer completes no
+second BOS password or login flow.
 
 ### 4. Resolve tenant and capabilities
 
@@ -472,15 +499,13 @@ with an original operation identifier.
   URL, the customer signs in directly with the provider, BOS receives the
   callback and stores the tokens, and Codex polls
   `bos_get_authorization_status`.
-- Calimatic, SendGrid, and other API-key providers return a sensitive-field
-  request. Codex calls `bos_start_provider_credential_handoff`, and the customer
-  enters the value in the one-time local page. BOS validates, encrypts, and stores it within
-  server-validated tenant, installed-app, plugin, provider, and credential
-  scope.
+- Calimatic, SendGrid, and other API-key providers return a short-lived BOS
+  HTTPS credential-collection URL and transaction identifier. The agent opens
+  the URL, the customer submits the value directly to BOS, and the agent polls
+  the sanitized transaction status.
 
-Neither flow echoes credential values. Credentials, OAuth passwords, and tokens
-never enter the conversation. Provider keys enter only the write-only MCP call
-created internally by the broker after local submission.
+Both flows keep provider credentials, OAuth passwords, and tokens out of the
+conversation and client package.
 
 ### 6. Verify and run
 
@@ -499,8 +524,8 @@ When BOS client authentication or provider authorization fails:
    or provider credential authorization.
 3. Report the exact tenant, plugin, capability, and credential state returned
    by BOS.
-4. Start the local BOS credential handoff, provider OAuth, or local provider-key
-   handoff according to the structured recovery response.
+4. Open the BOS-returned provider OAuth or HTTPS credential-collection URL
+   through the active agent interface.
 5. Verify the connection after the user completes authorization.
 6. Retry the affected operation once.
 7. Stop and report the unresolved state if verification or the retry fails.

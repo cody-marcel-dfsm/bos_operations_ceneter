@@ -216,19 +216,13 @@ export async function copyRuntime(product, pluginRoot, base = root) {
     const configPath = join(pluginRoot, ".mcp.json");
     const config = await readJson(configPath);
     const server = config.mcpServers?.bos;
-    if (!server || !Array.isArray(server.args)) {
-      throw new Error(`Runtime ${product.runtime} has no BOS MCP server args`);
+    if (!server || server.type !== "http" || typeof server.url !== "string") {
+      throw new Error(`Runtime ${product.runtime} has no remote BOS MCP server`);
     }
-    server.args.push("--profile", product.mcp_profile);
+    server.url = `${server.url.replace(/\/$/, "")}/${product.mcp_profile}`;
+    config.mcpServers[product.name] = server;
+    delete config.mcpServers.bos;
     await writeJson(configPath, config);
-  }
-  try {
-    await cp(join(runtimeRoot, "scripts"), join(pluginRoot, "scripts"), {
-      recursive: true,
-      filter: publicPackagePath
-    });
-  } catch (error) {
-    if (error.code !== "ENOENT") throw error;
   }
 }
 

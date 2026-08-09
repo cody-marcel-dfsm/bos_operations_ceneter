@@ -307,7 +307,7 @@ with package source or access authority.
 
 **Dependencies:** BOSPKG-005, BOSPKG-009.
 
-### BOSPKG-012 — Implement authentication and authorization state handling
+### BOSPKG-012 — Implement native remote authentication and authorization state handling
 
 **Outcome:** Every secured workflow follows one consistent BOS connection,
 scope resolution, provider setup, verification, and retry sequence.
@@ -316,7 +316,9 @@ scope resolution, provider setup, verification, and retry sequence.
 
 - Represent BOS client authorization, tenant resolution, capability
   authorization, and provider credential health as distinct states.
-- Add client-facing MCP authentication, OAuth, and sensitive API-key actions
+- Generate native remote Streamable HTTP configuration for Codex and Claude.
+- Forward the client-managed `BOS_API_KEY` as an HTTPS Bearer header.
+- Consume BOS-returned provider OAuth and HTTPS credential-collection actions
   without persisting or echoing credentials.
 - Implement the recovery sequence defined in the design.
 - Permit one retry after verified recovery.
@@ -325,12 +327,12 @@ scope resolution, provider setup, verification, and retry sequence.
 
 - Diagnostics identify tenant, plugin, capability, and credential state using
   BOS-returned evidence.
-- Missing authentication stops the affected operation and starts the correct
-  recovery action.
+- A missing or invalid `BOS_API_KEY` stops the affected operation with no
+  secondary BOS login flow.
 - Recovery verifies state before retrying and retries no more than once.
-- Direct credentials appear only in the customer's transient answer and the
-  immediately following sensitive MCP argument. They never appear in logs,
-  responses, generated files, configuration, or retries.
+- Provider credentials are submitted directly to the BOS-hosted HTTPS flow and
+  remain absent from model messages, logs, responses, generated files, customer
+  configuration, and retries.
 
 **Dependencies:** BOSPKG-009, BOSPKG-011.
 
@@ -431,6 +433,54 @@ operation, recovery, and update behavior for supported clients.
 - The release checklist links to smoke-test evidence and archive checksums.
 
 **Dependencies:** BOSPKG-013, BOSPKG-015.
+
+### BOSPKG-018 — Replace local broker transport with remote Streamable HTTP
+
+**Outcome:** Every supported client reaches BOS directly through its native
+remote MCP transport on macOS, Windows, and Linux.
+
+**Scope:**
+
+- Replace subprocess MCP definitions with HTTPS endpoint definitions.
+- Remove the Python broker, compiled executable, loopback listeners, broker
+  tests, and platform-specific broker build dependencies.
+- Give restricted product profiles unique MCP server names and endpoints.
+- Move tool filtering, routing, and provider-recovery state to the BOS service.
+
+**Acceptance criteria:**
+
+- Generated Codex and Claude runtime products contain `type: http`, an HTTPS
+  URL, and an environment-derived Authorization header.
+- Generated client packages contain no `command`, `stdio`, executable, Python
+  runtime, or local credential listener.
+- The Video Ads product targets only `/mcp/video-ads` through the
+  `video-ads` server identity.
+- Missing `BOS_API_KEY` fails at the BOS service boundary and cannot initiate a
+  second BOS authentication mechanism.
+
+**Dependencies:** BOSPKG-012, BOSPKG-015.
+
+### BOSPKG-019 — Produce an OS-neutral customer distribution
+
+**Outcome:** One deterministic ZIP installs from macOS, Windows, or Linux
+without a compiled client transport.
+
+**Scope:**
+
+- Package all generated Codex, Claude, and Copilot distributions.
+- Publish versioned and stable OS-neutral ZIP names.
+- Run validation and release jobs on a platform-neutral CI runner.
+- Document native installation and GCP-managed `BOS_API_KEY` configuration.
+
+**Acceptance criteria:**
+
+- The ZIP contains all three client distributions and no platform binary.
+- ZIP contents and checksums are deterministic.
+- The complete release build passes on Linux CI.
+- Client smoke-test evidence covers macOS, Windows, and Linux where each host
+  client is supported.
+
+**Dependencies:** BOSPKG-018.
 
 ### BOSPKG-017 — Rename and document the standalone repository
 

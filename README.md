@@ -1,20 +1,22 @@
 # BOS Operations Center Packages
 
-## Install in Codex on macOS
+## Install in Codex, Claude, or Copilot
 
-Requirements: Apple-silicon Mac, Codex installed, and Codex signed in.
+Requirements: a supported client on macOS, Windows, or Linux and a
+GCP-provisioned `BOS_API_KEY` in that client's environment.
 
 1. Open a new Codex task.
 2. Paste this instruction into Codex:
 
-   > Install BOS Operations Center from https://github.com/cody-marcel-dfsm/bos_operations_ceneter/releases/latest/download/bos-operations-center-macos.zip. Download and verify the ZIP, follow its README_INSTALL.md, install it, and verify that the BOS MCP is configured.
+   > Install BOS Operations Center from https://github.com/cody-marcel-dfsm/bos_operations_ceneter/releases/latest/download/bos-operations-center.zip. Download and verify the ZIP, follow its README_INSTALL.md for this client, and verify that the remote BOS MCP is configured.
 
 3. Let Codex complete the installation, then start a new Codex task.
-4. Ask Codex to perform a BOS operation. When authentication is required,
-   enter your credential in the local **Connect BOS** window that opens.
+4. Ask the client to perform a BOS operation. It connects directly to BOS over
+   HTTPS using the configured API key.
 
-Keep credentials and API keys out of Codex chat. BOS collects them only through
-the local secure handoff window.
+Keep credentials and API keys out of agent chat. The BOS client key comes from
+the approved GCP-managed client configuration. Provider setup uses short-lived
+BOS-hosted HTTPS flows.
 
 For customer-specific products, initialization first derives safe non-secret
 values from the active client, local timezone, connected-account metadata, and
@@ -56,11 +58,6 @@ package promotion, and idempotent installer/reconciler design.
 See [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) for completed
 capabilities, local validation evidence, and the remaining client smoke tests.
 
-See
-[docs/MACOS_CLEAN_INSTALL_ACCEPTANCE.md](docs/MACOS_CLEAN_INSTALL_ACCEPTANCE.md)
-for the native installer security contract and resettable clean-macOS
-acceptance environment.
-
 ## Build
 
 Run:
@@ -69,10 +66,9 @@ Run:
 npm run build
 ```
 
-The complete build runs on Apple-silicon macOS. It assembles every declared
-product/client distribution, creates the deterministic product archives and
-release manifest, builds the self-contained MCP broker, and creates both the
-versioned and stable customer-installation ZIPs under `dist/`.
+The complete build assembles every declared product/client distribution,
+creates deterministic product archives and the release manifest, and creates
+versioned and stable OS-neutral customer ZIPs under `dist/`.
 
 Use `npm run build:packages` when developing only canonical/generated client
 content without producing deployable archives.
@@ -85,9 +81,9 @@ package structure, tests, and credential safety.
 
 ## Install
 
-### Customer ZIP for macOS
+### Cross-platform customer ZIP
 
-Create the self-contained Apple-silicon customer archive:
+Create the customer distribution:
 
 ```bash
 npm run release:customer
@@ -96,23 +92,21 @@ npm run release:customer
 This produces:
 
 ```text
-dist/bos-operations-center-macos-<version>.zip
-dist/bos-operations-center-macos.zip
+dist/bos-operations-center-<version>.zip
+dist/bos-operations-center.zip
 ```
 
 `release:customer` is an alias for the complete validated build; ZIP creation
 is already part of `npm run build`.
 
-The ZIP includes the Codex marketplace, BOS and iCode plugins, a Codex-executed
-installer, and a self-contained BOS MCP broker. Customers need macOS and a
-signed-in Codex installation. Give Codex the public GitHub release URL and ask
+The ZIP includes generated Codex, Claude, and Copilot distributions plus
+client-specific installation guidance. It contains no executable MCP proxy or
+platform runtime. Give the active agent the public GitHub release URL and ask
 it to download, verify, extract, inspect `README_INSTALL.md`, and install the
-package. On the first secured request, the BOS MCP opens a one-time loopback
-credential page. The customer enters the credential there, outside chat.
+appropriate distribution.
 
-Tags matching `v*` run the customer-release workflow on GitHub's Apple-silicon
-macOS runner and attach the versioned and stable ZIP names to the GitHub
-release.
+Tags matching `v*` run the customer-release workflow on a Linux runner and
+attach the versioned and stable ZIP names to the GitHub release.
 
 ### Codex
 
@@ -188,14 +182,15 @@ the command after Codex installs or replaces a cached plugin version.
 
 1. Run `npm run release:check`.
 2. Install the selected package from `clients/claude/plugins/<product>`.
-3. Select **Connect BOS** when Claude first needs organization data.
+3. Configure `BOS_API_KEY` through the approved client environment and restart
+   Claude.
 
 ### GitHub Copilot
 
 1. Run `npm run release:check`.
 2. Copy `clients/copilot/products/<product>/skills` to `.agents/skills` in the
    target repository.
-3. Connect the BOS MCP server using the client’s secure authentication flow.
+3. Connect the remote BOS MCP endpoint using the client-managed `BOS_API_KEY`.
 
 The checked-in client directories contain credential-free adapters. A release
 may also publish those three directories as downloadable archives for customers
@@ -203,19 +198,18 @@ who do not use Git.
 
 ## Customer onboarding
 
-Installing the package grants no organization access. On the first secured
-request, Codex calls `bos_start_authentication`. The MCP opens a one-time local
-page, receives the credential directly into MCP session memory, and BOS resolves
-the authorized tenant, capabilities, and provider credential states.
-Every secured organization operation requires that authenticated BOS path.
-There is no unauthenticated or alternate-provider fallback.
+Installing the package grants no organization access. On each secured request,
+the client forwards its GCP-provisioned `BOS_API_KEY` to the remote BOS MCP over
+HTTPS. BOS resolves the authorized tenant, product profile, capabilities, and
+provider credential states. Every secured organization operation requires that
+authenticated BOS path.
 
 ### API-key service such as Calimatic
 
 1. Request an operation that requires Calimatic.
-2. BOS returns `authorization_required` with a sensitive API-key field.
-3. Codex calls `bos_start_provider_credential_handoff`; the customer enters the
-   key in the one-time local page rather than the chat composer.
+2. BOS returns `authorization_required` with a short-lived HTTPS
+   credential-collection URL and transaction identifier.
+3. The agent opens the URL and the customer submits the key directly to BOS.
 4. BOS validates and encrypts the key, then Codex verifies the connection and
    resumes the original request once.
 

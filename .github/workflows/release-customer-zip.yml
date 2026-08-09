@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: macos-15
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,6 +25,6 @@ jobs:
           gh release create "${GITHUB_REF_NAME}" \
             dist/*.tar.gz \
             dist/release-manifest.json \
-            dist/bos-operations-center-macos-*.zip \
-            dist/bos-operations-center-macos.zip \
+            dist/bos-operations-center-*.zip \
+            dist/bos-operations-center.zip \
             --generate-notes

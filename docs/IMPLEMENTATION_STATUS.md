@@ -22,12 +22,11 @@ ready for client testing.
   composition metadata, and version compatibility warnings.
 - Machine-local Codex developer linking with pre-link backups and idempotent
   canonical-source symlinks.
-- Deterministic macOS customer ZIP generation with an embedded marketplace,
-  Codex-executed shell bootstrap, MCP-session authentication, and a
-  self-contained Apple-silicon BOS broker.
+- Deterministic cross-platform customer ZIP generation containing Codex,
+  Claude, and Copilot distributions with native remote MCP configuration.
 - Tag-triggered GitHub release workflow for versioned and stable ZIP assets.
 - Source-to-generated drift validation, skill validation, secret/path scanning,
-  installer tests, broker compilation, and release checks.
+  installer tests, remote MCP configuration checks, and release checks.
 - Lead Director repository specializations that explicitly compose the
   application-neutral BOS planning, implementation, review, authentication, and
   boundary foundations.
@@ -41,7 +40,7 @@ ready for client testing.
 
 - All package unit and installer tests pass.
 - All generated Codex plugins pass the official plugin validator.
-- BOS broker tests pass.
+- Native remote MCP package tests pass.
 - Repeated release builds produce identical checksums.
 - Fresh Codex tasks discover the namespaced `bos:*` skills and Lead Director
   repository skills.

@@ -3,15 +3,14 @@
 ## Purpose
 
 BOS Operations Center is the canonical source, composition, validation, and
-release system for portable BOS skills, client adapters, and the credential-
-free local MCP broker.
+release system for portable BOS skills and native remote MCP client adapters.
 
 ## Ownership boundaries
 
 - `source/platform/` owns tenant-neutral BOS operating and architecture skills.
 - `source/capabilities/` owns reusable business capabilities.
 - `source/verticals/` owns industry and franchise specialization.
-- `source/runtime/` owns credential-free client runtime components.
+- `source/runtime/` owns credential-free remote MCP connection templates.
 - `products/` declares versioned compositions; build scripts generate client
   packages from those declarations.
 - The BOS service owns authentication, authorization, tenant data, provider
@@ -46,11 +45,15 @@ free local MCP broker.
     confirmed values, derive only unambiguous non-secret client and canonical
     BOS metadata, and ask the user once for unresolved or conflicting values.
     Derived configuration never grants authority.
-11. Treat deployment artifacts as build outputs. The complete Apple-silicon
+11. Connect clients directly to BOS over HTTPS Streamable HTTP. Use the native
+    remote MCP configuration in Codex and Claude, and configure the equivalent
+    remote connection in Copilot. A BOS product profile owns its endpoint and
+    server-advertised tool set; clients never aggregate or invent BOS tools.
+12. Treat deployment artifacts as build outputs. The complete cross-platform
     build generates client packages, deterministic product archives, the
-    release manifest, the self-contained broker, and versioned and stable
-    customer ZIPs. Release workflows publish only artifacts produced and
-    validated by that build.
+    release manifest, and versioned and stable OS-neutral customer ZIPs.
+    Release workflows publish only artifacts produced and validated by that
+    build.
 
 ## Knowledge and review
 
