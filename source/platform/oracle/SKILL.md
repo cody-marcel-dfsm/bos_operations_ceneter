@@ -1,6 +1,6 @@
 ---
 name: oracle
-description: Ground BOS Operations Center architecture guidance and repository reviews in the canonical project Vault. Use for package architecture questions, implementation-pattern questions, constitutional compliance, credential-safety review, product composition, generated-client parity, MCP broker changes, release readiness, or approval of an actual BOS Operations Center diff.
+description: Ground BOS Operations Center architecture guidance and repository reviews in the canonical project Vault. Use for package architecture questions, implementation-pattern questions, constitutional compliance, credential-safety review, product composition, generated-client parity, remote MCP transport changes, release readiness, or approval of an actual BOS Operations Center diff.
 ---
 
 # BOS Oracle
@@ -22,8 +22,9 @@ review. Never answer BOS package architecture from memory alone.
 ## Architecture guidance
 
 - Separate verified architecture facts, inferences, and recommendations.
-- Prefer native package composition, secure MCP handoff, and existing BOS
-  platform boundaries before proposing a new abstraction.
+- Prefer native package composition, remote Streamable HTTP, BOS-hosted
+  provider authorization, and existing BOS platform boundaries before
+  proposing a new abstraction.
 - Keep reusable BOS contracts in this repository and application-specific
   runtime or approval machinery in the owning application repository.
 - If source and Vault conflict, flag the conflict. The architecture and
@@ -37,7 +38,7 @@ Review the completed diff after focused validation. Verify:
 - application-neutral platform behavior and correct specialization ownership;
 - Router-to-PO-to-GO mutation boundaries where service behavior is described;
 - credential-free tracked sources, generated artifacts, and logs;
-- local secure handoff or OAuth for credentials and provider authorization;
+- one client-configured BOS API key and BOS-hosted provider authorization;
 - product manifest completeness and canonical-source/client-package parity;
 - deterministic builds, version consistency, tests, and extension preservation;
 - updated Vault knowledge when the change establishes a durable rule.

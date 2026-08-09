@@ -32,15 +32,18 @@ configuration as distinct validated dimensions.
 - Provider credentials remain scoped to their installed app and plugin.
 - Reconnect replaces the scoped grant and preserves application configuration.
 - Background jobs carry the same validated scope as interactive operations.
-- Advertise the stable BOS tool contract when the MCP process starts so clients
-  that snapshot tools can complete authentication and recovery in one session.
-  Before BOS authentication, every secured call fails closed. Collect the BOS
-  credential only through the one-time loopback handoff, retain it only for the
-  MCP session, and never place it in chat, write it, or echo it.
+- Expose BOS as a remote HTTPS Streamable HTTP MCP server. Authenticate with the
+  client-configured `BOS_API_KEY` Bearer header only. Every secured call fails
+  closed when that key is missing or invalid, and the service never offers a
+  second BOS password or login flow.
+- Advertise only the tools allowed for the resolved endpoint, tenant,
+  installation, plugin, and execution role. Administrative tools remain absent
+  from customer product profiles.
 - When a domain call returns `authorization_required`, automatically complete
   the provider-specific recovery flow, verify it, and resume the original
   operation at most once.
 - For OAuth providers, open the server-returned authorization URL, let the
   customer sign in directly with the provider, and poll the BOS transaction.
-- For API-key providers, open the broker's one-time local credential handoff;
-  BOS owns encrypted credential persistence. Never accept the key in chat.
+- For API-key providers, open the short-lived BOS-hosted HTTPS
+  credential-collection URL returned by the service. BOS owns validation and
+  encrypted credential persistence. Keep the key out of chat and client files.

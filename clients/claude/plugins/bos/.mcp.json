@@ -1,12 +1,11 @@
 {
   "mcpServers": {
     "bos": {
-      "command": "python3",
-      "args": [
-        "./scripts/bos_mcp_broker.py"
-      ],
-      "cwd": ".",
-      "required": false
+      "type": "http",
+      "url": "https://dfsm.ai/mcp",
+      "headers": {
+        "Authorization": "Bearer ${BOS_API_KEY}"
+      }
     }
   }
 }

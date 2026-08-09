@@ -116,22 +116,19 @@ both cases.
 Update a default prompt only when it can fit within the existing maximum of
 three prompts without displacing a higher-value product entry point.
 
-### BOS broker
+### BOS MCP service
 
-Update `source/runtime/bos/scripts/bos_mcp_broker.py`:
+Implement the feedback tool in the BOS service repository:
 
-1. Add `bos_submit_feedback` to a startup-advertised feedback contract tool
-   collection.
+1. Add `bos_submit_feedback` to the endpoint's authorized tool contract.
 2. Use the exact input schema in the backend PRD.
-3. Include it in `_activate_tools()` before authenticated upstream discovery.
-4. Route calls through `_select_upstream()` so authentication and exact
-   `org_id` selection remain mandatory.
-5. Forward the original allowlisted arguments to the upstream service.
-6. Preserve the server result and error contract without echoing the feedback
-   body locally.
-7. Keep request bodies out of broker logs.
+3. Resolve the API key, tenant, installation, plugin, and `org_id` on the
+   server before execution.
+4. Pass the allowlisted request through PO orchestration and GO persistence.
+5. Preserve the service result and error contract while keeping request bodies
+   out of transport logs.
 
-The broker stores no feedback and provides no offline queue.
+The client package stores no feedback and provides no offline queue.
 
 ### Generated clients
 
@@ -253,7 +250,7 @@ of information must be omitted and request a safe restatement.
 
 | Condition | Client action |
 |---|---|
-| BOS disconnected | Call `bos_start_authentication`, direct the user to the local BOS window, poll status, then retry context. |
+| BOS API key missing or invalid | Stop and direct the user to repair the approved GCP-managed client configuration. |
 | Scope missing/ambiguous | Fail closed and state the missing canonical scope. |
 | Tool absent | Preserve the sanitized draft in conversation and report `BOS feedback capability unavailable`. |
 | Provider authorization requested | Treat as a server contract defect because feedback has no provider dependency. |
@@ -331,11 +328,11 @@ conversation and did not store it locally.
 1. Receive a staging backend satisfying the linked PRD and contract tests.
 2. Initialize `source/platform/submit-feedback` and generate its UI metadata.
 3. Write the concise skill and backend-contract reference.
-4. Add the broker's startup contract and forwarding behavior.
-5. Add skill, broker, security, and packaging tests.
+4. Add the BOS service tool contract and server-owned execution behavior.
+5. Add skill, service-contract, security, and packaging tests.
 6. Add the skill to BOS and customer-facing product composition.
 7. Rebuild all generated clients.
-8. Run package checks, unit tests, broker tests, secret scanning, and diff
+8. Run package checks, unit tests, service-contract tests, secret scanning, and diff
    validation.
 9. Run a staging smoke test that submits unique synthetic feedback and verifies
    the receipt.
