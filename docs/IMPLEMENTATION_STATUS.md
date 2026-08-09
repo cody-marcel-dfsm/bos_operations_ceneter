@@ -20,6 +20,10 @@ ready for client testing.
   of locally modified package files.
 - Customer-owned extension skill scaffolding, preservation, base-skill
   composition metadata, and version compatibility warnings.
+- Natural-language customer extension management in every product, including
+  typed schema-version-2 overlays, cross-client product metadata, atomic
+  updates, protected-authority rejection, explicit version acceptance, and
+  lossless legacy migration.
 - Machine-local Codex developer linking with pre-link backups and idempotent
   canonical-source symlinks.
 - Deterministic cross-platform customer ZIP generation containing Codex,

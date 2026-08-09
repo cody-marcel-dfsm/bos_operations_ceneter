@@ -39,6 +39,16 @@ and authenticated BOS metadata, then asks one consolidated question for the
 remaining values. Save the completed settings as customer-owned configuration
 with permissions limited to that user. Customer settings never grant access.
 
+## Customer skill extensions
+
+Each product includes `manage-customer-extension`. A customer can ask the agent
+to update or specialize an installed skill for their organization or location.
+The agent writes a typed customer-owned extension in the host's skills scope,
+validates it, and reports its base-version compatibility. Package updates
+preserve these extensions. Extensions may change customer terminology,
+defaults, policies, and exceptions while BOS authority, credentials, system
+instructions, MCP endpoints, and tool grants remain sealed.
+
 ## Provider authorization
 
 If an underlying provider grant is missing, BOS returns a short-lived HTTPS

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   listProducts,
@@ -66,6 +66,7 @@ test("Video Ads composes workflow skills and a scoped BOS endpoint", async () =>
   assert.deepEqual(
     skills.map((skill) => skill.name),
     [
+      "manage-customer-extension",
       "video-ad-briefing",
       "video-ad-generation",
       "video-ad-drive-delivery"
@@ -131,7 +132,54 @@ test("iCode composition contains only the shared feedback foundation", async () 
   const shared = iCode
     .filter((skill) => bosNames.has(skill.name))
     .map((skill) => skill.name);
-  assert.deepEqual(shared, ["submit-feedback"]);
+  assert.deepEqual(shared, ["submit-feedback", "manage-customer-extension"]);
+});
+
+test("every product and client ships tenant extension management metadata", async () => {
+  const products = await listProducts();
+  const roots = {
+    codex: (name) => `${root}/clients/codex/plugins/${name}`,
+    claude: (name) => `${root}/clients/claude/plugins/${name}`,
+    copilot: (name) => `${root}/clients/copilot/products/${name}`
+  };
+  for (const { manifest } of products) {
+    for (const client of manifest.clients) {
+      const productRoot = roots[client](manifest.name);
+      const metadata = JSON.parse(
+        await readFile(`${productRoot}/.bos-product.json`, "utf8")
+      );
+      assert.deepEqual(metadata, {
+        schema_version: "1",
+        name: manifest.name,
+        version: manifest.version,
+        client
+      });
+      const manager = await readFile(
+        `${productRoot}/skills/manage-customer-extension/SKILL.md`,
+        "utf8"
+      );
+      assert.match(manager, /asks to update, customize, override, specialize/);
+    }
+  }
+});
+
+test("generated feedback skill automatically discovers customer customizations", async () => {
+  const products = await listProducts();
+  for (const { manifest } of products) {
+    const skills = await resolveProductSkills(manifest);
+    if (!skills.some((skill) => skill.name === "submit-feedback")) continue;
+    for (const client of manifest.clients) {
+      const roots = {
+        codex: `${root}/clients/codex/plugins/${manifest.name}`,
+        claude: `${root}/clients/claude/plugins/${manifest.name}`,
+        copilot: `${root}/clients/copilot/products/${manifest.name}`
+      };
+      const feedbackRoot = `${roots[client]}/skills/submit-feedback`;
+      const skill = await readFile(`${feedbackRoot}/SKILL.md`, "utf8");
+      assert.match(skill, /automatically discover customer-owned extensions/i);
+      await access(`${feedbackRoot}/scripts/discover-customizations.mjs`);
+    }
+  }
 });
 
 test("generated clients exclude Python cache and bytecode files", async () => {

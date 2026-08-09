@@ -88,9 +88,17 @@ BOS foundation.
 
 Installed package skills are read-only managed files. A customer extension has
 a distinct name, declares its qualified base skill in
-`.bos-extension.json`, and contains only the customer's additions. Package
+`.bos-extension.json`, and contains only the customer's typed additions.
+`manage-customer-extension` creates and updates these overlays from natural
+language requests. Customer-configurable values take precedence over matching
+base defaults; system instructions, BOS authority, package invariants, MCP
+transport, credentials, and tool grants retain their owning authority. Package
 updates back up and replace managed files while preserving extension
 directories absent from the package inventory.
+
+Cross-client customer-owned discovery roots are `~/.agents/skills` for Codex,
+`~/.claude/skills` for Claude, and repository `.agents/skills` for Copilot.
+Managed BOS local installations may keep extensions beside packaged skills.
 
 Packaged BOS skills must remain application-neutral. They may define:
 

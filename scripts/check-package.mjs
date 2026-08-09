@@ -117,7 +117,11 @@ async function validateProducts() {
       manifest.name !== "bos" &&
       manifest.includes.some(
         (include) =>
-          include.startsWith("platform/") && include !== "platform/submit-feedback"
+          include.startsWith("platform/") &&
+          ![
+            "platform/submit-feedback",
+            "platform/manage-customer-extension"
+          ].includes(include)
       )
     ) {
       failures.push(

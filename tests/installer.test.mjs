@@ -196,7 +196,9 @@ test("customer extension composes a base skill and survives package apply", asyn
       name: "planning-cherry-creek",
       product: "bos",
       skill: "planning",
-      tested_version: created.tested_version
+      tested_version: created.tested_version,
+      schema_version: "2",
+      tenant: "cherry-creek"
     }
   ]);
   assert.deepEqual(inspected.warnings, []);
