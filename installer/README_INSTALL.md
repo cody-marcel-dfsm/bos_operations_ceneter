@@ -11,6 +11,10 @@ configuration. The packaged MCP definitions forward that value as an HTTPS
 Bearer header to BOS. Do not write the key into a package file, customer
 settings, command argument, or conversation.
 
+Applying this package over a legacy Codex installation removes the retired
+local BOS credential broker and replaces its stdio MCP definition with the
+native remote HTTPS connection. BOS never opens a local credential prompt.
+
 ## Codex
 
 Add `clients/codex` as a local marketplace, then install the `bos` plugin and

@@ -26,6 +26,30 @@ import {
 } from "./lib/package-model.mjs";
 
 const stateFileName = ".bos-package-state.json";
+const retiredBosBrokerPaths = new Set([
+  "scripts/bos_mcp_broker.py",
+  "tests/test_bos_mcp_broker.py",
+  "tests/test_bos_mcp_broker_live.py"
+]);
+
+function isRetiredBosBrokerPath(path) {
+  return retiredBosBrokerPaths.has(path) ||
+    /^tests\/__pycache__\/test_bos_mcp_broker(?:_live)?\..+\.pyc$/.test(path);
+}
+
+async function isRetiredBosBrokerConfig(path) {
+  try {
+    const config = await readJson(path);
+    const server = config?.mcpServers?.bos;
+    return server?.command === "python3" &&
+      Array.isArray(server.args) &&
+      server.args.some((argument) =>
+        typeof argument === "string" && argument.endsWith("bos_mcp_broker.py")
+      );
+  } catch {
+    return false;
+  }
+}
 
 function parseArgs(argv) {
   const [command = "inspect", ...rest] = argv;
@@ -274,6 +298,9 @@ async function inspectTarget(paths, desired) {
     (path) => !(path in desired.hashes)
   );
   const remove = [];
+  const retiredBrokerPresent = Object.keys(currentFiles).some(
+    isRetiredBosBrokerPath
+  );
 
   let previousState = null;
   if (hasState) {
@@ -319,6 +346,10 @@ async function inspectTarget(paths, desired) {
     else if (hasState && previousState.managed_paths.includes(path)) {
       replace.push(path);
     }
+    else if (!hasState && path === ".mcp.json" && retiredBrokerPresent &&
+      await isRetiredBosBrokerConfig(join(paths.target, path))) {
+      update.push(path);
+    }
     else if (!hasState && path === ".codex-plugin/plugin.json") {
       try {
         const currentManifest = await readJson(
@@ -339,6 +370,12 @@ async function inspectTarget(paths, desired) {
       remove.push(path);
     }
     preserve = preserve.filter((path) => !remove.includes(path));
+  }
+  if (retiredBrokerPresent) {
+    for (const path of Object.keys(currentFiles).filter(isRetiredBosBrokerPath)) {
+      if (!remove.includes(path)) remove.push(path);
+    }
+    preserve = preserve.filter((path) => !isRetiredBosBrokerPath(path));
   }
 
   if (conflicts.length) {
