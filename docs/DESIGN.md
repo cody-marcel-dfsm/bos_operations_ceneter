@@ -289,8 +289,8 @@ replace its cache and requires the developer to re-run the link command.
 
 ## What build means
 
-Building is deterministic package assembly. `npm run build` runs
-`scripts/build-packages.mjs`, which:
+Building is deterministic package and deployment-artifact assembly. On
+Apple-silicon macOS, `npm run build`:
 
 1. Reads the canonical platform, capability, and vertical skills.
 2. Reads the product manifests.
@@ -299,6 +299,11 @@ Building is deterministic package assembly. `npm run build` runs
    distribution.
 5. Assembles the selected skills into Codex, Claude, and Copilot package
    layouts.
+6. Creates deterministic per-product/client archives and a checksum manifest.
+7. Builds the self-contained macOS MCP broker.
+8. Creates versioned and stable customer installation ZIPs.
+
+`npm run build:packages` performs steps 1–5 for cross-platform development.
 
 A build does not:
 
@@ -310,11 +315,11 @@ A build does not:
 - call Gmail, Calendar, Drive, Calimatic, or another organization service;
 - deploy or publish a release.
 
-`npm run release:check` builds all clients and then validates package structure
-and scans the repository for credentials, private keys, tokens, unsafe
-credential files, and local user paths. A successful build proves that the
-distribution can be assembled. Platform installation tests and authenticated
-end-to-end tests remain separate release checks.
+`npm run release:check` runs the complete build, verifies all nine product
+archives and both customer ZIP names, validates ZIP contents, checks package
+structure, runs tests, and scans for credentials, private keys, tokens, unsafe
+credential files, and local user paths. Platform installation tests and
+authenticated end-to-end tests remain separate release checks.
 
 The builder reads every product manifest, resolves its selected canonical
 skills, and generates deterministic Codex, Claude, and Copilot distributions.

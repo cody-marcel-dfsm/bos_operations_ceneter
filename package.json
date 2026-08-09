@@ -7,7 +7,9 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
-    "build": "node scripts/build-packages.mjs",
+    "build:packages": "node scripts/build-packages.mjs",
+    "build": "npm run build:packages && python3 scripts/create_release.py && sh scripts/build_macos_broker.sh && python3 scripts/create_customer_zip.py",
+    "check:build": "node scripts/check-build-output.mjs",
     "check": "node scripts/check-package.mjs",
     "inventory": "node scripts/inventory-skills.mjs",
     "install:inspect": "node scripts/install-package.mjs inspect",
@@ -19,10 +21,10 @@
     "vm:env:sync": "node scripts/sync-vm-test-env.mjs",
     "vm:prepare": "sh scripts/vm/prepare-bos-vanilla.sh",
     "vm:acceptance": "sh scripts/vm/run-macos-acceptance.sh",
-    "release": "npm run release:check && python3 scripts/create_release.py",
-    "release:customer": "npm run release:check && sh scripts/build_macos_broker.sh && python3 scripts/create_customer_zip.py",
+    "release": "npm run release:check",
+    "release:customer": "npm run release:check",
     "test": "node --test tests/*.test.mjs",
-    "release:check": "npm run build && npm run check && npm test"
+    "release:check": "npm run build && npm run check:build && npm run check && npm test"
   },
   "engines": {
     "node": ">=20"
