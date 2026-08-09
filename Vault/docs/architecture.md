@@ -38,6 +38,10 @@ free local MCP broker.
    copies are build outputs rather than editing surfaces.
 8. Preserve customer extension skills while package-owned skills are replaced
    deterministically during updates.
+9. Keep customer identity and operating defaults out of canonical skills and
+   generated release content. Product manifests may declare an empty settings
+   template; installers validate and write the completed settings as
+   customer-owned configuration that package updates preserve.
 
 ## Knowledge and review
 

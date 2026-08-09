@@ -25,16 +25,18 @@ sections while authorization is pending.
 
 ## Workflow
 
-1. Resolve the requested date in `America/Denver`. Default to today and state the full date.
+1. Load the installed product's `config/customer-settings.json`. Resolve the
+   requested date in its required `timezone`. Default to today and state the
+   full date. Stop when the setting is absent or invalid.
 2. Call `bos_get_context` once and select the selected iCode organization `bos_icode` scope that exposes the required read capabilities.
 3. Retrieve date-bound Calimatic enrollments with the enrollment-listing
    capability. Use student/family lookup only to add contact information
    missing from the roster response. For camp dates, also follow
    `icode-class-operations` to include confirmed Care.com child-days from the
-   regular connected `[REDACTED_NAME]@icodeschool.com` Gmail account.
+   connected Gmail account selected by `mailboxes.care_com`.
 4. Retrieve active new leads from Lead Director. Default the intake window to the preceding 24 hours through planner generation time. Include leads requiring an initial call; exclude duplicate, spam, closed-lost, and already-converted records when those statuses are explicit.
 5. For scheduled-trial, confirmation, follow-up, or trial-draft requests, read and execute [references/trial-reconciliation.md](references/trial-reconciliation.md). Compose the live Lead Director, Calendar, and Gmail MCP primitives client-side; do not wait for or require a composite server tool.
-6. Normalize times to `America/Denver`, preserve provider provenance internally, deduplicate conservatively, and flag conflicts or missing fields.
+6. Normalize times to the configured `timezone`, preserve provider provenance internally, deduplicate conservatively, and flag conflicts or missing fields.
 7. Render the planner using [references/planner-content.md](references/planner-content.md).
 
 ## Trial reconciliation hard gate

@@ -55,6 +55,7 @@ export function validateProduct(manifest, path = "product.json") {
     "includes",
     "runtime",
     "mcp_profile",
+    "settings_template",
     "default_prompts"
   ]);
   for (const field of Object.keys(manifest)) {
@@ -127,7 +128,26 @@ export function validateProduct(manifest, path = "product.json") {
   if (manifest.mcp_profile && !manifest.runtime) {
     failures.push(`${path}: mcp_profile requires runtime`);
   }
+  if (
+    manifest.settings_template !== undefined &&
+    (typeof manifest.settings_template !== "string" ||
+      manifest.settings_template.startsWith("/") ||
+      manifest.settings_template.includes("..") ||
+      manifest.settings_template.includes("\\"))
+  ) {
+    failures.push(`${path}: unsafe settings_template`);
+  }
   return failures;
+}
+
+export async function copySettingsTemplate(product, pluginRoot, base = root) {
+  if (!product.settings_template) return;
+  const sourcePath = join(base, "source", product.settings_template);
+  if (!safeInside(join(base, "source", "config"), sourcePath)) {
+    throw new Error(`Unsafe settings template: ${product.settings_template}`);
+  }
+  await mkdir(join(pluginRoot, "config"), { recursive: true });
+  await cp(sourcePath, join(pluginRoot, "config", "customer-settings.template.json"));
 }
 
 export function safeInside(base, candidate) {

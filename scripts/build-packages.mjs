@@ -3,6 +3,7 @@ import { join } from "node:path";
 import {
   copyProductSkills,
   copyRuntime,
+  copySettingsTemplate,
   listProducts,
   marketplaceEntry,
   pluginManifest,
@@ -52,6 +53,7 @@ for (const { product, skills } of resolved) {
     );
     await copyProductSkills(skills, join(pluginRoot, "skills"));
     await copyRuntime(product, pluginRoot);
+    await copySettingsTemplate(product, pluginRoot);
     marketplace.plugins.push(marketplaceEntry(product));
   }
 
@@ -71,6 +73,7 @@ for (const { product, skills } of resolved) {
     });
     await copyProductSkills(skills, join(pluginRoot, "skills"));
     await copyRuntime(product, pluginRoot);
+    await copySettingsTemplate(product, pluginRoot);
   }
 
   if (product.clients.includes("copilot")) {
@@ -82,6 +85,7 @@ for (const { product, skills } of resolved) {
       "skills"
     );
     await copyProductSkills(skills, target);
+    await copySettingsTemplate(product, join(target, ".."));
   }
 }
 

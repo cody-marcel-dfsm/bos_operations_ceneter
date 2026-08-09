@@ -42,6 +42,7 @@ function parseArgs(argv) {
     else if (arg === "--product") options.product = rest[++index];
     else if (arg === "--home") options.home = resolve(rest[++index]);
     else if (arg === "--target") options.target = resolve(rest[++index]);
+    else if (arg === "--settings") options.settingsPath = resolve(rest[++index]);
     else if (arg === "--marketplace") {
       options.marketplace = resolve(rest[++index]);
     } else {
@@ -49,6 +50,88 @@ function parseArgs(argv) {
     }
   }
   return options;
+}
+
+export function validateCustomerSettings(settings) {
+  const failures = [];
+  if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
+    return ["settings must be a JSON object"];
+  }
+  if (settings.schema_version !== "1") failures.push('schema_version must be "1"');
+  const allowedTopLevel = new Set([
+    "schema_version", "organization_display_name", "location_display_name",
+    "timezone", "mailboxes", "billing"
+  ]);
+  for (const field of Object.keys(settings)) {
+    if (!allowedTopLevel.has(field)) failures.push(`unknown settings field: ${field}`);
+  }
+  for (const field of ["organization_display_name", "location_display_name", "timezone"]) {
+    if (typeof settings[field] !== "string" || !settings[field].trim()) {
+      failures.push(`${field} must be a non-empty string`);
+    }
+  }
+  if (typeof settings.timezone === "string" && settings.timezone) {
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: settings.timezone });
+    } catch {
+      failures.push("timezone must be a valid IANA timezone");
+    }
+  }
+  const mailbox = settings.mailboxes?.care_com;
+  if (settings.mailboxes !== undefined &&
+      (!settings.mailboxes || typeof settings.mailboxes !== "object" || Array.isArray(settings.mailboxes))) {
+    failures.push("mailboxes must be an object");
+  } else {
+    for (const field of Object.keys(settings.mailboxes ?? {})) {
+      if (field !== "care_com") failures.push(`unknown mailboxes field: ${field}`);
+    }
+  }
+  if (mailbox !== undefined && mailbox !== "" &&
+      (typeof mailbox !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mailbox))) {
+    failures.push("mailboxes.care_com must be empty or a valid email address");
+  }
+  const rate = settings.billing?.bright_horizons_rate_per_child_day;
+  const allowedBilling = new Set([
+    "center_name", "address", "billing_contact_name", "phone_number",
+    "invoice_reference_prefix", "bright_horizons_rate_per_child_day"
+  ]);
+  if (settings.billing !== undefined &&
+      (!settings.billing || typeof settings.billing !== "object" || Array.isArray(settings.billing))) {
+    failures.push("billing must be an object");
+  } else {
+    for (const field of Object.keys(settings.billing ?? {})) {
+      if (!allowedBilling.has(field)) failures.push(`unknown billing field: ${field}`);
+    }
+  }
+  if (rate !== undefined && rate !== null &&
+      (typeof rate !== "number" || !Number.isFinite(rate) || rate < 0)) {
+    failures.push("billing.bright_horizons_rate_per_child_day must be null or a non-negative number");
+  }
+  return failures;
+}
+
+async function configuredSettings(options, paths) {
+  const configPath = join(paths.target, "config", "customer-settings.json");
+  if (!(await pathExists(configPath))) return { state: "missing", path: configPath };
+  try {
+    const settings = await readJson(configPath);
+    const failures = validateCustomerSettings(settings);
+    return { state: failures.length ? "invalid" : "current", path: configPath, failures };
+  } catch {
+    return { state: "invalid", path: configPath, failures: ["invalid JSON"] };
+  }
+}
+
+async function applyCustomerSettings(options, paths) {
+  let settings = options.settings;
+  if (!settings && options.settingsPath) settings = await readJson(options.settingsPath);
+  if (!settings) return;
+  const failures = validateCustomerSettings(settings);
+  if (failures.length) throw new Error(`Invalid customer settings: ${failures.join("; ")}`);
+  const configPath = join(paths.target, "config", "customer-settings.json");
+  await mkdir(dirname(configPath), { recursive: true });
+  await writeJson(configPath, settings);
+  await chmod(configPath, 0o600);
 }
 
 function pathsFor(options) {
@@ -329,6 +412,7 @@ export async function inspectInstallation(rawOptions = {}) {
     paths,
     desired.manifest
   );
+  const settings = await configuredSettings(options, paths);
   if (["conflict", "invalid"].includes(marketplace.state)) {
     target.state = marketplace.state;
     target.conflicts.push(relative(options.home, paths.marketplace));
@@ -342,6 +426,7 @@ export async function inspectInstallation(rawOptions = {}) {
     paths,
     state: target.state,
     marketplace: marketplace.state,
+    settings,
     extensions: extensions.items,
     warnings: extensions.warnings,
     actions: {
@@ -463,6 +548,7 @@ export async function applyInstallation(rawOptions = {}) {
     }
     await mergeMarketplace(options, paths, desired.manifest);
   }
+  await applyCustomerSettings(options, paths);
   return inspectInstallation({ ...options, command: "verify" });
 }
 

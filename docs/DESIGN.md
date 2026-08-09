@@ -353,6 +353,19 @@ Customer configuration remains outside the generic package source and generated
 public distribution. Updating the generic package does not overwrite the
 client's customer configuration.
 
+A product that needs customer-specific values declares an empty settings
+template in its product manifest. The package builder copies that template to
+each supported client distribution. During installation, the completed JSON is
+validated and written as `config/customer-settings.json` with customer
+ownership and restrictive permissions. Managed package hashes exclude the
+completed file, so upgrades preserve it. Skills read required values from that
+file and return `configuration_required` when a required value is absent.
+
+Customer settings may contain display names, location names, IANA timezones,
+mailbox selectors, billing identity, and non-secret workflow defaults. They
+never grant authority and never contain credentials, provider tokens, API
+keys, tenant grants, or role assignments.
+
 Customer-owned extension skills may consume this non-secret configuration to
 specialize a packaged operating procedure. Extensions cannot grant tenant,
 organization, application, role, plugin, capability, or provider authority.

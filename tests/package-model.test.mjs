@@ -7,9 +7,44 @@ import {
   listProducts,
   resolveProductSkills,
   root,
-  validateProduct,
-  walkFiles
+  walkFiles,
+  validateProduct
 } from "../scripts/lib/package-model.mjs";
+
+test("canonical distributable skills contain no customer-specific settings", async () => {
+  const files = (await walkFiles(`${root}/source`)).filter((path) =>
+    /\/(platform|capabilities|verticals)\//.test(path)
+  );
+  const forbidden = [
+    /cody(?:\.|'s|\b)/i,
+    /cherry\s*creek/i,
+    /cody\.marcel@/i,
+    /760\s+s\s+colorado/i,
+    /7206042442/,
+    /America\/Denver/
+  ];
+  const failures = [];
+  for (const path of files) {
+    const content = await readFile(path, "utf8");
+    if (forbidden.some((pattern) => pattern.test(content))) failures.push(path);
+  }
+  assert.deepEqual(failures, []);
+});
+
+test("iCode packages include an empty customer settings template", async () => {
+  for (const path of [
+    `${root}/clients/codex/plugins/icode-operations-center/config/customer-settings.template.json`,
+    `${root}/clients/claude/plugins/icode-operations-center/config/customer-settings.template.json`,
+    `${root}/clients/copilot/products/icode-operations-center/config/customer-settings.template.json`
+  ]) {
+    const settings = JSON.parse(await readFile(path, "utf8"));
+    assert.equal(settings.schema_version, "1");
+    assert.equal(settings.organization_display_name, "");
+    assert.equal(settings.location_display_name, "");
+    assert.equal(settings.timezone, "");
+    assert.equal(settings.mailboxes.care_com, "");
+  }
+});
 
 test("all product manifests validate and resolve unique skills", async () => {
   const products = await listProducts();

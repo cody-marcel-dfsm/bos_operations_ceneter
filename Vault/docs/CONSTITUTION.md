@@ -22,3 +22,7 @@
    Vault sources, and validation results before approval.
 10. **Repository specialization.** Application-specific rules extend these
     principles in the owning application repository and never weaken them.
+11. **Customer configuration isolation.** Skills and release artifacts contain
+    no customer's names, mailboxes, addresses, phone numbers, locations, or
+    defaults. Installers apply those values from validated customer-owned
+    settings and preserve them across package updates.

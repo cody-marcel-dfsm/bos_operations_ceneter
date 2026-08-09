@@ -7,7 +7,8 @@ owns query planning, identity expansion, matching, classification, and output.
 
 ## Required primitive composition
 
-1. Resolve the local date range in `America/Denver`. Interpret “next seven
+1. Resolve the local date range using `timezone` from the installed product's
+   `config/customer-settings.json`. Interpret “next seven
    days” as now through the same local time seven days later, and include the
    local date containing that endpoint in date-based primitive searches.
 2. Search Calendar for the entire range:

@@ -1,6 +1,6 @@
 ---
 name: use-bos
-description: Use the single tenant-neutral BOS MCP for DFSM, ISM, iCode, [REDACTED_LOCATION], Lead Director, and other BOS-managed business operations.
+description: Use the single tenant-neutral BOS MCP for authorized applications and organizations without embedding customer identities or preferences.
 ---
 
 # Use BOS
