@@ -20,7 +20,8 @@ count as the visual.
 
 ## Mandatory workflow
 
-1. Resolve the requested window in `America/Denver` and state it. Interpret
+1. Resolve the requested window using `timezone` from the installed product's
+   `config/customer-settings.json` and state it. Interpret
    “next seven days” as now through the same local time seven days later; for
    date-based primitives, search from today's local date through the local date
    containing that endpoint.

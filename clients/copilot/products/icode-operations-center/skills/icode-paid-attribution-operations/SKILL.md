@@ -16,7 +16,8 @@ service-specific secure BOS browser flow before retrying once.
 
 ## Workflow
 
-1. Resolve an explicit date range in `America/Denver` and call
+1. Resolve an explicit date range using `timezone` from the installed product's
+   `config/customer-settings.json` and call
    `mcp__bos_icode__bos_get_context` once.
 2. Confirm the live capabilities needed for Gmail, Calendar, Lead Director,
    Calimatic, and Google Ads. Read

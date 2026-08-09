@@ -16,6 +16,12 @@ Requirements: Apple-silicon Mac, Codex installed, and Codex signed in.
 Keep credentials and API keys out of Codex chat. BOS collects them only through
 the local secure handoff window.
 
+For customer-specific products, complete the included
+`customer-settings.template.json` and pass it to the installer with
+`--settings`. The installed customer settings supply names, location,
+timezone, mailboxes, and billing defaults; distributable skills contain no
+customer-specific values.
+
 This repository is the canonical source, builder, installer, and release
 system for portable BOS foundation, product, and vertical Agent Skills
 distributed to Codex, Claude, and GitHub Copilot.

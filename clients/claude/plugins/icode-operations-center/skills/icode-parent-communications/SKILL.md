@@ -21,7 +21,8 @@ service-specific secure BOS browser flow before retrying once.
 
 - Use the configured telephony/voice plugin for tasks, transcripts, outcomes,
   and follow-up state.
-- Preserve received time, `America/Denver` business-hours classification, and
+- Preserve received time, business-hours classification in `timezone` from the
+  installed product's `config/customer-settings.json`, and
   escalation state.
 
 ## Calls after hours

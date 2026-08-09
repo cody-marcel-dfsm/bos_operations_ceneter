@@ -1,6 +1,6 @@
 ---
 name: icode-service-routing
-description: Route iCode and [REDACTED_LOCATION] requests to the appropriate tenant-scoped BOS capability according to the requested operation and [REDACTED_NAME] provider preferences. Use whenever an iCode workflow needs Gmail, Calendar, Drive, Calimatic, Lead Director, calls, SMS, reviews, outreach, student data, camp data, enrollment data, or another connected business service.
+description: Route iCode requests to the appropriate tenant-scoped BOS capability according to the installed customer's provider settings. Use whenever an iCode workflow needs Gmail, Calendar, Drive, Calimatic, Lead Director, calls, SMS, reviews, outreach, student data, camp data, enrollment data, or another connected business service.
 ---
 
 # iCode Service Routing
@@ -8,6 +8,11 @@ description: Route iCode and [REDACTED_LOCATION] requests to the appropriate ten
 Choose capabilities for the active iCode task inside the tenant-neutral BOS
 MCP. This skill defines provider preferences; `use-bos` owns authentication,
 authorization, and exact tenant scope.
+
+Load `config/customer-settings.json` from the installed
+`icode-operations-center` product before applying any customer-specific name,
+location, timezone, mailbox, billing identity, or default. Fail closed with a
+configuration-required result when the file or a required setting is absent.
 
 ## Routing workflow
 

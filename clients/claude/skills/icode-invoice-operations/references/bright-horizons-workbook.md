@@ -23,9 +23,11 @@ cancellation reconciliation in the same prompt.
 6. Group child-days by `employee_name`, `employer`, `case_number`, and
    `date_of_care`. Set `number_of_children` to the count of distinct enrolled
    students in that group.
-7. Use the authorization's approved hours. Use the configured Bright Horizons
-   rate of `$103.00` per child-day unless the user explicitly supplies a
-   different rate.
+7. Load the installed product's `config/customer-settings.json`. Use the
+   authorization's approved hours and
+   `billing.bright_horizons_rate_per_child_day` unless the user explicitly
+   supplies a different approved rate. Stop when required billing settings are
+   absent.
 8. Build the workbook from the JSON contract below, inspect values/formulas,
    scan formula errors, render the invoice sheet, and visually verify it before
    delivery.
@@ -41,18 +43,18 @@ Pass this JSON shape to `scripts/build_bh_invoice.mjs`:
 ```json
 {
   "date_submitted": "2026-06-14",
-  "center_name": "iCode organization",
-  "address": "[REDACTED_ADDRESS] Unit J, Glendale, CO 80246, USA",
-  "billing_contact_name": "iCode [REDACTED_LOCATION]",
-  "phone_number": "[REDACTED_PHONE]",
-  "invoice_reference_number": "iCodeCC_5",
+  "center_name": "<billing.center_name>",
+  "address": "<billing.address>",
+  "billing_contact_name": "<billing.billing_contact_name>",
+  "phone_number": "<billing.phone_number>",
+  "invoice_reference_number": "<billing.invoice_reference_prefix><sequence>",
   "period_start": "2026-06-01",
   "period_end": "2026-06-12",
   "rows": [
     {
-      "employee_name": "Joi Bowen",
-      "employer": "Children's Hospital Colorado",
-      "case_number": "10R-0T33-9CW1G",
+      "employee_name": "<authorization employee name>",
+      "employer": "<authorization employer>",
+      "case_number": "<authorization case number>",
       "number_of_children": 1,
       "date_of_care": "2026-06-01",
       "hours_of_care": 7,
@@ -62,9 +64,9 @@ Pass this JSON shape to `scripts/build_bh_invoice.mjs`:
 }
 ```
 
-`rate_per_day` is optional. The generator applies the configured `$103.00`
-child-day rate when it is absent. Include it only when the user explicitly
-specifies a different approved rate.
+`rate_per_day` is optional when the configured billing rate is supplied to the
+generator. Include a different value only when the user explicitly specifies
+another approved rate.
 
 Omit the script's output argument to use the configured directory:
 `./output/invoices/bright-horizons/`. The generated filename is

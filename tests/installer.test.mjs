@@ -15,6 +15,7 @@ import test from "node:test";
 import {
   applyInstallation,
   inspectInstallation,
+  validateCustomerSettings,
   verifyInstallation
 } from "../scripts/install-package.mjs";
 import { createCustomerExtension } from "../scripts/create-extension.mjs";
@@ -23,6 +24,69 @@ import { hashFile, root } from "../scripts/lib/package-model.mjs";
 async function temporaryHome() {
   return mkdtemp(join(tmpdir(), "bos-install-test-"));
 }
+
+const customerSettings = {
+  schema_version: "1",
+  organization_display_name: "Example Learning LLC",
+  location_display_name: "Example Center",
+  timezone: "America/New_York",
+  mailboxes: { care_com: "operations@example.com" },
+  billing: {
+    center_name: "Example Center",
+    address: "100 Example Avenue",
+    billing_contact_name: "Accounts Receivable",
+    phone_number: "5550100200",
+    invoice_reference_prefix: "EXAMPLE_",
+    bright_horizons_rate_per_child_day: 100
+  }
+};
+
+test("customer settings validate, install, and survive product updates", async () => {
+  const home = await temporaryHome();
+  assert.deepEqual(validateCustomerSettings(customerSettings), []);
+  await applyInstallation({
+    home,
+    product: "icode-operations-center",
+    settings: customerSettings
+  });
+  const settingsPath = join(
+    home,
+    "plugins",
+    "icode-operations-center",
+    "config",
+    "customer-settings.json"
+  );
+  assert.deepEqual(JSON.parse(await readFile(settingsPath, "utf8")), customerSettings);
+  assert.equal((await stat(settingsPath)).mode & 0o777, 0o600);
+  const report = await applyInstallation({
+    home,
+    product: "icode-operations-center"
+  });
+  assert.equal(report.settings.state, "current");
+  assert.deepEqual(JSON.parse(await readFile(settingsPath, "utf8")), customerSettings);
+  assert(report.actions.preserve.includes("config/customer-settings.json"));
+});
+
+test("customer settings reject missing identity and invalid timezone", () => {
+  const failures = validateCustomerSettings({
+    schema_version: "1",
+    organization_display_name: "",
+    location_display_name: "Example",
+    timezone: "Denver local"
+  });
+  assert(failures.some((failure) => failure.includes("organization_display_name")));
+  assert(failures.some((failure) => failure.includes("IANA timezone")));
+});
+
+test("customer settings reject undeclared fields and credential-like values", () => {
+  const failures = validateCustomerSettings({
+    ...customerSettings,
+    api_key: "must-never-live-here",
+    mailboxes: { ...customerSettings.mailboxes, private: "other@example.com" }
+  });
+  assert(failures.includes("unknown settings field: api_key"));
+  assert(failures.includes("unknown mailboxes field: private"));
+});
 
 test("missing installation is created and second apply is a no-op", async () => {
   const home = await temporaryHome();

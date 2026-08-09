@@ -1,6 +1,6 @@
 ---
 name: icode-student-operations
-description: Handle iCode student enrollment and progress-report workflows across tenant-scoped BOS data and Care.com confirmation emails in [REDACTED_NAME] connected iCode Gmail. Use when asked to find students, produce or reconcile enrollment reports, compare Lead Director and Calimatic state, include Care.com Backup Care enrollments, locate progress reports, summarize progress evidence, or identify missing student-data capabilities.
+description: Handle iCode student enrollment and progress-report workflows across tenant-scoped BOS data and Care.com confirmation emails in the configured customer mailbox. Use when asked to find students, produce or reconcile enrollment reports, compare Lead Director and Calimatic state, include Care.com Backup Care enrollments, locate progress reports, summarize progress evidence, or identify missing student-data capabilities.
 ---
 
 # iCode Student Operations
@@ -21,9 +21,11 @@ service-specific secure BOS browser flow.
 - Use Calimatic student and enrollment tools as the enrolled-student source.
 - Use Lead Director for prospect and lead state.
 - Use BOS Gmail only as correspondence/source evidence.
-- For Care.com messages addressed to `[REDACTED_NAME]@icodeschool.com`, follow
-  `email-account-routing` and use regular Gmail with exact sender
+- Load the installed product's `config/customer-settings.json`. For Care.com
+  messages addressed to `mailboxes.care_com`, follow `email-account-routing`
+  and use that configured Gmail account with exact sender
   `[REDACTED_EMAIL]`.
+- Stop and report configuration required when `mailboxes.care_com` is absent.
 - Dedupe Care.com request and confirmation notices by numeric job ID. Count only
   a confirmation with body status `Confirmed` as active enrollment; keep a
   `New` request as pending. Expand each confirmed service date to one child-day.

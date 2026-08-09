@@ -1,15 +1,17 @@
 ---
 name: icode-class-operations
-description: Handle iCode class rosters, schedules, capacity, and camp-assignment scenarios through tenant-scoped BOS data plus Care.com confirmations from [REDACTED_NAME] connected iCode Gmail. Use when asked about classes, camps, enrollment reports, rosters, attendance dates, open seats, Bright Horizons or Care.com placement, or assigning students to camps.
+description: Handle iCode class rosters, schedules, capacity, and camp-assignment scenarios through tenant-scoped BOS data plus Care.com confirmations from the configured customer mailbox. Use when asked about classes, camps, enrollment reports, rosters, attendance dates, open seats, Bright Horizons or Care.com placement, or assigning students to camps.
 ---
 
 # iCode Class Operations
 
 Use the tenant-neutral `bos` MCP and follow the `use-bos` context workflow.
 Use Calimatic for class/enrollment state and Calendar only as schedule evidence.
-For Care.com Backup Care evidence addressed to
-`[REDACTED_NAME]@icodeschool.com`, follow `email-account-routing` and use the
-regular connected Gmail plugin. Do not route that mailbox through BOS Gmail.
+Load the installed product's `config/customer-settings.json`. For Care.com
+Backup Care evidence addressed to `mailboxes.care_com`, follow
+`email-account-routing` and use that configured connected Gmail account. Do not
+route that mailbox through BOS Gmail. Stop and report configuration required
+when the mailbox setting is empty or absent.
 Use `bos-visual-output` for multi-class schedules, capacity, attendance, and
 camp-assignment results.
 When the user requests Calimatic, select the authorized BOS context exposing
