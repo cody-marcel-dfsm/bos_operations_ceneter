@@ -1,8 +1,17 @@
 {
   "name": "bos",
-  "version": "0.4.9",
+  "displayName": "BOS",
+  "version": "0.4.10",
   "description": "Tenant-neutral Business Operating System foundations and MCP access.",
   "author": {
     "name": "Infinite State Machines LLC"
-  }
+  },
+  "homepage": "https://dfsm.ai",
+  "repository": "https://github.com/cody-marcel-dfsm/bos_operations_ceneter",
+  "license": "Apache-2.0",
+  "keywords": [
+    "bos",
+    "operations",
+    "bos"
+  ]
 }

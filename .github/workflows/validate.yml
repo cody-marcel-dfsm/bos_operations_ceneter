@@ -17,6 +17,12 @@ jobs:
         with:
           node-version: "20"
       - run: npm run release:check
+      - name: Validate Claude marketplace and plugins
+        run: |
+          npx -y @anthropic-ai/claude-code@2.1.220 plugin validate clients/claude --strict
+          for plugin in clients/claude/plugins/*; do
+            npx -y @anthropic-ai/claude-code@2.1.220 plugin validate "$plugin" --strict
+          done
       - name: Reject tracked credential files
         run: |
           if git ls-files | grep -Ei '(^|/)(\.env($|\.)|credentials\.json$|service-account\.json$|id_rsa$|id_ed25519$|.*\.(pem|p12|pfx|key)$)'; then

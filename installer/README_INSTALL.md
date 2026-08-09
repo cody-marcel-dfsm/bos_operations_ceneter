@@ -23,9 +23,12 @@ new MCP and skill configuration.
 
 ## Claude
 
-Install the desired plugin directory from `clients/claude/plugins`. The
-generated `.mcp.json` uses Claude's native remote HTTP MCP configuration and
-reads `BOS_API_KEY` from the client environment.
+For Claude Code, add `clients/claude` as a local marketplace and install the
+desired plugin from the `bos-icode` marketplace. For Claude Cowork, upload the
+product-specific `*-claude-<version>.zip` release asset through Customize >
+Plugins. Do not upload the cross-client customer ZIP as a skill. Each Claude
+plugin includes its own native remote HTTP MCP configuration and reads
+`BOS_API_KEY` and `BOS_INSTALLED_APP_ID` from the configured client environment.
 
 ## GitHub Copilot
 

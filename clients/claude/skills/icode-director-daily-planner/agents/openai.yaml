@@ -1,4 +1,0 @@
-interface:
-  display_name: "iCode Director Daily Planner"
-  short_description: "Build the director’s daily operating brief"
-  default_prompt: "Use $icode-director-daily-planner to prepare the director’s planner for today."

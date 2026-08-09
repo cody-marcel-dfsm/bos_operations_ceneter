@@ -109,6 +109,52 @@ test("runtime products use native installed-app-bound MCP with bearer authentica
   }
 });
 
+test("iCode packages embed their installed-app-bound BOS connection", async () => {
+  for (const [client, path] of [
+    ["codex", `${root}/clients/codex/plugins/icode-operations-center/.mcp.json`],
+    ["claude", `${root}/clients/claude/plugins/icode-operations-center/.mcp.json`]
+  ]) {
+    const config = JSON.parse(await readFile(path, "utf8"));
+    assert.equal(config.mcpServers.bos.type, "http", client);
+    assert.equal(
+      config.mcpServers.bos.url,
+      "https://dfsm.ai/mcp/apps/${BOS_INSTALLED_APP_ID}",
+      client
+    );
+    assert.equal(
+      config.mcpServers.bos.headers.Authorization,
+      "Bearer ${BOS_API_KEY}",
+      client
+    );
+  }
+});
+
+test("Claude distribution is a marketplace of self-contained plugins", async () => {
+  const marketplace = JSON.parse(
+    await readFile(
+      `${root}/clients/claude/.claude-plugin/marketplace.json`,
+      "utf8"
+    )
+  );
+  assert.equal(marketplace.name, "bos-icode");
+  assert.deepEqual(
+    marketplace.plugins.map(({ name, source }) => ({ name, source })),
+    [
+      { name: "bos", source: "./plugins/bos" },
+      {
+        name: "icode-operations-center",
+        source: "./plugins/icode-operations-center"
+      },
+      { name: "video-ads", source: "./plugins/video-ads" }
+    ]
+  );
+  await assert.rejects(
+    access(`${root}/clients/claude/.claude-plugin/plugin.json`),
+    /ENOENT/
+  );
+  await assert.rejects(access(`${root}/clients/claude/.mcp.json`), /ENOENT/);
+});
+
 test("generated clients use native remote MCP without local transport", async () => {
   for (const client of ["codex", "claude", "copilot", "gemini"]) {
     const files = await walkFiles(`${root}/clients/${client}`);

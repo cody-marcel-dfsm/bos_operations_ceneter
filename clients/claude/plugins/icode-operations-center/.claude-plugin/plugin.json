@@ -1,8 +1,17 @@
 {
   "name": "icode-operations-center",
-  "version": "0.4.9",
+  "displayName": "iCode Operations Center",
+  "version": "0.4.10",
   "description": "Secure iCode operations through the tenant-scoped BOS MCP.",
   "author": {
     "name": "Infinite State Machines LLC"
-  }
+  },
+  "homepage": "https://dfsm.ai",
+  "repository": "https://github.com/cody-marcel-dfsm/bos_operations_ceneter",
+  "license": "Apache-2.0",
+  "keywords": [
+    "bos",
+    "operations",
+    "icode-operations-center"
+  ]
 }

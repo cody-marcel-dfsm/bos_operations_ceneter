@@ -1,8 +1,17 @@
 {
   "name": "video-ads",
+  "displayName": "Video Ads",
   "version": "0.1.1",
   "description": "Create, review, and deliver video ads through tenant-scoped BOS capabilities.",
   "author": {
     "name": "Infinite State Machines LLC"
-  }
+  },
+  "homepage": "https://dfsm.ai",
+  "repository": "https://github.com/cody-marcel-dfsm/bos_operations_ceneter",
+  "license": "Apache-2.0",
+  "keywords": [
+    "bos",
+    "operations",
+    "video-ads"
+  ]
 }
