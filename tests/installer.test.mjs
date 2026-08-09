@@ -276,6 +276,74 @@ test("compatible unmanaged plugin is adopted", async () => {
   assert.equal(after.state, "managed-current");
 });
 
+test("legacy local broker installation migrates to configured API-key MCP", async () => {
+  const home = await temporaryHome();
+  const desired = join(root, "clients", "codex", "plugins", "bos");
+  const target = join(home, "plugins", "bos");
+  await mkdir(join(home, "plugins"), { recursive: true });
+  await cp(desired, target, { recursive: true });
+  await mkdir(join(target, "scripts"), { recursive: true });
+  await writeFile(
+    join(target, "scripts", "bos_mcp_broker.py"),
+    "# retired local credential broker\n"
+  );
+  await mkdir(join(target, "tests", "__pycache__"), { recursive: true });
+  await writeFile(
+    join(target, "tests", "test_bos_mcp_broker.py"),
+    "# retired broker test\n"
+  );
+  await writeFile(
+    join(target, "tests", "test_bos_mcp_broker_live.py"),
+    "# retired live broker test\n"
+  );
+  await writeFile(
+    join(target, "tests", "__pycache__", "test_bos_mcp_broker.cpython-312.pyc"),
+    "retired bytecode"
+  );
+  await writeFile(
+    join(target, ".mcp.json"),
+    `${JSON.stringify({
+      mcpServers: {
+        bos: {
+          command: "python3",
+          args: ["./scripts/bos_mcp_broker.py"],
+          cwd: "."
+        }
+      }
+    }, null, 2)}\n`
+  );
+  const userFile = join(target, "USER-NOTES.txt");
+  await writeFile(userFile, "preserve me\n");
+
+  const before = await inspectInstallation({ home, product: "bos" });
+  assert.equal(before.state, "partial");
+  assert(before.actions.update.includes(".mcp.json"));
+  assert.deepEqual(before.actions.remove.sort(), [
+    "scripts/bos_mcp_broker.py",
+    "tests/__pycache__/test_bos_mcp_broker.cpython-312.pyc",
+    "tests/test_bos_mcp_broker.py",
+    "tests/test_bos_mcp_broker_live.py"
+  ]);
+
+  const after = await applyInstallation({ home, product: "bos" });
+  assert.equal(after.state, "managed-current");
+  await assert.rejects(
+    readFile(join(target, "scripts", "bos_mcp_broker.py"), "utf8"),
+    /ENOENT/
+  );
+  await assert.rejects(
+    readFile(join(target, "tests", "test_bos_mcp_broker.py"), "utf8"),
+    /ENOENT/
+  );
+  const mcp = JSON.parse(await readFile(join(target, ".mcp.json"), "utf8"));
+  assert.equal(
+    mcp.mcpServers.bos.headers.Authorization,
+    "Bearer ${BOS_API_KEY}"
+  );
+  assert.equal(mcp.mcpServers.bos.command, undefined);
+  assert.equal(await readFile(userFile, "utf8"), "preserve me\n");
+});
+
 test("stale managed file updates when prior hash proves ownership", async () => {
   const home = await temporaryHome();
   await applyInstallation({ home, product: "bos" });
