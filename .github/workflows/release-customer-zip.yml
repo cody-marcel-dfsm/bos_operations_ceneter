@@ -17,12 +17,14 @@ jobs:
         with:
           node-version: "20"
       - name: Build and validate customer ZIP
-        run: npm run release:customer
+        run: npm run release:check
       - name: Publish GitHub release assets
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${GITHUB_REF_NAME}" \
+            dist/*.tar.gz \
+            dist/release-manifest.json \
             dist/bos-operations-center-macos-*.zip \
             dist/bos-operations-center-macos.zip \
             --generate-notes

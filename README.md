@@ -69,13 +69,19 @@ Run:
 npm run build
 ```
 
-Building assembles every declared product/client distribution from canonical
-skills in `source/platform`, `source/capabilities`, and `source/verticals`.
-It does not install a package, configure a customer, authenticate BOS, access
-organization data, or publish a release.
+The complete build runs on Apple-silicon macOS. It assembles every declared
+product/client distribution, creates the deterministic product archives and
+release manifest, builds the self-contained MCP broker, and creates both the
+versioned and stable customer-installation ZIPs under `dist/`.
 
-Run `npm run release:check` to rebuild all client packages and validate package
-structure and credential safety.
+Use `npm run build:packages` when developing only canonical/generated client
+content without producing deployable archives.
+
+Building does not install a package, configure a customer, authenticate BOS,
+access organization data, or publish a GitHub release.
+
+Run `npm run release:check` to rebuild and verify all deployment artifacts,
+package structure, tests, and credential safety.
 
 ## Install
 
@@ -93,6 +99,9 @@ This produces:
 dist/bos-operations-center-macos-<version>.zip
 dist/bos-operations-center-macos.zip
 ```
+
+`release:customer` is an alias for the complete validated build; ZIP creation
+is already part of `npm run build`.
 
 The ZIP includes the Codex marketplace, BOS and iCode plugins, a Codex-executed
 installer, and a self-contained BOS MCP broker. Customers need macOS and a

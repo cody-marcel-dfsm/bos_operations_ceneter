@@ -46,6 +46,11 @@ free local MCP broker.
     confirmed values, derive only unambiguous non-secret client and canonical
     BOS metadata, and ask the user once for unresolved or conflicting values.
     Derived configuration never grants authority.
+11. Treat deployment artifacts as build outputs. The complete Apple-silicon
+    build generates client packages, deterministic product archives, the
+    release manifest, the self-contained broker, and versioned and stable
+    customer ZIPs. Release workflows publish only artifacts produced and
+    validated by that build.
 
 ## Knowledge and review
 

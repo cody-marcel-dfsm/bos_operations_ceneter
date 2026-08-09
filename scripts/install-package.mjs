@@ -213,7 +213,7 @@ function pathsFor(options) {
 async function desiredState(options, paths) {
   if (!(await pathExists(paths.desired))) {
     throw new Error(
-      `Built product is missing: ${paths.desired}. Run npm run build first.`
+      `Built product is missing: ${paths.desired}. Run npm run build:packages first.`
     );
   }
   const manifest = await readJson(
