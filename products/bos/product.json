@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.8",
+  "version": "0.4.9",
   "display_name": "BOS",
   "description": "Tenant-neutral Business Operating System foundations and MCP access.",
   "publisher": "Infinite State Machines LLC",
@@ -20,7 +20,8 @@
     "platform/review",
     "platform/oracle",
     "platform/po-go-boundary-enforcement",
-    "platform/authentication-context-integrity"
+    "platform/authentication-context-integrity",
+    "platform/manage-customer-extension"
   ],
   "runtime": "bos",
   "default_prompts": [

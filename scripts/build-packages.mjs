@@ -47,6 +47,12 @@ for (const { product, skills } of resolved) {
       product.name
     );
     await mkdir(join(pluginRoot, ".codex-plugin"), { recursive: true });
+    await writeJson(join(pluginRoot, ".bos-product.json"), {
+      schema_version: "1",
+      name: product.name,
+      version: product.version,
+      client: "codex"
+    });
     await writeJson(
       join(pluginRoot, ".codex-plugin", "plugin.json"),
       pluginManifest(product)
@@ -65,6 +71,12 @@ for (const { product, skills } of resolved) {
       product.name
     );
     await mkdir(join(pluginRoot, ".claude-plugin"), { recursive: true });
+    await writeJson(join(pluginRoot, ".bos-product.json"), {
+      schema_version: "1",
+      name: product.name,
+      version: product.version,
+      client: "claude"
+    });
     await writeJson(join(pluginRoot, ".claude-plugin", "plugin.json"), {
       name: product.name,
       version: product.version,
@@ -77,13 +89,19 @@ for (const { product, skills } of resolved) {
   }
 
   if (product.clients.includes("copilot")) {
-    const target = join(
+    const productRoot = join(
       stagedClients,
       "copilot",
       "products",
-      product.name,
-      "skills"
+      product.name
     );
+    const target = join(productRoot, "skills");
+    await writeJson(join(productRoot, ".bos-product.json"), {
+      schema_version: "1",
+      name: product.name,
+      version: product.version,
+      client: "copilot"
+    });
     await copyProductSkills(skills, target);
     await copySettingsTemplate(product, join(target, ".."));
   }

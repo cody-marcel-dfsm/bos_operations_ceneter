@@ -482,6 +482,34 @@ without a compiled client transport.
 
 **Dependencies:** BOSPKG-018.
 
+### BOSPKG-020 — Complete natural-language tenant skill extensions
+
+**Outcome:** A user can ask any packaged product to update a skill for one
+customer and receive a preserved, validated extension across supported clients.
+
+**Scope:**
+
+- Package `manage-customer-extension` in every product.
+- Define schema-version-2 terminology, default, policy, and exception overlays.
+- Generate client and product metadata for deterministic base resolution.
+- Support Codex, Claude, Copilot, and BOS managed-installation extension roots.
+- Preserve and migrate schema-version-1 extension instructions.
+- Reject attempts to change system instructions, authority, credentials,
+  transport, roles, canonical scope, or tool grants.
+
+**Acceptance criteria:**
+
+- Natural-language update phrases trigger the management skill.
+- Creation, repeated apply, keyed replacement, explicit removal, validation,
+  and version acceptance are deterministic and tested.
+- Package updates preserve embedded and external customer-owned extensions.
+- Every generated product/client package contains the manager and
+  `.bos-product.json`.
+- Legacy migration retains the complete original customer instructions.
+- Protected authority keys and directives fail before any extension write.
+
+**Dependencies:** BOSPKG-011, BOSPKG-019.
+
 ### BOSPKG-017 — Rename and document the standalone repository
 
 **Outcome:** The repository identity matches its multi-product purpose before

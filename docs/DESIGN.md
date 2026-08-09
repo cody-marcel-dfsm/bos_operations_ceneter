@@ -260,7 +260,9 @@ managed file is treated as disposable local state and is restored from the
 package during the next apply.
 
 Customer behavior is expressed through customer-owned extension skills beside
-the installed product skills. An extension:
+the installed product skills or in the host's customer-owned skills directory.
+Every product includes `manage-customer-extension`, so a user can request the
+change in natural language. An extension:
 
 - has its own distinct skill name;
 - declares the qualified product and base skill it extends;
@@ -269,11 +271,68 @@ the installed product skills. An extension:
 - contains only customer terminology, defaults, policies, and exceptions; and
 - defers unspecified behavior to the base skill.
 
+The extension manifest uses schema version 2 and records:
+
+```json
+{
+  "schema_version": "2",
+  "ownership": "customer",
+  "tenant": { "key": "example-center" },
+  "extends": {
+    "product": "icode-operations-center",
+    "skill": "icode-class-operations",
+    "tested_version": "0.4.9"
+  },
+  "overrides": {
+    "terminology": {},
+    "defaults": {},
+    "policies": {},
+    "exceptions": {}
+  }
+}
+```
+
+Each override has a stable key and a bounded text value. Repeating the same
+update is idempotent; changing a key replaces that tenant value; removing a key
+requires an explicit user request. Schema-version-1 extensions migrate by
+preserving their original skill as `LEGACY.md` and composing typed overrides
+over it.
+
+Precedence follows the owning authority:
+
+1. System, developer, workspace, and repository instructions remain
+   authoritative.
+2. BOS authentication, authorization, canonical scope, tool grants, and
+   package invariants remain authoritative.
+3. The packaged base skill supplies the reusable workflow.
+4. The tenant extension replaces only its declared customer-configurable
+   terminology, defaults, policies, and exceptions.
+5. A task-specific user choice may replace a default for that task when the
+   base workflow permits it.
+
+The manager rejects keys or directives that attempt to change tenant or
+organization identifiers, roles, credentials, authentication, authorization,
+MCP endpoints, tool grants, system instructions, or other protected authority
+surfaces.
+
 The installer preserves files absent from its managed-path inventory. It
 validates extension references and reports a compatibility warning when the
 installed base version differs from the extension's tested version. Package
 updates never merge prose with an LLM and never alter customer-owned extension
 content.
+
+Customer-owned storage is selected by the host: Codex user extensions use
+`~/.agents/skills`, Claude user extensions use `~/.claude/skills`, and Copilot
+repository extensions use `.agents/skills`. The BOS managed local installer
+also supports extensions beside the installed product because its ownership
+inventory preserves them. Product metadata in `.bos-product.json` gives the
+same manager deterministic product, client, and version context everywhere.
+
+When a user asks to update a packaged skill for one customer, the agent invokes
+`manage-customer-extension`, resolves the product, base skill, and customer key,
+inspects the current overlay, maps requested changes to typed keys, applies the
+atomic update, and validates it. A request intended for every customer routes
+to canonical product development instead of a tenant extension.
 
 Official product development changes the canonical source layers. Customer
 experimentation changes an extension skill. A generally useful customer

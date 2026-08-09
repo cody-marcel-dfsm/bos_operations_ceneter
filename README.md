@@ -133,8 +133,8 @@ attach the versioned and stable ZIP names to the GitHub release.
 
 6. Run `codex plugin add bos@bos-icode` and
    `codex plugin add icode-operations-center@bos-icode`.
-7. Start a new Codex task and select **Connect BOS** when organization data is
-   first required.
+7. Configure `BOS_API_KEY` through the approved client environment, restart
+   Codex, and begin the secured BOS operation.
 
 ### Customer extensions
 
@@ -142,6 +142,14 @@ Installed product skills are package-owned, read-only operating procedures.
 Package updates back up and replace every managed file. Customer terminology,
 defaults, policies, and exceptions belong in customer-owned extension skills,
 which updates preserve.
+
+Ask the agent directly, for example: “Update the class-operations skill for my
+location so the planning window defaults to 21 days.” Every product ships the
+`manage-customer-extension` skill, which resolves the base skill and customer,
+creates or updates a typed customer overlay, and validates it. The overlay may
+change terminology, defaults, policies, and exceptions. BOS authority,
+credentials, MCP configuration, tool grants, package constraints, and
+system/developer instructions retain their canonical owners.
 
 Create an extension beside the packaged skills:
 

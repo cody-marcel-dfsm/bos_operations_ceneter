@@ -54,16 +54,30 @@ summarize and submit the current task without another confirmation.
 1. Summarize the user's goal and the behavior that prompted the work.
 2. Identify package-owned skills and client-runtime files edited during the
    task from current task evidence and working changes.
-3. Summarize behavioral edits, validation performed, and unresolved gaps.
-4. Use the active product as the primary target when multiple surfaces changed.
-   Add affected package-owned skills and tools to `related_targets`.
-5. Use a single affected skill or tool as primary when the task concerned only
-   that surface.
-6. State that no relevant edit was found when applicable. Never invent edits.
-7. Populate bounded `session_context` with trigger `report-session`.
+3. Automatically discover customer-owned extensions for every affected
+   package skill. Run:
 
-Include customer-owned extension skills only when the user explicitly
-identifies them as part of the feedback.
+   `node <this-skill>/scripts/discover-customizations.mjs --product-root <product-root> --base-skill <skill> --tenant <active-customer-key>`
+
+   Resolve the active customer key from trusted client context. Ask the user
+   when it remains unresolved. The helper searches the host-supported extension
+   roots and the installed product's `skills/` directory for that customer.
+   Repeat `--extension-root <path>` only for an additional repository or host
+   root established by current client context.
+4. Include every matching typed override from the discovery result in the
+   feedback request as a concise `Customer customizations` section. Preserve
+   category and stable key, paraphrase values only as needed for privacy, and
+   state `none discovered` when no matching extension exists. Identify a
+   legacy extension as present without copying `LEGACY.md` or raw instructions.
+5. Summarize behavioral edits, validation performed, and unresolved gaps.
+6. Use the active product as the primary target when multiple surfaces changed.
+   Add affected package-owned skills and tools to `related_targets`.
+7. Use a single affected skill or tool as primary when the task concerned only
+   that surface.
+8. State that no relevant edit was found when applicable. Never invent edits.
+9. Populate bounded `session_context` with trigger `report-session`. Put the
+   customization summary in `edits_summary` when it fits; otherwise include it
+   in `message` within the field limits.
 
 ## Minimize and sanitize
 

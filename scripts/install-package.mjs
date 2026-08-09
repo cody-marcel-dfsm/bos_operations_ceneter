@@ -12,6 +12,7 @@ import {
 import { homedir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { validateExtensionManifest } from "../source/platform/manage-customer-extension/scripts/manage-extension.mjs";
 import {
   hashFile,
   hashTree,
@@ -423,16 +424,24 @@ async function inspectCustomerExtensions(paths, desiredManifest) {
         name: entry.name,
         product: extension.product,
         skill: extension.skill,
-        tested_version: extension.tested_version
+        tested_version: extension.tested_version,
+        schema_version: manifest.schema_version,
+        tenant: manifest.tenant?.key
       };
       items.push(item);
-      if (
-        manifest.schema_version !== "1" ||
+      const baseMissing =
         manifest.ownership !== "customer" ||
         extension.product !== desiredManifest.name ||
         typeof extension.skill !== "string" ||
-        !(await pathExists(join(skillsRoot, extension.skill, "SKILL.md")))
-      ) {
+        !(await pathExists(join(skillsRoot, extension.skill, "SKILL.md")));
+      const schemaFailures = manifest.schema_version === "2"
+        ? validateExtensionManifest(manifest, {
+            product: desiredManifest.name,
+            baseSkill: extension.skill,
+            tenant: manifest.tenant?.key
+          })
+        : manifest.schema_version === "1" ? [] : ["unsupported schema_version"];
+      if (baseMissing || schemaFailures.length) {
         warnings.push(`${entry.name}: invalid or missing base skill reference`);
       } else if (extension.tested_version !== desiredManifest.version) {
         warnings.push(

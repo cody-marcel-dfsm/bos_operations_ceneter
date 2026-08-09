@@ -35,6 +35,14 @@ Target types are `package`, `skill`, `plugin`, `mcp-tool`, `installation`, and
 
 Unknown properties are invalid. Send plain text only.
 
+For `report session`, automatically inspect customer-owned extension manifests
+matching the active customer and each affected product skill. Resolve the
+customer from trusted client context and ask when it remains unresolved.
+Include a plain-text summary of all typed override categories, keys, and
+sanitized values in `session_context.edits_summary` or `message`. Do not add a
+new payload property. Do not include absolute paths, raw manifests, tenant
+identifiers, or legacy instruction bodies.
+
 ## Example
 
 ```json

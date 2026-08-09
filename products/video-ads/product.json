@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "video-ads",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "display_name": "Video Ads",
   "description": "Create, review, and deliver video ads through tenant-scoped BOS capabilities.",
   "publisher": "Infinite State Machines LLC",
@@ -13,6 +13,7 @@
     "copilot"
   ],
   "includes": [
+    "platform/manage-customer-extension",
     "capabilities/video-ad-briefing",
     "capabilities/video-ad-generation",
     "capabilities/video-ad-drive-delivery"

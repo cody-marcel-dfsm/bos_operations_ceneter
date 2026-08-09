@@ -26,3 +26,9 @@
     no customer's names, mailboxes, addresses, phone numbers, locations, or
     defaults. Installers apply those values from validated customer-owned
     settings and preserve them across package updates.
+12. **Typed customer specialization.** A customer changes packaged workflow
+    behavior through a customer-owned extension declaring its product, base
+    skill, tested version, customer key, and typed overrides. Extensions may
+    change terminology, defaults, policies, and exceptions. Platform authority,
+    credentials, system instructions, transport, and tool grants remain under
+    their canonical owners.

@@ -54,6 +54,13 @@ release system for portable BOS skills and native remote MCP client adapters.
     release manifest, and versioned and stable OS-neutral customer ZIPs.
     Release workflows publish only artifacts produced and validated by that
     build.
+13. Apply tenant-specific skill changes through customer-owned typed extensions.
+    Extension terminology, defaults, policies, and exceptions may specialize
+    declared customer-configurable behavior. System instructions, package
+    invariants, authentication, authorization, canonical scope, credentials,
+    MCP endpoints, and tool grants remain sealed. Every product ships the same
+    extension manager and versioned product metadata for Codex, Claude, and
+    Copilot.
 
 ## Knowledge and review
 
