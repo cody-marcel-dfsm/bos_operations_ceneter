@@ -1,0 +1,27 @@
+{
+  "name": "bos-icode",
+  "description": "Verified BOS and iCode operational plugins from Infinite State Machines LLC.",
+  "owner": {
+    "name": "Infinite State Machines LLC"
+  },
+  "plugins": [
+    {
+      "name": "bos",
+      "source": "./plugins/bos",
+      "description": "Tenant-neutral Business Operating System foundations and MCP access.",
+      "version": "0.4.10"
+    },
+    {
+      "name": "icode-operations-center",
+      "source": "./plugins/icode-operations-center",
+      "description": "Secure iCode operations through the tenant-scoped BOS MCP.",
+      "version": "0.4.10"
+    },
+    {
+      "name": "video-ads",
+      "source": "./plugins/video-ads",
+      "description": "Create, review, and deliver video ads through tenant-scoped BOS capabilities.",
+      "version": "0.1.1"
+    }
+  ]
+}

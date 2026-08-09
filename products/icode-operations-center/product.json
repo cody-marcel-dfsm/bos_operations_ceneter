@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "icode-operations-center",
-  "version": "0.4.9",
+  "version": "0.4.10",
   "display_name": "iCode Operations Center",
   "description": "Secure iCode operations through the tenant-scoped BOS MCP.",
   "publisher": "Infinite State Machines LLC",
@@ -29,6 +29,7 @@
     "verticals/icode/icode-student-operations",
     "verticals/icode/icode-trial-reconciliation"
   ],
+  "runtime": "bos",
   "default_prompts": [
     "Initialize my iCode customer settings.",
     "Create today's iCode operations plan.",

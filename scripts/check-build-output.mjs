@@ -14,6 +14,16 @@ for (const archive of releaseManifest.archives) {
   assert(await pathExists(join(dist, archive.file)), `missing ${archive.file}`);
   assert.match(archive.sha256, /^[a-f0-9]{64}$/);
 }
+const claudeArchives = releaseManifest.archives.filter(
+  ({ client }) => client === "claude"
+);
+assert.equal(claudeArchives.length, 3);
+assert(claudeArchives.every(({ file }) => file.endsWith(".zip")));
+assert(
+  releaseManifest.archives
+    .filter(({ client }) => client !== "claude")
+    .every(({ file }) => file.endsWith(".tar.gz"))
+);
 
 const versionedZip = join(
   dist,
@@ -44,6 +54,10 @@ assert.match(
   /clients\/codex\/plugins\/icode-operations-center\/config\/customer-settings\.template\.json/
 );
 assert.match(listing.stdout, /clients\/claude\/plugins\/bos\/\.mcp\.json/);
+assert.match(
+  listing.stdout,
+  /clients\/claude\/\.claude-plugin\/marketplace\.json/
+);
 assert.match(listing.stdout, /clients\/copilot\/products\/bos\/skills/);
 assert.match(listing.stdout, /clients\/gemini\/extensions\/bos\/gemini-extension\.json/);
 assert.doesNotMatch(listing.stdout, /bos-mcp-broker|\/bin\//);

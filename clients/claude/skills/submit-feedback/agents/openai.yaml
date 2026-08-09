@@ -1,4 +1,0 @@
-interface:
-  display_name: "Submit Feedback"
-  short_description: "Send sanitized package feedback through BOS"
-  default_prompt: "Use $submit-feedback to submit feedback about the active package skill or tool."

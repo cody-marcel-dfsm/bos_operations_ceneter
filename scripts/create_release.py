@@ -8,6 +8,7 @@ import hashlib
 import io
 import json
 import tarfile
+import zipfile
 from pathlib import Path
 
 
@@ -39,6 +40,18 @@ def create_archive(source: Path, destination: Path, prefix: str) -> None:
             zipped.write(buffer.getvalue())
 
 
+def create_zip(source: Path, destination: Path, prefix: str) -> None:
+    with zipfile.ZipFile(destination, "w") as archive:
+        for path in sorted(source.rglob("*")):
+            if path.is_dir() or "__pycache__" in path.parts or path.suffix == ".pyc":
+                continue
+            relative = path.relative_to(source)
+            info = zipfile.ZipInfo((Path(prefix) / relative).as_posix(), (1980, 1, 1, 0, 0, 0))
+            info.external_attr = (0o100644 << 16)
+            info.compress_type = zipfile.ZIP_DEFLATED
+            archive.writestr(info, path.read_bytes())
+
+
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -50,6 +63,8 @@ def sha256(path: Path) -> str:
 def main() -> None:
     DIST.mkdir(parents=True, exist_ok=True)
     for old in DIST.glob("*.tar.gz"):
+        old.unlink()
+    for old in DIST.glob("*-claude-*.zip"):
         old.unlink()
 
     releases = []
@@ -65,8 +80,12 @@ def main() -> None:
         }
         for client in product["clients"]:
             source = roots[client]
-            destination = DIST / f"{name}-{client}-{version}.tar.gz"
-            create_archive(source, destination, name)
+            suffix = ".zip" if client == "claude" else ".tar.gz"
+            destination = DIST / f"{name}-{client}-{version}{suffix}"
+            if client == "claude":
+                create_zip(source, destination, name)
+            else:
+                create_archive(source, destination, name)
             releases.append(
                 {
                     "product": name,

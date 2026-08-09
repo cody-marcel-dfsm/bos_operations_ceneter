@@ -1,6 +1,6 @@
 {
   "name": "bos",
-  "version": "0.4.9",
+  "version": "0.4.10",
   "description": "Tenant-neutral Business Operating System foundations and MCP access.",
   "author": {
     "name": "Infinite State Machines LLC"

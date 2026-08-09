@@ -38,6 +38,12 @@ const marketplace = {
   interface: { displayName: "BOS + iCode" },
   plugins: []
 };
+const claudeMarketplace = {
+  name: "bos-icode",
+  description: "Verified BOS and iCode operational plugins from Infinite State Machines LLC.",
+  owner: { name: "Infinite State Machines LLC" },
+  plugins: []
+};
 
 for (const { product, skills } of resolved) {
   if (product.clients.includes("codex")) {
@@ -61,6 +67,12 @@ for (const { product, skills } of resolved) {
     await copyProductSkills(skills, join(pluginRoot, "skills"));
     await copyRuntime(product, pluginRoot);
     await copySettingsTemplate(product, pluginRoot);
+    claudeMarketplace.plugins.push({
+      name: product.name,
+      source: `./plugins/${product.name}`,
+      description: product.description,
+      version: product.version
+    });
     marketplace.plugins.push(marketplaceEntry(product));
   }
 
@@ -80,9 +92,14 @@ for (const { product, skills } of resolved) {
     });
     await writeJson(join(pluginRoot, ".claude-plugin", "plugin.json"), {
       name: product.name,
+      displayName: product.display_name,
       version: product.version,
       description: product.description,
-      author: { name: product.publisher }
+      author: { name: product.publisher },
+      homepage: "https://dfsm.ai",
+      repository: "https://github.com/cody-marcel-dfsm/bos_operations_ceneter",
+      license: "Apache-2.0",
+      keywords: ["bos", "operations", product.name]
     });
     await copyProductSkills(skills, join(pluginRoot, "skills"));
     await copyRuntime(product, pluginRoot);
@@ -133,30 +150,10 @@ await writeJson(
   join(stagedClients, "codex", ".agents", "plugins", "marketplace.json"),
   marketplace
 );
-
-const iCodeClaude = join(
-  stagedClients,
-  "claude",
-  "plugins",
-  "icode-operations-center"
+await writeJson(
+  join(stagedClients, "claude", ".claude-plugin", "marketplace.json"),
+  claudeMarketplace
 );
-await cp(join(iCodeClaude, ".claude-plugin"), join(stagedClients, "claude", ".claude-plugin"), {
-  recursive: true
-});
-await cp(join(iCodeClaude, "skills"), join(stagedClients, "claude", "skills"), {
-  recursive: true
-});
-try {
-  await cp(
-    join(iCodeClaude, ".mcp.json"),
-    join(stagedClients, "claude", ".mcp.json")
-  );
-} catch (error) {
-  if (error.code !== "ENOENT") throw error;
-  await writeJson(join(stagedClients, "claude", ".mcp.json"), {
-    mcpServers: {}
-  });
-}
 
 const iCodeCopilot = join(
   stagedClients,
