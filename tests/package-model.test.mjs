@@ -311,6 +311,7 @@ test("iCode composition contains only the shared feedback foundation", async () 
   );
   const iCode = await resolveProductSkills(byName["icode-operations-center"]);
   assert(iCode.some((skill) => skill.name === "icode-class-operations"));
+  assert(iCode.some((skill) => skill.name === "icode-customer-initialization"));
   const bos = await resolveProductSkills(byName.bos);
   const bosNames = new Set(bos.map((skill) => skill.name));
   const shared = iCode

@@ -17,8 +17,8 @@
       "Write"
     ],
     "defaultPrompt": [
+      "Initialize my iCode customer settings.",
       "Create today's iCode operations plan.",
-      "Show integrations that need authorization.",
       "Reconcile upcoming classes and trials."
     ]
   }

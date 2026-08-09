@@ -1,5 +1,5 @@
 {
-  "indexed_at": "20260809T145403.217589Z",
+  "indexed_at": "20260809T145109.711000Z",
   "schema_version": "bos-vault-manifest/v1",
   "source_count": 5,
   "sources": {
@@ -12,8 +12,8 @@
       "sha256": "f50fac9dd369117e49ad17c5d5508751880357c8f7be82ea9500de54f0a05fbd"
     },
     "Vault/docs/architecture.md": {
-      "bytes": 3262,
-      "sha256": "da240c9d823bb5d7f48475fe96e42266669185b1552b0bc7a910f3d4659135be"
+      "bytes": 2981,
+      "sha256": "5efecf5e298cd3e244888d6a2f741d16cb99f2a74b531a46480970ad6355421a"
     },
     "Vault/schemas/decision-record.md": {
       "bytes": 439,

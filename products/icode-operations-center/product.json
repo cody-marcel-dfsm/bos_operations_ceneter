@@ -16,6 +16,7 @@
   "includes": [
     "platform/submit-feedback",
     "capabilities/review-outreach",
+    "verticals/icode/icode-customer-initialization",
     "verticals/icode/icode-class-operations",
     "verticals/icode/icode-service-routing",
     "verticals/icode/icode-director-daily-planner",
@@ -27,8 +28,8 @@
     "verticals/icode/icode-trial-reconciliation"
   ],
   "default_prompts": [
+    "Initialize my iCode customer settings.",
     "Create today's iCode operations plan.",
-    "Show integrations that need authorization.",
     "Reconcile upcoming classes and trials."
   ]
 }

@@ -110,9 +110,46 @@ export function validateCustomerSettings(settings) {
   return failures;
 }
 
+export function deriveInitialCustomerSettings(template, clientContext = {}) {
+  const settings = structuredClone(template);
+  const sources = {};
+  const candidates = {
+    organization_display_name: clientContext.organization_display_name,
+    location_display_name: clientContext.location_display_name,
+    timezone:
+      clientContext.timezone ||
+      Intl.DateTimeFormat().resolvedOptions().timeZone ||
+      ""
+  };
+  for (const [field, value] of Object.entries(candidates)) {
+    if (typeof value === "string" && value.trim()) {
+      settings[field] = value.trim();
+      sources[field] = field === "timezone" && !clientContext.timezone
+        ? "client_system_timezone"
+        : "client_context";
+    }
+  }
+  if (typeof clientContext.care_com_mailbox === "string" && clientContext.care_com_mailbox.trim()) {
+    settings.mailboxes.care_com = clientContext.care_com_mailbox.trim();
+    sources["mailboxes.care_com"] = "client_connected_account_metadata";
+  }
+  settings._initialization = {
+    status: "initializing",
+    derived_sources: sources
+  };
+  return settings;
+}
+
 async function configuredSettings(options, paths) {
   const configPath = join(paths.target, "config", "customer-settings.json");
-  if (!(await pathExists(configPath))) return { state: "missing", path: configPath };
+  if (!(await pathExists(configPath))) {
+    const draftPath = join(paths.target, "config", "customer-settings.initialization.json");
+    return {
+      state: (await pathExists(draftPath)) ? "initializing" : "missing",
+      path: configPath,
+      draft_path: draftPath
+    };
+  }
   try {
     const settings = await readJson(configPath);
     const failures = validateCustomerSettings(settings);
@@ -132,6 +169,22 @@ async function applyCustomerSettings(options, paths) {
   await mkdir(dirname(configPath), { recursive: true });
   await writeJson(configPath, settings);
   await chmod(configPath, 0o600);
+  await rm(join(paths.target, "config", "customer-settings.initialization.json"), {
+    force: true
+  });
+}
+
+async function initializeCustomerSettings(options, paths) {
+  const configRoot = join(paths.target, "config");
+  const configPath = join(configRoot, "customer-settings.json");
+  const draftPath = join(configRoot, "customer-settings.initialization.json");
+  const templatePath = join(configRoot, "customer-settings.template.json");
+  if ((await pathExists(configPath)) || (await pathExists(draftPath)) ||
+      !(await pathExists(templatePath))) return;
+  const template = await readJson(templatePath);
+  const draft = deriveInitialCustomerSettings(template, options.clientContext);
+  await writeJson(draftPath, draft);
+  await chmod(draftPath, 0o600);
 }
 
 function pathsFor(options) {
@@ -548,6 +601,7 @@ export async function applyInstallation(rawOptions = {}) {
     }
     await mergeMarketplace(options, paths, desired.manifest);
   }
+  await initializeCustomerSettings(options, paths);
   await applyCustomerSettings(options, paths);
   return inspectInstallation({ ...options, command: "verify" });
 }
@@ -563,8 +617,13 @@ function printReport(report, asJson) {
   if (asJson) process.stdout.write(stableJson(report));
   else {
     console.log(
-      `${report.product}: ${report.state}; marketplace=${report.marketplace}`
+      `${report.product}: ${report.state}; marketplace=${report.marketplace}; settings=${report.settings.state}`
     );
+    if (report.settings.state === "initializing") {
+      console.log(
+        "Continue with icode-customer-initialization: derive safe client values and ask the user once for unresolved settings."
+      );
+    }
     for (const [key, values] of Object.entries(report.actions)) {
       if (values.length) console.log(`${key}: ${values.join(", ")}`);
     }

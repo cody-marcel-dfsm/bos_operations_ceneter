@@ -42,6 +42,10 @@ free local MCP broker.
    generated release content. Product manifests may declare an empty settings
    template; installers validate and write the completed settings as
    customer-owned configuration that package updates preserve.
+10. Initialize customer settings with a derive-then-ask workflow: preserve
+    confirmed values, derive only unambiguous non-secret client and canonical
+    BOS metadata, and ask the user once for unresolved or conflicting values.
+    Derived configuration never grants authority.
 
 ## Knowledge and review
 
