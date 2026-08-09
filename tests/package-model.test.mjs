@@ -153,6 +153,14 @@ test("Claude distribution is a marketplace of self-contained plugins", async () 
     /ENOENT/
   );
   await assert.rejects(access(`${root}/clients/claude/.mcp.json`), /ENOENT/);
+  const iCodeReadme = await readFile(
+    `${root}/clients/claude/plugins/icode-operations-center/README.md`,
+    "utf8"
+  );
+  assert.match(iCodeReadme, /authenticated adult/);
+  assert.match(iCodeReadme, /Students and minors are data subjects/);
+  assert.match(iCodeReadme, /minimum-necessary disclosure/);
+  assert.match(iCodeReadme, /https:\/\/dfsm\.ai\/apps\/bos\/privacy\.html/);
 });
 
 test("generated clients use native remote MCP without local transport", async () => {

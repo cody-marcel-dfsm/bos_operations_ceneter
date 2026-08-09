@@ -5,6 +5,12 @@ description: Reconcile iCode organization scheduled trials across BOS Lead Direc
 
 # iCode Trial Reconciliation
 
+This skill is for authenticated adult school staff performing legitimate
+school administration. Students and minors are data subjects, never users or
+operators. Use family identity only to reconcile a user-requested trial and
+minimize it in output. Draft communications to the authorized parent or
+guardian and never send them without an explicit authorized request.
+
 Use `bos_icode` exclusively. The MCP provides tenant-scoped primitives; perform
 query planning, identity expansion, cross-source matching, classification, and
 reporting in the GPT client.

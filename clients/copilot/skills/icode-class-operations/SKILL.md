@@ -5,6 +5,12 @@ description: Handle iCode class rosters, schedules, capacity, and camp-assignmen
 
 # iCode Class Operations
 
+This skill is for authenticated adult school staff performing legitimate
+school administration. Students and minors are data subjects, never users or
+operators. Access and display only the minimum student or family information
+needed for the requested roster, capacity, attendance, or placement task. Do
+not publish, export, or distribute it without a separate authorized request.
+
 Use the tenant-neutral `bos` MCP and follow the `use-bos` context workflow.
 Use Calimatic for class/enrollment state and Calendar only as schedule evidence.
 Load the installed product's `config/customer-settings.json`. For Care.com
