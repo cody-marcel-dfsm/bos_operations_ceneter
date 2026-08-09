@@ -5,6 +5,12 @@ description: Create an iCode director's date-specific operating planner from ten
 
 # iCode Director Daily Planner
 
+This skill is for authenticated adult school staff performing legitimate
+school administration. Students and minors are data subjects, never users or
+operators. Include only the minimum student or family information needed for
+the requested operating plan. Do not use this workflow for admissions,
+disciplinary, eligibility, or other high-impact decisions about students.
+
 Create a concise, action-oriented planner for one local business date. Retrieve live data through `bos_icode`; never distribute or send the planner unless the user separately requests and authorizes distribution.
 
 ## Required companion guidance

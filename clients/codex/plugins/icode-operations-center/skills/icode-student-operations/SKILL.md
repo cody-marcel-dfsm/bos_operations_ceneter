@@ -5,6 +5,13 @@ description: Handle iCode student enrollment and progress-report workflows acros
 
 # iCode Student Operations
 
+This skill is for authenticated adult school staff performing legitimate
+school administration. Students and minors are data subjects, never users or
+operators. Retrieve only the minimum student and family fields necessary for
+the requested enrollment or progress-report task. Do not publish, bulk export,
+or use these records for admissions, disciplinary, eligibility, or other
+high-impact decisions.
+
 Use `bos_icode` and follow the `bos-mcp-client` context workflow. Preserve
 student identity and provider provenance across every source.
 Use `bos-visual-output` for enrollment cohorts, progress trends, class

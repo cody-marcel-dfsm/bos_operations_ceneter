@@ -5,6 +5,12 @@ description: Handle iCode parent communication workflows through the tenant-scop
 
 # iCode Parent Communications
 
+This skill is for authenticated adult school staff performing legitimate
+school administration. Communications involving a minor must be directed to
+the authorized parent or guardian unless an approved school policy and
+capability explicitly provides otherwise. Minimize contact and transcript data
+and never expose it outside the selected tenant and requested workflow.
+
 Use `bos_icode` and follow the `bos-mcp-client` context workflow. Select the
 communication channel's configured BOS plugin; never substitute Gmail for
 calls, SMS, or reviews.
