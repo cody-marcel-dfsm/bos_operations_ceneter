@@ -4,6 +4,7 @@ import {
   copyProductSkills,
   copyRuntime,
   copySettingsTemplate,
+  geminiExtensionManifest,
   listProducts,
   marketplaceEntry,
   pluginManifest,
@@ -105,6 +106,27 @@ for (const { product, skills } of resolved) {
     await copyProductSkills(skills, target);
     await copySettingsTemplate(product, join(target, ".."));
   }
+
+  if (product.clients.includes("gemini")) {
+    const extensionRoot = join(
+      stagedClients,
+      "gemini",
+      "extensions",
+      product.name
+    );
+    await writeJson(join(extensionRoot, ".bos-product.json"), {
+      schema_version: "1",
+      name: product.name,
+      version: product.version,
+      client: "gemini"
+    });
+    await writeJson(
+      join(extensionRoot, "gemini-extension.json"),
+      await geminiExtensionManifest(product)
+    );
+    await copyProductSkills(skills, join(extensionRoot, "skills"));
+    await copySettingsTemplate(product, extensionRoot);
+  }
 }
 
 await writeJson(
@@ -157,7 +179,7 @@ await writeFile(
   ].join("\n")
 );
 
-for (const client of ["codex", "claude", "copilot"]) {
+for (const client of ["codex", "claude", "copilot", "gemini"]) {
   const target = join(root, "clients", client);
   const staged = join(stagedClients, client);
   const backup = join(stage, `${client}-previous`);
@@ -181,5 +203,5 @@ for (const client of ["codex", "claude", "copilot"]) {
 
 await rm(stage, { recursive: true, force: true });
 console.log(
-  `Generated ${resolved.length} products for Codex, Claude, and Copilot.`
+  `Generated ${resolved.length} products for Codex, Claude, Copilot, and Gemini.`
 );

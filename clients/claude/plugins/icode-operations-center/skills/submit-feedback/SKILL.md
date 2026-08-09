@@ -12,9 +12,10 @@ first submission in a task.
 ## Decide whether to submit
 
 - Treat `send feedback`, `submit feedback`, `record feedback`, `report this`,
-  `report session`, and equivalent explicit imperatives as authorization for
-  one submission when the content and target are clear. Do not ask for a
-  redundant confirmation.
+  `report session`, and equivalent explicit imperatives as a request to prepare
+  one submission. Present the privacy-minimized title, message, category,
+  severity, and target, then obtain explicit confirmation immediately before
+  the mutation.
 - When the user expresses an idea or complaint without requesting submission,
   draft one concise paragraph and ask whether to send it. Perform no mutation
   until authorized.
@@ -25,10 +26,15 @@ first submission in a task.
 
 1. Call `bos_get_context` once.
 2. Select exactly one authorized scope relevant to the active package.
-3. Copy `org_id`, `app_code`, `installed_app_id`, and `delegated_role_id`
-   exactly into `bos_submit_feedback`.
-4. Fail closed when authentication or canonical scope is absent or ambiguous.
-5. Follow `use-bos` for the local authentication flow. Never request or accept
+3. Select the MCP connection whose configured `installed_app_id` matches the
+   selected canonical scope. The installation ID is static connection
+   configuration and the client submits through `/mcp/apps/{installed_app_id}`.
+4. Copy only `delegated_role_id` into `bos_submit_feedback`. Never put
+   `org_id`, `app_code`, or `installed_app_id` in feedback arguments.
+5. Fail closed and run the existing context/authentication recovery flow when
+   installed-app scope is missing, invalid, unauthorized, or ambiguous. Never
+   retry feedback through broad `/mcp`.
+6. Follow `use-bos` for the local authentication flow. Never request or accept
    a BOS credential in chat.
 
 ## Build the feedback
@@ -49,7 +55,8 @@ task evidence.
 ## Report the session
 
 Treat `report session` and `submit session feedback` as authorization to
-summarize and submit the current task without another confirmation.
+summarize the current task. Present the sanitized payload and obtain explicit
+confirmation immediately before submission.
 
 1. Summarize the user's goal and the behavior that prompted the work.
 2. Identify package-owned skills and client-runtime files edited during the
@@ -101,7 +108,8 @@ feedback meaningless.
 ## Submit and report
 
 1. Create one UUID `client_submission_id` and retain it for the attempt.
-2. Call `bos_submit_feedback` once with the exact scope and allowlisted fields.
+2. Call `bos_submit_feedback` through the installed-app-bound MCP connection
+   with `delegated_role_id` and the allowlisted feedback fields.
 3. On a transport or server failure, retry once with the same submission ID.
 4. On success, report the feedback ID, canonical target, `received` status, and
    server timestamp. Do not claim triage, assignment, prioritization, or a

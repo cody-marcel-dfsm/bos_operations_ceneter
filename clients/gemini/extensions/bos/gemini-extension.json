@@ -1,0 +1,27 @@
+{
+  "name": "bos",
+  "version": "0.4.9",
+  "description": "Tenant-neutral Business Operating System foundations and MCP access.",
+  "settings": [
+    {
+      "name": "BOS API Key",
+      "description": "Organization-scoped BOS agent bearer credential.",
+      "envVar": "BOS_API_KEY",
+      "sensitive": true
+    },
+    {
+      "name": "BOS Installed App ID",
+      "description": "Static installed-app identifier for this MCP connection.",
+      "envVar": "BOS_INSTALLED_APP_ID",
+      "sensitive": false
+    }
+  ],
+  "mcpServers": {
+    "bos": {
+      "httpUrl": "https://dfsm.ai/mcp/apps/${BOS_INSTALLED_APP_ID}",
+      "headers": {
+        "Authorization": "Bearer ${BOS_API_KEY}"
+      }
+    }
+  }
+}

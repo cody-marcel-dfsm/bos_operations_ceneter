@@ -10,7 +10,8 @@
   "clients": [
     "codex",
     "claude",
-    "copilot"
+    "copilot",
+    "gemini"
   ],
   "includes": [
     "platform/manage-customer-extension",

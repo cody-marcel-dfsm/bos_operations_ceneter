@@ -1,0 +1,13 @@
+interface:
+  display_name: "iCode Class Operations"
+  short_description: "Handle classes, camps, and Care.com enrollments"
+  default_prompt: "Use $icode-class-operations to analyze classes, camp assignments, and Care.com enrollment confirmations."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "bos_icode"
+      description: "BOS remote agent gateway for iCode organization"
+      transport: "streamable_http"
+      url: "https://dfsm.ai/mcp"
+policy:
+  allow_implicit_invocation: true

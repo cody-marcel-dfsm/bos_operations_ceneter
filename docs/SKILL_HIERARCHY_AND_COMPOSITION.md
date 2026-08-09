@@ -241,7 +241,7 @@ Each skill has one editable source:
 | Generated client skill | Generated from this package; read-only |
 | User-global custom workflow | `~/.agents/skills/` |
 
-Generated Codex, Claude, and Copilot directories remain build outputs. Global
+Generated Codex, Claude, Copilot, and Gemini directories remain build outputs. Global
 skill directories should not contain independent copies of BOS package skills.
 
 ## Migration plan

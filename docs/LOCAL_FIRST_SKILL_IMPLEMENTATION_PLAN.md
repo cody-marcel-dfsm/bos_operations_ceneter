@@ -65,7 +65,7 @@ specialization split.
 The BOS Operations Center repository currently has:
 
 - a flat canonical `source/skills` directory;
-- generated Codex, Claude, and Copilot skill copies;
+- generated Codex, Claude, Copilot, and Gemini skill copies;
 - a fixed iCode Operations Center package;
 - credential scanning;
 - design and implementation documentation; and

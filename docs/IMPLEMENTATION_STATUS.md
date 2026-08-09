@@ -10,7 +10,7 @@ ready for client testing.
 - Product manifests for BOS and iCode Operations Center.
 - One BOS-owned MCP runtime, with companion products consuming BOS through
   skill composition.
-- Deterministic Codex, Claude, and Copilot package generation.
+- Deterministic Codex, Claude, Copilot, and Gemini package generation.
 - Deterministic release archives and SHA-256 release manifests.
 - Idempotent Codex installation with inspect, plan, apply, and verify modes.
 - Safe adoption of compatible unmanaged installations.

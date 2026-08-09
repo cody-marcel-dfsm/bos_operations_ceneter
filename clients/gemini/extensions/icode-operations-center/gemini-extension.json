@@ -1,0 +1,5 @@
+{
+  "name": "icode-operations-center",
+  "version": "0.4.9",
+  "description": "Secure iCode operations through the tenant-scoped BOS MCP."
+}

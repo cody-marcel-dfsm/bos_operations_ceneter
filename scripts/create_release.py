@@ -61,6 +61,7 @@ def main() -> None:
             "codex": ROOT / "clients" / "codex" / "plugins" / name,
             "claude": ROOT / "clients" / "claude" / "plugins" / name,
             "copilot": ROOT / "clients" / "copilot" / "products" / name,
+            "gemini": ROOT / "clients" / "gemini" / "extensions" / name,
         }
         for client in product["clients"]:
             source = roots[client]

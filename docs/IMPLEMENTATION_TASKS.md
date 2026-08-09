@@ -131,7 +131,7 @@ package.
 
 ### BOSPKG-005 — Model client adapters independently from product skills
 
-**Outcome:** Codex, Claude, and Copilot retain their native package structure
+**Outcome:** Codex, Claude, Copilot, and Gemini retain their native package structure
 while sharing one selected skill set.
 
 **Scope:**
@@ -467,7 +467,7 @@ without a compiled client transport.
 
 **Scope:**
 
-- Package all generated Codex, Claude, and Copilot distributions.
+- Package all generated Codex, Claude, Copilot, and Gemini distributions.
 - Publish versioned and stable OS-neutral ZIP names.
 - Run validation and release jobs on a platform-neutral CI runner.
 - Document native installation and GCP-managed `BOS_API_KEY` configuration.

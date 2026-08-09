@@ -10,7 +10,7 @@ import {
 import { basename, join, relative, resolve, sep } from "node:path";
 
 export const root = resolve(import.meta.dirname, "../..");
-export const supportedClients = new Set(["codex", "claude", "copilot"]);
+export const supportedClients = new Set(["codex", "claude", "copilot", "gemini"]);
 export const productNamePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export async function readJson(path) {
@@ -219,7 +219,7 @@ export async function copyRuntime(product, pluginRoot, base = root) {
     if (!server || server.type !== "http" || typeof server.url !== "string") {
       throw new Error(`Runtime ${product.runtime} has no remote BOS MCP server`);
     }
-    server.url = `${server.url.replace(/\/$/, "")}/${product.mcp_profile}`;
+    server.url = `${server.url.replace(/\/apps\/\$\{BOS_INSTALLED_APP_ID\}$/, "")}/${product.mcp_profile}`;
     config.mcpServers[product.name] = server;
     delete config.mcpServers.bos;
     await writeJson(configPath, config);
@@ -244,6 +244,52 @@ export function pluginManifest(product) {
     }
   };
   if (product.runtime) manifest.mcpServers = "./.mcp.json";
+  return manifest;
+}
+
+export async function geminiExtensionManifest(product, base = root) {
+  const manifest = {
+    name: product.name,
+    version: product.version,
+    description: product.description
+  };
+  if (!product.runtime) return manifest;
+
+  const runtime = await readJson(
+    join(base, "source", "runtime", product.runtime, ".mcp.json")
+  );
+  const sourceServer = runtime.mcpServers?.bos;
+  if (!sourceServer || sourceServer.type !== "http") {
+    throw new Error(`Runtime ${product.runtime} has no remote BOS MCP server`);
+  }
+  let httpUrl = sourceServer.url;
+  let serverName = "bos";
+  if (product.mcp_profile) {
+    httpUrl = `${httpUrl.replace(/\/apps\/\$\{BOS_INSTALLED_APP_ID\}$/, "")}/${product.mcp_profile}`;
+    serverName = product.name;
+  }
+  manifest.settings = [
+    {
+      name: "BOS API Key",
+      description: "Organization-scoped BOS agent bearer credential.",
+      envVar: "BOS_API_KEY",
+      sensitive: true
+    }
+  ];
+  if (httpUrl.includes("${BOS_INSTALLED_APP_ID}")) {
+    manifest.settings.push({
+      name: "BOS Installed App ID",
+      description: "Static installed-app identifier for this MCP connection.",
+      envVar: "BOS_INSTALLED_APP_ID",
+      sensitive: false
+    });
+  }
+  manifest.mcpServers = {
+    [serverName]: {
+      httpUrl,
+      headers: sourceServer.headers
+    }
+  };
   return manifest;
 }
 

@@ -33,7 +33,8 @@ test("iCode packages include an empty customer settings template", async () => {
   for (const path of [
     `${root}/clients/codex/plugins/icode-operations-center/config/customer-settings.template.json`,
     `${root}/clients/claude/plugins/icode-operations-center/config/customer-settings.template.json`,
-    `${root}/clients/copilot/products/icode-operations-center/config/customer-settings.template.json`
+    `${root}/clients/copilot/products/icode-operations-center/config/customer-settings.template.json`,
+    `${root}/clients/gemini/extensions/icode-operations-center/config/customer-settings.template.json`
   ]) {
     const settings = JSON.parse(await readFile(path, "utf8"));
     assert.equal(settings.schema_version, "1");
@@ -74,20 +75,20 @@ test("Video Ads composes workflow skills and a scoped BOS endpoint", async () =>
   );
 });
 
-test("runtime products use native remote HTTP with environment authentication", async () => {
+test("runtime products use native installed-app-bound MCP with bearer authentication", async () => {
   for (const client of ["codex", "claude"]) {
     const bos = JSON.parse(
       await readFile(`${root}/clients/${client}/plugins/bos/.mcp.json`, "utf8")
     );
-    assert.deepEqual(bos, {
-      mcpServers: {
-        bos: {
-          type: "http",
-          url: "https://dfsm.ai/mcp",
-          headers: { Authorization: "Bearer ${BOS_API_KEY}" }
-        }
-      }
-    });
+    assert.equal(bos.mcpServers.bos.type, "http");
+    assert.equal(
+      bos.mcpServers.bos.url,
+      "https://dfsm.ai/mcp/apps/${BOS_INSTALLED_APP_ID}"
+    );
+    assert.equal(
+      bos.mcpServers.bos.headers.Authorization,
+      "Bearer ${BOS_API_KEY}"
+    );
 
     const videoAds = JSON.parse(
       await readFile(
@@ -108,15 +109,77 @@ test("runtime products use native remote HTTP with environment authentication", 
   }
 });
 
-test("generated clients contain no local MCP transport implementation", async () => {
-  for (const client of ["codex", "claude", "copilot"]) {
+test("generated clients use native remote MCP without local transport", async () => {
+  for (const client of ["codex", "claude", "copilot", "gemini"]) {
     const files = await walkFiles(`${root}/clients/${client}`);
-    assert.equal(files.some((path) => /bos_mcp_broker|\/bin\//.test(path)), false);
+    assert.equal(files.some((path) => /bos_mcp_broker\.py$/.test(path)), false);
+    assert.equal(files.some((path) => /__pycache__|\.pyc$|\/bin\//.test(path)), false);
     for (const path of files.filter((path) => path.endsWith(".mcp.json"))) {
       const content = await readFile(path, "utf8");
       assert.doesNotMatch(content, /"command"|"stdio"|127\.0\.0\.1/);
     }
   }
+});
+
+test("Gemini extensions bundle canonical skills and Streamable HTTP MCP", async () => {
+  const manifest = JSON.parse(
+    await readFile(
+      `${root}/clients/gemini/extensions/bos/gemini-extension.json`,
+      "utf8"
+    )
+  );
+  assert.equal(manifest.name, "bos");
+  assert.equal(
+    manifest.mcpServers.bos.httpUrl,
+    "https://dfsm.ai/mcp/apps/${BOS_INSTALLED_APP_ID}"
+  );
+  assert.equal(manifest.mcpServers.bos.url, undefined);
+  assert.equal(
+    manifest.mcpServers.bos.headers.Authorization,
+    "Bearer ${BOS_API_KEY}"
+  );
+  assert.deepEqual(
+    manifest.settings.map(({ envVar, sensitive }) => ({ envVar, sensitive })),
+    [
+      { envVar: "BOS_API_KEY", sensitive: true },
+      { envVar: "BOS_INSTALLED_APP_ID", sensitive: false }
+    ]
+  );
+  await access(
+    `${root}/clients/gemini/extensions/bos/skills/submit-feedback/SKILL.md`
+  );
+});
+
+test("feedback contract keeps route scope in the connection and retry identity stable", async () => {
+  const runtime = JSON.parse(
+    await readFile(`${root}/source/runtime/bos/.mcp.json`, "utf8")
+  );
+  const url = runtime.mcpServers.bos.url;
+  assert.equal(url, "https://dfsm.ai/mcp/apps/${BOS_INSTALLED_APP_ID}");
+  assert.notEqual(url, "https://dfsm.ai/mcp");
+  assert.notEqual(
+    url.replace("${BOS_INSTALLED_APP_ID}", "install-a"),
+    url.replace("${BOS_INSTALLED_APP_ID}", "install-b")
+  );
+
+  const skill = await readFile(
+    `${root}/source/platform/submit-feedback/SKILL.md`,
+    "utf8"
+  );
+  const contract = await readFile(
+    `${root}/source/platform/submit-feedback/references/feedback-contract.md`,
+    "utf8"
+  );
+  assert.match(skill, /Copy only `delegated_role_id`/);
+  assert.match(skill, /Never put\s+`org_id`, `app_code`, or `installed_app_id`/);
+  assert.match(skill, /retry once with the same submission ID/);
+  assert.match(skill, /Do not claim triage, assignment, prioritization/);
+  assert.match(contract, /missing_or_ambiguous_scope/);
+  assert.match(contract, /feedback_create_not_allowed/);
+  assert.match(contract, /feedback_rate_limit_exceeded/);
+  assert.match(contract, /feedback_storage_unavailable/);
+  assert.match(contract, /idempotency_conflict/);
+  assert.doesNotMatch(contract, /"org_id"|"app_code"|"installed_app_id"/);
 });
 
 test("iCode composition contains only the shared feedback foundation", async () => {
@@ -140,7 +203,8 @@ test("every product and client ships tenant extension management metadata", asyn
   const roots = {
     codex: (name) => `${root}/clients/codex/plugins/${name}`,
     claude: (name) => `${root}/clients/claude/plugins/${name}`,
-    copilot: (name) => `${root}/clients/copilot/products/${name}`
+    copilot: (name) => `${root}/clients/copilot/products/${name}`,
+    gemini: (name) => `${root}/clients/gemini/extensions/${name}`
   };
   for (const { manifest } of products) {
     for (const client of manifest.clients) {
@@ -172,7 +236,8 @@ test("generated feedback skill automatically discovers customer customizations",
       const roots = {
         codex: `${root}/clients/codex/plugins/${manifest.name}`,
         claude: `${root}/clients/claude/plugins/${manifest.name}`,
-        copilot: `${root}/clients/copilot/products/${manifest.name}`
+        copilot: `${root}/clients/copilot/products/${manifest.name}`,
+        gemini: `${root}/clients/gemini/extensions/${manifest.name}`
       };
       const feedbackRoot = `${roots[client]}/skills/submit-feedback`;
       const skill = await readFile(`${feedbackRoot}/SKILL.md`, "utf8");
@@ -183,7 +248,7 @@ test("generated feedback skill automatically discovers customer customizations",
 });
 
 test("generated clients exclude Python cache and bytecode files", async () => {
-  for (const client of ["codex", "claude", "copilot"]) {
+  for (const client of ["codex", "claude", "copilot", "gemini"]) {
     const files = await walkFiles(`${root}/clients/${client}`);
     assert.equal(
       files.some(

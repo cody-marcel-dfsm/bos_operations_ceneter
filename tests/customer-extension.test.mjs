@@ -205,7 +205,8 @@ test("generated client managers execute from their packaged product roots", asyn
   for (const [client, clientProductRoot] of [
     ["codex", join(root, "clients", "codex", "plugins", "bos")],
     ["claude", join(root, "clients", "claude", "plugins", "bos")],
-    ["copilot", join(root, "clients", "copilot", "products", "bos")]
+    ["copilot", join(root, "clients", "copilot", "products", "bos")],
+    ["gemini", join(root, "clients", "gemini", "extensions", "bos")]
   ]) {
     const metadata = JSON.parse(
       await readFile(join(clientProductRoot, ".bos-product.json"), "utf8")

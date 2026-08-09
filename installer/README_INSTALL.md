@@ -1,8 +1,8 @@
 # Install BOS Operations Center
 
-This release is an operating-system-neutral package for Codex, Claude, and
-GitHub Copilot. Extract it with the standard ZIP tool on macOS, Windows, or
-Linux and select the directory for the client you use.
+This release is an operating-system-neutral package for Codex, Claude, GitHub
+Copilot, and Gemini CLI. Extract it with the standard ZIP tool on macOS,
+Windows, or Linux and select the directory for the client you use.
 
 ## Authentication
 
@@ -29,6 +29,15 @@ Copy the desired product skills from `clients/copilot/products/<product>/skills`
 into the repository's supported agent-skills directory. Configure the BOS
 remote MCP connection in the Copilot host using the same endpoint and
 `BOS_API_KEY`; the Copilot skill package contains no client runtime.
+
+## Gemini CLI
+
+Install the desired extension directory from
+`clients/gemini/extensions/<product>` with `gemini extensions install`. Gemini
+loads the bundled `skills/` directory and native Streamable HTTP MCP
+configuration from `gemini-extension.json`. Complete the declared
+`BOS_API_KEY` and `BOS_INSTALLED_APP_ID` extension settings during installation
+and restart Gemini CLI.
 
 ## Customer settings
 

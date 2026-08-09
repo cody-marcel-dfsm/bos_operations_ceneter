@@ -59,8 +59,15 @@ release system for portable BOS skills and native remote MCP client adapters.
     declared customer-configurable behavior. System instructions, package
     invariants, authentication, authorization, canonical scope, credentials,
     MCP endpoints, and tool grants remain sealed. Every product ships the same
-    extension manager and versioned product metadata for Codex, Claude, and
-    Copilot.
+    extension manager and versioned product metadata for Codex, Claude,
+    Copilot, and Gemini CLI.
+14. Route feedback mutations through the canonical installed-app-bound MCP URL
+    `/mcp/apps/{installed_app_id}`. Store the installation ID as static client
+    configuration for that native remote MCP connection and verify it against
+    `bos_get_context`. Keep
+    organization, application, and installation route scope out of feedback
+    arguments, preserve the organization-scoped bearer credential, and fail
+    closed without broad-endpoint fallback.
 
 ## Knowledge and review
 
