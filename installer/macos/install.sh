@@ -96,6 +96,31 @@ elif [ -f "${DESTINATION}/plugins/icode-operations-center/config/customer-settin
   /bin/cp "${DESTINATION}/plugins/icode-operations-center/config/customer-settings.json" \
     "${staging}/plugins/icode-operations-center/config/customer-settings.json"
   /bin/chmod 600 "${staging}/plugins/icode-operations-center/config/customer-settings.json"
+elif [ -f "${DESTINATION}/plugins/icode-operations-center/config/customer-settings.initialization.json" ]; then
+  /bin/mkdir -p "${staging}/plugins/icode-operations-center/config"
+  /bin/cp "${DESTINATION}/plugins/icode-operations-center/config/customer-settings.initialization.json" \
+    "${staging}/plugins/icode-operations-center/config/customer-settings.initialization.json"
+  /bin/chmod 600 "${staging}/plugins/icode-operations-center/config/customer-settings.initialization.json"
+else
+  config_root="${staging}/plugins/icode-operations-center/config"
+  template="${config_root}/customer-settings.template.json"
+  draft="${config_root}/customer-settings.initialization.json"
+  if [ -f "${template}" ]; then
+    /bin/cp "${template}" "${draft}"
+    derived_timezone=$(/usr/sbin/systemsetup -gettimezone 2>/dev/null | /usr/bin/sed 's/^Time Zone: //' || true)
+    case "${derived_timezone}" in
+      ""|/*|*..*) derived_timezone="" ;;
+    esac
+    if [ -n "${derived_timezone}" ] && [ -f "/usr/share/zoneinfo/${derived_timezone}" ]; then
+      /usr/bin/plutil -replace timezone -string "${derived_timezone}" "${draft}"
+      /usr/bin/plutil -insert _initialization -json \
+        '{"status":"initializing","derived_sources":{"timezone":"client_system_timezone"}}' "${draft}"
+    else
+      /usr/bin/plutil -insert _initialization -json \
+        '{"status":"initializing","derived_sources":{}}' "${draft}"
+    fi
+    /bin/chmod 600 "${draft}"
+  fi
 fi
 
 if [ -e "${DESTINATION}" ]; then
@@ -124,8 +149,9 @@ echo "BOS Operations Center is installed."
 if [ -n "${settings_file}" ]; then
   echo "Customer settings were applied to iCode Operations Center."
 else
-  echo "iCode customer settings remain unconfigured. Copy the included template,"
-  echo "fill it in, and rerun install.sh --settings /path/to/customer-settings.json."
+  echo "iCode customer-settings initialization has started. The client should"
+  echo "derive safe values from local and authenticated context, then ask the user"
+  echo "one consolidated question for unresolved settings."
 fi
 echo "Start a new Codex task. Codex will request BOS authentication through MCP"
 echo "when the first secured BOS operation is requested."

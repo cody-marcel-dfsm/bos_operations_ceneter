@@ -366,6 +366,15 @@ mailbox selectors, billing identity, and non-secret workflow defaults. They
 never grant authority and never contain credentials, provider tokens, API
 keys, tenant grants, or role assignments.
 
+Initialization follows a derive-then-ask contract. The installer creates a
+customer-owned initialization draft and derives the local IANA timezone. The
+customer-initialization skill preserves confirmed settings, reads unambiguous
+display metadata from the active client and authenticated BOS context, and
+uses connected-account metadata to identify a mailbox only when there is one
+clear candidate. It asks one consolidated question for every remaining or
+conflicting value. Billing identity is never inferred from unrelated messages
+or public web data. The completed file replaces the draft after validation.
+
 Customer-owned extension skills may consume this non-secret configuration to
 specialize a packaged operating procedure. Extensions cannot grant tenant,
 organization, application, role, plugin, capability, or provider authority.

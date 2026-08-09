@@ -12,7 +12,9 @@ authorization, and exact tenant scope.
 Load `config/customer-settings.json` from the installed
 `icode-operations-center` product before applying any customer-specific name,
 location, timezone, mailbox, billing identity, or default. Fail closed with a
-configuration-required result when the file or a required setting is absent.
+configuration-required result when the file or a required setting is absent,
+then invoke `icode-customer-initialization` to derive safe client-visible
+values and ask the user for the unresolved remainder.
 
 ## Routing workflow
 

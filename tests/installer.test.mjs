@@ -14,6 +14,7 @@ import { join } from "node:path";
 import test from "node:test";
 import {
   applyInstallation,
+  deriveInitialCustomerSettings,
   inspectInstallation,
   validateCustomerSettings,
   verifyInstallation
@@ -40,6 +41,45 @@ const customerSettings = {
     bright_horizons_rate_per_child_day: 100
   }
 };
+
+test("initialization derives safe client values and leaves unknowns unresolved", () => {
+  const template = {
+    schema_version: "1",
+    organization_display_name: "",
+    location_display_name: "",
+    timezone: "",
+    mailboxes: { care_com: "" },
+    billing: {}
+  };
+  const draft = deriveInitialCustomerSettings(template, {
+    timezone: "America/Chicago",
+    organization_display_name: "Example Organization",
+    care_com_mailbox: "care@example.com"
+  });
+  assert.equal(draft.timezone, "America/Chicago");
+  assert.equal(draft.organization_display_name, "Example Organization");
+  assert.equal(draft.location_display_name, "");
+  assert.equal(draft.mailboxes.care_com, "care@example.com");
+  assert.deepEqual(draft._initialization.derived_sources, {
+    organization_display_name: "client_context",
+    timezone: "client_context",
+    "mailboxes.care_com": "client_connected_account_metadata"
+  });
+});
+
+test("iCode install without answers creates a customer-owned initialization draft", async () => {
+  const home = await temporaryHome();
+  const report = await applyInstallation({
+    home,
+    product: "icode-operations-center",
+    clientContext: { timezone: "America/Los_Angeles" }
+  });
+  assert.equal(report.settings.state, "initializing");
+  const draft = JSON.parse(await readFile(report.settings.draft_path, "utf8"));
+  assert.equal(draft.timezone, "America/Los_Angeles");
+  assert.equal(draft.organization_display_name, "");
+  assert.equal((await stat(report.settings.draft_path)).mode & 0o777, 0o600);
+});
 
 test("customer settings validate, install, and survive product updates", async () => {
   const home = await temporaryHome();
