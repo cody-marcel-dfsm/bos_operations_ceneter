@@ -9,7 +9,7 @@ const packageManifest = JSON.parse(await readFile(join(root, "package.json"), "u
 const releaseManifest = JSON.parse(await readFile(join(dist, "release-manifest.json"), "utf8"));
 
 assert.equal(releaseManifest.schema_version, "1");
-assert.equal(releaseManifest.archives.length, 9);
+assert.equal(releaseManifest.archives.length, 12);
 for (const archive of releaseManifest.archives) {
   assert(await pathExists(join(dist, archive.file)), `missing ${archive.file}`);
   assert.match(archive.sha256, /^[a-f0-9]{64}$/);
@@ -45,6 +45,7 @@ assert.match(
 );
 assert.match(listing.stdout, /clients\/claude\/plugins\/bos\/\.mcp\.json/);
 assert.match(listing.stdout, /clients\/copilot\/products\/bos\/skills/);
+assert.match(listing.stdout, /clients\/gemini\/extensions\/bos\/gemini-extension\.json/);
 assert.doesNotMatch(listing.stdout, /bos-mcp-broker|\/bin\//);
 
 console.log("Build output contains all product archives and the cross-platform customer ZIP.");

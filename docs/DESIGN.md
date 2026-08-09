@@ -224,7 +224,8 @@ products/
 clients/
 ├── codex/
 ├── claude/
-└── copilot/
+├── copilot/
+└── gemini/
 scripts/
 docs/
 ```
@@ -233,7 +234,7 @@ docs/
 canonical skill sources. Skill instructions and supporting resources are
 edited only in their owning canonical layer.
 
-`clients/codex/`, `clients/claude/`, and `clients/copilot/` are generated
+`clients/codex/`, `clients/claude/`, `clients/copilot/`, and `clients/gemini/` are generated
 distributions. The build resolves each product manifest, selects its platform,
 capability, and vertical skills, and assembles the requested Codex, Claude, and
 Copilot packages. It preserves the platform-specific manifests and adapters
@@ -357,11 +358,11 @@ assembly. `npm run build`:
 3. Resolves each product's selected skill set.
 4. Replaces the generated skill directory for each product/client
    distribution.
-5. Assembles the selected skills into Codex, Claude, and Copilot package
+5. Assembles the selected skills into Codex, Claude, Copilot, and Gemini package
    layouts.
 6. Creates deterministic per-product/client archives and a checksum manifest.
 7. Creates versioned and stable cross-platform customer ZIPs containing the
-   generated Codex, Claude, and Copilot distributions.
+   generated Codex, Claude, Copilot, and Gemini distributions.
 
 `npm run build:packages` performs steps 1–5 for development.
 
@@ -382,7 +383,7 @@ credential files, and local user paths. Platform installation tests and
 authenticated end-to-end tests remain separate release checks.
 
 The builder reads every product manifest, resolves its selected canonical
-skills, and generates deterministic Codex, Claude, and Copilot distributions.
+skills, and generates deterministic Codex, Claude, Copilot, and Gemini distributions.
 
 ## MCP and API capability model
 
@@ -652,7 +653,7 @@ A public release is ready only when:
    package;
 2. `npm run release:check` passes;
 3. generated clients match the canonical source;
-4. Codex, Claude, and Copilot installation smoke tests pass;
+4. Codex, Claude, Copilot, and Gemini installation smoke tests pass;
 5. BOS connection and authentication recovery are tested;
 6. tenant isolation and no-fallback behavior are verified; and
 7. release archives contain no credentials or customer data.

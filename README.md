@@ -99,7 +99,7 @@ dist/bos-operations-center.zip
 `release:customer` is an alias for the complete validated build; ZIP creation
 is already part of `npm run build`.
 
-The ZIP includes generated Codex, Claude, and Copilot distributions plus
+The ZIP includes generated Codex, Claude, Copilot, and Gemini distributions plus
 client-specific installation guidance. It contains no executable MCP proxy or
 platform runtime. Give the active agent the public GitHub release URL and ask
 it to download, verify, extract, inspect `README_INSTALL.md`, and install the
@@ -200,8 +200,16 @@ the command after Codex installs or replaces a cached plugin version.
    target repository.
 3. Connect the remote BOS MCP endpoint using the client-managed `BOS_API_KEY`.
 
+### Gemini CLI
+
+1. Run `npm run release:check`.
+2. Install the selected extension with
+   `gemini extensions install clients/gemini/extensions/<product>`.
+3. Complete the extension settings for the organization-scoped `BOS_API_KEY`
+   and the product's static `BOS_INSTALLED_APP_ID`, then restart Gemini CLI.
+
 The checked-in client directories contain credential-free adapters. A release
-may also publish those three directories as downloadable archives for customers
+may also publish those four directories as downloadable archives for customers
 who do not use Git.
 
 ## Customer onboarding
@@ -253,6 +261,7 @@ branding, billing, quota, or compliance.
   preserved across local package updates.
 - `clients/claude/`: Claude plugin package.
 - `clients/copilot/`: GitHub Copilot Agent Skills package.
+- `clients/gemini/`: Gemini CLI extension packages.
 - `scripts/`: deterministic validation and packaging tools.
 - `dist/`: generated release archives; ignored by Git.
 - `tests/`: package, security, and portability tests.

@@ -12,7 +12,8 @@
   "clients": {
     "codex": "./clients/codex",
     "claude": "./clients/claude",
-    "copilot": "./clients/copilot"
+    "copilot": "./clients/copilot",
+    "gemini": "./clients/gemini"
   },
   "security": {
     "credential_free_artifacts": true,

@@ -174,6 +174,44 @@ async function validateProducts() {
         }
       }
     }
+    if (manifest.clients.includes("gemini")) {
+      const extensionRoot = join(
+        root,
+        "clients",
+        "gemini",
+        "extensions",
+        manifest.name
+      );
+      const extensionPath = join(extensionRoot, "gemini-extension.json");
+      if (!(await pathExists(extensionPath))) {
+        failures.push(`Missing generated Gemini extension: ${extensionPath}`);
+      } else {
+        const generated = await readJson(extensionPath);
+        if (
+          generated.name !== manifest.name ||
+          generated.version !== manifest.version
+        ) {
+          failures.push(`Generated Gemini identity drift: ${extensionPath}`);
+        }
+        for (const server of Object.values(generated.mcpServers ?? {})) {
+          if (typeof server.httpUrl !== "string" || "url" in server) {
+            failures.push(`Gemini MCP transport must use httpUrl: ${extensionPath}`);
+          }
+        }
+      }
+      for (const skill of skills) {
+        const generatedSkillRoot = join(extensionRoot, "skills", skill.name);
+        const [sourceHashes, generatedHashes] = await Promise.all([
+          hashTree(skill.sourcePath),
+          hashTree(generatedSkillRoot)
+        ]);
+        if (JSON.stringify(sourceHashes) !== JSON.stringify(generatedHashes)) {
+          failures.push(
+            `Generated skill differs from canonical source: ${generatedSkillRoot}`
+          );
+        }
+      }
+    }
   }
 }
 

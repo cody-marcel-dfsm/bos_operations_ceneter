@@ -11,7 +11,8 @@
   "clients": [
     "codex",
     "claude",
-    "copilot"
+    "copilot",
+    "gemini"
   ],
   "includes": [
     "platform/submit-feedback",

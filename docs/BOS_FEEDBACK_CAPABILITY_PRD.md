@@ -62,18 +62,18 @@ When the user explicitly says “send,” “submit,” “record,” or “repo
 the client skill:
 
 1. Calls `bos_get_context` once.
-2. Selects one exact authorized scope and copies `org_id`, `app_code`,
-   `installed_app_id`, and `delegated_role_id` into the submission.
+2. Selects one exact authorized scope, verifies the statically configured MCP
+   installation ID, and copies only `delegated_role_id` into the submission.
 3. Identifies the feedback target from the active skill/tool/package context.
 4. Produces a concise title and feedback body faithful to the user's words.
 5. Adds only the minimum sanitized reproduction context needed to understand
    the issue.
-6. Calls `bos_submit_feedback`.
+6. Presents the sanitized payload for explicit user confirmation, then calls
+   `bos_submit_feedback` through `/mcp/apps/{installed_app_id}`.
 7. Shows the returned feedback ID, status, target, and timestamp.
 
-The explicit imperative is authorization to submit the feedback described in
-that request. A second confirmation is unnecessary when the target and content
-are unambiguous.
+The explicit imperative authorizes preparation of the feedback described in
+that request. The client obtains confirmation immediately before submission.
 
 ### 5.2 Session-derived feedback
 
@@ -198,9 +198,6 @@ Description:
 {
   "type": "object",
   "properties": {
-    "org_id": { "type": "string", "format": "uuid" },
-    "app_code": { "type": "string", "minLength": 1, "maxLength": 100 },
-    "installed_app_id": { "type": "string", "format": "uuid" },
     "delegated_role_id": { "type": "string", "minLength": 1, "maxLength": 200 },
     "client_submission_id": { "type": "string", "format": "uuid" },
     "category": {
@@ -271,9 +268,6 @@ Description:
     }
   },
   "required": [
-    "org_id",
-    "app_code",
-    "installed_app_id",
     "delegated_role_id",
     "client_submission_id",
     "category",
@@ -348,7 +342,8 @@ The MCP handler and router perform no direct persistence.
 ### 8.2 Authorization
 
 1. Authenticate the actor from the BOS MCP session.
-2. Validate `org_id`, `app_code`, `installed_app_id`, and
+2. Derive organization, application, and installation scope from the
+   authenticated principal and `/mcp/apps/{installed_app_id}` route. Validate
    `delegated_role_id` against canonical context.
 3. Require an active installation and a feedback-create capability grant.
 4. Record both authenticated actor identity and validated delegated execution
@@ -427,7 +422,7 @@ making them writable through the initial public MCP contract.
 6. The client never sends a transcript, secret, raw tool payload, or unrelated
    business record.
 7. One retry uses the same `client_submission_id`.
-8. The skill is built into every intended Codex, Claude, and Copilot product.
+8. The skill is built into every intended Codex, Claude, Copilot, and Gemini product.
 
 ### Server
 
