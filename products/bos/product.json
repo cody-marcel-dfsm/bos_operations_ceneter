@@ -1,9 +1,9 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.11",
+  "version": "0.4.15",
   "display_name": "BOS",
-  "description": "Tenant-neutral Business Operating System foundations and MCP access.",
+  "description": "Tenant-neutral Business Operating System foundations.",
   "publisher": "Infinite State Machines LLC",
   "category": "Productivity",
   "authentication": "ON_USE",
@@ -14,8 +14,6 @@
     "gemini"
   ],
   "includes": [
-    "platform/use-bos",
-    "platform/submit-feedback",
     "platform/planning",
     "platform/implementation",
     "platform/review",
@@ -24,10 +22,9 @@
     "platform/authentication-context-integrity",
     "platform/manage-customer-extension"
   ],
-  "runtime": "bos",
   "default_prompts": [
     "Plan this BOS platform change.",
     "Review this BOS implementation.",
-    "Use BOS to complete this business operation."
+    "Validate this BOS package architecture."
   ]
 }

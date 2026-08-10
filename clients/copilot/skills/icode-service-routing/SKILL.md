@@ -6,7 +6,7 @@ description: Route iCode requests to the appropriate tenant-scoped BOS capabilit
 # iCode Service Routing
 
 Choose capabilities for the active iCode task inside the tenant-neutral BOS
-MCP. This skill defines provider preferences; `use-bos` owns authentication,
+MCP. This skill defines provider preferences; `bos-mcp-client` owns authentication,
 authorization, and exact tenant scope.
 
 Load `config/customer-settings.json` from the installed
@@ -18,16 +18,19 @@ values and ask the user for the unresolved remainder.
 
 ## Routing workflow
 
-1. Identify the requested operation and any provider preference stated by the
+1. Route every iCode operation through the installed `icode-operations` MCP
+   connection. The client's configured `BOS_API_KEY` identifies the canonical
+   BOS principal; the named endpoint selects the iCode tool group.
+2. Identify the requested operation and any provider preference stated by the
    user.
-2. Call `bos_get_context` once and select the exact organization, application,
+3. Call `bos_get_context` once and accept the exact organization, application,
    installation, role, and capability scope for the requested operation.
-3. Use the explicitly requested provider through its authorized BOS capability
+4. Use the explicitly requested provider through its authorized BOS capability
    when available.
-4. Otherwise use the preferred BOS capability listed below.
-5. If that capability is unavailable, continue only with another authorized
+5. Otherwise use the preferred BOS capability listed below.
+6. If that capability is unavailable, continue only with another authorized
    BOS capability that can answer the request and label the source used.
-6. Preserve provider provenance and freshness in the result.
+7. Preserve provider provenance and freshness in the result.
 
 ## Domain routes
 
@@ -49,7 +52,7 @@ result only from another capability present in the same validated BOS context.
 ## Scope
 
 Apply these preferences only to provider access required by the active iCode
-task. Copy the exact `org_id`, `app_code`, `installed_app_id`, and
-`delegated_role_id` returned by BOS into every domain call. A companion domain
+task. Use the packaged skill-group connection and omit `org_id`, `app_code`,
+`installed_app_id`, and `delegated_role_id`; BOS derives them. A companion domain
 skill may define how to perform its workflow; this routing skill owns only
 provider selection within authorized BOS capabilities.

@@ -5,6 +5,7 @@ import { promisify } from "node:util";
 import {
   hashTree,
   listProducts,
+  materializeMcpUrl,
   pathExists,
   readJson,
   resolveProductSkills,
@@ -119,6 +120,7 @@ async function validateProducts() {
         (include) =>
           include.startsWith("platform/") &&
           ![
+            "platform/bos-mcp-client",
             "platform/submit-feedback",
             "platform/manage-customer-extension"
           ].includes(include)
@@ -142,8 +144,31 @@ async function validateProducts() {
     for (const skill of skills) {
       validateSkillContent(await readFile(skill.skillFile, "utf8"), skill.skillFile);
     }
+    const generatedRoots = {
+      codex: join(root, "clients", "codex", "plugins", manifest.name),
+      claude: join(root, "clients", "claude", "plugins", manifest.name),
+      copilot: join(root, "clients", "copilot", "products", manifest.name),
+      gemini: join(root, "clients", "gemini", "extensions", manifest.name)
+    };
+    for (const client of manifest.clients) {
+      const metadataPath = join(generatedRoots[client], ".bos-product.json");
+      if (!(await pathExists(metadataPath))) {
+        failures.push(`Missing generated product metadata: ${metadataPath}`);
+        continue;
+      }
+      const metadata = await readJson(metadataPath);
+      if (
+        metadata.application_name !== manifest.application_name ||
+        metadata.mcp_group_name !== manifest.mcp_group_name ||
+        "mcp_application" in metadata ||
+        "mcp_resource_group" in metadata ||
+        "installed_app_id" in metadata
+      ) {
+        failures.push(`Generated named MCP route metadata drift: ${metadataPath}`);
+      }
+    }
     if (manifest.clients.includes("codex")) {
-      const pluginRoot = join(root, "clients", "codex", "plugins", manifest.name);
+      const pluginRoot = generatedRoots.codex;
       const pluginPath = join(pluginRoot, ".codex-plugin", "plugin.json");
       if (!(await pathExists(pluginPath))) {
         failures.push(`Missing generated Codex plugin: ${pluginPath}`);
@@ -154,6 +179,22 @@ async function validateProducts() {
           generated.version !== manifest.version
         ) {
           failures.push(`Generated Codex identity drift: ${pluginPath}`);
+        }
+      }
+      const runtimePath = join(pluginRoot, ".mcp.json");
+      if (manifest.runtime && await pathExists(runtimePath)) {
+        const runtime = await readJson(runtimePath);
+        const server = runtime.mcpServers?.[manifest.mcp_group_name];
+        const expectedUrl = materializeMcpUrl(
+          "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
+          manifest
+        );
+        if (
+          server?.url !== expectedUrl ||
+          server?.bearer_token_env_var !== "BOS_API_KEY" ||
+          JSON.stringify(runtime).includes("BOS_INSTALLED_APP_ID")
+        ) {
+          failures.push(`Generated Codex named MCP route drift: ${runtimePath}`);
         }
       }
       for (const skill of skills) {
@@ -174,14 +215,110 @@ async function validateProducts() {
         }
       }
     }
+    if (manifest.clients.includes("claude")) {
+      const pluginRoot = generatedRoots.claude;
+      const pluginPath = join(pluginRoot, ".claude-plugin", "plugin.json");
+      if (!(await pathExists(pluginPath))) {
+        failures.push(`Missing generated Claude plugin: ${pluginPath}`);
+      } else {
+        const generated = await readJson(pluginPath);
+        if (
+          generated.name !== manifest.name ||
+          generated.version !== manifest.version
+        ) {
+          failures.push(`Generated Claude identity drift: ${pluginPath}`);
+        }
+        if (manifest.runtime) {
+          if (
+            generated.mcpServers !== "./.mcp.json" ||
+            generated.userConfig !== undefined
+          ) {
+            failures.push(`Generated Claude runtime configuration drift: ${pluginPath}`);
+          }
+        }
+      }
+      const runtimePath = join(pluginRoot, ".mcp.json");
+      if (manifest.runtime) {
+        if (!(await pathExists(runtimePath))) {
+          failures.push(`Missing generated Claude MCP configuration: ${runtimePath}`);
+        } else {
+          const runtime = await readJson(runtimePath);
+          const server = runtime.mcpServers?.[manifest.mcp_group_name];
+          const expectedUrl = materializeMcpUrl(
+            "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
+            manifest
+          );
+          if (
+            server?.type !== "http" ||
+            server?.url !== expectedUrl ||
+            server?.headers?.Authorization !== "Bearer ${BOS_API_KEY}" ||
+            Object.keys(runtime.mcpServers ?? {}).length !== 1 ||
+            JSON.stringify(runtime).includes("BOS_INSTALLED_APP_ID") ||
+            JSON.stringify(runtime).includes("installed_app_id")
+          ) {
+            failures.push(`Generated Claude named MCP route drift: ${runtimePath}`);
+          }
+        }
+      }
+      for (const skill of skills) {
+        const generatedSkillRoot = join(pluginRoot, "skills", skill.name);
+        const generatedSkillFile = join(generatedSkillRoot, "SKILL.md");
+        if (!(await pathExists(generatedSkillFile))) {
+          failures.push(`Missing generated skill: ${generatedSkillFile}`);
+          continue;
+        }
+        const [sourceHashes, generatedHashes] = await Promise.all([
+          hashTree(skill.sourcePath),
+          hashTree(generatedSkillRoot)
+        ]);
+        if (JSON.stringify(sourceHashes) !== JSON.stringify(generatedHashes)) {
+          failures.push(
+            `Generated skill differs from canonical source: ${generatedSkillRoot}`
+          );
+        }
+      }
+    }
+    if (manifest.clients.includes("copilot")) {
+      const productRoot = generatedRoots.copilot;
+      const runtimePath = join(productRoot, ".github", "mcp.json");
+      if (!manifest.runtime && await pathExists(runtimePath)) {
+        failures.push(`Skills-only product contains Copilot MCP configuration: ${runtimePath}`);
+      } else if (manifest.runtime && !(await pathExists(runtimePath))) {
+        failures.push(`Missing generated Copilot MCP configuration: ${runtimePath}`);
+      } else if (manifest.runtime) {
+        const runtime = await readJson(runtimePath);
+        const server = runtime.mcpServers?.[manifest.mcp_group_name];
+        const expectedUrl = materializeMcpUrl(
+          "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
+          manifest
+        );
+        if (
+          server?.type !== "http" ||
+          server?.url !== expectedUrl ||
+          server?.headers?.Authorization !==
+            "Bearer ${COPILOT_MCP_BOS_API_KEY}" ||
+          JSON.stringify(server?.tools) !== JSON.stringify(["*"]) ||
+          Object.keys(runtime.mcpServers ?? {}).length !== 1 ||
+          /BOS_INSTALLED_APP_ID|installed_app_id/.test(JSON.stringify(runtime))
+        ) {
+          failures.push(`Generated Copilot named MCP route drift: ${runtimePath}`);
+        }
+      }
+      for (const skill of skills) {
+        const generatedSkillRoot = join(productRoot, "skills", skill.name);
+        const [sourceHashes, generatedHashes] = await Promise.all([
+          hashTree(skill.sourcePath),
+          hashTree(generatedSkillRoot)
+        ]);
+        if (JSON.stringify(sourceHashes) !== JSON.stringify(generatedHashes)) {
+          failures.push(
+            `Generated skill differs from canonical source: ${generatedSkillRoot}`
+          );
+        }
+      }
+    }
     if (manifest.clients.includes("gemini")) {
-      const extensionRoot = join(
-        root,
-        "clients",
-        "gemini",
-        "extensions",
-        manifest.name
-      );
+      const extensionRoot = generatedRoots.gemini;
       const extensionPath = join(extensionRoot, "gemini-extension.json");
       if (!(await pathExists(extensionPath))) {
         failures.push(`Missing generated Gemini extension: ${extensionPath}`);
@@ -197,6 +334,32 @@ async function validateProducts() {
           if (typeof server.httpUrl !== "string" || "url" in server) {
             failures.push(`Gemini MCP transport must use httpUrl: ${extensionPath}`);
           }
+        }
+        if (!manifest.runtime) {
+          if (generated.mcpServers !== undefined || generated.settings !== undefined) {
+            failures.push(`Skills-only Gemini product contains MCP configuration: ${extensionPath}`);
+          }
+          continue;
+        }
+        const expectedUrl = materializeMcpUrl(
+          "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
+          manifest
+        );
+        if (
+          generated.mcpServers?.[manifest.mcp_group_name]?.httpUrl !== expectedUrl ||
+          JSON.stringify(generated).includes("BOS_INSTALLED_APP_ID")
+        ) {
+          failures.push(`Generated Gemini named MCP route drift: ${extensionPath}`);
+        }
+        const settings = generated.settings ?? [];
+        if (
+          settings.length !== 1 ||
+          settings[0]?.envVar !== "BOS_API_KEY" ||
+          settings[0]?.sensitive !== true ||
+          generated.mcpServers?.[manifest.mcp_group_name]?.headers?.Authorization !==
+            "Bearer ${BOS_API_KEY}"
+        ) {
+          failures.push(`Generated Gemini authentication configuration drift: ${extensionPath}`);
         }
       }
       for (const skill of skills) {

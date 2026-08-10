@@ -21,7 +21,9 @@ release system for portable BOS skills and native remote MCP client adapters.
 ## Runtime invariants
 
 1. Resolve authenticated tenant, organization, application, installation,
-   role, and plugin scope before private execution.
+   role, and plugin scope on the server before private execution. Client route
+   names select an application-owned MCP tool group; they do not supply or
+   grant operational authority.
 2. Keep platform behavior application-neutral and place business behavior in
    the owning application graph or capability.
 3. Route mutations through PO orchestration and GO persistence.
@@ -47,8 +49,18 @@ release system for portable BOS skills and native remote MCP client adapters.
     Derived configuration never grants authority.
 11. Connect clients directly to BOS over HTTPS Streamable HTTP. Use the native
     remote MCP configuration in Codex and Claude, and configure the equivalent
-    remote connection in Copilot. A BOS product profile owns its endpoint and
-    server-advertised tool set; clients never aggregate or invent BOS tools.
+    remote connection in Copilot. Every runtime product declares one immutable
+    package-owned route using the exact static form
+    `/mcp/apps/{application-name}/{skill-group-name}`. Both path segments are
+    stable human-readable slugs, never IDs or customer settings. The BOS API
+    key configured once for the client authenticates every named connection;
+    the service derives
+    and validates actor, tenant, organization, installation, role, plugin, and
+    capability authority. A client may load multiple runtime products while
+    retaining exactly one BOS identity. Domain-skill routing chooses the
+    matching named connection without selecting tenant scope. Codex remote
+    servers bind `BOS_API_KEY` through
+    `bearer_token_env_var` so the host can resolve it without exposing it.
 12. Treat deployment artifacts as build outputs. The complete cross-platform
     build generates client packages, deterministic product archives, the
     release manifest, and versioned and stable OS-neutral customer ZIPs.
@@ -61,13 +73,30 @@ release system for portable BOS skills and native remote MCP client adapters.
     MCP endpoints, and tool grants remain sealed. Every product ships the same
     extension manager and versioned product metadata for Codex, Claude,
     Copilot, and Gemini CLI.
-14. Route feedback mutations through the canonical installed-app-bound MCP URL
-    `/mcp/apps/{installed_app_id}`. Store the installation ID as static client
-    configuration for that native remote MCP connection and verify it against
-    `bos_get_context`. Keep
-    organization, application, and installation route scope out of feedback
-    arguments, preserve the organization-scoped bearer credential, and fail
-    closed without broad-endpoint fallback.
+14. Route feedback mutations through the runtime product's canonical named MCP
+    route. Keep organization, application, installation, and delegated-role
+    scope out of feedback arguments. Derive operational scope from the
+    authenticated server context and fail closed on missing or ambiguous
+    authority without broad-endpoint fallback.
+15. Make the agent responsible for the MCP client lifecycle during an active
+    request. When a transport stream or MCP session closes, reconnect the same
+    configured endpoint, rediscover its live tools, revalidate canonical
+    context, and resume the interrupted request with bounded retry. Reconcile
+    uncertain mutations by operation or idempotency identity before replay.
+    Require user action only for secure provider authorization or credential
+    entry surfaces that inherently need direct user interaction.
+16. Distribute Claude products through a repository-root native marketplace or
+    Claude's native manual plugin-upload control. Keep remote release downloads
+    out of conversational installation workflows. Runtime Claude plugins use
+    the one client-global `BOS_API_KEY` already configured by the host and the
+    exact package-generated named HTTPS MCP route. Individual plugins never
+    declare independent key fields. Product application and skill-group names
+    remain immutable package metadata.
+17. Treat a Codex bearer registration as current only when `BOS_API_KEY` exists
+    in the active host process. On macOS, launch the desktop host with that one
+    process-scoped credential fetched from approved managed storage. Never
+    persist a bearer in package files or publish it into the global GUI launch
+    environment.
 
 ## Knowledge and review
 

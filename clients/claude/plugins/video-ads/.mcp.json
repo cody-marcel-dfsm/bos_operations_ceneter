@@ -2,7 +2,7 @@
   "mcpServers": {
     "video-ads": {
       "type": "http",
-      "url": "https://dfsm.ai/mcp/video-ads",
+      "url": "https://dfsm.ai/mcp/apps/leaddirector/video-ads",
       "headers": {
         "Authorization": "Bearer ${BOS_API_KEY}"
       }

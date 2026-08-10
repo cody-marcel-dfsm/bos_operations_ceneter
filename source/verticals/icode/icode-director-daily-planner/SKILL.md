@@ -1,9 +1,9 @@
 ---
 name: icode-director-daily-planner
-description: Create an iCode director's date-specific operating planner from tenant-scoped BOS data. Use when asked for a director daily plan, opening brief, class rosters, family contact sheet, new-lead call list, scheduled trials for a day or date range, families needing trial confirmation or follow-up, appropriate parent email drafts, or a combined action plan for iCode organization.
+description: Create daily plans and weekly director summaries from tenant-scoped iCode BOS data. Use when asked for a director daily plan, opening brief, weekly summary, weekly director report, week-in-review, class or enrollment summary, family contact sheet, new-lead call list, scheduled trials, follow-ups, wins, risks, next-week priorities, or a combined iCode operating update.
 ---
 
-# iCode Director Daily Planner
+# iCode Director Plans and Summaries
 
 This skill is for authenticated adult school staff performing legitimate
 school administration. Students and minors are data subjects, never users or
@@ -11,18 +11,27 @@ operators. Include only the minimum student or family information needed for
 the requested operating plan. Do not use this workflow for admissions,
 disciplinary, eligibility, or other high-impact decisions about students.
 
-Create a concise, action-oriented planner for one local business date. Retrieve live data through `bos_icode`; never distribute or send the planner unless the user separately requests and authorizes distribution.
+Create a concise, action-oriented daily planner or weekly director summary.
+Retrieve live data through the named `icode-operations` MCP connection; never
+distribute or send the result unless the user separately requests and authorizes
+distribution. “For my director” identifies the report audience and never
+requires the director's identity for preparation.
 
 ## Required companion guidance
 
 Read and follow these installed skills before retrieving data:
 
 - `bos-mcp-client` for scope resolution, live tool discovery, and provider access.
+- `icode-customer-initialization` when customer settings are missing, incomplete,
+  or invalid.
 - `bos-visual-output` for a timeline-led, visual operating brief.
 - `icode-class-operations` for date-bound class rosters.
 - `icode-student-operations` for student, enrollment, and family identity handling.
 
-Use the exact organization, installed app, role, plugin, and capability scope returned by `bos_get_context`. Treat the live MCP manifest as authoritative. Use only BOS MCP or a published BOS backend API.
+Use the single user and role resolved from the configured `BOS_API_KEY` by
+`bos_get_context`. BOS derives organization, installation, plugin, and
+capability scope. Treat the live MCP manifest as authoritative. Never ask the
+user to choose a director, organization, source, key, or role for preparation.
 
 When any planner source reports an authentication error, follow
 `bos-mcp-client` authentication recovery and prompt the user to complete that
@@ -31,19 +40,50 @@ sections while authorization is pending.
 
 ## Workflow
 
-1. Load the installed product's `config/customer-settings.json`. Resolve the
-   requested date in its required `timezone`. Default to today and state the
-   full date. Stop when the setting is absent or invalid.
-2. Call `bos_get_context` once and select the selected iCode organization `bos_icode` scope that exposes the required read capabilities.
+1. Load the installed product's `config/customer-settings.json`. When it is
+   absent or invalid, run `icode-customer-initialization` immediately and
+   resume this request after applying the validated settings. Resolve the
+   reporting period in its required `timezone`. A daily request defaults to
+   today. A weekly request without dates defaults to the most recently completed
+   local Monday-through-Sunday week. State the resolved period and continue
+   without asking.
+2. Call `bos_get_context` once through `icode-operations`. Require exactly one
+   authenticated user and role and accept the server-derived iCode scope. A
+   server violation is a configuration error, never a user selection question.
 3. Retrieve date-bound Calimatic enrollments with the enrollment-listing
    capability. Use student/family lookup only to add contact information
    missing from the roster response. For camp dates, also follow
    `icode-class-operations` to include confirmed Care.com child-days from the
    connected Gmail account selected by `mailboxes.care_com`.
-4. Retrieve active new leads from Lead Director. Default the intake window to the preceding 24 hours through planner generation time. Include leads requiring an initial call; exclude duplicate, spam, closed-lost, and already-converted records when those statuses are explicit.
+4. Retrieve active new leads from Lead Director. For a daily planner, use the
+   preceding 24 hours through generation time. For a weekly summary, use the
+   full resolved Monday-through-Sunday reporting period. Include leads requiring
+   action; exclude duplicate, spam, closed-lost, and already-converted records
+   when those statuses are explicit.
 5. For scheduled-trial, confirmation, follow-up, or trial-draft requests, read and execute [references/trial-reconciliation.md](references/trial-reconciliation.md). Compose the live Lead Director, Calendar, and Gmail MCP primitives client-side; do not wait for or require a composite server tool.
 6. Normalize times to the configured `timezone`, preserve provider provenance internally, deduplicate conservatively, and flag conflicts or missing fields.
-7. Render the planner using [references/planner-content.md](references/planner-content.md).
+7. Render a daily planner using
+   [references/planner-content.md](references/planner-content.md). Render a
+   weekly request using
+   [references/weekly-summary-content.md](references/weekly-summary-content.md).
+
+## Weekly director summary
+
+For a weekly summary, retrieve and synthesize the full resolved period:
+
+- classes held, enrollments, attendance, capacity, and material schedule changes;
+- new leads, lead response, pipeline movement, and unresolved lead actions;
+- trials scheduled, completed, converted, missed, and needing confirmation or follow-up;
+- parent or guardian follow-ups and communication actions;
+- operational wins and evidence-backed positive movement;
+- risks, missing evidence, overdue actions, and capability blockers; and
+- prioritized actions for the next local week.
+
+Use every authorized iCode source needed for these sections automatically.
+Never ask whether to use iCode operations, email, Calendar, Lead Director,
+Calimatic, or user-provided data. Report a source-specific partial result only
+after live discovery or retrieval proves that source unavailable. Never convert
+unavailable data into zero.
 
 ## Trial reconciliation hard gate
 

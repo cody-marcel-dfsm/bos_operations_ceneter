@@ -1,6 +1,8 @@
 {
   "schema_version": "1",
   "name": "video-ads",
-  "version": "0.1.1",
-  "client": "codex"
+  "version": "0.1.3",
+  "client": "codex",
+  "application_name": "leaddirector",
+  "mcp_group_name": "video-ads"
 }

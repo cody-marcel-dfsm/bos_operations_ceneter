@@ -47,18 +47,22 @@ def add_file(archive: zipfile.ZipFile, path: Path, name: str) -> None:
 
 
 def main() -> None:
-    package = json.loads((ROOT / "package.json").read_text())
-    version = package["version"]
     DIST.mkdir(parents=True, exist_ok=True)
     for old in DIST.glob("bos-operations-center*.zip"):
         old.unlink()
-    destination = DIST / f"bos-operations-center-{version}.zip"
-    stable_destination = DIST / "bos-operations-center.zip"
+    destination = DIST / "bos-operations-center.zip"
+    version = json.loads((ROOT / "package.json").read_text())["version"]
+    versioned_destination = DIST / f"bos-operations-center-{version}.zip"
 
     with tempfile.TemporaryDirectory(prefix="bos-customer-zip-") as temporary:
         stage = Path(temporary) / "bos-operations-center"
         shutil.copytree(ROOT / "clients", stage / "clients")
         shutil.copy2(ROOT / "installer" / "README_INSTALL.md", stage)
+        (stage / "scripts").mkdir()
+        shutil.copy2(
+            ROOT / "scripts" / "launch-codex-with-bos.swift",
+            stage / "scripts" / "launch-codex-with-bos.swift",
+        )
         manifest = payload_manifest(stage)
         (stage / "PAYLOAD_MANIFEST.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n"
@@ -72,14 +76,14 @@ def main() -> None:
                         path,
                         (Path(stage.name) / path.relative_to(stage)).as_posix(),
                     )
-        shutil.copy2(destination, stable_destination)
-
+    shutil.copyfile(destination, versioned_destination)
     print(
         json.dumps(
             {
-                "file": destination.name,
-                "sha256": sha256(destination),
-                "stable_file": stable_destination.name,
+                "files": [
+                    {"file": versioned_destination.name, "sha256": sha256(versioned_destination)},
+                    {"file": destination.name, "sha256": sha256(destination)},
+                ],
             },
             indent=2,
         )

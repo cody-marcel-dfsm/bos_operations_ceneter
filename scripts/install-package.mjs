@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { execFile } from "node:child_process";
 import {
   chmod,
   cp,
@@ -12,6 +13,7 @@ import {
 import { homedir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { validateExtensionManifest } from "../source/platform/manage-customer-extension/scripts/manage-extension.mjs";
 import {
   hashFile,
@@ -26,6 +28,7 @@ import {
 } from "./lib/package-model.mjs";
 
 const stateFileName = ".bos-package-state.json";
+const execFileAsync = promisify(execFile);
 const retiredBosBrokerPaths = new Set([
   "scripts/bos_mcp_broker.py",
   "tests/test_bos_mcp_broker.py",
@@ -75,6 +78,100 @@ function parseArgs(argv) {
     }
   }
   return options;
+}
+
+export function codexBosMcpRegistration(applicationName, mcpGroupName) {
+  const stableName = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+  if (!stableName.test(applicationName ?? "") ||
+      !stableName.test(mcpGroupName ?? "")) {
+    throw new Error("Application and MCP group names must be kebab-case strings");
+  }
+  const url = `https://dfsm.ai/mcp/apps/${applicationName}/${mcpGroupName}`;
+  return {
+    name: mcpGroupName,
+    url,
+    bearer_token_env_var: "BOS_API_KEY",
+    args: [
+      "mcp", "add", mcpGroupName, "--url", url,
+      "--bearer-token-env-var", "BOS_API_KEY"
+    ]
+  };
+}
+
+export async function codexHostBearerState(runCommand = execFileAsync) {
+  if (process.platform !== "darwin") {
+    return {
+      state: "verification_required",
+      reason: "codex_host_inspection_unsupported"
+    };
+  }
+  try {
+    const processes = await runCommand("ps", ["-axo", "pid=,command="]);
+    const line = String(processes?.stdout ?? processes ?? "")
+      .split("\n")
+      .find((candidate) =>
+        candidate.includes("/Applications/ChatGPT.app/Contents/Resources/codex") &&
+        candidate.includes("app-server")
+      );
+    if (!line) {
+      return { state: "configuration_required", reason: "codex_host_not_running" };
+    }
+    const pid = Number(line.trim().split(/\s+/, 1)[0]);
+    const environment = await runCommand("ps", ["eww", "-p", String(pid), "-o", "command="]);
+    const command = String(environment?.stdout ?? environment ?? "");
+    if (!/(?:^|\s)BOS_API_KEY=\S+/.test(command)) {
+      return {
+        state: "configuration_required",
+        reason: "codex_host_bos_api_key_missing",
+        pid
+      };
+    }
+    return { state: "current", pid };
+  } catch {
+    return {
+      state: "verification_required",
+      reason: "codex_host_inspection_failed"
+    };
+  }
+}
+
+async function configureCodexBosMcp(options, paths) {
+  const runtimePath = join(paths.target, ".mcp.json");
+  if (!(await pathExists(runtimePath))) return { state: "not_applicable" };
+  const runtime = await readJson(runtimePath);
+  const runtimeServer = Object.values(runtime.mcpServers ?? {})[0];
+  if (!runtimeServer) return { state: "not_applicable" };
+  const metadata = await readJson(join(paths.target, ".bos-product.json"));
+  const registration = codexBosMcpRegistration(
+    metadata.application_name,
+    metadata.mcp_group_name
+  );
+  if (runtimeServer.url !== registration.url) {
+    throw new Error("Packaged MCP resource-group URL does not match product metadata");
+  }
+  const runCommand = options.runCommand ?? execFileAsync;
+  await runCommand("codex", registration.args);
+  const verification = await runCommand("codex", ["mcp", "get", registration.name]);
+  const output = String(verification?.stdout ?? verification ?? "");
+  if (!output.includes(`url: ${registration.url}`) ||
+      !output.includes(`bearer_token_env_var: ${registration.bearer_token_env_var}`)) {
+    throw new Error("Codex BOS MCP registration verification failed");
+  }
+  const host = await (options.inspectCodexHost ?? codexHostBearerState)();
+  if (host.state !== "current") {
+    return {
+      ...host,
+      url: registration.url,
+      bearer_token_env_var: registration.bearer_token_env_var
+    };
+  }
+  return {
+    state: "current",
+    name: registration.name,
+    url: registration.url,
+    bearer_token_env_var: registration.bearer_token_env_var,
+    host_pid: host.pid
+  };
 }
 
 export function validateCustomerSettings(settings) {
@@ -649,13 +746,18 @@ export async function applyInstallation(rawOptions = {}) {
   }
   await initializeCustomerSettings(options, paths);
   await applyCustomerSettings(options, paths);
-  return inspectInstallation({ ...options, command: "verify" });
+  const runtime = await configureCodexBosMcp(options, paths);
+  const result = await inspectInstallation({ ...options, command: "verify" });
+  result.runtime = runtime;
+  return result;
 }
 
 export async function verifyInstallation(options = {}) {
   const report = await inspectInstallation({ ...options, command: "verify" });
+  report.runtime = await configureCodexBosMcp(options, report.paths);
   report.ok =
-    report.state === "managed-current" && report.marketplace === "current";
+    report.state === "managed-current" && report.marketplace === "current" &&
+    ["current", "not_applicable"].includes(report.runtime.state);
   return report;
 }
 

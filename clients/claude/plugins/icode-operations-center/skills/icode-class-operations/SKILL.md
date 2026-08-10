@@ -11,7 +11,7 @@ operators. Access and display only the minimum student or family information
 needed for the requested roster, capacity, attendance, or placement task. Do
 not publish, export, or distribute it without a separate authorized request.
 
-Use the tenant-neutral `bos` MCP and follow the `use-bos` context workflow.
+Use the tenant-neutral `bos` MCP and follow the `bos-mcp-client` context workflow.
 Use Calimatic for class/enrollment state and Calendar only as schedule evidence.
 Load the installed product's `config/customer-settings.json`. For Care.com
 Backup Care evidence addressed to `mailboxes.care_com`, follow
@@ -20,9 +20,9 @@ route that mailbox through BOS Gmail. Stop and report configuration required
 when the mailbox setting is empty or absent.
 Use `bos-visual-output` for multi-class schedules, capacity, attendance, and
 camp-assignment results.
-When the user requests Calimatic, select the authorized BOS context exposing
-the Calimatic capability and copy `org_id`, `app_code`, `installed_app_id`, and
-`delegated_role_id` exactly into the call. Never use a direct provider client or
+When the user requests Calimatic, use the packaged iCode skill-group connection
+and omit `org_id`, `app_code`, `installed_app_id`, and `delegated_role_id`; BOS
+derives them from the authenticated installation. Never use a direct provider client or
 browser session as a fallback. When BOS reports an authentication or credential
 error, follow its secure handoff flow and never request a secret in chat. If a
 required capability is unavailable, return a useful partial result from other

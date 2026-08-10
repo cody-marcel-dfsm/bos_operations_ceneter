@@ -8,6 +8,6 @@ dependencies:
       value: "bos_icode"
       description: "BOS remote agent gateway for iCode organization"
       transport: "streamable_http"
-      url: "https://dfsm.ai/mcp"
+      url: "https://dfsm.ai/mcp/apps/leaddirector/icode-operations"
 policy:
   allow_implicit_invocation: true

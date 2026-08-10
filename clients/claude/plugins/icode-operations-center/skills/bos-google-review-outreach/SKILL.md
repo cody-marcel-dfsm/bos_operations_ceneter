@@ -6,8 +6,9 @@ description: Run and report iCode Google Business Profile review outreach throug
 # BOS Google Review Outreach
 
 Use `bos-mcp-client` for context and live tool discovery. Use only authenticated
-BOS MCP operations. Preserve the resolved `org_id`, `app_code`,
-`installed_app_id`, and `delegated_role_id` on every call.
+BOS MCP operations. On the packaged iCode skill-group connection, omit
+`org_id`, `app_code`, `installed_app_id`, and `delegated_role_id`; BOS derives
+them from the authenticated installation.
 Use `bos-visual-output` for campaign, cohort, rating, and completion reporting.
 
 The BOS MCP key authenticates the agent installation and bounds organization,

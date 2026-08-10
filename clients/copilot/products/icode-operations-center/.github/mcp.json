@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "icode-operations": {
+      "type": "http",
+      "url": "https://dfsm.ai/mcp/apps/leaddirector/icode-operations",
+      "headers": {
+        "Authorization": "Bearer ${COPILOT_MCP_BOS_API_KEY}"
+      },
+      "tools": [
+        "*"
+      ]
+    }
+  }
+}

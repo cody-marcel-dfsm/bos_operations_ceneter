@@ -1,6 +1,6 @@
 {
   "name": "video-ads",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "description": "Create, review, and deliver video ads through tenant-scoped BOS capabilities.",
   "author": {
     "name": "Infinite State Machines LLC"

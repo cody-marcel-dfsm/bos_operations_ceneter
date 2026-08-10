@@ -13,11 +13,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import {
-  applyInstallation,
+  applyInstallation as applyInstallationRaw,
+  codexBosMcpRegistration,
+  codexHostBearerState,
   deriveInitialCustomerSettings,
   inspectInstallation,
   validateCustomerSettings,
-  verifyInstallation
+  verifyInstallation as verifyInstallationRaw
 } from "../scripts/install-package.mjs";
 import { createCustomerExtension } from "../scripts/create-extension.mjs";
 import { hashFile, root } from "../scripts/lib/package-model.mjs";
@@ -41,6 +43,125 @@ const customerSettings = {
     bright_horizons_rate_per_child_day: 100
   }
 };
+
+const mcpApplication = "leaddirector";
+const mcpResourceGroup = "icode-operations";
+const resourceGroupUrl = "https://dfsm.ai/mcp/apps/leaddirector/icode-operations";
+
+async function fakeCodex(_command, args) {
+  if (args[0] === "mcp" && args[1] === "get") {
+    const group = args[2];
+    const url = `https://dfsm.ai/mcp/apps/leaddirector/${group}`;
+    return {
+      stdout: [
+        group,
+        `  url: ${url}`,
+        "  bearer_token_env_var: BOS_API_KEY"
+      ].join("\n")
+    };
+  }
+  return { stdout: "" };
+}
+
+function applyInstallation(options) {
+  return applyInstallationRaw({
+    inspectCodexHost: async () => ({ state: "current", pid: 12345 }),
+    runCommand: fakeCodex,
+    ...options
+  });
+}
+
+function verifyInstallation(options) {
+  return verifyInstallationRaw({
+    inspectCodexHost: async () => ({ state: "current", pid: 12345 }),
+    runCommand: fakeCodex,
+    ...options
+  });
+}
+
+test("Codex runtime registration uses the client-configured BOS key", () => {
+  assert.deepEqual(codexBosMcpRegistration(mcpApplication, mcpResourceGroup), {
+    name: "icode-operations",
+    url: resourceGroupUrl,
+    bearer_token_env_var: "BOS_API_KEY",
+    args: [
+      "mcp", "add", "icode-operations", "--url", resourceGroupUrl,
+      "--bearer-token-env-var", "BOS_API_KEY"
+    ]
+  });
+  assert.throws(
+    () => codexBosMcpRegistration("leaddirector", "not a group"),
+    /kebab-case/
+  );
+});
+
+test("Codex runtime registration always uses immutable named package routes", () => {
+  const registration = codexBosMcpRegistration(
+    "leaddirector",
+    "icode-operations"
+  );
+  assert.equal(
+    registration.url,
+    "https://dfsm.ai/mcp/apps/leaddirector/icode-operations"
+  );
+  assert(!registration.url.includes("installed_app_id"));
+  assert(!registration.args.includes("BOS_INSTALLED_APP_ID"));
+});
+
+test("Codex runtime installation derives app and resource group from product", async () => {
+  const home = await temporaryHome();
+  const report = await applyInstallationRaw({
+    home,
+    product: "icode-operations-center",
+    inspectCodexHost: async () => ({ state: "current", pid: 12345 }),
+    runCommand: fakeCodex
+  });
+  assert.equal(report.runtime.state, "current");
+  assert.equal(report.runtime.url, resourceGroupUrl);
+});
+
+test("Codex runtime installation rejects a stale uncredentialed host", async () => {
+  const home = await temporaryHome();
+  const report = await applyInstallationRaw({
+    home,
+    product: "icode-operations-center",
+    environment: { BOS_API_KEY: "credentialed-installer-shell" },
+    inspectCodexHost: async () => ({
+      state: "configuration_required",
+      reason: "codex_host_bos_api_key_missing",
+      pid: 4321
+    }),
+    runCommand: fakeCodex
+  });
+  assert.deepEqual(report.runtime, {
+    state: "configuration_required",
+    reason: "codex_host_bos_api_key_missing",
+    pid: 4321,
+    url: resourceGroupUrl,
+    bearer_token_env_var: "BOS_API_KEY"
+  });
+});
+
+test("Codex host inspection reads the active app-server environment", async (context) => {
+  if (process.platform !== "darwin") {
+    context.skip("macOS host inspection");
+    return;
+  }
+  const calls = [];
+  const report = await codexHostBearerState(async (_command, args) => {
+    calls.push(args);
+    if (args[0] === "-axo") {
+      return {
+        stdout: "4321 /Applications/ChatGPT.app/Contents/Resources/codex app-server\n"
+      };
+    }
+    return {
+      stdout: "/Applications/ChatGPT.app/Contents/Resources/codex app-server BOS_API_KEY=test-only"
+    };
+  });
+  assert.deepEqual(report, { state: "current", pid: 4321 });
+  assert.deepEqual(calls[1], ["eww", "-p", "4321", "-o", "command="]);
+});
 
 test("initialization derives safe client values and leaves unknowns unresolved", () => {
   const template = {
@@ -274,74 +395,6 @@ test("compatible unmanaged plugin is adopted", async () => {
   assert.equal(before.state, "compatible-unmanaged");
   const after = await applyInstallation({ home, product: "bos" });
   assert.equal(after.state, "managed-current");
-});
-
-test("legacy local broker installation migrates to configured API-key MCP", async () => {
-  const home = await temporaryHome();
-  const desired = join(root, "clients", "codex", "plugins", "bos");
-  const target = join(home, "plugins", "bos");
-  await mkdir(join(home, "plugins"), { recursive: true });
-  await cp(desired, target, { recursive: true });
-  await mkdir(join(target, "scripts"), { recursive: true });
-  await writeFile(
-    join(target, "scripts", "bos_mcp_broker.py"),
-    "# retired local credential broker\n"
-  );
-  await mkdir(join(target, "tests", "__pycache__"), { recursive: true });
-  await writeFile(
-    join(target, "tests", "test_bos_mcp_broker.py"),
-    "# retired broker test\n"
-  );
-  await writeFile(
-    join(target, "tests", "test_bos_mcp_broker_live.py"),
-    "# retired live broker test\n"
-  );
-  await writeFile(
-    join(target, "tests", "__pycache__", "test_bos_mcp_broker.cpython-312.pyc"),
-    "retired bytecode"
-  );
-  await writeFile(
-    join(target, ".mcp.json"),
-    `${JSON.stringify({
-      mcpServers: {
-        bos: {
-          command: "python3",
-          args: ["./scripts/bos_mcp_broker.py"],
-          cwd: "."
-        }
-      }
-    }, null, 2)}\n`
-  );
-  const userFile = join(target, "USER-NOTES.txt");
-  await writeFile(userFile, "preserve me\n");
-
-  const before = await inspectInstallation({ home, product: "bos" });
-  assert.equal(before.state, "partial");
-  assert(before.actions.update.includes(".mcp.json"));
-  assert.deepEqual(before.actions.remove.sort(), [
-    "scripts/bos_mcp_broker.py",
-    "tests/__pycache__/test_bos_mcp_broker.cpython-312.pyc",
-    "tests/test_bos_mcp_broker.py",
-    "tests/test_bos_mcp_broker_live.py"
-  ]);
-
-  const after = await applyInstallation({ home, product: "bos" });
-  assert.equal(after.state, "managed-current");
-  await assert.rejects(
-    readFile(join(target, "scripts", "bos_mcp_broker.py"), "utf8"),
-    /ENOENT/
-  );
-  await assert.rejects(
-    readFile(join(target, "tests", "test_bos_mcp_broker.py"), "utf8"),
-    /ENOENT/
-  );
-  const mcp = JSON.parse(await readFile(join(target, ".mcp.json"), "utf8"));
-  assert.equal(
-    mcp.mcpServers.bos.headers.Authorization,
-    "Bearer ${BOS_API_KEY}"
-  );
-  assert.equal(mcp.mcpServers.bos.command, undefined);
-  assert.equal(await readFile(userFile, "utf8"), "preserve me\n");
 });
 
 test("stale managed file updates when prior hash proves ownership", async () => {

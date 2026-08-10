@@ -317,7 +317,8 @@ scope resolution, provider setup, verification, and retry sequence.
 - Represent BOS client authorization, tenant resolution, capability
   authorization, and provider credential health as distinct states.
 - Generate native remote Streamable HTTP configuration for Codex and Claude.
-- Forward the client-managed `BOS_API_KEY` as an HTTPS Bearer header.
+- Forward the client-managed `BOS_API_KEY` as the HTTPS Bearer header on every
+  named connection.
 - Consume BOS-returned provider OAuth and HTTPS credential-collection actions
   without persisting or echoing credentials.
 - Implement the recovery sequence defined in the design.
@@ -453,10 +454,10 @@ remote MCP transport on macOS, Windows, and Linux.
   URL, and an environment-derived Authorization header.
 - Generated client packages contain no `command`, `stdio`, executable, Python
   runtime, or local credential listener.
-- The Video Ads product targets only `/mcp/video-ads` through the
-  `video-ads` server identity.
-- Missing `BOS_API_KEY` fails at the BOS service boundary and cannot initiate a
-  second BOS authentication mechanism.
+- The Video Ads product targets only `/mcp/apps/leaddirector/video-ads`
+  through the `video-ads` server identity.
+- A missing `BOS_API_KEY` fails at the BOS service boundary and cannot initiate
+  a second BOS authentication mechanism.
 
 **Dependencies:** BOSPKG-012, BOSPKG-015.
 
@@ -470,7 +471,7 @@ without a compiled client transport.
 - Package all generated Codex, Claude, Copilot, and Gemini distributions.
 - Publish versioned and stable OS-neutral ZIP names.
 - Run validation and release jobs on a platform-neutral CI runner.
-- Document native installation and GCP-managed `BOS_API_KEY` configuration.
+- Document native installation and the one GCP-managed `BOS_API_KEY`.
 
 **Acceptance criteria:**
 

@@ -26,8 +26,8 @@
 - `git diff --check`: passed.
 - Two consecutive complete builds produced ZIP SHA-256
   `cac59f1720707be449cd0a1f98fba85f2d4fc076d282dd4d39f4886f258f0b92`.
-- Generated Codex and Claude configurations target `https://dfsm.ai/mcp`;
-  Video Ads targets `https://dfsm.ai/mcp/video-ads` under its own server name.
+- This historical review predates the application/resource-group route
+  correction. Current generated configurations follow the named-route specs.
 - Release validation runs on Linux and the ZIP contains Codex, Claude, and
   Copilot distributions for host-native installation on macOS, Windows, and
   Linux.

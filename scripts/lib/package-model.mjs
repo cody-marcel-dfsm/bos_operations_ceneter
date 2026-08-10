@@ -54,7 +54,8 @@ export function validateProduct(manifest, path = "product.json") {
     "clients",
     "includes",
     "runtime",
-    "mcp_profile",
+    "application_name",
+    "mcp_group_name",
     "settings_template",
     "default_prompts"
   ]);
@@ -120,13 +121,22 @@ export function validateProduct(manifest, path = "product.json") {
     failures.push(`${path}: default_prompts must contain up to 3 strings`);
   }
   if (
-    manifest.mcp_profile !== undefined &&
-    !productNamePattern.test(manifest.mcp_profile)
+    manifest.application_name !== undefined &&
+    !productNamePattern.test(manifest.application_name)
   ) {
-    failures.push(`${path}: invalid mcp_profile`);
+    failures.push(`${path}: invalid application_name`);
   }
-  if (manifest.mcp_profile && !manifest.runtime) {
-    failures.push(`${path}: mcp_profile requires runtime`);
+  if (
+    manifest.mcp_group_name !== undefined &&
+    !productNamePattern.test(manifest.mcp_group_name)
+  ) {
+    failures.push(`${path}: invalid mcp_group_name`);
+  }
+  if ((manifest.application_name || manifest.mcp_group_name) && !manifest.runtime) {
+    failures.push(`${path}: application and MCP group names require runtime`);
+  }
+  if (manifest.runtime && (!manifest.application_name || !manifest.mcp_group_name)) {
+    failures.push(`${path}: runtime requires application_name and mcp_group_name`);
   }
   if (
     manifest.settings_template !== undefined &&
@@ -208,22 +218,49 @@ function publicPackagePath(path) {
   return !parts.includes("__pycache__") && !name.endsWith(".pyc");
 }
 
-export async function copyRuntime(product, pluginRoot, base = root) {
+export async function copyRuntime(product, pluginRoot, base = root, client = null) {
   if (!product.runtime) return;
   const runtimeRoot = join(base, "source", "runtime", product.runtime);
   await cp(join(runtimeRoot, ".mcp.json"), join(pluginRoot, ".mcp.json"));
-  if (product.mcp_profile) {
-    const configPath = join(pluginRoot, ".mcp.json");
+  const configPath = join(pluginRoot, ".mcp.json");
+  const config = await readJson(configPath);
+  const server = config.mcpServers?.bos;
+  if (!server || server.type !== "http" || typeof server.url !== "string") {
+    throw new Error(`Runtime ${product.runtime} has no remote BOS MCP server`);
+  }
+  config.mcpServers[product.mcp_group_name] = server;
+  if (product.mcp_group_name !== "bos") delete config.mcpServers.bos;
+  server.url = materializeMcpUrl(server.url, product);
+  await writeJson(configPath, config);
+  if (client === "codex") {
     const config = await readJson(configPath);
-    const server = config.mcpServers?.bos;
-    if (!server || server.type !== "http" || typeof server.url !== "string") {
-      throw new Error(`Runtime ${product.runtime} has no remote BOS MCP server`);
+    for (const server of Object.values(config.mcpServers ?? {})) {
+      if (server.bearer_token_env_var === "BOS_API_KEY" &&
+          server.headers?.Authorization === "Bearer ${BOS_API_KEY}") {
+        delete server.headers.Authorization;
+        if (Object.keys(server.headers).length === 0) delete server.headers;
+      }
     }
-    server.url = `${server.url.replace(/\/apps\/\$\{BOS_INSTALLED_APP_ID\}$/, "")}/${product.mcp_profile}`;
-    config.mcpServers[product.name] = server;
-    delete config.mcpServers.bos;
     await writeJson(configPath, config);
   }
+  if (client === "claude") {
+    const configPath = join(pluginRoot, ".mcp.json");
+    const config = await readJson(configPath);
+    for (const server of Object.values(config.mcpServers ?? {})) {
+      delete server.bearer_token_env_var;
+    }
+    await writeJson(configPath, config);
+  }
+}
+
+export function materializeMcpUrl(template, product) {
+  const expected = "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}";
+  if (template !== expected) {
+    throw new Error(`Runtime ${product.runtime} has an invalid BOS MCP URL template`);
+  }
+  return template
+    .replace("{application_name}", product.application_name)
+    .replace("{mcp_group_name}", product.mcp_group_name);
 }
 
 export function pluginManifest(product) {
@@ -262,12 +299,8 @@ export async function geminiExtensionManifest(product, base = root) {
   if (!sourceServer || sourceServer.type !== "http") {
     throw new Error(`Runtime ${product.runtime} has no remote BOS MCP server`);
   }
-  let httpUrl = sourceServer.url;
-  let serverName = "bos";
-  if (product.mcp_profile) {
-    httpUrl = `${httpUrl.replace(/\/apps\/\$\{BOS_INSTALLED_APP_ID\}$/, "")}/${product.mcp_profile}`;
-    serverName = product.name;
-  }
+  const httpUrl = materializeMcpUrl(sourceServer.url, product);
+  const serverName = product.mcp_group_name;
   manifest.settings = [
     {
       name: "BOS API Key",
@@ -276,14 +309,6 @@ export async function geminiExtensionManifest(product, base = root) {
       sensitive: true
     }
   ];
-  if (httpUrl.includes("${BOS_INSTALLED_APP_ID}")) {
-    manifest.settings.push({
-      name: "BOS Installed App ID",
-      description: "Static installed-app identifier for this MCP connection.",
-      envVar: "BOS_INSTALLED_APP_ID",
-      sensitive: false
-    });
-  }
   manifest.mcpServers = {
     [serverName]: {
       httpUrl,
@@ -291,6 +316,30 @@ export async function geminiExtensionManifest(product, base = root) {
     }
   };
   return manifest;
+}
+
+export async function copilotMcpManifest(product, base = root) {
+  if (!product.runtime) return { mcpServers: {} };
+
+  const runtime = await readJson(
+    join(base, "source", "runtime", product.runtime, ".mcp.json")
+  );
+  const sourceServer = runtime.mcpServers?.bos;
+  if (!sourceServer || sourceServer.type !== "http") {
+    throw new Error(`Runtime ${product.runtime} has no remote BOS MCP server`);
+  }
+  return {
+    mcpServers: {
+      [product.mcp_group_name]: {
+        type: "http",
+        url: materializeMcpUrl(sourceServer.url, product),
+        headers: {
+          Authorization: "Bearer ${COPILOT_MCP_BOS_API_KEY}"
+        },
+        tools: ["*"]
+      }
+    }
+  };
 }
 
 export function marketplaceEntry(product) {

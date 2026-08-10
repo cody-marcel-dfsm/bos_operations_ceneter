@@ -20,8 +20,9 @@ students.
 
 ## Authentication and security
 
-The remote HTTPS MCP uses the client-configured `BOS_API_KEY` bearer credential
-and `BOS_INSTALLED_APP_ID`. Credentials are never included in this package,
+The remote HTTPS MCP uses this plugin's sensitive BOS bearer credential.
+The packaged `icode-operations` MCP resource group selects its tools.
+Credentials are never included in this package,
 conversation content, logs, or tool arguments.
 
 ## Privacy and support

@@ -6,10 +6,10 @@ Windows, or Linux and select the directory for the client you use.
 
 ## Authentication
 
-Configure `BOS_API_KEY` in the client environment through the approved GCP
-configuration. The packaged MCP definitions forward that value as an HTTPS
-Bearer header to BOS. Do not write the key into a package file, customer
-settings, command argument, or conversation.
+Configure the client's single `BOS_API_KEY` through the approved configuration.
+Every packaged named MCP connection forwards that same authenticated identity.
+Keep the key out of package files,
+customer settings, command arguments, and conversations.
 
 Applying this package over a legacy Codex installation removes the retired
 local BOS credential broker and replaces its stdio MCP definition with the
@@ -18,24 +18,44 @@ native remote HTTPS connection. BOS never opens a local credential prompt.
 ## Codex
 
 Add `clients/codex` as a local marketplace, then install the `bos` plugin and
-the product plugins you need. Restart Codex after installation so it loads the
-new MCP and skill configuration.
+the product plugins you need. Apply the installer for the selected product; it
+registers and verifies the packaged MCP URL with
+`bearer_token_env_var=BOS_API_KEY`. Restart Codex after installation
+so it loads every MCP and skill configuration.
+
+Every product ships an immutable human-readable MCP route in the form
+`/mcp/apps/<application-name>/<skill-group-name>`. The installer reads that
+route from package metadata and verifies it without asking for, discovering,
+or storing an installation ID. Customer settings cannot alter MCP routing.
+
+On macOS, use `scripts/launch-codex-with-bos.swift --gcp-secret
+<gcp-secret-name> --replace` to close the active ChatGPT process and start a
+ChatGPT/Codex instance with the one BOS key scoped to that process. The launcher keeps the key out of files and the global
+GUI launch environment.
+After saving active work, add `--force-replace` when macOS declines the normal
+graceful termination request.
+It resolves `gcloud` from `PATH`; pass `--gcloud <path>` for another location.
 
 ## Claude
 
-For Claude Code, add `clients/claude` as a local marketplace and install the
-desired plugin from the `bos-icode` marketplace. For Claude Cowork, upload the
-product-specific `*-claude-<version>.zip` release asset through Customize >
-Plugins. Do not upload the cross-client customer ZIP as a skill. Each Claude
-plugin includes its own native remote HTTP MCP configuration and reads
-`BOS_API_KEY` and `BOS_INSTALLED_APP_ID` from the configured client environment.
+In Claude Desktop, Chat, or Cowork, open Customize > Plugins, choose **Add
+marketplace** > **Add from a repository**, and add
+`https://github.com/cody-marcel-dfsm/bos_operations_ceneter`. Install the
+desired plugin from the `bos-icode` marketplace. Claude uses the one
+client-global `BOS_API_KEY` already configured by the host for every runtime
+plugin. The package supplies the static
+`/mcp/apps/<application-name>/<skill-group-name>` URL. Use the product-specific
+`*-claude.zip` only with Claude's native manual
+plugin-upload control. Do not ask Claude in a conversation to download or
+execute the ZIP.
 
 ## GitHub Copilot
 
 Copy the desired product skills from `clients/copilot/products/<product>/skills`
 into the repository's supported agent-skills directory. Configure the BOS
 remote MCP connection in the Copilot host using the same endpoint and
-`BOS_API_KEY`; the Copilot skill package contains no client runtime.
+`COPILOT_MCP_BOS_API_KEY`; the Copilot skill
+package contains no client runtime.
 
 ## Gemini CLI
 
@@ -43,8 +63,8 @@ Install the desired extension directory from
 `clients/gemini/extensions/<product>` with `gemini extensions install`. Gemini
 loads the bundled `skills/` directory and native Streamable HTTP MCP
 configuration from `gemini-extension.json`. Complete the declared
-`BOS_API_KEY` and `BOS_INSTALLED_APP_ID` extension settings during installation
-and restart Gemini CLI.
+`BOS_API_KEY` extension setting during installation and restart
+Gemini CLI.
 
 ## Customer settings
 
