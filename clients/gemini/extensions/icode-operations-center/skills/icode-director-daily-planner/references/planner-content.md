@@ -1,82 +1,117 @@
 # Director daily planner content contract
 
-Render one compact visual operating brief in this order. Follow
-`bos-visual-output`. Omit an optional field only when the source does not
-provide it, then summarize important omissions under Data checks.
+Render one compact, camp-first operating brief for the selected local day.
+Follow `bos-visual-output`. Include only the minimum student and family details
+needed for authorized daily school operations.
 
-## Header and snapshot
+## Header
 
 - Title: `Director Daily Planner — <Weekday, Month D, YYYY>`
 - Location and time zone
 - Generated-at time
-- Snapshot totals: classes, enrolled students, trials, and new leads requiring calls
-- First scheduled class and final scheduled activity
+- Source status: complete or source-specific partial
+- Snapshot totals: camps, expected camp students, camp-family calls, trials,
+  and qualified new leads requiring calls
 
-Present the snapshot as no more than three useful headline metrics. When the
-day contains three or more scheduled items, lead with a chronological timeline
-that combines classes, trials, callbacks, and operational deadlines.
+## Camps today
 
-## Priority actions
+Place this section first. Create one subsection per camp in chronological
+order.
 
-List up to five time-sensitive actions derived from the retrieved records. Use explicit times and action verbs. Prioritize imminent trials, missing trial confirmations, urgent new-lead callbacks, roster/contact gaps, and schedule conflicts.
+Camp heading: `<start–end time> — <camp name>`
 
-## Today's schedule
+Show instructor, room, age band, capacity, supplies or preparation, and
+schedule changes only when BOS returns them. Then list every student expected
+for that camp today:
 
-Combine classes and trials into one chronological visual timeline. Retain this
-compact table only when exact contacts or preparation details are operationally
-necessary:
+| Student | Parent/guardian | Primary family phone | Enrollment source | Attendance/arrival state | Parent note or action |
+|---|---|---|---|---|---|
 
-| Time | Activity | Student/family | Contact | Preparation or status |
+Use exactly these enrollment-source labels:
+
+- `Paid enrollment` for a source-backed paid Calimatic enrollment;
+- `Care.com` for a confirmed Care.com backup-care child-day explicitly assigned
+  to this camp occurrence and date;
+- `Bright Horizons` for a published BOS record explicitly identifying Bright
+  Horizons and assigning the student to this camp occurrence and date; or
+- `Needs review` when evidence is missing, conflicting, or cannot establish
+  the payer.
+
+Keep confirmed but unassigned Care.com or Bright Horizons child-days out of a
+camp roster. List them under Camp-family calls and exceptions as `Needs review`
+placement demand.
+
+Attendance/arrival state may include a source-backed expected arrival or
+departure time, confirmed absence, late arrival, early pickup, checked-in
+state, or `Not returned by source`. Never infer attendance from enrollment.
+Write `Missing in BOS — call list incomplete` when the primary phone is absent.
+
+Parent note or action contains only a relevant operational fact from a
+source-backed communication, such as an attendance change, pickup issue,
+schedule question, accommodation requiring preparation, or requested callback.
+Omit message bodies, sensitive narrative, and unrelated family information.
+
+If no camps are returned, state `No camps returned for this day` only after a
+successful date-bound camp search. When the source is unavailable, retain this
+section and name the missing capability instead of reporting zero camps.
+
+## Camp-family calls and exceptions
+
+List today's camp-related calls and corrections in urgency order:
+
+| Priority/time | Family/student | Phone | Camp | Reason | Next action |
+|---|---|---|---|---|---|
+
+Prioritize a camp starting soon, unconfirmed attendance, changed attendance,
+pickup or schedule conflicts, missing contacts, duplicate payer records, and
+preparation needs. Never invent a reason, owner, or deadline.
+
+## Today's timeline and upcoming events
+
+Combine camps, trials, callbacks, operational deadlines, and material Calendar
+events into one chronological timeline. Include relevant events in the next 48
+hours when they require preparation today.
+
+| Time | Activity or event | People/count | Operational impact | Preparation or action |
 |---|---|---|---|---|
 
-Keep the class rosters below as the detailed source for enrolled students; the schedule can summarize a class by enrollment count.
+State `No upcoming events returned by Calendar` only after a successful bounded
+Calendar search.
 
-## Classes and family contacts
+## Other classes and trials
 
-Create one subsection per class, ordered by start time.
+After camps, list non-camp classes and today's trials when exact contacts or
+preparation are operationally necessary:
 
-Class heading: `<start–end time> — <class name>`
+| Time | Activity | Student/family | Phone | Status | Preparation or action |
+|---|---|---|---|---|---|
 
-Include the course or age band and instructor only when returned by BOS. Show the roster count, then:
-
-| Student | Parent/guardian | Primary phone | Primary email | Operational note |
-|---|---|---|---|---|
-
-Use Operational note only for a source-backed item that affects today's service, such as first visit, pickup authorization gap, schedule conflict, or missing contact detail. Never expose sensitive narrative notes or infer attendance.
-
-## Trials scheduled today
-
-Order by scheduled time:
-
-| Time | Student | Parent/guardian | Phone | Email | Trial/class | Status and preparation |
-|---|---|---|---|---|---|---|
-
-Status and preparation should show source-backed confirmation status, assigned class, owner when returned, and the next concrete preparation step. Flag a missing time, contact method, class assignment, or confirmation as `Action required`.
+Flag a missing time, phone, class assignment, or confirmation as
+`Action required`.
 
 ## New leads to call
 
-Include active leads received within the planner's stated intake window that still require an initial call:
+Include active qualified leads received within the stated daily intake window
+that still require an initial call:
 
-| Priority | Received | Parent/guardian | Student | Phone | Email | Interest/source | Last touch | Call objective |
-|---|---|---|---|---|---|---|---|---|
+| Priority | Received | Parent/guardian | Student | Phone | Interest/source | Last touch | Call objective |
+|---|---|---|---|---|---|---|---|
 
-Set Priority using source-backed operational urgency:
-
-1. `Now`: same-day request, trial interest for today, or explicit urgent timing.
-2. `High`: received more than four business hours ago with no completed connection.
-3. `Standard`: all other qualified new leads awaiting initial contact.
-
-Write a short Call objective grounded in the record, such as schedule a trial, confirm age/program fit, or reach the family for the first time. Do not invent an objective when interest data is absent; use `Qualify interest and next step`.
+Set Priority using source-backed urgency: `Now` for same-day timing, `High` for
+an overdue first connection, and `Standard` for other qualified new leads.
+Use `Qualify interest and next step` when the record does not support a more
+specific objective.
 
 ## Data checks
 
 List only actionable issues:
 
-- missing family phone or email;
-- trial without a time, class, or confirmation state;
-- roster record that could not be matched confidently to family details;
-- duplicate or conflicting lead/trial records;
-- source or capability unavailable;
+- missing camp, roster, family phone, or enrollment-source evidence;
+- camp student without a source-backed attendance or arrival state;
+- trial without a time, class, phone, or confirmation state;
+- roster record that cannot be matched confidently to family details;
+- duplicate or conflicting payer, lead, trial, or schedule records;
+- source or capability unavailable; or
 - generation after an activity's scheduled time.
 
 End with `Planner scope: content prepared only; no distribution performed.`

@@ -32,7 +32,7 @@ test("canonical distributable skills contain no customer-specific settings", asy
   assert.deepEqual(failures, []);
 });
 
-test("iCode packages include an empty customer settings template", async () => {
+test("iCode packages include customer-neutral settings defaults", async () => {
   for (const path of [
     `${root}/clients/codex/plugins/icode-operations-center/config/customer-settings.template.json`,
     `${root}/clients/claude/plugins/icode-operations-center/config/customer-settings.template.json`,
@@ -45,6 +45,14 @@ test("iCode packages include an empty customer settings template", async () => {
     assert.equal(settings.location_display_name, "");
     assert.equal(settings.timezone, "");
     assert.equal(settings.mailboxes.care_com, "");
+    assert.equal(settings.mailboxes.parent_communications, "");
+    assert.deepEqual(settings.source_routes, {
+      calimatic: "bos",
+      lead_director: "bos",
+      calendar: "bos",
+      parent_communications: "bos",
+      care_com: "bos"
+    });
   }
 });
 
@@ -77,22 +85,99 @@ test("director planner repairs missing customer settings before resuming", async
   assert.doesNotMatch(guidance, /Stop when the setting is absent or invalid/);
 });
 
+test("director daily planner is camp-first at day-level detail", async () => {
+  const guidance = await readFile(
+    `${root}/source/verticals/icode/icode-director-daily-planner/SKILL.md`,
+    "utf8"
+  );
+  const dailyContract = await readFile(
+    `${root}/source/verticals/icode/icode-director-daily-planner/references/planner-content.md`,
+    "utf8"
+  );
+  assert.match(guidance, /selected day[\s\S]*daily planner/);
+  assert.match(guidance, /same camp-first operating hierarchy[\s\S]*day-level detail/i);
+  assert.match(guidance, /material events in the following 48 hours/i);
+  assert.match(dailyContract, /## Camps today/);
+  assert.match(
+    dailyContract,
+    /Primary family phone[\s\S]*Enrollment source[\s\S]*Attendance\/arrival state/
+  );
+  assert.match(dailyContract, /Paid enrollment[\s\S]*Care\.com[\s\S]*Bright Horizons/);
+  assert.match(dailyContract, /## Camp-family calls and exceptions/);
+  assert.match(dailyContract, /## Today's timeline and upcoming events/);
+  assert.match(guidance, /30 days before the reporting-period start/);
+  assert.match(dailyContract, /explicitly assigned[\s\S]*camp occurrence and date/);
+});
+
 test("director skill handles weekly summaries without scope questions", async () => {
   const guidance = await readFile(
     `${root}/source/verticals/icode/icode-director-daily-planner/SKILL.md`,
     "utf8"
   );
   assert.match(guidance, /weekly summary, weekly director report, week-in-review/i);
-  assert.match(guidance, /most recently completed[\s\S]*Monday-through-Sunday/i);
-  assert.match(guidance, /“For my director” identifies the report audience/i);
+  assert.match(guidance, /current local[\s\S]*Monday-through-Sunday/i);
+  assert.doesNotMatch(guidance, /most recently completed[\s\S]*Monday-through-Sunday/i);
+  assert.match(guidance, /“For my director” identifies\s+the report audience/i);
   assert.match(guidance, /Never ask the\s+user to choose a director, organization, source, key, or role/i);
   assert.match(guidance, /Require exactly one[\s\S]*authenticated user and role/i);
   assert.match(guidance, /Never ask whether to use iCode operations, email, Calendar/i);
+  assert.match(guidance, /every camp[\s\S]*student roster by day/i);
+  assert.match(guidance, /primary family phone/i);
+  assert.match(guidance, /Paid enrollment[\s\S]*Care\.com[\s\S]*Bright Horizons/i);
+  assert.match(guidance, /parent communication notes[\s\S]*this week's camps/i);
+  assert.match(guidance, /upcoming Calendar events/i);
+  const weeklyContract = await readFile(
+    `${root}/source/verticals/icode/icode-director-daily-planner/references/weekly-summary-content.md`,
+    "utf8"
+  );
+  assert.match(weeklyContract, /## Camps this week/);
+  assert.match(weeklyContract, /Day\/date[\s\S]*Primary family phone[\s\S]*Enrollment source/);
+  assert.match(weeklyContract, /## Family calls and camp exceptions/);
+  assert.match(weeklyContract, /## Upcoming events/);
+  assert.match(weeklyContract, /confirmed but unassigned[\s\S]*Needs review/);
   const product = (await listProducts()).find(
     ({ manifest }) => manifest.name === "icode-operations-center"
   )?.manifest;
   assert(product);
   assert(product.default_prompts.includes("Give me a weekly summary for my director."));
+});
+
+test("camp and student evidence honor customer-owned Care.com source routing", async () => {
+  for (const relativePath of [
+    "source/verticals/icode/icode-class-operations/SKILL.md",
+    "source/verticals/icode/icode-student-operations/SKILL.md"
+  ]) {
+    const guidance = await readFile(`${root}/${relativePath}`, "utf8");
+    assert.match(guidance, /source_routes\.care_com/i);
+    assert.match(guidance, /`icode_search_email_evidence`/);
+    assert.match(guidance, /email-account-routing/i);
+    assert.match(guidance, /normal Gmail connector/i);
+    assert.match(guidance, /bounded lookback of up to 180 days/i);
+    assert.match(guidance, /mailboxes\.care_com/i);
+  }
+});
+
+test("service routing composes package defaults with preserved customer settings", async () => {
+  const guidance = await readFile(
+    `${root}/source/verticals/icode/icode-service-routing/SKILL.md`,
+    "utf8"
+  );
+  assert.match(guidance, /customer-settings\.template\.json[\s\S]*recursively overlay/i);
+  assert.match(guidance, /Package builds never rewrite the customer overlay/i);
+  assert.match(guidance, /source_routes\.care_com/i);
+  assert.match(guidance, /connected_gmail[\s\S]*email-account-routing/i);
+});
+
+test("parent communications owns the configured email-evidence route", async () => {
+  const guidance = await readFile(
+    `${root}/source/verticals/icode/icode-parent-communications/SKILL.md`,
+    "utf8"
+  );
+  assert.match(guidance, /source_routes\.parent_communications/i);
+  assert.match(guidance, /mailboxes\.parent_communications/i);
+  assert.match(guidance, /email-account-routing/i);
+  assert.match(guidance, /read-only correspondence evidence/i);
+  assert.match(guidance, /never substitute Gmail for those channels/i);
 });
 
 test("canonical and generated skills contain no removed use-bos references", async () => {

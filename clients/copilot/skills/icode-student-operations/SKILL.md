@@ -12,27 +12,34 @@ the requested enrollment or progress-report task. Do not publish, bulk export,
 or use these records for admissions, disciplinary, eligibility, or other
 high-impact decisions.
 
-Use `bos_icode` and follow the `bos-mcp-client` context workflow. Preserve
+Use the named `icode-operations` MCP connection and follow the
+`bos-mcp-client` context workflow. Preserve
 student identity and provider provenance across every source.
 Use `bos-visual-output` for enrollment cohorts, progress trends, class
 distribution, and cross-source reconciliation.
-Use only BOS MCP or published BOS backend APIs with the iCode organization's
-plugin credentials. Browser sessions and native/local connectors provide no
-authorization, evidence, or fallback.
-When Gmail, Drive, or Calimatic reports an authentication error, follow
-`bos-mcp-client` authentication recovery and prompt the user to complete the
-service-specific secure BOS browser flow.
+Use BOS for every domain whose effective customer route is `bos`. A configured
+`connected_gmail` route may supply Care.com correspondence evidence through the
+normal Gmail connector and exact customer mailbox; it grants no BOS authority
+and cannot perform iCode mutations.
+For a BOS-routed Gmail, Drive, or Calimatic authentication error, follow
+`bos-mcp-client` recovery. For `connected_gmail`, use the Gmail connector's
+native account recovery for the exact configured mailbox.
 
 ## Enrollment
 
 - Use Calimatic student and enrollment tools as the enrolled-student source.
 - Use Lead Director for prospect and lead state.
-- Use BOS Gmail only as correspondence/source evidence.
-- Load the installed product's `config/customer-settings.json`. For Care.com
-  messages addressed to `mailboxes.care_com`, follow `email-account-routing`
-  and use that configured Gmail account with exact sender
-  `[REDACTED_EMAIL]`.
-- Stop and report configuration required when `mailboxes.care_com` is absent.
+- Use published `icode_search_email_evidence` and `icode_get_email_thread`
+  through the same named connection only as correspondence/source evidence.
+- Resolve the packaged settings defaults plus the preserved customer overlay.
+  Follow `source_routes.care_com`: use published iCode email evidence tools for
+  `bos`, or invoke `email-account-routing` and the normal Gmail connector for
+  `connected_gmail`. Select only the exact `mailboxes.care_com` account.
+- Stop and report configuration required when the selected route is unavailable
+  or a connected-Gmail route lacks `mailboxes.care_com`.
+- Use a bounded lookback of up to 180 days before the requested period through
+  its end for Care.com notices, then retain only child-days whose service date
+  falls inside the requested period.
 - Dedupe Care.com request and confirmation notices by numeric job ID. Count only
   a confirmation with body status `Confirmed` as active enrollment; keep a
   `New` request as pending. Expand each confirmed service date to one child-day.

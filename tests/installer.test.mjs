@@ -33,7 +33,14 @@ const customerSettings = {
   organization_display_name: "Example Learning LLC",
   location_display_name: "Example Center",
   timezone: "America/New_York",
-  mailboxes: { care_com: "operations@example.com" },
+  mailboxes: { care_com: "operations@example.com", parent_communications: "" },
+  source_routes: {
+    calimatic: "bos",
+    lead_director: "bos",
+    calendar: "bos",
+    parent_communications: "bos",
+    care_com: "connected_gmail"
+  },
   billing: {
     center_name: "Example Center",
     address: "100 Example Avenue",
@@ -169,7 +176,8 @@ test("initialization derives safe client values and leaves unknowns unresolved",
     organization_display_name: "",
     location_display_name: "",
     timezone: "",
-    mailboxes: { care_com: "" },
+    mailboxes: { care_com: "", parent_communications: "" },
+    source_routes: { care_com: "bos" },
     billing: {}
   };
   const draft = deriveInitialCustomerSettings(template, {
@@ -186,6 +194,48 @@ test("initialization derives safe client values and leaves unknowns unresolved",
     timezone: "client_context",
     "mailboxes.care_com": "client_connected_account_metadata"
   });
+});
+
+test("customer source routes are typed and cannot redirect operational domains to Gmail", () => {
+  assert.deepEqual(validateCustomerSettings(customerSettings), []);
+  assert.match(
+    validateCustomerSettings({
+      ...customerSettings,
+      source_routes: { ...customerSettings.source_routes, calimatic: "connected_gmail" }
+    }).join("; "),
+    /source_routes\.calimatic does not support connected_gmail/
+  );
+  assert.match(
+    validateCustomerSettings({
+      ...customerSettings,
+      source_routes: { ...customerSettings.source_routes, care_com: "unknown" }
+    }).join("; "),
+    /source_routes\.care_com must be bos or connected_gmail/
+  );
+  assert.match(
+    validateCustomerSettings({
+      ...customerSettings,
+      source_routes: {
+        ...customerSettings.source_routes,
+        parent_communications: "connected_gmail"
+      }
+    }).join("; "),
+    /source_routes\.parent_communications requires mailboxes\.parent_communications/
+  );
+  assert.deepEqual(
+    validateCustomerSettings({
+      ...customerSettings,
+      mailboxes: {
+        ...customerSettings.mailboxes,
+        parent_communications: "families@example.com"
+      },
+      source_routes: {
+        ...customerSettings.source_routes,
+        parent_communications: "connected_gmail"
+      }
+    }),
+    []
+  );
 });
 
 test("iCode install without answers creates a customer-owned initialization draft", async () => {

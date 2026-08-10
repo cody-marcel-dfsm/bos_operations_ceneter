@@ -12,10 +12,11 @@ the requested operating plan. Do not use this workflow for admissions,
 disciplinary, eligibility, or other high-impact decisions about students.
 
 Create a concise, action-oriented daily planner or weekly director summary.
-Retrieve live data through the named `icode-operations` MCP connection; never
-distribute or send the result unless the user separately requests and authorizes
-distribution. “For my director” identifies the report audience and never
-requires the director's identity for preparation.
+Retrieve BOS-routed live data through the named `icode-operations` MCP
+connection and separately connected read-only evidence through the effective
+customer source route. Never distribute or send the result unless the user
+separately requests and authorizes distribution. “For my director” identifies
+the report audience and never requires the director's identity for preparation.
 
 ## Required companion guidance
 
@@ -33,51 +34,107 @@ Use the single user and role resolved from the configured `BOS_API_KEY` by
 capability scope. Treat the live MCP manifest as authoritative. Never ask the
 user to choose a director, organization, source, key, or role for preparation.
 
-When any planner source reports an authentication error, follow
-`bos-mcp-client` authentication recovery and prompt the user to complete that
-service's secure BOS browser flow. Continue building unaffected planner
+When a BOS-routed planner source reports an authentication error, follow
+`bos-mcp-client` authentication recovery. When a separately connected client
+source reports an authentication error, follow that connector's native account
+recovery for the exact configured account. Continue building unaffected planner
 sections while authorization is pending.
 
 ## Workflow
 
-1. Load the installed product's `config/customer-settings.json`. When it is
+1. Load the installed product's settings template, then recursively overlay the
+   preserved customer-owned `config/customer-settings.json`. Never place a
+   customer mailbox or source selection in this packaged skill. When the overlay is
    absent or invalid, run `icode-customer-initialization` immediately and
    resume this request after applying the validated settings. Resolve the
    reporting period in its required `timezone`. A daily request defaults to
-   today. A weekly request without dates defaults to the most recently completed
-   local Monday-through-Sunday week. State the resolved period and continue
-   without asking.
+   today. A weekly request without dates defaults to the current local
+   Monday-through-Sunday week, including remaining upcoming days. Resolve
+   “next week,” “last week,” or an explicitly supplied date from that local
+   week calendar. State the resolved period and continue without asking.
 2. Call `bos_get_context` once through `icode-operations`. Require exactly one
    authenticated user and role and accept the server-derived iCode scope. A
    server violation is a configuration error, never a user selection question.
-3. Retrieve date-bound Calimatic enrollments with the enrollment-listing
-   capability. Use student/family lookup only to add contact information
-   missing from the roster response. For camp dates, also follow
-   `icode-class-operations` to include confirmed Care.com child-days from the
-   connected Gmail account selected by `mailboxes.care_com`.
-4. Retrieve active new leads from Lead Director. For a daily planner, use the
+3. Retrieve every camp occurrence in the resolved reporting window before
+   gathering general operating metrics: the selected day for a daily planner,
+   or every day in the resolved week for a weekly summary. Build each camp's roster from
+   date-bound Calimatic enrollments and confirmed, camp-assigned Care.com or
+   Bright Horizons backup-care child-days available through the effective
+   customer source routes. Care.com evidence follows
+   `source_routes.care_com`: use the published iCode email tools for `bos`, or
+   invoke `email-account-routing` and the normal Gmail connector using exactly
+   `mailboxes.care_com` for `connected_gmail`. Use
+   student/family lookup to add the primary family phone and guardian name when
+   the roster omits them. Label each student-day exactly `Paid enrollment`,
+   `Care.com`, `Bright Horizons`, or `Needs review` from source evidence; never
+   infer the payer, collapse backup-care programs into paid enrollment, or put
+   an unassigned backup-care child-day into a camp roster. Report confirmed but
+   unassigned backup-care demand as a `Needs review` placement exception.
+4. For each camp family, search bounded parent communications relevant to the
+   resolved day or week. Search from 30 days before the reporting-period start
+   through its end so earlier messages affecting current service are included.
+   Follow `source_routes.parent_communications` and hydrate each relevant hit
+   with that route's full-thread tool. A `connected_gmail` route uses exactly
+   `mailboxes.parent_communications`.
+   Extract only operational facts that affect attendance, schedule, contact,
+   pickup, accommodation, or an action the director must take. Omit message
+   bodies and unrelated family details.
+5. Retrieve Calendar events for the reporting window. For a daily planner,
+   include the selected day plus material events in the following 48 hours.
+   For a weekly summary, include the resolved week plus material events in the
+   immediately following local week. Highlight events requiring staffing,
+   preparation, family communication, space, or schedule coordination.
+6. Retrieve active new leads from Lead Director. For a daily planner, use the
    preceding 24 hours through generation time. For a weekly summary, use the
    full resolved Monday-through-Sunday reporting period. Include leads requiring
    action; exclude duplicate, spam, closed-lost, and already-converted records
    when those statuses are explicit.
-5. For scheduled-trial, confirmation, follow-up, or trial-draft requests, read and execute [references/trial-reconciliation.md](references/trial-reconciliation.md). Compose the live Lead Director, Calendar, and Gmail MCP primitives client-side; do not wait for or require a composite server tool.
-6. Normalize times to the configured `timezone`, preserve provider provenance internally, deduplicate conservatively, and flag conflicts or missing fields.
-7. Render a daily planner using
+7. For scheduled-trial, confirmation, follow-up, or trial-draft requests, read and execute [references/trial-reconciliation.md](references/trial-reconciliation.md). Compose the live Lead Director, Calendar, and Gmail MCP primitives client-side; do not wait for or require a composite server tool.
+8. Normalize times to the configured `timezone`, preserve provider provenance internally, deduplicate conservatively, and flag conflicts or missing fields.
+9. Render a daily planner using
    [references/planner-content.md](references/planner-content.md). Render a
    weekly request using
    [references/weekly-summary-content.md](references/weekly-summary-content.md).
 
+## Daily director planner
+
+For a daily planner, use the same camp-first operating hierarchy at finer
+day-level detail:
+
+- today's camps in chronological order, with exact time and preparation state;
+- every expected student, guardian, primary family phone, enrollment source,
+  attendance or arrival state, and operational parent note;
+- missing confirmations, attendance changes, pickup issues, and family calls
+  the director must make today;
+- today's Calendar timeline and material events in the following 48 hours;
+- other classes, trials, and new-lead calls after camp delivery needs; and
+- source-specific data gaps that make a roster or call list incomplete.
+
+Do not let general business commentary displace today's camp rosters, family
+contacts, and time-critical preparation.
+
 ## Weekly director summary
 
-For a weekly summary, retrieve and synthesize the full resolved period:
+For a weekly summary, make camps and the family call plan the primary content.
+Retrieve and synthesize the full resolved period in this priority order:
 
-- classes held, enrollments, attendance, capacity, and material schedule changes;
+- every camp, its scheduled days, and its student roster by day;
+- each rostered student's guardian, primary family phone, and evidence-backed
+  enrollment source: paid, Care.com, or Bright Horizons;
+- parent communication notes and follow-up actions that affect this week's camps;
+- upcoming Calendar events that affect staffing, preparation, or families;
+- other classes, enrollments, attendance, capacity, and material schedule changes;
 - new leads, lead response, pipeline movement, and unresolved lead actions;
 - trials scheduled, completed, converted, missed, and needing confirmation or follow-up;
 - parent or guardian follow-ups and communication actions;
 - operational wins and evidence-backed positive movement;
 - risks, missing evidence, overdue actions, and capability blockers; and
 - prioritized actions for the next local week.
+
+Do not let general financial, transaction, marketing, ownership-transfer, or
+pipeline commentary displace the camp rosters and family call plan. Include
+those topics only as concise secondary context when they create an immediate
+director action or the user explicitly requests them.
 
 Use every authorized iCode source needed for these sections automatically.
 Never ask whether to use iCode operations, email, Calendar, Lead Director,
@@ -100,8 +157,13 @@ this loop completes. If it cannot complete, report `Source incomplete`.
 
 ## Data rules
 
-- Group enrolled students by class and class start time. Preserve a student in every class occurrence they attend.
+- Group camp students by camp and scheduled day. Preserve a student on every
+  day they are expected to attend, including day-specific Care.com and Bright
+  Horizons reservations.
 - Include a parent or guardian name, primary phone, and primary email when BOS returns them because the planner explicitly serves family contact operations.
+- Mark each weekly camp student-day `Paid enrollment`, `Care.com`, `Bright
+  Horizons`, or `Needs review` using provider evidence. Preserve multiple
+  evidence-backed labels when sources conflict and flag the record for review.
 - Mark absent values as `Missing in BOS`; never infer contact details, class times, ages, trial times, or statuses.
 - Keep siblings connected to the same family while retaining each student's class or trial record.
 - Label uncertain cross-system matches `Needs review` and keep both source records visible.

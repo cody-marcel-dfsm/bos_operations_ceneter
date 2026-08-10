@@ -1,5 +1,5 @@
 {
-  "indexed_at": "20260810T200823.135703Z",
+  "indexed_at": "20260810T194946.689675Z",
   "schema_version": "bos-vault-manifest/v1",
   "source_count": 13,
   "sources": {
@@ -12,8 +12,8 @@
       "sha256": "408fdbc439bd0dca8f02e72e6152d7931f3926a5023fe4df5581a7ddadc7f4fe"
     },
     "Vault/docs/architecture.md": {
-      "bytes": 7263,
-      "sha256": "cdeb2729eec89e868316ccc43ba135925c3fb57783df8bed0b804cdf7f86327d"
+      "bytes": 6851,
+      "sha256": "69f35ac148e63b5385752735f569b063d9ed5d0e910744c4d1d13fe644be5a23"
     },
     "Vault/docs/marketplace-agent-harness-plan.md": {
       "bytes": 33013,

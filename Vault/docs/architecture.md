@@ -40,9 +40,14 @@ release system for portable BOS skills and native remote MCP client adapters.
 8. Preserve customer extension skills while package-owned skills are replaced
    deterministically during updates.
 9. Keep customer identity and operating defaults out of canonical skills and
-   generated release content. Product manifests may declare an empty settings
-   template; installers validate and write the completed settings as
-   customer-owned configuration that package updates preserve.
+   generated release content. Product manifests may declare a settings template
+   containing reusable defaults and typed source roles. Installers validate and
+   write customer-specific values as a customer-owned settings overlay that
+   package updates preserve. Skills resolve effective settings from the template
+   plus that overlay; builds never copy customer mailboxes, provider selectors,
+   or location values into managed skills or regenerated package files. A source
+   role may select a separately connected client service for read-only evidence
+   without changing BOS identity, scope, or mutation authority.
 10. Initialize customer settings with a derive-then-ask workflow: preserve
     confirmed values, derive only unambiguous non-secret client and canonical
     BOS metadata, and ask the user once for unresolved or conflicting values.

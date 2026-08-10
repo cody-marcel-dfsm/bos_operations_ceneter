@@ -1,6 +1,6 @@
 ---
 name: icode-parent-communications
-description: Handle iCode parent communication workflows through the tenant-scoped BOS MCP. Use for business-hours calls, after-hours calls, text messages, reviews, communication follow-up, transcript or outcome retrieval, response drafting, escalation, and missing telephony/SMS/review capability diagnosis.
+description: Handle iCode parent communication workflows through customer-configured evidence routes and the tenant-scoped BOS MCP. Use for business-hours calls, after-hours calls, email evidence, text messages, reviews, communication follow-up, transcript or outcome retrieval, response drafting, escalation, and missing communications capability diagnosis.
 ---
 
 # iCode Parent Communications
@@ -11,24 +11,45 @@ the authorized parent or guardian unless an approved school policy and
 capability explicitly provides otherwise. Minimize contact and transcript data
 and never expose it outside the selected tenant and requested workflow.
 
-Use `bos_icode` and follow the `bos-mcp-client` context workflow. Select the
-communication channel's configured BOS plugin; never substitute Gmail for
-calls, SMS, or reviews.
+Use the named `icode-operations` MCP connection and follow the `bos-mcp-client`
+context workflow for every BOS-routed domain. Resolve effective customer
+settings from the packaged template plus the preserved customer overlay.
+For email correspondence evidence, follow
+`source_routes.parent_communications`:
+
+- `bos`: use the published iCode email search and full-thread evidence tools.
+- `connected_gmail`: invoke `email-account-routing`, select exactly
+  `mailboxes.parent_communications`, and use the normal Gmail connector's
+  bounded search and full-thread tools.
+
+The external Gmail route supplies read-only correspondence evidence. Select
+the communication channel's configured BOS plugin for calls, SMS, reviews, and
+delivery; never substitute Gmail for those channels.
 Use `bos-visual-output` for multi-family contact queues, channel outcomes,
 response status, and follow-up timelines.
-Use only BOS MCP or published BOS backend APIs with the iCode organization's
-plugin credentials. Browser sessions and native/local connectors provide no
-authorization, evidence, delivery path, or fallback.
-When a communications provider reports an authentication error, follow
-`bos-mcp-client` authentication recovery and prompt the user to complete the
-service-specific secure BOS browser flow before retrying once.
+For a BOS-routed provider authentication error, follow `bos-mcp-client`
+recovery. For `connected_gmail`, use the Gmail connector's native account
+recovery for the exact configured mailbox. Never treat either route as a
+fallback for the other or as authority to send a message.
+
+## Email evidence and follow-up
+
+- Search from 30 days before the requested operating period through its end,
+  then retain only correspondence relevant to the requested families and dates.
+- Hydrate every relevant result with the selected route's full-thread tool
+  before interpreting attendance, schedule, pickup, accommodation, or follow-up
+  facts.
+- Preserve mailbox and provider provenance internally. Omit message bodies and
+  unrelated family details from the output.
+- Drafting or sending remains a separately authorized action through a
+  published tool for the requested channel.
 
 ## Calls during business hours
 
 - Use the configured telephony/voice plugin for tasks, transcripts, outcomes,
   and follow-up state.
 - Preserve received time, business-hours classification in `timezone` from the
-  installed product's `config/customer-settings.json`, and
+   effective customer `timezone`, and
   escalation state.
 
 ## Calls after hours

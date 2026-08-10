@@ -4,7 +4,15 @@
   "location_display_name": "",
   "timezone": "",
   "mailboxes": {
-    "care_com": ""
+    "care_com": "",
+    "parent_communications": ""
+  },
+  "source_routes": {
+    "calimatic": "bos",
+    "lead_director": "bos",
+    "calendar": "bos",
+    "parent_communications": "bos",
+    "care_com": "bos"
   },
   "billing": {
     "center_name": "",
