@@ -20,6 +20,7 @@ jobs:
         run: npm run release:check
       - name: Validate Claude marketplace and plugins
         run: |
+          npx -y @anthropic-ai/claude-code@2.1.220 plugin validate . --strict
           npx -y @anthropic-ai/claude-code@2.1.220 plugin validate clients/claude --strict
           for plugin in clients/claude/plugins/*; do
             npx -y @anthropic-ai/claude-code@2.1.220 plugin validate "$plugin" --strict
@@ -30,8 +31,8 @@ jobs:
         run: |
           gh release create "${GITHUB_REF_NAME}" \
             dist/*.tar.gz \
-            dist/*-claude-*.zip \
+            dist/*-claude.zip \
             dist/release-manifest.json \
-            dist/bos-operations-center-*.zip \
+            dist/bos-operations-center-${GITHUB_REF_NAME#v}.zip \
             dist/bos-operations-center.zip \
             --generate-notes

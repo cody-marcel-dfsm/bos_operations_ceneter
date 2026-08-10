@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "video-ads",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "display_name": "Video Ads",
   "description": "Create, review, and deliver video ads through tenant-scoped BOS capabilities.",
   "publisher": "Infinite State Machines LLC",
@@ -14,13 +14,15 @@
     "gemini"
   ],
   "includes": [
+    "platform/bos-mcp-client",
     "platform/manage-customer-extension",
     "capabilities/video-ad-briefing",
     "capabilities/video-ad-generation",
     "capabilities/video-ad-drive-delivery"
   ],
   "runtime": "bos",
-  "mcp_profile": "video-ads",
+  "application_name": "leaddirector",
+  "mcp_group_name": "video-ads",
   "default_prompts": [
     "Turn this offer into a production-ready video ad brief.",
     "Generate a video ad from this approved brief.",

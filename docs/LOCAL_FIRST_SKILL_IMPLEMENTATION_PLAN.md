@@ -28,8 +28,9 @@ The package system must converge safely on the desired structure:
    working directory and repository root.
 3. Every agent in a repository receives the repository-root skills visible
    from its working directory.
-4. Plugins distribute reusable skills and MCP connections.
-5. The BOS plugin owns reusable BOS foundations and tenant-neutral MCP access.
+4. Plugins distribute reusable skills and, for application products, named MCP
+   resource-group connections.
+5. The BOS plugin owns reusable BOS foundations and is skills-only.
 6. Lead Director is an application running on BOS.
 7. Lead Director repository skills apply BOS foundations and add
    application-specific source, architecture, test, and review requirements.
@@ -48,14 +49,13 @@ The current machine already has:
 
 ~/plugins/bos/
 ├── .codex-plugin/plugin.json
-├── .mcp.json
-├── skills/use-bos/SKILL.md
+├── skills/planning/SKILL.md
 └── tests/
 ```
 
 `codex plugin list` reports `bos@bos-icode` as installed and enabled. The plugin
-has the identity `bos`, a tenant-neutral `use-bos` skill, and an MCP
-configuration. This was the local prototype used to establish package source.
+has the identity `bos` and distributes reusable platform foundation skills.
+Application products separately own their named MCP resource-group connections.
 
 The Lead Director repository already has `.agents/skills`, including mixed
 Lead Director/BOS planning, implementation, review, boundary, and
@@ -87,7 +87,7 @@ The BOS Operations Center repository currently has:
     ├── .mcp.json
     ├── .bos-package-state.json
     └── skills/
-        ├── use-bos/
+        ├── bos-mcp-client/
         ├── planning/
         ├── implementation/
         ├── review/
@@ -108,7 +108,7 @@ lead_director/
 The plugin namespace presents foundation identities as:
 
 ```text
-bos:use-bos
+bos:bos-mcp-client
 bos:planning
 bos:implementation
 bos:review
@@ -391,8 +391,8 @@ local plugin.
 **Work:**
 
 - Compare `~/plugins/bos` against package sources by path and content.
-- Import the tenant-neutral plugin manifest, MCP configuration, tests, and foundation
-  skills into canonical package directories.
+- Import the platform plugin manifest, tests, and foundation skills into
+  canonical package directories.
 - Preserve provenance in the package inventory.
 - Generate the local plugin from package source and compare it with the tested
   prototype.

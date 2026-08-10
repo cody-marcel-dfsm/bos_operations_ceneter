@@ -3,6 +3,9 @@ import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   listProducts,
+  copilotMcpManifest,
+  geminiExtensionManifest,
+  materializeMcpUrl,
   resolveProductSkills,
   root,
   walkFiles,
@@ -45,6 +48,66 @@ test("iCode packages include an empty customer settings template", async () => {
   }
 });
 
+test("application runtime packages ship agent-owned MCP lifecycle recovery", async () => {
+  const products = await listProducts();
+  for (const name of ["icode-operations-center"]) {
+    const product = products.find(({ manifest }) => manifest.name === name);
+    assert(product, name);
+    const skills = await resolveProductSkills(product.manifest);
+    const client = skills.find((skill) => skill.name === "bos-mcp-client");
+    assert(client, `${name} must include bos-mcp-client`);
+    const guidance = await readFile(client.skillFile, "utf8");
+    assert.match(guidance, /agent owns the BOS MCP client lifecycle/i);
+    assert.match(guidance, /reconnect or reinitialize/i);
+    assert.match(guidance, /Never ask the user to reconnect BOS, resend the request/i);
+    assert.match(guidance, /reconcile by[\s\S]*idempotency identifier/i);
+    assert.match(guidance, /If BOS is absent from the callable tool manifest/i);
+    assert.match(guidance, /Do not stop at\s+diagnosing client registration/i);
+    assert.doesNotMatch(guidance, /unnamed endpoint as.*runtime connection/is);
+  }
+});
+
+test("director planner repairs missing customer settings before resuming", async () => {
+  const guidance = await readFile(
+    `${root}/source/verticals/icode/icode-director-daily-planner/SKILL.md`,
+    "utf8"
+  );
+  assert.match(guidance, /`icode-customer-initialization` when customer settings are missing/i);
+  assert.match(guidance, /run `icode-customer-initialization` immediately/i);
+  assert.doesNotMatch(guidance, /Stop when the setting is absent or invalid/);
+});
+
+test("director skill handles weekly summaries without scope questions", async () => {
+  const guidance = await readFile(
+    `${root}/source/verticals/icode/icode-director-daily-planner/SKILL.md`,
+    "utf8"
+  );
+  assert.match(guidance, /weekly summary, weekly director report, week-in-review/i);
+  assert.match(guidance, /most recently completed[\s\S]*Monday-through-Sunday/i);
+  assert.match(guidance, /“For my director” identifies the report audience/i);
+  assert.match(guidance, /Never ask the\s+user to choose a director, organization, source, key, or role/i);
+  assert.match(guidance, /Require exactly one[\s\S]*authenticated user and role/i);
+  assert.match(guidance, /Never ask whether to use iCode operations, email, Calendar/i);
+  const product = (await listProducts()).find(
+    ({ manifest }) => manifest.name === "icode-operations-center"
+  )?.manifest;
+  assert(product);
+  assert(product.default_prompts.includes("Give me a weekly summary for my director."));
+});
+
+test("canonical and generated skills contain no removed use-bos references", async () => {
+  const roots = [`${root}/source`, `${root}/clients`];
+  const failures = [];
+  for (const directory of roots) {
+    for (const path of await walkFiles(directory)) {
+      if (!path.endsWith("SKILL.md")) continue;
+      const guidance = await readFile(path, "utf8");
+      if (/\buse-bos\b/.test(guidance)) failures.push(path);
+    }
+  }
+  assert.deepEqual(failures, []);
+});
+
 test("all product manifests validate and resolve unique skills", async () => {
   const products = await listProducts();
   assert.equal(products.length, 3);
@@ -55,6 +118,122 @@ test("all product manifests validate and resolve unique skills", async () => {
   }
 });
 
+test("runtime manifests use explicit human-readable application and MCP group names", async () => {
+  const products = await listProducts();
+  assert.deepEqual(
+    Object.fromEntries(
+      products.map(({ manifest }) => [
+        manifest.name,
+        [manifest.application_name, manifest.mcp_group_name]
+      ])
+    ),
+    {
+      bos: [undefined, undefined],
+      "icode-operations-center": ["leaddirector", "icode-operations"],
+      "video-ads": ["leaddirector", "video-ads"]
+    }
+  );
+  for (const { manifest } of products) {
+    assert.equal("mcp_application" in manifest, false);
+    assert.equal("mcp_resource_group" in manifest, false);
+    assert.equal("installed_app_id" in manifest, false);
+  }
+});
+
+test("runtime package model materializes named application routes", async () => {
+  const template = "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}";
+  for (const { manifest } of await listProducts()) {
+    if (!manifest.runtime) continue;
+    const expected = `${template.split("{application_name}")[0]}${manifest.application_name}/${manifest.mcp_group_name}`;
+    assert.equal(materializeMcpUrl(template, manifest), expected);
+    const gemini = await geminiExtensionManifest(manifest);
+    assert.equal(gemini.mcpServers[manifest.mcp_group_name].httpUrl, expected);
+    assert.doesNotMatch(JSON.stringify(gemini), /BOS_INSTALLED_APP_ID|installed_app_id/);
+    const copilot = await copilotMcpManifest(manifest);
+    assert.equal(copilot.mcpServers[manifest.mcp_group_name].url, expected);
+    assert.equal(
+      copilot.mcpServers[manifest.mcp_group_name].headers.Authorization,
+      "Bearer ${COPILOT_MCP_BOS_API_KEY}"
+    );
+  }
+});
+
+test("runtime products share the one client-configured BOS identity", async () => {
+  const runtimeProducts = (await listProducts())
+    .map(({ manifest }) => manifest)
+    .filter((manifest) => manifest.runtime);
+  for (const product of runtimeProducts) {
+    const gemini = await geminiExtensionManifest(product);
+    assert.equal(gemini.settings[0].envVar, "BOS_API_KEY");
+    const copilot = await copilotMcpManifest(product);
+    assert.equal(
+      copilot.mcpServers[product.mcp_group_name].headers.Authorization,
+      "Bearer ${COPILOT_MCP_BOS_API_KEY}"
+    );
+  }
+});
+
+test("Copilot products bundle GitHub's repository MCP configuration", async () => {
+  for (const { manifest: product } of await listProducts()) {
+    if (!product.clients.includes("copilot")) continue;
+    const productRoot = `${root}/clients/copilot/products/${product.name}`;
+    if (!product.runtime) {
+      await assert.rejects(access(`${productRoot}/.github/mcp.json`));
+      const readme = await readFile(`${productRoot}/README.md`, "utf8");
+      assert.match(readme, /skills-only package/i);
+      continue;
+    }
+    const config = JSON.parse(
+      await readFile(`${productRoot}/.github/mcp.json`, "utf8")
+    );
+    assert.deepEqual(Object.keys(config.mcpServers), [product.mcp_group_name]);
+    assert.deepEqual(config.mcpServers[product.mcp_group_name], {
+      type: "http",
+      url: `https://dfsm.ai/mcp/apps/${product.application_name}/${product.mcp_group_name}`,
+      headers: {
+        Authorization: "Bearer ${COPILOT_MCP_BOS_API_KEY}"
+      },
+      tools: ["*"]
+    });
+    assert.doesNotMatch(
+      JSON.stringify(config),
+      /BOS_INSTALLED_APP_ID|installed_app_id/
+    );
+    const readme = await readFile(`${productRoot}/README.md`, "utf8");
+    assert.match(readme, /COPILOT_MCP_BOS_API_KEY/);
+    assert.match(
+      readme,
+      new RegExp(`/mcp/apps/${product.application_name}/${product.mcp_group_name}`)
+    );
+  }
+});
+
+test("package schema rejects legacy or incomplete MCP route fields", () => {
+  const base = {
+    schema_version: "1",
+    name: "example",
+    version: "1.0.0",
+    display_name: "Example",
+    description: "Example runtime package.",
+    publisher: "Example Publisher",
+    category: "Productivity",
+    authentication: "ON_USE",
+    clients: ["codex"],
+    includes: ["platform/planning"],
+    runtime: "bos",
+    application_name: "leaddirector",
+    mcp_group_name: "example",
+    default_prompts: []
+  };
+  assert.deepEqual(validateProduct(base), []);
+  assert.match(
+    validateProduct({ ...base, mcp_application: "leaddirector" }).join("\n"),
+    /unknown field mcp_application/
+  );
+  const { mcp_group_name: _removed, ...incomplete } = base;
+  assert.match(validateProduct(incomplete).join("\n"), /runtime requires application_name and mcp_group_name/);
+});
+
 test("Video Ads composes workflow skills and a scoped BOS endpoint", async () => {
   const products = await listProducts();
   const videoAds = products.find(
@@ -62,11 +241,13 @@ test("Video Ads composes workflow skills and a scoped BOS endpoint", async () =>
   )?.manifest;
   assert(videoAds);
   assert.equal(videoAds.runtime, "bos");
-  assert.equal(videoAds.mcp_profile, "video-ads");
+  assert.equal(videoAds.application_name, "leaddirector");
+  assert.equal(videoAds.mcp_group_name, "video-ads");
   const skills = await resolveProductSkills(videoAds);
   assert.deepEqual(
     skills.map((skill) => skill.name),
     [
+      "bos-mcp-client",
       "manage-customer-extension",
       "video-ad-briefing",
       "video-ad-generation",
@@ -75,20 +256,9 @@ test("Video Ads composes workflow skills and a scoped BOS endpoint", async () =>
   );
 });
 
-test("runtime products use native installed-app-bound MCP with bearer authentication", async () => {
+test("BOS is skills-only and runtime products use app-scoped resource groups", async () => {
   for (const client of ["codex", "claude"]) {
-    const bos = JSON.parse(
-      await readFile(`${root}/clients/${client}/plugins/bos/.mcp.json`, "utf8")
-    );
-    assert.equal(bos.mcpServers.bos.type, "http");
-    assert.equal(
-      bos.mcpServers.bos.url,
-      "https://dfsm.ai/mcp/apps/${BOS_INSTALLED_APP_ID}"
-    );
-    assert.equal(
-      bos.mcpServers.bos.headers.Authorization,
-      "Bearer ${BOS_API_KEY}"
-    );
+    await assert.rejects(access(`${root}/clients/${client}/plugins/bos/.mcp.json`));
 
     const videoAds = JSON.parse(
       await readFile(
@@ -100,32 +270,46 @@ test("runtime products use native installed-app-bound MCP with bearer authentica
     assert.equal(videoAds.mcpServers["video-ads"].type, "http");
     assert.equal(
       videoAds.mcpServers["video-ads"].url,
-      "https://dfsm.ai/mcp/video-ads"
+      "https://dfsm.ai/mcp/apps/leaddirector/video-ads"
     );
-    assert.equal(
-      videoAds.mcpServers["video-ads"].headers.Authorization,
-      "Bearer ${BOS_API_KEY}"
-    );
+    if (client === "claude") {
+      assert.equal(
+        videoAds.mcpServers["video-ads"].headers.Authorization,
+        "Bearer ${BOS_API_KEY}"
+      );
+    } else {
+      assert.equal(
+        videoAds.mcpServers["video-ads"].bearer_token_env_var,
+        "BOS_API_KEY"
+      );
+      assert.equal("headers" in videoAds.mcpServers["video-ads"], false);
+    }
   }
 });
 
-test("iCode packages embed their installed-app-bound BOS connection", async () => {
+test("iCode packages use the Lead Director app resource-group route", async () => {
   for (const [client, path] of [
     ["codex", `${root}/clients/codex/plugins/icode-operations-center/.mcp.json`],
     ["claude", `${root}/clients/claude/plugins/icode-operations-center/.mcp.json`]
   ]) {
     const config = JSON.parse(await readFile(path, "utf8"));
-    assert.equal(config.mcpServers.bos.type, "http", client);
+    assert.equal(config.mcpServers["icode-operations"].type, "http", client);
     assert.equal(
-      config.mcpServers.bos.url,
-      "https://dfsm.ai/mcp/apps/${BOS_INSTALLED_APP_ID}",
+      config.mcpServers["icode-operations"].url,
+      "https://dfsm.ai/mcp/apps/leaddirector/icode-operations",
       client
     );
-    assert.equal(
-      config.mcpServers.bos.headers.Authorization,
-      "Bearer ${BOS_API_KEY}",
-      client
-    );
+    if (client === "claude") {
+      assert.equal("bearer_token_env_var" in config.mcpServers["icode-operations"], false, client);
+      assert.equal(
+        config.mcpServers["icode-operations"].headers.Authorization,
+        "Bearer ${BOS_API_KEY}",
+        client
+      );
+    } else {
+      assert.equal(config.mcpServers["icode-operations"].bearer_token_env_var, "BOS_API_KEY", client);
+      assert.equal("headers" in config.mcpServers["icode-operations"], false, client);
+    }
   }
 });
 
@@ -161,6 +345,58 @@ test("Claude distribution is a marketplace of self-contained plugins", async () 
   assert.match(iCodeReadme, /Students and minors are data subjects/);
   assert.match(iCodeReadme, /minimum-necessary disclosure/);
   assert.match(iCodeReadme, /https:\/\/dfsm\.ai\/apps\/bos\/privacy\.html/);
+
+  const repositoryMarketplace = JSON.parse(
+    await readFile(`${root}/.claude-plugin/marketplace.json`, "utf8")
+  );
+  assert.equal(repositoryMarketplace.name, "bos-icode");
+  assert.deepEqual(
+    repositoryMarketplace.plugins.map(({ name, source }) => ({ name, source })),
+    marketplace.plugins.map(({ name }) => ({
+      name,
+      source: `./clients/claude/plugins/${name}`
+    }))
+  );
+
+  const iCodeManifest = JSON.parse(
+    await readFile(
+      `${root}/clients/claude/plugins/icode-operations-center/.claude-plugin/plugin.json`,
+      "utf8"
+    )
+  );
+  assert.equal(iCodeManifest.mcpServers, "./.mcp.json");
+  assert.equal(iCodeManifest.userConfig, undefined);
+
+  const iCodeRuntime = JSON.parse(
+    await readFile(
+      `${root}/clients/claude/plugins/icode-operations-center/.mcp.json`,
+      "utf8"
+    )
+  );
+  assert.equal(
+    iCodeRuntime.mcpServers["icode-operations"].url,
+    "https://dfsm.ai/mcp/apps/leaddirector/icode-operations"
+  );
+  assert.equal(
+    iCodeRuntime.mcpServers["icode-operations"].headers.Authorization,
+    "Bearer ${BOS_API_KEY}"
+  );
+  assert.equal("bearer_token_env_var" in iCodeRuntime.mcpServers["icode-operations"], false);
+
+  const videoAdsManifest = JSON.parse(
+    await readFile(
+      `${root}/clients/claude/plugins/video-ads/.claude-plugin/plugin.json`,
+      "utf8"
+    )
+  );
+  const videoAdsRuntime = JSON.parse(
+    await readFile(`${root}/clients/claude/plugins/video-ads/.mcp.json`, "utf8")
+  );
+  assert.equal(videoAdsManifest.userConfig, undefined);
+  assert.equal(
+    videoAdsRuntime.mcpServers["video-ads"].headers.Authorization,
+    "Bearer ${BOS_API_KEY}"
+  );
 });
 
 test("generated clients use native remote MCP without local transport", async () => {
@@ -175,46 +411,53 @@ test("generated clients use native remote MCP without local transport", async ()
   }
 });
 
-test("Gemini extensions bundle canonical skills and Streamable HTTP MCP", async () => {
-  const manifest = JSON.parse(
-    await readFile(
-      `${root}/clients/gemini/extensions/bos/gemini-extension.json`,
-      "utf8"
-    )
-  );
-  assert.equal(manifest.name, "bos");
-  assert.equal(
-    manifest.mcpServers.bos.httpUrl,
-    "https://dfsm.ai/mcp/apps/${BOS_INSTALLED_APP_ID}"
-  );
-  assert.equal(manifest.mcpServers.bos.url, undefined);
-  assert.equal(
-    manifest.mcpServers.bos.headers.Authorization,
-    "Bearer ${BOS_API_KEY}"
-  );
-  assert.deepEqual(
-    manifest.settings.map(({ envVar, sensitive }) => ({ envVar, sensitive })),
-    [
-      { envVar: "BOS_API_KEY", sensitive: true },
-      { envVar: "BOS_INSTALLED_APP_ID", sensitive: false }
-    ]
-  );
-  await access(
-    `${root}/clients/gemini/extensions/bos/skills/submit-feedback/SKILL.md`
-  );
+test("Gemini extensions bundle canonical skills and authenticated Streamable HTTP MCP", async () => {
+  const products = await listProducts();
+  for (const { manifest: product } of products) {
+    if (!product.clients.includes("gemini")) continue;
+    const extensionRoot = `${root}/clients/gemini/extensions/${product.name}`;
+    const manifest = JSON.parse(
+      await readFile(`${extensionRoot}/gemini-extension.json`, "utf8")
+    );
+    assert.equal(manifest.name, product.name);
+    assert.equal(manifest.version, product.version);
+    if (!product.runtime) {
+      assert.equal(manifest.mcpServers, undefined);
+      continue;
+    }
+    assert.deepEqual(Object.keys(manifest.mcpServers), [product.mcp_group_name]);
+    const server = manifest.mcpServers[product.mcp_group_name];
+    assert.equal(
+      server.httpUrl,
+      `https://dfsm.ai/mcp/apps/${product.application_name}/${product.mcp_group_name}`
+    );
+    assert.equal(server.url, undefined);
+    assert.equal(server.command, undefined);
+    assert.equal(server.headers.Authorization, "Bearer ${BOS_API_KEY}");
+    assert.deepEqual(
+      manifest.settings.map(({ envVar, sensitive }) => ({ envVar, sensitive })),
+      [{ envVar: "BOS_API_KEY", sensitive: true }]
+    );
+    assert.doesNotMatch(
+      JSON.stringify(manifest),
+      /BOS_INSTALLED_APP_ID|installed_app_id/
+    );
+
+    const skills = await resolveProductSkills(product);
+    for (const skill of skills) {
+      await access(`${extensionRoot}/skills/${skill.name}/SKILL.md`);
+    }
+  }
 });
 
-test("feedback contract keeps route scope in the connection and retry identity stable", async () => {
-  const runtime = JSON.parse(
-    await readFile(`${root}/source/runtime/bos/.mcp.json`, "utf8")
-  );
-  const url = runtime.mcpServers.bos.url;
-  assert.equal(url, "https://dfsm.ai/mcp/apps/${BOS_INSTALLED_APP_ID}");
-  assert.notEqual(url, "https://dfsm.ai/mcp");
-  assert.notEqual(
-    url.replace("${BOS_INSTALLED_APP_ID}", "install-a"),
-    url.replace("${BOS_INSTALLED_APP_ID}", "install-b")
-  );
+test("feedback contract keeps app resource-group selection static and retry identity stable", async () => {
+  const runtime = JSON.parse(await readFile(
+    `${root}/clients/codex/plugins/icode-operations-center/.mcp.json`,
+    "utf8"
+  ));
+  const url = runtime.mcpServers["icode-operations"].url;
+  assert.equal(url, "https://dfsm.ai/mcp/apps/leaddirector/icode-operations");
+  assert.doesNotMatch(JSON.stringify(runtime), /BOS_INSTALLED_APP_ID/);
 
   const skill = await readFile(
     `${root}/source/platform/submit-feedback/SKILL.md`,
@@ -224,8 +467,7 @@ test("feedback contract keeps route scope in the connection and retry identity s
     `${root}/source/platform/submit-feedback/references/feedback-contract.md`,
     "utf8"
   );
-  assert.match(skill, /Copy only `delegated_role_id`/);
-  assert.match(skill, /Never put\s+`org_id`, `app_code`, or `installed_app_id`/);
+  assert.match(skill, /Do not send execution-scope fields/);
   assert.match(skill, /retry once with the same submission ID/);
   assert.match(skill, /Do not claim triage, assignment, prioritization/);
   assert.match(contract, /missing_or_ambiguous_scope/);
@@ -236,7 +478,7 @@ test("feedback contract keeps route scope in the connection and retry identity s
   assert.doesNotMatch(contract, /"org_id"|"app_code"|"installed_app_id"/);
 });
 
-test("iCode composition contains only the shared feedback foundation", async () => {
+test("iCode composition contains only approved shared runtime foundations", async () => {
   const products = await listProducts();
   const byName = Object.fromEntries(
     products.map(({ manifest }) => [manifest.name, manifest])
@@ -249,7 +491,7 @@ test("iCode composition contains only the shared feedback foundation", async () 
   const shared = iCode
     .filter((skill) => bosNames.has(skill.name))
     .map((skill) => skill.name);
-  assert.deepEqual(shared, ["submit-feedback", "manage-customer-extension"]);
+  assert.deepEqual(shared, ["manage-customer-extension"]);
 });
 
 test("every product and client ships tenant extension management metadata", async () => {
@@ -270,7 +512,11 @@ test("every product and client ships tenant extension management metadata", asyn
         schema_version: "1",
         name: manifest.name,
         version: manifest.version,
-        client
+        client,
+        ...(manifest.runtime ? {
+          application_name: manifest.application_name,
+          mcp_group_name: manifest.mcp_group_name
+        } : {})
       });
       const manager = await readFile(
         `${productRoot}/skills/manage-customer-extension/SKILL.md`,

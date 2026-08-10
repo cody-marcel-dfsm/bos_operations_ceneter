@@ -4,6 +4,7 @@ import {
   copyProductSkills,
   copyRuntime,
   copySettingsTemplate,
+  copilotMcpManifest,
   geminiExtensionManifest,
   listProducts,
   marketplaceEntry,
@@ -58,14 +59,16 @@ for (const { product, skills } of resolved) {
       schema_version: "1",
       name: product.name,
       version: product.version,
-      client: "codex"
+      client: "codex",
+      application_name: product.application_name,
+      mcp_group_name: product.mcp_group_name
     });
     await writeJson(
       join(pluginRoot, ".codex-plugin", "plugin.json"),
       pluginManifest(product)
     );
     await copyProductSkills(skills, join(pluginRoot, "skills"));
-    await copyRuntime(product, pluginRoot);
+    await copyRuntime(product, pluginRoot, root, "codex");
     await copySettingsTemplate(product, pluginRoot);
     marketplace.plugins.push(marketplaceEntry(product));
   }
@@ -82,9 +85,11 @@ for (const { product, skills } of resolved) {
       schema_version: "1",
       name: product.name,
       version: product.version,
-      client: "claude"
+      client: "claude",
+      application_name: product.application_name,
+      mcp_group_name: product.mcp_group_name
     });
-    await writeJson(join(pluginRoot, ".claude-plugin", "plugin.json"), {
+    const claudePlugin = {
       name: product.name,
       displayName: product.display_name,
       version: product.version,
@@ -94,9 +99,16 @@ for (const { product, skills } of resolved) {
       repository: "https://github.com/cody-marcel-dfsm/bos_operations_ceneter",
       license: "Apache-2.0",
       keywords: ["bos", "operations", product.name]
-    });
+    };
+    if (product.runtime) {
+      claudePlugin.mcpServers = "./.mcp.json";
+    }
+    await writeJson(
+      join(pluginRoot, ".claude-plugin", "plugin.json"),
+      claudePlugin
+    );
     await copyProductSkills(skills, join(pluginRoot, "skills"));
-    await copyRuntime(product, pluginRoot);
+    await copyRuntime(product, pluginRoot, root, "claude");
     await copySettingsTemplate(product, pluginRoot);
     if (product.name === "icode-operations-center") {
       await writeFile(
@@ -124,8 +136,9 @@ for (const { product, skills } of resolved) {
           "",
           "## Authentication and security",
           "",
-          "The remote HTTPS MCP uses the client-configured `BOS_API_KEY` bearer credential",
-          "and `BOS_INSTALLED_APP_ID`. Credentials are never included in this package,",
+          "The remote HTTPS MCP uses this plugin's sensitive BOS bearer credential.",
+          "The packaged `icode-operations` MCP resource group selects its tools.",
+          "Credentials are never included in this package,",
           "conversation content, logs, or tool arguments.",
           "",
           "## Privacy and support",
@@ -157,10 +170,40 @@ for (const { product, skills } of resolved) {
       schema_version: "1",
       name: product.name,
       version: product.version,
-      client: "copilot"
+      client: "copilot",
+      application_name: product.application_name,
+      mcp_group_name: product.mcp_group_name
     });
+    if (product.runtime) {
+      await writeJson(
+        join(productRoot, ".github", "mcp.json"),
+        await copilotMcpManifest(product)
+      );
+    }
     await copyProductSkills(skills, target);
     await copySettingsTemplate(product, join(target, ".."));
+    await writeFile(
+      join(productRoot, "README.md"),
+      [
+        `# ${product.display_name} for GitHub Copilot`,
+        "",
+        "Copy `skills/` into the target repository's `.agents/skills/` directory.",
+        ...(product.runtime ? [
+          "Copy `.github/mcp.json` into the target repository, or paste its JSON into",
+          "Settings > Copilot > MCP servers for Copilot cloud agent and code review.",
+          "",
+          "Create an Agents secret named `COPILOT_MCP_BOS_API_KEY` containing the",
+          "organization-scoped BOS API key. GitHub exposes only `COPILOT_MCP_`-prefixed",
+          "secrets and variables to repository MCP configuration.",
+          "",
+          `This package is fixed to \`/mcp/apps/${product.application_name}/${product.mcp_group_name}\`.`,
+          "The package does not select or provision a BOS application."
+        ] : [
+          "This is a skills-only package and registers no MCP server."
+        ]),
+        ""
+      ].join("\n")
+    );
   }
 
   if (product.clients.includes("gemini")) {
@@ -174,7 +217,9 @@ for (const { product, skills } of resolved) {
       schema_version: "1",
       name: product.name,
       version: product.version,
-      client: "gemini"
+      client: "gemini",
+      application_name: product.application_name,
+      mcp_group_name: product.mcp_group_name
     });
     await writeJson(
       join(extensionRoot, "gemini-extension.json"),
@@ -210,7 +255,9 @@ await writeFile(
     "# BOS Operations Center Copilot Packages",
     "",
     "Select a product under `products/<product>/skills` and install those",
-    "skills into the target repository's `.agents/skills` directory.",
+    "skills into the target repository's `.agents/skills` directory. Each product",
+    "also includes a `.github/mcp.json` registration for its fixed named BOS MCP",
+    "route and product-specific setup instructions.",
     ""
   ].join("\n")
 );
@@ -236,6 +283,14 @@ for (const client of ["codex", "claude", "copilot", "gemini"]) {
     throw error;
   }
 }
+
+await writeJson(join(root, ".claude-plugin", "marketplace.json"), {
+  ...claudeMarketplace,
+  plugins: claudeMarketplace.plugins.map((plugin) => ({
+    ...plugin,
+    source: `./clients/claude/plugins/${plugin.name}`
+  }))
+});
 
 await rm(stage, { recursive: true, force: true });
 console.log(

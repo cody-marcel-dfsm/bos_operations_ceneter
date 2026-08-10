@@ -1,15 +1,15 @@
 # BOS Feedback Client Contract
 
-Use `bos_submit_feedback` only after selecting one exact installed-app scope
-returned by `bos_get_context`. Submit through
-`POST /mcp/apps/{installed_app_id}` with the existing organization-scoped BOS
-agent bearer credential. Route scope never appears in the request body and the
-client never falls back to broad `/mcp`. The installation ID is static client
-configuration for that MCP connection and must match canonical context.
+Use `bos_submit_feedback` through the package's static
+`POST /mcp/apps/{application-name}/{skill-group-name}` connection with the
+existing organization-scoped BOS agent bearer credential. Both route segments
+are immutable human-readable package configuration; the client never derives
+them from an installation ID or customer setting. Execution scope never
+appears in the request body and the client never falls back to an unnamed endpoint.
+BOS derives the authorized tenant and installation from the credential.
 
 ## Required fields
 
-- `delegated_role_id`
 - `client_submission_id`: UUID used unchanged for one safe retry
 - `category`: `bug`, `enhancement`, `usability`, `documentation`,
   `incorrect-result`, `missing-capability`, or `other`
@@ -51,7 +51,6 @@ identifiers, or legacy instruction bodies.
 
 ```json
 {
-  "delegated_role_id": "operations-director",
   "client_submission_id": "00000000-0000-4000-8000-000000000003",
   "category": "enhancement",
   "severity": "medium",

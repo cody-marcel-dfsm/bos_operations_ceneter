@@ -2,7 +2,8 @@
   "mcpServers": {
     "bos": {
       "type": "http",
-      "url": "https://dfsm.ai/mcp/apps/${BOS_INSTALLED_APP_ID}",
+      "url": "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
+      "bearer_token_env_var": "BOS_API_KEY",
       "headers": {
         "Authorization": "Bearer ${BOS_API_KEY}"
       }

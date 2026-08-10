@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "video-ads": {
+      "type": "http",
+      "url": "https://dfsm.ai/mcp/apps/leaddirector/video-ads",
+      "headers": {
+        "Authorization": "Bearer ${COPILOT_MCP_BOS_API_KEY}"
+      },
+      "tools": [
+        "*"
+      ]
+    }
+  }
+}

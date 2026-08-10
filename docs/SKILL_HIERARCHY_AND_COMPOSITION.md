@@ -62,7 +62,7 @@ skill focused on a reusable BOS goal:
 ```text
 bos
 └── skills/
-    ├── use-bos/
+    ├── bos-mcp-client/
     ├── planning/
     ├── implementation/
     ├── review/
@@ -74,7 +74,7 @@ bos
 The plugin identity supplies the external qualification:
 
 ```text
-bos:use-bos
+bos:bos-mcp-client
 bos:planning
 bos:implementation
 bos:review
@@ -297,10 +297,11 @@ selected BOS foundation, capability, and vertical skills from this repository.
 Preserve product-specific display names through product manifests.
 
 Use the plugin namespace for package ownership and product manifests for skill
-selection. Install the `bos` plugin once to supply foundations and the single
-BOS MCP connection. An iCode companion plugin supplies iCode vertical skills
-and uses that connection. The Lead Director source repository contributes its
-local specializations and applies the installed BOS foundations.
+selection. Install the `bos` plugin to supply general foundations. A runtime
+product such as iCode includes its configured BOS MCP connection and the
+shared `bos-mcp-client` lifecycle skill alongside its vertical skills. The
+Lead Director source repository contributes its local specializations and
+applies the installed BOS foundations.
 
 ### Phase 5: Remove duplicate exposure
 
@@ -322,8 +323,8 @@ Add validation that fails when:
 - a BOS foundation contains an application-specific repository path or gate;
 - an application specialization omits its required qualified BOS foundation;
 - a Lead Director legacy BOS workflow directory remains;
-- a companion product republishes BOS foundation skills under another plugin
-  namespace;
+- a companion product republishes BOS foundation skills other than approved
+  shared runtime and extension-management skills;
 - a packaged skill also exists as an independently maintained global copy;
 - product manifests reference unknown skills or capabilities;
 - two package entries expose the same qualified identity; or

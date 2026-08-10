@@ -154,11 +154,15 @@ composing `bos:*` foundation skills with `lead-director-*` repository skills.
 Lead Director therefore has no companion plugin that republishes BOS
 foundations.
 
-Install the `bos` foundation plugin once per client. It owns the general BOS
-MCP connection. Companion skill-only products such as iCode Operations Center
-use that connection. Products requiring a restricted tool surface register a
-uniquely named server and a BOS-owned profile endpoint, such as
-`video-ads` at `/mcp/video-ads`.
+Every product that owns a BOS runtime connection includes `bos-mcp-client` so
+the active agent owns transport recovery, live tool discovery, context
+validation, and safe request resumption. The BOS product publishes the other
+general foundations. Runtime products such as iCode Operations Center carry
+their fixed named application/group connection and the shared client-lifecycle
+skill. Products requiring a restricted tool surface register a uniquely named
+server and a BOS-owned named route. Current mappings include
+`/mcp/apps/leaddirector/icode-operations`,
+`/mcp/apps/leaddirector/video-ads`; the BOS platform package is skills-only.
 
 ### Customer configuration
 
@@ -446,8 +450,9 @@ specialize a packaged operating procedure. Extensions cannot grant tenant,
 organization, application, role, plugin, capability, or provider authority.
 
 Credentials and access authority remain outside customer configuration. The
-client receives its single `BOS_API_KEY` through the approved GCP-managed
-client configuration and forwards it as a Bearer header over HTTPS. Skill
+client receives one `BOS_API_KEY` through the approved GCP-managed client
+configuration. Each named MCP connection forwards that same key as a Bearer
+header over HTTPS. Skill
 files, generated packages, logs, customer settings, command arguments, and
 chat remain credential-free. BOS owns encrypted provider-credential
 persistence. For a missing provider grant, BOS returns a short-lived HTTPS
@@ -464,8 +469,8 @@ settings. The distribution contains configuration and skills; it contains no
 proxy executable, Python runtime, subprocess server, loopback listener, mobile
 client, or OS-specific transport adapter.
 
-The general BOS endpoint is `https://dfsm.ai/mcp`. Restricted products use a
-dedicated endpoint below that path. The BOS service authenticates the API key,
+The BOS platform package registers no MCP endpoint. Application products use
+their own immutable named routes. The BOS service authenticates the API key,
 resolves tenant and installation context, and advertises only the tools
 authorized for that endpoint. Tool discovery, routing, administrative-tool
 suppression, and provider recovery are server responsibilities.
@@ -534,8 +539,9 @@ authenticate BOS and does not authorize provider access.
 
 ### 3. Connect the account
 
-The client loads `BOS_API_KEY` from its approved GCP-managed environment and
-connects directly to the product's HTTPS MCP endpoint. BOS validates the key
+The client loads its one `BOS_API_KEY` from the approved GCP-managed environment
+and connects directly to each matching named HTTPS MCP endpoint. BOS validates
+the same key
 on every secured request and fails closed when it is absent, invalid, expired,
 or outside the endpoint's authorized product scope. The customer completes no
 second BOS password or login flow.

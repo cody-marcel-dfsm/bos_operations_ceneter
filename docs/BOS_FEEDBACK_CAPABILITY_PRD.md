@@ -62,14 +62,14 @@ When the user explicitly says “send,” “submit,” “record,” or “repo
 the client skill:
 
 1. Calls `bos_get_context` once.
-2. Selects one exact authorized scope, verifies the statically configured MCP
-   installation ID, and copies only `delegated_role_id` into the submission.
+2. Uses the product's fixed named application/group MCP connection; BOS derives
+   one exact authorized execution scope from the authenticated credential.
 3. Identifies the feedback target from the active skill/tool/package context.
 4. Produces a concise title and feedback body faithful to the user's words.
 5. Adds only the minimum sanitized reproduction context needed to understand
    the issue.
 6. Presents the sanitized payload for explicit user confirmation, then calls
-   `bos_submit_feedback` through `/mcp/apps/{installed_app_id}`.
+   `bos_submit_feedback` through the product's existing named MCP connection.
 7. Shows the returned feedback ID, status, target, and timestamp.
 
 The explicit imperative authorizes preparation of the feedback described in
@@ -342,9 +342,10 @@ The MCP handler and router perform no direct persistence.
 ### 8.2 Authorization
 
 1. Authenticate the actor from the BOS MCP session.
-2. Derive organization, application, and installation scope from the
-   authenticated principal and `/mcp/apps/{installed_app_id}` route. Validate
-   `delegated_role_id` against canonical context.
+2. Derive organization, application, installation, and delegated-role scope
+   from the authenticated principal. Treat the human-readable application and
+   skill-group route only as application/tool-group selection, never as an
+   authority or installation identifier.
 3. Require an active installation and a feedback-create capability grant.
 4. Record both authenticated actor identity and validated delegated execution
    role.

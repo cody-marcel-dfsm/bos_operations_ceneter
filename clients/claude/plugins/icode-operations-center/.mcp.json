@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "bos": {
+    "icode-operations": {
       "type": "http",
-      "url": "https://dfsm.ai/mcp/apps/${BOS_INSTALLED_APP_ID}",
+      "url": "https://dfsm.ai/mcp/apps/leaddirector/icode-operations",
       "headers": {
         "Authorization": "Bearer ${BOS_API_KEY}"
       }

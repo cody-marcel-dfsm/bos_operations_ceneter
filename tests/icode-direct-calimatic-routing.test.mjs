@@ -12,9 +12,9 @@ function read(relativePath) {
 test("iCode class operations route requested Calimatic access through BOS", () => {
   const skill = read("source/verticals/icode/icode-class-operations/SKILL.md");
 
-  assert.match(skill, /tenant-neutral `bos` MCP/i);
-  assert.match(skill, /authorized BOS context exposing.*Calimatic/is);
-  assert.match(skill, /org_id.*app_code.*installed_app_id.*delegated_role_id/is);
+  assert.match(skill, /packaged iCode skill-group connection/i);
+  assert.match(skill, /omit `org_id`, `app_code`, `installed_app_id`, and `delegated_role_id`/i);
+  assert.match(skill, /BOS\s+derives them from the authenticated installation/i);
   assert.match(skill, /Never use a direct provider client/i);
   assert.match(skill, /useful partial result.*authorized BOS capabilities/is);
 });

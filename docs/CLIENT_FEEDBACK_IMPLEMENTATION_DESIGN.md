@@ -147,9 +147,9 @@ The new skill follows this sequence:
 
 1. Determine whether the user authorized submission or requested only a draft.
 2. Call `bos_get_context` once.
-3. Select exactly one server-returned scope and verify its `installed_app_id`
-   matches the static installed-app ID in the active MCP connection URL. Retain
-   `delegated_role_id` for the tool arguments.
+3. Use the package's fixed named application/group MCP connection. Send no
+   execution scope fields; BOS derives the unique authorized scope from the
+   credential.
 4. Resolve the target:
    - Prefer the skill/tool that handled the immediately preceding operation.
    - Otherwise use the explicitly named target.
@@ -163,9 +163,9 @@ The new skill follows this sequence:
    from the current task and working changes.
 10. Generate one UUID `client_submission_id` and retain it for the submission
    attempt and one retry.
-11. Call `bos_submit_feedback` through the installed-app-bound MCP connection
-    with `delegated_role_id` and the allowlisted payload. Never put route scope
-    in the body or fall back to broad `/mcp`.
+11. Call `bos_submit_feedback` through the package's named MCP connection with
+    `delegated_role_id` and the allowlisted payload. Never put route scope in
+    the body or retry through an unnamed transport.
 12. Display the receipt ID, canonical target, status, and received time.
 
 Never imply that the feedback has been triaged, prioritized, assigned, or

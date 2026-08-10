@@ -1,6 +1,6 @@
 {
   "name": "icode-operations-center",
-  "version": "0.4.11",
+  "version": "0.4.15",
   "description": "Authorized school operations for adult iCode staff through the tenant-scoped BOS MCP.",
   "author": {
     "name": "Infinite State Machines LLC"
@@ -19,7 +19,7 @@
     "defaultPrompt": [
       "Initialize my iCode customer settings.",
       "Create today's iCode operations plan.",
-      "Reconcile upcoming classes and trials."
+      "Give me a weekly summary for my director."
     ]
   },
   "mcpServers": "./.mcp.json"

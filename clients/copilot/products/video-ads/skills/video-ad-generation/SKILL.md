@@ -8,13 +8,17 @@ description: Generate and monitor a video advertisement from an approved brief t
 Generate video only through the BOS capability authorized for the active
 organization, installed application, and Video Ads plugin.
 
+Follow `bos-mcp-client` and use only the installed `video-ads` MCP connection.
+The client's configured `BOS_API_KEY` identifies the server-side principal;
+the named endpoint selects the Video Ads tool group.
+
 ## Workflow
 
 1. Require an approved brief revision and identify its intended aspect ratio,
    duration, language, and source assets.
-2. Call `video_ads_get_readiness`, using one exact authorized BOS scope from
-   the tool metadata. Stop when Arcads, Drive delivery, or policy readiness is
-   unavailable.
+2. Call `video_ads_get_readiness` without execution-scope arguments. BOS derives
+   the exact ISM Lead Director scope from the authenticated skill-group
+   connection. Stop when Arcads, Drive delivery, or policy readiness is unavailable.
 3. Call `video_ads_list_options` and select only server-returned generation
    families, actors, situations, models, and output constraints.
 4. Create a unique idempotency key and call `video_ads_start_generation` with

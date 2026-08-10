@@ -64,7 +64,7 @@ def main() -> None:
     DIST.mkdir(parents=True, exist_ok=True)
     for old in DIST.glob("*.tar.gz"):
         old.unlink()
-    for old in DIST.glob("*-claude-*.zip"):
+    for old in DIST.glob("*-claude*.zip"):
         old.unlink()
 
     releases = []
@@ -80,11 +80,11 @@ def main() -> None:
         }
         for client in product["clients"]:
             source = roots[client]
-            suffix = ".zip" if client == "claude" else ".tar.gz"
-            destination = DIST / f"{name}-{client}-{version}{suffix}"
             if client == "claude":
+                destination = DIST / f"{name}-{client}.zip"
                 create_zip(source, destination, name)
             else:
+                destination = DIST / f"{name}-{client}-{version}.tar.gz"
                 create_archive(source, destination, name)
             releases.append(
                 {

@@ -5,7 +5,7 @@ description: Submit or draft customer feedback about BOS package skills, MCP too
 
 # Submit Feedback
 
-Submit privacy-minimized feedback through the tenant-neutral BOS MCP. Read
+Submit privacy-minimized feedback through the packaged application MCP group. Read
 [references/feedback-contract.md](references/feedback-contract.md) before the
 first submission in a task.
 
@@ -26,15 +26,14 @@ first submission in a task.
 
 1. Call `bos_get_context` once.
 2. Select exactly one authorized scope relevant to the active package.
-3. Select the MCP connection whose configured `installed_app_id` matches the
-   selected canonical scope. The installation ID is static connection
-   configuration and the client submits through `/mcp/apps/{installed_app_id}`.
-4. Copy only `delegated_role_id` into `bos_submit_feedback`. Never put
-   `org_id`, `app_code`, or `installed_app_id` in feedback arguments.
+3. Submit through the product's immutable packaged
+   `/mcp/apps/{application-name}/{skill-group-name}` connection.
+4. Do not send execution-scope fields. The authenticated server derives
+   `org_id`, `app_code`, `installed_app_id`, and `delegated_role_id`.
 5. Fail closed and run the existing context/authentication recovery flow when
-   installed-app scope is missing, invalid, unauthorized, or ambiguous. Never
-   retry feedback through broad `/mcp`.
-6. Follow `use-bos` for the local authentication flow. Never request or accept
+   execution scope is missing, invalid, unauthorized, or ambiguous. Never
+   retry feedback through an unnamed endpoint.
+6. Follow `bos-mcp-client` for the local authentication flow. Never request or accept
    a BOS credential in chat.
 
 ## Build the feedback
@@ -108,8 +107,8 @@ feedback meaningless.
 ## Submit and report
 
 1. Create one UUID `client_submission_id` and retain it for the attempt.
-2. Call `bos_submit_feedback` through the installed-app-bound MCP connection
-   with `delegated_role_id` and the allowlisted feedback fields.
+2. Call `bos_submit_feedback` through the package's named MCP connection with
+   only the allowlisted feedback fields. The server derives execution scope.
 3. On a transport or server failure, retry once with the same submission ID.
 4. On success, report the feedback ID, canonical target, `received` status, and
    server timestamp. Do not claim triage, assignment, prioritization, or a

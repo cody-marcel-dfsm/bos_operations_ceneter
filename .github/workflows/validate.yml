@@ -19,6 +19,7 @@ jobs:
       - run: npm run release:check
       - name: Validate Claude marketplace and plugins
         run: |
+          npx -y @anthropic-ai/claude-code@2.1.220 plugin validate . --strict
           npx -y @anthropic-ai/claude-code@2.1.220 plugin validate clients/claude --strict
           for plugin in clients/claude/plugins/*; do
             npx -y @anthropic-ai/claude-code@2.1.220 plugin validate "$plugin" --strict

@@ -8,20 +8,20 @@
     {
       "name": "bos",
       "source": "./plugins/bos",
-      "description": "Tenant-neutral Business Operating System foundations and MCP access.",
-      "version": "0.4.11"
+      "description": "Tenant-neutral Business Operating System foundations.",
+      "version": "0.4.15"
     },
     {
       "name": "icode-operations-center",
       "source": "./plugins/icode-operations-center",
       "description": "Authorized school operations for adult iCode staff through the tenant-scoped BOS MCP.",
-      "version": "0.4.11"
+      "version": "0.4.15"
     },
     {
       "name": "video-ads",
       "source": "./plugins/video-ads",
       "description": "Create, review, and deliver video ads through tenant-scoped BOS capabilities.",
-      "version": "0.1.1"
+      "version": "0.1.3"
     }
   ]
 }

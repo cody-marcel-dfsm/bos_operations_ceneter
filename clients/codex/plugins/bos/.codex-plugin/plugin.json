@@ -1,15 +1,15 @@
 {
   "name": "bos",
-  "version": "0.4.11",
-  "description": "Tenant-neutral Business Operating System foundations and MCP access.",
+  "version": "0.4.15",
+  "description": "Tenant-neutral Business Operating System foundations.",
   "author": {
     "name": "Infinite State Machines LLC"
   },
   "skills": "./skills/",
   "interface": {
     "displayName": "BOS",
-    "shortDescription": "Tenant-neutral Business Operating System foundations and MCP access.",
-    "longDescription": "Tenant-neutral Business Operating System foundations and MCP access.",
+    "shortDescription": "Tenant-neutral Business Operating System foundations.",
+    "longDescription": "Tenant-neutral Business Operating System foundations.",
     "developerName": "Infinite State Machines LLC",
     "category": "Productivity",
     "capabilities": [
@@ -19,8 +19,7 @@
     "defaultPrompt": [
       "Plan this BOS platform change.",
       "Review this BOS implementation.",
-      "Use BOS to complete this business operation."
+      "Validate this BOS package architecture."
     ]
-  },
-  "mcpServers": "./.mcp.json"
+  }
 }
