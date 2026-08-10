@@ -15,16 +15,18 @@ test("iCode class operations route requested Calimatic access through BOS", () =
   assert.match(skill, /packaged iCode skill-group connection/i);
   assert.match(skill, /omit `org_id`, `app_code`, `installed_app_id`, and `delegated_role_id`/i);
   assert.match(skill, /BOS\s+derives them from the authenticated installation/i);
-  assert.match(skill, /Never use a direct provider client/i);
-  assert.match(skill, /useful partial result.*authorized BOS capabilities/is);
+  assert.match(skill, /Never use a direct provider\s+client/i);
+  assert.match(skill, /exact missing route, capability, scope, and freshness/i);
 });
 
-test("iCode service routing preserves tenant scope for every provider", () => {
+test("iCode service routing preserves BOS scope while honoring evidence routes", () => {
   const skill = read("source/verticals/icode/icode-service-routing/SKILL.md");
 
   assert.match(skill, /tenant-neutral BOS/i);
-  assert.match(skill, /explicitly requested provider through its authorized BOS capability/i);
-  assert.match(skill, /authorized BOS Calimatic capability/i);
-  assert.match(skill, /Never route.*private provider work around BOS/is);
+  assert.match(skill, /source_routes\.calimatic[\s\S]*package default is BOS/i);
+  assert.match(skill, /source_routes\.care_com/i);
+  assert.match(skill, /connected_gmail[\s\S]*normal Gmail connector/i);
+  assert.match(skill, /external connector supplies evidence only/i);
+  assert.match(skill, /never changes BOS tenant, role, organization, or mutation authority/i);
   assert.match(skill, /org_id.*app_code.*installed_app_id.*delegated_role_id/is);
 });

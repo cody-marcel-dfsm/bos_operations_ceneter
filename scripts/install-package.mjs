@@ -182,7 +182,7 @@ export function validateCustomerSettings(settings) {
   if (settings.schema_version !== "1") failures.push('schema_version must be "1"');
   const allowedTopLevel = new Set([
     "schema_version", "organization_display_name", "location_display_name",
-    "timezone", "mailboxes", "billing"
+    "timezone", "mailboxes", "source_routes", "billing"
   ]);
   for (const field of Object.keys(settings)) {
     if (!allowedTopLevel.has(field)) failures.push(`unknown settings field: ${field}`);
@@ -205,12 +205,47 @@ export function validateCustomerSettings(settings) {
     failures.push("mailboxes must be an object");
   } else {
     for (const field of Object.keys(settings.mailboxes ?? {})) {
-      if (field !== "care_com") failures.push(`unknown mailboxes field: ${field}`);
+      if (!new Set(["care_com", "parent_communications"]).has(field)) {
+        failures.push(`unknown mailboxes field: ${field}`);
+      }
     }
   }
   if (mailbox !== undefined && mailbox !== "" &&
       (typeof mailbox !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mailbox))) {
     failures.push("mailboxes.care_com must be empty or a valid email address");
+  }
+  const parentMailbox = settings.mailboxes?.parent_communications;
+  if (parentMailbox !== undefined && parentMailbox !== "" &&
+      (typeof parentMailbox !== "string" ||
+       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(parentMailbox))) {
+    failures.push("mailboxes.parent_communications must be empty or a valid email address");
+  }
+  const allowedSourceRoutes = new Set([
+    "calimatic", "lead_director", "calendar", "parent_communications", "care_com"
+  ]);
+  const allowedRouteValues = new Set(["bos", "connected_gmail"]);
+  if (settings.source_routes !== undefined &&
+      (!settings.source_routes || typeof settings.source_routes !== "object" ||
+       Array.isArray(settings.source_routes))) {
+    failures.push("source_routes must be an object");
+  } else {
+    for (const [field, value] of Object.entries(settings.source_routes ?? {})) {
+      if (!allowedSourceRoutes.has(field)) {
+        failures.push(`unknown source_routes field: ${field}`);
+      } else if (!allowedRouteValues.has(value)) {
+        failures.push(`source_routes.${field} must be bos or connected_gmail`);
+      } else if (value === "connected_gmail" && field !== "care_com" &&
+                 field !== "parent_communications") {
+        failures.push(`source_routes.${field} does not support connected_gmail`);
+      } else if (value === "connected_gmail" && field === "care_com" && !mailbox) {
+        failures.push("source_routes.care_com requires mailboxes.care_com");
+      } else if (value === "connected_gmail" && field === "parent_communications" &&
+                 !parentMailbox) {
+        failures.push(
+          "source_routes.parent_communications requires mailboxes.parent_communications"
+        );
+      }
+    }
   }
   const rate = settings.billing?.bright_horizons_rate_per_child_day;
   const allowedBilling = new Set([

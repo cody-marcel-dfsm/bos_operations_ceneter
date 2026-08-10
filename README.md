@@ -180,6 +180,12 @@ Package updates back up and replace every managed file. Customer terminology,
 defaults, policies, and exceptions belong in customer-owned extension skills,
 which updates preserve.
 
+Customer values such as mailbox addresses and per-domain source routes belong
+in the preserved `config/customer-settings.json` overlay. The packaged
+`customer-settings.template.json` supplies reusable defaults and schema only.
+Builds replace the template and managed skills while preserving the overlay, so
+customer values never need to be copied into regenerated files.
+
 Ask the agent directly, for example: “Update the class-operations skill for my
 location so the planning window defaults to 21 days.” Every product ships the
 `manage-customer-extension` skill, which resolves the base skill and customer,

@@ -11,29 +11,43 @@ operators. Access and display only the minimum student or family information
 needed for the requested roster, capacity, attendance, or placement task. Do
 not publish, export, or distribute it without a separate authorized request.
 
-Use the tenant-neutral `bos` MCP and follow the `bos-mcp-client` context workflow.
+Use the named `icode-operations` MCP connection and follow the
+`bos-mcp-client` context workflow.
 Use Calimatic for class/enrollment state and Calendar only as schedule evidence.
-Load the installed product's `config/customer-settings.json`. For Care.com
-Backup Care evidence addressed to `mailboxes.care_com`, follow
-`email-account-routing` and use that configured connected Gmail account. Do not
-route that mailbox through BOS Gmail. Stop and report configuration required
-when the mailbox setting is empty or absent.
+Resolve the effective customer settings by loading the packaged settings
+template and recursively overlaying the preserved customer settings file. For
+Care.com Backup Care evidence, follow `source_routes.care_com`:
+
+- `bos`: use published `icode_search_email_evidence` and
+  `icode_get_email_thread` through the named iCode connection.
+- `connected_gmail`: invoke `email-account-routing`, select the exact
+  `mailboxes.care_com` account, and use the normal Gmail connector's bounded
+  search and full-thread retrieval tools.
+
+Stop with a source-specific configuration result when the selected route or
+required mailbox is unavailable. Never copy the mailbox into this packaged
+skill or silently switch to another account.
 Use `bos-visual-output` for multi-class schedules, capacity, attendance, and
 camp-assignment results.
 When the user requests Calimatic, use the packaged iCode skill-group connection
 and omit `org_id`, `app_code`, `installed_app_id`, and `delegated_role_id`; BOS
-derives them from the authenticated installation. Never use a direct provider client or
-browser session as a fallback. When BOS reports an authentication or credential
-error, follow its secure handoff flow and never request a secret in chat. If a
-required capability is unavailable, return a useful partial result from other
-authorized BOS capabilities and the exact missing capability, scope, and source
-freshness.
+derives them from the authenticated installation. Never use a direct provider
+client or browser session as a fallback for a BOS-routed domain. When BOS
+reports an authentication or credential error, follow its secure handoff flow.
+When `connected_gmail` reports an account error, use the Gmail connector's
+native recovery for the exact configured mailbox. Never request a secret in
+chat. If a required capability is unavailable, return a useful partial result
+with the exact missing route, capability, scope, and freshness.
 
 ## Classes and rosters
 
 - Use the authorized BOS enrollment-listing capability for date-bound rosters.
-- Search the connected iCode Gmail mailbox for messages from
-  `[REDACTED_EMAIL]` in the requested date window.
+- Search the configured Care.com evidence source for provider notices. Use a
+  bounded lookback of up to 180 days before the
+  requested period through its end, then retain only child-days whose service
+  date falls inside the requested period. Hydrate every relevant hit with
+  the selected route's full-thread tool before interpreting confirmation or
+  cancellation.
 - Group Care.com messages by numeric job ID. Count a `Backup Care Job
   Confirmation ID: <job_id>` with body status `Confirmed` as active enrollment.
   Retain `New Backup Care Job Request ID: <job_id>` with status `New` as pending
@@ -53,8 +67,14 @@ freshness.
   Horizons child-days. Never display Care.com as a camp/class.
 - Anchor scenarios in real Calimatic camp sections, dates, paid rosters, and
   capacity.
-- Keep Bright Horizons child-days unassigned until the user requests a scenario
-  or confirms placement.
+- Label a Bright Horizons student under a camp/day only when Calimatic or
+  another published BOS record explicitly identifies Bright Horizons and
+  assigns that student to the exact camp occurrence and date. Keep generic or
+  unassigned Bright Horizons child-days out of camp rosters and report them as
+  `Needs review` placement exceptions.
+- Label a Care.com student under a camp/day only when a confirmed child-day is
+  explicitly assigned to that exact camp occurrence and date. Report confirmed
+  but unassigned Care.com demand as a `Needs review` placement exception.
 - Treat assignment as a proposed scenario until an authorized Calimatic update
   tool is published and the user requests execution.
 

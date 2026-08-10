@@ -449,6 +449,18 @@ Customer-owned extension skills may consume this non-secret configuration to
 specialize a packaged operating procedure. Extensions cannot grant tenant,
 organization, application, role, plugin, capability, or provider authority.
 
+Package settings templates contain reusable defaults and the schema for
+customer-configurable source roles. The installed `customer-settings.json` is
+a customer-owned overlay containing confirmed customer values. Skills resolve effective settings by
+recursively overlaying it on the template. Builds replace templates and managed
+skills while preserving the overlay; they never copy customer mailboxes,
+provider selectors, or location values back into generated package files.
+
+Source routing is domain-specific. One customer can route Calimatic, Lead
+Director, Calendar, and general parent communications through BOS while routing
+Care.com evidence through an exact account in the client's normal Gmail
+connector. External connector evidence never expands BOS identity or authority.
+
 Credentials and access authority remain outside customer configuration. The
 client receives one `BOS_API_KEY` through the approved GCP-managed client
 configuration. Each named MCP connection forwards that same key as a Bearer
