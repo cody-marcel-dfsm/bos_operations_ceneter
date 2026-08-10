@@ -18,6 +18,9 @@ jobs:
           node-version: "20"
       - name: Build and validate customer ZIP
         run: npm run release:check
+        env:
+          BOS_API_KEY: ${{ secrets.BOS_API_KEY }}
+          ICODE_SMOKE_TIME_ZONE: ${{ vars.ICODE_SMOKE_TIME_ZONE }}
       - name: Validate Claude marketplace and plugins
         run: |
           npx -y @anthropic-ai/claude-code@2.1.220 plugin validate . --strict

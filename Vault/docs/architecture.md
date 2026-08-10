@@ -102,6 +102,18 @@ release system for portable BOS skills and native remote MCP client adapters.
     process-scoped credential fetched from approved managed storage. Never
     persist a bearer in package files or publish it into the global GUI launch
     environment.
+18. Gate every complete build and customer release on a credentialed,
+    read-only live query through each operational product's exact named MCP
+    route. For iCode director reporting, the gate must discover the complete
+    report read-tool contract, prove one server-derived iCode context, and
+    execute a bounded enrollment query for the customer-configured local week.
+    A well-formed empty record array is a valid seasonal result. When camp data
+    exists, report student and family-phone field presence as aggregate
+    data-quality evidence without treating provider-record completeness as a
+    transport failure. Emit only allowlisted status/error codes, validated
+    correlation IDs, tool names, and aggregate field-presence counts.
+    Artifact-only development builds may remain credential-free but provide no
+    production-readiness evidence.
 
 ## Knowledge and review
 

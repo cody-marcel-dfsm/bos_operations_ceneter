@@ -60,7 +60,7 @@ capabilities, local validation evidence, and the remaining client smoke tests.
 
 ## Build
 
-Run:
+Run the complete credentialed build:
 
 ```bash
 npm run build
@@ -68,13 +68,24 @@ npm run build
 
 The complete build assembles every declared product/client distribution,
 creates deterministic product archives and the release manifest, and creates
-versioned and stable OS-neutral customer ZIPs under `dist/`.
+versioned and stable OS-neutral customer ZIPs under `dist/`. It then runs the
+live iCode director-query smoke against the production named MCP route using
+the process-scoped `BOS_API_KEY` and the protected `ICODE_SMOKE_TIME_ZONE`
+IANA timezone. The build fails unless it derives one authenticated iCode
+context and executes the bounded current-local-week enrollment query. When
+camp records exist, the smoke reports aggregate student and family-phone field
+presence as data-quality evidence without emitting personal values.
+
+Use `npm run build:artifacts` for a credential-free artifact-only build. It
+cannot establish production readiness.
 
 Use `npm run build:packages` when developing only canonical/generated client
 content without producing deployable archives.
 
-Building does not install a package, configure a customer, authenticate BOS,
-access organization data, or publish a GitHub release.
+Building does not install a package, configure a customer, print organization
+records, or publish a GitHub release. The live smoke returns only status,
+correlation IDs, tool names, and aggregate field-presence counts; it never
+prints the key or personal record values.
 
 Run `npm run release:check` to rebuild and verify all deployment artifacts,
 package structure, tests, and credential safety.
@@ -149,13 +160,19 @@ launches Codex:
 
 ```bash
 npm run smoke:mcp:icode
+npm run smoke:mcp:icode-data
 npm run smoke:mcp:video-ads
 ```
 
-Each smoke test performs `initialize`, `notifications/initialized`, and
-`tools/list` against the exact named endpoint. It prints only status,
-correlation IDs, and advertised tool names; it never prints or persists the
-configured key. A successful connection requires a non-empty tool catalog.
+The connection smokes perform `initialize`, `notifications/initialized`, and
+`tools/list` against each exact named endpoint. Set `ICODE_SMOKE_TIME_ZONE` to
+the customer overlay's IANA timezone before running the iCode data smoke. It
+additionally calls `bos_get_context` and `icode_list_enrollments` for the
+current local week, requires the report read-tool contract, and reports
+aggregate camp, student, and family-phone field presence when records exist.
+Failures print a sanitized, copy-ready server remediation prompt containing
+only allowlisted status and error codes. Smoke output never prints or persists
+the configured key, server error text, or personal record values.
 
 On macOS, launch ChatGPT/Codex with a process-scoped GCP-managed credential:
 
