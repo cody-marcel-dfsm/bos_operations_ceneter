@@ -1,6 +1,6 @@
 {
   "name": "bos-operations-center",
-  "version": "0.4.16",
+  "version": "0.4.17",
   "private": false,
   "description": "Cross-client source repository for iCode Operations Center Agent Skills.",
   "author": "Infinite State Machines LLC",
@@ -8,9 +8,11 @@
   "type": "module",
   "scripts": {
     "smoke:mcp:icode": "node scripts/smoke-mcp-connection.mjs https://dfsm.ai/mcp/apps/leaddirector/icode-operations",
+    "smoke:mcp:icode-data": "node scripts/smoke-icode-director-query.mjs",
     "smoke:mcp:video-ads": "node scripts/smoke-mcp-connection.mjs https://dfsm.ai/mcp/apps/leaddirector/video-ads",
     "build:packages": "node scripts/build-packages.mjs",
-    "build": "npm run build:packages && python3 scripts/create_release.py && python3 scripts/create_customer_zip.py",
+    "build:artifacts": "npm run build:packages && python3 scripts/create_release.py && python3 scripts/create_customer_zip.py",
+    "build": "npm run build:artifacts && npm run smoke:mcp:icode-data",
     "check:build": "node scripts/check-build-output.mjs",
     "check": "node scripts/check-package.mjs",
     "inventory": "node scripts/inventory-skills.mjs",
