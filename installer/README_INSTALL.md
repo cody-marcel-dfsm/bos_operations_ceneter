@@ -4,6 +4,10 @@ This release is an operating-system-neutral package for Codex, Claude, GitHub
 Copilot, and Gemini CLI. Extract it with the standard ZIP tool on macOS,
 Windows, or Linux and select the directory for the client you use.
 
+This published package has already passed its maintainer build, credentialed
+live server contract smoke, package checks, and release validation. Install it
+directly; build and release commands belong to the publishing workflow.
+
 ## Authentication
 
 Configure the client's single `BOS_API_KEY` through the approved configuration.
@@ -92,3 +96,10 @@ authorization or credential-collection URL scoped to the authenticated tenant,
 installation, plugin, provider, and credential. Open that URL through the
 active agent interface, complete the provider flow with BOS, verify status,
 and resume the original operation once.
+
+## Server updates
+
+When BOS deploys an updated tool catalog, reconnect the configured named MCP
+endpoint and rediscover its tools. Keep the installed package, endpoint, and
+API key unchanged. Restart or reinstall only after a local package, plugin, or
+MCP registration change.

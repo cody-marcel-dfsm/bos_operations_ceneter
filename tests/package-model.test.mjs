@@ -643,3 +643,19 @@ test("generated clients exclude Python cache and bytecode files", async () => {
     );
   }
 });
+
+test("customer installation guidance contains no maintainer build commands", async () => {
+  const readme = await readFile(`${root}/README.md`, "utf8");
+  const installSection = readme.split("## Install\n")[1]
+    .split("## Customer onboarding\n")[0];
+  const packagedInstructions = await readFile(
+    `${root}/installer/README_INSTALL.md`, "utf8"
+  );
+  for (const guidance of [installSection, packagedInstructions]) {
+    assert.doesNotMatch(guidance, /npm run (?:build|release(?::check|:customer)?)/);
+  }
+  assert.doesNotMatch(installSection, /clone this repository/i);
+  assert.doesNotMatch(installSection, /unreleased development version/i);
+  assert.match(packagedInstructions, /reconnect the configured named MCP/i);
+  assert.match(packagedInstructions, /Restart or reinstall only after a local/i);
+});
