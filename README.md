@@ -60,6 +60,11 @@ capabilities, local validation evidence, and the remaining client smoke tests.
 
 ## Build
 
+Maintainers configure the process-scoped `BOS_API_KEY` and set
+`ICODE_SMOKE_TIME_ZONE` to the customer overlay's IANA timezone before running
+a complete build. GitHub Actions uses the encrypted `BOS_API_KEY` repository
+secret and the protected `ICODE_SMOKE_TIME_ZONE` repository variable.
+
 Run the complete credentialed build:
 
 ```bash
@@ -90,9 +95,9 @@ prints the key or personal record values.
 Run `npm run release:check` to rebuild and verify all deployment artifacts,
 package structure, tests, and credential safety.
 
-## Install
+## Distribution
 
-### Cross-platform customer ZIP
+### Maintainer-built cross-platform customer ZIP
 
 Create the customer distribution:
 
@@ -120,10 +125,22 @@ Claude's native manual plugin-upload control described below.
 Tags matching `v*` run the customer-release workflow on a Linux runner and
 attach the versioned and stable ZIP names to the GitHub release.
 
+Maintainers testing an unreleased repository checkout first configure the
+credentialed build environment and complete `npm run release:check`. They may
+then install the generated development packages and use the machine-local
+developer-link workflow.
+
+## Install
+
+Published packages have already passed the complete credentialed build and
+live server contract gate. Customer installation uses the packaged files
+directly and does not rebuild or revalidate the release.
+
 ### Codex
 
-1. Download or clone this repository.
-2. Run `npm run release:check`.
+1. Download and extract the published customer ZIP.
+2. Configure the client's one `BOS_API_KEY` through the approved environment.
+   The installer binds every package-owned MCP URL to that client identity.
 3. Inspect the local installation:
 
    ```bash
@@ -152,27 +169,8 @@ attach the versioned and stable ZIP names to the GitHub release.
 6. Run `codex plugin add bos@bos-icode`,
    `codex plugin add icode-operations-center@bos-icode`, and
    `codex plugin add video-ads@bos-icode`.
-7. Configure the client's one `BOS_API_KEY` through the approved environment.
-   The installer binds every package-owned MCP URL to that same client identity.
-
-Validate the complete authenticated MCP handshake from the same process that
-launches Codex:
-
-```bash
-npm run smoke:mcp:icode
-npm run smoke:mcp:icode-data
-npm run smoke:mcp:video-ads
-```
-
-The connection smokes perform `initialize`, `notifications/initialized`, and
-`tools/list` against each exact named endpoint. Set `ICODE_SMOKE_TIME_ZONE` to
-the customer overlay's IANA timezone before running the iCode data smoke. It
-additionally calls `bos_get_context` and `icode_list_enrollments` for the
-current local week, requires the report read-tool contract, and reports
-aggregate camp, student, and family-phone field presence when records exist.
-Failures print a sanitized, copy-ready server remediation prompt containing
-only allowlisted status and error codes. Smoke output never prints or persists
-the configured key, server error text, or personal record values.
+7. Start or restart Codex once so the host loads the installed plugin and MCP
+   registration, then open a new task and perform a representative BOS read.
 
 On macOS, launch ChatGPT/Codex with a process-scoped GCP-managed credential:
 
@@ -264,18 +262,16 @@ before installation and provides versioned updates through Claude.
 
 ### GitHub Copilot
 
-1. Run `npm run release:check`.
-2. Copy `clients/copilot/products/<product>/skills` to `.agents/skills` in the
+1. Copy `clients/copilot/products/<product>/skills` to `.agents/skills` in the
    target repository.
-3. For an application runtime product, install its generated `.github/mcp.json`
+2. For an application runtime product, install its generated `.github/mcp.json`
    and configure `COPILOT_MCP_BOS_API_KEY`. The BOS product is skills-only.
 
 ### Gemini CLI
 
-1. Run `npm run release:check`.
-2. Install the selected extension with
+1. Install the selected extension with
    `gemini extensions install clients/gemini/extensions/<product>`.
-3. For an application runtime product, complete the extension setting for the
+2. For an application runtime product, complete the extension setting for the
    `BOS_API_KEY` setting declared by that extension, then restart
    Gemini CLI. The BOS extension
    is skills-only and requires no MCP setting.
@@ -283,6 +279,11 @@ before installation and provides versioned updates through Claude.
 The checked-in client directories contain credential-free adapters. A release
 may also publish those four directories as downloadable archives for customers
 who do not use Git.
+
+Server-side tool-catalog deployments require the active client to reconnect the
+configured endpoint and rediscover tools. The installed package, endpoint, and
+API key remain unchanged. Reinstall or restart only after a local package,
+plugin, or MCP registration change.
 
 ## Customer onboarding
 

@@ -1,7 +1,7 @@
 {
   "name": "icode-operations-center",
   "displayName": "iCode Operations Center",
-  "version": "0.4.17",
+  "version": "0.4.18",
   "description": "Authorized school operations for adult iCode staff through the tenant-scoped BOS MCP.",
   "author": {
     "name": "Infinite State Machines LLC"
