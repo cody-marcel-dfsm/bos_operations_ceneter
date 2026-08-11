@@ -20,6 +20,7 @@
     "install:plan": "node scripts/install-package.mjs plan",
     "install:apply": "node scripts/install-package.mjs apply",
     "install:verify": "node scripts/install-package.mjs verify",
+    "install:claude": "node scripts/install-claude-local.mjs",
     "codex:launch:macos": "swift scripts/launch-codex-with-bos.swift",
     "extension:create": "node scripts/create-extension.mjs",
     "dev:link:codex": "node scripts/link-codex-development.mjs",

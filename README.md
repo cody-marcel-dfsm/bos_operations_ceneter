@@ -86,6 +86,11 @@ executes the bounded current-local-week enrollment query. When camp records
 exist, the smoke reports aggregate student and family-phone field presence as
 data-quality evidence without emitting personal values.
 
+The live gate prints phase progress while it runs. After protocol initialization
+and live tool discovery succeed, its independent read-only context and
+enrollment checks run concurrently; both checks must still pass before the
+build succeeds.
+
 Use `npm run build:artifacts` for a credential-free artifact-only build. It
 cannot establish production readiness.
 
@@ -192,9 +197,12 @@ instance whose environment contains `ICODE_OPERATIONS_BOS_API_KEY`. It does
 not write the
 credential to disk or add it to the global GUI launch
 environment. `--replace`
-closes the currently running ChatGPT instance before launching the scoped one.
-If macOS declines graceful termination after active work is saved, add
-`--force-replace` to complete the replacement.
+requires an interactive terminal and the typed confirmation `RESTART CHATGPT`
+before gracefully closing a running instance. The launcher refuses detached,
+scheduled, and background execution before reading managed credentials and
+never force-terminates ChatGPT.
+Package installation and verification never invoke this launcher or restart
+the client. Close ChatGPT manually if graceful termination does not complete.
 It resolves `gcloud` from `PATH`; use `--gcloud <path>` when it is installed
 elsewhere.
 
@@ -256,20 +264,24 @@ the command after Codex installs or replaces a cached plugin version.
 
 ### Claude
 
-1. In Claude, open Customize > Plugins, select **Add marketplace**, then
-   **Add from a repository**.
-2. Add `https://github.com/cody-marcel-dfsm/bos_operations_ceneter`.
-3. Install `iCode Operations Center` from the `bos-icode` marketplace.
-4. Confirm Claude's host configuration provides
-   `ICODE_OPERATIONS_BOS_API_KEY`. The plugin uses that product identity with
-   the package's static
-   `/mcp/apps/<application-name>/<skill-group-name>`
-   connection.
+Give Nazir the extracted source or customer package, open that folder in
+Claude Code, and have him paste this one line into Claude:
 
-Use Claude's native plugin UI for installation. A conversational request to
-download or execute a GitHub release ZIP is outside the supported installation
-path. The repository marketplace exposes the complete plugin source for review
-before installation and provides versioned updates through Claude.
+> Run `npm run install:claude` and guide me through the secure API-key prompt.
+
+That single installer command validates the bundled local Claude source, adds
+it to Claude, installs and enables `iCode Operations Center`, and confirms the
+plugin is enabled. It does not use Anthropic's public plugin marketplace.
+Claude's internal CLI calls the bundled local catalog a marketplace; it is only
+the package-discovery manifest inside this source tree.
+
+The plugin declares one required sensitive field named **iCode Operations
+Center API key**. Claude prompts for that field when it enables the plugin,
+masks the entry, stores it in secure credential storage, and supplies it to the
+plugin's static HTTPS MCP connection. The wrapper never reads the key or places
+it in a subprocess argument, environment variable, or file. Nazir pastes the
+key supplied by the BOS administrator once into Claude's native prompt. Start a
+new Claude session or run `/reload-plugins` after installation.
 
 ### GitHub Copilot
 

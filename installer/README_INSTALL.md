@@ -29,7 +29,11 @@ approved host configuration. iCode Operations Center uses
 `ICODE_OPERATIONS_BOS_API_KEY`. Each named MCP connection forwards only its
 own organization-scoped identity.
 Keep the key out of package files,
-customer settings, command arguments, and conversations.
+customer settings, customer-entered command arguments, and conversations.
+
+Claude uses the runtime plugin's required sensitive `bos_api_key` setting
+instead of the environment variable. Claude masks the one-time entry and keeps
+it in its secure credential storage; the wrapper never receives it.
 
 Applying this package over a legacy Codex installation removes the retired
 local BOS credential broker and replaces its stdio MCP definition with the
@@ -55,22 +59,26 @@ ICODE_OPERATIONS_BOS_API_KEY=<gcp-secret-name> --replace` to close the active
 ChatGPT process and start a ChatGPT/Codex instance with the iCode product key
 scoped to that process. The launcher keeps keys out of files and the global
 GUI launch environment.
-After saving active work, add `--force-replace` when macOS declines the normal
-graceful termination request.
+`--replace` requires a directly attached interactive terminal and the typed
+confirmation `RESTART CHATGPT`. The launcher requests graceful termination and
+never force-terminates ChatGPT; close the app manually if it does not exit.
 It resolves `gcloud` from `PATH`; pass `--gcloud <path>` for another location.
 
 ## Claude
 
-In Claude Desktop, Chat, or Cowork, open Customize > Plugins, choose **Add
-marketplace** > **Add from a repository**, and add
-`https://github.com/cody-marcel-dfsm/bos_operations_ceneter`. Install the
-desired plugin from the `bos-icode` marketplace. Claude uses each runtime
-plugin's declared product credential already configured by the host. The
-package supplies the static
-`/mcp/apps/<application-name>/<skill-group-name>` URL. Use the product-specific
-`*-claude.zip` only with Claude's native manual
-plugin-upload control. Do not ask Claude in a conversation to download or
-execute the ZIP.
+Open this extracted package as the Claude Code working folder and paste:
+
+> Run `npm run install:claude` and guide me through the secure API-key prompt.
+
+The command installs `iCode Operations Center` directly from
+`clients/claude`; no public marketplace listing or repository checkout is
+required. Claude's native plugin configuration prompts once, with masked input,
+for the API key supplied by the BOS administrator. Claude stores it securely
+and substitutes it into the package's static
+`/mcp/apps/<application-name>/<skill-group-name>` HTTPS connection. The wrapper
+never receives the key. The customer does not edit an environment file or
+settings file. Start a new Claude session or run `/reload-plugins` after
+installation.
 
 ## GitHub Copilot
 

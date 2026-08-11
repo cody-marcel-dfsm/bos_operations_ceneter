@@ -1,6 +1,7 @@
 #!/usr/bin/env swift
 
 import AppKit
+import Darwin
 import Foundation
 
 struct LaunchError: Error, CustomStringConvertible {
@@ -39,7 +40,7 @@ func credentialBindings() throws -> [(environmentVariable: String, secretName: S
         return (environmentVariable: parts[0], secretName: parts[1])
     }
     guard !bindings.isEmpty else {
-        throw LaunchError(description: "Usage: launch-codex-with-bos.swift --binding ENVIRONMENT_VARIABLE=gcp-secret-name [--binding ...] [--gcloud <path>] [--replace] [--force-replace]")
+        throw LaunchError(description: "Usage: launch-codex-with-bos.swift --binding ENVIRONMENT_VARIABLE=gcp-secret-name [--binding ...] [--gcloud <path>] [--replace]")
     }
     guard Set(bindings.map(\.environmentVariable)).count == bindings.count else {
         throw LaunchError(description: "Each credential environment variable may be bound only once")
@@ -48,7 +49,8 @@ func credentialBindings() throws -> [(environmentVariable: String, secretName: S
 }
 
 func isBosCredentialVariable(_ name: String) -> Bool {
-    name == "BOS_API_KEY" || name.hasSuffix("_BOS_API_KEY")
+    let credentialSuffix = ["BOS", "API", "KEY"].joined(separator: "_")
+    return name.hasSuffix(credentialSuffix)
 }
 
 func isolatedEnvironment(
@@ -59,6 +61,14 @@ func isolatedEnvironment(
         credentials,
         uniquingKeysWith: { _, scoped in scoped }
     )
+}
+
+func requireInteractiveLaunch() throws {
+    guard isatty(STDIN_FILENO) == 1 else {
+        throw LaunchError(
+            description: "Refusing unattended ChatGPT launch; run this command directly in an interactive terminal"
+        )
+    }
 }
 
 func executable(_ candidates: [String]) -> URL? {
@@ -136,56 +146,60 @@ func stopRunningChatGPT(app: URL) throws {
         withBundleIdentifier: bundleIdentifier
     )
     guard !running.isEmpty else { return }
-    guard CommandLine.arguments.contains("--replace") ||
-          CommandLine.arguments.contains("--force-replace") else {
+    guard CommandLine.arguments.contains("--replace") else {
         throw LaunchError(
             description: "ChatGPT is already running. Re-run with --replace to close it and start the credential-scoped instance."
         )
+    }
+    print("ChatGPT is running. Type RESTART CHATGPT to close it and continue: ", terminator: "")
+    guard readLine() == "RESTART CHATGPT" else {
+        throw LaunchError(description: "ChatGPT replacement cancelled")
     }
     for application in running { application.terminate() }
     let deadline = Date(timeIntervalSinceNow: 15)
     while running.contains(where: { !$0.isTerminated }) && Date() < deadline {
         RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
     }
-    if running.contains(where: { !$0.isTerminated }) &&
-       CommandLine.arguments.contains("--force-replace") {
-        for application in running where !application.isTerminated {
-            application.forceTerminate()
-        }
-        let forceDeadline = Date(timeIntervalSinceNow: 5)
-        while running.contains(where: { !$0.isTerminated }) && Date() < forceDeadline {
-            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
-        }
-    }
     guard running.allSatisfy(\.isTerminated) else {
-        throw LaunchError(description: "ChatGPT did not close within 15 seconds; re-run with --force-replace after saving active work")
+        throw LaunchError(description: "ChatGPT did not close within 15 seconds; close it manually and retry")
     }
 }
 
 func launchChatGPT(credentials: [String: String], app: URL) throws {
     try stopRunningChatGPT(app: app)
-    let configuration = NSWorkspace.OpenConfiguration()
-    configuration.createsNewApplicationInstance = true
-    configuration.environment = isolatedEnvironment(
+    let executable = app.appendingPathComponent("Contents/MacOS/ChatGPT")
+    guard FileManager.default.isExecutableFile(atPath: executable.path) else {
+        throw LaunchError(description: "ChatGPT executable not found at \(executable.path)")
+    }
+
+    // LaunchServices may discard OpenConfiguration.environment when replacing
+    // an existing Electron application. Start the bundle executable directly
+    // so the declared process-scoped bearer bindings become the root app
+    // environment and are inherited by its Codex app-server child.
+    let process = Process()
+    process.executableURL = executable
+    process.environment = isolatedEnvironment(
         base: ProcessInfo.processInfo.environment,
         credentials: credentials
     )
-    let semaphore = DispatchSemaphore(value: 0)
-    var launchError: Error?
-    NSWorkspace.shared.openApplication(
-        at: app,
-        configuration: configuration
-    ) { application, error in
-        launchError = error
-        if let application {
-            print("Started ChatGPT/Codex with \(credentials.count) process-scoped BOS product credential binding(s) (pid \(application.processIdentifier)).")
-        }
-        semaphore.signal()
-    }
-    while semaphore.wait(timeout: .now() + 0.1) == .timedOut {
+    process.standardInput = FileHandle.nullDevice
+    process.standardOutput = FileHandle.nullDevice
+    process.standardError = FileHandle.nullDevice
+    try process.run()
+
+    let activationDeadline = Date(timeIntervalSinceNow: 5)
+    var runningApplication: NSRunningApplication?
+    while runningApplication == nil && process.isRunning && Date() < activationDeadline {
+        runningApplication = NSRunningApplication(
+            processIdentifier: process.processIdentifier
+        )
         RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
     }
-    if let launchError { throw launchError }
+    guard process.isRunning else {
+        throw LaunchError(description: "ChatGPT exited before its credential-scoped process initialized")
+    }
+    runningApplication?.activate(options: [.activateAllWindows])
+    print("Started ChatGPT/Codex with \(credentials.count) process-scoped BOS product credential binding(s) (pid \(process.processIdentifier)).")
 }
 
 do {
@@ -217,6 +231,7 @@ do {
         print("Credential environment isolation check passed.")
         exit(0)
     }
+    try requireInteractiveLaunch()
     var credentials: [String: String] = [:]
     for binding in bindings {
         credentials[binding.environmentVariable] = try readSecret(

@@ -1,6 +1,6 @@
 ---
 name: icode-class-operations
-description: Handle iCode class rosters, schedules, capacity, and camp-assignment scenarios through tenant-scoped BOS data plus Care.com confirmations from the configured customer mailbox. Use when asked about classes, camps, enrollment reports, rosters, attendance dates, open seats, Bright Horizons or Care.com placement, or assigning students to camps.
+description: Handle iCode class rosters, schedules, capacity, camp enrollment reports, family contact rosters, and camp-assignment scenarios through tenant-scoped BOS data plus Care.com confirmations from the configured customer mailbox. Use when asked for students enrolled in a class or camp by day, family phone numbers, classes, camps, enrollment reports, rosters, attendance dates, open seats, Bright Horizons or Care.com placement, or assigning students to camps.
 ---
 
 # iCode Class Operations
@@ -29,6 +29,9 @@ required mailbox is unavailable. Never copy the mailbox into this packaged
 skill or silently switch to another account.
 Use `bos-visual-output` for multi-class schedules, capacity, attendance, and
 camp-assignment results.
+For a standalone class roster or family contact list, return the requested
+records directly in the conversation. For a camp-enrollment report, return the
+five-day roster image and separate family contact list defined below.
 When the user requests Calimatic, use the packaged iCode skill-group connection
 and omit `org_id`, `app_code`, `installed_app_id`, and `delegated_role_id`; BOS
 derives them from the authenticated installation. Never use a direct provider
@@ -60,6 +63,47 @@ with the exact missing route, capability, scope, and freshness.
 - Preserve class, course, student, service date, and provider provenance.
 - Never infer missing class dates or instructor assignments.
 
+## Camp enrollment and family contact reports
+
+Treat requests such as “camp enrollments for next week with student names per
+day and family phone numbers” as a bounded roster request. Resolve the local
+date range, retrieve every camp occurrence and date-bound enrollment in that
+range, and use student/family lookup when the enrollment row omits its primary
+family phone. Include confirmed backup-care child-days only under the exact
+camp occurrence and date supported by provider evidence.
+
+Return the complete report in the first final response. Render a five-column
+Monday-Friday image with `scripts/render_week_calendar.py`. Supply verified JSON
+containing exactly five day objects and roster entries with both `name` and
+`camp`, grouped as `paid`, `bh`, or `care_com`. The image must:
+
+- use one column for each weekday in chronological order;
+- repeat each child on every day the child is expected;
+- render every line as `Student — Camp` so the placement is explicit;
+- visually distinguish paid, Bright Horizons, and confirmed Care.com students;
+  and
+- show a daily headcount.
+
+List family contacts immediately after the image. Include each family once,
+even when multiple siblings or attendance days exist. Each family entry contains
+the returned guardian, primary family phone, and associated student names.
+Write `Missing in BOS — call list incomplete` for an absent phone. Keep phone
+numbers out of the image. Put `Needs review` placement exceptions outside the
+image when no exact camp occurrence and date is supported.
+
+Use the recovered `iCode Camps` card layout: navy weekday headers, white day
+cards, source labels, exact student/camp lines, and a headcount footer. Request
+PNG output when `rsvg-convert` is available and SVG otherwise; return the image
+inline as the report visual. Never substitute Mermaid, a Markdown-only
+roster, aggregate camp boxes, or a local HTML page for this camp report. The
+renderer transforms only BOS-returned or explicitly routed evidence; it never
+retrieves, reconciles, or calculates business data. Keep the renderer input in
+the client temporary-artifact surface and remove it after the image is rendered;
+never retain a second roster copy as a cache or report source.
+
+State a source-specific limitation where its records would appear. Report zero
+camps or students only after a successful bounded source query.
+
 ## Camp assignment
 
 - Apply the `camp-capacity-planning` seat model and Bright Horizons rules.
@@ -82,4 +126,5 @@ with the exact missing route, capability, scope, and freshness.
 
 State the date range, class roster or capacity result, assignment scenario,
 open seats, conflicts, and action required. Never represent a recommendation as
-a completed provider update.
+a completed provider update. Pair a camp roster image with the one-entry-per-
+family contact list so every requested phone remains directly available.

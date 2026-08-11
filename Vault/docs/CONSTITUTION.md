@@ -32,3 +32,8 @@
     change terminology, defaults, policies, and exceptions. Platform authority,
     credentials, system instructions, transport, and tool grants remain under
     their canonical owners.
+13. **Authority-scoped local reuse.** BOS-family plugins share one OS-user
+    document cache through authority-scoped indexes and content-addressed
+    objects. Each read proves current source authority. Incremental refreshes
+    advance their watermark only after complete atomic publication of changes
+    and tombstones.

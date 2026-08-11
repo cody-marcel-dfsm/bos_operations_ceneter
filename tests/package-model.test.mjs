@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
-import { access, readFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
 import test from "node:test";
 import {
   listProducts,
@@ -12,6 +16,8 @@ import {
   walkFiles,
   validateProduct
 } from "../scripts/lib/package-model.mjs";
+
+const execFileAsync = promisify(execFile);
 
 test("canonical distributable skills contain no customer-specific settings", async () => {
   const files = (await walkFiles(`${root}/source`)).filter((path) =>
@@ -59,9 +65,8 @@ test("iCode packages include customer-neutral settings defaults", async () => {
 
 test("application runtime packages ship agent-owned MCP lifecycle recovery", async () => {
   const products = await listProducts();
-  for (const name of ["icode-operations-center"]) {
-    const product = products.find(({ manifest }) => manifest.name === name);
-    assert(product, name);
+  for (const product of products.filter(({ manifest }) => manifest.runtime)) {
+    const name = product.manifest.name;
     const skills = await resolveProductSkills(product.manifest);
     const client = skills.find((skill) => skill.name === "bos-mcp-client");
     assert(client, `${name} must include bos-mcp-client`);
@@ -73,6 +78,26 @@ test("application runtime packages ship agent-owned MCP lifecycle recovery", asy
     assert.match(guidance, /If BOS is absent from the callable tool manifest/i);
     assert.match(guidance, /Do not stop at\s+diagnosing client registration/i);
     assert.doesNotMatch(guidance, /unnamed endpoint as.*runtime connection/is);
+    assert.match(guidance, /shared local document cache/i);
+    assert.match(guidance, /request exactly those intervals plus\s+changes after its cursor/i);
+    assert.match(guidance, /sync_completed_at/);
+    await access(`${client.sourcePath}/scripts/document-cache.mjs`);
+    await access(`${client.sourcePath}/references/document-cache-protocol.md`);
+  }
+});
+
+test("generated runtime clients ship the canonical shared document cache helper", async () => {
+  const canonical = await readFile(
+    `${root}/source/platform/bos-mcp-client/scripts/document-cache.mjs`
+  );
+  for (const path of [
+    `${root}/clients/codex/plugins/icode-operations-center/skills/bos-mcp-client/scripts/document-cache.mjs`,
+    `${root}/clients/claude/plugins/icode-operations-center/skills/bos-mcp-client/scripts/document-cache.mjs`,
+    `${root}/clients/copilot/products/icode-operations-center/skills/bos-mcp-client/scripts/document-cache.mjs`,
+    `${root}/clients/copilot/skills/bos-mcp-client/scripts/document-cache.mjs`,
+    `${root}/clients/gemini/extensions/icode-operations-center/skills/bos-mcp-client/scripts/document-cache.mjs`
+  ]) {
+    assert.deepEqual(await readFile(path), canonical, path);
   }
 });
 
@@ -108,6 +133,94 @@ test("director daily planner is camp-first at day-level detail", async () => {
   assert.match(dailyContract, /## Today's timeline and upcoming events/);
   assert.match(guidance, /30 days before the reporting-period start/);
   assert.match(dailyContract, /explicitly assigned[\s\S]*camp occurrence and date/);
+});
+
+test("director report visuals use a bounded mobile-first Mermaid fallback", async () => {
+  const guidance = await readFile(
+    `${root}/source/verticals/icode/icode-director-daily-planner/SKILL.md`,
+    "utf8"
+  );
+  const visualContract = await readFile(
+    `${root}/source/verticals/icode/icode-director-daily-planner/references/mobile-visual.md`,
+    "utf8"
+  );
+
+  assert.match(guidance, /references\/mobile-visual\.md/);
+  assert.match(visualContract, /mobile-first/i);
+  assert.match(visualContract, /Never create local HTML or emit a `visualize` content reference/i);
+  assert.match(visualContract, /standard Markdown by default/i);
+  assert.match(visualContract, /`flowchart TB`/);
+  assert.match(visualContract, /never use[^\n]*`timeline`[^\n]*`gantt`[^\n]*`xychart`/i);
+  assert.match(visualContract, /no more than seven nodes/i);
+  assert.match(visualContract, /32 visible characters/i);
+  assert.match(visualContract, /personally identifiable\s+information/i);
+  assert.match(visualContract, /accessible text summary/i);
+});
+
+test("camp enrollment reports render the accepted weekly image and deduped family contacts", async () => {
+  const classGuidance = await readFile(
+    `${root}/source/verticals/icode/icode-class-operations/SKILL.md`,
+    "utf8"
+  );
+  const directorGuidance = await readFile(
+    `${root}/source/verticals/icode/icode-director-daily-planner/SKILL.md`,
+    "utf8"
+  );
+  const directorFrontmatter = directorGuidance.split("---")[1];
+
+  assert.match(
+    classGuidance,
+    /camp enrollments for next week with student names per\s+day and family phone numbers/i
+  );
+  assert.match(classGuidance, /five-column\s+Monday-Friday image/i);
+  assert.match(classGuidance, /repeat each child on every day/i);
+  assert.match(classGuidance, /`Student — Camp`/i);
+  assert.match(classGuidance, /Include each family once/i);
+  assert.match(classGuidance, /Keep phone\s+numbers out of the image/i);
+  assert.match(classGuidance, /PNG output[\s\S]*SVG otherwise/i);
+  assert.match(classGuidance, /Never substitute Mermaid, a Markdown-only\s+roster/i);
+  const renderer =
+    `${root}/source/verticals/icode/icode-class-operations/scripts/render_week_calendar.py`;
+  await access(renderer);
+
+  const temporary = await mkdtemp(join(tmpdir(), "camp-roster-calendar-"));
+  try {
+    const input = join(temporary, "week.json");
+    const output = join(temporary, "week.svg");
+    await writeFile(input, JSON.stringify({
+      title: "iCode Camps — Test Week",
+      bh_label: "Provisional BH",
+      days: [
+        {
+          date: "Mon Aug 10",
+          paid: [{ name: "Johnny Example", camp: "Minecraft" }],
+          bh: [{ name: "Jordan Example", camp: "Minecraft" }],
+          care_com: [{ name: "Jamie Example", camp: "Roblox" }]
+        },
+        { date: "Tue Aug 11", paid: [{ name: "Johnny Example", camp: "Minecraft" }] },
+        { date: "Wed Aug 12" },
+        { date: "Thu Aug 13" },
+        { date: "Fri Aug 14" }
+      ]
+    }));
+    await execFileAsync("python3", [renderer, input, output]);
+    const svg = await readFile(output, "utf8");
+    assert.match(svg, /Johnny Example — Minecraft/);
+    assert.match(svg, /Jordan Example — Minecraft/);
+    assert.match(svg, /Jamie Example — Roblox/);
+    assert.match(svg, /Confirmed Care\.com/);
+    assert.match(svg, /Headcount: 3/);
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
+  assert.match(
+    directorGuidance,
+    /request asks only for a class or camp roster[\s\S]*execute `icode-class-operations`/i
+  );
+  assert.doesNotMatch(
+    directorFrontmatter,
+    /class or enrollment summary, family contact sheet/i
+  );
 });
 
 test("director skill handles weekly summaries without scope questions", async () => {
@@ -167,6 +280,118 @@ test("service routing composes package defaults with preserved customer settings
   assert.match(guidance, /Package builds never rewrite the customer overlay/i);
   assert.match(guidance, /source_routes\.care_com/i);
   assert.match(guidance, /connected_gmail[\s\S]*email-account-routing/i);
+});
+
+test("Bright Horizons report prompts deterministically generate the reimbursement workbook", async () => {
+  const skillRoot = `${root}/source/verticals/icode/icode-invoice-operations`;
+  const guidance = await readFile(`${skillRoot}/SKILL.md`, "utf8");
+  const contract = await readFile(
+    `${skillRoot}/references/bright-horizons-workbook.md`,
+    "utf8"
+  );
+  const builder = await readFile(
+    `${skillRoot}/scripts/build_bh_invoice.mjs`,
+    "utf8"
+  );
+  const template = JSON.parse(await readFile(
+    `${skillRoot}/assets/bright-horizons-reimbursement-template.json`,
+    "utf8"
+  ));
+
+  assert.match(guidance, /create a Bright Horizons report for last week/i);
+  assert.match(guidance, /deterministic reimbursement\s+workbook-generation intent/i);
+  assert.match(guidance, /Never invoke[\s\S]*reimbursement-report generation/i);
+  assert.match(guidance, /one short summary plus the\s+attached workbook/i);
+  assert.match(contract, /commands[\s\S]*create a Bright Horizons report for last week/i);
+  assert.match(contract, /attached final[\s\S]*`\.xlsx` workbook/i);
+  assert.doesNotMatch(contract, /\$103\.00 is configured/i);
+  assert.match(builder, /bright-horizons-reimbursement-template\.json/);
+  assert.match(builder, /"rate_per_day"/);
+  assert.doesNotMatch(builder, /configuredRatePerDay\s*=\s*103/);
+  assert.doesNotMatch(builder, /(?<!path\.)resolve\(process\.cwd\(\)/);
+  assert.equal(
+    template.schema_version,
+    "bright-horizons-reimbursement-template/v1"
+  );
+  assert.equal(template.worksheet_name, "Invoice");
+  assert.deepEqual(template.detail.headers, [
+    "Employee Name",
+    "Employer",
+    "Case #",
+    "# of Children",
+    "Date of Care",
+    "# of Hours of Care",
+    "Rate per Day",
+    "Amount",
+    "Other Comments"
+  ]);
+});
+
+test("Bright Horizons builder validates the distributed template and reimbursement totals", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "bos-bh-invoice-"));
+  const inputPath = join(directory, "input.json");
+  await writeFile(inputPath, JSON.stringify({
+    date_submitted: "2026-08-11",
+    center_name: "Example Center",
+    address: "Example Address",
+    billing_contact_name: "Example Billing Contact",
+    phone_number: "555-0100",
+    invoice_reference_number: "EXAMPLE_7",
+    rate_per_day: 103,
+    period_start: "2026-08-03",
+    period_end: "2026-08-09",
+    rows: [
+      {
+        employee_name: "Employee B",
+        employer: "Employer",
+        case_number: "CASE-2",
+        number_of_children: 1,
+        date_of_care: "2026-08-04",
+        hours_of_care: 7,
+        other_comments: ""
+      },
+      {
+        employee_name: "Employee A",
+        employer: "Employer",
+        case_number: "CASE-1",
+        number_of_children: 2,
+        date_of_care: "2026-08-03",
+        hours_of_care: 7,
+        other_comments: ""
+      }
+    ]
+  }));
+  try {
+    const { stdout } = await execFileAsync(
+      process.execPath,
+      [
+        `${root}/source/verticals/icode/icode-invoice-operations/scripts/build_bh_invoice.mjs`,
+        inputPath,
+        "--validate-only"
+      ],
+      { cwd: root }
+    );
+    const result = JSON.parse(stdout);
+    assert.equal(result.template_schema_version, "bright-horizons-reimbursement-template/v1");
+    assert.equal(result.invoice_reference, "EXAMPLE_7");
+    assert.equal(result.child_day_count, 3);
+    assert.equal(result.invoice_total, 309);
+    assert.equal(result.period_start, "2026-08-03");
+    assert.equal(result.period_end, "2026-08-09");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("client distributions include the Bright Horizons reimbursement template", async () => {
+  for (const path of [
+    `${root}/clients/codex/plugins/icode-operations-center/skills/icode-invoice-operations/assets/bright-horizons-reimbursement-template.json`,
+    `${root}/clients/claude/plugins/icode-operations-center/skills/icode-invoice-operations/assets/bright-horizons-reimbursement-template.json`,
+    `${root}/clients/copilot/products/icode-operations-center/skills/icode-invoice-operations/assets/bright-horizons-reimbursement-template.json`,
+    `${root}/clients/gemini/extensions/icode-operations-center/skills/icode-invoice-operations/assets/bright-horizons-reimbursement-template.json`
+  ]) {
+    await access(path);
+  }
 });
 
 test("parent communications owns the configured email-evidence route", async () => {
@@ -315,7 +540,7 @@ test("package schema rejects legacy or incomplete MCP route fields", () => {
     authentication: "ON_USE",
     release_status: "active",
     clients: ["codex"],
-    includes: ["platform/planning"],
+    includes: ["platform/bos-mcp-client"],
     runtime: "bos",
     application_name: "leaddirector",
     mcp_group_name: "example",
@@ -323,6 +548,10 @@ test("package schema rejects legacy or incomplete MCP route fields", () => {
     default_prompts: []
   };
   assert.deepEqual(validateProduct(base), []);
+  assert.match(
+    validateProduct({ ...base, includes: ["platform/planning"] }).join("\n"),
+    /runtime requires platform\/bos-mcp-client/
+  );
   assert.match(
     validateProduct({ ...base, mcp_application: "leaddirector" }).join("\n"),
     /unknown field mcp_application/
@@ -376,7 +605,7 @@ test("disabled products are absent while active runtime products remain scoped",
     if (client === "claude") {
       assert.equal(
         iCode.mcpServers["icode-operations"].headers.Authorization,
-        "Bearer ${ICODE_OPERATIONS_BOS_API_KEY}"
+        "Bearer ${user_config.bos_api_key}"
       );
     } else {
       assert.equal(
@@ -418,7 +647,7 @@ test("iCode packages use the Lead Director app resource-group route", async () =
       assert.equal("bearer_token_env_var" in config.mcpServers["icode-operations"], false, client);
       assert.equal(
         config.mcpServers["icode-operations"].headers.Authorization,
-        "Bearer ${ICODE_OPERATIONS_BOS_API_KEY}",
+        "Bearer ${user_config.bos_api_key}",
         client
       );
     } else {
@@ -483,7 +712,15 @@ test("Claude distribution is a marketplace of self-contained plugins", async () 
     )
   );
   assert.equal(iCodeManifest.mcpServers, "./.mcp.json");
-  assert.equal(iCodeManifest.userConfig, undefined);
+  assert.deepEqual(iCodeManifest.userConfig, {
+    bos_api_key: {
+      type: "string",
+      title: "iCode Operations Center API key",
+      description: "Paste the organization-scoped API key supplied by your BOS administrator.",
+      sensitive: true,
+      required: true
+    }
+  });
 
   const iCodeRuntime = JSON.parse(
     await readFile(
@@ -497,7 +734,7 @@ test("Claude distribution is a marketplace of self-contained plugins", async () 
   );
   assert.equal(
     iCodeRuntime.mcpServers["icode-operations"].headers.Authorization,
-    "Bearer ${ICODE_OPERATIONS_BOS_API_KEY}"
+    "Bearer ${user_config.bos_api_key}"
   );
   assert.equal("bearer_token_env_var" in iCodeRuntime.mcpServers["icode-operations"], false);
 

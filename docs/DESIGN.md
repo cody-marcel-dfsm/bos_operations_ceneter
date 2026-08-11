@@ -462,11 +462,15 @@ Care.com evidence through an exact account in the client's normal Gmail
 connector. External connector evidence never expands BOS identity or authority.
 
 Credentials and access authority remain outside customer configuration. Each
-active runtime product declares one organization-scoped credential environment
-variable through the approved GCP-managed client configuration. Each named MCP
-connection forwards only its declared key as a Bearer header over HTTPS. Skill
-files, generated packages, logs, customer settings, command arguments, and
-chat remain credential-free. BOS owns encrypted provider-credential
+active runtime product declares one organization-scoped credential binding.
+Claude packages expose that binding as a required sensitive `userConfig`
+field. Claude collects the value through its native masked configuration
+prompt, stores it in its secure credential store, and substitutes it directly
+into the named MCP authorization header. The local package wrapper never reads
+or transports the value. Other clients use their approved host credential
+binding. Each named MCP connection forwards only its declared key as a Bearer
+header over HTTPS. Skill files, generated packages, logs, customer settings,
+customer-entered commands, and model chat remain credential-free. BOS owns encrypted provider-credential
 persistence. For a missing provider grant, BOS returns a short-lived HTTPS
 authorization or credential-collection URL. The customer completes that flow
 with BOS through the active agent interface, and BOS handles validation,
@@ -537,11 +541,13 @@ state available from BOS and starts the applicable recovery flow.
 
 ### 1. Install the client distribution
 
-The customer gives Codex a GitHub release ZIP URL. Codex downloads, verifies,
-extracts, and installs the named product without asking the customer to run a
-shell command. The installation contains only the capabilities and vertical
-modules selected for that product. Installation alone grants no organization
-access.
+Codex can install from a published customer ZIP. Before public marketplace
+listing, Claude installs from an extracted source or customer package through
+the package's single `npm run install:claude` entry point. That entry point
+validates the local catalog and performs Claude's internal registration,
+installation, and enablement operations. The installation contains only the
+capabilities and vertical modules selected for that product. Installation
+alone grants no organization access.
 
 ### 2. Load customer configuration
 
@@ -551,13 +557,16 @@ authenticate BOS and does not authorize provider access.
 
 ### 3. Connect the account
 
-The client loads each selected product's declared credential from the approved
-GCP-managed environment and connects directly to its matching named HTTPS MCP
-endpoint. BOS validates that route-bound key on every secured request and fails
-closed when it is absent, invalid, expired, or outside the endpoint's authorized
-product scope. A failed product connection or provider credential cannot affect
-another product or organization. The customer completes no second BOS password
-or login flow.
+The client loads each selected product's declared credential binding and
+connects directly to its matching named HTTPS MCP endpoint. For Claude, the
+plugin's required sensitive field supplies a one-question setup wizard: the
+Claude configuration prompt accepts the administrator-provided key through
+masked input and retains it in secure credential storage; the package wrapper
+never handles it. BOS validates that route-bound key on every
+secured request and fails closed when it is absent, invalid, expired, or
+outside the endpoint's authorized product scope. A failed product connection
+or provider credential cannot affect another product or organization. The
+customer completes no second BOS password or login flow.
 
 ### 4. Resolve tenant and capabilities
 

@@ -144,6 +144,10 @@ export function validateProduct(manifest, path = "product.json") {
     failures.push(`${path}: runtime requires application_name and mcp_group_name`);
   }
   if (manifest.runtime &&
+      !manifest.includes?.includes("platform/bos-mcp-client")) {
+    failures.push(`${path}: runtime requires platform/bos-mcp-client`);
+  }
+  if (manifest.runtime &&
       !/^[A-Z][A-Z0-9_]*$/.test(manifest.credential_env_var ?? "")) {
     failures.push(`${path}: runtime requires credential_env_var`);
   }
@@ -262,6 +266,7 @@ export async function copyRuntime(product, pluginRoot, base = root, client = nul
     const config = await readJson(configPath);
     for (const server of Object.values(config.mcpServers ?? {})) {
       delete server.bearer_token_env_var;
+      server.headers.Authorization = "Bearer ${user_config.bos_api_key}";
     }
     await writeJson(configPath, config);
   }

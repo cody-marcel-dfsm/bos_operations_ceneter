@@ -67,6 +67,10 @@ def main() -> None:
             ROOT / "scripts" / "install-package.mjs",
             stage / "scripts" / "install-package.mjs",
         )
+        shutil.copy2(
+            ROOT / "scripts" / "install-claude-local.mjs",
+            stage / "scripts" / "install-claude-local.mjs",
+        )
         (stage / "scripts" / "lib").mkdir()
         shutil.copy2(
             ROOT / "scripts" / "lib" / "package-model.mjs",
@@ -101,6 +105,7 @@ def main() -> None:
                         "install:plan": "node scripts/install-package.mjs plan",
                         "install:apply": "node scripts/install-package.mjs apply",
                         "install:verify": "node scripts/install-package.mjs verify",
+                        "install:claude": "node scripts/install-claude-local.mjs",
                     },
                 },
                 indent=2,

@@ -4,6 +4,18 @@ Canonical architecture: `Vault/docs/architecture.md`
 Project constitution: `Vault/docs/CONSTITUTION.md`
 Knowledge root: `Vault/`
 
+## Customer installation routing
+
+- This repository owns customer installation instructions for BOS Operations
+  Center products across Claude, Codex, Copilot, and Gemini.
+- Answer installation and upgrade questions from `README.md`,
+  `installer/README_INSTALL.md`, product manifests, and generated client
+  packages in this repository.
+- Lead with the paste-ready instruction for the customer's named client.
+- Application repositories, including Lead Director, are outside the package
+  installation dependency chain. Consult them only when the request explicitly
+  concerns that application's server deployment or runtime implementation.
+
 ## Vault knowledge contract
 
 - Store authored architecture, decisions, specifications, plans, review records,

@@ -1,14 +1,16 @@
 ---
 name: icode-invoice-operations
-description: Handle iCode invoice discovery, reconciliation, and Excel workbook generation for Bright Horizons, Calimatic, and Care.com through the tenant-scoped BOS MCP. Use when asked to find invoices, compare billing evidence with enrollments or child-days, reconcile cancellations affecting invoices, identify missing invoice records, produce a Bright Horizons attendance invoice for a specified period, or report provider capability gaps.
+description: Generate the exact Bright Horizons reimbursement Excel report from the distributed client template, and handle separate invoice discovery or reconciliation workflows through tenant-scoped BOS. Use for commands such as "create a Bright Horizons report for last week," "generate the Bright Horizons reimbursement sheet," "make the Bright Horizons attendance invoice," invoice discovery, cancellation reconciliation, child-day comparison, or provider capability gaps.
 ---
 
 # iCode Invoice Operations
 
 Use `bos_icode` and follow the `bos-mcp-client` context workflow. Identify the
 invoice system of record before using Gmail, Drive, or enrollment evidence.
-Use `bos-visual-output` for billing variances, child-day comparisons, exception
-counts, and multi-period invoice summaries.
+Use `bos-visual-output` for explicitly requested billing variances, child-day
+comparisons, exception counts, and multi-period invoice summaries. Never invoke
+it for a Bright Horizons reimbursement-report generation request; the Excel
+workbook is the requested visual artifact.
 Use only BOS MCP or published BOS backend APIs with the iCode organization's
 plugin credentials. Browser sessions and native/local connectors provide no
 authorization, evidence, or fallback.
@@ -24,9 +26,14 @@ complete the service-specific secure BOS browser flow.
 - Classify reconciliation, provider repair, invoice generation, invoice-rate
   adjudication, scheduling, and app/UI packaging separately.
 - Route by user intent before retrieving evidence:
-  - For `generate`, `create`, `produce`, or `make an invoice`, run only the
-    invoice-generation workflow. Do not invoke, summarize, or mention the
-    cancellation-reconciliation workflow.
+  - Treat `create`, `generate`, `produce`, `make`, or `build` followed by a
+    Bright Horizons `report`, `sheet`, `spreadsheet`, `invoice`, `attendance
+    report`, or `reimbursement report` as one deterministic reimbursement
+    workbook-generation intent. A period phrase such as `last week` is enough;
+    never ask whether the user wants information or reconciliation.
+  - For reimbursement workbook generation, run only the invoice-generation
+    workflow. Do not invoke, summarize, or mention cancellation reconciliation,
+    build an inline visualization, or return a roster-only report.
   - For `reconcile cancellations`, `check cancellations`, or equivalent
     cancellation-specific prompts, run the cancellation-reconciliation
     workflow.
@@ -40,6 +47,11 @@ complete the service-specific secure BOS browser flow.
 - For requests to create the attendance invoice workbook, read
   [references/bright-horizons-workbook.md](references/bright-horizons-workbook.md)
   and follow it exactly.
+- Require the distributed
+  `assets/bright-horizons-reimbursement-template.json` and let the packaged
+  builder consume it. Never recreate, restyle, substitute, or summarize the
+  reimbursement layout from memory. Treat a missing or invalid template as a
+  package error and stop before creating a workbook.
 - Generate the workbook with
   `scripts/build_bh_invoice.mjs <input.json> [output.xlsx]`. When the output
   argument is omitted, save it in `./output/invoices/bright-horizons/` as
@@ -79,6 +91,9 @@ When cleanup cannot be applied in Calimatic, report
 
 For a generated Bright Horizons invoice, return the resolved inclusive period,
 invoice reference, child-day count, invoice total, and a link to the final
-`.xlsx` workbook. Do not include cancellation commentary in an invoice-only
-response. Never claim the workbook is ready while required authorization fields
-are unresolved.
+`.xlsx` workbook. Keep the user-facing response to one short summary plus the
+attached workbook. Do not include cancellation commentary, reconciliation
+counts, rosters, visualizations, builder paths, previews, or local HTML paths in
+an invoice-only response. Never claim the workbook is ready while required
+authorization fields, billing settings, source evidence, or the distributed
+template are unresolved.

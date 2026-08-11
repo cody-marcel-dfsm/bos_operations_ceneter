@@ -1,8 +1,10 @@
 # Bright Horizons Attendance Invoice Workbook
 
-This is an invoice-generation workflow. Do not load or run the Bright Horizons
-cancellation-reconciliation workflow unless the user explicitly asks for
-cancellation reconciliation in the same prompt.
+This is the Bright Horizons reimbursement-report generation workflow. Commands
+such as `create a Bright Horizons report for last week` mean this exact Excel
+deliverable. Do not load or run the Bright Horizons cancellation-reconciliation
+workflow unless the user explicitly asks for cancellation reconciliation in the
+same prompt.
 
 ## Source workflow
 
@@ -28,13 +30,18 @@ cancellation reconciliation in the same prompt.
    `billing.bright_horizons_rate_per_child_day` unless the user explicitly
    supplies a different approved rate. Stop when required billing settings are
    absent.
-8. Build the workbook from the JSON contract below, inspect values/formulas,
-   scan formula errors, render the invoice sheet, and visually verify it before
-   delivery.
+8. Verify that the installed skill contains
+   `assets/bright-horizons-reimbursement-template.json`. Build the workbook with
+   the packaged script, which validates and consumes that template. Never
+   recreate the layout from prose or substitute another workbook.
+9. Inspect values/formulas, scan formula errors, render the invoice sheet, and
+   visually verify it before delivery.
 
 If any retained row lacks employee name, employer, case number, or approved
 hours, stop before generation and report the exact unresolved fields and
-records. Do not ask the user for the daily rate; `$103.00` is configured.
+records. Load the daily rate from the installed customer settings. Never
+hardcode or infer a rate; repair an absent setting through
+`icode-customer-initialization` before resuming generation.
 
 ## Workbook contract
 
@@ -48,6 +55,7 @@ Pass this JSON shape to `scripts/build_bh_invoice.mjs`:
   "billing_contact_name": "<billing.billing_contact_name>",
   "phone_number": "<billing.phone_number>",
   "invoice_reference_number": "<billing.invoice_reference_prefix><sequence>",
+  "rate_per_day": "<billing.bright_horizons_rate_per_child_day>",
   "period_start": "2026-06-01",
   "period_end": "2026-06-12",
   "rows": [
@@ -64,9 +72,9 @@ Pass this JSON shape to `scripts/build_bh_invoice.mjs`:
 }
 ```
 
-`rate_per_day` is optional when the configured billing rate is supplied to the
-generator. Include a different value only when the user explicitly specifies
-another approved rate.
+`rate_per_day` is required in the normalized builder input. Populate it from
+`billing.bright_horizons_rate_per_child_day`. Use another value only when the
+user explicitly supplies a different approved rate.
 
 Omit the script's output argument to use the configured directory:
 `./output/invoices/bright-horizons/`. The generated filename is
@@ -75,6 +83,9 @@ argument only when the user requests another destination or filename.
 
 ## Layout and calculations
 
+- Treat `assets/bright-horizons-reimbursement-template.json` as authoritative
+  for worksheet name, label cells, header cells, colors, borders, formats,
+  column widths, row heights, and totals placement.
 - Use a single worksheet named `Invoice`.
 - Put submission metadata in rows 1–6, labels in column A and values beginning
   in column B.
@@ -101,3 +112,11 @@ argument only when the user requests another destination or filename.
 - Confirm the total amount equals the sum of row amounts.
 - Confirm no formula errors, clipped headers, clipped identifiers, or blank
   required fields.
+
+## Delivery contract
+
+Return one short summary containing the inclusive period, invoice reference,
+billable child-day count, and invoice total, followed by the attached final
+`.xlsx` workbook. Do not emit an inline visualization, roster-only report,
+reconciliation commentary, preview file, builder file, or local filesystem
+path.

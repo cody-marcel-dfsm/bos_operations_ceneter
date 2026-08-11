@@ -120,6 +120,76 @@ test("director live smoke executes context and a bounded camp-roster query", asy
   assert(!("org_id" in enrollmentCall.body.params.arguments));
 });
 
+test("director live smoke overlaps independent read checks after tool discovery", async () => {
+  const progress = [];
+  const requestOrder = [];
+  let contextResolved = false;
+  let resolveContext;
+  const contextResponse = new Promise((resolve) => {
+    resolveContext = () => {
+      contextResolved = true;
+      resolve(response({
+        jsonrpc: "2.0",
+        id: 3,
+        result: {
+          isError: false,
+          structuredContent: { result: {
+            installation_id: "present",
+            org_id: "present",
+            apps: [{ app_code: "lead_director", delegated_role_id: "director" }]
+          } }
+        }
+      }));
+    };
+  });
+  const fetchImpl = async (_url, options) => {
+    const body = JSON.parse(options.body);
+    const label = body.params?.name ?? body.method;
+    requestOrder.push(label);
+    if (body.method === "initialize") return response({
+      jsonrpc: "2.0",
+      id: body.id,
+      result: { protocolVersion: "2025-03-26" }
+    }, 200, { sessionId: "session-concurrent" });
+    if (body.method === "notifications/initialized") return response(undefined, 202);
+    if (body.method === "tools/list") return response({
+      jsonrpc: "2.0",
+      id: body.id,
+      result: { tools: ICODE_DIRECTOR_REQUIRED_TOOLS.map((name) => ({ name })) }
+    });
+    if (body.params?.name === "bos_get_context") return contextResponse;
+    if (body.params?.name === "icode_list_enrollments") {
+      assert.equal(contextResolved, false);
+      resolveContext();
+      return response({
+        jsonrpc: "2.0",
+        id: body.id,
+        result: { isError: false, structuredContent: { result: [] } }
+      });
+    }
+    throw new Error(`Unexpected request: ${JSON.stringify(body)}`);
+  };
+
+  const report = await runIcodeDirectorSmoke({
+    apiKey: "test-secret",
+    fetchImpl,
+    onProgress: (event) => progress.push(event),
+    timeZone: "America/Denver"
+  });
+  assert.equal(report.ok, true);
+  assert(progress.every((event) =>
+    Object.keys(event).every((key) => ["phase", "state", "status"].includes(key))
+  ));
+  assert.doesNotMatch(JSON.stringify({ progress, report }), /test-secret/);
+  assert.deepEqual(requestOrder, [
+    "initialize",
+    "notifications/initialized",
+    "tools/list",
+    "bos_get_context",
+    "icode_list_enrollments"
+  ]);
+});
+
 test("director live smoke prints a secret-free server prompt for missing tools", async () => {
   const fetchImpl = async (_url, options) => {
     const body = JSON.parse(options.body);

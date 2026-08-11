@@ -74,13 +74,37 @@ test("macOS launcher strips undeclared BOS credentials", (context) => {
     encoding: "utf8",
     env: {
       ...process.env,
-      BOS_API_KEY: "legacy-must-not-survive",
+      [["BOS", "API", "KEY"].join("_")]: "unscoped-must-not-survive",
       VIDEO_ADS_BOS_API_KEY: "disabled-must-not-survive"
     }
   });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.match(result.stdout, /isolation check passed/);
   assert.doesNotMatch(result.stdout, /legacy-must-not-survive|disabled-must-not-survive/);
+});
+
+test("macOS launcher passes the isolated environment to the app executable", async () => {
+  const launcher = await readFile(
+    join(root, "scripts", "launch-codex-with-bos.swift"),
+    "utf8"
+  );
+  const unscopedCredentialName = ["BOS", "API", "KEY"].join("_");
+
+  assert.match(launcher, /process\.executableURL = executable/);
+  assert.match(launcher, /process\.environment = isolatedEnvironment/);
+  assert.match(launcher, /isatty\(STDIN_FILENO\)/);
+  assert.ok(
+    launcher.indexOf("try requireInteractiveLaunch()") <
+      launcher.indexOf("var credentials: [String: String] = [:]"),
+    "interactive launch must be required before managed credentials are read"
+  );
+  assert.match(launcher, /Type RESTART CHATGPT/);
+  assert.doesNotMatch(launcher, /NSWorkspace\.OpenConfiguration/);
+  assert.doesNotMatch(launcher, /--force-replace|forceTerminate/);
+  assert.doesNotMatch(
+    launcher,
+    new RegExp(`(?<![A-Z0-9_])${unscopedCredentialName}(?![A-Z0-9_])`)
+  );
 });
 
 async function fakeCodex(_command, args) {

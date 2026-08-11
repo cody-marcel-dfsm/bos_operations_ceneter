@@ -1,10 +1,10 @@
 # Weekly director summary content contract
 
 Render one concise, director-ready operating summary for the resolved local
-Monday-through-Sunday period. Follow `bos-visual-output`. Camps, daily rosters,
-family phone contacts, parent follow-ups, and upcoming events are the primary
-content. Show the minimum family information needed for authorized school
-operations.
+Monday-through-Sunday period. Follow `bos-visual-output` and
+[mobile-visual.md](mobile-visual.md). Camps, daily rosters, family phone
+contacts, parent follow-ups, and upcoming events are the primary content. Show
+the minimum family information needed for authorized school operations.
 
 ## Header
 

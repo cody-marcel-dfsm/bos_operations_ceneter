@@ -106,6 +106,15 @@ for (const { product, skills } of resolved) {
     };
     if (product.runtime) {
       claudePlugin.mcpServers = "./.mcp.json";
+      claudePlugin.userConfig = {
+        bos_api_key: {
+          type: "string",
+          title: `${product.display_name} API key`,
+          description: "Paste the organization-scoped API key supplied by your BOS administrator.",
+          sensitive: true,
+          required: true
+        }
+      };
     }
     await writeJson(
       join(pluginRoot, ".claude-plugin", "plugin.json"),

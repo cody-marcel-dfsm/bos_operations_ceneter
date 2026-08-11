@@ -1,6 +1,6 @@
 ---
 name: icode-director-daily-planner
-description: Create daily plans and weekly director summaries from tenant-scoped iCode BOS data. Use when asked for a director daily plan, opening brief, weekly summary, weekly director report, week-in-review, class or enrollment summary, family contact sheet, new-lead call list, scheduled trials, follow-ups, wins, risks, next-week priorities, or a combined iCode operating update.
+description: Create daily plans and multi-area weekly director summaries from tenant-scoped iCode BOS data. Use when asked for a director daily plan, opening brief, weekly summary, weekly director report, week-in-review, new-lead call list, scheduled trials, follow-ups, wins, risks, next-week priorities, or a combined iCode operating update. Use iCode Class Operations for a standalone class or camp roster, enrollment report, or family contact list.
 ---
 
 # iCode Director Plans and Summaries
@@ -18,6 +18,15 @@ customer source route. Never distribute or send the result unless the user
 separately requests and authorizes distribution. “For my director” identifies
 the report audience and never requires the director's identity for preparation.
 
+## Routing boundary
+
+When the request asks only for a class or camp roster, enrollments by day, or
+family contact details, execute `icode-class-operations` and return its direct
+mobile-safe roster. Do not expand the request into a daily planner, weekly
+director summary, lead review, Calendar review, parent-communication review, or
+visual report. Continue with this skill only when the user requests a director
+plan, director summary, or multiple operating areas.
+
 ## Required companion guidance
 
 Read and follow these installed skills before retrieving data:
@@ -25,7 +34,7 @@ Read and follow these installed skills before retrieving data:
 - `bos-mcp-client` for scope resolution, live tool discovery, and provider access.
 - `icode-customer-initialization` when customer settings are missing, incomplete,
   or invalid.
-- `bos-visual-output` for a timeline-led, visual operating brief.
+- `bos-visual-output` for a visual operating brief.
 - `icode-class-operations` for date-bound class rosters.
 - `icode-student-operations` for student, enrollment, and family identity handling.
 
@@ -92,7 +101,9 @@ sections while authorization is pending.
    when those statuses are explicit.
 7. For scheduled-trial, confirmation, follow-up, or trial-draft requests, read and execute [references/trial-reconciliation.md](references/trial-reconciliation.md). Compose the live Lead Director, Calendar, and Gmail MCP primitives client-side; do not wait for or require a composite server tool.
 8. Normalize times to the configured `timezone`, preserve provider provenance internally, deduplicate conservatively, and flag conflicts or missing fields.
-9. Render a daily planner using
+9. Before rendering either report, read and apply the mobile-first visual
+   contract in [references/mobile-visual.md](references/mobile-visual.md).
+   Render a daily planner using
    [references/planner-content.md](references/planner-content.md). Render a
    weekly request using
    [references/weekly-summary-content.md](references/weekly-summary-content.md).

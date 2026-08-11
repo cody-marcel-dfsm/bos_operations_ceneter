@@ -1,0 +1,59 @@
+{
+  "indexed_at": "20260811T033823.877797Z",
+  "schema_version": "bos-vault-manifest/v1",
+  "source_count": 13,
+  "sources": {
+    "Vault/README.md": {
+      "bytes": 1015,
+      "sha256": "a4690b839d46eb359bc03d73375fc9009cf4dd847abf8acce9078da6487acf6c"
+    },
+    "Vault/docs/CONSTITUTION.md": {
+      "bytes": 2229,
+      "sha256": "408fdbc439bd0dca8f02e72e6152d7931f3926a5023fe4df5581a7ddadc7f4fe"
+    },
+    "Vault/docs/architecture.md": {
+      "bytes": 9063,
+      "sha256": "7d0b78d0b802ac89b7ae17a9088ee33ca29eed802d8ebcf579fe13a2f89d4233"
+    },
+    "Vault/docs/marketplace-agent-harness-plan.md": {
+      "bytes": 33166,
+      "sha256": "6d6bba2203f43a1431f8a422e7a838fa5539c313665421c11e4c2f424e1a5d28"
+    },
+    "Vault/docs/marketplace-submission-assets.md": {
+      "bytes": 24414,
+      "sha256": "6fa3b38906482c77cce0b02d2db4770f173b6e2b53f39be5e19f52eb8f476861"
+    },
+    "Vault/reviews/2026-08-09-customer-skill-extension-v2.md": {
+      "bytes": 3182,
+      "sha256": "3b620af070c856971bf4b953b13ae55cddda580b9b023f2903a8ac3c23051e05"
+    },
+    "Vault/reviews/2026-08-09-installed-app-feedback-gemini.md": {
+      "bytes": 2022,
+      "sha256": "3ae0a6a0cd5f444f1387329e1e46fbb955de8c695df014c36a6db48a26d3efd9"
+    },
+    "Vault/reviews/2026-08-09-remote-mcp-cross-platform.md": {
+      "bytes": 1804,
+      "sha256": "ba9857845991dbf0423fe06cb818172e850b9fac6deb545641bfea7e56ecd365"
+    },
+    "Vault/schemas/decision-record.md": {
+      "bytes": 439,
+      "sha256": "3922907624221572a243f58b3684dc8a2eb7b7d221b4a3d6ac5dd1317b9baef4"
+    },
+    "Vault/specs/customer-skill-extensions.md": {
+      "bytes": 5257,
+      "sha256": "1aa54c02f56b9a56f85abe7da8771bbf7134d0cd101c4c7130eae62b14713278"
+    },
+    "Vault/specs/named-mcp-application-group-routing.md": {
+      "bytes": 4894,
+      "sha256": "f55efbb3235e9248c835d882d0f9732cb137026aed961f5f3edea1af3e06a569"
+    },
+    "Vault/specs/named-mcp-server-implementation.md": {
+      "bytes": 13718,
+      "sha256": "f345258675ff1a0e7e2f23ac829ac8e2ef0e9020dd04f7944b782b377a4cece7"
+    },
+    "Vault/specs/oracle-and-vault.md": {
+      "bytes": 1470,
+      "sha256": "f83bbe0c4179b651f033f21fb2725b2a4efb7ed7484266afdd3b48f546f63c4b"
+    }
+  }
+}

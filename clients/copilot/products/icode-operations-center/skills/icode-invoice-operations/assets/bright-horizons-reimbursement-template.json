@@ -1,0 +1,53 @@
+{
+  "schema_version": "bright-horizons-reimbursement-template/v1",
+  "worksheet_name": "Invoice",
+  "metadata": {
+    "range": "A1:B6",
+    "labels": [
+      "Date Submitted:",
+      "Center Name:",
+      "Address:",
+      "Billing Contact Name:",
+      "Phone Number:",
+      "Invoice Reference Number:"
+    ],
+    "label_range": "A1:A6",
+    "date_cell": "B1",
+    "date_number_format": "mm/dd/yy",
+    "row_height": 22
+  },
+  "detail": {
+    "header_range": "A8:I8",
+    "first_data_row": 9,
+    "headers": [
+      "Employee Name",
+      "Employer",
+      "Case #",
+      "# of Children",
+      "Date of Care",
+      "# of Hours of Care",
+      "Rate per Day",
+      "Amount",
+      "Other Comments"
+    ],
+    "header_fill": "#B7DEE8",
+    "header_font_color": "#000000",
+    "header_row_height": 30,
+    "border_color": "#000000",
+    "column_widths": [26, 24, 19, 14, 14, 18, 14, 14, 24],
+    "case_number_format": "@",
+    "children_number_format": "0",
+    "date_number_format": "mm/dd/yy",
+    "hours_number_format": "0.##",
+    "currency_number_format": "$#,##0.00"
+  },
+  "totals": {
+    "row_offset_after_last_detail": 2,
+    "children_label_column": "C",
+    "children_value_column": "D",
+    "children_label": "Total Children",
+    "amount_label_column": "G",
+    "amount_value_column": "H",
+    "amount_label": "Total:"
+  }
+}

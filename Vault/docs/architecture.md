@@ -28,8 +28,11 @@ release system for portable BOS skills and native remote MCP client adapters.
    the owning application graph or capability.
 3. Route mutations through PO orchestration and GO persistence.
 4. Store provider credentials only in BOS-managed credential storage.
-5. Authenticate scoped product clients only with the API key provisioned in
-   their client environment. Never launch a second BOS login or password flow.
+5. Authenticate scoped product clients only with an API key supplied through
+   the client's native sensitive-configuration surface. Claude runtime plugins
+   declare a required sensitive install-time field that Claude stores in its
+   secure credential store; other clients use their approved host credential
+   binding. Never launch a second BOS login or password flow.
    Recover missing underlying provider grants through the BOS service's
    server-returned OAuth or secure provider-credential flow in the active agent
    interface; keep secrets out of model chat, package files, and logs.
@@ -58,13 +61,17 @@ release system for portable BOS skills and native remote MCP client adapters.
     package-owned route using the exact static form
     `/mcp/apps/{application-name}/{skill-group-name}`. Both path segments are
     stable human-readable slugs, never IDs or customer settings. Each active
-    runtime product declares exactly one product-owned credential environment
-    variable. That bearer resolves exactly one server-owned principal,
+    runtime product declares exactly one product-owned credential binding. That
+    bearer resolves exactly one server-owned principal,
     organization, installation, delegated role, plugin, and capability scope
     for that named connection. Products may resolve different organizations
     and principals in the same client process. Domain-skill routing chooses the
     matching named connection and its declared credential; credentials never
-    fall through between products. Codex remote servers bind the declared
+    fall through between products. Claude's native sensitive plugin
+    configuration prompts for and stores the value; the local package wrapper
+    never reads it or places it in a subprocess argument, environment variable,
+    file, or model chat. Claude substitutes that option directly into the
+    authorization header. Codex remote servers bind the declared
     product variable through `bearer_token_env_var` so the host can resolve it
     without exposing it.
 12. Treat deployment artifacts as build outputs. The complete cross-platform
@@ -91,18 +98,26 @@ release system for portable BOS skills and native remote MCP client adapters.
     uncertain mutations by operation or idempotency identity before replay.
     Require user action only for secure provider authorization or credential
     entry surfaces that inherently need direct user interaction.
-16. Distribute Claude products through a repository-root native marketplace or
-    Claude's native manual plugin-upload control. Keep remote release downloads
-    out of conversational installation workflows. Runtime Claude plugins use
-    the product's declared client-host credential and the exact package-generated
-    named HTTPS MCP route. Product application and skill-group names remain
-    immutable package metadata.
+16. Distribute pre-publication Claude products from the local source or
+    customer package with one installer entry point. The installer validates
+    and registers the package's local Claude catalog, then installs and enables
+    the selected plugin through Claude's native plugin CLI. Runtime Claude
+    plugins declare one required sensitive API-key option; Claude asks for it
+    through its native masked configuration prompt, securely stores the value,
+    and substitutes it into the exact package-generated named HTTPS MCP route.
+    The package wrapper never handles the credential.
+    Product application and skill-group names remain immutable package
+    metadata.
 17. Treat a Codex bearer registration as current only when the selected
     product's declared credential exists in the active host process, matches
     the installer process binding when one is supplied, and successfully
     initializes that product's exact named route with its required scoped tool
     group. On macOS, launch the desktop host with each installed product's
     process-scoped credential fetched from approved managed storage.
+    Require a directly attached interactive terminal and explicit typed user
+    confirmation before replacing a running desktop host. Never schedule,
+    detach, retry-loop, or force-terminate the desktop host from installation,
+    verification, reconciliation, or agent workflows.
     Never persist a bearer in package files or publish it into the global GUI
     launch environment.
 18. Gate every complete build and customer release on a credentialed,
@@ -123,6 +138,18 @@ release system for portable BOS skills and native remote MCP client adapters.
     correlation IDs, tool names, and aggregate field-presence counts.
     Artifact-only development builds may remain credential-free but provide no
     production-readiness evidence.
+19. Give every BOS-family runtime product on one OS user account a shared local
+    document cache. The packaged `bos-mcp-client` resolves the same
+    platform-native cache root from every client and product. It partitions
+    indexes by a hash of the current server-derived authority and source
+    account, deduplicates immutable document versions in a content-addressed
+    object store, and coordinates refreshes with atomic cross-process leases.
+    Skills validate current authority first, reuse covered cache intervals, and
+    request only the source changes after the committed per-file or per-query
+    watermark through a fixed refresh upper bound. A refresh publishes new
+    documents, tombstones, coverage, cursor, and sync time in one atomic commit
+    after every page succeeds. Failed or partial refreshes retain the previous
+    watermark. See `Vault/specs/shared-local-document-cache.md`.
 
 ## Knowledge and review
 
