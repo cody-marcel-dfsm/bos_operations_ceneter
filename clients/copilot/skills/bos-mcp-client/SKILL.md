@@ -6,10 +6,13 @@ description: Operate a packaged application MCP resource group, including scope 
 # BOS MCP Client
 
 Use this skill for client-side application resource-group operations.
-Each installed runtime product owns one declared bearer binding for its named
-connection. The triggered domain skill selects that product connection and its
-organization-scoped principal; BOS derives canonical execution scope on the
-server. Credentials never fall through from another product connection.
+Each installed runtime product owns one named remote MCP resource. Claude and
+ChatGPT/Codex authorize that resource through the host's OAuth 2.1 connection.
+Other supported clients use the product adapter declared by their generated
+package until they receive an equivalent OAuth migration.
+The triggered domain skill selects the matching product connection; BOS derives
+canonical execution scope from the validated grant. Authorization never falls
+through from another product connection.
 
 Developer and operator work is outside this skill when the request explicitly
 targets BOS source code, deployment infrastructure, Cloud Run, GCP Secret
@@ -27,9 +30,9 @@ request.
 - Discover and use the installed product's configured BOS MCP connection.
 - If BOS is absent from the callable tool manifest, inspect the active client's
   plugin and MCP registration immediately. Repair or reinstall the configured
-  local product and bind its declared product credential through the
-  supported secret mechanism. Preserve every other installed product
-  connection. Restore only the immutable
+  local product and restore its declared authorization connection. For Claude
+  and ChatGPT/Codex, invoke the host-managed OAuth connection. Preserve every
+  other installed product connection. Restore only the immutable
   `/mcp/apps/{application-name}/{skill-group-name}` package route for every
   application runtime product, then verify that named server is registered.
   Packages own both human-readable route segments.
@@ -45,8 +48,9 @@ request.
 - For a mutation whose completion is unknown after a disconnect, reconcile by
   its operation or idempotency identifier before deciding whether to resume.
   Never replay an uncertain mutation blindly.
-- Ask for user action only when the client presents a secure provider sign-in
-  or credential-entry surface that requires the user's direct interaction.
+- Ask for user action only when the host presents BOS Connect/Sign in or a
+  secure provider sign-in or credential-entry surface that inherently requires
+  the user's direct interaction. Never ask the user to paste a BOS key.
 - When the host requires a fresh session to load repaired tools, create or
   continue that session through the client's task controls when available and
   carry the original request into it. State the host boundary only when the
@@ -68,12 +72,15 @@ request.
 4. Use the triggered product skill to choose its matching named connection.
    For example, Education Center operations use `education-center`; Video Ads operations
    use `video-ads`. The endpoint selects a tool group; it never selects an
-   organization or another bearer credential.
-5. Authenticate the selected connection with exactly one package-declared
-   product credential. Keep it out of chat, tool arguments, package files, and
-   logs. Never reuse, fall back to, or test another product's credential.
-   If BOS rejects the credential after reconnecting once, report that the
-   client credential configuration requires repair.
+   organization or another authorization grant.
+5. Authenticate a selected Claude or ChatGPT/Codex connection through its
+   host-managed OAuth grant. Other clients use only the generated product
+   adapter declared for that client. Keep access tokens, refresh tokens,
+   authorization codes, bearer values, and grant metadata out of chat, tool
+   arguments, package files, and logs. Never reuse or fall back to another
+   product's authorization. If BOS rejects a desktop OAuth grant after
+   reconnecting once, invoke the host's Connect/Sign in flow and resume once
+   after it succeeds.
 6. When a domain call returns `authorization_required`, preserve its original
    operation ID and follow the returned authorization type automatically:
    - OAuth: open the returned URL, let the customer sign in directly with the
@@ -92,8 +99,8 @@ installation, or release gate.
 
 Domain skills interpret their workflows and execute only through their matching
 configured product MCP. BOS derives actor, tenant, organization, application,
-installation, role, plugin, and capability scope from that connection's bearer
-principal and canonical server records.
+installation, role, plugin, and capability scope from that connection's
+validated OAuth grant and canonical server records.
 
 ## Shared local document cache
 

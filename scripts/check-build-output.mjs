@@ -62,7 +62,7 @@ const listing = spawnSync("python3", [
 ], { encoding: "utf8" });
 assert.equal(listing.status, 0, listing.stderr || listing.stdout);
 assert.match(listing.stdout, /bos-operations-center\/README_INSTALL\.md/);
-assert.match(
+assert.doesNotMatch(
   listing.stdout,
   /bos-operations-center\/scripts\/launch-codex-with-bos\.swift/
 );

@@ -2,11 +2,11 @@
 
 Use `bos_submit_feedback` through the package's static
 `POST /mcp/apps/{application-name}/{skill-group-name}` connection with the
-existing organization-scoped BOS agent bearer credential. Both route segments
+existing host-managed, resource-scoped BOS OAuth grant. Both route segments
 are immutable human-readable package configuration; the client never derives
 them from an installation ID or customer setting. Execution scope never
 appears in the request body and the client never falls back to an unnamed endpoint.
-BOS derives the authorized tenant and installation from the credential.
+BOS derives the authorized tenant and installation from the validated grant.
 
 ## Required fields
 

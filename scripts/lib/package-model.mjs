@@ -247,29 +247,10 @@ export async function copyRuntime(product, pluginRoot, base = root, client = nul
   config.mcpServers[product.mcp_group_name] = server;
   if (product.mcp_group_name !== "bos") delete config.mcpServers.bos;
   server.url = materializeMcpUrl(server.url, product);
-  server.bearer_token_env_var = product.credential_env_var;
-  server.headers.Authorization = `Bearer \${${product.credential_env_var}}`;
+  if (!["codex", "claude"].includes(client)) {
+    throw new Error(`Runtime packaging does not support OAuth client ${client}`);
+  }
   await writeJson(configPath, config);
-  if (client === "codex") {
-    const config = await readJson(configPath);
-    for (const server of Object.values(config.mcpServers ?? {})) {
-      if (server.bearer_token_env_var === product.credential_env_var &&
-          server.headers?.Authorization === `Bearer \${${product.credential_env_var}}`) {
-        delete server.headers.Authorization;
-        if (Object.keys(server.headers).length === 0) delete server.headers;
-      }
-    }
-    await writeJson(configPath, config);
-  }
-  if (client === "claude") {
-    const configPath = join(pluginRoot, ".mcp.json");
-    const config = await readJson(configPath);
-    for (const server of Object.values(config.mcpServers ?? {})) {
-      delete server.bearer_token_env_var;
-      server.headers.Authorization = "Bearer ${user_config.bos_api_key}";
-    }
-    await writeJson(configPath, config);
-  }
 }
 
 export function materializeMcpUrl(template, product) {

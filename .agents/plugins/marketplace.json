@@ -8,7 +8,7 @@
       "name": "bos",
       "source": {
         "source": "local",
-        "path": "./plugins/bos"
+        "path": "./clients/codex/plugins/bos"
       },
       "policy": {
         "installation": "AVAILABLE",
@@ -20,7 +20,7 @@
       "name": "education-center",
       "source": {
         "source": "local",
-        "path": "./plugins/education-center"
+        "path": "./clients/codex/plugins/education-center"
       },
       "policy": {
         "installation": "AVAILABLE",

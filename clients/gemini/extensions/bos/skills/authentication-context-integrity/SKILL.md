@@ -30,26 +30,30 @@ configuration as distinct validated dimensions.
 - Request values select scope and require server validation.
 - Customer configuration supplies context and never supplies authority.
 - Provider credentials remain scoped to their installed app and plugin.
-- Reconnect replaces the scoped grant and preserves application configuration.
+- Reconnect or reauthorization replaces the scoped grant and preserves
+  application configuration.
 - Background jobs carry the same validated scope as interactive operations.
 - The agent owns MCP transport and session recovery. On a closed stream or
   session, it reconnects the configured endpoint, rediscovers tools,
   revalidates context, and resumes the interrupted request with bounded retry.
   It never delegates reconnection or request resubmission to the user.
-- Expose BOS as a remote HTTPS Streamable HTTP MCP server. Authenticate each
-  named product connection with exactly one package-declared, organization-scoped
-  bearer binding. Multiple product connections may use distinct principals.
-  Every secured call fails closed when that key is missing or invalid, and the
-  service never offers a second BOS password or login flow.
+- Expose BOS as a remote HTTPS Streamable HTTP MCP server. Claude and
+  ChatGPT/Codex desktop packages declare only the immutable resource URL and
+  use the host's OAuth 2.1 MCP authorization flow. The host discovers BOS
+  authorization metadata, launches consent, stores and refreshes the grant,
+  and attaches the resulting resource-scoped access token. The package never
+  asks for or stores a BOS API key. Multiple named product connections may
+  hold distinct grants. Every secured call fails closed when authorization is
+  absent, invalid, expired, revoked, or scoped to another resource.
 - Register the package's immutable
   `/mcp/apps/{application-name}/{skill-group-name}` endpoint and verify the
   server-returned context. Never discover, prompt for, repair, or materialize
   the route from an `installed_app_id`, and never retain an unnamed endpoint as
-  an installed product's runtime connection. In Codex, bind the product's
-  declared credential variable with `bearer_token_env_var`; literal header
-  templates do not establish a usable client credential binding. The server derives actor, tenant, organization,
-  installation, role, plugin, and capability scope from the authenticated key;
-  client prompts and tool arguments never supply those authority dimensions.
+  an installed product's runtime connection. For Claude and ChatGPT/Codex,
+  never add `bearer_token_env_var`, literal authorization headers, or a plugin
+  key field. The server derives actor, tenant, organization, installation,
+  role, plugin, and capability scope from the validated OAuth grant; client
+  prompts and tool arguments never supply those authority dimensions.
 - Advertise only the tools allowed for the resolved endpoint, tenant,
   installation, plugin, and execution role. Administrative tools remain absent
   from customer product profiles.

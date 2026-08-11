@@ -60,10 +60,12 @@ franchise or brand name should these skills use in drafts, reports, and
 communications?” Trim the answer, validate it as a single-line display value,
 and store it as `brand_display_name`.
 
-Do not open a separate authentication page or create another login for this
-configuration. BOS-routed provider authentication remains the BOS-owned
-recovery flow; a separately connected client source retains its native account
-authorization and recovery boundary.
+Customer settings initialization never opens an authorization page. In Claude
+and ChatGPT/Codex, the installed MCP connection completes BOS OAuth through the
+host's Connect/Sign in flow before this configuration workflow runs. Another
+client completes its generated product adapter first. BOS-routed provider
+authorization remains the BOS-owned recovery flow; a separately connected
+client source retains its native account authorization and recovery boundary.
 
 ## Apply and verify
 

@@ -4,7 +4,7 @@ import test from "node:test";
 import { installClaudeLocal } from "../scripts/install-claude-local.mjs";
 import { root } from "../scripts/lib/package-model.mjs";
 
-test("Claude installer never handles the sensitive plugin value", async () => {
+test("Claude installer contains no BOS credential handling", async () => {
   const source = await readFile(
     new URL("../scripts/install-claude-local.mjs", import.meta.url),
     "utf8"
@@ -12,7 +12,7 @@ test("Claude installer never handles the sensitive plugin value", async () => {
   assert.doesNotMatch(source, /promptForApiKey|bos_api_key|--config|suppliedApiKey/);
 });
 
-test("Claude local installer delegates sensitive configuration to Claude", async () => {
+test("Claude local installer delegates OAuth connection to Claude", async () => {
   const calls = [];
   let pluginListCount = 0;
   const run = (command, args) => {
@@ -63,7 +63,7 @@ test("Claude local installer delegates sensitive configuration to Claude", async
   assert.doesNotMatch(JSON.stringify(calls), /api[_-]?key|bos_api_key|--config/i);
 });
 
-test("Claude local installer updates an existing local installation without asking again", async () => {
+test("Claude local installer updates an existing local installation without credential prompts", async () => {
   const calls = [];
   const selector = "education-center@bos-education-center";
   const run = (command, args) => {

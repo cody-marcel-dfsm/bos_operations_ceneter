@@ -35,8 +35,10 @@ persisted record identifiers. Return `configuration_required` and invoke
 ## Routing workflow
 
 1. Route every domain marked `bos` through the installed `education-center` MCP
-   connection. Its configured `EDUCATION_CENTER_BOS_API_KEY` identifies the canonical
-   BOS principal; the named endpoint selects the Education Center tool group.
+   connection. In Claude and ChatGPT/Codex, its host-managed OAuth grant
+   identifies the canonical BOS authorization; another client uses only its
+   generated product adapter. The named endpoint selects the Education Center
+   tool group.
 2. Identify the requested operation and any provider preference stated by the
    user.
 3. Call `bos_get_context` once and accept the exact organization, application,

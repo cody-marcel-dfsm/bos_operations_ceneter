@@ -2,5 +2,6 @@
   "schema_version": "1",
   "name": "bos",
   "version": "0.4.21",
-  "client": "copilot"
+  "client": "copilot",
+  "authentication": "none"
 }
