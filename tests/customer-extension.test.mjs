@@ -202,16 +202,27 @@ test("extension manager rejects a symbolic-link extension target", async () => {
   );
 });
 
-test("extension manager reports the physical product path through a marketplace symlink", async () => {
+test("extension manager CLI runs through a marketplace symlink and reports the physical path", async () => {
   const marketplace = await extensionRoot();
   const linkedProduct = join(marketplace, "bos");
   await symlink(productRoot, linkedProduct, "dir");
-  const result = await inspectCustomerExtension({
-    productRoot: linkedProduct,
-    extensionRoot: join(linkedProduct, "skills"),
-    baseSkill: "planning",
-    tenant: "example-center"
-  });
+  const manager = join(
+    linkedProduct,
+    "skills",
+    "manage-customer-extension",
+    "scripts",
+    "manage-extension.mjs"
+  );
+  const execution = spawnSync("node", [
+    manager,
+    "inspect",
+    "--product-root", linkedProduct,
+    "--extension-root", join(linkedProduct, "skills"),
+    "--base-skill", "planning",
+    "--tenant", "example-center"
+  ], { encoding: "utf8" });
+  assert.equal(execution.status, 0, execution.stderr);
+  const result = JSON.parse(execution.stdout);
   assert.equal(
     result.path,
     join(await realpath(productRoot), "skills", "planning-example-center")
