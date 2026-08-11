@@ -461,10 +461,10 @@ Director, Calendar, and general parent communications through BOS while routing
 Care.com evidence through an exact account in the client's normal Gmail
 connector. External connector evidence never expands BOS identity or authority.
 
-Credentials and access authority remain outside customer configuration. The
-client receives one `BOS_API_KEY` through the approved GCP-managed client
-configuration. Each named MCP connection forwards that same key as a Bearer
-header over HTTPS. Skill
+Credentials and access authority remain outside customer configuration. Each
+active runtime product declares one organization-scoped credential environment
+variable through the approved GCP-managed client configuration. Each named MCP
+connection forwards only its declared key as a Bearer header over HTTPS. Skill
 files, generated packages, logs, customer settings, command arguments, and
 chat remain credential-free. BOS owns encrypted provider-credential
 persistence. For a missing provider grant, BOS returns a short-lived HTTPS
@@ -551,12 +551,13 @@ authenticate BOS and does not authorize provider access.
 
 ### 3. Connect the account
 
-The client loads its one `BOS_API_KEY` from the approved GCP-managed environment
-and connects directly to each matching named HTTPS MCP endpoint. BOS validates
-the same key
-on every secured request and fails closed when it is absent, invalid, expired,
-or outside the endpoint's authorized product scope. The customer completes no
-second BOS password or login flow.
+The client loads each selected product's declared credential from the approved
+GCP-managed environment and connects directly to its matching named HTTPS MCP
+endpoint. BOS validates that route-bound key on every secured request and fails
+closed when it is absent, invalid, expired, or outside the endpoint's authorized
+product scope. A failed product connection or provider credential cannot affect
+another product or organization. The customer completes no second BOS password
+or login flow.
 
 ### 4. Resolve tenant and capabilities
 

@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 export const MCP_CONNECTION_PROFILES = Object.freeze({
   "https://dfsm.ai/mcp/apps/leaddirector/icode-operations": Object.freeze({
     applicationCode: "lead_director",
+    credentialEnvVar: "ICODE_OPERATIONS_BOS_API_KEY",
     requiredTools: Object.freeze([
       "bos_get_context",
       "icode_get_email_thread",
@@ -17,6 +18,7 @@ export const MCP_CONNECTION_PROFILES = Object.freeze({
   }),
   "https://dfsm.ai/mcp/apps/leaddirector/video-ads": Object.freeze({
     applicationCode: "lead_director",
+    credentialEnvVar: "VIDEO_ADS_BOS_API_KEY",
     requiredTools: Object.freeze([
       "bos_get_context",
       "video_ads_get_readiness",
@@ -98,7 +100,7 @@ export async function runMcpConnectionSmoke({
 } = {}) {
   const profile = MCP_CONNECTION_PROFILES[endpoint];
   if (!profile) throw new Error("Pass an approved named BOS MCP endpoint");
-  if (!apiKey) throw new Error("BOS_API_KEY is absent from this process");
+  if (!apiKey) throw new Error(`${profile.credentialEnvVar} is absent from this process`);
 
   const report = { endpoint, credentialPresent: true };
   let sessionId;
@@ -223,7 +225,9 @@ async function main() {
   try {
     const report = await runMcpConnectionSmoke({
       endpoint: process.argv[2],
-      apiKey: process.env.BOS_API_KEY
+      apiKey: process.env[
+        MCP_CONNECTION_PROFILES[process.argv[2]]?.credentialEnvVar
+      ]
     });
     console.log(JSON.stringify(report, null, 2));
   } catch (error) {

@@ -29,7 +29,8 @@ Read and follow these installed skills before retrieving data:
 - `icode-class-operations` for date-bound class rosters.
 - `icode-student-operations` for student, enrollment, and family identity handling.
 
-Use the single user and role resolved from the configured `BOS_API_KEY` by
+Use the single user and role resolved from the configured
+`ICODE_OPERATIONS_BOS_API_KEY` by
 `bos_get_context`. BOS derives organization, installation, plugin, and
 capability scope. Treat the live MCP manifest as authoritative. Never ask the
 user to choose a director, organization, source, key, or role for preparation.

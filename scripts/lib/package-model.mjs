@@ -46,6 +46,7 @@ export function validateProduct(manifest, path = "product.json") {
     "schema_version",
     "name",
     "version",
+    "release_status",
     "display_name",
     "description",
     "publisher",
@@ -56,6 +57,7 @@ export function validateProduct(manifest, path = "product.json") {
     "runtime",
     "application_name",
     "mcp_group_name",
+    "credential_env_var",
     "settings_template",
     "default_prompts"
   ]);
@@ -64,6 +66,9 @@ export function validateProduct(manifest, path = "product.json") {
   }
   if (manifest.schema_version !== "1") {
     failures.push(`${path}: schema_version must be "1"`);
+  }
+  if (!["active", "disabled"].includes(manifest.release_status)) {
+    failures.push(`${path}: release_status must be active or disabled`);
   }
   if (!productNamePattern.test(manifest.name ?? "")) {
     failures.push(`${path}: invalid product name`);
@@ -137,6 +142,13 @@ export function validateProduct(manifest, path = "product.json") {
   }
   if (manifest.runtime && (!manifest.application_name || !manifest.mcp_group_name)) {
     failures.push(`${path}: runtime requires application_name and mcp_group_name`);
+  }
+  if (manifest.runtime &&
+      !/^[A-Z][A-Z0-9_]*$/.test(manifest.credential_env_var ?? "")) {
+    failures.push(`${path}: runtime requires credential_env_var`);
+  }
+  if (!manifest.runtime && manifest.credential_env_var !== undefined) {
+    failures.push(`${path}: skills-only product cannot declare credential_env_var`);
   }
   if (
     manifest.settings_template !== undefined &&
@@ -231,12 +243,14 @@ export async function copyRuntime(product, pluginRoot, base = root, client = nul
   config.mcpServers[product.mcp_group_name] = server;
   if (product.mcp_group_name !== "bos") delete config.mcpServers.bos;
   server.url = materializeMcpUrl(server.url, product);
+  server.bearer_token_env_var = product.credential_env_var;
+  server.headers.Authorization = `Bearer \${${product.credential_env_var}}`;
   await writeJson(configPath, config);
   if (client === "codex") {
     const config = await readJson(configPath);
     for (const server of Object.values(config.mcpServers ?? {})) {
-      if (server.bearer_token_env_var === "BOS_API_KEY" &&
-          server.headers?.Authorization === "Bearer ${BOS_API_KEY}") {
+      if (server.bearer_token_env_var === product.credential_env_var &&
+          server.headers?.Authorization === `Bearer \${${product.credential_env_var}}`) {
         delete server.headers.Authorization;
         if (Object.keys(server.headers).length === 0) delete server.headers;
       }
@@ -305,14 +319,16 @@ export async function geminiExtensionManifest(product, base = root) {
     {
       name: "BOS API Key",
       description: "Organization-scoped BOS agent bearer credential.",
-      envVar: "BOS_API_KEY",
+      envVar: product.credential_env_var,
       sensitive: true
     }
   ];
   manifest.mcpServers = {
     [serverName]: {
       httpUrl,
-      headers: sourceServer.headers
+      headers: {
+        Authorization: `Bearer \${${product.credential_env_var}}`
+      }
     }
   };
   return manifest;
@@ -334,12 +350,16 @@ export async function copilotMcpManifest(product, base = root) {
         type: "http",
         url: materializeMcpUrl(sourceServer.url, product),
         headers: {
-          Authorization: "Bearer ${COPILOT_MCP_BOS_API_KEY}"
+          Authorization: `Bearer \${${copilotCredentialEnvVar(product)}}`
         },
         tools: ["*"]
       }
     }
   };
+}
+
+export function copilotCredentialEnvVar(product) {
+  return `COPILOT_MCP_${product.credential_env_var}`;
 }
 
 export function marketplaceEntry(product) {

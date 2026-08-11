@@ -4,6 +4,7 @@ import {
   copyProductSkills,
   copyRuntime,
   copySettingsTemplate,
+  copilotCredentialEnvVar,
   copilotMcpManifest,
   geminiExtensionManifest,
   listProducts,
@@ -25,6 +26,7 @@ if (failures.length) throw new Error(failures.join("\n"));
 
 const resolved = [];
 for (const { manifest } of products) {
+  if (manifest.release_status === "disabled") continue;
   resolved.push({
     product: manifest,
     skills: await resolveProductSkills(manifest)
@@ -61,7 +63,8 @@ for (const { product, skills } of resolved) {
       version: product.version,
       client: "codex",
       application_name: product.application_name,
-      mcp_group_name: product.mcp_group_name
+      mcp_group_name: product.mcp_group_name,
+      credential_env_var: product.credential_env_var
     });
     await writeJson(
       join(pluginRoot, ".codex-plugin", "plugin.json"),
@@ -87,7 +90,8 @@ for (const { product, skills } of resolved) {
       version: product.version,
       client: "claude",
       application_name: product.application_name,
-      mcp_group_name: product.mcp_group_name
+      mcp_group_name: product.mcp_group_name,
+      credential_env_var: product.credential_env_var
     });
     const claudePlugin = {
       name: product.name,
@@ -172,7 +176,8 @@ for (const { product, skills } of resolved) {
       version: product.version,
       client: "copilot",
       application_name: product.application_name,
-      mcp_group_name: product.mcp_group_name
+      mcp_group_name: product.mcp_group_name,
+      credential_env_var: product.credential_env_var
     });
     if (product.runtime) {
       await writeJson(
@@ -192,7 +197,7 @@ for (const { product, skills } of resolved) {
           "Copy `.github/mcp.json` into the target repository, or paste its JSON into",
           "Settings > Copilot > MCP servers for Copilot cloud agent and code review.",
           "",
-          "Create an Agents secret named `COPILOT_MCP_BOS_API_KEY` containing the",
+          `Create an Agents secret named \`${copilotCredentialEnvVar(product)}\` containing the`,
           "organization-scoped BOS API key. GitHub exposes only `COPILOT_MCP_`-prefixed",
           "secrets and variables to repository MCP configuration.",
           "",
@@ -219,7 +224,8 @@ for (const { product, skills } of resolved) {
       version: product.version,
       client: "gemini",
       application_name: product.application_name,
-      mcp_group_name: product.mcp_group_name
+      mcp_group_name: product.mcp_group_name,
+      credential_env_var: product.credential_env_var
     });
     await writeJson(
       join(extensionRoot, "gemini-extension.json"),
@@ -292,7 +298,19 @@ await writeJson(join(root, ".claude-plugin", "marketplace.json"), {
   }))
 });
 
+await writeJson(join(root, "clients", "disabled-products.json"), {
+  schema_version: "1",
+  products: products
+    .map(({ manifest }) => manifest)
+    .filter(({ release_status }) => release_status === "disabled")
+    .map(({ name, application_name, mcp_group_name }) => ({
+      name,
+      application_name,
+      mcp_group_name
+    }))
+});
+
 await rm(stage, { recursive: true, force: true });
 console.log(
-  `Generated ${resolved.length} products for Codex, Claude, Copilot, and Gemini.`
+  `Generated ${resolved.length} active products for Codex, Claude, Copilot, and Gemini.`
 );

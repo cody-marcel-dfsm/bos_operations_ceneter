@@ -1,7 +1,17 @@
 import assert from "node:assert/strict";
-import { readFile, readdir } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  stat,
+  writeFile
+} from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { pathToFileURL } from "node:url";
 import { pathExists, root } from "./lib/package-model.mjs";
 
 const dist = join(root, "dist");
@@ -9,7 +19,7 @@ const releaseManifest = JSON.parse(await readFile(join(dist, "release-manifest.j
 const packageManifest = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
 
 assert.equal(releaseManifest.schema_version, "1");
-assert.equal(releaseManifest.archives.length, 12);
+assert.equal(releaseManifest.archives.length, 8);
 for (const archive of releaseManifest.archives) {
   assert(await pathExists(join(dist, archive.file)), `missing ${archive.file}`);
   assert.match(archive.sha256, /^[a-f0-9]{64}$/);
@@ -17,7 +27,7 @@ for (const archive of releaseManifest.archives) {
 const claudeArchives = releaseManifest.archives.filter(
   ({ client }) => client === "claude"
 );
-assert.equal(claudeArchives.length, 3);
+assert.equal(claudeArchives.length, 2);
 assert(claudeArchives.every(({ file }) => /-claude\.zip$/.test(file)));
 assert(
   releaseManifest.archives
@@ -58,6 +68,11 @@ assert.match(
 );
 assert.match(
   listing.stdout,
+  /bos-operations-center\/scripts\/install-package\.mjs/
+);
+assert.match(listing.stdout, /bos-operations-center\/package\.json/);
+assert.match(
+  listing.stdout,
   /clients\/codex\/plugins\/icode-operations-center\/config\/customer-settings\.template\.json/
 );
 assert.doesNotMatch(listing.stdout, /clients\/claude\/plugins\/bos\/\.mcp\.json/);
@@ -69,5 +84,85 @@ assert.match(listing.stdout, /clients\/copilot\/products\/bos\/skills/);
 assert.doesNotMatch(listing.stdout, /clients\/copilot\/products\/bos\/\.github\/mcp\.json/);
 assert.match(listing.stdout, /clients\/gemini\/extensions\/bos\/gemini-extension\.json/);
 assert.doesNotMatch(listing.stdout, /bos-mcp-broker|\/bin\//);
+assert.doesNotMatch(listing.stdout, /video-ads/);
+assert.match(listing.stdout, /clients\/disabled-products\.json/);
+
+const extractedRoot = await mkdtemp(join(tmpdir(), "bos-customer-installer-"));
+try {
+  const extraction = spawnSync("python3", [
+    "-c",
+    "import sys, zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])",
+    stableZip,
+    extractedRoot
+  ], { encoding: "utf8" });
+  assert.equal(extraction.status, 0, extraction.stderr || extraction.stdout);
+  const packageRoot = join(extractedRoot, "bos-operations-center");
+  const installer = await import(pathToFileURL(
+    join(packageRoot, "scripts", "install-package.mjs")
+  ).href);
+  const testHome = join(extractedRoot, "home");
+  const retiredRoot = join(testHome, "plugins", "video-ads");
+  await mkdir(retiredRoot, { recursive: true });
+  await writeFile(
+    join(retiredRoot, ".bos-product.json"),
+    JSON.stringify({ name: "video-ads" })
+  );
+  const marketplaceRoot = join(testHome, ".agents", "plugins");
+  await mkdir(marketplaceRoot, { recursive: true });
+  await writeFile(join(marketplaceRoot, "marketplace.json"), JSON.stringify({
+    name: "bos-icode",
+    interface: { displayName: "BOS + iCode" },
+    plugins: [{
+      name: "video-ads",
+      source: { source: "local", path: "./plugins/video-ads" },
+      policy: { installation: "AVAILABLE", authentication: "ON_USE" },
+      category: "Marketing"
+    }]
+  }));
+  let mcpRegistered = true;
+  let pluginInstalled = true;
+  const runCommand = async (_command, args) => {
+    if (args[0] === "mcp" && args[1] === "get") {
+      if (mcpRegistered) return {
+        stdout: "url: https://dfsm.ai/mcp/apps/leaddirector/video-ads"
+      };
+      throw Object.assign(new Error("missing"), {
+        stderr: "Error: No MCP server named 'video-ads' found."
+      });
+    }
+    if (args[0] === "mcp" && args[1] === "remove") {
+      mcpRegistered = false;
+      return { stdout: "Removed global MCP server 'video-ads'." };
+    }
+    if (args[0] === "plugin" && args[1] === "list") return {
+      stdout: pluginInstalled
+        ? "video-ads@bos-icode installed, enabled 0.1.3 /tmp/video-ads"
+        : "video-ads@bos-icode not installed /tmp/video-ads"
+    };
+    if (args[0] === "plugin" && args[1] === "remove") {
+      pluginInstalled = false;
+      return { stdout: JSON.stringify({ pluginId: "video-ads@bos-icode" }) };
+    }
+    return { stdout: "" };
+  };
+  const first = await installer.applyInstallation({
+    home: testHome,
+    product: "bos",
+    runCommand
+  });
+  assert.equal(first.state, "managed-current");
+  assert(first.disabled_product_actions.some((action) =>
+    action.startsWith("retired_plugin:video-ads:")
+  ));
+  await assert.rejects(stat(retiredRoot));
+  const second = await installer.applyInstallation({
+    home: testHome,
+    product: "bos",
+    runCommand
+  });
+  assert.deepEqual(second.disabled_product_actions, []);
+} finally {
+  await rm(extractedRoot, { recursive: true, force: true });
+}
 
 console.log("Build output contains all product archives and both customer ZIP names.");

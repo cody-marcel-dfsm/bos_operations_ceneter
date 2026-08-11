@@ -80,20 +80,27 @@ function parseArgs(argv) {
   return options;
 }
 
-export function codexBosMcpRegistration(applicationName, mcpGroupName) {
+export function codexBosMcpRegistration(
+  applicationName,
+  mcpGroupName,
+  credentialEnvVar
+) {
   const stableName = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
   if (!stableName.test(applicationName ?? "") ||
       !stableName.test(mcpGroupName ?? "")) {
     throw new Error("Application and MCP group names must be kebab-case strings");
   }
+  if (!/^[A-Z][A-Z0-9_]*$/.test(credentialEnvVar ?? "")) {
+    throw new Error("Credential environment binding must be an uppercase identifier");
+  }
   const url = `https://dfsm.ai/mcp/apps/${applicationName}/${mcpGroupName}`;
   return {
     name: mcpGroupName,
     url,
-    bearer_token_env_var: "BOS_API_KEY",
+    bearer_token_env_var: credentialEnvVar,
     args: [
       "mcp", "add", mcpGroupName, "--url", url,
-      "--bearer-token-env-var", "BOS_API_KEY"
+      "--bearer-token-env-var", credentialEnvVar
     ]
   };
 }
@@ -266,7 +273,7 @@ export async function verifyNamedMcpBearer({
 
 export async function codexHostBearerState(
   runCommand = execFileAsync,
-  { expectedApiKey, verifyBearer } = {}
+  { credentialEnvVar, expectedApiKey, verifyBearer } = {}
 ) {
   if (process.platform !== "darwin") {
     return {
@@ -288,11 +295,20 @@ export async function codexHostBearerState(
     const pid = Number(line.trim().split(/\s+/, 1)[0]);
     const environment = await runCommand("ps", ["eww", "-p", String(pid), "-o", "command="]);
     const command = String(environment?.stdout ?? environment ?? "");
-    const match = command.match(/(?:^|\s)BOS_API_KEY=(\S+)/);
+    if (!/^[A-Z][A-Z0-9_]*$/.test(credentialEnvVar ?? "")) {
+      return {
+        state: "configuration_required",
+        reason: "codex_host_credential_binding_invalid",
+        pid
+      };
+    }
+    const match = command.match(
+      new RegExp(`(?:^|\\s)${credentialEnvVar}=(\\S+)`)
+    );
     if (!match) {
       return {
         state: "configuration_required",
-        reason: "codex_host_bos_api_key_missing",
+        reason: "codex_host_product_api_key_missing",
         pid
       };
     }
@@ -300,7 +316,7 @@ export async function codexHostBearerState(
     if (expectedApiKey && !sameSecret(activeApiKey, expectedApiKey)) {
       return {
         state: "configuration_required",
-        reason: "codex_host_bos_api_key_mismatch",
+        reason: "codex_host_product_api_key_mismatch",
         pid
       };
     }
@@ -327,7 +343,8 @@ async function configureCodexBosMcp(options, paths) {
   const metadata = await readJson(join(paths.target, ".bos-product.json"));
   const registration = codexBosMcpRegistration(
     metadata.application_name,
-    metadata.mcp_group_name
+    metadata.mcp_group_name,
+    metadata.credential_env_var
   );
   if (runtimeServer.url !== registration.url) {
     throw new Error("Packaged MCP resource-group URL does not match product metadata");
@@ -346,17 +363,19 @@ async function configureCodexBosMcp(options, paths) {
   )({
     apiKey,
     endpoint: registration.url,
-    applicationName: product.application_name,
-    mcpGroupName: product.mcp_group_name,
+    applicationName: metadata.application_name,
+    mcpGroupName: metadata.mcp_group_name,
     fetchImpl: options.fetchImpl
   });
   const host = options.inspectCodexHost
     ? await options.inspectCodexHost({
-        expectedApiKey: environment.BOS_API_KEY,
+        credentialEnvVar: metadata.credential_env_var,
+        expectedApiKey: environment[metadata.credential_env_var],
         verifyBearer
       })
     : await codexHostBearerState(runCommand, {
-        expectedApiKey: environment.BOS_API_KEY,
+        credentialEnvVar: metadata.credential_env_var,
+        expectedApiKey: environment[metadata.credential_env_var],
         verifyBearer
       });
   if (host.state !== "current") {
@@ -374,6 +393,119 @@ async function configureCodexBosMcp(options, paths) {
     host_pid: host.pid,
     tool_count: host.tool_count
   };
+}
+
+function commandOutput(result) {
+  return `${result?.stdout ?? result ?? ""}\n${result?.stderr ?? ""}`;
+}
+
+async function inspectDisabledMcp(runCommand, product, endpoint) {
+  let result;
+  try {
+    result = await runCommand("codex", ["mcp", "get", product.mcp_group_name]);
+  } catch (error) {
+    const diagnostic = commandOutput(error);
+    if (diagnostic.includes(
+      `Error: No MCP server named '${product.mcp_group_name}' found.`
+    )) return "absent";
+    throw new Error(`Unable to inspect disabled MCP ${product.mcp_group_name}`);
+  }
+  const output = commandOutput(result);
+  if (output.includes(
+    `Error: No MCP server named '${product.mcp_group_name}' found.`
+  )) return "absent";
+  if (output.includes(`url: ${endpoint}`)) return "owned";
+  return "unrelated";
+}
+
+async function inspectDisabledPlugin(runCommand, product) {
+  let result;
+  try {
+    result = await runCommand("codex", ["plugin", "list"]);
+  } catch {
+    throw new Error(`Unable to inspect disabled plugin ${product.name}`);
+  }
+  const selector = `${product.name}@bos-icode`;
+  const line = commandOutput(result)
+    .split(/\r?\n/)
+    .find((candidate) => candidate.trimStart().startsWith(selector));
+  if (!line || /\bnot installed\b/.test(line)) return "absent";
+  if (/\binstalled(?:,|\b)/.test(line)) return "installed";
+  throw new Error(`Unable to classify disabled plugin ${product.name}`);
+}
+
+export async function reconcileDisabledCodexProducts(options = {}) {
+  if ((options.client ?? "codex") !== "codex") return [];
+  const manifestPath = join(root, "clients", "disabled-products.json");
+  if (!(await pathExists(manifestPath))) return [];
+  const disabled = await readJson(manifestPath);
+  const runCommand = options.runCommand ?? execFileAsync;
+  const renamePath = options.renamePath ?? rename;
+  const actions = [];
+  for (const product of disabled.products ?? []) {
+    const stableName = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+    if (!stableName.test(product.name ?? "") ||
+        !stableName.test(product.application_name ?? "") ||
+        !stableName.test(product.mcp_group_name ?? "")) {
+      throw new Error("Disabled product inventory contains an invalid identity");
+    }
+    const endpoint = `https://dfsm.ai/mcp/apps/${product.application_name}/${product.mcp_group_name}`;
+    if (await inspectDisabledMcp(runCommand, product, endpoint) === "owned") {
+      await runCommand("codex", ["mcp", "remove", product.mcp_group_name]);
+      if (await inspectDisabledMcp(runCommand, product, endpoint) !== "absent") {
+        throw new Error(`Disabled MCP ${product.mcp_group_name} remains registered`);
+      }
+      actions.push(`removed_mcp:${product.mcp_group_name}`);
+    }
+
+    const home = options.home ?? homedir();
+    const installedRoot = join(home, "plugins", product.name);
+    const installedMetadata = join(installedRoot, ".bos-product.json");
+    try {
+      const metadata = await readJson(installedMetadata);
+      if (metadata.name === product.name) {
+        if (await inspectDisabledPlugin(runCommand, product) === "installed") {
+          await runCommand("codex", [
+            "plugin", "remove", `${product.name}@bos-icode`, "--json"
+          ]);
+          if (await inspectDisabledPlugin(runCommand, product) !== "absent") {
+            throw new Error(`Disabled plugin ${product.name} remains installed`);
+          }
+        }
+        const backup = join(
+          home,
+          ".agents",
+          "bos-backups",
+          `disabled-${product.name}-${Date.now()}`
+        );
+        await mkdir(dirname(backup), { recursive: true });
+        await renamePath(installedRoot, backup);
+        actions.push(`retired_plugin:${product.name}:${backup}`);
+      }
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+
+    const marketplacePath = join(home, ".agents", "plugins", "marketplace.json");
+    try {
+      const marketplace = await readJson(marketplacePath);
+      const originalCount = marketplace.plugins?.length ?? 0;
+      marketplace.plugins = (marketplace.plugins ?? []).filter((entry) =>
+        entry.name !== product.name || entry.source?.path !== `./plugins/${product.name}`
+      );
+      if (marketplace.plugins.length !== originalCount) {
+        const temporary = `${marketplacePath}.tmp-${process.pid}`;
+        await writeFile(temporary, stableJson(marketplace));
+        await rename(temporary, marketplacePath);
+        actions.push(`removed_marketplace_entry:${product.name}`);
+      }
+    } catch (error) {
+      if (error?.code !== "ENOENT") {
+        throw new Error(`Unable to reconcile disabled marketplace entry ${product.name}`);
+      }
+    }
+  }
+  return actions;
 }
 
 export function validateCustomerSettings(settings) {
@@ -911,6 +1043,7 @@ export async function applyInstallation(rawOptions = {}) {
     home: homedir(),
     ...rawOptions
   };
+  const disabledProductActions = await reconcileDisabledCodexProducts(options);
   const report = await inspectInstallation({ ...options, command: "apply" });
   if (["conflict", "invalid"].includes(report.state)) {
     const error = new Error(`Installation state is ${report.state}`);
@@ -986,6 +1119,7 @@ export async function applyInstallation(rawOptions = {}) {
   const runtime = await configureCodexBosMcp(options, paths);
   const result = await inspectInstallation({ ...options, command: "verify" });
   result.runtime = runtime;
+  result.disabled_product_actions = disabledProductActions;
   return result;
 }
 

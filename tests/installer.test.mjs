@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import {
   chmod,
   cp,
@@ -18,6 +19,7 @@ import {
   codexHostBearerState,
   deriveInitialCustomerSettings,
   inspectInstallation,
+  reconcileDisabledCodexProducts,
   validateCustomerSettings,
   verifyNamedMcpBearer,
   verifyInstallation as verifyInstallationRaw
@@ -54,17 +56,45 @@ const customerSettings = {
 
 const mcpApplication = "leaddirector";
 const mcpResourceGroup = "icode-operations";
+const credentialEnvVar = "ICODE_OPERATIONS_BOS_API_KEY";
 const resourceGroupUrl = "https://dfsm.ai/mcp/apps/leaddirector/icode-operations";
+
+test("macOS launcher strips undeclared BOS credentials", (context) => {
+  if (process.platform !== "darwin") {
+    context.skip("macOS launcher isolation");
+    return;
+  }
+  const result = spawnSync("swift", [
+    "-module-cache-path", "/tmp/bos-swift-module-cache",
+    "scripts/launch-codex-with-bos.swift",
+    "--binding", `${credentialEnvVar}=test-secret-name`,
+    "--check-environment-isolation"
+  ], {
+    cwd: root,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      BOS_API_KEY: "legacy-must-not-survive",
+      VIDEO_ADS_BOS_API_KEY: "disabled-must-not-survive"
+    }
+  });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /isolation check passed/);
+  assert.doesNotMatch(result.stdout, /legacy-must-not-survive|disabled-must-not-survive/);
+});
 
 async function fakeCodex(_command, args) {
   if (args[0] === "mcp" && args[1] === "get") {
     const group = args[2];
+    if (group === "video-ads") return {
+      stderr: "Error: No MCP server named 'video-ads' found."
+    };
     const url = `https://dfsm.ai/mcp/apps/leaddirector/${group}`;
     return {
       stdout: [
         group,
         `  url: ${url}`,
-        "  bearer_token_env_var: BOS_API_KEY"
+        `  bearer_token_env_var: ${credentialEnvVar}`
       ].join("\n")
     };
   }
@@ -87,18 +117,22 @@ function verifyInstallation(options) {
   });
 }
 
-test("Codex runtime registration uses the client-configured BOS key", () => {
-  assert.deepEqual(codexBosMcpRegistration(mcpApplication, mcpResourceGroup), {
+test("Codex runtime registration uses the product credential binding", () => {
+  assert.deepEqual(codexBosMcpRegistration(
+    mcpApplication,
+    mcpResourceGroup,
+    credentialEnvVar
+  ), {
     name: "icode-operations",
     url: resourceGroupUrl,
-    bearer_token_env_var: "BOS_API_KEY",
+    bearer_token_env_var: credentialEnvVar,
     args: [
       "mcp", "add", "icode-operations", "--url", resourceGroupUrl,
-      "--bearer-token-env-var", "BOS_API_KEY"
+      "--bearer-token-env-var", credentialEnvVar
     ]
   });
   assert.throws(
-    () => codexBosMcpRegistration("leaddirector", "not a group"),
+    () => codexBosMcpRegistration("leaddirector", "not a group", credentialEnvVar),
     /kebab-case/
   );
 });
@@ -106,7 +140,8 @@ test("Codex runtime registration uses the client-configured BOS key", () => {
 test("Codex runtime registration always uses immutable named package routes", () => {
   const registration = codexBosMcpRegistration(
     "leaddirector",
-    "icode-operations"
+    "icode-operations",
+    credentialEnvVar
   );
   assert.equal(
     registration.url,
@@ -133,21 +168,202 @@ test("Codex runtime installation rejects a stale uncredentialed host", async () 
   const report = await applyInstallationRaw({
     home,
     product: "icode-operations-center",
-    environment: { BOS_API_KEY: "credentialed-installer-shell" },
+    environment: { [credentialEnvVar]: "credentialed-installer-shell" },
     inspectCodexHost: async () => ({
       state: "configuration_required",
-      reason: "codex_host_bos_api_key_missing",
+      reason: "codex_host_product_api_key_missing",
       pid: 4321
     }),
     runCommand: fakeCodex
   });
   assert.deepEqual(report.runtime, {
     state: "configuration_required",
-    reason: "codex_host_bos_api_key_missing",
+    reason: "codex_host_product_api_key_missing",
     pid: 4321,
     url: resourceGroupUrl,
-    bearer_token_env_var: "BOS_API_KEY"
+    bearer_token_env_var: credentialEnvVar
   });
+});
+
+test("disabled products are pruned without touching active product bindings", async () => {
+  const home = await temporaryHome();
+  const disabledRoot = join(home, "plugins", "video-ads");
+  await mkdir(disabledRoot, { recursive: true });
+  await writeFile(join(disabledRoot, ".bos-product.json"), JSON.stringify({
+    name: "video-ads"
+  }));
+  const marketplaceRoot = join(home, ".agents", "plugins");
+  await mkdir(marketplaceRoot, { recursive: true });
+  await writeFile(join(marketplaceRoot, "marketplace.json"), JSON.stringify({
+    name: "bos-icode",
+    plugins: [{
+      name: "video-ads",
+      source: { source: "local", path: "./plugins/video-ads" }
+    }, {
+      name: "icode-operations-center",
+      source: { source: "local", path: "./plugins/icode-operations-center" }
+    }]
+  }));
+  const calls = [];
+  let mcpRegistered = true;
+  let pluginInstalled = true;
+  const actions = await reconcileDisabledCodexProducts({
+    home,
+    runCommand: async (_command, args) => {
+      calls.push(args);
+      if (args[0] === "mcp" && args[1] === "get") {
+        if (mcpRegistered) return {
+          stdout: "url: https://dfsm.ai/mcp/apps/leaddirector/video-ads"
+        };
+        throw Object.assign(new Error("missing"), {
+          stderr: "Error: No MCP server named 'video-ads' found."
+        });
+      }
+      if (args[0] === "mcp" && args[1] === "remove") {
+        mcpRegistered = false;
+        return { stdout: "Removed global MCP server 'video-ads'." };
+      }
+      if (args[0] === "plugin" && args[1] === "list") return {
+        stdout: pluginInstalled
+          ? "video-ads@bos-icode installed, enabled 0.1.3 /tmp/video-ads"
+          : "video-ads@bos-icode not installed /tmp/video-ads"
+      };
+      if (args[0] === "plugin" && args[1] === "remove") {
+        pluginInstalled = false;
+        return { stdout: JSON.stringify({ pluginId: "video-ads@bos-icode" }) };
+      }
+      return { stdout: "" };
+    }
+  });
+  assert.equal(actions[0], "removed_mcp:video-ads");
+  assert.match(actions[1], /^retired_plugin:video-ads:/);
+  assert.equal(actions[2], "removed_marketplace_entry:video-ads");
+  assert(calls.some((args) => args.join(" ") === "mcp remove video-ads"));
+  assert(calls.some((args) =>
+    args.join(" ") === "plugin remove video-ads@bos-icode --json"
+  ));
+  assert(!calls.some((args) => args.join(" ").includes("icode-operations")));
+  await assert.rejects(stat(disabledRoot));
+  const marketplace = JSON.parse(
+    await readFile(join(marketplaceRoot, "marketplace.json"), "utf8")
+  );
+  assert.deepEqual(marketplace.plugins.map(({ name }) => name), [
+    "icode-operations-center"
+  ]);
+  assert.deepEqual(await reconcileDisabledCodexProducts({
+    home,
+    runCommand: async () => ({
+      stderr: "Error: No MCP server named 'video-ads' found."
+    })
+  }), []);
+});
+
+test("disabled-product removal failure is retryable and fail closed", async () => {
+  const home = await temporaryHome();
+  const disabledRoot = join(home, "plugins", "video-ads");
+  await mkdir(disabledRoot, { recursive: true });
+  await writeFile(join(disabledRoot, ".bos-product.json"), JSON.stringify({
+    name: "video-ads"
+  }));
+  let pluginInstalled = true;
+  await assert.rejects(reconcileDisabledCodexProducts({
+    home,
+    runCommand: async (_command, args) => {
+      if (args[0] === "mcp") return {
+        stderr: "Error: No MCP server named 'video-ads' found."
+      };
+      if (args[0] === "plugin" && args[1] === "list") return {
+        stdout: "video-ads@bos-icode installed, enabled 0.1.3 /tmp/video-ads"
+      };
+      throw new Error("simulated plugin removal failure");
+    }
+  }), /simulated plugin removal failure/);
+  assert.equal((await stat(disabledRoot)).isDirectory(), true);
+
+  const retry = await reconcileDisabledCodexProducts({
+    home,
+    runCommand: async (_command, args) => {
+      if (args[0] === "mcp") return {
+        stderr: "Error: No MCP server named 'video-ads' found."
+      };
+      if (args[0] === "plugin" && args[1] === "list") return {
+        stdout: pluginInstalled
+          ? "video-ads@bos-icode installed, enabled 0.1.3 /tmp/video-ads"
+          : "video-ads@bos-icode not installed /tmp/video-ads"
+      };
+      pluginInstalled = false;
+      return { stdout: JSON.stringify({ pluginId: "video-ads@bos-icode" }) };
+    }
+  });
+  assert.match(retry[0], /^retired_plugin:video-ads:/);
+  await assert.rejects(stat(disabledRoot));
+});
+
+test("disabled MCP removal failure stops active-product installation", async () => {
+  const home = await temporaryHome();
+  await assert.rejects(reconcileDisabledCodexProducts({
+    home,
+    runCommand: async (_command, args) => {
+      if (args[0] === "mcp" && args[1] === "get") return {
+        stdout: "url: https://dfsm.ai/mcp/apps/leaddirector/video-ads"
+      };
+      throw new Error("simulated MCP removal failure");
+    }
+  }), /simulated MCP removal failure/);
+});
+
+test("retry converges after plugin removal succeeds and source backup fails", async () => {
+  const home = await temporaryHome();
+  const disabledRoot = join(home, "plugins", "video-ads");
+  await mkdir(disabledRoot, { recursive: true });
+  await writeFile(join(disabledRoot, ".bos-product.json"), JSON.stringify({
+    name: "video-ads"
+  }));
+  let pluginInstalled = true;
+  const runCommand = async (_command, args) => {
+    if (args[0] === "mcp") return {
+      stderr: "Error: No MCP server named 'video-ads' found."
+    };
+    if (args[0] === "plugin" && args[1] === "list") return {
+      stdout: pluginInstalled
+        ? "video-ads@bos-icode installed, enabled 0.1.3 /tmp/video-ads"
+        : "video-ads@bos-icode not installed /tmp/video-ads"
+    };
+    pluginInstalled = false;
+    return { stdout: JSON.stringify({ pluginId: "video-ads@bos-icode" }) };
+  };
+  await assert.rejects(reconcileDisabledCodexProducts({
+    home,
+    runCommand,
+    renamePath: async () => {
+      throw new Error("simulated backup failure");
+    }
+  }), /simulated backup failure/);
+  assert.equal(pluginInstalled, false);
+  assert.equal((await stat(disabledRoot)).isDirectory(), true);
+
+  const retry = await reconcileDisabledCodexProducts({ home, runCommand });
+  assert.match(retry[0], /^retired_plugin:video-ads:/);
+  await assert.rejects(stat(disabledRoot));
+});
+
+test("disabled-product pruning ignores unrelated registrations and plugins", async () => {
+  const home = await temporaryHome();
+  const disabledRoot = join(home, "plugins", "video-ads");
+  await mkdir(disabledRoot, { recursive: true });
+  await writeFile(join(disabledRoot, ".bos-product.json"), JSON.stringify({
+    name: "unrelated-product"
+  }));
+  const calls = [];
+  const actions = await reconcileDisabledCodexProducts({
+    home,
+    runCommand: async (_command, args) => {
+      calls.push(args);
+      return { stdout: "url: https://example.com/unrelated" };
+    }
+  });
+  assert.deepEqual(actions, []);
+  assert(!calls.some((args) => args.includes("remove")));
 });
 
 test("Codex host inspection reads the active app-server environment", async (context) => {
@@ -164,9 +380,9 @@ test("Codex host inspection reads the active app-server environment", async (con
       };
     }
     return {
-      stdout: "/Applications/ChatGPT.app/Contents/Resources/codex app-server BOS_API_KEY=test-only"
+      stdout: `/Applications/ChatGPT.app/Contents/Resources/codex app-server ${credentialEnvVar}=test-only`
     };
-  });
+  }, { credentialEnvVar });
   assert.deepEqual(report, { state: "current", pid: 4321 });
   assert.deepEqual(calls[1], ["eww", "-p", "4321", "-o", "command="]);
 });
@@ -177,12 +393,12 @@ test("Codex host inspection rejects a different active bearer", async () => {
       stdout: "4321 /Applications/ChatGPT.app/Contents/Resources/codex app-server\n"
     };
     return {
-      stdout: "/Applications/ChatGPT.app/Contents/Resources/codex app-server BOS_API_KEY=stale-key"
+      stdout: `/Applications/ChatGPT.app/Contents/Resources/codex app-server ${credentialEnvVar}=stale-key`
     };
-  }, { expectedApiKey: "expected-key" });
+  }, { credentialEnvVar, expectedApiKey: "expected-key" });
   assert.deepEqual(report, {
     state: "configuration_required",
-    reason: "codex_host_bos_api_key_mismatch",
+    reason: "codex_host_product_api_key_mismatch",
     pid: 4321
   });
 });
@@ -194,9 +410,10 @@ test("Codex host current state requires the active bearer to pass the named rout
       stdout: "4321 /Applications/ChatGPT.app/Contents/Resources/codex app-server\n"
     };
     return {
-      stdout: "/Applications/ChatGPT.app/Contents/Resources/codex app-server BOS_API_KEY=active-key"
+      stdout: `/Applications/ChatGPT.app/Contents/Resources/codex app-server ${credentialEnvVar}=active-key`
     };
   }, {
+    credentialEnvVar,
     verifyBearer: async (apiKey) => {
       inspectedKey = apiKey;
       return {

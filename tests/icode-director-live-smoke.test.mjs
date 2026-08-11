@@ -434,7 +434,7 @@ test("every complete build and release workflow runs the credentialed data smoke
     new URL("../package.json", import.meta.url), "utf8"
   ));
   assert.match(packageJson.scripts.build, /smoke:mcp:icode-data/);
-  assert.match(packageJson.scripts.build, /smoke:mcp:video-ads/);
+  assert.doesNotMatch(packageJson.scripts.build, /smoke:mcp:video-ads/);
   assert.match(packageJson.scripts["release:check"], /npm run build/);
   for (const relativePath of [
     "../.github/workflows/validate.yml",
@@ -442,7 +442,7 @@ test("every complete build and release workflow runs the credentialed data smoke
   ]) {
     const workflow = await readFile(new URL(relativePath, import.meta.url), "utf8");
     assert.match(workflow, /npm run release:check/);
-    assert.match(workflow, /BOS_API_KEY:\s*\$\{\{ secrets\.BOS_API_KEY \}\}/);
+    assert.match(workflow, /ICODE_OPERATIONS_BOS_API_KEY:\s*\$\{\{ secrets\.ICODE_OPERATIONS_BOS_API_KEY \}\}/);
     assert.match(workflow, /ICODE_SMOKE_TIME_ZONE:\s*\$\{\{ vars\.ICODE_SMOKE_TIME_ZONE \}\}/);
   }
 });

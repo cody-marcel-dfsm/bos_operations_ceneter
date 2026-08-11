@@ -21,7 +21,7 @@ and ask the user for the unresolved remainder.
 ## Routing workflow
 
 1. Route every domain marked `bos` through the installed `icode-operations` MCP
-   connection. The client's configured `BOS_API_KEY` identifies the canonical
+   connection. Its configured `ICODE_OPERATIONS_BOS_API_KEY` identifies the canonical
    BOS principal; the named endpoint selects the iCode tool group.
 2. Identify the requested operation and any provider preference stated by the
    user.

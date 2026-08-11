@@ -1,12 +1,12 @@
 {
   "name": "icode-operations-center",
-  "version": "0.4.19",
+  "version": "0.4.20",
   "description": "Authorized school operations for adult iCode staff through the tenant-scoped BOS MCP.",
   "settings": [
     {
       "name": "BOS API Key",
       "description": "Organization-scoped BOS agent bearer credential.",
-      "envVar": "BOS_API_KEY",
+      "envVar": "ICODE_OPERATIONS_BOS_API_KEY",
       "sensitive": true
     }
   ],
@@ -14,7 +14,7 @@
     "icode-operations": {
       "httpUrl": "https://dfsm.ai/mcp/apps/leaddirector/icode-operations",
       "headers": {
-        "Authorization": "Bearer ${BOS_API_KEY}"
+        "Authorization": "Bearer ${ICODE_OPERATIONS_BOS_API_KEY}"
       }
     }
   }

@@ -3,9 +3,9 @@
     "bos": {
       "type": "http",
       "url": "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
-      "bearer_token_env_var": "BOS_API_KEY",
+      "bearer_token_env_var": "PRODUCT_API_KEY",
       "headers": {
-        "Authorization": "Bearer ${BOS_API_KEY}"
+        "Authorization": "Bearer ${PRODUCT_API_KEY}"
       }
     }
   }

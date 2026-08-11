@@ -70,6 +70,8 @@ def main() -> None:
     releases = []
     for product_file in sorted((ROOT / "products").glob("*/product.json")):
         product = json.loads(product_file.read_text())
+        if product.get("release_status") == "disabled":
+            continue
         name = product["name"]
         version = product["version"]
         roots = {

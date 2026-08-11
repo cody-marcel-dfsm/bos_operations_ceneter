@@ -4,7 +4,7 @@
       "type": "http",
       "url": "https://dfsm.ai/mcp/apps/leaddirector/icode-operations",
       "headers": {
-        "Authorization": "Bearer ${BOS_API_KEY}"
+        "Authorization": "Bearer ${ICODE_OPERATIONS_BOS_API_KEY}"
       }
     }
   }

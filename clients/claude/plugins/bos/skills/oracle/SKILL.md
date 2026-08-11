@@ -38,7 +38,8 @@ Review the completed diff after focused validation. Verify:
 - application-neutral platform behavior and correct specialization ownership;
 - Router-to-PO-to-GO mutation boundaries where service behavior is described;
 - credential-free tracked sources, generated artifacts, and logs;
-- one client-configured BOS API key and BOS-hosted provider authorization;
+- one declared credential per runtime product connection and BOS-hosted,
+  installation-scoped provider authorization;
 - product manifest completeness and canonical-source/client-package parity;
 - deterministic builds, version consistency, tests, and extension preservation;
 - updated Vault knowledge when the change establishes a durable rule.

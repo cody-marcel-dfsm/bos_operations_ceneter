@@ -9,19 +9,13 @@
       "name": "bos",
       "source": "./clients/claude/plugins/bos",
       "description": "Tenant-neutral Business Operating System foundations.",
-      "version": "0.4.19"
+      "version": "0.4.20"
     },
     {
       "name": "icode-operations-center",
       "source": "./clients/claude/plugins/icode-operations-center",
       "description": "Authorized school operations for adult iCode staff through the tenant-scoped BOS MCP.",
-      "version": "0.4.19"
-    },
-    {
-      "name": "video-ads",
-      "source": "./clients/claude/plugins/video-ads",
-      "description": "Create, review, and deliver video ads through tenant-scoped BOS capabilities.",
-      "version": "0.1.3"
+      "version": "0.4.20"
     }
   ]
 }
