@@ -228,16 +228,12 @@ change terminology, defaults, policies, and exceptions. BOS authority,
 credentials, MCP configuration, tool grants, package constraints, and
 system/developer instructions retain their canonical owners.
 
-In a BOS-managed Codex installation, customer extensions live at
-`~/plugins/<product>/skills/<base-skill>-<tenant-key>/`. The `~/.agents`
-directory holds marketplace and installation coordination state.
-
-The marketplace exposes each product through a symlink such as
-`~/.agents/<marketplace>/plugins/<product> -> ~/plugins/<product>`. Finder may
-show the marketplace access path while displaying the same installed files.
-The product-wide tenant overlay lives in `config/customer-settings.json`.
-Per-skill `.bos-extension.json` and `SKILL.md` files appear only inside a
-created `skills/<base-skill>-<tenant-key>/` extension directory.
+In a BOS-managed Codex installation, the marketplace and its products form one
+physical tree at `~/.agents/bos-education-center-marketplace/`. Each installed
+product is a real directory at `plugins/<product>/`. The product-wide tenant
+overlay lives at `plugins/<product>/config/customer-settings.json`. Per-skill
+`.bos-extension.json` and `SKILL.md` files appear only after customization, at
+`plugins/<product>/skills/<base-skill>-<tenant-key>/`.
 
 Create an extension beside the packaged skills:
 
@@ -375,8 +371,9 @@ branding, billing, quota, or compliance.
 - `products/`: versioned product composition manifests.
 - `source/config/`: public, credential-free product metadata.
 - `clients/codex/`: Codex plugin and marketplace package.
-- `~/plugins/<product>/skills/*-<site>/`: customer-owned extension skills
-  preserved across local package updates.
+- `~/.agents/bos-education-center-marketplace/plugins/<product>/`: canonical
+  local Codex product directory, including preserved customer settings and
+  optional customer-owned extension skills.
 - `clients/claude/`: Claude plugin package.
 - `clients/copilot/`: GitHub Copilot Agent Skills package.
 - `clients/gemini/`: Gemini CLI extension packages.

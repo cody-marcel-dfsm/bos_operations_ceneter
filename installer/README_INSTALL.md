@@ -120,15 +120,15 @@ preserve these extensions. Extensions may change customer terminology,
 defaults, policies, and exceptions while BOS authority, credentials, system
 instructions, MCP endpoints, and tool grants remain sealed.
 
-For a BOS-managed Codex installation, resolve extensions inside the installed
-product at `~/plugins/<product>/skills/<base-skill>-<tenant-key>/`. The
-installer discovers and preserves `.bos-extension.json` manifests from that
-directory. Codex marketplace state remains under `~/.agents`.
-
-The marketplace product path may be a symlink to `~/plugins/<product>`, so
-Finder can show either access path for the same files. Product-wide tenant
-settings remain in `config/customer-settings.json`; per-skill extension
-manifests remain under `skills/<base-skill>-<tenant-key>/`.
+For a BOS-managed Codex installation, the single canonical root is
+`~/.agents/bos-education-center-marketplace/`. Its marketplace manifest is at
+`.agents/plugins/marketplace.json`, and each product is a real directory at
+`plugins/<product>/`. Product-wide tenant settings remain in
+`plugins/<product>/config/customer-settings.json`; per-skill extension
+manifests remain under
+`plugins/<product>/skills/<base-skill>-<tenant-key>/`. The installer migrates
+the retired `~/plugins/<product>` layout into this tree and preserves customer
+files during package updates.
 
 ## Provider authorization
 

@@ -3,10 +3,12 @@ import { spawnSync } from "node:child_process";
 import {
   chmod,
   cp,
+  lstat,
   mkdir,
   mkdtemp,
   readFile,
   readdir,
+  symlink,
   stat,
   writeFile
 } from "node:fs/promises";
@@ -19,16 +21,26 @@ import {
   codexHostBearerState,
   deriveInitialCustomerSettings,
   inspectInstallation,
+  migrateLegacyCodexLayout,
   reconcileDisabledCodexProducts,
   validateCustomerSettings,
   verifyNamedMcpBearer,
   verifyInstallation as verifyInstallationRaw
 } from "../scripts/install-package.mjs";
 import { createCustomerExtension } from "../scripts/create-extension.mjs";
+import {
+  codexMarketplaceManifest,
+  codexMarketplaceRoot,
+  codexProductRoot
+} from "../scripts/lib/codex-layout.mjs";
 import { hashFile, root } from "../scripts/lib/package-model.mjs";
 
 async function temporaryHome() {
   return mkdtemp(join(tmpdir(), "bos-install-test-"));
+}
+
+function installedProduct(home, product) {
+  return codexProductRoot({ home, product });
 }
 
 const customerSettings = {
@@ -250,7 +262,7 @@ test("disabled products are pruned without touching active product bindings", as
   await writeFile(join(disabledRoot, ".bos-product.json"), JSON.stringify({
     name: "video-ads"
   }));
-  const marketplaceRoot = join(home, ".agents", "plugins");
+  const marketplaceRoot = join(codexMarketplaceRoot(home), ".agents", "plugins");
   await mkdir(marketplaceRoot, { recursive: true });
   await writeFile(join(marketplaceRoot, "marketplace.json"), JSON.stringify({
     name: "bos-education-center",
@@ -703,9 +715,7 @@ test("customer settings validate, install, and survive product updates", async (
     settings: customerSettings
   });
   const settingsPath = join(
-    home,
-    "plugins",
-    "education-center",
+    installedProduct(home, "education-center"),
     "config",
     "customer-settings.json"
   );
@@ -759,24 +769,66 @@ test("missing installation is created and second apply is a no-op", async () => 
   assert.equal(applied.state, "managed-current");
   assert.equal(applied.marketplace, "current");
   const stateBefore = await readFile(
-    join(home, "plugins", "bos", ".bos-package-state.json"),
+    join(installedProduct(home, "bos"), ".bos-package-state.json"),
     "utf8"
   );
   const repeated = await applyInstallation({ home, product: "bos" });
   const stateAfter = await readFile(
-    join(home, "plugins", "bos", ".bos-package-state.json"),
+    join(installedProduct(home, "bos"), ".bos-package-state.json"),
     "utf8"
   );
   assert.equal(repeated.state, "managed-current");
   assert.equal(stateAfter, stateBefore);
 });
 
+test("apply migrates the retired product directory and marketplace symlink", async () => {
+  const home = await temporaryHome();
+  const desired = join(root, "clients", "codex", "plugins", "bos");
+  const legacy = join(home, "plugins", "bos");
+  const canonical = installedProduct(home, "bos");
+  await mkdir(dirname(legacy), { recursive: true });
+  await mkdir(dirname(canonical), { recursive: true });
+  await cp(desired, legacy, { recursive: true });
+  await symlink(legacy, canonical, "dir");
+
+  const before = await inspectInstallation({ home, product: "bos" });
+  assert.equal(before.state, "legacy-layout");
+
+  const after = await applyInstallation({ home, product: "bos" });
+  assert.equal(after.state, "managed-current");
+  assert.equal((await lstat(canonical)).isDirectory(), true);
+  await assert.rejects(lstat(legacy), /ENOENT/);
+  assert.match(after.layout_actions[0], /^migrated_product:bos:/);
+});
+
+test("failed layout migration restores the marketplace link", async () => {
+  const home = await temporaryHome();
+  const desired = join(root, "clients", "codex", "plugins", "bos");
+  const legacy = join(home, "plugins", "bos");
+  const canonical = installedProduct(home, "bos");
+  await mkdir(dirname(legacy), { recursive: true });
+  await mkdir(dirname(canonical), { recursive: true });
+  await cp(desired, legacy, { recursive: true });
+  await symlink(legacy, canonical, "dir");
+
+  await assert.rejects(migrateLegacyCodexLayout({
+    home,
+    product: "bos",
+    renamePath: async () => {
+      throw new Error("simulated migration failure");
+    }
+  }), /simulated migration failure/);
+
+  assert.equal((await lstat(canonical)).isSymbolicLink(), true);
+  assert.equal((await lstat(legacy)).isDirectory(), true);
+});
+
 test("apply preserves unrelated marketplace entries and plugin files", async () => {
   const home = await temporaryHome();
   await applyInstallation({ home, product: "bos" });
-  const userFile = join(home, "plugins", "bos", "USER-NOTES.txt");
+  const userFile = join(installedProduct(home, "bos"), "USER-NOTES.txt");
   await writeFile(userFile, "preserve me\n");
-  const marketplacePath = join(home, ".agents", "plugins", "marketplace.json");
+  const marketplacePath = codexMarketplaceManifest(home);
   const marketplace = JSON.parse(await readFile(marketplacePath, "utf8"));
   marketplace.plugins.unshift({
     name: "other",
@@ -794,7 +846,7 @@ test("apply preserves unrelated marketplace entries and plugin files", async () 
 
 test("apply converges a stale marketplace identity while preserving entries", async () => {
   const home = await temporaryHome();
-  const marketplacePath = join(home, ".agents", "plugins", "marketplace.json");
+  const marketplacePath = codexMarketplaceManifest(home);
   await mkdir(dirname(marketplacePath), { recursive: true });
   await writeFile(marketplacePath, JSON.stringify({
     name: "legacy-marketplace",
@@ -825,7 +877,7 @@ test("apply converges a stale marketplace identity while preserving entries", as
 test("managed package files are installed read-only", async () => {
   const home = await temporaryHome();
   await applyInstallation({ home, product: "bos" });
-  const skill = join(home, "plugins", "bos", "skills", "planning", "SKILL.md");
+  const skill = join(installedProduct(home, "bos"), "skills", "planning", "SKILL.md");
   const mode = (await stat(skill)).mode & 0o777;
   assert.equal(mode, 0o444);
 });
@@ -883,7 +935,7 @@ test("customer extension reports base version compatibility warnings", async () 
 test("modified managed file is backed up and replaced", async () => {
   const home = await temporaryHome();
   await applyInstallation({ home, product: "bos" });
-  const skill = join(home, "plugins", "bos", "skills", "planning", "SKILL.md");
+  const skill = join(installedProduct(home, "bos"), "skills", "planning", "SKILL.md");
   await chmod(skill, 0o644);
   await writeFile(skill, "local modification\n");
   const report = await inspectInstallation({ home, product: "bos" });
@@ -920,8 +972,8 @@ test("verify reports current installation", async () => {
 test("compatible unmanaged plugin is adopted", async () => {
   const home = await temporaryHome();
   const desired = join(root, "clients", "codex", "plugins", "bos");
-  const target = join(home, "plugins", "bos");
-  await mkdir(join(home, "plugins"), { recursive: true });
+  const target = installedProduct(home, "bos");
+  await mkdir(join(codexMarketplaceRoot(home), "plugins"), { recursive: true });
   await cp(desired, target, { recursive: true });
   const before = await inspectInstallation({ home, product: "bos" });
   assert.equal(before.state, "compatible-unmanaged");
@@ -932,13 +984,11 @@ test("compatible unmanaged plugin is adopted", async () => {
 test("stale managed file updates when prior hash proves ownership", async () => {
   const home = await temporaryHome();
   await applyInstallation({ home, product: "bos" });
-  const skill = join(home, "plugins", "bos", "skills", "planning", "SKILL.md");
+  const skill = join(installedProduct(home, "bos"), "skills", "planning", "SKILL.md");
   await chmod(skill, 0o644);
   await writeFile(skill, "managed old version\n");
   const statePath = join(
-    home,
-    "plugins",
-    "bos",
+    installedProduct(home, "bos"),
     ".bos-package-state.json"
   );
   await chmod(statePath, 0o644);
@@ -954,8 +1004,8 @@ test("stale managed file updates when prior hash proves ownership", async () => 
 
 test("conflicting marketplace entry stops installation", async () => {
   const home = await temporaryHome();
-  const marketplacePath = join(home, ".agents", "plugins", "marketplace.json");
-  await mkdir(join(home, ".agents", "plugins"), { recursive: true });
+  const marketplacePath = codexMarketplaceManifest(home);
+  await mkdir(dirname(marketplacePath), { recursive: true });
   await writeFile(
     marketplacePath,
     `${JSON.stringify(
@@ -993,14 +1043,14 @@ test("unsafe target outside selected home is rejected", async () => {
       product: "bos",
       target: join(tmpdir(), "outside-bos")
     }),
-    /Target must remain inside/
+    /Target must be the marketplace product directory/
   );
 });
 
 test("stale package-owned files are removed while user files remain", async () => {
   const home = await temporaryHome();
   await applyInstallation({ home, product: "bos" });
-  const target = join(home, "plugins", "bos");
+  const target = installedProduct(home, "bos");
   const removedPath = join(target, "obsolete-managed.txt");
   const userPath = join(target, "user-owned.txt");
   await writeFile(removedPath, "old managed content\n");

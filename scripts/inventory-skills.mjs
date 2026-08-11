@@ -1,6 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, relative, resolve } from "node:path";
+import { codexProductRoot } from "./lib/codex-layout.mjs";
 import { pathExists, root, stableJson, walkFiles } from "./lib/package-model.mjs";
 
 function parseSkill(content) {
@@ -32,7 +33,10 @@ const records = (
   await Promise.all([
     inventoryRoot("user-global", join(homedir(), ".agents", "skills")),
     inventoryRoot("legacy-user", join(homedir(), ".codex", "skills")),
-    inventoryRoot("local-bos-plugin", join(homedir(), "plugins", "bos", "skills")),
+    inventoryRoot(
+      "local-bos-plugin",
+      join(codexProductRoot({ home: homedir(), product: "bos" }), "skills")
+    ),
     inventoryRoot(
       "lead-director-repository",
       resolve(root, "..", "lead_director", ".agents", "skills")
