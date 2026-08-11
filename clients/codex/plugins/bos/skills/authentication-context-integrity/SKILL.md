@@ -36,22 +36,26 @@ configuration as distinct validated dimensions.
   session, it reconnects the configured endpoint, rediscovers tools,
   revalidates context, and resumes the interrupted request with bounded retry.
   It never delegates reconnection or request resubmission to the user.
-- Expose BOS as a remote HTTPS Streamable HTTP MCP server. Authenticate every
-  named product connection with the client's single configured `BOS_API_KEY`.
+- Expose BOS as a remote HTTPS Streamable HTTP MCP server. Authenticate each
+  named product connection with exactly one package-declared, organization-scoped
+  bearer binding. Multiple product connections may use distinct principals.
   Every secured call fails closed when that key is missing or invalid, and the
   service never offers a second BOS password or login flow.
 - Register the package's immutable
   `/mcp/apps/{application-name}/{skill-group-name}` endpoint and verify the
   server-returned context. Never discover, prompt for, repair, or materialize
   the route from an `installed_app_id`, and never retain an unnamed endpoint as
-  an installed product's runtime connection. In Codex, bind `BOS_API_KEY` with
-  `bearer_token_env_var`; literal header
+  an installed product's runtime connection. In Codex, bind the product's
+  declared credential variable with `bearer_token_env_var`; literal header
   templates do not establish a usable client credential binding. The server derives actor, tenant, organization,
   installation, role, plugin, and capability scope from the authenticated key;
   client prompts and tool arguments never supply those authority dimensions.
 - Advertise only the tools allowed for the resolved endpoint, tenant,
   installation, plugin, and execution role. Administrative tools remain absent
   from customer product profiles.
+- Keep provider authorization scoped to its organization, installation, and
+  plugin. Missing provider readiness never changes another named connection's
+  tools, authentication, build gate, or release state.
 - When a domain call returns `authorization_required`, automatically complete
   the provider-specific recovery flow, verify it, and resume the original
   operation at most once.

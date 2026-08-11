@@ -1,4 +1,0 @@
-interface:
-  display_name: "Video Ad Generation"
-  short_description: "Generate video ads through authorized BOS capabilities"
-  default_prompt: "Use $video-ad-generation to generate a video ad from this approved brief and monitor it to completion."

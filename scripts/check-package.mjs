@@ -6,6 +6,7 @@ import {
   hashTree,
   listProducts,
   materializeMcpUrl,
+  copilotCredentialEnvVar,
   pathExists,
   readJson,
   resolveProductSkills,
@@ -150,6 +151,14 @@ async function validateProducts() {
       copilot: join(root, "clients", "copilot", "products", manifest.name),
       gemini: join(root, "clients", "gemini", "extensions", manifest.name)
     };
+    if (manifest.release_status === "disabled") {
+      for (const generatedRoot of Object.values(generatedRoots)) {
+        if (await pathExists(generatedRoot)) {
+          failures.push(`Disabled product is present in generated clients: ${generatedRoot}`);
+        }
+      }
+      continue;
+    }
     for (const client of manifest.clients) {
       const metadataPath = join(generatedRoots[client], ".bos-product.json");
       if (!(await pathExists(metadataPath))) {
@@ -160,6 +169,7 @@ async function validateProducts() {
       if (
         metadata.application_name !== manifest.application_name ||
         metadata.mcp_group_name !== manifest.mcp_group_name ||
+        metadata.credential_env_var !== manifest.credential_env_var ||
         "mcp_application" in metadata ||
         "mcp_resource_group" in metadata ||
         "installed_app_id" in metadata
@@ -191,7 +201,7 @@ async function validateProducts() {
         );
         if (
           server?.url !== expectedUrl ||
-          server?.bearer_token_env_var !== "BOS_API_KEY" ||
+          server?.bearer_token_env_var !== manifest.credential_env_var ||
           JSON.stringify(runtime).includes("BOS_INSTALLED_APP_ID")
         ) {
           failures.push(`Generated Codex named MCP route drift: ${runtimePath}`);
@@ -251,7 +261,8 @@ async function validateProducts() {
           if (
             server?.type !== "http" ||
             server?.url !== expectedUrl ||
-            server?.headers?.Authorization !== "Bearer ${BOS_API_KEY}" ||
+            server?.headers?.Authorization !==
+              `Bearer \${${manifest.credential_env_var}}` ||
             Object.keys(runtime.mcpServers ?? {}).length !== 1 ||
             JSON.stringify(runtime).includes("BOS_INSTALLED_APP_ID") ||
             JSON.stringify(runtime).includes("installed_app_id")
@@ -296,7 +307,7 @@ async function validateProducts() {
           server?.type !== "http" ||
           server?.url !== expectedUrl ||
           server?.headers?.Authorization !==
-            "Bearer ${COPILOT_MCP_BOS_API_KEY}" ||
+            `Bearer \${${copilotCredentialEnvVar(manifest)}}` ||
           JSON.stringify(server?.tools) !== JSON.stringify(["*"]) ||
           Object.keys(runtime.mcpServers ?? {}).length !== 1 ||
           /BOS_INSTALLED_APP_ID|installed_app_id/.test(JSON.stringify(runtime))
@@ -354,10 +365,10 @@ async function validateProducts() {
         const settings = generated.settings ?? [];
         if (
           settings.length !== 1 ||
-          settings[0]?.envVar !== "BOS_API_KEY" ||
+          settings[0]?.envVar !== manifest.credential_env_var ||
           settings[0]?.sensitive !== true ||
           generated.mcpServers?.[manifest.mcp_group_name]?.headers?.Authorization !==
-            "Bearer ${BOS_API_KEY}"
+            `Bearer \${${manifest.credential_env_var}}`
         ) {
           failures.push(`Generated Gemini authentication configuration drift: ${extensionPath}`);
         }

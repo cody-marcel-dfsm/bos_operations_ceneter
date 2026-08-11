@@ -69,8 +69,8 @@ Each client package owns:
 - native harness connection metadata;
 - marketplace name, description, prompts, icons, screenshots, version, and
   support links;
-- binding the client's single `BOS_API_KEY` through the harness's supported
-  sensitive configuration mechanism;
+- binding each runtime product's declared organization-scoped credential
+  through the harness's supported sensitive configuration mechanism;
 - connection recovery and rediscovery within the active request; and
 - client-side composition of server-advertised MCP tools.
 
@@ -97,8 +97,10 @@ Marketplace installation does not:
 - combine tools or credentials from multiple BOS routes into one operation; or
 - introduce a second BOS login or authorization architecture.
 
-The client has one provisioned `BOS_API_KEY`, and every runtime product uses it
-while each domain skill selects its matching named connection. Underlying provider authorization
+Each active runtime product has one provisioned credential binding for its
+named connection. Different products may resolve different organizations and
+principals while each domain skill selects its matching named connection.
+Underlying provider authorization
 continues through BOS-hosted secure flows when a server operation reports that
 authorization is required.
 
@@ -140,7 +142,7 @@ Each generated plugin contains:
 - `.claude-plugin/plugin.json`;
 - `.mcp.json` with the product's fixed remote MCP URL;
 - the product's generated `skills/` tree;
-- the client-global `BOS_API_KEY` binding shared by every BOS plugin; and
+- the product-declared credential binding used only by that BOS plugin; and
 - marketplace metadata, documentation, and default prompts.
 
 The iCode plugin connects to:
@@ -179,7 +181,7 @@ The generated registration uses:
 ```toml
 [mcp_servers.icode-operations]
 url = "https://dfsm.ai/mcp/apps/leaddirector/icode-operations"
-bearer_token_env_var = "BOS_API_KEY"
+bearer_token_env_var = "ICODE_OPERATIONS_BOS_API_KEY"
 ```
 
 Codex binds the bearer credential from the active host process or another
@@ -225,7 +227,8 @@ The generated `gemini-extension.json` contains:
 
 - the product name, version, and description;
 - the fixed remote MCP URL;
-- a declared sensitive `BOS_API_KEY` setting shared by named BOS connections;
+- a declared sensitive product credential setting for each named BOS
+  connection;
 - the generated skills directory; and
 - optional context or commands derived from canonical product sources.
 
@@ -237,7 +240,7 @@ The iCode extension uses:
     "icode-operations": {
       "httpUrl": "https://dfsm.ai/mcp/apps/leaddirector/icode-operations",
       "headers": {
-        "Authorization": "Bearer ${BOS_API_KEY}"
+        "Authorization": "Bearer ${ICODE_OPERATIONS_BOS_API_KEY}"
       }
     }
   }

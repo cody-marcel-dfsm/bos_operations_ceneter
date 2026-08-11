@@ -173,7 +173,7 @@ export function serverRemediationPrompt({
     "Failure evidence:",
     JSON.stringify(safe, null, 2),
     "Required server resolution:",
-    "1. Authenticate the existing client BOS_API_KEY and derive exactly one iCode installation, organization, actor, and delegated role.",
+    "1. Authenticate the existing client ICODE_OPERATIONS_BOS_API_KEY and derive exactly one iCode installation, organization, actor, and delegated role.",
     "2. Enable the icode-operations resource group in canonical installed-app metadata for that principal.",
     `3. Publish the exact required report tools: ${ICODE_DIRECTOR_REQUIRED_TOOLS.join(", ")}.`,
     "4. Ensure the Calimatic plugin publishes calimatic_list_enrollments and calimatic_search_students so the named route aliases them to icode_list_enrollments and icode_search_students.",
@@ -204,7 +204,7 @@ export async function runIcodeDirectorSmoke({
   if (endpoint !== ICODE_DIRECTOR_ENDPOINT) {
     throw new Error("The iCode director smoke test accepts only the approved endpoint");
   }
-  if (!apiKey) throw new Error("BOS_API_KEY is absent from this process");
+  if (!apiKey) throw new Error("ICODE_OPERATIONS_BOS_API_KEY is absent from this process");
   const week = currentLocalWeek(now, timeZone);
   startDate ||= week.startDate;
   endDate ||= week.endDate;
@@ -406,7 +406,7 @@ export async function runIcodeDirectorSmoke({
 async function main() {
   try {
     const report = await runIcodeDirectorSmoke({
-      apiKey: process.env.BOS_API_KEY,
+      apiKey: process.env.ICODE_OPERATIONS_BOS_API_KEY,
       timeZone: process.env.ICODE_SMOKE_TIME_ZONE,
       startDate: process.env.ICODE_SMOKE_START_DATE,
       endDate: process.env.ICODE_SMOKE_END_DATE

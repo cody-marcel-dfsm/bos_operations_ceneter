@@ -6,9 +6,10 @@ description: Operate a packaged application MCP resource group, including scope 
 # BOS MCP Client
 
 Use this skill for client-side application resource-group operations.
-The client owns one configured `BOS_API_KEY`. The triggered domain skill selects
-its named product connection; every connection uses that same authenticated
-principal, and BOS derives canonical execution scope on the server.
+Each installed runtime product owns one declared bearer binding for its named
+connection. The triggered domain skill selects that product connection and its
+organization-scoped principal; BOS derives canonical execution scope on the
+server. Credentials never fall through from another product connection.
 
 Developer and operator work is outside this skill when the request explicitly
 targets BOS source code, deployment infrastructure, Cloud Run, GCP Secret
@@ -26,7 +27,7 @@ request.
 - Discover and use the installed product's configured BOS MCP connection.
 - If BOS is absent from the callable tool manifest, inspect the active client's
   plugin and MCP registration immediately. Repair or reinstall the configured
-  local product and bind the client's configured `BOS_API_KEY` through the
+  local product and bind its declared product credential through the
   supported secret mechanism. Preserve every other installed product
   connection. Restore only the immutable
   `/mcp/apps/{application-name}/{skill-group-name}` package route for every
@@ -68,8 +69,9 @@ request.
    For example, iCode operations use `icode-operations`; Video Ads operations
    use `video-ads`. The endpoint selects a tool group; it never selects an
    organization or another bearer credential.
-5. Authenticate every BOS connection with the single client-configured
-   `BOS_API_KEY`. Keep the key out of chat, tool arguments, package files, and logs.
+5. Authenticate the selected connection with exactly one package-declared
+   product credential. Keep it out of chat, tool arguments, package files, and
+   logs. Never reuse, fall back to, or test another product's credential.
    If BOS rejects the credential after reconnecting once, report that the
    client credential configuration requires repair.
 6. When a domain call returns `authorization_required`, preserve its original
@@ -81,6 +83,12 @@ request.
      BOS and poll the sanitized transaction status.
 7. Verify recovered authorization and call `bos_resume_operation` once. Stop
    if authorization or that single retry fails.
+
+Provider readiness and authorization are local to the selected organization,
+installation, and plugin. A missing provider credential can block only the
+affected provider operation. It never removes another product's tools, changes
+another connection's authentication state, or blocks another product's build,
+installation, or release gate.
 
 Domain skills interpret their workflows and execute only through their matching
 configured product MCP. BOS derives actor, tenant, organization, application,

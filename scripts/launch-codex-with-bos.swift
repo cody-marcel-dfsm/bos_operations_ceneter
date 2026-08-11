@@ -15,6 +15,52 @@ func argument(_ name: String) -> String? {
     return CommandLine.arguments[index + 1]
 }
 
+func arguments(_ name: String) -> [String] {
+    CommandLine.arguments.enumerated().compactMap { index, value in
+        guard value == name,
+              CommandLine.arguments.indices.contains(index + 1) else {
+            return nil
+        }
+        return CommandLine.arguments[index + 1]
+    }
+}
+
+func credentialBindings() throws -> [(environmentVariable: String, secretName: String)] {
+    let pattern = try NSRegularExpression(pattern: "^[A-Z][A-Z0-9_]*$")
+    let bindings: [(environmentVariable: String, secretName: String)] = try arguments("--binding").map { value in
+        let parts = value.split(separator: "=", maxSplits: 1).map(String.init)
+        guard parts.count == 2, !parts[1].isEmpty else {
+            throw LaunchError(description: "Each --binding must use ENVIRONMENT_VARIABLE=gcp-secret-name")
+        }
+        let range = NSRange(parts[0].startIndex..<parts[0].endIndex, in: parts[0])
+        guard pattern.firstMatch(in: parts[0], range: range) != nil else {
+            throw LaunchError(description: "Credential environment variables must use uppercase letters, digits, and underscores")
+        }
+        return (environmentVariable: parts[0], secretName: parts[1])
+    }
+    guard !bindings.isEmpty else {
+        throw LaunchError(description: "Usage: launch-codex-with-bos.swift --binding ENVIRONMENT_VARIABLE=gcp-secret-name [--binding ...] [--gcloud <path>] [--replace] [--force-replace]")
+    }
+    guard Set(bindings.map(\.environmentVariable)).count == bindings.count else {
+        throw LaunchError(description: "Each credential environment variable may be bound only once")
+    }
+    return bindings
+}
+
+func isBosCredentialVariable(_ name: String) -> Bool {
+    name == "BOS_API_KEY" || name.hasSuffix("_BOS_API_KEY")
+}
+
+func isolatedEnvironment(
+    base: [String: String],
+    credentials: [String: String]
+) -> [String: String] {
+    base.filter { !isBosCredentialVariable($0.key) }.merging(
+        credentials,
+        uniquingKeysWith: { _, scoped in scoped }
+    )
+}
+
 func executable(_ candidates: [String]) -> URL? {
     candidates
         .map { URL(fileURLWithPath: $0) }
@@ -116,13 +162,13 @@ func stopRunningChatGPT(app: URL) throws {
     }
 }
 
-func launchChatGPT(secret: String, app: URL) throws {
+func launchChatGPT(credentials: [String: String], app: URL) throws {
     try stopRunningChatGPT(app: app)
     let configuration = NSWorkspace.OpenConfiguration()
     configuration.createsNewApplicationInstance = true
-    configuration.environment = ProcessInfo.processInfo.environment.merging(
-        ["BOS_API_KEY": secret],
-        uniquingKeysWith: { _, scoped in scoped }
+    configuration.environment = isolatedEnvironment(
+        base: ProcessInfo.processInfo.environment,
+        credentials: credentials
     )
     let semaphore = DispatchSemaphore(value: 0)
     var launchError: Error?
@@ -132,7 +178,7 @@ func launchChatGPT(secret: String, app: URL) throws {
     ) { application, error in
         launchError = error
         if let application {
-            print("Started ChatGPT/Codex with the process-scoped BOS credential (pid \(application.processIdentifier)).")
+            print("Started ChatGPT/Codex with \(credentials.count) process-scoped BOS product credential binding(s) (pid \(application.processIdentifier)).")
         }
         semaphore.signal()
     }
@@ -143,9 +189,7 @@ func launchChatGPT(secret: String, app: URL) throws {
 }
 
 do {
-    guard let secretName = argument("--gcp-secret"), !secretName.isEmpty else {
-        throw LaunchError(description: "Usage: launch-codex-with-bos.swift --gcp-secret <secret-name> [--gcloud <path>] [--replace] [--force-replace]")
-    }
+    let bindings = try credentialBindings()
     let app = URL(fileURLWithPath: argument("--app") ?? "/Applications/ChatGPT.app")
     guard FileManager.default.fileExists(atPath: app.path) else {
         throw LaunchError(description: "ChatGPT application not found at \(app.path)")
@@ -155,8 +199,32 @@ do {
         print("ChatGPT and gcloud launch dependencies are available.")
         exit(0)
     }
-    let secret = try readSecret(named: secretName, gcloud: gcloud)
-    try launchChatGPT(secret: secret, app: app)
+    if CommandLine.arguments.contains("--check-environment-isolation") {
+        let declared = Dictionary(
+            uniqueKeysWithValues: bindings.map { ($0.environmentVariable, "DECLARED") }
+        )
+        let environment = isolatedEnvironment(
+            base: ProcessInfo.processInfo.environment,
+            credentials: declared
+        )
+        let undeclared = environment.keys.filter {
+            isBosCredentialVariable($0) && declared[$0] == nil
+        }
+        guard undeclared.isEmpty,
+              declared.allSatisfy({ environment[$0.key] == $0.value }) else {
+            throw LaunchError(description: "Credential environment isolation check failed")
+        }
+        print("Credential environment isolation check passed.")
+        exit(0)
+    }
+    var credentials: [String: String] = [:]
+    for binding in bindings {
+        credentials[binding.environmentVariable] = try readSecret(
+            named: binding.secretName,
+            gcloud: gcloud
+        )
+    }
+    try launchChatGPT(credentials: credentials, app: app)
 } catch {
     FileHandle.standardError.write(Data("\(error)\n".utf8))
     exit(1)

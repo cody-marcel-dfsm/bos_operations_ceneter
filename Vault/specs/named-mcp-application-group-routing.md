@@ -53,19 +53,21 @@ same derived route.
 A client package:
 
 - contains its immutable application and skill-group names;
-- supplies the client's single `BOS_API_KEY` using the harness's supported
-  secret mechanism;
+- supplies the product's declared organization-scoped bearer using the
+  harness's supported secret mechanism;
 - connects only to its generated route;
 - discovers the live tool manifest returned by that route;
 - reconnects the same route after recoverable transport failure; and
 - treats server-returned operational context as authorization evidence, never
   as input for constructing another endpoint.
 
-Multiple runtime products may be active in one client. Every named connection
-uses the same configured key. The triggered domain skill chooses its product
+Multiple runtime products may be active in one client. Each named connection
+uses its own package-declared credential binding and may resolve a different
+organization or principal. The triggered domain skill chooses its product
 connection; it never chooses a tenant, organization, actor, role, or key value.
-The server maps the one bearer principal to every authority dimension and
-resolves exactly one user and role.
+The server maps each bearer principal to exactly one authorized installation,
+organization, user, and delegated role for that route. A credential never
+falls through to another product connection.
 
 A client package never asks for, stores, derives, or substitutes an
 `installed_app_id` into its MCP URL. It never selects or provisions an

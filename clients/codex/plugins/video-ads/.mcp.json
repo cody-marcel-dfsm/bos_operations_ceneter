@@ -1,9 +1,0 @@
-{
-  "mcpServers": {
-    "video-ads": {
-      "type": "http",
-      "url": "https://dfsm.ai/mcp/apps/leaddirector/video-ads",
-      "bearer_token_env_var": "BOS_API_KEY"
-    }
-  }
-}

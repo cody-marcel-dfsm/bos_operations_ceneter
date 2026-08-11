@@ -63,6 +63,51 @@ def main() -> None:
             ROOT / "scripts" / "launch-codex-with-bos.swift",
             stage / "scripts" / "launch-codex-with-bos.swift",
         )
+        shutil.copy2(
+            ROOT / "scripts" / "install-package.mjs",
+            stage / "scripts" / "install-package.mjs",
+        )
+        (stage / "scripts" / "lib").mkdir()
+        shutil.copy2(
+            ROOT / "scripts" / "lib" / "package-model.mjs",
+            stage / "scripts" / "lib" / "package-model.mjs",
+        )
+        extension_script = (
+            stage
+            / "source"
+            / "platform"
+            / "manage-customer-extension"
+            / "scripts"
+        )
+        extension_script.mkdir(parents=True)
+        shutil.copy2(
+            ROOT
+            / "source"
+            / "platform"
+            / "manage-customer-extension"
+            / "scripts"
+            / "manage-extension.mjs",
+            extension_script / "manage-extension.mjs",
+        )
+        (stage / "package.json").write_text(
+            json.dumps(
+                {
+                    "name": "bos-operations-center-installer",
+                    "version": version,
+                    "private": True,
+                    "type": "module",
+                    "scripts": {
+                        "install:inspect": "node scripts/install-package.mjs inspect",
+                        "install:plan": "node scripts/install-package.mjs plan",
+                        "install:apply": "node scripts/install-package.mjs apply",
+                        "install:verify": "node scripts/install-package.mjs verify",
+                    },
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n"
+        )
         manifest = payload_manifest(stage)
         (stage / "PAYLOAD_MANIFEST.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n"

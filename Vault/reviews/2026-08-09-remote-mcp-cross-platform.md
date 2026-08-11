@@ -8,8 +8,9 @@
 
 ## Evidence reviewed
 
-- The canonical runtime uses HTTPS remote MCP and references `BOS_API_KEY`
-  without embedding its value: `source/runtime/bos/.mcp.json:1`.
+- The canonical runtime uses HTTPS remote MCP and materializes each active
+  product's declared credential environment variable without embedding its
+  value: `source/runtime/bos/.mcp.json:1`.
 - Product profiles receive unique endpoint paths and server identities during
   generation: `scripts/lib/package-model.mjs:211`.
 - Authentication, tenant scope, product-tool suppression, and provider

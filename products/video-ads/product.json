@@ -2,6 +2,7 @@
   "schema_version": "1",
   "name": "video-ads",
   "version": "0.1.3",
+  "release_status": "disabled",
   "display_name": "Video Ads",
   "description": "Create, review, and deliver video ads through tenant-scoped BOS capabilities.",
   "publisher": "Infinite State Machines LLC",
@@ -23,6 +24,7 @@
   "runtime": "bos",
   "application_name": "leaddirector",
   "mcp_group_name": "video-ads",
+  "credential_env_var": "VIDEO_ADS_BOS_API_KEY",
   "default_prompts": [
     "Turn this offer into a production-ready video ad brief.",
     "Generate a video ad from this approved brief.",

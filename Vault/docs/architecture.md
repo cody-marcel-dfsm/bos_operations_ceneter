@@ -57,15 +57,16 @@ release system for portable BOS skills and native remote MCP client adapters.
     remote connection in Copilot. Every runtime product declares one immutable
     package-owned route using the exact static form
     `/mcp/apps/{application-name}/{skill-group-name}`. Both path segments are
-    stable human-readable slugs, never IDs or customer settings. The BOS API
-    key configured once for the client authenticates every named connection;
-    the service derives
-    and validates actor, tenant, organization, installation, role, plugin, and
-    capability authority. A client may load multiple runtime products while
-    retaining exactly one BOS identity. Domain-skill routing chooses the
-    matching named connection without selecting tenant scope. Codex remote
-    servers bind `BOS_API_KEY` through
-    `bearer_token_env_var` so the host can resolve it without exposing it.
+    stable human-readable slugs, never IDs or customer settings. Each active
+    runtime product declares exactly one product-owned credential environment
+    variable. That bearer resolves exactly one server-owned principal,
+    organization, installation, delegated role, plugin, and capability scope
+    for that named connection. Products may resolve different organizations
+    and principals in the same client process. Domain-skill routing chooses the
+    matching named connection and its declared credential; credentials never
+    fall through between products. Codex remote servers bind the declared
+    product variable through `bearer_token_env_var` so the host can resolve it
+    without exposing it.
 12. Treat deployment artifacts as build outputs. The complete cross-platform
     build generates client packages, deterministic product archives, the
     release manifest, and versioned and stable OS-neutral customer ZIPs.
@@ -93,20 +94,25 @@ release system for portable BOS skills and native remote MCP client adapters.
 16. Distribute Claude products through a repository-root native marketplace or
     Claude's native manual plugin-upload control. Keep remote release downloads
     out of conversational installation workflows. Runtime Claude plugins use
-    the one client-global `BOS_API_KEY` already configured by the host and the
-    exact package-generated named HTTPS MCP route. Individual plugins never
-    declare independent key fields. Product application and skill-group names
-    remain immutable package metadata.
-17. Treat a Codex bearer registration as current only when `BOS_API_KEY` exists
-    in the active host process, matches the installer process binding when one
-    is supplied, and successfully initializes the product's exact named route
-    with its required scoped tool group. On macOS, launch the desktop host with
-    that one process-scoped credential fetched from approved managed storage.
+    the product's declared client-host credential and the exact package-generated
+    named HTTPS MCP route. Product application and skill-group names remain
+    immutable package metadata.
+17. Treat a Codex bearer registration as current only when the selected
+    product's declared credential exists in the active host process, matches
+    the installer process binding when one is supplied, and successfully
+    initializes that product's exact named route with its required scoped tool
+    group. On macOS, launch the desktop host with each installed product's
+    process-scoped credential fetched from approved managed storage.
     Never persist a bearer in package files or publish it into the global GUI
     launch environment.
 18. Gate every complete build and customer release on a credentialed,
-    read-only live query through each operational product's exact named MCP
-    route using the same build-process `BOS_API_KEY`. For iCode director
+    read-only live query through each active operational product's exact named
+    MCP route using that product's declared build-process credential. Disabled
+    or unreleased products are excluded from generated marketplaces, customer
+    archives, installation instructions, and release gates. A missing provider
+    credential or disabled provider plugin blocks only its owning product or
+    operation and never another organization's connection, tools, build, or
+    release. For iCode director
     reporting, the gate must discover the complete
     report read-tool contract, prove one server-derived iCode context, and
     execute a bounded enrollment query for the customer-configured local week.

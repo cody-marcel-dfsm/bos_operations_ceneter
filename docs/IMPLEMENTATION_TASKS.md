@@ -317,8 +317,8 @@ scope resolution, provider setup, verification, and retry sequence.
 - Represent BOS client authorization, tenant resolution, capability
   authorization, and provider credential health as distinct states.
 - Generate native remote Streamable HTTP configuration for Codex and Claude.
-- Forward the client-managed `BOS_API_KEY` as the HTTPS Bearer header on every
-  named connection.
+- Forward each runtime product's declared client-managed credential as the
+  HTTPS Bearer header on that named connection.
 - Consume BOS-returned provider OAuth and HTTPS credential-collection actions
   without persisting or echoing credentials.
 - Implement the recovery sequence defined in the design.
@@ -328,8 +328,8 @@ scope resolution, provider setup, verification, and retry sequence.
 
 - Diagnostics identify tenant, plugin, capability, and credential state using
   BOS-returned evidence.
-- A missing or invalid `BOS_API_KEY` stops the affected operation with no
-  secondary BOS login flow.
+- A missing or invalid product credential stops only that product's affected
+  operation with no secondary BOS login flow.
 - Recovery verifies state before retrying and retries no more than once.
 - Provider credentials are submitted directly to the BOS-hosted HTTPS flow and
   remain absent from model messages, logs, responses, generated files, customer
@@ -456,8 +456,9 @@ remote MCP transport on macOS, Windows, and Linux.
   runtime, or local credential listener.
 - The Video Ads product targets only `/mcp/apps/leaddirector/video-ads`
   through the `video-ads` server identity.
-- A missing `BOS_API_KEY` fails at the BOS service boundary and cannot initiate
-  a second BOS authentication mechanism.
+- A missing declared product credential fails at that BOS service boundary and
+  cannot initiate a second BOS authentication mechanism or affect another
+  product connection.
 
 **Dependencies:** BOSPKG-012, BOSPKG-015.
 
@@ -471,7 +472,8 @@ without a compiled client transport.
 - Package all generated Codex, Claude, Copilot, and Gemini distributions.
 - Publish versioned and stable OS-neutral ZIP names.
 - Run validation and release jobs on a platform-neutral CI runner.
-- Document native installation and the one GCP-managed `BOS_API_KEY`.
+- Document native installation and one GCP-managed credential binding per
+  active runtime product.
 
 **Acceptance criteria:**
 

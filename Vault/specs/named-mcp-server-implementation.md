@@ -167,9 +167,10 @@ icode_update_lead
 ```
 
 The three `bos_*` lifecycle operations are application-neutral controls. They
-authenticate with the same client key and return only the context or operation
-state authorized for the named iCode connection. They never broaden the
-resource-group tool allowlist or accept client-supplied authority.
+authenticate with the named product connection's declared bearer and return
+only the context or operation state authorized for the named iCode connection.
+They never broaden the resource-group tool allowlist or accept client-supplied
+authority.
 
 The server implementation may add a tool only after the iCode product contract,
 tool classification, tests, and marketplace disclosure are updated together.
@@ -202,10 +203,16 @@ video_ads_retry_transfer
 video_ads_start_generation
 ```
 
-The route must remain unpublished unless every listed tool is registered and
+The Video Ads product remains disabled and the route must remain unpublished
+unless every listed tool is registered and
 the authenticated installed application enables the `video-ads` resource
 group. Google Drive remains a server-side dependency of the `video-ads` plugin;
 the named route exposes no generic Drive operation.
+
+Missing Arcads credentials, provider readiness, or Video Ads installation
+authority affects only this disabled product and its operations. It cannot
+change another organization's principal mapping, tool catalog, installation
+status, build gate, or release readiness.
 
 Every mutating video tool must route through its PO, use an idempotency key,
 record an audit, and validate any provider credential against the resolved
@@ -344,7 +351,8 @@ another tenant's identifiers.
 
 - iCode returns exactly the approved tool set supported by enabled plugins;
 - disabled plugins remove their tools;
-- Video Ads returns its final approved non-empty set;
+- enabled Video Ads returns its final approved non-empty set; disabled Video
+  Ads remains unpublished and cannot affect another route;
 - BOS returns only its explicit platform set;
 - scope fields are absent from every public schema;
 - one authorized installation succeeds;
@@ -378,7 +386,9 @@ another tenant's identifiers.
 The server is marketplace-ready only when all gates pass:
 
 1. Complete application-repository diff is reviewed.
-2. Video Ads and BOS have non-empty explicit allowlists.
+2. Every published runtime product has a non-empty explicit allowlist; disabled
+   Video Ads is excluded until its full allowlist and provider implementation
+   are ready.
 3. Multi-install discovery isolation tests pass.
 4. Seed reconciliation dry-run and idempotency evidence pass.
 5. Full MCP, auth, PO/GO, provider, graph, and secret tests pass.
