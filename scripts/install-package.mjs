@@ -32,6 +32,9 @@ const codexMarketplaceIdentity = Object.freeze({
   name: "bos-education-center",
   displayName: "BOS + Education Center"
 });
+const codexCredentialMigrationAliases = new Map([
+  ["education-center", ["ICODE_OPERATIONS_BOS_API_KEY"]]
+]);
 const execFileAsync = promisify(execFile);
 const retiredBosBrokerPaths = new Set([
   "scripts/bos_mcp_broker.py",
@@ -345,15 +348,53 @@ async function configureCodexBosMcp(options, paths) {
   const runtimeServer = Object.values(runtime.mcpServers ?? {})[0];
   if (!runtimeServer) return { state: "not_applicable" };
   const metadata = await readJson(join(paths.target, ".bos-product.json"));
-  const registration = codexBosMcpRegistration(
+  const declaredRegistration = codexBosMcpRegistration(
     metadata.application_name,
     metadata.mcp_group_name,
     metadata.credential_env_var
   );
-  if (runtimeServer.url !== registration.url) {
+  if (runtimeServer.url !== declaredRegistration.url) {
     throw new Error("Packaged MCP resource-group URL does not match product metadata");
   }
   const runCommand = options.runCommand ?? execFileAsync;
+  const environment = options.environment ?? process.env;
+  const verifyBearer = (apiKey) => (
+    options.verifyNamedMcpBearer ?? verifyNamedMcpBearer
+  )({
+    apiKey,
+    endpoint: declaredRegistration.url,
+    applicationName: metadata.application_name,
+    mcpGroupName: metadata.mcp_group_name,
+    fetchImpl: options.fetchImpl
+  });
+  const inspectHost = (credentialEnvVar) => options.inspectCodexHost
+    ? options.inspectCodexHost({
+        credentialEnvVar,
+        expectedApiKey: environment[credentialEnvVar],
+        verifyBearer
+      })
+    : codexHostBearerState(runCommand, {
+        credentialEnvVar,
+        expectedApiKey: environment[credentialEnvVar],
+        verifyBearer
+      });
+  let selectedCredentialEnvVar = metadata.credential_env_var;
+  let host = await inspectHost(selectedCredentialEnvVar);
+  if (host.reason === "codex_host_product_api_key_missing") {
+    for (const alias of codexCredentialMigrationAliases.get(metadata.name) ?? []) {
+      const aliasHost = await inspectHost(alias);
+      if (aliasHost.reason !== "codex_host_product_api_key_missing") {
+        selectedCredentialEnvVar = alias;
+        host = aliasHost;
+        break;
+      }
+    }
+  }
+  const registration = codexBosMcpRegistration(
+    metadata.application_name,
+    metadata.mcp_group_name,
+    selectedCredentialEnvVar
+  );
   await runCommand("codex", registration.args);
   const verification = await runCommand("codex", ["mcp", "get", registration.name]);
   const output = String(verification?.stdout ?? verification ?? "");
@@ -361,32 +402,14 @@ async function configureCodexBosMcp(options, paths) {
       !output.includes(`bearer_token_env_var: ${registration.bearer_token_env_var}`)) {
     throw new Error("Codex BOS MCP registration verification failed");
   }
-  const environment = options.environment ?? process.env;
-  const verifyBearer = (apiKey) => (
-    options.verifyNamedMcpBearer ?? verifyNamedMcpBearer
-  )({
-    apiKey,
-    endpoint: registration.url,
-    applicationName: metadata.application_name,
-    mcpGroupName: metadata.mcp_group_name,
-    fetchImpl: options.fetchImpl
-  });
-  const host = options.inspectCodexHost
-    ? await options.inspectCodexHost({
-        credentialEnvVar: metadata.credential_env_var,
-        expectedApiKey: environment[metadata.credential_env_var],
-        verifyBearer
-      })
-    : await codexHostBearerState(runCommand, {
-        credentialEnvVar: metadata.credential_env_var,
-        expectedApiKey: environment[metadata.credential_env_var],
-        verifyBearer
-      });
   if (host.state !== "current") {
     return {
       ...host,
       url: registration.url,
-      bearer_token_env_var: registration.bearer_token_env_var
+      bearer_token_env_var: registration.bearer_token_env_var,
+      ...(selectedCredentialEnvVar !== metadata.credential_env_var
+        ? { credential_binding_reused: true }
+        : {})
     };
   }
   return {
@@ -394,6 +417,9 @@ async function configureCodexBosMcp(options, paths) {
     name: registration.name,
     url: registration.url,
     bearer_token_env_var: registration.bearer_token_env_var,
+    ...(selectedCredentialEnvVar !== metadata.credential_env_var
+      ? { credential_binding_reused: true }
+      : {}),
     host_pid: host.pid,
     tool_count: host.tool_count
   };
