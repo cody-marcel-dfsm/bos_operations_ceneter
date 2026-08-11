@@ -180,6 +180,26 @@ test("camp enrollment reports render the accepted weekly image and deduped famil
   assert.match(classGuidance, /Keep phone\s+numbers out of the image/i);
   assert.match(classGuidance, /PNG output[\s\S]*SVG otherwise/i);
   assert.match(classGuidance, /Never substitute Mermaid, a Markdown-only\s+roster/i);
+  assert.match(
+    classGuidance,
+    /run the shared document-cache\s+`begin` → source gap\/delta → `commit` → `read` workflow/i
+  );
+  assert.match(
+    classGuidance,
+    /generate from the covered cache without a\s+source content query/i
+  );
+  assert.match(
+    classGuidance,
+    /missing daily fields in one summary response do not prove that occurrence data\s+is unavailable/i
+  );
+  assert.match(
+    classGuidance,
+    /A partial or unavailable source never suppresses the image when another source\s+returned exact day-level placements/i
+  );
+  assert.match(
+    classGuidance,
+    /Do not print `daily occurrence data unavailable`/i
+  );
   const renderer =
     `${root}/source/verticals/education-center/education-center-class-operations/scripts/render_week_calendar.py`;
   await access(renderer);

@@ -9,7 +9,8 @@ BOS-managed Codex products use one physical marketplace tree:
 ├── .agents/plugins/marketplace.json
 └── plugins/
     ├── bos/
-    └── education-center/
+    ├── education-center/
+    └── ism-meta-ads/
 ```
 
 Each product entry is a real directory. The marketplace manifest references
@@ -26,6 +27,13 @@ customer-owned locations:
 The settings template and packaged skills remain package-owned. A customer
 extension directory exists only after a tenant requests a per-skill change.
 
+The same marketplace also owns application skill-group packages managed by
+this project. `ism-meta-ads` is the private Lead Director package for the
+`meta-ads` skill group. It is a separate product from `video-ads`; the latter
+is a disabled creative-generation product. A managed private package remains
+`AVAILABLE` until its named MCP route, tool catalog, and authority contract are
+current, then it may be installed explicitly.
+
 ## Upgrade behavior
 
 During apply, the installer recognizes the retired `~/plugins/<product>`
@@ -37,6 +45,12 @@ settings, extensions, and unmanaged customer files move with the product.
 If both legacy and canonical physical directories exist, installation stops
 for review. This avoids choosing between two potentially divergent customer
 states.
+
+An upgrade replaces entries for products declared by the installed release
+and preserves validated application skill-group entries such as
+`ism-meta-ads`. Preservation keeps Lead Director packages inside the same
+physical marketplace without silently publishing them in the Education Center
+customer distribution.
 
 ## Outcome
 

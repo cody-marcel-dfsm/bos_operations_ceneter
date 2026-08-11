@@ -81,6 +81,35 @@ range, and use student/family lookup when the enrollment row omits its primary
 family phone. Include confirmed backup-care child-days only under the exact
 camp occurrence and date supported by provider evidence.
 
+### Cache-backed source retrieval
+
+After `bos_get_context` validates live authority, run the shared document-cache
+`begin` → source gap/delta → `commit` → `read` workflow from `bos-mcp-client`
+for each reusable logical query: camp occurrences and capacities, date-bound
+enrollments and attendance dates, required student/family records, Bright
+Horizons evidence, and routed Care.com messages or threads. Keep the requested
+date window in cache coverage rather than the stable selector.
+
+- When `begin` returns `current`, generate from the covered cache without a
+  source content query.
+- When it returns gaps, query only the uncovered intervals plus changes after
+  the committed cursor through the fixed refresh upper bound. Follow every
+  page, commit normalized records and tombstones once, then read the covered
+  cache state used for the report.
+- When it returns `busy`, wait for the bounded lease and call `begin` again.
+- Abort an incomplete refresh so the prior committed watermark remains valid.
+  Use any still-covered cache interval and label only the uncovered source
+  interval as partial.
+
+Missing daily fields in one summary response do not prove that occurrence data
+is unavailable. Continue with the discoverable camp-occurrence, enrollment,
+attendance, and family lookup capabilities required to complete the cache plan.
+Do not print `daily occurrence data unavailable`, report a zero, or omit paid
+students until the cache read and the required source gap/delta request have
+both completed or returned a source-specific failure. Never reconstruct dates
+from a registration duration when neither cached nor source evidence supplies
+the exact attendance dates.
+
 Return the complete report in the first final response. Render a five-column
 Monday-Friday image with `scripts/render_week_calendar.py`. Supply verified JSON
 containing exactly five day objects and roster entries with both `name` and
@@ -109,6 +138,12 @@ renderer transforms only BOS-returned or explicitly routed evidence; it never
 retrieves, reconciles, or calculates business data. Keep the renderer input in
 the client temporary-artifact surface and remove it after the image is rendered;
 never retain a second roster copy as a cache or report source.
+
+A partial or unavailable source never suppresses the image when another source
+returned exact day-level placements. Render every verified placement, identify
+the visual as partial when its daily totals omit a failed source, and state the
+source limitation immediately after the image. Suppress the image only when no
+source or covered cache interval returned any exact day-level placement.
 
 State a source-specific limitation where its records would appear. Report zero
 camps or students only after a successful bounded source query.

@@ -130,6 +130,13 @@ manifests remain under
 the retired `~/plugins/<product>` layout into this tree and preserves customer
 files during package updates.
 
+Application skill-group packages managed by BOS use this same physical tree.
+The Lead Director `ism-meta-ads` package lives at
+`plugins/ism-meta-ads/` and represents the `meta-ads` group. It remains an
+available private plugin until its declared named route and scoped tool catalog
+pass the current runtime contract; public product convergence preserves its
+marketplace entry and directory.
+
 ## Provider authorization
 
 If an underlying provider grant is missing, BOS returns a short-lived HTTPS

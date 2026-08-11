@@ -1,7 +1,7 @@
 {
-  "indexed_at": "20260811T182346.519555Z",
+  "indexed_at": "20260811T182304.251205Z",
   "schema_version": "bos-vault-manifest/v1",
-  "source_count": 26,
+  "source_count": 25,
   "sources": {
     "Vault/README.md": {
       "bytes": 1015,
@@ -70,10 +70,6 @@
     "Vault/reviews/2026-08-11-education-center-identity.md": {
       "bytes": 3436,
       "sha256": "2a115fba3c057259940ec4c7d6ccdb2297064bef276a83aa7f40187ade9a0e6a"
-    },
-    "Vault/reviews/2026-08-11-lead-director-private-marketplace-placement.md": {
-      "bytes": 2051,
-      "sha256": "4937a02c25e3c4505c0c1425680f3bde2275d546b6c4de44fe77e275550dd739"
     },
     "Vault/reviews/2026-08-11-release-readiness.md": {
       "bytes": 3836,
