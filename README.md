@@ -232,6 +232,13 @@ In a BOS-managed Codex installation, customer extensions live at
 `~/plugins/<product>/skills/<base-skill>-<tenant-key>/`. The `~/.agents`
 directory holds marketplace and installation coordination state.
 
+The marketplace exposes each product through a symlink such as
+`~/.agents/<marketplace>/plugins/<product> -> ~/plugins/<product>`. Finder may
+show the marketplace access path while displaying the same installed files.
+The product-wide tenant overlay lives in `config/customer-settings.json`.
+Per-skill `.bos-extension.json` and `SKILL.md` files appear only inside a
+created `skills/<base-skill>-<tenant-key>/` extension directory.
+
 Create an extension beside the packaged skills:
 
 ```bash

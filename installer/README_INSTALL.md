@@ -125,6 +125,11 @@ product at `~/plugins/<product>/skills/<base-skill>-<tenant-key>/`. The
 installer discovers and preserves `.bos-extension.json` manifests from that
 directory. Codex marketplace state remains under `~/.agents`.
 
+The marketplace product path may be a symlink to `~/plugins/<product>`, so
+Finder can show either access path for the same files. Product-wide tenant
+settings remain in `config/customer-settings.json`; per-skill extension
+manifests remain under `skills/<base-skill>-<tenant-key>/`.
+
 ## Provider authorization
 
 If an underlying provider grant is missing, BOS returns a short-lived HTTPS

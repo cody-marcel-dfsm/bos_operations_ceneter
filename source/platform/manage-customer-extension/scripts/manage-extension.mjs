@@ -1,6 +1,17 @@
 #!/usr/bin/env node
 
-import { chmod, cp, lstat, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  cp,
+  lstat,
+  mkdir,
+  readFile,
+  realpath,
+  rename,
+  rm,
+  stat,
+  writeFile
+} from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -21,6 +32,16 @@ async function pathExists(path) {
     return true;
   } catch (error) {
     if (error.code === "ENOENT") return false;
+    throw error;
+  }
+}
+
+async function canonicalPath(path) {
+  const resolved = resolve(path);
+  try {
+    return await realpath(resolved);
+  } catch (error) {
+    if (error.code === "ENOENT") return resolved;
     throw error;
   }
 }
@@ -151,10 +172,14 @@ async function readProductMetadata(productRoot) {
   throw new Error(`product metadata is missing under ${productRoot}`);
 }
 
-function extensionPaths(options, product) {
-  const productRoot = resolve(options.productRoot ?? resolve(SCRIPT_DIR, "../../.."));
+async function extensionPaths(options, product) {
+  const productRoot = await canonicalPath(
+    options.productRoot ?? resolve(SCRIPT_DIR, "../../..")
+  );
   const baseSkillsRoot = join(productRoot, "skills");
-  const extensionRoot = resolve(options.extensionRoot ?? baseSkillsRoot);
+  const extensionRoot = await canonicalPath(
+    options.extensionRoot ?? baseSkillsRoot
+  );
   requireName(options.baseSkill, "base skill");
   requireName(options.tenant, "tenant key");
   const extensionName = `${options.baseSkill}-${options.tenant}`;
@@ -243,9 +268,11 @@ async function replaceExtension(paths, manifest, skill, legacySkill) {
 }
 
 export async function inspectCustomerExtension(rawOptions) {
-  const productRoot = resolve(rawOptions.productRoot ?? resolve(SCRIPT_DIR, "../../.."));
+  const productRoot = await canonicalPath(
+    rawOptions.productRoot ?? resolve(SCRIPT_DIR, "../../..")
+  );
   const product = await readProductMetadata(productRoot);
-  const paths = extensionPaths({ ...rawOptions, productRoot }, product);
+  const paths = await extensionPaths({ ...rawOptions, productRoot }, product);
   const basePath = join(paths.baseSkillsRoot, rawOptions.baseSkill, "SKILL.md");
   if (!(await pathExists(basePath))) throw new Error(`installed base skill is missing: ${basePath}`);
   const manifestPath = join(paths.extensionPath, ".bos-extension.json");
@@ -303,9 +330,11 @@ export async function inspectCustomerExtension(rawOptions) {
 export async function applyCustomerExtension(rawOptions) {
   const before = await inspectCustomerExtension(rawOptions);
   if (before.state === "invalid") throw new Error(before.failures.join("; "));
-  const productRoot = resolve(rawOptions.productRoot ?? resolve(SCRIPT_DIR, "../../.."));
+  const productRoot = await canonicalPath(
+    rawOptions.productRoot ?? resolve(SCRIPT_DIR, "../../..")
+  );
   const product = await readProductMetadata(productRoot);
-  const paths = extensionPaths({ ...rawOptions, productRoot }, product);
+  const paths = await extensionPaths({ ...rawOptions, productRoot }, product);
   const manifestPath = join(paths.extensionPath, ".bos-extension.json");
   let manifest = {
     schema_version: "2",
