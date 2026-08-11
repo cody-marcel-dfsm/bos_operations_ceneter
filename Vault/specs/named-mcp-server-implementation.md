@@ -182,10 +182,30 @@ Route:
 /mcp/apps/leaddirector/video-ads
 ```
 
-Before registering this route, the owning implementation must define non-empty
-allowed-plugin and allowed-tool sets for the implemented video briefing,
-generation, review, and approved-delivery capabilities. The route must remain
-unpublished while either allowlist is empty.
+Allowed plugins:
+
+```text
+video-ads
+```
+
+Allowed tools:
+
+```text
+bos_get_authorization_status
+bos_get_context
+bos_resume_operation
+video_ads_get_generation
+video_ads_get_readiness
+video_ads_list_generations
+video_ads_list_options
+video_ads_retry_transfer
+video_ads_start_generation
+```
+
+The route must remain unpublished unless every listed tool is registered and
+the authenticated installed application enables the `video-ads` resource
+group. Google Drive remains a server-side dependency of the `video-ads` plugin;
+the named route exposes no generic Drive operation.
 
 Every mutating video tool must route through its PO, use an idempotency key,
 record an audit, and validate any provider credential against the resolved

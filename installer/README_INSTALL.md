@@ -25,7 +25,9 @@ Add `clients/codex` as a local marketplace, then install the `bos` plugin and
 the product plugins you need. Apply the installer for the selected product; it
 registers and verifies the packaged MCP URL with
 `bearer_token_env_var=BOS_API_KEY`. Restart Codex after installation
-so it loads every MCP and skill configuration.
+so it loads every MCP and skill configuration. Installer verification reports
+the runtime current only when the active desktop bearer matches the supplied
+process binding and initializes the selected named route with its scoped tools.
 
 Every product ships an immutable human-readable MCP route in the form
 `/mcp/apps/<application-name>/<skill-group-name>`. The installer reads that

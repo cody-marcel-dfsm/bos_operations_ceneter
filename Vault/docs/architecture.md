@@ -98,13 +98,16 @@ release system for portable BOS skills and native remote MCP client adapters.
     declare independent key fields. Product application and skill-group names
     remain immutable package metadata.
 17. Treat a Codex bearer registration as current only when `BOS_API_KEY` exists
-    in the active host process. On macOS, launch the desktop host with that one
-    process-scoped credential fetched from approved managed storage. Never
-    persist a bearer in package files or publish it into the global GUI launch
-    environment.
+    in the active host process, matches the installer process binding when one
+    is supplied, and successfully initializes the product's exact named route
+    with its required scoped tool group. On macOS, launch the desktop host with
+    that one process-scoped credential fetched from approved managed storage.
+    Never persist a bearer in package files or publish it into the global GUI
+    launch environment.
 18. Gate every complete build and customer release on a credentialed,
     read-only live query through each operational product's exact named MCP
-    route. For iCode director reporting, the gate must discover the complete
+    route using the same build-process `BOS_API_KEY`. For iCode director
+    reporting, the gate must discover the complete
     report read-tool contract, prove one server-derived iCode context, and
     execute a bounded enrollment query for the customer-configured local week.
     A well-formed empty record array is a valid seasonal result. When camp data
