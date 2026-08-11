@@ -14,5 +14,14 @@
     "operations",
     "icode-operations-center"
   ],
-  "mcpServers": "./.mcp.json"
+  "mcpServers": "./.mcp.json",
+  "userConfig": {
+    "bos_api_key": {
+      "type": "string",
+      "title": "iCode Operations Center API key",
+      "description": "Paste the organization-scoped API key supplied by your BOS administrator.",
+      "sensitive": true,
+      "required": true
+    }
+  }
 }

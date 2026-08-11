@@ -94,3 +94,64 @@ Domain skills interpret their workflows and execute only through their matching
 configured product MCP. BOS derives actor, tenant, organization, application,
 installation, role, plugin, and capability scope from that connection's bearer
 principal and canonical server records.
+
+## Shared local document cache
+
+Use the packaged `scripts/document-cache.mjs` helper for every reusable
+document or document-like read, including files, messages, full threads,
+events, enrollments, leads, and provider evidence. The helper resolves one
+OS-user cache root shared by all BOS-family products and clients. Keep its
+authority indexes separate while allowing identical immutable document
+versions to share the content-addressed object store. Read
+[references/document-cache-protocol.md](references/document-cache-protocol.md)
+before invoking the helper.
+
+After `bos_get_context` validates the live request authority, include its
+server-derived organization, installation, delegated role, application, and
+this product's skill-group name in the cache authority. Include the exact
+authenticated account identity for a separately connected read-only source.
+Use digested cache keys in diagnostics.
+
+For each logical source query:
+
+1. Choose a stable source, resource kind, account, and selector. Keep the time
+   window outside the selector so overlapping date windows share coverage.
+2. Capture one fixed refresh upper bound and call the helper's `begin` operation
+   through JSON on standard input. Pass document bodies through standard input
+   only; keep them out of command arguments, temporary repository files, and
+   diagnostics.
+3. When the plan is `current`, generate from the cache without a source content
+   query. When the plan returns gaps, request exactly those intervals plus
+   changes after its cursor through the fixed upper bound. Use provider cursors,
+   `modified_after`, conditional versions or ETags, or a bounded versioned
+   snapshot. For a cold plan, one bounded snapshot initializes both coverage
+   and the change watermark. Call `read` after `begin` when the provider needs
+   cached resource versions for conditional requests. Follow every page and
+   preserve deletion tombstones.
+4. When the plan is `busy`, wait for the bounded lease, then call `begin` again
+   and use the completed shared result. This makes concurrent identical work
+   single-flight across plugins and client processes.
+5. Call `commit` once with the complete normalized change set, tombstones, next
+   cursor, and coverage. The helper atomically updates objects, coverage,
+   watermark, and `sync_completed_at`. Call `abort` after a failed or partial
+   retrieval so the previous committed watermark remains authoritative.
+6. Call `read` and generate the requested outcome from the covered cache state.
+
+Treat query coverage as `[from, through)` and change catch-up as
+`(after, through]`. Normalize only the minimum-necessary reusable fields into
+cached payloads. Exclude raw message bodies, attachment bytes, unrelated notes,
+credentials, and secrets unless the user's request explicitly requires that
+source artifact and its provider policy permits local caching.
+
+For a named file or thread, use its stable provider resource identity and cached
+version for conditional validation. Fetch the body only when the provider
+reports a new version. The initial request treats the full bounded interval or
+current named resource as its gap. Snapshot-only sources refresh the complete
+bounded snapshot only after conditional source-version validation reports a
+change. Record that limitation until their tools expose an incremental cursor
+or per-resource conditional read.
+
+The cache supplies read evidence. Execute mutations through the canonical BOS
+or provider path, then let a subsequent incremental catch-up reconcile the
+local read state. Apply the full cache contract in
+`Vault/specs/shared-local-document-cache.md` when working in this repository.

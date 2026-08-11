@@ -197,6 +197,7 @@ export async function runIcodeDirectorSmoke({
   endpoint = ICODE_DIRECTOR_ENDPOINT,
   fetchImpl = fetch,
   now = new Date(),
+  onProgress,
   timeZone,
   startDate,
   endDate
@@ -216,7 +217,8 @@ export async function runIcodeDirectorSmoke({
   };
   let lastCorrelationId;
   let sessionId;
-  const post = async (body) => {
+  const post = async (phase, body) => {
+    onProgress?.({ phase, state: "started" });
     const headers = {
       Accept: "application/json, text/event-stream",
       Authorization: `Bearer ${apiKey}`,
@@ -224,24 +226,36 @@ export async function runIcodeDirectorSmoke({
       "MCP-Protocol-Version": "2025-03-26"
     };
     if (sessionId) headers["Mcp-Session-Id"] = sessionId;
-    const response = await fetchImpl(endpoint, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(30_000),
-      redirect: "error"
-    });
+    let response;
+    try {
+      response = await fetchImpl(endpoint, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(30_000),
+        redirect: "error"
+      });
+    } catch (error) {
+      onProgress?.({ phase, state: "failed" });
+      throw error;
+    }
     const returnedSessionId = response.headers.get("mcp-session-id");
     if (returnedSessionId) sessionId = returnedSessionId;
     const correlationId = safeCorrelationId(
       response.headers.get("x-correlation-id")
     );
     if (correlationId) lastCorrelationId = correlationId;
-    return {
+    const result = {
       status: response.status,
       correlationId,
       payload: parseMcpPayload(await response.text())
     };
+    onProgress?.({
+      phase,
+      state: "completed",
+      status: result.status
+    });
+    return result;
   };
   const fail = (check, observed, correlationId = lastCorrelationId) => {
     report.failure = { check, correlationId, observed };
@@ -254,7 +268,7 @@ export async function runIcodeDirectorSmoke({
     }), report);
   };
 
-  const initialize = await post({
+  const initialize = await post("initialize", {
     jsonrpc: "2.0",
     id: 1,
     method: "initialize",
@@ -278,7 +292,7 @@ export async function runIcodeDirectorSmoke({
   if (!report.initialize.protocolAccepted) {
     fail("MCP protocol negotiation", report.initialize, initialize.correlationId);
   }
-  const initialized = await post({
+  const initialized = await post("initialized notification", {
     jsonrpc: "2.0",
     method: "notifications/initialized",
     params: {}
@@ -294,7 +308,7 @@ export async function runIcodeDirectorSmoke({
       initialized.correlationId);
   }
 
-  const listed = await post({
+  const listed = await post("tool discovery", {
     jsonrpc: "2.0",
     id: 2,
     method: "tools/list",
@@ -314,14 +328,31 @@ export async function runIcodeDirectorSmoke({
     error: rpcError(listed.payload)
   };
 
-  const contextCall = toolNames.includes("bos_get_context")
-    ? await post({
+  const contextRequest = toolNames.includes("bos_get_context")
+    ? post("authenticated context", {
       jsonrpc: "2.0",
       id: 3,
       method: "tools/call",
       params: { name: "bos_get_context", arguments: {} }
     })
     : undefined;
+  const toolListSucceeded = listed.status === 200 &&
+    !listed.payload?.error && missingTools.length === 0;
+  const enrollmentsRequest = toolListSucceeded
+    ? post("bounded enrollment query", {
+      jsonrpc: "2.0",
+      id: 4,
+      method: "tools/call",
+      params: {
+        name: "icode_list_enrollments",
+        arguments: { query: { start_date: startDate, end_date: endDate } }
+      }
+    })
+    : undefined;
+  const [contextCall, enrollments] = await Promise.all([
+    contextRequest,
+    enrollmentsRequest
+  ]);
   report.context = contextCall && {
     status: contextCall.status,
     correlationId: contextCall.correlationId,
@@ -338,7 +369,7 @@ export async function runIcodeDirectorSmoke({
       missingTools
     }, contextCall?.correlationId ?? listed.correlationId);
   }
-  if (listed.status !== 200 || listed.payload?.error || missingTools.length) {
+  if (!toolListSucceeded) {
     fail("tools/list contains the complete director-report read contract", {
       status: listed.status,
       toolCount: toolNames.length,
@@ -349,15 +380,6 @@ export async function runIcodeDirectorSmoke({
     }, listed.correlationId);
   }
 
-  const enrollments = await post({
-    jsonrpc: "2.0",
-    id: 4,
-    method: "tools/call",
-    params: {
-      name: "icode_list_enrollments",
-      arguments: { query: { start_date: startDate, end_date: endDate } }
-    }
-  });
   report.enrollments = {
     status: enrollments.status,
     correlationId: enrollments.correlationId,
@@ -407,6 +429,14 @@ async function main() {
   try {
     const report = await runIcodeDirectorSmoke({
       apiKey: process.env.ICODE_OPERATIONS_BOS_API_KEY,
+      onProgress: ({ phase, state, status }) => {
+        if (state === "started") {
+          console.error(`[iCode build smoke] ${phase} started`);
+          return;
+        }
+        const statusText = status === undefined ? state : `HTTP ${status}`;
+        console.error(`[iCode build smoke] ${phase} ${statusText}`);
+      },
       timeZone: process.env.ICODE_SMOKE_TIME_ZONE,
       startDate: process.env.ICODE_SMOKE_START_DATE,
       endDate: process.env.ICODE_SMOKE_END_DATE

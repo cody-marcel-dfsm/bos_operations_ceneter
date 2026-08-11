@@ -1,8 +1,9 @@
 # Director daily planner content contract
 
 Render one compact, camp-first operating brief for the selected local day.
-Follow `bos-visual-output`. Include only the minimum student and family details
-needed for authorized daily school operations.
+Follow `bos-visual-output` and
+[mobile-visual.md](mobile-visual.md). Include only the minimum student and
+family details needed for authorized daily school operations.
 
 ## Header
 

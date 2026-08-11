@@ -239,9 +239,18 @@ async function validateProducts() {
           failures.push(`Generated Claude identity drift: ${pluginPath}`);
         }
         if (manifest.runtime) {
+          const expectedUserConfig = {
+            bos_api_key: {
+              type: "string",
+              title: `${manifest.display_name} API key`,
+              description: "Paste the organization-scoped API key supplied by your BOS administrator.",
+              sensitive: true,
+              required: true
+            }
+          };
           if (
             generated.mcpServers !== "./.mcp.json" ||
-            generated.userConfig !== undefined
+            JSON.stringify(generated.userConfig) !== JSON.stringify(expectedUserConfig)
           ) {
             failures.push(`Generated Claude runtime configuration drift: ${pluginPath}`);
           }
@@ -262,7 +271,7 @@ async function validateProducts() {
             server?.type !== "http" ||
             server?.url !== expectedUrl ||
             server?.headers?.Authorization !==
-              `Bearer \${${manifest.credential_env_var}}` ||
+              "Bearer ${user_config.bos_api_key}" ||
             Object.keys(runtime.mcpServers ?? {}).length !== 1 ||
             JSON.stringify(runtime).includes("BOS_INSTALLED_APP_ID") ||
             JSON.stringify(runtime).includes("installed_app_id")

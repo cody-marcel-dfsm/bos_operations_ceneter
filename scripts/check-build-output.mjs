@@ -70,6 +70,10 @@ assert.match(
   listing.stdout,
   /bos-operations-center\/scripts\/install-package\.mjs/
 );
+assert.match(
+  listing.stdout,
+  /bos-operations-center\/scripts\/install-claude-local\.mjs/
+);
 assert.match(listing.stdout, /bos-operations-center\/package\.json/);
 assert.match(
   listing.stdout,
