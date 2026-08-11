@@ -19,7 +19,7 @@ const baseRequest = {
     installation_id: "installation-example",
     delegated_role_id: "role-example",
     application: "lead-director",
-    skill_group: "icode-operations"
+    skill_group: "education-center"
   },
   source: { provider: "google-drive", account: "account-example" },
   query: {

@@ -1,0 +1,26 @@
+{
+  "name": "education-center",
+  "version": "0.4.20",
+  "description": "A childhood education franchise-in-a-box operating system for authorized adult education center staff through the tenant-scoped BOS MCP.",
+  "author": {
+    "name": "Infinite State Machines LLC"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Education Center",
+    "shortDescription": "A childhood education franchise-in-a-box operating system for authorized adult e",
+    "longDescription": "A childhood education franchise-in-a-box operating system for authorized adult education center staff through the tenant-scoped BOS MCP.",
+    "developerName": "Infinite State Machines LLC",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Initialize my education center, including its customer-facing brand name.",
+      "Create today's education center operations plan.",
+      "Give me a weekly summary for my director."
+    ]
+  },
+  "mcpServers": "./.mcp.json"
+}

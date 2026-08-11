@@ -4,7 +4,7 @@
 
 BOS Operations Packages is the source and package-generation architecture for
 portable operational products distributed to Codex, Claude, and GitHub
-Copilot. iCode Operations Center is one product generated from this
+Copilot. Education Center is one product generated from this
 architecture. Lead Director and future BOS-supported products can select other
 capabilities and vertical packs from the same canonical source.
 
@@ -94,21 +94,21 @@ and scope.
 ### Industry or franchise packs
 
 Vertical packs contain domain concepts and rules that genuinely belong to an
-industry or franchise. The iCode pack can contain students, parents,
+industry or franchise. The Education Center pack can contain students, parents,
 instructors, classes, camps, trials, Bright Horizons, Calimatic, and
 franchise-specific enrollment rules.
 
 Potential verticals include:
 
 ```text
-verticals/icode/
+verticals/education-center/
 verticals/collision-repair/
 verticals/home-services/
 verticals/automation-agency/
 ```
 
-The iCode pack may adapt a generic capability into iCode terminology, add
-iCode-specific policies, or provide a workflow that is meaningful only within
+The Education Center pack may adapt a generic capability into Education Center terminology, add
+Education Center-specific policies, or provide a workflow that is meaningful only within
 the franchise.
 
 ### Product packages
@@ -118,26 +118,26 @@ belong in a customer-facing product:
 
 ```text
 products/
-├── icode-operations-center/
+├── education-center/
 │   └── product.json
 └── bos/
     └── product.json
 ```
 
-An iCode product definition can select:
+An Education Center product definition can select:
 
 ```json
 {
-  "name": "icode-operations-center",
+  "name": "education-center",
   "includes": [
     "platform/bos-mcp-client",
     "capabilities/review-outreach",
     "capabilities/paid-attribution",
     "capabilities/daily-operations-planner",
-    "verticals/icode/class-operations",
-    "verticals/icode/student-operations",
-    "verticals/icode/instructor-operations",
-    "verticals/icode/parent-communications"
+    "verticals/education-center/class-operations",
+    "verticals/education-center/student-operations",
+    "verticals/education-center/instructor-operations",
+    "verticals/education-center/parent-communications"
   ]
 }
 ```
@@ -157,11 +157,11 @@ foundations.
 Every product that owns a BOS runtime connection includes `bos-mcp-client` so
 the active agent owns transport recovery, live tool discovery, context
 validation, and safe request resumption. The BOS product publishes the other
-general foundations. Runtime products such as iCode Operations Center carry
+general foundations. Runtime products such as Education Center carry
 their fixed named application/group connection and the shared client-lifecycle
 skill. Products requiring a restricted tool surface register a uniquely named
 server and a BOS-owned named route. Current mappings include
-`/mcp/apps/leaddirector/icode-operations`,
+`/mcp/apps/leaddirector/education-center`,
 `/mcp/apps/leaddirector/video-ads`; the BOS platform package is skills-only.
 
 ### Customer configuration
@@ -179,7 +179,7 @@ Customer configuration supplies the final operating context:
 - workflow defaults; and
 - customer or location exceptions.
 
-Examples include iCode Cherry Creek, DFSM, another iCode franchise location, or
+Examples include Education Center Cherry Creek, DFSM, another Education Center franchise location, or
 a Lead Director customer. Customer-specific facts belong in customer
 configuration. Shared franchise semantics belong in a vertical pack. Reusable
 procedures belong in capability skills.
@@ -202,14 +202,14 @@ The current skills should evolve as follows:
 |---|---|
 | `bos-mcp-client` | Platform |
 | `bos-google-review-outreach` | Generic review-outreach capability plus Google Business Profile contract |
-| `icode-paid-attribution-operations` | Generic paid-attribution capability plus iCode adapter |
-| `icode-director-daily-planner` | Generic location planner plus iCode planner modules |
-| `icode-class-operations` | iCode vertical |
-| `icode-student-operations` | iCode vertical |
-| `icode-instructor-operations` | iCode vertical |
-| `icode-parent-communications` | Generic communications capability plus iCode policies and terminology |
-| `icode-invoice-operations` | Generic invoice capability plus Bright Horizons and Calimatic iCode modules |
-| `icode-trial-reconciliation` | Generic appointment reconciliation plus iCode adapter |
+| `education-center-paid-attribution-operations` | Generic paid-attribution capability plus Education Center adapter |
+| `education-center-director-daily-planner` | Generic location planner plus Education Center planner modules |
+| `education-center-class-operations` | Education Center vertical |
+| `education-center-student-operations` | Education Center vertical |
+| `education-center-instructor-operations` | Education Center vertical |
+| `education-center-parent-communications` | Generic communications capability plus Education Center policies and terminology |
+| `education-center-invoice-operations` | Generic invoice capability plus Bright Horizons and Calimatic Education Center modules |
+| `education-center-trial-reconciliation` | Generic appointment reconciliation plus Education Center adapter |
 
 ## Source and generated clients
 
@@ -220,10 +220,10 @@ source/
 ├── platform/
 ├── capabilities/
 ├── verticals/
-│   └── icode/
+│   └── education-center/
 └── config/
 products/
-├── icode-operations-center/
+├── education-center/
 └── lead-director/
 clients/
 ├── codex/
@@ -284,8 +284,8 @@ The extension manifest uses schema version 2 and records:
   "ownership": "customer",
   "tenant": { "key": "example-center" },
   "extends": {
-    "product": "icode-operations-center",
-    "skill": "icode-class-operations",
+    "product": "education-center",
+    "skill": "education-center-class-operations",
     "tested_version": "0.4.9"
   },
   "overrides": {
@@ -431,8 +431,9 @@ ownership and restrictive permissions. Managed package hashes exclude the
 completed file, so upgrades preserve it. Skills read required values from that
 file and return `configuration_required` when a required value is absent.
 
-Customer settings may contain display names, location names, IANA timezones,
-mailbox selectors, billing identity, and non-secret workflow defaults. They
+Customer settings may contain customer-facing brand names, organization display
+names, location names, IANA timezones, mailbox selectors, billing identity, and
+non-secret workflow defaults. They
 never grant authority and never contain credentials, provider tokens, API
 keys, tenant grants, or role assignments.
 
@@ -444,6 +445,12 @@ uses connected-account metadata to identify a mailbox only when there is one
 clear candidate. It asks one consolidated question for every remaining or
 conflicting value. Billing identity is never inferred from unrelated messages
 or public web data. The completed file replaces the draft after validation.
+
+The Education Center initialization questionnaire always collects
+`brand_display_name` when it is unresolved. Every Education Center skill uses
+that value for customer-facing franchise or brand references. A skill-specific
+typed extension may override `terminology.brand_display_name`. Neither value is
+interpolated into package-owned technical identifiers.
 
 Customer-owned extension skills may consume this non-secret configuration to
 specialize a packaged operating procedure. Extensions cannot grant tenant,
@@ -636,9 +643,9 @@ fallback path.
 
 The client presents the named product and its operational vocabulary.
 
-An iCode user should see concepts such as:
+An Education Center user should see concepts such as:
 
-- iCode Operations Center;
+- Education Center;
 - classes;
 - students;
 - parents;
@@ -669,7 +676,7 @@ The repository should be renamed before standalone Git history and public
 release. The recommended internal repository name is
 `bos-operations-packages`.
 
-`iCode Operations Center` remains the customer-facing name of the iCode product
+`Education Center` remains the customer-facing name of the Education Center product
 generated from the repository. Other product manifests produce independent
 customer-facing distributions from the same platform and capability source.
 

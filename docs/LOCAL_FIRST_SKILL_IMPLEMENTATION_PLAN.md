@@ -45,7 +45,7 @@ The current machine already has:
 
 ```text
 ~/.agents/plugins/marketplace.json
-└── bos@bos-icode → ./plugins/bos
+└── bos@bos-education-center → ./plugins/bos
 
 ~/plugins/bos/
 ├── .codex-plugin/plugin.json
@@ -53,7 +53,7 @@ The current machine already has:
 └── tests/
 ```
 
-`codex plugin list` reports `bos@bos-icode` as installed and enabled. The plugin
+`codex plugin list` reports `bos@bos-education-center` as installed and enabled. The plugin
 has the identity `bos` and distributes reusable platform foundation skills.
 Application products separately own their named MCP resource-group connections.
 
@@ -66,7 +66,7 @@ The BOS Operations Center repository currently has:
 
 - a flat canonical `source/skills` directory;
 - generated Codex, Claude, Copilot, and Gemini skill copies;
-- a fixed iCode Operations Center package;
+- a fixed Education Center package;
 - credential scanning;
 - design and implementation documentation; and
 - no committed baseline or automated test suite beyond release scripts.
@@ -176,7 +176,7 @@ source-control baseline.
 
 - Every discovered `SKILL.md` appears exactly once in the inventory.
 - Duplicate skill names and divergent copies are reported.
-- The inventory identifies the current `bos@bos-icode` plugin as an adoptable
+- The inventory identifies the current `bos@bos-education-center` plugin as an adoptable
   local prototype.
 
 ## Stage 1: Implement the BOS foundation locally
@@ -201,7 +201,7 @@ local development target.
 
 - Plugin validation passes.
 - The remote MCP configuration tests pass.
-- `codex plugin list` resolves `bos@bos-icode` to `~/plugins/bos`.
+- `codex plugin list` resolves `bos@bos-education-center` to `~/plugins/bos`.
 - A second adoption run reports `managed-current` and makes no file changes.
 
 ### LOCAL-101 — Extract `bos:planning`
@@ -270,13 +270,13 @@ invariants.
 ### LOCAL-104 — Reinstall the local plugin
 
 **Outcome:** Codex loads the extracted foundation skills through the existing
-`bos-icode` marketplace.
+`bos-education-center` marketplace.
 
 **Work:**
 
 - Validate the completed local plugin.
 - Update the Codex cachebuster through the supported helper.
-- Reinstall `bos@bos-icode`.
+- Reinstall `bos@bos-education-center`.
 - Start a new Codex thread for discovery testing.
 
 **Acceptance:**
@@ -371,7 +371,7 @@ duplicated BOS content.
 - Compare old and new behavior using the activation matrix.
 - Transfer any missing Lead Director delta into specializations.
 - Disable or remove superseded mixed skills.
-- Remove independent global copies of skills now supplied by `bos@bos-icode`.
+- Remove independent global copies of skills now supplied by `bos@bos-education-center`.
 - Preserve a recoverable inventory and backup.
 
 **Acceptance:**
@@ -415,11 +415,11 @@ source/
 ├── platform/
 ├── capabilities/
 ├── verticals/
-│   └── icode/
+│   └── education-center/
 └── config/
 products/
 ├── bos/
-├── icode-operations-center/
+├── education-center/
 └── lead-director/
 ```
 
@@ -427,7 +427,7 @@ products/
 
 - Move foundation skills into `source/platform`.
 - Move reusable business procedures into `source/capabilities`.
-- Move iCode-specific workflows into `source/verticals/icode`.
+- Move Education Center-specific workflows into `source/verticals/education-center`.
 - Define versioned product manifests with explicit includes and supported
   clients.
 - Keep a compatibility resolver until generated equivalence is proven.
@@ -436,7 +436,7 @@ products/
 
 - Every skill resolves through exactly one canonical layer.
 - Product includes are unique and deterministic.
-- iCode excludes Lead Director-only content.
+- Education Center excludes Lead Director-only content.
 - BOS foundations exclude application-only content.
 
 ### PKG-302 — Implement product-aware deterministic builds
@@ -582,7 +582,7 @@ npm run install:plan -- --client codex --product bos
 **Required fixtures:**
 
 - empty home;
-- existing `bos-icode` marketplace with unrelated plugins;
+- existing `bos-education-center` marketplace with unrelated plugins;
 - existing correct unmanaged BOS plugin;
 - current managed BOS plugin;
 - stale managed BOS plugin;
@@ -631,7 +631,7 @@ Add validation for:
 3. Plan adoption or update.
 4. Apply through the package installer.
 5. Update the cachebuster.
-6. Reinstall `bos@bos-icode`.
+6. Reinstall `bos@bos-education-center`.
 7. Start a new Codex thread.
 8. Run BOS-only and Lead Director composition prompts.
 9. Exercise one read-only BOS MCP operation.
@@ -642,7 +642,7 @@ Add validation for:
 Run the complete flow against an isolated temporary home before another client
 machine:
 
-- create `bos-icode` marketplace;
+- create `bos-education-center` marketplace;
 - create `~/plugins/bos`;
 - install plugin;
 - verify skill discovery;
@@ -702,7 +702,7 @@ After Codex local testing passes:
 ```text
 LOCAL-000 baseline
     → LOCAL-001 inventory
-    → LOCAL-100 adopt existing bos@bos-icode
+    → LOCAL-100 adopt existing bos@bos-education-center
     → LOCAL-101..103 extract foundations
     → LOCAL-104 reinstall
     → LOCAL-200..203 Lead Director specialization tests
@@ -733,7 +733,7 @@ local state before expanding the remaining foundations.
 ## Definition of done
 
 - The local hierarchy matches the documented scope model.
-- The existing `bos@bos-icode` installation is safely adopted.
+- The existing `bos@bos-education-center` installation is safely adopted.
 - BOS foundations are reusable across applications.
 - Lead Director skills specialize BOS foundations repository-wide.
 - The package is the single canonical source for managed BOS plugin files.

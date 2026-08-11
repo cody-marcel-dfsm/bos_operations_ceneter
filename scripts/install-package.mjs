@@ -28,6 +28,10 @@ import {
 } from "./lib/package-model.mjs";
 
 const stateFileName = ".bos-package-state.json";
+const codexMarketplaceIdentity = Object.freeze({
+  name: "bos-education-center",
+  displayName: "BOS + Education Center"
+});
 const execFileAsync = promisify(execFile);
 const retiredBosBrokerPaths = new Set([
   "scripts/bos_mcp_broker.py",
@@ -127,14 +131,14 @@ function parseMcpPayload(text) {
 }
 
 const namedMcpRequiredTools = new Map([
-  ["leaddirector/icode-operations", [
+  ["leaddirector/education-center", [
     "bos_get_context",
-    "icode_get_email_thread",
-    "icode_list_enrollments",
-    "icode_search_calendar_events",
-    "icode_search_email_evidence",
-    "icode_search_leads",
-    "icode_search_students"
+    "education_center_get_email_thread",
+    "education_center_list_enrollments",
+    "education_center_search_calendar_events",
+    "education_center_search_email_evidence",
+    "education_center_search_leads",
+    "education_center_search_students"
   ]],
   ["leaddirector/video-ads", [
     "bos_get_context",
@@ -425,7 +429,7 @@ async function inspectDisabledPlugin(runCommand, product) {
   } catch {
     throw new Error(`Unable to inspect disabled plugin ${product.name}`);
   }
-  const selector = `${product.name}@bos-icode`;
+  const selector = `${product.name}@bos-education-center`;
   const line = commandOutput(result)
     .split(/\r?\n/)
     .find((candidate) => candidate.trimStart().startsWith(selector));
@@ -466,7 +470,7 @@ export async function reconcileDisabledCodexProducts(options = {}) {
       if (metadata.name === product.name) {
         if (await inspectDisabledPlugin(runCommand, product) === "installed") {
           await runCommand("codex", [
-            "plugin", "remove", `${product.name}@bos-icode`, "--json"
+            "plugin", "remove", `${product.name}@bos-education-center`, "--json"
           ]);
           if (await inspectDisabledPlugin(runCommand, product) !== "absent") {
             throw new Error(`Disabled plugin ${product.name} remains installed`);
@@ -515,16 +519,23 @@ export function validateCustomerSettings(settings) {
   }
   if (settings.schema_version !== "1") failures.push('schema_version must be "1"');
   const allowedTopLevel = new Set([
-    "schema_version", "organization_display_name", "location_display_name",
+    "schema_version", "brand_display_name", "organization_display_name", "location_display_name",
     "timezone", "mailboxes", "source_routes", "billing"
   ]);
   for (const field of Object.keys(settings)) {
     if (!allowedTopLevel.has(field)) failures.push(`unknown settings field: ${field}`);
   }
-  for (const field of ["organization_display_name", "location_display_name", "timezone"]) {
+  for (const field of [
+    "brand_display_name", "organization_display_name", "location_display_name", "timezone"
+  ]) {
     if (typeof settings[field] !== "string" || !settings[field].trim()) {
       failures.push(`${field} must be a non-empty string`);
     }
+  }
+  if (typeof settings.brand_display_name === "string" &&
+      (settings.brand_display_name.trim().length > 120 ||
+       /[\r\n\u0000-\u001f\u007f]/.test(settings.brand_display_name))) {
+    failures.push("brand_display_name must be a single-line display value of 120 characters or fewer");
   }
   if (typeof settings.timezone === "string" && settings.timezone) {
     try {
@@ -736,6 +747,12 @@ async function marketplaceStatus(options, paths, desiredManifest) {
     entries[0].source?.path !== expectedPath
   ) {
     return { state: "conflict", entry: entries[0] };
+  }
+  if (
+    marketplace.name !== codexMarketplaceIdentity.name ||
+    marketplace.interface?.displayName !== codexMarketplaceIdentity.displayName
+  ) {
+    return { state: "stale", entry: entries[0] };
   }
   return { state: "current", entry: entries[0] };
 }
@@ -1011,11 +1028,16 @@ async function mergeMarketplace(options, paths, desiredManifest) {
     marketplace = await readJson(paths.marketplace);
   } else {
     marketplace = {
-      name: "bos-icode",
-      interface: { displayName: "BOS + iCode" },
+      name: codexMarketplaceIdentity.name,
+      interface: { displayName: codexMarketplaceIdentity.displayName },
       plugins: []
     };
   }
+  marketplace.name = codexMarketplaceIdentity.name;
+  marketplace.interface = {
+    ...(marketplace.interface ?? {}),
+    displayName: codexMarketplaceIdentity.displayName
+  };
   const entry = marketplaceEntry({
     name: options.product,
     authentication: "ON_USE",
@@ -1140,7 +1162,7 @@ function printReport(report, asJson) {
     );
     if (report.settings.state === "initializing") {
       console.log(
-        "Continue with icode-customer-initialization: derive safe client values and ask the user once for unresolved settings."
+        "Continue with education-center-customer-initialization: derive safe client values and ask the user once for unresolved settings."
       );
     }
     for (const [key, values] of Object.entries(report.actions)) {

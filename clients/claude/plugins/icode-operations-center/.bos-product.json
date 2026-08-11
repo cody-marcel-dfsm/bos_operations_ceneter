@@ -1,9 +1,0 @@
-{
-  "schema_version": "1",
-  "name": "icode-operations-center",
-  "version": "0.4.20",
-  "client": "claude",
-  "application_name": "leaddirector",
-  "mcp_group_name": "icode-operations",
-  "credential_env_var": "ICODE_OPERATIONS_BOS_API_KEY"
-}

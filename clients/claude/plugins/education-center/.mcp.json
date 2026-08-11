@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "education-center": {
+      "type": "http",
+      "url": "https://dfsm.ai/mcp/apps/leaddirector/education-center",
+      "headers": {
+        "Authorization": "Bearer ${user_config.bos_api_key}"
+      }
+    }
+  }
+}

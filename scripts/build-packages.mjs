@@ -37,13 +37,13 @@ await rm(stage, { recursive: true, force: true });
 await mkdir(stagedClients, { recursive: true });
 
 const marketplace = {
-  name: "bos-icode",
-  interface: { displayName: "BOS + iCode" },
+  name: "bos-education-center",
+  interface: { displayName: "BOS + Education Center" },
   plugins: []
 };
 const claudeMarketplace = {
-  name: "bos-icode",
-  description: "Verified BOS and iCode operational plugins from Infinite State Machines LLC.",
+  name: "bos-education-center",
+  description: "Verified BOS and childhood education franchise operations plugins from Infinite State Machines LLC.",
   owner: { name: "Infinite State Machines LLC" },
   plugins: []
 };
@@ -123,14 +123,15 @@ for (const { product, skills } of resolved) {
     await copyProductSkills(skills, join(pluginRoot, "skills"));
     await copyRuntime(product, pluginRoot, root, "claude");
     await copySettingsTemplate(product, pluginRoot);
-    if (product.name === "icode-operations-center") {
+    if (product.name === "education-center") {
       await writeFile(
         join(pluginRoot, "README.md"),
         [
-          "# iCode Operations Center",
+          "# Education Center",
           "",
-          "This plugin supports legitimate school administration by authenticated adult",
-          "iCode staff. Students and minors are data subjects; they are never intended",
+          "This plugin is a childhood education franchise-in-a-box operating system for",
+          "authenticated adult education center staff. Students and minors are data subjects;",
+          "they are never intended",
           "users or operators of this plugin.",
           "",
           "## Data access and purpose",
@@ -150,7 +151,9 @@ for (const { product, skills } of resolved) {
           "## Authentication and security",
           "",
           "The remote HTTPS MCP uses this plugin's sensitive BOS bearer credential.",
-          "The packaged `icode-operations` MCP resource group selects its tools.",
+          "The packaged `education-center` MCP resource group selects its tools.",
+          "The customer-facing franchise or brand name is supplied during tenant setup",
+          "and applies only to customer-facing copy and output.",
           "Credentials are never included in this package,",
           "conversation content, logs, or tool arguments.",
           "",
@@ -254,14 +257,14 @@ await writeJson(
   claudeMarketplace
 );
 
-const iCodeCopilot = join(
+const educationCenterCopilot = join(
   stagedClients,
   "copilot",
   "products",
-  "icode-operations-center",
+  "education-center",
   "skills"
 );
-await cp(iCodeCopilot, join(stagedClients, "copilot", "skills"), {
+await cp(educationCenterCopilot, join(stagedClients, "copilot", "skills"), {
   recursive: true
 });
 await writeFile(

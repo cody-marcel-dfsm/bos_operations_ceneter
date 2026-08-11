@@ -1,9 +1,0 @@
-{
-  "mcpServers": {
-    "icode-operations": {
-      "type": "http",
-      "url": "https://dfsm.ai/mcp/apps/leaddirector/icode-operations",
-      "bearer_token_env_var": "ICODE_OPERATIONS_BOS_API_KEY"
-    }
-  }
-}

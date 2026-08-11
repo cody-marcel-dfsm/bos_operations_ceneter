@@ -3,7 +3,7 @@
 ## Objective
 
 Implement the architecture in [DESIGN.md](DESIGN.md) as a sequence of
-independently reviewable changes. Preserve the current iCode Operations Center
+independently reviewable changes. Preserve the current Education Center
 distributions throughout the migration.
 
 Use
@@ -41,8 +41,8 @@ product boundaries while the existing package continues to build.
 
 **Scope:**
 
-- Add `source/platform/`, `source/capabilities/`, and `source/verticals/icode/`.
-- Add `products/icode-operations-center/product.json`.
+- Add `source/platform/`, `source/capabilities/`, and `source/verticals/education-center/`.
+- Add `products/education-center/product.json`.
 - Keep `source/skills/` as the active canonical source until BOSPKG-006.
 - Document the temporary compatibility boundary in the product manifest.
 
@@ -51,7 +51,7 @@ product boundaries while the existing package continues to build.
 - The product manifest has a versioned schema identifier, product identifier,
   display name, included skills, and supported clients.
 - Every included skill identifier resolves to one existing canonical skill.
-- `npm run build` still generates the same ten iCode skills for all three
+- `npm run build` still generates the same ten Education Center skills for all three
   clients.
 - `npm run release:check` passes.
 
@@ -155,7 +155,7 @@ while sharing one selected skill set.
 ### BOSPKG-006 — Migrate canonical skills into architectural layers
 
 **Outcome:** `source/platform/`, `source/capabilities/`, and
-`source/verticals/icode/` become the only canonical skill sources.
+`source/verticals/education-center/` become the only canonical skill sources.
 
 **Initial mapping:**
 
@@ -163,10 +163,10 @@ while sharing one selected skill set.
 |---|---|
 | `bos-mcp-client` | `source/platform/bos-mcp-client` |
 | `bos-google-review-outreach` | `source/capabilities/review-outreach` |
-| `icode-class-operations` | `source/verticals/icode/class-operations` |
-| `icode-student-operations` | `source/verticals/icode/student-operations` |
-| `icode-instructor-operations` | `source/verticals/icode/instructor-operations` |
-| Remaining mixed iCode skills | `source/verticals/icode/` until extracted by BOSPKG-008 |
+| `education-center-class-operations` | `source/verticals/education-center/class-operations` |
+| `education-center-student-operations` | `source/verticals/education-center/student-operations` |
+| `education-center-instructor-operations` | `source/verticals/education-center/instructor-operations` |
+| Remaining mixed Education Center skills | `source/verticals/education-center/` until extracted by BOSPKG-008 |
 
 **Scope:**
 
@@ -180,7 +180,7 @@ while sharing one selected skill set.
 - No generated client file is treated as canonical input.
 - Every product include resolves through exactly one architectural layer.
 - Internal skill references and resource links pass validation.
-- The iCode package retains the intended ten workflow entry points.
+- The Education Center package retains the intended ten workflow entry points.
 - `npm run release:check` passes after the compatibility path is removed.
 
 **Dependencies:** BOSPKG-004, BOSPKG-005.
@@ -208,27 +208,27 @@ product manifests.
 
 ## Milestone 3: Reusable capability extraction
 
-### BOSPKG-008 — Split mixed iCode workflows into capabilities and adapters
+### BOSPKG-008 — Split mixed Education Center workflows into capabilities and adapters
 
-**Outcome:** Reusable operating procedures are independent from iCode-specific
+**Outcome:** Reusable operating procedures are independent from Education Center-specific
 terminology and policy.
 
 **Delivery slices:**
 
-1. `paid-attribution` plus an iCode attribution adapter.
-2. `daily-operations-planner` plus iCode planner modules.
-3. `communications` plus iCode parent policies and terminology.
+1. `paid-attribution` plus an Education Center attribution adapter.
+2. `daily-operations-planner` plus Education Center planner modules.
+3. `communications` plus Education Center parent policies and terminology.
 4. `invoice-reconciliation` plus Bright Horizons and Calimatic modules.
-5. `appointment-reconciliation` plus an iCode trial adapter.
+5. `appointment-reconciliation` plus an Education Center trial adapter.
 
 **Acceptance criteria for each slice:**
 
 - The generic capability contains no customer names, tenant identifiers,
   mailbox addresses, account identifiers, or location-specific policy.
-- The iCode adapter declares its required generic capability.
+- The Education Center adapter declares its required generic capability.
 - Provider and BOS capability requirements are explicit and machine-checkable.
-- The iCode product preserves the current workflow behavior and terminology.
-- Contract tests cover the generic capability and its iCode composition.
+- The Education Center product preserves the current workflow behavior and terminology.
+- Contract tests cover the generic capability and its Education Center composition.
 
 **Dependencies:** BOSPKG-006.
 
@@ -521,7 +521,7 @@ public release.
 **Scope:**
 
 - Rename the package/repository identity to `bos-operations-packages`.
-- Keep `iCode Operations Center` as the iCode product display name.
+- Keep `Education Center` as the Education Center product display name.
 - Update README, package metadata, contribution guidance, security
   documentation, and release instructions.
 - Confirm trademark and attribution text for each named product.
@@ -540,7 +540,7 @@ public release.
 
 Complete LOCAL-000 through LOCAL-104 from the local-first plan before
 BOSPKG-001. This establishes the source-control baseline, inventories existing
-skills, adopts the installed `bos@bos-icode` prototype, extracts the first BOS
+skills, adopts the installed `bos@bos-education-center` prototype, extracts the first BOS
 foundations, and verifies their discovery in a new Codex thread.
 
 Complete LOCAL-200 through LOCAL-203 next to prove Lead Director composition.

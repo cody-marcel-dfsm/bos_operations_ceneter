@@ -1,12 +1,12 @@
 ---
 name: bos-google-review-outreach
-description: Run and report iCode Google Business Profile review outreach through tenant-scoped BOS MCP workflows. Use for Calimatic class/camp cohorts, recent review campaigns, approval, three-step SendGrid outreach, optional Twilio SMS, Google review links, Drive HTML templates, campaign advancement, completion tracking, reviewer/rating enrichment, and dependency diagnosis.
+description: Run and report Education Center Google Business Profile review outreach through tenant-scoped BOS MCP workflows. Use for Calimatic class/camp cohorts, recent review campaigns, approval, three-step SendGrid outreach, optional Twilio SMS, Google review links, Drive HTML templates, campaign advancement, completion tracking, reviewer/rating enrichment, and dependency diagnosis.
 ---
 
 # BOS Google Review Outreach
 
 Use `bos-mcp-client` for context and live tool discovery. Use only authenticated
-BOS MCP operations. On the packaged iCode skill-group connection, omit
+BOS MCP operations. On the packaged Education Center skill-group connection, omit
 `org_id`, `app_code`, `installed_app_id`, and `delegated_role_id`; BOS derives
 them from the authenticated installation.
 Use `bos-visual-output` for campaign, cohort, rating, and completion reporting.
@@ -27,24 +27,24 @@ Cloud project questions, or provider authorization recovery, read and follow
 
 ## Run workflow
 
-1. Resolve BOS context and confirm `icode-automated-outreach` is enabled. When
+1. Resolve BOS context and confirm `education-center-automated-outreach` is enabled. When
    Google Business Profile is unconfigured, provide the standard BOS project
    information and initiate the secure BOS authorization flow defined by the
    onboarding reference.
 2. Resolve explicit inclusive dates for relative requests. An omitted
    `class_type` means every Calimatic class/camp type.
-3. Call `icode_review_outreach_run` with dates, optional class type, and a
+3. Call `education_center_review_outreach_run` with dates, optional class type, and a
    stable `client_run_key`. The server queries Calimatic, groups one responsible
    parent/family, creates a missing Lead Director lead, moves it through the
    governed enrollment path, pins the three-step Drive sequence, and creates or
    resumes one active family campaign.
 4. Present campaign counts and states. When approval is enabled, never advance
    `awaiting_approval` campaigns without user approval.
-5. Call `icode_review_campaign_approve` for an approved campaign.
-6. Call `icode_review_campaign_advance` only when the client judges the next
+5. Call `education_center_review_campaign_approve` for an approved campaign.
+6. Call `education_center_review_campaign_advance` only when the client judges the next
    communication due. Scheduling and timing intelligence remain client-side.
    Each call executes exactly one legal server-selected communication step.
-7. Call `icode_review_campaigns_list` for reporting and future scheduling.
+7. Call `education_center_review_campaigns_list` for reporting and future scheduling.
 
 ## Fixed campaign policy
 

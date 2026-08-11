@@ -169,7 +169,7 @@ Other applications follow the same pattern:
 bos:planning
 ├── lead-director-planning
 ├── subscription-director-planning
-└── icode-operations-planning
+└── education-center-planning
 ```
 
 The BOS skill owns the reusable invariant. The application skill owns the
@@ -298,7 +298,7 @@ Preserve product-specific display names through product manifests.
 
 Use the plugin namespace for package ownership and product manifests for skill
 selection. Install the `bos` plugin to supply general foundations. A runtime
-product such as iCode includes its configured BOS MCP connection and the
+product such as Education Center includes its configured BOS MCP connection and the
 shared `bos-mcp-client` lifecycle skill alongside its vertical skills. The
 Lead Director source repository contributes its local specializations and
 applies the installed BOS foundations.

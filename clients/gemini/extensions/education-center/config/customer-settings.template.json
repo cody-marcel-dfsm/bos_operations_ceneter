@@ -1,0 +1,26 @@
+{
+  "schema_version": "1",
+  "brand_display_name": "",
+  "organization_display_name": "",
+  "location_display_name": "",
+  "timezone": "",
+  "mailboxes": {
+    "care_com": "",
+    "parent_communications": ""
+  },
+  "source_routes": {
+    "calimatic": "bos",
+    "lead_director": "bos",
+    "calendar": "bos",
+    "parent_communications": "bos",
+    "care_com": "bos"
+  },
+  "billing": {
+    "center_name": "",
+    "address": "",
+    "billing_contact_name": "",
+    "phone_number": "",
+    "invoice_reference_prefix": "",
+    "bright_horizons_rate_per_child_day": null
+  }
+}

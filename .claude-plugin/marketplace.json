@@ -1,6 +1,6 @@
 {
-  "name": "bos-icode",
-  "description": "Verified BOS and iCode operational plugins from Infinite State Machines LLC.",
+  "name": "bos-education-center",
+  "description": "Verified BOS and childhood education franchise operations plugins from Infinite State Machines LLC.",
   "owner": {
     "name": "Infinite State Machines LLC"
   },
@@ -12,9 +12,9 @@
       "version": "0.4.20"
     },
     {
-      "name": "icode-operations-center",
-      "source": "./clients/claude/plugins/icode-operations-center",
-      "description": "Authorized school operations for adult iCode staff through the tenant-scoped BOS MCP.",
+      "name": "education-center",
+      "source": "./clients/claude/plugins/education-center",
+      "description": "A childhood education franchise-in-a-box operating system for authorized adult education center staff through the tenant-scoped BOS MCP.",
       "version": "0.4.20"
     }
   ]

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Education Center Paid Attribution Operations"
+  short_description: "Reconcile Gmail GCLIDs and Google Ads outcomes"
+  default_prompt: "Use $education-center-paid-attribution-operations to reconcile recent Education Center leads across BOS Gmail, Calendar, Lead Director, Calimatic, and Google Ads, then prepare a safe offline-conversion plan."

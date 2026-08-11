@@ -19,8 +19,8 @@ jobs:
       - name: Build and validate customer ZIP
         run: npm run release:check
         env:
-          ICODE_OPERATIONS_BOS_API_KEY: ${{ secrets.ICODE_OPERATIONS_BOS_API_KEY }}
-          ICODE_SMOKE_TIME_ZONE: ${{ vars.ICODE_SMOKE_TIME_ZONE }}
+          EDUCATION_CENTER_BOS_API_KEY: ${{ secrets.EDUCATION_CENTER_BOS_API_KEY }}
+          EDUCATION_CENTER_SMOKE_TIME_ZONE: ${{ vars.EDUCATION_CENTER_SMOKE_TIME_ZONE }}
       - name: Validate Claude marketplace and plugins
         run: |
           npx -y @anthropic-ai/claude-code@2.1.220 plugin validate . --strict

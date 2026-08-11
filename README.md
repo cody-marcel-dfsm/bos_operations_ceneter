@@ -3,8 +3,8 @@
 ## Install in Codex
 
 Requirements: Codex on macOS, Windows, or Linux and the active product's
-GCP-provisioned credential in its environment. iCode Operations Center uses
-`ICODE_OPERATIONS_BOS_API_KEY`.
+GCP-provisioned credential in its environment. Education Center uses
+`EDUCATION_CENTER_BOS_API_KEY`.
 
 1. Open a new Codex task.
 2. Paste this instruction into Codex:
@@ -22,7 +22,8 @@ BOS-hosted HTTPS flows.
 For customer-specific products, initialization first derives safe non-secret
 values from the active client, local timezone, connected-account metadata, and
 authenticated BOS context. It asks the user one consolidated question for
-unresolved or ambiguous values, then writes the completed settings through the
+unresolved or ambiguous values, including the customer-facing franchise or
+brand name stored as `brand_display_name`, then writes the completed settings through the
 installer's `--settings` flow. Distributable skills contain no customer-specific
 values.
 
@@ -61,11 +62,11 @@ capabilities, local validation evidence, and the remaining client smoke tests.
 
 ## Build
 
-Maintainers configure the process-scoped `ICODE_OPERATIONS_BOS_API_KEY` and set
-`ICODE_SMOKE_TIME_ZONE` to the customer overlay's IANA timezone before running
+Maintainers configure the process-scoped `EDUCATION_CENTER_BOS_API_KEY` and set
+`EDUCATION_CENTER_SMOKE_TIME_ZONE` to the customer overlay's IANA timezone before running
 a complete build. GitHub Actions uses the encrypted
-`ICODE_OPERATIONS_BOS_API_KEY` repository secret and the protected
-`ICODE_SMOKE_TIME_ZONE` repository variable.
+`EDUCATION_CENTER_BOS_API_KEY` repository secret and the protected
+`EDUCATION_CENTER_SMOKE_TIME_ZONE` repository variable.
 
 Run the complete credentialed build:
 
@@ -76,12 +77,12 @@ npm run build
 The complete build assembles every declared product/client distribution,
 creates deterministic product archives and the release manifest, and creates
 versioned and stable OS-neutral customer ZIPs under `dist/`. It then uses the
-iCode product's process-scoped credential for the live director-query smoke.
+Education Center product's process-scoped credential for the live director-query smoke.
 Video Ads is disabled and excluded from generated packages, customer archives,
 and release gates until its provider and server implementation are ready. A
-Video Ads or Arcads configuration state cannot affect iCode. The iCode query
+Video Ads or Arcads configuration state cannot affect Education Center. The Education Center query
 uses the protected
-`ICODE_SMOKE_TIME_ZONE` IANA timezone, derives one authenticated context, and
+`EDUCATION_CENTER_SMOKE_TIME_ZONE` IANA timezone, derives one authenticated context, and
 executes the bounded current-local-week enrollment query. When camp records
 exist, the smoke reports aggregate student and family-phone field presence as
 data-quality evidence without emitting personal values.
@@ -153,8 +154,8 @@ converging active products. Video Ads is listed as disabled in this release.
 ### Codex
 
 1. Download and extract the published customer ZIP.
-2. Configure `ICODE_OPERATIONS_BOS_API_KEY` through the approved environment.
-   The installer binds the iCode package-owned MCP URL to that product identity
+2. Configure `EDUCATION_CENTER_BOS_API_KEY` through the approved environment.
+   The installer binds the Education Center package-owned MCP URL to that product identity
    and reports the runtime current only after the active desktop bearer
    initializes the selected named route and discovers its scoped tools.
 3. Inspect the local installation:
@@ -167,20 +168,20 @@ converging active products. Video Ads is listed as disabled in this release.
 
    ```bash
    npm run install:plan -- --product bos
-   npm run install:plan -- --product icode-operations-center
+   npm run install:plan -- --product education-center
    ```
 
 5. Apply and verify:
 
    ```bash
    npm run install:apply -- --product bos
-   npm run install:apply -- --product icode-operations-center
+   npm run install:apply -- --product education-center
    npm run install:verify -- --product bos
-   npm run install:verify -- --product icode-operations-center
+   npm run install:verify -- --product education-center
    ```
 
-6. Run `codex plugin add bos@bos-icode`,
-   and `codex plugin add icode-operations-center@bos-icode`.
+6. Run `codex plugin add bos@bos-education-center`,
+   and `codex plugin add education-center@bos-education-center`.
 7. Start or restart Codex once so the host loads the installed plugin and MCP
    registration, then open a new task and perform a representative BOS read.
 
@@ -188,12 +189,12 @@ On macOS, launch ChatGPT/Codex with a process-scoped GCP-managed credential:
 
 ```bash
 npm run codex:launch:macos -- \
-  --binding ICODE_OPERATIONS_BOS_API_KEY=<gcp-secret-name> \
+  --binding EDUCATION_CENTER_BOS_API_KEY=<gcp-secret-name> \
   --replace
 ```
 
 The launcher reads the secret into memory and starts a new ChatGPT/Codex
-instance whose environment contains `ICODE_OPERATIONS_BOS_API_KEY`. It does
+instance whose environment contains `EDUCATION_CENTER_BOS_API_KEY`. It does
 not write the
 credential to disk or add it to the global GUI launch
 environment. `--replace`
@@ -231,8 +232,8 @@ Create an extension beside the packaged skills:
 
 ```bash
 npm run extension:create -- \
-  --product icode-operations-center \
-  --base-skill icode-class-operations \
+  --product education-center \
+  --base-skill education-center-class-operations \
   --site cherry-creek
 ```
 
@@ -270,12 +271,12 @@ Claude Code, and have him paste this one line into Claude:
 > Run `npm run install:claude` and guide me through the secure API-key prompt.
 
 That single installer command validates the bundled local Claude source, adds
-it to Claude, installs and enables `iCode Operations Center`, and confirms the
+it to Claude, installs and enables `Education Center`, and confirms the
 plugin is enabled. It does not use Anthropic's public plugin marketplace.
 Claude's internal CLI calls the bundled local catalog a marketplace; it is only
 the package-discovery manifest inside this source tree.
 
-The plugin declares one required sensitive field named **iCode Operations
+The plugin declares one required sensitive field named **Education Center Operations
 Center API key**. Claude prompts for that field when it enables the plugin,
 masks the entry, stores it in secure credential storage, and supplies it to the
 plugin's static HTTPS MCP connection. The wrapper never reads the key or places
@@ -288,16 +289,16 @@ new Claude session or run `/reload-plugins` after installation.
 1. Copy `clients/copilot/products/<product>/skills` to `.agents/skills` in the
    target repository.
 2. For an application runtime product, install its generated `.github/mcp.json`
-   and configure `COPILOT_MCP_<PRODUCT_CREDENTIAL_ENV_VAR>`. For iCode this is
-   `COPILOT_MCP_ICODE_OPERATIONS_BOS_API_KEY`. The BOS product is skills-only.
+   and configure `COPILOT_MCP_<PRODUCT_CREDENTIAL_ENV_VAR>`. For Education Center this is
+   `COPILOT_MCP_EDUCATION_CENTER_BOS_API_KEY`. The BOS product is skills-only.
 
 ### Gemini CLI
 
 1. Install the selected extension with
    `gemini extensions install clients/gemini/extensions/<product>`.
 2. For an application runtime product, complete the extension setting for the
-   product credential setting declared by that extension. For iCode this is
-   `ICODE_OPERATIONS_BOS_API_KEY`; then restart
+   product credential setting declared by that extension. For Education Center this is
+   `EDUCATION_CENTER_BOS_API_KEY`; then restart
    Gemini CLI. The BOS extension
    is skills-only and requires no MCP setting.
 

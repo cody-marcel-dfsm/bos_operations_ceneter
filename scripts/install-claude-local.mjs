@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const projectRoot = resolve(import.meta.dirname, "..");
-const defaultProduct = "icode-operations-center";
+const defaultProduct = "education-center";
 
 function defaultRun(command, args, { capture = false } = {}) {
   const result = spawnSync(command, args, {
