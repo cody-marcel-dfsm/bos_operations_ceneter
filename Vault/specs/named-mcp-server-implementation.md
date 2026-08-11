@@ -16,7 +16,7 @@ server-side installation authorization.
 The server must expose HTTPS Streamable HTTP MCP at:
 
 ```text
-POST /mcp/apps/leaddirector/icode-operations
+POST /mcp/apps/leaddirector/education-center
 POST /mcp/apps/leaddirector/video-ads
 ```
 
@@ -90,7 +90,7 @@ shape:
 McpResourceGroup(
     application_name="leaddirector",
     application_code="lead_director",
-    group_name="icode-operations",
+    group_name="education-center",
     allowed_plugin_ids=frozenset(...),
     allowed_tool_names=frozenset(...),
 )
@@ -114,12 +114,12 @@ tool contract is implemented.
 
 ## Required group definitions
 
-### Lead Director: iCode Operations
+### Lead Director: Education Center Operations
 
 Route:
 
 ```text
-/mcp/apps/leaddirector/icode-operations
+/mcp/apps/leaddirector/education-center
 ```
 
 Allowed plugins:
@@ -129,8 +129,8 @@ calimatic
 gmail
 google-calendar
 google-drive-context
-icode-automated-outreach
-icode-offline-ad-conversions
+education-center-automated-outreach
+education-center-offline-ad-conversions
 lead_director
 platform-feedback
 reputation
@@ -143,36 +143,36 @@ bos_get_authorization_status
 bos_get_context
 bos_resume_operation
 bos_submit_feedback
-icode_create_calendar_event
-icode_create_email_draft
-icode_create_lead
-icode_create_offline_ad_conversions
-icode_export_drive_text
-icode_get_email_thread
-icode_list_enrollments
-icode_review_campaign_advance
-icode_review_campaign_approve
-icode_review_campaigns_list
-icode_review_outreach_run
-icode_search_calendar_events
-icode_search_drive_files
-icode_search_email_evidence
-icode_search_leads
-icode_search_review_profiles
-icode_search_reviews
-icode_search_students
-icode_update_calendar_event
-icode_update_email_draft
-icode_update_lead
+education_center_create_calendar_event
+education_center_create_email_draft
+education_center_create_lead
+education_center_create_offline_ad_conversions
+education_center_export_drive_text
+education_center_get_email_thread
+education_center_list_enrollments
+education_center_review_campaign_advance
+education_center_review_campaign_approve
+education_center_review_campaigns_list
+education_center_review_outreach_run
+education_center_search_calendar_events
+education_center_search_drive_files
+education_center_search_email_evidence
+education_center_search_leads
+education_center_search_review_profiles
+education_center_search_reviews
+education_center_search_students
+education_center_update_calendar_event
+education_center_update_email_draft
+education_center_update_lead
 ```
 
 The three `bos_*` lifecycle operations are application-neutral controls. They
 authenticate with the named product connection's declared bearer and return
-only the context or operation state authorized for the named iCode connection.
+only the context or operation state authorized for the named Education Center connection.
 They never broaden the resource-group tool allowlist or accept client-supplied
 authority.
 
-The server implementation may add a tool only after the iCode product contract,
+The server implementation may add a tool only after the Education Center product contract,
 tool classification, tests, and marketplace disclosure are updated together.
 
 ### Lead Director: Video Ads
@@ -227,7 +227,7 @@ logical value is:
 {
   "metadata": {
     "fsm": {
-      "mcp_resource_groups": ["icode-operations"]
+      "mcp_resource_groups": ["education-center"]
     }
   }
 }
@@ -349,7 +349,7 @@ another tenant's identifiers.
 
 ### Discovery
 
-- iCode returns exactly the approved tool set supported by enabled plugins;
+- Education Center returns exactly the approved tool set supported by enabled plugins;
 - disabled plugins remove their tools;
 - enabled Video Ads returns its final approved non-empty set; disabled Video
   Ads remains unpublished and cannot affect another route;

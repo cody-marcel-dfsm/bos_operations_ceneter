@@ -39,15 +39,16 @@ test("canonical distributable skills contain no customer-specific settings", asy
   assert.deepEqual(failures, []);
 });
 
-test("iCode packages include customer-neutral settings defaults", async () => {
+test("Education Center packages include customer-neutral settings defaults", async () => {
   for (const path of [
-    `${root}/clients/codex/plugins/icode-operations-center/config/customer-settings.template.json`,
-    `${root}/clients/claude/plugins/icode-operations-center/config/customer-settings.template.json`,
-    `${root}/clients/copilot/products/icode-operations-center/config/customer-settings.template.json`,
-    `${root}/clients/gemini/extensions/icode-operations-center/config/customer-settings.template.json`
+    `${root}/clients/codex/plugins/education-center/config/customer-settings.template.json`,
+    `${root}/clients/claude/plugins/education-center/config/customer-settings.template.json`,
+    `${root}/clients/copilot/products/education-center/config/customer-settings.template.json`,
+    `${root}/clients/gemini/extensions/education-center/config/customer-settings.template.json`
   ]) {
     const settings = JSON.parse(await readFile(path, "utf8"));
     assert.equal(settings.schema_version, "1");
+    assert.equal(settings.brand_display_name, "");
     assert.equal(settings.organization_display_name, "");
     assert.equal(settings.location_display_name, "");
     assert.equal(settings.timezone, "");
@@ -91,11 +92,11 @@ test("generated runtime clients ship the canonical shared document cache helper"
     `${root}/source/platform/bos-mcp-client/scripts/document-cache.mjs`
   );
   for (const path of [
-    `${root}/clients/codex/plugins/icode-operations-center/skills/bos-mcp-client/scripts/document-cache.mjs`,
-    `${root}/clients/claude/plugins/icode-operations-center/skills/bos-mcp-client/scripts/document-cache.mjs`,
-    `${root}/clients/copilot/products/icode-operations-center/skills/bos-mcp-client/scripts/document-cache.mjs`,
+    `${root}/clients/codex/plugins/education-center/skills/bos-mcp-client/scripts/document-cache.mjs`,
+    `${root}/clients/claude/plugins/education-center/skills/bos-mcp-client/scripts/document-cache.mjs`,
+    `${root}/clients/copilot/products/education-center/skills/bos-mcp-client/scripts/document-cache.mjs`,
     `${root}/clients/copilot/skills/bos-mcp-client/scripts/document-cache.mjs`,
-    `${root}/clients/gemini/extensions/icode-operations-center/skills/bos-mcp-client/scripts/document-cache.mjs`
+    `${root}/clients/gemini/extensions/education-center/skills/bos-mcp-client/scripts/document-cache.mjs`
   ]) {
     assert.deepEqual(await readFile(path), canonical, path);
   }
@@ -103,21 +104,21 @@ test("generated runtime clients ship the canonical shared document cache helper"
 
 test("director planner repairs missing customer settings before resuming", async () => {
   const guidance = await readFile(
-    `${root}/source/verticals/icode/icode-director-daily-planner/SKILL.md`,
+    `${root}/source/verticals/education-center/education-center-director-daily-planner/SKILL.md`,
     "utf8"
   );
-  assert.match(guidance, /`icode-customer-initialization` when customer settings are missing/i);
-  assert.match(guidance, /run `icode-customer-initialization` immediately/i);
+  assert.match(guidance, /`education-center-customer-initialization` when customer settings are missing/i);
+  assert.match(guidance, /run `education-center-customer-initialization` immediately/i);
   assert.doesNotMatch(guidance, /Stop when the setting is absent or invalid/);
 });
 
 test("director daily planner is camp-first at day-level detail", async () => {
   const guidance = await readFile(
-    `${root}/source/verticals/icode/icode-director-daily-planner/SKILL.md`,
+    `${root}/source/verticals/education-center/education-center-director-daily-planner/SKILL.md`,
     "utf8"
   );
   const dailyContract = await readFile(
-    `${root}/source/verticals/icode/icode-director-daily-planner/references/planner-content.md`,
+    `${root}/source/verticals/education-center/education-center-director-daily-planner/references/planner-content.md`,
     "utf8"
   );
   assert.match(guidance, /selected day[\s\S]*daily planner/);
@@ -137,11 +138,11 @@ test("director daily planner is camp-first at day-level detail", async () => {
 
 test("director report visuals use a bounded mobile-first Mermaid fallback", async () => {
   const guidance = await readFile(
-    `${root}/source/verticals/icode/icode-director-daily-planner/SKILL.md`,
+    `${root}/source/verticals/education-center/education-center-director-daily-planner/SKILL.md`,
     "utf8"
   );
   const visualContract = await readFile(
-    `${root}/source/verticals/icode/icode-director-daily-planner/references/mobile-visual.md`,
+    `${root}/source/verticals/education-center/education-center-director-daily-planner/references/mobile-visual.md`,
     "utf8"
   );
 
@@ -159,11 +160,11 @@ test("director report visuals use a bounded mobile-first Mermaid fallback", asyn
 
 test("camp enrollment reports render the accepted weekly image and deduped family contacts", async () => {
   const classGuidance = await readFile(
-    `${root}/source/verticals/icode/icode-class-operations/SKILL.md`,
+    `${root}/source/verticals/education-center/education-center-class-operations/SKILL.md`,
     "utf8"
   );
   const directorGuidance = await readFile(
-    `${root}/source/verticals/icode/icode-director-daily-planner/SKILL.md`,
+    `${root}/source/verticals/education-center/education-center-director-daily-planner/SKILL.md`,
     "utf8"
   );
   const directorFrontmatter = directorGuidance.split("---")[1];
@@ -180,7 +181,7 @@ test("camp enrollment reports render the accepted weekly image and deduped famil
   assert.match(classGuidance, /PNG output[\s\S]*SVG otherwise/i);
   assert.match(classGuidance, /Never substitute Mermaid, a Markdown-only\s+roster/i);
   const renderer =
-    `${root}/source/verticals/icode/icode-class-operations/scripts/render_week_calendar.py`;
+    `${root}/source/verticals/education-center/education-center-class-operations/scripts/render_week_calendar.py`;
   await access(renderer);
 
   const temporary = await mkdtemp(join(tmpdir(), "camp-roster-calendar-"));
@@ -188,7 +189,7 @@ test("camp enrollment reports render the accepted weekly image and deduped famil
     const input = join(temporary, "week.json");
     const output = join(temporary, "week.svg");
     await writeFile(input, JSON.stringify({
-      title: "iCode Camps — Test Week",
+      title: "Education Center Camps — Test Week",
       bh_label: "Provisional BH",
       days: [
         {
@@ -215,7 +216,7 @@ test("camp enrollment reports render the accepted weekly image and deduped famil
   }
   assert.match(
     directorGuidance,
-    /request asks only for a class or camp roster[\s\S]*execute `icode-class-operations`/i
+    /request asks only for a class or camp roster[\s\S]*execute `education-center-class-operations`/i
   );
   assert.doesNotMatch(
     directorFrontmatter,
@@ -225,7 +226,7 @@ test("camp enrollment reports render the accepted weekly image and deduped famil
 
 test("director skill handles weekly summaries without scope questions", async () => {
   const guidance = await readFile(
-    `${root}/source/verticals/icode/icode-director-daily-planner/SKILL.md`,
+    `${root}/source/verticals/education-center/education-center-director-daily-planner/SKILL.md`,
     "utf8"
   );
   assert.match(guidance, /weekly summary, weekly director report, week-in-review/i);
@@ -234,14 +235,14 @@ test("director skill handles weekly summaries without scope questions", async ()
   assert.match(guidance, /“For my director” identifies\s+the report audience/i);
   assert.match(guidance, /Never ask the\s+user to choose a director, organization, source, key, or role/i);
   assert.match(guidance, /Require exactly one[\s\S]*authenticated user and role/i);
-  assert.match(guidance, /Never ask whether to use iCode operations, email, Calendar/i);
+  assert.match(guidance, /Never ask whether to use Education Center operations, email, Calendar/i);
   assert.match(guidance, /every camp[\s\S]*student roster by day/i);
   assert.match(guidance, /primary family phone/i);
   assert.match(guidance, /Paid enrollment[\s\S]*Care\.com[\s\S]*Bright Horizons/i);
   assert.match(guidance, /parent communication notes[\s\S]*this week's camps/i);
   assert.match(guidance, /upcoming Calendar events/i);
   const weeklyContract = await readFile(
-    `${root}/source/verticals/icode/icode-director-daily-planner/references/weekly-summary-content.md`,
+    `${root}/source/verticals/education-center/education-center-director-daily-planner/references/weekly-summary-content.md`,
     "utf8"
   );
   assert.match(weeklyContract, /## Camps this week/);
@@ -250,7 +251,7 @@ test("director skill handles weekly summaries without scope questions", async ()
   assert.match(weeklyContract, /## Upcoming events/);
   assert.match(weeklyContract, /confirmed but unassigned[\s\S]*Needs review/);
   const product = (await listProducts()).find(
-    ({ manifest }) => manifest.name === "icode-operations-center"
+    ({ manifest }) => manifest.name === "education-center"
   )?.manifest;
   assert(product);
   assert(product.default_prompts.includes("Give me a weekly summary for my director."));
@@ -258,12 +259,12 @@ test("director skill handles weekly summaries without scope questions", async ()
 
 test("camp and student evidence honor customer-owned Care.com source routing", async () => {
   for (const relativePath of [
-    "source/verticals/icode/icode-class-operations/SKILL.md",
-    "source/verticals/icode/icode-student-operations/SKILL.md"
+    "source/verticals/education-center/education-center-class-operations/SKILL.md",
+    "source/verticals/education-center/education-center-student-operations/SKILL.md"
   ]) {
     const guidance = await readFile(`${root}/${relativePath}`, "utf8");
     assert.match(guidance, /source_routes\.care_com/i);
-    assert.match(guidance, /`icode_search_email_evidence`/);
+    assert.match(guidance, /`education_center_search_email_evidence`/);
     assert.match(guidance, /email-account-routing/i);
     assert.match(guidance, /normal Gmail connector/i);
     assert.match(guidance, /bounded lookback of up to 180 days/i);
@@ -273,17 +274,51 @@ test("camp and student evidence honor customer-owned Care.com source routing", a
 
 test("service routing composes package defaults with preserved customer settings", async () => {
   const guidance = await readFile(
-    `${root}/source/verticals/icode/icode-service-routing/SKILL.md`,
+    `${root}/source/verticals/education-center/education-center-service-routing/SKILL.md`,
     "utf8"
   );
   assert.match(guidance, /customer-settings\.template\.json[\s\S]*recursively overlay/i);
   assert.match(guidance, /Package builds never rewrite the customer overlay/i);
   assert.match(guidance, /source_routes\.care_com/i);
   assert.match(guidance, /connected_gmail[\s\S]*email-account-routing/i);
+  assert.match(guidance, /brand_display_name/);
+  assert.match(guidance, /terminology\.brand_display_name/);
+  assert.match(guidance, /customer-facing[\s\S]*franchise or brand/i);
+  assert.match(guidance, /inert display text/i);
+});
+
+test("every Education Center skill applies tenant brand terminology only to display copy", async () => {
+  const product = (await listProducts()).find(
+    ({ manifest }) => manifest.name === "education-center"
+  )?.manifest;
+  assert(product);
+  const skills = await resolveProductSkills(product);
+  for (const skill of skills.filter(({ name }) => name.startsWith("education-center-"))) {
+    const guidance = await readFile(skill.skillFile, "utf8");
+    assert.match(guidance, /brand_display_name/, skill.name);
+    assert.match(guidance, /customer-facing/, skill.name);
+    assert.match(
+      guidance,
+      /brand_display_name[\s\S]*(?:Keep technical|Never interpolate)[\s\S]*identifiers/i,
+      skill.name
+    );
+  }
+});
+
+test("Education Center initialization asks the tenant for its display brand", async () => {
+  const guidance = await readFile(
+    `${root}/source/verticals/education-center/education-center-customer-initialization/SKILL.md`,
+    "utf8"
+  );
+  assert.match(
+    guidance,
+    /What customer-facing[\s\S]*franchise or brand name[\s\S]*drafts, reports, and[\s\S]*communications/i
+  );
+  assert.match(guidance, /store it as `brand_display_name`/i);
 });
 
 test("Bright Horizons report prompts deterministically generate the reimbursement workbook", async () => {
-  const skillRoot = `${root}/source/verticals/icode/icode-invoice-operations`;
+  const skillRoot = `${root}/source/verticals/education-center/education-center-invoice-operations`;
   const guidance = await readFile(`${skillRoot}/SKILL.md`, "utf8");
   const contract = await readFile(
     `${skillRoot}/references/bright-horizons-workbook.md`,
@@ -365,7 +400,7 @@ test("Bright Horizons builder validates the distributed template and reimburseme
     const { stdout } = await execFileAsync(
       process.execPath,
       [
-        `${root}/source/verticals/icode/icode-invoice-operations/scripts/build_bh_invoice.mjs`,
+        `${root}/source/verticals/education-center/education-center-invoice-operations/scripts/build_bh_invoice.mjs`,
         inputPath,
         "--validate-only"
       ],
@@ -385,10 +420,10 @@ test("Bright Horizons builder validates the distributed template and reimburseme
 
 test("client distributions include the Bright Horizons reimbursement template", async () => {
   for (const path of [
-    `${root}/clients/codex/plugins/icode-operations-center/skills/icode-invoice-operations/assets/bright-horizons-reimbursement-template.json`,
-    `${root}/clients/claude/plugins/icode-operations-center/skills/icode-invoice-operations/assets/bright-horizons-reimbursement-template.json`,
-    `${root}/clients/copilot/products/icode-operations-center/skills/icode-invoice-operations/assets/bright-horizons-reimbursement-template.json`,
-    `${root}/clients/gemini/extensions/icode-operations-center/skills/icode-invoice-operations/assets/bright-horizons-reimbursement-template.json`
+    `${root}/clients/codex/plugins/education-center/skills/education-center-invoice-operations/assets/bright-horizons-reimbursement-template.json`,
+    `${root}/clients/claude/plugins/education-center/skills/education-center-invoice-operations/assets/bright-horizons-reimbursement-template.json`,
+    `${root}/clients/copilot/products/education-center/skills/education-center-invoice-operations/assets/bright-horizons-reimbursement-template.json`,
+    `${root}/clients/gemini/extensions/education-center/skills/education-center-invoice-operations/assets/bright-horizons-reimbursement-template.json`
   ]) {
     await access(path);
   }
@@ -396,7 +431,7 @@ test("client distributions include the Bright Horizons reimbursement template", 
 
 test("parent communications owns the configured email-evidence route", async () => {
   const guidance = await readFile(
-    `${root}/source/verticals/icode/icode-parent-communications/SKILL.md`,
+    `${root}/source/verticals/education-center/education-center-parent-communications/SKILL.md`,
     "utf8"
   );
   assert.match(guidance, /source_routes\.parent_communications/i);
@@ -440,7 +475,7 @@ test("runtime manifests use explicit human-readable application and MCP group na
     ),
     {
       bos: [undefined, undefined],
-      "icode-operations-center": ["leaddirector", "icode-operations"],
+      "education-center": ["leaddirector", "education-center"],
       "video-ads": ["leaddirector", "video-ads"]
     }
   );
@@ -590,29 +625,29 @@ test("disabled products are absent while active runtime products remain scoped",
     await assert.rejects(
       access(`${root}/clients/${client}/plugins/video-ads`)
     );
-    const iCode = JSON.parse(
+    const educationCenter = JSON.parse(
       await readFile(
-        `${root}/clients/${client}/plugins/icode-operations-center/.mcp.json`,
+        `${root}/clients/${client}/plugins/education-center/.mcp.json`,
         "utf8"
       )
     );
-    assert.deepEqual(Object.keys(iCode.mcpServers), ["icode-operations"]);
-    assert.equal(iCode.mcpServers["icode-operations"].type, "http");
+    assert.deepEqual(Object.keys(educationCenter.mcpServers), ["education-center"]);
+    assert.equal(educationCenter.mcpServers["education-center"].type, "http");
     assert.equal(
-      iCode.mcpServers["icode-operations"].url,
-      "https://dfsm.ai/mcp/apps/leaddirector/icode-operations"
+      educationCenter.mcpServers["education-center"].url,
+      "https://dfsm.ai/mcp/apps/leaddirector/education-center"
     );
     if (client === "claude") {
       assert.equal(
-        iCode.mcpServers["icode-operations"].headers.Authorization,
+        educationCenter.mcpServers["education-center"].headers.Authorization,
         "Bearer ${user_config.bos_api_key}"
       );
     } else {
       assert.equal(
-        iCode.mcpServers["icode-operations"].bearer_token_env_var,
-        "ICODE_OPERATIONS_BOS_API_KEY"
+        educationCenter.mcpServers["education-center"].bearer_token_env_var,
+        "EDUCATION_CENTER_BOS_API_KEY"
       );
-      assert.equal("headers" in iCode.mcpServers["icode-operations"], false);
+      assert.equal("headers" in educationCenter.mcpServers["education-center"], false);
     }
   }
 });
@@ -631,32 +666,32 @@ test("disabled product inventory is generated for idempotent client pruning", as
   });
 });
 
-test("iCode packages use the Lead Director app resource-group route", async () => {
+test("Education Center packages use the Lead Director app resource-group route", async () => {
   for (const [client, path] of [
-    ["codex", `${root}/clients/codex/plugins/icode-operations-center/.mcp.json`],
-    ["claude", `${root}/clients/claude/plugins/icode-operations-center/.mcp.json`]
+    ["codex", `${root}/clients/codex/plugins/education-center/.mcp.json`],
+    ["claude", `${root}/clients/claude/plugins/education-center/.mcp.json`]
   ]) {
     const config = JSON.parse(await readFile(path, "utf8"));
-    assert.equal(config.mcpServers["icode-operations"].type, "http", client);
+    assert.equal(config.mcpServers["education-center"].type, "http", client);
     assert.equal(
-      config.mcpServers["icode-operations"].url,
-      "https://dfsm.ai/mcp/apps/leaddirector/icode-operations",
+      config.mcpServers["education-center"].url,
+      "https://dfsm.ai/mcp/apps/leaddirector/education-center",
       client
     );
     if (client === "claude") {
-      assert.equal("bearer_token_env_var" in config.mcpServers["icode-operations"], false, client);
+      assert.equal("bearer_token_env_var" in config.mcpServers["education-center"], false, client);
       assert.equal(
-        config.mcpServers["icode-operations"].headers.Authorization,
+        config.mcpServers["education-center"].headers.Authorization,
         "Bearer ${user_config.bos_api_key}",
         client
       );
     } else {
       assert.equal(
-        config.mcpServers["icode-operations"].bearer_token_env_var,
-        "ICODE_OPERATIONS_BOS_API_KEY",
+        config.mcpServers["education-center"].bearer_token_env_var,
+        "EDUCATION_CENTER_BOS_API_KEY",
         client
       );
-      assert.equal("headers" in config.mcpServers["icode-operations"], false, client);
+      assert.equal("headers" in config.mcpServers["education-center"], false, client);
     }
   }
 });
@@ -668,14 +703,14 @@ test("Claude distribution is a marketplace of self-contained plugins", async () 
       "utf8"
     )
   );
-  assert.equal(marketplace.name, "bos-icode");
+  assert.equal(marketplace.name, "bos-education-center");
   assert.deepEqual(
     marketplace.plugins.map(({ name, source }) => ({ name, source })),
     [
       { name: "bos", source: "./plugins/bos" },
       {
-        name: "icode-operations-center",
-        source: "./plugins/icode-operations-center"
+        name: "education-center",
+        source: "./plugins/education-center"
       },
     ]
   );
@@ -684,19 +719,19 @@ test("Claude distribution is a marketplace of self-contained plugins", async () 
     /ENOENT/
   );
   await assert.rejects(access(`${root}/clients/claude/.mcp.json`), /ENOENT/);
-  const iCodeReadme = await readFile(
-    `${root}/clients/claude/plugins/icode-operations-center/README.md`,
+  const educationCenterReadme = await readFile(
+    `${root}/clients/claude/plugins/education-center/README.md`,
     "utf8"
   );
-  assert.match(iCodeReadme, /authenticated adult/);
-  assert.match(iCodeReadme, /Students and minors are data subjects/);
-  assert.match(iCodeReadme, /minimum-necessary disclosure/);
-  assert.match(iCodeReadme, /https:\/\/dfsm\.ai\/apps\/bos\/privacy\.html/);
+  assert.match(educationCenterReadme, /authenticated adult/);
+  assert.match(educationCenterReadme, /Students and minors are data subjects/);
+  assert.match(educationCenterReadme, /minimum-necessary disclosure/);
+  assert.match(educationCenterReadme, /https:\/\/dfsm\.ai\/apps\/bos\/privacy\.html/);
 
   const repositoryMarketplace = JSON.parse(
     await readFile(`${root}/.claude-plugin/marketplace.json`, "utf8")
   );
-  assert.equal(repositoryMarketplace.name, "bos-icode");
+  assert.equal(repositoryMarketplace.name, "bos-education-center");
   assert.deepEqual(
     repositoryMarketplace.plugins.map(({ name, source }) => ({ name, source })),
     marketplace.plugins.map(({ name }) => ({
@@ -705,38 +740,38 @@ test("Claude distribution is a marketplace of self-contained plugins", async () 
     }))
   );
 
-  const iCodeManifest = JSON.parse(
+  const educationCenterManifest = JSON.parse(
     await readFile(
-      `${root}/clients/claude/plugins/icode-operations-center/.claude-plugin/plugin.json`,
+      `${root}/clients/claude/plugins/education-center/.claude-plugin/plugin.json`,
       "utf8"
     )
   );
-  assert.equal(iCodeManifest.mcpServers, "./.mcp.json");
-  assert.deepEqual(iCodeManifest.userConfig, {
+  assert.equal(educationCenterManifest.mcpServers, "./.mcp.json");
+  assert.deepEqual(educationCenterManifest.userConfig, {
     bos_api_key: {
       type: "string",
-      title: "iCode Operations Center API key",
+      title: "Education Center API key",
       description: "Paste the organization-scoped API key supplied by your BOS administrator.",
       sensitive: true,
       required: true
     }
   });
 
-  const iCodeRuntime = JSON.parse(
+  const educationCenterRuntime = JSON.parse(
     await readFile(
-      `${root}/clients/claude/plugins/icode-operations-center/.mcp.json`,
+      `${root}/clients/claude/plugins/education-center/.mcp.json`,
       "utf8"
     )
   );
   assert.equal(
-    iCodeRuntime.mcpServers["icode-operations"].url,
-    "https://dfsm.ai/mcp/apps/leaddirector/icode-operations"
+    educationCenterRuntime.mcpServers["education-center"].url,
+    "https://dfsm.ai/mcp/apps/leaddirector/education-center"
   );
   assert.equal(
-    iCodeRuntime.mcpServers["icode-operations"].headers.Authorization,
+    educationCenterRuntime.mcpServers["education-center"].headers.Authorization,
     "Bearer ${user_config.bos_api_key}"
   );
-  assert.equal("bearer_token_env_var" in iCodeRuntime.mcpServers["icode-operations"], false);
+  assert.equal("bearer_token_env_var" in educationCenterRuntime.mcpServers["education-center"], false);
 
   await assert.rejects(access(`${root}/clients/claude/plugins/video-ads`));
 });
@@ -798,11 +833,11 @@ test("Gemini extensions bundle canonical skills and authenticated Streamable HTT
 
 test("feedback contract keeps app resource-group selection static and retry identity stable", async () => {
   const runtime = JSON.parse(await readFile(
-    `${root}/clients/codex/plugins/icode-operations-center/.mcp.json`,
+    `${root}/clients/codex/plugins/education-center/.mcp.json`,
     "utf8"
   ));
-  const url = runtime.mcpServers["icode-operations"].url;
-  assert.equal(url, "https://dfsm.ai/mcp/apps/leaddirector/icode-operations");
+  const url = runtime.mcpServers["education-center"].url;
+  assert.equal(url, "https://dfsm.ai/mcp/apps/leaddirector/education-center");
   assert.doesNotMatch(JSON.stringify(runtime), /BOS_INSTALLED_APP_ID/);
 
   const skill = await readFile(
@@ -824,17 +859,17 @@ test("feedback contract keeps app resource-group selection static and retry iden
   assert.doesNotMatch(contract, /"org_id"|"app_code"|"installed_app_id"/);
 });
 
-test("iCode composition contains only approved shared runtime foundations", async () => {
+test("Education Center composition contains only approved shared runtime foundations", async () => {
   const products = await listProducts();
   const byName = Object.fromEntries(
     products.map(({ manifest }) => [manifest.name, manifest])
   );
-  const iCode = await resolveProductSkills(byName["icode-operations-center"]);
-  assert(iCode.some((skill) => skill.name === "icode-class-operations"));
-  assert(iCode.some((skill) => skill.name === "icode-customer-initialization"));
+  const educationCenter = await resolveProductSkills(byName["education-center"]);
+  assert(educationCenter.some((skill) => skill.name === "education-center-class-operations"));
+  assert(educationCenter.some((skill) => skill.name === "education-center-customer-initialization"));
   const bos = await resolveProductSkills(byName.bos);
   const bosNames = new Set(bos.map((skill) => skill.name));
-  const shared = iCode
+  const shared = educationCenter
     .filter((skill) => bosNames.has(skill.name))
     .map((skill) => skill.name);
   assert.deepEqual(shared, ["manage-customer-extension"]);

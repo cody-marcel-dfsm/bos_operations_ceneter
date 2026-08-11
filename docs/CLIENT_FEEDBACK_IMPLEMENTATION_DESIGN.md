@@ -27,7 +27,7 @@ Examples:
 - “Submit feedback that the camp report needs a Care.com total.”
 - “Report that BOS authentication keeps losing its context.”
 - “Send feedback about the tool that just failed.”
-- “Record this as feedback for the iCode package.”
+- “Record this as feedback for the Education Center package.”
 
 Do not ask for a second confirmation. Resolve context, sanitize the payload,
 submit it, and show the receipt.
@@ -105,7 +105,7 @@ current product validator prevents non-BOS products from including platform
 skills, so implementation must choose and test one composition mechanism:
 
 1. Add reusable product dependencies to the package model and make
-   `icode-operations-center` depend on the BOS foundation product; or
+   `education-center` depend on the BOS foundation product; or
 2. Allowlist `platform/submit-feedback` as a shared platform include and add it
    explicitly to each intended product.
 

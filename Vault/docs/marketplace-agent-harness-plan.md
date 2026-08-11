@@ -15,10 +15,10 @@ metadata, and a remote MCP connection. A package connects directly to a fixed,
 human-readable application and skill-group route. Installing a marketplace
 package never selects, creates, or provisions a BOS application.
 
-The confirmed iCode Operations route is:
+The confirmed Education Center Operations route is:
 
 ```text
-https://dfsm.ai/mcp/apps/leaddirector/icode-operations
+https://dfsm.ai/mcp/apps/leaddirector/education-center
 ```
 
 The work includes correcting the current ID-based Vault language, runtime
@@ -37,7 +37,7 @@ The remote MCP route has two stable, human-readable path segments:
 For the confirmed route:
 
 - `leaddirector` names the BOS application.
-- `icode-operations` names the MCP and client skill grouping exposed through
+- `education-center` names the MCP and client skill grouping exposed through
   Lead Director.
 - Both names are declared by the product and application owners at build time.
 - Neither segment is an identifier, database key, installation ID, tenant
@@ -45,7 +45,7 @@ For the confirmed route:
 
 One BOS application may expose multiple named MCP groups. Multiple client skill
 packages may therefore map to the same application while connecting to
-different group routes. iCode Operations and the video skill package both map
+different group routes. Education Center Operations and the video skill package both map
 to Lead Director. Future BOS applications may expose their own named groups
 when those applications are implemented.
 
@@ -112,7 +112,7 @@ installed-application routing model with explicit human-readable route fields:
 ```json
 {
   "application_name": "leaddirector",
-  "mcp_group_name": "icode-operations"
+  "mcp_group_name": "education-center"
 }
 ```
 
@@ -145,10 +145,10 @@ Each generated plugin contains:
 - the product-declared credential binding used only by that BOS plugin; and
 - marketplace metadata, documentation, and default prompts.
 
-The iCode plugin connects to:
+The Education Center plugin connects to:
 
 ```text
-https://dfsm.ai/mcp/apps/leaddirector/icode-operations
+https://dfsm.ai/mcp/apps/leaddirector/education-center
 ```
 
 Claude enablement collects only the BOS API key. The package never requests an
@@ -179,9 +179,9 @@ native remote MCP registration.
 The generated registration uses:
 
 ```toml
-[mcp_servers.icode-operations]
-url = "https://dfsm.ai/mcp/apps/leaddirector/icode-operations"
-bearer_token_env_var = "ICODE_OPERATIONS_BOS_API_KEY"
+[mcp_servers.education-center]
+url = "https://dfsm.ai/mcp/apps/leaddirector/education-center"
+bearer_token_env_var = "EDUCATION_CENTER_BOS_API_KEY"
 ```
 
 Codex binds the bearer credential from the active host process or another
@@ -232,15 +232,15 @@ The generated `gemini-extension.json` contains:
 - the generated skills directory; and
 - optional context or commands derived from canonical product sources.
 
-The iCode extension uses:
+The Education Center extension uses:
 
 ```json
 {
   "mcpServers": {
-    "icode-operations": {
-      "httpUrl": "https://dfsm.ai/mcp/apps/leaddirector/icode-operations",
+    "education-center": {
+      "httpUrl": "https://dfsm.ai/mcp/apps/leaddirector/education-center",
       "headers": {
-        "Authorization": "Bearer ${ICODE_OPERATIONS_BOS_API_KEY}"
+        "Authorization": "Bearer ${EDUCATION_CENTER_BOS_API_KEY}"
       }
     }
   }
@@ -295,7 +295,7 @@ entry gate is satisfied.
 
 Complete these decisions before implementation branches diverge:
 
-1. Confirm `leaddirector/icode-operations` as the iCode mapping.
+1. Confirm `leaddirector/education-center` as the Education Center mapping.
 2. Record `leaddirector/video-ads` as the current video mapping.
 3. Record the BOS platform product as skills-only with no MCP mapping.
 4. Approve the manifest fields `application_name` and `mcp_group_name`.
@@ -331,7 +331,7 @@ Can run with: Tracks A, C, D, and E
 
 Deliverables:
 
-- live `/mcp/apps/leaddirector/icode-operations` route;
+- live `/mcp/apps/leaddirector/education-center` route;
 - approved and live Lead Director video-group route;
 - group-specific server-advertised tool manifests;
 - API-key authentication and authorization enforcement;
@@ -539,7 +539,7 @@ not block one another.
 
 ### Phase 0: Confirm the route inventory
 
-1. Record `leaddirector/icode-operations` as the confirmed iCode route.
+1. Record `leaddirector/education-center` as the confirmed Education Center route.
 2. Inventory every product and the BOS application that owns its MCP tools.
 3. Record `video-ads` as the current human-readable MCP group name for the
    video skills.
@@ -629,8 +629,8 @@ Exit gate: a clean installation needs no application or MCP-group input.
 The owning Lead Director repository must certify the named routes against the
 actual server before marketplace publication.
 
-1. Verify the confirmed iCode route resolves over HTTPS Streamable HTTP.
-2. Verify its advertised tool manifest matches the iCode Operations workflows.
+1. Verify the confirmed Education Center route resolves over HTTPS Streamable HTTP.
+2. Verify its advertised tool manifest matches the Education Center Operations workflows.
 3. Verify the named video route after its group name is approved.
 4. Verify authentication, tenant isolation, role and plugin enforcement,
    provider authorization recovery, PO/GO mutation boundaries, audit, and
@@ -810,8 +810,8 @@ The plan is complete when:
 
 1. every active source and generated artifact uses the human-readable
    application/group route contract;
-2. iCode Operations connects to
-   `/mcp/apps/leaddirector/icode-operations` in every harness;
+2. Education Center Operations connects to
+   `/mcp/apps/leaddirector/education-center` in every harness;
 3. every additional published group has an owner-approved stable route;
 4. no client requests an application ID, installed-app ID, application
    selection, or provisioning;

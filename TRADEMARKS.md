@@ -2,7 +2,7 @@
 
 The Apache License 2.0 grants copyright and patent permissions. It does not
 grant permission to use the names, logos, service marks, or trademarks of
-Infinite State Machines LLC, BOS, Lead Director, iCode Operations Center, or
+Infinite State Machines LLC, BOS, Lead Director, Education Center, or
 their licensors to imply endorsement, sponsorship, or an official distribution.
 
 Forks and modified distributions must use branding that clearly distinguishes

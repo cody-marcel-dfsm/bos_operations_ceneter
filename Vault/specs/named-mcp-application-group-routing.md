@@ -25,7 +25,7 @@ Current product mappings are:
 
 | Product | Application name | Skill-group name | Route |
 | --- | --- | --- | --- |
-| iCode Operations Center | `leaddirector` | `icode-operations` | `/mcp/apps/leaddirector/icode-operations` |
+| Education Center | `leaddirector` | `education-center` | `/mcp/apps/leaddirector/education-center` |
 | Video Ads | `leaddirector` | `video-ads` | `/mcp/apps/leaddirector/video-ads` |
 | BOS | — | — | Skills-only; no MCP route |
 
@@ -39,7 +39,7 @@ Runtime product manifests declare:
 ```json
 {
   "application_name": "leaddirector",
-  "mcp_group_name": "icode-operations"
+  "mcp_group_name": "education-center"
 }
 ```
 

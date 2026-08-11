@@ -1,6 +1,6 @@
 ---
 name: planning
-description: Plan application-neutral Business Operating System changes, migrations, integrations, validation, and rollout work. Use for BOS platform architecture, shared runtime, tenant scope, plugin infrastructure, MCP capability, authentication-context, PO/GO boundary, or cross-application planning that must remain reusable across Lead Director, Subscription Director, iCode, and future BOS apps.
+description: Plan application-neutral Business Operating System changes, migrations, integrations, validation, and rollout work. Use for BOS platform architecture, shared runtime, tenant scope, plugin infrastructure, MCP capability, authentication-context, PO/GO boundary, or cross-application planning that must remain reusable across Lead Director, Subscription Director, Education Center, and future BOS apps.
 ---
 
 # BOS Planning

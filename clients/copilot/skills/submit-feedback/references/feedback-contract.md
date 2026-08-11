@@ -56,14 +56,14 @@ identifiers, or legacy instruction bodies.
   "severity": "medium",
   "target": {
     "type": "package",
-    "product_name": "icode-operations-center",
+    "product_name": "education-center",
     "product_version": "0.4.8"
   },
   "related_targets": [
     {
       "type": "skill",
-      "product_name": "icode-operations-center",
-      "skill_name": "icode-class-operations"
+      "product_name": "education-center",
+      "skill_name": "education-center-class-operations"
     }
   ],
   "title": "Include session-derived feedback",

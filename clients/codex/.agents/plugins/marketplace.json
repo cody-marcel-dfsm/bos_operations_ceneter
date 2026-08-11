@@ -1,7 +1,7 @@
 {
-  "name": "bos-icode",
+  "name": "bos-education-center",
   "interface": {
-    "displayName": "BOS + iCode"
+    "displayName": "BOS + Education Center"
   },
   "plugins": [
     {
@@ -17,10 +17,10 @@
       "category": "Productivity"
     },
     {
-      "name": "icode-operations-center",
+      "name": "education-center",
       "source": {
         "source": "local",
-        "path": "./plugins/icode-operations-center"
+        "path": "./plugins/education-center"
       },
       "policy": {
         "installation": "AVAILABLE",

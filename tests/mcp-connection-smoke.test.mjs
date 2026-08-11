@@ -75,7 +75,7 @@ test("Video Ads smoke proves the complete tool contract and exact scope", async 
 test("Video Ads smoke rejects a context-only or unrelated catalog", async () => {
   for (const tools of [
     ["bos_get_context"],
-    ["bos_get_context", "icode_list_enrollments"]
+    ["bos_get_context", "education_center_list_enrollments"]
   ]) {
     await assert.rejects(
       runMcpConnectionSmoke({

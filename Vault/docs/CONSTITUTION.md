@@ -37,3 +37,8 @@
     objects. Each read proves current source authority. Incremental refreshes
     advance their watermark only after complete atomic publication of changes
     and tombstones.
+14. **Generic education product identity.** `Education Center` is the reusable
+    childhood-education franchise product and vertical identity. Each tenant
+    supplies its customer-facing franchise or brand name through the
+    customer-owned settings initialization workflow. Skills apply that value to
+    display copy only; technical identifiers remain package-owned.

@@ -66,7 +66,7 @@ request.
    the authenticated principal and installed-app group enablement.
 3. Fail closed when context is absent or ambiguous.
 4. Use the triggered product skill to choose its matching named connection.
-   For example, iCode operations use `icode-operations`; Video Ads operations
+   For example, Education Center operations use `education-center`; Video Ads operations
    use `video-ads`. The endpoint selects a tool group; it never selects an
    organization or another bearer credential.
 5. Authenticate the selected connection with exactly one package-declared

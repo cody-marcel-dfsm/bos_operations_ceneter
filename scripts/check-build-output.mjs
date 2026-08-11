@@ -77,7 +77,7 @@ assert.match(
 assert.match(listing.stdout, /bos-operations-center\/package\.json/);
 assert.match(
   listing.stdout,
-  /clients\/codex\/plugins\/icode-operations-center\/config\/customer-settings\.template\.json/
+  /clients\/codex\/plugins\/education-center\/config\/customer-settings\.template\.json/
 );
 assert.doesNotMatch(listing.stdout, /clients\/claude\/plugins\/bos\/\.mcp\.json/);
 assert.match(
@@ -114,8 +114,8 @@ try {
   const marketplaceRoot = join(testHome, ".agents", "plugins");
   await mkdir(marketplaceRoot, { recursive: true });
   await writeFile(join(marketplaceRoot, "marketplace.json"), JSON.stringify({
-    name: "bos-icode",
-    interface: { displayName: "BOS + iCode" },
+    name: "bos-education-center",
+    interface: { displayName: "BOS + Education Center" },
     plugins: [{
       name: "video-ads",
       source: { source: "local", path: "./plugins/video-ads" },
@@ -140,12 +140,12 @@ try {
     }
     if (args[0] === "plugin" && args[1] === "list") return {
       stdout: pluginInstalled
-        ? "video-ads@bos-icode installed, enabled 0.1.3 /tmp/video-ads"
-        : "video-ads@bos-icode not installed /tmp/video-ads"
+        ? "video-ads@bos-education-center installed, enabled 0.1.3 /tmp/video-ads"
+        : "video-ads@bos-education-center not installed /tmp/video-ads"
     };
     if (args[0] === "plugin" && args[1] === "remove") {
       pluginInstalled = false;
-      return { stdout: JSON.stringify({ pluginId: "video-ads@bos-icode" }) };
+      return { stdout: JSON.stringify({ pluginId: "video-ads@bos-education-center" }) };
     }
     return { stdout: "" };
   };

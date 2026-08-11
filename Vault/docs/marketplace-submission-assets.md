@@ -7,16 +7,16 @@ Last audited: 2026-08-09
 ## Purpose and scope
 
 This document is the durable inventory and production checklist for public
-marketplace assets for the BOS, iCode Operations Center, and Video Ads client
+marketplace assets for the BOS, Education Center, and Video Ads client
 products. It covers Claude, OpenAI ChatGPT and Codex, Gemini CLI, and GitHub
 Copilot.
 
 Marketplace packages are client-side skill groupings connected to fixed,
 human-readable BOS MCP routes. Marketplace publication does not select or
-provision a BOS application. For example, iCode Operations Center connects to:
+provision a BOS application. For example, Education Center connects to:
 
 ```text
-https://dfsm.ai/mcp/apps/leaddirector/icode-operations
+https://dfsm.ai/mcp/apps/leaddirector/education-center
 ```
 
 This inventory does not approve a route, runtime, tool catalog, release, or
@@ -38,20 +38,20 @@ approval come from Tracks F through J.
 
 ## Canonical product identity
 
-| Field | BOS | iCode Operations Center | Video Ads | Status | Canonical source |
+| Field | BOS | Education Center | Video Ads | Status | Canonical source |
 | --- | --- | --- | --- | --- | --- |
-| Stable package name | `bos` | `icode-operations-center` | `video-ads` | Ready | `products/*/product.json` |
-| Display name | BOS | iCode Operations Center | Video Ads | Ready | `products/*/product.json` |
+| Stable package name | `bos` | `education-center` | `video-ads` | Ready | `products/*/product.json` |
+| Display name | BOS | Education Center | Video Ads | Ready | `products/*/product.json` |
 | Publisher | Infinite State Machines LLC | Infinite State Machines LLC | Infinite State Machines LLC | Ready | `products/*/product.json` |
 | Category | Productivity | Productivity | Marketing | Ready | `products/*/product.json` |
 | Current version | 0.4.13 | 0.4.13 | 0.1.1 | Ready | `products/*/product.json` |
 | Application name | `bos` | `leaddirector` | `leaddirector` | Ready for packaging; runtime certification pending | `products/*/product.json` |
-| MCP group name | `bos` | `icode-operations` | `video-ads` | Ready for packaging; runtime certification pending | `products/*/product.json` |
+| MCP group name | `bos` | `education-center` | `video-ads` | Ready for packaging; runtime certification pending | `products/*/product.json` |
 | Short description | Present | Present | Present | Ready as source copy | `products/*/product.json` |
 | Long description | Repeats short copy | Repeats short copy | Repeats short copy | Missing | Product/release operations |
 | Starter prompts | Three | Three | Three | Ready as source copy | `products/*/product.json` |
 | Keyword set | Minimal Claude keywords | Minimal Claude keywords | Minimal Claude keywords | Partial | Generated Claude manifests |
-| Audience and eligibility | Unspecified | Adult authorized iCode staff is stated | Unspecified | Partial | Product owner |
+| Audience and eligibility | Unspecified | Adult authorized Education Center staff is stated | Unspecified | Partial | Product owner |
 | Geographic availability | Unspecified | Unspecified | Unspecified | Missing | Business owner and counsel |
 | Support lifecycle | Latest release only in `SECURITY.md` | Same | Same | Partial | Product/release operations |
 
@@ -133,7 +133,7 @@ notifications, and unrelated account details.
 
 The owning BOS application repository exports one catalog for each named route:
 
-- `/mcp/apps/leaddirector/icode-operations`; and
+- `/mcp/apps/leaddirector/education-center`; and
 - `/mcp/apps/leaddirector/video-ads`.
 
 The BOS platform package is skills-only and has no MCP catalog.
@@ -199,7 +199,7 @@ OpenAI accepts skills-only, MCP-only, or combined skills-and-MCP plugins. BOS
 products are combined submissions when their skills and named MCP route are
 published together.
 
-Create a separate submission record for BOS, iCode Operations Center, and Video
+Create a separate submission record for BOS, Education Center, and Video
 Ads unless OpenAI explicitly approves a combined catalog listing.
 
 - [ ] Confirm the publishing OpenAI organization and project.

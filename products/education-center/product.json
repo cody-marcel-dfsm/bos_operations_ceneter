@@ -1,0 +1,43 @@
+{
+  "schema_version": "1",
+  "name": "education-center",
+  "version": "0.4.20",
+  "release_status": "active",
+  "display_name": "Education Center",
+  "description": "A childhood education franchise-in-a-box operating system for authorized adult education center staff through the tenant-scoped BOS MCP.",
+  "publisher": "Infinite State Machines LLC",
+  "category": "Productivity",
+  "authentication": "ON_USE",
+  "settings_template": "config/education-center.settings.template.json",
+  "clients": [
+    "codex",
+    "claude",
+    "copilot",
+    "gemini"
+  ],
+  "includes": [
+    "platform/bos-mcp-client",
+    "platform/submit-feedback",
+    "platform/manage-customer-extension",
+    "capabilities/review-outreach",
+    "verticals/education-center/education-center-customer-initialization",
+    "verticals/education-center/education-center-class-operations",
+    "verticals/education-center/education-center-service-routing",
+    "verticals/education-center/education-center-director-daily-planner",
+    "verticals/education-center/education-center-instructor-operations",
+    "verticals/education-center/education-center-invoice-operations",
+    "verticals/education-center/education-center-paid-attribution-operations",
+    "verticals/education-center/education-center-parent-communications",
+    "verticals/education-center/education-center-student-operations",
+    "verticals/education-center/education-center-trial-reconciliation"
+  ],
+  "runtime": "bos",
+  "application_name": "leaddirector",
+  "mcp_group_name": "education-center",
+  "credential_env_var": "EDUCATION_CENTER_BOS_API_KEY",
+  "default_prompts": [
+    "Initialize my education center, including its customer-facing brand name.",
+    "Create today's education center operations plan.",
+    "Give me a weekly summary for my director."
+  ]
+}

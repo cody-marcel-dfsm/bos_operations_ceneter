@@ -1,0 +1,13 @@
+interface:
+  display_name: "Education Center Class Operations"
+  short_description: "Handle classes, camps, and Care.com enrollments"
+  default_prompt: "Use $education-center-class-operations to generate next week's five-day camp roster image with each student and camp repeated by attendance day, plus one primary phone entry per family."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "bos_education_center"
+      description: "BOS remote agent gateway for Education Center organization"
+      transport: "streamable_http"
+      url: "https://dfsm.ai/mcp/apps/leaddirector/education-center"
+policy:
+  allow_implicit_invocation: true

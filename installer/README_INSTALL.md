@@ -15,9 +15,9 @@ extracted package root, run:
 
 ```bash
 npm run install:apply -- --product bos
-npm run install:apply -- --product icode-operations-center
+npm run install:apply -- --product education-center
 npm run install:verify -- --product bos
-npm run install:verify -- --product icode-operations-center
+npm run install:verify -- --product education-center
 ```
 
 Video Ads is disabled in this release.
@@ -25,8 +25,8 @@ Video Ads is disabled in this release.
 ## Authentication
 
 Configure each selected runtime product's declared credential through the
-approved host configuration. iCode Operations Center uses
-`ICODE_OPERATIONS_BOS_API_KEY`. Each named MCP connection forwards only its
+approved host configuration. Education Center uses
+`EDUCATION_CENTER_BOS_API_KEY`. Each named MCP connection forwards only its
 own organization-scoped identity.
 Keep the key out of package files,
 customer settings, customer-entered command arguments, and conversations.
@@ -55,8 +55,8 @@ route from package metadata and verifies it without asking for, discovering,
 or storing an installation ID. Customer settings cannot alter MCP routing.
 
 On macOS, use `scripts/launch-codex-with-bos.swift --binding
-ICODE_OPERATIONS_BOS_API_KEY=<gcp-secret-name> --replace` to close the active
-ChatGPT process and start a ChatGPT/Codex instance with the iCode product key
+EDUCATION_CENTER_BOS_API_KEY=<gcp-secret-name> --replace` to close the active
+ChatGPT process and start a ChatGPT/Codex instance with the Education Center product key
 scoped to that process. The launcher keeps keys out of files and the global
 GUI launch environment.
 `--replace` requires a directly attached interactive terminal and the typed
@@ -70,7 +70,7 @@ Open this extracted package as the Claude Code working folder and paste:
 
 > Run `npm run install:claude` and guide me through the secure API-key prompt.
 
-The command installs `iCode Operations Center` directly from
+The command installs `Education Center` directly from
 `clients/claude`; no public marketplace listing or repository checkout is
 required. Claude's native plugin configuration prompts once, with masked input,
 for the API key supplied by the BOS administrator. Claude stores it securely
@@ -85,8 +85,8 @@ installation.
 Copy the desired product skills from `clients/copilot/products/<product>/skills`
 into the repository's supported agent-skills directory. Configure the BOS
 remote MCP connection in the Copilot host using the same endpoint and
-product-prefixed credential variable; iCode uses
-`COPILOT_MCP_ICODE_OPERATIONS_BOS_API_KEY`. The Copilot skill
+product-prefixed credential variable; Education Center uses
+`COPILOT_MCP_EDUCATION_CENTER_BOS_API_KEY`. The Copilot skill
 package contains no client runtime.
 
 ## Gemini CLI
@@ -95,8 +95,8 @@ Install the desired extension directory from
 `clients/gemini/extensions/<product>` with `gemini extensions install`. Gemini
 loads the bundled `skills/` directory and native Streamable HTTP MCP
 configuration from `gemini-extension.json`. Complete the declared
-product credential setting during installation; iCode uses
-`ICODE_OPERATIONS_BOS_API_KEY`. Restart
+product credential setting during installation; Education Center uses
+`EDUCATION_CENTER_BOS_API_KEY`. Restart
 Gemini CLI.
 
 ## Customer settings
@@ -105,7 +105,9 @@ Products that need customer context include
 `config/customer-settings.template.json`. On first use, the customer
 initialization skill derives unambiguous non-secret values from local client
 and authenticated BOS metadata, then asks one consolidated question for the
-remaining values. Save the completed settings as customer-owned configuration
+remaining values. The Education Center questionnaire always asks for the
+customer-facing franchise or brand name when `brand_display_name` is empty.
+Save the completed settings as customer-owned configuration
 with permissions limited to that user. Customer settings never grant access.
 
 ## Customer skill extensions

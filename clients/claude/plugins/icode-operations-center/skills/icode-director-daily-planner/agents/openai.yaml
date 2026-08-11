@@ -1,4 +1,0 @@
-interface:
-  display_name: "iCode Director Plans and Summaries"
-  short_description: "Build daily plans and camp-first weekly reports"
-  default_prompt: "Use $icode-director-daily-planner to prepare this week’s camp-first director summary."

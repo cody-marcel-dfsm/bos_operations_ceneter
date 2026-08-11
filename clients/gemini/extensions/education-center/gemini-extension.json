@@ -1,0 +1,21 @@
+{
+  "name": "education-center",
+  "version": "0.4.20",
+  "description": "A childhood education franchise-in-a-box operating system for authorized adult education center staff through the tenant-scoped BOS MCP.",
+  "settings": [
+    {
+      "name": "BOS API Key",
+      "description": "Organization-scoped BOS agent bearer credential.",
+      "envVar": "EDUCATION_CENTER_BOS_API_KEY",
+      "sensitive": true
+    }
+  ],
+  "mcpServers": {
+    "education-center": {
+      "httpUrl": "https://dfsm.ai/mcp/apps/leaddirector/education-center",
+      "headers": {
+        "Authorization": "Bearer ${EDUCATION_CENTER_BOS_API_KEY}"
+      }
+    }
+  }
+}

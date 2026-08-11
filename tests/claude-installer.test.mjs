@@ -27,7 +27,7 @@ test("Claude local installer delegates sensitive configuration to Claude", async
       return pluginListCount === 1
         ? "[]"
         : JSON.stringify([{
-            id: "icode-operations-center@bos-icode",
+            id: "education-center@bos-education-center",
             enabled: true
           }]);
     }
@@ -38,7 +38,7 @@ test("Claude local installer delegates sensitive configuration to Claude", async
     base: root,
     run
   });
-  assert.equal(result.selector, "icode-operations-center@bos-icode");
+  assert.equal(result.selector, "education-center@bos-education-center");
   assert.deepEqual(
     calls.find(([, args]) => args[1] === "marketplace" && args[2] === "add")?.[1],
     [
@@ -55,7 +55,7 @@ test("Claude local installer delegates sensitive configuration to Claude", async
     [
       "plugin",
       "install",
-      "icode-operations-center@bos-icode",
+      "education-center@bos-education-center",
       "--scope",
       "user"
     ]
@@ -65,13 +65,13 @@ test("Claude local installer delegates sensitive configuration to Claude", async
 
 test("Claude local installer updates an existing local installation without asking again", async () => {
   const calls = [];
-  const selector = "icode-operations-center@bos-icode";
+  const selector = "education-center@bos-education-center";
   const run = (command, args) => {
     calls.push([command, args]);
     if (args[0] === "--version") return "2.1.220\n";
     if (args[0] === "plugin" && args[1] === "validate") return "Valid\n";
     if (args[0] === "plugin" && args[1] === "marketplace" && args[2] === "list") {
-      return JSON.stringify([{ name: "bos-icode" }]);
+      return JSON.stringify([{ name: "bos-education-center" }]);
     }
     if (args[0] === "plugin" && args[1] === "list") {
       return JSON.stringify([{ id: selector, enabled: true }]);
@@ -84,7 +84,7 @@ test("Claude local installer updates an existing local installation without aski
     run
   });
   assert(calls.some(([, args]) =>
-    args.join(" ") === "plugin marketplace update bos-icode"
+    args.join(" ") === "plugin marketplace update bos-education-center"
   ));
   assert(calls.some(([, args]) =>
     args.join(" ") === `plugin update ${selector} --scope user`

@@ -3,17 +3,17 @@
 import { pathToFileURL } from "node:url";
 
 export const MCP_CONNECTION_PROFILES = Object.freeze({
-  "https://dfsm.ai/mcp/apps/leaddirector/icode-operations": Object.freeze({
+  "https://dfsm.ai/mcp/apps/leaddirector/education-center": Object.freeze({
     applicationCode: "lead_director",
-    credentialEnvVar: "ICODE_OPERATIONS_BOS_API_KEY",
+    credentialEnvVar: "EDUCATION_CENTER_BOS_API_KEY",
     requiredTools: Object.freeze([
       "bos_get_context",
-      "icode_get_email_thread",
-      "icode_list_enrollments",
-      "icode_search_calendar_events",
-      "icode_search_email_evidence",
-      "icode_search_leads",
-      "icode_search_students"
+      "education_center_get_email_thread",
+      "education_center_list_enrollments",
+      "education_center_search_calendar_events",
+      "education_center_search_email_evidence",
+      "education_center_search_leads",
+      "education_center_search_students"
     ])
   }),
   "https://dfsm.ai/mcp/apps/leaddirector/video-ads": Object.freeze({

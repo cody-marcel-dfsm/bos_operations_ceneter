@@ -291,9 +291,9 @@ Description:
   "received_at": "2026-08-01T18:30:00Z",
   "target": {
     "type": "skill",
-    "product_name": "icode-operations-center",
+    "product_name": "education-center",
     "product_version": "0.4.8",
-    "skill_name": "icode-class-operations"
+    "skill_name": "education-center-class-operations"
   },
   "correlation_id": "req_01K1..."
 }

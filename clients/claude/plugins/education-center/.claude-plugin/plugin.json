@@ -1,0 +1,27 @@
+{
+  "name": "education-center",
+  "displayName": "Education Center",
+  "version": "0.4.20",
+  "description": "A childhood education franchise-in-a-box operating system for authorized adult education center staff through the tenant-scoped BOS MCP.",
+  "author": {
+    "name": "Infinite State Machines LLC"
+  },
+  "homepage": "https://dfsm.ai",
+  "repository": "https://github.com/cody-marcel-dfsm/bos_operations_ceneter",
+  "license": "Apache-2.0",
+  "keywords": [
+    "bos",
+    "operations",
+    "education-center"
+  ],
+  "mcpServers": "./.mcp.json",
+  "userConfig": {
+    "bos_api_key": {
+      "type": "string",
+      "title": "Education Center API key",
+      "description": "Paste the organization-scoped API key supplied by your BOS administrator.",
+      "sensitive": true,
+      "required": true
+    }
+  }
+}

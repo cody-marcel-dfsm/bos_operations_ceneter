@@ -44,11 +44,13 @@ release system for portable BOS skills and native remote MCP client adapters.
    deterministically during updates.
 9. Keep customer identity and operating defaults out of canonical skills and
    generated release content. Product manifests may declare a settings template
-   containing reusable defaults and typed source roles. Installers validate and
+   containing reusable defaults, customer-facing brand terminology, and typed
+   source roles. Installers validate and
    write customer-specific values as a customer-owned settings overlay that
    package updates preserve. Skills resolve effective settings from the template
-   plus that overlay; builds never copy customer mailboxes, provider selectors,
-   or location values into managed skills or regenerated package files. A source
+   plus that overlay; builds never copy customer brand names, mailboxes,
+   provider selectors, or location values into managed skills or regenerated
+   package files. A source
    role may select a separately connected client service for read-only evidence
    without changing BOS identity, scope, or mutation authority.
 10. Initialize customer settings with a derive-then-ask workflow: preserve
@@ -127,9 +129,9 @@ release system for portable BOS skills and native remote MCP client adapters.
     archives, installation instructions, and release gates. A missing provider
     credential or disabled provider plugin blocks only its owning product or
     operation and never another organization's connection, tools, build, or
-    release. For iCode director
+    release. For Education Center director
     reporting, the gate must discover the complete
-    report read-tool contract, prove one server-derived iCode context, and
+    report read-tool contract, prove one server-derived Education Center context, and
     execute a bounded enrollment query for the customer-configured local week.
     A well-formed empty record array is a valid seasonal result. When camp data
     exists, report student and family-phone field presence as aggregate

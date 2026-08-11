@@ -77,6 +77,12 @@ idempotent.
 
 An extension supplies customer behavior and context. It grants no authority.
 
+Product-wide customer settings may provide a default terminology value such as
+`brand_display_name`. A skill-specific typed extension may replace it with the
+same stable key under `terminology`. The override changes customer-facing copy
+for that base skill and never changes product, skill, MCP, environment-variable,
+tool, capability, authorization, or record identifiers.
+
 ## Protected surfaces
 
 Reject keys or directives that attempt to change:
