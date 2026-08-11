@@ -913,6 +913,9 @@ test("every product and client ships tenant extension management metadata", asyn
         "utf8"
       );
       assert.match(manager, /asks to update, customize, override, specialize/);
+      assert.match(manager, /<product-root>\/\.bos-package-state\.json/);
+      assert.match(manager, /normally `~\/plugins\/<product>\/skills`/);
+      assert.match(manager, /Report\s+the resolved absolute extension path before writing it/);
     }
   }
 });

@@ -16,13 +16,16 @@ immutable.
 2. Classify the request into `terminology`, `defaults`, `policies`, or
    `exceptions`. Treat a request explicitly intended for every customer as a
    canonical product change and route it to the owning source repository.
-3. Locate the product root from the loaded skill path. Select a customer-owned
-   extension skills root supported by the host:
-   - Codex user scope: `~/.agents/skills`.
-   - Claude user scope: `~/.claude/skills`.
-   - Copilot repository scope: `<repository>/.agents/skills`.
-   - BOS managed local installation: the installed product's `skills/`
-     directory, which the BOS installer preserves.
+3. Locate the product root from the loaded skill path and resolve the extension
+   root in this order:
+   - When `<product-root>/.bos-package-state.json` exists, use
+     `<product-root>/skills`. This is the BOS-managed Codex installation path
+     (normally `~/plugins/<product>/skills`) and the installer preserves its
+     customer-owned extensions.
+   - Otherwise use an existing host-native scope: Codex `~/.agents/skills`,
+     Claude `~/.claude/skills`, or Copilot `<repository>/.agents/skills`.
+   Check that the selected parent exists or create it during `apply`. Report
+   the resolved absolute extension path before writing it.
 4. Inspect an existing extension before changing it:
 
    `node <this-skill>/scripts/manage-extension.mjs inspect --product-root <product-root> --extension-root <skills-root> --base-skill <skill> --tenant <customer-key>`
