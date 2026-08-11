@@ -8,6 +8,20 @@ description: Create, inspect, validate, or update a customer-owned extension of 
 Apply customer changes through a typed extension. Keep the packaged base skill
 immutable.
 
+## Storage model
+
+- `config/customer-settings.json` is the preserved product-wide tenant
+  settings overlay. `config/customer-settings.template.json` is its
+  package-owned schema and defaults.
+- `skills/<base-skill>-<tenant-key>/.bos-extension.json` is a customer-owned
+  per-skill override manifest. Its sibling `SKILL.md` composes the packaged
+  base skill with the typed overrides.
+- A marketplace path may be a symlink to the installed product. Resolve and
+  report the physical product root; identify the marketplace path as an
+  alternate access path to the same files.
+
+Keep product settings and per-skill extensions labeled separately.
+
 ## Workflow
 
 1. Resolve the installed product, base skill, and customer key from the request
@@ -25,7 +39,7 @@ immutable.
    - Otherwise use an existing host-native scope: Codex `~/.agents/skills`,
      Claude `~/.claude/skills`, or Copilot `<repository>/.agents/skills`.
    Check that the selected parent exists or create it during `apply`. Report
-   the resolved absolute extension path before writing it.
+   the resolved physical extension path before writing it.
 4. Inspect an existing extension before changing it:
 
    `node <this-skill>/scripts/manage-extension.mjs inspect --product-root <product-root> --extension-root <skills-root> --base-skill <skill> --tenant <customer-key>`

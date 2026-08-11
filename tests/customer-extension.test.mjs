@@ -4,6 +4,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  realpath,
   stat,
   symlink,
   writeFile
@@ -198,6 +199,22 @@ test("extension manager rejects a symbolic-link extension target", async () => {
       policies: { reporting: "Include the approved summary." }
     }),
     /must not be a symbolic link/
+  );
+});
+
+test("extension manager reports the physical product path through a marketplace symlink", async () => {
+  const marketplace = await extensionRoot();
+  const linkedProduct = join(marketplace, "bos");
+  await symlink(productRoot, linkedProduct, "dir");
+  const result = await inspectCustomerExtension({
+    productRoot: linkedProduct,
+    extensionRoot: join(linkedProduct, "skills"),
+    baseSkill: "planning",
+    tenant: "example-center"
+  });
+  assert.equal(
+    result.path,
+    join(await realpath(productRoot), "skills", "planning-example-center")
   );
 });
 
