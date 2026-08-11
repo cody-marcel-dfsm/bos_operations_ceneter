@@ -215,6 +215,28 @@ test("protocol mismatch fails before tool discovery", async () => {
   assert.equal(requestCount, 1);
 });
 
+test("protocol output treats the server version as an untrusted scalar", async () => {
+  const privateText = "Jane Student private-live-key family@example.com";
+  const fetchImpl = async () => response({
+    jsonrpc: "2.0",
+    id: 1,
+    result: { protocolVersion: privateText }
+  });
+  await assert.rejects(
+    runIcodeDirectorSmoke({
+      apiKey: "private-live-key",
+      fetchImpl,
+      timeZone: "America/Denver"
+    }),
+    (error) => {
+      assert(error instanceof IcodeDirectorSmokeFailure);
+      assert.doesNotMatch(error.message, /Jane|family@example|private-live-key/);
+      assert.equal(error.report.initialize.protocolAccepted, false);
+      return true;
+    }
+  );
+});
+
 test("failed initialized notification blocks the smoke", async () => {
   const fetchImpl = async (_url, options) => {
     const body = JSON.parse(options.body);
@@ -281,7 +303,10 @@ test("a legitimate empty current-week enrollment array passes the query gate", a
   assert.equal(report.dataQuality.campDataPresent, false);
 });
 
-function completeSmokeFetchForEnrollmentRecords(records) {
+function completeSmokeFetchForEnrollmentRecords(
+  records,
+  { contextIsError = false, enrollmentIsError = false } = {}
+) {
   return async (_url, options) => {
     const body = JSON.parse(options.body);
     if (body.method === "initialize") return response({
@@ -299,7 +324,7 @@ function completeSmokeFetchForEnrollmentRecords(records) {
       jsonrpc: "2.0",
       id: body.id,
       result: {
-        isError: false,
+        isError: contextIsError,
         structuredContent: { result: {
           installation_id: "present",
           org_id: "present",
@@ -310,10 +335,32 @@ function completeSmokeFetchForEnrollmentRecords(records) {
     return response({
       jsonrpc: "2.0",
       id: body.id,
-      result: { isError: false, structuredContent: { result: records } }
+      result: {
+        isError: enrollmentIsError,
+        structuredContent: { result: records }
+      }
     });
   };
 }
+
+test("tool-result output treats isError as an untrusted scalar", async () => {
+  const privateText = "Jane Student private-live-key family@example.com";
+  await assert.rejects(
+    runIcodeDirectorSmoke({
+      apiKey: "private-live-key",
+      timeZone: "America/Denver",
+      fetchImpl: completeSmokeFetchForEnrollmentRecords([], {
+        contextIsError: privateText
+      })
+    }),
+    (error) => {
+      assert(error instanceof IcodeDirectorSmokeFailure);
+      assert.doesNotMatch(error.message, /Jane|family@example|private-live-key/);
+      assert.equal(error.report.context.toolResultSucceeded, false);
+      return true;
+    }
+  );
+});
 
 test("camp fields present with empty provider values pass with a warning", async () => {
   const report = await runIcodeDirectorSmoke({
@@ -387,6 +434,7 @@ test("every complete build and release workflow runs the credentialed data smoke
     new URL("../package.json", import.meta.url), "utf8"
   ));
   assert.match(packageJson.scripts.build, /smoke:mcp:icode-data/);
+  assert.match(packageJson.scripts.build, /smoke:mcp:video-ads/);
   assert.match(packageJson.scripts["release:check"], /npm run build/);
   for (const relativePath of [
     "../.github/workflows/validate.yml",

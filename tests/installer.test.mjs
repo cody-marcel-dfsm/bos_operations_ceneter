@@ -19,6 +19,7 @@ import {
   deriveInitialCustomerSettings,
   inspectInstallation,
   validateCustomerSettings,
+  verifyNamedMcpBearer,
   verifyInstallation as verifyInstallationRaw
 } from "../scripts/install-package.mjs";
 import { createCustomerExtension } from "../scripts/create-extension.mjs";
@@ -168,6 +169,162 @@ test("Codex host inspection reads the active app-server environment", async (con
   });
   assert.deepEqual(report, { state: "current", pid: 4321 });
   assert.deepEqual(calls[1], ["eww", "-p", "4321", "-o", "command="]);
+});
+
+test("Codex host inspection rejects a different active bearer", async () => {
+  const report = await codexHostBearerState(async (_command, args) => {
+    if (args[0] === "-axo") return {
+      stdout: "4321 /Applications/ChatGPT.app/Contents/Resources/codex app-server\n"
+    };
+    return {
+      stdout: "/Applications/ChatGPT.app/Contents/Resources/codex app-server BOS_API_KEY=stale-key"
+    };
+  }, { expectedApiKey: "expected-key" });
+  assert.deepEqual(report, {
+    state: "configuration_required",
+    reason: "codex_host_bos_api_key_mismatch",
+    pid: 4321
+  });
+});
+
+test("Codex host current state requires the active bearer to pass the named route", async () => {
+  let inspectedKey;
+  const report = await codexHostBearerState(async (_command, args) => {
+    if (args[0] === "-axo") return {
+      stdout: "4321 /Applications/ChatGPT.app/Contents/Resources/codex app-server\n"
+    };
+    return {
+      stdout: "/Applications/ChatGPT.app/Contents/Resources/codex app-server BOS_API_KEY=active-key"
+    };
+  }, {
+    verifyBearer: async (apiKey) => {
+      inspectedKey = apiKey;
+      return {
+        state: "configuration_required",
+        reason: "named_mcp_resource_group_unavailable"
+      };
+    }
+  });
+  assert.equal(inspectedKey, "active-key");
+  assert.deepEqual(report, {
+    state: "configuration_required",
+    reason: "named_mcp_resource_group_unavailable",
+    pid: 4321
+  });
+  assert.doesNotMatch(JSON.stringify(report), /active-key/);
+});
+
+test("named MCP bearer verification requires a usable scoped tool group", async () => {
+  const requests = [];
+  const fetchImpl = async (_url, options) => {
+    const body = JSON.parse(options.body);
+    requests.push({ body, headers: options.headers });
+    if (body.method === "initialize") return new Response(JSON.stringify({
+      jsonrpc: "2.0",
+      id: body.id,
+      result: { protocolVersion: "2025-03-26" }
+    }), { status: 200, headers: { "mcp-session-id": "install-session" } });
+    assert.equal(options.headers["Mcp-Session-Id"], "install-session");
+    if (body.method === "notifications/initialized") {
+      return new Response("", { status: 202 });
+    }
+    if (body.method === "tools/call") return new Response(JSON.stringify({
+      jsonrpc: "2.0",
+      id: body.id,
+      result: {
+        isError: false,
+        structuredContent: {
+          result: {
+            installation_id: "installed-app",
+            org_id: "organization",
+            apps: [{
+              app_code: "lead_director",
+              delegated_role_id: "operator"
+            }]
+          }
+        }
+      }
+    }), { status: 200 });
+    return new Response(JSON.stringify({
+      jsonrpc: "2.0",
+      id: body.id,
+      result: { tools: [
+        "bos_get_context",
+        "icode_get_email_thread",
+        "icode_list_enrollments",
+        "icode_search_calendar_events",
+        "icode_search_email_evidence",
+        "icode_search_leads",
+        "icode_search_students"
+      ].map((name) => ({ name })) }
+    }), { status: 200 });
+  };
+  const report = await verifyNamedMcpBearer({
+    apiKey: "test-key",
+    endpoint: resourceGroupUrl,
+    applicationName: mcpApplication,
+    mcpGroupName: mcpResourceGroup,
+    fetchImpl
+  });
+  assert.deepEqual(report, { state: "current", tool_count: 7 });
+  assert.equal(requests.length, 4);
+});
+
+for (const [label, exposedTools] of [
+  ["context-only", ["bos_get_context"]],
+  ["unrelated-domain", ["bos_get_context", "video_ads_get_readiness"]]
+]) {
+  test(`named MCP bearer verification rejects the ${label} catalog`, async () => {
+    const fetchImpl = async (_url, options) => {
+      const body = JSON.parse(options.body);
+      if (body.method === "initialize") return new Response(JSON.stringify({
+        jsonrpc: "2.0",
+        id: body.id,
+        result: { protocolVersion: "2025-03-26" }
+      }), { status: 200 });
+      if (body.method === "notifications/initialized") {
+        return new Response("", { status: 202 });
+      }
+      return new Response(JSON.stringify({
+        jsonrpc: "2.0",
+        id: body.id,
+        result: { tools: exposedTools.map((name) => ({ name })) }
+      }), { status: 200 });
+    };
+    const report = await verifyNamedMcpBearer({
+      apiKey: "test-key",
+      endpoint: resourceGroupUrl,
+      applicationName: mcpApplication,
+      mcpGroupName: mcpResourceGroup,
+      fetchImpl
+    });
+    assert.deepEqual(report, {
+      state: "configuration_required",
+      reason: "named_mcp_resource_group_unavailable"
+    });
+  });
+}
+
+test("named MCP bearer verification fails closed on unavailable resource group", async () => {
+  const report = await verifyNamedMcpBearer({
+    apiKey: "private-key",
+    endpoint: resourceGroupUrl,
+    applicationName: mcpApplication,
+    mcpGroupName: mcpResourceGroup,
+    fetchImpl: async () => new Response(JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      error: {
+        code: -32001,
+        message: "resource group unavailable for Jane Family private-key"
+      }
+    }), { status: 200 })
+  });
+  assert.deepEqual(report, {
+    state: "configuration_required",
+    reason: "named_mcp_initialize_rejected"
+  });
+  assert.doesNotMatch(JSON.stringify(report), /Jane|private-key/);
 });
 
 test("initialization derives safe client values and leaves unknowns unresolved", () => {

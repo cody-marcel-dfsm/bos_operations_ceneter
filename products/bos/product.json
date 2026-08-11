@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.18",
+  "version": "0.4.19",
   "display_name": "BOS",
   "description": "Tenant-neutral Business Operating System foundations.",
   "publisher": "Infinite State Machines LLC",

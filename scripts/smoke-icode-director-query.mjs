@@ -63,9 +63,9 @@ function safeCorrelationId(value) {
 function rpcError(payload) {
   const error = payload?.error;
   if (!error) return undefined;
-  return {
-    code: Number.isInteger(error.code) ? error.code : "unclassified_rpc_error"
-  };
+  return Number.isInteger(error.code)
+    ? { present: true, code: error.code }
+    : { present: true };
 }
 
 function toolResult(payload) {
@@ -85,7 +85,7 @@ function safeContextObservation(payload) {
   );
   const expectedApps = apps.filter((app) => app?.app_code === "lead_director");
   return {
-    isError: result?.isError,
+    toolResultSucceeded: result?.isError === false,
     installationPresent: Boolean(context?.installation_id),
     organizationPresent: Boolean(context?.org_id),
     appCount: apps.length,
@@ -132,7 +132,7 @@ function rosterObservation(payload) {
   const campRows = rows.filter(isCampRecord);
   const rosterRows = campRows.length ? campRows : rows;
   return {
-    isError: result?.isError,
+    toolResultSucceeded: result?.isError === false,
     recordCount: rows.length,
     enrollmentShapeCount: enrollmentRows.length,
     campRecordCount: campRows.length,
@@ -267,14 +267,15 @@ export async function runIcodeDirectorSmoke({
   report.initialize = {
     status: initialize.status,
     correlationId: initialize.correlationId,
-    protocolVersion: initialize.payload?.result?.protocolVersion,
+    protocolAccepted:
+      initialize.payload?.result?.protocolVersion === "2025-03-26",
     sessionEstablished: Boolean(sessionId),
     error: rpcError(initialize.payload)
   };
   if (initialize.status !== 200 || initialize.payload?.error) {
     fail("authenticated MCP initialize", report.initialize, initialize.correlationId);
   }
-  if (report.initialize.protocolVersion !== "2025-03-26") {
+  if (!report.initialize.protocolAccepted) {
     fail("MCP protocol negotiation", report.initialize, initialize.correlationId);
   }
   const initialized = await post({
@@ -328,7 +329,7 @@ export async function runIcodeDirectorSmoke({
     error: rpcError(contextCall.payload)
   };
   if (!contextCall || contextCall.status !== 200 ||
-      contextCall.payload?.error || report.context?.isError !== false ||
+      contextCall.payload?.error || !report.context?.toolResultSucceeded ||
       !report.context.installationPresent || !report.context.organizationPresent ||
       report.context.appCount !== 1 || report.context.roleCount !== 1 ||
       !report.context.expectedIcodeApplication) {
@@ -364,7 +365,7 @@ export async function runIcodeDirectorSmoke({
     error: rpcError(enrollments.payload)
   };
   if (enrollments.status !== 200 || enrollments.payload?.error ||
-      report.enrollments.isError !== false ||
+      !report.enrollments.toolResultSucceeded ||
       !Array.isArray(structuredResult(enrollments.payload))) {
     fail("current-week enrollment query returns a structured record array",
       report.enrollments,

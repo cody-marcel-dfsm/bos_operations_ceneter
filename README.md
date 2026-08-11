@@ -73,13 +73,14 @@ npm run build
 
 The complete build assembles every declared product/client distribution,
 creates deterministic product archives and the release manifest, and creates
-versioned and stable OS-neutral customer ZIPs under `dist/`. It then runs the
-live iCode director-query smoke against the production named MCP route using
-the process-scoped `BOS_API_KEY` and the protected `ICODE_SMOKE_TIME_ZONE`
-IANA timezone. The build fails unless it derives one authenticated iCode
-context and executes the bounded current-local-week enrollment query. When
-camp records exist, the smoke reports aggregate student and family-phone field
-presence as data-quality evidence without emitting personal values.
+versioned and stable OS-neutral customer ZIPs under `dist/`. It then uses the
+same process-scoped `BOS_API_KEY` for the live iCode director-query smoke and
+the Video Ads named-route smoke. The build fails unless that one identity can
+initialize every operational product route. The iCode query uses the protected
+`ICODE_SMOKE_TIME_ZONE` IANA timezone, derives one authenticated context, and
+executes the bounded current-local-week enrollment query. When camp records
+exist, the smoke reports aggregate student and family-phone field presence as
+data-quality evidence without emitting personal values.
 
 Use `npm run build:artifacts` for a credential-free artifact-only build. It
 cannot establish production readiness.
@@ -140,7 +141,9 @@ directly and does not rebuild or revalidate the release.
 
 1. Download and extract the published customer ZIP.
 2. Configure the client's one `BOS_API_KEY` through the approved environment.
-   The installer binds every package-owned MCP URL to that client identity.
+   The installer binds every package-owned MCP URL to that client identity and
+   reports the runtime current only after the active desktop bearer initializes
+   the selected named route and discovers its scoped tools.
 3. Inspect the local installation:
 
    ```bash

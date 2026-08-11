@@ -1,6 +1,6 @@
 {
   "name": "icode-operations-center",
-  "version": "0.4.18",
+  "version": "0.4.19",
   "description": "Authorized school operations for adult iCode staff through the tenant-scoped BOS MCP.",
   "settings": [
     {

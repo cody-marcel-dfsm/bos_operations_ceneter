@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { execFile } from "node:child_process";
 import {
   chmod,
@@ -98,7 +98,176 @@ export function codexBosMcpRegistration(applicationName, mcpGroupName) {
   };
 }
 
-export async function codexHostBearerState(runCommand = execFileAsync) {
+function sameSecret(left, right) {
+  const digest = (value) => createHash("sha256").update(value).digest();
+  return timingSafeEqual(digest(left), digest(right));
+}
+
+function parseMcpPayload(text) {
+  const candidates = String(text ?? "")
+    .split("\n")
+    .filter((line) => line.startsWith("data:"))
+    .map((line) => line.slice(5).trim());
+  for (const candidate of candidates.length ? candidates : [String(text ?? "").trim()]) {
+    if (!candidate) continue;
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      // Continue until a complete JSON or SSE data payload is found.
+    }
+  }
+  return undefined;
+}
+
+const namedMcpRequiredTools = new Map([
+  ["leaddirector/icode-operations", [
+    "bos_get_context",
+    "icode_get_email_thread",
+    "icode_list_enrollments",
+    "icode_search_calendar_events",
+    "icode_search_email_evidence",
+    "icode_search_leads",
+    "icode_search_students"
+  ]],
+  ["leaddirector/video-ads", [
+    "bos_get_context",
+    "video_ads_get_readiness",
+    "video_ads_list_options",
+    "video_ads_start_generation",
+    "video_ads_get_generation",
+    "video_ads_list_generations",
+    "video_ads_retry_transfer"
+  ]]
+]);
+
+const namedMcpApplicationCodes = new Map([
+  ["leaddirector", "lead_director"]
+]);
+
+function requiredNamedMcpTools(applicationName, mcpGroupName) {
+  return namedMcpRequiredTools.get(`${applicationName}/${mcpGroupName}`);
+}
+
+export async function verifyNamedMcpBearer({
+  apiKey,
+  endpoint,
+  applicationName,
+  mcpGroupName,
+  fetchImpl = fetch
+}) {
+  if (!apiKey) {
+    return { state: "configuration_required", reason: "bos_api_key_missing" };
+  }
+  let sessionId;
+  const post = async (body) => {
+    const headers = {
+      Accept: "application/json, text/event-stream",
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "MCP-Protocol-Version": "2025-03-26"
+    };
+    if (sessionId) headers["Mcp-Session-Id"] = sessionId;
+    const response = await fetchImpl(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(30_000),
+      redirect: "error"
+    });
+    sessionId = response.headers.get("mcp-session-id") ?? sessionId;
+    return {
+      status: response.status,
+      payload: parseMcpPayload(await response.text())
+    };
+  };
+  try {
+    const initialize = await post({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-03-26",
+        capabilities: {},
+        clientInfo: { name: "bos-install-verifier", version: "1" }
+      }
+    });
+    if (initialize.status !== 200 || initialize.payload?.error ||
+        initialize.payload?.result?.protocolVersion !== "2025-03-26") {
+      return {
+        state: "configuration_required",
+        reason: "named_mcp_initialize_rejected"
+      };
+    }
+    const initialized = await post({
+      jsonrpc: "2.0",
+      method: "notifications/initialized",
+      params: {}
+    });
+    if (initialized.status < 200 || initialized.status >= 300 ||
+        initialized.payload?.error) {
+      return {
+        state: "configuration_required",
+        reason: "named_mcp_initialization_failed"
+      };
+    }
+    const listed = await post({
+      jsonrpc: "2.0",
+      id: 2,
+      method: "tools/list",
+      params: {}
+    });
+    const names = listed.payload?.result?.tools
+      ?.map((tool) => tool?.name)
+      .filter(Boolean) ?? [];
+    const requiredTools = requiredNamedMcpTools(applicationName, mcpGroupName);
+    if (!requiredTools) {
+      return {
+        state: "configuration_required",
+        reason: "named_mcp_tool_contract_missing"
+      };
+    }
+    const missingTools = requiredTools.filter((name) => !names.includes(name));
+    if (listed.status !== 200 || listed.payload?.error || missingTools.length) {
+      return {
+        state: "configuration_required",
+        reason: "named_mcp_resource_group_unavailable"
+      };
+    }
+    const contextCall = await post({
+      jsonrpc: "2.0",
+      id: 3,
+      method: "tools/call",
+      params: { name: "bos_get_context", arguments: {} }
+    });
+    const result = contextCall.payload?.result;
+    const context = result?.structuredContent?.result;
+    const apps = Array.isArray(context?.apps) ? context.apps : [];
+    const roles = new Set(
+      apps.map((app) => app?.delegated_role_id).filter(Boolean)
+    );
+    const expectedApplicationCode = namedMcpApplicationCodes.get(applicationName);
+    if (contextCall.status !== 200 || contextCall.payload?.error ||
+        result?.isError !== false || !context?.installation_id ||
+        !context?.org_id || apps.length !== 1 || roles.size !== 1 ||
+        apps[0]?.app_code !== expectedApplicationCode) {
+      return {
+        state: "configuration_required",
+        reason: "named_mcp_context_invalid"
+      };
+    }
+    return { state: "current", tool_count: names.length };
+  } catch {
+    return {
+      state: "verification_required",
+      reason: "named_mcp_live_check_failed"
+    };
+  }
+}
+
+export async function codexHostBearerState(
+  runCommand = execFileAsync,
+  { expectedApiKey, verifyBearer } = {}
+) {
   if (process.platform !== "darwin") {
     return {
       state: "verification_required",
@@ -119,12 +288,26 @@ export async function codexHostBearerState(runCommand = execFileAsync) {
     const pid = Number(line.trim().split(/\s+/, 1)[0]);
     const environment = await runCommand("ps", ["eww", "-p", String(pid), "-o", "command="]);
     const command = String(environment?.stdout ?? environment ?? "");
-    if (!/(?:^|\s)BOS_API_KEY=\S+/.test(command)) {
+    const match = command.match(/(?:^|\s)BOS_API_KEY=(\S+)/);
+    if (!match) {
       return {
         state: "configuration_required",
         reason: "codex_host_bos_api_key_missing",
         pid
       };
+    }
+    const activeApiKey = match[1];
+    if (expectedApiKey && !sameSecret(activeApiKey, expectedApiKey)) {
+      return {
+        state: "configuration_required",
+        reason: "codex_host_bos_api_key_mismatch",
+        pid
+      };
+    }
+    if (verifyBearer) {
+      const live = await verifyBearer(activeApiKey);
+      if (live.state !== "current") return { ...live, pid };
+      return { state: "current", pid, tool_count: live.tool_count };
     }
     return { state: "current", pid };
   } catch {
@@ -157,7 +340,25 @@ async function configureCodexBosMcp(options, paths) {
       !output.includes(`bearer_token_env_var: ${registration.bearer_token_env_var}`)) {
     throw new Error("Codex BOS MCP registration verification failed");
   }
-  const host = await (options.inspectCodexHost ?? codexHostBearerState)();
+  const environment = options.environment ?? process.env;
+  const verifyBearer = (apiKey) => (
+    options.verifyNamedMcpBearer ?? verifyNamedMcpBearer
+  )({
+    apiKey,
+    endpoint: registration.url,
+    applicationName: product.application_name,
+    mcpGroupName: product.mcp_group_name,
+    fetchImpl: options.fetchImpl
+  });
+  const host = options.inspectCodexHost
+    ? await options.inspectCodexHost({
+        expectedApiKey: environment.BOS_API_KEY,
+        verifyBearer
+      })
+    : await codexHostBearerState(runCommand, {
+        expectedApiKey: environment.BOS_API_KEY,
+        verifyBearer
+      });
   if (host.state !== "current") {
     return {
       ...host,
@@ -170,7 +371,8 @@ async function configureCodexBosMcp(options, paths) {
     name: registration.name,
     url: registration.url,
     bearer_token_env_var: registration.bearer_token_env_var,
-    host_pid: host.pid
+    host_pid: host.pid,
+    tool_count: host.tool_count
   };
 }
 

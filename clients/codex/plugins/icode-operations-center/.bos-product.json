@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "icode-operations-center",
-  "version": "0.4.18",
+  "version": "0.4.19",
   "client": "codex",
   "application_name": "leaddirector",
   "mcp_group_name": "icode-operations"
