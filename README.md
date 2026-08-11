@@ -1,422 +1,300 @@
 # BOS Operations Center Packages
 
-## Install in Codex
+BOS Operations Center is the canonical source, package generator, validator,
+and release system for portable BOS skills and remote MCP client adapters.
+Claude Cowork/Desktop and ChatGPT/Codex Desktop install plugins through native
+private marketplaces and authorize BOS through host-managed OAuth 2.1.
 
-Requirements: Codex on macOS, Windows, or Linux and the active product's
-GCP-provisioned credential in its environment. Education Center uses
-`EDUCATION_CENTER_BOS_API_KEY`.
+## Choose your environment
 
-1. Open a new Codex task.
-2. Paste this instruction into Codex:
+| Environment | Use it for | Start here |
+|---|---|---|
+| ChatGPT/Codex Desktop customer | Install and operate Education Center | [Codex installation](#chatgptcodex-desktop) |
+| Claude Cowork/Desktop customer | Install and operate Education Center | [Claude installation](#claude-coworkdesktop) |
+| Local plugin development | Edit, regenerate, install, and test an unreleased checkout | [Local development](#local-plugin-development) |
+| Maintainer artifact build | Generate credential-free client packages and archives | [Artifact build](#artifact-only-build) |
+| Maintainer release validation | Run the live server gate and complete release checks | [Release validation](#complete-release-validation) |
+| Optional archive installation | Test or transfer a packaged release without Git marketplace access | [Archive installation](#optional-archive-installation) |
+| Copilot or Gemini | Use the current secondary client adapters | [Other clients](#other-clients) |
 
-   > Install BOS Operations Center from https://github.com/cody-marcel-dfsm/bos_operations_ceneter/releases/latest/download/bos-operations-center.zip. Download and verify the ZIP, follow its README_INSTALL.md for this client, and verify that the remote BOS MCP is configured.
-
-3. Let Codex complete the installation, then start a new Codex task.
-4. Ask Codex to perform a BOS operation. It connects directly to BOS over
-   HTTPS using the configured API key.
-
-Keep credentials and API keys out of agent chat. The BOS client key comes from
-the approved GCP-managed client configuration. Provider setup uses short-lived
-BOS-hosted HTTPS flows.
-
-For customer-specific products, initialization first derives safe non-secret
-values from the active client, local timezone, connected-account metadata, and
-authenticated BOS context. It asks the user one consolidated question for
-unresolved or ambiguous values, including the customer-facing franchise or
-brand name stored as `brand_display_name`, then writes the completed settings through the
-installer's `--settings` flow. Distributable skills contain no customer-specific
-values.
-
-This repository is the canonical source, builder, installer, and release
-system for portable BOS foundation, product, and vertical Agent Skills
-distributed to Codex, Claude, and GitHub Copilot.
-
-The canonical Codex marketplace may also contain private application
-skill-group packages managed by this project. `ism-meta-ads` belongs to Lead
-Director's `meta-ads` skill group and remains distinct from the disabled
-`video-ads` creative-generation product. Private application packages are
-preserved during released-product convergence and are excluded from public
-customer archives unless promoted through the product release lifecycle.
-
-The skills are useful as readable operating procedures on their own. Connecting
-them to BOS adds tenant-scoped data access, managed integrations, secure
-authentication, and authorized execution.
-
-See [docs/DESIGN.md](docs/DESIGN.md) for detailed build meaning,
-customer-configuration boundaries, authenticated access policy, first-time
-user flow, and release requirements.
-
-Project architecture, constitutional rules, specifications, and durable
-decisions live in [Vault/README.md](Vault/README.md). The packaged `bos:oracle`
-skill grounds architecture guidance and repository reviews in that evidence.
-
-See [docs/IMPLEMENTATION_TASKS.md](docs/IMPLEMENTATION_TASKS.md) for the
-dependency-ordered implementation backlog and acceptance criteria.
-
-See
-[docs/SKILL_HIERARCHY_AND_COMPOSITION.md](docs/SKILL_HIERARCHY_AND_COMPOSITION.md)
-for skill availability by working-directory scope, the BOS plugin namespace,
-and the design for Lead Director and other applications to specialize reusable
-BOS foundation skills.
-
-See
-[docs/LOCAL_FIRST_SKILL_IMPLEMENTATION_PLAN.md](docs/LOCAL_FIRST_SKILL_IMPLEMENTATION_PLAN.md)
-for the dependency-ordered local rollout, Lead Director composition tests,
-package promotion, and idempotent installer/reconciler design.
-
-See [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) for completed
-capabilities, local validation evidence, and the remaining client smoke tests.
-
-## Build
-
-Maintainers configure the process-scoped `EDUCATION_CENTER_BOS_API_KEY` and set
-`EDUCATION_CENTER_SMOKE_TIME_ZONE` to the customer overlay's IANA timezone before running
-a complete build. GitHub Actions uses the encrypted
-`EDUCATION_CENTER_BOS_API_KEY` repository secret and the protected
-`EDUCATION_CENTER_SMOKE_TIME_ZONE` repository variable.
-
-Run the complete credentialed build:
-
-```bash
-npm run build
-```
-
-The complete build assembles every declared product/client distribution,
-creates deterministic product archives and the release manifest, and creates
-versioned and stable OS-neutral customer ZIPs under `dist/`. It then uses the
-Education Center product's process-scoped credential for the live director-query smoke.
-Video Ads is disabled and excluded from generated packages, customer archives,
-and release gates until its provider and server implementation are ready. A
-Video Ads or Arcads configuration state cannot affect Education Center. The Education Center query
-uses the protected
-`EDUCATION_CENTER_SMOKE_TIME_ZONE` IANA timezone, derives one authenticated context, and
-executes the bounded current-local-week enrollment query. When camp records
-exist, the smoke reports aggregate student and family-phone field presence as
-data-quality evidence without emitting personal values.
-
-The live gate prints phase progress while it runs. After protocol initialization
-and live tool discovery succeed, its independent read-only context and
-enrollment checks run concurrently; both checks must still pass before the
-build succeeds.
-
-Use `npm run build:artifacts` for a credential-free artifact-only build. It
-cannot establish production readiness.
-
-Use `npm run build:packages` when developing only canonical/generated client
-content without producing deployable archives.
-
-Building does not install a package, configure a customer, print organization
-records, or publish a GitHub release. The live smoke returns only status,
-correlation IDs, tool names, and aggregate field-presence counts; it never
-prints the key or personal record values.
-
-Run `npm run release:check` to rebuild and verify all deployment artifacts,
-package structure, tests, and credential safety.
-
-## Distribution
-
-### Maintainer-built cross-platform customer ZIP
-
-Create the customer distribution:
-
-```bash
-npm run release:customer
-```
-
-This produces:
-
-```text
-dist/bos-operations-center-<version>.zip
-dist/bos-operations-center.zip
-```
-
-`release:customer` is an alias for the complete validated build; ZIP creation
-is already part of `npm run build`.
-
-The ZIP includes generated Codex, Claude, Copilot, and Gemini distributions plus
-client-specific installation guidance. It contains no executable MCP proxy or
-platform runtime. For Codex, give the active agent the public GitHub release URL
-and ask it to download, verify, extract, inspect `README_INSTALL.md`, and install
-the Codex distribution. Install Claude through the repository marketplace or
-Claude's native manual plugin-upload control described below.
-
-Tags matching `v*` run the customer-release workflow on a Linux runner and
-attach the versioned and stable ZIP names to the GitHub release.
-
-Maintainers testing an unreleased repository checkout first configure the
-credentialed build environment and complete `npm run release:check`. They may
-then install the generated development packages and use the machine-local
-developer-link workflow.
+Customer desktop installation does not use Codex Environment variables, setup
+scripts, API-key prompts, cloud-secret names, or operating-system-specific
+launchers. The desktop host owns the BOS OAuth grant. Underlying provider
+authorization remains a separate BOS-hosted workflow.
 
 ## Install
 
-Published packages have already passed the complete credentialed build and
-live server contract gate. Customer installation uses the packaged files
-directly and does not rebuild or revalidate the release.
+The private Git marketplace is the normal pre-publication installation and
+update channel. Installing a plugin grants no organization access. Select
+**Connect** or **Sign in** when the host presents it, then complete BOS consent.
 
-The packaged `clients/disabled-products.json` is authoritative. An upgrade
-removes package-owned MCP registrations and plugins listed there before
-converging active products. Video Ads is listed as disabled in this release.
+### ChatGPT/Codex Desktop
 
-### Codex
+Requirement: ChatGPT Desktop with Codex and plugin support.
+[OpenAI's plugin guide](https://learn.chatgpt.com/docs/plugins) documents the
+desktop Plugins Directory, connection prompt, and new-task activation flow.
 
-1. Download and extract the published customer ZIP.
-2. Configure `EDUCATION_CENTER_BOS_API_KEY` through the approved environment.
-   The installer binds the Education Center package-owned MCP URL to that product identity
-   and reports the runtime current only after the active desktop bearer
-   initializes the selected named route and discovers its scoped tools.
-3. Inspect the local installation:
+Open a new Codex task and paste:
 
-   ```bash
-   npm run install:inspect -- --product bos
-   ```
+> Add https://github.com/cody-marcel-dfsm/bos_operations_ceneter as a Codex
+> plugin marketplace, install and enable `bos` and `education-center`, connect
+> Education Center to BOS through the host's sign-in flow, start a new task if
+> required to load the plugin, and verify one authenticated Education Center
+> read. Do not request or configure a BOS API key, environment variable,
+> secret-manager name, or installed application ID. If authorization is
+> incomplete, report `authentication_required`; do not generate an
+> unavailable-data report.
 
-4. Preview the convergence plan:
+Codex reads the repository catalog at
+`.agents/plugins/marketplace.json`, installs the plugins into its managed
+cache, and discovers OAuth from the immutable Education Center MCP resource.
+Start a new task after installation or upgrade.
 
-   ```bash
-   npm run install:plan -- --product bos
-   npm run install:plan -- --product education-center
-   ```
+### Claude Cowork/Desktop
 
-5. Apply and verify:
+1. Open **Customize → Plugins**.
+2. Add
+   `https://github.com/cody-marcel-dfsm/bos_operations_ceneter` as a
+   marketplace.
+3. Install **BOS** and **Education Center**.
+4. Select **Connect**, complete BOS sign-in, and start a new Cowork task.
+5. Request one authenticated Education Center read to verify the connection.
 
-   ```bash
-   npm run install:apply -- --product bos
-   npm run install:apply -- --product education-center
-   npm run install:verify -- --product bos
-   npm run install:verify -- --product education-center
-   ```
+Claude reads `.claude-plugin/marketplace.json`. The Education Center plugin
+contains no API-key field or authorization-header template. Claude discovers
+OAuth from the immutable MCP resource and manages the resulting grant.
 
-6. Run `codex plugin add bos@bos-education-center`,
-   and `codex plugin add education-center@bos-education-center`.
-7. Start or restart Codex once so the host loads the installed plugin and MCP
-   registration, then open a new task and perform a representative BOS read.
+### Updates
 
-On macOS, launch ChatGPT/Codex with a process-scoped GCP-managed credential:
+- Refresh or update the `bos-education-center` marketplace.
+- Upgrade or reinstall the affected plugin.
+- Start a new task so the host loads the updated package.
+- Reauthorize only when the host reports that the BOS grant is missing,
+  expired, revoked, or incorrectly scoped.
 
-```bash
-npm run codex:launch:macos -- \
-  --binding EDUCATION_CENTER_BOS_API_KEY=<gcp-secret-name> \
-  --replace
+Server-only tool-catalog changes require reconnection and tool rediscovery.
+They do not require a different endpoint or a new package.
+
+### Optional archive installation
+
+Use a release archive only for offline transfer or archive-specific testing.
+Open the extracted package and follow
+[`installer/README_INSTALL.md`](installer/README_INSTALL.md). The archive is
+operating-system-neutral and contains no customer credential, local MCP proxy,
+or OS-specific launcher.
+
+### Customer settings and extensions
+
+On first use, `education-center-customer-initialization` derives safe
+non-secret values and asks one consolidated question for unresolved customer
+settings. The customer-owned overlay is
+`config/customer-settings.json`; package updates preserve it. Customer
+settings select display terminology and provider routes. They never grant
+authority.
+
+Ask the agent to specialize a workflow, for example: “Update the
+class-operations skill for my location so the planning window defaults to 21
+days.” The packaged `manage-customer-extension` skill creates a typed,
+customer-owned extension and checks version compatibility. Extensions may
+change terminology, defaults, policies, and exceptions. They cannot change
+authentication, authorization, MCP routes, system instructions, or tool
+grants.
+
+## Customer onboarding
+
+The desktop host authorizes one immutable product resource:
+
+```text
+https://dfsm.ai/mcp/apps/leaddirector/education-center
 ```
 
-The launcher reads the secret into memory and starts a new ChatGPT/Codex
-instance whose environment contains `EDUCATION_CENTER_BOS_API_KEY`. It does
-not write the
-credential to disk or add it to the global GUI launch
-environment. `--replace`
-requires an interactive terminal and the typed confirmation `RESTART CHATGPT`
-before gracefully closing a running instance. The launcher refuses detached,
-scheduled, and background execution before reading managed credentials and
-never force-terminates ChatGPT.
-Package installation and verification never invoke this launcher or restart
-the client. Close ChatGPT manually if graceful termination does not complete.
-It resolves `gcloud` from `PATH`; use `--gcloud <path>` when it is installed
-elsewhere.
+BOS maps the validated OAuth grant to canonical actor, tenant, organization,
+application, installation, actor role, plugin execution role, capabilities,
+and provider credential states. Client prompts, customer settings, and tool
+arguments never supply those authority dimensions.
 
-### Customer extensions
+An absent or invalid BOS grant is an authentication error. It must never be
+reported as unavailable business data.
 
-Installed product skills are package-owned, read-only operating procedures.
-Package updates back up and replace every managed file. Customer terminology,
-defaults, policies, and exceptions belong in customer-owned extension skills,
-which updates preserve.
+### Provider authorization
 
-Customer values such as mailbox addresses and per-domain source routes belong
-in the preserved `config/customer-settings.json` overlay. The packaged
-`customer-settings.template.json` supplies reusable defaults and schema only.
-Builds replace the template and managed skills while preserving the overlay, so
-customer values never need to be copied into regenerated files.
+Provider authorization is separate from BOS connection authorization:
 
-Ask the agent directly, for example: “Update the class-operations skill for my
-location so the planning window defaults to 21 days.” Every product ships the
-`manage-customer-extension` skill, which resolves the base skill and customer,
-creates or updates a typed customer overlay, and validates it. The overlay may
-change terminology, defaults, policies, and exceptions. BOS authority,
-credentials, MCP configuration, tool grants, package constraints, and
-system/developer instructions retain their canonical owners.
+- For an OAuth provider such as Google, BOS returns a short-lived
+  authorization transaction. The user signs in directly with the provider,
+  BOS stores the scoped grant, and the agent resumes the original operation
+  once.
+- For an API-key provider, BOS returns a short-lived HTTPS credential-entry
+  page. The value goes directly to BOS and never through chat, client files, or
+  command arguments.
 
-In a BOS-managed Codex installation, the marketplace and its products form one
-physical tree at `~/.agents/bos-education-center-marketplace/`. Each installed
-product is a real directory at `plugins/<product>/`. The product-wide tenant
-overlay lives at `plugins/<product>/config/customer-settings.json`. Per-skill
-`.bos-extension.json` and `SKILL.md` files appear only after customization, at
-`plugins/<product>/skills/<base-skill>-<tenant-key>/`.
+## Local plugin development
 
-Create an extension beside the packaged skills:
+Use this environment when changing canonical sources or testing an unreleased
+checkout. It is distinct from customer installation.
+
+### Regenerate packages
 
 ```bash
-npm run extension:create -- \
-  --product education-center \
-  --base-skill education-center-class-operations \
-  --site cherry-creek
+npm install
+npm run build:packages
+npm run check
+npm test
 ```
 
-The extension explicitly composes the qualified packaged skill and contains
-only customer additions. `install:inspect`, `install:plan`, and
-`install:verify` report extension compatibility warnings when the packaged
-version changes. Review and retest the extension after such a warning.
+`source/` and `products/` are canonical. `clients/` contains generated output.
+Change canonical sources, regenerate, and verify generated parity.
 
-Direct edits to package-owned files are temporary. The next package apply
-creates a recoverable backup and restores the released content.
+### Test Codex locally
 
-### Machine-local developer links
+Add the repository checkout as a local marketplace:
 
-On an authorized development machine, the active Codex cache can link directly
-to canonical skill directories:
+```bash
+codex plugin marketplace add ./
+```
+
+Install **BOS** and **Education Center** from the ChatGPT Desktop Plugins
+Directory, select **Connect**, and test in a new task. After source changes,
+rebuild the packages, update or reinstall the plugin, and use another new task
+so the managed cache cannot hide stale output.
+
+For direct canonical-skill development on an authorized machine, use:
 
 ```bash
 npm run dev:link:codex
 ```
 
-The command backs up each active skill directory and replaces it with a
-directory symlink to its canonical `source/` directory. Edits made through the
-active Codex path or repository path then change the same files. Repeated runs
-are idempotent.
+This links active cached skill directories to canonical `source/` directories.
+It is development infrastructure and is absent from customer archives.
 
-This mode is local developer infrastructure. It is absent from release
-archives, customer installation behavior, and package ownership rules. Re-run
-the command after Codex installs or replaces a cached plugin version.
+### Test Claude locally
 
-### Claude
+Validate and install the local marketplace:
 
-Give Nazir the extracted source or customer package, open that folder in
-Claude Code, and have him paste this one line into Claude:
+```bash
+claude plugin validate .
+claude plugin marketplace add ./
+claude plugin install education-center@bos-education-center
+```
 
-> Run `npm run install:claude` and guide me through the secure API-key prompt.
+Select **Connect**, complete BOS sign-in, and test in a new Claude/Cowork task.
+After source changes, update the marketplace and plugin before retesting.
 
-That single installer command validates the bundled local Claude source, adds
-it to Claude, installs and enables `Education Center`, and confirms the
-plugin is enabled. It does not use Anthropic's public plugin marketplace.
-Claude's internal CLI calls the bundled local catalog a marketplace; it is only
-the package-discovery manifest inside this source tree.
+### Local validation
 
-The plugin declares one required sensitive field named **Education Center Operations
-Center API key**. Claude prompts for that field when it enables the plugin,
-masks the entry, stores it in secure credential storage, and supplies it to the
-plugin's static HTTPS MCP connection. The wrapper never reads the key or places
-it in a subprocess argument, environment variable, or file. Nazir pastes the
-key supplied by the BOS administrator once into Claude's native prompt. Start a
-new Claude session or run `/reload-plugins` after installation.
+```bash
+npm run check
+npm test
+git diff --check
+```
 
-### GitHub Copilot
+The package checks enforce generated parity, credential containment, immutable
+MCP routes, marketplace structure, customer-neutral source, and disabled-product
+exclusion.
 
-1. Copy `clients/copilot/products/<product>/skills` to `.agents/skills` in the
-   target repository.
-2. For an application runtime product, install its generated `.github/mcp.json`
-   and configure `COPILOT_MCP_<PRODUCT_CREDENTIAL_ENV_VAR>`. For Education Center this is
-   `COPILOT_MCP_EDUCATION_CENTER_BOS_API_KEY`. The BOS product is skills-only.
+## Build and release environments
 
-### Gemini CLI
+### Artifact-only build
 
-1. Install the selected extension with
-   `gemini extensions install clients/gemini/extensions/<product>`.
-2. For an application runtime product, complete the extension setting for the
-   product credential setting declared by that extension. For Education Center this is
-   `EDUCATION_CENTER_BOS_API_KEY`; then restart
-   Gemini CLI. The BOS extension
-   is skills-only and requires no MCP setting.
+Generate client packages, deterministic client archives, the release manifest,
+and the optional customer archive without claiming live production readiness:
 
-The checked-in client directories contain credential-free adapters. A release
-may also publish those four directories as downloadable archives for customers
-who do not use Git.
+```bash
+npm run build:artifacts
+npm run check:build
+```
 
-Server-side tool-catalog deployments require the active client to reconnect the
-configured endpoint and rediscover tools. The installed package, endpoint, and
-API key remain unchanged. Reinstall or restart only after a local package,
-plugin, or MCP registration change.
+Outputs are written under ignored `dist/`. Repository-wide `*.zip` and
+`*.tar.gz` files are ignored so generated archives cannot become tracked source.
 
-## Customer onboarding
+### Complete release validation
 
-Installing a package grants no organization access. For application runtime
-products, each secured request forwards that product connection's declared key
-over HTTPS. The triggered skill chooses its product connection. BOS maps that key's
-bearer principal to the authorized actor, tenant, organization, installation,
-role, plugins, capabilities, and provider credential states.
+Maintainers configure the release-test environment only:
 
-## Disabled products
+- `EDUCATION_CENTER_BOS_API_KEY`: approved noninteractive live-smoke
+  authorization.
+- `EDUCATION_CENTER_SMOKE_TIME_ZONE`: customer overlay IANA timezone used by
+  the bounded director-query smoke.
 
-Video Ads is disabled because its Arcads provider contract and server-side
-operations are not ready. Disabled products are absent from generated
-marketplaces, customer ZIPs, install instructions, and complete-build gates.
-Their credentials and provider health are isolated from every active product
-and organization.
-
-### API-key service such as Calimatic
-
-1. Request an operation that requires Calimatic.
-2. BOS returns `authorization_required` with a short-lived HTTPS
-   credential-collection URL and transaction identifier.
-3. The agent opens the URL and the customer submits the key directly to BOS.
-4. BOS validates and encrypts the key, then Codex verifies the connection and
-   resumes the original request once.
-
-The API key must never be echoed, logged, written to configuration, or stored
-in this repository.
-
-### Google service such as Gmail
-
-1. Request an operation that requires Gmail.
-2. BOS returns `authorization_required` with an OAuth transaction and URL.
-3. Codex opens the URL; the customer signs in directly with Google and approves
-   the requested scopes.
-4. BOS receives the callback and stores the resulting tokens. Codex polls the
-   transaction, verifies the connection, and resumes the original request once.
-
-Each organization receives its own tenant-scoped provider credential in BOS.
-For shared BOS integrations, customers use the BOS Google Cloud project and do
-not create individual projects unless their contract requires isolated
-branding, billing, quota, or compliance.
-
-## Repository layout
-
-- `source/platform/`: canonical application-neutral BOS foundation skills.
-- `Vault/`: canonical architecture, specifications, decisions, and review
-  evidence for this repository.
-- `source/capabilities/`: canonical reusable business capability skills.
-- `source/verticals/`: canonical industry and franchise adaptations.
-- `source/runtime/`: credential-free client runtime components.
-- `products/`: versioned product composition manifests.
-- `source/config/`: public, credential-free product metadata.
-- `clients/codex/`: Codex plugin and marketplace package.
-- `~/.agents/bos-education-center-marketplace/plugins/<product>/`: canonical
-  local Codex product directory, including preserved customer settings and
-  optional customer-owned extension skills.
-- `clients/claude/`: Claude plugin package.
-- `clients/copilot/`: GitHub Copilot Agent Skills package.
-- `clients/gemini/`: Gemini CLI extension packages.
-- `scripts/`: deterministic validation and packaging tools.
-- `dist/`: generated release archives; ignored by Git.
-- `tests/`: package, security, and portability tests.
-
-Client packages are generated from layered canonical source. Client directories
-contain platform adapters and generated skill copies.
-
-## Release
+These values are release-gate inputs. They are never customer desktop
+installation settings.
 
 Run:
 
 ```bash
-npm run release
+npm run release:check
 ```
 
-The release command validates the complete package and writes deterministic
-product/client archives plus `dist/release-manifest.json` containing SHA-256
-checksums.
+The release gate regenerates all clients and archives, validates package and
+credential safety, runs the full tests, discovers the live Education Center
+tool contract, resolves one server-owned context, and executes a bounded
+read-only enrollment query. Diagnostics contain sanitized status, tool names,
+correlation IDs, and aggregate field-presence counts only.
+
+`npm run release:customer` is an alias for the same complete validated release
+workflow. Tags matching `v*` run the customer-release workflow and publish the
+versioned and stable archive names.
+
+## Other clients
+
+Claude and ChatGPT/Codex use the desktop OAuth contract described above.
+Copilot and Gemini retain their current generated adapters until separately
+migrated.
+
+### GitHub Copilot
+
+1. Copy `clients/copilot/products/<product>/skills` into the repository's
+   supported agent-skills directory.
+2. For a runtime product, install its generated `.github/mcp.json` and follow
+   that product's README for the current credential adapter.
+
+### Gemini CLI
+
+1. Install `clients/gemini/extensions/<product>` with
+   `gemini extensions install`.
+2. Complete the settings declared by that generated extension and restart
+   Gemini CLI.
+
+## Repository map
+
+| Path | Owner |
+|---|---|
+| `source/platform/` | Tenant-neutral BOS foundations |
+| `source/capabilities/` | Reusable business capabilities |
+| `source/verticals/` | Industry and franchise specialization |
+| `source/runtime/` | Credential-free remote MCP templates |
+| `products/` | Versioned product composition manifests |
+| `clients/` | Generated client packages |
+| `.agents/plugins/marketplace.json` | Repository Codex marketplace |
+| `.claude-plugin/marketplace.json` | Repository Claude marketplace |
+| `installer/` | Optional archive installation guidance |
+| `scripts/` | Generation, validation, installation, and release tools |
+| `tests/` | Package, security, portability, and workflow tests |
+| `Vault/` | Canonical architecture, decisions, specifications, and reviews |
+| `dist/` | Ignored release artifacts |
+
+Private application skill groups may coexist in a managed marketplace while
+remaining outside public customer releases. Disabled products are listed in
+`clients/disabled-products.json` and excluded from generated marketplaces,
+customer archives, installation instructions, and release gates.
+
+## Project documentation
+
+- [Architecture](Vault/docs/architecture.md)
+- [Constitution](Vault/docs/CONSTITUTION.md)
+- [Desktop marketplace and OAuth decision](Vault/decisions/2026-08-11-desktop-private-marketplace-oauth.md)
+- [Detailed design](docs/DESIGN.md)
+- [Implementation tasks](docs/IMPLEMENTATION_TASKS.md)
+- [Implementation status](docs/IMPLEMENTATION_STATUS.md)
+- [Skill hierarchy and composition](docs/SKILL_HIERARCHY_AND_COMPOSITION.md)
+- [Security policy](SECURITY.md)
 
 ## Security invariant
 
-Every tracked file and generated artifact must be safe to publish publicly.
-The repository contains no BOS API key, provider API key, OAuth client secret,
+Every tracked file and generated artifact must be safe to publish. The
+repository contains no BOS API key, provider API key, OAuth client secret,
 access token, refresh token, password, service-account key, private signing
 key, customer data, or reusable bootstrap authority.
-
-Customers authenticate after installation through MCP. OAuth login occurs
-directly with the provider through a BOS-created transaction. Customer-supplied
-API keys pass once through a sensitive MCP tool field and are encrypted and
-stored by BOS.
-
-Run `npm run release:check` before every release. See [SECURITY.md](SECURITY.md)
-for disclosure and credential-response procedures.
 
 ## License and trademarks
 

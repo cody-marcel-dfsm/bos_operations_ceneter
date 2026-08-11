@@ -47,11 +47,11 @@ Read and follow these installed skills before retrieving data:
 - `education-center-class-operations` for date-bound class rosters.
 - `education-center-student-operations` for student, enrollment, and family identity handling.
 
-Use the single user and role resolved from the configured
-`EDUCATION_CENTER_BOS_API_KEY` by
-`bos_get_context`. BOS derives organization, installation, plugin, and
-capability scope. Treat the live MCP manifest as authoritative. Never ask the
-user to choose a director, organization, source, key, or role for preparation.
+Use the single user and role resolved by `bos_get_context` from the authorized
+product connection. Claude and ChatGPT/Codex use the host-managed BOS OAuth
+grant; another client uses only its generated product adapter. BOS derives
+organization, installation, plugin, and capability scope. Treat the live MCP
+manifest as authoritative. Never ask the user to choose a director, organization, source, key, or role for preparation.
 
 When a BOS-routed planner source reports an authentication error, follow
 `bos-mcp-client` authentication recovery. When a separately connected client

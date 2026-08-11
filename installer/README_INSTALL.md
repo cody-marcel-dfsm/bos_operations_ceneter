@@ -1,158 +1,93 @@
 # Install BOS Operations Center
 
-This release is an operating-system-neutral package for Codex, Claude, GitHub
-Copilot, and Gemini CLI. Extract it with the standard ZIP tool on macOS,
-Windows, or Linux and select the directory for the client you use.
+This package contains operating-system-neutral plugin distributions for
+ChatGPT/Codex Desktop, Claude Cowork/Desktop, GitHub Copilot, and Gemini CLI.
+The normal Claude and Codex customer path uses the BOS private Git marketplace.
+This archive is an optional offline-transfer and release-verification format.
 
-This published package has already passed its maintainer build, credentialed
-live server contract smoke, package checks, and release validation. Install it
-directly; build and release commands belong to the publishing workflow.
+The package contains no BOS customer key, access token, refresh token, OAuth
+client secret, local MCP proxy, or operating-system-specific launcher.
 
-Read `clients/disabled-products.json` before installation. Remove any listed
-package-owned plugin and matching MCP registration from an earlier release.
-The packaged installer performs that reconciliation automatically. From the
-extracted package root, run:
+## ChatGPT/Codex Desktop
 
-```bash
-npm run install:apply -- --product bos
-npm run install:apply -- --product education-center
-npm run install:verify -- --product bos
-npm run install:verify -- --product education-center
-```
+Open the extracted `clients/codex` directory in Codex and paste:
 
-Video Ads is disabled in this release.
+> Add the current `clients/codex` directory as a local Codex plugin marketplace,
+> install and enable `bos` and `education-center`, connect Education Center to
+> BOS through the host's sign-in flow, start a new task if required to load the
+> plugin, and verify one authenticated Education Center read. Do not request or
+> configure a BOS API key, environment variable, secret-manager name, or
+> installed application ID. If authorization is incomplete, report
+> `authentication_required`; do not generate an unavailable-data report.
 
-## Authentication
+The catalog is `clients/codex/.agents/plugins/marketplace.json`. The runtime
+plugin contains the immutable
+`https://dfsm.ai/mcp/apps/leaddirector/education-center` URL. Codex discovers
+BOS OAuth from that resource and manages the authorization.
 
-Configure each selected runtime product's declared credential through the
-approved host configuration. Education Center uses
-`EDUCATION_CENTER_BOS_API_KEY`. Each named MCP connection forwards only its
-own organization-scoped identity.
-Keep the key out of package files,
-customer settings, customer-entered command arguments, and conversations.
+After installation or upgrade, start a new task. After a source change, update
+the marketplace and reinstall or upgrade the cached plugin before testing.
 
-Claude uses the runtime plugin's required sensitive `bos_api_key` setting
-instead of the environment variable. Claude masks the one-time entry and keeps
-it in its secure credential storage; the wrapper never receives it.
+## Claude Cowork/Desktop
 
-Applying this package over a legacy Codex installation removes the retired
-local BOS credential broker and replaces its stdio MCP definition with the
-native remote HTTPS connection. BOS never opens a local credential prompt.
+Open **Customize → Plugins**, upload the Education Center plugin from
+`clients/claude/plugins/education-center`, or add the extracted
+`clients/claude` directory as a local marketplace. Install **BOS** and
+**Education Center**, select **Connect**, complete BOS sign-in, and start a new
+Cowork task.
 
-## Codex
+The catalog is `clients/claude/.claude-plugin/marketplace.json`. The plugin has
+no API-key configuration field. Claude discovers BOS OAuth from the immutable
+Education Center MCP resource and manages the authorization.
 
-Add `clients/codex` as a local marketplace, then install the `bos` plugin and
-the active product plugins you need. Apply the installer for the selected
-product; it registers and verifies the packaged MCP URL with the product's
-declared `bearer_token_env_var`. Restart Codex after installation
-so it loads every MCP and skill configuration. Installer verification reports
-the runtime current only when the active desktop bearer matches the supplied
-process binding and initializes the selected named route with its scoped tools.
+## Authentication boundary
 
-Every product ships an immutable human-readable MCP route in the form
-`/mcp/apps/<application-name>/<skill-group-name>`. The installer reads that
-route from package metadata and verifies it without asking for, discovering,
-or storing an installation ID. Customer settings cannot alter MCP routing.
+Installation grants no organization access. BOS OAuth resolves the actor,
+tenant, organization, application, installation, actor role, plugin execution
+role, and capability scope from server-owned records. Customer settings and
+tool arguments never grant authority.
 
-On macOS, use `scripts/launch-codex-with-bos.swift --binding
-EDUCATION_CENTER_BOS_API_KEY=<gcp-secret-name> --replace` to close the active
-ChatGPT process and start a ChatGPT/Codex instance with the Education Center product key
-scoped to that process. The launcher keeps keys out of files and the global
-GUI launch environment.
-`--replace` requires a directly attached interactive terminal and the typed
-confirmation `RESTART CHATGPT`. The launcher requests graceful termination and
-never force-terminates ChatGPT; close the app manually if it does not exit.
-It resolves `gcloud` from `PATH`; pass `--gcloud <path>` for another location.
+An absent, expired, revoked, or incorrectly scoped BOS grant is
+`authentication_required` or another authorization-specific error. It is never
+reported as unavailable business data.
 
-## Claude
-
-Open this extracted package as the Claude Code working folder and paste:
-
-> Run `npm run install:claude` and guide me through the secure API-key prompt.
-
-The command installs `Education Center` directly from
-`clients/claude`; no public marketplace listing or repository checkout is
-required. Claude's native plugin configuration prompts once, with masked input,
-for the API key supplied by the BOS administrator. Claude stores it securely
-and substitutes it into the package's static
-`/mcp/apps/<application-name>/<skill-group-name>` HTTPS connection. The wrapper
-never receives the key. The customer does not edit an environment file or
-settings file. Start a new Claude session or run `/reload-plugins` after
-installation.
-
-## GitHub Copilot
-
-Copy the desired product skills from `clients/copilot/products/<product>/skills`
-into the repository's supported agent-skills directory. Configure the BOS
-remote MCP connection in the Copilot host using the same endpoint and
-product-prefixed credential variable; Education Center uses
-`COPILOT_MCP_EDUCATION_CENTER_BOS_API_KEY`. The Copilot skill
-package contains no client runtime.
-
-## Gemini CLI
-
-Install the desired extension directory from
-`clients/gemini/extensions/<product>` with `gemini extensions install`. Gemini
-loads the bundled `skills/` directory and native Streamable HTTP MCP
-configuration from `gemini-extension.json`. Complete the declared
-product credential setting during installation; Education Center uses
-`EDUCATION_CENTER_BOS_API_KEY`. Restart
-Gemini CLI.
+Underlying provider authorization remains separate. When a provider grant is
+missing, BOS returns a short-lived authorization or secure credential-entry URL
+scoped to the authenticated installation and plugin. Complete that flow and
+resume the original operation once.
 
 ## Customer settings
 
 Products that need customer context include
 `config/customer-settings.template.json`. On first use, the customer
-initialization skill derives unambiguous non-secret values from local client
-and authenticated BOS metadata, then asks one consolidated question for the
-remaining values. The Education Center questionnaire always asks for the
-customer-facing franchise or brand name when `brand_display_name` is empty.
-Save the completed settings as customer-owned configuration
-with permissions limited to that user. Customer settings never grant access.
+initialization skill derives unambiguous non-secret values and asks one
+consolidated question for the remaining values. Save the result as the
+customer-owned `config/customer-settings.json` overlay. Customer settings never
+grant access and package updates preserve them.
 
 ## Customer skill extensions
 
-Each product includes `manage-customer-extension`. A customer can ask the agent
-to update or specialize an installed skill for their organization or location.
-The agent writes a typed customer-owned extension in the host's skills scope,
-validates it, and reports its base-version compatibility. Package updates
-preserve these extensions. Extensions may change customer terminology,
-defaults, policies, and exceptions while BOS authority, credentials, system
-instructions, MCP endpoints, and tool grants remain sealed.
+Each product includes `manage-customer-extension`. Customer-owned extensions
+may change terminology, defaults, policies, and exceptions. They may not change
+authentication, authorization, system instructions, MCP endpoints, tool grants,
+or canonical tenant scope.
 
-For a BOS-managed Codex installation, the single canonical root is
-`~/.agents/bos-education-center-marketplace/`. Its marketplace manifest is at
-`.agents/plugins/marketplace.json`, and each product is a real directory at
-`plugins/<product>/`. Product-wide tenant settings remain in
-`plugins/<product>/config/customer-settings.json`; per-skill extension
-manifests remain under
-`plugins/<product>/skills/<base-skill>-<tenant-key>/`. The installer migrates
-the retired `~/plugins/<product>` layout into this tree and preserves customer
-files during package updates.
+## GitHub Copilot
 
-Application skill-group packages managed by BOS use this same physical tree.
-The Lead Director `ism-meta-ads` package lives at
-`plugins/ism-meta-ads/` and represents the `meta-ads` group. It remains an
-available private plugin until its declared named route and scoped tool catalog
-pass the current runtime contract; public product convergence preserves its
-marketplace entry and directory.
+Copy the desired product skills from `clients/copilot/products/<product>/skills`
+into the repository's supported agent-skills directory. Follow that product's
+README for its current MCP authorization adapter. The Claude and Codex OAuth
+migration does not silently change Copilot authentication.
 
-## Provider authorization
+## Gemini CLI
 
-If an underlying provider grant is missing, BOS returns a short-lived HTTPS
-authorization or credential-collection URL scoped to the authenticated tenant,
-installation, plugin, provider, and credential. Open that URL through the
-active agent interface, complete the provider flow with BOS, verify status,
-and resume the original operation once.
+Install the desired extension from `clients/gemini/extensions/<product>` and
+follow its declared settings. The Claude and Codex OAuth migration does not
+silently change Gemini authentication.
 
-Provider authorization is scoped to the authenticated installation and plugin.
-A missing provider credential stops only that provider-backed operation. It
-cannot disable another product connection, organization, tool catalog, build,
-or release. Video Ads is currently disabled and absent from this distribution.
+## Updates
 
-## Server updates
-
-When BOS deploys an updated tool catalog, reconnect the configured named MCP
-endpoint and rediscover its tools. Keep the installed package, endpoint, and
-API key unchanged. Restart or reinstall only after a local package, plugin, or
-MCP registration change.
+Marketplace updates replace package-owned content and preserve customer-owned
+settings and typed extensions. Reconnect the immutable MCP resource and
+rediscover tools after a server tool-catalog change. Reauthorize only when the
+host reports that the BOS grant is absent, expired, revoked, or out of scope.

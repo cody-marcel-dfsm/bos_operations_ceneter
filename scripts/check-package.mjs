@@ -180,10 +180,17 @@ async function validateProducts() {
         continue;
       }
       const metadata = await readJson(metadataPath);
+      const desktopOAuth = ["codex", "claude"].includes(client);
+      const expectedAuthentication = manifest.runtime
+        ? (desktopOAuth ? "oauth_2_1" : "bearer_env")
+        : "none";
       if (
         metadata.application_name !== manifest.application_name ||
         metadata.mcp_group_name !== manifest.mcp_group_name ||
-        metadata.credential_env_var !== manifest.credential_env_var ||
+        metadata.authentication !== expectedAuthentication ||
+        (desktopOAuth
+          ? "credential_env_var" in metadata
+          : metadata.credential_env_var !== manifest.credential_env_var) ||
         "mcp_application" in metadata ||
         "mcp_resource_group" in metadata ||
         "installed_app_id" in metadata
@@ -215,7 +222,9 @@ async function validateProducts() {
         );
         if (
           server?.url !== expectedUrl ||
-          server?.bearer_token_env_var !== manifest.credential_env_var ||
+          server?.type !== "http" ||
+          "bearer_token_env_var" in (server ?? {}) ||
+          "headers" in (server ?? {}) ||
           JSON.stringify(runtime).includes("BOS_INSTALLED_APP_ID")
         ) {
           failures.push(`Generated Codex named MCP route drift: ${runtimePath}`);
@@ -253,19 +262,8 @@ async function validateProducts() {
           failures.push(`Generated Claude identity drift: ${pluginPath}`);
         }
         if (manifest.runtime) {
-          const expectedUserConfig = {
-            bos_api_key: {
-              type: "string",
-              title: `${manifest.display_name} API key`,
-              description: "Paste the organization-scoped API key supplied by your BOS administrator.",
-              sensitive: true,
-              required: true
-            }
-          };
-          if (
-            generated.mcpServers !== "./.mcp.json" ||
-            JSON.stringify(generated.userConfig) !== JSON.stringify(expectedUserConfig)
-          ) {
+          if (generated.mcpServers !== "./.mcp.json" ||
+              "userConfig" in generated) {
             failures.push(`Generated Claude runtime configuration drift: ${pluginPath}`);
           }
         }
@@ -284,8 +282,8 @@ async function validateProducts() {
           if (
             server?.type !== "http" ||
             server?.url !== expectedUrl ||
-            server?.headers?.Authorization !==
-              "Bearer ${user_config.bos_api_key}" ||
+            "headers" in (server ?? {}) ||
+            "bearer_token_env_var" in (server ?? {}) ||
             Object.keys(runtime.mcpServers ?? {}).length !== 1 ||
             JSON.stringify(runtime).includes("BOS_INSTALLED_APP_ID") ||
             JSON.stringify(runtime).includes("installed_app_id")

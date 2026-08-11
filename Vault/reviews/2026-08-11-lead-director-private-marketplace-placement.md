@@ -16,7 +16,7 @@ group.
 - The active marketplace entry uses the local source
   `./plugins/ism-meta-ads`, matching the physical package directory under
   `~/.agents/bos-education-center-marketplace/plugins/`.
-- The legacy `/Users/cody/plugins/ism-meta-ads` path is absent after migration.
+- The legacy `~/plugins/ism-meta-ads` path is absent after migration.
 - The marketplace policy reports `ism-meta-ads@bos-education-center` as
   available and uninstalled. This preserves the package without activating its
   retired broad MCP route or its superseded write-operation declarations.

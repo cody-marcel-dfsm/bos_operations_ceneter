@@ -1,5 +1,5 @@
 {
-  "indexed_at": "20260811T221602.354808Z",
+  "indexed_at": "20260811T220558.934803Z",
   "schema_version": "bos-vault-manifest/v1",
   "source_count": 28,
   "sources": {
@@ -72,8 +72,8 @@
       "sha256": "534d17c53817d886a0d25d20d2f78137ebfa846d92a91fd38eadffcb4e605f5c"
     },
     "Vault/reviews/2026-08-11-desktop-private-marketplace-oauth.md": {
-      "bytes": 4327,
-      "sha256": "605c12e00a41a8acdce3e56a59f7395c43f63dee29e4e7d41b805f6ad6b63da5"
+      "bytes": 4015,
+      "sha256": "7f8442ad4247af3c6171b6bf03ad2f1eac35aef72dd9344821d35b28dc6fbc99"
     },
     "Vault/reviews/2026-08-11-education-center-identity.md": {
       "bytes": 3436,

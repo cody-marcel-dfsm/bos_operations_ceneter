@@ -64,7 +64,7 @@ for (const { product, skills } of resolved) {
       client: "codex",
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
-      credential_env_var: product.credential_env_var
+      authentication: product.runtime ? "oauth_2_1" : "none"
     });
     await writeJson(
       join(pluginRoot, ".codex-plugin", "plugin.json"),
@@ -91,7 +91,7 @@ for (const { product, skills } of resolved) {
       client: "claude",
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
-      credential_env_var: product.credential_env_var
+      authentication: product.runtime ? "oauth_2_1" : "none"
     });
     const claudePlugin = {
       name: product.name,
@@ -106,15 +106,6 @@ for (const { product, skills } of resolved) {
     };
     if (product.runtime) {
       claudePlugin.mcpServers = "./.mcp.json";
-      claudePlugin.userConfig = {
-        bos_api_key: {
-          type: "string",
-          title: `${product.display_name} API key`,
-          description: "Paste the organization-scoped API key supplied by your BOS administrator.",
-          sensitive: true,
-          required: true
-        }
-      };
     }
     await writeJson(
       join(pluginRoot, ".claude-plugin", "plugin.json"),
@@ -150,8 +141,11 @@ for (const { product, skills } of resolved) {
           "",
           "## Authentication and security",
           "",
-          "The remote HTTPS MCP uses this plugin's sensitive BOS bearer credential.",
+          "The remote HTTPS MCP uses OAuth 2.1 authorization initiated by the host.",
           "The packaged `education-center` MCP resource group selects its tools.",
+          "Install the plugin, select Connect, and complete BOS sign-in. Claude",
+          "stores and refreshes the resulting authorization; the plugin never asks",
+          "the user to paste a BOS key.",
           "The customer-facing franchise or brand name is supplied during tenant setup",
           "and applies only to customer-facing copy and output.",
           "Credentials are never included in this package,",
@@ -189,6 +183,7 @@ for (const { product, skills } of resolved) {
       client: "copilot",
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
+      authentication: product.runtime ? "bearer_env" : "none",
       credential_env_var: product.credential_env_var
     });
     if (product.runtime) {
@@ -237,6 +232,7 @@ for (const { product, skills } of resolved) {
       client: "gemini",
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
+      authentication: product.runtime ? "bearer_env" : "none",
       credential_env_var: product.credential_env_var
     });
     await writeJson(
@@ -307,6 +303,17 @@ await writeJson(join(root, ".claude-plugin", "marketplace.json"), {
   plugins: claudeMarketplace.plugins.map((plugin) => ({
     ...plugin,
     source: `./clients/claude/plugins/${plugin.name}`
+  }))
+});
+
+await writeJson(join(root, ".agents", "plugins", "marketplace.json"), {
+  ...marketplace,
+  plugins: marketplace.plugins.map((plugin) => ({
+    ...plugin,
+    source: {
+      source: "local",
+      path: `./clients/codex/plugins/${plugin.name}`
+    }
   }))
 });
 

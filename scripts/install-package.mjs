@@ -354,6 +354,22 @@ async function configureCodexBosMcp(options, paths) {
   const runtimeServer = Object.values(runtime.mcpServers ?? {})[0];
   if (!runtimeServer) return { state: "not_applicable" };
   const metadata = await readJson(join(paths.target, ".bos-product.json"));
+  if (metadata.authentication === "oauth_2_1") {
+    const expectedUrl =
+      `https://dfsm.ai/mcp/apps/${metadata.application_name}/${metadata.mcp_group_name}`;
+    if (runtimeServer.type !== "http" || runtimeServer.url !== expectedUrl ||
+        "bearer_token_env_var" in runtimeServer || "headers" in runtimeServer ||
+        "credential_env_var" in metadata) {
+      throw new Error("Packaged OAuth MCP configuration is invalid");
+    }
+    return {
+      state: "host_managed",
+      name: metadata.mcp_group_name,
+      url: expectedUrl,
+      authentication: "oauth_2_1",
+      next_action: "connect"
+    };
+  }
   const registration = codexBosMcpRegistration(
     metadata.application_name,
     metadata.mcp_group_name,
@@ -384,6 +400,26 @@ async function configureCodexBosMcp(options, paths) {
         expectedApiKey: environment[metadata.credential_env_var],
         verifyBearer
       }));
+  let credentialState = host;
+  if (host.state === "verification_required" &&
+      host.reason === "codex_host_inspection_unsupported") {
+    const apiKey = environment[metadata.credential_env_var];
+    if (!apiKey) {
+      credentialState = {
+        state: "configuration_required",
+        reason: "codex_customer_environment_product_api_key_missing"
+      };
+    } else {
+      const live = await verifyBearer(apiKey);
+      credentialState = live.state === "current"
+        ? {
+            state: "current",
+            credential_source: "customer_environment",
+            tool_count: live.tool_count
+          }
+        : live;
+    }
+  }
   await runCommand("codex", registration.args);
   const verification = await runCommand("codex", ["mcp", "get", registration.name]);
   const output = String(verification?.stdout ?? verification ?? "");
@@ -391,21 +427,25 @@ async function configureCodexBosMcp(options, paths) {
       !output.includes(`bearer_token_env_var: ${registration.bearer_token_env_var}`)) {
     throw new Error("Codex BOS MCP registration verification failed");
   }
-  if (host.state !== "current") {
+  if (credentialState.state !== "current") {
     return {
-      ...host,
+      ...credentialState,
       url: registration.url,
       bearer_token_env_var: registration.bearer_token_env_var
     };
   }
-  return {
+  const current = {
     state: "current",
     name: registration.name,
     url: registration.url,
     bearer_token_env_var: registration.bearer_token_env_var,
-    host_pid: host.pid,
-    tool_count: host.tool_count
+    tool_count: credentialState.tool_count
   };
+  if (credentialState.pid) current.host_pid = credentialState.pid;
+  if (credentialState.credential_source) {
+    current.credential_source = credentialState.credential_source;
+  }
+  return current;
 }
 
 function commandOutput(result) {
@@ -1138,7 +1178,7 @@ async function mergeMarketplace(options, paths, desiredManifest) {
   };
   const entry = marketplaceEntry({
     name: options.product,
-    authentication: "ON_USE",
+    authentication: desiredManifest.mcpServers ? "ON_INSTALL" : "ON_USE",
     category: desiredManifest.interface?.category ?? "Productivity"
   });
   const index = marketplace.plugins.findIndex(
@@ -1146,8 +1186,10 @@ async function mergeMarketplace(options, paths, desiredManifest) {
   );
   if (index === -1) marketplace.plugins.push(entry);
   else {
-    entry.policy.authentication =
-      marketplace.plugins[index].policy?.authentication ?? "ON_USE";
+    if (!desiredManifest.mcpServers) {
+      entry.policy.authentication =
+        marketplace.plugins[index].policy?.authentication ?? "ON_USE";
+    }
     marketplace.plugins[index] = entry;
   }
   await mkdir(dirname(paths.marketplace), { recursive: true });
@@ -1250,7 +1292,7 @@ export async function verifyInstallation(options = {}) {
   report.runtime = await configureCodexBosMcp(options, report.paths);
   report.ok =
     report.state === "managed-current" && report.marketplace === "current" &&
-    ["current", "not_applicable"].includes(report.runtime.state);
+    ["current", "host_managed", "not_applicable"].includes(report.runtime.state);
   return report;
 }
 
@@ -1269,6 +1311,12 @@ function printReport(report, asJson) {
       if (values.length) console.log(`${key}: ${values.join(", ")}`);
     }
     for (const warning of report.warnings) console.log(`warning: ${warning}`);
+    if (report.runtime) {
+      const reason = report.runtime.reason
+        ? `; reason=${report.runtime.reason}`
+        : "";
+      console.log(`runtime=${report.runtime.state}${reason}`);
+    }
   }
 }
 

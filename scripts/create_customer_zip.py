@@ -60,10 +60,6 @@ def main() -> None:
         shutil.copy2(ROOT / "installer" / "README_INSTALL.md", stage)
         (stage / "scripts").mkdir()
         shutil.copy2(
-            ROOT / "scripts" / "launch-codex-with-bos.swift",
-            stage / "scripts" / "launch-codex-with-bos.swift",
-        )
-        shutil.copy2(
             ROOT / "scripts" / "install-package.mjs",
             stage / "scripts" / "install-package.mjs",
         )

@@ -2,8 +2,7 @@
   "mcpServers": {
     "education-center": {
       "type": "http",
-      "url": "https://dfsm.ai/mcp/apps/leaddirector/education-center",
-      "bearer_token_env_var": "EDUCATION_CENTER_BOS_API_KEY"
+      "url": "https://dfsm.ai/mcp/apps/leaddirector/education-center"
     }
   }
 }

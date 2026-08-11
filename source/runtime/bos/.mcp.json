@@ -2,11 +2,7 @@
   "mcpServers": {
     "bos": {
       "type": "http",
-      "url": "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
-      "bearer_token_env_var": "PRODUCT_API_KEY",
-      "headers": {
-        "Authorization": "Bearer ${PRODUCT_API_KEY}"
-      }
+      "url": "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}"
     }
   }
 }

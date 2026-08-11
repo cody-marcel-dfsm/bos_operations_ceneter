@@ -11,12 +11,13 @@ Use these package-owned technical identities:
 - vertical skills: `education-center-*`;
 - MCP tool aliases: `education_center_*`;
 - runtime server alias: `bos_education_center`;
-- credential binding: `EDUCATION_CENTER_BOS_API_KEY`.
+- desktop authorization resource:
+  `https://dfsm.ai/mcp/apps/leaddirector/education-center`.
 
-Existing installations preserve the bearer through approved managed storage
-and bind it to `EDUCATION_CENTER_BOS_API_KEY`. Package source, generated
-clients, installed MCP registration, and newly launched host processes use only
-the declared Education Center binding.
+Claude and ChatGPT/Codex desktop installations authorize that immutable
+resource through host-managed OAuth 2.1. Their package source and generated
+clients contain no API-key binding. Copilot and Gemini retain their existing
+client-specific adapters until separately migrated.
 
 During customer initialization, ask for and persist the tenant's
 customer-facing franchise or brand name as `brand_display_name` in the

@@ -2,5 +2,6 @@
   "schema_version": "1",
   "name": "bos",
   "version": "0.4.21",
-  "client": "claude"
+  "client": "claude",
+  "authentication": "none"
 }

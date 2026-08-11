@@ -28,14 +28,15 @@ release system for portable BOS skills and native remote MCP client adapters.
    the owning application graph or capability.
 3. Route mutations through PO orchestration and GO persistence.
 4. Store provider credentials only in BOS-managed credential storage.
-5. Authenticate scoped product clients only with an API key supplied through
-   the client's native sensitive-configuration surface. Claude runtime plugins
-   declare a required sensitive install-time field that Claude stores in its
-   secure credential store; other clients use their approved host credential
-   binding. Never launch a second BOS login or password flow.
-   Recover missing underlying provider grants through the BOS service's
-   server-returned OAuth or secure provider-credential flow in the active agent
-   interface; keep secrets out of model chat, package files, and logs.
+5. Authenticate Claude and ChatGPT/Codex desktop product connections through
+   the host's OAuth 2.1 MCP authorization flow. Their packages declare only the
+   immutable HTTPS MCP resource; they contain no API-key field, authorization
+   header template, or credential environment-variable binding. The host
+   discovers BOS authorization metadata, launches consent, stores and refreshes
+   the grant, and attaches a resource-scoped token. Recover missing underlying
+   provider grants through the BOS service's server-returned OAuth or secure
+   provider-credential flow in the active agent interface; keep secrets out of
+   model chat, package files, customer settings, setup scripts, and logs.
 6. Fail closed on missing, malformed, unauthorized, or ambiguous canonical
    state.
 7. Generate every client package from canonical `source/`; generated client
@@ -63,19 +64,14 @@ release system for portable BOS skills and native remote MCP client adapters.
     package-owned route using the exact static form
     `/mcp/apps/{application-name}/{skill-group-name}`. Both path segments are
     stable human-readable slugs, never IDs or customer settings. Each active
-    runtime product declares exactly one product-owned credential binding. That
-    bearer resolves exactly one server-owned principal,
-    organization, installation, delegated role, plugin, and capability scope
-    for that named connection. Products may resolve different organizations
-    and principals in the same client process. Domain-skill routing chooses the
-    matching named connection and its declared credential; credentials never
-    fall through between products. Claude's native sensitive plugin
-    configuration prompts for and stores the value; the local package wrapper
-    never reads it or places it in a subprocess argument, environment variable,
-    file, or model chat. Claude substitutes that option directly into the
-    authorization header. Codex remote servers bind the declared
-    product variable through `bearer_token_env_var` so the host can resolve it
-    without exposing it.
+    Claude or ChatGPT/Codex runtime product obtains exactly one host-managed
+    OAuth grant for its named MCP resource. That grant resolves exactly one
+    server-owned actor, organization, installation, delegated role, plugin,
+    and capability scope for that connection. Products may resolve different
+    organizations and actors in the same client. Domain-skill routing chooses
+    the matching named connection; authorization never falls through between
+    products. The plugin package never reads, prompts for, substitutes, or
+    persists BOS access or refresh tokens.
 12. Treat deployment artifacts as build outputs. The complete cross-platform
     build generates client packages, deterministic product archives, the
     release manifest, and versioned and stable OS-neutral customer ZIPs.
@@ -100,35 +96,28 @@ release system for portable BOS skills and native remote MCP client adapters.
     uncertain mutations by operation or idempotency identity before replay.
     Require user action only for secure provider authorization or credential
     entry surfaces that inherently need direct user interaction.
-16. Distribute pre-publication Claude products from the local source or
-    customer package with one installer entry point. The installer validates
-    and registers the package's local Claude catalog, then installs and enables
-    the selected plugin through Claude's native plugin CLI. Runtime Claude
-    plugins declare one required sensitive API-key option; Claude asks for it
-    through its native masked configuration prompt, securely stores the value,
-    and substitutes it into the exact package-generated named HTTPS MCP route.
-    The package wrapper never handles the credential.
-    Product application and skill-group names remain immutable package
-    metadata.
-17. Treat a Codex bearer registration as current only when the selected
-    product's declared credential exists in the active host process, matches
-    the installer process binding when one is supplied, and successfully
-    initializes that product's exact named route with its required scoped tool
-    group. On macOS, launch the desktop host with each installed product's
-    process-scoped credential fetched from approved managed storage.
-    Require a directly attached interactive terminal and explicit typed user
-    confirmation before replacing a running desktop host. Never schedule,
-    detach, retry-loop, or force-terminate the desktop host from installation,
-    verification, reconciliation, or agent workflows.
-    Never persist a bearer in package files or publish it into the global GUI
-    launch environment.
-    Installers register and inspect only the product's declared credential
-    binding. During a product rename, preserve the bearer through approved
-    managed storage and relaunch the host with the declared binding. Remove
-    retired binding identifiers from package source and client configuration.
-18. Gate every complete build and customer release on a credentialed,
+16. Distribute pre-publication Claude and Codex products through their native
+    local or private Git marketplaces. Claude uses
+    `.claude-plugin/marketplace.json`; Codex uses
+    `.agents/plugins/marketplace.json`. Keep separate host manifests and share
+    canonical skills through deterministic generation. Installation adds the
+    marketplace, installs the product, invokes the host's Connect/Sign in
+    action for runtime products, and begins a new task after the host loads the
+    plugin. Customer ZIPs may remain optional release artifacts; they are not
+    the primary desktop installation or credential path.
+17. Treat a Claude or ChatGPT/Codex product connection as ready only when the
+    installed plugin points to its exact immutable MCP resource, OAuth
+    discovery succeeds, the host holds a valid resource-scoped grant, the
+    server returns one canonical context, and the required scoped tool group is
+    discoverable. A missing or expired grant triggers the host's Connect/Sign
+    in flow. Installation and recovery never request a BOS key, manipulate the
+    desktop process environment, or use an OS-specific launcher. Plugin source
+    changes require marketplace update or reinstall, cache refresh as supported
+    by the host, and a new task.
+18. Gate every complete build and customer release on an authorized,
     read-only live query through each active operational product's exact named
-    MCP route using that product's declared build-process credential. Disabled
+    MCP route using the approved noninteractive release-test authorization.
+    This release-only evidence never changes the desktop OAuth contract. Disabled
     or unreleased products are excluded from generated marketplaces, customer
     archives, installation instructions, and release gates. A missing provider
     credential or disabled provider plugin blocks only its owning product or

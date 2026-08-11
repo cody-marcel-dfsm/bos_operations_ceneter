@@ -1,6 +1,6 @@
 # BOS marketplace and agent-harness distribution plan
 
-Status: planned
+Status: partially implemented; desktop authentication amended 2026-08-11
 Date: 2026-08-09
 Owner: BOS Operations Center
 
@@ -69,8 +69,8 @@ Each client package owns:
 - native harness connection metadata;
 - marketplace name, description, prompts, icons, screenshots, version, and
   support links;
-- binding each runtime product's declared organization-scoped credential
-  through the harness's supported sensitive configuration mechanism;
+- declaring each runtime product's immutable MCP resource and using the native
+  host authorization mechanism;
 - connection recovery and rediscovery within the active request; and
 - client-side composition of server-advertised MCP tools.
 
@@ -95,11 +95,12 @@ Marketplace installation does not:
 - accept an application ID or installed-app ID;
 - infer a route from a tenant, organization, prompt, or credential;
 - combine tools or credentials from multiple BOS routes into one operation; or
-- introduce a second BOS login or authorization architecture.
+- accept credentials or authority through plugin configuration fields.
 
-Each active runtime product has one provisioned credential binding for its
-named connection. Different products may resolve different organizations and
-principals while each domain skill selects its matching named connection.
+Each active Claude or ChatGPT/Codex runtime product has one host-managed OAuth
+grant for its named connection. Different products may resolve different
+organizations and actors while each domain skill selects its matching named
+connection.
 Underlying provider authorization
 continues through BOS-hosted secure flows when a server operation reports that
 authorization is required.
@@ -176,21 +177,26 @@ authority.
 Distribute each skill group as an OpenAI plugin containing Codex skills and a
 native remote MCP registration.
 
-The generated registration uses:
+The generated registration contains only:
 
-```toml
-[mcp_servers.education-center]
-url = "https://dfsm.ai/mcp/apps/leaddirector/education-center"
-bearer_token_env_var = "EDUCATION_CENTER_BOS_API_KEY"
+```json
+{
+  "mcpServers": {
+    "education-center": {
+      "type": "http",
+      "url": "https://dfsm.ai/mcp/apps/leaddirector/education-center"
+    }
+  }
+}
 ```
 
-Codex binds the bearer credential from the active host process or another
-approved Codex secret mechanism. The package contains no credential and no
-route setting. A fresh Codex task must discover the installed skill group and
-its fixed MCP server without manual reconstruction.
+Codex discovers BOS OAuth metadata from the resource, presents Connect/Sign in,
+and stores and refreshes the resulting grant. The package contains no
+credential field or route setting. A fresh Codex task must discover the
+installed skill group and its fixed MCP server without manual reconstruction.
 
-Codex validation covers plugin installation, skill discovery, process-scoped
-credential presence, MCP discovery, a representative read, a confirmed
+Codex validation covers plugin installation, skill discovery, OAuth discovery
+and connection, MCP discovery, a representative read, a confirmed
 mutation, provider authorization recovery, transport reconnection, task
 continuation, package update, and credential containment.
 

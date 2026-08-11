@@ -657,18 +657,11 @@ test("disabled products are absent while active runtime products remain scoped",
       educationCenter.mcpServers["education-center"].url,
       "https://dfsm.ai/mcp/apps/leaddirector/education-center"
     );
-    if (client === "claude") {
-      assert.equal(
-        educationCenter.mcpServers["education-center"].headers.Authorization,
-        "Bearer ${user_config.bos_api_key}"
-      );
-    } else {
-      assert.equal(
-        educationCenter.mcpServers["education-center"].bearer_token_env_var,
-        "EDUCATION_CENTER_BOS_API_KEY"
-      );
-      assert.equal("headers" in educationCenter.mcpServers["education-center"], false);
-    }
+    assert.equal("headers" in educationCenter.mcpServers["education-center"], false);
+    assert.equal(
+      "bearer_token_env_var" in educationCenter.mcpServers["education-center"],
+      false
+    );
   }
 });
 
@@ -698,21 +691,12 @@ test("Education Center packages use the Lead Director app resource-group route",
       "https://dfsm.ai/mcp/apps/leaddirector/education-center",
       client
     );
-    if (client === "claude") {
-      assert.equal("bearer_token_env_var" in config.mcpServers["education-center"], false, client);
-      assert.equal(
-        config.mcpServers["education-center"].headers.Authorization,
-        "Bearer ${user_config.bos_api_key}",
-        client
-      );
-    } else {
-      assert.equal(
-        config.mcpServers["education-center"].bearer_token_env_var,
-        "EDUCATION_CENTER_BOS_API_KEY",
-        client
-      );
-      assert.equal("headers" in config.mcpServers["education-center"], false, client);
-    }
+    assert.equal("headers" in config.mcpServers["education-center"], false, client);
+    assert.equal(
+      "bearer_token_env_var" in config.mcpServers["education-center"],
+      false,
+      client
+    );
   }
 });
 
@@ -767,15 +751,7 @@ test("Claude distribution is a marketplace of self-contained plugins", async () 
     )
   );
   assert.equal(educationCenterManifest.mcpServers, "./.mcp.json");
-  assert.deepEqual(educationCenterManifest.userConfig, {
-    bos_api_key: {
-      type: "string",
-      title: "Education Center API key",
-      description: "Paste the organization-scoped API key supplied by your BOS administrator.",
-      sensitive: true,
-      required: true
-    }
-  });
+  assert.equal("userConfig" in educationCenterManifest, false);
 
   const educationCenterRuntime = JSON.parse(
     await readFile(
@@ -787,10 +763,7 @@ test("Claude distribution is a marketplace of self-contained plugins", async () 
     educationCenterRuntime.mcpServers["education-center"].url,
     "https://dfsm.ai/mcp/apps/leaddirector/education-center"
   );
-  assert.equal(
-    educationCenterRuntime.mcpServers["education-center"].headers.Authorization,
-    "Bearer ${user_config.bos_api_key}"
-  );
+  assert.equal("headers" in educationCenterRuntime.mcpServers["education-center"], false);
   assert.equal("bearer_token_env_var" in educationCenterRuntime.mcpServers["education-center"], false);
 
   await assert.rejects(access(`${root}/clients/claude/plugins/video-ads`));
@@ -917,15 +890,21 @@ test("every product and client ships tenant extension management metadata", asyn
       const metadata = JSON.parse(
         await readFile(`${productRoot}/.bos-product.json`, "utf8")
       );
+      const desktopOAuth = ["codex", "claude"].includes(client);
       assert.deepEqual(metadata, {
         schema_version: "1",
         name: manifest.name,
         version: manifest.version,
         client,
+        authentication: manifest.runtime
+          ? (desktopOAuth ? "oauth_2_1" : "bearer_env")
+          : "none",
         ...(manifest.runtime ? {
           application_name: manifest.application_name,
           mcp_group_name: manifest.mcp_group_name,
-          credential_env_var: manifest.credential_env_var
+          ...(!desktopOAuth ? {
+            credential_env_var: manifest.credential_env_var
+          } : {})
         } : {})
       });
       const manager = await readFile(
@@ -989,6 +968,86 @@ test("customer installation guidance contains no maintainer build commands", asy
   }
   assert.doesNotMatch(installSection, /clone this repository/i);
   assert.doesNotMatch(installSection, /unreleased development version/i);
-  assert.match(packagedInstructions, /reconnect the configured named MCP/i);
-  assert.match(packagedInstructions, /Restart or reinstall only after a local/i);
+  assert.match(packagedInstructions, /host's sign-in flow/i);
+  assert.match(packagedInstructions, /paste:/i);
+  assert.doesNotMatch(
+    packagedInstructions,
+    /EDUCATION_CENTER_BOS_API_KEY|bearer_token_env_var|user_config\.bos_api_key|gcloud|gcp-secret-name/i
+  );
+  assert.match(
+    packagedInstructions,
+    /authorization is incomplete[\s\S]*do not generate an unavailable-data report/i
+  );
+  assert.match(packagedInstructions, /Reconnect the immutable MCP resource/i);
+  assert.match(packagedInstructions, /After installation or upgrade, start a new task/i);
+});
+
+test("README routes customer, development, and release environments explicitly", async () => {
+  const readme = await readFile(`${root}/README.md`, "utf8");
+  const environmentIndex = readme.split("## Choose your environment\n")[1]
+    .split("## Install\n")[0];
+  const installSection = readme.split("## Install\n")[1]
+    .split("## Customer onboarding\n")[0];
+  const developmentSection = readme.split("## Local plugin development\n")[1]
+    .split("## Build and release environments\n")[0];
+  const releaseSection = readme.split("## Build and release environments\n")[1]
+    .split("## Other clients\n")[0];
+
+  for (const destination of [
+    "#chatgptcodex-desktop",
+    "#claude-coworkdesktop",
+    "#local-plugin-development",
+    "#artifact-only-build",
+    "#complete-release-validation",
+    "#optional-archive-installation",
+    "#other-clients"
+  ]) {
+    assert.match(environmentIndex, new RegExp(`\\(${destination}\\)`));
+  }
+
+  assert.match(installSection, /Open a new Codex task and paste:/);
+  assert.match(installSection, /Customize → Plugins/);
+  assert.match(installSection, /host's sign-in flow/i);
+  assert.doesNotMatch(
+    installSection,
+    /EDUCATION_CENTER_BOS_API_KEY|EDUCATION_CENTER_SMOKE_TIME_ZONE/
+  );
+  assert.match(developmentSection, /codex plugin marketplace add \.\//);
+  assert.match(developmentSection, /claude plugin marketplace add \.\//);
+  assert.match(releaseSection, /EDUCATION_CENTER_BOS_API_KEY/);
+  assert.match(releaseSection, /npm run release:check/);
+});
+
+test("repository marketplaces expose native Claude and Codex desktop packages", async () => {
+  const codex = JSON.parse(await readFile(
+    `${root}/.agents/plugins/marketplace.json`,
+    "utf8"
+  ));
+  const claude = JSON.parse(await readFile(
+    `${root}/.claude-plugin/marketplace.json`,
+    "utf8"
+  ));
+  assert.deepEqual(codex.plugins.map(({ name, source, policy }) => ({
+    name,
+    path: source.path,
+    authentication: policy.authentication
+  })), [
+    {
+      name: "bos",
+      path: "./clients/codex/plugins/bos",
+      authentication: "ON_USE"
+    },
+    {
+      name: "education-center",
+      path: "./clients/codex/plugins/education-center",
+      authentication: "ON_INSTALL"
+    }
+  ]);
+  assert.deepEqual(claude.plugins.map(({ name, source }) => ({ name, source })), [
+    { name: "bos", source: "./clients/claude/plugins/bos" },
+    {
+      name: "education-center",
+      source: "./clients/claude/plugins/education-center"
+    }
+  ]);
 });

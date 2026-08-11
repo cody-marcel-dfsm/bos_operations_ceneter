@@ -192,67 +192,64 @@ test("Codex runtime installation derives app and resource group from product", a
   const home = await temporaryHome();
   const report = await applyInstallationRaw({
     home,
-    product: "education-center",
-    inspectCodexHost: async () => ({ state: "current", pid: 12345 }),
-    runCommand: fakeCodex
-  });
-  assert.equal(report.runtime.state, "current");
-  assert.equal(report.runtime.url, resourceGroupUrl);
-});
-
-test("Codex runtime installation rejects a stale uncredentialed host", async () => {
-  const home = await temporaryHome();
-  const report = await applyInstallationRaw({
-    home,
-    product: "education-center",
-    environment: { [credentialEnvVar]: "credentialed-installer-shell" },
-    inspectCodexHost: async () => ({
-      state: "configuration_required",
-      reason: "codex_host_product_api_key_missing",
-      pid: 4321
-    }),
-    runCommand: fakeCodex
+    product: "education-center"
   });
   assert.deepEqual(report.runtime, {
-    state: "configuration_required",
-    reason: "codex_host_product_api_key_missing",
-    pid: 4321,
+    state: "host_managed",
+    name: "education-center",
     url: resourceGroupUrl,
-    bearer_token_env_var: credentialEnvVar
+    authentication: "oauth_2_1",
+    next_action: "connect"
   });
 });
 
-test("Codex runtime installation uses only the product-declared credential binding", async () => {
+test("Codex OAuth installation ignores legacy customer environment keys", async () => {
   const home = await temporaryHome();
-  let registeredCredentialEnvVar;
-  const runCommand = async (_command, args) => {
-    if (args[0] === "mcp" && args[1] === "add") {
-      registeredCredentialEnvVar = args.at(-1);
-      return { stdout: "" };
-    }
-    if (args[0] === "mcp" && args[1] === "get") return {
-      stdout: [
-        "education-center",
-        `  url: ${resourceGroupUrl}`,
-        `  bearer_token_env_var: ${registeredCredentialEnvVar}`
-      ].join("\n")
-    };
-    return { stdout: "" };
-  };
-  const inspectedBindings = [];
+  let inspectedHost = false;
+  const codexCalls = [];
   const report = await applyInstallationRaw({
     home,
     product: "education-center",
-    inspectCodexHost: async ({ credentialEnvVar: inspected }) => {
-      inspectedBindings.push(inspected);
-      return { state: "current", pid: 12345, tool_count: 8 };
+    environment: { [credentialEnvVar]: "legacy-value-must-not-be-read" },
+    inspectCodexHost: async () => {
+      inspectedHost = true;
+      return { state: "current" };
     },
-    runCommand
+    runCommand: async (_command, args) => {
+      codexCalls.push(args);
+      if (args[0] === "mcp" && args[1] === "get") {
+        return { stderr: `Error: No MCP server named '${args[2]}' found.` };
+      }
+      return { stdout: "" };
+    }
   });
 
-  assert.deepEqual(inspectedBindings, [credentialEnvVar]);
-  assert.equal(registeredCredentialEnvVar, credentialEnvVar);
-  assert.equal(report.runtime.state, "current");
+  assert.equal(inspectedHost, false);
+  assert.equal(
+    codexCalls.some((args) =>
+      args[0] === "mcp" && args[1] === "add" && args[2] === "education-center"
+    ),
+    false
+  );
+  assert.equal(report.runtime.authentication, "oauth_2_1");
+  assert.equal(report.runtime.next_action, "connect");
+});
+
+test("Codex OAuth installation rejects credential material in the packaged MCP", async () => {
+  const home = await temporaryHome();
+  await applyInstallationRaw({
+    home,
+    product: "education-center"
+  });
+  const runtimePath = join(installedProduct(home, "education-center"), ".mcp.json");
+  const runtime = JSON.parse(await readFile(runtimePath, "utf8"));
+  runtime.mcpServers["education-center"].bearer_token_env_var = credentialEnvVar;
+  await chmod(runtimePath, 0o644);
+  await writeFile(runtimePath, JSON.stringify(runtime));
+  await assert.rejects(
+    verifyInstallationRaw({ home, product: "education-center" }),
+    /Packaged OAuth MCP configuration is invalid/
+  );
 });
 
 test("disabled products are pruned without touching active product bindings", async () => {

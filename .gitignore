@@ -1,4 +1,6 @@
 dist/
+*.zip
+*.tar.gz
 tmp/
 node_modules/
 __pycache__/

@@ -9,9 +9,11 @@
 4. **PO/GO mutation boundary.** Routers validate and dispatch, POs orchestrate,
    and GOs persist.
 5. **Credential containment.** Public source and release artifacts contain no
-   secrets or customer data. A scoped client uses its single provisioned API
-   key. Missing provider grants recover through BOS-hosted HTTPS authorization
-   or credential collection and are stored only by the BOS service.
+   secrets or customer data. Claude and ChatGPT/Codex desktop clients authorize
+   each named BOS MCP resource through host-managed OAuth 2.1. Packages contain
+   no user-entered BOS credential. Missing provider grants recover through
+   BOS-hosted HTTPS authorization or credential collection and are stored only
+   by the BOS service.
 6. **Fail-closed execution.** Missing or ambiguous canonical state produces an
    explicit error and no fallback authority.
 7. **Canonical generation.** Product manifests compose canonical sources into

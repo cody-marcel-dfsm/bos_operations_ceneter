@@ -14,14 +14,5 @@
     "operations",
     "education-center"
   ],
-  "mcpServers": "./.mcp.json",
-  "userConfig": {
-    "bos_api_key": {
-      "type": "string",
-      "title": "Education Center API key",
-      "description": "Paste the organization-scoped API key supplied by your BOS administrator.",
-      "sensitive": true,
-      "required": true
-    }
-  }
+  "mcpServers": "./.mcp.json"
 }

@@ -108,7 +108,7 @@ export async function installClaudeLocal({
   }
 
   process.stdout.write(
-    `Installed ${selector}. Claude will request the required sensitive API key through its native plugin configuration. Start a new Claude session or run /reload-plugins.\n`
+    `Installed ${selector}. Select Connect in Claude and complete BOS sign-in, then start a new Claude session or run /reload-plugins.\n`
   );
   return {
     marketplace: marketplace.name,
