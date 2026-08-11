@@ -122,12 +122,10 @@ release system for portable BOS skills and native remote MCP client adapters.
     verification, reconciliation, or agent workflows.
     Never persist a bearer in package files or publish it into the global GUI
     launch environment.
-    During an identifier-only product rename, the installer may reuse a
-    product-specific compatibility binding already present in the active Codex
-    host when the newly declared binding is absent. This migration reads only
-    the active binding, never copies or persists its bearer, and applies only
-    to the same product connection and immutable route. Fresh installations
-    continue to use the product's declared binding.
+    Installers register and inspect only the product's declared credential
+    binding. During a product rename, preserve the bearer through approved
+    managed storage and relaunch the host with the declared binding. Remove
+    retired binding identifiers from package source and client configuration.
 18. Gate every complete build and customer release on a credentialed,
     read-only live query through each active operational product's exact named
     MCP route using that product's declared build-process credential. Disabled
