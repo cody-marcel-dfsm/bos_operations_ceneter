@@ -31,6 +31,13 @@ This repository is the canonical source, builder, installer, and release
 system for portable BOS foundation, product, and vertical Agent Skills
 distributed to Codex, Claude, and GitHub Copilot.
 
+The canonical Codex marketplace may also contain private application
+skill-group packages managed by this project. `ism-meta-ads` belongs to Lead
+Director's `meta-ads` skill group and remains distinct from the disabled
+`video-ads` creative-generation product. Private application packages are
+preserved during released-product convergence and are excluded from public
+customer archives unless promoted through the product release lifecycle.
+
 The skills are useful as readable operating procedures on their own. Connecting
 them to BOS adds tenant-scoped data access, managed integrations, secure
 authentication, and authorized execution.
