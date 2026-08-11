@@ -44,10 +44,10 @@ The package system must converge safely on the desired structure:
 The current machine already has:
 
 ```text
-~/.agents/plugins/marketplace.json
+~/.agents/bos-education-center-marketplace/.agents/plugins/marketplace.json
 └── bos@bos-education-center → ./plugins/bos
 
-~/plugins/bos/
+~/.agents/bos-education-center-marketplace/plugins/bos/
 ├── .codex-plugin/plugin.json
 ├── skills/planning/SKILL.md
 └── tests/
@@ -75,24 +75,22 @@ The BOS Operations Center repository currently has:
 
 ```text
 ~/.agents/
-├── plugins/
-│   └── marketplace.json
-└── skills/
-    └── <cross-project user skills only>/
-
-~/plugins/
-└── bos/
-    ├── .codex-plugin/
-    │   └── plugin.json
-    ├── .mcp.json
-    ├── .bos-package-state.json
-    └── skills/
-        ├── bos-mcp-client/
-        ├── planning/
-        ├── implementation/
-        ├── review/
-        ├── po-go-boundary-enforcement/
-        └── authentication-context-integrity/
+├── skills/
+│   └── <cross-project user skills only>/
+└── bos-education-center-marketplace/
+    ├── .agents/plugins/marketplace.json
+    └── plugins/bos/
+        ├── .codex-plugin/
+        │   └── plugin.json
+        ├── .mcp.json
+        ├── .bos-package-state.json
+        └── skills/
+            ├── bos-mcp-client/
+            ├── planning/
+            ├── implementation/
+            ├── review/
+            ├── po-go-boundary-enforcement/
+            └── authentication-context-integrity/
 
 lead_director/
 └── .agents/
@@ -161,8 +159,8 @@ source-control baseline.
 - Inventory:
   - `~/.agents/skills`;
   - `~/.codex/skills`;
-  - `~/.agents/plugins/marketplace.json`;
-  - `~/plugins/bos`;
+  - `~/.agents/bos-education-center-marketplace/.agents/plugins/marketplace.json`;
+  - `~/.agents/bos-education-center-marketplace/plugins/bos`;
   - installed plugin state from `codex plugin list`;
   - `lead_director/.agents/skills`;
   - duplicate `.claude/skills` trees; and
@@ -183,8 +181,9 @@ source-control baseline.
 
 ### LOCAL-100 — Validate and adopt the existing local BOS plugin
 
-**Outcome:** The existing `~/plugins/bos` structure becomes the controlled
-local development target.
+**Outcome:** The existing
+`~/.agents/bos-education-center-marketplace/plugins/bos` structure becomes the
+controlled local development target.
 
 **Work:**
 
@@ -201,7 +200,8 @@ local development target.
 
 - Plugin validation passes.
 - The remote MCP configuration tests pass.
-- `codex plugin list` resolves `bos@bos-education-center` to `~/plugins/bos`.
+- `codex plugin list` resolves `bos@bos-education-center` to
+  `~/.agents/bos-education-center-marketplace/plugins/bos`.
 - A second adoption run reports `managed-current` and makes no file changes.
 
 ### LOCAL-101 — Extract `bos:planning`
@@ -390,7 +390,8 @@ local plugin.
 
 **Work:**
 
-- Compare `~/plugins/bos` against package sources by path and content.
+- Compare `~/.agents/bos-education-center-marketplace/plugins/bos` against
+  package sources by path and content.
 - Import the platform plugin manifest, tests, and foundation skills into
   canonical package directories.
 - Preserve provenance in the package inventory.
@@ -643,7 +644,7 @@ Run the complete flow against an isolated temporary home before another client
 machine:
 
 - create `bos-education-center` marketplace;
-- create `~/plugins/bos`;
+- create `~/.agents/bos-education-center-marketplace/plugins/bos`;
 - install plugin;
 - verify skill discovery;
 - verify MCP startup;

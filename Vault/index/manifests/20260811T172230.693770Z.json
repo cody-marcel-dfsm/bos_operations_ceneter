@@ -1,7 +1,7 @@
 {
-  "indexed_at": "20260811T172420.571574Z",
+  "indexed_at": "20260811T172230.693770Z",
   "schema_version": "bos-vault-manifest/v1",
-  "source_count": 24,
+  "source_count": 23,
   "sources": {
     "Vault/README.md": {
       "bytes": 1015,
@@ -54,10 +54,6 @@
     "Vault/reviews/2026-08-11-camp-roster-image-restoration.md": {
       "bytes": 2934,
       "sha256": "fba0c0b9304f6f4afed0be36f58933e7f49e48079fa62c5f0a1194f7f16ffe4d"
-    },
-    "Vault/reviews/2026-08-11-canonical-codex-marketplace-layout.md": {
-      "bytes": 1993,
-      "sha256": "3092c38df254e072c768c584ae7f02a2b790f627ff769967b49105c9019e93ed"
     },
     "Vault/reviews/2026-08-11-codex-canonical-education-center-binding.md": {
       "bytes": 2076,

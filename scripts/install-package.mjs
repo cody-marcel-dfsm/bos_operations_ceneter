@@ -3,11 +3,14 @@ import { execFile } from "node:child_process";
 import {
   chmod,
   cp,
+  lstat,
   mkdir,
   readFile,
   readdir,
+  realpath,
   rename,
   rm,
+  symlink,
   writeFile
 } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -15,6 +18,12 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { validateExtensionManifest } from "../source/platform/manage-customer-extension/scripts/manage-extension.mjs";
+import {
+  codexMarketplaceManifest,
+  codexProductRoot,
+  legacyCodexProductRoot,
+  marketplaceRootFromManifest
+} from "./lib/codex-layout.mjs";
 import {
   hashFile,
   hashTree,
@@ -463,34 +472,39 @@ export async function reconcileDisabledCodexProducts(options = {}) {
     }
 
     const home = options.home ?? homedir();
-    const installedRoot = join(home, "plugins", product.name);
-    const installedMetadata = join(installedRoot, ".bos-product.json");
-    try {
-      const metadata = await readJson(installedMetadata);
-      if (metadata.name === product.name) {
-        if (await inspectDisabledPlugin(runCommand, product) === "installed") {
-          await runCommand("codex", [
-            "plugin", "remove", `${product.name}@bos-education-center`, "--json"
-          ]);
-          if (await inspectDisabledPlugin(runCommand, product) !== "absent") {
-            throw new Error(`Disabled plugin ${product.name} remains installed`);
+    const installedRoots = [
+      codexProductRoot({ home, product: product.name }),
+      legacyCodexProductRoot(home, product.name)
+    ];
+    for (const [rootIndex, installedRoot] of installedRoots.entries()) {
+      const installedMetadata = join(installedRoot, ".bos-product.json");
+      try {
+        const metadata = await readJson(installedMetadata);
+        if (metadata.name === product.name) {
+          if (await inspectDisabledPlugin(runCommand, product) === "installed") {
+            await runCommand("codex", [
+              "plugin", "remove", `${product.name}@bos-education-center`, "--json"
+            ]);
+            if (await inspectDisabledPlugin(runCommand, product) !== "absent") {
+              throw new Error(`Disabled plugin ${product.name} remains installed`);
+            }
           }
+          const backup = join(
+            home,
+            ".agents",
+            "bos-backups",
+            `disabled-${product.name}-${Date.now()}-${rootIndex}`
+          );
+          await mkdir(dirname(backup), { recursive: true });
+          await renamePath(installedRoot, backup);
+          actions.push(`retired_plugin:${product.name}:${backup}`);
         }
-        const backup = join(
-          home,
-          ".agents",
-          "bos-backups",
-          `disabled-${product.name}-${Date.now()}`
-        );
-        await mkdir(dirname(backup), { recursive: true });
-        await renamePath(installedRoot, backup);
-        actions.push(`retired_plugin:${product.name}:${backup}`);
+      } catch (error) {
+        if (error?.code !== "ENOENT") throw error;
       }
-    } catch (error) {
-      if (error?.code !== "ENOENT") throw error;
     }
 
-    const marketplacePath = join(home, ".agents", "plugins", "marketplace.json");
+    const marketplacePath = codexMarketplaceManifest(home);
     try {
       const marketplace = await readJson(marketplacePath);
       const originalCount = marketplace.plugins?.length ?? 0;
@@ -700,16 +714,93 @@ function pathsFor(options) {
     "plugins",
     options.product
   );
-  const target =
-    options.target ?? join(options.home, "plugins", options.product);
-  const marketplace =
-    options.marketplace ??
-    join(options.home, ".agents", "plugins", "marketplace.json");
-  const pluginRoot = join(options.home, "plugins");
-  if (!safeInside(pluginRoot, target)) {
-    throw new Error(`Target must remain inside ${pluginRoot}`);
+  const marketplace = options.marketplace ?? codexMarketplaceManifest(options.home);
+  const marketplaceRoot = marketplaceRootFromManifest(marketplace);
+  const marketplaceRelativePath = relative(marketplaceRoot, marketplace);
+  const allowedMarketplaceRoot = join(options.home, ".agents");
+  if (marketplaceRelativePath !== join(".agents", "plugins", "marketplace.json") ||
+      !safeInside(allowedMarketplaceRoot, marketplaceRoot) ||
+      resolve(marketplaceRoot) === resolve(allowedMarketplaceRoot)) {
+    throw new Error(
+      `Marketplace must use <home>/.agents/<marketplace>/.agents/plugins/marketplace.json`
+    );
   }
-  return { desired, target, marketplace };
+  const canonicalTarget = codexProductRoot({
+    home: options.home,
+    marketplace,
+    product: options.product
+  });
+  const target = options.target ?? canonicalTarget;
+  if (resolve(target) !== resolve(canonicalTarget)) {
+    throw new Error(`Target must be the marketplace product directory ${canonicalTarget}`);
+  }
+  return {
+    desired,
+    target,
+    marketplace,
+    legacyTarget: legacyCodexProductRoot(options.home, options.product)
+  };
+}
+
+async function lstatIfExists(path) {
+  try {
+    return await lstat(path);
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+async function validateLegacyProduct(path, product) {
+  const metadata = await readJson(join(path, ".bos-product.json"));
+  if (metadata.name !== product) {
+    throw new Error(`Legacy product metadata does not match ${product}: ${path}`);
+  }
+}
+
+export async function migrateLegacyCodexLayout(rawOptions = {}) {
+  const options = {
+    client: "codex",
+    product: "bos",
+    home: homedir(),
+    ...rawOptions
+  };
+  const paths = pathsFor(options);
+  const legacyStat = await lstatIfExists(paths.legacyTarget);
+  const targetStat = await lstatIfExists(paths.target);
+  if (!legacyStat) {
+    if (targetStat?.isSymbolicLink()) {
+      throw new Error(`Canonical product path must be a real directory: ${paths.target}`);
+    }
+    return [];
+  }
+  await validateLegacyProduct(paths.legacyTarget, options.product);
+  let removedMarketplaceLink = false;
+  if (targetStat?.isSymbolicLink()) {
+    const [linkedProduct, legacyProduct] = await Promise.all([
+      realpath(paths.target),
+      realpath(paths.legacyTarget)
+    ]);
+    if (linkedProduct !== legacyProduct) {
+      throw new Error(`Marketplace link does not target the legacy product: ${paths.target}`);
+    }
+    await rm(paths.target, { force: true });
+    removedMarketplaceLink = true;
+  } else if (targetStat) {
+    throw new Error(
+      `Both canonical and legacy product directories exist for ${options.product}`
+    );
+  }
+  await mkdir(dirname(paths.target), { recursive: true });
+  try {
+    await (options.renamePath ?? rename)(paths.legacyTarget, paths.target);
+  } catch (error) {
+    if (removedMarketplaceLink && !(await lstatIfExists(paths.target))) {
+      await symlink(paths.legacyTarget, paths.target, "dir");
+    }
+    throw error;
+  }
+  return [`migrated_product:${options.product}:${paths.legacyTarget}:${paths.target}`];
 }
 
 async function desiredState(options, paths) {
@@ -988,6 +1079,13 @@ export async function inspectInstallation(rawOptions = {}) {
   const paths = pathsFor(options);
   const desired = await desiredState(options, paths);
   const target = await inspectTarget(paths, desired);
+  const [targetStat, legacyStat] = await Promise.all([
+    lstatIfExists(paths.target),
+    lstatIfExists(paths.legacyTarget)
+  ]);
+  const legacyLayout = targetStat?.isSymbolicLink() ||
+    (!targetStat && Boolean(legacyStat));
+  if (legacyLayout) target.state = "legacy-layout";
   const extensions = await inspectCustomerExtensions(paths, desired.manifest);
   const marketplace = await marketplaceStatus(
     options,
@@ -1065,6 +1163,7 @@ export async function applyInstallation(rawOptions = {}) {
     home: homedir(),
     ...rawOptions
   };
+  const layoutActions = await migrateLegacyCodexLayout(options);
   const disabledProductActions = await reconcileDisabledCodexProducts(options);
   const report = await inspectInstallation({ ...options, command: "apply" });
   if (["conflict", "invalid"].includes(report.state)) {
@@ -1141,6 +1240,7 @@ export async function applyInstallation(rawOptions = {}) {
   const runtime = await configureCodexBosMcp(options, paths);
   const result = await inspectInstallation({ ...options, command: "verify" });
   result.runtime = runtime;
+  result.layout_actions = layoutActions;
   result.disabled_product_actions = disabledProductActions;
   return result;
 }

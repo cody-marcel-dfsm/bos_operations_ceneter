@@ -2,6 +2,10 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { applyCustomerExtension } from "../source/platform/manage-customer-extension/scripts/manage-extension.mjs";
+import {
+  codexMarketplaceManifest,
+  codexProductRoot
+} from "./lib/codex-layout.mjs";
 import { stableJson } from "./lib/package-model.mjs";
 
 function parseArgs(argv) {
@@ -9,6 +13,7 @@ function parseArgs(argv) {
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--home") options.home = resolve(argv[++index]);
+    else if (argument === "--marketplace") options.marketplace = resolve(argv[++index]);
     else if (argument === "--product") options.product = argv[++index];
     else if (argument === "--base-skill") options.baseSkill = argv[++index];
     else if (argument === "--site") options.site = argv[++index];
@@ -19,7 +24,12 @@ function parseArgs(argv) {
 
 export async function createCustomerExtension(rawOptions) {
   const options = { home: homedir(), ...rawOptions };
-  const productRoot = join(options.home, "plugins", options.product);
+  const marketplace = options.marketplace ?? codexMarketplaceManifest(options.home);
+  const productRoot = codexProductRoot({
+    home: options.home,
+    marketplace,
+    product: options.product
+  });
   return applyCustomerExtension({
     productRoot,
     extensionRoot: join(productRoot, "skills"),

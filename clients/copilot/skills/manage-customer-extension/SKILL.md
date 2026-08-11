@@ -16,9 +16,8 @@ immutable.
 - `skills/<base-skill>-<tenant-key>/.bos-extension.json` is a customer-owned
   per-skill override manifest. Its sibling `SKILL.md` composes the packaged
   base skill with the typed overrides.
-- A marketplace path may be a symlink to the installed product. Resolve and
-  report the physical product root; identify the marketplace path as an
-  alternate access path to the same files.
+- A BOS-managed Codex product is a real directory under
+  `~/.agents/bos-education-center-marketplace/plugins/<product>/`.
 
 Keep product settings and per-skill extensions labeled separately.
 
@@ -34,8 +33,9 @@ Keep product settings and per-skill extensions labeled separately.
    root in this order:
    - When `<product-root>/.bos-package-state.json` exists, use
      `<product-root>/skills`. This is the BOS-managed Codex installation path
-     (normally `~/plugins/<product>/skills`) and the installer preserves its
-     customer-owned extensions.
+     (normally
+     `~/.agents/bos-education-center-marketplace/plugins/<product>/skills`)
+     and the installer preserves its customer-owned extensions.
    - Otherwise use an existing host-native scope: Codex `~/.agents/skills`,
      Claude `~/.claude/skills`, or Copilot `<repository>/.agents/skills`.
    Check that the selected parent exists or create it during `apply`. Report

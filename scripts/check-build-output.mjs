@@ -72,6 +72,10 @@ assert.match(
 );
 assert.match(
   listing.stdout,
+  /bos-operations-center\/scripts\/lib\/codex-layout\.mjs/
+);
+assert.match(
+  listing.stdout,
   /bos-operations-center\/scripts\/install-claude-local\.mjs/
 );
 assert.match(listing.stdout, /bos-operations-center\/package\.json/);
@@ -111,7 +115,13 @@ try {
     join(retiredRoot, ".bos-product.json"),
     JSON.stringify({ name: "video-ads" })
   );
-  const marketplaceRoot = join(testHome, ".agents", "plugins");
+  const marketplaceRoot = join(
+    testHome,
+    ".agents",
+    "bos-education-center-marketplace",
+    ".agents",
+    "plugins"
+  );
   await mkdir(marketplaceRoot, { recursive: true });
   await writeFile(join(marketplaceRoot, "marketplace.json"), JSON.stringify({
     name: "bos-education-center",

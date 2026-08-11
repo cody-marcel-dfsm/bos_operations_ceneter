@@ -3,7 +3,7 @@
   "records": [
     {
       "scope": "local-bos-plugin",
-      "path": "<home>/plugins/bos/skills/bos-mcp-client/SKILL.md",
+      "path": "<home>/.agents/bos-education-center-marketplace/plugins/bos/skills/bos-mcp-client/SKILL.md",
       "relative_path": "bos-mcp-client/SKILL.md",
       "name": "bos-mcp-client",
       "description": "Tenant-neutral BOS workflow."

@@ -76,6 +76,10 @@ def main() -> None:
             ROOT / "scripts" / "lib" / "package-model.mjs",
             stage / "scripts" / "lib" / "package-model.mjs",
         )
+        shutil.copy2(
+            ROOT / "scripts" / "lib" / "codex-layout.mjs",
+            stage / "scripts" / "lib" / "codex-layout.mjs",
+        )
         extension_script = (
             stage
             / "source"
