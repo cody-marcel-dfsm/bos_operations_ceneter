@@ -17,6 +17,10 @@ The marketplace exposes `plugins/education-center` as a symlink to the managed
 file. The manager now resolves existing symlinked product and extension roots
 to their physical paths before inspection, validation, or mutation.
 
+Deployment verification also found that the CLI entrypoint compared the raw
+invocation path with the physical module path. The comparison now canonicalizes
+both paths, allowing direct manager execution through the marketplace symlink.
+
 The skill and installation guidance now distinguish these storage types:
 
 - `config/customer-settings.json` is the preserved product-wide tenant
@@ -34,8 +38,8 @@ directory will appear after one is created.
 
 - Skill Creator `quick_validate.py`: passed.
 - Focused customer-extension tests: 9 passed, 0 failed.
-- Marketplace-symlink regression test proves the manager reports the physical
-  product path.
+- Marketplace-symlink regression test executes the CLI through the symlink and
+  proves the manager reports the physical product path.
 - `npm run build:artifacts`: passed and regenerated all client copies.
 - `npm run check:build`: passed.
 - `npm run check`: passed.

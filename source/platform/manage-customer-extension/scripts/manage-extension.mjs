@@ -433,7 +433,12 @@ async function main() {
   process.stdout.write(stableJson(result));
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+const invokedPath = process.argv[1]
+  ? await canonicalPath(process.argv[1])
+  : null;
+const modulePath = await canonicalPath(fileURLToPath(import.meta.url));
+
+if (invokedPath === modulePath) {
   main().catch((error) => {
     console.error(error.message);
     process.exitCode = 1;
