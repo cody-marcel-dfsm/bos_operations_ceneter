@@ -1,5 +1,5 @@
 {
-  "indexed_at": "20260811T165548.666315Z",
+  "indexed_at": "20260811T165537.327475Z",
   "schema_version": "bos-vault-manifest/v1",
   "source_count": 23,
   "sources": {
@@ -60,8 +60,8 @@
       "sha256": "2a115fba3c057259940ec4c7d6ccdb2297064bef276a83aa7f40187ade9a0e6a"
     },
     "Vault/reviews/2026-08-11-managed-extension-directory.md": {
-      "bytes": 1492,
-      "sha256": "27a6ae004a432bc3e1087fdfb1711713cf017a0319316b8e13b2b5a61079ab6e"
+      "bytes": 1502,
+      "sha256": "7829da50eff750a8ea19c5ec6c9a087da007146b086faa6e9ac54946c133a447"
     },
     "Vault/reviews/2026-08-11-release-readiness.md": {
       "bytes": 3836,

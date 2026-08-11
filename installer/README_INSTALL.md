@@ -120,6 +120,11 @@ preserve these extensions. Extensions may change customer terminology,
 defaults, policies, and exceptions while BOS authority, credentials, system
 instructions, MCP endpoints, and tool grants remain sealed.
 
+For a BOS-managed Codex installation, resolve extensions inside the installed
+product at `~/plugins/<product>/skills/<base-skill>-<tenant-key>/`. The
+installer discovers and preserves `.bos-extension.json` manifests from that
+directory. Codex marketplace state remains under `~/.agents`.
+
 ## Provider authorization
 
 If an underlying provider grant is missing, BOS returns a short-lived HTTPS

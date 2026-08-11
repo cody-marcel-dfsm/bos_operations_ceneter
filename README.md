@@ -228,6 +228,10 @@ change terminology, defaults, policies, and exceptions. BOS authority,
 credentials, MCP configuration, tool grants, package constraints, and
 system/developer instructions retain their canonical owners.
 
+In a BOS-managed Codex installation, customer extensions live at
+`~/plugins/<product>/skills/<base-skill>-<tenant-key>/`. The `~/.agents`
+directory holds marketplace and installation coordination state.
+
 Create an extension beside the packaged skills:
 
 ```bash
