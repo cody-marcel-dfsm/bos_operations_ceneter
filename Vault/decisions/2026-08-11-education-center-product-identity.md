@@ -13,6 +13,12 @@ Use these package-owned technical identities:
 - runtime server alias: `bos_education_center`;
 - credential binding: `EDUCATION_CENTER_BOS_API_KEY`.
 
+For an existing Codex installation, preserve the already active pre-rename
+process binding as a compatibility alias when the newly declared binding is
+absent. The installer reuses the binding name without copying, displaying, or
+persisting the bearer. Fresh installations use
+`EDUCATION_CENTER_BOS_API_KEY`.
+
 During customer initialization, ask for and persist the tenant's
 customer-facing franchise or brand name as `brand_display_name` in the
 customer-owned `config/customer-settings.json` overlay. Apply it wherever

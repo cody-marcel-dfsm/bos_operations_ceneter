@@ -1,23 +1,23 @@
 {
-  "indexed_at": "20260811T162232.968284Z",
+  "indexed_at": "20260811T162028.412503Z",
   "schema_version": "bos-vault-manifest/v1",
-  "source_count": 22,
+  "source_count": 21,
   "sources": {
     "Vault/README.md": {
       "bytes": 1015,
       "sha256": "a4690b839d46eb359bc03d73375fc9009cf4dd847abf8acce9078da6487acf6c"
     },
     "Vault/decisions/2026-08-11-education-center-product-identity.md": {
-      "bytes": 1586,
-      "sha256": "62ee53536ebfec849ea0813426a09dab5767807831fc490cfeb80206e496bb92"
+      "bytes": 1277,
+      "sha256": "b3b6e228c016d185192f02cc598eeab6b3fea65acbbca54d4ed221d2bb8096f1"
     },
     "Vault/docs/CONSTITUTION.md": {
       "bytes": 2926,
       "sha256": "4990a801666e65864ab6c803a8bd39af09d4362b17e055914a303214186409ce"
     },
     "Vault/docs/architecture.md": {
-      "bytes": 11232,
-      "sha256": "d726732b585bc1691313772827dbbaf10e67c40676f452f5dcff574a0c945de9"
+      "bytes": 10797,
+      "sha256": "ca1fb98d5671dd313c297cd9d31250ed09e372871c67f088866325db991fab65"
     },
     "Vault/docs/marketplace-agent-harness-plan.md": {
       "bytes": 33265,
@@ -50,10 +50,6 @@
     "Vault/reviews/2026-08-11-camp-roster-image-restoration.md": {
       "bytes": 2934,
       "sha256": "fba0c0b9304f6f4afed0be36f58933e7f49e48079fa62c5f0a1194f7f16ffe4d"
-    },
-    "Vault/reviews/2026-08-11-codex-credential-rename-migration.md": {
-      "bytes": 1884,
-      "sha256": "1e3879791db7adc99d1d63828d7d1e0aa0f7d3af2cb6b937cdf1a0cd85b5c357"
     },
     "Vault/reviews/2026-08-11-education-center-identity.md": {
       "bytes": 3436,
