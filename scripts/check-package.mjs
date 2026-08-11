@@ -32,6 +32,10 @@ const secretPatterns = [
   /"(?:access_token|refresh_token|client_secret|private_key)"\s*:\s*"(?!REDACTED|EXAMPLE|<)[^"]+"/i,
   /\/Users\/[A-Za-z0-9._-]+\//
 ];
+const retiredProductIdentityPatterns = [
+  new RegExp(`\\b${["i", "code"].join("")}\\b`, "i"),
+  new RegExp(["I", "CODE", "_OPERATIONS"].join(""))
+];
 const textExtensions = new Set([
   ".json",
   ".md",
@@ -58,6 +62,11 @@ async function scan(directory) {
     if (ignoredDirectories.has(entry.name)) continue;
     if (directory === root && entry.name === ".env") continue;
     const path = join(directory, entry.name);
+    for (const pattern of retiredProductIdentityPatterns) {
+      if (pattern.test(entry.name)) {
+        failures.push(`Retired product identity in path: ${path}`);
+      }
+    }
     if (entry.isDirectory()) {
       await scan(path);
       continue;
@@ -77,6 +86,11 @@ async function scan(directory) {
     }
     for (const pattern of secretPatterns) {
       if (pattern.test(content)) failures.push(`Credential pattern in ${path}`);
+    }
+    for (const pattern of retiredProductIdentityPatterns) {
+      if (pattern.test(content)) {
+        failures.push(`Retired product identity in ${path}`);
+      }
     }
   }
 }

@@ -210,9 +210,8 @@ test("Codex runtime installation rejects a stale uncredentialed host", async () 
   });
 });
 
-test("Codex runtime installation reuses an active pre-rename credential binding", async () => {
+test("Codex runtime installation uses only the product-declared credential binding", async () => {
   const home = await temporaryHome();
-  const legacyCredentialEnvVar = "ICODE_OPERATIONS_BOS_API_KEY";
   let registeredCredentialEnvVar;
   const runCommand = async (_command, args) => {
     if (args[0] === "mcp" && args[1] === "add") {
@@ -234,22 +233,14 @@ test("Codex runtime installation reuses an active pre-rename credential binding"
     product: "education-center",
     inspectCodexHost: async ({ credentialEnvVar: inspected }) => {
       inspectedBindings.push(inspected);
-      if (inspected === legacyCredentialEnvVar) {
-        return { state: "current", pid: 12345, tool_count: 8 };
-      }
-      return {
-        state: "configuration_required",
-        reason: "codex_host_product_api_key_missing",
-        pid: 12345
-      };
+      return { state: "current", pid: 12345, tool_count: 8 };
     },
     runCommand
   });
 
-  assert.deepEqual(inspectedBindings, [credentialEnvVar, legacyCredentialEnvVar]);
-  assert.equal(registeredCredentialEnvVar, legacyCredentialEnvVar);
+  assert.deepEqual(inspectedBindings, [credentialEnvVar]);
+  assert.equal(registeredCredentialEnvVar, credentialEnvVar);
   assert.equal(report.runtime.state, "current");
-  assert.equal(report.runtime.credential_binding_reused, true);
 });
 
 test("disabled products are pruned without touching active product bindings", async () => {
