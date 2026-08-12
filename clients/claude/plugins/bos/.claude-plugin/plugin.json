@@ -1,7 +1,7 @@
 {
   "name": "bos",
   "displayName": "BOS",
-  "version": "0.4.21",
+  "version": "0.4.22",
   "description": "Tenant-neutral Business Operating System foundations.",
   "author": {
     "name": "Infinite State Machines LLC"

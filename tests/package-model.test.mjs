@@ -984,6 +984,7 @@ test("customer installation guidance contains no maintainer build commands", asy
 
 test("README routes customer, development, and release environments explicitly", async () => {
   const readme = await readFile(`${root}/README.md`, "utf8");
+  const repositoryPackage = JSON.parse(await readFile(`${root}/package.json`, "utf8"));
   const environmentIndex = readme.split("## Choose your environment\n")[1]
     .split("## Install\n")[0];
   const installSection = readme.split("## Install\n")[1]
@@ -1006,6 +1007,11 @@ test("README routes customer, development, and release environments explicitly",
   }
 
   assert.match(installSection, /Open a new Codex task and paste:/);
+  assert.ok(
+    installSection.includes(
+      `Current desktop marketplace release: \`${repositoryPackage.version}\``
+    )
+  );
   assert.match(installSection, /Customize → Plugins/);
   assert.match(installSection, /host's sign-in flow/i);
   assert.doesNotMatch(
@@ -1016,6 +1022,30 @@ test("README routes customer, development, and release environments explicitly",
   assert.match(developmentSection, /claude plugin marketplace add \.\//);
   assert.match(releaseSection, /EDUCATION_CENTER_BOS_API_KEY/);
   assert.match(releaseSection, /npm run release:check/);
+});
+
+test("desktop marketplace versions match the repository release", async () => {
+  const repositoryPackage = JSON.parse(await readFile(`${root}/package.json`, "utf8"));
+  const expectedVersion = repositoryPackage.version;
+  const claudeMarketplace = JSON.parse(await readFile(
+    `${root}/.claude-plugin/marketplace.json`,
+    "utf8"
+  ));
+
+  assert.deepEqual(
+    claudeMarketplace.plugins.map(({ version }) => version),
+    [expectedVersion, expectedVersion]
+  );
+
+  for (const clientManifest of [
+    "clients/codex/plugins/bos/.codex-plugin/plugin.json",
+    "clients/codex/plugins/education-center/.codex-plugin/plugin.json",
+    "clients/claude/plugins/bos/.claude-plugin/plugin.json",
+    "clients/claude/plugins/education-center/.claude-plugin/plugin.json"
+  ]) {
+    const manifest = JSON.parse(await readFile(`${root}/${clientManifest}`, "utf8"));
+    assert.equal(manifest.version, expectedVersion, clientManifest);
+  }
 });
 
 test("repository marketplaces expose native Claude and Codex desktop packages", async () => {
