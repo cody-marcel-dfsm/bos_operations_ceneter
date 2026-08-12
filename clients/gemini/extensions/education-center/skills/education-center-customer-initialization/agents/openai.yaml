@@ -1,4 +1,4 @@
 interface:
   display_name: "Education Center Customer Setup"
-  short_description: "Derive and confirm customer settings"
-  default_prompt: "Initialize my Education Center customer settings from this client and ask me only for values you cannot determine safely."
+  short_description: "Derive and recommend customer settings"
+  default_prompt: "Initialize my Education Center customer settings, derive the best sourced defaults, and let me accept the complete recommendation at once."

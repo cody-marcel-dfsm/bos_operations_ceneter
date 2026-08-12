@@ -10,8 +10,9 @@
    and GOs persist.
 5. **Credential containment.** Public source and release artifacts contain no
    secrets or customer data. Claude and ChatGPT/Codex desktop clients authorize
-   each named BOS MCP resource through host-managed OAuth 2.1. Packages contain
-   no user-entered BOS credential. Missing provider grants recover through
+   each named BOS MCP resource through host-managed OAuth 2.1. Claude declares
+   the resource directly; Codex binds a required registered app that owns the
+   resource. Packages contain no user-entered BOS credential. Missing provider grants recover through
    BOS-hosted HTTPS authorization or credential collection and are stored only
    by the BOS service.
 6. **Fail-closed execution.** Missing or ambiguous canonical state produces an

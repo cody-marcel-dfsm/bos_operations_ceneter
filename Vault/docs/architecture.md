@@ -10,7 +10,9 @@ release system for portable BOS skills and native remote MCP client adapters.
 - `source/platform/` owns tenant-neutral BOS operating and architecture skills.
 - `source/capabilities/` owns reusable business capabilities.
 - `source/verticals/` owns industry and franchise specialization.
-- `source/runtime/` owns credential-free remote MCP connection templates.
+- `source/runtime/` owns credential-free remote MCP connection templates for
+  clients that distribute an endpoint directly. Product manifests own the
+  stable registered Codex app ID for each Codex runtime product.
 - `products/` declares versioned compositions; build scripts generate client
   packages from those declarations.
 - The BOS service owns authentication, authorization, tenant data, provider
@@ -29,9 +31,11 @@ release system for portable BOS skills and native remote MCP client adapters.
 3. Route mutations through PO orchestration and GO persistence.
 4. Store provider credentials only in BOS-managed credential storage.
 5. Authenticate Claude and ChatGPT/Codex desktop product connections through
-   the host's OAuth 2.1 MCP authorization flow. Their packages declare only the
-   immutable HTTPS MCP resource; they contain no API-key field, authorization
-   header template, or credential environment-variable binding. The host
+   the host's OAuth 2.1 MCP authorization flow. Claude packages declare the
+   immutable HTTPS MCP resource directly. Codex packages declare a required
+   registered app in `.app.json`; that app owns the immutable resource. Neither
+   package contains an API-key field, authorization header template, or
+   credential environment-variable binding. The host
    discovers BOS authorization metadata, launches consent, stores and refreshes
    the grant, and attaches a resource-scoped token. Recover missing underlying
    provider grants through the BOS service's server-returned OAuth or secure
@@ -54,13 +58,17 @@ release system for portable BOS skills and native remote MCP client adapters.
    package files. A source
    role may select a separately connected client service for read-only evidence
    without changing BOS identity, scope, or mutation authority.
-10. Initialize customer settings with a derive-then-ask workflow: preserve
-    confirmed values, derive only unambiguous non-secret client and canonical
-    BOS metadata, and ask the user once for unresolved or conflicting values.
-    Derived configuration never grants authority.
-11. Connect clients directly to BOS over HTTPS Streamable HTTP. Use the native
-    remote MCP configuration in Codex and Claude, and configure the equivalent
-    remote connection in Copilot. Every runtime product declares one immutable
+10. Initialize customer settings only after the runtime product connection is
+    authenticated. Preserve confirmed values, derive unambiguous non-secret
+    client and canonical BOS metadata, and present sourced suggestions for
+    unresolved or conflicting display values. Ask the user once to accept or
+    correct the complete recommendation; persist suggested values only after
+    confirmation. Derived configuration never grants authority.
+11. Connect clients directly to BOS over HTTPS Streamable HTTP. Use a registered
+    app binding in Codex, native remote MCP configuration in Claude, and the
+    equivalent remote connection in Copilot. A Codex runtime plugin contains
+    `apps: "./.app.json"` and no `.mcp.json` or `mcpServers`; its product
+    manifest records the stable `asdk_app_*` identifier. Every runtime product declares one immutable
     package-owned route using the exact static form
     `/mcp/apps/{application-name}/{skill-group-name}`. Both path segments are
     stable human-readable slugs, never IDs or customer settings. Each active
@@ -106,7 +114,8 @@ release system for portable BOS skills and native remote MCP client adapters.
     plugin. Customer ZIPs may remain optional release artifacts; they are not
     the primary desktop installation or credential path.
 17. Treat a Claude or ChatGPT/Codex product connection as ready only when the
-    installed plugin points to its exact immutable MCP resource, OAuth
+    installed plugin points to its exact immutable MCP resource—directly for
+    Claude and through its required registered app for Codex—OAuth
     discovery succeeds, the host holds a valid resource-scoped grant, the
     server returns one canonical context, and the required scoped tool group is
     discoverable. A missing or expired grant triggers the host's Connect/Sign

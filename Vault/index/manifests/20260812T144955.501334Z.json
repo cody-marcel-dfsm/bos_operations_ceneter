@@ -1,7 +1,7 @@
 {
-  "indexed_at": "20260812T175947.994272Z",
+  "indexed_at": "20260812T144955.501334Z",
   "schema_version": "bos-vault-manifest/v1",
-  "source_count": 30,
+  "source_count": 29,
   "sources": {
     "Vault/README.md": {
       "bytes": 1015,
@@ -12,24 +12,24 @@
       "sha256": "3d5315f7b627b91746c218da0cae3f6cf2cfb3cbed66637e542ad68ea5747dd4"
     },
     "Vault/decisions/2026-08-11-desktop-private-marketplace-oauth.md": {
-      "bytes": 2992,
-      "sha256": "df02c471f0d5f3bfd4defea0cd1d43bed70a34cca3c1f3b72e4f31bd75b58649"
+      "bytes": 2609,
+      "sha256": "9b94076d6dac6e9f04c016d2cf37486dac6ee1bd389dbed6413ab25897b824a4"
     },
     "Vault/decisions/2026-08-11-education-center-product-identity.md": {
-      "bytes": 2072,
-      "sha256": "d3c1fba826b3eab80cf2a2ac5461e78305bf4e685771d9bbd352393b21e843fb"
+      "bytes": 1900,
+      "sha256": "21a41e6e5065bc0c24c278da0af98d87d3d5c16f8765aa8063dff4bbbd943ce7"
     },
     "Vault/docs/CONSTITUTION.md": {
-      "bytes": 3143,
-      "sha256": "d5c1c98279430e115f71c95fc6756e4e3fd34b771c93b92ea08c0e104b007c03"
+      "bytes": 3039,
+      "sha256": "e5f212fb84efcc61c2262b26649f74c6b45e2279bcf421b90c69baf28634a290"
     },
     "Vault/docs/architecture.md": {
-      "bytes": 11092,
-      "sha256": "098e23994d0aa70fa3e1f3837dcef8603d3ef73b7a3ffcafc13c58f1dc8ebe99"
+      "bytes": 10573,
+      "sha256": "cc529b08335b05e2c26de5308914acb6934cd4f887d90005bcc542953866aa0b"
     },
     "Vault/docs/marketplace-agent-harness-plan.md": {
-      "bytes": 33377,
-      "sha256": "472c9e7f8ff5d14ddb32fc86b6fde43b819134ab6be6f332bf35b4c755721d09"
+      "bytes": 33342,
+      "sha256": "e7cbfc401c1a877642780666c107db60fe1c899cbf353bcd91afcf90d62320ff"
     },
     "Vault/docs/marketplace-submission-assets.md": {
       "bytes": 24383,
@@ -91,10 +91,6 @@
       "bytes": 3995,
       "sha256": "f9a33b925ca22479e64d399111a8b07218361b5df4087b63c168b9da5be76042"
     },
-    "Vault/reviews/2026-08-12-codex-education-center-app-binding.md": {
-      "bytes": 3312,
-      "sha256": "ae592ec0e50b5baad9634869aef6a16c63ec0f1d40ae571709979ff7828a4ee0"
-    },
     "Vault/reviews/2026-08-12-education-center-initialization-defaults.md": {
       "bytes": 2616,
       "sha256": "caeed8950ccf7a63515fcb662d160774a009e6807bf12aa5edd21b3f4fa1010e"
@@ -108,8 +104,8 @@
       "sha256": "ce696da6b99f10263e835387c03470013b0b68f60b05db9a197e33eb93ed38a1"
     },
     "Vault/specs/named-mcp-application-group-routing.md": {
-      "bytes": 5549,
-      "sha256": "c7d2c51db7b49d8edeec4c6a9d02aabb1e10e50d5a7835d0090595cfae8aa5b5"
+      "bytes": 4887,
+      "sha256": "84dd143acfeb10da127c3c6aa15905f67fe8fa553cd1be71969a36d6392107d8"
     },
     "Vault/specs/named-mcp-server-implementation.md": {
       "bytes": 14015,

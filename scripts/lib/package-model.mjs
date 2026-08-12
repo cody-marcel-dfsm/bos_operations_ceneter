@@ -57,6 +57,7 @@ export function validateProduct(manifest, path = "product.json") {
     "runtime",
     "application_name",
     "mcp_group_name",
+    "codex_app_id",
     "credential_env_var",
     "settings_template",
     "default_prompts"
@@ -142,6 +143,26 @@ export function validateProduct(manifest, path = "product.json") {
   }
   if (manifest.runtime && (!manifest.application_name || !manifest.mcp_group_name)) {
     failures.push(`${path}: runtime requires application_name and mcp_group_name`);
+  }
+  if (
+    manifest.codex_app_id !== undefined &&
+    !/^asdk_app_[a-z0-9]+$/.test(manifest.codex_app_id)
+  ) {
+    failures.push(`${path}: codex_app_id must be an asdk_app identifier`);
+  }
+  if (
+    manifest.release_status === "active" &&
+    manifest.runtime &&
+    manifest.clients?.includes("codex") &&
+    !manifest.codex_app_id
+  ) {
+    failures.push(`${path}: active Codex runtime requires codex_app_id`);
+  }
+  if (
+    manifest.codex_app_id !== undefined &&
+    (!manifest.runtime || !manifest.clients?.includes("codex"))
+  ) {
+    failures.push(`${path}: codex_app_id requires a Codex runtime product`);
   }
   if (manifest.runtime &&
       !manifest.includes?.includes("platform/bos-mcp-client")) {
@@ -236,6 +257,9 @@ function publicPackagePath(path) {
 
 export async function copyRuntime(product, pluginRoot, base = root, client = null) {
   if (!product.runtime) return;
+  if (client !== "claude") {
+    throw new Error(`Runtime MCP packaging is reserved for Claude, received ${client}`);
+  }
   const runtimeRoot = join(base, "source", "runtime", product.runtime);
   await cp(join(runtimeRoot, ".mcp.json"), join(pluginRoot, ".mcp.json"));
   const configPath = join(pluginRoot, ".mcp.json");
@@ -247,9 +271,6 @@ export async function copyRuntime(product, pluginRoot, base = root, client = nul
   config.mcpServers[product.mcp_group_name] = server;
   if (product.mcp_group_name !== "bos") delete config.mcpServers.bos;
   server.url = materializeMcpUrl(server.url, product);
-  if (!["codex", "claude"].includes(client)) {
-    throw new Error(`Runtime packaging does not support OAuth client ${client}`);
-  }
   await writeJson(configPath, config);
 }
 
@@ -280,8 +301,23 @@ export function pluginManifest(product) {
       defaultPrompt: product.default_prompts
     }
   };
-  if (product.runtime) manifest.mcpServers = "./.mcp.json";
+  if (product.runtime) manifest.apps = "./.app.json";
   return manifest;
+}
+
+export function codexAppManifest(product) {
+  if (!product.runtime) return { apps: {} };
+  if (!/^asdk_app_[a-z0-9]+$/.test(product.codex_app_id ?? "")) {
+    throw new Error(`Product ${product.name} has no registered Codex app ID`);
+  }
+  return {
+    apps: {
+      [product.name]: {
+        id: product.codex_app_id,
+        required: true
+      }
+    }
+  };
 }
 
 export async function geminiExtensionManifest(product, base = root) {

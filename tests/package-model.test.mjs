@@ -325,15 +325,21 @@ test("every Education Center skill applies tenant brand terminology only to disp
   }
 });
 
-test("Education Center initialization asks the tenant for its display brand", async () => {
+test("Education Center initialization proposes sourced defaults with one-step acceptance", async () => {
   const guidance = await readFile(
     `${root}/source/verticals/education-center/education-center-customer-initialization/SKILL.md`,
     "utf8"
   );
   assert.match(
     guidance,
-    /What customer-facing[\s\S]*franchise or brand name[\s\S]*drafts, reports, and[\s\S]*communications/i
+    /Recommended defaults[\s\S]*brand display name[\s\S]*organization display name[\s\S]*location display name[\s\S]*IANA timezone/i
   );
+  assert.match(guidance, /Reply \*\*Use these defaults\*\*[\s\S]*accept all values/i);
+  assert.match(guidance, /status and source/i);
+  assert.match(guidance, /bos-mcp-client[\s\S]*live-tool discovery/i);
+  assert.match(guidance, /Complete authentication before asking any customer-settings question/i);
+  assert.match(guidance, /Connect\/Sign in[\s\S]*context discovery[\s\S]*present the recommendation/i);
+  assert.match(guidance, /authentication_required[\s\S]*preserve the initialization draft[\s\S]*ask[\s\S]*no settings questions/i);
   assert.match(guidance, /store it as `brand_display_name`/i);
 });
 
@@ -599,6 +605,7 @@ test("package schema rejects legacy or incomplete MCP route fields", () => {
     runtime: "bos",
     application_name: "leaddirector",
     mcp_group_name: "example",
+    codex_app_id: "asdk_app_example123",
     credential_env_var: "EXAMPLE_BOS_API_KEY",
     default_prompts: []
   };
@@ -613,6 +620,12 @@ test("package schema rejects legacy or incomplete MCP route fields", () => {
   );
   const { mcp_group_name: _removed, ...incomplete } = base;
   assert.match(validateProduct(incomplete).join("\n"), /runtime requires application_name and mcp_group_name/);
+  const { codex_app_id: _appRemoved, ...unregistered } = base;
+  assert.match(validateProduct(unregistered).join("\n"), /active Codex runtime requires codex_app_id/);
+  assert.match(
+    validateProduct({ ...base, codex_app_id: "plugin_asdk_app_wrong" }).join("\n"),
+    /codex_app_id must be an asdk_app identifier/
+  );
 });
 
 test("Video Ads composes workflow skills and a scoped BOS endpoint", async () => {
@@ -642,27 +655,31 @@ test("Video Ads composes workflow skills and a scoped BOS endpoint", async () =>
 test("disabled products are absent while active runtime products remain scoped", async () => {
   for (const client of ["codex", "claude"]) {
     await assert.rejects(access(`${root}/clients/${client}/plugins/bos/.mcp.json`));
-    await assert.rejects(
-      access(`${root}/clients/${client}/plugins/video-ads`)
-    );
-    const educationCenter = JSON.parse(
-      await readFile(
-        `${root}/clients/${client}/plugins/education-center/.mcp.json`,
-        "utf8"
-      )
-    );
-    assert.deepEqual(Object.keys(educationCenter.mcpServers), ["education-center"]);
-    assert.equal(educationCenter.mcpServers["education-center"].type, "http");
-    assert.equal(
-      educationCenter.mcpServers["education-center"].url,
-      "https://dfsm.ai/mcp/apps/leaddirector/education-center"
-    );
-    assert.equal("headers" in educationCenter.mcpServers["education-center"], false);
-    assert.equal(
-      "bearer_token_env_var" in educationCenter.mcpServers["education-center"],
-      false
-    );
+    await assert.rejects(access(`${root}/clients/${client}/plugins/video-ads`));
   }
+  await assert.rejects(
+    access(`${root}/clients/codex/plugins/education-center/.mcp.json`)
+  );
+  const app = JSON.parse(await readFile(
+    `${root}/clients/codex/plugins/education-center/.app.json`,
+    "utf8"
+  ));
+  assert.deepEqual(app, {
+    apps: {
+      "education-center": {
+        id: "asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
+        required: true
+      }
+    }
+  });
+  const claudeRuntime = JSON.parse(await readFile(
+    `${root}/clients/claude/plugins/education-center/.mcp.json`,
+    "utf8"
+  ));
+  assert.equal(
+    claudeRuntime.mcpServers["education-center"].url,
+    "https://dfsm.ai/mcp/apps/leaddirector/education-center"
+  );
 });
 
 test("disabled product inventory is generated for idempotent client pruning", async () => {
@@ -679,25 +696,30 @@ test("disabled product inventory is generated for idempotent client pruning", as
   });
 });
 
-test("Education Center packages use the Lead Director app resource-group route", async () => {
-  for (const [client, path] of [
-    ["codex", `${root}/clients/codex/plugins/education-center/.mcp.json`],
-    ["claude", `${root}/clients/claude/plugins/education-center/.mcp.json`]
-  ]) {
-    const config = JSON.parse(await readFile(path, "utf8"));
-    assert.equal(config.mcpServers["education-center"].type, "http", client);
-    assert.equal(
-      config.mcpServers["education-center"].url,
-      "https://dfsm.ai/mcp/apps/leaddirector/education-center",
-      client
-    );
-    assert.equal("headers" in config.mcpServers["education-center"], false, client);
-    assert.equal(
-      "bearer_token_env_var" in config.mcpServers["education-center"],
-      false,
-      client
-    );
-  }
+test("Education Center packages use client-native OAuth bindings", async () => {
+  const codexRoot = `${root}/clients/codex/plugins/education-center`;
+  const metadata = JSON.parse(await readFile(`${codexRoot}/.bos-product.json`, "utf8"));
+  const plugin = JSON.parse(await readFile(`${codexRoot}/.codex-plugin/plugin.json`, "utf8"));
+  const app = JSON.parse(await readFile(`${codexRoot}/.app.json`, "utf8"));
+  assert.equal(metadata.application_name, "leaddirector");
+  assert.equal(metadata.mcp_group_name, "education-center");
+  assert.equal(metadata.codex_app_id, app.apps["education-center"].id);
+  assert.equal(plugin.apps, "./.app.json");
+  assert.equal(plugin.mcpServers, undefined);
+  assert.equal(app.apps["education-center"].required, true);
+  await assert.rejects(access(`${codexRoot}/.mcp.json`));
+
+  const claude = JSON.parse(await readFile(
+    `${root}/clients/claude/plugins/education-center/.mcp.json`,
+    "utf8"
+  ));
+  assert.equal(claude.mcpServers["education-center"].type, "http");
+  assert.equal(
+    claude.mcpServers["education-center"].url,
+    "https://dfsm.ai/mcp/apps/leaddirector/education-center"
+  );
+  assert.equal("headers" in claude.mcpServers["education-center"], false);
+  assert.equal("bearer_token_env_var" in claude.mcpServers["education-center"], false);
 });
 
 test("Claude distribution is a marketplace of self-contained plugins", async () => {
@@ -769,7 +791,7 @@ test("Claude distribution is a marketplace of self-contained plugins", async () 
   await assert.rejects(access(`${root}/clients/claude/plugins/video-ads`));
 });
 
-test("generated clients use native remote MCP without local transport", async () => {
+test("generated clients use host-native BOS connections without local transport", async () => {
   for (const client of ["codex", "claude", "copilot", "gemini"]) {
     const files = await walkFiles(`${root}/clients/${client}`);
     assert.equal(files.some((path) => /bos_mcp_broker\.py$/.test(path)), false);
@@ -825,13 +847,18 @@ test("Gemini extensions bundle canonical skills and authenticated Streamable HTT
 });
 
 test("feedback contract keeps app resource-group selection static and retry identity stable", async () => {
-  const runtime = JSON.parse(await readFile(
-    `${root}/clients/codex/plugins/education-center/.mcp.json`,
+  const metadata = JSON.parse(await readFile(
+    `${root}/clients/codex/plugins/education-center/.bos-product.json`,
     "utf8"
   ));
-  const url = runtime.mcpServers["education-center"].url;
+  const app = JSON.parse(await readFile(
+    `${root}/clients/codex/plugins/education-center/.app.json`,
+    "utf8"
+  ));
+  const url = `https://dfsm.ai/mcp/apps/${metadata.application_name}/${metadata.mcp_group_name}`;
   assert.equal(url, "https://dfsm.ai/mcp/apps/leaddirector/education-center");
-  assert.doesNotMatch(JSON.stringify(runtime), /BOS_INSTALLED_APP_ID/);
+  assert.equal(metadata.codex_app_id, app.apps["education-center"].id);
+  assert.doesNotMatch(JSON.stringify({ metadata, app }), /BOS_INSTALLED_APP_ID/);
 
   const skill = await readFile(
     `${root}/source/platform/submit-feedback/SKILL.md`,
@@ -902,6 +929,9 @@ test("every product and client ships tenant extension management metadata", asyn
         ...(manifest.runtime ? {
           application_name: manifest.application_name,
           mcp_group_name: manifest.mcp_group_name,
+          ...(client === "codex" ? {
+            codex_app_id: manifest.codex_app_id
+          } : {}),
           ...(!desktopOAuth ? {
             credential_env_var: manifest.credential_env_var
           } : {})

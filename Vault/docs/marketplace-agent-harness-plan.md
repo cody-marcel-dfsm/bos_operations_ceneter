@@ -113,7 +113,8 @@ installed-application routing model with explicit human-readable route fields:
 ```json
 {
   "application_name": "leaddirector",
-  "mcp_group_name": "education-center"
+  "mcp_group_name": "education-center",
+  "codex_app_id": "asdk_app_<registered-id>"
 }
 ```
 
@@ -143,7 +144,6 @@ Each generated plugin contains:
 - `.claude-plugin/plugin.json`;
 - `.mcp.json` with the product's fixed remote MCP URL;
 - the product's generated `skills/` tree;
-- the product-declared credential binding used only by that BOS plugin; and
 - marketplace metadata, documentation, and default prompts.
 
 The Education Center plugin connects to:
@@ -152,8 +152,8 @@ The Education Center plugin connects to:
 https://dfsm.ai/mcp/apps/leaddirector/education-center
 ```
 
-Claude enablement collects only the BOS API key. The package never requests an
-application or group value. The root marketplace lists each independently
+Claude enablement presents Connect and completes host-managed BOS OAuth. The
+package never requests an application, group, or BOS key. The root marketplace lists each independently
 installable skill group and points at its generated plugin directory.
 
 Claude Code validation covers marketplace discovery, installation, enablement,
@@ -175,25 +175,26 @@ authority.
 ### OpenAI Codex
 
 Distribute each skill group as an OpenAI plugin containing Codex skills and a
-native remote MCP registration.
+required registered app binding.
 
 The generated registration contains only:
 
 ```json
 {
-  "mcpServers": {
+  "apps": {
     "education-center": {
-      "type": "http",
-      "url": "https://dfsm.ai/mcp/apps/leaddirector/education-center"
+      "id": "asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
+      "required": true
     }
   }
 }
 ```
 
-Codex discovers BOS OAuth metadata from the resource, presents Connect/Sign in,
-and stores and refreshes the resulting grant. The package contains no
-credential field or route setting. A fresh Codex task must discover the
-installed skill group and its fixed MCP server without manual reconstruction.
+The registered app owns the fixed Education Center MCP resource. Codex presents
+Connect/Sign in and stores and refreshes the resulting grant. The package
+contains no credential field, route setting, `.mcp.json`, or `mcpServers`.
+A fresh Codex task must discover the installed skill group and registered app
+without manual reconstruction.
 
 Codex validation covers plugin installation, skill discovery, OAuth discovery
 and connection, MCP discovery, a representative read, a confirmed
@@ -434,12 +435,12 @@ Can run with: Tracks F, H, and I
 
 Subtracks:
 
-- G1: Codex plugin and native remote MCP registration.
+- G1: Codex plugin and registered app binding.
 - G2: ChatGPT MCP-backed app and Plugin Directory listing.
 
 Deliverables:
 
-- Codex skill/plugin artifacts and process-scoped bearer binding;
+- Codex skill/plugin artifacts and required `.app.json` binding;
 - ChatGPT app metadata, tool classifications, and confirmation behavior;
 - private developer-mode validation;
 - live install, discovery, workflow, recovery, update, and access-control
@@ -619,9 +620,9 @@ and retain all fail-closed authorization behavior.
 ### Phase 5: Update installers and release packaging
 
 1. Remove installed-app-ID questions and settings from every installer.
-2. Install each product's generated fixed MCP connection.
-3. Configure only the existing BOS API key through approved client secret
-   mechanisms.
+2. Install each product's generated host-native runtime binding.
+3. Complete host-managed OAuth for Claude and Codex; keep their packages free
+   of BOS credential fields.
 4. Preserve customer-owned skill extensions and non-route settings.
 5. Regenerate deterministic archives, stable customer ZIPs, release manifests,
    checksums, and marketplace packages.

@@ -48,26 +48,32 @@ overridden by customer settings, installer prompts, environment variables, or
 model instructions. Every generated harness adapter for one product uses the
 same derived route.
 
+An active Codex runtime product also declares its stable registered
+`asdk_app_*` identifier. The registered app owns the derived route; the Codex
+package references that app and does not duplicate the URL in `.mcp.json`.
+
 ## Client responsibilities
 
 A client package:
 
 - contains its immutable application and skill-group names;
-- supplies the product's declared organization-scoped bearer using the
-  harness's supported secret mechanism;
-- connects only to its generated route;
+- connects only to its generated route, directly through a client-native
+  remote MCP adapter or indirectly through a registered app that owns the
+  route;
+- uses the host-managed OAuth grant for Claude and ChatGPT/Codex desktop
+  product connections;
 - discovers the live tool manifest returned by that route;
 - reconnects the same route after recoverable transport failure; and
 - treats server-returned operational context as authorization evidence, never
   as input for constructing another endpoint.
 
 Multiple runtime products may be active in one client. Each named connection
-uses its own package-declared credential binding and may resolve a different
-organization or principal. The triggered domain skill chooses its product
-connection; it never chooses a tenant, organization, actor, role, or key value.
-The server maps each bearer principal to exactly one authorized installation,
-organization, user, and delegated role for that route. A credential never
-falls through to another product connection.
+uses its own host-managed grant or approved client-specific adapter and may
+resolve a different organization or principal. The triggered domain skill
+chooses its product connection; it never chooses a tenant, organization, actor,
+role, token, or key value. The server maps each authenticated principal to
+exactly one authorized installation, organization, user, and delegated role
+for that route. Authority never falls through to another product connection.
 
 A client package never asks for, stores, derives, or substitutes an
 `installed_app_id` into its MCP URL. It never selects or provisions an
@@ -77,7 +83,8 @@ application during marketplace installation.
 
 The BOS service:
 
-- authenticates the API key;
+- validates the resource-scoped OAuth access token or the approved
+  client-specific release authorization;
 - resolves tenant, organization, actor, application installation, role, plugin,
   and capability scope from canonical server-owned state;
 - verifies that the authenticated principal may use the named application and
@@ -100,8 +107,10 @@ The following are obsolete client-routing forms:
 - `BOS_INSTALLED_APP_ID` in client configuration;
 - customer- or installer-supplied application/group route values;
 - unnamed endpoint fallback;
-- one-segment `/mcp/apps/{value}` routes; and
-- profile routes outside the named application/group hierarchy.
+- one-segment `/mcp/apps/{value}` routes;
+- profile routes outside the named application/group hierarchy; and
+- a Codex runtime plugin that declares the route through `.mcp.json` or
+  `mcpServers` instead of its registered app binding.
 
 Canonical sources, manifests, generators, adapters, installers, skills, tests,
 and release artifacts must migrate together. Validation rejects obsolete forms
@@ -112,12 +121,14 @@ with a correction that identifies the expected named two-segment route.
 For every runtime product, automated evidence must establish:
 
 1. Manifest route slugs satisfy the schema and approved inventory.
-2. Claude, Codex, ChatGPT, Gemini CLI, and Copilot adapters use the same URL.
+2. Claude, ChatGPT/Codex, Gemini CLI, and Copilot adapters resolve the same
+   immutable URL; Codex does so through its registered app.
 3. No generated package contains an installation-ID route setting or unresolved
    route substitution.
 4. Unknown or unauthorized application/group combinations fail closed.
 5. The server derives operational installation scope from authenticated state.
 6. Connection recovery returns to the same immutable named endpoint.
 7. Credential and customer-data scans pass for public artifacts.
-8. Multiple runtime products reuse the one client-configured key without
-   creating product-specific credential bindings.
+8. Each active Claude or ChatGPT/Codex runtime product obtains one host-managed
+   resource-scoped grant without package credential fields or cross-product
+   fallback.

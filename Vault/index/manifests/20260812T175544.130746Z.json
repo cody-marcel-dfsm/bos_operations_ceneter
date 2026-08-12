@@ -1,5 +1,5 @@
 {
-  "indexed_at": "20260812T175947.994272Z",
+  "indexed_at": "20260812T175544.130746Z",
   "schema_version": "bos-vault-manifest/v1",
   "source_count": 30,
   "sources": {
@@ -93,7 +93,7 @@
     },
     "Vault/reviews/2026-08-12-codex-education-center-app-binding.md": {
       "bytes": 3312,
-      "sha256": "ae592ec0e50b5baad9634869aef6a16c63ec0f1d40ae571709979ff7828a4ee0"
+      "sha256": "7c67748ba8b6c41359c97506e9dd81ff4b5c793dd8b9db6eaae882d0ed2253cb"
     },
     "Vault/reviews/2026-08-12-education-center-initialization-defaults.md": {
       "bytes": 2616,
@@ -108,8 +108,8 @@
       "sha256": "ce696da6b99f10263e835387c03470013b0b68f60b05db9a197e33eb93ed38a1"
     },
     "Vault/specs/named-mcp-application-group-routing.md": {
-      "bytes": 5549,
-      "sha256": "c7d2c51db7b49d8edeec4c6a9d02aabb1e10e50d5a7835d0090595cfae8aa5b5"
+      "bytes": 4887,
+      "sha256": "84dd143acfeb10da127c3c6aa15905f67fe8fa553cd1be71969a36d6392107d8"
     },
     "Vault/specs/named-mcp-server-implementation.md": {
       "bytes": 14015,

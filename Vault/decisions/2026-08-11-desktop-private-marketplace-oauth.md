@@ -13,8 +13,10 @@ Desktop plugins through native local or private Git marketplaces. Claude uses
 catalogs, with host-specific plugin manifests generated from shared canonical
 skills.
 
-Runtime plugins contain the immutable remote HTTPS Streamable HTTP MCP URL and
-no customer credential binding. The desktop host performs OAuth 2.1 MCP
+Claude runtime plugins contain the immutable remote HTTPS Streamable HTTP MCP
+URL. Codex runtime plugins contain a required `.app.json` entry referencing a
+registered `asdk_app_*` connection that owns that immutable URL. Neither has a
+customer credential binding. The desktop host performs OAuth 2.1 MCP
 discovery, presents Connect/Sign in, stores and refreshes the grant, and sends
 the resource-scoped access token. BOS derives tenant, organization,
 application, installation, actor role, plugin execution role, and capabilities
@@ -28,12 +30,15 @@ surface.
 ## Consequences
 
 - Claude runtime manifests have no `userConfig` API-key field.
-- Codex runtime manifests have no `bearer_token_env_var`.
-- Claude and Codex `.mcp.json` files have no literal authorization header.
+- Codex runtime manifests use `apps: "./.app.json"`, contain no `.mcp.json` or
+  `mcpServers`, and have no `bearer_token_env_var`.
+- Claude `.mcp.json` files have no literal authorization header.
 - Codex Environments and setup scripts are not credential stores.
 - OS-specific launchers are outside the customer installation path.
 - Customer ZIPs are optional artifacts rather than the primary distribution
   path.
+- Each active Codex runtime product records its stable registered app ID in the
+  canonical product manifest and fails package validation when that binding is absent.
 - Education Center uses `ON_INSTALL` because authenticated live data is core to
   the product.
 - Copilot and Gemini retain their current adapters until their own migration is

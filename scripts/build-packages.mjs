@@ -1,6 +1,7 @@
 import { cp, mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
+  codexAppManifest,
   copyProductSkills,
   copyRuntime,
   copySettingsTemplate,
@@ -64,6 +65,7 @@ for (const { product, skills } of resolved) {
       client: "codex",
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
+      codex_app_id: product.codex_app_id,
       authentication: product.runtime ? "oauth_2_1" : "none"
     });
     await writeJson(
@@ -71,7 +73,9 @@ for (const { product, skills } of resolved) {
       pluginManifest(product)
     );
     await copyProductSkills(skills, join(pluginRoot, "skills"));
-    await copyRuntime(product, pluginRoot, root, "codex");
+    if (product.runtime) {
+      await writeJson(join(pluginRoot, ".app.json"), codexAppManifest(product));
+    }
     await copySettingsTemplate(product, pluginRoot);
     marketplace.plugins.push(marketplaceEntry(product));
   }

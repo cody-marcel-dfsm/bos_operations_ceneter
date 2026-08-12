@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
+  access,
   chmod,
   cp,
   lstat,
@@ -8,6 +9,7 @@ import {
   mkdtemp,
   readFile,
   readdir,
+  rm,
   symlink,
   stat,
   writeFile
@@ -71,6 +73,7 @@ const mcpApplication = "leaddirector";
 const mcpResourceGroup = "education-center";
 const credentialEnvVar = "EDUCATION_CENTER_BOS_API_KEY";
 const resourceGroupUrl = "https://dfsm.ai/mcp/apps/leaddirector/education-center";
+const codexAppId = "asdk_app_6a7cb1cc330c81918aa63d96aeeaba91";
 
 test("macOS launcher strips undeclared BOS credentials", (context) => {
   if (process.platform !== "darwin") {
@@ -198,6 +201,7 @@ test("Codex runtime installation derives app and resource group from product", a
     state: "host_managed",
     name: "education-center",
     url: resourceGroupUrl,
+    app_id: codexAppId,
     authentication: "oauth_2_1",
     next_action: "connect"
   });
@@ -235,20 +239,38 @@ test("Codex OAuth installation ignores legacy customer environment keys", async 
   assert.equal(report.runtime.next_action, "connect");
 });
 
-test("Codex OAuth installation rejects credential material in the packaged MCP", async () => {
+test("Codex OAuth installation rejects a direct MCP file beside the app binding", async () => {
   const home = await temporaryHome();
   await applyInstallationRaw({
     home,
     product: "education-center"
   });
   const runtimePath = join(installedProduct(home, "education-center"), ".mcp.json");
-  const runtime = JSON.parse(await readFile(runtimePath, "utf8"));
-  runtime.mcpServers["education-center"].bearer_token_env_var = credentialEnvVar;
-  await chmod(runtimePath, 0o644);
-  await writeFile(runtimePath, JSON.stringify(runtime));
+  await writeFile(runtimePath, JSON.stringify({
+    mcpServers: {
+      "education-center": {
+        type: "http",
+        url: resourceGroupUrl
+      }
+    }
+  }));
   await assert.rejects(
     verifyInstallationRaw({ home, product: "education-center" }),
-    /Packaged OAuth MCP configuration is invalid/
+    /Packaged Codex app binding is invalid/
+  );
+});
+
+test("Codex OAuth installation rejects an unregistered app identifier", async () => {
+  const home = await temporaryHome();
+  await applyInstallationRaw({ home, product: "education-center" });
+  const appPath = join(installedProduct(home, "education-center"), ".app.json");
+  const app = JSON.parse(await readFile(appPath, "utf8"));
+  app.apps["education-center"].id = "asdk_app_wrong";
+  await chmod(appPath, 0o644);
+  await writeFile(appPath, JSON.stringify(app));
+  await assert.rejects(
+    verifyInstallationRaw({ home, product: "education-center" }),
+    /Packaged Codex app binding is invalid/
   );
 });
 
@@ -617,7 +639,7 @@ test("named MCP bearer verification fails closed on unavailable resource group",
   assert.doesNotMatch(JSON.stringify(report), /Jane|private-key/);
 });
 
-test("initialization derives safe client values and leaves unknowns unresolved", () => {
+test("initialization derives safe client values, including an explicit brand", () => {
   const template = {
     schema_version: "1",
     brand_display_name: "",
@@ -630,16 +652,17 @@ test("initialization derives safe client values and leaves unknowns unresolved",
   };
   const draft = deriveInitialCustomerSettings(template, {
     timezone: "America/Chicago",
-    brand_display_name: "Must Be Confirmed Through Questionnaire",
+    brand_display_name: "Example Learning",
     organization_display_name: "Example Organization",
     care_com_mailbox: "care@example.com"
   });
   assert.equal(draft.timezone, "America/Chicago");
-  assert.equal(draft.brand_display_name, "");
+  assert.equal(draft.brand_display_name, "Example Learning");
   assert.equal(draft.organization_display_name, "Example Organization");
   assert.equal(draft.location_display_name, "");
   assert.equal(draft.mailboxes.care_com, "care@example.com");
   assert.deepEqual(draft._initialization.derived_sources, {
+    brand_display_name: "client_context",
     organization_display_name: "client_context",
     timezone: "client_context",
     "mailboxes.care_com": "client_connected_account_metadata"
@@ -976,6 +999,59 @@ test("compatible unmanaged plugin is adopted", async () => {
   assert.equal(before.state, "compatible-unmanaged");
   const after = await applyInstallation({ home, product: "bos" });
   assert.equal(after.state, "managed-current");
+});
+
+test("legacy unmanaged Codex MCP package migrates to the registered app binding", async () => {
+  const home = await temporaryHome();
+  const desired = join(root, "clients", "codex", "plugins", "education-center");
+  const target = installedProduct(home, "education-center");
+  await mkdir(join(codexMarketplaceRoot(home), "plugins"), { recursive: true });
+  await cp(desired, target, { recursive: true });
+  await rm(join(target, ".app.json"));
+  const manifestPath = join(target, ".codex-plugin", "plugin.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  delete manifest.apps;
+  manifest.mcpServers = "./.mcp.json";
+  await writeFile(manifestPath, JSON.stringify(manifest));
+  await writeFile(join(target, ".mcp.json"), JSON.stringify({
+    mcpServers: {
+      "education-center": { type: "http", url: resourceGroupUrl }
+    }
+  }));
+
+  const before = await inspectInstallation({ home, product: "education-center" });
+  assert(before.actions.remove.includes(".mcp.json"));
+  const after = await applyInstallationRaw({ home, product: "education-center" });
+  assert.equal(after.state, "managed-current");
+  await assert.rejects(access(join(target, ".mcp.json")));
+  const app = JSON.parse(await readFile(join(target, ".app.json"), "utf8"));
+  assert.equal(app.apps["education-center"].id, codexAppId);
+});
+
+test("unmanaged Codex migration preserves an unrelated direct MCP file", async () => {
+  const home = await temporaryHome();
+  const desired = join(root, "clients", "codex", "plugins", "education-center");
+  const target = installedProduct(home, "education-center");
+  await mkdir(join(codexMarketplaceRoot(home), "plugins"), { recursive: true });
+  await cp(desired, target, { recursive: true });
+  await rm(join(target, ".app.json"));
+  const manifestPath = join(target, ".codex-plugin", "plugin.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  delete manifest.apps;
+  manifest.mcpServers = "./.mcp.json";
+  await writeFile(manifestPath, JSON.stringify(manifest));
+  await writeFile(join(target, ".mcp.json"), JSON.stringify({
+    mcpServers: {
+      "video-ads": {
+        type: "http",
+        url: "https://dfsm.ai/mcp/apps/leaddirector/video-ads"
+      }
+    }
+  }));
+
+  const report = await inspectInstallation({ home, product: "education-center" });
+  assert(report.actions.preserve.includes(".mcp.json"));
+  assert(!report.actions.remove.includes(".mcp.json"));
 });
 
 test("stale managed file updates when prior hash proves ownership", async () => {

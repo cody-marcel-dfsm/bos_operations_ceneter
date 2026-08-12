@@ -1,6 +1,6 @@
 ---
 name: education-center-customer-initialization
-description: Initialize or repair Education Center customer settings after installation by deriving non-secret values from the active client and authenticated BOS context, then asking the user only for unresolved or ambiguous values.
+description: Initialize or repair Education Center customer settings after installation by deriving non-secret values from the active client and authenticated BOS context, proposing sourced defaults for uncertain values, and letting the user accept the complete recommendation at once.
 ---
 
 # Education Center Customer Initialization
@@ -20,14 +20,22 @@ secrets.
    skill.
 2. Preserve every existing valid user-confirmed value. Package rebuilds and
    upgrades replace the template while leaving the customer overlay unchanged.
-3. Preserve an existing user-confirmed `brand_display_name`. Treat it as
-   unresolved when it is absent. Never derive the customer-facing franchise or
-   brand name from the package name, organization name, domain, or public data.
+3. Build candidates for all four required base values before asking the user.
+   Inspect non-secret customer metadata already available in the current
+   conversation, installation draft, active client, and configured product.
+   Preserve an existing user-confirmed `brand_display_name`. Otherwise prefer
+   an explicit brand or franchise label; when none exists, propose a concise
+   brand from a consistent organization or location name. Remove only an
+   obvious legal-entity suffix or exact location qualifier. Treat this as a
+   suggestion that requires confirmation, never as established identity.
 4. Derive the IANA timezone from the active client's local system context.
-5. When BOS is already authenticated, call `bos_get_context` once. Use an
-   organization or location display name only when exactly one authorized
-   matching scope exists. Request selectors remain untrusted and never become
-   authority.
+5. After BOS authentication, call `bos_get_context`. If that alias is
+   absent, follow `bos-mcp-client` connection recovery and live-tool discovery
+   once, then retry. Use an organization or location display name as derived
+   when exactly one authorized matching scope exists. Use consistent
+   non-secret labels from client metadata as suggested defaults when BOS
+   context remains unavailable. Request selectors remain untrusted and never
+   become authority.
 6. Preserve the package's per-domain `source_routes` defaults unless the
    customer explicitly selects another supported source. For
    `connected_gmail`, inspect connected-account metadata already visible to the
@@ -38,32 +46,56 @@ secrets.
    already present in the client or canonical BOS organization metadata. Never
    infer a billing address, contact, phone number, rate, or invoice prefix from
    unrelated messages or public web data.
-8. Track each derived value with its source. Treat multiple candidates,
-   conflicting values, and low-confidence guesses as unresolved.
+8. Track each value with its source and status: `confirmed`, `derived`, or
+   `suggested`. Resolve conflicts in favor of user-confirmed values, then
+   exact canonical metadata. Keep lower-confidence guesses as suggestions for
+   confirmation. Never use public web research or unrelated message content to
+   infer customer identity.
 
 ## User elicitation
 
-Ask one concise consolidated question in the agent conversation for all
-unresolved required values. Show derived values and their sources so the user
-can correct them. Always ask for the customer-facing franchise or brand name
-when `brand_display_name` is unresolved. Required base values are brand display
-name, organization display name, location display name, and IANA timezone. Ask
-for the Care.com mailbox and billing
+Complete authentication before asking any customer-settings question. Verify
+the installed Education Center BOS connection and finish its host-managed
+Connect/Sign in flow when required. After authentication, run context discovery
+and derivation, then present the recommendation. Never combine an
+authentication prompt with the settings questionnaire. If the host requires
+the user's direct sign-in interaction, ask only for that action, resume the
+initialization automatically after it succeeds, and ask the settings question
+afterward. If bounded connection recovery cannot complete authentication,
+return `authentication_required`, preserve the initialization draft, and ask
+no settings questions.
+
+Ask one concise consolidated question in the agent conversation. Always show a
+`Recommended defaults` block containing brand display name, organization
+display name, location display name, and IANA timezone. Include each value's
+status and source. Fill every field with the best customer-specific candidate
+available; use the generic product display name only as a clearly labeled
+low-confidence last-resort suggestion. End with: “Reply **Use these defaults**
+to accept all values, or send any corrections.” Do not require the user to
+retype derived values or answer separate field-by-field questions.
+
+Required base values are brand display name, organization display name,
+location display name, and IANA timezone. Ask for the Care.com mailbox and billing
 fields only when the customer uses those workflows. Ask for a Care.com mailbox
 only when `source_routes.care_com` is `connected_gmail` and the client cannot
 resolve exactly one configured account. Ask for a parent-communications mailbox
 only when `source_routes.parent_communications` is `connected_gmail` and its
 exact account remains unresolved.
 
-Use this questionnaire label for the brand field: “What customer-facing
-franchise or brand name should these skills use in drafts, reports, and
-communications?” Trim the answer, validate it as a single-line display value,
-and store it as `brand_display_name`.
+Label the brand recommendation “Customer-facing franchise or brand name used
+in drafts, reports, and communications.” Trim the accepted value, validate it
+as a single-line display value, and store it as `brand_display_name`.
 
-Customer settings initialization never opens an authorization page. In Claude
-and ChatGPT/Codex, the installed MCP connection completes BOS OAuth through the
-host's Connect/Sign in flow before this configuration workflow runs. Another
-client completes its generated product adapter first. BOS-routed provider
+Treat “Use these defaults,” “Accept defaults,” and an equivalent unambiguous
+confirmation as approval of the complete displayed recommendation. Apply
+nothing from a new or repaired initialization until the recommendation is
+confirmed. Existing valid user-confirmed settings require no reconfirmation.
+
+Customer settings initialization never opens a provider authorization page or
+collects a credential. In Claude and ChatGPT/Codex, complete BOS OAuth through
+the installed MCP connection's host-managed Connect/Sign in flow before
+eliciting settings. Another client completes its generated product adapter
+first. BOS-routed provider
 authorization remains the BOS-owned recovery flow; a separately connected
 client source retains its native account authorization and recovery boundary.
 

@@ -1,5 +1,5 @@
 {
-  "indexed_at": "20260812T175947.994272Z",
+  "indexed_at": "20260812T175810.210212Z",
   "schema_version": "bos-vault-manifest/v1",
   "source_count": 30,
   "sources": {
@@ -108,8 +108,8 @@
       "sha256": "ce696da6b99f10263e835387c03470013b0b68f60b05db9a197e33eb93ed38a1"
     },
     "Vault/specs/named-mcp-application-group-routing.md": {
-      "bytes": 5549,
-      "sha256": "c7d2c51db7b49d8edeec4c6a9d02aabb1e10e50d5a7835d0090595cfae8aa5b5"
+      "bytes": 5553,
+      "sha256": "f9defb9f2b1d822806e7373828020f87c3b1b4290cfcb573c3b1ad99c0cb765b"
     },
     "Vault/specs/named-mcp-server-implementation.md": {
       "bytes": 14015,

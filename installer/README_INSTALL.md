@@ -21,9 +21,10 @@ Open the extracted `clients/codex` directory in Codex and paste:
 > `authentication_required`; do not generate an unavailable-data report.
 
 The catalog is `clients/codex/.agents/plugins/marketplace.json`. The runtime
-plugin contains the immutable
-`https://dfsm.ai/mcp/apps/leaddirector/education-center` URL. Codex discovers
-BOS OAuth from that resource and manages the authorization.
+plugin's `.app.json` references the registered Education Center app. That app
+owns the immutable `https://dfsm.ai/mcp/apps/leaddirector/education-center`
+resource, so Codex can render Connect and manage BOS OAuth. The Codex plugin
+contains no `.mcp.json` or headless `mcpServers` entry.
 
 After installation or upgrade, start a new task. After a source change, update
 the marketplace and reinstall or upgrade the cached plugin before testing.

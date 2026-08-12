@@ -211,24 +211,37 @@ async function validateProducts() {
         ) {
           failures.push(`Generated Codex identity drift: ${pluginPath}`);
         }
-      }
-      const runtimePath = join(pluginRoot, ".mcp.json");
-      if (manifest.runtime && await pathExists(runtimePath)) {
-        const runtime = await readJson(runtimePath);
-        const server = runtime.mcpServers?.[manifest.mcp_group_name];
-        const expectedUrl = materializeMcpUrl(
-          "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
-          manifest
-        );
-        if (
-          server?.url !== expectedUrl ||
-          server?.type !== "http" ||
-          "bearer_token_env_var" in (server ?? {}) ||
-          "headers" in (server ?? {}) ||
-          JSON.stringify(runtime).includes("BOS_INSTALLED_APP_ID")
-        ) {
-          failures.push(`Generated Codex named MCP route drift: ${runtimePath}`);
+        if (manifest.runtime) {
+          if (generated.apps !== "./.app.json" || "mcpServers" in generated) {
+            failures.push(`Generated Codex app binding drift: ${pluginPath}`);
+          }
+        } else if ("apps" in generated || "mcpServers" in generated) {
+          failures.push(`Skills-only Codex product contains runtime binding: ${pluginPath}`);
         }
+      }
+      const appPath = join(pluginRoot, ".app.json");
+      const runtimePath = join(pluginRoot, ".mcp.json");
+      if (manifest.runtime) {
+        if (
+          !(await pathExists(appPath)) ||
+          await pathExists(runtimePath)
+        ) {
+          failures.push(`Generated Codex app file drift: ${appPath}`);
+        } else {
+          const appManifest = await readJson(appPath);
+          const entries = Object.entries(appManifest.apps ?? {});
+          const [name, app] = entries[0] ?? [];
+          if (
+            entries.length !== 1 ||
+            name !== manifest.name ||
+            app?.id !== manifest.codex_app_id ||
+            app?.required !== true
+          ) {
+            failures.push(`Generated Codex registered app drift: ${appPath}`);
+          }
+        }
+      } else if (await pathExists(appPath) || await pathExists(runtimePath)) {
+        failures.push(`Skills-only Codex product contains runtime file: ${pluginRoot}`);
       }
       for (const skill of skills) {
         const generatedSkillRoot = join(pluginRoot, "skills", skill.name);

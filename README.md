@@ -28,13 +28,13 @@ The private Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Select
 **Connect** or **Sign in** when the host presents it, then complete BOS consent.
 
-Current desktop marketplace release: `0.4.22`. If `0.4.21` is installed,
+Current desktop marketplace release: `0.4.23`. If `0.4.22` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
 
 Requirement: ChatGPT Desktop with Codex and plugin support.
-[OpenAI's plugin guide](https://learn.chatgpt.com/docs/plugins) documents the
+[OpenAI's plugin guide](https://developers.openai.com/plugins/build/plugins) documents the
 desktop Plugins Directory, connection prompt, and new-task activation flow.
 
 Open a new Codex task and paste:
@@ -50,8 +50,9 @@ Open a new Codex task and paste:
 
 Codex reads the repository catalog at
 `.agents/plugins/marketplace.json`, installs the plugins into its managed
-cache, and discovers OAuth from the immutable Education Center MCP resource.
-Start a new task after installation or upgrade.
+cache, and loads the registered Education Center app from the plugin's
+`.app.json`. That app owns the immutable BOS MCP resource and host-managed OAuth
+grant. Start a new task after installation or upgrade.
 
 ### Claude Cowork/Desktop
 
@@ -89,8 +90,8 @@ or OS-specific launcher.
 ### Customer settings and extensions
 
 On first use, `education-center-customer-initialization` derives safe
-non-secret values and asks one consolidated question for unresolved customer
-settings. The customer-owned overlay is
+non-secret values, proposes sourced defaults for uncertain values, and lets the
+customer accept the complete recommendation in one reply. The customer-owned overlay is
 `config/customer-settings.json`; package updates preserve it. Customer
 settings select display terminology and provider routes. They never grant
 authority.
@@ -157,7 +158,8 @@ codex plugin marketplace add ./
 ```
 
 Install **BOS** and **Education Center** from the ChatGPT Desktop Plugins
-Directory, select **Connect**, and test in a new task. After source changes,
+Directory. Confirm that Education Center shows **Connect**, complete BOS OAuth,
+and test in a new task. After source changes,
 rebuild the packages, update or reinstall the plugin, and use another new task
 so the managed cache cannot hide stale output.
 
