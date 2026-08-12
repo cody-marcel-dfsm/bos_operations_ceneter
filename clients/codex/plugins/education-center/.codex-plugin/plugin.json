@@ -1,6 +1,6 @@
 {
   "name": "education-center",
-  "version": "0.4.22",
+  "version": "0.4.23",
   "description": "A childhood education franchise-in-a-box operating system for authorized adult education center staff through the tenant-scoped BOS MCP.",
   "author": {
     "name": "Infinite State Machines LLC"
@@ -22,5 +22,5 @@
       "Give me a weekly summary for my director."
     ]
   },
-  "mcpServers": "./.mcp.json"
+  "apps": "./.app.json"
 }

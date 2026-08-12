@@ -316,9 +316,10 @@ scope resolution, provider setup, verification, and retry sequence.
 
 - Represent BOS client authorization, tenant resolution, capability
   authorization, and provider credential health as distinct states.
-- Generate native remote Streamable HTTP configuration for Codex and Claude.
-- Forward each runtime product's declared client-managed credential as the
-  HTTPS Bearer header on that named connection.
+- Generate a required registered app binding for Codex and native remote
+  Streamable HTTP configuration for Claude.
+- Use host-managed OAuth for Codex and Claude without packaged BOS credential
+  fields or authorization-header templates.
 - Consume BOS-returned provider OAuth and HTTPS credential-collection actions
   without persisting or echoing credentials.
 - Implement the recovery sequence defined in the design.
@@ -328,8 +329,8 @@ scope resolution, provider setup, verification, and retry sequence.
 
 - Diagnostics identify tenant, plugin, capability, and credential state using
   BOS-returned evidence.
-- A missing or invalid product credential stops only that product's affected
-  operation with no secondary BOS login flow.
+- A missing or invalid OAuth grant stops only that product's affected operation
+  and invokes the host's Connect/Sign in flow.
 - Recovery verifies state before retrying and retries no more than once.
 - Provider credentials are submitted directly to the BOS-hosted HTTPS flow and
   remain absent from model messages, logs, responses, generated files, customer
@@ -450,15 +451,15 @@ remote MCP transport on macOS, Windows, and Linux.
 
 **Acceptance criteria:**
 
-- Generated Codex and Claude runtime products contain `type: http`, an HTTPS
-  URL, and an environment-derived Authorization header.
+- Generated Codex runtime products contain a required `.app.json` binding and
+  no `.mcp.json`; generated Claude runtime products contain `type: http` and
+  the immutable HTTPS URL without credential fields or authorization headers.
 - Generated client packages contain no `command`, `stdio`, executable, Python
   runtime, or local credential listener.
 - The Video Ads product targets only `/mcp/apps/leaddirector/video-ads`
   through the `video-ads` server identity.
-- A missing declared product credential fails at that BOS service boundary and
-  cannot initiate a second BOS authentication mechanism or affect another
-  product connection.
+- A missing OAuth grant fails at that BOS service boundary, invokes the
+  host-managed connection flow, and cannot affect another product connection.
 
 **Dependencies:** BOSPKG-012, BOSPKG-015.
 

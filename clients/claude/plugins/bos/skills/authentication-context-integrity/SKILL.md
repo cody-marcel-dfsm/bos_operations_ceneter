@@ -37,9 +37,11 @@ configuration as distinct validated dimensions.
   session, it reconnects the configured endpoint, rediscovers tools,
   revalidates context, and resumes the interrupted request with bounded retry.
   It never delegates reconnection or request resubmission to the user.
-- Expose BOS as a remote HTTPS Streamable HTTP MCP server. Claude and
-  ChatGPT/Codex desktop packages declare only the immutable resource URL and
-  use the host's OAuth 2.1 MCP authorization flow. The host discovers BOS
+- Expose BOS as a remote HTTPS Streamable HTTP MCP server. Claude desktop
+  packages declare only the immutable resource URL. ChatGPT/Codex packages
+  declare a required registered app binding that owns that resource and carry
+  no direct MCP server declaration. Both use the host's OAuth 2.1 MCP
+  authorization flow. The host discovers BOS
   authorization metadata, launches consent, stores and refreshes the grant,
   and attaches the resulting resource-scoped access token. The package never
   asks for or stores a BOS API key. Multiple named product connections may
@@ -49,9 +51,10 @@ configuration as distinct validated dimensions.
   `/mcp/apps/{application-name}/{skill-group-name}` endpoint and verify the
   server-returned context. Never discover, prompt for, repair, or materialize
   the route from an `installed_app_id`, and never retain an unnamed endpoint as
-  an installed product's runtime connection. For Claude and ChatGPT/Codex,
-  never add `bearer_token_env_var`, literal authorization headers, or a plugin
-  key field. The server derives actor, tenant, organization, installation,
+  an installed product's runtime connection. For ChatGPT/Codex, never package
+  `.mcp.json` or `mcpServers`; bind the registered app through `.app.json`.
+  For Claude and ChatGPT/Codex, never add `bearer_token_env_var`, literal
+  authorization headers, or a plugin key field. The server derives actor, tenant, organization, installation,
   role, plugin, and capability scope from the validated OAuth grant; client
   prompts and tool arguments never supply those authority dimensions.
 - Advertise only the tools allowed for the resolved endpoint, tenant,

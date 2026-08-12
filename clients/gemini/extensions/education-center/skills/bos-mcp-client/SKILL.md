@@ -29,9 +29,10 @@ request.
 
 - Discover and use the installed product's configured BOS MCP connection.
 - If BOS is absent from the callable tool manifest, inspect the active client's
-  plugin and MCP registration immediately. Repair or reinstall the configured
-  local product and restore its declared authorization connection. For Claude
-  and ChatGPT/Codex, invoke the host-managed OAuth connection. Preserve every
+  plugin and runtime binding immediately. Repair or reinstall the configured
+  local product and restore its declared authorization connection. For Codex,
+  verify the required registered app binding; for Claude, verify the direct
+  remote MCP declaration. Invoke the host-managed OAuth connection. Preserve every
   other installed product connection. Restore only the immutable
   `/mcp/apps/{application-name}/{skill-group-name}` package route for every
   application runtime product, then verify that named server is registered.

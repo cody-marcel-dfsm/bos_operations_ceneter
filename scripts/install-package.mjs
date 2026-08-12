@@ -67,6 +67,22 @@ async function isRetiredBosBrokerConfig(path) {
   }
 }
 
+async function isLegacyCodexOAuthConfig(path, expectedName, expectedUrl) {
+  try {
+    const config = await readJson(path);
+    const entries = Object.entries(config?.mcpServers ?? {});
+    if (entries.length !== 1) return false;
+    const [name, server] = entries[0];
+    return name === expectedName &&
+      server?.type === "http" &&
+      server.url === expectedUrl &&
+      !("headers" in server) &&
+      !("bearer_token_env_var" in server);
+  } catch {
+    return false;
+  }
+}
+
 function parseArgs(argv) {
   const [command = "inspect", ...rest] = argv;
   const options = {
@@ -348,28 +364,38 @@ export async function codexHostBearerState(
 }
 
 async function configureCodexBosMcp(options, paths) {
-  const runtimePath = join(paths.target, ".mcp.json");
-  if (!(await pathExists(runtimePath))) return { state: "not_applicable" };
-  const runtime = await readJson(runtimePath);
-  const runtimeServer = Object.values(runtime.mcpServers ?? {})[0];
-  if (!runtimeServer) return { state: "not_applicable" };
   const metadata = await readJson(join(paths.target, ".bos-product.json"));
   if (metadata.authentication === "oauth_2_1") {
+    const appPath = join(paths.target, ".app.json");
+    const runtimePath = join(paths.target, ".mcp.json");
+    if (!(await pathExists(appPath)) || await pathExists(runtimePath)) {
+      throw new Error("Packaged Codex app binding is invalid");
+    }
+    const appManifest = await readJson(appPath);
+    const appEntries = Object.entries(appManifest.apps ?? {});
+    const [appName, app] = appEntries[0] ?? [];
     const expectedUrl =
       `https://dfsm.ai/mcp/apps/${metadata.application_name}/${metadata.mcp_group_name}`;
-    if (runtimeServer.type !== "http" || runtimeServer.url !== expectedUrl ||
-        "bearer_token_env_var" in runtimeServer || "headers" in runtimeServer ||
+    if (appEntries.length !== 1 || appName !== metadata.name ||
+        app?.id !== metadata.codex_app_id || app?.required !== true ||
+        !/^asdk_app_[a-z0-9]+$/.test(app?.id ?? "") ||
         "credential_env_var" in metadata) {
-      throw new Error("Packaged OAuth MCP configuration is invalid");
+      throw new Error("Packaged Codex app binding is invalid");
     }
     return {
       state: "host_managed",
       name: metadata.mcp_group_name,
       url: expectedUrl,
+      app_id: app.id,
       authentication: "oauth_2_1",
       next_action: "connect"
     };
   }
+  const runtimePath = join(paths.target, ".mcp.json");
+  if (!(await pathExists(runtimePath))) return { state: "not_applicable" };
+  const runtime = await readJson(runtimePath);
+  const runtimeServer = Object.values(runtime.mcpServers ?? {})[0];
+  if (!runtimeServer) return { state: "not_applicable" };
   const registration = codexBosMcpRegistration(
     metadata.application_name,
     metadata.mcp_group_name,
@@ -670,6 +696,7 @@ export function deriveInitialCustomerSettings(template, clientContext = {}) {
   const settings = structuredClone(template);
   const sources = {};
   const candidates = {
+    brand_display_name: clientContext.brand_display_name,
     organization_display_name: clientContext.organization_display_name,
     location_display_name: clientContext.location_display_name,
     timezone:
@@ -985,6 +1012,24 @@ async function inspectTarget(paths, desired) {
     }
     preserve = preserve.filter((path) => !remove.includes(path));
   }
+  if (
+    !previousState &&
+    desired.manifest.apps &&
+    ".mcp.json" in currentFiles &&
+    !(".mcp.json" in desired.hashes)
+  ) {
+    const metadata = await readJson(join(paths.desired, ".bos-product.json"));
+    const expectedUrl =
+      `https://dfsm.ai/mcp/apps/${metadata.application_name}/${metadata.mcp_group_name}`;
+    if (await isLegacyCodexOAuthConfig(
+      join(paths.target, ".mcp.json"),
+      metadata.mcp_group_name,
+      expectedUrl
+    )) {
+      remove.push(".mcp.json");
+      preserve = preserve.filter((path) => path !== ".mcp.json");
+    }
+  }
   if (retiredBrokerPresent) {
     for (const path of Object.keys(currentFiles).filter(isRetiredBosBrokerPath)) {
       if (!remove.includes(path)) remove.push(path);
@@ -1178,7 +1223,7 @@ async function mergeMarketplace(options, paths, desiredManifest) {
   };
   const entry = marketplaceEntry({
     name: options.product,
-    authentication: desiredManifest.mcpServers ? "ON_INSTALL" : "ON_USE",
+    authentication: desiredManifest.apps ? "ON_INSTALL" : "ON_USE",
     category: desiredManifest.interface?.category ?? "Productivity"
   });
   const index = marketplace.plugins.findIndex(
@@ -1186,7 +1231,7 @@ async function mergeMarketplace(options, paths, desiredManifest) {
   );
   if (index === -1) marketplace.plugins.push(entry);
   else {
-    if (!desiredManifest.mcpServers) {
+    if (!desiredManifest.apps) {
       entry.policy.authentication =
         marketplace.plugins[index].policy?.authentication ?? "ON_USE";
     }

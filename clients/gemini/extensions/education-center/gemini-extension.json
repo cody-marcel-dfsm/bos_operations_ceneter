@@ -1,6 +1,6 @@
 {
   "name": "education-center",
-  "version": "0.4.22",
+  "version": "0.4.23",
   "description": "A childhood education franchise-in-a-box operating system for authorized adult education center staff through the tenant-scoped BOS MCP.",
   "settings": [
     {

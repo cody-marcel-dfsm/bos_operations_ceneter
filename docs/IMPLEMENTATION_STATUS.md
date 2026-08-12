@@ -27,10 +27,13 @@ ready for client testing.
 - Machine-local Codex developer linking with pre-link backups and idempotent
   canonical-source symlinks.
 - Deterministic cross-platform customer ZIP generation containing Codex,
-  Claude, and Copilot distributions with native remote MCP configuration.
+  Claude, and Copilot distributions with host-native BOS connections.
+- Codex Education Center app binding through the registered
+  `asdk_app_6a7cb1cc330c81918aa63d96aeeaba91` connection, with no direct
+  `.mcp.json` entry.
 - Tag-triggered GitHub release workflow for versioned and stable ZIP assets.
 - Source-to-generated drift validation, skill validation, secret/path scanning,
-  installer tests, remote MCP configuration checks, and release checks.
+  installer tests, host-native connection checks, and release checks.
 - Lead Director repository specializations that explicitly compose the
   application-neutral BOS planning, implementation, review, authentication, and
   boundary foundations.
@@ -43,26 +46,34 @@ ready for client testing.
 ## Validated locally
 
 - All package unit and installer tests pass.
-- All generated Codex plugins pass the official plugin validator.
-- Native remote MCP package tests pass.
+- The generated Codex plugin installs successfully and its registered app
+  binding passes repository package validation. The bundled plugin-validator
+  currently rejects `required`, including on OpenAI's own Gmail package, so it
+  is not a usable release signal for this field.
+- Host-native connection package tests pass.
 - Repeated release builds produce identical checksums.
 - Fresh Codex tasks discover the namespaced `bos:*` skills and Lead Director
   repository skills.
-- The BOS MCP is reachable through the installed BOS plugin and returns tenant
-  context.
+- ChatGPT displays Connect for Education Center BOS, discovers BOS OAuth, and
+  reaches Cherry Creek organization and Director-role selection. The deployed
+  BOS application then rejects the MCP agent handoff with `Authenticated BOS
+  session is required`; server remediation remains the live release gate.
+- The BOS application reports the Cherry Creek Calimatic SIS provider enabled.
 - A second installer apply is a no-op for a current managed installation.
 
 ## Client testing gates
 
-The implementation is ready for these environment-specific smoke tests:
+The package implementation is ready for these environment-specific smoke tests:
 
 1. Install the generated Claude bundle in a clean Claude environment and verify
    skill discovery.
 2. Install the generated Copilot bundle in a clean Copilot environment and
    verify repository instruction discovery.
-3. Run one authenticated read-only BOS domain operation from a clean client.
+3. Repair the deployed BOS MCP agent handoff so the authenticated web session
+   completes OAuth authorization, then run `bos_get_context` and one bounded
+   `education_center_list_enrollments` read from a clean Codex task.
 4. Exercise an upgrade from version `0.4.0` to `0.4.1` and confirm managed
    files are replaced while customer extension files remain unchanged.
 
-These gates validate client environments; they require no additional package
-architecture work.
+These gates validate client and deployed-server environments. The current live
+failure is server-owned and requires no additional package architecture work.

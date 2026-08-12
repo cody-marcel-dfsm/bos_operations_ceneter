@@ -439,18 +439,23 @@ keys, tenant grants, or role assignments.
 
 Initialization follows a derive-then-ask contract. The installer creates a
 customer-owned initialization draft and derives the local IANA timezone. The
-customer-initialization skill preserves confirmed settings, reads unambiguous
-display metadata from the active client and authenticated BOS context, and
-uses connected-account metadata to identify a mailbox only when there is one
-clear candidate. It asks one consolidated question for every remaining or
-conflicting value. Billing identity is never inferred from unrelated messages
-or public web data. The completed file replaces the draft after validation.
+customer-initialization skill completes the product connection's host-managed
+authentication before eliciting settings, preserves confirmed settings, reads
+unambiguous display metadata from the active client and authenticated BOS
+context, and uses connected-account metadata to identify a mailbox only when there is one
+clear candidate. It proposes a sourced default for every required base value,
+labels uncertain inferences as suggestions, and lets the customer accept the
+complete recommendation in one reply. Billing identity and customer identity
+are never inferred from unrelated messages or public web data. The completed
+file replaces the draft after validation.
 
-The Education Center initialization questionnaire always collects
-`brand_display_name` when it is unresolved. Every Education Center skill uses
-that value for customer-facing franchise or brand references. A skill-specific
-typed extension may override `terminology.brand_display_name`. Neither value is
-interpolated into package-owned technical identifiers.
+The Education Center initialization questionnaire always recommends and
+confirms `brand_display_name` when it is unresolved. A consistent organization
+or location label may supply a suggested brand after explicit brand metadata is
+exhausted. Every Education Center skill uses the accepted value for
+customer-facing franchise or brand references. A skill-specific typed extension
+may override `terminology.brand_display_name`. Neither value is interpolated
+into package-owned technical identifiers.
 
 Customer-owned extension skills may consume this non-secret configuration to
 specialize a packaged operating procedure. Extensions cannot grant tenant,
@@ -468,15 +473,14 @@ Director, Calendar, and general parent communications through BOS while routing
 Care.com evidence through an exact account in the client's normal Gmail
 connector. External connector evidence never expands BOS identity or authority.
 
-Credentials and access authority remain outside customer configuration. Each
-active runtime product declares one organization-scoped credential binding.
-Claude packages expose that binding as a required sensitive `userConfig`
-field. Claude collects the value through its native masked configuration
-prompt, stores it in its secure credential store, and substitutes it directly
-into the named MCP authorization header. The local package wrapper never reads
-or transports the value. Other clients use their approved host credential
-binding. Each named MCP connection forwards only its declared key as a Bearer
-header over HTTPS. Skill files, generated packages, logs, customer settings,
+Credentials and access authority remain outside customer configuration.
+Claude and ChatGPT/Codex authorize the named BOS resource through host-managed
+OAuth 2.1. Claude packages carry a credential-free remote MCP declaration.
+Codex packages carry a required `.app.json` entry whose stable `asdk_app_*`
+identifier refers to the registered BOS resource; Codex packages carry no
+`.mcp.json`. The hosts discover authorization metadata from the resource,
+collect consent, store and refresh the grant, and attach its resource-scoped
+access token. Skill files, generated packages, logs, customer settings,
 customer-entered commands, and model chat remain credential-free. BOS owns encrypted provider-credential
 persistence. For a missing provider grant, BOS returns a short-lived HTTPS
 authorization or credential-collection URL. The customer completes that flow
@@ -485,15 +489,16 @@ callback processing, token exchange, and storage.
 
 ## MCP transport and client boundary
 
-BOS runs as an independently deployed Streamable HTTP MCP server. Codex and
-Claude use their native remote MCP transports. Copilot packages contain skills
+BOS runs as an independently deployed Streamable HTTP MCP server. Codex loads
+the registered app referenced by the plugin, while Claude uses its native
+remote MCP transport. Copilot packages contain skills
 and configure the same remote endpoint through the host's supported MCP
 settings. The distribution contains configuration and skills; it contains no
 proxy executable, Python runtime, subprocess server, loopback listener, mobile
 client, or OS-specific transport adapter.
 
 The BOS platform package registers no MCP endpoint. Application products use
-their own immutable named routes. The BOS service authenticates the API key,
+their own immutable named routes. The BOS service validates the OAuth token,
 resolves tenant and installation context, and advertises only the tools
 authorized for that endpoint. Tool discovery, routing, administrative-tool
 suppression, and provider recovery are server responsibilities.
@@ -504,7 +509,7 @@ local process integrations that require direct machine access.
 
 Controlling external references:
 
-- [OpenAI Model Context Protocol](https://learn.chatgpt.com/docs/extend/mcp)
+- [OpenAI plugin package guide](https://developers.openai.com/plugins/build/plugins)
 - [Anthropic Claude Code MCP](https://code.claude.com/docs/en/mcp)
 - [MCP transport specification](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports)
 - [Official MCP TypeScript SDK server guidance](https://ts.sdk.modelcontextprotocol.io/server)
@@ -519,7 +524,7 @@ Every organization operation requires:
 4. a healthy tenant-scoped provider credential when the capability uses an
    external provider.
 
-The authenticated key or session is the access gate. Local customer
+The authenticated grant or session is the access gate. Local customer
 configuration never bypasses that gate.
 
 Tenant isolation is mandatory. A credential, provider connection, capability,
@@ -548,11 +553,9 @@ state available from BOS and starts the applicable recovery flow.
 
 ### 1. Install the client distribution
 
-Codex can install from a published customer ZIP. Before public marketplace
-listing, Claude installs from an extracted source or customer package through
-the package's single `npm run install:claude` entry point. That entry point
-validates the local catalog and performs Claude's internal registration,
-installation, and enablement operations. The installation contains only the
+Codex and Claude install from their native private marketplaces. Optional
+customer archives carry the same generated marketplace packages for offline
+transfer. The installation contains only the
 capabilities and vertical modules selected for that product. Installation
 alone grants no organization access.
 
@@ -564,16 +567,14 @@ authenticate BOS and does not authorize provider access.
 
 ### 3. Connect the account
 
-The client loads each selected product's declared credential binding and
-connects directly to its matching named HTTPS MCP endpoint. For Claude, the
-plugin's required sensitive field supplies a one-question setup wizard: the
-Claude configuration prompt accepts the administrator-provided key through
-masked input and retains it in secure credential storage; the package wrapper
-never handles it. BOS validates that route-bound key on every
-secured request and fails closed when it is absent, invalid, expired, or
-outside the endpoint's authorized product scope. A failed product connection
+The client loads each selected product's host-native runtime binding. Codex
+loads the registered app named by `.app.json`; Claude loads the credential-free
+remote MCP declaration. The host presents Connect, completes OAuth discovery
+and consent, and stores the resource-scoped grant. BOS validates that grant on
+every secured request and fails closed when it is absent, invalid, expired,
+revoked, or outside the endpoint's authorized product scope. A failed product connection
 or provider credential cannot affect another product or organization. The
-customer completes no second BOS password or login flow.
+customer completes only the host-presented BOS authorization flow.
 
 ### 4. Resolve tenant and capabilities
 
