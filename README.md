@@ -28,6 +28,9 @@ The private Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Select
 **Connect** or **Sign in** when the host presents it, then complete BOS consent.
 
+Current desktop marketplace release: `0.4.22`. If `0.4.21` is installed,
+refresh the marketplace and upgrade or reinstall both plugins before connecting.
+
 ### ChatGPT/Codex Desktop
 
 Requirement: ChatGPT Desktop with Codex and plugin support.
