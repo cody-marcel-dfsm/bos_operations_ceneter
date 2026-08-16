@@ -337,23 +337,40 @@ export async function geminiExtensionManifest(product, base = root) {
   }
   const httpUrl = materializeMcpUrl(sourceServer.url, product);
   const serverName = product.mcp_group_name;
-  manifest.settings = [
-    {
-      name: "BOS API Key",
-      description: "Organization-scoped BOS agent bearer credential.",
-      envVar: product.credential_env_var,
-      sensitive: true
-    }
-  ];
   manifest.mcpServers = {
     [serverName]: {
       httpUrl,
-      headers: {
-        Authorization: `Bearer \${${product.credential_env_var}}`
-      }
+      oauth: { enabled: true }
     }
   };
   return manifest;
+}
+
+export function geminiPluginManifest(product) {
+  return {
+    $schema: "https://antigravity.google/schemas/v1/plugin.json",
+    name: product.name,
+    description: product.description
+  };
+}
+
+export async function geminiPluginMcpManifest(product, base = root) {
+  if (!product.runtime) return { mcpServers: {} };
+
+  const runtime = await readJson(
+    join(base, "source", "runtime", product.runtime, ".mcp.json")
+  );
+  const sourceServer = runtime.mcpServers?.bos;
+  if (!sourceServer || sourceServer.type !== "http") {
+    throw new Error(`Runtime ${product.runtime} has no remote BOS MCP server`);
+  }
+  return {
+    mcpServers: {
+      [product.mcp_group_name]: {
+        serverUrl: materializeMcpUrl(sourceServer.url, product)
+      }
+    }
+  };
 }
 
 export async function copilotMcpManifest(product, base = root) {

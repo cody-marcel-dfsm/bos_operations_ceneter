@@ -91,6 +91,11 @@ assert.match(
 assert.match(listing.stdout, /clients\/copilot\/products\/bos\/skills/);
 assert.doesNotMatch(listing.stdout, /clients\/copilot\/products\/bos\/\.github\/mcp\.json/);
 assert.match(listing.stdout, /clients\/gemini\/extensions\/bos\/gemini-extension\.json/);
+assert.match(listing.stdout, /clients\/gemini\/extensions\/bos\/plugin\.json/);
+assert.match(
+  listing.stdout,
+  /clients\/gemini\/extensions\/education-center\/mcp_config\.json/
+);
 assert.doesNotMatch(listing.stdout, /bos-mcp-broker|\/bin\//);
 assert.doesNotMatch(listing.stdout, /video-ads/);
 assert.match(listing.stdout, /clients\/disabled-products\.json/);

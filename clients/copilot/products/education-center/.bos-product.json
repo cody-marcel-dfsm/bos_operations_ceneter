@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.23",
+  "version": "0.4.24",
   "client": "copilot",
   "application_name": "leaddirector",
   "mcp_group_name": "education-center",

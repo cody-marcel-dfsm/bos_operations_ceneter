@@ -2,8 +2,9 @@
 
 BOS Operations Center is the canonical source, package generator, validator,
 and release system for portable BOS skills and remote MCP client adapters.
-Claude Cowork/Desktop and ChatGPT/Codex Desktop install plugins through native
-private marketplaces and authorize BOS through host-managed OAuth 2.1.
+Claude Cowork/Desktop, ChatGPT/Codex Desktop, and the Gemini client install
+native packages and authorize BOS through host-managed OAuth 2.1. The single
+Gemini extension supports both Gemini CLI and Google Antigravity 2.0 Desktop.
 
 ## Choose your environment
 
@@ -11,11 +12,12 @@ private marketplaces and authorize BOS through host-managed OAuth 2.1.
 |---|---|---|
 | ChatGPT/Codex Desktop customer | Install and operate Education Center | [Codex installation](#chatgptcodex-desktop) |
 | Claude Cowork/Desktop customer | Install and operate Education Center | [Claude installation](#claude-coworkdesktop) |
+| Gemini customer | Use Gemini CLI or Antigravity 2.0 Desktop | [Gemini installation](#gemini-cli-and-antigravity-20-desktop) |
 | Local plugin development | Edit, regenerate, install, and test an unreleased checkout | [Local development](#local-plugin-development) |
 | Maintainer artifact build | Generate credential-free client packages and archives | [Artifact build](#artifact-only-build) |
 | Maintainer release validation | Run the live server gate and complete release checks | [Release validation](#complete-release-validation) |
 | Optional archive installation | Test or transfer a packaged release without Git marketplace access | [Archive installation](#optional-archive-installation) |
-| Copilot or Gemini | Use the current secondary client adapters | [Other clients](#other-clients) |
+| GitHub Copilot | Use the repository client adapter | [Other clients](#other-clients) |
 
 Customer desktop installation does not use Codex Environment variables, setup
 scripts, API-key prompts, cloud-secret names, or operating-system-specific
@@ -28,7 +30,7 @@ The private Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Select
 **Connect** or **Sign in** when the host presents it, then complete BOS consent.
 
-Current desktop marketplace release: `0.4.23`. If `0.4.22` is installed,
+Current desktop marketplace release: `0.4.24`. If `0.4.23` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -242,9 +244,35 @@ versioned and stable archive names.
 
 ## Other clients
 
-Claude and ChatGPT/Codex use the desktop OAuth contract described above.
-Copilot and Gemini retain their current generated adapters until separately
-migrated.
+Claude, ChatGPT/Codex, Gemini CLI, and Antigravity Desktop use host-managed
+OAuth for the immutable BOS product resource.
+
+### Gemini CLI and Antigravity 2.0 Desktop
+
+Requirement: current Gemini CLI or
+[Google Antigravity 2.0](https://antigravity.google/product/antigravity-2).
+Google documents the native
+[Antigravity plugin layout](https://antigravity.google/docs/ide/plugins?app=antigravity-ide-),
+[desktop MCP setup and OAuth flow](https://antigravity.google/docs/mcp?authuser=0000),
+and [Gemini CLI MCP OAuth command](https://geminicli.com/docs/tools/mcp-server/).
+
+Give Hardik this instruction:
+
+> Use the single Gemini client in `clients/gemini`. For Gemini CLI, install
+> `clients/gemini/extensions/bos` and
+> `clients/gemini/extensions/education-center`, restart Gemini CLI, run
+> `/mcp auth education-center`, and complete BOS sign-in. For Antigravity 2.0
+> Desktop, copy those same two complete extension directories into
+> `~/.gemini/config/plugins/`, restart Antigravity, open Settings >
+> Customizations, select Authenticate for `education-center`, complete BOS
+> sign-in, and verify one authenticated Education Center read. Preserve the
+> directory contents and do not request a BOS API key, token, client secret,
+> environment variable, or installed application ID.
+
+The same generated product directory contains `gemini-extension.json` for
+Gemini CLI and `plugin.json` plus `mcp_config.json` for Antigravity Desktop.
+Both load the same skills and product metadata. Runtime authentication uses
+OAuth discovery and the host-managed resource-scoped grant.
 
 ### GitHub Copilot
 
@@ -252,16 +280,6 @@ migrated.
    supported agent-skills directory.
 2. For a runtime product, install its generated `.github/mcp.json` and follow
    that product's README for the current credential adapter.
-
-### Gemini CLI
-
-1. From the repository or extracted archive, run
-   `gemini extensions install clients/gemini/extensions/bos`, followed by
-   `gemini extensions install clients/gemini/extensions/education-center`.
-2. Complete the sensitive BOS setting declared by the Education Center
-   extension and restart Gemini CLI.
-3. Run `/extensions list` and `/skills list` to verify both extensions and the
-   bundled skills. See `clients/gemini/README.md` for update and repair commands.
 
 ## Repository map
 
