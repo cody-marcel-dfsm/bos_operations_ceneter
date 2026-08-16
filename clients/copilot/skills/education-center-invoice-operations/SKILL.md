@@ -1,6 +1,6 @@
 ---
 name: education-center-invoice-operations
-description: Generate the exact Bright Horizons reimbursement Excel report from the distributed client template, and handle separate invoice discovery or reconciliation workflows through tenant-scoped BOS. Use for commands such as "create a Bright Horizons report for last week," "generate the Bright Horizons reimbursement sheet," "make the Bright Horizons attendance invoice," invoice discovery, cancellation reconciliation, child-day comparison, or provider capability gaps.
+description: Generate the exact Bright Horizons reimbursement Excel report from the distributed client template, answer Bright Horizons process, forwarding, billing, cancellation, and payment questions, and handle separate invoice discovery or reconciliation workflows through tenant-scoped BOS. Use for commands such as "create a Bright Horizons report for last week," "generate the Bright Horizons reimbursement sheet," "make the Bright Horizons attendance invoice," invoice discovery, cancellation reconciliation, child-day comparison, or provider capability gaps.
 ---
 
 # Education Center Invoice Operations
@@ -29,6 +29,11 @@ complete the service-specific secure BOS browser flow.
 
 ## Bright Horizons
 
+- Read
+  [references/bright-horizons-operating-rules.md](references/bright-horizons-operating-rules.md)
+  for every Bright Horizons inquiry. Apply its intent routing, evidence
+  precedence, addresses, cancellation policy, payment controls, and
+  fail-closed exception handling.
 - Treat Bright Horizons cancellation reconciliation as a supported automated
   read-only BOS workflow. An explicit user trigger and an unavailable
   Calimatic write operation do not make reconciliation partial.
@@ -41,7 +46,10 @@ complete the service-specific secure BOS browser flow.
     workbook-generation intent. A period phrase such as `last week` is enough;
     never ask whether the user wants information or reconciliation.
   - For reimbursement workbook generation, run only the invoice-generation
-    workflow. Do not invoke, summarize, or mention cancellation reconciliation,
+    workflow. As a mandatory internal generation step, reconcile every
+    candidate child-day against confirmation, cancellation, Calimatic, and
+    written-exception evidence before building the workbook. Do not invoke or
+    summarize the separate user-facing cancellation-reconciliation workflow,
     build an inline visualization, or return a roster-only report.
   - For `reconcile cancellations`, `check cancellations`, or equivalent
     cancellation-specific prompts, run the cancellation-reconciliation
@@ -50,9 +58,12 @@ complete the service-specific secure BOS browser flow.
     sections.
 - Use the configured invoice/accounting source as primary when available.
 - For invoice generation, use BOS Gmail or Drive for Bright Horizons
-  authorization fields and Calimatic for service/enrollment child-days.
+  authorization, confirmation, cancellation, and written-exception evidence,
+  and Calimatic for service/enrollment child-days.
 - Invoke the BOS Bright Horizons cancellation reconciliation workflow only
-  when the user explicitly requests cancellation work.
+  when the user explicitly requests cancellation work. The mandatory
+  pre-invoice evidence reconciliation remains part of invoice generation and
+  is not a second user-facing workflow.
 - For requests to create the attendance invoice workbook, read
   [references/bright-horizons-workbook.md](references/bright-horizons-workbook.md)
   and follow it exactly.

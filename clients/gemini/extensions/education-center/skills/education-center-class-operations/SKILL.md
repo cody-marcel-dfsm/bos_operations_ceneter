@@ -53,6 +53,12 @@ with the exact missing route, capability, scope, and freshness.
 
 ## Classes and rosters
 
+- For every Bright Horizons roster, attendance, capacity, or placement report,
+  read the sibling
+  `education-center-invoice-operations/references/bright-horizons-operating-rules.md`.
+  Apply its evidence precedence, intake verification, cancellation control,
+  and fail-closed discrepancy rules. Keep reimbursement workbook generation in
+  `education-center-invoice-operations`.
 - Use the authorized BOS enrollment-listing capability for date-bound rosters.
 - Search the configured Care.com evidence source for provider notices. Use a
   bounded lookback of up to 180 days before the

@@ -2,9 +2,11 @@
 
 This is the Bright Horizons reimbursement-report generation workflow. Commands
 such as `create a Bright Horizons report for last week` mean this exact Excel
-deliverable. Do not load or run the Bright Horizons cancellation-reconciliation
-workflow unless the user explicitly asks for cancellation reconciliation in the
-same prompt.
+deliverable. Read `bright-horizons-operating-rules.md` first. Perform its
+mandatory child-day evidence reconciliation inside this workflow. Do not load
+or run the separate user-facing Bright Horizons cancellation-reconciliation
+workflow unless the user explicitly asks for cancellation reconciliation in
+the same prompt.
 
 ## Source workflow
 
@@ -12,29 +14,43 @@ same prompt.
    `end_date`. State the resolved dates.
 2. Call `bos_education_center.bos_get_context` and copy the authorized Calimatic, Gmail,
    and Drive scope identifiers exactly.
-3. List Calimatic enrollments for the period. Retain only records whose course
+3. List Calimatic enrollments for the period. Retain candidate records whose course
    is `Bright Horizons Enrollment` or whose class name begins
    `Bright Horizons Camp -`.
-4. Treat each retained student/date record as one child-day only after
-   validating that its Calimatic `enrollment_status` is enrolled. Do not search
-   for, report, or reconcile cancellation emails during invoice generation.
-5. Retrieve the Bright Horizons authorization evidence through BOS Gmail or
-   Drive. Match by guardian/employee identity and the service dates. Capture
-   `employee_name`, `employer`, and `case_number`. Never infer these fields from
-   email domains or Calimatic.
-6. Group child-days by `employee_name`, `employer`, `case_number`, and
-   `date_of_care`. Set `number_of_children` to the count of distinct enrolled
-   students in that group.
-7. Load the installed product's `config/customer-settings.json`. Use the
+4. Retrieve all Bright Horizons authorization, confirmation, cancellation, and
+   written-exception evidence for the period, including later messages that can
+   affect its dates. Build the candidate child-day set as the union of Calimatic
+   and provider evidence so a record missing from either source cannot disappear
+   from review. Match first by child, date of care, and care-request/case number;
+   use guardian/employee identity to disambiguate. Never infer identity fields
+   from email domains or Calimatic.
+5. Assign exactly one billing disposition from
+   `bright-horizons-operating-rules.md` to every candidate child/date:
+   `Active`, `Timely cancellation`, `Late cancellation`, `Post-start
+   cancellation`, or `Unresolved`. An explicit provider cancellation controls
+   a stale Calimatic enrolled status. Stop before generation when any
+   disposition is `Unresolved`. A Calimatic-only child-day without provider
+   authorization and a provider-confirmed child-day without Calimatic service
+   evidence are unresolved discrepancies; never omit them silently.
+6. Exclude timely cancellations. Retain active child-days at the configured
+   full rate, late cancellations at 50%, and provider-approved post-start
+   cancellations at the approved full rate. Preserve cancellation and approval
+   details in `other_comments`.
+7. Capture `employee_name`, `employer`, `case_number`, approved hours, and date
+   of care from the authorization evidence. Group only records with the same
+   employee, employer, case number, date, billing disposition, row rate, and
+   comment. Set `number_of_children` to the count of distinct children in that
+   group.
+8. Load the installed product's `config/customer-settings.json`. Use the
    authorization's approved hours and
    `billing.bright_horizons_rate_per_child_day` unless the user explicitly
    supplies a different approved rate. Stop when required billing settings are
    absent.
-8. Verify that the installed skill contains
+9. Verify that the installed skill contains
    `assets/bright-horizons-reimbursement-template.json`. Build the workbook with
    the packaged script, which validates and consumes that template. Never
    recreate the layout from prose or substitute another workbook.
-9. Inspect values/formulas, scan formula errors, render the invoice sheet, and
+10. Inspect values/formulas, scan formula errors, render the invoice sheet, and
    visually verify it before delivery.
 
 If any retained row lacks employee name, employer, case number, or approved
@@ -66,15 +82,23 @@ Pass this JSON shape to `scripts/build_bh_invoice.mjs`:
       "number_of_children": 1,
       "date_of_care": "2026-06-01",
       "hours_of_care": 7,
+      "rate_per_day": 51.5,
       "other_comments": ""
     }
   ]
 }
 ```
 
-`rate_per_day` is required in the normalized builder input. Populate it from
-`billing.bright_horizons_rate_per_child_day`. Use another value only when the
-user explicitly supplies a different approved rate.
+The top-level `rate_per_day` is required in the normalized builder input.
+Populate that full base rate from
+`billing.bright_horizons_rate_per_child_day`. Use another full base rate only
+when the user explicitly supplies a different approved rate.
+
+Set `row.rate_per_day` to the configured full daily rate for active and
+provider-approved post-start child-days. Set it to exactly 50% of that rate for
+late cancellations. Timely cancellations never become rows. The packaged
+builder prefers `row.rate_per_day` over the top-level rate so mixed full-rate
+and half-rate rows remain deterministic.
 
 Omit the script's output argument to use the configured directory:
 `./output/invoices/bright-horizons/`. The generated filename is
@@ -109,6 +133,11 @@ argument only when the user requests another destination or filename.
 - Confirm every detail date is within the inclusive requested period.
 - Confirm grouped child counts reconcile to distinct Calimatic student/date
   records.
+- Confirm every candidate child/date has exactly one non-unresolved billing
+  disposition and that every excluded timely cancellation has retained
+  evidence.
+- Confirm every 50% row has a late-cancellation timestamp and every full-rate
+  post-start cancellation has written approval in `Other Comments`.
 - Confirm the total amount equals the sum of row amounts.
 - Confirm no formula errors, clipped headers, clipped identifiers, or blank
   required fields.
