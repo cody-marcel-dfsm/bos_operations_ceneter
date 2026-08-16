@@ -136,7 +136,7 @@ never grant authority.
 
 Add `bos_submit_feedback` to the BOS service's advertised contract tools. The
 tool appears in `tools/list` for authorized endpoints and calls fail closed
-until the API key and exact tenant scope are valid.
+until the resource-scoped OAuth grant and exact canonical scope are valid.
 
 The BOS service stores feedback through its authenticated application path. It
 keeps request bodies out of transport logs and derives authority from canonical

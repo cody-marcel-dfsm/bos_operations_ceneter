@@ -5,7 +5,6 @@ import {
   copyProductSkills,
   copyRuntime,
   copySettingsTemplate,
-  copilotCredentialEnvVar,
   copilotMcpManifest,
   geminiExtensionManifest,
   geminiPluginManifest,
@@ -189,8 +188,7 @@ for (const { product, skills } of resolved) {
       client: "copilot",
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
-      authentication: product.runtime ? "bearer_env" : "none",
-      credential_env_var: product.credential_env_var
+      authentication: product.runtime ? "oauth_2_1" : "none"
     });
     if (product.runtime) {
       await writeJson(
@@ -207,12 +205,14 @@ for (const { product, skills } of resolved) {
         "",
         "Copy `skills/` into the target repository's `.agents/skills/` directory.",
         ...(product.runtime ? [
-          "Copy `.github/mcp.json` into the target repository, or paste its JSON into",
-          "Settings > Copilot > MCP servers for Copilot cloud agent and code review.",
+          "Copy `.github/mcp.json` into the target repository for Copilot CLI, or",
+          "copy the server entry into `.vscode/mcp.json` for Copilot in VS Code.",
           "",
-          `Create an Agents secret named \`${copilotCredentialEnvVar(product)}\` containing the`,
-          "organization-scoped BOS API key. GitHub exposes only `COPILOT_MCP_`-prefixed",
-          "secrets and variables to repository MCP configuration.",
+          `Run \`/mcp auth ${product.mcp_group_name}\` in Copilot CLI, or select \`Auth\``,
+          "above the server entry in VS Code, then complete BOS sign-in. The host",
+          "discovers BOS OAuth and stores and refreshes the resource-scoped grant.",
+          "GitHub Copilot cloud agent and code review cannot use this remote OAuth",
+          "connection until those hosts support OAuth-authenticated MCP servers.",
           "",
           `This package is fixed to \`/mcp/apps/${product.application_name}/${product.mcp_group_name}\`.`,
           "The package does not select or provision a BOS application."

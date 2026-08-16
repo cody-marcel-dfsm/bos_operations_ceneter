@@ -19,7 +19,7 @@ jobs:
       - name: Build and validate customer ZIP
         run: npm run release:check
         env:
-          EDUCATION_CENTER_BOS_API_KEY: ${{ secrets.EDUCATION_CENTER_BOS_API_KEY }}
+          EDUCATION_CENTER_RELEASE_OAUTH_ACCESS_TOKEN: ${{ secrets.EDUCATION_CENTER_RELEASE_OAUTH_ACCESS_TOKEN }}
           EDUCATION_CENTER_SMOKE_TIME_ZONE: ${{ vars.EDUCATION_CENTER_SMOKE_TIME_ZONE }}
       - name: Validate Claude marketplace and plugins
         run: |

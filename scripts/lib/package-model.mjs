@@ -58,7 +58,6 @@ export function validateProduct(manifest, path = "product.json") {
     "application_name",
     "mcp_group_name",
     "codex_app_id",
-    "credential_env_var",
     "settings_template",
     "default_prompts"
   ]);
@@ -167,13 +166,6 @@ export function validateProduct(manifest, path = "product.json") {
   if (manifest.runtime &&
       !manifest.includes?.includes("platform/bos-mcp-client")) {
     failures.push(`${path}: runtime requires platform/bos-mcp-client`);
-  }
-  if (manifest.runtime &&
-      !/^[A-Z][A-Z0-9_]*$/.test(manifest.credential_env_var ?? "")) {
-    failures.push(`${path}: runtime requires credential_env_var`);
-  }
-  if (!manifest.runtime && manifest.credential_env_var !== undefined) {
-    failures.push(`${path}: skills-only product cannot declare credential_env_var`);
   }
   if (
     manifest.settings_template !== undefined &&
@@ -388,17 +380,10 @@ export async function copilotMcpManifest(product, base = root) {
       [product.mcp_group_name]: {
         type: "http",
         url: materializeMcpUrl(sourceServer.url, product),
-        headers: {
-          Authorization: `Bearer \${${copilotCredentialEnvVar(product)}}`
-        },
         tools: ["*"]
       }
     }
   };
-}
-
-export function copilotCredentialEnvVar(product) {
-  return `COPILOT_MCP_${product.credential_env_var}`;
 }
 
 export function marketplaceEntry(product) {

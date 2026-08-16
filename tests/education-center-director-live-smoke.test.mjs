@@ -100,7 +100,7 @@ test("director live smoke executes context and a bounded camp-roster query", asy
   };
 
   const report = await runEducationCenterDirectorSmoke({
-    apiKey: "test-secret",
+    accessToken: "test-oauth-access-token",
     fetchImpl,
     timeZone: "America/Denver",
     startDate: "2026-08-10",
@@ -171,7 +171,7 @@ test("director live smoke overlaps independent read checks after tool discovery"
   };
 
   const report = await runEducationCenterDirectorSmoke({
-    apiKey: "test-secret",
+    accessToken: "test-oauth-access-token",
     fetchImpl,
     onProgress: (event) => progress.push(event),
     timeZone: "America/Denver"
@@ -180,7 +180,7 @@ test("director live smoke overlaps independent read checks after tool discovery"
   assert(progress.every((event) =>
     Object.keys(event).every((key) => ["phase", "state", "status"].includes(key))
   ));
-  assert.doesNotMatch(JSON.stringify({ progress, report }), /test-secret/);
+  assert.doesNotMatch(JSON.stringify({ progress, report }), /test-oauth-access-token/);
   assert.deepEqual(requestOrder, [
     "initialize",
     "notifications/initialized",
@@ -226,7 +226,7 @@ test("director live smoke prints a secret-free server prompt for missing tools",
 
   await assert.rejects(
     runEducationCenterDirectorSmoke({
-      apiKey: "private-live-key",
+      accessToken: "private-live-oauth-token",
       fetchImpl,
       timeZone: "America/Denver",
       startDate: "2026-08-10",
@@ -237,7 +237,7 @@ test("director live smoke prints a secret-free server prompt for missing tools",
       assert.match(error.message, /^SERVER REMEDIATION PROMPT/);
       assert.match(error.message, /education_center_list_enrollments/);
       assert.match(error.message, /education_center_search_students/);
-      assert.doesNotMatch(error.message, /private-live-key/);
+      assert.doesNotMatch(error.message, /private-live-oauth-token/);
       return true;
     }
   );
@@ -249,19 +249,19 @@ test("server error details containing PII never reach remediation output", async
     id: 1,
     error: {
       code: -32001,
-      message: "Student Jane Example +1-303-555-0199 private-live-key"
+      message: "Student Jane Example +1-303-555-0199 private-live-oauth-token"
     }
   }, 401);
   await assert.rejects(
     runEducationCenterDirectorSmoke({
-      apiKey: "private-live-key",
+      accessToken: "private-live-oauth-token",
       fetchImpl,
       timeZone: "America/Denver"
     }),
     (error) => {
       assert(error instanceof EducationCenterDirectorSmokeFailure);
       assert.match(error.message, /-32001/);
-      assert.doesNotMatch(error.message, /Jane|303-555|private-live-key/);
+      assert.doesNotMatch(error.message, /Jane|303-555|private-live-oauth-token/);
       return true;
     }
   );
@@ -278,7 +278,7 @@ test("protocol mismatch fails before tool discovery", async () => {
     }, 200, { sessionId: "session-old" });
   };
   await assert.rejects(runEducationCenterDirectorSmoke({
-    apiKey: "test-secret",
+    accessToken: "test-oauth-access-token",
     fetchImpl,
     timeZone: "America/Denver"
   }), /MCP protocol negotiation/);
@@ -286,7 +286,7 @@ test("protocol mismatch fails before tool discovery", async () => {
 });
 
 test("protocol output treats the server version as an untrusted scalar", async () => {
-  const privateText = "Jane Student private-live-key family@example.com";
+  const privateText = "Jane Student private-live-oauth-token family@example.com";
   const fetchImpl = async () => response({
     jsonrpc: "2.0",
     id: 1,
@@ -294,13 +294,13 @@ test("protocol output treats the server version as an untrusted scalar", async (
   });
   await assert.rejects(
     runEducationCenterDirectorSmoke({
-      apiKey: "private-live-key",
+      accessToken: "private-live-oauth-token",
       fetchImpl,
       timeZone: "America/Denver"
     }),
     (error) => {
       assert(error instanceof EducationCenterDirectorSmokeFailure);
-      assert.doesNotMatch(error.message, /Jane|family@example|private-live-key/);
+      assert.doesNotMatch(error.message, /Jane|family@example|private-live-oauth-token/);
       assert.equal(error.report.initialize.protocolAccepted, false);
       return true;
     }
@@ -324,7 +324,7 @@ test("failed initialized notification blocks the smoke", async () => {
     }, 500);
   };
   await assert.rejects(runEducationCenterDirectorSmoke({
-    apiKey: "test-secret",
+    accessToken: "test-oauth-access-token",
     fetchImpl,
     timeZone: "America/Denver"
   }), /MCP initialized notification/);
@@ -365,7 +365,7 @@ test("a legitimate empty current-week enrollment array passes the query gate", a
     });
   };
   const report = await runEducationCenterDirectorSmoke({
-    apiKey: "test-secret",
+    accessToken: "test-oauth-access-token",
     fetchImpl,
     timeZone: "America/Denver"
   });
@@ -414,10 +414,10 @@ function completeSmokeFetchForEnrollmentRecords(
 }
 
 test("tool-result output treats isError as an untrusted scalar", async () => {
-  const privateText = "Jane Student private-live-key family@example.com";
+  const privateText = "Jane Student private-live-oauth-token family@example.com";
   await assert.rejects(
     runEducationCenterDirectorSmoke({
-      apiKey: "private-live-key",
+      accessToken: "private-live-oauth-token",
       timeZone: "America/Denver",
       fetchImpl: completeSmokeFetchForEnrollmentRecords([], {
         contextIsError: privateText
@@ -425,7 +425,7 @@ test("tool-result output treats isError as an untrusted scalar", async () => {
     }),
     (error) => {
       assert(error instanceof EducationCenterDirectorSmokeFailure);
-      assert.doesNotMatch(error.message, /Jane|family@example|private-live-key/);
+      assert.doesNotMatch(error.message, /Jane|family@example|private-live-oauth-token/);
       assert.equal(error.report.context.toolResultSucceeded, false);
       return true;
     }
@@ -434,7 +434,7 @@ test("tool-result output treats isError as an untrusted scalar", async () => {
 
 test("camp fields present with empty provider values pass with a warning", async () => {
   const report = await runEducationCenterDirectorSmoke({
-    apiKey: "test-secret",
+    accessToken: "test-oauth-access-token",
     timeZone: "America/Denver",
     fetchImpl: completeSmokeFetchForEnrollmentRecords([{
       display_name: null,
@@ -452,7 +452,7 @@ test("camp fields present with empty provider values pass with a warning", async
 
 test("camp records structurally missing student and phone fields fail", async () => {
   await assert.rejects(runEducationCenterDirectorSmoke({
-    apiKey: "test-secret",
+    accessToken: "test-oauth-access-token",
     timeZone: "America/Denver",
     fetchImpl: completeSmokeFetchForEnrollmentRecords([{
       attributes: { class_type: "Camp", class_name: "Summer Camp" }
@@ -462,7 +462,7 @@ test("camp records structurally missing student and phone fields fail", async ()
 
 test("unrecognized nonempty record shapes cannot pass as a seasonal result", async () => {
   await assert.rejects(runEducationCenterDirectorSmoke({
-    apiKey: "test-secret",
+    accessToken: "test-oauth-access-token",
     timeZone: "America/Denver",
     fetchImpl: completeSmokeFetchForEnrollmentRecords([{
       status: "unknown record shape"
@@ -472,7 +472,7 @@ test("unrecognized nonempty record shapes cannot pass as a seasonal result", asy
 
 test("a malformed row cannot hide beside a canonical enrollment row", async () => {
   await assert.rejects(runEducationCenterDirectorSmoke({
-    apiKey: "test-secret",
+    accessToken: "test-oauth-access-token",
     timeZone: "America/Denver",
     fetchImpl: completeSmokeFetchForEnrollmentRecords([{
       display_name: null,
@@ -486,7 +486,7 @@ test("a malformed row cannot hide beside a canonical enrollment row", async () =
 
 test("every camp row must expose both student and family-phone keys", async () => {
   await assert.rejects(runEducationCenterDirectorSmoke({
-    apiKey: "test-secret",
+    accessToken: "test-oauth-access-token",
     timeZone: "America/Denver",
     fetchImpl: completeSmokeFetchForEnrollmentRecords([{
       display_name: null,
@@ -499,7 +499,7 @@ test("every camp row must expose both student and family-phone keys", async () =
   }), /camp records expose student and family-phone fields/);
 });
 
-test("every complete build and release workflow runs the credentialed data smoke", async () => {
+test("every complete build and release workflow runs the OAuth-authenticated data smoke", async () => {
   const packageJson = JSON.parse(await readFile(
     new URL("../package.json", import.meta.url), "utf8"
   ));
@@ -512,7 +512,7 @@ test("every complete build and release workflow runs the credentialed data smoke
   ]) {
     const workflow = await readFile(new URL(relativePath, import.meta.url), "utf8");
     assert.match(workflow, /npm run release:check/);
-    assert.match(workflow, /EDUCATION_CENTER_BOS_API_KEY:\s*\$\{\{ secrets\.EDUCATION_CENTER_BOS_API_KEY \}\}/);
+    assert.match(workflow, /EDUCATION_CENTER_RELEASE_OAUTH_ACCESS_TOKEN:\s*\$\{\{ secrets\.EDUCATION_CENTER_RELEASE_OAUTH_ACCESS_TOKEN \}\}/);
     assert.match(workflow, /EDUCATION_CENTER_SMOKE_TIME_ZONE:\s*\$\{\{ vars\.EDUCATION_CENTER_SMOKE_TIME_ZONE \}\}/);
   }
 });

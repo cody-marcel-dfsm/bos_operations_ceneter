@@ -7,7 +7,6 @@ import { promisify } from "node:util";
 import test from "node:test";
 import {
   listProducts,
-  copilotCredentialEnvVar,
   copilotMcpManifest,
   geminiExtensionManifest,
   geminiPluginManifest,
@@ -556,14 +555,11 @@ test("runtime package model materializes named application routes", async () => 
     assert.equal(geminiDesktop.mcpServers[manifest.mcp_group_name].serverUrl, expected);
     const copilot = await copilotMcpManifest(manifest);
     assert.equal(copilot.mcpServers[manifest.mcp_group_name].url, expected);
-    assert.equal(
-      copilot.mcpServers[manifest.mcp_group_name].headers.Authorization,
-      `Bearer \${${copilotCredentialEnvVar(manifest)}}`
-    );
+    assert.equal(copilot.mcpServers[manifest.mcp_group_name].headers, undefined);
   }
 });
 
-test("runtime products declare isolated product credential bindings", async () => {
+test("runtime products declare credential-free OAuth bindings", async () => {
   const runtimeProducts = (await listProducts())
     .map(({ manifest }) => manifest)
     .filter((manifest) => manifest.runtime);
@@ -572,15 +568,8 @@ test("runtime products declare isolated product credential bindings", async () =
     assert.equal(gemini.settings, undefined);
     assert.equal(gemini.mcpServers[product.mcp_group_name].headers, undefined);
     const copilot = await copilotMcpManifest(product);
-    assert.equal(
-      copilot.mcpServers[product.mcp_group_name].headers.Authorization,
-      `Bearer \${${copilotCredentialEnvVar(product)}}`
-    );
+    assert.equal(copilot.mcpServers[product.mcp_group_name].headers, undefined);
   }
-  assert.equal(
-    new Set(runtimeProducts.map(({ credential_env_var }) => credential_env_var)).size,
-    runtimeProducts.length
-  );
 });
 
 test("Copilot products bundle GitHub's repository MCP configuration", async () => {
@@ -601,9 +590,6 @@ test("Copilot products bundle GitHub's repository MCP configuration", async () =
     assert.deepEqual(config.mcpServers[product.mcp_group_name], {
       type: "http",
       url: `https://dfsm.ai/mcp/apps/${product.application_name}/${product.mcp_group_name}`,
-      headers: {
-        Authorization: `Bearer \${${copilotCredentialEnvVar(product)}}`
-      },
       tools: ["*"]
     });
     assert.doesNotMatch(
@@ -611,11 +597,8 @@ test("Copilot products bundle GitHub's repository MCP configuration", async () =
       /BOS_INSTALLED_APP_ID|installed_app_id/
     );
     const readme = await readFile(`${productRoot}/README.md`, "utf8");
-    assert.equal(
-      config.mcpServers[product.mcp_group_name].headers.Authorization,
-      `Bearer \${${copilotCredentialEnvVar(product)}}`
-    );
-    assert.match(readme, new RegExp(copilotCredentialEnvVar(product)));
+    assert.equal(config.mcpServers[product.mcp_group_name].headers, undefined);
+    assert.match(readme, /complete BOS sign-in/i);
     assert.match(
       readme,
       new RegExp(`/mcp/apps/${product.application_name}/${product.mcp_group_name}`)
@@ -640,7 +623,6 @@ test("package schema rejects legacy or incomplete MCP route fields", () => {
     application_name: "leaddirector",
     mcp_group_name: "example",
     codex_app_id: "asdk_app_example123",
-    credential_env_var: "EXAMPLE_BOS_API_KEY",
     default_prompts: []
   };
   assert.deepEqual(validateProduct(base), []);
@@ -651,6 +633,10 @@ test("package schema rejects legacy or incomplete MCP route fields", () => {
   assert.match(
     validateProduct({ ...base, mcp_application: "leaddirector" }).join("\n"),
     /unknown field mcp_application/
+  );
+  assert.match(
+    validateProduct({ ...base, credential_env_var: "EXAMPLE_BOS_CREDENTIAL" }).join("\n"),
+    /unknown field credential_env_var/
   );
   const { mcp_group_name: _removed, ...incomplete } = base;
   assert.match(validateProduct(incomplete).join("\n"), /runtime requires application_name and mcp_group_name/);
@@ -672,7 +658,7 @@ test("Video Ads composes workflow skills and a scoped BOS endpoint", async () =>
   assert.equal(videoAds.application_name, "leaddirector");
   assert.equal(videoAds.mcp_group_name, "video-ads");
   assert.equal(videoAds.release_status, "disabled");
-  assert.equal(videoAds.credential_env_var, "VIDEO_ADS_BOS_API_KEY");
+  assert.equal("credential_env_var" in videoAds, false);
   const skills = await resolveProductSkills(videoAds);
   assert.deepEqual(
     skills.map((skill) => skill.name),
@@ -993,23 +979,19 @@ test("every product and client ships tenant extension management metadata", asyn
       const metadata = JSON.parse(
         await readFile(`${productRoot}/.bos-product.json`, "utf8")
       );
-      const desktopOAuth = ["codex", "claude", "gemini"].includes(client);
       assert.deepEqual(metadata, {
         schema_version: "1",
         name: manifest.name,
         version: manifest.version,
         client,
         authentication: manifest.runtime
-          ? (desktopOAuth ? "oauth_2_1" : "bearer_env")
+          ? "oauth_2_1"
           : "none",
         ...(manifest.runtime ? {
           application_name: manifest.application_name,
           mcp_group_name: manifest.mcp_group_name,
           ...(client === "codex" ? {
             codex_app_id: manifest.codex_app_id
-          } : {}),
-          ...(!desktopOAuth ? {
-            credential_env_var: manifest.credential_env_var
           } : {})
         } : {})
       });
@@ -1126,7 +1108,7 @@ test("README routes customer, development, and release environments explicitly",
   );
   assert.match(developmentSection, /codex plugin marketplace add \.\//);
   assert.match(developmentSection, /claude plugin marketplace add \.\//);
-  assert.match(releaseSection, /EDUCATION_CENTER_BOS_API_KEY/);
+  assert.match(releaseSection, /EDUCATION_CENTER_RELEASE_OAUTH_ACCESS_TOKEN/);
   assert.match(releaseSection, /npm run release:check/);
 });
 

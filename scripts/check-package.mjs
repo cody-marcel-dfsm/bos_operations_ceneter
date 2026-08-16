@@ -6,7 +6,6 @@ import {
   hashTree,
   listProducts,
   materializeMcpUrl,
-  copilotCredentialEnvVar,
   pathExists,
   readJson,
   resolveProductSkills,
@@ -195,17 +194,14 @@ async function validateProducts() {
         continue;
       }
       const metadata = await readJson(metadataPath);
-      const desktopOAuth = ["codex", "claude", "gemini"].includes(client);
       const expectedAuthentication = manifest.runtime
-        ? (desktopOAuth ? "oauth_2_1" : "bearer_env")
+        ? "oauth_2_1"
         : "none";
       if (
         metadata.application_name !== manifest.application_name ||
         metadata.mcp_group_name !== manifest.mcp_group_name ||
         metadata.authentication !== expectedAuthentication ||
-        (desktopOAuth
-          ? "credential_env_var" in metadata
-          : metadata.credential_env_var !== manifest.credential_env_var) ||
+        "credential_env_var" in metadata ||
         "mcp_application" in metadata ||
         "mcp_resource_group" in metadata ||
         "installed_app_id" in metadata
@@ -355,8 +351,7 @@ async function validateProducts() {
         if (
           server?.type !== "http" ||
           server?.url !== expectedUrl ||
-          server?.headers?.Authorization !==
-            `Bearer \${${copilotCredentialEnvVar(manifest)}}` ||
+          "headers" in server ||
           JSON.stringify(server?.tools) !== JSON.stringify(["*"]) ||
           Object.keys(runtime.mcpServers ?? {}).length !== 1 ||
           /BOS_INSTALLED_APP_ID|installed_app_id/.test(JSON.stringify(runtime))

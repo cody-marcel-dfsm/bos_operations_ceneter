@@ -9,8 +9,8 @@ Generate video only through the BOS capability authorized for the active
 organization, installed application, and Video Ads plugin.
 
 Follow `bos-mcp-client` and use only the installed `video-ads` MCP connection.
-The connection's configured `VIDEO_ADS_BOS_API_KEY` identifies the server-side principal;
-the named endpoint selects the Video Ads tool group.
+The host-managed, resource-scoped OAuth grant identifies the server-side
+principal; the named endpoint selects the Video Ads tool group.
 
 ## Workflow
 

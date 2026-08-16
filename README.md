@@ -218,8 +218,8 @@ Outputs are written under ignored `dist/`. Repository-wide `*.zip` and
 
 Maintainers configure the release-test environment only:
 
-- `EDUCATION_CENTER_BOS_API_KEY`: approved noninteractive live-smoke
-  authorization.
+- `EDUCATION_CENTER_RELEASE_OAUTH_ACCESS_TOKEN`: approved short-lived,
+  resource-scoped OAuth token used only by the noninteractive live smoke.
 - `EDUCATION_CENTER_SMOKE_TIME_ZONE`: customer overlay IANA timezone used by
   the bounded director-query smoke.
 
@@ -244,7 +244,7 @@ versioned and stable archive names.
 
 ## Other clients
 
-Claude, ChatGPT/Codex, Gemini CLI, and Antigravity Desktop use host-managed
+Claude, ChatGPT/Codex, OAuth-capable Copilot hosts, Gemini CLI, and Antigravity Desktop use host-managed
 OAuth for the immutable BOS product resource.
 
 ### Gemini CLI and Antigravity 2.0 Desktop
@@ -278,8 +278,13 @@ OAuth discovery and the host-managed resource-scoped grant.
 
 1. Copy `clients/copilot/products/<product>/skills` into the repository's
    supported agent-skills directory.
-2. For a runtime product, install its generated `.github/mcp.json` and follow
-   that product's README for the current credential adapter.
+2. Install the runtime product's generated `.github/mcp.json` for Copilot CLI,
+   or copy its server entry into `.vscode/mcp.json` for Copilot in VS Code.
+3. Run `/mcp auth <group>` in Copilot CLI or select `Auth` above the VS Code
+   server entry, then complete BOS sign-in.
+
+Copilot cloud agent and code review currently lack remote MCP OAuth support, so
+the BOS runtime plugin is unavailable on those two hosts.
 
 ## Repository map
 
@@ -309,6 +314,7 @@ customer archives, installation instructions, and release gates.
 - [Architecture](Vault/docs/architecture.md)
 - [Constitution](Vault/docs/CONSTITUTION.md)
 - [Desktop marketplace and OAuth decision](Vault/decisions/2026-08-11-desktop-private-marketplace-oauth.md)
+- [OAuth-only runtime product decision](Vault/decisions/2026-08-16-all-runtime-products-oauth-only.md)
 - [Detailed design](docs/DESIGN.md)
 - [Implementation tasks](docs/IMPLEMENTATION_TASKS.md)
 - [Implementation status](docs/IMPLEMENTATION_STATUS.md)

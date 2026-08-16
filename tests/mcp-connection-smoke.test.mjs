@@ -62,7 +62,7 @@ function videoFetch({ tools = profile.requiredTools, appCode, error } = {}) {
 test("Video Ads smoke proves the complete tool contract and exact scope", async () => {
   const report = await runMcpConnectionSmoke({
     endpoint,
-    apiKey: "test-key",
+    accessToken: "test-oauth-access-token",
     fetchImpl: videoFetch()
   });
   assert.equal(report.ok, true);
@@ -80,7 +80,7 @@ test("Video Ads smoke rejects a context-only or unrelated catalog", async () => 
     await assert.rejects(
       runMcpConnectionSmoke({
         endpoint,
-        apiKey: "test-key",
+        accessToken: "test-oauth-access-token",
         fetchImpl: videoFetch({ tools })
       }),
       (error) => error instanceof McpConnectionSmokeFailure &&
@@ -93,7 +93,7 @@ test("Video Ads smoke rejects the wrong server-derived application scope", async
   await assert.rejects(
     runMcpConnectionSmoke({
       endpoint,
-      apiKey: "test-key",
+      accessToken: "test-oauth-access-token",
       fetchImpl: videoFetch({ appCode: "other_application" })
     }),
     (error) => error instanceof McpConnectionSmokeFailure &&
@@ -102,7 +102,7 @@ test("Video Ads smoke rejects the wrong server-derived application scope", async
 });
 
 test("Video Ads smoke strips PII and credentials from errors and correlations", async () => {
-  const privateText = "Jane Student test-secret family@example.com";
+  const privateText = "Jane Student test-oauth-access-token family@example.com";
   const fetchImpl = async (_url, options) => {
     const body = JSON.parse(options.body);
     if (body.method === "initialize") return new Response(JSON.stringify({
@@ -123,10 +123,10 @@ test("Video Ads smoke strips PII and credentials from errors and correlations", 
     });
   };
   await assert.rejects(
-    runMcpConnectionSmoke({ endpoint, apiKey: "test-secret", fetchImpl }),
+    runMcpConnectionSmoke({ endpoint, accessToken: "test-oauth-access-token", fetchImpl }),
     (error) => {
       const output = JSON.stringify(error.report);
-      assert.doesNotMatch(output, /Jane|family@example|test-secret/);
+      assert.doesNotMatch(output, /Jane|family@example|test-oauth-access-token/);
       assert.match(output, /-32003/);
       return true;
     }
@@ -134,7 +134,7 @@ test("Video Ads smoke strips PII and credentials from errors and correlations", 
 });
 
 test("Video Ads smoke treats protocol and result flags as untrusted scalars", async () => {
-  const privateText = "Jane Student test-secret family@example.com";
+  const privateText = "Jane Student test-oauth-access-token family@example.com";
   const protocolFetch = async (_url, options) => {
     const body = JSON.parse(options.body);
     return response({
@@ -146,12 +146,12 @@ test("Video Ads smoke treats protocol and result flags as untrusted scalars", as
   await assert.rejects(
     runMcpConnectionSmoke({
       endpoint,
-      apiKey: "test-secret",
+      accessToken: "test-oauth-access-token",
       fetchImpl: protocolFetch
     }),
     (error) => {
       const output = JSON.stringify(error.report);
-      assert.doesNotMatch(output, /Jane|family@example|test-secret/);
+      assert.doesNotMatch(output, /Jane|family@example|test-oauth-access-token/);
       assert.equal(error.report.initialize.protocolAccepted, false);
       return true;
     }
@@ -168,12 +168,12 @@ test("Video Ads smoke treats protocol and result flags as untrusted scalars", as
   await assert.rejects(
     runMcpConnectionSmoke({
       endpoint,
-      apiKey: "test-secret",
+      accessToken: "test-oauth-access-token",
       fetchImpl: hostileResultFetch
     }),
     (error) => {
       const output = JSON.stringify(error.report);
-      assert.doesNotMatch(output, /Jane|family@example|test-secret/);
+      assert.doesNotMatch(output, /Jane|family@example|test-oauth-access-token/);
       assert.equal(error.report.context.toolResultSucceeded, false);
       return true;
     }

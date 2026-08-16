@@ -3,9 +3,6 @@
     "education-center": {
       "type": "http",
       "url": "https://dfsm.ai/mcp/apps/leaddirector/education-center",
-      "headers": {
-        "Authorization": "Bearer ${COPILOT_MCP_EDUCATION_CENTER_BOS_API_KEY}"
-      },
       "tools": [
         "*"
       ]

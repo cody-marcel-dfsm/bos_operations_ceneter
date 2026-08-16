@@ -122,7 +122,7 @@ Implement the feedback tool in the BOS service repository:
 
 1. Add `bos_submit_feedback` to the endpoint's authorized tool contract.
 2. Use the exact input schema in the backend PRD.
-3. Resolve the API key, tenant, installation, plugin, and `org_id` on the
+3. Resolve the OAuth grant, tenant, installation, plugin, and `org_id` on the
    server before execution.
 4. Pass the allowlisted request through PO orchestration and GO persistence.
 5. Preserve the service result and error contract while keeping request bodies
@@ -253,7 +253,7 @@ of information must be omitted and request a safe restatement.
 
 | Condition | Client action |
 |---|---|
-| BOS API key missing or invalid | Stop and direct the user to repair the approved GCP-managed client configuration. |
+| BOS OAuth grant missing or invalid | Stop and invoke the host's Connect/Sign in flow for the immutable resource. |
 | Scope missing/ambiguous | Fail closed and state the missing canonical scope. |
 | Tool absent | Preserve the sanitized draft in conversation and report `BOS feedback capability unavailable`. |
 | Provider authorization requested | Treat as a server contract defect because feedback has no provider dependency. |

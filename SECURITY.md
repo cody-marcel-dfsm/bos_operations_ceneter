@@ -20,9 +20,11 @@ Never commit or distribute:
 - passwords, cookies, service-account files, or private keys;
 - customer records, tenant exports, or reusable installation authority.
 
-Customers provide BOS and provider API keys only when Codex requests them for
-an immediate sensitive MCP call. The client must never echo, log, persist, or
-retry a secret-bearing argument. BOS encrypts and stores provider credentials.
+Customers authorize BOS product connections only through the host-managed OAuth
+flow. Clients never request a BOS credential in chat, configuration, scripts,
+or environment variables. For an underlying API-key provider, BOS presents a
+short-lived HTTPS credential-entry page and encrypts and stores the provider
+credential without exposing it to the client or conversation.
 Customers complete OAuth directly with the provider through a short-lived
 BOS-created authorization transaction; provider passwords and OAuth tokens
 never enter Codex.

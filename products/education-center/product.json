@@ -35,7 +35,6 @@
   "application_name": "leaddirector",
   "mcp_group_name": "education-center",
   "codex_app_id": "asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
-  "credential_env_var": "EDUCATION_CENTER_BOS_API_KEY",
   "default_prompts": [
     "Initialize my education center, including its customer-facing brand name.",
     "Create today's education center operations plan.",

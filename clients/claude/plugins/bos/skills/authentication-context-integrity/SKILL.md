@@ -37,10 +37,11 @@ configuration as distinct validated dimensions.
   session, it reconnects the configured endpoint, rediscovers tools,
   revalidates context, and resumes the interrupted request with bounded retry.
   It never delegates reconnection or request resubmission to the user.
-- Expose BOS as a remote HTTPS Streamable HTTP MCP server. Claude desktop
-  packages declare only the immutable resource URL. ChatGPT/Codex packages
-  declare a required registered app binding that owns that resource and carry
-  no direct MCP server declaration. Both use the host's OAuth 2.1 MCP
+- Expose BOS as a remote HTTPS Streamable HTTP MCP server. Claude, OAuth-capable
+  GitHub Copilot, and Gemini packages declare only the immutable resource URL.
+  ChatGPT/Codex packages declare a required registered app binding that owns
+  that resource and carry no direct MCP server declaration. Every runtime host
+  uses its OAuth 2.1 MCP
   authorization flow. The host discovers BOS
   authorization metadata, launches consent, stores and refreshes the grant,
   and attaches the resulting resource-scoped access token. The package never
@@ -53,8 +54,8 @@ configuration as distinct validated dimensions.
   the route from an `installed_app_id`, and never retain an unnamed endpoint as
   an installed product's runtime connection. For ChatGPT/Codex, never package
   `.mcp.json` or `mcpServers`; bind the registered app through `.app.json`.
-  For Claude and ChatGPT/Codex, never add `bearer_token_env_var`, literal
-  authorization headers, or a plugin key field. The server derives actor, tenant, organization, installation,
+  For every client, never add `bearer_token_env_var`, literal authorization
+  headers, or a plugin key field. The server derives actor, tenant, organization, installation,
   role, plugin, and capability scope from the validated OAuth grant; client
   prompts and tool arguments never supply those authority dimensions.
 - Advertise only the tools allowed for the resolved endpoint, tenant,
