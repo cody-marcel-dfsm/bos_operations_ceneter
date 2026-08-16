@@ -1,7 +1,7 @@
 {
-  "indexed_at": "20260816T161359.343375Z",
+  "indexed_at": "20260816T160009.071551Z",
   "schema_version": "bos-vault-manifest/v1",
-  "source_count": 35,
+  "source_count": 34,
   "sources": {
     "Vault/README.md": {
       "bytes": 1015,
@@ -114,10 +114,6 @@
     "Vault/reviews/2026-08-12-education-center-initialization-defaults.md": {
       "bytes": 2616,
       "sha256": "caeed8950ccf7a63515fcb662d160774a009e6807bf12aa5edd21b3f4fa1010e"
-    },
-    "Vault/reviews/2026-08-16-bright-horizons-deterministic-report-rules.md": {
-      "bytes": 3269,
-      "sha256": "2a783a3e6ee3b7b249f679f20480358fe1d340c92b32ac8e49eb438e76c11f36"
     },
     "Vault/schemas/decision-record.md": {
       "bytes": 439,

@@ -255,10 +255,13 @@ migrated.
 
 ### Gemini CLI
 
-1. Install `clients/gemini/extensions/<product>` with
-   `gemini extensions install`.
-2. Complete the settings declared by that generated extension and restart
-   Gemini CLI.
+1. From the repository or extracted archive, run
+   `gemini extensions install clients/gemini/extensions/bos`, followed by
+   `gemini extensions install clients/gemini/extensions/education-center`.
+2. Complete the sensitive BOS setting declared by the Education Center
+   extension and restart Gemini CLI.
+3. Run `/extensions list` and `/skills list` to verify both extensions and the
+   bundled skills. See `clients/gemini/README.md` for update and repair commands.
 
 ## Repository map
 

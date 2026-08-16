@@ -125,6 +125,21 @@ function validateSkillContent(content, path) {
 }
 
 async function validateProducts() {
+  const [repositoryPackage, packageManifest] = await Promise.all([
+    readJson(join(root, "package.json")),
+    readJson(join(root, "package-manifest.json"))
+  ]);
+  if (packageManifest.version !== repositoryPackage.version) {
+    failures.push(
+      `Package manifest version ${packageManifest.version} does not match repository release ${repositoryPackage.version}`
+    );
+  }
+  if (
+    JSON.stringify(Object.keys(packageManifest.clients ?? {}).sort()) !==
+    JSON.stringify(["claude", "codex", "copilot", "gemini"])
+  ) {
+    failures.push("Package manifest must declare all supported clients");
+  }
   const products = await listProducts();
   const identities = new Set();
   for (const { path, manifest } of products) {
@@ -365,6 +380,7 @@ async function validateProducts() {
     if (manifest.clients.includes("gemini")) {
       const extensionRoot = generatedRoots.gemini;
       const extensionPath = join(extensionRoot, "gemini-extension.json");
+      const readmePath = join(extensionRoot, "README.md");
       if (!(await pathExists(extensionPath))) {
         failures.push(`Missing generated Gemini extension: ${extensionPath}`);
       } else {
@@ -384,27 +400,42 @@ async function validateProducts() {
           if (generated.mcpServers !== undefined || generated.settings !== undefined) {
             failures.push(`Skills-only Gemini product contains MCP configuration: ${extensionPath}`);
           }
-          continue;
+        } else {
+          const expectedUrl = materializeMcpUrl(
+            "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
+            manifest
+          );
+          if (
+            generated.mcpServers?.[manifest.mcp_group_name]?.httpUrl !== expectedUrl ||
+            JSON.stringify(generated).includes("BOS_INSTALLED_APP_ID")
+          ) {
+            failures.push(`Generated Gemini named MCP route drift: ${extensionPath}`);
+          }
+          const settings = generated.settings ?? [];
+          if (
+            settings.length !== 1 ||
+            settings[0]?.envVar !== manifest.credential_env_var ||
+            settings[0]?.sensitive !== true ||
+            generated.mcpServers?.[manifest.mcp_group_name]?.headers?.Authorization !==
+              `Bearer \${${manifest.credential_env_var}}`
+          ) {
+            failures.push(`Generated Gemini authentication configuration drift: ${extensionPath}`);
+          }
         }
-        const expectedUrl = materializeMcpUrl(
-          "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
-          manifest
-        );
+      }
+      if (!(await pathExists(readmePath))) {
+        failures.push(`Missing generated Gemini installation guidance: ${readmePath}`);
+      } else {
+        const readme = await readFile(readmePath, "utf8");
         if (
-          generated.mcpServers?.[manifest.mcp_group_name]?.httpUrl !== expectedUrl ||
-          JSON.stringify(generated).includes("BOS_INSTALLED_APP_ID")
+          !readme.includes(`gemini extensions install clients/gemini/extensions/${manifest.name}`) ||
+          !readme.includes("/extensions list") ||
+          !readme.includes("/skills list") ||
+          (manifest.runtime &&
+            (!readme.includes(`gemini extensions config ${manifest.name}`) ||
+              !readme.includes(`/mcp/apps/${manifest.application_name}/${manifest.mcp_group_name}`)))
         ) {
-          failures.push(`Generated Gemini named MCP route drift: ${extensionPath}`);
-        }
-        const settings = generated.settings ?? [];
-        if (
-          settings.length !== 1 ||
-          settings[0]?.envVar !== manifest.credential_env_var ||
-          settings[0]?.sensitive !== true ||
-          generated.mcpServers?.[manifest.mcp_group_name]?.headers?.Authorization !==
-            `Bearer \${${manifest.credential_env_var}}`
-        ) {
-          failures.push(`Generated Gemini authentication configuration drift: ${extensionPath}`);
+          failures.push(`Generated Gemini installation guidance drift: ${readmePath}`);
         }
       }
       for (const skill of skills) {

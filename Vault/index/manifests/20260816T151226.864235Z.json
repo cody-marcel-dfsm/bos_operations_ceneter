@@ -1,7 +1,7 @@
 {
-  "indexed_at": "20260816T161359.343375Z",
+  "indexed_at": "20260816T151226.864235Z",
   "schema_version": "bos-vault-manifest/v1",
-  "source_count": 35,
+  "source_count": 33,
   "sources": {
     "Vault/README.md": {
       "bytes": 1015,
@@ -28,12 +28,8 @@
       "sha256": "098e23994d0aa70fa3e1f3837dcef8603d3ef73b7a3ffcafc13c58f1dc8ebe99"
     },
     "Vault/docs/bos-expertise-package-ecosystem-proposal.md": {
-      "bytes": 21898,
-      "sha256": "93b04c18b57b5dbbc43ccbde51d682d791a6d4f9d5d2e99feaa27db9e67e24f6"
-    },
-    "Vault/docs/bos-product-licensing-user-experience.md": {
-      "bytes": 16055,
-      "sha256": "b7870d710c76d455893beddae44b5b37e886cc13c01a0bea2f921dc4820c6446"
+      "bytes": 21525,
+      "sha256": "372ba6d515a7dbddac22403096df3d08d266496bc81111520e82e7c5ac1439af"
     },
     "Vault/docs/marketplace-agent-harness-plan.md": {
       "bytes": 33377,
@@ -44,12 +40,12 @@
       "sha256": "ceede1f076e84f58419ed9c553f8d95e9cbc2089e368825bced513596901bb33"
     },
     "Vault/docs/my-crm-developer-platform-work-matrix.md": {
-      "bytes": 8316,
-      "sha256": "4ef070709c4e3f7bb117fe861f77d4cfb34bf30f85fdcef4c1d63577fe2838ee"
+      "bytes": 37495,
+      "sha256": "92f653d57c7dce7336d95bcb0a53a7d95ba36f754d6469f2605edddb6ccbf1a0"
     },
     "Vault/docs/my-crm-plugin-architecture-proposal.md": {
-      "bytes": 29479,
-      "sha256": "2606da5689acf4a91ad065acc8ef4eb8a19d8f8ec28573558259635a37a7b0b2"
+      "bytes": 29310,
+      "sha256": "75af7fe4ff2c382c711da26f856789eb7193279fc3659a36962ff3b5db5ff6e4"
     },
     "Vault/reviews/2026-08-09-customer-skill-extension-v2.md": {
       "bytes": 3182,
@@ -114,10 +110,6 @@
     "Vault/reviews/2026-08-12-education-center-initialization-defaults.md": {
       "bytes": 2616,
       "sha256": "caeed8950ccf7a63515fcb662d160774a009e6807bf12aa5edd21b3f4fa1010e"
-    },
-    "Vault/reviews/2026-08-16-bright-horizons-deterministic-report-rules.md": {
-      "bytes": 3269,
-      "sha256": "2a783a3e6ee3b7b249f679f20480358fe1d340c92b32ac8e49eb438e76c11f36"
     },
     "Vault/schemas/decision-record.md": {
       "bytes": 439,

@@ -245,6 +245,32 @@ for (const { product, skills } of resolved) {
     );
     await copyProductSkills(skills, join(extensionRoot, "skills"));
     await copySettingsTemplate(product, extensionRoot);
+    await writeFile(
+      join(extensionRoot, "README.md"),
+      [
+        `# ${product.display_name} for Gemini CLI`,
+        "",
+        `Install this extension from a terminal with \`gemini extensions install clients/gemini/extensions/${product.name}\`.`,
+        "Gemini CLI copies the extension into its managed extension directory.",
+        ...(product.runtime ? [
+          "During installation, enter the organization-scoped BOS API key in the",
+          "sensitive `BOS API Key` setting. Gemini CLI stores sensitive extension",
+          "settings in the system keychain and supplies the credential only to the",
+          "fixed HTTPS MCP route declared by this extension.",
+          "",
+          `This package is fixed to \`/mcp/apps/${product.application_name}/${product.mcp_group_name}\`.`,
+          "The package does not select or provision a BOS application. If the setting",
+          `must be repaired, run \`gemini extensions config ${product.name}\`.`
+        ] : [
+          "This is a skills-only extension and registers no MCP server or credential setting."
+        ]),
+        "",
+        "Restart Gemini CLI after installation or update. Run `/extensions list` to",
+        "confirm the extension is enabled and `/skills list` to confirm its skills are",
+        "discoverable. Use `gemini extensions update " + product.name + "` for later releases.",
+        ""
+      ].join("\n")
+    );
   }
 }
 
@@ -276,6 +302,25 @@ await writeFile(
     "skills into the target repository's `.agents/skills` directory. Each product",
     "also includes a `.github/mcp.json` registration for its fixed named BOS MCP",
     "route and product-specific setup instructions.",
+    ""
+  ].join("\n")
+);
+await writeFile(
+  join(stagedClients, "gemini", "README.md"),
+  [
+    "# BOS Operations Center Gemini CLI Extensions",
+    "",
+    "Install both generated extensions from a terminal:",
+    "",
+    "```bash",
+    "gemini extensions install clients/gemini/extensions/bos",
+    "gemini extensions install clients/gemini/extensions/education-center",
+    "```",
+    "",
+    "Complete the sensitive BOS setting requested for the Education Center extension,",
+    "then restart Gemini CLI. Run `/extensions list` and `/skills list` to verify the",
+    "extensions and bundled skills. Each extension has product-specific details in its",
+    "own README.",
     ""
   ].join("\n")
 );

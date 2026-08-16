@@ -82,9 +82,13 @@ migration does not silently change Copilot authentication.
 
 ## Gemini CLI
 
-Install the desired extension from `clients/gemini/extensions/<product>` and
-follow its declared settings. The Claude and Codex OAuth migration does not
-silently change Gemini authentication.
+From the extracted package, run
+`gemini extensions install clients/gemini/extensions/bos`, followed by
+`gemini extensions install clients/gemini/extensions/education-center`.
+Complete the sensitive BOS setting requested for Education Center, restart
+Gemini CLI, then run `/extensions list` and `/skills list`. Product-specific
+update and repair instructions are in `clients/gemini/README.md`. Gemini retains
+its extension-managed credential adapter.
 
 ## Updates
 

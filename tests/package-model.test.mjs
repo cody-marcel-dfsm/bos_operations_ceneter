@@ -350,6 +350,10 @@ test("Bright Horizons report prompts deterministically generate the reimbursemen
     `${skillRoot}/references/bright-horizons-workbook.md`,
     "utf8"
   );
+  const operatingRules = await readFile(
+    `${skillRoot}/references/bright-horizons-operating-rules.md`,
+    "utf8"
+  );
   const builder = await readFile(
     `${skillRoot}/scripts/build_bh_invoice.mjs`,
     "utf8"
@@ -362,9 +366,21 @@ test("Bright Horizons report prompts deterministically generate the reimbursemen
   assert.match(guidance, /create a Bright Horizons report for last week/i);
   assert.match(guidance, /deterministic reimbursement\s+workbook-generation intent/i);
   assert.match(guidance, /Never invoke[\s\S]*reimbursement-report generation/i);
+  assert.match(guidance, /reconcile every\s+candidate child-day[\s\S]*before building/i);
   assert.match(guidance, /one short summary plus the\s+attached workbook/i);
   assert.match(contract, /commands[\s\S]*create a Bright Horizons report for last week/i);
+  assert.match(contract, /billing disposition[\s\S]*active[\s\S]*timely cancellation[\s\S]*late cancellation[\s\S]*post-start cancellation/i);
+  assert.match(contract, /candidate child-day set[\s\S]*union of Calimatic[\s\S]*provider evidence/i);
+  assert.match(contract, /Calimatic-only[\s\S]*provider-confirmed[\s\S]*unresolved/i);
+  assert.match(contract, /row\.rate_per_day[\s\S]*50%/i);
   assert.match(contract, /attached final[\s\S]*`\.xlsx` workbook/i);
+  assert.match(operatingRules, /brighthorizonsenrollments@calimatic\.com/i);
+  assert.match(operatingRules, /providerbilling@brighthorizons\.com/i);
+  assert.match(operatingRules, /two business days[\s\S]*5:00\s+p\.m\./i);
+  assert.match(operatingRules, /mark[\s\S]*paid only after[\s\S]*funds/i);
+  assert.match(operatingRules, /each business day[\s\S]*dated export|normalized\s+snapshot/i);
+  assert.match(operatingRules, /within 45 calendar days/i);
+  assert.match(operatingRules, /peer discussion[\s\S]*never override/i);
   assert.doesNotMatch(contract, /\$103\.00 is configured/i);
   assert.match(builder, /bright-horizons-reimbursement-template\.json/);
   assert.match(builder, /"rate_per_day"/);
@@ -409,7 +425,8 @@ test("Bright Horizons builder validates the distributed template and reimburseme
         number_of_children: 1,
         date_of_care: "2026-08-04",
         hours_of_care: 7,
-        other_comments: ""
+        rate_per_day: 51.5,
+        other_comments: "Late cancellation — 50% rate"
       },
       {
         employee_name: "Employee A",
@@ -436,7 +453,7 @@ test("Bright Horizons builder validates the distributed template and reimburseme
     assert.equal(result.template_schema_version, "bright-horizons-reimbursement-template/v1");
     assert.equal(result.invoice_reference, "EXAMPLE_7");
     assert.equal(result.child_day_count, 3);
-    assert.equal(result.invoice_total, 309);
+    assert.equal(result.invoice_total, 257.5);
     assert.equal(result.period_start, "2026-08-03");
     assert.equal(result.period_end, "2026-08-09");
   } finally {
@@ -450,6 +467,17 @@ test("client distributions include the Bright Horizons reimbursement template", 
     `${root}/clients/claude/plugins/education-center/skills/education-center-invoice-operations/assets/bright-horizons-reimbursement-template.json`,
     `${root}/clients/copilot/products/education-center/skills/education-center-invoice-operations/assets/bright-horizons-reimbursement-template.json`,
     `${root}/clients/gemini/extensions/education-center/skills/education-center-invoice-operations/assets/bright-horizons-reimbursement-template.json`
+  ]) {
+    await access(path);
+  }
+});
+
+test("client distributions include deterministic Bright Horizons operating rules", async () => {
+  for (const path of [
+    `${root}/clients/codex/plugins/education-center/skills/education-center-invoice-operations/references/bright-horizons-operating-rules.md`,
+    `${root}/clients/claude/plugins/education-center/skills/education-center-invoice-operations/references/bright-horizons-operating-rules.md`,
+    `${root}/clients/copilot/products/education-center/skills/education-center-invoice-operations/references/bright-horizons-operating-rules.md`,
+    `${root}/clients/gemini/extensions/education-center/skills/education-center-invoice-operations/references/bright-horizons-operating-rules.md`
   ]) {
     await access(path);
   }
@@ -812,12 +840,26 @@ test("Gemini extensions bundle canonical skills and authenticated Streamable HTT
     const manifest = JSON.parse(
       await readFile(`${extensionRoot}/gemini-extension.json`, "utf8")
     );
+    const readme = await readFile(`${extensionRoot}/README.md`, "utf8");
     assert.equal(manifest.name, product.name);
     assert.equal(manifest.version, product.version);
+    assert.match(
+      readme,
+      new RegExp(`gemini extensions install clients/gemini/extensions/${product.name}`)
+    );
+    assert.match(readme, /\/extensions list/);
+    assert.match(readme, /\/skills list/);
+    assert.match(readme, new RegExp(`gemini extensions update ${product.name}`));
     if (!product.runtime) {
       assert.equal(manifest.mcpServers, undefined);
+      assert.match(readme, /skills-only extension/i);
       continue;
     }
+    assert.match(readme, new RegExp(`gemini extensions config ${product.name}`));
+    assert.match(
+      readme,
+      new RegExp(`/mcp/apps/${product.application_name}/${product.mcp_group_name}`)
+    );
     assert.deepEqual(Object.keys(manifest.mcpServers), [product.mcp_group_name]);
     const server = manifest.mcpServers[product.mcp_group_name];
     assert.equal(
@@ -844,6 +886,18 @@ test("Gemini extensions bundle canonical skills and authenticated Streamable HTT
       await access(`${extensionRoot}/skills/${skill.name}/SKILL.md`);
     }
   }
+});
+
+test("Gemini client package provides a complete two-extension install path", async () => {
+  const readme = await readFile(`${root}/clients/gemini/README.md`, "utf8");
+  assert.match(readme, /gemini extensions install clients\/gemini\/extensions\/bos/);
+  assert.match(
+    readme,
+    /gemini extensions install clients\/gemini\/extensions\/education-center/
+  );
+  assert.match(readme, /sensitive BOS setting/i);
+  assert.match(readme, /\/extensions list/);
+  assert.match(readme, /\/skills list/);
 });
 
 test("feedback contract keeps app resource-group selection static and retry identity stable", async () => {
@@ -1057,11 +1111,20 @@ test("README routes customer, development, and release environments explicitly",
 test("desktop marketplace versions match the repository release", async () => {
   const repositoryPackage = JSON.parse(await readFile(`${root}/package.json`, "utf8"));
   const expectedVersion = repositoryPackage.version;
+  const packageManifest = JSON.parse(await readFile(
+    `${root}/package-manifest.json`,
+    "utf8"
+  ));
   const claudeMarketplace = JSON.parse(await readFile(
     `${root}/.claude-plugin/marketplace.json`,
     "utf8"
   ));
 
+  assert.equal(packageManifest.version, expectedVersion);
+  assert.deepEqual(
+    Object.keys(packageManifest.clients).sort(),
+    ["claude", "codex", "copilot", "gemini"]
+  );
   assert.deepEqual(
     claudeMarketplace.plugins.map(({ version }) => version),
     [expectedVersion, expectedVersion]
