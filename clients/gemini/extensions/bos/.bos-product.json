@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.23",
+  "version": "0.4.24",
   "client": "gemini",
   "authentication": "none"
 }

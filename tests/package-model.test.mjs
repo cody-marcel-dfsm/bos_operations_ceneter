@@ -10,6 +10,8 @@ import {
   copilotCredentialEnvVar,
   copilotMcpManifest,
   geminiExtensionManifest,
+  geminiPluginManifest,
+  geminiPluginMcpManifest,
   materializeMcpUrl,
   resolveProductSkills,
   root,
@@ -548,7 +550,10 @@ test("runtime package model materializes named application routes", async () => 
     assert.equal(materializeMcpUrl(template, manifest), expected);
     const gemini = await geminiExtensionManifest(manifest);
     assert.equal(gemini.mcpServers[manifest.mcp_group_name].httpUrl, expected);
+    assert.deepEqual(gemini.mcpServers[manifest.mcp_group_name].oauth, { enabled: true });
     assert.doesNotMatch(JSON.stringify(gemini), /BOS_INSTALLED_APP_ID|installed_app_id/);
+    const geminiDesktop = await geminiPluginMcpManifest(manifest);
+    assert.equal(geminiDesktop.mcpServers[manifest.mcp_group_name].serverUrl, expected);
     const copilot = await copilotMcpManifest(manifest);
     assert.equal(copilot.mcpServers[manifest.mcp_group_name].url, expected);
     assert.equal(
@@ -564,7 +569,8 @@ test("runtime products declare isolated product credential bindings", async () =
     .filter((manifest) => manifest.runtime);
   for (const product of runtimeProducts) {
     const gemini = await geminiExtensionManifest(product);
-    assert.equal(gemini.settings[0].envVar, product.credential_env_var);
+    assert.equal(gemini.settings, undefined);
+    assert.equal(gemini.mcpServers[product.mcp_group_name].headers, undefined);
     const copilot = await copilotMcpManifest(product);
     assert.equal(
       copilot.mcpServers[product.mcp_group_name].headers.Authorization,
@@ -831,7 +837,7 @@ test("generated clients use host-native BOS connections without local transport"
   }
 });
 
-test("Gemini extensions bundle canonical skills and authenticated Streamable HTTP MCP", async () => {
+test("one Gemini extension bundles CLI and Antigravity Desktop with OAuth MCP", async () => {
   const products = await listProducts();
   for (const { manifest: product } of products) {
     if (product.release_status === "disabled") continue;
@@ -840,9 +846,13 @@ test("Gemini extensions bundle canonical skills and authenticated Streamable HTT
     const manifest = JSON.parse(
       await readFile(`${extensionRoot}/gemini-extension.json`, "utf8")
     );
+    const desktopPlugin = JSON.parse(
+      await readFile(`${extensionRoot}/plugin.json`, "utf8")
+    );
     const readme = await readFile(`${extensionRoot}/README.md`, "utf8");
     assert.equal(manifest.name, product.name);
     assert.equal(manifest.version, product.version);
+    assert.deepEqual(desktopPlugin, geminiPluginManifest(product));
     assert.match(
       readme,
       new RegExp(`gemini extensions install clients/gemini/extensions/${product.name}`)
@@ -850,12 +860,17 @@ test("Gemini extensions bundle canonical skills and authenticated Streamable HTT
     assert.match(readme, /\/extensions list/);
     assert.match(readme, /\/skills list/);
     assert.match(readme, new RegExp(`gemini extensions update ${product.name}`));
+    assert.match(readme, /Antigravity 2\.0 Desktop/);
+    assert.match(readme, new RegExp(`~/.gemini/config/plugins/${product.name}`));
     if (!product.runtime) {
       assert.equal(manifest.mcpServers, undefined);
+      await assert.rejects(access(`${extensionRoot}/mcp_config.json`));
       assert.match(readme, /skills-only extension/i);
       continue;
     }
-    assert.match(readme, new RegExp(`gemini extensions config ${product.name}`));
+    assert.match(readme, new RegExp(`/mcp auth ${product.mcp_group_name}`));
+    assert.match(readme, /Settings > Customizations/);
+    assert.match(readme, /Authenticate/);
     assert.match(
       readme,
       new RegExp(`/mcp/apps/${product.application_name}/${product.mcp_group_name}`)
@@ -868,13 +883,16 @@ test("Gemini extensions bundle canonical skills and authenticated Streamable HTT
     );
     assert.equal(server.url, undefined);
     assert.equal(server.command, undefined);
-    assert.equal(
-      server.headers.Authorization,
-      `Bearer \${${product.credential_env_var}}`
+    assert.deepEqual(server.oauth, { enabled: true });
+    assert.equal(server.headers, undefined);
+    assert.equal(manifest.settings, undefined);
+    const desktopMcp = JSON.parse(
+      await readFile(`${extensionRoot}/mcp_config.json`, "utf8")
     );
-    assert.deepEqual(
-      manifest.settings.map(({ envVar, sensitive }) => ({ envVar, sensitive })),
-      [{ envVar: product.credential_env_var, sensitive: true }]
+    assert.deepEqual(desktopMcp, await geminiPluginMcpManifest(product));
+    assert.equal(
+      desktopMcp.mcpServers[product.mcp_group_name].serverUrl,
+      `https://dfsm.ai/mcp/apps/${product.application_name}/${product.mcp_group_name}`
     );
     assert.doesNotMatch(
       JSON.stringify(manifest),
@@ -888,14 +906,18 @@ test("Gemini extensions bundle canonical skills and authenticated Streamable HTT
   }
 });
 
-test("Gemini client package provides a complete two-extension install path", async () => {
+test("Gemini client package provides one CLI and desktop extension umbrella", async () => {
   const readme = await readFile(`${root}/clients/gemini/README.md`, "utf8");
   assert.match(readme, /gemini extensions install clients\/gemini\/extensions\/bos/);
   assert.match(
     readme,
     /gemini extensions install clients\/gemini\/extensions\/education-center/
   );
-  assert.match(readme, /sensitive BOS setting/i);
+  assert.match(readme, /Antigravity 2\.0 Desktop/);
+  assert.match(readme, /~\/\.gemini\/config\/plugins/);
+  assert.match(readme, /\/mcp auth education-center/);
+  assert.match(readme, /Settings > Customizations/);
+  assert.doesNotMatch(readme, /API key|sensitive BOS setting/i);
   assert.match(readme, /\/extensions list/);
   assert.match(readme, /\/skills list/);
 });
@@ -971,7 +993,7 @@ test("every product and client ships tenant extension management metadata", asyn
       const metadata = JSON.parse(
         await readFile(`${productRoot}/.bos-product.json`, "utf8")
       );
-      const desktopOAuth = ["codex", "claude"].includes(client);
+      const desktopOAuth = ["codex", "claude", "gemini"].includes(client);
       assert.deepEqual(metadata, {
         schema_version: "1",
         name: manifest.name,

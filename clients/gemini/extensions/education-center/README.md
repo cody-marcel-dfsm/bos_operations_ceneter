@@ -1,16 +1,27 @@
-# Education Center for Gemini CLI
+# Education Center for Gemini
+
+This one Gemini extension supports Gemini CLI and Google Antigravity 2.0 Desktop.
+Both surfaces load the same packaged skills and fixed BOS product identity.
+
+## Gemini CLI
 
 Install this extension from a terminal with `gemini extensions install clients/gemini/extensions/education-center`.
 Gemini CLI copies the extension into its managed extension directory.
-During installation, enter the organization-scoped BOS API key in the
-sensitive `BOS API Key` setting. Gemini CLI stores sensitive extension
-settings in the system keychain and supplies the credential only to the
-fixed HTTPS MCP route declared by this extension.
+Run `/mcp auth education-center` and complete BOS sign-in in the browser.
+Gemini CLI discovers BOS OAuth, stores and refreshes the resource-scoped grant,
+and connects to the fixed HTTPS MCP route declared by this extension.
 
 This package is fixed to `/mcp/apps/leaddirector/education-center`.
-The package does not select or provision a BOS application. If the setting
-must be repaired, run `gemini extensions config education-center`.
+The package does not select or provision a BOS application.
 
 Restart Gemini CLI after installation or update. Run `/extensions list` to
 confirm the extension is enabled and `/skills list` to confirm its skills are
 discoverable. Use `gemini extensions update education-center` for later releases.
+
+## Antigravity 2.0 Desktop
+
+Copy this complete `education-center` directory to `~/.gemini/config/plugins/education-center`
+or place it in the opened workspace under `.agents/plugins/`. Restart Antigravity.
+Open Settings > Customizations, find the `education-center` MCP server,
+select Authenticate, complete BOS sign-in in the browser, and return to Antigravity.
+The desktop host stores and refreshes the resource-scoped OAuth grant.

@@ -60,8 +60,8 @@ A client package:
 - connects only to its generated route, directly through a client-native
   remote MCP adapter or indirectly through a registered app that owns the
   route;
-- uses the host-managed OAuth grant for Claude and ChatGPT/Codex desktop
-  product connections;
+- uses the host-managed OAuth grant for Claude, ChatGPT/Codex desktop, Gemini
+  CLI, and Google Antigravity 2.0 Desktop product connections;
 - discovers the live tool manifest returned by that route;
 - reconnects the same route after recoverable transport failure; and
 - treats server-returned operational context as authorization evidence, never
@@ -121,14 +121,17 @@ with a correction that identifies the expected named two-segment route.
 For every runtime product, automated evidence must establish:
 
 1. Manifest route slugs satisfy the schema and approved inventory.
-2. Claude, ChatGPT/Codex, Gemini CLI, and Copilot adapters resolve the same
-   immutable URL; Codex does so through its registered app.
+2. Claude, ChatGPT/Codex, the single Gemini extension umbrella, and Copilot
+   adapters resolve the same immutable URL; Codex does so through its
+   registered app. The Gemini directory supports Gemini CLI through
+   `gemini-extension.json` and Antigravity Desktop through `plugin.json` plus
+   `mcp_config.json`, while sharing one skill tree and product identity.
 3. No generated package contains an installation-ID route setting or unresolved
    route substitution.
 4. Unknown or unauthorized application/group combinations fail closed.
 5. The server derives operational installation scope from authenticated state.
 6. Connection recovery returns to the same immutable named endpoint.
 7. Credential and customer-data scans pass for public artifacts.
-8. Each active Claude or ChatGPT/Codex runtime product obtains one host-managed
-   resource-scoped grant without package credential fields or cross-product
-   fallback.
+8. Each active Claude, ChatGPT/Codex, or Gemini runtime product obtains one
+   host-managed resource-scoped grant without package credential fields or
+   cross-product fallback.

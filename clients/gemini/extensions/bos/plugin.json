@@ -1,5 +1,5 @@
 {
+  "$schema": "https://antigravity.google/schemas/v1/plugin.json",
   "name": "bos",
-  "version": "0.4.24",
   "description": "Tenant-neutral Business Operating System foundations."
 }

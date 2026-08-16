@@ -1,5 +1,5 @@
 {
-  "indexed_at": "20260816T164324.837149Z",
+  "indexed_at": "20260816T163242.035683Z",
   "schema_version": "bos-vault-manifest/v1",
   "source_count": 35,
   "sources": {
@@ -24,8 +24,8 @@
       "sha256": "d5c1c98279430e115f71c95fc6756e4e3fd34b771c93b92ea08c0e104b007c03"
     },
     "Vault/docs/architecture.md": {
-      "bytes": 11563,
-      "sha256": "ef5bd08e8a5168211e9e44a6605629c8dd4be2a7d4bdaf21f6b3aed2dd3b9b91"
+      "bytes": 11092,
+      "sha256": "098e23994d0aa70fa3e1f3837dcef8603d3ef73b7a3ffcafc13c58f1dc8ebe99"
     },
     "Vault/docs/bos-expertise-package-ecosystem-proposal.md": {
       "bytes": 21898,
@@ -33,7 +33,7 @@
     },
     "Vault/docs/bos-product-licensing-user-experience.md": {
       "bytes": 16055,
-      "sha256": "74015f8405d4e9acbc0715adf24cd45996762a120f3a9144462d9ed789b0804f"
+      "sha256": "b7870d710c76d455893beddae44b5b37e886cc13c01a0bea2f921dc4820c6446"
     },
     "Vault/docs/marketplace-agent-harness-plan.md": {
       "bytes": 33377,
@@ -128,8 +128,8 @@
       "sha256": "ce696da6b99f10263e835387c03470013b0b68f60b05db9a197e33eb93ed38a1"
     },
     "Vault/specs/named-mcp-application-group-routing.md": {
-      "bytes": 5832,
-      "sha256": "6e805b1504901c8c0c7c633dd8ada62db841987ce025e01fe6775e7ac7266b3a"
+      "bytes": 5549,
+      "sha256": "c7d2c51db7b49d8edeec4c6a9d02aabb1e10e50d5a7835d0090595cfae8aa5b5"
     },
     "Vault/specs/named-mcp-server-implementation.md": {
       "bytes": 14015,

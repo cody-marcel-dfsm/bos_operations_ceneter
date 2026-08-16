@@ -30,11 +30,12 @@ release system for portable BOS skills and native remote MCP client adapters.
    the owning application graph or capability.
 3. Route mutations through PO orchestration and GO persistence.
 4. Store provider credentials only in BOS-managed credential storage.
-5. Authenticate Claude and ChatGPT/Codex desktop product connections through
-   the host's OAuth 2.1 MCP authorization flow. Claude packages declare the
+5. Authenticate Claude, ChatGPT/Codex desktop, Gemini CLI, and Google
+   Antigravity 2.0 Desktop product connections through the host's OAuth 2.1 MCP
+   authorization flow. Claude and Gemini packages declare the
    immutable HTTPS MCP resource directly. Codex packages declare a required
-   registered app in `.app.json`; that app owns the immutable resource. Neither
-   package contains an API-key field, authorization header template, or
+   registered app in `.app.json`; that app owns the immutable resource. None of
+   these packages contains an API-key field, authorization header template, or
    credential environment-variable binding. The host
    discovers BOS authorization metadata, launches consent, stores and refreshes
    the grant, and attaches a resource-scoped token. Recover missing underlying
@@ -65,14 +66,18 @@ release system for portable BOS skills and native remote MCP client adapters.
     correct the complete recommendation; persist suggested values only after
     confirmation. Derived configuration never grants authority.
 11. Connect clients directly to BOS over HTTPS Streamable HTTP. Use a registered
-    app binding in Codex, native remote MCP configuration in Claude, and the
-    equivalent remote connection in Copilot. A Codex runtime plugin contains
+    app binding in Codex, native remote MCP configuration in Claude, the
+    equivalent remote connection in Copilot, and one Gemini extension umbrella
+    for Gemini CLI and Antigravity 2.0 Desktop. The Gemini product directory
+    contains shared skills and product metadata, `gemini-extension.json` with
+    OAuth enabled for Gemini CLI, and Antigravity's `plugin.json` plus a runtime
+    `mcp_config.json` using `serverUrl`. A Codex runtime plugin contains
     `apps: "./.app.json"` and no `.mcp.json` or `mcpServers`; its product
     manifest records the stable `asdk_app_*` identifier. Every runtime product declares one immutable
     package-owned route using the exact static form
     `/mcp/apps/{application-name}/{skill-group-name}`. Both path segments are
     stable human-readable slugs, never IDs or customer settings. Each active
-    Claude or ChatGPT/Codex runtime product obtains exactly one host-managed
+    Claude, ChatGPT/Codex, or Gemini runtime product obtains exactly one host-managed
     OAuth grant for its named MCP resource. That grant resolves exactly one
     server-owned actor, organization, installation, delegated role, plugin,
     and capability scope for that connection. Products may resolve different
@@ -91,7 +96,7 @@ release system for portable BOS skills and native remote MCP client adapters.
     invariants, authentication, authorization, canonical scope, credentials,
     MCP endpoints, and tool grants remain sealed. Every product ships the same
     extension manager and versioned product metadata for Codex, Claude,
-    Copilot, and Gemini CLI.
+    Copilot, and the combined Gemini CLI/Antigravity Desktop client.
 14. Route feedback mutations through the runtime product's canonical named MCP
     route. Keep organization, application, installation, and delegated-role
     scope out of feedback arguments. Derive operational scope from the
@@ -113,9 +118,10 @@ release system for portable BOS skills and native remote MCP client adapters.
     action for runtime products, and begins a new task after the host loads the
     plugin. Customer ZIPs may remain optional release artifacts; they are not
     the primary desktop installation or credential path.
-17. Treat a Claude or ChatGPT/Codex product connection as ready only when the
+17. Treat a Claude, ChatGPT/Codex, Gemini CLI, or Antigravity Desktop product
+    connection as ready only when the
     installed plugin points to its exact immutable MCP resource—directly for
-    Claude and through its required registered app for Codex—OAuth
+    Claude and Gemini and through its required registered app for Codex—OAuth
     discovery succeeds, the host holds a valid resource-scoped grant, the
     server returns one canonical context, and the required scoped tool group is
     discoverable. A missing or expired grant triggers the host's Connect/Sign

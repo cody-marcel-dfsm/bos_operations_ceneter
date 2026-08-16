@@ -1,7 +1,8 @@
 # Install BOS Operations Center
 
 This package contains operating-system-neutral plugin distributions for
-ChatGPT/Codex Desktop, Claude Cowork/Desktop, GitHub Copilot, and Gemini CLI.
+ChatGPT/Codex Desktop, Claude Cowork/Desktop, GitHub Copilot, and the Gemini
+client for Gemini CLI and Google Antigravity 2.0 Desktop.
 The normal Claude and Codex customer path uses the BOS private Git marketplace.
 This archive is an optional offline-transfer and release-verification format.
 
@@ -80,15 +81,34 @@ into the repository's supported agent-skills directory. Follow that product's
 README for its current MCP authorization adapter. The Claude and Codex OAuth
 migration does not silently change Copilot authentication.
 
-## Gemini CLI
+## Gemini CLI and Antigravity 2.0 Desktop
 
-From the extracted package, run
+The same Gemini extension directories support both Google surfaces.
+[Install Google Antigravity 2.0](https://antigravity.google/product/antigravity-2)
+before following the desktop path. Google's
+[plugin documentation](https://antigravity.google/docs/ide/plugins?app=antigravity-ide-)
+defines the global `~/.gemini/config/plugins/` location and its
+[MCP documentation](https://antigravity.google/docs/mcp?authuser=0000) defines
+the desktop authentication flow.
+
+For Gemini CLI, run
 `gemini extensions install clients/gemini/extensions/bos`, followed by
 `gemini extensions install clients/gemini/extensions/education-center`.
-Complete the sensitive BOS setting requested for Education Center, restart
-Gemini CLI, then run `/extensions list` and `/skills list`. Product-specific
-update and repair instructions are in `clients/gemini/README.md`. Gemini retains
-its extension-managed credential adapter.
+Restart Gemini CLI, run `/mcp auth education-center`, complete BOS sign-in in
+the browser, then run `/extensions list` and `/skills list`.
+
+For Antigravity 2.0 Desktop, copy the complete
+`clients/gemini/extensions/bos` and
+`clients/gemini/extensions/education-center` directories into
+`~/.gemini/config/plugins/`. Restart Antigravity, open Settings >
+Customizations, select Authenticate for `education-center`, and complete BOS
+sign-in in the browser. Verify one authenticated Education Center read.
+
+Each product directory contains the shared skills, `gemini-extension.json`,
+and Antigravity's native `plugin.json`; the runtime product also contains
+`mcp_config.json`. The package contains no BOS key, token, authorization header,
+OAuth client secret, environment-variable credential binding, or installed
+application ID. Product-specific details are in `clients/gemini/README.md`.
 
 ## Updates
 

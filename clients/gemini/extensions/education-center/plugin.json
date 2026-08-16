@@ -1,0 +1,5 @@
+{
+  "$schema": "https://antigravity.google/schemas/v1/plugin.json",
+  "name": "education-center",
+  "description": "A childhood education franchise-in-a-box operating system for authorized adult education center staff through the tenant-scoped BOS MCP."
+}

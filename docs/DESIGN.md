@@ -240,9 +240,11 @@ edited only in their owning canonical layer.
 
 `clients/codex/`, `clients/claude/`, `clients/copilot/`, and `clients/gemini/` are generated
 distributions. The build resolves each product manifest, selects its platform,
-capability, and vertical skills, and assembles the requested Codex, Claude, and
-Copilot packages. It preserves the platform-specific manifests and adapters
-maintained for each client.
+capability, and vertical skills, and assembles the requested Codex, Claude,
+Copilot, and Gemini packages. The single Gemini package includes Gemini CLI and
+Antigravity Desktop native manifests around one shared skill tree and product
+identity. It preserves the platform-specific manifests and adapters maintained
+for each client.
 
 Generated skill copies are not independent sources. Changes made only under a
 generated client directory will be replaced by the next build. The development

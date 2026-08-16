@@ -195,7 +195,7 @@ async function validateProducts() {
         continue;
       }
       const metadata = await readJson(metadataPath);
-      const desktopOAuth = ["codex", "claude"].includes(client);
+      const desktopOAuth = ["codex", "claude", "gemini"].includes(client);
       const expectedAuthentication = manifest.runtime
         ? (desktopOAuth ? "oauth_2_1" : "bearer_env")
         : "none";
@@ -380,6 +380,8 @@ async function validateProducts() {
     if (manifest.clients.includes("gemini")) {
       const extensionRoot = generatedRoots.gemini;
       const extensionPath = join(extensionRoot, "gemini-extension.json");
+      const pluginPath = join(extensionRoot, "plugin.json");
+      const pluginMcpPath = join(extensionRoot, "mcp_config.json");
       const readmePath = join(extensionRoot, "README.md");
       if (!(await pathExists(extensionPath))) {
         failures.push(`Missing generated Gemini extension: ${extensionPath}`);
@@ -407,20 +409,54 @@ async function validateProducts() {
           );
           if (
             generated.mcpServers?.[manifest.mcp_group_name]?.httpUrl !== expectedUrl ||
-            JSON.stringify(generated).includes("BOS_INSTALLED_APP_ID")
+            generated.mcpServers?.[manifest.mcp_group_name]?.oauth?.enabled !== true ||
+            /BOS_INSTALLED_APP_ID|installed_app_id|Authorization|clientSecret/.test(
+              JSON.stringify(generated)
+            )
           ) {
             failures.push(`Generated Gemini named MCP route drift: ${extensionPath}`);
           }
-          const settings = generated.settings ?? [];
-          if (
-            settings.length !== 1 ||
-            settings[0]?.envVar !== manifest.credential_env_var ||
-            settings[0]?.sensitive !== true ||
-            generated.mcpServers?.[manifest.mcp_group_name]?.headers?.Authorization !==
-              `Bearer \${${manifest.credential_env_var}}`
-          ) {
+          if (generated.settings !== undefined || generated.mcpServers?.[manifest.mcp_group_name]?.headers) {
             failures.push(`Generated Gemini authentication configuration drift: ${extensionPath}`);
           }
+        }
+      }
+      if (!(await pathExists(pluginPath))) {
+        failures.push(`Missing generated Antigravity plugin manifest: ${pluginPath}`);
+      } else {
+        const plugin = await readJson(pluginPath);
+        const expectedPlugin = {
+          $schema: "https://antigravity.google/schemas/v1/plugin.json",
+          name: manifest.name,
+          description: manifest.description
+        };
+        if (JSON.stringify(plugin) !== JSON.stringify(expectedPlugin)) {
+          failures.push(`Generated Antigravity plugin identity drift: ${pluginPath}`);
+        }
+      }
+      if (!manifest.runtime) {
+        if (await pathExists(pluginMcpPath)) {
+          failures.push(`Skills-only Gemini product contains desktop MCP configuration: ${pluginMcpPath}`);
+        }
+      } else if (!(await pathExists(pluginMcpPath))) {
+        failures.push(`Missing generated Antigravity MCP configuration: ${pluginMcpPath}`);
+      } else {
+        const desktopMcp = await readJson(pluginMcpPath);
+        const expectedUrl = materializeMcpUrl(
+          "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
+          manifest
+        );
+        const server = desktopMcp.mcpServers?.[manifest.mcp_group_name];
+        if (
+          Object.keys(desktopMcp.mcpServers ?? {}).length !== 1 ||
+          server?.serverUrl !== expectedUrl ||
+          "url" in (server ?? {}) ||
+          "httpUrl" in (server ?? {}) ||
+          /Authorization|headers|clientSecret|BOS_INSTALLED_APP_ID|installed_app_id/.test(
+            JSON.stringify(desktopMcp)
+          )
+        ) {
+          failures.push(`Generated Antigravity MCP configuration drift: ${pluginMcpPath}`);
         }
       }
       if (!(await pathExists(readmePath))) {
@@ -431,8 +467,12 @@ async function validateProducts() {
           !readme.includes(`gemini extensions install clients/gemini/extensions/${manifest.name}`) ||
           !readme.includes("/extensions list") ||
           !readme.includes("/skills list") ||
+          !readme.includes("Antigravity 2.0 Desktop") ||
+          !readme.includes(`~/.gemini/config/plugins/${manifest.name}`) ||
           (manifest.runtime &&
-            (!readme.includes(`gemini extensions config ${manifest.name}`) ||
+            (!readme.includes(`/mcp auth ${manifest.mcp_group_name}`) ||
+              !readme.includes("Settings > Customizations") ||
+              !readme.includes("Authenticate") ||
               !readme.includes(`/mcp/apps/${manifest.application_name}/${manifest.mcp_group_name}`)))
         ) {
           failures.push(`Generated Gemini installation guidance drift: ${readmePath}`);
