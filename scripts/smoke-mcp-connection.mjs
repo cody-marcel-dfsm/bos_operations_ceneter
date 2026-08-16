@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 export const MCP_CONNECTION_PROFILES = Object.freeze({
   "https://dfsm.ai/mcp/apps/leaddirector/education-center": Object.freeze({
     applicationCode: "lead_director",
-    credentialEnvVar: "EDUCATION_CENTER_BOS_API_KEY",
+    releaseAccessTokenEnvVar: "EDUCATION_CENTER_RELEASE_OAUTH_ACCESS_TOKEN",
     requiredTools: Object.freeze([
       "bos_get_context",
       "education_center_get_email_thread",
@@ -18,7 +18,7 @@ export const MCP_CONNECTION_PROFILES = Object.freeze({
   }),
   "https://dfsm.ai/mcp/apps/leaddirector/video-ads": Object.freeze({
     applicationCode: "lead_director",
-    credentialEnvVar: "VIDEO_ADS_BOS_API_KEY",
+    releaseAccessTokenEnvVar: "VIDEO_ADS_RELEASE_OAUTH_ACCESS_TOKEN",
     requiredTools: Object.freeze([
       "bos_get_context",
       "video_ads_get_readiness",
@@ -95,19 +95,21 @@ export class McpConnectionSmokeFailure extends Error {
 
 export async function runMcpConnectionSmoke({
   endpoint,
-  apiKey,
+  accessToken,
   fetchImpl = fetch
 } = {}) {
   const profile = MCP_CONNECTION_PROFILES[endpoint];
   if (!profile) throw new Error("Pass an approved named BOS MCP endpoint");
-  if (!apiKey) throw new Error(`${profile.credentialEnvVar} is absent from this process`);
+  if (!accessToken) {
+    throw new Error(`${profile.releaseAccessTokenEnvVar} is absent from this process`);
+  }
 
-  const report = { endpoint, credentialPresent: true };
+  const report = { endpoint, accessTokenPresent: true };
   let sessionId;
   const post = async (body) => {
     const headers = {
       Accept: "application/json, text/event-stream",
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
       "MCP-Protocol-Version": "2025-03-26"
     };
@@ -225,8 +227,8 @@ async function main() {
   try {
     const report = await runMcpConnectionSmoke({
       endpoint: process.argv[2],
-      apiKey: process.env[
-        MCP_CONNECTION_PROFILES[process.argv[2]]?.credentialEnvVar
+      accessToken: process.env[
+        MCP_CONNECTION_PROFILES[process.argv[2]]?.releaseAccessTokenEnvVar
       ]
     });
     console.log(JSON.stringify(report, null, 2));

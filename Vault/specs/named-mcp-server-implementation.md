@@ -53,10 +53,10 @@ The transport must never redirect an unknown named route to an unnamed endpoint.
 
 ## Authentication contract
 
-Every named-route request must require:
+Every named-route request must require a resource-scoped OAuth access token:
 
 ```http
-Authorization: Bearer <PRODUCT_API_KEY>
+Authorization: Bearer <OAUTH_ACCESS_TOKEN>
 ```
 
 The authenticated principal must resolve from canonical server-owned state and
@@ -64,7 +64,7 @@ include at least:
 
 - actor identity;
 - tenant and organization identity;
-- active API-key status;
+- OAuth grant identity, resource, status, and expiry;
 - authorized installed applications;
 - delegated roles; and
 - enabled plugins and capabilities.
@@ -74,11 +74,12 @@ authority for the named application/group fails closed and returns no tool
 manifest. The service must use one consistent forbidden/not-found policy that
 does not disclose another tenant's installation state.
 
-Route names are product selectors only. The one bearer key and canonical
-installed-app records determine authority. A client may maintain simultaneous
-connections for multiple named groups, all authenticated by the same principal.
-The key resolves exactly one user and role. The server evaluates every request
-exclusively from that bearer and never accepts actor, tenant, organization,
+Route names are product selectors only. The validated resource-scoped OAuth
+grant and canonical installed-app records determine authority. A client may
+maintain simultaneous connections for multiple named groups, each with its own
+grant. A grant resolves exactly one user, organization, installation, and role
+for its named resource. The server evaluates every request exclusively from
+that grant and never accepts actor, tenant, organization,
 installation, role, plugin, or capability authority from client arguments.
 
 ## Resource-group registry
@@ -323,7 +324,7 @@ The server must fail closed with sanitized errors:
 
 | Condition | Required result |
 | --- | --- |
-| Missing, invalid, expired, or revoked API key | HTTP `401` |
+| Missing, invalid, expired, revoked, or wrong-resource OAuth token | HTTP `401` |
 | Unknown application/group route | HTTP `404`; no broad fallback |
 | Authenticated principal lacks group authority | Consistent non-disclosing `403` or `404` policy |
 | Zero enabled installation scopes | MCP tool unavailable/authorization error |
@@ -333,7 +334,7 @@ The server must fail closed with sanitized errors:
 | Provider authorization required | Existing sanitized `authorization_required` tool result |
 | Mutation result uncertain after disconnect | Reconcile by operation/idempotency identity before replay |
 
-Errors and logs must not contain API keys, provider secrets, raw tokens, or
+Errors and logs must not contain provider secrets, raw OAuth tokens, or
 another tenant's identifiers.
 
 ## Required automated tests

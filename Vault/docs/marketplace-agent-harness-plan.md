@@ -1,6 +1,6 @@
 # BOS marketplace and agent-harness distribution plan
 
-Status: partially implemented; desktop authentication amended 2026-08-11
+Status: partially implemented; all runtime-product authentication amended 2026-08-16
 Date: 2026-08-09
 Owner: BOS Operations Center
 
@@ -97,7 +97,7 @@ Marketplace installation does not:
 - combine tools or credentials from multiple BOS routes into one operation; or
 - accept credentials or authority through plugin configuration fields.
 
-Each active Claude or ChatGPT/Codex runtime product has one host-managed OAuth
+Each active Claude, ChatGPT/Codex, OAuth-capable Copilot, or Gemini runtime product has one host-managed OAuth
 grant for its named connection. Different products may resolve different
 organizations and actors while each domain skill selects its matching named
 connection.
@@ -234,8 +234,7 @@ The generated `gemini-extension.json` contains:
 
 - the product name, version, and description;
 - the fixed remote MCP URL;
-- a declared sensitive product credential setting for each named BOS
-  connection;
+- OAuth discovery for each named BOS connection;
 - the generated skills directory; and
 - optional context or commands derived from canonical product sources.
 
@@ -246,16 +245,14 @@ The Education Center extension uses:
   "mcpServers": {
     "education-center": {
       "httpUrl": "https://dfsm.ai/mcp/apps/leaddirector/education-center",
-      "headers": {
-        "Authorization": "Bearer ${EDUCATION_CENTER_BOS_API_KEY}"
-      }
+      "oauth": { "enabled": true }
     }
   }
 }
 ```
 
 Gemini validation covers extension structural validation, installation from a
-public GitHub URL, sensitive-setting storage, named-route discovery, skill
+public GitHub URL, host-managed OAuth, named-route discovery, skill
 activation, reads, mutations, provider authorization recovery, restart,
 extension update, and removal. After direct GitHub installation passes, submit
 the extension for Gemini Extensions Gallery discovery.
@@ -265,9 +262,9 @@ the extension for Gemini Extensions Gallery discovery.
 Continue generating a Copilot adapter from the same product manifest so the
 repository preserves its declared cross-client parity.
 
-The adapter contains the fixed named MCP route, references the product-specific
-key through Copilot's supported secret configuration, and carries prompts or
-instructions derived from the canonical skills. Validate organization-level
+The adapter contains the fixed named MCP route without headers or credential
+fields and carries prompts or instructions derived from the canonical skills.
+Copilot IDE and CLI discover OAuth and hold the resource-scoped grant. Validate
 installation, policy controls, MCP discovery, representative reads and
 mutations, and credential containment.
 
@@ -341,7 +338,7 @@ Deliverables:
 - live `/mcp/apps/leaddirector/education-center` route;
 - approved and live Lead Director video-group route;
 - group-specific server-advertised tool manifests;
-- API-key authentication and authorization enforcement;
+- resource-scoped OAuth authentication and authorization enforcement;
 - unknown and unauthorized route rejection;
 - provider authorization, audit, PO/GO, and idempotency evidence; and
 - application-repository approval evidence for each public route.
@@ -398,7 +395,7 @@ Deliverables:
 - preserved server-returned operational authorization context;
 - feedback and provider recovery over the configured named connection;
 - installers that request no route or application value;
-- launchers that bind only approved credentials; and
+- removal of credential-injection launchers; and
 - customer-extension and settings preservation tests.
 
 Exit gate: a clean client installation requires no application or group input.
@@ -418,7 +415,7 @@ Subtracks:
 Deliverables:
 
 - generated plugin manifests, MCP configuration, and skills;
-- sensitive BOS API-key enablement;
+- host-managed OAuth enablement without package credential fields;
 - marketplace root entries;
 - live install, discovery, workflow, recovery, update, and reinstall evidence;
   and
@@ -621,8 +618,8 @@ and retain all fail-closed authorization behavior.
 
 1. Remove installed-app-ID questions and settings from every installer.
 2. Install each product's generated host-native runtime binding.
-3. Complete host-managed OAuth for Claude and Codex; keep their packages free
-   of BOS credential fields.
+3. Complete host-managed OAuth for Claude, Codex, OAuth-capable Copilot, and
+   Gemini; keep every package free of BOS credential fields.
 4. Preserve customer-owned skill extensions and non-route settings.
 5. Regenerate deterministic archives, stable customer ZIPs, release manifests,
    checksums, and marketplace packages.
@@ -642,7 +639,7 @@ actual server before marketplace publication.
 4. Verify authentication, tenant isolation, role and plugin enforcement,
    provider authorization recovery, PO/GO mutation boundaries, audit, and
    idempotency.
-5. Verify that an API key cannot use an unauthorized application/group route.
+5. Verify that an OAuth token cannot use an unauthorized application/group route.
 6. Verify that unknown application and group names fail closed.
 
 Exit gate: signed or otherwise canonical application-repository evidence
@@ -654,7 +651,7 @@ Run a shared behavioral matrix in Claude Code, Claude Desktop, Codex, ChatGPT,
 Gemini CLI, and Copilot:
 
 1. fresh package installation;
-2. secure API-key configuration;
+2. host-managed OAuth authorization;
 3. exact named URL inspection;
 4. MCP initialization and tool discovery;
 5. skill discovery and activation;
@@ -663,7 +660,7 @@ Gemini CLI, and Copilot:
 8. missing provider authorization and successful BOS-hosted recovery;
 9. transport loss, reconnection, and request continuation;
 10. uncertain mutation reconciliation without blind replay;
-11. invalid or revoked credential rejection;
+11. invalid, revoked, or wrong-resource OAuth grant rejection;
 12. unauthorized application/group rejection;
 13. package update and customer-extension preservation; and
 14. uninstall and clean reinstall.
@@ -734,7 +731,7 @@ approved representative workflows.
 ### Integration tests
 
 - remote Streamable HTTP initialization;
-- bearer authentication;
+- resource-scoped OAuth token validation;
 - server context validation;
 - read and write workflows;
 - provider authorization recovery;
@@ -795,8 +792,8 @@ bounded support window. Rollback never restores broad MCP fallback authority.
 | A package group is mistaken for a separate BOS application. | Require separate `application_name` and `mcp_group_name` fields and assert the complete route in tests. |
 | Harnesses drift in endpoint or credentials. | Use one product manifest and one route builder with generated-output parity tests. |
 | A group name changes after publication. | Treat names as stable public API; use explicit migration and release notes for any future rename. |
-| A marketplace asks for configuration that could alter scope. | Expose only supported secret configuration; keep route fields immutable and fail submission rather than weaken authority. |
-| Provider authorization is confused with BOS client authentication. | Keep BOS API-key authentication and BOS-hosted provider recovery as separate documented flows. |
+| A marketplace asks for configuration that could alter scope. | Expose no BOS credential configuration; keep route fields immutable and fail submission rather than weaken authority. |
+| Provider authorization is confused with BOS client authentication. | Keep host-managed BOS OAuth and BOS-hosted provider recovery as separate documented flows. |
 | Public artifacts expose customer information. | Retain deterministic credential and customer-data scans before release. |
 
 ## Documentation deliverables

@@ -11,7 +11,8 @@ Discover the live schemas. Expected semantic tools:
 | `reputation_search_profiles` | BOS scope and bounded query | Return verified profile and provider-issued write-review URL |
 | `reputation_search_reviews` | BOS scope and profile ID | Return recent public reviews and ratings |
 
-All calls require the authenticated MCP key and current plugin capability grant.
+All calls require the validated resource-scoped OAuth grant and current plugin
+capability grant.
 The server derives `run_as_role` from installed-app FSM metadata.
 
 Google Business Profile customer onboarding uses the shared BOS Google Cloud

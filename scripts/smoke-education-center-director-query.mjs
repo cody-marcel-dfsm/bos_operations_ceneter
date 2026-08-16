@@ -173,13 +173,13 @@ export function serverRemediationPrompt({
     "Failure evidence:",
     JSON.stringify(safe, null, 2),
     "Required server resolution:",
-    "1. Authenticate the existing client EDUCATION_CENTER_BOS_API_KEY and derive exactly one Education Center installation, organization, actor, and delegated role.",
+    "1. Validate the release-only resource-scoped OAuth access token and derive exactly one Education Center installation, organization, actor, and delegated role.",
     "2. Enable the education-center resource group in canonical installed-app metadata for that principal.",
     `3. Publish the exact required report tools: ${EDUCATION_CENTER_DIRECTOR_REQUIRED_TOOLS.join(", ")}.`,
     "4. Ensure the Calimatic plugin publishes calimatic_list_enrollments and calimatic_search_students so the named route aliases them to education_center_list_enrollments and education_center_search_students.",
     "5. Execute education_center_list_enrollments with server-derived scope and query.start_date/query.end_date; return structured class-enrollment records with class date, student, guardian, and family-phone fields when provider data contains them.",
-    "6. Keep org_id, app_code, installed_app_id, and delegated_role_id out of public tool arguments; do not change the endpoint or create another API key.",
-    "7. Redeploy, then run npm run smoke:mcp:education-center-data with the authorized Education Center key until this query passes.",
+    "6. Keep org_id, app_code, installed_app_id, and delegated_role_id out of public tool arguments; do not change the endpoint or mint another grant.",
+    "7. Redeploy, then run npm run smoke:mcp:education-center-data with the authorized release OAuth token until this query passes.",
     "Owning server surfaces: backend/platform_orchestration/mcp_operational_profiles.py, agent_operation_catalog.py, canonical installed-app metadata, operation registry, and Calimatic provider binding."
   ].join("\n");
 }
@@ -193,7 +193,7 @@ export class EducationCenterDirectorSmokeFailure extends Error {
 }
 
 export async function runEducationCenterDirectorSmoke({
-  apiKey,
+  accessToken,
   endpoint = EDUCATION_CENTER_DIRECTOR_ENDPOINT,
   fetchImpl = fetch,
   now = new Date(),
@@ -205,7 +205,9 @@ export async function runEducationCenterDirectorSmoke({
   if (endpoint !== EDUCATION_CENTER_DIRECTOR_ENDPOINT) {
     throw new Error("The Education Center director smoke test accepts only the approved endpoint");
   }
-  if (!apiKey) throw new Error("EDUCATION_CENTER_BOS_API_KEY is absent from this process");
+  if (!accessToken) {
+    throw new Error("EDUCATION_CENTER_RELEASE_OAUTH_ACCESS_TOKEN is absent from this process");
+  }
   const week = currentLocalWeek(now, timeZone);
   startDate ||= week.startDate;
   endDate ||= week.endDate;
@@ -213,7 +215,7 @@ export async function runEducationCenterDirectorSmoke({
     endpoint,
     reportingWindow: { startDate, endDate },
     timeZone,
-    credentialPresent: true
+    oauthAccessTokenPresent: true
   };
   let lastCorrelationId;
   let sessionId;
@@ -221,7 +223,7 @@ export async function runEducationCenterDirectorSmoke({
     onProgress?.({ phase, state: "started" });
     const headers = {
       Accept: "application/json, text/event-stream",
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
       "MCP-Protocol-Version": "2025-03-26"
     };
@@ -428,7 +430,7 @@ export async function runEducationCenterDirectorSmoke({
 async function main() {
   try {
     const report = await runEducationCenterDirectorSmoke({
-      apiKey: process.env.EDUCATION_CENTER_BOS_API_KEY,
+      accessToken: process.env.EDUCATION_CENTER_RELEASE_OAUTH_ACCESS_TOKEN,
       onProgress: ({ phase, state, status }) => {
         if (state === "started") {
           console.error(`[Education Center build smoke] ${phase} started`);

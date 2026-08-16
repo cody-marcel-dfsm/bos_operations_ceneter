@@ -15,11 +15,11 @@ Use these package-owned technical identities:
   `https://dfsm.ai/mcp/apps/leaddirector/education-center`.
 - Codex registered app: `asdk_app_6a7cb1cc330c81918aa63d96aeeaba91`.
 
-Claude and ChatGPT/Codex desktop installations authorize that immutable
-resource through host-managed OAuth 2.1. Claude declares it directly; Codex
-references the registered Education Center app through `.app.json`. Their
-package source and generated clients contain no API-key binding. Copilot and Gemini retain their existing
-client-specific adapters until separately migrated.
+Claude, ChatGPT/Codex desktop, OAuth-capable GitHub Copilot hosts, Gemini CLI,
+and Antigravity Desktop authorize that immutable resource through host-managed
+OAuth 2.1. Claude, Copilot, and Gemini declare it directly; Codex references the
+registered Education Center app through `.app.json`. Package source and
+generated clients contain no BOS credential binding.
 
 During customer initialization, complete the product connection's host-managed
 authentication before eliciting settings. Then derive or propose the tenant's

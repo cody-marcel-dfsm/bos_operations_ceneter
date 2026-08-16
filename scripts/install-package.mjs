@@ -1,4 +1,4 @@
-import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import {
   chmod,
@@ -109,369 +109,41 @@ function parseArgs(argv) {
   return options;
 }
 
-export function codexBosMcpRegistration(
-  applicationName,
-  mcpGroupName,
-  credentialEnvVar
-) {
-  const stableName = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-  if (!stableName.test(applicationName ?? "") ||
-      !stableName.test(mcpGroupName ?? "")) {
-    throw new Error("Application and MCP group names must be kebab-case strings");
-  }
-  if (!/^[A-Z][A-Z0-9_]*$/.test(credentialEnvVar ?? "")) {
-    throw new Error("Credential environment binding must be an uppercase identifier");
-  }
-  const url = `https://dfsm.ai/mcp/apps/${applicationName}/${mcpGroupName}`;
-  return {
-    name: mcpGroupName,
-    url,
-    bearer_token_env_var: credentialEnvVar,
-    args: [
-      "mcp", "add", mcpGroupName, "--url", url,
-      "--bearer-token-env-var", credentialEnvVar
-    ]
-  };
-}
-
-function sameSecret(left, right) {
-  const digest = (value) => createHash("sha256").update(value).digest();
-  return timingSafeEqual(digest(left), digest(right));
-}
-
-function parseMcpPayload(text) {
-  const candidates = String(text ?? "")
-    .split("\n")
-    .filter((line) => line.startsWith("data:"))
-    .map((line) => line.slice(5).trim());
-  for (const candidate of candidates.length ? candidates : [String(text ?? "").trim()]) {
-    if (!candidate) continue;
-    try {
-      return JSON.parse(candidate);
-    } catch {
-      // Continue until a complete JSON or SSE data payload is found.
-    }
-  }
-  return undefined;
-}
-
-const namedMcpRequiredTools = new Map([
-  ["leaddirector/education-center", [
-    "bos_get_context",
-    "education_center_get_email_thread",
-    "education_center_list_enrollments",
-    "education_center_search_calendar_events",
-    "education_center_search_email_evidence",
-    "education_center_search_leads",
-    "education_center_search_students"
-  ]],
-  ["leaddirector/video-ads", [
-    "bos_get_context",
-    "video_ads_get_readiness",
-    "video_ads_list_options",
-    "video_ads_start_generation",
-    "video_ads_get_generation",
-    "video_ads_list_generations",
-    "video_ads_retry_transfer"
-  ]]
-]);
-
-const namedMcpApplicationCodes = new Map([
-  ["leaddirector", "lead_director"]
-]);
-
-function requiredNamedMcpTools(applicationName, mcpGroupName) {
-  return namedMcpRequiredTools.get(`${applicationName}/${mcpGroupName}`);
-}
-
-export async function verifyNamedMcpBearer({
-  apiKey,
-  endpoint,
-  applicationName,
-  mcpGroupName,
-  fetchImpl = fetch
-}) {
-  if (!apiKey) {
-    return { state: "configuration_required", reason: "bos_api_key_missing" };
-  }
-  let sessionId;
-  const post = async (body) => {
-    const headers = {
-      Accept: "application/json, text/event-stream",
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "MCP-Protocol-Version": "2025-03-26"
-    };
-    if (sessionId) headers["Mcp-Session-Id"] = sessionId;
-    const response = await fetchImpl(endpoint, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(30_000),
-      redirect: "error"
-    });
-    sessionId = response.headers.get("mcp-session-id") ?? sessionId;
-    return {
-      status: response.status,
-      payload: parseMcpPayload(await response.text())
-    };
-  };
-  try {
-    const initialize = await post({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "initialize",
-      params: {
-        protocolVersion: "2025-03-26",
-        capabilities: {},
-        clientInfo: { name: "bos-install-verifier", version: "1" }
-      }
-    });
-    if (initialize.status !== 200 || initialize.payload?.error ||
-        initialize.payload?.result?.protocolVersion !== "2025-03-26") {
-      return {
-        state: "configuration_required",
-        reason: "named_mcp_initialize_rejected"
-      };
-    }
-    const initialized = await post({
-      jsonrpc: "2.0",
-      method: "notifications/initialized",
-      params: {}
-    });
-    if (initialized.status < 200 || initialized.status >= 300 ||
-        initialized.payload?.error) {
-      return {
-        state: "configuration_required",
-        reason: "named_mcp_initialization_failed"
-      };
-    }
-    const listed = await post({
-      jsonrpc: "2.0",
-      id: 2,
-      method: "tools/list",
-      params: {}
-    });
-    const names = listed.payload?.result?.tools
-      ?.map((tool) => tool?.name)
-      .filter(Boolean) ?? [];
-    const requiredTools = requiredNamedMcpTools(applicationName, mcpGroupName);
-    if (!requiredTools) {
-      return {
-        state: "configuration_required",
-        reason: "named_mcp_tool_contract_missing"
-      };
-    }
-    const missingTools = requiredTools.filter((name) => !names.includes(name));
-    if (listed.status !== 200 || listed.payload?.error || missingTools.length) {
-      return {
-        state: "configuration_required",
-        reason: "named_mcp_resource_group_unavailable"
-      };
-    }
-    const contextCall = await post({
-      jsonrpc: "2.0",
-      id: 3,
-      method: "tools/call",
-      params: { name: "bos_get_context", arguments: {} }
-    });
-    const result = contextCall.payload?.result;
-    const context = result?.structuredContent?.result;
-    const apps = Array.isArray(context?.apps) ? context.apps : [];
-    const roles = new Set(
-      apps.map((app) => app?.delegated_role_id).filter(Boolean)
-    );
-    const expectedApplicationCode = namedMcpApplicationCodes.get(applicationName);
-    if (contextCall.status !== 200 || contextCall.payload?.error ||
-        result?.isError !== false || !context?.installation_id ||
-        !context?.org_id || apps.length !== 1 || roles.size !== 1 ||
-        apps[0]?.app_code !== expectedApplicationCode) {
-      return {
-        state: "configuration_required",
-        reason: "named_mcp_context_invalid"
-      };
-    }
-    return { state: "current", tool_count: names.length };
-  } catch {
-    return {
-      state: "verification_required",
-      reason: "named_mcp_live_check_failed"
-    };
-  }
-}
-
-export async function codexHostBearerState(
-  runCommand = execFileAsync,
-  { credentialEnvVar, expectedApiKey, verifyBearer } = {}
-) {
-  if (process.platform !== "darwin") {
-    return {
-      state: "verification_required",
-      reason: "codex_host_inspection_unsupported"
-    };
-  }
-  try {
-    const processes = await runCommand("ps", ["-axo", "pid=,command="]);
-    const line = String(processes?.stdout ?? processes ?? "")
-      .split("\n")
-      .find((candidate) =>
-        candidate.includes("/Applications/ChatGPT.app/Contents/Resources/codex") &&
-        candidate.includes("app-server")
-      );
-    if (!line) {
-      return { state: "configuration_required", reason: "codex_host_not_running" };
-    }
-    const pid = Number(line.trim().split(/\s+/, 1)[0]);
-    const environment = await runCommand("ps", ["eww", "-p", String(pid), "-o", "command="]);
-    const command = String(environment?.stdout ?? environment ?? "");
-    if (!/^[A-Z][A-Z0-9_]*$/.test(credentialEnvVar ?? "")) {
-      return {
-        state: "configuration_required",
-        reason: "codex_host_credential_binding_invalid",
-        pid
-      };
-    }
-    const match = command.match(
-      new RegExp(`(?:^|\\s)${credentialEnvVar}=(\\S+)`)
-    );
-    if (!match) {
-      return {
-        state: "configuration_required",
-        reason: "codex_host_product_api_key_missing",
-        pid
-      };
-    }
-    const activeApiKey = match[1];
-    if (expectedApiKey && !sameSecret(activeApiKey, expectedApiKey)) {
-      return {
-        state: "configuration_required",
-        reason: "codex_host_product_api_key_mismatch",
-        pid
-      };
-    }
-    if (verifyBearer) {
-      const live = await verifyBearer(activeApiKey);
-      if (live.state !== "current") return { ...live, pid };
-      return { state: "current", pid, tool_count: live.tool_count };
-    }
-    return { state: "current", pid };
-  } catch {
-    return {
-      state: "verification_required",
-      reason: "codex_host_inspection_failed"
-    };
-  }
-}
-
-async function configureCodexBosMcp(options, paths) {
+async function configureCodexBosMcp(_options, paths) {
   const metadata = await readJson(join(paths.target, ".bos-product.json"));
-  if (metadata.authentication === "oauth_2_1") {
-    const appPath = join(paths.target, ".app.json");
-    const runtimePath = join(paths.target, ".mcp.json");
-    if (!(await pathExists(appPath)) || await pathExists(runtimePath)) {
-      throw new Error("Packaged Codex app binding is invalid");
-    }
-    const appManifest = await readJson(appPath);
-    const appEntries = Object.entries(appManifest.apps ?? {});
-    const [appName, app] = appEntries[0] ?? [];
-    const expectedUrl =
-      `https://dfsm.ai/mcp/apps/${metadata.application_name}/${metadata.mcp_group_name}`;
-    if (appEntries.length !== 1 || appName !== metadata.name ||
-        app?.id !== metadata.codex_app_id || app?.required !== true ||
-        !/^asdk_app_[a-z0-9]+$/.test(app?.id ?? "") ||
-        "credential_env_var" in metadata) {
-      throw new Error("Packaged Codex app binding is invalid");
-    }
-    return {
-      state: "host_managed",
-      name: metadata.mcp_group_name,
-      url: expectedUrl,
-      app_id: app.id,
-      authentication: "oauth_2_1",
-      next_action: "connect"
-    };
-  }
+  const appPath = join(paths.target, ".app.json");
   const runtimePath = join(paths.target, ".mcp.json");
-  if (!(await pathExists(runtimePath))) return { state: "not_applicable" };
-  const runtime = await readJson(runtimePath);
-  const runtimeServer = Object.values(runtime.mcpServers ?? {})[0];
-  if (!runtimeServer) return { state: "not_applicable" };
-  const registration = codexBosMcpRegistration(
-    metadata.application_name,
-    metadata.mcp_group_name,
-    metadata.credential_env_var
-  );
-  if (runtimeServer.url !== registration.url) {
-    throw new Error("Packaged MCP resource-group URL does not match product metadata");
-  }
-  const runCommand = options.runCommand ?? execFileAsync;
-  const environment = options.environment ?? process.env;
-  const verifyBearer = (apiKey) => (
-    options.verifyNamedMcpBearer ?? verifyNamedMcpBearer
-  )({
-    apiKey,
-    endpoint: registration.url,
-    applicationName: metadata.application_name,
-    mcpGroupName: metadata.mcp_group_name,
-    fetchImpl: options.fetchImpl
-  });
-  const host = await (options.inspectCodexHost
-    ? options.inspectCodexHost({
-        credentialEnvVar: metadata.credential_env_var,
-        expectedApiKey: environment[metadata.credential_env_var],
-        verifyBearer
-      })
-    : codexHostBearerState(runCommand, {
-        credentialEnvVar: metadata.credential_env_var,
-        expectedApiKey: environment[metadata.credential_env_var],
-        verifyBearer
-      }));
-  let credentialState = host;
-  if (host.state === "verification_required" &&
-      host.reason === "codex_host_inspection_unsupported") {
-    const apiKey = environment[metadata.credential_env_var];
-    if (!apiKey) {
-      credentialState = {
-        state: "configuration_required",
-        reason: "codex_customer_environment_product_api_key_missing"
-      };
-    } else {
-      const live = await verifyBearer(apiKey);
-      credentialState = live.state === "current"
-        ? {
-            state: "current",
-            credential_source: "customer_environment",
-            tool_count: live.tool_count
-          }
-        : live;
+  if (metadata.authentication === "none") {
+    if (metadata.application_name !== undefined ||
+        metadata.mcp_group_name !== undefined ||
+        await pathExists(appPath) || await pathExists(runtimePath)) {
+      throw new Error("Skills-only Codex package contains an MCP binding");
     }
+    return { state: "not_applicable" };
   }
-  await runCommand("codex", registration.args);
-  const verification = await runCommand("codex", ["mcp", "get", registration.name]);
-  const output = String(verification?.stdout ?? verification ?? "");
-  if (!output.includes(`url: ${registration.url}`) ||
-      !output.includes(`bearer_token_env_var: ${registration.bearer_token_env_var}`)) {
-    throw new Error("Codex BOS MCP registration verification failed");
+  if (metadata.authentication !== "oauth_2_1" ||
+      !(await pathExists(appPath)) || await pathExists(runtimePath)) {
+    throw new Error("Packaged Codex app binding is invalid");
   }
-  if (credentialState.state !== "current") {
-    return {
-      ...credentialState,
-      url: registration.url,
-      bearer_token_env_var: registration.bearer_token_env_var
-    };
+  const appManifest = await readJson(appPath);
+  const appEntries = Object.entries(appManifest.apps ?? {});
+  const [appName, app] = appEntries[0] ?? [];
+  const expectedUrl =
+    `https://dfsm.ai/mcp/apps/${metadata.application_name}/${metadata.mcp_group_name}`;
+  if (appEntries.length !== 1 || appName !== metadata.name ||
+      app?.id !== metadata.codex_app_id || app?.required !== true ||
+      !/^asdk_app_[a-z0-9]+$/.test(app?.id ?? "") ||
+      "credential_env_var" in metadata) {
+    throw new Error("Packaged Codex app binding is invalid");
   }
-  const current = {
-    state: "current",
-    name: registration.name,
-    url: registration.url,
-    bearer_token_env_var: registration.bearer_token_env_var,
-    tool_count: credentialState.tool_count
+  return {
+    state: "host_managed",
+    name: metadata.mcp_group_name,
+    url: expectedUrl,
+    app_id: app.id,
+    authentication: "oauth_2_1",
+    next_action: "connect"
   };
-  if (credentialState.pid) current.host_pid = credentialState.pid;
-  if (credentialState.credential_source) {
-    current.credential_source = credentialState.credential_source;
-  }
-  return current;
 }
 
 function commandOutput(result) {

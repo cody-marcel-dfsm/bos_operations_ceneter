@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
 import {
   access,
   chmod,
@@ -19,14 +18,11 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 import {
   applyInstallation as applyInstallationRaw,
-  codexBosMcpRegistration,
-  codexHostBearerState,
   deriveInitialCustomerSettings,
   inspectInstallation,
   migrateLegacyCodexLayout,
   reconcileDisabledCodexProducts,
   validateCustomerSettings,
-  verifyNamedMcpBearer,
   verifyInstallation as verifyInstallationRaw
 } from "../scripts/install-package.mjs";
 import { createCustomerExtension } from "../scripts/create-extension.mjs";
@@ -69,59 +65,9 @@ const customerSettings = {
   }
 };
 
-const mcpApplication = "leaddirector";
-const mcpResourceGroup = "education-center";
-const credentialEnvVar = "EDUCATION_CENTER_BOS_API_KEY";
+const legacyCredentialEnvVar = "LEGACY_BOS_CREDENTIAL";
 const resourceGroupUrl = "https://dfsm.ai/mcp/apps/leaddirector/education-center";
 const codexAppId = "asdk_app_6a7cb1cc330c81918aa63d96aeeaba91";
-
-test("macOS launcher strips undeclared BOS credentials", (context) => {
-  if (process.platform !== "darwin") {
-    context.skip("macOS launcher isolation");
-    return;
-  }
-  const result = spawnSync("swift", [
-    "-module-cache-path", "/tmp/bos-swift-module-cache",
-    "scripts/launch-codex-with-bos.swift",
-    "--binding", `${credentialEnvVar}=test-secret-name`,
-    "--check-environment-isolation"
-  ], {
-    cwd: root,
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      [["BOS", "API", "KEY"].join("_")]: "unscoped-must-not-survive",
-      VIDEO_ADS_BOS_API_KEY: "disabled-must-not-survive"
-    }
-  });
-  assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /isolation check passed/);
-  assert.doesNotMatch(result.stdout, /legacy-must-not-survive|disabled-must-not-survive/);
-});
-
-test("macOS launcher passes the isolated environment to the app executable", async () => {
-  const launcher = await readFile(
-    join(root, "scripts", "launch-codex-with-bos.swift"),
-    "utf8"
-  );
-  const unscopedCredentialName = ["BOS", "API", "KEY"].join("_");
-
-  assert.match(launcher, /process\.executableURL = executable/);
-  assert.match(launcher, /process\.environment = isolatedEnvironment/);
-  assert.match(launcher, /isatty\(STDIN_FILENO\)/);
-  assert.ok(
-    launcher.indexOf("try requireInteractiveLaunch()") <
-      launcher.indexOf("var credentials: [String: String] = [:]"),
-    "interactive launch must be required before managed credentials are read"
-  );
-  assert.match(launcher, /Type RESTART CHATGPT/);
-  assert.doesNotMatch(launcher, /NSWorkspace\.OpenConfiguration/);
-  assert.doesNotMatch(launcher, /--force-replace|forceTerminate/);
-  assert.doesNotMatch(
-    launcher,
-    new RegExp(`(?<![A-Z0-9_])${unscopedCredentialName}(?![A-Z0-9_])`)
-  );
-});
 
 async function fakeCodex(_command, args) {
   if (args[0] === "mcp" && args[1] === "get") {
@@ -131,11 +77,7 @@ async function fakeCodex(_command, args) {
     };
     const url = `https://dfsm.ai/mcp/apps/leaddirector/${group}`;
     return {
-      stdout: [
-        group,
-        `  url: ${url}`,
-        `  bearer_token_env_var: ${credentialEnvVar}`
-      ].join("\n")
+      stdout: [group, `  url: ${url}`].join("\n")
     };
   }
   return { stdout: "" };
@@ -156,40 +98,6 @@ function verifyInstallation(options) {
     ...options
   });
 }
-
-test("Codex runtime registration uses the product credential binding", () => {
-  assert.deepEqual(codexBosMcpRegistration(
-    mcpApplication,
-    mcpResourceGroup,
-    credentialEnvVar
-  ), {
-    name: "education-center",
-    url: resourceGroupUrl,
-    bearer_token_env_var: credentialEnvVar,
-    args: [
-      "mcp", "add", "education-center", "--url", resourceGroupUrl,
-      "--bearer-token-env-var", credentialEnvVar
-    ]
-  });
-  assert.throws(
-    () => codexBosMcpRegistration("leaddirector", "not a group", credentialEnvVar),
-    /kebab-case/
-  );
-});
-
-test("Codex runtime registration always uses immutable named package routes", () => {
-  const registration = codexBosMcpRegistration(
-    "leaddirector",
-    "education-center",
-    credentialEnvVar
-  );
-  assert.equal(
-    registration.url,
-    "https://dfsm.ai/mcp/apps/leaddirector/education-center"
-  );
-  assert(!registration.url.includes("installed_app_id"));
-  assert(!registration.args.includes("BOS_INSTALLED_APP_ID"));
-});
 
 test("Codex runtime installation derives app and resource group from product", async () => {
   const home = await temporaryHome();
@@ -214,7 +122,7 @@ test("Codex OAuth installation ignores legacy customer environment keys", async 
   const report = await applyInstallationRaw({
     home,
     product: "education-center",
-    environment: { [credentialEnvVar]: "legacy-value-must-not-be-read" },
+    environment: { [legacyCredentialEnvVar]: "legacy-value-must-not-be-read" },
     inspectCodexHost: async () => {
       inspectedHost = true;
       return { state: "current" };
@@ -459,184 +367,6 @@ test("disabled-product pruning ignores unrelated registrations and plugins", asy
   });
   assert.deepEqual(actions, []);
   assert(!calls.some((args) => args.includes("remove")));
-});
-
-test("Codex host inspection reads the active app-server environment", async (context) => {
-  if (process.platform !== "darwin") {
-    context.skip("macOS host inspection");
-    return;
-  }
-  const calls = [];
-  const report = await codexHostBearerState(async (_command, args) => {
-    calls.push(args);
-    if (args[0] === "-axo") {
-      return {
-        stdout: "4321 /Applications/ChatGPT.app/Contents/Resources/codex app-server\n"
-      };
-    }
-    return {
-      stdout: `/Applications/ChatGPT.app/Contents/Resources/codex app-server ${credentialEnvVar}=test-only`
-    };
-  }, { credentialEnvVar });
-  assert.deepEqual(report, { state: "current", pid: 4321 });
-  assert.deepEqual(calls[1], ["eww", "-p", "4321", "-o", "command="]);
-});
-
-test("Codex host inspection rejects a different active bearer", async () => {
-  const report = await codexHostBearerState(async (_command, args) => {
-    if (args[0] === "-axo") return {
-      stdout: "4321 /Applications/ChatGPT.app/Contents/Resources/codex app-server\n"
-    };
-    return {
-      stdout: `/Applications/ChatGPT.app/Contents/Resources/codex app-server ${credentialEnvVar}=stale-key`
-    };
-  }, { credentialEnvVar, expectedApiKey: "expected-key" });
-  assert.deepEqual(report, {
-    state: "configuration_required",
-    reason: "codex_host_product_api_key_mismatch",
-    pid: 4321
-  });
-});
-
-test("Codex host current state requires the active bearer to pass the named route", async () => {
-  let inspectedKey;
-  const report = await codexHostBearerState(async (_command, args) => {
-    if (args[0] === "-axo") return {
-      stdout: "4321 /Applications/ChatGPT.app/Contents/Resources/codex app-server\n"
-    };
-    return {
-      stdout: `/Applications/ChatGPT.app/Contents/Resources/codex app-server ${credentialEnvVar}=active-key`
-    };
-  }, {
-    credentialEnvVar,
-    verifyBearer: async (apiKey) => {
-      inspectedKey = apiKey;
-      return {
-        state: "configuration_required",
-        reason: "named_mcp_resource_group_unavailable"
-      };
-    }
-  });
-  assert.equal(inspectedKey, "active-key");
-  assert.deepEqual(report, {
-    state: "configuration_required",
-    reason: "named_mcp_resource_group_unavailable",
-    pid: 4321
-  });
-  assert.doesNotMatch(JSON.stringify(report), /active-key/);
-});
-
-test("named MCP bearer verification requires a usable scoped tool group", async () => {
-  const requests = [];
-  const fetchImpl = async (_url, options) => {
-    const body = JSON.parse(options.body);
-    requests.push({ body, headers: options.headers });
-    if (body.method === "initialize") return new Response(JSON.stringify({
-      jsonrpc: "2.0",
-      id: body.id,
-      result: { protocolVersion: "2025-03-26" }
-    }), { status: 200, headers: { "mcp-session-id": "install-session" } });
-    assert.equal(options.headers["Mcp-Session-Id"], "install-session");
-    if (body.method === "notifications/initialized") {
-      return new Response("", { status: 202 });
-    }
-    if (body.method === "tools/call") return new Response(JSON.stringify({
-      jsonrpc: "2.0",
-      id: body.id,
-      result: {
-        isError: false,
-        structuredContent: {
-          result: {
-            installation_id: "installed-app",
-            org_id: "organization",
-            apps: [{
-              app_code: "lead_director",
-              delegated_role_id: "operator"
-            }]
-          }
-        }
-      }
-    }), { status: 200 });
-    return new Response(JSON.stringify({
-      jsonrpc: "2.0",
-      id: body.id,
-      result: { tools: [
-        "bos_get_context",
-        "education_center_get_email_thread",
-        "education_center_list_enrollments",
-        "education_center_search_calendar_events",
-        "education_center_search_email_evidence",
-        "education_center_search_leads",
-        "education_center_search_students"
-      ].map((name) => ({ name })) }
-    }), { status: 200 });
-  };
-  const report = await verifyNamedMcpBearer({
-    apiKey: "test-key",
-    endpoint: resourceGroupUrl,
-    applicationName: mcpApplication,
-    mcpGroupName: mcpResourceGroup,
-    fetchImpl
-  });
-  assert.deepEqual(report, { state: "current", tool_count: 7 });
-  assert.equal(requests.length, 4);
-});
-
-for (const [label, exposedTools] of [
-  ["context-only", ["bos_get_context"]],
-  ["unrelated-domain", ["bos_get_context", "video_ads_get_readiness"]]
-]) {
-  test(`named MCP bearer verification rejects the ${label} catalog`, async () => {
-    const fetchImpl = async (_url, options) => {
-      const body = JSON.parse(options.body);
-      if (body.method === "initialize") return new Response(JSON.stringify({
-        jsonrpc: "2.0",
-        id: body.id,
-        result: { protocolVersion: "2025-03-26" }
-      }), { status: 200 });
-      if (body.method === "notifications/initialized") {
-        return new Response("", { status: 202 });
-      }
-      return new Response(JSON.stringify({
-        jsonrpc: "2.0",
-        id: body.id,
-        result: { tools: exposedTools.map((name) => ({ name })) }
-      }), { status: 200 });
-    };
-    const report = await verifyNamedMcpBearer({
-      apiKey: "test-key",
-      endpoint: resourceGroupUrl,
-      applicationName: mcpApplication,
-      mcpGroupName: mcpResourceGroup,
-      fetchImpl
-    });
-    assert.deepEqual(report, {
-      state: "configuration_required",
-      reason: "named_mcp_resource_group_unavailable"
-    });
-  });
-}
-
-test("named MCP bearer verification fails closed on unavailable resource group", async () => {
-  const report = await verifyNamedMcpBearer({
-    apiKey: "private-key",
-    endpoint: resourceGroupUrl,
-    applicationName: mcpApplication,
-    mcpGroupName: mcpResourceGroup,
-    fetchImpl: async () => new Response(JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      error: {
-        code: -32001,
-        message: "resource group unavailable for Jane Family private-key"
-      }
-    }), { status: 200 })
-  });
-  assert.deepEqual(report, {
-    state: "configuration_required",
-    reason: "named_mcp_initialize_rejected"
-  });
-  assert.doesNotMatch(JSON.stringify(report), /Jane|private-key/);
 });
 
 test("initialization derives safe client values, including an explicit brand", () => {

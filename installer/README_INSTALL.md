@@ -77,9 +77,12 @@ or canonical tenant scope.
 ## GitHub Copilot
 
 Copy the desired product skills from `clients/copilot/products/<product>/skills`
-into the repository's supported agent-skills directory. Follow that product's
-README for its current MCP authorization adapter. The Claude and Codex OAuth
-migration does not silently change Copilot authentication.
+into the repository's supported agent-skills directory. Install the product's
+`.github/mcp.json` for Copilot CLI or copy its server entry into
+`.vscode/mcp.json` for VS Code. Run `/mcp auth <group>` in Copilot CLI or select
+`Auth` above the VS Code server entry, then complete BOS sign-in. Copilot cloud
+agent and code review cannot load this runtime connection until they support
+remote MCP OAuth.
 
 ## Gemini CLI and Antigravity 2.0 Desktop
 

@@ -1,8 +1,8 @@
 # Local-First Skill and Package Implementation Plan
 
 > Historical foundation plan. Current transport and release requirements are
-> controlled by `DESIGN.md` and `IMPLEMENTATION_TASKS.md`: native remote
-> Streamable HTTP, one client-configured BOS API key, and OS-neutral packages.
+> controlled by the Vault architecture: native remote Streamable HTTP,
+> host-managed OAuth for every runtime product connection, and OS-neutral packages.
 
 ## Objective
 
