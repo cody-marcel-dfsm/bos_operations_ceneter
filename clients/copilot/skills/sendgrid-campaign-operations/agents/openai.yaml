@@ -1,0 +1,4 @@
+interface:
+  display_name: "SendGrid Campaign Operations"
+  short_description: "Build, run, and measure email campaigns"
+  default_prompt: "Use $sendgrid-campaign-operations to build an approved audience, run a SendGrid campaign, and report its lifecycle metrics."

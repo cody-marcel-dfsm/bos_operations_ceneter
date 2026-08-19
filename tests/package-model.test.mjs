@@ -65,6 +65,39 @@ test("Education Center packages include customer-neutral settings defaults", asy
   }
 });
 
+test("Education Center packages include governed SendGrid campaign operations", async () => {
+  const products = await listProducts();
+  const educationCenter = products.find(
+    ({ manifest }) => manifest.name === "education-center"
+  );
+  assert(educationCenter, "education-center product must exist");
+  assert(
+    educationCenter.manifest.includes.includes(
+      "capabilities/sendgrid-campaign-operations"
+    )
+  );
+
+  const skills = await resolveProductSkills(educationCenter.manifest);
+  const sendgrid = skills.find(
+    (skill) => skill.name === "sendgrid-campaign-operations"
+  );
+  assert(sendgrid, "education-center must include SendGrid campaign operations");
+
+  const guidance = await readFile(sendgrid.skillFile, "utf8");
+  const contract = await readFile(
+    `${sendgrid.sourcePath}/references/capability-contract.md`,
+    "utf8"
+  );
+  assert.match(guidance, /Gmail[\s\S]*Calimatic[\s\S]*Lead Director/i);
+  assert.match(guidance, /explicit user approval[\s\S]*external list send/i);
+  assert.match(guidance, /education_center_send_sendgrid_campaign/);
+  assert.match(guidance, /accepted[\s\S]*`delivered` only from delivery evidence/i);
+  assert.match(guidance, /reconcile uncertain mutation outcomes before retrying/i);
+  assert.match(contract, /pause, resume, cancel, or reschedule/i);
+  assert.match(contract, /unique human opens[\s\S]*unique human clicks/i);
+  assert.match(contract, /Source membership or prior correspondence alone does not establish consent/i);
+});
+
 test("application runtime packages ship agent-owned MCP lifecycle recovery", async () => {
   const products = await listProducts();
   for (const product of products.filter(({ manifest }) => manifest.runtime)) {
