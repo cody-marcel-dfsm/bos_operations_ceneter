@@ -9,13 +9,13 @@
       "name": "bos",
       "source": "./plugins/bos",
       "description": "Tenant-neutral Business Operating System foundations.",
-      "version": "0.4.24"
+      "version": "0.4.25"
     },
     {
       "name": "education-center",
       "source": "./plugins/education-center",
       "description": "A childhood education franchise-in-a-box operating system for authorized adult education center staff through the tenant-scoped BOS MCP.",
-      "version": "0.4.24"
+      "version": "0.4.25"
     }
   ]
 }

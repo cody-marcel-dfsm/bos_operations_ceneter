@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.24",
+  "version": "0.4.25",
   "release_status": "active",
   "display_name": "BOS",
   "description": "Tenant-neutral Business Operating System foundations.",
