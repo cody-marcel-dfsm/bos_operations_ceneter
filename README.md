@@ -239,8 +239,7 @@ read-only enrollment query. Diagnostics contain sanitized status, tool names,
 correlation IDs, and aggregate field-presence counts only.
 
 `npm run release:customer` is an alias for the same complete validated release
-workflow. Tags matching `v*` run the customer-release workflow and publish the
-versioned and stable archive names.
+command.
 
 ## Other clients
 
