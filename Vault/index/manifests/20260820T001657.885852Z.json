@@ -1,7 +1,7 @@
 {
-  "indexed_at": "20260820T192137.682551Z",
+  "indexed_at": "20260820T001657.885852Z",
   "schema_version": "bos-vault-manifest/v1",
-  "source_count": 38,
+  "source_count": 37,
   "sources": {
     "Vault/README.md": {
       "bytes": 1015,
@@ -28,8 +28,8 @@
       "sha256": "fbf5ce6aed9aae7f611f3e5bff43b9148af49b4c12283f04678c5f0df36a7ccd"
     },
     "Vault/docs/architecture.md": {
-      "bytes": 12357,
-      "sha256": "04526eb1dadd703761e7418a220e9c9dbdc1db5b2c2959f20ab574be7c9a35b6"
+      "bytes": 11734,
+      "sha256": "e4afaf7458c71a42f341013d044199b1b9ae503e9897dd2b5c9bdf7466d57805"
     },
     "Vault/docs/bos-expertise-package-ecosystem-proposal.md": {
       "bytes": 21898,
@@ -126,10 +126,6 @@
     "Vault/reviews/2026-08-19-sendgrid-campaign-operations.md": {
       "bytes": 2153,
       "sha256": "895c6620a8e5510c83e41eb8917bbe4337743547bd90299545d9890efd496ede"
-    },
-    "Vault/reviews/2026-08-20-sendgrid-complete-client-workflow.md": {
-      "bytes": 2964,
-      "sha256": "a4deda2bbad2f93eef7d1ff01c18bc665bbd707ba2aeccfdb59ebb7c435cb693"
     },
     "Vault/schemas/decision-record.md": {
       "bytes": 439,

@@ -104,12 +104,21 @@ release system for portable BOS skills and native remote MCP client adapters.
     authenticated server context and fail closed on missing or ambiguous
     authority without broad-endpoint fallback.
 15. Make the agent responsible for the MCP client lifecycle during an active
-    request. When a transport stream or MCP session closes, reconnect the same
-    configured endpoint, rediscover its live tools, revalidate canonical
-    context, and resume the interrupted request with bounded retry. Reconcile
-    uncertain mutations by operation or idempotency identity before replay.
-    Require user action only for secure provider authorization or credential
-    entry surfaces that inherently need direct user interaction.
+    request. Refresh the callable manifest after initial connection, OAuth
+    reconnection, permission or execution-role changes, plugin updates,
+    capability refreshes, and transport or MCP session replacement. Reconnect
+    the same configured endpoint, rediscover live schemas, revalidate canonical
+    context, and resume the interrupted request with bounded retry. Preserve a
+    sanitized continuation envelope containing a task-local request reference
+    and sanitized request hash, server-owned workflow identities, approval
+    bindings, completed/pending steps, and stable
+    idempotency keys. Exclude tokens, credentials, raw authority IDs, provider
+    payloads, and customer records. When a host cannot refresh tools in place,
+    create or continue a same-task session, transfer that envelope, and resume
+    automatically. Reconcile uncertain mutations by operation or idempotency
+    identity before replay. Require user action only for secure provider
+    authorization or credential-entry surfaces that inherently need direct
+    user interaction.
 16. Distribute pre-publication Claude and Codex products through their native
     local or private Git marketplaces. Claude uses
     `.claude-plugin/marketplace.json`; Codex uses

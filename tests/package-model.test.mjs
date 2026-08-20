@@ -88,14 +88,186 @@ test("Education Center packages include governed SendGrid campaign operations", 
     `${sendgrid.sourcePath}/references/capability-contract.md`,
     "utf8"
   );
-  assert.match(guidance, /Gmail[\s\S]*Calimatic[\s\S]*Lead Director/i);
-  assert.match(guidance, /explicit user approval[\s\S]*external list send/i);
-  assert.match(guidance, /education_center_send_sendgrid_campaign/);
-  assert.match(guidance, /accepted[\s\S]*`delivered` only from delivery evidence/i);
-  assert.match(guidance, /reconcile uncertain mutation outcomes before retrying/i);
+  const workflow = await readFile(
+    `${sendgrid.sourcePath}/references/client-workflow.md`,
+    "utf8"
+  );
+  assert.match(guidance, /Calimatic[\s\S]*Lead Director[\s\S]*Gmail/i);
+  assert.match(guidance, /explicit approval[\s\S]*list send/i);
+  assert.match(`${guidance}\n${contract}`, /education_center_send_sendgrid_campaign/);
+  assert.match(guidance, /HTTP 202[\s\S]*accepted[\s\S]*delivered[\s\S]*authenticated/i);
+  assert.match(guidance, /Reconcile uncertain outcomes before any retry/i);
   assert.match(contract, /pause, resume, cancel, or reschedule/i);
   assert.match(contract, /unique human opens[\s\S]*unique human clicks/i);
   assert.match(contract, /Source membership or prior correspondence alone does not establish consent/i);
+  assert.match(guidance, /manifest refresh[\s\S]*same-task continuation/i);
+  assert.match(guidance, /deterministic test send[\s\S]*list send/i);
+  assert.match(guidance, /HTTP 202[\s\S]*accepted/i);
+  assert.match(contract, /Upsert capability issue/i);
+  assert.match(workflow, /returning\s+seasonal families[\s\S]*recent trials/i);
+  assert.match(workflow, /display exactly[\s\S]*UTF-8 subject[\s\S]*physical address/i);
+  await access(`${sendgrid.sourcePath}/scripts/validate_campaign_workflow_trace.py`);
+});
+
+test("SendGrid client trace validates the governed 229-recipient acceptance path", async () => {
+  const temporary = await mkdtemp(join(tmpdir(), "sendgrid-client-trace-"));
+  try {
+    const tracePath = join(temporary, "trace.json");
+    const metrics = (requested, suppressed, prepared, accepted, delivered) => ({
+      requested,
+      suppressed,
+      prepared,
+      accepted,
+      rejected: prepared - accepted,
+      delivered,
+      bounced: accepted - delivered,
+      unique_human_opens: 0,
+      unique_human_clicks: 0,
+      unsubscribes: 0,
+      complaints: 0,
+      conversions: 0,
+      authenticated_delivery_events: delivered > 0,
+      category: "ownership-transition",
+      reporting_cutoff: "2026-08-20T18:00:00Z"
+    });
+    const trace = {
+      schema_version: "education-center-sendgrid-campaign-trace/v1",
+      connection: "education-center",
+      context_verified: true,
+      same_task_continuation_supported: true,
+      manifest_refresh_policy: [
+        "initial_connection",
+        "oauth_reconnection",
+        "permission_change",
+        "plugin_update",
+        "capability_refresh",
+        "session_replacement"
+      ],
+      manifest_refreshes: [{
+        trigger: "capability_refresh",
+        manifest_fingerprint: "sha256:manifest-v2",
+        context_revalidated: true,
+        preserved_fields: [
+          "active_user_request",
+          "campaign_draft",
+          "audience_identity",
+          "approval_state",
+          "idempotency_keys"
+        ]
+      }],
+      session: {
+        request_hash: "sha256:request",
+        draft_id: "draft-1",
+        audience_id: "audience-1",
+        campaign_id: "campaign-1",
+        idempotency_keys: {
+          test_send: "campaign-1:test:v1",
+          list_send: "campaign-1:live:v1"
+        }
+      },
+      expected_eligible: 229,
+      expected_named_recipients: ["Max", "Jeremy"],
+      audience: {
+        matched: 248,
+        unique: 235,
+        eligible: 229,
+        excluded: 6,
+        suppressed: 6,
+        counts_by_source: { calimatic: 120, lead_director: 115 },
+        counts_by_cohort: { returning_spring: 112, camp_customers: 139 },
+        suppression_counts: { unsubscribed: 3, bounced: 2, do_not_email: 1 },
+        provenance_preserved: true,
+        overlapping_tags_preserved: true,
+        named_recipients: [
+          { display_name: "Max", included: true, governed_update: true },
+          { display_name: "Jeremy", included: true, governed_update: true }
+        ]
+      },
+      content_preview: {
+        displayed_fields: [
+          "subject_utf8",
+          "html_utf8",
+          "plain_text_utf8",
+          "sender",
+          "reply_to",
+          "campaign_dates",
+          "contact_information",
+          "category",
+          "unsubscribe_configuration",
+          "tracking_configuration",
+          "physical_address"
+        ],
+        exact_utf8_displayed: true,
+        content_hash: "sha256:utf8-content",
+        audience_version: "audience-v2",
+        category: "ownership-transition"
+      },
+      approval: {
+        explicit: true,
+        send_action: "list_send",
+        content_hash: "sha256:utf8-content",
+        audience_version: "audience-v2"
+      },
+      operations: [
+        {
+          sequence: 1,
+          mode: "test",
+          idempotency_key: "campaign-1:test:v1",
+          http_status: 202,
+          outcome: "accepted",
+          reconciled: true,
+          audience_count: 1
+        },
+        {
+          sequence: 2,
+          mode: "live",
+          idempotency_key: "campaign-1:live:v1",
+          http_status: 202,
+          outcome: "accepted",
+          reconciled: true,
+          audience_count: 229
+        }
+      ],
+      statistics: {
+        test: metrics(1, 0, 1, 1, 1),
+        live: metrics(235, 6, 229, 229, 227)
+      },
+      diagnostics: {
+        legacy_filesystem_token_used: false,
+        repository_sender_script_used: false,
+        direct_database_access_used: false,
+        raw_sendgrid_credential_used: false,
+        raw_recipient_addresses_exposed: false,
+        hashed_recipient_identities: true
+      },
+      missing_capabilities: []
+    };
+    await writeFile(tracePath, JSON.stringify(trace));
+    const validator =
+      `${root}/source/capabilities/sendgrid-campaign-operations/scripts/validate_campaign_workflow_trace.py`;
+    const { stdout } = await execFileAsync("python3", [validator, tracePath]);
+    assert.deepEqual(JSON.parse(stdout), { errors: [], status: "valid" });
+
+    const invalidTrace = structuredClone(trace);
+    invalidTrace.org_id = "actor-supplied-authority";
+    invalidTrace.approval.content_hash = "sha256:stale-content";
+    invalidTrace.missing_capabilities = ["audience_update"];
+    invalidTrace.capability_issue = {};
+    await writeFile(tracePath, JSON.stringify(invalidTrace));
+    await assert.rejects(
+      execFileAsync("python3", [validator, tracePath]),
+      (error) => {
+        const result = JSON.parse(error.stdout);
+        const message = result.errors.join("\n");
+        assert.match(message, /forbidden authority keys: org_id/i);
+        assert.match(message, /approval content hash is stale/i);
+        assert.match(message, /capability issue missing issue_id/i);
+        return true;
+      }
+    );
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
 });
 
 test("application runtime packages ship agent-owned MCP lifecycle recovery", async () => {
@@ -109,6 +281,9 @@ test("application runtime packages ship agent-owned MCP lifecycle recovery", asy
     assert.match(guidance, /agent owns the BOS MCP client lifecycle/i);
     assert.match(guidance, /reconnect or reinitialize/i);
     assert.match(guidance, /Never ask the user to reconnect BOS, resend the request/i);
+    assert.match(guidance, /permission or role changes[\s\S]*plugin install\/update[\s\S]*capability enablement/i);
+    assert.match(guidance, /sanitized continuation envelope/i);
+    assert.match(guidance, /same-task session/i);
     assert.match(guidance, /reconcile by[\s\S]*idempotency identifier/i);
     assert.match(guidance, /If BOS is absent from the callable tool manifest/i);
     assert.match(guidance, /Do not stop at\s+diagnosing client registration/i);
@@ -118,6 +293,7 @@ test("application runtime packages ship agent-owned MCP lifecycle recovery", asy
     assert.match(guidance, /sync_completed_at/);
     await access(`${client.sourcePath}/scripts/document-cache.mjs`);
     await access(`${client.sourcePath}/references/document-cache-protocol.md`);
+    await access(`${client.sourcePath}/references/runtime-continuation-contract.md`);
   }
 });
 
