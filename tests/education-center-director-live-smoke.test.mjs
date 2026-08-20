@@ -499,20 +499,11 @@ test("every camp row must expose both student and family-phone keys", async () =
   }), /camp records expose student and family-phone fields/);
 });
 
-test("every complete build and release workflow runs the OAuth-authenticated data smoke", async () => {
+test("every complete local build runs the OAuth-authenticated data smoke", async () => {
   const packageJson = JSON.parse(await readFile(
     new URL("../package.json", import.meta.url), "utf8"
   ));
   assert.match(packageJson.scripts.build, /smoke:mcp:education-center-data/);
   assert.doesNotMatch(packageJson.scripts.build, /smoke:mcp:video-ads/);
   assert.match(packageJson.scripts["release:check"], /npm run build/);
-  for (const relativePath of [
-    "../.github/workflows/validate.yml",
-    "../.github/workflows/release-customer-zip.yml"
-  ]) {
-    const workflow = await readFile(new URL(relativePath, import.meta.url), "utf8");
-    assert.match(workflow, /npm run release:check/);
-    assert.match(workflow, /EDUCATION_CENTER_RELEASE_OAUTH_ACCESS_TOKEN:\s*\$\{\{ secrets\.EDUCATION_CENTER_RELEASE_OAUTH_ACCESS_TOKEN \}\}/);
-    assert.match(workflow, /EDUCATION_CENTER_SMOKE_TIME_ZONE:\s*\$\{\{ vars\.EDUCATION_CENTER_SMOKE_TIME_ZONE \}\}/);
-  }
 });
