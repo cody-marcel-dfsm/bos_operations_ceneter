@@ -27,6 +27,10 @@ provisioning a client runtime operation.
 The agent owns the BOS MCP client lifecycle for the duration of the user's
 request.
 
+Read [references/runtime-continuation-contract.md](references/runtime-continuation-contract.md)
+before recovering authorization, refreshing a tool manifest, or continuing a
+stateful mutation workflow.
+
 - Discover and use the installed product's configured BOS MCP connection.
 - If BOS is absent from the callable tool manifest, inspect the active client's
   plugin and runtime binding immediately. Repair or reinstall the configured
@@ -43,9 +47,17 @@ request.
 - If the transport, stream, or MCP session closes, reconnect or reinitialize
   that same configured connection, rediscover its live tools, call
   `bos_get_context` again, and retry the interrupted read-only operation once.
+- Refresh the callable tool manifest immediately after OAuth reconnection,
+  permission or role changes, plugin install/update, capability enablement, or
+  an explicit server capability refresh. Discard stale schemas and validate the
+  next call only against the refreshed manifest.
 - Preserve the user's original request across recovery and continue it
   automatically. Never ask the user to reconnect BOS, resend the request, or
   start a new task.
+- Preserve the sanitized continuation envelope across every refresh, including
+  pending draft identities, approval state, operation identities, and
+  idempotency keys. Never place tokens, credentials, raw authority IDs, raw
+  provider payloads, or customer records in that envelope.
 - For a mutation whose completion is unknown after a disconnect, reconcile by
   its operation or idempotency identifier before deciding whether to resume.
   Never replay an uncertain mutation blindly.
@@ -53,8 +65,9 @@ request.
   secure provider sign-in or credential-entry surface that inherently requires
   the user's direct interaction. Never ask the user to paste a BOS key.
 - When the host requires a fresh session to load repaired tools, create or
-  continue that session through the client's task controls when available and
-  carry the original request into it. State the host boundary only when the
+  continue a same-task session through the client's task controls when
+  available, carry the continuation envelope into it, rediscover tools, verify
+  context, and resume automatically. State the host boundary only when the
   client offers no programmatic continuation mechanism.
 - If bounded recovery fails, report the attempted recovery, sanitized error
   category, completed partial work, and the precise client or service repair
