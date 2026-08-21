@@ -571,6 +571,18 @@ test("director skill handles weekly summaries without scope questions", async ()
   assert(product.default_prompts.includes("Give me a weekly summary for my director."));
 });
 
+test("BOS starter prompts provide operating-system-style discovery", async () => {
+  const product = (await listProducts()).find(
+    ({ manifest }) => manifest.name === "bos"
+  )?.manifest;
+  assert(product);
+  assert.deepEqual(product.default_prompts, [
+    "List the BOS apps and skills installed for my organization.",
+    "Show me the tools and workflows available in each BOS app.",
+    "Check which BOS apps are connected and ready to use."
+  ]);
+});
+
 test("camp and student evidence honor customer-owned Care.com source routing", async () => {
   for (const relativePath of [
     "source/verticals/education-center/education-center-class-operations/SKILL.md",
