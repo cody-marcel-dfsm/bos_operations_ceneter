@@ -1,7 +1,7 @@
 {
-  "indexed_at": "20260821T202449.142192Z",
+  "indexed_at": "20260821T165803.064472Z",
   "schema_version": "bos-vault-manifest/v1",
-  "source_count": 42,
+  "source_count": 41,
   "sources": {
     "Vault/README.md": {
       "bytes": 1015,
@@ -162,10 +162,6 @@
     "Vault/specs/oracle-and-vault.md": {
       "bytes": 1470,
       "sha256": "f83bbe0c4179b651f033f21fb2725b2a4efb7ed7484266afdd3b48f546f63c4b"
-    },
-    "Vault/specs/role-aware-mcp-client.md": {
-      "bytes": 883,
-      "sha256": "08c5833083ea40cd8128b43ec02091bd87f56839501cb29cc6fafdfd2bfe5191"
     },
     "Vault/specs/shared-local-document-cache.md": {
       "bytes": 7735,

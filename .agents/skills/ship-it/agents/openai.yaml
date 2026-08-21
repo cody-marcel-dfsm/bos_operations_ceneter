@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ship It"
+  short_description: "Review, build, commit, and push repository changes"
+  default_prompt: "Use $ship-it to review, build, commit, and push all current repository changes."
