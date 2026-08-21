@@ -17,7 +17,10 @@ configuration as distinct validated dimensions.
 2. Separate observed behavior from the intended platform contract.
 3. Trace every context field from authenticated input to side effect.
 4. Resolve installed-app and plugin scope from canonical records.
-5. Derive plugin execution role from installed-app plugin metadata.
+5. For interactive OAuth requests, derive the effective execution role from
+   the authenticated user's current installed-app membership. Use a
+   server-issued role context for an explicit lower-role request. Keep
+   plugin-owned execution roles only for background or service-owned work.
 6. Resolve credentials by organization, installation, plugin, and credential
    name.
 7. Fail closed when canonical scope or grant provenance is incomplete.
@@ -26,7 +29,8 @@ configuration as distinct validated dimensions.
 
 ## Invariants
 
-- User role authorizes the actor; plugin `run_as_role` governs execution.
+- The authenticated user's current role governs interactive execution. A
+  plugin `run_as_role` value never elevates an OAuth user's authority.
 - Request values select scope and require server validation.
 - Customer configuration supplies context and never supplies authority.
 - Provider credentials remain scoped to their installed app and plugin.
@@ -59,8 +63,9 @@ configuration as distinct validated dimensions.
   role, plugin, and capability scope from the validated OAuth grant; client
   prompts and tool arguments never supply those authority dimensions.
 - Advertise only the tools allowed for the resolved endpoint, tenant,
-  installation, plugin, and execution role. Administrative tools remain absent
-  from customer product profiles.
+  installation, plugin, and execution role. Advertise administrative tools
+  only when the selected role carries their explicit administrative
+  capability.
 - Keep provider authorization scoped to its organization, installation, and
   plugin. Missing provider readiness never changes another named connection's
   tools, authentication, build gate, or release state.

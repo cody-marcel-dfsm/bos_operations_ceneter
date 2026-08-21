@@ -9,13 +9,13 @@
       "name": "bos",
       "source": "./clients/claude/plugins/bos",
       "description": "Agent-first Business Operating System foundations for governed agent workflows.",
-      "version": "0.4.26"
+      "version": "0.4.27"
     },
     {
       "name": "education-center",
       "source": "./clients/claude/plugins/education-center",
       "description": "Agent-first education operations for complex, human-centered work.",
-      "version": "0.4.26"
+      "version": "0.4.27"
     }
   ]
 }

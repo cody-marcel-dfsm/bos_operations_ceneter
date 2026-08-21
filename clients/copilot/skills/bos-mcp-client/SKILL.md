@@ -81,7 +81,10 @@ stateful mutation workflow.
    authority or user-selectable settings.
 2. On an application skill-group connection, do not send `org_id`, `app_code`,
    `installed_app_id`, or `delegated_role_id`; BOS derives execution scope from
-   the authenticated principal and installed-app group enablement.
+   the authenticated principal and installed-app group enablement. Call
+   `bos_get_context`, use the server-marked default role context, and pass only
+   its opaque `context_id` to domain tools. When the user explicitly requests
+   another available role, use that role's opaque context for the request.
 3. Fail closed when context is absent or ambiguous.
 4. Use the triggered product skill to choose its matching named connection.
    For example, Education Center operations use `education-center`; Video Ads operations
@@ -115,6 +118,36 @@ Domain skills interpret their workflows and execute only through their matching
 configured product MCP. BOS derives actor, tenant, organization, application,
 installation, role, plugin, and capability scope from that connection's
 validated OAuth grant and canonical server records.
+
+## Role-aware execution
+
+Treat role names and capabilities returned by BOS as descriptions of
+server-owned authority. Client prompts and arguments never create authority.
+
+1. Call `bos_get_context` before the first domain operation and after an
+   authorization, membership, or role-capability change.
+2. Group role entries by organization and installed app. Use the entry marked
+   `is_default: true` unless the user explicitly requests another available
+   role.
+3. Select a role using only its opaque `context_id`. Never send a role name or
+   delegated-role value as authority.
+4. Confirm the requested operation appears in that context and is invocable.
+   When it is absent, explain that the selected role lacks the capability and
+   stop before calling the domain tool.
+5. Preserve the selected context for related calls in the request. An explicit
+   lower-role request changes the context for that request only.
+
+The server re-resolves membership and capabilities on every call. Refresh
+context once after a denial or missing context, then treat the repeated server
+result as authoritative.
+
+For role administration, call `bos_list_role_capabilities` to read role intent,
+authority rank, capabilities, editability, and revision. Call
+`bos_update_role_capabilities` only when the user explicitly requests a change,
+using the exact context, target role, complete replacement capability list, and
+revision from that read. The selected role must carry `bos.roles.update`. After
+success, refresh `bos_get_context`. On a revision conflict, read the current
+configuration and have the user resolve any material difference before retrying.
 
 ## Shared local document cache
 
