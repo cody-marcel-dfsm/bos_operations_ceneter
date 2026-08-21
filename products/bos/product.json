@@ -1,10 +1,12 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.25",
+  "version": "0.4.26",
   "release_status": "active",
-  "display_name": "BOS",
-  "description": "Tenant-neutral Business Operating System foundations.",
+  "display_name": "BOS — Business Operating System",
+  "description": "Agent-first Business Operating System foundations for governed agent workflows.",
+  "long_description": "BOS is an agent-first Business Operating System foundation for planning, implementing, reviewing, and governing agent-ready business platforms. This skills-only plugin provides application-neutral architecture, authentication, execution-boundary, implementation, review, and support expertise; industry- and sector-specific skills are distributed in separate product packages. The broader BOS architecture is designed around an integration mesh where intelligent orchestrators can coordinate deterministic work across connected apps and services. Third-party development, distribution, and independent monetization are future platform directions and are not included in this plugin.",
+  "website_url": "https://dfsm.ai",
   "publisher": "Infinite State Machines LLC",
   "category": "Productivity",
   "authentication": "ON_USE",
@@ -15,6 +17,7 @@
     "gemini"
   ],
   "includes": [
+    "platform/bos-guided-support",
     "platform/planning",
     "platform/implementation",
     "platform/review",

@@ -1,4 +1,4 @@
-# Education Center for Gemini
+# Education Operation Center for Gemini
 
 This one Gemini extension supports Gemini CLI and Google Antigravity 2.0 Desktop.
 Both surfaces load the same packaged skills and fixed BOS product identity.

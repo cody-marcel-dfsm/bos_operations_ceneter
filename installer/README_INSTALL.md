@@ -14,15 +14,15 @@ client secret, local MCP proxy, or operating-system-specific launcher.
 Open the extracted `clients/codex` directory in Codex and paste:
 
 > Add the current `clients/codex` directory as a local Codex plugin marketplace,
-> install and enable `bos` and `education-center`, connect Education Center to
+> install and enable `bos` and `education-center`, connect Education Operation Center to
 > BOS through the host's sign-in flow, start a new task if required to load the
-> plugin, and verify one authenticated Education Center read. Do not request or
+> plugin, and verify one authenticated Education Operation Center read. Do not request or
 > configure a BOS API key, environment variable, secret-manager name, or
 > installed application ID. If authorization is incomplete, report
 > `authentication_required`; do not generate an unavailable-data report.
 
 The catalog is `clients/codex/.agents/plugins/marketplace.json`. The runtime
-plugin's `.app.json` references the registered Education Center app. That app
+plugin's `.app.json` references the registered Education Operation Center app. That app
 owns the immutable `https://dfsm.ai/mcp/apps/leaddirector/education-center`
 resource, so Codex can render Connect and manage BOS OAuth. The Codex plugin
 contains no `.mcp.json` or headless `mcpServers` entry.
@@ -32,15 +32,15 @@ the marketplace and reinstall or upgrade the cached plugin before testing.
 
 ## Claude Cowork/Desktop
 
-Open **Customize → Plugins**, upload the Education Center plugin from
+Open **Customize → Plugins**, upload the Education Operation Center plugin from
 `clients/claude/plugins/education-center`, or add the extracted
 `clients/claude` directory as a local marketplace. Install **BOS** and
-**Education Center**, select **Connect**, complete BOS sign-in, and start a new
+**Education Operation Center**, select **Connect**, complete BOS sign-in, and start a new
 Cowork task.
 
 The catalog is `clients/claude/.claude-plugin/marketplace.json`. The plugin has
 no API-key configuration field. Claude discovers BOS OAuth from the immutable
-Education Center MCP resource and manages the authorization.
+Education Operation Center MCP resource and manages the authorization.
 
 ## Authentication boundary
 
@@ -105,7 +105,7 @@ For Antigravity 2.0 Desktop, copy the complete
 `clients/gemini/extensions/education-center` directories into
 `~/.gemini/config/plugins/`. Restart Antigravity, open Settings >
 Customizations, select Authenticate for `education-center`, and complete BOS
-sign-in in the browser. Verify one authenticated Education Center read.
+sign-in in the browser. Verify one authenticated Education Operation Center read.
 
 Each product directory contains the shared skills, `gemini-extension.json`,
 and Antigravity's native `plugin.json`; the runtime product also contains

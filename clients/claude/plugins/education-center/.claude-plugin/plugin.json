@@ -1,8 +1,8 @@
 {
   "name": "education-center",
-  "displayName": "Education Center",
-  "version": "0.4.25",
-  "description": "A childhood education franchise-in-a-box operating system for authorized adult education center staff through the tenant-scoped BOS MCP.",
+  "displayName": "Education Operation Center",
+  "version": "0.4.26",
+  "description": "Agent-first education operations for complex, human-centered work.",
   "author": {
     "name": "Infinite State Machines LLC"
   },

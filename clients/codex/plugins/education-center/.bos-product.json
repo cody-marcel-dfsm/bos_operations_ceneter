@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.25",
+  "version": "0.4.26",
   "client": "codex",
   "application_name": "leaddirector",
   "mcp_group_name": "education-center",

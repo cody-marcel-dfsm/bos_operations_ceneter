@@ -1,0 +1,4 @@
+interface:
+  display_name: "Education Center Agent Calls"
+  short_description: "Initiate governed lead calls through BOS"
+  default_prompt: "Use $agent-call-operations to find the requested lead and initiate one authorized agent call."

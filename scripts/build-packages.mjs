@@ -40,7 +40,7 @@ await mkdir(stagedClients, { recursive: true });
 
 const marketplace = {
   name: "bos-education-center",
-  interface: { displayName: "BOS + Education Center" },
+  interface: { displayName: "BOS + Education Operation Center" },
   plugins: []
 };
 const claudeMarketplace = {
@@ -104,7 +104,7 @@ for (const { product, skills } of resolved) {
       version: product.version,
       description: product.description,
       author: { name: product.publisher },
-      homepage: "https://dfsm.ai",
+      homepage: product.website_url ?? "https://dfsm.ai",
       repository: "https://github.com/cody-marcel-dfsm/bos_operations_ceneter",
       license: "Apache-2.0",
       keywords: ["bos", "operations", product.name]
@@ -123,7 +123,7 @@ for (const { product, skills } of resolved) {
       await writeFile(
         join(pluginRoot, "README.md"),
         [
-          "# Education Center",
+          `# ${product.display_name}`,
           "",
           "This plugin is a childhood education franchise-in-a-box operating system for",
           "authenticated adult education center staff. Students and minors are data subjects;",
