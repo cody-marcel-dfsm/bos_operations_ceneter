@@ -171,6 +171,19 @@ release system for portable BOS skills and native remote MCP client adapters.
     documents, tombstones, coverage, cursor, and sync time in one atomic commit
     after every page succeeds. Failed or partial refreshes retain the previous
     watermark. See `Vault/specs/shared-local-document-cache.md`.
+20. Resolve interactive execution roles from the authenticated user's current
+    installed-app membership. `bos_get_context` returns one opaque context for
+    each assigned role and marks the unique highest `agent_authority_rank` as
+    the default. An explicit lower-role request uses only another returned
+    context and applies to that request. Clients preflight against the selected
+    context and pass only its `context_id`; the service revalidates membership,
+    capabilities, installation and plugin grants, semantic operation support,
+    tenant scope, and provider readiness before every read or mutation. Plugin
+    `run_as_role` remains reserved for callbacks and autonomous service work and
+    never elevates an interactive OAuth actor. Role capability administration
+    uses explicit `bos.roles.read` and `bos.roles.update`, complete replacement
+    lists, optimistic revisions, and server-side audit. See
+    `Vault/specs/role-aware-mcp-client.md`.
 
 ## Knowledge and review
 

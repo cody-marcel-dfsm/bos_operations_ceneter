@@ -1,5 +1,5 @@
 {
-  "indexed_at": "20260821T212521.396708Z",
+  "indexed_at": "20260821T212330.160906Z",
   "schema_version": "bos-vault-manifest/v1",
   "source_count": 42,
   "sources": {
@@ -28,8 +28,8 @@
       "sha256": "08d0652438ab19bc19c7f2e87b32e181d89ab0a17f4679da271de778c44f807a"
     },
     "Vault/docs/architecture.md": {
-      "bytes": 13327,
-      "sha256": "6235cdcf6a2722ef4c84afc4a0f72b09eb2e5780c2206b12e0b5942ad4db8b35"
+      "bytes": 12357,
+      "sha256": "04526eb1dadd703761e7418a220e9c9dbdc1db5b2c2959f20ab574be7c9a35b6"
     },
     "Vault/docs/bos-expertise-package-ecosystem-proposal.md": {
       "bytes": 21898,
@@ -164,8 +164,8 @@
       "sha256": "f83bbe0c4179b651f033f21fb2725b2a4efb7ed7484266afdd3b48f546f63c4b"
     },
     "Vault/specs/role-aware-mcp-client.md": {
-      "bytes": 5356,
-      "sha256": "90ebc1e24e12a7e9fd3f486de4fed19102b03986bc35cb9446f7e236bd4f48e7"
+      "bytes": 883,
+      "sha256": "08c5833083ea40cd8128b43ec02091bd87f56839501cb29cc6fafdfd2bfe5191"
     },
     "Vault/specs/shared-local-document-cache.md": {
       "bytes": 7735,
