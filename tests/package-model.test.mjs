@@ -12,6 +12,7 @@ import {
   geminiPluginManifest,
   geminiPluginMcpManifest,
   materializeMcpUrl,
+  pluginManifest,
   resolveProductSkills,
   root,
   walkFiles,
@@ -40,6 +41,55 @@ test("canonical distributable skills contain no customer-specific settings", asy
   assert.deepEqual(failures, []);
 });
 
+test("BOS packages ship MCP-optional visual guided support on every client", async () => {
+  const products = await listProducts();
+  const bos = products.find(({ manifest }) => manifest.name === "bos");
+  assert(bos, "bos product must exist");
+  assert(bos.manifest.includes.includes("platform/bos-guided-support"));
+
+  const skills = await resolveProductSkills(bos.manifest);
+  const support = skills.find((skill) => skill.name === "bos-guided-support");
+  assert(support, "bos must include guided support");
+
+  const guidance = await readFile(support.skillFile, "utf8");
+  const states = await readFile(
+    `${support.sourcePath}/references/support-state-machine.md`,
+    "utf8"
+  );
+  const runbooks = await readFile(
+    `${support.sourcePath}/references/client-runbooks.md`,
+    "utf8"
+  );
+  const visual = await readFile(
+    `${support.sourcePath}/references/visual-support.md`,
+    "utf8"
+  );
+
+  assert.match(guidance, /MCP is an enhancement, never a prerequisite/i);
+  assert.match(guidance, /Install.*Load.*Register.*Sign in.*Discover.*Verify/s);
+  assert.match(guidance, /Preserve\s+progress the user already reported/i);
+  assert.match(guidance, /one safe, bounded, authenticated read succeeds/i);
+  assert.match(states, /A later-stage error never proves an earlier stage failed/i);
+  assert.match(runbooks, /ChatGPT\/Codex Desktop/);
+  assert.match(runbooks, /Claude Cowork\/Desktop/);
+  assert.match(runbooks, /GitHub Copilot CLI or VS Code/);
+  assert.match(runbooks, /Gemini CLI/);
+  assert.match(runbooks, /Google Antigravity 2\.0 Desktop/);
+  assert.match(visual, /one high-contrast circle or rounded rectangle/i);
+  assert.match(visual, /Never fabricate a vendor\s+screenshot/i);
+
+  for (const skillRoot of [
+    `${root}/clients/codex/plugins/bos/skills/bos-guided-support`,
+    `${root}/clients/claude/plugins/bos/skills/bos-guided-support`,
+    `${root}/clients/copilot/products/bos/skills/bos-guided-support`,
+    `${root}/clients/gemini/extensions/bos/skills/bos-guided-support`
+  ]) {
+    await access(`${skillRoot}/SKILL.md`);
+    await access(`${skillRoot}/agents/openai.yaml`);
+    await access(`${skillRoot}/assets/connection-journey.svg`);
+  }
+});
+
 test("Education Center packages include customer-neutral settings defaults", async () => {
   for (const path of [
     `${root}/clients/codex/plugins/education-center/config/customer-settings.template.json`,
@@ -63,6 +113,40 @@ test("Education Center packages include customer-neutral settings defaults", asy
       care_com: "bos"
     });
   }
+});
+
+test("Education Center packages include governed single-lead Agent Call operations", async () => {
+  const products = await listProducts();
+  const educationCenter = products.find(
+    ({ manifest }) => manifest.name === "education-center"
+  );
+  assert(educationCenter, "education-center product must exist");
+  assert(
+    educationCenter.manifest.includes.includes(
+      "capabilities/agent-call-operations"
+    )
+  );
+
+  const skills = await resolveProductSkills(educationCenter.manifest);
+  const agentCalls = skills.find(
+    (skill) => skill.name === "agent-call-operations"
+  );
+  assert(agentCalls, "education-center must include Agent Call operations");
+
+  const guidance = await readFile(agentCalls.skillFile, "utf8");
+  const contract = await readFile(
+    `${agentCalls.sourcePath}/references/capability-contract.md`,
+    "utf8"
+  );
+  assert.match(guidance, /education_center_search_leads/);
+  assert.match(guidance, /education_center_initiate_agent_call/);
+  assert.match(guidance, /exactly one lead/i);
+  assert.match(guidance, /stable task-local idempotency key/i);
+  assert.match(guidance, /reconcile[\s\S]*before any replay/i);
+  assert.match(contract, /opaque identifier returned/i);
+  assert.match(contract, /public schema excludes[\s\S]*org_id[\s\S]*phone numbers/i);
+  assert.match(contract, /plugin `run_as_role`/i);
+  assert.match(contract, /without dispatching a second provider call/i);
 });
 
 test("Education Center packages include governed SendGrid campaign operations", async () => {
@@ -728,6 +812,55 @@ test("all product manifests validate and resolve unique skills", async () => {
   }
 });
 
+test("BOS marketplace metadata explains the platform and links to its website", async () => {
+  const bos = (await listProducts()).find(
+    ({ manifest }) => manifest.name === "bos"
+  )?.manifest;
+  assert(bos);
+  assert.equal(bos.display_name, "BOS — Business Operating System");
+  assert.equal(bos.description.length, 79);
+  assert.match(bos.description, /Agent-first Business Operating System/);
+  assert.match(bos.long_description, /skills-only plugin/);
+  assert.match(bos.long_description, /industry- and sector-specific skills/);
+  assert.match(bos.long_description, /integration mesh/);
+  assert.match(bos.long_description, /deterministic work/);
+  assert.match(bos.long_description, /future platform directions/);
+  assert.match(bos.long_description, /not included in this plugin/);
+  assert.equal(bos.website_url, "https://dfsm.ai");
+
+  const codex = pluginManifest(bos);
+  assert.equal(codex.description, bos.description);
+  assert.equal(codex.homepage, bos.website_url);
+  assert.equal(codex.interface.shortDescription, bos.description);
+  assert.equal(codex.interface.longDescription, bos.long_description);
+  assert.equal(codex.interface.websiteURL, bos.website_url);
+});
+
+test("Education Operation Center marketplace metadata presents independent workflows", async () => {
+  const education = (await listProducts()).find(
+    ({ manifest }) => manifest.name === "education-center"
+  )?.manifest;
+  assert(education);
+  assert.equal(education.display_name, "Education Operation Center");
+  assert.ok(education.description.length <= 80);
+  assert.match(education.description, /Agent-first education operations/);
+  assert.match(
+    education.long_description,
+    /Ads and Customer Outreach → Free Trial Class, Session, or Booking → Enrollment/
+  );
+  assert.match(education.long_description, /independent deterministic workflow/);
+  assert.match(education.long_description, /Intelligent orchestrators select and coordinate/);
+  assert.match(education.long_description, /complex, human-centered tasks/);
+  assert.match(education.long_description, /preserving human judgment, approvals/);
+  assert.equal(education.website_url, "https://dfsm.ai");
+
+  const codex = pluginManifest(education);
+  assert.equal(codex.interface.displayName, education.display_name);
+  assert.equal(codex.interface.shortDescription, education.description);
+  assert.equal(codex.interface.longDescription, education.long_description);
+  assert.equal(codex.interface.websiteURL, education.website_url);
+});
+
 test("runtime manifests use explicit human-readable application and MCP group names", async () => {
   const products = await listProducts();
   assert.deepEqual(
@@ -835,6 +968,18 @@ test("package schema rejects legacy or incomplete MCP route fields", () => {
     default_prompts: []
   };
   assert.deepEqual(validateProduct(base), []);
+  assert.deepEqual(
+    validateProduct({
+      ...base,
+      long_description: "A longer marketplace description.",
+      website_url: "https://example.com"
+    }),
+    []
+  );
+  assert.match(
+    validateProduct({ ...base, website_url: "http://example.com" }).join("\n"),
+    /website_url must be an absolute HTTPS URL/
+  );
   assert.match(
     validateProduct({ ...base, includes: ["platform/planning"] }).join("\n"),
     /runtime requires platform\/bos-mcp-client/
@@ -1262,6 +1407,8 @@ test("customer installation guidance contains no maintainer build commands", asy
   );
   for (const guidance of [installSection, packagedInstructions]) {
     assert.doesNotMatch(guidance, /npm run (?:build|release(?::check|:customer)?)/);
+    assert.match(guidance, /Education Operation Center/);
+    assert.doesNotMatch(guidance, /(?<!Operation )Education Center/);
   }
   assert.doesNotMatch(installSection, /clone this repository/i);
   assert.doesNotMatch(installSection, /unreleased development version/i);

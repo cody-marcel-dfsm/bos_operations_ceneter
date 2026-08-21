@@ -150,6 +150,7 @@ education_center_create_lead
 education_center_create_offline_ad_conversions
 education_center_export_drive_text
 education_center_get_email_thread
+education_center_initiate_agent_call
 education_center_list_enrollments
 education_center_review_campaign_advance
 education_center_review_campaign_approve
@@ -175,6 +176,17 @@ authority.
 
 The server implementation may add a tool only after the Education Center product contract,
 tool classification, tests, and marketplace disclosure are updated together.
+
+`education_center_initiate_agent_call` is a mutating action owned by
+`education-center-automated-outreach`. Its public input contains only the opaque `lead_id`
+returned from the same authorized context and a stable `idempotency_key`. The
+server derives the organization, application, installation, delegated role,
+plugin execution role, FSM action, destination phone, and provider binding. It
+must verify the lead's current state exposes `agent_call`, lock the operation,
+route through the dedicated PO and existing bound Agent Call service, persist
+audit and operation state through GO repositories, and reconcile repeated keys
+without a second provider dispatch. The public schema must not expose
+`plugin_id`, `action_id`, phone, provider, or execution-scope selectors.
 
 ### Lead Director: Video Ads
 

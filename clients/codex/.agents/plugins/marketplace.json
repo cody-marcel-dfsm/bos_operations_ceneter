@@ -1,7 +1,7 @@
 {
   "name": "bos-education-center",
   "interface": {
-    "displayName": "BOS + Education Center"
+    "displayName": "BOS + Education Operation Center"
   },
   "plugins": [
     {

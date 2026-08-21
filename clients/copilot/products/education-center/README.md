@@ -1,4 +1,4 @@
-# Education Center for GitHub Copilot
+# Education Operation Center for GitHub Copilot
 
 Copy `skills/` into the target repository's `.agents/skills/` directory.
 Copy `.github/mcp.json` into the target repository for Copilot CLI, or

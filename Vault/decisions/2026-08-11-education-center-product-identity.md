@@ -1,9 +1,11 @@
-# Education Center product identity and tenant branding
+# Education Operation Center display identity and tenant branding
 
 ## Decision
 
-Use `Education Center` as the generic product and vertical name for the
-childhood education franchise-in-a-box package.
+Use `Education Operation Center` as the generic marketplace and customer-facing
+product display name for the childhood education franchise-in-a-box package.
+Preserve `Education Center` in established technical product and vertical
+identifiers.
 
 Use these package-owned technical identities:
 
@@ -18,7 +20,7 @@ Use these package-owned technical identities:
 Claude, ChatGPT/Codex desktop, OAuth-capable GitHub Copilot hosts, Gemini CLI,
 and Antigravity Desktop authorize that immutable resource through host-managed
 OAuth 2.1. Claude, Copilot, and Gemini declare it directly; Codex references the
-registered Education Center app through `.app.json`. Package source and
+registered Education Operation Center app through `.app.json`. Package source and
 generated clients contain no BOS credential binding.
 
 During customer initialization, complete the product connection's host-managed

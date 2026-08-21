@@ -49,6 +49,8 @@ export function validateProduct(manifest, path = "product.json") {
     "release_status",
     "display_name",
     "description",
+    "long_description",
+    "website_url",
     "publisher",
     "category",
     "authentication",
@@ -83,6 +85,19 @@ export function validateProduct(manifest, path = "product.json") {
     if (typeof manifest[field] !== "string" || !manifest[field]) {
       failures.push(`${path}: ${field} must be a non-empty string`);
     }
+  }
+  if (
+    manifest.long_description !== undefined &&
+    (typeof manifest.long_description !== "string" || !manifest.long_description)
+  ) {
+    failures.push(`${path}: long_description must be a non-empty string`);
+  }
+  if (
+    manifest.website_url !== undefined &&
+    (typeof manifest.website_url !== "string" ||
+      !/^https:\/\/[^\s]+$/.test(manifest.website_url))
+  ) {
+    failures.push(`${path}: website_url must be an absolute HTTPS URL`);
   }
   if (!["ON_INSTALL", "ON_USE"].includes(manifest.authentication)) {
     failures.push(`${path}: authentication must be ON_INSTALL or ON_USE`);
@@ -286,13 +301,17 @@ export function pluginManifest(product) {
     interface: {
       displayName: product.display_name,
       shortDescription: product.description.slice(0, 80),
-      longDescription: product.description,
+      longDescription: product.long_description ?? product.description,
       developerName: product.publisher,
       category: product.category,
       capabilities: ["Read", "Write"],
       defaultPrompt: product.default_prompts
     }
   };
+  if (product.website_url) {
+    manifest.homepage = product.website_url;
+    manifest.interface.websiteURL = product.website_url;
+  }
   if (product.runtime) manifest.apps = "./.app.json";
   return manifest;
 }

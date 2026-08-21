@@ -7,13 +7,13 @@ Last audited: 2026-08-09
 ## Purpose and scope
 
 This document is the durable inventory and production checklist for public
-marketplace assets for the BOS, Education Center, and Video Ads client
+marketplace assets for the BOS, Education Operation Center, and Video Ads client
 products. It covers Claude, OpenAI ChatGPT and Codex, Gemini CLI, and GitHub
 Copilot.
 
 Marketplace packages are client-side skill groupings connected to fixed,
 human-readable BOS MCP routes. Marketplace publication does not select or
-provision a BOS application. For example, Education Center connects to:
+provision a BOS application. For example, Education Operation Center connects to:
 
 ```text
 https://dfsm.ai/mcp/apps/leaddirector/education-center
@@ -38,20 +38,20 @@ approval come from Tracks F through J.
 
 ## Canonical product identity
 
-| Field | BOS | Education Center | Video Ads | Status | Canonical source |
+| Field | BOS | Education Operation Center | Video Ads | Status | Canonical source |
 | --- | --- | --- | --- | --- | --- |
 | Stable package name | `bos` | `education-center` | `video-ads` | Ready | `products/*/product.json` |
-| Display name | BOS | Education Center | Video Ads | Ready | `products/*/product.json` |
+| Display name | BOS — Business Operating System | Education Operation Center | Video Ads | Ready | `products/*/product.json` |
 | Publisher | Infinite State Machines LLC | Infinite State Machines LLC | Infinite State Machines LLC | Ready | `products/*/product.json` |
 | Category | Productivity | Productivity | Marketing | Ready | `products/*/product.json` |
-| Current version | 0.4.13 | 0.4.13 | 0.1.1 | Ready | `products/*/product.json` |
-| Application name | `bos` | `leaddirector` | `leaddirector` | Ready for packaging; runtime certification pending | `products/*/product.json` |
-| MCP group name | `bos` | `education-center` | `video-ads` | Ready for packaging; runtime certification pending | `products/*/product.json` |
+| Current version | 0.4.26 | 0.4.26 | 0.1.1 | Ready | `products/*/product.json` |
+| Application name | None (skills-only) | `leaddirector` | `leaddirector` | Ready for packaging; runtime certification pending | `products/*/product.json` |
+| MCP group name | None (skills-only) | `education-center` | `video-ads` | Ready for packaging; runtime certification pending | `products/*/product.json` |
 | Short description | Present | Present | Present | Ready as source copy | `products/*/product.json` |
-| Long description | Repeats short copy | Repeats short copy | Repeats short copy | Missing | Product/release operations |
+| Long description | Present | Present | Repeats short copy | Partial | Product/release operations |
 | Starter prompts | Three | Three | Three | Ready as source copy | `products/*/product.json` |
 | Keyword set | Minimal Claude keywords | Minimal Claude keywords | Minimal Claude keywords | Partial | Generated Claude manifests |
-| Audience and eligibility | Unspecified | Adult authorized Education Center staff is stated | Unspecified | Partial | Product owner |
+| Audience and eligibility | Unspecified | Authorized adult education-center staff is stated | Unspecified | Partial | Product owner |
 | Geographic availability | Unspecified | Unspecified | Unspecified | Missing | Business owner and counsel |
 | Support lifecycle | Latest release only in `SECURITY.md` | Same | Same | Partial | Product/release operations |
 
@@ -64,7 +64,7 @@ are evidence of propagation and are never the source to edit.
 | Asset | Status | Evidence or gap | Owner | Completion test |
 | --- | --- | --- | --- | --- |
 | Publisher legal name | Ready | Infinite State Machines LLC is consistent in product and plugin manifests. | Business owner | Matches every marketplace account and public page. |
-| Publisher website | Partial | Generated Claude plugins use `https://dfsm.ai`; no product-specific public listing page is recorded. | Web/product operations | Public HTTPS product page identifies publisher and each listed product. |
+| Publisher website | Partial | Generated Codex and Claude plugins for BOS and Education Operation Center use `https://dfsm.ai`; no product-specific public listing page is recorded. | Web/product operations | Public HTTPS product page identifies publisher and each listed product. |
 | Privacy policy URL | Partial | `https://dfsm.ai/apps/bos/privacy.html` is live, but the audited copy focuses on websites, lead forms, and campaigns. It does not yet disclose the client plugin/MCP data flows, customer-authorized provider data, tool outputs, retention, deletion, or subprocessors needed for marketplace review. | Privacy/counsel and web operations | Published policy accurately covers all submitted products and MCP processing. |
 | Terms URL | Missing/external | No canonical public terms URL is recorded in repository manifests or product metadata. | Counsel and web operations | Public HTTPS terms page matches publisher and submitted products. |
 | Support URL | Missing/external | `SECURITY.md` provides a security contact, but no public customer support page or SLA is recorded. | Support and web operations | Public HTTPS page provides contact method, expected response, setup help, and escalation path. |
@@ -76,7 +76,7 @@ are evidence of propagation and are never the source to edit.
 | Product logos/icons | Missing | No PNG, SVG, JPG, WebP, or GIF product asset exists outside repository internals. | Brand/design | Approved master plus harness-required exports exist for all three products. |
 | Marketplace screenshots | Missing | No marketplace screenshots exist. | Product/design and harness owners | Approved, privacy-safe screenshots demonstrate representative workflows in each claimed harness. |
 | Demo video | Conditional/missing | No listing demo exists. | Product/design | Produce only when a portal requires it or review benefits materially. |
-| Long listing descriptions | Missing | Generated Codex long descriptions repeat short descriptions. | Product marketing with product owners | Approved long copy explains audience, workflows, authorization, and limitations without overstating tools. |
+| Long listing descriptions | Partial | BOS and Education Operation Center have product-owner-selected long marketplace copy; Video Ads still repeats its short description. | Product marketing with product owners | Every submitted product has approved long copy explaining audience, workflows, authorization, and limitations without overstating tools. |
 | Example prompts | Ready as source | Each product declares three default prompts. | Product owner | Prompts pass live positive tests and contain no customer identity. |
 | Tool/action catalog | Missing/external | Skill inventories describe workflows, while the authoritative server-advertised tools and annotations belong to the live named routes. | Lead Director/BOS application owner | Versioned export lists every tool, purpose, input/output schema, read/write behavior, side effects, and annotations. |
 | Review test cases | Missing | No canonical marketplace reviewer packet contains five positive and three negative cases per OpenAI submission. | QA with product owners | Cases run successfully against reviewer credentials and record expected results. |
@@ -199,7 +199,7 @@ OpenAI accepts skills-only, MCP-only, or combined skills-and-MCP plugins. BOS
 products are combined submissions when their skills and named MCP route are
 published together.
 
-Create a separate submission record for BOS, Education Center, and Video
+Create a separate submission record for BOS, Education Operation Center, and Video
 Ads unless OpenAI explicitly approves a combined catalog listing.
 
 - [ ] Confirm the publishing OpenAI organization and project.

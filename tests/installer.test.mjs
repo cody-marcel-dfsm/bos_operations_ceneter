@@ -616,7 +616,10 @@ test("apply converges a stale marketplace identity while preserving entries", as
 
   const marketplace = JSON.parse(await readFile(marketplacePath, "utf8"));
   assert.equal(marketplace.name, "bos-education-center");
-  assert.equal(marketplace.interface.displayName, "BOS + Education Center");
+  assert.equal(
+    marketplace.interface.displayName,
+    "BOS + Education Operation Center"
+  );
   assert.equal(marketplace.interface.customField, "preserved");
   assert.deepEqual(marketplace.plugins.map(({ name }) => name), [
     "bos",

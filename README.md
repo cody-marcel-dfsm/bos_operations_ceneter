@@ -10,8 +10,8 @@ Gemini extension supports both Gemini CLI and Google Antigravity 2.0 Desktop.
 
 | Environment | Use it for | Start here |
 |---|---|---|
-| ChatGPT/Codex Desktop customer | Install and operate Education Center | [Codex installation](#chatgptcodex-desktop) |
-| Claude Cowork/Desktop customer | Install and operate Education Center | [Claude installation](#claude-coworkdesktop) |
+| ChatGPT/Codex Desktop customer | Install and operate Education Operation Center | [Codex installation](#chatgptcodex-desktop) |
+| Claude Cowork/Desktop customer | Install and operate Education Operation Center | [Claude installation](#claude-coworkdesktop) |
 | Gemini customer | Use Gemini CLI or Antigravity 2.0 Desktop | [Gemini installation](#gemini-cli-and-antigravity-20-desktop) |
 | Local plugin development | Edit, regenerate, install, and test an unreleased checkout | [Local development](#local-plugin-development) |
 | Maintainer artifact build | Generate credential-free client packages and archives | [Artifact build](#artifact-only-build) |
@@ -30,7 +30,7 @@ The private Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Select
 **Connect** or **Sign in** when the host presents it, then complete BOS consent.
 
-Current desktop marketplace release: `0.4.25`. If `0.4.24` is installed,
+Current desktop marketplace release: `0.4.26`. If `0.4.25` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -43,8 +43,8 @@ Open a new Codex task and paste:
 
 > Add https://github.com/cody-marcel-dfsm/bos_operations_ceneter as a Codex
 > plugin marketplace, install and enable `bos` and `education-center`, connect
-> Education Center to BOS through the host's sign-in flow, start a new task if
-> required to load the plugin, and verify one authenticated Education Center
+> Education Operation Center to BOS through the host's sign-in flow, start a new task if
+> required to load the plugin, and verify one authenticated Education Operation Center
 > read. Do not request or configure a BOS API key, environment variable,
 > secret-manager name, or installed application ID. If authorization is
 > incomplete, report `authentication_required`; do not generate an
@@ -52,7 +52,7 @@ Open a new Codex task and paste:
 
 Codex reads the repository catalog at
 `.agents/plugins/marketplace.json`, installs the plugins into its managed
-cache, and loads the registered Education Center app from the plugin's
+cache, and loads the registered Education Operation Center app from the plugin's
 `.app.json`. That app owns the immutable BOS MCP resource and host-managed OAuth
 grant. Start a new task after installation or upgrade.
 
@@ -62,11 +62,11 @@ grant. Start a new task after installation or upgrade.
 2. Add
    `https://github.com/cody-marcel-dfsm/bos_operations_ceneter` as a
    marketplace.
-3. Install **BOS** and **Education Center**.
+3. Install **BOS** and **Education Operation Center**.
 4. Select **Connect**, complete BOS sign-in, and start a new Cowork task.
-5. Request one authenticated Education Center read to verify the connection.
+5. Request one authenticated Education Operation Center read to verify the connection.
 
-Claude reads `.claude-plugin/marketplace.json`. The Education Center plugin
+Claude reads `.claude-plugin/marketplace.json`. The Education Operation Center plugin
 contains no API-key field or authorization-header template. Claude discovers
 OAuth from the immutable MCP resource and manages the resulting grant.
 
@@ -107,6 +107,14 @@ authentication, authorization, MCP routes, system instructions, or tool
 grants.
 
 ## Customer onboarding
+
+The BOS plugin includes `bos-guided-support`, a visual client-side support skill
+that works before MCP is connected. When a user is stuck, paste:
+
+> Help me get BOS connected and working. Show my progress through Install, Load,
+> Register, Sign in, Discover, and Verify. Give me one action at a time, ask for
+> a screenshot when the current state is unclear, and confirm success with one
+> authenticated read. Never ask me for a BOS API key or token.
 
 The desktop host authorizes one immutable product resource:
 
@@ -159,8 +167,8 @@ Add the repository checkout as a local marketplace:
 codex plugin marketplace add ./
 ```
 
-Install **BOS** and **Education Center** from the ChatGPT Desktop Plugins
-Directory. Confirm that Education Center shows **Connect**, complete BOS OAuth,
+Install **BOS** and **Education Operation Center** from the ChatGPT Desktop Plugins
+Directory. Confirm that Education Operation Center shows **Connect**, complete BOS OAuth,
 and test in a new task. After source changes,
 rebuild the packages, update or reinstall the plugin, and use another new task
 so the managed cache cannot hide stale output.
@@ -233,7 +241,7 @@ npm run release:check
 ```
 
 The release gate regenerates all clients and archives, validates package and
-credential safety, runs the full tests, discovers the live Education Center
+credential safety, runs the full tests, discovers the live Education Operation Center
 tool contract, resolves one server-owned context, and executes a bounded
 read-only enrollment query. Diagnostics contain sanitized status, tool names,
 correlation IDs, and aggregate field-presence counts only.
@@ -264,7 +272,7 @@ Give Hardik this instruction:
 > Desktop, copy those same two complete extension directories into
 > `~/.gemini/config/plugins/`, restart Antigravity, open Settings >
 > Customizations, select Authenticate for `education-center`, complete BOS
-> sign-in, and verify one authenticated Education Center read. Preserve the
+> sign-in, and verify one authenticated Education Operation Center read. Preserve the
 > directory contents and do not request a BOS API key, token, client secret,
 > environment variable, or installed application ID.
 

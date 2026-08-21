@@ -1,4 +1,4 @@
-# Education Center
+# Education Operation Center
 
 This plugin is a childhood education franchise-in-a-box operating system for
 authenticated adult education center staff. Students and minors are data subjects;

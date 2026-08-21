@@ -1,4 +1,4 @@
-# BOS for Gemini
+# BOS — Business Operating System for Gemini
 
 This one Gemini extension supports Gemini CLI and Google Antigravity 2.0 Desktop.
 Both surfaces load the same packaged skills and fixed BOS product identity.

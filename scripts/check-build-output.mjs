@@ -130,7 +130,7 @@ try {
   await mkdir(marketplaceRoot, { recursive: true });
   await writeFile(join(marketplaceRoot, "marketplace.json"), JSON.stringify({
     name: "bos-education-center",
-    interface: { displayName: "BOS + Education Center" },
+    interface: { displayName: "BOS + Education Operation Center" },
     plugins: [{
       name: "video-ads",
       source: { source: "local", path: "./plugins/video-ads" },

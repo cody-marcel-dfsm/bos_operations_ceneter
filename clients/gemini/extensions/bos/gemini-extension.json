@@ -1,5 +1,5 @@
 {
   "name": "bos",
-  "version": "0.4.25",
-  "description": "Tenant-neutral Business Operating System foundations."
+  "version": "0.4.26",
+  "description": "Agent-first Business Operating System foundations for governed agent workflows."
 }

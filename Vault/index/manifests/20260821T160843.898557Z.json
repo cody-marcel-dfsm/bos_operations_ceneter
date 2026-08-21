@@ -1,0 +1,171 @@
+{
+  "indexed_at": "20260821T160843.898557Z",
+  "schema_version": "bos-vault-manifest/v1",
+  "source_count": 41,
+  "sources": {
+    "Vault/README.md": {
+      "bytes": 1015,
+      "sha256": "a4690b839d46eb359bc03d73375fc9009cf4dd847abf8acce9078da6487acf6c"
+    },
+    "Vault/decisions/2026-08-11-canonical-codex-marketplace-layout.md": {
+      "bytes": 2506,
+      "sha256": "3d5315f7b627b91746c218da0cae3f6cf2cfb3cbed66637e542ad68ea5747dd4"
+    },
+    "Vault/decisions/2026-08-11-desktop-private-marketplace-oauth.md": {
+      "bytes": 2992,
+      "sha256": "df02c471f0d5f3bfd4defea0cd1d43bed70a34cca3c1f3b72e4f31bd75b58649"
+    },
+    "Vault/decisions/2026-08-11-education-center-product-identity.md": {
+      "bytes": 2056,
+      "sha256": "1b360513efe9bd81dde615d74f7d43be283f65f26075be356191c1cf837455f0"
+    },
+    "Vault/decisions/2026-08-16-all-runtime-products-oauth-only.md": {
+      "bytes": 2158,
+      "sha256": "aa266cafd76f9fe5709994817c5339a9026611d4a11f91eab29b24ac2853a23f"
+    },
+    "Vault/docs/CONSTITUTION.md": {
+      "bytes": 3193,
+      "sha256": "fbf5ce6aed9aae7f611f3e5bff43b9148af49b4c12283f04678c5f0df36a7ccd"
+    },
+    "Vault/docs/architecture.md": {
+      "bytes": 12357,
+      "sha256": "04526eb1dadd703761e7418a220e9c9dbdc1db5b2c2959f20ab574be7c9a35b6"
+    },
+    "Vault/docs/bos-expertise-package-ecosystem-proposal.md": {
+      "bytes": 21898,
+      "sha256": "93b04c18b57b5dbbc43ccbde51d682d791a6d4f9d5d2e99feaa27db9e67e24f6"
+    },
+    "Vault/docs/bos-product-licensing-user-experience.md": {
+      "bytes": 16055,
+      "sha256": "981d46a1bbbe6170387fa8ff1ad136f51d7d2ba6931829c58c6a1f20dfb1eaa9"
+    },
+    "Vault/docs/marketplace-agent-harness-plan.md": {
+      "bytes": 33431,
+      "sha256": "743e06d868c66ca613c67822fd6876529c62320f41c53d3fd27c4c2645a40b0d"
+    },
+    "Vault/docs/marketplace-submission-assets.md": {
+      "bytes": 24462,
+      "sha256": "44b9f2da92bec074749c9e0ee30e90d3f118ce50103b66be698873ee67933274"
+    },
+    "Vault/docs/my-crm-developer-platform-work-matrix.md": {
+      "bytes": 8316,
+      "sha256": "4ef070709c4e3f7bb117fe861f77d4cfb34bf30f85fdcef4c1d63577fe2838ee"
+    },
+    "Vault/docs/my-crm-plugin-architecture-proposal.md": {
+      "bytes": 29479,
+      "sha256": "2606da5689acf4a91ad065acc8ef4eb8a19d8f8ec28573558259635a37a7b0b2"
+    },
+    "Vault/reviews/2026-08-09-customer-skill-extension-v2.md": {
+      "bytes": 3182,
+      "sha256": "3b620af070c856971bf4b953b13ae55cddda580b9b023f2903a8ac3c23051e05"
+    },
+    "Vault/reviews/2026-08-09-installed-app-feedback-gemini.md": {
+      "bytes": 2022,
+      "sha256": "3ae0a6a0cd5f444f1387329e1e46fbb955de8c695df014c36a6db48a26d3efd9"
+    },
+    "Vault/reviews/2026-08-09-remote-mcp-cross-platform.md": {
+      "bytes": 1804,
+      "sha256": "ba9857845991dbf0423fe06cb818172e850b9fac6deb545641bfea7e56ecd365"
+    },
+    "Vault/reviews/2026-08-11-bright-horizons-reimbursement-skill.md": {
+      "bytes": 3312,
+      "sha256": "7482a6c92bbb52d307b4f1770ae75c1a4cbf026119317af38f374135e9f7a189"
+    },
+    "Vault/reviews/2026-08-11-build-performance.md": {
+      "bytes": 2957,
+      "sha256": "de9334333dd289f6ca3bd03f710309630e87fb52b3cf1eea9670914dac0519a9"
+    },
+    "Vault/reviews/2026-08-11-camp-report-cache-delta-fix.md": {
+      "bytes": 2523,
+      "sha256": "b564466ce6f22a66915320c4bc13805b7dbe238abb773a15a800d925b68f51e9"
+    },
+    "Vault/reviews/2026-08-11-camp-roster-image-restoration.md": {
+      "bytes": 2934,
+      "sha256": "fba0c0b9304f6f4afed0be36f58933e7f49e48079fa62c5f0a1194f7f16ffe4d"
+    },
+    "Vault/reviews/2026-08-11-canonical-codex-marketplace-layout.md": {
+      "bytes": 1993,
+      "sha256": "3092c38df254e072c768c584ae7f02a2b790f627ff769967b49105c9019e93ed"
+    },
+    "Vault/reviews/2026-08-11-codex-canonical-education-center-binding.md": {
+      "bytes": 2076,
+      "sha256": "534d17c53817d886a0d25d20d2f78137ebfa846d92a91fd38eadffcb4e605f5c"
+    },
+    "Vault/reviews/2026-08-11-desktop-private-marketplace-oauth.md": {
+      "bytes": 4327,
+      "sha256": "605c12e00a41a8acdce3e56a59f7395c43f63dee29e4e7d41b805f6ad6b63da5"
+    },
+    "Vault/reviews/2026-08-11-education-center-identity.md": {
+      "bytes": 3436,
+      "sha256": "2a115fba3c057259940ec4c7d6ccdb2297064bef276a83aa7f40187ade9a0e6a"
+    },
+    "Vault/reviews/2026-08-11-lead-director-private-marketplace-placement.md": {
+      "bytes": 2041,
+      "sha256": "05ec764842e70114ff19e8e6b6f70f96bdb5c65e07a6280d9f91b93137d481d3"
+    },
+    "Vault/reviews/2026-08-11-release-readiness.md": {
+      "bytes": 3836,
+      "sha256": "0d3305e680a92568bb3fe9d7fae43ca48c862b480bab7867aee4d52c5c967fc5"
+    },
+    "Vault/reviews/2026-08-11-shared-local-document-cache.md": {
+      "bytes": 3995,
+      "sha256": "f9a33b925ca22479e64d399111a8b07218361b5df4087b63c168b9da5be76042"
+    },
+    "Vault/reviews/2026-08-12-codex-education-center-app-binding.md": {
+      "bytes": 3312,
+      "sha256": "ae592ec0e50b5baad9634869aef6a16c63ec0f1d40ae571709979ff7828a4ee0"
+    },
+    "Vault/reviews/2026-08-12-education-center-initialization-defaults.md": {
+      "bytes": 2616,
+      "sha256": "caeed8950ccf7a63515fcb662d160774a009e6807bf12aa5edd21b3f4fa1010e"
+    },
+    "Vault/reviews/2026-08-16-bright-horizons-deterministic-report-rules.md": {
+      "bytes": 3269,
+      "sha256": "2a783a3e6ee3b7b249f679f20480358fe1d340c92b32ac8e49eb438e76c11f36"
+    },
+    "Vault/reviews/2026-08-19-sendgrid-campaign-operations.md": {
+      "bytes": 2153,
+      "sha256": "895c6620a8e5510c83e41eb8917bbe4337743547bd90299545d9890efd496ede"
+    },
+    "Vault/reviews/2026-08-20-bos-guided-support.md": {
+      "bytes": 2614,
+      "sha256": "471b51847853ad3b5d9f3e0f72967c1ee7c4b50eaa3a38a6d0d1ca76bf39f9b7"
+    },
+    "Vault/reviews/2026-08-20-sendgrid-complete-client-workflow.md": {
+      "bytes": 2964,
+      "sha256": "a4deda2bbad2f93eef7d1ff01c18bc665bbd707ba2aeccfdb59ebb7c435cb693"
+    },
+    "Vault/reviews/2026-08-21-education-center-agent-call-client-contract.md": {
+      "bytes": 2815,
+      "sha256": "7cf5a796feb4307d94e4891c81aa4c04b557ef3c1440b0a9debaab068ad42a37"
+    },
+    "Vault/schemas/decision-record.md": {
+      "bytes": 439,
+      "sha256": "3922907624221572a243f58b3684dc8a2eb7b7d221b4a3d6ac5dd1317b9baef4"
+    },
+    "Vault/specs/client-guided-support.md": {
+      "bytes": 1940,
+      "sha256": "ebcb822b70526b4b1a6de7a93325ec0a106c6a860ce925cbc3d7c089001412e9"
+    },
+    "Vault/specs/customer-skill-extensions.md": {
+      "bytes": 5632,
+      "sha256": "ce696da6b99f10263e835387c03470013b0b68f60b05db9a197e33eb93ed38a1"
+    },
+    "Vault/specs/named-mcp-application-group-routing.md": {
+      "bytes": 5893,
+      "sha256": "6a9d0cf8f56608f6a59144762c132d59af02fb957d37fd303d29c277742ed47a"
+    },
+    "Vault/specs/named-mcp-server-implementation.md": {
+      "bytes": 14968,
+      "sha256": "65c56e21cb6c788dbe2825dc63ef244598c894adaa44db5042dc74bce4de2866"
+    },
+    "Vault/specs/oracle-and-vault.md": {
+      "bytes": 1470,
+      "sha256": "f83bbe0c4179b651f033f21fb2725b2a4efb7ed7484266afdd3b48f546f63c4b"
+    },
+    "Vault/specs/shared-local-document-cache.md": {
+      "bytes": 7735,
+      "sha256": "3186bcb5685d6a971b5bcb08b806b95d4dc3a9d35d8bb82ab7ba5b438c728729"
+    }
+  }
+}

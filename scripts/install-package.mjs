@@ -39,7 +39,7 @@ import {
 const stateFileName = ".bos-package-state.json";
 const codexMarketplaceIdentity = Object.freeze({
   name: "bos-education-center",
-  displayName: "BOS + Education Center"
+  displayName: "BOS + Education Operation Center"
 });
 const execFileAsync = promisify(execFile);
 const retiredBosBrokerPaths = new Set([
