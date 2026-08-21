@@ -15,10 +15,11 @@ configuration, or prompt instructions. A missing capability stops the client
 operation, and the server repeats the same authorization check before any data
 read or mutation.
 
-Role administration begins with `bos_list_role_capabilities`. A requested
-change uses `bos_update_role_capabilities` with the exact current revision and
-complete replacement list. The selected role must advertise `bos.roles.update`.
-After success, clients refresh context and tool discovery.
+Role administration begins with `bos_list_role_capabilities` when the selected
+role advertises `bos.roles.read`. A requested change uses
+`bos_update_role_capabilities` with the exact current revision and complete
+replacement list. The selected role must also advertise `bos.roles.update`.
+After an audited server success, clients refresh context and tool discovery.
 
 ## Authority model
 
@@ -69,7 +70,8 @@ every data read or mutation and filters results through its canonical scope.
 
 `bos_list_role_capabilities` returns role intent, label, authority rank,
 capability list, editability, and an optimistic revision for one authorized
-installed app. `bos_update_role_capabilities` requires:
+installed app and requires the acting context to carry `bos.roles.read`.
+`bos_update_role_capabilities` requires:
 
 - an acting context carrying `bos.roles.update`;
 - a target role that already exists;
@@ -80,7 +82,10 @@ The update changes only the target role's explicit capability list. It does not
 change membership, authority rank, provider credentials, or another
 installation. A revision conflict requires a fresh read and user resolution of
 any material difference before retrying. After success, clients refresh
-context and discovery before further operations.
+context and discovery before further operations. The server atomically records
+the authenticated actor, acting role, target role, and before/after capability
+lists in the installation audit; clients never manufacture or substitute that
+audit evidence.
 
 ## Interactive and autonomous execution
 
