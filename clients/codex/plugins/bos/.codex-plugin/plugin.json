@@ -17,9 +17,9 @@
       "Write"
     ],
     "defaultPrompt": [
-      "Plan this BOS platform change.",
-      "Review this BOS implementation.",
-      "Validate this BOS package architecture."
+      "List the BOS apps and skills installed for my organization.",
+      "Show me the tools and workflows available in each BOS app.",
+      "Check which BOS apps are connected and ready to use."
     ],
     "websiteURL": "https://dfsm.ai"
   },
