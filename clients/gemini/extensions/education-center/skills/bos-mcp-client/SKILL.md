@@ -141,13 +141,17 @@ The server re-resolves membership and capabilities on every call. Refresh
 context once after a denial or missing context, then treat the repeated server
 result as authoritative.
 
-For role administration, call `bos_list_role_capabilities` to read role intent,
-authority rank, capabilities, editability, and revision. Call
-`bos_update_role_capabilities` only when the user explicitly requests a change,
-using the exact context, target role, complete replacement capability list, and
-revision from that read. The selected role must carry `bos.roles.update`. After
-success, refresh `bos_get_context`. On a revision conflict, read the current
-configuration and have the user resolve any material difference before retrying.
+For role administration, call `bos_list_role_capabilities` only when the
+selected role carries `bos.roles.read`; it returns role intent, authority rank,
+capabilities, editability, and revision. Call `bos_update_role_capabilities`
+only when the user explicitly requests a change, using the exact context,
+target role, complete replacement capability list, and revision from that read.
+The selected role must also carry `bos.roles.update`. Treat success as a
+server-audited mutation recording the authenticated actor, acting role, target
+role, and before/after capabilities; never claim success when the server does
+not return the completed update. After success, refresh `bos_get_context`. On a
+revision conflict, read the current configuration and have the user resolve any
+material difference before retrying.
 
 ## Shared local document cache
 
