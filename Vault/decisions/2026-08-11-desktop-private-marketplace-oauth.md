@@ -35,8 +35,8 @@ surface.
 - Claude `.mcp.json` files have no literal authorization header.
 - Codex Environments and setup scripts are not credential stores.
 - OS-specific launchers are outside the customer installation path.
-- Customer ZIPs are optional artifacts rather than the primary distribution
-  path.
+- Git marketplaces are the customer distribution path. Repository release
+  workflows create no customer ZIP.
 - Each active Codex runtime product records its stable registered app ID in the
   canonical product manifest and fails package validation when that binding is absent.
 - Education Center uses `ON_INSTALL` because authenticated live data is core to

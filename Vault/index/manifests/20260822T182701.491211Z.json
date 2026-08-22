@@ -1,5 +1,5 @@
 {
-  "indexed_at": "20260822T182817.629055Z",
+  "indexed_at": "20260822T182701.491211Z",
   "schema_version": "bos-vault-manifest/v1",
   "source_count": 42,
   "sources": {
@@ -25,7 +25,7 @@
     },
     "Vault/docs/CONSTITUTION.md": {
       "bytes": 3281,
-      "sha256": "56fac9e9128743254ce60d3c4b0dbc2a1d80d02198ec235cde65974e2fa0b017"
+      "sha256": "08d0652438ab19bc19c7f2e87b32e181d89ab0a17f4679da271de778c44f807a"
     },
     "Vault/docs/architecture.md": {
       "bytes": 12453,

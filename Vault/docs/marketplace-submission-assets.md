@@ -44,7 +44,7 @@ approval come from Tracks F through J.
 | Display name | BOS — Business Operating System | Education Operation Center | Video Ads | Ready | `products/*/product.json` |
 | Publisher | Infinite State Machines LLC | Infinite State Machines LLC | Infinite State Machines LLC | Ready | `products/*/product.json` |
 | Category | Productivity | Productivity | Marketing | Ready | `products/*/product.json` |
-| Current version | 0.4.27 | 0.4.27 | 0.1.3 | Ready | `products/*/product.json` |
+| Current version | 0.4.30 | 0.4.30 | 0.1.3 | Ready | `products/*/product.json` |
 | Application name | None (skills-only) | `leaddirector` | `leaddirector` | Ready for packaging; runtime certification pending | `products/*/product.json` |
 | MCP group name | None (skills-only) | `education-center` | `video-ads` | Ready for packaging; runtime certification pending | `products/*/product.json` |
 | Short description | Present | Present | Present | Ready as source copy | `products/*/product.json` |
@@ -72,7 +72,7 @@ are evidence of propagation and are never the source to edit.
 | Data-handling disclosure | Missing | No marketplace-specific disclosure maps user inputs, MCP requests/responses, provider data, retention, subprocessors, and deletion. | Privacy/counsel with BOS runtime owner | Disclosure reconciles with live MCP behavior and privacy policy. |
 | Account/data deletion instructions | Missing | The live privacy page names a privacy-request email, but no product-specific connection revocation and operational-data deletion procedure is recorded. | Privacy/support and BOS runtime owner | Reviewer can follow a public deletion/revocation procedure. |
 | Trademark policy | Ready in repository | `TRADEMARKS.md` exists. | Legal | Public packaging links or includes the policy where required. |
-| Open-source license | Ready | Apache-2.0 is declared and `LICENSE` exists. | Release operations | Every public repository and archive contains the license. |
+| Open-source license | Ready | Apache-2.0 is declared and `LICENSE` exists. | Release operations | Every public repository contains the license. |
 | Product logos/icons | Missing | No PNG, SVG, JPG, WebP, or GIF product asset exists outside repository internals. | Brand/design | Approved master plus harness-required exports exist for all three products. |
 | Marketplace screenshots | Missing | No marketplace screenshots exist. | Product/design and harness owners | Approved, privacy-safe screenshots demonstrate representative workflows in each claimed harness. |
 | Demo video | Conditional/missing | No listing demo exists. | Product/design | Produce only when a portal requires it or review benefits materially. |
@@ -81,7 +81,7 @@ are evidence of propagation and are never the source to edit.
 | Tool/action catalog | Missing/external | Skill inventories describe workflows, while the authoritative server-advertised tools and annotations belong to the live named routes. | Lead Director/BOS application owner | Versioned export lists every tool, purpose, input/output schema, read/write behavior, side effects, and annotations. |
 | Review test cases | Missing | No canonical marketplace reviewer packet contains five positive and three negative cases per OpenAI submission. | QA with product owners | Cases run successfully against reviewer credentials and record expected results. |
 | Reviewer demo account/key | External | Public artifacts correctly contain no credentials. | BOS operations/security | Time-bounded reviewer credential and safe review tenant are delivered through the portal's secret channel. |
-| Release archives | Ready as build output | `dist/release-manifest.json` records twelve product/client archives and SHA-256 checksums. `dist/` is generated and ignored. | Release engineering | Rebuilt archives and checksums pass Track J on the release commit. |
+| Generated client packages | Ready as build output | `clients/` contains the canonical Codex, Claude, Copilot, and Gemini outputs. | Release engineering | Generated parity and credential-free local checks pass on the release commit. |
 | Release notes/changelog | Missing | Versions exist, while no per-product marketplace release notes or changelog is canonical. | Product/release operations | Each submitted version has product-specific changes, compatibility, migration, and known limitations. |
 | Public repository metadata | Partial | Repository URL is in Claude manifests; repository name currently uses `bos_operations_ceneter`. Public visibility, About copy, topics, and release state require account-level verification. | Repository owner | Public repository metadata, topics, releases, and support links are verified live. |
 | Customer/credential scan | Ready as repository control | Security and package tests prohibit credentials; final evidence belongs to Track J. | Release engineering | Scan passes on exact submission artifacts. |
@@ -249,8 +249,7 @@ does not authorize a change to the fixed human-readable route model.
 Official basis: [Gemini CLI extension release](https://geminicli.com/docs/extensions/releasing/).
 The Gemini gallery automatically indexes eligible public GitHub repositories;
 the official discovery steps are a public repository plus the
-`gemini-cli-extension` GitHub topic. GitHub Releases can provide faster installs
-and the root of an extension archive must contain `gemini-extension.json`.
+`gemini-cli-extension` GitHub topic.
 
 Because the current repository contains three extensions below
 `clients/gemini/extensions/`, product/release operations must choose and record
@@ -264,10 +263,9 @@ Checklist per listed extension:
 
 - [x] Generated `gemini-extension.json` exists with name, version, description,
   sensitive API-key setting, and fixed named MCP endpoint.
-- [x] Deterministic Gemini archive exists in the current release manifest.
+- [x] Deterministic Gemini generated package exists under `clients/gemini`.
 - [ ] Select and document the public repository topology.
-- [ ] Ensure `gemini-extension.json` is at repository root or archive root for
-  the installable product.
+- [ ] Ensure `gemini-extension.json` is at the installable repository root.
 - [ ] Add product README, long description, starter prompts, support links,
   license, security information, and screenshots.
 - [ ] Make the release repository public.
@@ -275,8 +273,6 @@ Checklist per listed extension:
 - [ ] Validate direct installation from the exact public repository URL.
 - [ ] Publish a tagged GitHub release and mark the intended stable version as
   Latest.
-- [ ] Attach the self-contained generic `.tar.gz` or `.zip` only when using
-  custom release archives, with the required root structure.
 - [ ] Validate update discovery from the published release.
 - [ ] Verify the extension appears in the gallery after indexing and record the
   listing URL/date.
@@ -295,7 +291,7 @@ from a marketplace or repository. A repository marketplace uses
 manifest for compatibility.
 
 - [x] Product-specific Copilot skill trees and product metadata are generated.
-- [x] Deterministic Copilot archives exist in the release manifest.
+- [x] Deterministic Copilot generated packages exist under `clients/copilot`.
 - [x] The repository has a Claude marketplace manifest that current Copilot CLI
   documentation says it can discover.
 - [ ] Decide whether Copilot will share the Claude marketplace manifest or own
@@ -343,7 +339,7 @@ data-flow catalog. Submission clicks wait for Track J release approval.
 
 Create one durable release/submission record per product and harness containing:
 
-- product, harness, package version, git commit, and archive checksum;
+- product, harness, package version, git commit, and generated-tree checksum;
 - fixed MCP route and live route certification reference;
 - marketplace/repository URL and listing identifier;
 - publisher account and verified legal identity;

@@ -351,13 +351,12 @@ links. The local link command backs up active cached skill directories and
 symlinks them to canonical source directories. This makes the active Codex
 skill and repository skill one filesystem object and removes local
 reconciliation from the developer loop. The mode is deliberately outside
-release artifacts and customer installation; a Codex plugin reinstall may
+generated customer packages and customer installation; a Codex plugin reinstall may
 replace its cache and requires the developer to re-run the link command.
 
 ## What build means
 
-Building is deterministic, OS-neutral package and deployment-artifact
-assembly. `npm run build`:
+Building is deterministic, OS-neutral client-package assembly. `npm run build`:
 
 1. Reads the canonical platform, capability, and vertical skills.
 2. Reads the product manifests.
@@ -366,11 +365,8 @@ assembly. `npm run build`:
    distribution.
 5. Assembles the selected skills into Codex, Claude, Copilot, and Gemini package
    layouts.
-6. Creates deterministic per-product/client archives and a checksum manifest.
-7. Creates versioned and stable cross-platform customer ZIPs containing the
-   generated Codex, Claude, Copilot, and Gemini distributions.
 
-`npm run build:packages` performs steps 1–5 for development.
+`npm run build:packages` performs the same client generation directly.
 
 A build does not:
 
@@ -382,11 +378,10 @@ A build does not:
 - call Gmail, Calendar, Drive, Calimatic, or another organization service;
 - deploy or publish a release.
 
-`npm run release:check` runs the complete build, verifies all nine product
-archives and both customer ZIP names, validates ZIP contents, checks package
-structure, runs tests, and scans for credentials, private keys, tokens, unsafe
-credential files, and local user paths. Platform installation tests and
-authenticated end-to-end tests remain separate release checks.
+`npm run release:check` runs the complete credential-free local build, checks
+package structure and generated parity, runs tests, and scans for credentials,
+private keys, tokens, unsafe credential files, and local user paths. It creates
+no archive and performs no live authenticated request.
 
 The builder reads every product manifest, resolves its selected canonical
 skills, and generates deterministic Codex, Claude, Copilot, and Gemini distributions.
@@ -555,9 +550,8 @@ state available from BOS and starts the applicable recovery flow.
 
 ### 1. Install the client distribution
 
-Codex and Claude install from their native private marketplaces. Optional
-customer archives carry the same generated marketplace packages for offline
-transfer. The installation contains only the
+Codex and Claude install from their native private marketplaces. The
+installation contains only the
 capabilities and vertical modules selected for that product. Installation
 alone grants no organization access.
 
@@ -691,7 +685,7 @@ A public release is ready only when:
    package;
 2. `npm run release:check` passes;
 3. generated clients match the canonical source;
-4. Codex, Claude, Copilot, and Gemini installation smoke tests pass;
-5. BOS connection and authentication recovery are tested;
-6. tenant isolation and no-fallback behavior are verified; and
-7. release archives contain no credentials or customer data.
+4. deterministic installation tests pass;
+5. host-managed BOS connection and authentication recovery are tested outside
+   the repository release command; and
+6. tenant isolation and no-fallback behavior are verified.

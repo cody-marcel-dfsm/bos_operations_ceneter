@@ -86,11 +86,11 @@ release system for portable BOS skills and native remote MCP client adapters.
     the matching named connection; authorization never falls through between
     products. The plugin package never reads, prompts for, substitutes, or
     persists BOS access or refresh tokens.
-12. Treat deployment artifacts as build outputs. The complete cross-platform
-    build generates client packages, deterministic product archives, the
-    release manifest, and versioned and stable OS-neutral customer ZIPs.
-    Release workflows publish only artifacts produced and validated by that
-    build.
+12. Treat generated client packages as build outputs. The complete
+    cross-platform build materializes Codex, Claude, Copilot, and Gemini clients
+    directly under `clients/` and validates them against canonical `source/`
+    and product manifests. Repository release workflows do not generate ZIPs,
+    tarballs, customer archives, or release manifests.
 13. Apply tenant-specific skill changes through customer-owned typed extensions.
     Extension terminology, defaults, policies, and exceptions may specialize
     declared customer-configurable behavior. System instructions, package
@@ -126,8 +126,8 @@ release system for portable BOS skills and native remote MCP client adapters.
     canonical skills through deterministic generation. Installation adds the
     marketplace, installs the product, invokes the host's Connect/Sign in
     action for runtime products, and begins a new task after the host loads the
-    plugin. Customer ZIPs may remain optional release artifacts; they are not
-    the primary desktop installation or credential path.
+    plugin. Git marketplace installation is the distribution path; repository
+    release workflows create no customer archive.
 17. Treat a Claude, ChatGPT/Codex, OAuth-capable Copilot, Gemini CLI, or Antigravity Desktop product
     connection as ready only when the
     installed plugin points to its exact immutable MCP resource—directly for
@@ -139,26 +139,13 @@ release system for portable BOS skills and native remote MCP client adapters.
     desktop process environment, or use an OS-specific launcher. Plugin source
     changes require marketplace update or reinstall, cache refresh as supported
     by the host, and a new task.
-18. Gate every complete build and customer release on an authorized,
-    read-only live query through each active operational product's exact named
-    MCP route using an approved noninteractive, resource-scoped OAuth access
-    token. The release gate never accepts a BOS product key.
-    This release-only evidence never changes the desktop OAuth contract. Disabled
-    or unreleased products are excluded from generated marketplaces, customer
-    archives, installation instructions, and release gates. A missing provider
-    credential or disabled provider plugin blocks only its owning product or
-    operation and never another organization's connection, tools, build, or
-    release. For Education Center director
-    reporting, the gate must discover the complete
-    report read-tool contract, prove one server-derived Education Center context, and
-    execute a bounded enrollment query for the customer-configured local week.
-    A well-formed empty record array is a valid seasonal result. When camp data
-    exists, report student and family-phone field presence as aggregate
-    data-quality evidence without treating provider-record completeness as a
-    transport failure. Emit only allowlisted status/error codes, validated
-    correlation IDs, tool names, and aggregate field-presence counts.
-    Artifact-only development builds may remain credential-free but provide no
-    production-readiness evidence.
+18. Keep repository builds and release checks credential-free and local. They
+    regenerate clients, validate canonical-source parity, scan for credentials
+    and customer data, and run deterministic tests without a live MCP query or
+    noninteractive OAuth access token. Verify live product connectivity after
+    installation through each supported host's managed OAuth flow. Disabled or
+    unreleased products are excluded from generated marketplaces, installation
+    instructions, and release checks.
 19. Give every BOS-family runtime product on one OS user account a shared local
     document cache. The packaged `bos-mcp-client` resolves the same
     platform-native cache root from every client and product. It partitions

@@ -14,9 +14,7 @@ Gemini extension supports both Gemini CLI and Google Antigravity 2.0 Desktop.
 | Claude Cowork/Desktop customer | Install and operate Education Operation Center | [Claude installation](#claude-coworkdesktop) |
 | Gemini customer | Use Gemini CLI or Antigravity 2.0 Desktop | [Gemini installation](#gemini-cli-and-antigravity-20-desktop) |
 | Local plugin development | Edit, regenerate, install, and test an unreleased checkout | [Local development](#local-plugin-development) |
-| Maintainer artifact build | Generate credential-free client packages and archives | [Artifact build](#artifact-only-build) |
-| Maintainer release validation | Run the live server gate and complete release checks | [Release validation](#complete-release-validation) |
-| Optional archive installation | Test or transfer a packaged release without Git marketplace access | [Archive installation](#optional-archive-installation) |
+| Maintainer release validation | Regenerate client packages and run credential-free local checks | [Release validation](#release-validation) |
 | GitHub Copilot | Use the repository client adapter | [Other clients](#other-clients) |
 
 Customer desktop installation does not use Codex Environment variables, setup
@@ -30,7 +28,7 @@ The private Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Select
 **Connect** or **Sign in** when the host presents it, then complete BOS consent.
 
-Current desktop marketplace release: `0.4.27`. If `0.4.26` is installed,
+Current desktop marketplace release: `0.4.30`. If `0.4.29` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -80,14 +78,6 @@ OAuth from the immutable MCP resource and manages the resulting grant.
 
 Server-only tool-catalog changes require reconnection and tool rediscovery.
 They do not require a different endpoint or a new package.
-
-### Optional archive installation
-
-Use a release archive only for offline transfer or archive-specific testing.
-Open the extracted package and follow
-[`installer/README_INSTALL.md`](installer/README_INSTALL.md). The archive is
-operating-system-neutral and contains no customer credential, local MCP proxy,
-or OS-specific launcher.
 
 ### Customer settings and extensions
 
@@ -180,7 +170,8 @@ npm run dev:link:codex
 ```
 
 This links active cached skill directories to canonical `source/` directories.
-It is development infrastructure and is absent from customer archives.
+It is development infrastructure and is absent from installed customer
+packages.
 
 ### Test Claude locally
 
@@ -207,32 +198,12 @@ The package checks enforce generated parity, credential containment, immutable
 MCP routes, marketplace structure, customer-neutral source, and disabled-product
 exclusion.
 
-## Build and release environments
+## Release validation
 
-### Artifact-only build
-
-Generate client packages, deterministic client archives, the release manifest,
-and the optional customer archive without claiming live production readiness:
-
-```bash
-npm run build:artifacts
-npm run check:build
-```
-
-Outputs are written under ignored `dist/`. Repository-wide `*.zip` and
-`*.tar.gz` files are ignored so generated archives cannot become tracked source.
-
-### Complete release validation
-
-Maintainers configure the release-test environment only:
-
-- `EDUCATION_CENTER_RELEASE_OAUTH_ACCESS_TOKEN`: approved short-lived,
-  resource-scoped OAuth token used only by the noninteractive live smoke.
-- `EDUCATION_CENTER_SMOKE_TIME_ZONE`: customer overlay IANA timezone used by
-  the bounded director-query smoke.
-
-These values are release-gate inputs. They are never customer desktop
-installation settings.
+Release validation is credential-free and local. It regenerates canonical
+client packages, checks generated parity and credential containment, and runs
+the complete test suite. It creates no ZIPs, tarballs, customer archives, or
+release manifests and performs no live MCP call.
 
 Run:
 
@@ -240,14 +211,9 @@ Run:
 npm run release:check
 ```
 
-The release gate regenerates all clients and archives, validates package and
-credential safety, runs the full tests, discovers the live Education Operation Center
-tool contract, resolves one server-owned context, and executes a bounded
-read-only enrollment query. Diagnostics contain sanitized status, tool names,
-correlation IDs, and aggregate field-presence counts only.
-
-`npm run release:customer` is an alias for the same complete validated release
-command.
+The desktop host verifies live BOS access after installation through its
+host-managed OAuth connection. Repository release commands never accept or
+retrieve a reusable BOS access token.
 
 ## Other clients
 
@@ -305,16 +271,14 @@ the BOS runtime plugin is unavailable on those two hosts.
 | `clients/` | Generated client packages |
 | `.agents/plugins/marketplace.json` | Repository Codex marketplace |
 | `.claude-plugin/marketplace.json` | Repository Claude marketplace |
-| `installer/` | Optional archive installation guidance |
 | `scripts/` | Generation, validation, installation, and release tools |
 | `tests/` | Package, security, portability, and workflow tests |
 | `Vault/` | Canonical architecture, decisions, specifications, and reviews |
-| `dist/` | Ignored release artifacts |
 
 Private application skill groups may coexist in a managed marketplace while
 remaining outside public customer releases. Disabled products are listed in
 `clients/disabled-products.json` and excluded from generated marketplaces,
-customer archives, installation instructions, and release gates.
+installation instructions, and release checks.
 
 ## Project documentation
 

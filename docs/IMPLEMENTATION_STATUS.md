@@ -11,7 +11,6 @@ ready for client testing.
 - One BOS-owned MCP runtime, with companion products consuming BOS through
   skill composition.
 - Deterministic Codex, Claude, Copilot, and Gemini package generation.
-- Deterministic release archives and SHA-256 release manifests.
 - Idempotent Codex installation with inspect, plan, apply, and verify modes.
 - Safe adoption of compatible unmanaged installations.
 - Managed upgrades, package-owned stale-path removal, conflict detection,
@@ -26,14 +25,12 @@ ready for client testing.
   lossless legacy migration.
 - Machine-local Codex developer linking with pre-link backups and idempotent
   canonical-source symlinks.
-- Deterministic cross-platform customer ZIP generation containing Codex,
-  Claude, and Copilot distributions with host-native BOS connections.
 - Codex Education Center app binding through the registered
   `asdk_app_6a7cb1cc330c81918aa63d96aeeaba91` connection, with no direct
   `.mcp.json` entry.
-- Tag-triggered GitHub release workflow for versioned and stable ZIP assets.
 - Source-to-generated drift validation, skill validation, secret/path scanning,
-  installer tests, host-native connection checks, and release checks.
+  installer tests, host-native connection checks, and credential-free local
+  release checks.
 - Lead Director repository specializations that explicitly compose the
   application-neutral BOS planning, implementation, review, authentication, and
   boundary foundations.

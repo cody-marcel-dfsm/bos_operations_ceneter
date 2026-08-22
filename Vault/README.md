@@ -14,7 +14,8 @@ repository.
   workflow intermediates.
 
 Executable skills remain in `source/`, tests remain in `tests/`, generated
-clients remain in `clients/`, and release artifacts remain in `dist/`.
+clients remain in `clients/`. Repository release workflows create no archive
+artifacts.
 
 ## Lifecycle
 

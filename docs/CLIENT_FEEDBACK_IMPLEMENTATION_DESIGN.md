@@ -315,7 +315,7 @@ conversation and did not store it locally.
 - Product validation accepts the selected composition mechanism.
 - Canonical skill is included in every intended product.
 - Codex, Claude, Copilot, and Gemini generated copies match the source.
-- Package archives remain credential-free.
+- Generated client packages remain credential-free.
 - Existing install/update tests continue to pass.
 
 ### Security tests

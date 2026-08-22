@@ -10,5 +10,5 @@ Describe the workflow, client adapter, or documentation change.
 
 ## Validation
 
-- [ ] `npm run release:check`
+- [ ] Credential-free local `npm run release:check`
 - [ ] Changed skills pass `quick_validate.py`

@@ -494,10 +494,10 @@ Deliverables:
 
 - shared live behavioral matrix;
 - route, skill, and tool-manifest parity evidence;
-- deterministic builds and release archives;
+- deterministic generated-client builds;
 - credential and customer-data scans;
 - migration compatibility evidence;
-- release manifest and checksums; and
+- generated-tree parity evidence; and
 - final Oracle review of the actual diff and validation results.
 
 Exit gate: every claimed harness passes its applicable certification matrix
@@ -614,16 +614,16 @@ claimed harness.
 Exit gate: client skills treat the route as immutable package configuration
 and retain all fail-closed authorization behavior.
 
-### Phase 5: Update installers and release packaging
+### Phase 5: Update installers and generated packages
 
 1. Remove installed-app-ID questions and settings from every installer.
 2. Install each product's generated host-native runtime binding.
 3. Complete host-managed OAuth for Claude, Codex, OAuth-capable Copilot, and
    Gemini; keep every package free of BOS credential fields.
 4. Preserve customer-owned skill extensions and non-route settings.
-5. Regenerate deterministic archives, stable customer ZIPs, release manifests,
-   checksums, and marketplace packages.
-6. Scan every artifact for secrets, customer data, unresolved variables, and
+5. Regenerate deterministic marketplace client packages without archive or
+   release-manifest output.
+6. Scan every generated package for secrets, customer data, unresolved variables, and
    obsolete route forms.
 
 Exit gate: a clean installation needs no application or MCP-group input.
@@ -742,7 +742,7 @@ approved representative workflows.
 
 - deterministic cross-platform build;
 - generated-output parity;
-- archive and release-manifest consistency;
+- generated-tree parity and marketplace consistency;
 - credential and customer-data scans;
 - marketplace manifest validation; and
 - live harness smoke-test evidence.

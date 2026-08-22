@@ -8,7 +8,7 @@
    state; application graphs own business decisions.
 4. **PO/GO mutation boundary.** Routers validate and dispatch, POs orchestrate,
    and GOs persist.
-5. **Credential containment.** Public source and release artifacts contain no
+5. **Credential containment.** Public source and generated clients contain no
    secrets or customer data. Claude, ChatGPT/Codex desktop, OAuth-capable
    GitHub Copilot hosts, and Gemini authorize each named BOS MCP resource
    through host-managed OAuth 2.1. Claude, Copilot, and Gemini declare the
@@ -26,7 +26,7 @@
    Vault sources, and validation results before approval.
 10. **Repository specialization.** Application-specific rules extend these
     principles in the owning application repository and never weaken them.
-11. **Customer configuration isolation.** Skills and release artifacts contain
+11. **Customer configuration isolation.** Skills and generated clients contain
     no customer's names, mailboxes, addresses, phone numbers, locations, or
     defaults. Installers apply those values from validated customer-owned
     settings and preserve them across package updates.

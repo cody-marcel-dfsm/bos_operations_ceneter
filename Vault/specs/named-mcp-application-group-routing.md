@@ -113,8 +113,8 @@ The following are obsolete client-routing forms:
 - a Codex runtime plugin that declares the route through `.mcp.json` or
   `mcpServers` instead of its registered app binding.
 
-Canonical sources, manifests, generators, adapters, installers, skills, tests,
-and release artifacts must migrate together. Validation rejects obsolete forms
+Canonical sources, manifests, generators, adapters, skills, tests, and
+generated clients must migrate together. Validation rejects obsolete forms
 with a correction that identifies the expected named two-segment route.
 
 ## Required validation

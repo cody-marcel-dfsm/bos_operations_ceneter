@@ -8,7 +8,6 @@ directions when the local evidence conflicts.
 ## Canonical BOS sources
 
 - Package customer instructions: repository `README.md`
-- Archive instructions: repository `installer/README_INSTALL.md`
 - Product composition and version: `products/<product>/product.json` or the
   installed `.bos-product.json`
 - Generated runtime declarations: the installed product package

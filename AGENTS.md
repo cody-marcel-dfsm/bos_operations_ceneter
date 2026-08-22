@@ -8,9 +8,8 @@ Knowledge root: `Vault/`
 
 - This repository owns customer installation instructions for BOS Operations
   Center products across Claude, Codex, Copilot, and Gemini.
-- Answer installation and upgrade questions from `README.md`,
-  `installer/README_INSTALL.md`, product manifests, and generated client
-  packages in this repository.
+- Answer installation and upgrade questions from `README.md`, product
+  manifests, and generated client packages in this repository.
 - Lead with the paste-ready instruction for the customer's named client.
 - Application repositories, including Lead Director, are outside the package
   installation dependency chain. Consult them only when the request explicitly
