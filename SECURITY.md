@@ -34,5 +34,5 @@ certificates may be distributed. Pre-authenticated setup links may not be
 distributed.
 
 If a credential is committed, revoke it immediately, remove it from current and
-historical release artifacts, audit access, and publish a security notice when
+historical releases, audit access, and publish a security notice when
 customer action is required.

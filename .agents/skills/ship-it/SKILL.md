@@ -1,11 +1,11 @@
 ---
 name: ship-it
-description: Review, validate, build, commit, and push every uncommitted change in the current Git repository. Use when the user says “ship it,” “send it,” or explicitly asks to commit all current work and push it to the configured remote.
+description: Create the next repository release version, review and validate all current work, regenerate client packages, commit everything, and push the current branch. Use when the user says “ship it,” “send it,” or asks to release and push the current work.
 ---
 
 # Ship It
 
-Complete the current repository's delivery loop. The invocation itself authorizes staging all current changes, creating one commit, and pushing the current branch. Do not request redundant confirmation.
+Complete the current repository's release loop. A successful invocation creates a new version even when the pending source change did not edit version metadata. The invocation itself authorizes the repository-native version bump, generated package updates, staging all current changes, one commit, and pushing the current branch. Do not request redundant confirmation.
 
 ## Preflight
 
@@ -15,9 +15,24 @@ Complete the current repository's delivery loop. The invocation itself authorize
 4. Review the entire pending change set. Inspect untracked files before staging. Treat every existing change as user-owned and in scope for this invocation.
 5. Block the shipment and report exact findings when the changes expose credentials or private data, contain a material correctness or security defect, include an obviously accidental large artifact, or conflict with repository instructions. Never discard or rewrite the user's work while resolving a blocker.
 
+## Create the release version
+
+1. After preflight and initial change review, increment the repository release version before generating packages. Use the repository's native version command when it exists. In BOS Operations Center, run `npm run version:next` for the default patch release.
+2. Default to a patch increment. Use a minor, major, or exact version only when the user or repository release policy specifies it.
+3. Require the bump to update canonical package metadata, every active product manifest, and current-release documentation. Leave disabled products on their independent versions.
+4. Treat generated client manifests and marketplaces as outputs of the canonical
+   package build. Do not hand-edit generated copies. Do not create ZIP, tarball,
+   customer-archive, or release-manifest artifacts.
+5. If the worktree is clean, the new version itself is the release change. Do not skip the release or create an empty commit.
+
 ## Validate and build
 
-Run the strongest repository-defined local checks that are practical for the change, including focused tests plus the canonical build or release validation when declared. Apply any repository-required review skill or approval contract to the actual diff and evidence.
+Regenerate versioned client packages after the bump. Run the strongest
+repository-defined credential-free local checks that are practical for the
+complete release diff, including focused tests plus canonical package
+validation. Do not invoke a live MCP release smoke or require a release OAuth
+access token. Apply any repository-required review skill or approval contract
+to the actual diff and evidence.
 
 - Fix failures caused by the pending changes when the correction is clearly within their scope, then rerun affected checks.
 - Stop without committing or pushing when a required check still fails, a required external gate is unavailable, or a safe correction would materially change intent.
@@ -34,8 +49,8 @@ Run the strongest repository-defined local checks that are practical for the cha
 
 Push the current branch to its configured upstream. When no upstream exists, set one only when the current branch and a single intended remote are unambiguous. Never force-push. Never change branches merely to make a push succeed.
 
-If the worktree is already clean, do not create an empty commit. Push existing unpushed commits only when the invocation clearly targets the current branch and the upstream is unambiguous.
+Push existing unpushed commits with the new release commit when the invocation clearly targets the current branch and the upstream is unambiguous.
 
 ## Report
 
-After a successful push, report the commit hash, subject, branch, remote destination, included file count, and validation/build results. If stopped, state the blocking evidence and leave the repository unchanged beyond clearly scoped fixes made before the blocker was known.
+After a successful push, report the previous and new release versions, commit hash, subject, branch, remote destination, included file count, generated packages, and validation/build results. If stopped, state the blocking evidence and leave the repository unchanged beyond clearly scoped fixes made before the blocker was known.

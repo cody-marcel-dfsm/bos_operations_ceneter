@@ -621,7 +621,7 @@ Add validation for:
 - plugin and marketplace schema;
 - installer idempotency;
 - absolute paths, credentials, and customer data; and
-- deterministic archives and checksums.
+- deterministic generated-client parity.
 
 ### PKG-501 — Run local end-to-end installation
 
@@ -661,7 +661,7 @@ After Codex local testing passes:
 - apply equivalent managed-state and conflict rules where supported;
 - preserve client-specific configuration;
 - run install/update smoke tests for each client; and
-- publish deterministic archives and checksums.
+- publish generated clients through the native Git marketplaces.
 
 ## Test gates
 

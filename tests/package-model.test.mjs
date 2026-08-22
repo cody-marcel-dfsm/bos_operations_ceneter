@@ -12,6 +12,7 @@ import {
   geminiPluginManifest,
   geminiPluginMcpManifest,
   materializeMcpUrl,
+  pathExists,
   pluginManifest,
   resolveProductSkills,
   root,
@@ -140,13 +141,40 @@ test("Education Center packages include governed single-lead Agent Call operatio
   );
   assert.match(guidance, /education_center_search_leads/);
   assert.match(guidance, /education_center_initiate_agent_call/);
+  assert.match(guidance, /education_center_get_agent_call_status/);
+  assert.match(guidance, /same-task continuation controls/);
+  assert.match(guidance, /Do not end the task/);
+  assert.doesNotMatch(guidance, /Refresh or reconnect.*then retry/i);
   assert.match(guidance, /exactly one lead/i);
-  assert.match(guidance, /stable task-local idempotency key/i);
-  assert.match(guidance, /reconcile[\s\S]*before any replay/i);
+  assert.match(guidance, /each explicit user request[\s\S]*fresh idempotency key/i);
+  assert.match(guidance, /same lead in the same conversation/i);
+  assert.match(guidance, /Reuse that key only for a transport retry/i);
+  assert.match(guidance, /call-log or provider-call reference/i);
+  assert.match(guidance, /follow-up questions[\s\S]*read-only/i);
+  assert.match(guidance, /never invoke the call mutation/i);
+  assert.match(guidance, /only operation used for[\s\S]*outcome reconciliation/i);
+  assert.match(guidance, /bounded status follow-up/i);
+  assert.match(guidance, /up to 60\s+seconds/i);
+  assert.match(guidance, /Call requested; completion not confirmed/i);
+  assert.match(guidance, /Never say `dispatched`\s*from `accepted`/i);
+  assert.match(guidance, /Omit internal[\s\S]*CRM status/i);
+  assert.match(guidance, /provider call reference[\s\S]*call-log ID/i);
+  assert.match(guidance, /Call failed — send this screenshot to BOS\s+support/i);
+  assert.match(guidance, /Error code:[\s\S]*Support reference:[\s\S]*Call placement:/i);
+  assert.match(guidance, /Not returned by BOS/i);
+  assert.match(guidance, /invalid error\s+response[\s\S]*public tool name and timestamp/i);
+  assert.match(guidance, /never replace it with a generic phrase[\s\S]*indeterminate server\s+error/i);
+  assert.match(guidance, /Do not infer a root cause/i);
+  assert.match(guidance, /Keep[\s\S]*repair instructions out of the user-facing error/i);
   assert.match(contract, /opaque identifier returned/i);
   assert.match(contract, /public schema excludes[\s\S]*org_id[\s\S]*phone numbers/i);
-  assert.match(contract, /plugin `run_as_role`/i);
+  assert.match(contract, /Metadata `run_as_role` applies only to autonomous/i);
   assert.match(contract, /without dispatching a second provider call/i);
+  assert.match(contract, /latest persisted call for that lead/i);
+  assert.match(contract, /It never dispatches or retries/i);
+  assert.match(contract, /authenticated actor and server-selected[\s\S]*actor role/i);
+  assert.match(contract, /run_as_role` applies only to autonomous/i);
+  assert.match(contract, /status discovery[\s\S]*Retell is disconnected/i);
 });
 
 test("Education Center packages include governed SendGrid campaign operations", async () => {
@@ -1414,31 +1442,27 @@ test("customer installation guidance contains no maintainer build commands", asy
   const readme = await readFile(`${root}/README.md`, "utf8");
   const installSection = readme.split("## Install\n")[1]
     .split("## Customer onboarding\n")[0];
-  const packagedInstructions = await readFile(
-    `${root}/installer/README_INSTALL.md`, "utf8"
-  );
-  for (const guidance of [installSection, packagedInstructions]) {
-    assert.doesNotMatch(guidance, /npm run (?:build|release(?::check|:customer)?)/);
-    assert.match(guidance, /Education Operation Center/);
-    assert.doesNotMatch(guidance, /(?<!Operation )Education Center/);
-  }
+  const normalizedInstallSection = installSection
+    .replace(/^>\s?/gm, "")
+    .replace(/\s+/g, " ");
+  assert.doesNotMatch(installSection, /npm run (?:build|release(?::check|:customer)?)/);
+  assert.match(installSection, /Education Operation Center/);
+  assert.doesNotMatch(installSection, /(?<!Operation )Education Center/);
   assert.doesNotMatch(installSection, /clone this repository/i);
   assert.doesNotMatch(installSection, /unreleased development version/i);
-  assert.match(packagedInstructions, /host's sign-in flow/i);
-  assert.match(packagedInstructions, /paste:/i);
+  assert.match(installSection, /host's sign-in flow/i);
+  assert.match(installSection, /paste:/i);
   assert.doesNotMatch(
-    packagedInstructions,
+    installSection,
     /EDUCATION_CENTER_BOS_API_KEY|bearer_token_env_var|user_config\.bos_api_key|gcloud|gcp-secret-name/i
   );
   assert.match(
-    packagedInstructions,
-    /authorization is incomplete[\s\S]*do not generate an unavailable-data report/i
+    normalizedInstallSection,
+    /authorization is incomplete.*do not generate an unavailable-data report/i
   );
-  assert.match(packagedInstructions, /Reconnect the immutable MCP resource/i);
-  assert.match(packagedInstructions, /After installation or upgrade, start a new task/i);
 });
 
-test("README routes customer, development, and release environments explicitly", async () => {
+test("README routes customer, development, and credential-free release validation explicitly", async () => {
   const readme = await readFile(`${root}/README.md`, "utf8");
   const repositoryPackage = JSON.parse(await readFile(`${root}/package.json`, "utf8"));
   const environmentIndex = readme.split("## Choose your environment\n")[1]
@@ -1446,17 +1470,15 @@ test("README routes customer, development, and release environments explicitly",
   const installSection = readme.split("## Install\n")[1]
     .split("## Customer onboarding\n")[0];
   const developmentSection = readme.split("## Local plugin development\n")[1]
-    .split("## Build and release environments\n")[0];
-  const releaseSection = readme.split("## Build and release environments\n")[1]
+    .split("## Release validation\n")[0];
+  const releaseSection = readme.split("## Release validation\n")[1]
     .split("## Other clients\n")[0];
 
   for (const destination of [
     "#chatgptcodex-desktop",
     "#claude-coworkdesktop",
     "#local-plugin-development",
-    "#artifact-only-build",
-    "#complete-release-validation",
-    "#optional-archive-installation",
+    "#release-validation",
     "#other-clients"
   ]) {
     assert.match(environmentIndex, new RegExp(`\\(${destination}\\)`));
@@ -1476,8 +1498,52 @@ test("README routes customer, development, and release environments explicitly",
   );
   assert.match(developmentSection, /codex plugin marketplace add \.\//);
   assert.match(developmentSection, /claude plugin marketplace add \.\//);
-  assert.match(releaseSection, /EDUCATION_CENTER_RELEASE_OAUTH_ACCESS_TOKEN/);
   assert.match(releaseSection, /npm run release:check/);
+  assert.match(releaseSection, /credential-free and local/i);
+  assert.match(releaseSection, /creates no ZIPs, tarballs, customer archives/i);
+  assert.match(releaseSection, /performs no live MCP call/i);
+  assert.doesNotMatch(releaseSection, /ACCESS_TOKEN|SMOKE_TIME_ZONE/);
+  assert.equal(repositoryPackage.scripts.build, "npm run build:packages");
+  assert.equal(
+    repositoryPackage.scripts["release:check"],
+    "npm run build && npm run check && npm test"
+  );
+  for (const removed of [
+    "build:artifacts",
+    "check:build",
+    "release:customer",
+    "smoke:mcp:education-center",
+    "smoke:mcp:education-center-data",
+    "smoke:mcp:video-ads"
+  ]) {
+    assert.equal(repositoryPackage.scripts[removed], undefined);
+  }
+});
+
+test("release sources contain no archive builders or noninteractive OAuth gate", async () => {
+  const retiredReleaseToken = [
+    "EDUCATION_CENTER", "RELEASE", "OAUTH", "ACCESS", "TOKEN"
+  ].join("_");
+  const currentReleaseSources = [
+    `${root}/package.json`,
+    `${root}/README.md`,
+    `${root}/Vault/docs/architecture.md`,
+    `${root}/.agents/skills/ship-it/SKILL.md`
+  ];
+  for (const path of currentReleaseSources) {
+    const content = await readFile(path, "utf8");
+    assert.equal(content.includes(retiredReleaseToken), false);
+    assert.doesNotMatch(content, /create_(?:release|customer_zip)\.py/);
+  }
+  for (const removedPath of [
+    `${root}/scripts/create_release.py`,
+    `${root}/scripts/create_customer_zip.py`,
+    `${root}/scripts/check-build-output.mjs`,
+    `${root}/scripts/smoke-mcp-connection.mjs`,
+    `${root}/scripts/smoke-education-center-director-query.mjs`
+  ]) {
+    assert.equal(await pathExists(removedPath), false);
+  }
 });
 
 test("desktop marketplace versions match the repository release", async () => {

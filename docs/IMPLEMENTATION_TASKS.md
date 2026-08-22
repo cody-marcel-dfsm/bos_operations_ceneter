@@ -380,31 +380,29 @@ integrity, portability, and credential safety.
 
 - Each validation category has a positive and negative test.
 - Failures identify the exact file and rule.
-- The scanner covers the files that will enter release archives.
+- The scanner covers canonical sources and every generated client package.
 - The check runs on the repository's supported Node version in CI.
 
 **Dependencies:** BOSPKG-007, BOSPKG-009, BOSPKG-011.
 
-### BOSPKG-015 — Generate deterministic release archives
+### BOSPKG-015 — Validate generated client packages
 
-**Outcome:** Each product/client distribution can be delivered without cloning
-the repository.
+**Outcome:** Each product/client distribution is generated deterministically
+for native Git marketplace installation.
 
 **Scope:**
 
-- Add a release command that builds and validates first.
-- Create one archive per product/client combination in `dist/`.
-- Normalize file ordering, timestamps, permissions, and archive names.
-- Emit checksums and a release manifest.
+- Add a credential-free release command that builds and validates first.
+- Generate each client package directly under `clients/`.
+- Validate source parity, package structure, and credential containment.
+- Create no ZIP, tarball, customer archive, or release manifest.
 
 **Acceptance criteria:**
 
-- Two releases from the same commit produce identical checksums.
-- Archives contain only the selected product, client adapter, documentation,
-  and credential-free public metadata.
-- Extracted archives pass package validation.
-- `dist/` remains generated and excluded from source control except for its
-  placeholder.
+- Two builds from the same commit produce identical generated client trees.
+- Generated packages contain only the selected product, client adapter,
+  documentation, and credential-free public metadata.
+- Package validation passes without a live OAuth token or MCP request.
 
 **Dependencies:** BOSPKG-014.
 
@@ -431,8 +429,8 @@ operation, recovery, and update behavior for supported clients.
 
 - Every matrix cell has a recorded pass/fail result and reproducible procedure.
 - Tenant isolation and no-fallback tests pass for every client.
-- Release archives contain no credentials or customer data after testing.
-- The release checklist links to smoke-test evidence and archive checksums.
+- Generated clients contain no credentials or customer data after testing.
+- The release checklist links to deterministic local validation evidence.
 
 **Dependencies:** BOSPKG-013, BOSPKG-015.
 
@@ -463,26 +461,24 @@ remote MCP transport on macOS, Windows, and Linux.
 
 **Dependencies:** BOSPKG-012, BOSPKG-015.
 
-### BOSPKG-019 — Produce an OS-neutral customer distribution
+### BOSPKG-019 — Publish native marketplace distributions
 
-**Outcome:** One deterministic ZIP installs from macOS, Windows, or Linux
-without a compiled client transport.
+**Outcome:** Codex, Claude, Copilot, and Gemini install from generated Git
+marketplace packages without a compiled client transport or customer archive.
 
 **Scope:**
 
-- Package all generated Codex, Claude, Copilot, and Gemini distributions.
-- Publish versioned and stable OS-neutral ZIP names.
-- Run validation and release jobs on a platform-neutral CI runner.
-- Document native installation and one GCP-managed credential binding per
-  active runtime product.
+- Generate all client distributions under `clients/`.
+- Publish through each host's native Git marketplace or repository mechanism.
+- Run credential-free validation on a platform-neutral CI runner.
+- Document native host-managed OAuth installation per active runtime product.
 
 **Acceptance criteria:**
 
-- The ZIP contains all three client distributions and no platform binary.
-- ZIP contents and checksums are deterministic.
-- The complete release build passes on Linux CI.
-- Client smoke-test evidence covers macOS, Windows, and Linux where each host
-  client is supported.
+- Generated distributions contain no platform binary or reusable credential.
+- The complete local release check passes without a live token.
+- Client installation evidence covers each supported host through its native
+  marketplace path.
 
 **Dependencies:** BOSPKG-018.
 
