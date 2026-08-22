@@ -28,9 +28,15 @@ before invoking the call mutation.
 5. Treat each explicit user request to initiate a call as a new dispatch
    request. Create a fresh idempotency key for that request, including when it
    targets the same lead in the same conversation, and call
-   `education_center_initiate_agent_call` with only the server-owned lead
-   identifier and that key. Omit organization, application, installation,
-   role, plugin, action, phone, and provider identifiers.
+   `education_center_initiate_agent_call` with the exact `lead_id` from the
+   matched record's `attributes.available_actions[]` entry whose `action_id`
+   is `agent_call` and whose `tool` is
+   `education_center_initiate_agent_call`. Never pass the top-level federated
+   `record_ref` (`bos:person:...`) as `lead_id`. If that exact action or its
+   `arguments.lead_id` is absent or ambiguous, return `lead_not_found` without
+   a mutation.
+   Omit organization, application, installation, role, plugin, action, phone,
+   and provider identifiers.
 6. Reuse that key only for a transport retry, provider-authorization recovery,
    or reconciliation of this exact dispatch request. If provider authorization
    is required, preserve the same lead and idempotency key, complete the
