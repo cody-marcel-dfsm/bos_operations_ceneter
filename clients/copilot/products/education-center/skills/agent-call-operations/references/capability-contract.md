@@ -9,7 +9,7 @@ read-only `education_center_get_agent_call_status`. They are owned by the
 
 | Field | Requirement |
 | --- | --- |
-| `lead_id` | Required opaque identifier returned by `education_center_search_leads` in the same authorized context |
+| `lead_id` | Required UUID copied exactly from the matched search record's `attributes.available_actions[].arguments.lead_id` for the `agent_call` action; never use the top-level federated `record_ref` |
 | `idempotency_key` | Required stable key for this user request, lead, and intended call |
 
 The status operation requires `lead_id` and accepts either `call_log_id` or

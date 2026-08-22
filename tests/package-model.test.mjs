@@ -141,6 +141,9 @@ test("Education Center packages include governed single-lead Agent Call operatio
   );
   assert.match(guidance, /education_center_search_leads/);
   assert.match(guidance, /education_center_initiate_agent_call/);
+  assert.match(guidance, /attributes\.available_actions\[\][\s\S]*agent_call/i);
+  assert.match(guidance, /arguments\.lead_id[\s\S]*absent or ambiguous/i);
+  assert.match(guidance, /Never pass[\s\S]*record_ref[\s\S]*as `lead_id`/i);
   assert.match(guidance, /education_center_get_agent_call_status/);
   assert.match(guidance, /same-task continuation controls/);
   assert.match(guidance, /Do not end the task/);
@@ -166,7 +169,8 @@ test("Education Center packages include governed single-lead Agent Call operatio
   assert.match(guidance, /never replace it with a generic phrase[\s\S]*indeterminate server\s+error/i);
   assert.match(guidance, /Do not infer a root cause/i);
   assert.match(guidance, /Keep[\s\S]*repair instructions out of the user-facing error/i);
-  assert.match(contract, /opaque identifier returned/i);
+  assert.match(contract, /UUID[\s\S]*available_actions\[\][\s\S]*arguments\.lead_id/i);
+  assert.match(contract, /never use[\s\S]*record_ref/i);
   assert.match(contract, /public schema excludes[\s\S]*org_id[\s\S]*phone numbers/i);
   assert.match(contract, /Metadata `run_as_role` applies only to autonomous/i);
   assert.match(contract, /without dispatching a second provider call/i);
