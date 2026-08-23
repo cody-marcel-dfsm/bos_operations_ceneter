@@ -20,8 +20,12 @@ discoverable. Use `gemini extensions update education-center` for later releases
 
 ## Antigravity 2.0 Desktop
 
-Copy this complete `education-center` directory to `~/.gemini/config/plugins/education-center`
-or place it in the opened workspace under `.agents/plugins/`. Restart Antigravity.
+Run `scripts/install-antigravity.mjs` once from the synced BOS Operations Center
+repository. This is a clean install: it deletes prior BOS product entries without backups,
+then links every generated Gemini product into `~/.gemini/config/plugins/`.
+It resolves the repository from the installer's own location, independent of the
+current working directory. It stops if customer-owned extension metadata exists.
+After each Git pull, restart Antigravity.
 Open Settings > Customizations, find the `education-center` MCP server,
 select Authenticate, complete BOS sign-in in the browser, and return to Antigravity.
 The desktop host stores and refreshes the resource-scoped OAuth grant.
