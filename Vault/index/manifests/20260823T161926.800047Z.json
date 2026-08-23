@@ -1,7 +1,7 @@
 {
-  "indexed_at": "20260823T172921.554477Z",
+  "indexed_at": "20260823T161926.800047Z",
   "schema_version": "bos-vault-manifest/v1",
-  "source_count": 46,
+  "source_count": 44,
   "sources": {
     "Vault/README.md": {
       "bytes": 1032,
@@ -16,44 +16,40 @@
       "sha256": "80ac95f7bef21ad99312dfbbb4b2da7e0a447b4594efb66269057be3e1bd4b0a"
     },
     "Vault/decisions/2026-08-11-education-center-product-identity.md": {
-      "bytes": 2283,
-      "sha256": "648766c72786c0c7a582b43cddcc94c5899b6ba8711ee34cc955d7082ba4d389"
+      "bytes": 2315,
+      "sha256": "5a5e004058b48dd73e87736a3b69ebc7b418a2faa1818c42ddd7a6fb5924fac9"
     },
     "Vault/decisions/2026-08-16-all-runtime-products-oauth-only.md": {
-      "bytes": 2334,
-      "sha256": "c8a94e966ccef37d314e1063c97e0d6fc92efa93835db4ad5753f7aec457766d"
+      "bytes": 2393,
+      "sha256": "8df8ffbf375343e58275a4c3899341e07494c258c7a25278f09ef498e38db0cf"
     },
     "Vault/decisions/2026-08-22-claude-account-connector-separation.md": {
-      "bytes": 2321,
-      "sha256": "3cc80e918c447d53ddc8b88044948423f4ab209479f22f3dd6a21933ccd0e671"
-    },
-    "Vault/decisions/2026-08-23-automatic-plugin-and-provider-authentication.md": {
-      "bytes": 3000,
-      "sha256": "842b31141e0fe08e414cd4526e72ae279fb877b7e0f79528e3f1ccdb0b16591e"
+      "bytes": 2139,
+      "sha256": "1ec4bc4b27239885b8414489db072484058deb625e51ec0c2138dc6c17b9ff03"
     },
     "Vault/docs/CONSTITUTION.md": {
-      "bytes": 3376,
-      "sha256": "cefad4641660f0f435278cbae2b61a6923a2bbee36872e043bb6132189d880d0"
+      "bytes": 3379,
+      "sha256": "e6283ae6ad7d94b907d128afe0b8ca428326783bf0477b7f8badcb51de7e52fc"
     },
     "Vault/docs/architecture.md": {
-      "bytes": 15567,
-      "sha256": "96980487cd85487a6738f24b4a6eb20c09b9a4a17b1da444e534cc635f8ed986"
+      "bytes": 15468,
+      "sha256": "7f441a0b0bc643843ad1f453ea2623a110288342fa2ca1bc1e75987f7b1ca7c5"
     },
     "Vault/docs/bos-expertise-package-ecosystem-proposal.md": {
       "bytes": 21898,
       "sha256": "93b04c18b57b5dbbc43ccbde51d682d791a6d4f9d5d2e99feaa27db9e67e24f6"
     },
     "Vault/docs/bos-product-licensing-user-experience.md": {
-      "bytes": 16127,
-      "sha256": "013486776b79e84d0bdd7c19433f4910d7efd1c705be7da92d36f5fd49dfe6cc"
+      "bytes": 16177,
+      "sha256": "2b5d61976dbe3b240c4115b7599e99093f9efea548ab39288b6c8a90eea86841"
     },
     "Vault/docs/marketplace-agent-harness-plan.md": {
-      "bytes": 33749,
-      "sha256": "2080f91ba09994b181e96f606404860e32d2f92cf758e0c9f58d0fa246e58474"
+      "bytes": 33814,
+      "sha256": "91da9bd557a7c3623396c82bfc82d20f37b856aa560a47f03e51277400953ef6"
     },
     "Vault/docs/marketplace-submission-assets.md": {
       "bytes": 24346,
-      "sha256": "820bb1b258f8b997c8c46ba0495942f63545090376d3416aad4fc4550f25343f"
+      "sha256": "fb21b32b16f8fd78d22c078c46b87c1490d4ba0480bb20a8eb897f08258eed89"
     },
     "Vault/docs/my-crm-developer-platform-work-matrix.md": {
       "bytes": 8316,
@@ -147,10 +143,6 @@
       "bytes": 2815,
       "sha256": "7cf5a796feb4307d94e4891c81aa4c04b557ef3c1440b0a9debaab068ad42a37"
     },
-    "Vault/reviews/2026-08-23-automatic-plugin-and-provider-authentication.md": {
-      "bytes": 2696,
-      "sha256": "0915384fbdcf85f77440d61c25fdc346cef4909ec20a902b5a6866a1bc2937f9"
-    },
     "Vault/reviews/2026-08-23-product-first-run-initialization.md": {
       "bytes": 1887,
       "sha256": "6f4626a59a0686acb3419bf2e187906095f16a3729d9b89fba715b50f0af208e"
@@ -168,8 +160,8 @@
       "sha256": "ce696da6b99f10263e835387c03470013b0b68f60b05db9a197e33eb93ed38a1"
     },
     "Vault/specs/named-mcp-application-group-routing.md": {
-      "bytes": 6197,
-      "sha256": "9373dc86369bf60913ad0faa5360e6a6cc856546698817a2bdb471ee1ca9c37a"
+      "bytes": 6146,
+      "sha256": "c82910a98b129d5841ecb5cd254e5fd1e8fb7de77c690a85cc2d3c0bfc260c47"
     },
     "Vault/specs/named-mcp-server-implementation.md": {
       "bytes": 14968,

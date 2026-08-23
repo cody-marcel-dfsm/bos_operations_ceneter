@@ -35,7 +35,7 @@ before a user's connection can be authorized.
 | Product | Package state | Runtime state | Current customer-access state |
 |---|---|---|---|
 | BOS | Active package of tenant-neutral skills | Skills-only; no MCP resource and generated authentication is `none` | Local package use; no BOS server connection through this product |
-| Education Center | Active package, version `0.4.39` | Active named resource `/mcp/apps/leaddirector/education-center` with a real tool and provider allowlist | Current server-backed product and the primary no-fee access baseline |
+| Education Center | Active package, version `0.4.41` | Active named resource `/mcp/apps/leaddirector/education-center` with a real tool and provider allowlist | Current server-backed product and the primary no-fee access baseline |
 | Video Ads | Source product exists, version `0.1.3` | Named resource is registered, but the server group currently exposes no tools | Release is disabled and excluded from generated marketplaces and customer artifacts |
 
 Evidence:
@@ -75,9 +75,8 @@ https://dfsm.ai/mcp/apps/leaddirector/education-center
 
 Codex reaches that resource through the registered app in
 `clients/codex/plugins/education-center/.app.json`. Claude reaches it through
-an account or organization Web connector; the generated Claude plugin records
-the immutable resource and `claude_account` scope in `.bos-product.json` and
-contains no plugin MCP declaration.
+the runtime plugin's packaged connector; generated metadata records the
+immutable resource and `claude_plugin` scope in `.bos-product.json`.
 
 ### 3. Existing BOS authorization resolution
 

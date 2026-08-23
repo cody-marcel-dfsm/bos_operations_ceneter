@@ -19,9 +19,8 @@ Use these package-owned technical identities:
 
 Claude, ChatGPT/Codex desktop, OAuth-capable GitHub Copilot hosts, Gemini CLI,
 and Antigravity Desktop authorize that immutable resource through host-managed
-OAuth 2.1. Claude provisions it through an account or organization Web
-connector while the marketplace plugin remains skills-only; Copilot and Gemini
-declare it directly, and Codex references the registered Education Operation
+OAuth 2.1. The Claude runtime plugin declares it directly so installation
+registers its connector; Copilot and Gemini declare it directly, and Codex references the registered Education Operation
 Center app through `.app.json`. Package source and generated clients contain no
 BOS credential binding.
 

@@ -11,8 +11,8 @@
 5. **Credential containment.** Public source and generated clients contain no
    secrets or customer data. Claude, ChatGPT/Codex desktop, OAuth-capable
    GitHub Copilot hosts, and Gemini authorize each named BOS MCP resource
-   through host-managed OAuth 2.1. Claude provisions the resource as an
-   account-level Web connector and keeps it out of plugin MCP manifests;
+   through host-managed OAuth 2.1. A Claude runtime plugin declares its
+   immutable remote resource so installation registers the connector;
    Copilot and Gemini declare it directly, and Codex binds a required
    registered app that owns it.
    Packages contain no user-entered BOS credential. Missing provider grants recover through

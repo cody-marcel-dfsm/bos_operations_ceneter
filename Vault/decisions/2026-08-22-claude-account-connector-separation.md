@@ -2,8 +2,12 @@
 
 ## Status
 
-Accepted on 2026-08-22. Supersedes the Claude packaging portion of
-`2026-08-11-desktop-private-marketplace-oauth.md`.
+Superseded on 2026-08-23 by
+`2026-08-23-automatic-plugin-and-provider-authentication.md`.
+
+This decision failed the product installation requirement because installing
+the plugin did not register its BOS connector. It required a separate owner or
+user action to enter the package-owned URL manually.
 
 ## Evidence
 

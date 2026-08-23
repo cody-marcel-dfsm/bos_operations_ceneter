@@ -142,8 +142,8 @@ Claude marketplace.
 Each generated plugin contains:
 
 - `.claude-plugin/plugin.json`;
-- `.bos-product.json` with `claude_account` scope and the fixed remote MCP URL;
-- `CONNECTORS.md` with account or organization connector provisioning guidance;
+- `.bos-product.json` with `claude_plugin` scope and the fixed remote MCP URL;
+- `.mcp.json` referenced by `plugin.json` for automatic connector registration;
 - the product's generated `skills/` tree;
 - marketplace metadata, documentation, and default prompts.
 
@@ -153,10 +153,9 @@ The Education Center plugin connects to:
 https://dfsm.ai/mcp/apps/leaddirector/education-center
 ```
 
-The marketplace plugin contains no `.mcp.json` or `mcpServers`, because Claude
-classifies plugin-owned MCP servers as `Connects in sessions`. An account or
-organization Web connector presents Connect under Customize → Connectors and
-completes host-managed BOS OAuth. The package never requests an application,
+The marketplace runtime plugin declares the immutable remote MCP resource. The
+first eligible request loads it and Claude presents host-managed BOS OAuth when
+required. The package never requests an application,
 group, or BOS key. The root marketplace lists each independently installable
 skill group and points at its generated plugin directory.
 
@@ -167,10 +166,11 @@ authorization recovery, transport recovery, updates, and uninstall/reinstall.
 ### Claude Desktop
 
 Use the same generated skills and fixed MCP route as Claude Code. The native
-Claude plugin distributes skills, while an account or organization Web connector
-owns authentication and the fixed route. Generate connector metadata from the
-same product manifest and publish the resource in Anthropic's Connector Directory
-for public one-click installation.
+Claude runtime plugin distributes skills and declares the fixed remote connector.
+Installing the plugin registers that connector without a separate URL-entry or
+organization-provisioning step. An eligible request activates its host-managed
+authorization. Generate the declaration
+from the same product manifest.
 
 Claude Code and Claude Desktop must expose equivalent skill content, use the
 same named route, and produce equivalent tool discovery. Any Desktop-only
