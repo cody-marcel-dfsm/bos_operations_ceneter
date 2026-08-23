@@ -114,7 +114,7 @@ installed-application routing model with explicit human-readable route fields:
 {
   "application_name": "leaddirector",
   "mcp_group_name": "education-center",
-  "codex_app_id": "asdk_app_<registered-id>"
+  "codex_app_id": "plugin_asdk_app_<registered-id>"
 }
 ```
 
@@ -188,7 +188,7 @@ The generated registration contains only:
 {
   "apps": {
     "education-center": {
-      "id": "asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
+      "id": "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
       "required": true
     }
   }

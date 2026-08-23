@@ -17,7 +17,7 @@ skills.
 
 Claude runtime plugins contain the immutable remote HTTPS Streamable HTTP MCP
 URL. Codex runtime plugins contain a required `.app.json` entry referencing a
-registered `asdk_app_*` connection that owns that immutable URL. Neither has a
+registered `plugin_asdk_app_*` connection that owns that immutable URL. Neither has a
 customer credential binding. The desktop host performs OAuth 2.1 MCP
 discovery, presents Connect/Sign in, stores and refreshes the grant, and sends
 the resource-scoped access token. BOS derives tenant, organization,

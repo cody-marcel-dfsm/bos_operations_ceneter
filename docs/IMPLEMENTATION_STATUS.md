@@ -26,7 +26,7 @@ ready for client testing.
 - Machine-local Codex developer linking with pre-link backups and idempotent
   canonical-source symlinks.
 - Codex Education Center app binding through the registered
-  `asdk_app_6a7cb1cc330c81918aa63d96aeeaba91` connection, with no direct
+  `plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91` connection, with no direct
   `.mcp.json` entry.
 - Source-to-generated drift validation, skill validation, secret/path scanning,
   installer tests, host-native connection checks, and credential-free local

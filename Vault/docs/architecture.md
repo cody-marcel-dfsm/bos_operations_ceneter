@@ -94,7 +94,8 @@ release system for portable BOS skills and native remote MCP client adapters.
     runtime plugin contains account-connector metadata and no MCP declaration.
     A Codex runtime plugin contains
     `apps: "./.app.json"` and no `.mcp.json` or `mcpServers`; its product
-    manifest records the stable `asdk_app_*` identifier. Every runtime product declares one immutable
+    manifest records the complete stable `plugin_asdk_app_*` technical identifier
+    copied from the registered ChatGPT connection. Every runtime product declares one immutable
     package-owned route using the exact static form
     `/mcp/apps/{application-name}/{skill-group-name}`. Both path segments are
     stable human-readable slugs, never IDs or customer settings. Each active

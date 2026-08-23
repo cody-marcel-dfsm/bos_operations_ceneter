@@ -49,7 +49,7 @@ model instructions. Every generated harness adapter for one product uses the
 same derived route.
 
 An active Codex runtime product also declares its stable registered
-`asdk_app_*` identifier. The registered app owns the derived route; the Codex
+`plugin_asdk_app_*` technical identifier. The registered app owns the derived route; the Codex
 package references that app and does not duplicate the URL in `.mcp.json`.
 
 ## Client responsibilities

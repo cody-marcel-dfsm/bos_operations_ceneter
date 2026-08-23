@@ -1080,7 +1080,7 @@ test("package schema rejects legacy or incomplete MCP route fields", () => {
     runtime: "bos",
     application_name: "leaddirector",
     mcp_group_name: "example",
-    codex_app_id: "asdk_app_example123",
+    codex_app_id: "plugin_asdk_app_example123",
     default_prompts: []
   };
   assert.deepEqual(validateProduct(base), []);
@@ -1113,8 +1113,8 @@ test("package schema rejects legacy or incomplete MCP route fields", () => {
   const { codex_app_id: _appRemoved, ...unregistered } = base;
   assert.match(validateProduct(unregistered).join("\n"), /active Codex runtime requires codex_app_id/);
   assert.match(
-    validateProduct({ ...base, codex_app_id: "plugin_asdk_app_wrong" }).join("\n"),
-    /codex_app_id must be an asdk_app identifier/
+    validateProduct({ ...base, codex_app_id: "asdk_app_wrong" }).join("\n"),
+    /codex_app_id must be a plugin_asdk_app identifier/
   );
 });
 
@@ -1157,7 +1157,7 @@ test("disabled products are absent while active runtime products remain scoped",
   assert.deepEqual(app, {
     apps: {
       "education-center": {
-        id: "asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
+        id: "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
         required: true
       }
     }
