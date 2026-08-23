@@ -20,8 +20,8 @@ scope exactly and keep provider evidence separate until the lead is reconciled.
 Use `bos-visual-output` for source-to-outcome flows, conversion counts, missing
 GCLID cohorts, and attribution trends.
 When a Google or Calimatic source reports an authentication error, follow
-`bos-mcp-client` authentication recovery and prompt the user to complete the
-service-specific secure BOS browser flow before retrying once.
+`bos-mcp-client` request interception: activate the server-returned secure
+browser handoff, poll readiness, and resume the pending operation once.
 
 ## Workflow
 

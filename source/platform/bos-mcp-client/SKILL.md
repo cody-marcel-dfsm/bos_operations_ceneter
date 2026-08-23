@@ -7,8 +7,8 @@ description: Operate a packaged application MCP resource group, including scope 
 
 Use this skill for client-side application resource-group operations.
 Each installed runtime product owns one named remote MCP resource. A Claude
-runtime plugin declares it and the first eligible request activates its
-host-managed authorization; ChatGPT/Codex authorizes
+account or organization Web connector declares it and exposes the persistent
+host-managed **Connect** action; ChatGPT/Codex authorizes
 it through the registered app's host-managed OAuth 2.1 connection.
 Other supported clients use the product adapter declared by their generated
 package until they receive an equivalent OAuth migration.
@@ -37,11 +37,13 @@ stateful mutation workflow.
 - If BOS is absent from the callable tool manifest, inspect the active client's
   plugin and runtime binding immediately. Repair or reinstall the configured
   local product and restore its declared authorization connection. For Codex,
-  verify the required registered app binding; for Claude, verify the runtime
-  plugin's packaged MCP declaration and retry the eligible request so Claude
-  presents its host-managed authorization automatically.
-  Never ask the user to add a custom connector or enter its URL. Preserve every
-  other installed product connection. Restore only the immutable
+  verify the required registered app binding; for Claude, verify the package's
+  account-connector metadata and the matching Web connector under
+  **Customize → Connectors**, then use its persistent **Connect** action. When a
+  private installation lacks that connector, add it with the exact name and URL
+  from the generated `CONNECTORS.md`; never reconstruct or modify the
+  package-owned route. Preserve every other installed product connection.
+  Restore only the immutable
   `/mcp/apps/{application-name}/{skill-group-name}` package route for every
   application runtime product, then verify that named server is registered.
   Packages own both human-readable route segments.
@@ -80,6 +82,11 @@ stateful mutation workflow.
 
 ## Runtime workflow
 
+Apply provider recovery as one request interceptor around every BOS domain
+`tools/call`. Domain skills describe the operation; they never own, opt into,
+or bypass authentication recovery. Preserve the pending call before execution
+and inspect its sanitized result before producing a final answer.
+
 1. Use the immutable connection URL recorded by the package and declared by
    the product's native host adapter. Treat its application name
    and skill-group name as immutable package configuration, never as tenant
@@ -95,8 +102,8 @@ stateful mutation workflow.
    For example, Education Center operations use `education-center`; Video Ads operations
    use `video-ads`. The endpoint selects a tool group; it never selects an
    organization or another authorization grant.
-5. Authenticate a selected Claude connection when the first eligible request
-   activates the installed plugin connector, and a ChatGPT/Codex connection
+5. Authenticate a selected Claude account-level Web connector through its
+   persistent **Connect** control, and a ChatGPT/Codex connection
    through its registered app. Both use a host-managed
    OAuth grant. Other clients use only the generated product
    adapter declared for that client. Keep access tokens, refresh tokens,
@@ -106,16 +113,27 @@ stateful mutation workflow.
    reconnecting once, invoke the host's Connect/Sign in flow and resume once
    after it succeeds.
 6. When a domain call returns `authorization_required`, preserve its original
-   operation ID and present the returned secure authorization path automatically
-   in the active request:
-   - OAuth: open the returned URL, let the customer sign in directly with the
-     provider, and poll `bos_get_authorization_status` with the exact scope.
-   - Secret input: open the returned short-lived BOS HTTPS
-     credential-collection URL. Let the customer submit the value directly to
-     BOS and poll the sanitized transaction status.
+   operation ID and activate the returned secure authorization path immediately
+   in the active request. Use the host's native URL-mode elicitation when it is
+   available; otherwise present the returned resource link as the next action.
+   The host obtains the customer's consent before opening the browser.
+   - OAuth: open the returned provider URL, let the customer sign in directly
+     with the provider, and poll `bos_get_authorization_status` with the exact
+     recovery token.
+   - API key: open the returned short-lived BOS HTTPS credential-collection
+     URL. For Calimatic, this BOS page asks for the Calimatic portal URL and API
+     key. The customer submits them directly to BOS; the model and MCP client
+     never receive either value. Poll the sanitized transaction status.
 7. Poll and verify recovered authorization, then call `bos_resume_operation`
    once without asking the user to resubmit the request. Stop
    if authorization or that single retry fails.
+
+For an explicit request to connect or authenticate a provider, call
+`bos_get_context` and invoke the exact server-returned recovery `next_action`
+for that provider. Do not substitute setup instructions, a dashboard route, or
+a request for the user to report completion. The same interceptor owns Gmail
+OAuth, Calimatic API-key collection, and every future provider authorization
+kind returned by BOS.
 
 Provider readiness and authorization are local to the selected organization,
 installation, and plugin. A missing provider credential can block only the

@@ -343,7 +343,7 @@ The server must fail closed with sanitized errors:
 | Multiple enabled installation scopes | MCP ambiguity error; no arbitrary selection |
 | Tool outside group allowlist | JSON-RPC `-32601` |
 | Client supplies server-derived scope | JSON-RPC `-32602` |
-| Provider authorization required | Existing sanitized `authorization_required` tool result |
+| Provider authorization required | Standard URL-mode elicitation when supported, with a sanitized `authorization_required` resource-link result for clients without URL elicitation |
 | Mutation result uncertain after disconnect | Reconcile by operation/idempotency identity before replay |
 
 Errors and logs must not contain provider secrets, raw OAuth tokens, or
@@ -382,6 +382,9 @@ another tenant's identifiers.
 - unauthorized plugin/tool/group combinations fail closed;
 - cross-tenant and cross-installation calls fail;
 - provider authorization recovery resumes the original operation once; and
+- Gmail recovery returns provider OAuth while Calimatic recovery returns a
+  short-lived BOS-hosted portal-URL and API-key page through the same request
+  interceptor; and
 - repeated mutations reconcile through idempotency.
 
 ### Reconciliation and deployment

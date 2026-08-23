@@ -142,8 +142,8 @@ Claude marketplace.
 Each generated plugin contains:
 
 - `.claude-plugin/plugin.json`;
-- `.bos-product.json` with `claude_plugin` scope and the fixed remote MCP URL;
-- `.mcp.json` referenced by `plugin.json` for automatic connector registration;
+- `.bos-product.json` with `claude_account` scope and the fixed remote MCP URL;
+- `CONNECTORS.md` with the immutable account-connector name and URL;
 - the product's generated `skills/` tree;
 - marketplace metadata, documentation, and default prompts.
 
@@ -153,9 +153,9 @@ The Education Center plugin connects to:
 https://dfsm.ai/mcp/apps/leaddirector/education-center
 ```
 
-The marketplace runtime plugin declares the immutable remote MCP resource. The
-first eligible request loads it and Claude presents host-managed BOS OAuth when
-required. The package never requests an application,
+The marketplace runtime plugin records the immutable remote MCP resource as
+account-connector metadata. The account or organization Web connector presents
+host-managed BOS OAuth through its persistent **Connect** control. The package never requests an application,
 group, or BOS key. The root marketplace lists each independently installable
 skill group and points at its generated plugin directory.
 
@@ -166,10 +166,10 @@ authorization recovery, transport recovery, updates, and uninstall/reinstall.
 ### Claude Desktop
 
 Use the same generated skills and fixed MCP route as Claude Code. The native
-Claude runtime plugin distributes skills and declares the fixed remote connector.
-Installing the plugin registers that connector without a separate URL-entry or
-organization-provisioning step. An eligible request activates its host-managed
-authorization. Generate the declaration
+Claude runtime plugin distributes skills and fixed account-connector metadata.
+Provision the resource as an account or organization Web connector; private
+installations use the exact generated URL and published installations use
+Anthropic's Connector Directory. Generate the metadata
 from the same product manifest.
 
 Claude Code and Claude Desktop must expose equivalent skill content, use the

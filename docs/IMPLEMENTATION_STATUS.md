@@ -49,9 +49,9 @@ ready for client testing.
   is not a usable release signal for this field.
 - Host-native connection package tests pass.
 - Repeated release builds produce identical checksums.
-- Generated Claude runtime plugins contain one credential-free `.mcp.json`
-  mirrored inline by `mcpServers`, so installation registers the connector and
-  an eligible request presents authorization without a separately entered URL.
+- Generated Claude runtime plugins contain account-connector metadata and no
+  `.mcp.json` or `mcpServers`, so Claude presents a persistent account-level
+  **Connect** control instead of **Connects in sessions**.
 - Fresh Codex tasks discover the namespaced `bos:*` skills and Lead Director
   repository skills.
 - ChatGPT displays Connect for Education Center BOS, discovers BOS OAuth, and
@@ -65,8 +65,8 @@ ready for client testing.
 
 The package implementation is ready for these environment-specific smoke tests:
 
-1. Install the generated Claude bundle in a clean Claude environment, verify
-   that its packaged connector and **Connect** control appear automatically,
+1. Install the generated Claude bundle in a clean Claude environment, provision
+   its account-level Web connector, verify its persistent **Connect** control,
    complete BOS OAuth, and confirm skill discovery and one bounded read.
 2. Install the generated Copilot bundle in a clean Copilot environment and
    verify repository instruction discovery.

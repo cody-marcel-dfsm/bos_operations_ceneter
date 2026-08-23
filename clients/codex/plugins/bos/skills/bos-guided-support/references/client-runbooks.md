@@ -12,8 +12,9 @@ directions when the local evidence conflicts.
   installed `.bos-product.json`
 - Generated runtime declarations: the installed product package
 
-The Education Center product resource is package-owned. Never ask the user to
-type, edit, or reconstruct its endpoint.
+The Education Center product resource is package-owned. Use the exact generated
+connector metadata when private installation requires Claude's custom connector
+flow. Never ask the user to reconstruct or modify the endpoint.
 
 ## ChatGPT/Codex Desktop
 
@@ -34,15 +35,14 @@ Official source:
 
 1. Open **Customize → Plugins** and confirm BOS plus the runtime product are
    installed and enabled from the configured marketplace.
-2. Open the installed runtime plugin and confirm its packaged connector appears.
-   A missing connector is a package defect; never
-   direct the user to add a custom URL.
-3. Start a new Cowork task after installation or update and make an eligible
-   Education Center request. Claude loads the connector and presents BOS
-   sign-in automatically when authorization is required.
-4. Complete the secure host sign-in interaction, then let the agent resume the
-   original request.
-5. Confirm the plugin connector is visible, refresh discovery, resolve
+2. Open **Customize → Connectors** and confirm the account or organization Web
+   connector is present. For a private installation, use the exact name and URL
+   from the generated product's `CONNECTORS.md` to add the custom connector.
+3. Confirm the entry is classified as **Web** and provides **Connect**. A
+   **Web / Plugin** entry with **Connects in sessions** is a package defect.
+4. Select **Connect**, complete BOS consent, and start a new Cowork task after
+   installation or update.
+5. Refresh discovery, resolve
    context, and run one bounded read.
 
 Official sources:

@@ -122,8 +122,8 @@ For every runtime product, automated evidence must establish:
 
 1. Manifest route slugs satisfy the schema and approved inventory.
 2. Claude, ChatGPT/Codex, the single Gemini extension umbrella, and Copilot
-   adapters resolve the same immutable URL; Claude does so through its runtime
-   plugin declaration and Codex through its registered app. The Gemini directory supports Gemini CLI through
+   adapters resolve the same immutable URL; Claude does so through its account
+   or organization Web connector and Codex through its registered app. The Gemini directory supports Gemini CLI through
    `gemini-extension.json` and Antigravity Desktop through `plugin.json` plus
    `mcp_config.json`, while sharing one skill tree and product identity.
 3. No generated package contains an installation-ID route setting or unresolved
@@ -135,7 +135,7 @@ For every runtime product, automated evidence must establish:
 8. Each active Claude, ChatGPT/Codex, OAuth-capable Copilot, or Gemini runtime product obtains one
    host-managed resource-scoped grant without package credential fields or
    cross-product fallback.
-9. Every active Claude runtime plugin contains exactly one credential-free
-   `.mcp.json`, mirrors the server inline through `mcpServers`, and identifies
-   `claude_plugin` connection scope. Installation registers the immutable
-   resource without a separately entered URL.
+9. Every active Claude runtime plugin contains no `.mcp.json` or `mcpServers`,
+   identifies `claude_account` connection scope, and records the immutable
+   resource in `CONNECTORS.md`. The account or organization Web connector
+   supplies the persistent **Connect** control.

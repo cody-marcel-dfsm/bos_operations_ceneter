@@ -1,5 +1,5 @@
 {
-  "indexed_at": "20260823T201408.424858Z",
+  "indexed_at": "20260823T185556.791443Z",
   "schema_version": "bos-vault-manifest/v1",
   "source_count": 49,
   "sources": {
@@ -28,8 +28,8 @@
       "sha256": "a731cbef581ae7a41df6ca448b57d1afd52ed3471c3d860d1cd500646d66d3fd"
     },
     "Vault/decisions/2026-08-23-automatic-plugin-and-provider-authentication.md": {
-      "bytes": 2806,
-      "sha256": "e82ed3b9bc926ab04a4d0c05d08b81af3bcc0cb1c0bc91aa04d7d1ad2d75385e"
+      "bytes": 2475,
+      "sha256": "ce5108a94667f29fb7094c31f914b07fafdb0e4ae1e6aa38f154bbe1d8e12a88"
     },
     "Vault/decisions/2026-08-23-claude-persistent-account-connectors.md": {
       "bytes": 1651,
@@ -49,7 +49,7 @@
     },
     "Vault/docs/bos-product-licensing-user-experience.md": {
       "bytes": 16130,
-      "sha256": "45ac04924c7b60c6e5b78cccdc0bc9c4329aedc0b995b6d5ee19212503c0625e"
+      "sha256": "528487590a159b1be3d5242a8e8ac60527e025bdafb730a7ec9769156f9d8c83"
     },
     "Vault/docs/marketplace-agent-harness-plan.md": {
       "bytes": 33796,
@@ -57,7 +57,7 @@
     },
     "Vault/docs/marketplace-submission-assets.md": {
       "bytes": 24346,
-      "sha256": "eb1bbe8d5480f916bda0df3b50098ad52b14a3ad1e203783b3641143dea8f534"
+      "sha256": "e0cc21ca57a0be8fcb48db69c5b49c9ac6996d62ca987ff5ea3e4de954566df3"
     },
     "Vault/docs/my-crm-developer-platform-work-matrix.md": {
       "bytes": 8316,
@@ -156,8 +156,8 @@
       "sha256": "0915384fbdcf85f77440d61c25fdc346cef4909ec20a902b5a6866a1bc2937f9"
     },
     "Vault/reviews/2026-08-23-claude-persistent-connect-button.md": {
-      "bytes": 2657,
-      "sha256": "e4cab9ac927026f1e881ee82baf00a23e9780cabfabe79624c022af77a2578ac"
+      "bytes": 2423,
+      "sha256": "86bfcc40382a0692d621cbf7645ae15c8cb48438f3cc41b3e1906156e936e8ae"
     },
     "Vault/reviews/2026-08-23-product-first-run-initialization.md": {
       "bytes": 1887,
@@ -184,8 +184,8 @@
       "sha256": "aea3567a63a508ccf12e902df4bc26ab27da166fc09892ceea1a505cf716dfa2"
     },
     "Vault/specs/named-mcp-server-implementation.md": {
-      "bytes": 15229,
-      "sha256": "c38aaedd89a4cd706177fb1e1f3b9518e4904ba52106e70147a75c09197e5153"
+      "bytes": 14968,
+      "sha256": "65c56e21cb6c788dbe2825dc63ef244598c894adaa44db5042dc74bce4de2866"
     },
     "Vault/specs/oracle-and-vault.md": {
       "bytes": 1470,

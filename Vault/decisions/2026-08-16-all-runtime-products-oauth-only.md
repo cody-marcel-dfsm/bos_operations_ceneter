@@ -7,8 +7,9 @@ resource through OAuth 2.1. Product manifests, generated packages, installers,
 customer settings, and host launch environments contain no BOS product key,
 credential environment binding, or static authorization header.
 
-Claude runtime plugins, Gemini, and OAuth-capable GitHub Copilot hosts declare
-the immutable resource directly and use host OAuth discovery. ChatGPT/Codex binds
+Claude account or organization Web connectors, Gemini, and OAuth-capable GitHub
+Copilot hosts declare the immutable resource directly and use host OAuth
+discovery. ChatGPT/Codex binds
 the resource through its required registered app. Each connection holds one resource-scoped
 grant that the BOS service maps to exactly one server-owned actor,
 organization, installation, delegated role, plugin, and capability scope.
@@ -34,8 +35,9 @@ packages, environment bindings, tool arguments, model chat, or logs.
 - `credential_env_var` and `bearer_env` are invalid product/package fields.
 - Generated Copilot MCP configuration contains a URL and tool policy with no
   credential header.
-- Generated Claude runtime plugins contain one `.mcp.json` reference so plugin
-  installation registers the connector; Claude owns OAuth and grant persistence.
+- Generated Claude runtime plugins contain account-connector metadata and no
+  `.mcp.json` or `mcpServers`; Claude owns OAuth and grant persistence through
+  the account-level Web connector.
 - Codex installation accepts only the registered-app OAuth package form; the
   retired environment-injection launcher and direct bearer registration path
   are removed.
