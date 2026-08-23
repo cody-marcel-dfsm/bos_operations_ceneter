@@ -290,16 +290,15 @@ Give Hardik this instruction:
 > `clients/gemini/extensions/education-center`, restart Gemini CLI, run
 > `/mcp auth education-center`, and complete BOS sign-in. For Antigravity 2.0
 > Desktop, run `./scripts/install-antigravity.sh` once from the synced repository.
-> This is a clean install: it deletes prior BOS product folders and symlinks from
-> `~/.gemini/config/plugins/` without backups, then creates one symlink for every
-> generated Gemini product. It locates the repository from its own file path.
-> This bootstrap path is for an uncustomized installation and stops if it detects
-> customer-owned extension metadata.
+> This is an intentionally destructive clean install: it deletes prior BOS product
+> folders and symlinks from `~/.gemini/config/plugins/`, including local
+> customizations, without backups. It then creates one symlink for every generated
+> Gemini product and locates the repository from its own file path.
 > After each Git pull,
 > restart Antigravity, open Settings >
 > Customizations, select Authenticate for `education-center`, complete BOS
-> sign-in, and verify one authenticated Education Operation Center read. Preserve the
-> directory contents and do not request a BOS API key, token, client secret,
+> sign-in, and verify one authenticated Education Operation Center read. Keep the
+> synced repository in place and do not request a BOS API key, token, client secret,
 > environment variable, or installed application ID.
 
 The same generated product directory contains `gemini-extension.json` for

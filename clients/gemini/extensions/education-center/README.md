@@ -21,10 +21,11 @@ discoverable. Use `gemini extensions update education-center` for later releases
 ## Antigravity 2.0 Desktop
 
 Run `./scripts/install-antigravity.sh` once from the synced BOS Operations Center
-repository. This is a clean install: it deletes prior BOS product entries without backups,
+repository. This is an intentionally destructive clean install: it deletes prior BOS
+product entries, including local customizations, without backups,
 then links every generated Gemini product into `~/.gemini/config/plugins/`.
 It resolves the repository from the installer's own location, independent of the
-current working directory. It stops if customer-owned extension metadata exists.
+current working directory.
 After each Git pull, restart Antigravity.
 Open Settings > Customizations, find the `education-center` MCP server,
 select Authenticate, complete BOS sign-in in the browser, and return to Antigravity.
