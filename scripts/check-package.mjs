@@ -285,35 +285,25 @@ async function validateProducts() {
         ) {
           failures.push(`Generated Claude identity drift: ${pluginPath}`);
         }
-        if (manifest.runtime) {
-          if (generated.mcpServers !== "./.mcp.json" ||
-              "userConfig" in generated) {
-            failures.push(`Generated Claude runtime configuration drift: ${pluginPath}`);
-          }
+        if (manifest.runtime &&
+            ("mcpServers" in generated || "userConfig" in generated)) {
+          failures.push(`Generated Claude plugin owns a session-scoped connection: ${pluginPath}`);
         }
       }
       const runtimePath = join(pluginRoot, ".mcp.json");
       if (manifest.runtime) {
-        if (!(await pathExists(runtimePath))) {
-          failures.push(`Missing generated Claude MCP configuration: ${runtimePath}`);
-        } else {
-          const runtime = await readJson(runtimePath);
-          const server = runtime.mcpServers?.[manifest.mcp_group_name];
-          const expectedUrl = materializeMcpUrl(
-            "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
-            manifest
-          );
-          if (
-            server?.type !== "http" ||
-            server?.url !== expectedUrl ||
-            "headers" in (server ?? {}) ||
-            "bearer_token_env_var" in (server ?? {}) ||
-            Object.keys(runtime.mcpServers ?? {}).length !== 1 ||
-            JSON.stringify(runtime).includes("BOS_INSTALLED_APP_ID") ||
-            JSON.stringify(runtime).includes("installed_app_id")
-          ) {
-            failures.push(`Generated Claude named MCP route drift: ${runtimePath}`);
-          }
+        if (await pathExists(runtimePath)) {
+          failures.push(`Generated Claude plugin contains session-scoped MCP: ${runtimePath}`);
+        }
+        const metadata = await readJson(join(pluginRoot, ".bos-product.json"));
+        const expectedUrl = materializeMcpUrl(
+          "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
+          manifest
+        );
+        if (metadata.connection_scope !== "claude_account" ||
+            metadata.resource_url !== expectedUrl ||
+            !(await pathExists(join(pluginRoot, "CONNECTORS.md")))) {
+          failures.push(`Generated Claude account connector metadata drift: ${pluginRoot}`);
         }
       }
       for (const skill of skills) {

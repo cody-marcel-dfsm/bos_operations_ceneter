@@ -28,7 +28,7 @@ The private Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Select
 **Connect** or **Sign in** when the host presents it, then complete BOS consent.
 
-Current desktop marketplace release: `0.4.32`. If `0.4.31` is installed,
+Current desktop marketplace release: `0.4.34`. If `0.4.33` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -61,12 +61,21 @@ grant. Start a new task after installation or upgrade.
    `https://github.com/cody-marcel-dfsm/bos_operations_ceneter` as a
    marketplace.
 3. Install **BOS** and **Education Operation Center**.
-4. Select **Connect**, complete BOS sign-in, and start a new Cowork task.
-5. Request one authenticated Education Operation Center read to verify the connection.
+4. Open **Customize → Connectors**. Add the package-owned Education Operation
+   Center Web connector when it is not already present through your organization
+   or Anthropic's Connector Directory:
+   - Name: `education-center`
+   - URL: `https://dfsm.ai/mcp/apps/leaddirector/education-center`
+5. Select **Connect** on that Web connector and complete BOS sign-in.
+6. Start a new Cowork task and request one authenticated Education Operation
+   Center read to verify the connection.
 
 Claude reads `.claude-plugin/marketplace.json`. The Education Operation Center plugin
-contains no API-key field or authorization-header template. Claude discovers
-OAuth from the immutable MCP resource and manages the resulting grant.
+contains skills and account-connector metadata. It intentionally contains no
+`.mcp.json`, `mcpServers`, API-key field, or authorization-header template;
+plugin-owned MCP declarations appear as `Connects in sessions`. The account-level
+Web connector discovers OAuth from the immutable MCP resource and Claude stores
+and refreshes the resulting grant across sessions.
 
 ### Updates
 
@@ -183,7 +192,10 @@ claude plugin marketplace add ./
 claude plugin install education-center@bos-education-center
 ```
 
-Select **Connect**, complete BOS sign-in, and test in a new Claude/Cowork task.
+Under **Customize → Connectors**, add or select the account-level
+`education-center` Web connector, select **Connect**, complete BOS sign-in, and
+test in a new Claude/Cowork task. The plugin must not appear as a connector with
+status `Connects in sessions`.
 After source changes, update the marketplace and plugin before retesting.
 
 ### Local validation
@@ -218,7 +230,8 @@ retrieve a reusable BOS access token.
 ## Other clients
 
 Claude, ChatGPT/Codex, OAuth-capable Copilot hosts, Gemini CLI, and Antigravity Desktop use host-managed
-OAuth for the immutable BOS product resource.
+OAuth for the immutable BOS product resource. Claude provisions it as an
+account-level Web connector while the marketplace plugin remains skills-only.
 
 ### Gemini CLI and Antigravity 2.0 Desktop
 

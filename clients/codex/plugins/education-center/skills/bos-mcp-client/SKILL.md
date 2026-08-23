@@ -6,8 +6,9 @@ description: Operate a packaged application MCP resource group, including scope 
 # BOS MCP Client
 
 Use this skill for client-side application resource-group operations.
-Each installed runtime product owns one named remote MCP resource. Claude and
-ChatGPT/Codex authorize that resource through the host's OAuth 2.1 connection.
+Each installed runtime product owns one named remote MCP resource. Claude
+authorizes it through an account-level Web connector; ChatGPT/Codex authorizes
+it through the registered app's host-managed OAuth 2.1 connection.
 Other supported clients use the product adapter declared by their generated
 package until they receive an equivalent OAuth migration.
 The triggered domain skill selects the matching product connection; BOS derives
@@ -35,8 +36,9 @@ stateful mutation workflow.
 - If BOS is absent from the callable tool manifest, inspect the active client's
   plugin and runtime binding immediately. Repair or reinstall the configured
   local product and restore its declared authorization connection. For Codex,
-  verify the required registered app binding; for Claude, verify the direct
-  remote MCP declaration. Invoke the host-managed OAuth connection. Preserve every
+  verify the required registered app binding; for Claude, verify the account-level
+  Web connector under Customize → Connectors and reject a plugin-owned MCP
+  declaration labeled `Connects in sessions`. Invoke the host-managed OAuth connection. Preserve every
   other installed product connection. Restore only the immutable
   `/mcp/apps/{application-name}/{skill-group-name}` package route for every
   application runtime product, then verify that named server is registered.
@@ -76,7 +78,8 @@ stateful mutation workflow.
 
 ## Runtime workflow
 
-1. Use the connection URL shipped by the package. Treat its application name
+1. Use the immutable connection URL recorded by the package and provisioned in
+   the host account connector. Treat its application name
    and skill-group name as immutable package configuration, never as tenant
    authority or user-selectable settings.
 2. On an application skill-group connection, do not send `org_id`, `app_code`,
@@ -90,8 +93,9 @@ stateful mutation workflow.
    For example, Education Center operations use `education-center`; Video Ads operations
    use `video-ads`. The endpoint selects a tool group; it never selects an
    organization or another authorization grant.
-5. Authenticate a selected Claude or ChatGPT/Codex connection through its
-   host-managed OAuth grant. Other clients use only the generated product
+5. Authenticate a selected Claude connection from Customize → Connectors and a
+   ChatGPT/Codex connection through its registered app. Both use a host-managed
+   OAuth grant. Other clients use only the generated product
    adapter declared for that client. Keep access tokens, refresh tokens,
    authorization codes, bearer values, and grant metadata out of chat, tool
    arguments, package files, and logs. Never reuse or fall back to another

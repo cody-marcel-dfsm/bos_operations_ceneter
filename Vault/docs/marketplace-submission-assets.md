@@ -44,7 +44,7 @@ approval come from Tracks F through J.
 | Display name | BOS — Business Operating System | Education Operation Center | Video Ads | Ready | `products/*/product.json` |
 | Publisher | Infinite State Machines LLC | Infinite State Machines LLC | Infinite State Machines LLC | Ready | `products/*/product.json` |
 | Category | Productivity | Productivity | Marketing | Ready | `products/*/product.json` |
-| Current version | 0.4.32 | 0.4.32 | 0.1.3 | Ready | `products/*/product.json` |
+| Current version | 0.4.34 | 0.4.34 | 0.1.3 | Ready | `products/*/product.json` |
 | Application name | None (skills-only) | `leaddirector` | `leaddirector` | Ready for packaging; runtime certification pending | `products/*/product.json` |
 | MCP group name | None (skills-only) | `education-center` | `video-ads` | Ready for packaging; runtime certification pending | `products/*/product.json` |
 | Short description | Present | Present | Present | Ready as source copy | `products/*/product.json` |
@@ -169,8 +169,8 @@ bumped on release.
 - [x] Marketplace declares publisher name and three product entries.
 - [x] Each generated product has `.claude-plugin/plugin.json`.
 - [x] Product manifests contain display name, version, short description,
-  author, homepage, repository, license, keywords, MCP reference, and sensitive
-  API-key configuration.
+  author, homepage, repository, license, keywords, and account-connector
+  metadata with no sensitive API-key configuration.
 - [ ] Confirm public repository visibility and correct the public repository
   slug if the current `bos_operations_ceneter` spelling is unintended.
 - [ ] Add a marketplace owner support email if approved for public use.
@@ -184,13 +184,13 @@ bumped on release.
 
 ### Anthropic central discovery
 
-Repository marketplace publication is actionable without a central Anthropic
-submission. A separate Anthropic partner, directory, Claude Desktop, or Cowork
-listing is an **external and conditional** track until Anthropic supplies the
-applicable portal and current field requirements. The harness owner records the
-portal URL, submission ID, submitted fields, reviewer correspondence, and final
-decision when that route is available. Repository readiness must not be called
-Anthropic directory approval.
+Repository marketplace publication distributes skills without creating an
+account-level connector. Private deployments provision the fixed resource as a
+custom or organization Web connector. Public one-click **Connect** behavior
+requires an Anthropic Connector Directory listing and is therefore an external
+release dependency. The harness owner records the portal URL, submission ID,
+submitted fields, reviewer correspondence, and final decision. Repository
+readiness must not be called Anthropic directory approval.
 
 ## OpenAI ChatGPT and Codex checklist
 

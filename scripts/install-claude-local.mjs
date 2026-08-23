@@ -62,12 +62,37 @@ export async function installClaudeLocal({
     }),
     "marketplace list"
   );
-  const marketplaceInstalled = configuredMarketplaces.some(
+  const configuredMarketplace = configuredMarketplaces.find(
     (entry) => entry.name === marketplace.name
   );
-  if (marketplaceInstalled) {
+  const selector = `${product}@${marketplace.name}`;
+  const marketplaceIsLocal = configuredMarketplace &&
+    configuredMarketplace.source === "directory" &&
+    resolve(configuredMarketplace.path ?? configuredMarketplace.url ?? "") === marketplaceRoot;
+  let marketplaceReplaced = false;
+  if (marketplaceIsLocal) {
     run("claude", ["plugin", "marketplace", "update", marketplace.name]);
   } else {
+    let displacedPlugins = [];
+    if (configuredMarketplace) {
+      displacedPlugins = parseJsonOutput(
+        run("claude", ["plugin", "list", "--json"], { capture: true }),
+        "plugin list"
+      ).filter((entry) =>
+        entry.scope === "user" &&
+        entry.id.endsWith(`@${marketplace.name}`) &&
+        entry.id !== selector
+      );
+      run("claude", [
+        "plugin",
+        "marketplace",
+        "remove",
+        marketplace.name,
+        "--scope",
+        "user"
+      ]);
+      marketplaceReplaced = true;
+    }
     run("claude", [
       "plugin",
       "marketplace",
@@ -76,18 +101,31 @@ export async function installClaudeLocal({
       "--scope",
       "user"
     ]);
+    for (const displaced of displacedPlugins) {
+      run("claude", ["plugin", "install", displaced.id, "--scope", "user"]);
+      if (!displaced.enabled) {
+        run("claude", ["plugin", "disable", displaced.id, "--scope", "user"]);
+      }
+    }
   }
 
-  const selector = `${product}@${marketplace.name}`;
+  const productMetadata = JSON.parse(readFileSync(
+    join(marketplaceRoot, "plugins", product, ".bos-product.json"),
+    "utf8"
+  ));
   const installedPlugins = parseJsonOutput(
     run("claude", ["plugin", "list", "--json"], { capture: true }),
     "plugin list"
   );
-  const installed = installedPlugins.some((entry) => entry.id === selector);
+  const installed = marketplaceReplaced
+    ? undefined
+    : installedPlugins.find((entry) => entry.id === selector);
 
   if (installed) {
     run("claude", ["plugin", "update", selector, "--scope", "user"]);
-    run("claude", ["plugin", "enable", selector, "--scope", "user"]);
+    if (!installed.enabled) {
+      run("claude", ["plugin", "enable", selector, "--scope", "user"]);
+    }
   } else {
     run("claude", [
       "plugin",
@@ -107,14 +145,17 @@ export async function installClaudeLocal({
     throw new Error(`Claude did not enable ${selector}`);
   }
 
-  process.stdout.write(
-    `Installed ${selector}. Select Connect in Claude and complete BOS sign-in, then start a new Claude session or run /reload-plugins.\n`
-  );
+  const completionMessage = productMetadata.connection_scope === "claude_account"
+    ? `Connect the ${productMetadata.mcp_group_name} account-level Web connector under Customize > Connectors, then complete BOS sign-in.`
+    : "This is a skills-only plugin and requires no BOS connector.";
+  process.stdout.write(`Installed ${selector}. ${completionMessage}\n`);
   return {
     marketplace: marketplace.name,
     marketplaceRoot,
     product,
     selector,
+    connectionScope: productMetadata.connection_scope ?? "none",
+    resourceUrl: productMetadata.resource_url,
     installed: true
   };
 }

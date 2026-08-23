@@ -41,10 +41,13 @@ configuration as distinct validated dimensions.
   session, it reconnects the configured endpoint, rediscovers tools,
   revalidates context, and resumes the interrupted request with bounded retry.
   It never delegates reconnection or request resubmission to the user.
-- Expose BOS as a remote HTTPS Streamable HTTP MCP server. Claude, OAuth-capable
-  GitHub Copilot, and Gemini packages declare only the immutable resource URL.
-  ChatGPT/Codex packages declare a required registered app binding that owns
-  that resource and carry no direct MCP server declaration. Every runtime host
+- Expose BOS as a remote HTTPS Streamable HTTP MCP server. Claude account-level
+  Web connectors, OAuth-capable GitHub Copilot, and Gemini declare the immutable
+  resource URL. Claude marketplace plugins contain skills and account-connector
+  metadata only; they never package `.mcp.json` or `mcpServers`, because Claude
+  classifies plugin-owned MCP servers as session connections. ChatGPT/Codex
+  packages declare a required registered app binding that owns the resource and
+  carry no direct MCP server declaration. Every runtime host
   uses its OAuth 2.1 MCP
   authorization flow. The host discovers BOS
   authorization metadata, launches consent, stores and refreshes the grant,
@@ -56,8 +59,10 @@ configuration as distinct validated dimensions.
   `/mcp/apps/{application-name}/{skill-group-name}` endpoint and verify the
   server-returned context. Never discover, prompt for, repair, or materialize
   the route from an `installed_app_id`, and never retain an unnamed endpoint as
-  an installed product's runtime connection. For ChatGPT/Codex, never package
-  `.mcp.json` or `mcpServers`; bind the registered app through `.app.json`.
+  an installed product's runtime connection. For Claude, provision the resource
+  as an account or organization Web connector and keep it out of the plugin MCP
+  manifest. For ChatGPT/Codex, never package `.mcp.json` or `mcpServers`; bind
+  the registered app through `.app.json`.
   For every client, never add `bearer_token_env_var`, literal authorization
   headers, or a plugin key field. The server derives actor, tenant, organization, installation,
   role, plugin, and capability scope from the validated OAuth grant; client

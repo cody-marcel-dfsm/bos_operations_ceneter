@@ -21,11 +21,11 @@ students.
 
 ## Authentication and security
 
-The remote HTTPS MCP uses OAuth 2.1 authorization initiated by the host.
-The packaged `education-center` MCP resource group selects its tools.
-Install the plugin, select Connect, and complete BOS sign-in. Claude
-stores and refreshes the resulting authorization; the plugin never asks
-the user to paste a BOS key.
+The remote HTTPS MCP uses OAuth 2.1 through the account-level
+`education-center` Web connector under **Customize → Connectors**.
+Install the plugin, connect that account connector, and complete BOS sign-in.
+Claude stores and refreshes the resulting authorization; the plugin contains
+no session-scoped MCP declaration and never asks the user to paste a BOS key.
 The customer-facing franchise or brand name is supplied during tenant setup
 and applies only to customer-facing copy and output.
 Credentials are never included in this package,

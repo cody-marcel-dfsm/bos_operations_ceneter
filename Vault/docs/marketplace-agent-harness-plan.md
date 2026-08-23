@@ -142,7 +142,8 @@ Claude marketplace.
 Each generated plugin contains:
 
 - `.claude-plugin/plugin.json`;
-- `.mcp.json` with the product's fixed remote MCP URL;
+- `.bos-product.json` with `claude_account` scope and the fixed remote MCP URL;
+- `CONNECTORS.md` with account or organization connector provisioning guidance;
 - the product's generated `skills/` tree;
 - marketplace metadata, documentation, and default prompts.
 
@@ -152,9 +153,12 @@ The Education Center plugin connects to:
 https://dfsm.ai/mcp/apps/leaddirector/education-center
 ```
 
-Claude enablement presents Connect and completes host-managed BOS OAuth. The
-package never requests an application, group, or BOS key. The root marketplace lists each independently
-installable skill group and points at its generated plugin directory.
+The marketplace plugin contains no `.mcp.json` or `mcpServers`, because Claude
+classifies plugin-owned MCP servers as `Connects in sessions`. An account or
+organization Web connector presents Connect under Customize → Connectors and
+completes host-managed BOS OAuth. The package never requests an application,
+group, or BOS key. The root marketplace lists each independently installable
+skill group and points at its generated plugin directory.
 
 Claude Code validation covers marketplace discovery, installation, enablement,
 MCP tool discovery, skill activation, reads, confirmed mutations, provider
@@ -162,10 +166,11 @@ authorization recovery, transport recovery, updates, and uninstall/reinstall.
 
 ### Claude Desktop
 
-Use the same generated skills and fixed MCP route as Claude Code. Prefer the
-native Claude plugin when Desktop supports the same plugin package. If the
-Desktop marketplace requires a connector-specific registration, generate that
-adapter from the same product manifest.
+Use the same generated skills and fixed MCP route as Claude Code. The native
+Claude plugin distributes skills, while an account or organization Web connector
+owns authentication and the fixed route. Generate connector metadata from the
+same product manifest and publish the resource in Anthropic's Connector Directory
+for public one-click installation.
 
 Claude Code and Claude Desktop must expose equivalent skill content, use the
 same named route, and produce equivalent tool discovery. Any Desktop-only

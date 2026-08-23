@@ -3,7 +3,6 @@ import { join } from "node:path";
 import {
   codexAppManifest,
   copyProductSkills,
-  copyRuntime,
   copySettingsTemplate,
   copilotMcpManifest,
   geminiExtensionManifest,
@@ -11,6 +10,7 @@ import {
   geminiPluginMcpManifest,
   listProducts,
   marketplaceEntry,
+  materializeMcpUrl,
   pluginManifest,
   resolveProductSkills,
   root,
@@ -89,6 +89,12 @@ for (const { product, skills } of resolved) {
       product.name
     );
     await mkdir(join(pluginRoot, ".claude-plugin"), { recursive: true });
+    const claudeResourceUrl = product.runtime
+      ? materializeMcpUrl(
+          "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
+          product
+        )
+      : undefined;
     await writeJson(join(pluginRoot, ".bos-product.json"), {
       schema_version: "1",
       name: product.name,
@@ -96,6 +102,10 @@ for (const { product, skills } of resolved) {
       client: "claude",
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
+      ...(product.runtime ? {
+        connection_scope: "claude_account",
+        resource_url: claudeResourceUrl
+      } : {}),
       authentication: product.runtime ? "oauth_2_1" : "none"
     });
     const claudePlugin = {
@@ -109,16 +119,35 @@ for (const { product, skills } of resolved) {
       license: "Apache-2.0",
       keywords: ["bos", "operations", product.name]
     };
-    if (product.runtime) {
-      claudePlugin.mcpServers = "./.mcp.json";
-    }
     await writeJson(
       join(pluginRoot, ".claude-plugin", "plugin.json"),
       claudePlugin
     );
     await copyProductSkills(skills, join(pluginRoot, "skills"));
-    await copyRuntime(product, pluginRoot, root, "claude");
     await copySettingsTemplate(product, pluginRoot);
+    if (product.runtime) {
+      await writeFile(
+        join(pluginRoot, "CONNECTORS.md"),
+        [
+          "# Claude account connector",
+          "",
+          `This plugin uses the account-level Web connector named \`${product.mcp_group_name}\`.`,
+          "It must appear under **Customize → Connectors** with its own **Connect** control.",
+          "The plugin intentionally contains no `.mcp.json` or `mcpServers` declaration;",
+          "plugin-owned MCP declarations are session-scoped in Claude.",
+          "",
+          "For a private or development installation, an account owner adds a custom",
+          `connector with the package-owned resource URL \`${claudeResourceUrl}\`, then`,
+          "each authorized user completes BOS OAuth from **Customize → Connectors**.",
+          "For customer distribution, publish the same resource in Anthropic's Connector",
+          "Directory or provision it as an organization connector.",
+          "",
+          "The Claude account stores and refreshes the resource-scoped grant. The plugin",
+          "never requests, stores, or transports a BOS key or OAuth token.",
+          ""
+        ].join("\n")
+      );
+    }
     if (product.name === "education-center") {
       await writeFile(
         join(pluginRoot, "README.md"),
@@ -146,11 +175,11 @@ for (const { product, skills } of resolved) {
           "",
           "## Authentication and security",
           "",
-          "The remote HTTPS MCP uses OAuth 2.1 authorization initiated by the host.",
-          "The packaged `education-center` MCP resource group selects its tools.",
-          "Install the plugin, select Connect, and complete BOS sign-in. Claude",
-          "stores and refreshes the resulting authorization; the plugin never asks",
-          "the user to paste a BOS key.",
+          "The remote HTTPS MCP uses OAuth 2.1 through the account-level",
+          "`education-center` Web connector under **Customize → Connectors**.",
+          "Install the plugin, connect that account connector, and complete BOS sign-in.",
+          "Claude stores and refreshes the resulting authorization; the plugin contains",
+          "no session-scoped MCP declaration and never asks the user to paste a BOS key.",
           "The customer-facing franchise or brand name is supplied during tenant setup",
           "and applies only to customer-facing copy and output.",
           "Credentials are never included in this package,",
