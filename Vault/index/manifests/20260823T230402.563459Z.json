@@ -1,5 +1,5 @@
 {
-  "indexed_at": "20260823T232154.283872Z",
+  "indexed_at": "20260823T230402.563459Z",
   "schema_version": "bos-vault-manifest/v1",
   "source_count": 50,
   "sources": {
@@ -44,8 +44,8 @@
       "sha256": "52ca2685a46cf52d21e95218f5ef50d66873b18c19347b5809b1c380c4990882"
     },
     "Vault/docs/architecture.md": {
-      "bytes": 15743,
-      "sha256": "92102448998ef50fea222dfcfb5487a34007825788b3b0e98ef5af2c8fa293cd"
+      "bytes": 15779,
+      "sha256": "df5c7a89a0a36530b78c6068853422e2a702835c3538748629d404cd3fe55725"
     },
     "Vault/docs/bos-expertise-package-ecosystem-proposal.md": {
       "bytes": 21898,
