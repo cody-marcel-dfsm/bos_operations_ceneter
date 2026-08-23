@@ -1194,12 +1194,7 @@ test("Claude distribution is a marketplace of self-contained plugins", async () 
     repositoryMarketplace.plugins.map(({ name, source }) => ({ name, source })),
     marketplace.plugins.map(({ name }) => ({
       name,
-      source: {
-        source: "git-subdir",
-        url: "https://github.com/cody-marcel-dfsm/bos_operations_ceneter.git",
-        path: `clients/claude/plugins/${name}`,
-        ref: "main"
-      }
+      source: `./clients/claude/plugins/${name}`
     }))
   );
 
@@ -1650,23 +1645,10 @@ test("repository marketplaces expose native Claude and Codex desktop packages", 
     }
   ]);
   assert.deepEqual(claude.plugins.map(({ name, source }) => ({ name, source })), [
-    {
-      name: "bos",
-      source: {
-        source: "git-subdir",
-        url: "https://github.com/cody-marcel-dfsm/bos_operations_ceneter.git",
-        path: "clients/claude/plugins/bos",
-        ref: "main"
-      }
-    },
+    { name: "bos", source: "./clients/claude/plugins/bos" },
     {
       name: "education-center",
-      source: {
-        source: "git-subdir",
-        url: "https://github.com/cody-marcel-dfsm/bos_operations_ceneter.git",
-        path: "clients/claude/plugins/education-center",
-        ref: "main"
-      }
+      source: "./clients/claude/plugins/education-center"
     }
   ]);
 });
