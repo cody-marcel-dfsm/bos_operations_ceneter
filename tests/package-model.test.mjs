@@ -1090,13 +1090,8 @@ test("disabled products are absent while active runtime products remain scoped",
       }
     }
   });
-  const claudeRuntime = JSON.parse(await readFile(
-    `${root}/clients/claude/plugins/education-center/.mcp.json`,
-    "utf8"
-  ));
-  assert.equal(
-    claudeRuntime.mcpServers["education-center"].url,
-    "https://dfsm.ai/mcp/apps/leaddirector/education-center"
+  await assert.rejects(
+    access(`${root}/clients/claude/plugins/education-center/.mcp.json`)
   );
 });
 
@@ -1114,7 +1109,7 @@ test("disabled product inventory is generated for idempotent client pruning", as
   });
 });
 
-test("Education Center packages use client-native OAuth bindings", async () => {
+test("Education Center packages use account-scoped desktop OAuth bindings", async () => {
   const codexRoot = `${root}/clients/codex/plugins/education-center`;
   const metadata = JSON.parse(await readFile(`${codexRoot}/.bos-product.json`, "utf8"));
   const plugin = JSON.parse(await readFile(`${codexRoot}/.codex-plugin/plugin.json`, "utf8"));
@@ -1127,17 +1122,26 @@ test("Education Center packages use client-native OAuth bindings", async () => {
   assert.equal(app.apps["education-center"].required, true);
   await assert.rejects(access(`${codexRoot}/.mcp.json`));
 
-  const claude = JSON.parse(await readFile(
-    `${root}/clients/claude/plugins/education-center/.mcp.json`,
+  const claudeRoot = `${root}/clients/claude/plugins/education-center`;
+  const claudeMetadata = JSON.parse(await readFile(
+    `${claudeRoot}/.bos-product.json`,
     "utf8"
   ));
-  assert.equal(claude.mcpServers["education-center"].type, "http");
+  const claudePlugin = JSON.parse(await readFile(
+    `${claudeRoot}/.claude-plugin/plugin.json`,
+    "utf8"
+  ));
+  assert.equal(claudeMetadata.connection_scope, "claude_account");
   assert.equal(
-    claude.mcpServers["education-center"].url,
+    claudeMetadata.resource_url,
     "https://dfsm.ai/mcp/apps/leaddirector/education-center"
   );
-  assert.equal("headers" in claude.mcpServers["education-center"], false);
-  assert.equal("bearer_token_env_var" in claude.mcpServers["education-center"], false);
+  assert.equal(claudePlugin.mcpServers, undefined);
+  await assert.rejects(access(`${claudeRoot}/.mcp.json`));
+  const connectorGuide = await readFile(`${claudeRoot}/CONNECTORS.md`, "utf8");
+  assert.match(connectorGuide, /account-level Web connector/i);
+  assert.match(connectorGuide, /Customize.*Connectors/i);
+  assert.doesNotMatch(connectorGuide, /connects in sessions/i);
 });
 
 test("Claude distribution is a marketplace of self-contained plugins", async () => {
@@ -1190,21 +1194,11 @@ test("Claude distribution is a marketplace of self-contained plugins", async () 
       "utf8"
     )
   );
-  assert.equal(educationCenterManifest.mcpServers, "./.mcp.json");
+  assert.equal(educationCenterManifest.mcpServers, undefined);
   assert.equal("userConfig" in educationCenterManifest, false);
-
-  const educationCenterRuntime = JSON.parse(
-    await readFile(
-      `${root}/clients/claude/plugins/education-center/.mcp.json`,
-      "utf8"
-    )
+  await assert.rejects(
+    access(`${root}/clients/claude/plugins/education-center/.mcp.json`)
   );
-  assert.equal(
-    educationCenterRuntime.mcpServers["education-center"].url,
-    "https://dfsm.ai/mcp/apps/leaddirector/education-center"
-  );
-  assert.equal("headers" in educationCenterRuntime.mcpServers["education-center"], false);
-  assert.equal("bearer_token_env_var" in educationCenterRuntime.mcpServers["education-center"], false);
 
   await assert.rejects(access(`${root}/clients/claude/plugins/video-ads`));
 });
@@ -1390,6 +1384,9 @@ test("every product and client ships tenant extension management metadata", asyn
           mcp_group_name: manifest.mcp_group_name,
           ...(client === "codex" ? {
             codex_app_id: manifest.codex_app_id
+          } : client === "claude" ? {
+            connection_scope: "claude_account",
+            resource_url: `https://dfsm.ai/mcp/apps/${manifest.application_name}/${manifest.mcp_group_name}`
           } : {})
         } : {})
       });

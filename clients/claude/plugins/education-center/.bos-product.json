@@ -1,9 +1,11 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.32",
+  "version": "0.4.34",
   "client": "claude",
   "application_name": "leaddirector",
   "mcp_group_name": "education-center",
+  "connection_scope": "claude_account",
+  "resource_url": "https://dfsm.ai/mcp/apps/leaddirector/education-center",
   "authentication": "oauth_2_1"
 }

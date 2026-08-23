@@ -262,25 +262,6 @@ function publicPackagePath(path) {
   return !parts.includes("__pycache__") && !name.endsWith(".pyc");
 }
 
-export async function copyRuntime(product, pluginRoot, base = root, client = null) {
-  if (!product.runtime) return;
-  if (client !== "claude") {
-    throw new Error(`Runtime MCP packaging is reserved for Claude, received ${client}`);
-  }
-  const runtimeRoot = join(base, "source", "runtime", product.runtime);
-  await cp(join(runtimeRoot, ".mcp.json"), join(pluginRoot, ".mcp.json"));
-  const configPath = join(pluginRoot, ".mcp.json");
-  const config = await readJson(configPath);
-  const server = config.mcpServers?.bos;
-  if (!server || server.type !== "http" || typeof server.url !== "string") {
-    throw new Error(`Runtime ${product.runtime} has no remote BOS MCP server`);
-  }
-  config.mcpServers[product.mcp_group_name] = server;
-  if (product.mcp_group_name !== "bos") delete config.mcpServers.bos;
-  server.url = materializeMcpUrl(server.url, product);
-  await writeJson(configPath, config);
-}
-
 export function materializeMcpUrl(template, product) {
   const expected = "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}";
   if (template !== expected) {
