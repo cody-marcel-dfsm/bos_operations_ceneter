@@ -26,8 +26,9 @@ resume the original request automatically.
 # BOS MCP Client
 
 Use this skill for client-side application resource-group operations.
-Each installed runtime product owns one named remote MCP resource. Claude
-authorizes it through an account-level Web connector; ChatGPT/Codex authorizes
+Each installed runtime product owns one named remote MCP resource. A Claude
+runtime plugin declares it and the first eligible request activates its
+host-managed authorization; ChatGPT/Codex authorizes
 it through the registered app's host-managed OAuth 2.1 connection.
 Other supported clients use the product adapter declared by their generated
 package until they receive an equivalent OAuth migration.
@@ -56,9 +57,10 @@ stateful mutation workflow.
 - If BOS is absent from the callable tool manifest, inspect the active client's
   plugin and runtime binding immediately. Repair or reinstall the configured
   local product and restore its declared authorization connection. For Codex,
-  verify the required registered app binding; for Claude, verify the account-level
-  Web connector under Customize → Connectors and reject a plugin-owned MCP
-  declaration labeled `Connects in sessions`. Invoke the host-managed OAuth connection. Preserve every
+  verify the required registered app binding; for Claude, verify the runtime
+  plugin's packaged MCP declaration and retry the eligible request so Claude
+  presents its host-managed authorization automatically.
+  Never ask the user to add a custom connector or enter its URL. Preserve every
   other installed product connection. Restore only the immutable
   `/mcp/apps/{application-name}/{skill-group-name}` package route for every
   application runtime product, then verify that named server is registered.
@@ -98,8 +100,8 @@ stateful mutation workflow.
 
 ## Runtime workflow
 
-1. Use the immutable connection URL recorded by the package and provisioned in
-   the host account connector. Treat its application name
+1. Use the immutable connection URL recorded by the package and declared by
+   the product's native host adapter. Treat its application name
    and skill-group name as immutable package configuration, never as tenant
    authority or user-selectable settings.
 2. On an application skill-group connection, do not send `org_id`, `app_code`,
@@ -113,8 +115,9 @@ stateful mutation workflow.
    For example, Education Center operations use `education-center`; Video Ads operations
    use `video-ads`. The endpoint selects a tool group; it never selects an
    organization or another authorization grant.
-5. Authenticate a selected Claude connection from Customize → Connectors and a
-   ChatGPT/Codex connection through its registered app. Both use a host-managed
+5. Authenticate a selected Claude connection when the first eligible request
+   activates the installed plugin connector, and a ChatGPT/Codex connection
+   through its registered app. Both use a host-managed
    OAuth grant. Other clients use only the generated product
    adapter declared for that client. Keep access tokens, refresh tokens,
    authorization codes, bearer values, and grant metadata out of chat, tool
@@ -123,13 +126,15 @@ stateful mutation workflow.
    reconnecting once, invoke the host's Connect/Sign in flow and resume once
    after it succeeds.
 6. When a domain call returns `authorization_required`, preserve its original
-   operation ID and follow the returned authorization type automatically:
+   operation ID and present the returned secure authorization path automatically
+   in the active request:
    - OAuth: open the returned URL, let the customer sign in directly with the
      provider, and poll `bos_get_authorization_status` with the exact scope.
    - Secret input: open the returned short-lived BOS HTTPS
      credential-collection URL. Let the customer submit the value directly to
      BOS and poll the sanitized transaction status.
-7. Verify recovered authorization and call `bos_resume_operation` once. Stop
+7. Poll and verify recovered authorization, then call `bos_resume_operation`
+   once without asking the user to resubmit the request. Stop
    if authorization or that single retry fails.
 
 Provider readiness and authorization are local to the selected organization,

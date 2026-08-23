@@ -41,11 +41,11 @@ configuration as distinct validated dimensions.
   session, it reconnects the configured endpoint, rediscovers tools,
   revalidates context, and resumes the interrupted request with bounded retry.
   It never delegates reconnection or request resubmission to the user.
-- Expose BOS as a remote HTTPS Streamable HTTP MCP server. Claude account-level
-  Web connectors, OAuth-capable GitHub Copilot, and Gemini declare the immutable
-  resource URL. Claude marketplace plugins contain skills and account-connector
-  metadata only; they never package `.mcp.json` or `mcpServers`, because Claude
-  classifies plugin-owned MCP servers as session connections. ChatGPT/Codex
+- Expose BOS as a remote HTTPS Streamable HTTP MCP server. Claude marketplace
+  plugins, OAuth-capable GitHub Copilot, and Gemini declare the immutable
+  resource URL. A Claude runtime plugin packages `.mcp.json` and references it
+  through `mcpServers`, so plugin installation registers the product connector
+  without a separately entered URL. ChatGPT/Codex
   packages declare a required registered app binding that owns the resource and
   carry no direct MCP server declaration. Every runtime host
   uses its OAuth 2.1 MCP
@@ -59,9 +59,10 @@ configuration as distinct validated dimensions.
   `/mcp/apps/{application-name}/{skill-group-name}` endpoint and verify the
   server-returned context. Never discover, prompt for, repair, or materialize
   the route from an `installed_app_id`, and never retain an unnamed endpoint as
-  an installed product's runtime connection. For Claude, provision the resource
-  as an account or organization Web connector and keep it out of the plugin MCP
-  manifest. For ChatGPT/Codex, never package `.mcp.json` or `mcpServers`; bind
+  an installed product's runtime connection. For Claude, declare the resource
+  in the runtime plugin. The first eligible request loads it and the host
+  presents BOS authorization automatically when required. For ChatGPT/Codex,
+  never package `.mcp.json` or `mcpServers`; bind
   the registered app through `.app.json`.
   For every client, never add `bearer_token_env_var`, literal authorization
   headers, or a plugin key field. The server derives actor, tenant, organization, installation,
@@ -75,8 +76,9 @@ configuration as distinct validated dimensions.
   plugin. Missing provider readiness never changes another named connection's
   tools, authentication, build gate, or release state.
 - When a domain call returns `authorization_required`, automatically complete
-  the provider-specific recovery flow, verify it, and resume the original
-  operation at most once.
+  the provider-specific recovery flow in the active request, verify it, and
+  resume the original operation at most once. Never send the user to settings
+  to discover or manually register a provider connection.
 - For OAuth providers, open the server-returned authorization URL, let the
   customer sign in directly with the provider, and poll the BOS transaction.
 - For API-key providers, open the short-lived BOS-hosted HTTPS

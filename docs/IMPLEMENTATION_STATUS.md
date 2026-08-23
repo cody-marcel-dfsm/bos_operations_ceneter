@@ -49,9 +49,9 @@ ready for client testing.
   is not a usable release signal for this field.
 - Host-native connection package tests pass.
 - Repeated release builds produce identical checksums.
-- Generated Claude marketplace plugins are skills-only and contain no
-  `.mcp.json` or `mcpServers`. Their metadata requires an account-level Web
-  connector, preventing Claude's `Connects in sessions` classification.
+- Generated Claude runtime plugins contain one credential-free `.mcp.json`
+  mirrored inline by `mcpServers`, so installation registers the connector and
+  an eligible request presents authorization without a separately entered URL.
 - Fresh Codex tasks discover the namespaced `bos:*` skills and Lead Director
   repository skills.
 - ChatGPT displays Connect for Education Center BOS, discovers BOS OAuth, and
@@ -65,10 +65,9 @@ ready for client testing.
 
 The package implementation is ready for these environment-specific smoke tests:
 
-1. Install the generated Claude bundle in a clean Claude environment, provision
-   the immutable resource as an account-level Web connector, verify the
-   persistent **Connect** control, and confirm skill discovery. Public one-click
-   distribution remains gated on Anthropic Connector Directory approval.
+1. Install the generated Claude bundle in a clean Claude environment, verify
+   that its packaged connector and **Connect** control appear automatically,
+   complete BOS OAuth, and confirm skill discovery and one bounded read.
 2. Install the generated Copilot bundle in a clean Copilot environment and
    verify repository instruction discovery.
 3. Repair the deployed BOS MCP agent handoff so the authenticated web session
@@ -78,5 +77,5 @@ The package implementation is ready for these environment-specific smoke tests:
    files are replaced while customer extension files remain unchanged.
 
 These gates validate client and deployed-server environments. The known Codex
-MCP handoff failure remains server-owned; Claude account-connector publication
-is a separate external distribution gate.
+MCP handoff failure remains server-owned; Claude connector registration is now
+owned and validated by the runtime plugin package.

@@ -145,8 +145,8 @@ export async function installClaudeLocal({
     throw new Error(`Claude did not enable ${selector}`);
   }
 
-  const completionMessage = productMetadata.connection_scope === "claude_account"
-    ? `Connect the ${productMetadata.mcp_group_name} account-level Web connector under Customize > Connectors, then complete BOS sign-in.`
+  const completionMessage = productMetadata.connection_scope === "claude_plugin"
+    ? `Start a new request that uses ${productMetadata.mcp_group_name}; Claude loads its bundled connector and presents BOS sign-in when authorization is required.`
     : "This is a skills-only plugin and requires no BOS connector.";
   process.stdout.write(`Installed ${selector}. ${completionMessage}\n`);
   return {

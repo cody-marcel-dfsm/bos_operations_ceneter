@@ -301,26 +301,41 @@ async function validateProducts() {
         ) {
           failures.push(`Generated Claude identity drift: ${pluginPath}`);
         }
-        if (manifest.runtime &&
-            ("mcpServers" in generated || "userConfig" in generated)) {
-          failures.push(`Generated Claude plugin owns a session-scoped connection: ${pluginPath}`);
+        if (manifest.runtime && "userConfig" in generated) {
+          failures.push(`Generated Claude plugin connector declaration drift: ${pluginPath}`);
+        }
+        if (!manifest.runtime && "mcpServers" in generated) {
+          failures.push(`Skills-only Claude plugin contains runtime binding: ${pluginPath}`);
         }
       }
       const runtimePath = join(pluginRoot, ".mcp.json");
       if (manifest.runtime) {
-        if (await pathExists(runtimePath)) {
-          failures.push(`Generated Claude plugin contains session-scoped MCP: ${runtimePath}`);
+        if (!(await pathExists(runtimePath))) {
+          failures.push(`Generated Claude plugin is missing its connector: ${runtimePath}`);
+          continue;
         }
         const metadata = await readJson(join(pluginRoot, ".bos-product.json"));
+        const runtime = await readJson(runtimePath);
         const expectedUrl = materializeMcpUrl(
           "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
           manifest
         );
-        if (metadata.connection_scope !== "claude_account" ||
+        const server = runtime.mcpServers?.[manifest.mcp_group_name];
+        const pluginManifest = await readJson(pluginPath);
+        const declaredServer = pluginManifest.mcpServers?.[manifest.mcp_group_name];
+        if (metadata.connection_scope !== "claude_plugin" ||
             metadata.resource_url !== expectedUrl ||
-            !(await pathExists(join(pluginRoot, "CONNECTORS.md")))) {
-          failures.push(`Generated Claude account connector metadata drift: ${pluginRoot}`);
+            Object.keys(runtime.mcpServers ?? {}).length !== 1 ||
+            Object.keys(pluginManifest.mcpServers ?? {}).length !== 1 ||
+            server?.type !== "http" ||
+            server?.url !== expectedUrl ||
+            JSON.stringify(declaredServer) !== JSON.stringify(server) ||
+            "headers" in (server ?? {}) ||
+            await pathExists(join(pluginRoot, "CONNECTORS.md"))) {
+          failures.push(`Generated Claude plugin connector drift: ${pluginRoot}`);
         }
+      } else if (await pathExists(runtimePath)) {
+        failures.push(`Skills-only Claude plugin contains runtime file: ${runtimePath}`);
       }
       for (const skill of skills) {
         const generatedSkillRoot = join(pluginRoot, "skills", skill.name);
