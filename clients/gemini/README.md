@@ -18,7 +18,7 @@ run `/extensions list` and `/skills list` to verify the extensions and bundled s
 
 ## Antigravity 2.0 Desktop
 
-Run `scripts/install-antigravity.mjs` once. This clean installer deletes prior BOS
+Run `./scripts/install-antigravity.sh` once. This clean installer deletes prior BOS
 product entries without backups, locates this repository from its own file path,
 and creates one product symlink in `~/.gemini/config/plugins/` for each active product.
 It stops if customer-owned extension metadata exists.

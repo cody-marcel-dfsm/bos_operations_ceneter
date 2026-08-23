@@ -4,6 +4,7 @@ import { extname, join } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import {
+  geminiPluginManifest,
   hashTree,
   injectSettingsPreflight,
   listProducts,
@@ -431,11 +432,7 @@ async function validateProducts() {
         failures.push(`Missing generated Antigravity plugin manifest: ${pluginPath}`);
       } else {
         const plugin = await readJson(pluginPath);
-        const expectedPlugin = {
-          $schema: "https://antigravity.google/schemas/v1/plugin.json",
-          name: manifest.name,
-          description: manifest.description
-        };
+        const expectedPlugin = geminiPluginManifest(manifest);
         if (JSON.stringify(plugin) !== JSON.stringify(expectedPlugin)) {
           failures.push(`Generated Antigravity plugin identity drift: ${pluginPath}`);
         }
@@ -474,7 +471,7 @@ async function validateProducts() {
           !readme.includes("/extensions list") ||
           !readme.includes("/skills list") ||
           !readme.includes("Antigravity 2.0 Desktop") ||
-          !readme.includes("scripts/install-antigravity.mjs") ||
+          !readme.includes("scripts/install-antigravity.sh") ||
           !readme.includes("~/.gemini/config/plugins/") ||
           !readme.includes("clean install") ||
           !readme.includes("without backups") ||
