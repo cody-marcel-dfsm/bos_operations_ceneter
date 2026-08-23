@@ -453,7 +453,11 @@ async function validateProducts() {
           !readme.includes("/extensions list") ||
           !readme.includes("/skills list") ||
           !readme.includes("Antigravity 2.0 Desktop") ||
-          !readme.includes(`~/.gemini/config/plugins/${manifest.name}`) ||
+          !readme.includes("scripts/install-antigravity.mjs") ||
+          !readme.includes("~/.gemini/config/plugins/") ||
+          !readme.includes("clean install") ||
+          !readme.includes("without backups") ||
+          !readme.includes("After each Git pull, restart Antigravity") ||
           (manifest.runtime &&
             (!readme.includes(`/mcp auth ${manifest.mcp_group_name}`) ||
               !readme.includes("Settings > Customizations") ||
