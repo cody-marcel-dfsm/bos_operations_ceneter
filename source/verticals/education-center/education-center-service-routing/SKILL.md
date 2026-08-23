@@ -53,6 +53,14 @@ persisted record identifiers. Return `configuration_required` and invoke
    partial result and label the source used. Never silently switch mailboxes.
 7. Preserve provider provenance and freshness in the result.
 
+Provider readiness is part of this request path. When `bos_get_context` marks
+the selected provider operation `recovery_required`, invoke its exact
+server-returned `next_action` and let `bos-mcp-client` complete recovery before
+continuing the domain workflow. Gmail opens the provider OAuth consent path.
+Calimatic opens the short-lived BOS credential page that asks for the portal
+URL and API key. Never replace either path with dashboard navigation, written
+setup steps, or a request for the customer to return and confirm completion.
+
 ## Domain routes
 
 - Use `source_routes.calimatic` for class, camp, enrollment, attendance,

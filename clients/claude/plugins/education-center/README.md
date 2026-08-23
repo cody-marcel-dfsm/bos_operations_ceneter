@@ -21,11 +21,13 @@ students.
 
 ## Authentication and security
 
-The plugin declares the immutable `education-center` remote HTTPS MCP resource
-and uses Claude's host-managed OAuth 2.1 flow. Install the plugin and start
-a request that uses it; Claude loads the connector and presents BOS sign-in
-when required. No custom connector URL or
-separate account/organization connector registration is required.
+The remote HTTPS MCP uses OAuth 2.1 through the account-level
+`education-center` Web connector under **Customize → Connectors**.
+Install the plugin, add or select that account connector, select **Connect**,
+and complete BOS sign-in. Private installations use the package-owned
+resource URL documented in `CONNECTORS.md`; published installations use
+the same resource through Anthropic's Connector Directory or organization
+provisioning.
 Claude stores and refreshes the resulting authorization, and the plugin never
 asks the user to paste a BOS key.
 The customer-facing franchise or brand name is supplied during tenant setup
