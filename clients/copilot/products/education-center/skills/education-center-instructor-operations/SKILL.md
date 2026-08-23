@@ -3,6 +3,26 @@ name: education-center-instructor-operations
 description: Handle Education Center instructor hiring, onboarding, teaching operations, and offboarding through the tenant-scoped BOS MCP. Use when asked to find candidates, reconcile instructor communications or documents, schedule interviews or onboarding, inspect teaching schedules and rosters, prepare lifecycle checklists, or identify missing instructor-management capabilities.
 ---
 
+
+## Product first-run preflight
+
+Before performing this skill's workflow, resolve the installed product root and
+validate its customer-owned `config/customer-settings.json` against
+`config/customer-settings.template.json`. Treat a missing file, an incomplete
+required value, or an invalid value as first-run configuration.
+
+When first-run configuration is detected, invoke `education-center-customer-initialization`
+immediately. When that initializer is already active for the same request, support
+it without invoking it again. Preserve the user's original request while
+initialization runs.
+Complete the product's host-managed BOS authentication before asking any settings
+question. If direct sign-in is required, ask only for that action and resume
+initialization automatically afterward. Do not perform the original workflow or
+substitute generic customer values while configuration remains unresolved. After
+the user accepts the consolidated recommendation and the initializer writes and
+revalidates `config/customer-settings.json`, reload the effective settings and
+resume the original request automatically.
+
 # Education Center Instructor Operations
 
 ## Tenant terminology

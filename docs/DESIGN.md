@@ -426,7 +426,11 @@ each supported client distribution. During installation, the completed JSON is
 validated and written as `config/customer-settings.json` with customer
 ownership and restrictive permissions. Managed package hashes exclude the
 completed file, so upgrades preserve it. Skills read required values from that
-file and return `configuration_required` when a required value is absent.
+file. The product manifest also names one included settings initializer. The
+builder injects an equivalent first-run preflight into every other packaged
+skill for Codex, Claude, Copilot, and Gemini. A missing, incomplete, or invalid
+overlay invokes that initializer, preserves the pending request through setup,
+and resumes the original workflow after the accepted settings are revalidated.
 
 Customer settings may contain customer-facing brand names, organization display
 names, location names, IANA timezones, mailbox selectors, billing identity, and
