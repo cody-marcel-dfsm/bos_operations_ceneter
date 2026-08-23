@@ -20,7 +20,7 @@ discoverable. Use `gemini extensions update education-center` for later releases
 
 ## Antigravity 2.0 Desktop
 
-Run `scripts/install-antigravity.mjs` once from the synced BOS Operations Center
+Run `./scripts/install-antigravity.sh` once from the synced BOS Operations Center
 repository. This is a clean install: it deletes prior BOS product entries without backups,
 then links every generated Gemini product into `~/.gemini/config/plugins/`.
 It resolves the repository from the installer's own location, independent of the
