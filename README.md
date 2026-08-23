@@ -28,7 +28,7 @@ The private Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Select
 **Connect** or **Sign in** when the host presents it, then complete BOS consent.
 
-Current desktop marketplace release: `0.4.35`. If `0.4.34` is installed,
+Current desktop marketplace release: `0.4.36`. If `0.4.35` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -79,11 +79,19 @@ and refreshes the resulting grant across sessions.
 
 ### Updates
 
+- **Independent Claude Git marketplace:** A release on the tracked Git ref makes
+  the new version discoverable. Each account must select **Refresh marketplace**
+  or run `claude plugin marketplace update bos-education-center`; Claude Code
+  accounts may instead enable marketplace auto-update. A publisher-side build
+  cannot force refreshes across marketplaces independently added by other users.
 - **Claude organization marketplace:** Maintainers publish each new Claude plugin version by merging a version-bump
   pull request into the connected repository's default branch. With **Sync
   automatically** enabled under Claude Organization Settings → Plugins, that
   merge tells Claude to synchronize its hosted marketplace copy for every
   organization user.
+- **Official Anthropic marketplace:** Submit the new version through Claude's
+  plugin submission form. Anthropic review and publication provide the central
+  distribution path for unrelated personal accounts.
 - **Claude installed plugin:** After Claude synchronizes the marketplace, upgrade the affected plugin when
   the host presents **Update**.
 - **Private ChatGPT/Codex Git marketplace:** Run
@@ -235,11 +243,13 @@ Run:
 npm run release:check
 ```
 
-Publish a release through a release branch and merged pull request. A direct
-push of a version bump to the default branch does not provide Claude's
-documented organization-marketplace synchronization trigger. The generated
-Claude `plugin.json` is the single version authority; the Claude marketplace
-catalog intentionally omits duplicate version fields.
+Publish a release through a release branch and merged pull request. That merge
+provides Claude's documented organization-marketplace synchronization trigger
+only when the repository is connected to an organization marketplace with
+**Sync automatically** enabled. Independent marketplaces refresh per account,
+and official Anthropic marketplace versions use the submission portal. The
+generated Claude `plugin.json` is the single version authority; the Claude
+marketplace catalog intentionally omits duplicate version fields.
 
 The desktop host verifies live BOS access after installation through its
 host-managed OAuth connection. Repository release commands never accept or
