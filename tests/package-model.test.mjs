@@ -1152,6 +1152,11 @@ test("Claude distribution is a marketplace of self-contained plugins", async () 
     )
   );
   assert.equal(marketplace.name, "bos-education-center");
+  assert.equal(
+    marketplace.plugins.every(({ version }) => version === undefined),
+    true,
+    "Claude marketplace entries must defer to plugin.json as the single version authority"
+  );
   assert.deepEqual(
     marketplace.plugins.map(({ name, source }) => ({ name, source })),
     [
@@ -1180,6 +1185,11 @@ test("Claude distribution is a marketplace of self-contained plugins", async () 
     await readFile(`${root}/.claude-plugin/marketplace.json`, "utf8")
   );
   assert.equal(repositoryMarketplace.name, "bos-education-center");
+  assert.equal(
+    repositoryMarketplace.plugins.every(({ version }) => version === undefined),
+    true,
+    "repository Claude marketplace entries must not duplicate plugin.json versions"
+  );
   assert.deepEqual(
     repositoryMarketplace.plugins.map(({ name, source }) => ({ name, source })),
     marketplace.plugins.map(({ name }) => ({
@@ -1547,6 +1557,26 @@ test("release sources contain no archive builders or noninteractive OAuth gate",
   }
 });
 
+test("ship-it publishes releases through a merged pull request", async () => {
+  const workflow = await readFile(
+    `${root}/.agents/skills/ship-it/SKILL.md`,
+    "utf8"
+  );
+  assert.match(workflow, /Never push a release commit directly to the default branch/i);
+  assert.match(workflow, /create a release branch/i);
+  assert.match(workflow, /open a pull request/i);
+  assert.match(workflow, /merge the pull request/i);
+  assert.match(workflow, /Claude organization marketplace/i);
+  assert.match(workflow, /codex plugin marketplace upgrade/i);
+  assert.match(workflow, /OpenAI Platform/i);
+  assert.equal(
+    workflow.indexOf("## Create the release branch") <
+      workflow.indexOf("## Create the release version"),
+    true,
+    "release branch creation must precede the version bump"
+  );
+});
+
 test("desktop marketplace versions match the repository release", async () => {
   const repositoryPackage = JSON.parse(await readFile(`${root}/package.json`, "utf8"));
   const expectedVersion = repositoryPackage.version;
@@ -1564,9 +1594,9 @@ test("desktop marketplace versions match the repository release", async () => {
     Object.keys(packageManifest.clients).sort(),
     ["claude", "codex", "copilot", "gemini"]
   );
-  assert.deepEqual(
-    claudeMarketplace.plugins.map(({ version }) => version),
-    [expectedVersion, expectedVersion]
+  assert.equal(
+    claudeMarketplace.plugins.every(({ version }) => version === undefined),
+    true
   );
 
   for (const clientManifest of [
