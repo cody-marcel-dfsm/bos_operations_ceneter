@@ -15,7 +15,8 @@ Use these package-owned technical identities:
 - runtime server alias: `bos_education_center`;
 - desktop authorization resource:
   `https://dfsm.ai/mcp/apps/leaddirector/education-center`.
-- Codex registered app: `asdk_app_6a7cb1cc330c81918aa63d96aeeaba91`.
+- ChatGPT/Codex registered app technical ID:
+  `plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91`.
 
 Claude, ChatGPT/Codex desktop, OAuth-capable GitHub Copilot hosts, Gemini CLI,
 and Antigravity Desktop authorize that immutable resource through host-managed

@@ -1,7 +1,7 @@
 {
-  "indexed_at": "20260823T204225.300337Z",
+  "indexed_at": "20260823T202457.833458Z",
   "schema_version": "bos-vault-manifest/v1",
-  "source_count": 50,
+  "source_count": 49,
   "sources": {
     "Vault/README.md": {
       "bytes": 1032,
@@ -12,12 +12,12 @@
       "sha256": "3d5315f7b627b91746c218da0cae3f6cf2cfb3cbed66637e542ad68ea5747dd4"
     },
     "Vault/decisions/2026-08-11-desktop-private-marketplace-oauth.md": {
-      "bytes": 3159,
-      "sha256": "9bea446eb8a228cac1a8ee98bbac4c3b786b358b0897d5fcf795e249ffef4f61"
+      "bytes": 3152,
+      "sha256": "80ac95f7bef21ad99312dfbbb4b2da7e0a447b4594efb66269057be3e1bd4b0a"
     },
     "Vault/decisions/2026-08-11-education-center-product-identity.md": {
-      "bytes": 2317,
-      "sha256": "2f2c52846122d9ff5c9b039ec227d52cd3a2aff73e2695fe9c9df56e22bb7c15"
+      "bytes": 2287,
+      "sha256": "3f75db11d7ba9b6073db9c845d07925270b9a4b1128e9675c83522d6ac2b1169"
     },
     "Vault/decisions/2026-08-16-all-runtime-products-oauth-only.md": {
       "bytes": 2388,
@@ -31,10 +31,6 @@
       "bytes": 2806,
       "sha256": "e82ed3b9bc926ab04a4d0c05d08b81af3bcc0cb1c0bc91aa04d7d1ad2d75385e"
     },
-    "Vault/decisions/2026-08-23-chatgpt-registered-app-technical-id.md": {
-      "bytes": 1162,
-      "sha256": "d169c5718d0280ddfd98c86eba6640f5f3e5fe6165afaf18298682d90775fe1f"
-    },
     "Vault/decisions/2026-08-23-claude-persistent-account-connectors.md": {
       "bytes": 1651,
       "sha256": "fc41565a62588a57be13d640e68c3647fb1fc10188cb882b0317c4f7eff609cb"
@@ -44,8 +40,8 @@
       "sha256": "52ca2685a46cf52d21e95218f5ef50d66873b18c19347b5809b1c380c4990882"
     },
     "Vault/docs/architecture.md": {
-      "bytes": 15637,
-      "sha256": "4e1a0f07c334782f9aa702f2a6c5f31249357700d3cf4c6b06d627aa6201c43f"
+      "bytes": 15561,
+      "sha256": "4c115968437937163d7a725cafbfb98c65d162aa2e7ec4ae5a635053c66a96df"
     },
     "Vault/docs/bos-expertise-package-ecosystem-proposal.md": {
       "bytes": 21898,
@@ -53,15 +49,15 @@
     },
     "Vault/docs/bos-product-licensing-user-experience.md": {
       "bytes": 16130,
-      "sha256": "b3bf8e34a34dbfb4c68c50ea8a849f90c8fb80ec1722dec550d70678e4f8ca1a"
+      "sha256": "45ac04924c7b60c6e5b78cccdc0bc9c4329aedc0b995b6d5ee19212503c0625e"
     },
     "Vault/docs/marketplace-agent-harness-plan.md": {
-      "bytes": 33810,
-      "sha256": "26de8781afaec0197f2ec47c8137236665bec8b5c57b1ecb9e81ef2d0c096b0a"
+      "bytes": 33796,
+      "sha256": "1e88aa99eeb59e6d8ff3686a29202cca4c312c78c94e7236198ad6dcc1698238"
     },
     "Vault/docs/marketplace-submission-assets.md": {
       "bytes": 24346,
-      "sha256": "e9e29a94050fd376a91122b0db77dfa7a3622c2c94d034eac81f50a7dc2cf627"
+      "sha256": "eb1bbe8d5480f916bda0df3b50098ad52b14a3ad1e203783b3641143dea8f534"
     },
     "Vault/docs/my-crm-developer-platform-work-matrix.md": {
       "bytes": 8316,
@@ -184,8 +180,8 @@
       "sha256": "ce696da6b99f10263e835387c03470013b0b68f60b05db9a197e33eb93ed38a1"
     },
     "Vault/specs/named-mcp-application-group-routing.md": {
-      "bytes": 6227,
-      "sha256": "aa76d568438092e6042683480d1fec9806be1b8cceb088fd8be784541ef27bc2"
+      "bytes": 6210,
+      "sha256": "aea3567a63a508ccf12e902df4bc26ab27da166fc09892ceea1a505cf716dfa2"
     },
     "Vault/specs/named-mcp-server-implementation.md": {
       "bytes": 15229,

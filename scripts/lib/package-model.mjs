@@ -161,9 +161,9 @@ export function validateProduct(manifest, path = "product.json") {
   }
   if (
     manifest.codex_app_id !== undefined &&
-    !/^asdk_app_[a-z0-9]+$/.test(manifest.codex_app_id)
+    !/^plugin_asdk_app_[a-z0-9]+$/.test(manifest.codex_app_id)
   ) {
-    failures.push(`${path}: codex_app_id must be an asdk_app identifier`);
+    failures.push(`${path}: codex_app_id must be a plugin_asdk_app identifier`);
   }
   if (
     manifest.release_status === "active" &&
@@ -358,7 +358,7 @@ export function pluginManifest(product) {
 
 export function codexAppManifest(product) {
   if (!product.runtime) return { apps: {} };
-  if (!/^asdk_app_[a-z0-9]+$/.test(product.codex_app_id ?? "")) {
+  if (!/^plugin_asdk_app_[a-z0-9]+$/.test(product.codex_app_id ?? "")) {
     throw new Error(`Product ${product.name} has no registered Codex app ID`);
   }
   return {
