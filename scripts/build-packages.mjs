@@ -197,8 +197,7 @@ for (const { product, skills } of resolved) {
     claudeMarketplace.plugins.push({
       name: product.name,
       source: `./plugins/${product.name}`,
-      description: product.description,
-      version: product.version
+      description: product.description
     });
   }
 
