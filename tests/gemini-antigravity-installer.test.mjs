@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import {
+  copyFile,
   lstat,
   mkdir,
   mkdtemp,
@@ -8,117 +9,315 @@ import {
   readlink,
   realpath,
   rm,
+  symlink,
   writeFile
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import test from "node:test";
-import {
-  installAntigravity,
-  repositoryRoot
-} from "../scripts/install-antigravity.mjs";
 
 const execFileAsync = promisify(execFile);
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const script = join(repositoryRoot, "scripts", "install-antigravity.sh");
 
-test("Antigravity installer resolves repository source independently of cwd", async (context) => {
-  const sandbox = await mkdtemp(join(tmpdir(), "bos-antigravity-cli-"));
-  context.after(() => rm(sandbox, { recursive: true, force: true }));
-  const home = join(sandbox, "home");
-  const cwd = join(sandbox, "unrelated-working-directory");
-  await mkdir(home, { recursive: true });
-  await mkdir(cwd, { recursive: true });
-
-  const script = join(repositoryRoot, "scripts", "install-antigravity.mjs");
-  const { stdout } = await execFileAsync(process.execPath, [script], {
+async function runInstaller({ cwd, home }) {
+  return execFileAsync("/bin/sh", [script], {
     cwd,
-    env: { ...process.env, HOME: home }
+    env: {
+      ...process.env,
+      HOME: home
+    }
   });
+}
+
+test("Antigravity shell installer resolves the repository independently of cwd", async (context) => {
+  const sandbox = await mkdtemp(join(tmpdir(), "bos-antigravity-shell-"));
+  context.after(() => rm(sandbox, { recursive: true, force: true }));
+  const cwd = join(sandbox, "unrelated-working-directory");
+  const home = join(sandbox, "home");
+  const pluginsRoot = join(home, ".gemini", "config", "plugins");
+  await mkdir(cwd, { recursive: true });
+  await mkdir(home, { recursive: true });
+
+  const { stdout } = await runInstaller({ cwd, home });
 
   for (const name of ["bos", "education-center"]) {
-    const target = join(home, ".gemini", "config", "plugins", name);
+    const target = join(pluginsRoot, name);
     assert.equal((await lstat(target)).isSymbolicLink(), true);
     assert.equal(
       await realpath(resolve(dirname(target), await readlink(target))),
       await realpath(join(repositoryRoot, "clients", "gemini", "extensions", name))
     );
   }
-  assert.match(stdout, /Restart Antigravity/);
-  assert.match(stdout, /Clean Antigravity install completed/);
+  assert.match(stdout, /Clean install: removing prior BOS plugins without backups/);
+  assert.match(stdout, /Restart Antigravity after each Git pull/);
 });
 
-test("Antigravity installer removes prior and disabled product entries without backups", async (context) => {
-  const sandbox = await mkdtemp(join(tmpdir(), "bos-antigravity-link-"));
+test("Antigravity shell installer removes prior BOS entries and preserves unrelated plugins", async (context) => {
+  const sandbox = await mkdtemp(join(tmpdir(), "bos-antigravity-clean-"));
   context.after(() => rm(sandbox, { recursive: true, force: true }));
-  const pluginsRoot = join(sandbox, "plugins");
-  const priorBos = join(pluginsRoot, "bos");
+  const home = join(sandbox, "home");
+  const pluginsRoot = join(home, ".gemini", "config", "plugins");
+  const priorBos = join(pluginsRoot, "old-bos-name");
   const disabledProduct = join(pluginsRoot, "video-ads");
-  const unrelatedPlugin = join(pluginsRoot, "unrelated-plugin");
+  const unrelated = join(pluginsRoot, "unrelated-plugin");
   await mkdir(priorBos, { recursive: true });
-  await mkdir(disabledProduct, { recursive: true });
-  await mkdir(unrelatedPlugin, { recursive: true });
-  await writeFile(join(priorBos, "local-copy.txt"), "previous copy\n");
-  await writeFile(join(disabledProduct, "old-plugin.txt"), "disabled\n");
-  await writeFile(join(unrelatedPlugin, "keep.txt"), "unrelated\n");
+  await mkdir(unrelated, { recursive: true });
+  await symlink(join(sandbox, "missing-disabled-source"), disabledProduct);
+  await writeFile(join(priorBos, ".bos-product.json"), "{}\n");
+  await writeFile(join(priorBos, "old.txt"), "remove\n");
+  await writeFile(join(unrelated, "keep.txt"), "keep\n");
 
-  const first = await installAntigravity({ pluginsRoot });
-  assert(first.results.every((item) => item.state === "linked"));
-  assert(first.results.every((item) => item.verified === true));
-  await assert.rejects(readFile(join(priorBos, "local-copy.txt"), "utf8"));
+  await runInstaller({ cwd: sandbox, home });
+
+  await assert.rejects(lstat(priorBos));
   await assert.rejects(lstat(disabledProduct));
-  assert.deepEqual(first.removed, [{ name: "video-ads", target: disabledProduct }]);
-  assert.equal(await readFile(join(unrelatedPlugin, "keep.txt"), "utf8"), "unrelated\n");
-
-  const second = await installAntigravity({ pluginsRoot });
-  assert(second.results.every((item) => item.state === "current"));
-  assert(second.results.every((item) => item.verified === true));
-  assert.deepEqual(second.removed, []);
+  assert.equal(await readFile(join(unrelated, "keep.txt"), "utf8"), "keep\n");
 });
 
-test("Antigravity clean install validates all source plugins before deleting prior entries", async (context) => {
+test("Antigravity shell installer replaces broken current-product symlinks", async (context) => {
+  const sandbox = await mkdtemp(join(tmpdir(), "bos-antigravity-broken-"));
+  context.after(() => rm(sandbox, { recursive: true, force: true }));
+  const home = join(sandbox, "home");
+  const pluginsRoot = join(home, ".gemini", "config", "plugins");
+  const target = join(pluginsRoot, "education-center");
+  await mkdir(pluginsRoot, { recursive: true });
+  await symlink(join(sandbox, "missing-source"), target);
+
+  await runInstaller({ cwd: sandbox, home });
+
+  assert.equal((await lstat(target)).isSymbolicLink(), true);
+  assert.equal(
+    await realpath(resolve(dirname(target), await readlink(target))),
+    await realpath(join(repositoryRoot, "clients", "gemini", "extensions", "education-center"))
+  );
+});
+
+test("Antigravity preflight preserves existing plugins when any active source is malformed", async (context) => {
   const sandbox = await mkdtemp(join(tmpdir(), "bos-antigravity-preflight-"));
   context.after(() => rm(sandbox, { recursive: true, force: true }));
-  const pluginsRoot = join(sandbox, "installed", "plugins");
-  const priorBos = join(pluginsRoot, "bos");
-  const sourceBos = join(sandbox, "repo", "clients", "gemini", "extensions", "bos");
-  await mkdir(priorBos, { recursive: true });
-  await mkdir(sourceBos, { recursive: true });
-  await writeFile(join(priorBos, "prior.txt"), "keep on preflight failure\n");
-  await writeFile(
-    join(sourceBos, ".bos-product.json"),
-    JSON.stringify({ client: "gemini", name: "bos" })
+  const fakeRepository = join(sandbox, "repository");
+  const scriptsRoot = join(fakeRepository, "scripts");
+  const home = join(sandbox, "home");
+  const priorPlugin = join(home, ".gemini", "config", "plugins", "bos");
+
+  await mkdir(scriptsRoot, { recursive: true });
+  await copyFile(script, join(scriptsRoot, "install-antigravity.sh"));
+  await copyFile(
+    join(repositoryRoot, "scripts", "preflight-antigravity.mjs"),
+    join(scriptsRoot, "preflight-antigravity.mjs")
   );
-  await writeFile(join(sourceBos, "plugin.json"), JSON.stringify({ name: "wrong-name" }));
-  await mkdir(join(sandbox, "repo", "clients"), { recursive: true });
+  const runtimeRoot = join(fakeRepository, "source", "runtime", "bos");
+  await mkdir(runtimeRoot, { recursive: true });
   await writeFile(
-    join(sandbox, "repo", "clients", "disabled-products.json"),
-    JSON.stringify({ products: [] })
+    join(runtimeRoot, ".mcp.json"),
+    JSON.stringify({
+      mcpServers: {
+        bos: {
+          type: "http",
+          url: "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}"
+        }
+      }
+    })
   );
+  for (const name of ["bos", "education-center"]) {
+    const productRoot = join(fakeRepository, "products", name);
+    const extensionRoot = join(fakeRepository, "clients", "gemini", "extensions", name);
+    await mkdir(productRoot, { recursive: true });
+    await mkdir(extensionRoot, { recursive: true });
+    await writeFile(
+      join(productRoot, "product.json"),
+      JSON.stringify({
+        schema_version: "1",
+        name,
+        version: "0.4.46",
+        release_status: "active",
+        display_name: name,
+        description: "Test product.",
+        publisher: "Test Publisher",
+        category: "test",
+        authentication: "ON_USE",
+        clients: ["gemini"],
+        includes: name === "education-center"
+          ? ["platform/bos-mcp-client"]
+          : ["platform/test"],
+        runtime: name === "education-center" ? "bos" : undefined,
+        application_name: name === "education-center" ? "leaddirector" : undefined,
+        mcp_group_name: name === "education-center" ? "education-center" : undefined,
+        default_prompts: []
+      })
+    );
+    await writeFile(
+      join(extensionRoot, ".bos-product.json"),
+      JSON.stringify({
+        schema_version: "1",
+        name,
+        version: "0.4.46",
+        client: "gemini",
+        application_name: name === "education-center" ? "leaddirector" : undefined,
+        mcp_group_name: name === "education-center" ? "education-center" : undefined,
+        authentication: name === "education-center" ? "oauth_2_1" : "none"
+      })
+    );
+    await writeFile(
+      join(extensionRoot, "plugin.json"),
+      JSON.stringify({
+        $schema: "https://antigravity.google/schemas/v1/plugin.json",
+        name,
+        description: `Test product. Version 0.4.46.`
+      })
+    );
+    if (name === "education-center") {
+      await writeFile(
+        join(extensionRoot, "mcp_config.json"),
+        JSON.stringify({
+          mcpServers: {
+            "education-center": {
+              serverUrl: "https://dfsm.ai/mcp/apps/leaddirector/education-center"
+            },
+            unexpected: { command: "unsafe" }
+          }
+        })
+      );
+    }
+  }
+  await writeFile(
+    join(fakeRepository, "clients", "disabled-products.json"),
+    JSON.stringify({ schema_version: "1", products: [] })
+  );
+  await mkdir(priorPlugin, { recursive: true });
+  await writeFile(join(priorPlugin, "preserve.txt"), "preserved\n");
 
   await assert.rejects(
-    installAntigravity({ base: join(sandbox, "repo"), pluginsRoot }),
-    /identity does not match/
+    execFileAsync("/bin/sh", [join(scriptsRoot, "install-antigravity.sh")], {
+      cwd: sandbox,
+      env: { ...process.env, HOME: home }
+    }),
+    /source preflight failed/
   );
-  assert.equal(
-    await readFile(join(priorBos, "prior.txt"), "utf8"),
-    "keep on preflight failure\n"
-  );
+  assert.equal(await readFile(join(priorPlugin, "preserve.txt"), "utf8"), "preserved\n");
 });
 
-test("Antigravity clean install stops before deleting customer-owned extensions", async (context) => {
-  const sandbox = await mkdtemp(join(tmpdir(), "bos-antigravity-customer-extension-"));
+test("Antigravity preflight preserves existing plugins when disabled inventory is malformed", async (context) => {
+  const sandbox = await mkdtemp(join(tmpdir(), "bos-antigravity-disabled-preflight-"));
   context.after(() => rm(sandbox, { recursive: true, force: true }));
-  const pluginsRoot = join(sandbox, "plugins");
-  const extensionRoot = join(pluginsRoot, "bos", "skills", "customer-extension");
-  await mkdir(extensionRoot, { recursive: true });
-  await writeFile(join(extensionRoot, ".bos-extension.json"), "{}\n");
+  const fakeRepository = join(sandbox, "repository");
+  const scriptsRoot = join(fakeRepository, "scripts");
+  const home = join(sandbox, "home");
+  const priorPlugin = join(home, ".gemini", "config", "plugins", "bos");
+
+  await mkdir(scriptsRoot, { recursive: true });
+  await copyFile(script, join(scriptsRoot, "install-antigravity.sh"));
+  await copyFile(
+    join(repositoryRoot, "scripts", "preflight-antigravity.mjs"),
+    join(scriptsRoot, "preflight-antigravity.mjs")
+  );
+  const runtimeRoot = join(fakeRepository, "source", "runtime", "bos");
+  await mkdir(runtimeRoot, { recursive: true });
+  await writeFile(
+    join(runtimeRoot, ".mcp.json"),
+    JSON.stringify({
+      mcpServers: {
+        bos: {
+          type: "http",
+          url: "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}"
+        }
+      }
+    })
+  );
+  for (const name of ["bos", "education-center"]) {
+    const productRoot = join(fakeRepository, "products", name);
+    const extensionRoot = join(fakeRepository, "clients", "gemini", "extensions", name);
+    await mkdir(productRoot, { recursive: true });
+    await mkdir(extensionRoot, { recursive: true });
+    const runtime = name === "education-center";
+    await writeFile(
+      join(productRoot, "product.json"),
+      JSON.stringify({
+        schema_version: "1",
+        display_name: name,
+        description: "Test product.",
+        publisher: "Test Publisher",
+        category: "test",
+        authentication: "ON_USE",
+        includes: runtime ? ["platform/bos-mcp-client"] : ["platform/test"],
+        name,
+        version: "0.4.46",
+        release_status: "active",
+        clients: ["gemini"],
+        runtime: runtime ? "bos" : undefined,
+        application_name: runtime ? "leaddirector" : undefined,
+        mcp_group_name: runtime ? "education-center" : undefined,
+        default_prompts: []
+      })
+    );
+    await writeFile(
+      join(extensionRoot, ".bos-product.json"),
+      JSON.stringify({
+        schema_version: "1",
+        name,
+        version: "0.4.46",
+        client: "gemini",
+        application_name: runtime ? "leaddirector" : undefined,
+        mcp_group_name: runtime ? "education-center" : undefined,
+        authentication: runtime ? "oauth_2_1" : "none"
+      })
+    );
+    await writeFile(
+      join(extensionRoot, "plugin.json"),
+      JSON.stringify({
+        $schema: "https://antigravity.google/schemas/v1/plugin.json",
+        name,
+        description: `Test product. Version 0.4.46.`
+      })
+    );
+    if (runtime) {
+      await writeFile(
+        join(extensionRoot, "mcp_config.json"),
+        JSON.stringify({
+          mcpServers: {
+            "education-center": {
+              serverUrl: "https://dfsm.ai/mcp/apps/leaddirector/education-center"
+            }
+          }
+        })
+      );
+    }
+  }
+  const disabledRoot = join(fakeRepository, "products", "video-ads");
+  await mkdir(disabledRoot, { recursive: true });
+  await writeFile(
+    join(disabledRoot, "product.json"),
+    JSON.stringify({
+      schema_version: "1",
+      name: "../../../target",
+      version: "0.4.46",
+      release_status: "disabled",
+      display_name: "Video Ads",
+      description: "Test disabled product.",
+      publisher: "Test Publisher",
+      category: "test",
+      authentication: "ON_USE",
+      clients: ["gemini"],
+      includes: ["platform/test"],
+      default_prompts: []
+    })
+  );
+  await writeFile(
+    join(fakeRepository, "clients", "disabled-products.json"),
+    JSON.stringify({ schema_version: "1", products: [] })
+  );
+  await mkdir(priorPlugin, { recursive: true });
+  await writeFile(join(priorPlugin, "preserve.txt"), "preserved\n");
 
   await assert.rejects(
-    installAntigravity({ pluginsRoot }),
-    /customer extension metadata exists/
+    execFileAsync("/bin/sh", [join(scriptsRoot, "install-antigravity.sh")], {
+      cwd: sandbox,
+      env: { ...process.env, HOME: home }
+    }),
+    /source preflight failed/
   );
-  assert.equal(
-    await readFile(join(extensionRoot, ".bos-extension.json"), "utf8"),
-    "{}\n"
-  );
+  assert.equal(await readFile(join(priorPlugin, "preserve.txt"), "utf8"), "preserved\n");
 });

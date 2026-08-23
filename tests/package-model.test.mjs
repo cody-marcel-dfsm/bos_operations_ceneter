@@ -1328,7 +1328,7 @@ test("one Gemini extension bundles CLI and Antigravity Desktop with OAuth MCP", 
     assert.match(readme, new RegExp(`gemini extensions update ${product.name}`));
     assert.match(readme, /Antigravity 2\.0 Desktop/);
     assert.match(readme, /~\/\.gemini\/config\/plugins\//);
-    assert.match(readme, /scripts\/install-antigravity\.mjs/);
+    assert.match(readme, /scripts\/install-antigravity\.sh/);
     assert.match(readme, /clean install/i);
     assert.match(readme, /without backups/);
     if (!product.runtime) {
@@ -1384,7 +1384,7 @@ test("Gemini client package provides one CLI and desktop extension umbrella", as
   );
   assert.match(readme, /Antigravity 2\.0 Desktop/);
   assert.match(readme, /~\/\.gemini\/config\/plugins/);
-  assert.match(readme, /scripts\/install-antigravity\.mjs/);
+  assert.match(readme, /scripts\/install-antigravity\.sh/);
   assert.match(readme, /clean installer/);
   assert.match(readme, /without backups/);
   assert.match(readme, /After each Git pull, restart Antigravity/);
