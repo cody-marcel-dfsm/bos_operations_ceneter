@@ -13,4 +13,4 @@ Describe the workflow, client adapter, or documentation change.
 - [ ] Credential-free local `npm run release:check`
 - [ ] Changed skills pass `quick_validate.py`
 - [ ] For a Claude release, the version is declared once in each generated `plugin.json`
-- [ ] For a Claude release, this version-bump PR will be merged to trigger marketplace sync
+- [ ] For an organization-managed Claude release, automatic GitHub sync is enabled
