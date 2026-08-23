@@ -42,8 +42,8 @@ Use only BOS MCP or published BOS backend APIs with the Education Center organiz
 plugin credentials. Browser sessions and native/local connectors provide no
 authorization, evidence, or fallback.
 When Gmail, Calendar, Drive, or Calimatic reports an authentication error,
-follow `bos-mcp-client` authentication recovery and prompt the user to complete
-the service-specific secure BOS browser flow.
+follow `bos-mcp-client` request interception, activate the server-returned
+secure browser handoff, poll readiness, and resume the pending operation once.
 
 ## Hiring
 

@@ -41,11 +41,11 @@ configuration as distinct validated dimensions.
   session, it reconnects the configured endpoint, rediscovers tools,
   revalidates context, and resumes the interrupted request with bounded retry.
   It never delegates reconnection or request resubmission to the user.
-- Expose BOS as a remote HTTPS Streamable HTTP MCP server. Claude marketplace
-  plugins, OAuth-capable GitHub Copilot, and Gemini declare the immutable
-  resource URL. A Claude runtime plugin packages `.mcp.json` and references it
-  through `mcpServers`, so plugin installation registers the product connector
-  without a separately entered URL. ChatGPT/Codex
+- Expose BOS as a remote HTTPS Streamable HTTP MCP server. Claude account or
+  organization Web connectors, OAuth-capable GitHub Copilot, and Gemini declare
+  the immutable resource URL. Claude marketplace plugins contain skills and
+  account-connector metadata with no `.mcp.json` or `mcpServers`; this preserves
+  the persistent account-level **Connect** control. ChatGPT/Codex
   packages declare a required registered app binding that owns the resource and
   carry no direct MCP server declaration. Every runtime host
   uses its OAuth 2.1 MCP
@@ -60,8 +60,8 @@ configuration as distinct validated dimensions.
   server-returned context. Never discover, prompt for, repair, or materialize
   the route from an `installed_app_id`, and never retain an unnamed endpoint as
   an installed product's runtime connection. For Claude, declare the resource
-  in the runtime plugin. The first eligible request loads it and the host
-  presents BOS authorization automatically when required. For ChatGPT/Codex,
+  in an account or organization Web connector and complete authorization from
+  **Customize → Connectors**. For ChatGPT/Codex,
   never package `.mcp.json` or `mcpServers`; bind
   the registered app through `.app.json`.
   For every client, never add `bearer_token_env_var`, literal authorization
@@ -84,3 +84,7 @@ configuration as distinct validated dimensions.
 - For API-key providers, open the short-lived BOS-hosted HTTPS
   credential-collection URL returned by the service. BOS owns validation and
   encrypted credential persistence. Keep the key out of chat and client files.
+- Calimatic uses that API-key path. Its first blocked request or explicit
+  connect request activates the BOS-hosted page for portal URL and API-key
+  entry, polls the installation-scoped transaction, and resumes the pending
+  operation once. Never direct the customer to a general settings dashboard.
