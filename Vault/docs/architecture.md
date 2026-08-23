@@ -134,9 +134,13 @@ release system for portable BOS skills and native remote MCP client adapters.
     skill-distribution path; repository release workflows create no customer archive.
     Publish Claude organization-marketplace releases through a version-bump pull
     request merged into the connected repository's default branch. That merge is
-    the Claude GitHub synchronization event when the organization owner has enabled
-    automatic marketplace sync. Keep the generated plugin's `plugin.json` as the
-    single Claude version authority and omit duplicate marketplace-entry versions.
+    the Claude GitHub synchronization event only when the organization owner has
+    enabled automatic marketplace sync. Independently added Git marketplaces are
+    refreshed by each account through Claude's supported marketplace controls;
+    repository publishers hold no authority to mutate or force-refresh those
+    accounts. Official Anthropic marketplace releases use its reviewed submission
+    and publication process. Keep the generated plugin's `plugin.json` as the single
+    Claude version authority and omit duplicate marketplace-entry versions.
     OpenAI Git marketplace consumers refresh the tracked repository snapshot through
     the Codex marketplace upgrade control; public ChatGPT/Codex directory releases
     require a separately reviewed and published OpenAI submission. Git pull-request

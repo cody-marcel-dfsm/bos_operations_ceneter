@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.35",
+  "version": "0.4.36",
   "client": "codex",
   "authentication": "none"
 }

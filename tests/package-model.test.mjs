@@ -1567,6 +1567,8 @@ test("ship-it publishes releases through a merged pull request", async () => {
   assert.match(workflow, /open a pull request/i);
   assert.match(workflow, /merge the pull request/i);
   assert.match(workflow, /Claude organization marketplace/i);
+  assert.match(workflow, /publisher cannot force a refresh/i);
+  assert.match(workflow, /official Anthropic marketplace/i);
   assert.match(workflow, /codex plugin marketplace upgrade/i);
   assert.match(workflow, /OpenAI Platform/i);
   assert.equal(

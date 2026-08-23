@@ -5,7 +5,7 @@ description: Create the next repository release version, review and validate all
 
 # Ship It
 
-Complete the current repository's release loop. A successful invocation creates a new version even when the pending source change did not edit version metadata. The invocation itself authorizes the repository-native version bump, generated package updates, staging all current changes, one commit, creation of a release branch and pull request, and merging that pull request into the default branch. The merged version-bump pull request is the publication event used by the Claude organization marketplace GitHub sync. Do not request redundant confirmation.
+Complete the current repository's release loop. A successful invocation creates a new version even when the pending source change did not edit version metadata. The invocation itself authorizes the repository-native version bump, generated package updates, staging all current changes, one commit, creation of a release branch and pull request, and merging that pull request into the default branch. A merged version-bump pull request is the publication event used by Claude organization marketplace GitHub sync when an owner has enabled **Sync automatically**. Independently added Claude marketplaces and official marketplace submissions have separate host-owned publication lifecycles. Do not request redundant confirmation.
 
 ## Preflight
 
@@ -17,7 +17,7 @@ Complete the current repository's release loop. A successful invocation creates 
 
 ## Create the release branch
 
-1. Never push a release commit directly to the default branch. Claude's organization marketplace sync recognizes a plugin version bump merged through a pull request.
+1. Never push a release commit directly to the default branch. A merged release pull request provides an auditable release boundary and supplies Claude's organization-marketplace trigger when that distribution path is configured.
 2. When the current branch is the default branch, create a release branch named `codex/release-v<next-version>` before changing version metadata. Preserve the complete current worktree when creating the branch.
 3. When the current branch is already a non-default working branch, use it as the release branch when its upstream and intended default-branch target are unambiguous.
 4. Stop if the release branch already exists locally or remotely and cannot be identified as the current release safely. Never delete, reset, or overwrite an existing branch.
@@ -58,11 +58,13 @@ to the actual diff and evidence.
 2. Open a pull request from the release branch to the resolved default branch. The title must identify the new release version, and the body must summarize generated clients and validation evidence.
 3. Wait for all required pull-request checks. Fix in-scope failures on the release branch, rerun affected local validation, push the correction, and wait again.
 4. Merge the pull request only after every required check passes and the repository reports that it is mergeable. Use a repository-supported merge method; GitHub must record the pull request as merged. Do not bypass protections or required reviews.
-5. Verify that the remote default branch contains the release version after the merge. This merge is the event the Claude organization marketplace uses when **Sync automatically** is enabled for the connected GitHub marketplace.
-6. Treat OpenAI publication as a separate host lifecycle. The merged commit makes the release available to the tracked Git ref, while private Codex marketplaces still require `codex plugin marketplace upgrade` and public ChatGPT/Codex directory releases still require submission and publication through the OpenAI Platform.
+5. Verify that the remote default branch contains the release version after the merge. For a connected Claude organization marketplace with **Sync automatically** enabled, this merge supplies its synchronization event.
+6. Treat independent Claude marketplace publication as a separate host lifecycle. The merged commit makes the new version discoverable, while each account must refresh the marketplace through Claude's supported control. The publisher cannot force a refresh across independently added marketplaces.
+7. Treat official Anthropic marketplace publication as a separate reviewed submission. A Git commit or pull request does not publish a new official-marketplace version.
+8. Treat OpenAI publication as a separate host lifecycle. The merged commit makes the release available to the tracked Git ref, while private Codex marketplaces still require `codex plugin marketplace upgrade` and public ChatGPT/Codex directory releases still require submission and publication through the OpenAI Platform.
 
 Push existing unpushed commits with the release commit only when they are part of the reviewed release branch and the pull-request target is unambiguous.
 
 ## Report
 
-After a successful merge, report the previous and new release versions, pull-request URL and number, release commit, merge commit, source and default branches, remote destination, included file count, generated packages, and validation/build results. Confirm that the merged version-bump pull request emitted the Claude marketplace synchronization trigger. State that Codex Git marketplace refresh and public ChatGPT/Codex directory publication remain separate host-owned actions. If stopped, state the blocking evidence and leave the repository unchanged beyond clearly scoped fixes made before the blocker was known.
+After a successful merge, report the previous and new release versions, pull-request URL and number, release commit, merge commit, source and default branches, remote destination, included file count, generated packages, and validation/build results. State which publication path was actually triggered: Claude organization sync, independent Claude marketplace availability, or neither. State that independent Claude account refresh, official Anthropic publication, Codex Git marketplace refresh, and public ChatGPT/Codex directory publication remain separate host-owned actions. If stopped, state the blocking evidence and leave the repository unchanged beyond clearly scoped fixes made before the blocker was known.
