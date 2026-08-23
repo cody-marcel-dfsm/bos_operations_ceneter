@@ -78,7 +78,9 @@ release system for portable BOS skills and native remote MCP client adapters.
     its source tree from its own file location, deletes prior active or disabled
     BOS product entries without backups, and creates exactly one generated-product
     symlink per active product in Antigravity's global plugin directory. A Git pull
-    and host restart then load current source without recopying packages. A Claude
+    and host restart then load current source without recopying packages. This
+    clean bootstrap is limited to uncustomized installations and fails before
+    deletion when customer-owned extension metadata exists. A Claude
     runtime plugin contains account-connector metadata and no MCP declaration.
     A Codex runtime plugin contains
     `apps: "./.app.json"` and no `.mcp.json` or `mcpServers`; its product

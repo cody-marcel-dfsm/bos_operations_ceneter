@@ -286,6 +286,8 @@ Give Hardik this instruction:
 > This is a clean install: it deletes prior BOS product folders and symlinks from
 > `~/.gemini/config/plugins/` without backups, then creates one symlink for every
 > generated Gemini product. It locates the repository from its own file path.
+> This bootstrap path is for an uncustomized installation and stops if it detects
+> customer-owned extension metadata.
 > After each Git pull,
 > restart Antigravity, open Settings >
 > Customizations, select Authenticate for `education-center`, complete BOS

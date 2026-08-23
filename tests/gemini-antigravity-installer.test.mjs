@@ -104,3 +104,21 @@ test("Antigravity clean install validates all source plugins before deleting pri
     "keep on preflight failure\n"
   );
 });
+
+test("Antigravity clean install stops before deleting customer-owned extensions", async (context) => {
+  const sandbox = await mkdtemp(join(tmpdir(), "bos-antigravity-customer-extension-"));
+  context.after(() => rm(sandbox, { recursive: true, force: true }));
+  const pluginsRoot = join(sandbox, "plugins");
+  const extensionRoot = join(pluginsRoot, "bos", "skills", "customer-extension");
+  await mkdir(extensionRoot, { recursive: true });
+  await writeFile(join(extensionRoot, ".bos-extension.json"), "{}\n");
+
+  await assert.rejects(
+    installAntigravity({ pluginsRoot }),
+    /customer extension metadata exists/
+  );
+  assert.equal(
+    await readFile(join(extensionRoot, ".bos-extension.json"), "utf8"),
+    "{}\n"
+  );
+});

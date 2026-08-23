@@ -82,7 +82,8 @@ Official sources:
 1. Run `scripts/install-antigravity.mjs` once from the synced BOS Operations
    Center repository. This clean installer deletes prior BOS product entries
    without backups, resolves the repository from its own file path, and creates
-   one symlink per active product in the global plugin directory.
+   one symlink per active product in the global plugin directory. It is for an
+   uncustomized bootstrap and stops if customer-owned extension metadata exists.
 2. Restart Antigravity after installation and after each Git pull.
 3. Open **Settings → Customizations**, select **Authenticate** for the runtime
    product, and complete BOS sign-in.

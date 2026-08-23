@@ -319,7 +319,8 @@ for (const { product, skills } of resolved) {
         "repository. This is a clean install: it deletes prior BOS product entries without backups,",
         "then links every generated Gemini product into `~/.gemini/config/plugins/`.",
         "It resolves the repository from the installer's own location, independent of the",
-        "current working directory. After each Git pull, restart Antigravity.",
+        "current working directory. It stops if customer-owned extension metadata exists.",
+        "After each Git pull, restart Antigravity.",
         ...(product.runtime ? [
           `Open Settings > Customizations, find the \`${product.mcp_group_name}\` MCP server,`,
           "select Authenticate, complete BOS sign-in in the browser, and return to Antigravity.",
@@ -390,6 +391,7 @@ await writeFile(
     "Run `scripts/install-antigravity.mjs` once. This clean installer deletes prior BOS",
     "product entries without backups, locates this repository from its own file path,",
     "and creates one product symlink in `~/.gemini/config/plugins/` for each active product.",
+    "It stops if customer-owned extension metadata exists.",
     "After each Git pull, restart Antigravity, open Settings > Customizations, and",
     "select Authenticate for the",
     "`education-center` MCP server. Complete BOS sign-in in the browser.",
