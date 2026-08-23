@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted on 2026-08-23. Supersedes the Claude packaging portion of
+Partially superseded on 2026-08-23 by
+`2026-08-23-claude-persistent-account-connectors.md` for Claude product
+connections. Provider recovery remains accepted. This decision previously superseded
+the Claude packaging portion of
 `2026-08-22-claude-account-connector-separation.md` and
 `2026-08-16-all-runtime-products-oauth-only.md`.
 
@@ -32,27 +35,23 @@ Official references:
 
 ## Decision
 
-- Every generated Claude runtime plugin declares exactly one credential-free
-  `.mcp.json` remote HTTP server and repeats that declaration inline in
-  `plugin.json`. The inline declaration matches Anthropic's desktop-compatible
-  first-party plugin shape; `.mcp.json` preserves CLI compatibility.
-- Plugin installation is the connector-registration event. The package and
-  support flow never instruct a customer to add a custom connector URL.
-- The first eligible request activates the plugin connector. Claude presents
-  BOS authorization automatically when the resource grant is missing and
-  resumes the request after the customer's secure sign-in interaction.
+- The superseding decision owns Claude product-connection packaging and its
+  persistent account-level **Connect** control.
 - Claude owns BOS OAuth discovery, consent, token storage, refresh, and request
   attachment. The plugin contains no reusable credential.
 - Each domain request handles `authorization_required` by presenting the exact
   BOS-returned OAuth or short-lived credential-collection path, polling its
   transaction, verifying readiness, and resuming the original operation once.
+- Provider recovery is a single request-path interceptor applied to every
+  domain call. Individual skills never replace it with settings/dashboard
+  directions. Google-backed dependencies use provider OAuth; Calimatic uses a
+  short-lived BOS-hosted portal-URL and API-key form whose values never enter
+  the model or MCP client.
 - The product connector grant and each subsystem/provider grant remain distinct,
   installation-scoped authorization dimensions.
 
 ## Validation requirement
 
-A release fails when an active Claude runtime plugin lacks its `.mcp.json`, its
-manifest does not reference that file, its endpoint differs from the other
-client adapters, it contains headers or credential fields, or customer guidance
-requires manual connector registration. Tests also require automatic provider
-authorization recovery and original-request resumption.
+A release fails when a Claude runtime plugin owns a session-scoped MCP
+declaration or lacks its account-connector metadata. Tests continue to require
+automatic provider authorization recovery and original-request resumption.

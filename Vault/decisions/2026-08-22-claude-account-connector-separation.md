@@ -2,12 +2,9 @@
 
 ## Status
 
-Superseded on 2026-08-23 by
-`2026-08-23-automatic-plugin-and-provider-authentication.md`.
-
-This decision failed the product installation requirement because installing
-the plugin did not register its BOS connector. It required a separate owner or
-user action to enter the package-owned URL manually.
+Reaffirmed on 2026-08-23 by
+`2026-08-23-claude-persistent-account-connectors.md` after direct Claude Desktop
+evidence reproduced the **Connects in sessions** defect.
 
 ## Evidence
 

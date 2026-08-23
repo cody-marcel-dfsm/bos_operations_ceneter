@@ -12,7 +12,7 @@ test("Claude installer contains no BOS credential handling", async () => {
   assert.doesNotMatch(source, /promptForApiKey|bos_api_key|--config|suppliedApiKey/);
 });
 
-test("Claude local installer provides the plugin connector without manual registration", async () => {
+test("Claude local installer directs users to the persistent account connector", async () => {
   const calls = [];
   let pluginListCount = 0;
   const run = (command, args) => {
@@ -61,7 +61,7 @@ test("Claude local installer provides the plugin connector without manual regist
     ]
   );
   assert.doesNotMatch(JSON.stringify(calls), /api[_-]?key|bos_api_key|--config/i);
-  assert.equal(result.connectionScope, "claude_plugin");
+  assert.equal(result.connectionScope, "claude_account");
   assert.equal(
     result.resourceUrl,
     "https://dfsm.ai/mcp/apps/leaddirector/education-center"
