@@ -28,7 +28,7 @@ The private Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Select
 **Connect** or **Sign in** when the host presents it, then complete BOS consent.
 
-Current desktop marketplace release: `0.4.36`. If `0.4.35` is installed,
+Current desktop marketplace release: `0.4.37`. If `0.4.36` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -80,10 +80,15 @@ and refreshes the resulting grant across sessions.
 ### Updates
 
 - **Independent Claude Git marketplace:** A release on the tracked Git ref makes
-  the new version discoverable. Each account must select **Refresh marketplace**
-  or run `claude plugin marketplace update bos-education-center`; Claude Code
-  accounts may instead enable marketplace auto-update. A publisher-side build
-  cannot force refreshes across marketplaces independently added by other users.
+  the new version discoverable. Repository installations publish each Claude
+  plugin as a direct `git-subdir` source on `main`, so Claude can resolve the
+  current plugin manifest when the account selects **Refresh marketplace** and
+  can enable the installed plugin's **Update** button. Installations created
+  before this direct-source contract must run
+  `claude plugin marketplace update bos-education-center` once to acquire the
+  new catalog entry; future releases use the in-app refresh and in-place update
+  flow. Claude Code accounts may instead enable marketplace auto-update. A
+  publisher-side build cannot force a refresh in another user's account.
 - **Claude organization marketplace:** Maintainers publish each new Claude plugin version by merging a version-bump
   pull request into the connected repository's default branch. With **Sync
   automatically** enabled under Claude Organization Settings → Plugins, that
@@ -92,8 +97,9 @@ and refreshes the resulting grant across sessions.
 - **Official Anthropic marketplace:** Submit the new version through Claude's
   plugin submission form. Anthropic review and publication provide the central
   distribution path for unrelated personal accounts.
-- **Claude installed plugin:** After Claude synchronizes the marketplace, upgrade the affected plugin when
-  the host presents **Update**.
+- **Claude installed plugin:** Select **Refresh marketplace**, open the installed
+  plugin, and select **Update**. Claude replaces the installed cached version in
+  place; uninstalling and reinstalling the plugin is unnecessary.
 - **Private ChatGPT/Codex Git marketplace:** Run
   `codex plugin marketplace upgrade bos-education-center`, update or reinstall
   the affected plugin, and start a new task. OpenAI tracks the resulting Git
@@ -276,8 +282,14 @@ Give Hardik this instruction:
 > `clients/gemini/extensions/bos` and
 > `clients/gemini/extensions/education-center`, restart Gemini CLI, run
 > `/mcp auth education-center`, and complete BOS sign-in. For Antigravity 2.0
-> Desktop, copy those same two complete extension directories into
-> `~/.gemini/config/plugins/`, restart Antigravity, open Settings >
+> Desktop, run `scripts/install-antigravity.mjs` once from the synced repository.
+> This is a clean install: it deletes prior BOS product folders and symlinks from
+> `~/.gemini/config/plugins/` without backups, then creates one symlink for every
+> generated Gemini product. It locates the repository from its own file path.
+> This bootstrap path is for an uncustomized installation and stops if it detects
+> customer-owned extension metadata.
+> After each Git pull,
+> restart Antigravity, open Settings >
 > Customizations, select Authenticate for `education-center`, complete BOS
 > sign-in, and verify one authenticated Education Operation Center read. Preserve the
 > directory contents and do not request a BOS API key, token, client secret,

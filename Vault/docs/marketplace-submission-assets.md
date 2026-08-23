@@ -44,7 +44,7 @@ approval come from Tracks F through J.
 | Display name | BOS — Business Operating System | Education Operation Center | Video Ads | Ready | `products/*/product.json` |
 | Publisher | Infinite State Machines LLC | Infinite State Machines LLC | Infinite State Machines LLC | Ready | `products/*/product.json` |
 | Category | Productivity | Productivity | Marketing | Ready | `products/*/product.json` |
-| Current version | 0.4.36 | 0.4.36 | 0.1.3 | Ready | `products/*/product.json` |
+| Current version | 0.4.37 | 0.4.37 | 0.1.3 | Ready | `products/*/product.json` |
 | Application name | None (skills-only) | `leaddirector` | `leaddirector` | Ready for packaging; runtime certification pending | `products/*/product.json` |
 | MCP group name | None (skills-only) | `education-center` | `video-ads` | Ready for packaging; runtime certification pending | `products/*/product.json` |
 | Short description | Present | Present | Present | Ready as source copy | `products/*/product.json` |

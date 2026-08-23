@@ -1194,7 +1194,12 @@ test("Claude distribution is a marketplace of self-contained plugins", async () 
     repositoryMarketplace.plugins.map(({ name, source }) => ({ name, source })),
     marketplace.plugins.map(({ name }) => ({
       name,
-      source: `./clients/claude/plugins/${name}`
+      source: {
+        source: "git-subdir",
+        url: "https://github.com/cody-marcel-dfsm/bos_operations_ceneter.git",
+        path: `clients/claude/plugins/${name}`,
+        ref: "main"
+      }
     }))
   );
 
@@ -1249,7 +1254,10 @@ test("one Gemini extension bundles CLI and Antigravity Desktop with OAuth MCP", 
     assert.match(readme, /\/skills list/);
     assert.match(readme, new RegExp(`gemini extensions update ${product.name}`));
     assert.match(readme, /Antigravity 2\.0 Desktop/);
-    assert.match(readme, new RegExp(`~/.gemini/config/plugins/${product.name}`));
+    assert.match(readme, /~\/\.gemini\/config\/plugins\//);
+    assert.match(readme, /scripts\/install-antigravity\.mjs/);
+    assert.match(readme, /clean install/i);
+    assert.match(readme, /without backups/);
     if (!product.runtime) {
       assert.equal(manifest.mcpServers, undefined);
       await assert.rejects(access(`${extensionRoot}/mcp_config.json`));
@@ -1303,6 +1311,10 @@ test("Gemini client package provides one CLI and desktop extension umbrella", as
   );
   assert.match(readme, /Antigravity 2\.0 Desktop/);
   assert.match(readme, /~\/\.gemini\/config\/plugins/);
+  assert.match(readme, /scripts\/install-antigravity\.mjs/);
+  assert.match(readme, /clean installer/);
+  assert.match(readme, /without backups/);
+  assert.match(readme, /After each Git pull, restart Antigravity/);
   assert.match(readme, /\/mcp auth education-center/);
   assert.match(readme, /Settings > Customizations/);
   assert.doesNotMatch(readme, /API key|sensitive BOS setting/i);
@@ -1638,10 +1650,23 @@ test("repository marketplaces expose native Claude and Codex desktop packages", 
     }
   ]);
   assert.deepEqual(claude.plugins.map(({ name, source }) => ({ name, source })), [
-    { name: "bos", source: "./clients/claude/plugins/bos" },
+    {
+      name: "bos",
+      source: {
+        source: "git-subdir",
+        url: "https://github.com/cody-marcel-dfsm/bos_operations_ceneter.git",
+        path: "clients/claude/plugins/bos",
+        ref: "main"
+      }
+    },
     {
       name: "education-center",
-      source: "./clients/claude/plugins/education-center"
+      source: {
+        source: "git-subdir",
+        url: "https://github.com/cody-marcel-dfsm/bos_operations_ceneter.git",
+        path: "clients/claude/plugins/education-center",
+        ref: "main"
+      }
     }
   ]);
 });

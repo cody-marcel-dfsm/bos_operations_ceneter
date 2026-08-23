@@ -1,5 +1,5 @@
 {
-  "indexed_at": "20260823T153847.615686Z",
+  "indexed_at": "20260823T153036.886390Z",
   "schema_version": "bos-vault-manifest/v1",
   "source_count": 43,
   "sources": {
@@ -32,8 +32,8 @@
       "sha256": "e6283ae6ad7d94b907d128afe0b8ca428326783bf0477b7f8badcb51de7e52fc"
     },
     "Vault/docs/architecture.md": {
-      "bytes": 14837,
-      "sha256": "233ab412e254c8819a85d49d237388d3e2ec8e18c35ebce19581ed595cf93096"
+      "bytes": 14232,
+      "sha256": "c9f68439f6dd862d5793f97a03790ddd1e6af6f20ec55a21792a3102b2a8996a"
     },
     "Vault/docs/bos-expertise-package-ecosystem-proposal.md": {
       "bytes": 21898,
@@ -41,7 +41,7 @@
     },
     "Vault/docs/bos-product-licensing-user-experience.md": {
       "bytes": 16177,
-      "sha256": "fa61464bd22eba32aad2cfbff8180959e87866fa6ac83fd7dc1fb1e3b568f735"
+      "sha256": "847d1819aafeb6ee03963c6758601f4dd28234777a565679f6c75a30accee763"
     },
     "Vault/docs/marketplace-agent-harness-plan.md": {
       "bytes": 33814,
@@ -49,7 +49,7 @@
     },
     "Vault/docs/marketplace-submission-assets.md": {
       "bytes": 24346,
-      "sha256": "d3bc5183fc1cced1cb61b638cf2206cea60cbf279af9b3cb5e7f9dd40f20e1f6"
+      "sha256": "b2f1590cbcf80ca9c7edc52675f56e44bfa051c398d4b587975ebe92bde4150b"
     },
     "Vault/docs/my-crm-developer-platform-work-matrix.md": {
       "bytes": 8316,
