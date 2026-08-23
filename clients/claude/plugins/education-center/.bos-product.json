@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.37",
+  "version": "0.4.38",
   "client": "claude",
   "application_name": "leaddirector",
   "mcp_group_name": "education-center",
