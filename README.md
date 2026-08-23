@@ -28,7 +28,7 @@ The private Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Select
 **Connect** or **Sign in** when the host presents it, then complete BOS consent.
 
-Current desktop marketplace release: `0.4.39`. If `0.4.38` is installed,
+Current desktop marketplace release: `0.4.40`. If `0.4.39` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -115,9 +115,13 @@ They do not require a different endpoint or a new package.
 
 ### Customer settings and extensions
 
-On first use, `education-center-customer-initialization` derives safe
-non-secret values, proposes sourced defaults for uncertain values, and lets the
-customer accept the complete recommendation in one reply. The customer-owned overlay is
+On first use, every Education Operation Center skill validates customer settings
+before its normal workflow. Missing, incomplete, or invalid settings invoke
+`education-center-customer-initialization` automatically, preserve the original
+request through setup, and resume it after the accepted settings are revalidated.
+The initializer derives safe non-secret values, proposes sourced defaults for
+uncertain values, and lets the customer accept the complete recommendation in one reply.
+The customer-owned overlay is
 `config/customer-settings.json`; package updates preserve it. Customer
 settings select display terminology and provider routes. They never grant
 authority.

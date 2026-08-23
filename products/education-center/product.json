@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.39",
+  "version": "0.4.40",
   "release_status": "active",
   "display_name": "Education Operation Center",
   "description": "Agent-first education operations for complex, human-centered work.",
@@ -11,6 +11,7 @@
   "category": "Productivity",
   "authentication": "ON_INSTALL",
   "settings_template": "config/education-center.settings.template.json",
+  "settings_initializer": "education-center-customer-initialization",
   "clients": [
     "codex",
     "claude",

@@ -68,6 +68,14 @@ release system for portable BOS skills and native remote MCP client adapters.
     unresolved or conflicting display values. Ask the user once to accept or
     correct the complete recommendation; persist suggested values only after
     confirmation. Derived configuration never grants authority.
+    A product that declares a customer-settings template also declares one
+    included settings-initialization skill. During deterministic client
+    generation, every other skill in that product receives the same first-run
+    preflight: validate the preserved customer overlay before its normal
+    workflow, invoke the initializer when the overlay is missing, incomplete,
+    or invalid, preserve the pending request through authentication and
+    confirmation, then reload settings and resume it automatically. Apply this
+    composition equally to Claude, Codex, Copilot, and Gemini packages.
 11. Connect clients directly to BOS over HTTPS Streamable HTTP. Use a registered
     app binding in Codex, an account-level Web connector in Claude, the
     OAuth-discovered remote connection in Copilot IDE/CLI, and one Gemini extension umbrella

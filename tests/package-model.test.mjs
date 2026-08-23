@@ -11,6 +11,7 @@ import {
   geminiExtensionManifest,
   geminiPluginManifest,
   geminiPluginMcpManifest,
+  injectSettingsPreflight,
   materializeMcpUrl,
   pathExists,
   pluginManifest,
@@ -113,6 +114,70 @@ test("Education Center packages include customer-neutral settings defaults", asy
       parent_communications: "bos",
       care_com: "bos"
     });
+  }
+});
+
+test("settings products declare an included initializer", async () => {
+  const education = (await listProducts()).find(
+    ({ manifest }) => manifest.name === "education-center"
+  )?.manifest;
+  assert(education);
+  assert.equal(
+    education.settings_initializer,
+    "education-center-customer-initialization"
+  );
+  assert.deepEqual(validateProduct(education), []);
+
+  const withoutInitializer = { ...education };
+  delete withoutInitializer.settings_initializer;
+  assert.match(
+    validateProduct(withoutInitializer).join("\n"),
+    /settings_template and settings_initializer must be declared together/
+  );
+  assert.match(
+    validateProduct({ ...education, settings_initializer: "missing-skill" }).join("\n"),
+    /settings_initializer must name an included skill/
+  );
+});
+
+test("settings preflight injection preserves frontmatter and adds resumable initialization", () => {
+  const source = "---\nname: example\ndescription: Example.\n---\n\n# Example\n";
+  const output = injectSettingsPreflight(source, "initialize-example");
+  assert.match(output, /^---\nname: example\ndescription: Example\.\n---/);
+  assert.match(output, /validate its customer-owned `config\/customer-settings\.json`/i);
+  assert.match(output, /invoke `initialize-example`[\s\S]*immediately/i);
+  assert.match(output, /initializer is already active[\s\S]*without invoking it again/i);
+  assert.match(output, /Preserve the user's original request/i);
+  assert.match(output, /resume the original request automatically/i);
+});
+
+test("every generated Education Center skill enforces first-run initialization on every client", async () => {
+  const education = (await listProducts()).find(
+    ({ manifest }) => manifest.name === "education-center"
+  )?.manifest;
+  assert(education);
+  const skills = await resolveProductSkills(education);
+  const roots = [
+    `${root}/clients/codex/plugins/education-center/skills`,
+    `${root}/clients/claude/plugins/education-center/skills`,
+    `${root}/clients/copilot/products/education-center/skills`,
+    `${root}/clients/copilot/skills`,
+    `${root}/clients/gemini/extensions/education-center/skills`
+  ];
+  for (const clientRoot of roots) {
+    for (const skill of skills) {
+      const guidance = await readFile(`${clientRoot}/${skill.name}/SKILL.md`, "utf8");
+      if (skill.name === education.settings_initializer) {
+        assert.match(guidance, /Run this workflow immediately after installing or upgrading/i);
+        continue;
+      }
+      assert.match(guidance, /## Product first-run preflight/, `${clientRoot}/${skill.name}`);
+      assert.match(guidance, /missing file, an incomplete[\s\S]*or an invalid value/i);
+      assert.match(guidance, /invoke `education-center-customer-initialization`[\s\S]*immediately/i);
+      assert.match(guidance, /initializer is already active[\s\S]*without invoking it again/i);
+      assert.match(guidance, /host-managed BOS authentication/i);
+      assert.match(guidance, /resume the original request automatically/i);
+    }
   }
 });
 

@@ -3,6 +3,26 @@ name: education-center-class-operations
 description: Handle Education Center class rosters, schedules, capacity, camp enrollment reports, family contact rosters, and camp-assignment scenarios through tenant-scoped BOS data plus Care.com confirmations from the configured customer mailbox. Use when asked for students enrolled in a class or camp by day, family phone numbers, classes, camps, enrollment reports, rosters, attendance dates, open seats, Bright Horizons or Care.com placement, or assigning students to camps.
 ---
 
+
+## Product first-run preflight
+
+Before performing this skill's workflow, resolve the installed product root and
+validate its customer-owned `config/customer-settings.json` against
+`config/customer-settings.template.json`. Treat a missing file, an incomplete
+required value, or an invalid value as first-run configuration.
+
+When first-run configuration is detected, invoke `education-center-customer-initialization`
+immediately. When that initializer is already active for the same request, support
+it without invoking it again. Preserve the user's original request while
+initialization runs.
+Complete the product's host-managed BOS authentication before asking any settings
+question. If direct sign-in is required, ask only for that action and resume
+initialization automatically afterward. Do not perform the original workflow or
+substitute generic customer values while configuration remains unresolved. After
+the user accepts the consolidated recommendation and the initializer writes and
+revalidates `config/customer-settings.json`, reload the effective settings and
+resume the original request automatically.
+
 # Education Center Class Operations
 
 ## Tenant terminology
