@@ -1,19 +1,26 @@
 ---
 name: ship-it
-description: Create the next repository release version, review and validate all current work, regenerate client packages, commit everything, and push the current branch. Use when the user says “ship it,” “send it,” or asks to release and push the current work.
+description: Create the next repository release version, review and validate all current work, regenerate client packages, commit everything, and merge it through a release pull request. Use when the user says “ship it,” “send it,” or asks to release and publish the current work.
 ---
 
 # Ship It
 
-Complete the current repository's release loop. A successful invocation creates a new version even when the pending source change did not edit version metadata. The invocation itself authorizes the repository-native version bump, generated package updates, staging all current changes, one commit, and pushing the current branch. Do not request redundant confirmation.
+Complete the current repository's release loop. A successful invocation creates a new version even when the pending source change did not edit version metadata. The invocation itself authorizes the repository-native version bump, generated package updates, staging all current changes, one commit, creation of a release branch and pull request, and merging that pull request into the default branch. The merged version-bump pull request is the publication event used by the Claude organization marketplace GitHub sync. Do not request redundant confirmation.
 
 ## Preflight
 
-1. Resolve the repository root, current branch, upstream, remotes, and complete status, including staged, unstaged, untracked, renamed, and deleted files.
+1. Resolve the repository root, current branch, default branch, upstream, remotes, and complete status, including staged, unstaged, untracked, renamed, and deleted files.
 2. Read the repository's applicable instructions and release/build documentation. Use its native review, validation, build, and release checks.
-3. Stop before mutation when the repository is in a merge, rebase, cherry-pick, conflicted, or detached-HEAD state; when the push target is ambiguous; or when completing the workflow requires credentials or authority the user has not provided.
+3. Stop before mutation when the repository is in a merge, rebase, cherry-pick, conflicted, or detached-HEAD state; when the default branch, push target, or pull-request target is ambiguous; or when completing the workflow requires credentials or authority the user has not provided.
 4. Review the entire pending change set. Inspect untracked files before staging. Treat every existing change as user-owned and in scope for this invocation.
 5. Block the shipment and report exact findings when the changes expose credentials or private data, contain a material correctness or security defect, include an obviously accidental large artifact, or conflict with repository instructions. Never discard or rewrite the user's work while resolving a blocker.
+
+## Create the release branch
+
+1. Never push a release commit directly to the default branch. Claude's organization marketplace sync recognizes a plugin version bump merged through a pull request.
+2. When the current branch is the default branch, create a release branch named `codex/release-v<next-version>` before changing version metadata. Preserve the complete current worktree when creating the branch.
+3. When the current branch is already a non-default working branch, use it as the release branch when its upstream and intended default-branch target are unambiguous.
+4. Stop if the release branch already exists locally or remotely and cannot be identified as the current release safely. Never delete, reset, or overwrite an existing branch.
 
 ## Create the release version
 
@@ -45,12 +52,17 @@ to the actual diff and evidence.
 3. Infer a concise commit message from the complete diff and the repository's recent commit style. Do not amend, squash, rebase, skip hooks, or create an empty commit.
 4. Create one commit containing the complete staged change set. If a commit hook changes files, inspect those changes, rerun relevant validation, stage the complete result, and create a new commit only when the original commit did not succeed.
 
-## Push
+## Publish through a pull request
 
-Push the current branch to its configured upstream. When no upstream exists, set one only when the current branch and a single intended remote are unambiguous. Never force-push. Never change branches merely to make a push succeed.
+1. Push the release branch to its configured upstream. When no upstream exists, set one only when the release branch and a single intended remote are unambiguous. Never force-push.
+2. Open a pull request from the release branch to the resolved default branch. The title must identify the new release version, and the body must summarize generated clients and validation evidence.
+3. Wait for all required pull-request checks. Fix in-scope failures on the release branch, rerun affected local validation, push the correction, and wait again.
+4. Merge the pull request only after every required check passes and the repository reports that it is mergeable. Use a repository-supported merge method; GitHub must record the pull request as merged. Do not bypass protections or required reviews.
+5. Verify that the remote default branch contains the release version after the merge. This merge is the event the Claude organization marketplace uses when **Sync automatically** is enabled for the connected GitHub marketplace.
+6. Treat OpenAI publication as a separate host lifecycle. The merged commit makes the release available to the tracked Git ref, while private Codex marketplaces still require `codex plugin marketplace upgrade` and public ChatGPT/Codex directory releases still require submission and publication through the OpenAI Platform.
 
-Push existing unpushed commits with the new release commit when the invocation clearly targets the current branch and the upstream is unambiguous.
+Push existing unpushed commits with the release commit only when they are part of the reviewed release branch and the pull-request target is unambiguous.
 
 ## Report
 
-After a successful push, report the previous and new release versions, commit hash, subject, branch, remote destination, included file count, generated packages, and validation/build results. If stopped, state the blocking evidence and leave the repository unchanged beyond clearly scoped fixes made before the blocker was known.
+After a successful merge, report the previous and new release versions, pull-request URL and number, release commit, merge commit, source and default branches, remote destination, included file count, generated packages, and validation/build results. Confirm that the merged version-bump pull request emitted the Claude marketplace synchronization trigger. State that Codex Git marketplace refresh and public ChatGPT/Codex directory publication remain separate host-owned actions. If stopped, state the blocking evidence and leave the repository unchanged beyond clearly scoped fixes made before the blocker was known.

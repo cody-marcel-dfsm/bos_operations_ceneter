@@ -28,7 +28,7 @@ The private Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Select
 **Connect** or **Sign in** when the host presents it, then complete BOS consent.
 
-Current desktop marketplace release: `0.4.34`. If `0.4.33` is installed,
+Current desktop marketplace release: `0.4.35`. If `0.4.34` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -79,8 +79,20 @@ and refreshes the resulting grant across sessions.
 
 ### Updates
 
-- Refresh or update the `bos-education-center` marketplace.
-- Upgrade or reinstall the affected plugin.
+- **Claude organization marketplace:** Maintainers publish each new Claude plugin version by merging a version-bump
+  pull request into the connected repository's default branch. With **Sync
+  automatically** enabled under Claude Organization Settings → Plugins, that
+  merge tells Claude to synchronize its hosted marketplace copy for every
+  organization user.
+- **Claude installed plugin:** After Claude synchronizes the marketplace, upgrade the affected plugin when
+  the host presents **Update**.
+- **Private ChatGPT/Codex Git marketplace:** Run
+  `codex plugin marketplace upgrade bos-education-center`, update or reinstall
+  the affected plugin, and start a new task. OpenAI tracks the resulting Git
+  snapshot; the pull-request history is not an OpenAI update trigger.
+- **Public ChatGPT/Codex Plugins Directory:** Submit, obtain approval for, and
+  publish the new plugin version through the OpenAI Platform. The public
+  directory uses submitted snapshots rather than the repository marketplace.
 - Start a new task so the host loads the updated package.
 - Reauthorize only when the host reports that the BOS grant is missing,
   expired, revoked, or incorrectly scoped.
@@ -222,6 +234,12 @@ Run:
 ```bash
 npm run release:check
 ```
+
+Publish a release through a release branch and merged pull request. A direct
+push of a version bump to the default branch does not provide Claude's
+documented organization-marketplace synchronization trigger. The generated
+Claude `plugin.json` is the single version authority; the Claude marketplace
+catalog intentionally omits duplicate version fields.
 
 The desktop host verifies live BOS access after installation through its
 host-managed OAuth connection. Repository release commands never accept or
