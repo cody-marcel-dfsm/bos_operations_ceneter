@@ -5,7 +5,7 @@ description: Create the next repository release version, review and validate all
 
 # Ship It
 
-Complete the current repository's release loop. A successful invocation creates a new version even when the pending source change did not edit version metadata. The invocation itself authorizes the repository-native version bump, generated package updates, staging all current changes, one commit, creation of a release branch and pull request, and merging that pull request into the default branch. A merged version-bump pull request is the publication event used by Claude organization marketplace GitHub sync when an owner has enabled **Sync automatically**. Independently added Claude marketplaces and official marketplace submissions have separate host-owned publication lifecycles. Do not request redundant confirmation.
+Complete the current repository's release loop. A successful invocation creates a new version even when the pending source change did not edit version metadata. The invocation itself authorizes the repository-native version bump, generated package updates, staging all current changes, one commit, creation of a temporary release branch and pull request, merging that pull request into the default branch, returning the workspace to the updated default branch, and deleting the merged local release branch. A merged version-bump pull request is the publication event used by Claude organization marketplace GitHub sync when an owner has enabled **Sync automatically**. Independently added Claude marketplaces and official marketplace submissions have separate host-owned publication lifecycles. Do not request redundant confirmation.
 
 ## Preflight
 
@@ -65,6 +65,15 @@ to the actual diff and evidence.
 
 Push existing unpushed commits with the release commit only when they are part of the reviewed release branch and the pull-request target is unambiguous.
 
+## Restore the default-branch workspace
+
+After GitHub records the pull request as merged:
+
+1. Switch the current workspace to the resolved default branch and fast-forward it from its configured remote. Never leave the workspace checked out on the merged release branch.
+2. Verify the local default branch and its remote-tracking branch resolve to the same commit and that the worktree is clean.
+3. Verify the release branch used by this invocation is an ancestor of the updated default branch, then delete that local release branch with the safe merged-branch deletion command. Delete only the release branch used by this invocation; preserve unrelated user branches.
+4. Report a failed release cleanup when the workspace cannot return to the default branch, the branches differ, the worktree is dirty, or the merged local release branch remains. Do not call the release complete until these invariants hold.
+
 ## Report
 
-After a successful merge, report the previous and new release versions, pull-request URL and number, release commit, merge commit, source and default branches, remote destination, included file count, generated packages, and validation/build results. State which publication path was actually triggered: Claude organization sync, independent Claude marketplace availability, or neither. State that independent Claude account refresh, official Anthropic publication, Codex Git marketplace refresh, and public ChatGPT/Codex directory publication remain separate host-owned actions. If stopped, state the blocking evidence and leave the repository unchanged beyond clearly scoped fixes made before the blocker was known.
+After a successful merge and cleanup, report the previous and new release versions, pull-request URL and number, release commit, merge commit, source and default branches, remote destination, included file count, generated packages, validation/build results, and confirmation that the workspace is on a clean, current default branch with the merged local release branch removed. State which publication path was actually triggered: Claude organization sync, independent Claude marketplace availability, or neither. State that independent Claude account refresh, official Anthropic publication, Codex Git marketplace refresh, and public ChatGPT/Codex directory publication remain separate host-owned actions. If stopped, state the blocking evidence and leave the repository unchanged beyond clearly scoped fixes made before the blocker was known.
