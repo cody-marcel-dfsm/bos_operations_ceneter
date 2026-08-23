@@ -57,7 +57,7 @@ package references that app and does not duplicate the URL in `.mcp.json`.
 A client package:
 
 - contains its immutable application and skill-group names;
-- connects only to its generated route through an account connector, a
+- connects only to its generated route through a plugin declaration, a
   client-native remote MCP adapter, or a registered app that owns the route;
 - uses the host-managed OAuth grant for Claude, ChatGPT/Codex desktop,
   OAuth-capable GitHub Copilot hosts, Gemini CLI, and Google Antigravity 2.0
@@ -122,8 +122,8 @@ For every runtime product, automated evidence must establish:
 
 1. Manifest route slugs satisfy the schema and approved inventory.
 2. Claude, ChatGPT/Codex, the single Gemini extension umbrella, and Copilot
-   adapters resolve the same immutable URL; Claude does so through an
-   account-level Web connector and Codex through its registered app. The Gemini directory supports Gemini CLI through
+   adapters resolve the same immutable URL; Claude does so through its runtime
+   plugin declaration and Codex through its registered app. The Gemini directory supports Gemini CLI through
    `gemini-extension.json` and Antigravity Desktop through `plugin.json` plus
    `mcp_config.json`, while sharing one skill tree and product identity.
 3. No generated package contains an installation-ID route setting or unresolved
@@ -135,6 +135,7 @@ For every runtime product, automated evidence must establish:
 8. Each active Claude, ChatGPT/Codex, OAuth-capable Copilot, or Gemini runtime product obtains one
    host-managed resource-scoped grant without package credential fields or
    cross-product fallback.
-9. No Claude marketplace plugin contains `.mcp.json` or `mcpServers`; its
-   generated metadata identifies `claude_account` connection scope and the
-   immutable resource for account or organization connector provisioning.
+9. Every active Claude runtime plugin contains exactly one credential-free
+   `.mcp.json`, mirrors the server inline through `mcpServers`, and identifies
+   `claude_plugin` connection scope. Installation registers the immutable
+   resource without a separately entered URL.

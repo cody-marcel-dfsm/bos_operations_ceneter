@@ -34,12 +34,15 @@ Official source:
 
 1. Open **Customize → Plugins** and confirm BOS plus the runtime product are
    installed and enabled from the configured marketplace.
-2. Open **Customize → Connectors** and confirm the product appears as a Web
-   connector with its own **Connect** control. `Connects in sessions` means the
-   plugin incorrectly owns the MCP server and requires package repair.
-3. Select **Connect** on the account-level Web connector and complete BOS sign-in.
-4. Start a new Cowork task after installation or update.
-5. Confirm the account connector is visible, refresh discovery, resolve
+2. Open the installed runtime plugin and confirm its packaged connector appears.
+   A missing connector is a package defect; never
+   direct the user to add a custom URL.
+3. Start a new Cowork task after installation or update and make an eligible
+   Education Center request. Claude loads the connector and presents BOS
+   sign-in automatically when authorization is required.
+4. Complete the secure host sign-in interaction, then let the agent resume the
+   original request.
+5. Confirm the plugin connector is visible, refresh discovery, resolve
    context, and run one bounded read.
 
 Official sources:

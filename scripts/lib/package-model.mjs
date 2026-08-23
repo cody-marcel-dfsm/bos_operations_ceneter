@@ -371,6 +371,21 @@ export function codexAppManifest(product) {
   };
 }
 
+export function claudePluginMcpManifest(product) {
+  if (!product.runtime) return { mcpServers: {} };
+  return {
+    mcpServers: {
+      [product.mcp_group_name]: {
+        type: "http",
+        url: materializeMcpUrl(
+          "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
+          product
+        )
+      }
+    }
+  };
+}
+
 export async function geminiExtensionManifest(product, base = root) {
   const manifest = {
     name: product.name,

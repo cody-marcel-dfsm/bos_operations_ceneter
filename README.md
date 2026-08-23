@@ -28,7 +28,7 @@ The private Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Select
 **Connect** or **Sign in** when the host presents it, then complete BOS consent.
 
-Current desktop marketplace release: `0.4.40`. If `0.4.39` is installed,
+Current desktop marketplace release: `0.4.41`. If `0.4.40` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -61,21 +61,17 @@ grant. Start a new task after installation or upgrade.
    `https://github.com/cody-marcel-dfsm/bos_operations_ceneter` as a
    marketplace.
 3. Install **BOS** and **Education Operation Center**.
-4. Open **Customize → Connectors**. Add the package-owned Education Operation
-   Center Web connector when it is not already present through your organization
-   or Anthropic's Connector Directory:
-   - Name: `education-center`
-   - URL: `https://dfsm.ai/mcp/apps/leaddirector/education-center`
-5. Select **Connect** on that Web connector and complete BOS sign-in.
-6. Start a new Cowork task and request one authenticated Education Operation
-   Center read to verify the connection.
+4. Start a new Cowork task and make an Education Operation Center request.
+5. Claude loads the packaged `education-center` connector and presents BOS
+   sign-in automatically when authorization is required.
+6. Complete the secure sign-in interaction; the agent resumes the request.
 
-Claude reads `.claude-plugin/marketplace.json`. The Education Operation Center plugin
-contains skills and account-connector metadata. It intentionally contains no
-`.mcp.json`, `mcpServers`, API-key field, or authorization-header template;
-plugin-owned MCP declarations appear as `Connects in sessions`. The account-level
-Web connector discovers OAuth from the immutable MCP resource and Claude stores
-and refreshes the resulting grant across sessions.
+Claude reads `.claude-plugin/marketplace.json`. The Education Operation Center
+plugin contains skills plus one `.mcp.json` declaration for its immutable HTTPS
+resource. Installing the plugin registers that connector automatically; users
+never add or type its URL. Claude discovers OAuth from the resource and stores
+and refreshes the resulting grant. The package contains no API-key field,
+authorization-header template, or reusable credential.
 
 ### Updates
 
@@ -163,12 +159,13 @@ reported as unavailable business data.
 Provider authorization is separate from BOS connection authorization:
 
 - For an OAuth provider such as Google, BOS returns a short-lived
-  authorization transaction. The user signs in directly with the provider,
-  BOS stores the scoped grant, and the agent resumes the original operation
-  once.
+  authorization transaction. The agent presents that path automatically in the
+  active request, the user signs in directly with the provider, BOS stores the
+  scoped grant, and the agent verifies readiness and resumes the original
+  operation once.
 - For an API-key provider, BOS returns a short-lived HTTPS credential-entry
-  page. The value goes directly to BOS and never through chat, client files, or
-  command arguments.
+  page and the agent presents it automatically in the active request. The value
+  goes directly to BOS and never through chat, client files, or command arguments.
 
 ## Local plugin development
 
@@ -221,10 +218,9 @@ claude plugin marketplace add ./
 claude plugin install education-center@bos-education-center
 ```
 
-Under **Customize → Connectors**, add or select the account-level
-`education-center` Web connector, select **Connect**, complete BOS sign-in, and
-test in a new Claude/Cowork task. The plugin must not appear as a connector with
-status `Connects in sessions`.
+Start a new Claude/Cowork task and make an eligible Education Center request.
+Claude loads the packaged connector and presents BOS sign-in automatically when
+required. Never add a custom connector or enter the resource URL separately.
 After source changes, update the marketplace and plugin before retesting.
 
 ### Local validation
@@ -267,8 +263,8 @@ retrieve a reusable BOS access token.
 ## Other clients
 
 Claude, ChatGPT/Codex, OAuth-capable Copilot hosts, Gemini CLI, and Antigravity Desktop use host-managed
-OAuth for the immutable BOS product resource. Claude provisions it as an
-account-level Web connector while the marketplace plugin remains skills-only.
+OAuth for the immutable BOS product resource. A Claude runtime plugin declares
+the connector directly so installation registers it automatically.
 
 ### Gemini CLI and Antigravity 2.0 Desktop
 

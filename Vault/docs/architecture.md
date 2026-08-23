@@ -33,17 +33,18 @@ release system for portable BOS skills and native remote MCP client adapters.
 5. Authenticate Claude, ChatGPT/Codex desktop, OAuth-capable GitHub Copilot
    hosts, Gemini CLI, and Google Antigravity 2.0 Desktop product connections
    through the host's OAuth 2.1 MCP
-   authorization flow. Claude account or organization Web connectors and Gemini
-   packages declare the immutable HTTPS MCP resource directly. Claude marketplace
-   plugins remain skills-only and contain no `.mcp.json` or `mcpServers`, preventing
-   Claude from classifying the resource as `Connects in sessions`. Codex packages declare a required
+   authorization flow. Claude runtime plugins, Copilot, and Gemini packages
+   declare the immutable HTTPS MCP resource directly. Installing a Claude
+   runtime plugin registers its packaged remote connector through `.mcp.json`
+   and `mcpServers`; the customer never enters its URL separately. Codex packages declare a required
    registered app in `.app.json`; that app owns the immutable resource. None of
    these packages contains an API-key field, authorization header template, or
    credential environment-variable binding. The host
    discovers BOS authorization metadata, launches consent, stores and refreshes
    the grant, and attaches a resource-scoped token. Recover missing underlying
    provider grants through the BOS service's server-returned OAuth or secure
-   provider-credential flow in the active agent interface; keep secrets out of
+   provider-credential flow in the active request, then verify and resume the
+   interrupted operation automatically; keep secrets out of
    model chat, package files, customer settings, setup scripts, and logs.
 6. Fail closed on missing, malformed, unauthorized, or ambiguous canonical
    state.
@@ -77,7 +78,7 @@ release system for portable BOS skills and native remote MCP client adapters.
     confirmation, then reload settings and resume it automatically. Apply this
     composition equally to Claude, Codex, Copilot, and Gemini packages.
 11. Connect clients directly to BOS over HTTPS Streamable HTTP. Use a registered
-    app binding in Codex, an account-level Web connector in Claude, the
+    app binding in Codex, a plugin-declared remote connector in Claude, the
     OAuth-discovered remote connection in Copilot IDE/CLI, and one Gemini extension umbrella
     for Gemini CLI and Antigravity 2.0 Desktop. The Gemini product directory
     contains shared skills and product metadata, `gemini-extension.json` with
@@ -89,7 +90,8 @@ release system for portable BOS skills and native remote MCP client adapters.
     and host restart then load current source without recopying packages. This
     clean bootstrap is limited to uncustomized installations and fails before
     deletion when customer-owned extension metadata exists. A Claude
-    runtime plugin contains account-connector metadata and no MCP declaration.
+    runtime plugin contains exactly one credential-free `.mcp.json` declaration
+    mirrored inline by `mcpServers`.
     A Codex runtime plugin contains
     `apps: "./.app.json"` and no `.mcp.json` or `mcpServers`; its product
     manifest records the stable `asdk_app_*` identifier. Every runtime product declares one immutable
@@ -142,9 +144,9 @@ release system for portable BOS skills and native remote MCP client adapters.
     `.claude-plugin/marketplace.json`; Codex uses
     `.agents/plugins/marketplace.json`. Keep separate host manifests and share
     canonical skills through deterministic generation. Installation adds the
-    marketplace and installs the product skills. Claude account or organization
-    connector provisioning registers the runtime resource separately and presents
-    the persistent Connect action under Customize → Connectors. A new task loads
+    marketplace, installs the product skills, and registers each runtime
+    product's packaged connector. A new eligible request loads the connector
+    and Claude presents BOS authorization automatically when required. A new task loads
     the installed skills after updates. Git marketplace installation is the
     skill-distribution path; repository release workflows create no customer archive.
     Publish Claude organization-marketplace releases through a version-bump pull
@@ -167,13 +169,13 @@ release system for portable BOS skills and native remote MCP client adapters.
     history grants neither OpenAI publication nor client refresh authority.
 17. Treat a Claude, ChatGPT/Codex, OAuth-capable Copilot, Gemini CLI, or Antigravity Desktop product
     connection as ready only when the
-    installed product points to its exact immutable MCP resource—through an
-    account connector for Claude, directly for Copilot and Gemini, and through
+    installed product points to its exact immutable MCP resource—through its
+    plugin declaration for Claude, directly for Copilot and Gemini, and through
     its required registered app for Codex—OAuth
     discovery succeeds, the host holds a valid resource-scoped grant, the
     server returns one canonical context, and the required scoped tool group is
-    discoverable. A missing or expired grant triggers the host's Connect/Sign
-    in flow. Installation and recovery never request a BOS key, manipulate the
+    discoverable. A missing or expired grant makes the active request trigger
+    the host's authorization flow. Installation and recovery never request a BOS key, manipulate the
     desktop process environment, or use an OS-specific launcher. Plugin source
     changes require marketplace update or reinstall, cache refresh as supported
     by the host, and a new task.

@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 import test from "node:test";
 import {
   listProducts,
+  claudePluginMcpManifest,
   copilotMcpManifest,
   geminiExtensionManifest,
   geminiPluginManifest,
@@ -468,6 +469,9 @@ test("application runtime packages ship agent-owned MCP lifecycle recovery", asy
     assert.match(guidance, /reconcile by[\s\S]*idempotency identifier/i);
     assert.match(guidance, /If BOS is absent from the callable tool manifest/i);
     assert.match(guidance, /Do not stop at\s+diagnosing client registration/i);
+    assert.match(guidance, /authorization_required/i);
+    assert.match(guidance, /authorization path automatically[\s\S]*active request/i);
+    assert.match(guidance, /poll[\s\S]*bos_resume_operation[\s\S]*without asking the user to resubmit/i);
     assert.doesNotMatch(guidance, /unnamed endpoint as.*runtime connection/is);
     assert.match(guidance, /shared local document cache/i);
     assert.match(guidance, /request exactly those intervals plus\s+changes after its cursor/i);
@@ -742,6 +746,8 @@ test("Education Center initialization proposes sourced defaults with one-step ac
   assert.match(guidance, /bos-mcp-client[\s\S]*live-tool discovery/i);
   assert.match(guidance, /Complete authentication before asking any customer-settings question/i);
   assert.match(guidance, /Connect\/Sign in[\s\S]*context discovery[\s\S]*present the recommendation/i);
+  assert.match(guidance, /first eligible request[\s\S]*host presents BOS OAuth automatically/i);
+  assert.doesNotMatch(guidance, /Customize\s*→\s*Connectors/i);
   assert.match(guidance, /authentication_required[\s\S]*preserve the initialization draft[\s\S]*ask[\s\S]*no settings questions/i);
   assert.match(guidance, /store it as `brand_display_name`/i);
 });
@@ -1155,9 +1161,7 @@ test("disabled products are absent while active runtime products remain scoped",
       }
     }
   });
-  await assert.rejects(
-    access(`${root}/clients/claude/plugins/education-center/.mcp.json`)
-  );
+  await access(`${root}/clients/claude/plugins/education-center/.mcp.json`);
 });
 
 test("disabled product inventory is generated for idempotent client pruning", async () => {
@@ -1174,7 +1178,7 @@ test("disabled product inventory is generated for idempotent client pruning", as
   });
 });
 
-test("Education Center packages use account-scoped desktop OAuth bindings", async () => {
+test("Education Center packages use automatic host-native OAuth bindings", async () => {
   const codexRoot = `${root}/clients/codex/plugins/education-center`;
   const metadata = JSON.parse(await readFile(`${codexRoot}/.bos-product.json`, "utf8"));
   const plugin = JSON.parse(await readFile(`${codexRoot}/.codex-plugin/plugin.json`, "utf8"));
@@ -1196,17 +1200,23 @@ test("Education Center packages use account-scoped desktop OAuth bindings", asyn
     `${claudeRoot}/.claude-plugin/plugin.json`,
     "utf8"
   ));
-  assert.equal(claudeMetadata.connection_scope, "claude_account");
+  assert.equal(claudeMetadata.connection_scope, "claude_plugin");
   assert.equal(
     claudeMetadata.resource_url,
     "https://dfsm.ai/mcp/apps/leaddirector/education-center"
   );
-  assert.equal(claudePlugin.mcpServers, undefined);
-  await assert.rejects(access(`${claudeRoot}/.mcp.json`));
-  const connectorGuide = await readFile(`${claudeRoot}/CONNECTORS.md`, "utf8");
-  assert.match(connectorGuide, /account-level Web connector/i);
-  assert.match(connectorGuide, /Customize.*Connectors/i);
-  assert.doesNotMatch(connectorGuide, /connects in sessions/i);
+  assert.deepEqual(claudePlugin.mcpServers, claudePluginMcpManifest(
+    (await listProducts()).find(({ manifest }) => manifest.name === "education-center").manifest
+  ).mcpServers);
+  const claudeMcp = JSON.parse(await readFile(`${claudeRoot}/.mcp.json`, "utf8"));
+  assert.deepEqual(claudeMcp, claudePluginMcpManifest(
+    (await listProducts()).find(({ manifest }) => manifest.name === "education-center").manifest
+  ));
+  assert.deepEqual(claudeMcp.mcpServers["education-center"], {
+    type: "http",
+    url: "https://dfsm.ai/mcp/apps/leaddirector/education-center"
+  });
+  await assert.rejects(access(`${claudeRoot}/CONNECTORS.md`));
 });
 
 test("Claude distribution is a marketplace of self-contained plugins", async () => {
@@ -1269,11 +1279,11 @@ test("Claude distribution is a marketplace of self-contained plugins", async () 
       "utf8"
     )
   );
-  assert.equal(educationCenterManifest.mcpServers, undefined);
+  assert.deepEqual(educationCenterManifest.mcpServers, claudePluginMcpManifest(
+    (await listProducts()).find(({ manifest }) => manifest.name === "education-center").manifest
+  ).mcpServers);
   assert.equal("userConfig" in educationCenterManifest, false);
-  await assert.rejects(
-    access(`${root}/clients/claude/plugins/education-center/.mcp.json`)
-  );
+  await access(`${root}/clients/claude/plugins/education-center/.mcp.json`);
 
   await assert.rejects(access(`${root}/clients/claude/plugins/video-ads`));
 });
@@ -1467,7 +1477,7 @@ test("every product and client ships tenant extension management metadata", asyn
           ...(client === "codex" ? {
             codex_app_id: manifest.codex_app_id
           } : client === "claude" ? {
-            connection_scope: "claude_account",
+            connection_scope: "claude_plugin",
             resource_url: `https://dfsm.ai/mcp/apps/${manifest.application_name}/${manifest.mcp_group_name}`
           } : {})
         } : {})
