@@ -28,7 +28,7 @@ The private Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Select
 **Connect** or **Sign in** when the host presents it, then complete BOS consent.
 
-Current desktop marketplace release: `0.4.45`. If `0.4.44` is installed,
+Current desktop marketplace release: `0.4.46`. If `0.4.45` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -289,7 +289,7 @@ Give Hardik this instruction:
 > `clients/gemini/extensions/bos` and
 > `clients/gemini/extensions/education-center`, restart Gemini CLI, run
 > `/mcp auth education-center`, and complete BOS sign-in. For Antigravity 2.0
-> Desktop, run `scripts/install-antigravity.mjs` once from the synced repository.
+> Desktop, run `./scripts/install-antigravity.sh` once from the synced repository.
 > This is a clean install: it deletes prior BOS product folders and symlinks from
 > `~/.gemini/config/plugins/` without backups, then creates one symlink for every
 > generated Gemini product. It locates the repository from its own file path.

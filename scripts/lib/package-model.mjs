@@ -416,7 +416,7 @@ export function geminiPluginManifest(product) {
   return {
     $schema: "https://antigravity.google/schemas/v1/plugin.json",
     name: product.name,
-    description: product.description
+    description: `${product.description} Version ${product.version}.`
   };
 }
 

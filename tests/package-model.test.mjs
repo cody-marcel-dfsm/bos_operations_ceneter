@@ -1316,6 +1316,10 @@ test("one Gemini extension bundles CLI and Antigravity Desktop with OAuth MCP", 
     assert.equal(manifest.version, product.version);
     assert.deepEqual(desktopPlugin, geminiPluginManifest(product));
     assert.match(
+      desktopPlugin.description,
+      new RegExp(`Version ${product.version.replaceAll(".", "\\.")}\\.$`)
+    );
+    assert.match(
       readme,
       new RegExp(`gemini extensions install clients/gemini/extensions/${product.name}`)
     );

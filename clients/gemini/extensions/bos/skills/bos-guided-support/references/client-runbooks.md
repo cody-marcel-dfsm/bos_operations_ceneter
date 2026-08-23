@@ -82,7 +82,7 @@ Official sources:
 
 ## Google Antigravity 2.0 Desktop
 
-1. Run `scripts/install-antigravity.mjs` once from the synced BOS Operations
+1. Run `./scripts/install-antigravity.sh` once from the synced BOS Operations
    Center repository. This clean installer deletes prior BOS product entries
    without backups, resolves the repository from its own file path, and creates
    one symlink per active product in the global plugin directory. It is for an

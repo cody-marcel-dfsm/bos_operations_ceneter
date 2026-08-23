@@ -118,7 +118,9 @@ release system for portable BOS skills and native remote MCP client adapters.
     invariants, authentication, authorization, canonical scope, credentials,
     MCP endpoints, and tool grants remain sealed. Every product ships the same
     extension manager and versioned product metadata for Codex, Claude,
-    Copilot, and the combined Gemini CLI/Antigravity Desktop client.
+    Copilot, and the combined Gemini CLI/Antigravity Desktop client. Generated
+    Antigravity `plugin.json` descriptions repeat the product release version
+    so the plugin information UI exposes it directly.
 14. Route feedback mutations through the runtime product's canonical named MCP
     route. Keep organization, application, installation, and delegated-role
     scope out of feedback arguments. Derive operational scope from the
