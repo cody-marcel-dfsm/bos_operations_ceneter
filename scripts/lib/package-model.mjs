@@ -61,6 +61,7 @@ export function validateProduct(manifest, path = "product.json") {
     "mcp_group_name",
     "codex_app_id",
     "settings_template",
+    "settings_initializer",
     "default_prompts"
   ]);
   for (const field of Object.keys(manifest)) {
@@ -191,6 +192,25 @@ export function validateProduct(manifest, path = "product.json") {
   ) {
     failures.push(`${path}: unsafe settings_template`);
   }
+  if (
+    manifest.settings_initializer !== undefined &&
+    !productNamePattern.test(manifest.settings_initializer)
+  ) {
+    failures.push(`${path}: invalid settings_initializer`);
+  }
+  if (Boolean(manifest.settings_template) !== Boolean(manifest.settings_initializer)) {
+    failures.push(
+      `${path}: settings_template and settings_initializer must be declared together`
+    );
+  }
+  if (
+    manifest.settings_initializer &&
+    !manifest.includes?.some(
+      (include) => include.split("/").at(-1) === manifest.settings_initializer
+    )
+  ) {
+    failures.push(`${path}: settings_initializer must name an included skill`);
+  }
   return failures;
 }
 
@@ -246,14 +266,53 @@ export async function resolveProductSkills(product, base = root) {
   return skills;
 }
 
-export async function copyProductSkills(skills, target) {
+export async function copyProductSkills(product, skills, target) {
   await mkdir(target, { recursive: true });
   for (const skill of skills) {
-    await cp(skill.sourcePath, join(target, skill.name), {
+    const skillTarget = join(target, skill.name);
+    await cp(skill.sourcePath, skillTarget, {
       recursive: true,
       filter: publicPackagePath
     });
+    if (
+      product.settings_initializer &&
+      skill.name !== product.settings_initializer
+    ) {
+      const skillFile = join(skillTarget, "SKILL.md");
+      const guidance = await readFile(skillFile, "utf8");
+      await writeFile(
+        skillFile,
+        injectSettingsPreflight(guidance, product.settings_initializer)
+      );
+    }
   }
+}
+
+export function injectSettingsPreflight(guidance, initializer) {
+  const frontmatter = guidance.match(/^---\s*\n[\s\S]*?^---\s*\n/m);
+  if (!frontmatter) throw new Error("Cannot inject settings preflight without frontmatter");
+  const preflight = [
+    "## Product first-run preflight",
+    "",
+    "Before performing this skill's workflow, resolve the installed product root and",
+    "validate its customer-owned `config/customer-settings.json` against",
+    "`config/customer-settings.template.json`. Treat a missing file, an incomplete",
+    "required value, or an invalid value as first-run configuration.",
+    "",
+    `When first-run configuration is detected, invoke \`${initializer}\``,
+    "immediately. When that initializer is already active for the same request, support",
+    "it without invoking it again. Preserve the user's original request while",
+    "initialization runs.",
+    "Complete the product's host-managed BOS authentication before asking any settings",
+    "question. If direct sign-in is required, ask only for that action and resume",
+    "initialization automatically afterward. Do not perform the original workflow or",
+    "substitute generic customer values while configuration remains unresolved. After",
+    "the user accepts the consolidated recommendation and the initializer writes and",
+    "revalidates `config/customer-settings.json`, reload the effective settings and",
+    "resume the original request automatically.",
+    ""
+  ].join("\n");
+  return `${guidance.slice(0, frontmatter[0].length)}\n${preflight}\n${guidance.slice(frontmatter[0].length)}`;
 }
 
 function publicPackagePath(path) {

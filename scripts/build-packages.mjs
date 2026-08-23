@@ -73,7 +73,7 @@ for (const { product, skills } of resolved) {
       join(pluginRoot, ".codex-plugin", "plugin.json"),
       pluginManifest(product)
     );
-    await copyProductSkills(skills, join(pluginRoot, "skills"));
+    await copyProductSkills(product, skills, join(pluginRoot, "skills"));
     if (product.runtime) {
       await writeJson(join(pluginRoot, ".app.json"), codexAppManifest(product));
     }
@@ -123,7 +123,7 @@ for (const { product, skills } of resolved) {
       join(pluginRoot, ".claude-plugin", "plugin.json"),
       claudePlugin
     );
-    await copyProductSkills(skills, join(pluginRoot, "skills"));
+    await copyProductSkills(product, skills, join(pluginRoot, "skills"));
     await copySettingsTemplate(product, pluginRoot);
     if (product.runtime) {
       await writeFile(
@@ -224,7 +224,7 @@ for (const { product, skills } of resolved) {
         await copilotMcpManifest(product)
       );
     }
-    await copyProductSkills(skills, target);
+    await copyProductSkills(product, skills, target);
     await copySettingsTemplate(product, join(target, ".."));
     await writeFile(
       join(productRoot, "README.md"),
@@ -282,7 +282,7 @@ for (const { product, skills } of resolved) {
         await geminiPluginMcpManifest(product)
       );
     }
-    await copyProductSkills(skills, join(extensionRoot, "skills"));
+    await copyProductSkills(product, skills, join(extensionRoot, "skills"));
     await copySettingsTemplate(product, extensionRoot);
     await writeFile(
       join(extensionRoot, "README.md"),

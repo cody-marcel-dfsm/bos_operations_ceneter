@@ -1,9 +1,11 @@
 import { readFile, readdir } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { extname, join } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import {
   hashTree,
+  injectSettingsPreflight,
   listProducts,
   materializeMcpUrl,
   pathExists,
@@ -55,6 +57,20 @@ const ignoredDirectories = new Set([
 ]);
 const failures = [];
 const execFileAsync = promisify(execFile);
+
+async function expectedSkillHashes(product, skill) {
+  const hashes = await hashTree(skill.sourcePath);
+  if (
+    product.settings_initializer &&
+    skill.name !== product.settings_initializer
+  ) {
+    const source = await readFile(skill.skillFile, "utf8");
+    hashes["SKILL.md"] = createHash("sha256")
+      .update(injectSettingsPreflight(source, product.settings_initializer))
+      .digest("hex");
+  }
+  return hashes;
+}
 
 async function scan(directory) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -262,7 +278,7 @@ async function validateProducts() {
           continue;
         }
         const [sourceHashes, generatedHashes] = await Promise.all([
-          hashTree(skill.sourcePath),
+          expectedSkillHashes(manifest, skill),
           hashTree(generatedSkillRoot)
         ]);
         if (JSON.stringify(sourceHashes) !== JSON.stringify(generatedHashes)) {
@@ -314,7 +330,7 @@ async function validateProducts() {
           continue;
         }
         const [sourceHashes, generatedHashes] = await Promise.all([
-          hashTree(skill.sourcePath),
+          expectedSkillHashes(manifest, skill),
           hashTree(generatedSkillRoot)
         ]);
         if (JSON.stringify(sourceHashes) !== JSON.stringify(generatedHashes)) {
@@ -352,7 +368,7 @@ async function validateProducts() {
       for (const skill of skills) {
         const generatedSkillRoot = join(productRoot, "skills", skill.name);
         const [sourceHashes, generatedHashes] = await Promise.all([
-          hashTree(skill.sourcePath),
+          expectedSkillHashes(manifest, skill),
           hashTree(generatedSkillRoot)
         ]);
         if (JSON.stringify(sourceHashes) !== JSON.stringify(generatedHashes)) {
@@ -470,7 +486,7 @@ async function validateProducts() {
       for (const skill of skills) {
         const generatedSkillRoot = join(extensionRoot, "skills", skill.name);
         const [sourceHashes, generatedHashes] = await Promise.all([
-          hashTree(skill.sourcePath),
+          expectedSkillHashes(manifest, skill),
           hashTree(generatedSkillRoot)
         ]);
         if (JSON.stringify(sourceHashes) !== JSON.stringify(generatedHashes)) {
