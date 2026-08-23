@@ -79,10 +79,11 @@ Official sources:
 
 ## Google Antigravity 2.0 Desktop
 
-1. Confirm complete BOS and runtime-product extension directories exist in the
-   global Gemini plugin location specified by the current BOS installation
-   instructions.
-2. Restart Antigravity after copying or updating them.
+1. Run `scripts/install-antigravity.mjs` once from the synced BOS Operations
+   Center repository. This clean installer deletes prior BOS product entries
+   without backups, resolves the repository from its own file path, and creates
+   one symlink per active product in the global plugin directory.
+2. Restart Antigravity after installation and after each Git pull.
 3. Open **Settings → Customizations**, select **Authenticate** for the runtime
    product, and complete BOS sign-in.
 4. Confirm the named resource and skills load, resolve context, and run one

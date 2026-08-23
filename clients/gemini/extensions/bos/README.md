@@ -15,6 +15,9 @@ discoverable. Use `gemini extensions update bos` for later releases.
 
 ## Antigravity 2.0 Desktop
 
-Copy this complete `bos` directory to `~/.gemini/config/plugins/bos`
-or place it in the opened workspace under `.agents/plugins/`. Restart Antigravity.
+Run `scripts/install-antigravity.mjs` once from the synced BOS Operations Center
+repository. This is a clean install: it deletes prior BOS product entries without backups,
+then links every generated Gemini product into `~/.gemini/config/plugins/`.
+It resolves the repository from the installer's own location, independent of the
+current working directory. After each Git pull, restart Antigravity.
 Open Settings > Customizations and confirm the plugin and its skills are enabled.

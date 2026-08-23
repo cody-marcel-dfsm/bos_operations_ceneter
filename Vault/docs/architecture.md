@@ -74,8 +74,13 @@ release system for portable BOS skills and native remote MCP client adapters.
     for Gemini CLI and Antigravity 2.0 Desktop. The Gemini product directory
     contains shared skills and product metadata, `gemini-extension.json` with
     OAuth enabled for Gemini CLI, and Antigravity's `plugin.json` plus a runtime
-    `mcp_config.json` using `serverUrl`. A Claude runtime plugin contains
-    account-connector metadata and no MCP declaration. A Codex runtime plugin contains
+    `mcp_config.json` using `serverUrl`. A repository-local installer resolves
+    its source tree from its own file location, deletes prior active or disabled
+    BOS product entries without backups, and creates exactly one generated-product
+    symlink per active product in Antigravity's global plugin directory. A Git pull
+    and host restart then load current source without recopying packages. A Claude
+    runtime plugin contains account-connector metadata and no MCP declaration.
+    A Codex runtime plugin contains
     `apps: "./.app.json"` and no `.mcp.json` or `mcpServers`; its product
     manifest records the stable `asdk_app_*` identifier. Every runtime product declares one immutable
     package-owned route using the exact static form
@@ -140,7 +145,12 @@ release system for portable BOS skills and native remote MCP client adapters.
     repository publishers hold no authority to mutate or force-refresh those
     accounts. Official Anthropic marketplace releases use its reviewed submission
     and publication process. Keep the generated plugin's `plugin.json` as the single
-    Claude version authority and omit duplicate marketplace-entry versions.
+    Claude version authority and omit duplicate marketplace-entry versions. The
+    repository-root Claude marketplace publishes each plugin as a direct
+    `git-subdir` source on the default branch, allowing Claude's manual marketplace
+    refresh to resolve the current manifest and enable an in-place **Update**.
+    Generated local client marketplaces retain relative sources because their
+    plugin directories ship inside the package.
     OpenAI Git marketplace consumers refresh the tracked repository snapshot through
     the Codex marketplace upgrade control; public ChatGPT/Codex directory releases
     require a separately reviewed and published OpenAI submission. Git pull-request

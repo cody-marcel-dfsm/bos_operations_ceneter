@@ -18,9 +18,11 @@ run `/extensions list` and `/skills list` to verify the extensions and bundled s
 
 ## Antigravity 2.0 Desktop
 
-Copy `clients/gemini/extensions/bos` and `clients/gemini/extensions/education-center`
-into `~/.gemini/config/plugins/`, preserving each product directory name. Restart
-Antigravity, open Settings > Customizations, and select Authenticate for the
+Run `scripts/install-antigravity.mjs` once. This clean installer deletes prior BOS
+product entries without backups, locates this repository from its own file path,
+and creates one product symlink in `~/.gemini/config/plugins/` for each active product.
+After each Git pull, restart Antigravity, open Settings > Customizations, and
+select Authenticate for the
 `education-center` MCP server. Complete BOS sign-in in the browser.
 
 The Gemini package contains no BOS key, token, authorization header, or client secret.
