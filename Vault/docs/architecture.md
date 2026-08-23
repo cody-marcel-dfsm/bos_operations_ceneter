@@ -147,12 +147,12 @@ release system for portable BOS skills and native remote MCP client adapters.
     repository publishers hold no authority to mutate or force-refresh those
     accounts. Official Anthropic marketplace releases use its reviewed submission
     and publication process. Keep the generated plugin's `plugin.json` as the single
-    Claude version authority and omit duplicate marketplace-entry versions. The
-    repository-root Claude marketplace publishes each plugin as a direct
-    `git-subdir` source on the default branch, allowing Claude's manual marketplace
-    refresh to resolve the current manifest and enable an in-place **Update**.
-    Generated local client marketplaces retain relative sources because their
-    plugin directories ship inside the package.
+    Claude version authority and omit duplicate marketplace-entry versions. Keep
+    Claude plugin sources as paths relative to the Git marketplace root so the
+    Desktop native marketplace reader resolves the bumped manifest after the user
+    selects the BOS marketplace's **Check for updates** action under the Code tab.
+    The Anthropic-tab refresh action targets `claude-plugins-official` and is not
+    the refresh control for independently added Code marketplaces.
     OpenAI Git marketplace consumers refresh the tracked repository snapshot through
     the Codex marketplace upgrade control; public ChatGPT/Codex directory releases
     require a separately reviewed and published OpenAI submission. Git pull-request
