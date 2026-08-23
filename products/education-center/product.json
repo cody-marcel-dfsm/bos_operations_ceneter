@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.44",
+  "version": "0.4.45",
   "release_status": "active",
   "display_name": "Education Operation Center",
   "description": "Agent-first education operations for complex, human-centered work.",
@@ -39,7 +39,7 @@
   "runtime": "bos",
   "application_name": "leaddirector",
   "mcp_group_name": "education-center",
-  "codex_app_id": "asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
+  "codex_app_id": "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
   "default_prompts": [
     "Initialize my education center, including its customer-facing brand name.",
     "Create today's education center operations plan.",
