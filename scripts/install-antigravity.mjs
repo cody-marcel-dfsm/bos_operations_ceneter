@@ -90,6 +90,18 @@ async function disabledProductNames(base) {
   return names;
 }
 
+async function containsCustomerExtension(path) {
+  const pathStat = await lstat(path);
+  if (pathStat.isSymbolicLink() || !pathStat.isDirectory()) return false;
+  for (const entry of await readdir(path, { withFileTypes: true })) {
+    if (entry.isFile() && entry.name === ".bos-extension.json") return true;
+    if (entry.isDirectory() && await containsCustomerExtension(join(path, entry.name))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 async function linkExtension({ name, source, pluginsRoot }) {
   const target = join(pluginsRoot, name);
   let state = "linked";
@@ -124,8 +136,18 @@ export async function installAntigravity(rawOptions = {}) {
   await mkdir(pluginsRoot, { recursive: true });
 
   const activeNames = new Set(extensions.map(({ name }) => name));
+  const disabledNames = await disabledProductNames(base);
+  for (const name of new Set([...activeNames, ...disabledNames])) {
+    const target = join(pluginsRoot, name);
+    if (await entryExists(target) && await containsCustomerExtension(target)) {
+      throw new Error(
+        `Clean install stopped because customer extension metadata exists in ${target}`
+      );
+    }
+  }
+
   const removed = [];
-  for (const name of await disabledProductNames(base)) {
+  for (const name of disabledNames) {
     if (activeNames.has(name)) continue;
     const target = join(pluginsRoot, name);
     if (!(await entryExists(target))) continue;
@@ -171,6 +193,7 @@ if (isMain()) {
   if (options.help) {
     console.log("Usage: install-antigravity.mjs");
     console.log("Clean install: existing BOS product entries are deleted without backups.");
+    console.log("The installer stops if it detects customer-owned extension metadata.");
   } else {
     installAntigravity(options).then(printResult).catch((error) => {
       console.error(`Antigravity installation failed: ${error.message}`);

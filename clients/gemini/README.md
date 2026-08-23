@@ -21,6 +21,7 @@ run `/extensions list` and `/skills list` to verify the extensions and bundled s
 Run `scripts/install-antigravity.mjs` once. This clean installer deletes prior BOS
 product entries without backups, locates this repository from its own file path,
 and creates one product symlink in `~/.gemini/config/plugins/` for each active product.
+It stops if customer-owned extension metadata exists.
 After each Git pull, restart Antigravity, open Settings > Customizations, and
 select Authenticate for the
 `education-center` MCP server. Complete BOS sign-in in the browser.
