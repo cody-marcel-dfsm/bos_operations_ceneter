@@ -28,7 +28,7 @@ The private Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Select
 **Connect** or **Sign in** when the host presents it, then complete BOS consent.
 
-Current desktop marketplace release: `0.4.38`. If `0.4.37` is installed,
+Current desktop marketplace release: `0.4.39`. If `0.4.38` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -80,15 +80,14 @@ and refreshes the resulting grant across sessions.
 ### Updates
 
 - **Independent Claude Git marketplace:** A release on the tracked Git ref makes
-  the new version discoverable. Repository installations publish each Claude
-  plugin as a direct `git-subdir` source on `main`, so Claude can resolve the
-  current plugin manifest when the account selects **Refresh marketplace** and
-  can enable the installed plugin's **Update** button. Installations created
-  before this direct-source contract must run
-  `claude plugin marketplace update bos-education-center` once to acquire the
-  new catalog entry; future releases use the in-app refresh and in-place update
-  flow. Claude Code accounts may instead enable marketplace auto-update. A
-  publisher-side build cannot force a refresh in another user's account.
+  the new version discoverable. In Claude Desktop, open **Customize → Plugins →
+  Browse → Code**, select `bos-education-center`, open **Marketplace options**,
+  and select **Check for updates**. The similarly named **Refresh marketplace**
+  control on the Anthropic tab refreshes `claude-plugins-official`; it does not
+  refresh this independently added Git marketplace. The equivalent Claude Code
+  command is `claude plugin marketplace update bos-education-center`. Claude
+  Code accounts may instead enable marketplace auto-update. A publisher-side
+  build cannot force a refresh in another user's account.
 - **Claude organization marketplace:** Maintainers publish each new Claude plugin version by merging a version-bump
   pull request into the connected repository's default branch. With **Sync
   automatically** enabled under Claude Organization Settings → Plugins, that
@@ -97,9 +96,9 @@ and refreshes the resulting grant across sessions.
 - **Official Anthropic marketplace:** Submit the new version through Claude's
   plugin submission form. Anthropic review and publication provide the central
   distribution path for unrelated personal accounts.
-- **Claude installed plugin:** Select **Refresh marketplace**, open the installed
-  plugin, and select **Update**. Claude replaces the installed cached version in
-  place; uninstalling and reinstalling the plugin is unnecessary.
+- **Claude installed plugin:** After the BOS marketplace update check completes,
+  open the installed plugin and select **Update**. Claude replaces the installed
+  cached version in place; uninstalling and reinstalling is unnecessary.
 - **Private ChatGPT/Codex Git marketplace:** Run
   `codex plugin marketplace upgrade bos-education-center`, update or reinstall
   the affected plugin, and start a new task. OpenAI tracks the resulting Git

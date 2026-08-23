@@ -49,8 +49,6 @@ const claudeMarketplace = {
   owner: { name: "Infinite State Machines LLC" },
   plugins: []
 };
-const claudePluginRepositoryUrl =
-  "https://github.com/cody-marcel-dfsm/bos_operations_ceneter.git";
 
 for (const { product, skills } of resolved) {
   if (product.clients.includes("codex")) {
@@ -428,12 +426,7 @@ await writeJson(join(root, ".claude-plugin", "marketplace.json"), {
   ...claudeMarketplace,
   plugins: claudeMarketplace.plugins.map((plugin) => ({
     ...plugin,
-    source: {
-      source: "git-subdir",
-      url: claudePluginRepositoryUrl,
-      path: `clients/claude/plugins/${plugin.name}`,
-      ref: "main"
-    }
+    source: `./clients/claude/plugins/${plugin.name}`
   }))
 });
 
