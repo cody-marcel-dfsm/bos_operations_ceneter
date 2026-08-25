@@ -1,126 +1,110 @@
-# BOS product platform staged work matrix
+# My CRM independent launch work matrix
 
-Status: reset after licensing design correction
-Date: 2026-08-16
-Owners: BOS Operations Center, Lead Director, Subscription Director
+Status: active planning baseline
+Date: 2026-08-25
+Owners: BOS Operations Center and Lead Director
 
-## Required sequence
+## Operating decision
 
-The efforts remain separate and proceed in this order:
+My CRM proceeds as an independent product effort under the same current access
+model as the existing BOS runtime products. The initial path has no product
+license, fee, Stripe, checkout, Subscription Director lookup, or entitlement
+dependency.
 
-1. Document and preserve the products and customer-access model that exist.
-2. Add explicit no-fee licensing to the existing server-backed product path.
-3. Apply the established product/license model to My CRM and decide My CRM's
-   separate product, pricing, and acquisition strategy.
-4. Design the local developer experience and later monetization experience as a
-   separate platform effort.
+The work is organized as parallel owning surfaces. Rows describe peer efforts
+and their direct contracts; they are not a hierarchy. Future licensing and the
+external developer marketplace remain separate projects and do not block My
+CRM.
 
-This document records the boundaries and current work. It does not define My
-CRM pricing or the external developer workflow.
+## Current user path
 
-## Stage 0 — verified current product model
+```text
+Install My CRM
+  -> host loads CRM skills
+  -> Connect / Sign in to BOS
+  -> BOS OAuth authenticates the user
+  -> Lead Director resolves or onboards an authorized CRM context
+  -> client discovers the context-permitted CRM tools
+  -> skills call /mcp/apps/leaddirector/crm
+  -> Lead Director uses enabled provider integrations
+```
 
-| Surface | BOS Operations Center | Lead Director | Subscription Director |
-|---|---|---|---|
-| BOS | Active skills-only package; no MCP resource | No BOS-package product route | No BOS license representation |
-| Education Center | Active package and generated Claude/Codex connection | Active `leaddirector/education-center` group with tool/provider allowlists; customer enablement comes from installed-app FSM, roles, and plugin grants | No Education Center product/license mapping |
-| Video Ads | Source manifest exists; release disabled and excluded from clients | Named group exists with no current tool/provider surface | No Video Ads product/license mapping |
-| Customer installation | Native marketplace installs package files and immutable connection metadata | Installation grants no organization access; OAuth resolves an existing server-side app/installation/role/group context | No participation today |
-| Product connection | Host starts product-specific OAuth | Resolves canonical context, records consent, issues resource-scoped grant, enforces group/tool/plugin scope | No participation today |
-| Provider connection | Client receives server-created recovery instructions | Owns provider grants and credential recovery | No participation |
-| Stripe | No payment implementation in product packages | Hosts Subscription Director implementation in the current codebase | Connected-account catalog, checkout, fees, webhooks, and subscriber state exist independently of BOS product access |
+No commercial service participates in this path.
 
-The controlling detail is in
-`Vault/docs/bos-product-licensing-user-experience.md`.
+## Work matrix
 
-## Stage 1 — existing Education Center no-fee license path
+| ID | Independent surface | Verified existing foundation | Work required for My CRM | Direct dependency | Owner |
+|---|---|---|---|---|---|
+| CRM-P01 | Product identity | Versioned product manifests and generated host packages exist | Add `products/my-crm/product.json`, product assets, descriptions, prompts, `application_name: leaddirector`, and `mcp_group_name: crm` | Approved product/route binding | BOS Operations Center |
+| CRM-P02 | Canonical skill source | `source/platform/`, `source/capabilities/`, and deterministic include composition exist | Add `source/capabilities/my-crm/` with routing and contact skills first; add pipeline, activity, and reconciliation skills as server capabilities become real | Public MCP schemas | BOS Operations Center |
+| CRM-P03 | Client generation | Claude, Codex, Copilot, and Gemini generators and validators exist | Declare launch clients, generate packages, validate parity, and publish through each selected marketplace path | Product manifest and skills | BOS Operations Center |
+| CRM-P04 | ChatGPT/Codex binding | Active runtime products support registered `.app.json` bindings | Register the CRM resource and record its stable `plugin_asdk_app_*` ID before activating Codex distribution | Exact `/leaddirector/crm` resource | BOS Operations Center + OpenAI configuration |
+| CRM-M01 | Named MCP group | `/mcp/apps/leaddirector/crm` and alias/isolation tests exist | Treat this as the My CRM server resource; add explicit annotations and the customer-facing semantic tool set | Lead Director runtime | Lead Director |
+| CRM-M02 | Current native CRM tools | Lead search/get/create exist; update is declared but disabled | Complete an approved editable-field update PO or omit update promises; keep provisioning retry outside normal My CRM skill workflows | PO/GO contracts | Lead Director |
+| CRM-M03 | Federated CRM tools | Federation service, persistence, executor, and adapter framework exist | Add source listing, normalized contact search/get/create/update, activity timeline, and reconciliation plan/apply operations to the `crm` group | Provider capability verification | Lead Director |
+| CRM-A01 | Canonical authorization | OAuth grant, opaque contexts, app membership, roles, plugin grants, and group filtering exist | Enable `crm` for the intended customer Lead Director installation templates and roles | App graph configuration | Lead Director |
+| CRM-A02 | Existing-user connection | Current OAuth resolves already provisioned organizations and contexts | Verify install -> Connect -> context -> discovery -> request continuation for each launch host | CRM group enabled | Lead Director + BOS Operations Center |
+| CRM-A03 | New-user onboarding | Governed organization/application provisioning work exists separately; current auth expects pre-provisioned organization state | Add `application_onboarding_required` continuation and a PO/GO flow to create or join an organization, install Lead Director, assign a role, enable `crm`, and resume OAuth | Product access policy; no licensing dependency | Lead Director |
+| CRM-I01 | Lead Director records | Native Lead Director federation adapter supports search/get/create | Define the customer-facing lead/contact projection and exact writable fields | CRM semantic schemas | Lead Director |
+| CRM-I02 | GoHighLevel | Scoped contact get/create/update primitives and adapter exist | Add and verify tenant-scoped contact search, then expose GHL through federated CRM operations | Provider authorization and adapter tests | Lead Director |
+| CRM-I03 | Gmail and Calendar | Provider plugins, recovery, and federated executor aliases exist | Add deterministic contact matching and a read-only CRM activity timeline; keep send/create behavior separately governed | Contact identity contract | Lead Director |
+| CRM-I04 | Calimatic | Read adapter and cached roster paths exist | Add optional read-only customer/student context only where the installed plugin and role permit it | Source matching and provenance rules | Lead Director |
+| CRM-I05 | Future CRM providers | OS plugin framework and provider binding model exist | Add Salesforce or another provider once as a server-side plugin/adapter with capability and conformance tests | Provider-specific API implementation | Lead Director/BOS service |
+| CRM-Q01 | Security and tenancy | Context, group, raw-authority rejection, and provider-scope tests exist | Add My CRM cross-org, cross-context, plugin-allowlist, role-ceiling, and provider-account mismatch contracts | Final tool surface | Lead Director |
+| CRM-Q02 | Mutation safety | Federation idempotency, plan, lock, audit, and source-version foundations exist | Verify search-before-create, stale-version handling, partial success, uncertain-result reconciliation, and bounded retries | Writable source coverage | Lead Director |
+| CRM-Q03 | Package safety | Deterministic builds, source parity checks, and credential scans exist | Add My CRM manifest/source/client coverage and marketplace metadata tests | Generated packages | BOS Operations Center |
+| CRM-Q04 | Live acceptance | Existing products use host-managed OAuth | Validate fresh install, first sign-in, reconnect, provider recovery, tool refresh, and resumed request in every launch client | Staging deployment and host registration | Cross-project |
 
-### Invariants
+## Commercial and developer workstreams
 
-- A no-fee license is a real, product-specific license with configured terms.
-- License provisioning and license lookup are separate operations.
-- Lookup is read-only and never creates, assigns, renews, or changes a license.
-- Missing license returns `license_missing` and denies access.
-- Product installation, BOS authorization, license authorization, and provider
-  authorization remain separate events.
-- Stripe does not participate in the existing no-fee path.
+These remain peers outside the My CRM launch dependency chain:
 
-### Work matrix
+| Workstream | Current relationship to My CRM |
+|---|---|
+| Product licensing | No calls, records, gates, or launch dependency. A future integration requires a separate architecture decision and migration plan. |
+| Subscription Director | No participation in initial My CRM authentication, onboarding, connection, discovery, or execution. |
+| Stripe | No My CRM product, price, checkout, webhook, or subscriber-state requirement. |
+| External developer packages | Future distribution and monetization design; My CRM may serve as a first-party reference package after its product contracts stabilize. |
+| Third-party server integrations | Future server-side plugin/adapter contribution model owned by the BOS service and Lead Director. |
 
-| ID | Surface | Existing | Work required | Owner |
-|---|---|---|---|---|
-| BASE-01 | Stable licensing product identity | `education-center` package and `leaddirector/education-center` resource exist | Choose one licensing product key and validate the package/resource/Subscription Director mapping | Cross-project contract |
-| BASE-02 | Licensed Product record | Absent | Add an Education Center product representation to Subscription Director independent of Stripe Product objects | Subscription Director |
-| BASE-03 | No-fee License Definition | Absent | Define terms/version, effective policy, duration, support/update rights, and exact subject type | Subscription Director/product owner |
-| BASE-04 | Provisioned License | Payment-oriented subscriber rows exist; no BOS product license | Add durable product-and-subject-bound licenses with status, provenance, terms state, and effective dates | Subscription Director GO |
-| BASE-05 | Provisioning workflow | Existing installed apps and resource-group enablement exist | Define an explicit authorized workflow that provisions no-fee licenses; keep it outside lookup | Subscription Director PO + owning onboarding/admin flow |
-| BASE-06 | Existing-customer migration | Existing Education Center OAuth contexts identify eligible customers | Inventory, provision, and reconcile licenses idempotently before enforcement | Cross-project migration |
-| BASE-07 | License lookup | Absent | Add server-authenticated, read-only exact lookup returning normalized decisions | Subscription Director API |
-| BASE-08 | OAuth license gate | OAuth resolves canonical context and issues grants | After context resolution, call lookup with product and server-resolved subject; issue grant only for `active` | Lead Director OAuth platform |
-| BASE-09 | Terms acceptance | Static application terms exist | Allow acceptance only for an already provisioned `terms_required` license and record actor/version evidence | Subscription Director PO/GO |
-| BASE-10 | Runtime enforcement | Resource/group/tool checks exist | Revalidate the same provisioned license at approved grant/runtime boundaries | Lead Director MCP platform |
-| BASE-11 | Failure/recovery | OAuth, scope, and provider errors are distinct | Add `license_missing`, `terms_required`, `not_effective`, `suspended`, and `configuration_error` outcomes | Lead Director + Subscription Director |
-| BASE-12 | Shadow rollout | Absent | Compare license decisions with successful existing OAuth contexts before fail-closed enforcement | Cross-project operations |
-| BASE-13 | Validation | OAuth, route, resource-group, tenant, and Stripe tests exist | Add lookup-purity, provisioning, migration, terms, missing-license, suspension, revocation, and isolation contracts | All owners |
+## Delivery increments
 
-### Exit gate
+### Package and connection beta
 
-Every expected Education Center customer has an explicitly provisioned and
-reconciled no-fee license before enforcement. OAuth lookup is mutation-free.
-Missing licenses fail closed. Existing provider and tenant boundaries remain
-unchanged.
+- Bind product `my-crm` to the existing `leaddirector/crm` route.
+- Ship routing and Lead Director contact/lead skills.
+- Support search, get, and create using the currently implemented native tools.
+- Complete marketplace installation, OAuth connection, context selection, and
+  provider-independent acceptance tests.
 
-## Stage 2 — My CRM product application
+### No-fee public onboarding
 
-Status: deferred until Stage 1 contracts and user experience are accepted.
+- Define whether a new login creates a new organization or joins an invited
+  organization.
+- Provision the Lead Director installation, CRM group, and initial role through
+  the governed onboarding PO/GO path.
+- Resume the interrupted OAuth connection after provisioning.
+- Confirm that every branch remains free of license and payment calls.
 
-My CRM will receive its own:
+### Federated CRM release
 
-- product identity and named MCP group;
-- skill grouping and client package;
-- service-capability composition;
-- License Definition and license-subject decision;
-- acquisition and pricing strategy; and
-- rollout and customer journey.
+- Expand the CRM group to provider-neutral contact and source operations.
+- Complete GoHighLevel search and the supported Lead Director update path.
+- Add activity evidence and reconciliation only after identity/provenance and
+  mutation contracts pass.
+- Publish capability coverage so skills never promise unavailable provider
+  behavior.
 
-The existing Education Center baseline supplies the established mechanics for
-product identity, pre-provisioned license lookup, terms, OAuth enforcement, and
-runtime validation. It does not decide whether or how My CRM licenses are
-provisioned or purchased.
+## Decisions required for implementation
 
-No My CRM pricing, Stripe binding, no-fee assumption, or acquisition workflow is
-approved in this matrix.
+1. Confirm product `my-crm` will bind to the existing MCP group `crm`.
+2. Confirm the initial launch clients: Claude and ChatGPT/Codex, or all four
+   currently generated client families.
+3. Define the new-login organization path: create a new organization, accept an
+   invitation, or offer both.
+4. Define the initial Lead Director role and capabilities provisioned for a new
+   My CRM organization.
+5. Define the minimum public release: native Lead Director beta or federated
+   Lead Director plus GoHighLevel.
 
-## Stage 3 — external developer experience
-
-Status: deferred until the existing product model and My CRM application are
-understood.
-
-Controlling requirements already captured:
-
-- A developer can install BOS and immediately write, run, and test a normal
-  client-side plugin from an independently owned local repository.
-- Local development requires no publisher registration, human approval, server
-  route creation, or invented capability identifiers.
-- No published external BOS SDK exists today.
-- Client skills can use only the tools actually exposed by their installed BOS
-  MCP connection; server-side authorization remains authoritative.
-- Public distribution, publisher identity, monetization, and third-party
-  server integrations are distinct later workflows.
-
-The developer workflow will be designed from the real local BOS/plugin behavior
-after Stages 1 and 2, rather than inferred from a hypothetical marketplace.
-
-## Open baseline decisions
-
-1. What canonical subject owns the current Education Center license?
-2. What explicit existing or new administrative/onboarding action provisions a
-   no-fee license after the migration?
-3. Which terms apply, and who may accept them for that subject?
-4. How is the skills-only BOS package treated when it has no MCP enforcement
-   boundary?
-5. When Video Ads is re-enabled, does it reuse the same subject and provisioning
-   pattern or define a different License Definition?
-
-These questions belong to the existing-product licensing baseline. My CRM and
-developer monetization begin after they are answered.
+None of these decisions requires a product-license or pricing decision.
