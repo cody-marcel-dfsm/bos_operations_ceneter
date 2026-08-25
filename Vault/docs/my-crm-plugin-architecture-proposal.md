@@ -28,6 +28,17 @@ The initial identities are:
 | Existing MCP route | `/mcp/apps/leaddirector/crm` |
 | Initial commercial policy | no fee; no license lookup or entitlement gate |
 
+### Approved product asset
+
+Use `products/my-crm/assets/lead-director-crm-logo.png` as the My CRM package
+logo and composer icon. It is the supplied square Lead Director CRM mark: deep
+navy field, electric-blue shield, white typography, and pipeline-to-target
+symbol. The source is a 1024×1024 RGB PNG.
+
+`My CRM` remains the marketplace display name. `Lead Director CRM` is the brand
+wording rendered inside the approved logo and accurately identifies the BOS
+application that owns the CRM runtime.
+
 Use the existing `crm` resource group. Lead Director already owns and tests
 this immutable route for CRM access. The product name and route-group name do
 not need to be identical: `products/my-crm/product.json` explicitly binds the
@@ -130,6 +141,7 @@ bos_operations_center/
 │   └── my-crm/
 │       ├── product.json
 │       └── assets/
+│           └── lead-director-crm-logo.png
 ├── clients/
 │   ├── codex/plugins/my-crm/       # generated
 │   ├── claude/plugins/my-crm/      # generated
