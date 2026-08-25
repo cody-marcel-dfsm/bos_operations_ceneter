@@ -7,6 +7,13 @@ for application context, MCP runtime, CRM operations, and provider integrations
 
 ## Decision
 
+My CRM is a provider-neutral CRM operating layer over customer and lead data in
+the systems connected to BOS. It gives the user one CRM vocabulary for records,
+pipelines, activities, and reconciliation while preserving the identity and
+transaction guarantees of every source. A request may target one source, query
+several sources independently, construct a merged view, or synchronize selected
+facts from an authoritative source into other selected systems.
+
 My CRM launches through the current BOS plugin access model. The initial
 product has no product-license, Subscription Director, Stripe, checkout,
 entitlement, fee, or payment-processing dependency.
@@ -55,7 +62,8 @@ adapters remain usable without that future subsystem.
 |---|---|---|
 | AI client | Installs the product, loads skills, presents Connect/Sign in, stores the OAuth grant, and invokes MCP tools | Claude, ChatGPT/Codex, and later supported hosts |
 | Product package | Declares My CRM identity, CRM skill composition, host metadata, and the `leaddirector/crm` connection | BOS Operations Center |
-| CRM skills | Interpret CRM intent and compose bounded server tools into contact, pipeline, activity, and reconciliation workflows | BOS Operations Center |
+| CRM skills | Interpret CRM intent, select per-source, federated, merged-view, or synchronize-from behavior, and compose bounded CRM operations | BOS Operations Center |
+| BOS federated-query skills | Plan source fan-out, enforce cache freshness, run per-source work in parallel where the host permits it, aggregate results, and expose execution evidence | BOS Operations Center |
 | MCP transport | Validates the host-managed token, exposes discovery, accepts opaque `context_id`, and dispatches calls | Lead Director/BOS service |
 | Named CRM group | Filters the aggregate registry to the approved CRM tools and plugin domains | Lead Director |
 | Installed application | Supplies organization, installation, actor, role, plugin, capability, and `crm` group enablement | Lead Director app graph |
@@ -66,6 +74,51 @@ adapters remain usable without that future subsystem.
 My CRM is therefore a client product over an application-owned MCP surface. It
 does not access OS integrations directly. Lead Director resolves the installed
 application and exposes the permitted integration capabilities.
+
+## Federated execution contract
+
+My CRM consumes the reusable BOS contract in
+[`../specs/federated-query-execution.md`](../specs/federated-query-execution.md).
+The CRM skills supply domain intent and CRM result interpretation. BOS platform
+skills supply discovery, cache policy, source fan-out, aggregation, recovery,
+execution evidence, and explain planning.
+
+The four CRM execution modes are:
+
+| Mode | Meaning |
+|---|---|
+| `per_source` | Return distinct results and status for every selected CRM source |
+| `federated` | Query selected sources and aggregate the result set while retaining source provenance |
+| `merged_view` | Correlate records into a composite view without silently changing source records |
+| `synchronize_from` | Treat a selected source as authoritative for specified fields and apply a governed mutation plan to explicit targets |
+
+The client retains a revisioned source catalog learned through MCP discovery and
+configuration. Each invocation validates that catalog according to its refresh
+policy instead of rediscovering every source unconditionally. Dataset caches
+carry an authority scope, query identity, last successful update time, and a
+configurable maximum age. Stale entries are refreshed before use and are
+excluded from results when the refresh fails unless the user explicitly permits
+stale fallback.
+
+For multi-source reads, the client creates one bounded execution unit per source
+and runs those units in parallel when the host supports agents or parallel tool
+calls. Each unit receives only the selected source handle, opaque BOS context,
+normalized query, cache policy, and output schema. Hosts without parallel
+execution run the same plan sequentially and preserve the same result envelope.
+
+Each source result is appended to a user-visible execution ledger as it arrives.
+The ledger shows plan creation, source start, cache decision, freshness, source
+success or failure, recovery, aggregation, and finalization. It provides
+observable execution evidence and excludes private model reasoning. The final
+answer includes per-source provenance, cache/live status, a local-time freshness
+label, partial failures, and usage telemetry whose scope is identified as
+host-measured, client-visible estimate, or unavailable.
+
+`explain <request>` returns the planned skills, source selection, cache
+decisions, normalized query parameters, aggregation strategy, mutation risk,
+and expected output without executing source calls. `explain analyze <request>`
+executes the plan and adds observed timings, cache outcomes, source outcomes,
+recovery, and usage.
 
 ## User experience
 
@@ -130,13 +183,16 @@ Generated host packages remain build outputs.
 ```text
 bos_operations_center/
 ├── source/
+│   ├── platform/
+│   │   ├── bos-federated-query/
+│   │   └── bos-cache-maintenance/
 │   └── capabilities/
 │       └── my-crm/
-│           ├── routing/
-│           ├── contact-operations/
+│           ├── my-crm/
+│           ├── record-operations/
 │           ├── pipeline-operations/
-│           ├── activity-context/
-│           └── reconciliation/
+│           ├── activity-operations/
+│           └── federation-operations/
 ├── products/
 │   └── my-crm/
 │       ├── product.json
@@ -204,9 +260,11 @@ There is no source dependency from My CRM to Subscription Director.
 
 ## Product capability design
 
-### Initial package beta
+### Implementation bootstrap
 
-Ship the client/package path against the existing CRM group with skills for:
+The current Lead Director-only tools validate the package, connection, context,
+and MCP call path. They are the implementation bootstrap for My CRM and do not
+define the product's provider-neutral semantics. The bootstrap skills support:
 
 - selecting and explaining the current Lead Director context;
 - searching leads;
@@ -236,6 +294,13 @@ provenance, coverage, supported operations, and partial-failure evidence. They
 coordinate only enabled plugins and healthy provider bindings inside the
 selected Lead Director context.
 
+Federated reads preserve successful source results when another source fails.
+Single-source commits inherit that provider's transactional guarantee.
+Cross-source mutations execute as a versioned plan and report every source as
+pending, committed, failed, uncertain, recovery scheduled, or reconciled. The
+system may compensate or retry toward eventual consistency and never represents
+the cross-source operation as atomic.
+
 The initial federated source order is:
 
 1. Lead Director native records for leads and pipeline state.
@@ -250,14 +315,35 @@ The initial federated source order is:
 
 | Skill | Responsibility |
 |---|---|
-| `my-crm-routing` | Classify CRM intent, select the My CRM connection and opaque context, and route to the focused skill |
-| `my-crm-contact-operations` | Search before create; inspect and update supported contact fields; preserve source provenance |
+| `my-crm` | Classify CRM intent, entity, source scope, and execution mode; select the My CRM connection and opaque context; delegate platform mechanics and focused CRM work |
+| `my-crm-record-operations` | Search, get, create, update, and safely delete supported CRM entities while preserving source provenance and provider guarantees |
 | `my-crm-pipeline-operations` | Inspect and change supported lead, opportunity, stage, owner, and next-action state |
-| `my-crm-activity-context` | Assemble authorized email, calendar, note, call, and document evidence into a timeline |
-| `my-crm-reconciliation` | Detect duplicates and conflicts, prepare a versioned plan, confirm governed writes, apply idempotently, and report every source result |
+| `my-crm-activity-operations` | Assemble authorized email, calendar, note, call, and document evidence into source-aware activity timelines |
+| `my-crm-federation-operations` | Compare, link, merge for presentation, select authoritative sources, plan synchronization, apply idempotently, and report every source result |
 
-The routing and contact skills ship first. Other skills may ship only when the
+My CRM includes the platform-owned `bos-federated-query` and
+`bos-cache-maintenance` skills and delegates shared execution machinery to them.
+The entry and record skills ship first. Other CRM skills may ship only when the
 corresponding server tools are discoverable and tested.
+
+## Outstanding design decisions
+
+The architectural direction is established. Implementation still needs these
+bounded product decisions:
+
+1. Define identity confidence and field-authority rules for `merged_view` and
+   `synchronize_from`, including which fields may never merge automatically.
+2. Define default freshness profiles by CRM dataset and source class. The
+   client selects the configured maximum age; live server invalidation,
+   authorization changes, and catalog revisions always force refresh.
+3. Define the portable execution-event schema and each launch host's adapter to
+   its progress or activity surface.
+4. Confirm which launch hosts expose exact model usage. Other hosts will return
+   a labeled client-visible estimate or `unavailable`.
+5. Define per-operation provider guarantees and compensation support in the
+   source catalog before enabling multi-source writes.
+6. Define durable recovery limits and the user-action-required threshold. The
+   server owns recovery state and retries; the client observes and reports them.
 
 ## Launch boundaries
 

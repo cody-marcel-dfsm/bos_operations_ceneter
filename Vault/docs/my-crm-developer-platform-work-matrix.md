@@ -36,12 +36,16 @@ No commercial service participates in this path.
 | ID | Independent surface | Verified existing foundation | Work required for My CRM | Direct dependency | Owner |
 |---|---|---|---|---|---|
 | CRM-P01 | Product identity | The approved 1024×1024 Lead Director CRM mark is stored at `products/my-crm/assets/lead-director-crm-logo.png`; versioned product manifests and generated host packages exist | Add `products/my-crm/product.json`, bind both logo fields to the approved asset, add descriptions and prompts, and declare `application_name: leaddirector` and `mcp_group_name: crm` | Approved product/route binding | BOS Operations Center |
-| CRM-P02 | Canonical skill source | `source/platform/`, `source/capabilities/`, and deterministic include composition exist | Add `source/capabilities/my-crm/` with routing and contact skills first; add pipeline, activity, and reconciliation skills as server capabilities become real | Public MCP schemas | BOS Operations Center |
+| CRM-P02 | Canonical CRM skill source | `source/platform/`, `source/capabilities/`, and deterministic include composition exist | Add provider-neutral `source/capabilities/my-crm/` entry, record, pipeline, activity, and federation skills; keep source orchestration in shared platform skills | Public MCP schemas and federated execution contract | BOS Operations Center |
 | CRM-P03 | Client generation | Claude, Codex, Copilot, and Gemini generators and validators exist | Declare launch clients, generate packages, validate parity, and publish through each selected marketplace path | Product manifest and skills | BOS Operations Center |
 | CRM-P04 | ChatGPT/Codex binding | Active runtime products support registered `.app.json` bindings | Register the CRM resource and record its stable `plugin_asdk_app_*` ID before activating Codex distribution | Exact `/leaddirector/crm` resource | BOS Operations Center + OpenAI configuration |
+| CRM-P05 | Federated-query platform skill | BOS MCP client already owns context, discovery, recovery, continuation, and shared cache helpers | Add `bos-federated-query` for explain planning, source selection, freshness enforcement, per-source execution, progressive aggregation, execution ledger, and usage reporting | Revisioned source catalog and normalized result envelope | BOS Operations Center |
+| CRM-P06 | Cache-maintenance platform skill | Authority-scoped content-addressed cache, incremental synchronization, leases, and atomic publication exist | Add configurable maximum-age policy, inspect/refresh/clear/compact operations, invocation-time freshness checks, and human-readable local freshness labels | Shared cache protocol | BOS Operations Center |
 | CRM-M01 | Named MCP group | `/mcp/apps/leaddirector/crm` and alias/isolation tests exist | Treat this as the My CRM server resource; add explicit annotations and the customer-facing semantic tool set | Lead Director runtime | Lead Director |
 | CRM-M02 | Current native CRM tools | Lead search/get/create exist; update is declared but disabled | Complete an approved editable-field update PO or omit update promises; keep provisioning retry outside normal My CRM skill workflows | PO/GO contracts | Lead Director |
 | CRM-M03 | Federated CRM tools | Federation service, persistence, executor, and adapter framework exist | Add source listing, normalized contact search/get/create/update, activity timeline, and reconciliation plan/apply operations to the `crm` group | Provider capability verification | Lead Director |
+| CRM-M04 | Partial federated reads | Provider adapters and normalized records exist | Return a per-source result envelope that preserves successful results, identifies failures and coverage, and supports client-side progressive aggregation | Federated query contract | Lead Director |
+| CRM-M05 | Cross-source consistency | Versioned plans, locking, idempotency, audit, and per-target success/failure capture exist | Persist per-source pending, committed, failed, uncertain, recovery-scheduled, and reconciled states; add bounded retry, compensation where supported, and reconciliation status | Durable GO recovery ledger | Lead Director |
 | CRM-A01 | Canonical authorization | OAuth grant, opaque contexts, app membership, roles, plugin grants, and group filtering exist | Enable `crm` for the intended customer Lead Director installation templates and roles | App graph configuration | Lead Director |
 | CRM-A02 | Existing-user connection | Current OAuth resolves already provisioned organizations and contexts | Verify install -> Connect -> context -> discovery -> request continuation for each launch host | CRM group enabled | Lead Director + BOS Operations Center |
 | CRM-A03 | New-user onboarding | Governed organization/application provisioning work exists separately; current auth expects pre-provisioned organization state | Add `application_onboarding_required` continuation and a PO/GO flow to create or join an organization, install Lead Director, assign a role, enable `crm`, and resume OAuth | Product access policy; no licensing dependency | Lead Director |
@@ -54,6 +58,8 @@ No commercial service participates in this path.
 | CRM-Q02 | Mutation safety | Federation idempotency, plan, lock, audit, and source-version foundations exist | Verify search-before-create, stale-version handling, partial success, uncertain-result reconciliation, and bounded retries | Writable source coverage | Lead Director |
 | CRM-Q03 | Package safety | Deterministic builds, source parity checks, and credential scans exist | Add My CRM manifest/source/client coverage and marketplace metadata tests | Generated packages | BOS Operations Center |
 | CRM-Q04 | Live acceptance | Existing products use host-managed OAuth | Validate fresh install, first sign-in, reconnect, provider recovery, tool refresh, and resumed request in every launch client | Staging deployment and host registration | Cross-project |
+| CRM-Q05 | Explain and usage evidence | Tool discovery and operation schemas expose enough information to form a static plan | Validate `explain` and `explain analyze` output, normalized parameters, selected skills/sources, cache decisions, timing, and explicitly scoped token usage | Platform execution skill and host telemetry | BOS Operations Center + Lead Director |
+| CRM-Q06 | Progressive result behavior | MCP transport supports catalog subscription events; current tool calls complete as one response | Validate client-side per-source fan-out and ordered execution-ledger events now; add server-side tool progress only through a later portable transport contract | Host parallelism with sequential fallback | Cross-project |
 
 ## Commercial and developer workstreams
 
@@ -69,10 +75,11 @@ These remain peers outside the My CRM launch dependency chain:
 
 ## Delivery increments
 
-### Package and connection beta
+### Package and connection bootstrap
 
 - Bind product `my-crm` to the existing `leaddirector/crm` route.
-- Ship routing and Lead Director contact/lead skills.
+- Ship the provider-neutral entry and record skills with Lead Director as the
+  first connected source.
 - Support search, get, and create using the currently implemented native tools.
 - Complete marketplace installation, OAuth connection, context selection, and
   provider-independent acceptance tests.
@@ -88,7 +95,10 @@ These remain peers outside the My CRM launch dependency chain:
 
 ### Federated CRM release
 
-- Expand the CRM group to provider-neutral contact and source operations.
+- Expand the CRM group to provider-neutral record and source operations with
+  per-source, federated, merged-view, and synchronize-from modes.
+- Add freshness-aware cache use, per-source parallel execution, progressive
+  execution evidence, explain planning, and scoped usage reporting.
 - Complete GoHighLevel search and the supported Lead Director update path.
 - Add activity evidence and reconciliation only after identity/provenance and
   mutation contracts pass.
