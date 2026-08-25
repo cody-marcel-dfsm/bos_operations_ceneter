@@ -1,6 +1,6 @@
 # My CRM independent launch work matrix
 
-Status: active planning baseline
+Status: implementation complete; external host registration and live acceptance pending
 Date: 2026-08-25
 Owners: BOS Operations Center and Lead Director
 
@@ -15,6 +15,36 @@ The work is organized as parallel owning surfaces. Rows describe peer efforts
 and their direct contracts; they are not a hierarchy. Future licensing and the
 external developer marketplace remain separate projects and do not block My
 CRM.
+
+## Implementation snapshot
+
+The repository implementation now contains the My CRM product manifest, approved
+brand asset, provider-neutral skill group, shared federated-query helper,
+freshness-aware cache protocol, explain planning, execution-event ledger, and
+explicitly scoped usage reporting. Lead Director now owns the corresponding
+source catalog, provider-neutral record CRU operations, per-source query
+overrides, federated search, plan/apply synchronization, durable per-source
+operation state, and reconciliation.
+
+The public CRM tools are:
+
+- `crm_list_sources`, `crm_search_records`, and `crm_explain_query`;
+- `crm_get_record`, `crm_create_record`, and `crm_update_record`;
+- `crm_plan_sync`, `crm_apply_sync`, `crm_get_operation_status`, and
+  `crm_reconcile_operation`.
+
+GoHighLevel contact search now uses the canonical tenant-bound platform provider.
+Lead Director, Gmail, Calendar, GoHighLevel, and Calimatic source operations are
+composed only after their own current plugin, role, grant, provider-health, and
+source-operation authorization succeeds. Client-side stale cache results are
+withheld until refresh unless an explicit stale-on-refresh-error policy permits
+the fallback.
+
+The My CRM product remains release-disabled until the exact ChatGPT plugin is
+created through the OpenAI Platform and its assigned `plugin_asdk_app_*` ID is
+recorded. That identifier is external configuration rather than application
+code. Marketplace submission and production deployment remain separate release
+actions.
 
 ## Current user path
 

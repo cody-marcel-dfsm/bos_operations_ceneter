@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   aggregateQueryResult,
+  buildSourceCacheDescriptor,
   buildQueryPlan,
   executionEvent,
   explainQueryPlan,
@@ -73,6 +74,34 @@ test("source results include local freshness and scoped usage", () => {
   assert.equal(value.usage.total_tokens, 15);
 });
 
+test("source cache keys are deterministic and stale cache is withheld", () => {
+  const plan = buildQueryPlan({
+    ...input,
+    sources: [
+      input.sources[0],
+      { ...input.sources[1], query: { phone: "3035550100" } }
+    ]
+  });
+  const descriptor = buildSourceCacheDescriptor(
+    plan,
+    "opaque-source-two"
+  );
+  assert.equal(descriptor.cache_key.startsWith("bos_query_"), true);
+  assert.equal(descriptor.query_digest.length, 64);
+  assert.deepEqual(plan.sources[1].query, { phone: "3035550100" });
+
+  const stale = normalizeSourceResult({
+    source_handle: "opaque-source-two",
+    source_label: "GoHighLevel",
+    origin: "cache",
+    last_updated_at: "2026-08-25T20:00:00.000Z",
+    max_age_seconds: 60,
+    records: [{ record_ref: "bos:person:stale" }]
+  }, { now: "2026-08-25T20:05:00.000Z" });
+  assert.equal(stale.status, "refresh_required");
+  assert.deepEqual(stale.records, []);
+});
+
 test("aggregation preserves completed sources and reports partial completion", () => {
   const plan = buildQueryPlan(input);
   const ledger = [executionEvent({
@@ -94,6 +123,40 @@ test("aggregation preserves completed sources and reports partial completion", (
   assert.equal(result.record_count, 1);
   assert.equal(result.failed_source_count, 1);
   assert.equal(result.execution_ledger[0].event_type, "plan_created");
+});
+
+test("aggregation totals complete source usage with an explicit scope", () => {
+  const result = aggregateQueryResult({
+    plan: buildQueryPlan(input),
+    source_results: [
+      {
+        status: "completed",
+        records: [],
+        usage: {
+          scope: "host_measured",
+          input_tokens: 10,
+          output_tokens: 2,
+          total_tokens: 12
+        }
+      },
+      {
+        status: "completed",
+        records: [],
+        usage: {
+          scope: "host_measured",
+          input_tokens: 20,
+          output_tokens: 3,
+          total_tokens: 23
+        }
+      }
+    ]
+  });
+  assert.deepEqual(result.usage, {
+    scope: "host_measured",
+    input_tokens: 30,
+    output_tokens: 5,
+    total_tokens: 35
+  });
 });
 
 test("plans and usage fail closed on malformed policy", () => {

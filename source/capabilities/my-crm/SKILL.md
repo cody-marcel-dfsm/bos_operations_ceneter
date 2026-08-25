@@ -24,10 +24,33 @@ freshness.
 4. Delegate CRM semantics to the focused skill and source mechanics to
    `bos-federated-query`.
 
+## Use the public CRM operations
+
+- Discover with `crm_list_sources`.
+- Search with `crm_search_records`; use `source_handles` to constrain one
+  execution unit and `source_queries` when providers need different normalized
+  filters.
+- Read one exact record with `crm_get_record`.
+- Create or update one source with `crm_create_record` or `crm_update_record`.
+- Plan and apply multi-source changes with `crm_plan_sync` and
+  `crm_apply_sync`.
+- Observe recovery with `crm_get_operation_status` and advance uncertain work
+  with `crm_reconcile_operation`.
+
+Read [tool workflows](references/tool-workflows.md) before a federated query or
+mutation.
+
 Treat `explain <request>` as a plan-only request. Return selected skills,
 sources, sanitized parameter shapes, cache decisions, parallel groups,
 aggregation, mutation boundaries, and expected output. Execute no source data
 call or mutation. `explain analyze` executes and attaches observed evidence.
+
+For a normal multi-source query, create one execution-ledger `source_started`
+event per selected handle, then issue one bounded `crm_search_records` call per
+handle. Run those calls in parallel sub-agents when the host supports them.
+Append `source_completed` or `source_failed` as each result returns so the
+visible activity surface receives progressive per-source data. A sequential
+host follows the same event and result contract.
 
 Present source identity, cache/live status, local freshness, partial failures,
 and scoped token usage in the final result. Missing source data remains an

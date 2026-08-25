@@ -81,6 +81,7 @@ export function buildQueryPlan(input) {
         max_age_seconds: maxAge,
         allow_stale_on_error: source.allow_stale_on_error === true
       },
+      query: object(source.query ?? input.query ?? {}, `sources[${index}].query`),
       execution: source.execution === "sequential" ? "sequential" : "parallel"
     };
   });
@@ -113,6 +114,7 @@ export function explainQueryPlan(plan) {
     sources: plan.sources.map((source) => ({
       source_handle_digest: hash(source.source_handle).slice(0, 16),
       source_label: source.source_label,
+      query_shape: jsonShape(source.query),
       cache_policy: source.cache_policy,
       execution: source.execution
     })),
@@ -151,13 +153,19 @@ export function normalizeSourceResult(input, options = {}) {
     throw new Error("max_age_seconds must be a non-negative integer");
   }
   const timeZone = options.timeZone;
+  const stale = ageSeconds > maxAge;
+  const staleFallbackAllowed = input.allow_stale_on_error === true &&
+    input.refresh_error === true;
+  const cacheUsable = origin !== "cache" || !stale || staleFallbackAllowed;
   return {
     source_handle: text(input.source_handle, "source_handle"),
     source_label: text(input.source_label, "source_label"),
-    status: text(input.status ?? "completed", "status"),
+    status: cacheUsable
+      ? text(input.status ?? "completed", "status")
+      : "refresh_required",
     origin,
     freshness: {
-      status: ageSeconds > maxAge ? "stale" : "fresh",
+      status: stale ? "stale" : "fresh",
       last_updated_at: updated.toISOString(),
       local_label: new Intl.DateTimeFormat(undefined, {
         dateStyle: "medium",
@@ -172,13 +180,53 @@ export function normalizeSourceResult(input, options = {}) {
           : `${Math.floor(ageSeconds / 3600)} hours ago`,
       max_age_seconds: maxAge
     },
+    stale_fallback_used: origin === "cache" && staleFallbackAllowed,
     coverage: object(input.coverage ?? { complete: true }, "coverage"),
-    records: Array.isArray(input.records) ? input.records : [],
+    records: cacheUsable && Array.isArray(input.records) ? input.records : [],
     error: input.error ?? null,
     elapsed_ms: Number.isInteger(input.elapsed_ms) && input.elapsed_ms >= 0
       ? input.elapsed_ms
       : null,
     usage: usage(input.usage)
+  };
+}
+
+export function buildSourceCacheDescriptor(plan, sourceHandle) {
+  object(plan, "plan");
+  const selected = plan.sources.find((source) => source.source_handle === sourceHandle);
+  if (!selected) throw new Error("source_handle is not present in the plan");
+  const material = {
+    product: text(plan.product, "plan.product"),
+    mcp_group: text(plan.mcp_group, "plan.mcp_group"),
+    dataset: text(plan.dataset, "plan.dataset"),
+    source_handle: text(selected.source_handle, "source.source_handle"),
+    query: object(selected.query, "source.query")
+  };
+  return {
+    cache_key: `bos_query_${hash(material).slice(0, 40)}`,
+    source_handle: selected.source_handle,
+    dataset: plan.dataset,
+    query_digest: hash(selected.query),
+    freshness_policy: selected.cache_policy
+  };
+}
+
+function aggregateUsage(sourceResults) {
+  if (sourceResults.length === 0) return { scope: "unavailable" };
+  const values = sourceResults.map((item) => usage(item.usage));
+  if (values.some((item) => item.scope === "unavailable" ||
+      !Number.isInteger(item.input_tokens) || !Number.isInteger(item.output_tokens))) {
+    return { scope: "unavailable" };
+  }
+  const inputTokens = values.reduce((total, item) => total + item.input_tokens, 0);
+  const outputTokens = values.reduce((total, item) => total + item.output_tokens, 0);
+  return {
+    scope: values.every((item) => item.scope === "host_measured")
+      ? "host_measured"
+      : "client_visible_estimate",
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+    total_tokens: inputTokens + outputTokens
   };
 }
 
@@ -204,7 +252,7 @@ export function aggregateQueryResult(input) {
     execution_ledger: Array.isArray(input.execution_ledger)
       ? input.execution_ledger
       : [],
-    usage: usage(input.usage)
+    usage: usage(input.usage ?? aggregateUsage(sourceResults))
   };
 }
 
@@ -218,8 +266,12 @@ async function runCli() {
   else if (operation === "explain") result = explainQueryPlan(buildQueryPlan(input));
   else if (operation === "event") result = executionEvent(input.event);
   else if (operation === "source_result") result = normalizeSourceResult(input.result, input.options);
+  else if (operation === "cache_key") {
+    const plan = buildQueryPlan(input);
+    result = buildSourceCacheDescriptor(plan, input.source_handle);
+  }
   else if (operation === "aggregate") result = aggregateQueryResult(input);
-  else throw new Error("operation must be plan, explain, event, source_result, or aggregate");
+  else throw new Error("operation must be plan, explain, event, source_result, cache_key, or aggregate");
   process.stdout.write(`${JSON.stringify(result)}\n`);
 }
 
