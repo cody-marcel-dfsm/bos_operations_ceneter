@@ -15,21 +15,33 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { promisify } from "node:util";
 import test from "node:test";
 
-const execFileAsync = promisify(execFile);
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const script = join(repositoryRoot, "scripts", "install-antigravity.sh");
+const script = join(repositoryRoot, "scripts", "clean-install-antigravity.sh");
+const confirmationPhrase = "DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS";
 
-async function runInstaller({ cwd, home }) {
-  return execFileAsync("/bin/sh", [script], {
-    cwd,
-    env: {
-      ...process.env,
-      HOME: home
-    }
+function runScript(scriptPath, { cwd, home, confirmation = confirmationPhrase }) {
+  return new Promise((resolvePromise, rejectPromise) => {
+    const child = execFile("/bin/sh", [scriptPath], {
+      cwd,
+      env: { ...process.env, HOME: home }
+    }, (error, stdout, stderr) => {
+      if (error) {
+        error.message = `${error.message}\n${stderr}`;
+        error.stdout = stdout;
+        error.stderr = stderr;
+        rejectPromise(error);
+        return;
+      }
+      resolvePromise({ stdout, stderr });
+    });
+    child.stdin.end(`${confirmation}\n`);
   });
+}
+
+async function runInstaller(options) {
+  return runScript(script, options);
 }
 
 test("Antigravity shell installer resolves the repository independently of cwd", async (context) => {
@@ -51,8 +63,36 @@ test("Antigravity shell installer resolves the repository independently of cwd",
       await realpath(join(repositoryRoot, "clients", "gemini", "extensions", name))
     );
   }
-  assert.match(stdout, /Clean install: removing prior BOS plugins without backups/);
+  assert.match(stdout, /WARNING: DESTRUCTIVE CLEAN INSTALL/);
+  assert.match(stdout, /All local customizations.*will be lost/);
+  assert.match(stdout, new RegExp(confirmationPhrase));
+  assert.match(stdout, /Confirmation accepted.*without backups/);
   assert.match(stdout, /Restart Antigravity after each Git pull/);
+});
+
+test("Antigravity clean installer requires exact destructive confirmation", async (context) => {
+  const sandbox = await mkdtemp(join(tmpdir(), "bos-antigravity-confirmation-"));
+  context.after(() => rm(sandbox, { recursive: true, force: true }));
+  const home = join(sandbox, "home");
+  const priorPlugin = join(home, ".gemini", "config", "plugins", "bos");
+  await mkdir(priorPlugin, { recursive: true });
+  await writeFile(join(priorPlugin, ".bos-product.json"), "{}\n");
+  await writeFile(join(priorPlugin, "customization.txt"), "preserve\n");
+
+  let refusal;
+  try {
+    await runInstaller({ cwd: sandbox, home, confirmation: "NO" });
+  } catch (error) {
+    refusal = error;
+  }
+
+  assert(refusal);
+  assert.match(refusal.stdout, /WARNING: DESTRUCTIVE CLEAN INSTALL/);
+  assert.match(refusal.stderr, /aborted.*No plugins or customizations were changed/i);
+  assert.equal(
+    await readFile(join(priorPlugin, "customization.txt"), "utf8"),
+    "preserve\n"
+  );
 });
 
 test("Antigravity shell installer removes prior BOS entries and preserves unrelated plugins", async (context) => {
@@ -104,7 +144,7 @@ test("Antigravity preflight preserves existing plugins when any active source is
   const priorPlugin = join(home, ".gemini", "config", "plugins", "bos");
 
   await mkdir(scriptsRoot, { recursive: true });
-  await copyFile(script, join(scriptsRoot, "install-antigravity.sh"));
+  await copyFile(script, join(scriptsRoot, "clean-install-antigravity.sh"));
   await copyFile(
     join(repositoryRoot, "scripts", "preflight-antigravity.mjs"),
     join(scriptsRoot, "preflight-antigravity.mjs")
@@ -191,10 +231,7 @@ test("Antigravity preflight preserves existing plugins when any active source is
   await writeFile(join(priorPlugin, "preserve.txt"), "preserved\n");
 
   await assert.rejects(
-    execFileAsync("/bin/sh", [join(scriptsRoot, "install-antigravity.sh")], {
-      cwd: sandbox,
-      env: { ...process.env, HOME: home }
-    }),
+    runScript(join(scriptsRoot, "clean-install-antigravity.sh"), { cwd: sandbox, home }),
     /source preflight failed/
   );
   assert.equal(await readFile(join(priorPlugin, "preserve.txt"), "utf8"), "preserved\n");
@@ -209,7 +246,7 @@ test("Antigravity preflight preserves existing plugins when disabled inventory i
   const priorPlugin = join(home, ".gemini", "config", "plugins", "bos");
 
   await mkdir(scriptsRoot, { recursive: true });
-  await copyFile(script, join(scriptsRoot, "install-antigravity.sh"));
+  await copyFile(script, join(scriptsRoot, "clean-install-antigravity.sh"));
   await copyFile(
     join(repositoryRoot, "scripts", "preflight-antigravity.mjs"),
     join(scriptsRoot, "preflight-antigravity.mjs")
@@ -313,10 +350,7 @@ test("Antigravity preflight preserves existing plugins when disabled inventory i
   await writeFile(join(priorPlugin, "preserve.txt"), "preserved\n");
 
   await assert.rejects(
-    execFileAsync("/bin/sh", [join(scriptsRoot, "install-antigravity.sh")], {
-      cwd: sandbox,
-      env: { ...process.env, HOME: home }
-    }),
+    runScript(join(scriptsRoot, "clean-install-antigravity.sh"), { cwd: sandbox, home }),
     /source preflight failed/
   );
   assert.equal(await readFile(join(priorPlugin, "preserve.txt"), "utf8"), "preserved\n");

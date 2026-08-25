@@ -28,7 +28,7 @@ The private Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Select
 **Connect** or **Sign in** when the host presents it, then complete BOS consent.
 
-Current desktop marketplace release: `0.4.46`. If `0.4.45` is installed,
+Current desktop marketplace release: `0.4.47`. If `0.4.46` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -289,11 +289,13 @@ Give Hardik this instruction:
 > `clients/gemini/extensions/bos` and
 > `clients/gemini/extensions/education-center`, restart Gemini CLI, run
 > `/mcp auth education-center`, and complete BOS sign-in. For Antigravity 2.0
-> Desktop, run `./scripts/install-antigravity.sh` once from the synced repository.
+> Desktop, run `./scripts/clean-install-antigravity.sh` once from the synced repository.
 > This is an intentionally destructive clean install: it deletes prior BOS product
 > folders and symlinks from `~/.gemini/config/plugins/`, including local
-> customizations, without backups. It then creates one symlink for every generated
-> Gemini product and locates the repository from its own file path.
+> customizations, without backups. The installer shows this warning and requires
+> you to type `DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS` before it changes any
+> files. It then creates one symlink for every generated Gemini product and
+> locates the repository from its own file path.
 > After each Git pull,
 > restart Antigravity, open Settings >
 > Customizations, select Authenticate for `education-center`, complete BOS

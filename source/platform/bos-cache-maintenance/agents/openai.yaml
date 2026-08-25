@@ -1,0 +1,4 @@
+interface:
+  display_name: "BOS Cache Maintenance"
+  short_description: "Keep authorized BOS query caches fresh"
+  default_prompt: "Use $bos-cache-maintenance to inspect or refresh the relevant BOS query cache."

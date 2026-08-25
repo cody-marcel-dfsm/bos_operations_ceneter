@@ -72,8 +72,8 @@ const codexAppId = "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91";
 async function fakeCodex(_command, args) {
   if (args[0] === "mcp" && args[1] === "get") {
     const group = args[2];
-    if (group === "video-ads") return {
-      stderr: "Error: No MCP server named 'video-ads' found."
+    if (["crm", "video-ads"].includes(group)) return {
+      stderr: `Error: No MCP server named '${group}' found.`
     };
     const url = `https://dfsm.ai/mcp/apps/leaddirector/${group}`;
     return {
