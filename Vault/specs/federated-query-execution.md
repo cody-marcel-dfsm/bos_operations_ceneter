@@ -2,17 +2,17 @@
 
 ## Status and ownership
 
-- **Status:** proposed BOS platform contract
+- **Status:** implemented client execution contract
 - **Owner:** BOS Operations Center platform skills and packaged client runtime
-- **Server owner:** each BOS application that exposes federated query and
-  mutation tools
+- **Server dependency:** existing operations exposed by each BOS application;
+  this contract adds no service, schema, capability, grant, or persistence
 - **First consumer:** My CRM over the Lead Director `crm` MCP group
 
 ## Purpose
 
 Define a reusable client execution model for queries and mutations that span
-multiple BOS-connected sources. The contract covers source discovery, cached
-source catalogs, configurable dataset freshness, per-source parallel work,
+multiple BOS-connected sources. The contract covers MCP tool discovery, cached
+client source maps, configurable dataset freshness, per-source parallel work,
 progressive source results, final aggregation, explain plans, usage reporting,
 and recovery from partial cross-source mutations.
 
@@ -23,15 +23,16 @@ education, reporting, marketing, and future federated products.
 
 ## Core invariants
 
-1. Each source operation receives only the selected opaque BOS context, one
-   server-discovered source handle, the minimum normalized query, and its
-   bounded output contract.
+1. Each source operation receives only the selected opaque BOS context, the
+   schema-valid arguments for one live-discovered MCP tool, and its bounded
+   output contract.
 2. A source mutation commits with exactly the transactional and atomicity
    guarantees of that source's verified provider or application operation.
 3. A cross-source mutation is a set of independent source commits. It is never
    represented as a distributed atomic transaction.
-4. Cross-source completion is durable, idempotent, observable per source, and
-   recoverable toward eventual consistency.
+4. Cross-source completion is observable per source in the client task. The
+   client uses existing receipts, versions, idempotency, status, and read-back
+   operations when available to recover toward eventual consistency.
 5. Cached data is authority-scoped. Every cache read first proves current BOS
    context and source-account authorization.
 6. A dataset whose last complete synchronization exceeds its configured
@@ -49,34 +50,36 @@ education, reporting, marketing, and future federated products.
     They never change query meaning, source scope, final result schema, or
     mutation guarantees.
 
-## Source catalog
+## Client source map
 
-The application MCP group exposes a source catalog containing:
+The client derives a source map from the active MCP `tools/list` result, each
+tool's input/output schema, and package-owned semantic routing. The map may
+contain:
 
-- stable opaque source handle and display name;
+- a client-generated source/tool digest and display name;
 - source type and provider family;
 - supported entity and dataset types;
 - supported read, create, update, delete, pipeline, activity, link, merge, and
   synchronization operations;
 - query filters, pagination, versions, cursors, and snapshot behavior;
-- current connection and authorization state;
-- declared transactional and atomicity guarantees by operation;
+- operation availability in the selected context;
+- declared transactional and atomicity guarantees when the tool returns them;
 - whether the source can act as an authoritative input or synchronization
   target; and
-- catalog revision, observed time, and invalidation metadata.
+- manifest fingerprint and observation time.
 
-The client may cache this sanitized catalog. It refreshes the catalog after MCP
-connection, tool-manifest, plugin, capability, provider-binding, or server
-revision changes and after the configured catalog maximum age expires. A normal
-query reuses a current catalog and avoids an unconditional discovery call.
+The client may cache this sanitized map. It refreshes after MCP connection,
+tool-manifest, plugin, capability, or role changes and after the configured
+maximum age expires. A normal query may reuse a current map.
 
-The catalog grants no authority. Every source call remains subject to live
-server authorization.
+The map grants no authority. Every source call remains subject to live server
+authorization. An absent tool remains unavailable; the client never registers
+it, grants it, or creates server state to make it appear.
 
 The effective cache-reuse decision combines the client-configured maximum age
-with server invalidation evidence. A context, authorization, provider binding,
-catalog, or source revision change forces refresh even when the client age
-window has not expired.
+with manifest/context invalidation evidence. A context, authorization, role,
+plugin, or manifest change forces refresh even when the client age window has
+not expired.
 
 ## Query plan
 
@@ -96,7 +99,8 @@ The domain skill compiles the user's request into a sanitized plan:
   },
   "sources": [
     {
-      "source_handle": "opaque server-discovered handle",
+      "source_id": "client source/tool digest",
+      "tool": "exact_discovered_tool_name",
       "cache_policy": {"max_age_seconds": 300},
       "execution": "parallel"
     }
@@ -267,8 +271,9 @@ A normalized source result has this minimum shape:
 
 ```json
 {
-  "source_handle": "opaque server-discovered handle",
+  "source_handle": "client source/tool digest",
   "source_label": "GoHighLevel",
+  "tool": "exact_discovered_tool_name",
   "status": "completed",
   "origin": "cache",
   "freshness": {
@@ -314,33 +319,26 @@ at the provider's verified guarantee level, such as:
 
 ### Multiple sources
 
-The server stores one durable federated operation with one child operation per
-source. Each child records:
+The client compiles an explicit task-local plan with one independently
+authorized existing tool call per source. The plan records the exact discovered
+tool, sanitized target, expected version when supported, idempotency argument
+when supported, source guarantee, dependencies, and confirmation state.
 
-- source handle and target record reference;
-- intended operation and expected version;
-- idempotency key;
-- state: pending, committed, failed, uncertain, recovery scheduled, or
-  reconciled;
-- attempt count and sanitized error category;
-- provider correlation or commit receipt when available; and
-- last reconciliation time.
+Execution may commit some sources before another fails. The task ledger reports
+every committed, failed, unavailable, and uncertain source with returned
+receipts and sanitized errors. The client never claims rollback of committed
+sources unless a verified compensating operation completed.
 
-The apply operation may commit some sources before another fails. The result
-reports every committed, failed, unavailable, and uncertain source. The client
-never claims rollback of committed sources unless a verified compensating
-operation completed.
-
-Recovery rechecks uncertain results, retries retry-safe failures with the same
-idempotency identities, refreshes affected cache entries, and continues until
-the operation reaches complete, stable partial, or user-action-required state.
-The server owns the durable recovery state and scheduled retries. The client
-may request a retry or reconciliation, observes the durable status, and reports
-each recovery attempt and final consistency state.
+Recovery re-reads uncertain targets and uses existing status, version, receipt,
+or idempotency operations when the discovered source contract supplies them.
+It retries only when that contract proves the replay safe. The client continues
+until complete, stable partial, or user-action-required and refreshes affected
+local caches. My CRM adds no server recovery record, scheduler, table, or
+migration.
 
 ## Platform skills
 
-Add two reusable skills under `source/platform/`:
+Two reusable skills under `source/platform/` implement this client contract:
 
 ### `bos-federated-query`
 
@@ -350,7 +348,7 @@ reporting, and explain/explain-analyze behavior.
 
 ### `bos-cache-maintenance`
 
-Own source-catalog refresh, query-cache inspection, stale-query refresh,
+Own source-map refresh, query-cache inspection, stale-query refresh,
 explicit invalidation, authority revocation cleanup, unreferenced-object
 garbage collection, and cache health reporting. On every domain invocation it
 runs a bounded preflight for only the catalog and datasets relevant to that
@@ -360,20 +358,22 @@ Domain products include these skills when they perform federated or expensive
 multi-source reads. Domain skills supply semantics and source policies; the
 platform skills supply execution mechanics.
 
-## Required additions to the current platform
+## Implementation boundary
 
-1. Add maximum-age freshness policy and stale states to the shared cache helper.
-2. Add cache maintenance operations and tests.
-3. Add a revisioned, cacheable MCP source-catalog contract.
-4. Add a portable query-plan and explain-result schema.
-5. Add source-scoped query tools that return terminal per-source results.
-6. Change federated search aggregation to retain other source results when one
-   source fails.
-7. Add durable per-source federated mutation states and recovery orchestration.
-8. Add client execution-ledger and usage envelopes.
-9. Validate bounded parallel execution and sequential fallback.
-10. Add progressive host rendering where supported; retain final-ledger parity
-    everywhere.
+The BOS platform already provides authentication context, live tool discovery,
+resource-group filtering, provider authorization recovery, deterministic
+operations, and the underlying source guarantees. This package adds only:
+
+1. maximum-age freshness policy and cache maintenance in the shared local cache;
+2. a cacheable client source map derived from `tools/list`;
+3. portable query-plan, result, execution-ledger, and usage envelopes;
+4. bounded per-source parallel execution with sequential fallback;
+5. client-side partial-result aggregation and progressive host rendering; and
+6. CRM domain skills that translate intent into discovered tool calls.
+
+It requires no Lead Director database migration, repository, model, seed,
+capability publication, source-catalog endpoint, generic CRM façade tool, or
+federated recovery service.
 
 ## Validation gates
 

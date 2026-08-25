@@ -69,7 +69,7 @@ adapters remain usable without that future subsystem.
 | Installed application | Supplies organization, installation, actor, role, plugin, capability, and `crm` group enablement | Lead Director app graph |
 | CRM PO services | Execute provider-neutral CRM reads and governed mutations | Lead Director |
 | OS plugins and adapters | Connect Lead Director records, GoHighLevel, Calimatic, Gmail, Calendar, and future CRM systems | Lead Director/BOS service |
-| GO persistence | Stores tenant-scoped CRM state, plans, idempotency, provenance, and audit evidence | Lead Director |
+| Existing service persistence | Remains owned by the operations already exposed through BOS; My CRM adds no state | Lead Director |
 
 My CRM is therefore a client product over an application-owned MCP surface. It
 does not access OS integrations directly. Lead Director resolves the installed
@@ -92,9 +92,9 @@ The four CRM execution modes are:
 | `merged_view` | Correlate records into a composite view without silently changing source records |
 | `synchronize_from` | Treat a selected source as authoritative for specified fields and apply a governed mutation plan to explicit targets |
 
-The client retains a revisioned source catalog learned through MCP discovery and
-configuration. Each invocation validates that catalog according to its refresh
-policy instead of rediscovering every source unconditionally. Dataset caches
+The client retains a source/capability map derived from the MCP tool manifest
+and package configuration. Each invocation validates its manifest fingerprint
+and refresh policy instead of rediscovering every source unconditionally. Dataset caches
 carry an authority scope, query identity, last successful update time, and a
 configurable maximum age. Stale entries are refreshed before use and are
 excluded from results when the refresh fails unless the user explicitly permits
@@ -102,7 +102,7 @@ stale fallback.
 
 For multi-source reads, the client creates one bounded execution unit per source
 and runs those units in parallel when the host supports agents or parallel tool
-calls. Each unit receives only the selected source handle, opaque BOS context,
+calls. Each unit receives only the selected source/tool identity, opaque BOS context,
 normalized query, cache policy, and output schema. Hosts without parallel
 execution run the same plan sequentially and preserve the same result envelope.
 
@@ -144,27 +144,11 @@ is created or read.
 
 ### New login with no Lead Director context
 
-A BOS login and an operational application context are different records. The
-current Lead Director authentication architecture resolves pre-provisioned
-organizations; a login by itself does not prove an installed application,
-role, or customer-data scope.
-
-To deliver the intended “sign up and use My CRM at no charge” experience, add a
-governed onboarding continuation:
-
-1. BOS authenticates the user.
-2. Context resolution finds no eligible `leaddirector/crm` context and returns
-   `application_onboarding_required` with a server-owned continuation URL.
-3. The user creates or joins an organization through the Lead Director
-   onboarding flow.
-4. Lead Director's PO/GO provisioning path creates or resolves the installed
-   application, assigns the permitted role, and enables the `crm` group.
-5. OAuth resumes, resolves the new canonical context, and completes the grant.
-6. The client refreshes tool discovery and resumes the original CRM request.
-
-This onboarding flow provisions application authority. It performs no license
-or payment operation. Existing-organization invitations follow the same flow
-and join the invited organization instead of creating another one.
+My CRM delegates this case to the existing BOS login, installation, invitation,
+and application-context experience. After that platform flow returns an
+eligible context, the client refreshes tool discovery and resumes the original
+request. My CRM adds no onboarding record, route, provisioning workflow, or
+database write. No license or payment operation participates.
 
 ### Provider connection
 
@@ -206,7 +190,7 @@ bos_operations_center/
 └── Vault/
 ```
 
-Lead Director owns the server implementation:
+Lead Director already owns the unchanged server implementation:
 
 ```text
 lead_director/
@@ -217,14 +201,13 @@ lead_director/
 │   ├── federated_record_tools.py
 │   ├── agent_federation_runtime.py
 │   └── agent_lead_sis_crm_adapters.py
-├── backend/graph_orchestration/
-│   └── agent_federation_repository.py
 └── backend/tests/unit/
     ├── test_crm_mcp_operational_profile.py
     └── test_*federat*.py
 ```
 
-There is no source dependency from My CRM to Subscription Director.
+My CRM changes none of these files. There is no source dependency from My CRM
+to Subscription Director.
 
 ## Verified current baseline
 
@@ -238,8 +221,8 @@ There is no source dependency from My CRM to Subscription Director.
   `plugin_asdk_app_*` identifier.
 - Education Center demonstrates the current installation and OAuth connection
   model.
-- No `products/my-crm/product.json` or `source/capabilities/my-crm/` tree exists
-  yet.
+- `products/my-crm/product.json` and the `source/capabilities/my-crm*` skill
+  group now exist as client package source.
 
 ### Lead Director
 
@@ -256,7 +239,10 @@ There is no source dependency from My CRM to Subscription Director.
   GoHighLevel, and Calimatic adapter foundations already exist.
 - GoHighLevel contact search lacks a verified scoped PO primitive. Lead
   Director general field update and Calimatic writes also remain unavailable.
-- The current CRM group does not expose the broader federated provider mesh.
+- The CRM group now composes existing GoHighLevel contact get/create/update,
+  Gmail and Calendar activity reads, and Calimatic student/enrollment reads.
+  The live manifest still filters them by the selected context's plugin,
+  capability, role, and provider state.
 
 ## Product capability design
 
@@ -278,28 +264,19 @@ workflow requires it.
 
 ### Federated CRM release
 
-Expand the same `crm` group with application-owned semantic operations:
+The client reads the active CRM MCP tool manifest and combines its exact names
+and schemas with package-owned CRM semantic routing. This creates a local
+source/capability map without a new source-catalog endpoint or generic CRM
+façade. Only discovered operations are eligible. Missing operations remain
+unavailable and cause no server registration, grant, seed, or persistence.
 
-- `crm_list_sources`
-- `crm_search_contacts`
-- `crm_get_contact`
-- `crm_create_contact`
-- `crm_update_contact`
-- `crm_get_activity_timeline`
-- `crm_plan_reconciliation`
-- `crm_apply_reconciliation`
-
-These tools normalize user intent while returning source identity,
-provenance, coverage, supported operations, and partial-failure evidence. They
-coordinate only enabled plugins and healthy provider bindings inside the
-selected Lead Director context.
-
-Federated reads preserve successful source results when another source fails.
-Single-source commits inherit that provider's transactional guarantee.
-Cross-source mutations execute as a versioned plan and report every source as
-pending, committed, failed, uncertain, recovery scheduled, or reconciled. The
-system may compensate or retry toward eventual consistency and never represents
-the cross-source operation as atomic.
+Federated reads call one existing source operation per execution unit and
+preserve successful results when another source fails. Single-source commits
+inherit that operation's transactional guarantee. Cross-source mutations use
+an explicitly confirmed task-local sequence and report every source as pending,
+committed, failed, uncertain, or reconciled. The client uses existing receipts,
+versions, idempotency, status, and read-back tools when they are discoverable
+and never represents the cross-source operation as atomic.
 
 The initial federated source order is:
 
@@ -308,8 +285,8 @@ The initial federated source order is:
 3. Gmail and Google Calendar for read-only activity evidence after deterministic
    contact matching is established.
 4. Calimatic for optional read-only family/student context.
-5. Salesforce and other future CRMs through new server-owned plugins and
-   adapters.
+5. Salesforce and other future CRMs when their integrations expose compatible
+   operations through the existing BOS platform.
 
 ## CRM skill grouping
 
@@ -340,10 +317,10 @@ bounded product decisions:
    its progress or activity surface.
 4. Confirm which launch hosts expose exact model usage. Other hosts will return
    a labeled client-visible estimate or `unavailable`.
-5. Define per-operation provider guarantees and compensation support in the
-   source catalog before enabling multi-source writes.
-6. Define durable recovery limits and the user-action-required threshold. The
-   server owns recovery state and retries; the client observes and reports them.
+5. Define per-operation provider guarantees and safe retry/compensation support
+   in the client routing map before enabling multi-source writes.
+6. Define the bounded task-local recovery window and the
+   user-action-required threshold.
 
 ## Launch boundaries
 

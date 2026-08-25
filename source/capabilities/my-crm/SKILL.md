@@ -14,40 +14,48 @@ freshness.
 
 1. Identify the CRM entity and intent: records, pipeline, activities, or
    federation/reconciliation.
-2. Select one execution mode:
+2. Select one client execution mode:
    - `per_source` for distinct source results or one explicit source;
    - `federated` for a combined search retaining provenance;
    - `merged_view` for a correlated presentation with conflicts; or
-   - `synchronize_from` for a governed plan using one explicit field authority.
-3. Call `crm_list_sources` or use the current cached source catalog. Select only
-   sources whose discovered operation coverage satisfies the request.
-4. Delegate CRM semantics to the focused skill and source mechanics to
+   - `synchronize_from` for an explicitly confirmed sequence using one field
+     authority.
+3. Load the current MCP tool manifest. Derive the source/capability map from
+   the discovered tool names and schemas plus this package's client routing
+   configuration. Reuse the map only while its manifest fingerprint and
+   configured maximum age remain current.
+4. Select only operations actually present in the live manifest. Absence means
+   unavailable in the selected context; it never triggers server registration,
+   capability creation, a database write, or a fallback to another connection.
+5. Delegate CRM semantics to the focused skill and source mechanics to
    `bos-federated-query`.
 
-## Use the public CRM operations
+## Use discovered BOS operations
 
-- Discover with `crm_list_sources`.
-- Search with `crm_search_records`; use `source_handles` to constrain one
-  execution unit and `source_queries` when providers need different normalized
-  filters.
-- Read one exact record with `crm_get_record`.
-- Create or update one source with `crm_create_record` or `crm_update_record`.
-- Plan and apply multi-source changes with `crm_plan_sync` and
-  `crm_apply_sync`.
-- Observe recovery with `crm_get_operation_status` and advance uncertain work
-  with `crm_reconcile_operation`.
+- Treat `tools/list` and `bos_get_context` as the authoritative discovery
+  surfaces. Tool schemas define the parameters the client may send.
+- Use existing CRM aliases when discovered. The initial Lead Director route
+  provides `crm_search_leads`, `crm_get_lead`, `crm_create_lead`, and the
+  server-advertised availability of `crm_update_lead`.
+- Map additional discovered provider operations to CRM source semantics in the
+  client. Preserve the exact source tool name and result provenance.
+- Never call a generic CRM operation merely because this skill names a desired
+  semantic. Call only a tool returned by the active MCP connection.
 
 Read [tool workflows](references/tool-workflows.md) before a federated query or
 mutation.
 
-Treat `explain <request>` as a plan-only request. Return selected skills,
-sources, sanitized parameter shapes, cache decisions, parallel groups,
-aggregation, mutation boundaries, and expected output. Execute no source data
-call or mutation. `explain analyze` executes and attaches observed evidence.
+Treat `explain <request>` as a client plan-only request. Compile it from the
+live/cached manifest and skill configuration. Return selected skills, sources,
+exact discovered tool names, sanitized parameter shapes, cache decisions,
+parallel groups, aggregation, mutation boundaries, and expected output.
+Execute no source data call or mutation. `explain analyze` executes the same
+plan and attaches observed evidence.
 
 For a normal multi-source query, create one execution-ledger `source_started`
-event per selected handle, then issue one bounded `crm_search_records` call per
-handle. Run those calls in parallel sub-agents when the host supports them.
+event per selected source, then issue one bounded call to that source's
+discovered read tool. Run those calls in parallel sub-agents when the host
+supports them.
 Append `source_completed` or `source_failed` as each result returns so the
 visible activity surface receives progressive per-source data. A sequential
 host follows the same event and result contract.
