@@ -13,6 +13,7 @@ import {
 const input = {
   product: "my-crm",
   mcp_group: "crm",
+  manifest_fingerprint: "sha256:active-crm-tools-v1",
   skills: ["my-crm-record-operations", "bos-federated-query"],
   dataset: "contacts",
   query: { email: "ada@example.com" },
@@ -21,11 +22,13 @@ const input = {
     {
       source_handle: "opaque-source-one",
       source_label: "Lead Director",
+      tool: "crm_search_leads",
       max_age_seconds: 300
     },
     {
       source_handle: "opaque-source-two",
       source_label: "GoHighLevel",
+      tool: "ghl_search_contacts",
       max_age_seconds: 60
     }
   ]
@@ -36,6 +39,8 @@ test("query plans are deterministic and explain output sanitizes values", () => 
   const second = buildQueryPlan(input);
   assert.deepEqual(first, second);
   assert.equal(first.aggregation.mode, "merged_view");
+  assert.equal(first.manifest_fingerprint, "sha256:active-crm-tools-v1");
+  assert.equal(first.sources[0].tool, "crm_search_leads");
   assert.equal(first.sources.length, 2);
 
   const explained = explainQueryPlan(first);
@@ -52,6 +57,7 @@ test("source results include local freshness and scoped usage", () => {
   const value = normalizeSourceResult({
     source_handle: "opaque-source-one",
     source_label: "Lead Director",
+    tool: "crm_search_leads",
     status: "completed",
     origin: "cache",
     last_updated_at: "2026-08-25T20:14:00.000Z",
@@ -93,6 +99,7 @@ test("source cache keys are deterministic and stale cache is withheld", () => {
   const stale = normalizeSourceResult({
     source_handle: "opaque-source-two",
     source_label: "GoHighLevel",
+    tool: "ghl_search_contacts",
     origin: "cache",
     last_updated_at: "2026-08-25T20:00:00.000Z",
     max_age_seconds: 60,
@@ -163,6 +170,17 @@ test("plans and usage fail closed on malformed policy", () => {
   assert.throws(
     () => buildQueryPlan({ ...input, mode: "atomic_cross_source" }),
     /mode is invalid/
+  );
+  assert.throws(
+    () => buildQueryPlan({ ...input, manifest_fingerprint: "" }),
+    /manifest_fingerprint must be a non-empty string/
+  );
+  assert.throws(
+    () => buildQueryPlan({
+      ...input,
+      sources: [{ ...input.sources[0], tool: "" }]
+    }),
+    /sources\[0\]\.tool must be a non-empty string/
   );
   assert.throws(
     () => aggregateQueryResult({

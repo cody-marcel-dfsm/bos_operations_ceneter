@@ -77,6 +77,7 @@ export function buildQueryPlan(input) {
     return {
       source_handle: text(source.source_handle, `sources[${index}].source_handle`),
       source_label: text(source.source_label, `sources[${index}].source_label`),
+      tool: text(source.tool, `sources[${index}].tool`),
       cache_policy: {
         max_age_seconds: maxAge,
         allow_stale_on_error: source.allow_stale_on_error === true
@@ -89,6 +90,7 @@ export function buildQueryPlan(input) {
     plan_version: PLAN_VERSION,
     product: text(input.product, "product"),
     mcp_group: text(input.mcp_group, "mcp_group"),
+    manifest_fingerprint: text(input.manifest_fingerprint, "manifest_fingerprint"),
     skills: (input.skills ?? []).map((item, index) => text(item, `skills[${index}]`)),
     dataset: text(input.dataset, "dataset"),
     query: object(input.query ?? {}, "query"),
@@ -108,12 +110,14 @@ export function explainQueryPlan(plan) {
     plan_id: plan.plan_id,
     product: plan.product,
     mcp_group: plan.mcp_group,
+    manifest_fingerprint: plan.manifest_fingerprint,
     skills: plan.skills,
     dataset: plan.dataset,
     query_shape: jsonShape(plan.query),
     sources: plan.sources.map((source) => ({
       source_handle_digest: hash(source.source_handle).slice(0, 16),
       source_label: source.source_label,
+      tool: source.tool,
       query_shape: jsonShape(source.query),
       cache_policy: source.cache_policy,
       execution: source.execution
@@ -160,6 +164,7 @@ export function normalizeSourceResult(input, options = {}) {
   return {
     source_handle: text(input.source_handle, "source_handle"),
     source_label: text(input.source_label, "source_label"),
+    tool: text(input.tool, "tool"),
     status: cacheUsable
       ? text(input.status ?? "completed", "status")
       : "refresh_required",
@@ -198,13 +203,19 @@ export function buildSourceCacheDescriptor(plan, sourceHandle) {
   const material = {
     product: text(plan.product, "plan.product"),
     mcp_group: text(plan.mcp_group, "plan.mcp_group"),
+    manifest_fingerprint: text(
+      plan.manifest_fingerprint,
+      "plan.manifest_fingerprint"
+    ),
     dataset: text(plan.dataset, "plan.dataset"),
     source_handle: text(selected.source_handle, "source.source_handle"),
+    tool: text(selected.tool, "source.tool"),
     query: object(selected.query, "source.query")
   };
   return {
     cache_key: `bos_query_${hash(material).slice(0, 40)}`,
     source_handle: selected.source_handle,
+    tool: selected.tool,
     dataset: plan.dataset,
     query_digest: hash(selected.query),
     freshness_policy: selected.cache_policy

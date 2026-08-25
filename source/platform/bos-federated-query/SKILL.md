@@ -15,11 +15,12 @@ the first federated execution or explain request in a task.
 
 ## Workflow
 
-1. Validate one opaque BOS context and load the current revisioned source
-   catalog. Reuse the catalog while its revision and configured maximum age are
-   current.
+1. Validate one opaque BOS context and load the current MCP tool manifest.
+   Derive the client source map from discovered tools plus the product routing
+   configuration. Reuse it while its fingerprint and configured maximum age
+   are current.
 2. Compile the request into a plan containing the domain skill, dataset,
-   normalized filter shape, selected opaque source handles, cache policy,
+   normalized filter shape, selected discovered source tools, cache policy,
    execution dependencies, aggregation mode, and expected result schema.
 3. For `explain`, return the sanitized plan and stop before source data calls or
    mutations. For `explain analyze`, execute and attach observed evidence.
@@ -43,9 +44,11 @@ source-result, execution-event, or aggregate envelopes are useful.
 ## Mutation boundary
 
 Single-source mutations inherit the source's declared guarantee. Multi-source
-mutations require a server-owned versioned plan, explicit targets, idempotency,
-and per-source durable status. The server owns scheduled recovery. Report every
-committed, failed, uncertain, recovery-scheduled, and reconciled source.
+mutations use an explicitly confirmed task-local plan of existing source tools.
+Preserve every source receipt and error. Reconcile through existing read,
+status, version, and idempotency operations when discovered, and retry only
+when those contracts prove safety. Report every committed, failed, uncertain,
+and reconciled source. This skill creates no server state or schema.
 
 The execution ledger contains observable operations and sanitized outcomes. It
 excludes private model reasoning, credentials, raw authority identifiers, and

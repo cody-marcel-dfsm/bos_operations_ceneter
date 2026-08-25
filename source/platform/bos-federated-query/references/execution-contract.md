@@ -6,12 +6,13 @@
 - `federated`: combine result sets and retain record provenance.
 - `merged_view`: correlate records into a composite presentation with
   field-level provenance and conflicts.
-- `synchronize_from`: use one selected source as field authority for a
-  server-owned mutation plan targeting explicit sources.
+- `synchronize_from`: use one selected source as field authority for an
+  explicitly confirmed task-local plan targeting discovered source tools.
 
 ## Source result
 
-Each source returns `source_handle`, `source_label`, `status`, `origin`,
+Each source returns a client `source_handle`, the exact discovered `tool`,
+`source_label`, `status`, `origin`,
 `freshness`, `coverage`, `records`, a sanitized `error`, timings, and `usage`.
 Origin is `cache`, `live`, or `mixed`. Freshness includes the ISO update time,
 local human-readable label, age, configured maximum age, and status.
