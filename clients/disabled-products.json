@@ -2,6 +2,11 @@
   "schema_version": "1",
   "products": [
     {
+      "name": "my-crm",
+      "application_name": "leaddirector",
+      "mcp_group_name": "crm"
+    },
+    {
       "name": "video-ads",
       "application_name": "leaddirector",
       "mcp_group_name": "video-ads"

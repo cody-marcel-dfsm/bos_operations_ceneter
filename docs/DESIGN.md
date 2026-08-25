@@ -164,6 +164,35 @@ server and a BOS-owned named route. Current mappings include
 `/mcp/apps/leaddirector/education-center`,
 `/mcp/apps/leaddirector/video-ads`; the BOS platform package is skills-only.
 
+### In-memory BOS Plugin Console
+
+The skills-only BOS package includes `bos-plugin-console` as the cross-product
+interaction contract. The console uses named BOS product connections already
+available in the active client's MCP context. It does not enumerate local
+plugin folders, execute a command-line plugin listing, or create a new broad BOS
+runtime connection.
+
+Each eligible product route exposes its scoped plugin-service snapshot as MCP
+`structuredContent`. BOS orders the rows, supplies display-safe properties and
+opaque action selectors, and associates the status response with a remotely
+served MCP App resource. The active client renders the component directly in
+its conversation or content window. Clients with another compatible native
+structured-content surface may render the same response there; a client without
+interactive component support retains the same table and accepts equivalent
+natural-language actions.
+
+Console queries write no report, cache, HTML, Markdown, or state file; execute
+no packaged renderer; bind no localhost port; and start no local process,
+browser, or service. The component's selected row, expanded property state, and
+pending indicator exist only for the active client view. Canonical plugin state,
+provider readiness, optimistic revisions, and audits remain server-owned.
+
+**Connect** invokes the owning product route's scoped provider-authorization
+tool. The **Enabled** toggle invokes its revisioned, idempotent PO/GO mutation.
+Neither action installs, removes, starts, stops, or edits software on the user's
+machine. See `Vault/specs/plugin-service-console.md` for the response, action,
+security, and cross-client contracts.
+
 ### Customer configuration
 
 Customer configuration supplies the final operating context:

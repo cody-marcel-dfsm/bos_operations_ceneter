@@ -1,0 +1,4 @@
+interface:
+  display_name: "My CRM Federation"
+  short_description: "Reconcile CRM data across authorized sources"
+  default_prompt: "Use $my-crm-federation-operations to compare or synchronize these CRM sources safely."

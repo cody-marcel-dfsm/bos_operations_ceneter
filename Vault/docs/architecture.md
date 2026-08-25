@@ -90,7 +90,10 @@ release system for portable BOS skills and native remote MCP client adapters.
     symlink per active product in Antigravity's global plugin directory. A Git pull
     and host restart then load current source without recopying packages. This
     clean bootstrap explicitly deletes local customizations along with prior
-    BOS product entries. A Claude
+    BOS product entries. Before any filesystem mutation, the installer displays
+    the destructive scope and target, warns that local BOS product customizations
+    have no backup, and requires the exact typed confirmation
+    `DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS`. A Claude
     runtime plugin contains account-connector metadata and no MCP declaration.
     A Codex runtime plugin contains
     `apps: "./.app.json"` and no `.mcp.json` or `mcpServers`; its product
@@ -214,6 +217,18 @@ release system for portable BOS skills and native remote MCP client adapters.
     uses explicit `bos.roles.read` and `bos.roles.update`, complete replacement
     lists, optimistic revisions, and server-side audit. See
     `Vault/specs/role-aware-mcp-client.md`.
+21. Present BOS product connections, server plugin enablement,
+    provider-service readiness, and display-safe properties through the BOS
+    Plugin Console inside the active client's content window. A console request
+    remains memory-only: it writes no runtime artifact, executes no packaged
+    renderer, starts no local process or service, and inspects no local plugin
+    directory. Each product's named MCP resource and OAuth grant remain
+    independent. The server returns ordered `structuredContent`, owns plugin
+    state, revisions, connection actions, and audited enablement mutations, and
+    remotely serves the associated MCP App resource. Clients render that state
+    through their native structured-content or component surface and invoke the
+    same authenticated remote tools for **Connect** buttons and enablement
+    toggles. See `Vault/specs/plugin-service-console.md`.
 
 ## Knowledge and review
 

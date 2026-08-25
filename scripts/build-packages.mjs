@@ -2,6 +2,7 @@ import { cp, mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   codexAppManifest,
+  copyProductAssets,
   copyProductSkills,
   copySettingsTemplate,
   copilotMcpManifest,
@@ -74,6 +75,7 @@ for (const { product, skills } of resolved) {
       pluginManifest(product)
     );
     await copyProductSkills(product, skills, join(pluginRoot, "skills"));
+    await copyProductAssets(product, pluginRoot);
     if (product.runtime) {
       await writeJson(join(pluginRoot, ".app.json"), codexAppManifest(product));
     }
@@ -318,12 +320,13 @@ for (const { product, skills } of resolved) {
         "",
         "## Antigravity 2.0 Desktop",
         "",
-        "Run `./scripts/install-antigravity.sh` once from the synced BOS Operations Center",
+        "Run `./scripts/clean-install-antigravity.sh` once from the synced BOS Operations Center",
         "repository. This is an intentionally destructive clean install: it deletes prior BOS",
         "product entries, including local customizations, without backups,",
         "then links every generated Gemini product into `~/.gemini/config/plugins/`.",
         "It resolves the repository from the installer's own location, independent of the",
-        "current working directory.",
+        "current working directory. Before changing files, it displays the deletion warning and",
+        "requires `DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS` as typed confirmation.",
         "After each Git pull, restart Antigravity.",
         ...(product.runtime ? [
           `Open Settings > Customizations, find the \`${product.mcp_group_name}\` MCP server,`,
@@ -392,9 +395,10 @@ await writeFile(
     "",
     "## Antigravity 2.0 Desktop",
     "",
-    "Run `./scripts/install-antigravity.sh` once. This intentionally destructive clean installer",
+    "Run `./scripts/clean-install-antigravity.sh` once. This intentionally destructive clean installer",
     "deletes prior BOS product entries, including local customizations, without backups,",
-    "locates this repository from its own file path,",
+    "locates this repository from its own file path, and requires typed confirmation of",
+    "`DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS` before changing files,",
     "and creates one product symlink in `~/.gemini/config/plugins/` for each active product.",
     "After each Git pull, restart Antigravity, open Settings > Customizations, and",
     "select Authenticate for the",

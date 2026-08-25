@@ -18,9 +18,10 @@ run `/extensions list` and `/skills list` to verify the extensions and bundled s
 
 ## Antigravity 2.0 Desktop
 
-Run `./scripts/install-antigravity.sh` once. This intentionally destructive clean installer
+Run `./scripts/clean-install-antigravity.sh` once. This intentionally destructive clean installer
 deletes prior BOS product entries, including local customizations, without backups,
-locates this repository from its own file path,
+locates this repository from its own file path, and requires typed confirmation of
+`DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS` before changing files,
 and creates one product symlink in `~/.gemini/config/plugins/` for each active product.
 After each Git pull, restart Antigravity, open Settings > Customizations, and
 select Authenticate for the

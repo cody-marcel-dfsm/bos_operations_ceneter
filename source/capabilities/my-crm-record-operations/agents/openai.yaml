@@ -1,0 +1,4 @@
+interface:
+  display_name: "My CRM Records"
+  short_description: "Work with provider-neutral CRM records"
+  default_prompt: "Use $my-crm-record-operations to find or change this CRM record safely."

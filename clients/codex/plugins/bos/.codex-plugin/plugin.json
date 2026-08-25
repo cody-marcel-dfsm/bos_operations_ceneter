@@ -1,6 +1,6 @@
 {
   "name": "bos",
-  "version": "0.4.46",
+  "version": "0.4.47",
   "description": "Agent-first Business Operating System foundations for governed agent workflows.",
   "author": {
     "name": "Infinite State Machines LLC"
@@ -21,7 +21,10 @@
       "Show me the tools and workflows available in each BOS app.",
       "Check which BOS apps are connected and ready to use."
     ],
-    "websiteURL": "https://dfsm.ai"
+    "websiteURL": "https://dfsm.ai",
+    "brandColor": "#061638",
+    "composerIcon": "./assets/bos-logo.png",
+    "logo": "./assets/bos-logo.png"
   },
   "homepage": "https://dfsm.ai"
 }

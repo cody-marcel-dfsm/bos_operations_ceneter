@@ -82,11 +82,12 @@ Official sources:
 
 ## Google Antigravity 2.0 Desktop
 
-1. Run `./scripts/install-antigravity.sh` once from the synced BOS Operations
+1. Run `./scripts/clean-install-antigravity.sh` once from the synced BOS Operations
    Center repository. This intentionally destructive clean installer deletes
    prior BOS product entries, including local customizations, without backups,
    resolves the repository from its own file path, and creates one symlink per
-   active product in the global plugin directory.
+   active product in the global plugin directory. It changes nothing until the
+   user types `DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS` to confirm the warning.
 2. Restart Antigravity after installation and after each Git pull.
 3. Open **Settings → Customizations**, select **Authenticate** for the runtime
    product, and complete BOS sign-in.

@@ -58,6 +58,13 @@ const ignoredDirectories = new Set([
 ]);
 const failures = [];
 const execFileAsync = promisify(execFile);
+const reusableRuntimePlatformSkills = new Set([
+  "platform/bos-mcp-client",
+  "platform/bos-federated-query",
+  "platform/bos-cache-maintenance",
+  "platform/submit-feedback",
+  "platform/manage-customer-extension"
+]);
 
 async function expectedSkillHashes(product, skill) {
   const hashes = await hashTree(skill.sourcePath);
@@ -165,11 +172,7 @@ async function validateProducts() {
       manifest.includes.some(
         (include) =>
           include.startsWith("platform/") &&
-          ![
-            "platform/bos-mcp-client",
-            "platform/submit-feedback",
-            "platform/manage-customer-extension"
-          ].includes(include)
+          !reusableRuntimePlatformSkills.has(include)
       )
     ) {
       failures.push(
@@ -471,7 +474,8 @@ async function validateProducts() {
           !readme.includes("/extensions list") ||
           !readme.includes("/skills list") ||
           !readme.includes("Antigravity 2.0 Desktop") ||
-          !readme.includes("scripts/install-antigravity.sh") ||
+          !readme.includes("scripts/clean-install-antigravity.sh") ||
+          !readme.includes("DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS") ||
           !readme.includes("~/.gemini/config/plugins/") ||
           !readme.includes("clean install") ||
           !readme.includes("without backups") ||

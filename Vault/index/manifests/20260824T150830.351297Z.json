@@ -1,0 +1,247 @@
+{
+  "indexed_at": "20260824T150830.351297Z",
+  "schema_version": "bos-vault-manifest/v1",
+  "source_count": 60,
+  "sources": {
+    "Vault/README.md": {
+      "bytes": 1032,
+      "sha256": "151db2b63b813c58a5634e28bc5f6690beec6750cf970a2dea8b4b6f067d8906"
+    },
+    "Vault/decisions/2026-08-11-canonical-codex-marketplace-layout.md": {
+      "bytes": 2506,
+      "sha256": "3d5315f7b627b91746c218da0cae3f6cf2cfb3cbed66637e542ad68ea5747dd4"
+    },
+    "Vault/decisions/2026-08-11-desktop-private-marketplace-oauth.md": {
+      "bytes": 3159,
+      "sha256": "9bea446eb8a228cac1a8ee98bbac4c3b786b358b0897d5fcf795e249ffef4f61"
+    },
+    "Vault/decisions/2026-08-11-education-center-product-identity.md": {
+      "bytes": 2317,
+      "sha256": "2f2c52846122d9ff5c9b039ec227d52cd3a2aff73e2695fe9c9df56e22bb7c15"
+    },
+    "Vault/decisions/2026-08-16-all-runtime-products-oauth-only.md": {
+      "bytes": 2388,
+      "sha256": "864fcb8c6f25955ad7b01a26e83ad3ad6ec5dd19eebce882d3d75c8fe9b4208a"
+    },
+    "Vault/decisions/2026-08-22-claude-account-connector-separation.md": {
+      "bytes": 2187,
+      "sha256": "a731cbef581ae7a41df6ca448b57d1afd52ed3471c3d860d1cd500646d66d3fd"
+    },
+    "Vault/decisions/2026-08-23-automatic-plugin-and-provider-authentication.md": {
+      "bytes": 2806,
+      "sha256": "e82ed3b9bc926ab04a4d0c05d08b81af3bcc0cb1c0bc91aa04d7d1ad2d75385e"
+    },
+    "Vault/decisions/2026-08-23-chatgpt-registered-app-technical-id.md": {
+      "bytes": 1162,
+      "sha256": "d169c5718d0280ddfd98c86eba6640f5f3e5fe6165afaf18298682d90775fe1f"
+    },
+    "Vault/decisions/2026-08-23-claude-persistent-account-connectors.md": {
+      "bytes": 1651,
+      "sha256": "fc41565a62588a57be13d640e68c3647fb1fc10188cb882b0317c4f7eff609cb"
+    },
+    "Vault/docs/CONSTITUTION.md": {
+      "bytes": 3350,
+      "sha256": "52ca2685a46cf52d21e95218f5ef50d66873b18c19347b5809b1c380c4990882"
+    },
+    "Vault/docs/architecture.md": {
+      "bytes": 15991,
+      "sha256": "149f0144f5b55bf755c36bc1e58cce4edfaf4d3405a9003766bff7d3608f16db"
+    },
+    "Vault/docs/bos-expertise-package-ecosystem-proposal.md": {
+      "bytes": 21898,
+      "sha256": "93b04c18b57b5dbbc43ccbde51d682d791a6d4f9d5d2e99feaa27db9e67e24f6"
+    },
+    "Vault/docs/bos-product-licensing-user-experience.md": {
+      "bytes": 16130,
+      "sha256": "883d101f85110e57800c61baae49fa5056744147ae60d4cacf99cd17731da877"
+    },
+    "Vault/docs/marketplace-agent-harness-plan.md": {
+      "bytes": 33810,
+      "sha256": "26de8781afaec0197f2ec47c8137236665bec8b5c57b1ecb9e81ef2d0c096b0a"
+    },
+    "Vault/docs/marketplace-submission-assets.md": {
+      "bytes": 24799,
+      "sha256": "06d34f2d513a4af240e44281fe04ef1bb364ee7879e8ab41c28667018bf13105"
+    },
+    "Vault/docs/my-crm-developer-platform-work-matrix.md": {
+      "bytes": 8316,
+      "sha256": "4ef070709c4e3f7bb117fe861f77d4cfb34bf30f85fdcef4c1d63577fe2838ee"
+    },
+    "Vault/docs/my-crm-plugin-architecture-proposal.md": {
+      "bytes": 29479,
+      "sha256": "2606da5689acf4a91ad065acc8ef4eb8a19d8f8ec28573558259635a37a7b0b2"
+    },
+    "Vault/reviews/2026-08-09-customer-skill-extension-v2.md": {
+      "bytes": 3182,
+      "sha256": "3b620af070c856971bf4b953b13ae55cddda580b9b023f2903a8ac3c23051e05"
+    },
+    "Vault/reviews/2026-08-09-installed-app-feedback-gemini.md": {
+      "bytes": 2022,
+      "sha256": "3ae0a6a0cd5f444f1387329e1e46fbb955de8c695df014c36a6db48a26d3efd9"
+    },
+    "Vault/reviews/2026-08-09-remote-mcp-cross-platform.md": {
+      "bytes": 1804,
+      "sha256": "ba9857845991dbf0423fe06cb818172e850b9fac6deb545641bfea7e56ecd365"
+    },
+    "Vault/reviews/2026-08-11-bright-horizons-reimbursement-skill.md": {
+      "bytes": 3312,
+      "sha256": "7482a6c92bbb52d307b4f1770ae75c1a4cbf026119317af38f374135e9f7a189"
+    },
+    "Vault/reviews/2026-08-11-build-performance.md": {
+      "bytes": 2957,
+      "sha256": "de9334333dd289f6ca3bd03f710309630e87fb52b3cf1eea9670914dac0519a9"
+    },
+    "Vault/reviews/2026-08-11-camp-report-cache-delta-fix.md": {
+      "bytes": 2523,
+      "sha256": "b564466ce6f22a66915320c4bc13805b7dbe238abb773a15a800d925b68f51e9"
+    },
+    "Vault/reviews/2026-08-11-camp-roster-image-restoration.md": {
+      "bytes": 2934,
+      "sha256": "fba0c0b9304f6f4afed0be36f58933e7f49e48079fa62c5f0a1194f7f16ffe4d"
+    },
+    "Vault/reviews/2026-08-11-canonical-codex-marketplace-layout.md": {
+      "bytes": 1993,
+      "sha256": "3092c38df254e072c768c584ae7f02a2b790f627ff769967b49105c9019e93ed"
+    },
+    "Vault/reviews/2026-08-11-codex-canonical-education-center-binding.md": {
+      "bytes": 2076,
+      "sha256": "534d17c53817d886a0d25d20d2f78137ebfa846d92a91fd38eadffcb4e605f5c"
+    },
+    "Vault/reviews/2026-08-11-desktop-private-marketplace-oauth.md": {
+      "bytes": 4327,
+      "sha256": "605c12e00a41a8acdce3e56a59f7395c43f63dee29e4e7d41b805f6ad6b63da5"
+    },
+    "Vault/reviews/2026-08-11-education-center-identity.md": {
+      "bytes": 3436,
+      "sha256": "2a115fba3c057259940ec4c7d6ccdb2297064bef276a83aa7f40187ade9a0e6a"
+    },
+    "Vault/reviews/2026-08-11-lead-director-private-marketplace-placement.md": {
+      "bytes": 2041,
+      "sha256": "05ec764842e70114ff19e8e6b6f70f96bdb5c65e07a6280d9f91b93137d481d3"
+    },
+    "Vault/reviews/2026-08-11-release-readiness.md": {
+      "bytes": 3836,
+      "sha256": "0d3305e680a92568bb3fe9d7fae43ca48c862b480bab7867aee4d52c5c967fc5"
+    },
+    "Vault/reviews/2026-08-11-shared-local-document-cache.md": {
+      "bytes": 3995,
+      "sha256": "f9a33b925ca22479e64d399111a8b07218361b5df4087b63c168b9da5be76042"
+    },
+    "Vault/reviews/2026-08-12-codex-education-center-app-binding.md": {
+      "bytes": 3312,
+      "sha256": "ae592ec0e50b5baad9634869aef6a16c63ec0f1d40ae571709979ff7828a4ee0"
+    },
+    "Vault/reviews/2026-08-12-education-center-initialization-defaults.md": {
+      "bytes": 2616,
+      "sha256": "caeed8950ccf7a63515fcb662d160774a009e6807bf12aa5edd21b3f4fa1010e"
+    },
+    "Vault/reviews/2026-08-16-bright-horizons-deterministic-report-rules.md": {
+      "bytes": 3269,
+      "sha256": "2a783a3e6ee3b7b249f679f20480358fe1d340c92b32ac8e49eb438e76c11f36"
+    },
+    "Vault/reviews/2026-08-19-sendgrid-campaign-operations.md": {
+      "bytes": 2153,
+      "sha256": "895c6620a8e5510c83e41eb8917bbe4337743547bd90299545d9890efd496ede"
+    },
+    "Vault/reviews/2026-08-20-bos-guided-support.md": {
+      "bytes": 2614,
+      "sha256": "471b51847853ad3b5d9f3e0f72967c1ee7c4b50eaa3a38a6d0d1ca76bf39f9b7"
+    },
+    "Vault/reviews/2026-08-20-sendgrid-complete-client-workflow.md": {
+      "bytes": 2964,
+      "sha256": "a4deda2bbad2f93eef7d1ff01c18bc665bbd707ba2aeccfdb59ebb7c435cb693"
+    },
+    "Vault/reviews/2026-08-21-education-center-agent-call-client-contract.md": {
+      "bytes": 2815,
+      "sha256": "7cf5a796feb4307d94e4891c81aa4c04b557ef3c1440b0a9debaab068ad42a37"
+    },
+    "Vault/reviews/2026-08-23-automatic-plugin-and-provider-authentication.md": {
+      "bytes": 2696,
+      "sha256": "0915384fbdcf85f77440d61c25fdc346cef4909ec20a902b5a6866a1bc2937f9"
+    },
+    "Vault/reviews/2026-08-23-claude-persistent-connect-button.md": {
+      "bytes": 2657,
+      "sha256": "e4cab9ac927026f1e881ee82baf00a23e9780cabfabe79624c022af77a2578ac"
+    },
+    "Vault/reviews/2026-08-23-product-first-run-initialization.md": {
+      "bytes": 1887,
+      "sha256": "6f4626a59a0686acb3419bf2e187906095f16a3729d9b89fba715b50f0af208e"
+    },
+    "Vault/reviews/2026-08-23-release-0.4.42.md": {
+      "bytes": 952,
+      "sha256": "68eb14ec754bca5db9e24c7bbbca3c4468538680ed2452cdc16180715a43277c"
+    },
+    "Vault/schemas/decision-record.md": {
+      "bytes": 439,
+      "sha256": "3922907624221572a243f58b3684dc8a2eb7b7d221b4a3d6ac5dd1317b9baef4"
+    },
+    "Vault/specs/client-guided-support.md": {
+      "bytes": 1940,
+      "sha256": "ebcb822b70526b4b1a6de7a93325ec0a106c6a860ce925cbc3d7c089001412e9"
+    },
+    "Vault/specs/customer-skill-extensions.md": {
+      "bytes": 5632,
+      "sha256": "ce696da6b99f10263e835387c03470013b0b68f60b05db9a197e33eb93ed38a1"
+    },
+    "Vault/specs/named-mcp-application-group-routing.md": {
+      "bytes": 6227,
+      "sha256": "aa76d568438092e6042683480d1fec9806be1b8cceb088fd8be784541ef27bc2"
+    },
+    "Vault/specs/named-mcp-server-implementation.md": {
+      "bytes": 15229,
+      "sha256": "c38aaedd89a4cd706177fb1e1f3b9518e4904ba52106e70147a75c09197e5153"
+    },
+    "Vault/specs/oracle-and-vault.md": {
+      "bytes": 1470,
+      "sha256": "f83bbe0c4179b651f033f21fb2725b2a4efb7ed7484266afdd3b48f546f63c4b"
+    },
+    "Vault/specs/role-aware-mcp-client.md": {
+      "bytes": 5691,
+      "sha256": "256c13611373936545bca42b3be95f3d32c9a942167f2d07cfb0a29d3d9e255b"
+    },
+    "Vault/specs/shared-local-document-cache.md": {
+      "bytes": 7735,
+      "sha256": "3186bcb5685d6a971b5bcb08b806b95d4dc3a9d35d8bb82ab7ba5b438c728729"
+    },
+    "Vault/submissions/openai/education-operation-center/README.md": {
+      "bytes": 3396,
+      "sha256": "a4f2336ae833631c40049f867508b6a98b191a3089f41d811116805709c458a8"
+    },
+    "Vault/submissions/openai/education-operation-center/asset-provenance.md": {
+      "bytes": 925,
+      "sha256": "ee49562fc95c0a2bed21ad3a9c6d20a6b37ea0b630b4247815c81f3e566e5294"
+    },
+    "Vault/submissions/openai/education-operation-center/checklist.md": {
+      "bytes": 3849,
+      "sha256": "1b5af6881dbe66ff9d14dfa6f84ceac7654c20442ed76a3e9481aee8bbc863ca"
+    },
+    "Vault/submissions/openai/education-operation-center/legal-and-support-drafts.md": {
+      "bytes": 10735,
+      "sha256": "506c62d3eb278dfd9de6c6bad4f2f7445c6e7874be9eb2fee233b7cf5692eaa0"
+    },
+    "Vault/submissions/openai/education-operation-center/listing.md": {
+      "bytes": 4335,
+      "sha256": "cc9aa092a954881f8731967efbc3fd775855b7ac5cb1d2d919100bbb163192e6"
+    },
+    "Vault/submissions/openai/education-operation-center/portal-readiness.md": {
+      "bytes": 2233,
+      "sha256": "f1b209216d26b71cc51452d9e4f2f9ddf095103936646eab034a71d39e3ea143"
+    },
+    "Vault/submissions/openai/education-operation-center/release-notes.md": {
+      "bytes": 1061,
+      "sha256": "96275dc532fd41ee3cc11dae2d7c1cf02dc18b2f773178c0fdfcfa0926ce09aa"
+    },
+    "Vault/submissions/openai/education-operation-center/reviewer-access.md": {
+      "bytes": 1730,
+      "sha256": "634e3064bccdcf67c9e625d45373ea1fbd472d19e33f0276e3875ba3a343229f"
+    },
+    "Vault/submissions/openai/education-operation-center/reviewer-tests.md": {
+      "bytes": 4452,
+      "sha256": "3200c24a0b03f614574003f7531b096c882622bd2012d9a0ad58fa52b59e5ba8"
+    },
+    "Vault/submissions/openai/education-operation-center/tool-annotation-audit.md": {
+      "bytes": 3656,
+      "sha256": "1e8be55b0b477dc96ab953f2a9e7c6b6abf2d951c317a191d96f7666a14ec087"
+    }
+  }
+}
