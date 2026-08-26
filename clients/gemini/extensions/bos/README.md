@@ -15,11 +15,12 @@ discoverable. Use `gemini extensions update bos` for later releases.
 
 ## Antigravity 2.0 Desktop
 
-Run `./scripts/install-antigravity.sh` once from the synced BOS Operations Center
+Run `./scripts/clean-install-antigravity.sh` once from the synced BOS Operations Center
 repository. This is an intentionally destructive clean install: it deletes prior BOS
 product entries, including local customizations, without backups,
 then links every generated Gemini product into `~/.gemini/config/plugins/`.
 It resolves the repository from the installer's own location, independent of the
-current working directory.
+current working directory. Before changing files, it displays the deletion warning and
+requires `DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS` as typed confirmation.
 After each Git pull, restart Antigravity.
 Open Settings > Customizations and confirm the plugin and its skills are enabled.

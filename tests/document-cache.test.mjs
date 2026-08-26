@@ -9,6 +9,8 @@ import {
   canonicalJson,
   commitDocumentSync,
   digest,
+  inspectDocumentCache,
+  invalidateDocumentCache,
   readDocumentCache,
   resolveDocumentCacheRoot
 } from "../source/platform/bos-mcp-client/scripts/document-cache.mjs";
@@ -149,6 +151,95 @@ test("completed refreshes expose only the later catch-up gap", async (context) =
     through: "2026-08-11T02:00:00.000Z"
   });
   assert.equal(catchUp.cursor, "cursor-1");
+});
+
+test("configured maximum age requires refresh and exposes freshness evidence", async (context) => {
+  const cacheRoot = await temporaryCache(context);
+  const request = {
+    ...baseRequest,
+    freshness_policy: {
+      max_age_seconds: 300,
+      allow_stale_on_error: false
+    }
+  };
+  const cold = await beginDocumentSync(request, {
+    cacheRoot,
+    now: "2026-08-11T00:00:00.000Z"
+  });
+  await commitDocumentSync({
+    ...request,
+    lease_token: cold.lease_token,
+    documents: []
+  }, { cacheRoot, now: "2026-08-11T00:00:01.000Z" });
+
+  const fresh = await readDocumentCache(request, {
+    cacheRoot,
+    now: "2026-08-11T00:05:01.000Z"
+  });
+  assert.equal(fresh.state, "current");
+  assert.equal(fresh.freshness_status, "fresh");
+  assert.equal(fresh.age_seconds, 300);
+  assert.equal(fresh.max_age_seconds, 300);
+  assert.equal(fresh.origin, "cache");
+
+  const stale = await beginDocumentSync(request, {
+    cacheRoot,
+    now: "2026-08-11T00:05:02.000Z"
+  });
+  assert.equal(stale.state, "refresh_required");
+  assert.equal(stale.freshness_status, "stale");
+  assert.equal(stale.age_seconds, 301);
+  assert.ok(stale.lease_token);
+  await abortDocumentSync(
+    { ...request, lease_token: stale.lease_token },
+    { cacheRoot }
+  );
+});
+
+test("cache inspection and invalidation preserve authority-scoped behavior", async (context) => {
+  const cacheRoot = await temporaryCache(context);
+  const cold = await beginDocumentSync(baseRequest, { cacheRoot });
+  await commitDocumentSync({
+    ...baseRequest,
+    lease_token: cold.lease_token,
+    documents: [{
+      resource_id: "record-1",
+      version: "v1",
+      modified_at: "2026-08-10T12:00:00.000Z",
+      payload: { display_name: "Example" }
+    }]
+  }, { cacheRoot, now: "2026-08-11T00:00:01.000Z" });
+
+  const inspected = await inspectDocumentCache(baseRequest, { cacheRoot });
+  assert.equal(inspected.document_count, 1);
+  assert.equal(Object.hasOwn(inspected, "documents"), false);
+
+  const invalidated = await invalidateDocumentCache(baseRequest, { cacheRoot });
+  assert.equal(invalidated.state, "invalidated");
+  const after = await readDocumentCache(baseRequest, { cacheRoot });
+  assert.equal(after.state, "cold");
+  assert.deepEqual(after.documents, []);
+});
+
+test("freshness policy rejects invalid values", async (context) => {
+  const cacheRoot = await temporaryCache(context);
+  await assert.rejects(
+    beginDocumentSync({
+      ...baseRequest,
+      freshness_policy: { max_age_seconds: -1 }
+    }, { cacheRoot }),
+    /max_age_seconds/
+  );
+  await assert.rejects(
+    beginDocumentSync({
+      ...baseRequest,
+      freshness_policy: {
+        max_age_seconds: 60,
+        allow_stale_on_error: "yes"
+      }
+    }, { cacheRoot }),
+    /allow_stale_on_error/
+  );
 });
 
 test("aborted and concurrent refreshes preserve the committed watermark", async (context) => {

@@ -1,0 +1,4 @@
+interface:
+  display_name: "My CRM"
+  short_description: "Operate CRM data across connected sources"
+  default_prompt: "Use $my-crm to handle this CRM request across my authorized BOS sources."

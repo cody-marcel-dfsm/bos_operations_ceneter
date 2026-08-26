@@ -920,7 +920,7 @@ test("canonical and generated skills contain no removed use-bos references", asy
 
 test("all product manifests validate and resolve unique skills", async () => {
   const products = await listProducts();
-  assert.equal(products.length, 3);
+  assert.equal(products.length, 4);
   for (const { path, manifest } of products) {
     assert.deepEqual(validateProduct(manifest, path), []);
     const skills = await resolveProductSkills(manifest);
@@ -943,6 +943,9 @@ test("BOS marketplace metadata explains the platform and links to its website", 
   assert.match(bos.long_description, /future platform directions/);
   assert.match(bos.long_description, /not included in this plugin/);
   assert.equal(bos.website_url, "https://dfsm.ai");
+  assert.equal(bos.brand_color, "#061638");
+  assert.equal(bos.composer_icon, "assets/bos-logo.png");
+  assert.equal(bos.logo, "assets/bos-logo.png");
 
   const codex = pluginManifest(bos);
   assert.equal(codex.description, bos.description);
@@ -950,6 +953,11 @@ test("BOS marketplace metadata explains the platform and links to its website", 
   assert.equal(codex.interface.shortDescription, bos.description);
   assert.equal(codex.interface.longDescription, bos.long_description);
   assert.equal(codex.interface.websiteURL, bos.website_url);
+  assert.equal(codex.interface.brandColor, bos.brand_color);
+  assert.equal(codex.interface.composerIcon, "./assets/bos-logo.png");
+  assert.equal(codex.interface.logo, "./assets/bos-logo.png");
+  await access(`${root}/products/bos/assets/bos-logo.png`);
+  await access(`${root}/clients/codex/plugins/bos/assets/bos-logo.png`);
 });
 
 test("Education Operation Center marketplace metadata presents independent workflows", async () => {
@@ -969,12 +977,20 @@ test("Education Operation Center marketplace metadata presents independent workf
   assert.match(education.long_description, /complex, human-centered tasks/);
   assert.match(education.long_description, /preserving human judgment, approvals/);
   assert.equal(education.website_url, "https://dfsm.ai");
+  assert.equal(education.brand_color, "#061638");
+  assert.equal(education.composer_icon, "assets/education-center-logo.png");
+  assert.equal(education.logo, "assets/education-center-logo.png");
 
   const codex = pluginManifest(education);
   assert.equal(codex.interface.displayName, education.display_name);
   assert.equal(codex.interface.shortDescription, education.description);
   assert.equal(codex.interface.longDescription, education.long_description);
   assert.equal(codex.interface.websiteURL, education.website_url);
+  assert.equal(codex.interface.brandColor, education.brand_color);
+  assert.equal(codex.interface.composerIcon, "./assets/education-center-logo.png");
+  assert.equal(codex.interface.logo, "./assets/education-center-logo.png");
+  await access(`${root}/products/education-center/assets/education-center-logo.png`);
+  await access(`${root}/clients/codex/plugins/education-center/assets/education-center-logo.png`);
 });
 
 test("runtime manifests use explicit human-readable application and MCP group names", async () => {
@@ -989,6 +1005,7 @@ test("runtime manifests use explicit human-readable application and MCP group na
     {
       bos: [undefined, undefined],
       "education-center": ["leaddirector", "education-center"],
+      "my-crm": ["leaddirector", "crm"],
       "video-ads": ["leaddirector", "video-ads"]
     }
   );
@@ -1124,6 +1141,13 @@ test("Video Ads composes workflow skills and a scoped BOS endpoint", async () =>
     ({ manifest }) => manifest.name === "video-ads"
   )?.manifest;
   assert(videoAds);
+  assert.equal(videoAds.brand_color, "#061638");
+  assert.equal(videoAds.composer_icon, "assets/marketing-director-logo.png");
+  assert.equal(videoAds.logo, "assets/marketing-director-logo.png");
+  const manifest = pluginManifest(videoAds);
+  assert.equal(manifest.interface.composerIcon, "./assets/marketing-director-logo.png");
+  assert.equal(manifest.interface.logo, "./assets/marketing-director-logo.png");
+  await access(`${root}/products/video-ads/assets/marketing-director-logo.png`);
   assert.equal(videoAds.runtime, "bos");
   assert.equal(videoAds.application_name, "leaddirector");
   assert.equal(videoAds.mcp_group_name, "video-ads");
@@ -1173,11 +1197,18 @@ test("disabled product inventory is generated for idempotent client pruning", as
   );
   assert.deepEqual(inventory, {
     schema_version: "1",
-    products: [{
-      name: "video-ads",
-      application_name: "leaddirector",
-      mcp_group_name: "video-ads"
-    }]
+    products: [
+      {
+        name: "my-crm",
+        application_name: "leaddirector",
+        mcp_group_name: "crm"
+      },
+      {
+        name: "video-ads",
+        application_name: "leaddirector",
+        mcp_group_name: "video-ads"
+      }
+    ]
   });
 });
 
@@ -1328,7 +1359,8 @@ test("one Gemini extension bundles CLI and Antigravity Desktop with OAuth MCP", 
     assert.match(readme, new RegExp(`gemini extensions update ${product.name}`));
     assert.match(readme, /Antigravity 2\.0 Desktop/);
     assert.match(readme, /~\/\.gemini\/config\/plugins\//);
-    assert.match(readme, /scripts\/install-antigravity\.sh/);
+    assert.match(readme, /scripts\/clean-install-antigravity\.sh/);
+    assert.match(readme, /DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS/);
     assert.match(readme, /clean install/i);
     assert.match(readme, /without backups/);
     if (!product.runtime) {
@@ -1384,7 +1416,8 @@ test("Gemini client package provides one CLI and desktop extension umbrella", as
   );
   assert.match(readme, /Antigravity 2\.0 Desktop/);
   assert.match(readme, /~\/\.gemini\/config\/plugins/);
-  assert.match(readme, /scripts\/install-antigravity\.sh/);
+  assert.match(readme, /scripts\/clean-install-antigravity\.sh/);
+  assert.match(readme, /DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS/);
   assert.match(readme, /clean installer/);
   assert.match(readme, /without backups/);
   assert.match(readme, /After each Git pull, restart Antigravity/);
@@ -1442,6 +1475,42 @@ test("Education Center composition contains only approved shared runtime foundat
     .filter((skill) => bosNames.has(skill.name))
     .map((skill) => skill.name);
   assert.deepEqual(shared, ["manage-customer-extension"]);
+});
+
+test("My CRM composes the approved reusable federated runtime skills", async () => {
+  const products = await listProducts();
+  const myCrm = products.find(({ manifest }) => manifest.name === "my-crm")?.manifest;
+  assert(myCrm);
+  assert.equal(myCrm.release_status, "disabled");
+  assert.deepEqual(
+    myCrm.includes.filter((include) => include.startsWith("platform/")),
+    [
+      "platform/bos-mcp-client",
+      "platform/bos-federated-query",
+      "platform/bos-cache-maintenance",
+      "platform/manage-customer-extension"
+    ]
+  );
+  const skills = await resolveProductSkills(myCrm);
+  assert(skills.some((skill) => skill.name === "bos-federated-query"));
+  assert(skills.some((skill) => skill.name === "bos-cache-maintenance"));
+
+  const policy = JSON.parse(await readFile(
+    `${root}/source/capabilities/my-crm/references/client-policy.json`,
+    "utf8"
+  ));
+  assert.deepEqual(policy.freshness_defaults_seconds, {
+    exact_record: 60,
+    pipeline_state: 120,
+    record_search: 300,
+    activity_timeline: 600
+  });
+  assert.equal(
+    policy.identity.automatic_merged_view_key,
+    "exact_normalized_email"
+  );
+  assert.equal(policy.mutation.verification_reads_per_uncertain_source, 1);
+  assert.equal(policy.mutation.safe_replays_per_uncertain_source, 1);
 });
 
 test("every product and client ships tenant extension management metadata", async () => {

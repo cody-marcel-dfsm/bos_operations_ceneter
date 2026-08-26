@@ -206,7 +206,9 @@ For each logical source query:
    only; keep them out of command arguments, temporary repository files, and
    diagnostics.
 3. When the plan is `current`, generate from the cache without a source content
-   query. When the plan returns gaps, request exactly those intervals plus
+   query. When a configured maximum age produces `refresh_required`, perform a
+   conditional or incremental refresh and exclude the stale source after a
+   failed refresh under the default policy. When the plan returns gaps, request exactly those intervals plus
    changes after its cursor through the fixed upper bound. Use provider cursors,
    `modified_after`, conditional versions or ETags, or a bounded versioned
    snapshot. For a cold plan, one bounded snapshot initializes both coverage
@@ -221,6 +223,11 @@ For each logical source query:
    watermark, and `sync_completed_at`. Call `abort` after a failed or partial
    retrieval so the previous committed watermark remains authoritative.
 6. Call `read` and generate the requested outcome from the covered cache state.
+
+Use `inspect` for cache health metadata without document bodies and
+`invalidate` for one exact authority/source/query identity. Report origin,
+`sync_completed_at`, local update time, human-readable age, and configured
+maximum age with every freshness-governed result.
 
 Treat query coverage as `[from, through)` and change catch-up as
 `(after, through]`. Normalize only the minimum-necessary reusable fields into

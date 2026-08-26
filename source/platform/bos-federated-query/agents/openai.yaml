@@ -1,0 +1,4 @@
+interface:
+  display_name: "BOS Federated Query"
+  short_description: "Plan and run source-aware BOS queries"
+  default_prompt: "Use $bos-federated-query to plan and run this request across the authorized BOS sources."

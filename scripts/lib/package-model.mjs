@@ -51,6 +51,9 @@ export function validateProduct(manifest, path = "product.json") {
     "description",
     "long_description",
     "website_url",
+    "brand_color",
+    "composer_icon",
+    "logo",
     "publisher",
     "category",
     "authentication",
@@ -99,6 +102,25 @@ export function validateProduct(manifest, path = "product.json") {
       !/^https:\/\/[^\s]+$/.test(manifest.website_url))
   ) {
     failures.push(`${path}: website_url must be an absolute HTTPS URL`);
+  }
+  if (
+    manifest.brand_color !== undefined &&
+    !/^#[0-9A-Fa-f]{6}$/.test(manifest.brand_color)
+  ) {
+    failures.push(`${path}: brand_color must be a six-digit hex color`);
+  }
+  for (const field of ["composer_icon", "logo"]) {
+    const value = manifest[field];
+    if (
+      value !== undefined &&
+      (typeof value !== "string" ||
+        !value.startsWith("assets/") ||
+        value.includes("..") ||
+        value.includes("\\") ||
+        !/\.(?:png|jpe?g|svg|webp)$/i.test(value))
+    ) {
+      failures.push(`${path}: ${field} must be a safe image path under assets/`);
+    }
   }
   if (!["ON_INSTALL", "ON_USE"].includes(manifest.authentication)) {
     failures.push(`${path}: authentication must be ON_INSTALL or ON_USE`);
@@ -222,6 +244,22 @@ export async function copySettingsTemplate(product, pluginRoot, base = root) {
   }
   await mkdir(join(pluginRoot, "config"), { recursive: true });
   await cp(sourcePath, join(pluginRoot, "config", "customer-settings.template.json"));
+}
+
+export async function copyProductAssets(product, pluginRoot, base = root) {
+  const assets = new Set(
+    [product.composer_icon, product.logo].filter(Boolean)
+  );
+  for (const asset of assets) {
+    const sourcePath = join(base, "products", product.name, asset);
+    const productAssets = join(base, "products", product.name, "assets");
+    if (!safeInside(productAssets, sourcePath)) {
+      throw new Error(`Product ${product.name} has an unsafe visual asset path`);
+    }
+    const targetPath = join(pluginRoot, asset);
+    await mkdir(resolve(targetPath, ".."), { recursive: true });
+    await cp(sourcePath, targetPath);
+  }
 }
 
 export function safeInside(base, candidate) {
@@ -352,6 +390,11 @@ export function pluginManifest(product) {
     manifest.homepage = product.website_url;
     manifest.interface.websiteURL = product.website_url;
   }
+  if (product.brand_color) manifest.interface.brandColor = product.brand_color;
+  if (product.composer_icon) {
+    manifest.interface.composerIcon = `./${product.composer_icon}`;
+  }
+  if (product.logo) manifest.interface.logo = `./${product.logo}`;
   if (product.runtime) manifest.apps = "./.app.json";
   return manifest;
 }
