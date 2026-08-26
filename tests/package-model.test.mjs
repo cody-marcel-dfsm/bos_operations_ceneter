@@ -1495,31 +1495,22 @@ test("My CRM composes the approved reusable federated runtime skills", async () 
   assert(skills.some((skill) => skill.name === "bos-federated-query"));
   assert(skills.some((skill) => skill.name === "bos-cache-maintenance"));
 
-  const entry = await readFile(
-    `${root}/source/capabilities/my-crm/SKILL.md`,
+  const policy = JSON.parse(await readFile(
+    `${root}/source/capabilities/my-crm/references/client-policy.json`,
     "utf8"
+  ));
+  assert.deepEqual(policy.freshness_defaults_seconds, {
+    exact_record: 60,
+    pipeline_state: 120,
+    record_search: 300,
+    activity_timeline: 600
+  });
+  assert.equal(
+    policy.identity.automatic_merged_view_key,
+    "exact_normalized_email"
   );
-  const workflow = await readFile(
-    `${root}/source/capabilities/my-crm/references/tool-workflows.md`,
-    "utf8"
-  );
-  const execution = await readFile(
-    `${root}/source/platform/bos-federated-query/SKILL.md`,
-    "utf8"
-  );
-  const clientContract = `${entry}\n${workflow}\n${execution}`;
-  assert.match(clientContract, /tools\/list/);
-  assert.match(clientContract, /creates no server state(?:,| or) schema/);
-  for (const inventedFacade of [
-    "crm_list_sources",
-    "crm_search_records",
-    "crm_explain_query",
-    "crm_plan_sync",
-    "crm_apply_sync",
-    "crm_reconcile_operation"
-  ]) {
-    assert.doesNotMatch(clientContract, new RegExp(inventedFacade));
-  }
+  assert.equal(policy.mutation.verification_reads_per_uncertain_source, 1);
+  assert.equal(policy.mutation.safe_replays_per_uncertain_source, 1);
 });
 
 test("every product and client ships tenant extension management metadata", async () => {
