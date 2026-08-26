@@ -255,6 +255,65 @@ function aggregateUsage(sourceResults) {
   };
 }
 
+function mergedPresentation(sourceResults) {
+  const candidates = [];
+  for (const source of sourceResults) {
+    const sourceHandle = text(source.source_handle, "source_result.source_handle");
+    const sourceLabel = text(source.source_label, "source_result.source_label");
+    const tool = text(source.tool, "source_result.tool");
+    for (const record of Array.isArray(source.records) ? source.records : []) {
+      const email = record?.identity?.normalized_email;
+      candidates.push({
+        source_handle: sourceHandle,
+        source_label: sourceLabel,
+        tool,
+        normalized_email: typeof email === "string" && email.trim()
+          ? email.trim().toLowerCase()
+          : null,
+        record
+      });
+    }
+  }
+
+  const groups = new Map();
+  for (const candidate of candidates) {
+    const key = candidate.normalized_email ?? `unmatched:${groups.size}`;
+    const values = groups.get(key) ?? [];
+    values.push(candidate);
+    groups.set(key, values);
+  }
+
+  return {
+    policy: "exact_normalized_email",
+    groups: [...groups.entries()].map(([key, members]) => {
+      if (key.startsWith("unmatched:")) {
+        return { status: "unmatched", reason: "missing_normalized_email", members };
+      }
+      const sourceCounts = new Map();
+      for (const member of members) {
+        sourceCounts.set(
+          member.source_handle,
+          (sourceCounts.get(member.source_handle) ?? 0) + 1
+        );
+      }
+      if ([...sourceCounts.values()].some((count) => count > 1)) {
+        return {
+          status: "ambiguous",
+          reason: "duplicate_candidate_within_source",
+          identity: { normalized_email: key },
+          members
+        };
+      }
+      return {
+        status: sourceCounts.size > 1 ? "correlated" : "unmatched",
+        reason: sourceCounts.size > 1 ? null : "single_source_only",
+        identity: { normalized_email: key },
+        members
+      };
+    })
+  };
+}
+
 export function aggregateQueryResult(input) {
   object(input, "aggregate input");
   const plan = object(input.plan, "plan");
@@ -263,17 +322,21 @@ export function aggregateQueryResult(input) {
   }
   const sourceResults = input.source_results;
   const failed = sourceResults.filter((item) => item.status !== "completed");
+  const mode = plan.aggregation?.mode ?? "federated";
   return {
     result_version: RESULT_VERSION,
     plan_id: text(plan.plan_id, "plan.plan_id"),
     complete: failed.length === 0,
-    mode: plan.aggregation?.mode ?? "federated",
+    mode,
     sources: sourceResults,
     record_count: sourceResults.reduce(
       (count, item) => count + (Array.isArray(item.records) ? item.records.length : 0),
       0
     ),
     failed_source_count: failed.length,
+    merged_view: mode === "merged_view"
+      ? mergedPresentation(sourceResults)
+      : null,
     execution_ledger: Array.isArray(input.execution_ledger)
       ? input.execution_ledger
       : [],
