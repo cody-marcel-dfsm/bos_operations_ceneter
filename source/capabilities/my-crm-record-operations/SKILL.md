@@ -21,8 +21,8 @@ Use `my-crm` for routing and the `crm` MCP connection for execution.
 1. Resolve the exact source and verify that the operation is advertised.
 2. Search that source for duplicates before create when a stable identity value
    exists.
-3. Require the current source version for update and send a fresh idempotency
-   key for the user's exact mutation request.
+3. Supply the current source version and a fresh idempotency key when the live
+   tool schema supports or requires them. Never invent unsupported parameters.
 4. Report the source's declared transaction guarantee, commit reference,
    read-back verification, and final state.
 5. Invalidate or refresh the affected query cache after a confirmed mutation.

@@ -81,6 +81,22 @@ with manifest/context invalidation evidence. A context, authorization, role,
 plugin, or manifest change forces refresh even when the client age window has
 not expired.
 
+## My CRM identity policy
+
+An automatic merged presentation requires exactly one normalized email shared
+by the candidate records across distinct sources. An exact normalized phone may
+increase confidence and is displayed as supporting evidence. It does not merge
+records by itself when email is absent or conflicting.
+
+Keep records separate and label them ambiguous when any source contains more
+than one candidate for the identity, email values conflict, or a correlation
+depends on a transitive chain. A merged presentation changes no source data.
+Every field retains its contributing source and freshness evidence.
+
+Identity confidence grants no mutation authority. `synchronize_from` separately
+requires an explicit authoritative source, explicit fields, exact target
+records, current versions when supported, and user confirmation.
+
 ## Query plan
 
 The domain skill compiles the user's request into a sanitized plan:
@@ -91,6 +107,7 @@ The domain skill compiles the user's request into a sanitized plan:
   "mode": "execute",
   "product": "my-crm",
   "mcp_group": "crm",
+  "manifest_fingerprint": "sha256 of the live callable tool manifest",
   "skills": ["my-crm-record-operations", "bos-federated-query"],
   "dataset": "contacts",
   "query": {
@@ -99,7 +116,7 @@ The domain skill compiles the user's request into a sanitized plan:
   },
   "sources": [
     {
-      "source_id": "client source/tool digest",
+      "source_handle": "client source/tool digest",
       "tool": "exact_discovered_tool_name",
       "cache_policy": {"max_age_seconds": 300},
       "execution": "parallel"
@@ -115,6 +132,10 @@ The domain skill compiles the user's request into a sanitized plan:
 The persisted or diagnostic form replaces user values with field names,
 types, counts, bounds, or hashes. Raw customer query values remain in the
 task-local execution context only.
+
+Before accepting the plan, the client proves that every selected `tool` appears
+in the callable tool-name set associated with `manifest_fingerprint`. A cached
+or configured tool name that is absent from that set fails closed.
 
 The plan records:
 
@@ -173,6 +194,20 @@ Extend the shared document-cache request with a client-resolved policy:
 for the source and dataset, with a task-specific user override when provided.
 It changes data-reuse behavior and grants no server authority.
 
+My CRM defaults are:
+
+| Dataset | Maximum age |
+|---|---:|
+| exact record | 60 seconds |
+| pipeline state | 120 seconds |
+| record search | 300 seconds |
+| activity timeline | 600 seconds |
+
+Customer policy and explicit task requests may tighten these values. A looser
+value requires an explicit product/customer policy. Context, manifest, role,
+plugin, capability, or provider-binding change invalidates reuse regardless of
+age.
+
 Before using a covered dataset, compare the current time with its last complete
 `sync_completed_at`:
 
@@ -209,7 +244,7 @@ capable host runs independent units concurrently through sub-agents or parallel
 tool calls. Each unit receives:
 
 - the selected opaque `context_id`;
-- one opaque source handle;
+- one client source/tool handle and its exact discovered tool name;
 - the normalized source-specific query;
 - cache policy and fixed refresh bound;
 - the expected normalized result schema;
@@ -228,7 +263,7 @@ sequentially. The final result contract and failure semantics remain identical.
 The client maintains a user-visible execution ledger with events such as:
 
 - `plan_created`;
-- `catalog_cache_used` or `catalog_refreshed`;
+- `manifest_map_cache_used` or `manifest_map_refreshed`;
 - `source_started`;
 - `source_cache_hit`, `source_cache_stale`, or `source_refresh_started`;
 - `source_result_available`;
@@ -329,12 +364,12 @@ every committed, failed, unavailable, and uncertain source with returned
 receipts and sanitized errors. The client never claims rollback of committed
 sources unless a verified compensating operation completed.
 
-Recovery re-reads uncertain targets and uses existing status, version, receipt,
-or idempotency operations when the discovered source contract supplies them.
-It retries only when that contract proves the replay safe. The client continues
-until complete, stable partial, or user-action-required and refreshes affected
-local caches. My CRM adds no server recovery record, scheduler, table, or
-migration.
+Recovery performs one verification read for an uncertain target and uses
+existing status, version, receipt, or idempotency operations when the discovered
+source contract supplies them. It performs at most one replay when that
+contract proves the replay safe. The client then returns complete, stable
+partial, or `user_action_required` and refreshes affected local caches. My CRM
+adds no server recovery record, scheduler, table, migration, or background job.
 
 ## Platform skills
 
@@ -390,5 +425,6 @@ federated recovery service.
 8. Single-source results never claim stronger atomicity than the provider
    contract.
 9. Cross-source results never claim atomic commit or unverified rollback.
-10. Recovery is idempotent and converges to complete, stable partial, or
-    user-action-required state with every source accounted for.
+10. Recovery remains within the verification/read and safe-replay bounds and
+    ends as complete, stable partial, or user-action-required with every source
+    accounted for.

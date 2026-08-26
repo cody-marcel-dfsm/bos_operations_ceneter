@@ -1,13 +1,13 @@
 # My CRM product architecture
 
-Status: active initial-product direction
+Status: implemented client-product architecture; external host activation pending
 Date: 2026-08-25
 Owners: BOS Operations Center for client composition and skills; Lead Director
 for application context, MCP runtime, CRM operations, and provider integrations
 
 ## Decision
 
-My CRM is a provider-neutral CRM operating layer over customer and lead data in
+My CRM is a provider-neutral client expertise layer over customer and lead data in
 the systems connected to BOS. It gives the user one CRM vocabulary for records,
 pipelines, activities, and reconciliation while preserving the identity and
 transaction guarantees of every source. A request may target one source, query
@@ -67,7 +67,7 @@ adapters remain usable without that future subsystem.
 | MCP transport | Validates the host-managed token, exposes discovery, accepts opaque `context_id`, and dispatches calls | Lead Director/BOS service |
 | Named CRM group | Filters the aggregate registry to the approved CRM tools and plugin domains | Lead Director |
 | Installed application | Supplies organization, installation, actor, role, plugin, capability, and `crm` group enablement | Lead Director app graph |
-| CRM PO services | Execute provider-neutral CRM reads and governed mutations | Lead Director |
+| Existing operation POs | Execute the already-cataloged Lead Director and provider operations selected by the skills | Lead Director |
 | OS plugins and adapters | Connect Lead Director records, GoHighLevel, Calimatic, Gmail, Calendar, and future CRM systems | Lead Director/BOS service |
 | Existing service persistence | Remains owned by the operations already exposed through BOS; My CRM adds no state | Lead Director |
 
@@ -94,7 +94,8 @@ The four CRM execution modes are:
 
 The client retains a source/capability map derived from the MCP tool manifest
 and package configuration. Each invocation validates its manifest fingerprint
-and refresh policy instead of rediscovering every source unconditionally. Dataset caches
+and refresh policy instead of rediscovering every source unconditionally.
+Dataset caches
 carry an authority scope, query identity, last successful update time, and a
 configurable maximum age. Stale entries are refreshed before use and are
 excluded from results when the refresh fails unless the user explicitly permits
@@ -171,12 +172,11 @@ bos_operations_center/
 │   │   ├── bos-federated-query/
 │   │   └── bos-cache-maintenance/
 │   └── capabilities/
-│       └── my-crm/
-│           ├── my-crm/
-│           ├── record-operations/
-│           ├── pipeline-operations/
-│           ├── activity-operations/
-│           └── federation-operations/
+│       ├── my-crm/
+│       ├── my-crm-record-operations/
+│       ├── my-crm-pipeline-operations/
+│       ├── my-crm-activity-operations/
+│       └── my-crm-federation-operations/
 ├── products/
 │   └── my-crm/
 │       ├── product.json
@@ -190,24 +190,21 @@ bos_operations_center/
 └── Vault/
 ```
 
-Lead Director already owns the unchanged server implementation:
+Lead Director already owns the execution platform. My CRM needs one declarative
+resource-group composition and its contract test:
 
 ```text
 lead_director/
 ├── backend/platform_orchestration/
-│   ├── mcp_operational_profiles.py
-│   ├── agent_operation_catalog.py
-│   ├── federated_record_service.py
-│   ├── federated_record_tools.py
-│   ├── agent_federation_runtime.py
-│   └── agent_lead_sis_crm_adapters.py
+│   └── mcp_operational_profiles.py
 └── backend/tests/unit/
-    ├── test_crm_mcp_operational_profile.py
-    └── test_*federat*.py
+    └── test_crm_mcp_operational_profile.py
 ```
 
-My CRM changes none of these files. There is no source dependency from My CRM
-to Subscription Director.
+That configuration groups existing tools under `crm`; it adds no operation,
+router, PO, GO, provider adapter, repository, model, seed, migration, or
+database access. There is no source dependency from My CRM to Subscription
+Director.
 
 ## Verified current baseline
 
@@ -227,9 +224,12 @@ to Subscription Director.
 ### Lead Director
 
 - `/mcp/apps/leaddirector/crm` is registered and contract-tested.
-- The group currently permits the `lead_director` plugin domain.
-- Current public CRM aliases include lead search, get, create, reserved update,
-  and customer-provisioning retry, plus BOS context and authorization status.
+- The group permits the `lead_director`, `gohighlevel`, `gmail`,
+  `google-calendar`, and `calimatic` plugin domains while retaining live
+  context, role, plugin, capability, and provider filtering.
+- Current public CRM aliases include Lead Director record operations,
+  GoHighLevel contact get/create/update, Gmail and Calendar activity reads, and
+  Calimatic student/enrollment reads, plus BOS context and recovery operations.
 - Lead search, get, and create are implemented. General Lead Director field
   update is declared unavailable until an approved editable-field PO path
   exists.
@@ -246,23 +246,7 @@ to Subscription Director.
 
 ## Product capability design
 
-### Implementation bootstrap
-
-The current Lead Director-only tools validate the package, connection, context,
-and MCP call path. They are the implementation bootstrap for My CRM and do not
-define the product's provider-neutral semantics. The bootstrap skills support:
-
-- selecting and explaining the current Lead Director context;
-- searching leads;
-- retrieving one lead;
-- creating a lead after duplicate checking; and
-- reporting unsupported update or provider operations accurately.
-
-The customer-provisioning retry operation remains an internal capability. My
-CRM skills do not invoke it unless a future explicitly packaged administrative
-workflow requires it.
-
-### Federated CRM release
+### Federated CRM behavior
 
 The client reads the active CRM MCP tool manifest and combines its exact names
 and schemas with package-owned CRM semantic routing. This creates a local
@@ -303,24 +287,28 @@ My CRM includes the platform-owned `bos-federated-query` and
 The entry and record skills ship first. Other CRM skills may ship only when the
 corresponding server tools are discoverable and tested.
 
-## Outstanding design decisions
+## Implemented client policy
 
-The architectural direction is established. Implementation still needs these
-bounded product decisions:
-
-1. Define identity confidence and field-authority rules for `merged_view` and
-   `synchronize_from`, including which fields may never merge automatically.
-2. Define default freshness profiles by CRM dataset and source class. The
-   client selects the configured maximum age; live server invalidation,
-   authorization changes, and catalog revisions always force refresh.
-3. Define the portable execution-event schema and each launch host's adapter to
-   its progress or activity surface.
-4. Confirm which launch hosts expose exact model usage. Other hosts will return
-   a labeled client-visible estimate or `unavailable`.
-5. Define per-operation provider guarantees and safe retry/compensation support
-   in the client routing map before enabling multi-source writes.
-6. Define the bounded task-local recovery window and the
-   user-action-required threshold.
+1. `merged_view` automatically correlates records only on one exact normalized
+   email shared across sources. Exact normalized phone is supporting evidence;
+   conflicting emails, duplicate matches inside one source, or transitive
+   matches remain separate and ambiguous.
+2. `synchronize_from` requires an explicit authoritative source, exact fields,
+   exact targets, and user confirmation. Identity matching alone never
+   authorizes a write.
+3. Default maximum ages are 60 seconds for an exact record, 120 seconds for
+   pipeline state, 300 seconds for record searches, and 600 seconds for
+   activity timelines. A product/customer policy or explicit request may
+   tighten these values. Context, manifest, role, plugin, or provider changes
+   force discovery and data refresh.
+4. The client emits the portable execution-event schema. Hosts render events
+   progressively when supported and return the same ledger in the final result
+   otherwise.
+5. Usage is labeled `host_measured`, `client_visible_estimate`, or
+   `unavailable`; an estimate is never presented as host billing usage.
+6. Recovery performs one verification read and at most one replay proved safe
+   by the existing source contract. Remaining uncertainty becomes
+   `user_action_required`. My CRM schedules no background work.
 
 ## Launch boundaries
 
@@ -348,16 +336,11 @@ The initial release excludes:
 
 ## Launch gates
 
-1. Approve the package-to-route binding: product `my-crm`, MCP group `crm`.
-2. Decide whether the first public release promises existing-account access or
-   self-service onboarding for every new login. Implement the onboarding
-   continuation before advertising the latter.
-3. Add the My CRM canonical skill source and product manifest.
-4. Register the ChatGPT/Codex app for the exact CRM route and add its stable app
+1. Register the ChatGPT/Codex app for the exact CRM route and add its stable app
    ID to the active manifest.
-5. Generate and validate the declared client packages.
-6. Verify tenant isolation, opaque-context selection, role/capability filtering,
+2. Generate and validate the declared client packages after activation.
+3. Verify tenant isolation, opaque-context selection, role/capability filtering,
    provider recovery, mutation idempotency, and audit evidence.
-7. Run one live Connect/Sign in and tool-discovery test in each launch client.
+4. Run one live Connect/Sign in and tool-discovery test in each launch client.
 
 No launch gate depends on Subscription Director or commercial licensing.

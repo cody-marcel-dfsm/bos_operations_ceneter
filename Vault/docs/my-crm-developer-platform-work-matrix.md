@@ -1,6 +1,6 @@
 # My CRM independent launch work matrix
 
-Status: client package implemented; external host registration and live acceptance pending
+Status: implementation complete; external host registration and live acceptance pending
 Date: 2026-08-25
 Owners: BOS Operations Center client package and existing Lead Director platform
 
@@ -134,11 +134,50 @@ and creates no server recovery record.
 | CRM-P06 | Mutation coordination | Existing deterministic source operations | Confirm a task-local plan, call each source independently, and reconcile with existing operations | BOS Operations Center |
 | CRM-M01 | Named MCP resource | `/mcp/apps/leaddirector/crm` exists | No new route or runtime | Lead Director |
 | CRM-M02 | Authorization | OAuth, opaque contexts, role/plugin/capability filtering | No My CRM-specific access path | Lead Director |
-| CRM-M03 | Source operations | Operation catalog, provider adapters, PO/GO boundaries | No generic façade; use operations already exposed by the selected resource | Lead Director |
+| CRM-M03 | Source operations | Operation catalog, provider adapters, PO/GO boundaries | Compose existing operations in the declarative `crm` resource-group allowlist; add no generic façade | Lead Director |
 | CRM-M04 | Platform persistence | Existing platform-owned persistence and provider receipts | No schema, migration, repository, model, seed, or recovery-ledger work | Lead Director |
 | CRM-Q01 | Package safety | Build, validation, parity, and credential scans | Validate My CRM source and generated clients | BOS Operations Center |
 | CRM-Q02 | Behavioral safety | Live manifest and server authorization | Verify absent tools fail closed, source partials remain visible, and no server writes occur during discovery/explain/cache | Cross-project |
 | CRM-Q03 | Live acceptance | Host-managed OAuth | Test install, connect, context, discovery, reads, recovery, and resumed requests in launch hosts | Cross-project |
+
+## Implemented file surfaces
+
+### BOS Operations Center client source
+
+- `products/my-crm/product.json` owns product identity and the
+  `leaddirector/crm` binding.
+- `source/capabilities/my-crm/` owns request routing and the maintained client
+  policy reference.
+- `source/capabilities/my-crm-*-operations/` owns record, pipeline, activity,
+  and federation expertise as sibling capability packages.
+- `source/platform/bos-federated-query/` owns deterministic manifest-validated
+  plans, explain output, source-result envelopes, aggregation, and usage.
+- `source/platform/bos-cache-maintenance/` and the existing document-cache
+  helper own authority-scoped freshness and invalidation.
+
+### Lead Director grouping configuration
+
+- `backend/platform_orchestration/mcp_operational_profiles.py` maps existing
+  operations into the named `crm` group and classifies mutation annotations.
+- `backend/tests/unit/test_crm_mcp_operational_profile.py` verifies aliases,
+  allowed plugin domains, filtered discovery, opaque context, and raw-authority
+  rejection.
+
+My CRM changes no other Lead Director implementation surface.
+
+## Implemented policy decisions
+
+- Automatic merged presentation requires one exact normalized email. Phone is
+  supporting evidence. Conflicts, duplicates within one source, and transitive
+  matches remain separate.
+- Cross-source writes require explicit source and field authority, exact
+  targets, and user confirmation.
+- Default maximum ages are exact record 60 seconds, pipeline 120 seconds,
+  record search 300 seconds, and activity timeline 600 seconds.
+- Recovery is bounded to one verification read and one contract-proved safe
+  replay per uncertain source. Remaining uncertainty is user-action-required.
+- Progressive events and final ledgers share one portable schema. Token usage
+  always declares measured, estimated, or unavailable scope.
 
 ## Remaining release work
 
@@ -148,11 +187,7 @@ and creates no server recovery record.
    each one.
 3. Run a live tool-discovery inventory against the deployed `crm` resource and
    record the source operations currently exposed.
-4. Define identity confidence and field-authority policy for merged views and
-   cross-source changes.
-5. Define default freshness by dataset/source class and host-specific
-   progressive-output adapters.
-6. Validate which hosts provide exact token usage; label other results as
+4. Validate which hosts provide exact token usage; label other results as
    estimates or unavailable.
 
 ## Separate commercial and developer efforts

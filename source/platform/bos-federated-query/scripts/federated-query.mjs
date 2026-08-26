@@ -65,6 +65,16 @@ export function buildQueryPlan(input) {
   object(input, "input");
   const mode = text(input.mode ?? "federated", "mode");
   if (!MODES.has(mode)) throw new Error("mode is invalid");
+  if (!Array.isArray(input.available_tools) || input.available_tools.length === 0) {
+    throw new Error("available_tools must be a non-empty array");
+  }
+  const availableTools = input.available_tools.map((tool, index) =>
+    text(tool, `available_tools[${index}]`)
+  );
+  if (new Set(availableTools).size !== availableTools.length) {
+    throw new Error("available_tools must not contain duplicates");
+  }
+  const callableTools = new Set(availableTools);
   if (!Array.isArray(input.sources) || input.sources.length === 0) {
     throw new Error("sources must be a non-empty array");
   }
@@ -74,10 +84,14 @@ export function buildQueryPlan(input) {
     if (!Number.isInteger(maxAge) || maxAge < 0) {
       throw new Error(`sources[${index}].max_age_seconds must be non-negative`);
     }
+    const tool = text(source.tool, `sources[${index}].tool`);
+    if (!callableTools.has(tool)) {
+      throw new Error(`sources[${index}].tool is absent from available_tools`);
+    }
     return {
       source_handle: text(source.source_handle, `sources[${index}].source_handle`),
       source_label: text(source.source_label, `sources[${index}].source_label`),
-      tool: text(source.tool, `sources[${index}].tool`),
+      tool,
       cache_policy: {
         max_age_seconds: maxAge,
         allow_stale_on_error: source.allow_stale_on_error === true

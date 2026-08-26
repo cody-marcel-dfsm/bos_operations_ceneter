@@ -14,8 +14,9 @@ const input = {
   product: "my-crm",
   mcp_group: "crm",
   manifest_fingerprint: "sha256:active-crm-tools-v1",
+  available_tools: ["crm_search_leads", "crm_search_calimatic_students"],
   skills: ["my-crm-record-operations", "bos-federated-query"],
-  dataset: "contacts",
+  dataset: "customer_records",
   query: { email: "ada@example.com" },
   mode: "merged_view",
   sources: [
@@ -27,8 +28,8 @@ const input = {
     },
     {
       source_handle: "opaque-source-two",
-      source_label: "GoHighLevel",
-      tool: "ghl_search_contacts",
+      source_label: "Calimatic",
+      tool: "crm_search_calimatic_students",
       max_age_seconds: 60
     }
   ]
@@ -85,7 +86,7 @@ test("source cache keys are deterministic and stale cache is withheld", () => {
     ...input,
     sources: [
       input.sources[0],
-      { ...input.sources[1], query: { phone: "3035550100" } }
+      { ...input.sources[1], query: { student_name: "Ada" } }
     ]
   });
   const descriptor = buildSourceCacheDescriptor(
@@ -94,12 +95,12 @@ test("source cache keys are deterministic and stale cache is withheld", () => {
   );
   assert.equal(descriptor.cache_key.startsWith("bos_query_"), true);
   assert.equal(descriptor.query_digest.length, 64);
-  assert.deepEqual(plan.sources[1].query, { phone: "3035550100" });
+  assert.deepEqual(plan.sources[1].query, { student_name: "Ada" });
 
   const stale = normalizeSourceResult({
     source_handle: "opaque-source-two",
-    source_label: "GoHighLevel",
-    tool: "ghl_search_contacts",
+    source_label: "Calimatic",
+    tool: "crm_search_calimatic_students",
     origin: "cache",
     last_updated_at: "2026-08-25T20:00:00.000Z",
     max_age_seconds: 60,
@@ -181,6 +182,20 @@ test("plans and usage fail closed on malformed policy", () => {
       sources: [{ ...input.sources[0], tool: "" }]
     }),
     /sources\[0\]\.tool must be a non-empty string/
+  );
+  assert.throws(
+    () => buildQueryPlan({
+      ...input,
+      sources: [{
+        ...input.sources[0],
+        tool: "crm_search_records"
+      }]
+    }),
+    /sources\[0\]\.tool is absent from available_tools/
+  );
+  assert.throws(
+    () => buildQueryPlan({ ...input, available_tools: [] }),
+    /available_tools must be a non-empty array/
   );
   assert.throws(
     () => aggregateQueryResult({

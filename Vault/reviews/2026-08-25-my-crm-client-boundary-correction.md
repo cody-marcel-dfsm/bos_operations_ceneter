@@ -39,6 +39,13 @@ migration or data operation was executed as part of this correction.
   requires a manifest fingerprint and exact discovered tool in every plan and
   explain result. Lines 148-222 preserve the tool in normalized source results
   and cache identity.
+- `Vault/specs/federated-query-execution.md:84-99` defines the implemented
+  identity and field-authority boundary; lines 197-213 define bounded dataset
+  freshness; and lines 367-375 bound task-local recovery without background
+  state.
+- `Vault/docs/my-crm-plugin-architecture-proposal.md:287-317` records the
+  implemented client policy and leaves only external host activation and live
+  acceptance as launch gates.
 - In Lead Director,
   `backend/platform_orchestration/agent_operation_catalog.py:2483-2548` already
   defines Lead Director lead operations through the existing federation PO;
@@ -62,5 +69,7 @@ migration or data operation was executed as part of this correction.
 - Tenant, role, plugin, provider, and capability filtering: approved.
 - Database impact from My CRM: none.
 - Licensing and payment dependency: none.
+- Final release validation: package and credential checks plus all 136 tests
+  passed against the complete `0.4.47` branch.
 
 APPROVED
