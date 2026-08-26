@@ -35,10 +35,11 @@ migration or data operation was executed as part of this correction.
   planning, cache preflight, parallel source units, progressive evidence, and
   partial aggregation in the client. Lines 44-55 expressly create no server
   state or schema.
-- `source/platform/bos-federated-query/scripts/federated-query.mjs:64-127`
-  requires a manifest fingerprint and exact discovered tool in every plan and
-  explain result. Lines 148-222 preserve the tool in normalized source results
-  and cache identity.
+- `source/platform/bos-federated-query/scripts/federated-query.mjs:64-141`
+  requires a non-empty live callable-tool set, rejects planned tools absent
+  from that set, and carries the manifest fingerprint into plan and explain
+  results. Lines 258-345 implement deterministic exact-normalized-email
+  correlation while preserving source provenance and ambiguity.
 - `Vault/specs/federated-query-execution.md:84-99` defines the implemented
   identity and field-authority boundary; lines 197-213 define bounded dataset
   freshness; and lines 367-375 bound task-local recovery without background
@@ -69,7 +70,7 @@ migration or data operation was executed as part of this correction.
 - Tenant, role, plugin, provider, and capability filtering: approved.
 - Database impact from My CRM: none.
 - Licensing and payment dependency: none.
-- Final release validation: package and credential checks plus all 136 tests
+- Final release validation: package and credential checks plus all 137 tests
   passed against the complete `0.4.47` branch.
 
 APPROVED
