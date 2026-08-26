@@ -386,7 +386,7 @@ reporting, and explain/explain-analyze behavior.
 Own source-map refresh, query-cache inspection, stale-query refresh,
 explicit invalidation, authority revocation cleanup, unreferenced-object
 garbage collection, and cache health reporting. On every domain invocation it
-runs a bounded preflight for only the catalog and datasets relevant to that
+runs a bounded preflight for only the manifest-derived map and datasets relevant to that
 request. It never refreshes the entire cache indiscriminately.
 
 Domain products include these skills when they perform federated or expensive

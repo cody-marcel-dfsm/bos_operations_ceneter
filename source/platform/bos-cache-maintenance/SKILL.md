@@ -12,8 +12,8 @@ an explicit cache inspection, invalidation, or stale-refresh operation.
 
 ## Invocation preflight
 
-For every domain invocation, inspect only the manifest-derived source map and datasets
-selected by that request:
+For every domain invocation, inspect only the manifest-derived source map and
+datasets selected by that request:
 
 1. Apply the product's client-owned maximum-age policy by source and dataset.
 2. Treat live context, authorization, provider-binding, manifest, or source
