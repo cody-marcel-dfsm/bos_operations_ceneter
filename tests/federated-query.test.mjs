@@ -121,8 +121,24 @@ test("aggregation preserves completed sources and reports partial completion", (
   const result = aggregateQueryResult({
     plan,
     source_results: [
-      { status: "completed", records: [{ record_ref: "bos:person:one" }] },
-      { status: "failed", records: [], error: { code: "source_unavailable" } }
+      {
+        source_handle: "opaque-source-one",
+        source_label: "Lead Director",
+        tool: "crm_search_leads",
+        status: "completed",
+        records: [{
+          record_ref: "bos:person:one",
+          identity: { normalized_email: "ada@example.com" }
+        }]
+      },
+      {
+        source_handle: "opaque-source-two",
+        source_label: "Calimatic",
+        tool: "crm_search_calimatic_students",
+        status: "failed",
+        records: [],
+        error: { code: "source_unavailable" }
+      }
     ],
     execution_ledger: ledger,
     usage: { scope: "unavailable" }
@@ -138,6 +154,9 @@ test("aggregation totals complete source usage with an explicit scope", () => {
     plan: buildQueryPlan(input),
     source_results: [
       {
+        source_handle: "opaque-source-one",
+        source_label: "Lead Director",
+        tool: "crm_search_leads",
         status: "completed",
         records: [],
         usage: {
@@ -148,6 +167,9 @@ test("aggregation totals complete source usage with an explicit scope", () => {
         }
       },
       {
+        source_handle: "opaque-source-two",
+        source_label: "Calimatic",
+        tool: "crm_search_calimatic_students",
         status: "completed",
         records: [],
         usage: {
@@ -165,6 +187,68 @@ test("aggregation totals complete source usage with an explicit scope", () => {
     output_tokens: 5,
     total_tokens: 35
   });
+});
+
+test("merged views correlate exact email across sources and preserve ambiguity", () => {
+  const result = aggregateQueryResult({
+    plan: buildQueryPlan(input),
+    source_results: [
+      {
+        source_handle: "opaque-source-one",
+        source_label: "Lead Director",
+        tool: "crm_search_leads",
+        status: "completed",
+        records: [{
+          record_ref: "lead-1",
+          identity: {
+            normalized_email: "Ada@Example.com",
+            normalized_phone: "+13035550100"
+          }
+        }]
+      },
+      {
+        source_handle: "opaque-source-two",
+        source_label: "Calimatic",
+        tool: "crm_search_calimatic_students",
+        status: "completed",
+        records: [
+          {
+            record_ref: "student-1",
+            identity: {
+              normalized_email: "ada@example.com",
+              normalized_phone: "+13035550100"
+            }
+          },
+          {
+            record_ref: "student-duplicate",
+            identity: { normalized_email: "duplicate@example.com" }
+          },
+          {
+            record_ref: "student-duplicate-2",
+            identity: { normalized_email: "duplicate@example.com" }
+          },
+          {
+            record_ref: "phone-only",
+            identity: { normalized_phone: "+13035550100" }
+          }
+        ]
+      }
+    ]
+  });
+
+  const correlated = result.merged_view.groups.find(
+    (group) => group.identity?.normalized_email === "ada@example.com"
+  );
+  assert.equal(correlated.status, "correlated");
+  assert.equal(correlated.members.length, 2);
+  const ambiguous = result.merged_view.groups.find(
+    (group) => group.identity?.normalized_email === "duplicate@example.com"
+  );
+  assert.equal(ambiguous.status, "ambiguous");
+  assert.equal(ambiguous.reason, "duplicate_candidate_within_source");
+  assert(result.merged_view.groups.some(
+    (group) => group.reason === "missing_normalized_email"
+  ));
 });
 
 test("plans and usage fail closed on malformed policy", () => {
