@@ -1,126 +1,198 @@
-# BOS product platform staged work matrix
+# My CRM independent launch work matrix
 
-Status: reset after licensing design correction
-Date: 2026-08-16
-Owners: BOS Operations Center, Lead Director, Subscription Director
+Status: implementation complete; external host registration and live acceptance pending
+Date: 2026-08-25
+Owners: BOS Operations Center client package and existing Lead Director platform
 
-## Required sequence
+## Operating decision
 
-The efforts remain separate and proceed in this order:
+My CRM is a client expertise package over the existing Lead Director `crm` MCP
+resource. It uses the same current no-fee access model as the other BOS runtime
+products. It has no product-license, fee, Stripe, checkout, Subscription
+Director, or entitlement dependency.
 
-1. Document and preserve the products and customer-access model that exist.
-2. Add explicit no-fee licensing to the existing server-backed product path.
-3. Apply the established product/license model to My CRM and decide My CRM's
-   separate product, pricing, and acquisition strategy.
-4. Design the local developer experience and later monetization experience as a
-   separate platform effort.
+The implementation adds no Lead Director database table, migration, seed,
+repository, model, capability publication, source-catalog endpoint, generic CRM
+façade, or recovery service. BOS already owns authenticated context, filtered
+tool discovery, plugin/provider authorization, deterministic source operations,
+and each operation's native transaction guarantees.
 
-This document records the boundaries and current work. It does not define My
-CRM pricing or the external developer workflow.
+The work surfaces below are peers with direct contracts. They are separate
+efforts rather than a hierarchy.
 
-## Stage 0 — verified current product model
+## Correct runtime stack
 
-| Surface | BOS Operations Center | Lead Director | Subscription Director |
-|---|---|---|---|
-| BOS | Active skills-only package; no MCP resource | No BOS-package product route | No BOS license representation |
-| Education Center | Active package and generated Claude/Codex connection | Active `leaddirector/education-center` group with tool/provider allowlists; customer enablement comes from installed-app FSM, roles, and plugin grants | No Education Center product/license mapping |
-| Video Ads | Source manifest exists; release disabled and excluded from clients | Named group exists with no current tool/provider surface | No Video Ads product/license mapping |
-| Customer installation | Native marketplace installs package files and immutable connection metadata | Installation grants no organization access; OAuth resolves an existing server-side app/installation/role/group context | No participation today |
-| Product connection | Host starts product-specific OAuth | Resolves canonical context, records consent, issues resource-scoped grant, enforces group/tool/plugin scope | No participation today |
-| Provider connection | Client receives server-created recovery instructions | Owns provider grants and credential recovery | No participation |
-| Stripe | No payment implementation in product packages | Hosts Subscription Director implementation in the current codebase | Connected-account catalog, checkout, fees, webhooks, and subscriber state exist independently of BOS product access |
+```text
+Claude / ChatGPT / Codex host
+  -> installed My CRM package
+  -> CRM domain skills + shared client execution/cache skills
+  -> host-managed BOS OAuth
+  -> /mcp/apps/leaddirector/crm
+  -> bos_get_context + tools/list
+  -> client derives a source/capability map from discovered tool schemas
+  -> existing BOS tools execute in their current tenant/plugin/provider scope
+  -> client aggregates provenance, freshness, partial errors, and usage
+```
 
-The controlling detail is in
-`Vault/docs/bos-product-licensing-user-experience.md`.
+The live MCP manifest is the authority for callable operations. The package may
+cache a manifest fingerprint and semantic routing map. It refreshes discovery
+after connection, context, role, plugin, or capability changes and after its
+configured maximum age. A missing tool is unavailable. The package never
+creates access or server functionality in response.
 
-## Stage 1 — existing Education Center no-fee license path
+## What exists
 
-### Invariants
+### BOS Operations Center
 
-- A no-fee license is a real, product-specific license with configured terms.
-- License provisioning and license lookup are separate operations.
-- Lookup is read-only and never creates, assigns, renews, or changes a license.
-- Missing license returns `license_missing` and denies access.
-- Product installation, BOS authorization, license authorization, and provider
-  authorization remain separate events.
-- Stripe does not participate in the existing no-fee path.
+- deterministic product composition for Codex, Claude, Copilot, and Gemini;
+- `bos-mcp-client` for OAuth, opaque context, tool discovery, recovery, and
+  continuation;
+- the shared authority-scoped local document cache;
+- `bos-federated-query` for client planning, per-source fan-out, explain,
+  aggregation, execution events, and scoped usage;
+- `bos-cache-maintenance` for client freshness, refresh, inspect, and
+  invalidation;
+- the My CRM product manifest, brand asset, and CRM skill group.
 
-### Work matrix
+### Existing Lead Director platform
 
-| ID | Surface | Existing | Work required | Owner |
+- registered `/mcp/apps/leaddirector/crm` routing;
+- `bos_get_context` and filtered MCP tool discovery;
+- existing public CRM aliases for Lead Director search/get/create/update,
+  GoHighLevel get/create/update, Gmail activity search/thread read, Calendar
+  activity search, and Calimatic student/enrollment reads;
+- existing operation catalog, resource-group filtering, provider adapters,
+  authorization recovery, and PO/GO execution boundaries;
+- existing integrations for Lead Director, GoHighLevel, Gmail, Google Calendar,
+  and Calimatic. The CRM resource-group allowlist composes their existing
+  operations without adding an execution or persistence layer. Each operation
+  is usable only when present in the selected context's live manifest.
+
+Existing Lead Director platform persistence remains owned by Lead Director.
+My CRM neither changes nor extends that persistence.
+
+## My CRM product behavior
+
+### Discovery and routing
+
+1. Connect to the package-declared `leaddirector/crm` resource.
+2. Resolve one opaque context through `bos_get_context`.
+3. Read the live tool manifest.
+4. Build a client source map from exact tool names, input/output schemas, and
+   package semantic routing.
+5. Select only tools that can satisfy the requested CRM entity and operation.
+
+The current map supports Lead Director lead records, GoHighLevel contact
+get/create/update, Gmail and Calendar read-only activity evidence, and Calimatic
+read-only customer/student evidence. Availability remains context-specific.
+GoHighLevel search is accurately unavailable because the existing operation
+catalog does not currently advertise a scoped search tool.
+
+### Reads
+
+- create one bounded execution unit per discovered source operation;
+- apply the local freshness policy before each reusable dataset query;
+- execute independent sources in parallel when the host supports it;
+- preserve completed results when another source fails;
+- retain per-source provenance and show cache/live origin, local last-updated
+  time, human-readable age, maximum age, and coverage;
+- optionally correlate exact approved identities into a merged presentation;
+  ambiguous identities remain separate; and
+- report measured, client-visible estimated, or unavailable token usage.
+
+### Explain
+
+`explain <request>` compiles a client plan from the manifest and skills without
+calling a data operation. It shows exact discovered tools, sanitized parameter
+shapes, cache decisions, parallel groups, aggregation, mutation boundaries,
+expected output, and usage/latency scope. `explain analyze` executes that plan
+and appends observed results.
+
+### Mutations
+
+A single-source mutation calls the existing source tool and inherits exactly
+that operation's transaction guarantees. The package supplies versions,
+idempotency keys, and operation identities only when the discovered schema
+supports them.
+
+A cross-source change is an explicitly confirmed task-local sequence of
+independent source calls. The client records every returned receipt and error,
+reports partial completion, re-reads uncertain targets, and uses existing
+status/version/idempotency operations when discovered. It retries only when the
+existing contract proves replay safe. It makes no distributed-atomicity claim
+and creates no server recovery record.
+
+## Work matrix
+
+| ID | Independent surface | Existing foundation | My CRM work | Owner |
 |---|---|---|---|---|
-| BASE-01 | Stable licensing product identity | `education-center` package and `leaddirector/education-center` resource exist | Choose one licensing product key and validate the package/resource/Subscription Director mapping | Cross-project contract |
-| BASE-02 | Licensed Product record | Absent | Add an Education Center product representation to Subscription Director independent of Stripe Product objects | Subscription Director |
-| BASE-03 | No-fee License Definition | Absent | Define terms/version, effective policy, duration, support/update rights, and exact subject type | Subscription Director/product owner |
-| BASE-04 | Provisioned License | Payment-oriented subscriber rows exist; no BOS product license | Add durable product-and-subject-bound licenses with status, provenance, terms state, and effective dates | Subscription Director GO |
-| BASE-05 | Provisioning workflow | Existing installed apps and resource-group enablement exist | Define an explicit authorized workflow that provisions no-fee licenses; keep it outside lookup | Subscription Director PO + owning onboarding/admin flow |
-| BASE-06 | Existing-customer migration | Existing Education Center OAuth contexts identify eligible customers | Inventory, provision, and reconcile licenses idempotently before enforcement | Cross-project migration |
-| BASE-07 | License lookup | Absent | Add server-authenticated, read-only exact lookup returning normalized decisions | Subscription Director API |
-| BASE-08 | OAuth license gate | OAuth resolves canonical context and issues grants | After context resolution, call lookup with product and server-resolved subject; issue grant only for `active` | Lead Director OAuth platform |
-| BASE-09 | Terms acceptance | Static application terms exist | Allow acceptance only for an already provisioned `terms_required` license and record actor/version evidence | Subscription Director PO/GO |
-| BASE-10 | Runtime enforcement | Resource/group/tool checks exist | Revalidate the same provisioned license at approved grant/runtime boundaries | Lead Director MCP platform |
-| BASE-11 | Failure/recovery | OAuth, scope, and provider errors are distinct | Add `license_missing`, `terms_required`, `not_effective`, `suspended`, and `configuration_error` outcomes | Lead Director + Subscription Director |
-| BASE-12 | Shadow rollout | Absent | Compare license decisions with successful existing OAuth contexts before fail-closed enforcement | Cross-project operations |
-| BASE-13 | Validation | OAuth, route, resource-group, tenant, and Stripe tests exist | Add lookup-purity, provisioning, migration, terms, missing-license, suspension, revocation, and isolation contracts | All owners |
+| CRM-P01 | Product identity | Product manifests and generated host packages | Keep `products/my-crm/product.json` bound to `leaddirector/crm` with the approved asset | BOS Operations Center |
+| CRM-P02 | CRM expertise | Canonical capability composition | Maintain provider-neutral record, pipeline, activity, and federation skills | BOS Operations Center |
+| CRM-P03 | Client discovery map | MCP `tools/list`, context, and schemas | Map discovered operations to CRM semantics locally; cache by manifest fingerprint | BOS Operations Center |
+| CRM-P04 | Federated execution | Host agents/parallel tools and local cache | Fan out per source, preserve partials, merge with provenance, and render freshness/usage | BOS Operations Center |
+| CRM-P05 | Explain planning | Live schemas and skill routing | Compile plan-only and explain-analyze views in the client | BOS Operations Center |
+| CRM-P06 | Mutation coordination | Existing deterministic source operations | Confirm a task-local plan, call each source independently, and reconcile with existing operations | BOS Operations Center |
+| CRM-M01 | Named MCP resource | `/mcp/apps/leaddirector/crm` exists | No new route or runtime | Lead Director |
+| CRM-M02 | Authorization | OAuth, opaque contexts, role/plugin/capability filtering | No My CRM-specific access path | Lead Director |
+| CRM-M03 | Source operations | Operation catalog, provider adapters, PO/GO boundaries | Compose existing operations in the declarative `crm` resource-group allowlist; add no generic façade | Lead Director |
+| CRM-M04 | Platform persistence | Existing platform-owned persistence and provider receipts | No schema, migration, repository, model, seed, or recovery-ledger work | Lead Director |
+| CRM-Q01 | Package safety | Build, validation, parity, and credential scans | Validate My CRM source and generated clients | BOS Operations Center |
+| CRM-Q02 | Behavioral safety | Live manifest and server authorization | Verify absent tools fail closed, source partials remain visible, and no server writes occur during discovery/explain/cache | Cross-project |
+| CRM-Q03 | Live acceptance | Host-managed OAuth | Test install, connect, context, discovery, reads, recovery, and resumed requests in launch hosts | Cross-project |
 
-### Exit gate
+## Implemented file surfaces
 
-Every expected Education Center customer has an explicitly provisioned and
-reconciled no-fee license before enforcement. OAuth lookup is mutation-free.
-Missing licenses fail closed. Existing provider and tenant boundaries remain
-unchanged.
+### BOS Operations Center client source
 
-## Stage 2 — My CRM product application
+- `products/my-crm/product.json` owns product identity and the
+  `leaddirector/crm` binding.
+- `source/capabilities/my-crm/` owns request routing and the maintained client
+  policy reference.
+- `source/capabilities/my-crm-*-operations/` owns record, pipeline, activity,
+  and federation expertise as sibling capability packages.
+- `source/platform/bos-federated-query/` owns deterministic manifest-validated
+  plans, explain output, source-result envelopes, aggregation, and usage.
+- `source/platform/bos-cache-maintenance/` and the existing document-cache
+  helper own authority-scoped freshness and invalidation.
 
-Status: deferred until Stage 1 contracts and user experience are accepted.
+### Lead Director grouping configuration
 
-My CRM will receive its own:
+- `backend/platform_orchestration/mcp_operational_profiles.py` maps existing
+  operations into the named `crm` group and classifies mutation annotations.
+- `backend/tests/unit/test_crm_mcp_operational_profile.py` verifies aliases,
+  allowed plugin domains, filtered discovery, opaque context, and raw-authority
+  rejection.
 
-- product identity and named MCP group;
-- skill grouping and client package;
-- service-capability composition;
-- License Definition and license-subject decision;
-- acquisition and pricing strategy; and
-- rollout and customer journey.
+My CRM changes no other Lead Director implementation surface.
 
-The existing Education Center baseline supplies the established mechanics for
-product identity, pre-provisioned license lookup, terms, OAuth enforcement, and
-runtime validation. It does not decide whether or how My CRM licenses are
-provisioned or purchased.
+## Implemented policy decisions
 
-No My CRM pricing, Stripe binding, no-fee assumption, or acquisition workflow is
-approved in this matrix.
+- Automatic merged presentation requires one exact normalized email. Phone is
+  supporting evidence. Conflicts, duplicates within one source, and transitive
+  matches remain separate.
+- Cross-source writes require explicit source and field authority, exact
+  targets, and user confirmation.
+- Default maximum ages are exact record 60 seconds, pipeline 120 seconds,
+  record search 300 seconds, and activity timeline 600 seconds.
+- Recovery is bounded to one verification read and one contract-proved safe
+  replay per uncertain source. Remaining uncertainty is user-action-required.
+- Progressive events and final ledgers share one portable schema. Token usage
+  always declares measured, estimated, or unavailable scope.
 
-## Stage 3 — external developer experience
+## Remaining release work
 
-Status: deferred until the existing product model and My CRM application are
-understood.
+1. Register the exact ChatGPT/Codex app and record its assigned
+   `plugin_asdk_app_*` ID before enabling the product.
+2. Decide the initial launch clients and run generated-package acceptance for
+   each one.
+3. Run a live tool-discovery inventory against the deployed `crm` resource and
+   record the source operations currently exposed.
+4. Validate which hosts provide exact token usage; label other results as
+   estimates or unavailable.
 
-Controlling requirements already captured:
+## Separate commercial and developer efforts
 
-- A developer can install BOS and immediately write, run, and test a normal
-  client-side plugin from an independently owned local repository.
-- Local development requires no publisher registration, human approval, server
-  route creation, or invented capability identifiers.
-- No published external BOS SDK exists today.
-- Client skills can use only the tools actually exposed by their installed BOS
-  MCP connection; server-side authorization remains authoritative.
-- Public distribution, publisher identity, monetization, and third-party
-  server integrations are distinct later workflows.
-
-The developer workflow will be designed from the real local BOS/plugin behavior
-after Stages 1 and 2, rather than inferred from a hypothetical marketplace.
-
-## Open baseline decisions
-
-1. What canonical subject owns the current Education Center license?
-2. What explicit existing or new administrative/onboarding action provisions a
-   no-fee license after the migration?
-3. Which terms apply, and who may accept them for that subject?
-4. How is the skills-only BOS package treated when it has no MCP enforcement
-   boundary?
-5. When Video Ads is re-enabled, does it reuse the same subject and provisioning
-   pattern or define a different License Definition?
-
-These questions belong to the existing-product licensing baseline. My CRM and
-developer monetization begin after they are answered.
+Product licensing, Subscription Director, Stripe, marketplace monetization,
+external developer packages, and third-party server integration contribution
+remain independent workstreams. None participates in My CRM installation,
+login, discovery, or execution for this release.

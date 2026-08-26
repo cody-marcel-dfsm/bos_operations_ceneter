@@ -1,0 +1,4 @@
+interface:
+  display_name: "My CRM Activities"
+  short_description: "Build source-aware CRM activity timelines"
+  default_prompt: "Use $my-crm-activity-operations to assemble this customer's authorized activity timeline."

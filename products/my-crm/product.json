@@ -1,0 +1,41 @@
+{
+  "schema_version": "1",
+  "name": "my-crm",
+  "version": "0.1.0",
+  "release_status": "disabled",
+  "display_name": "My CRM",
+  "description": "Provider-neutral CRM operations across tenant-scoped BOS-connected customer data sources.",
+  "long_description": "My CRM gives authorized users one CRM operating vocabulary across connected customer and lead systems. It derives source capabilities from the live BOS MCP tool manifest, runs the existing source operations, preserves provenance and freshness, builds merged views, and coordinates explicitly confirmed cross-source changes within the client task.",
+  "website_url": "https://dfsm.ai",
+  "brand_color": "#061638",
+  "composer_icon": "assets/lead-director-crm-logo.png",
+  "logo": "assets/lead-director-crm-logo.png",
+  "publisher": "Infinite State Machines LLC",
+  "category": "Productivity",
+  "authentication": "ON_INSTALL",
+  "clients": [
+    "codex",
+    "claude",
+    "copilot",
+    "gemini"
+  ],
+  "includes": [
+    "platform/bos-mcp-client",
+    "platform/bos-federated-query",
+    "platform/bos-cache-maintenance",
+    "platform/manage-customer-extension",
+    "capabilities/my-crm",
+    "capabilities/my-crm-record-operations",
+    "capabilities/my-crm-pipeline-operations",
+    "capabilities/my-crm-activity-operations",
+    "capabilities/my-crm-federation-operations"
+  ],
+  "runtime": "bos",
+  "application_name": "leaddirector",
+  "mcp_group_name": "crm",
+  "default_prompts": [
+    "Show me the latest leads across my connected CRM sources.",
+    "Explain how you would find and merge this customer across my CRM sources.",
+    "Compare this customer across sources and show conflicts without changing anything."
+  ]
+}

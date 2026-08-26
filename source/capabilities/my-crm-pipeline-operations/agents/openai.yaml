@@ -1,0 +1,4 @@
+interface:
+  display_name: "My CRM Pipelines"
+  short_description: "Operate source-aware CRM pipelines"
+  default_prompt: "Use $my-crm-pipeline-operations to inspect or update this CRM pipeline state."

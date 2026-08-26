@@ -35,6 +35,22 @@ request identity:
 }
 ```
 
+Add an optional client-owned freshness policy when reuse must have a bounded
+age:
+
+```json
+{
+  "freshness_policy": {
+    "max_age_seconds": 300,
+    "allow_stale_on_error": false
+  }
+}
+```
+
+The policy does not change the cache identity. A completed cache whose age
+exceeds the maximum returns `refresh_required` with a lease. Refresh it through
+the same fixed upper bound and commit or abort before rendering the source.
+
 Use the same source, resource kind, account, and selector for equivalent
 queries across skills. Put requested dates in `window`. Set `refresh_through`
 once before paging the provider and retain that exact value through commit or
@@ -111,6 +127,13 @@ Repeat the shared request and add `"operation": "read"`. The result contains
 the plan state plus current non-deleted documents for that authority and query.
 Filter the returned normalized records to the requested operating interval and
 apply the domain skill's minimum-necessary data rules before rendering.
+
+## Inspect and invalidate
+
+Use `inspect` with the exact shared request to return cache metadata and
+`document_count` without document bodies. Use `invalidate` with the same exact
+request to remove its authority-scoped query manifest and lease. The next read
+is cold. Both operations return only digested cache keys.
 
 ## Managed root override
 

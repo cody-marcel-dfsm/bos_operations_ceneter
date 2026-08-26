@@ -126,12 +126,34 @@ function normalizeRequest(input) {
     "refresh_through"
   );
   const sourceIdentity = { ...source, resource_kind: query.resource_kind };
+  const freshnessInput = input.freshness_policy === undefined
+    ? null
+    : requireObject(input.freshness_policy, "freshness_policy");
+  let freshnessPolicy = null;
+  if (freshnessInput !== null) {
+    const maxAgeSeconds = freshnessInput.max_age_seconds;
+    if (!Number.isInteger(maxAgeSeconds) || maxAgeSeconds < 0 ||
+        maxAgeSeconds > 31_536_000) {
+      throw new Error(
+        "freshness_policy.max_age_seconds must be an integer from 0 through 31536000"
+      );
+    }
+    if (freshnessInput.allow_stale_on_error !== undefined &&
+        typeof freshnessInput.allow_stale_on_error !== "boolean") {
+      throw new Error("freshness_policy.allow_stale_on_error must be a boolean");
+    }
+    freshnessPolicy = {
+      max_age_seconds: maxAgeSeconds,
+      allow_stale_on_error: freshnessInput.allow_stale_on_error ?? false
+    };
+  }
   return {
     authority,
     source,
     query,
     window,
     refresh_through: refreshThrough,
+    freshness_policy: freshnessPolicy,
     authority_key: digest({ ...authority, source_account: source.account }),
     source_key: digest(sourceIdentity),
     query_key: digest({ source: sourceIdentity, selector: query.selector })
@@ -255,16 +277,45 @@ function missingIntervals(requested, coverage) {
   return gaps;
 }
 
-function syncPlan(request, manifest) {
+function freshnessEvidence(request, manifest, now) {
+  const completed = manifest.sync_completed_at;
+  const policy = request.freshness_policy;
+  if (!completed) {
+    return {
+      freshness_status: "missing",
+      age_seconds: null,
+      max_age_seconds: policy?.max_age_seconds ?? null,
+      allow_stale_on_error: policy?.allow_stale_on_error ?? false,
+      stale: false
+    };
+  }
+  const ageSeconds = Math.max(
+    0,
+    Math.floor((now.valueOf() - Date.parse(completed)) / 1000)
+  );
+  const stale = policy !== null && ageSeconds > policy.max_age_seconds;
+  return {
+    freshness_status: stale ? "stale" : "fresh",
+    age_seconds: ageSeconds,
+    max_age_seconds: policy?.max_age_seconds ?? null,
+    allow_stale_on_error: policy?.allow_stale_on_error ?? false,
+    stale
+  };
+}
+
+function syncPlan(request, manifest, now = new Date()) {
   const coverageGaps = missingIntervals(request.window, manifest.coverage);
   const previousThrough = manifest.watermark?.through ?? null;
   const changeGap = !previousThrough ||
     Date.parse(previousThrough) < Date.parse(request.refresh_through)
     ? { after: previousThrough, through: request.refresh_through }
     : null;
+  const freshness = freshnessEvidence(request, manifest, now);
+  const needsContent = coverageGaps.length || changeGap;
   return {
-    state: coverageGaps.length || changeGap ?
-      (manifest.sync_completed_at ? "catch_up" : "cold") : "current",
+    state: needsContent
+      ? (manifest.sync_completed_at ? "catch_up" : "cold")
+      : (freshness.stale ? "refresh_required" : "current"),
     authority_key: request.authority_key,
     source_key: request.source_key,
     query_key: request.query_key,
@@ -273,7 +324,9 @@ function syncPlan(request, manifest) {
     cursor: manifest.watermark?.cursor ?? null,
     cached_resource_count: Object.values(manifest.resources)
       .filter((resource) => !resource.deleted).length,
-    sync_completed_at: manifest.sync_completed_at
+    sync_completed_at: manifest.sync_completed_at,
+    origin: manifest.sync_completed_at ? "cache" : null,
+    ...freshness
   };
 }
 
@@ -337,7 +390,7 @@ export async function beginDocumentSync(input, options = {}) {
     };
   }
   const manifest = await loadManifest(path.manifest, request);
-  const plan = syncPlan(request, manifest);
+  const plan = syncPlan(request, manifest, now);
   if (plan.state === "current") {
     await rm(path.lease, { force: true });
     return plan;
@@ -485,9 +538,30 @@ export async function readDocumentCache(input, options = {}) {
     left.resource_id.localeCompare(right.resource_id) ||
     left.version.localeCompare(right.version)
   );
+  const now = options.now ? new Date(options.now) : new Date();
   return {
-    ...syncPlan(request, manifest),
+    ...syncPlan(request, manifest, now),
     documents
+  };
+}
+
+export async function inspectDocumentCache(input, options = {}) {
+  const result = await readDocumentCache(input, options);
+  const { documents, ...metadata } = result;
+  return { ...metadata, document_count: documents.length };
+}
+
+export async function invalidateDocumentCache(input, options = {}) {
+  const request = normalizeRequest(input);
+  const root = cacheRootFromInput(input, options);
+  const path = locations(root, request);
+  await rm(path.manifest, { force: true });
+  await rm(path.lease, { force: true });
+  return {
+    state: "invalidated",
+    authority_key: request.authority_key,
+    source_key: request.source_key,
+    query_key: request.query_key
   };
 }
 
@@ -507,8 +581,14 @@ async function runCli() {
     result = await abortDocumentSync(input);
   } else if (operation === "read") {
     result = await readDocumentCache(input);
+  } else if (operation === "inspect") {
+    result = await inspectDocumentCache(input);
+  } else if (operation === "invalidate") {
+    result = await invalidateDocumentCache(input);
   } else {
-    throw new Error("operation must be root, begin, commit, abort, or read");
+    throw new Error(
+      "operation must be root, begin, commit, abort, read, inspect, or invalidate"
+    );
   }
   process.stdout.write(`${JSON.stringify(result)}\n`);
 }

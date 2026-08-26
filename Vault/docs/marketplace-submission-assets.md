@@ -2,7 +2,14 @@
 
 Status: execution inventory for Track C
 Owner: product and release operations
-Last audited: 2026-08-09
+Last audited: 2026-08-25
+
+Education Operation Center OpenAI pre-submission materials are maintained in
+`Vault/submissions/openai/education-operation-center/`. That packet contains
+paste-ready listing copy, five positive and three negative reviewer cases,
+reviewer-access requirements, legal/support drafts, release notes, a complete
+45-tool annotation audit, portal evidence, and an original icon candidate. No
+OpenAI draft or application was created during packet preparation.
 
 ## Purpose and scope
 
@@ -44,7 +51,7 @@ approval come from Tracks F through J.
 | Display name | BOS — Business Operating System | Education Operation Center | Video Ads | Ready | `products/*/product.json` |
 | Publisher | Infinite State Machines LLC | Infinite State Machines LLC | Infinite State Machines LLC | Ready | `products/*/product.json` |
 | Category | Productivity | Productivity | Marketing | Ready | `products/*/product.json` |
-| Current version | 0.4.46 | 0.4.46 | 0.1.3 | Ready | `products/*/product.json` |
+| Current version | 0.4.47 | 0.4.47 | 0.1.3 | Ready | `products/*/product.json` |
 | Application name | None (skills-only) | `leaddirector` | `leaddirector` | Ready for packaging; runtime certification pending | `products/*/product.json` |
 | MCP group name | None (skills-only) | `education-center` | `video-ads` | Ready for packaging; runtime certification pending | `products/*/product.json` |
 | Short description | Present | Present | Present | Ready as source copy | `products/*/product.json` |
@@ -73,7 +80,7 @@ are evidence of propagation and are never the source to edit.
 | Account/data deletion instructions | Missing | The live privacy page names a privacy-request email, but no product-specific connection revocation and operational-data deletion procedure is recorded. | Privacy/support and BOS runtime owner | Reviewer can follow a public deletion/revocation procedure. |
 | Trademark policy | Ready in repository | `TRADEMARKS.md` exists. | Legal | Public packaging links or includes the policy where required. |
 | Open-source license | Ready | Apache-2.0 is declared and `LICENSE` exists. | Release operations | Every public repository contains the license. |
-| Product logos/icons | Missing | No PNG, SVG, JPG, WebP, or GIF product asset exists outside repository internals. | Brand/design | Approved master plus harness-required exports exist for all three products. |
+| Product logos/icons | Ready for current product set | The BOS, Education Center, and Marketing Director/Video Ads products have canonical square logo assets under their product `assets/` folders and manifest mappings for both `interface.logo` and `interface.composerIcon`. A coordinated Lead Director CRM runtime logo is retained at `brand/assets/lead-director-crm-logo.png` without creating a new package. | Brand/design | Regenerated Codex packages contain the active-product exports; disabled products retain approved source assets for later activation. |
 | Marketplace screenshots | Missing | No marketplace screenshots exist. | Product/design and harness owners | Approved, privacy-safe screenshots demonstrate representative workflows in each claimed harness. |
 | Demo video | Conditional/missing | No listing demo exists. | Product/design | Produce only when a portal requires it or review benefits materially. |
 | Long listing descriptions | Partial | BOS and Education Operation Center have product-owner-selected long marketplace copy; Video Ads still repeats its short description. | Product marketing with product owners | Every submitted product has approved long copy explaining audience, workflows, authorization, and limitations without overstating tools. |
