@@ -1,6 +1,6 @@
 ---
 name: bos-cache-maintenance
-description: Inspect, refresh, invalidate, and maintain authority-scoped BOS query caches and cached source catalogs. Use automatically before federated or expensive source reads and when a user asks about cache health, freshness, refresh, or clearing cached data.
+description: Inspect, refresh, invalidate, and maintain authority-scoped BOS query caches and cached MCP source maps. Use automatically before federated or expensive source reads and when a user asks about cache health, freshness, refresh, or clearing cached data.
 ---
 
 # BOS Cache Maintenance
@@ -12,11 +12,11 @@ an explicit cache inspection, invalidation, or stale-refresh operation.
 
 ## Invocation preflight
 
-For every domain invocation, inspect only the source catalog and datasets
+For every domain invocation, inspect only the manifest-derived source map and datasets
 selected by that request:
 
 1. Apply the product's client-owned maximum-age policy by source and dataset.
-2. Treat live context, authorization, provider-binding, catalog, or source
+2. Treat live context, authorization, provider-binding, manifest, or source
    revision changes as invalidation evidence.
 3. Use `current` cache data within policy. For `refresh_required`, query the
    provider conditionally or incrementally through one fixed upper bound and

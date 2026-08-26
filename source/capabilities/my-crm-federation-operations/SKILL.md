@@ -8,8 +8,10 @@ description: Compare, correlate, merge for presentation, and coordinate CRM reco
 ## Compare and merge for presentation
 
 1. Query selected sources independently and preserve every source result.
-2. Correlate exact normalized identities under the product identity policy.
-3. Keep ambiguous matches separate and show the conflicting evidence.
+2. Correlate only one exact normalized email shared across distinct sources.
+   Treat exact normalized phone as supporting evidence.
+3. Keep duplicate candidates within one source, conflicting emails, and
+   transitive matches separate and show the conflicting evidence.
 4. Build a merged view without changing source records. Attach field-level
    provenance and freshness.
 
@@ -26,10 +28,12 @@ description: Compare, correlate, merge for presentation, and coordinate CRM reco
 4. Report every source as pending, committed, failed, uncertain, or reconciled.
    Cross-source completion is eventually consistent and carries no distributed
    atomicity claim.
-5. Re-read uncertain targets and use existing source status/idempotency tools
-   when discovered. Retry only where the existing contract proves safety.
-   Refresh affected caches after terminal updates. My CRM adds no server
-   persistence or recovery service.
+5. Perform one verification read for an uncertain target and use existing
+   source status/idempotency tools when discovered. Perform at most one replay
+   where the existing contract proves safety, then return complete, stable
+   partial, or `user_action_required`. Refresh affected caches after terminal
+   updates. My CRM adds no server persistence, recovery service, or background
+   work.
 
 Never silently choose a field authority, overwrite an ambiguous identity, or
 claim rollback without a verified compensating commit.

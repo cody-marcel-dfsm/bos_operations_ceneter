@@ -1509,7 +1509,7 @@ test("My CRM composes the approved reusable federated runtime skills", async () 
   );
   const clientContract = `${entry}\n${workflow}\n${execution}`;
   assert.match(clientContract, /tools\/list/);
-  assert.match(clientContract, /creates no server state or schema/);
+  assert.match(clientContract, /creates no server state(?:,| or) schema/);
   for (const inventedFacade of [
     "crm_list_sources",
     "crm_search_records",

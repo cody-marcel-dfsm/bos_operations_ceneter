@@ -3,6 +3,8 @@
 ## Discovery map and cache
 
 1. Resolve the current opaque BOS context through `bos-mcp-client`.
+   Load `client-policy.json` and apply its dataset defaults unless an approved
+   customer policy or explicit request supplies a stricter value.
 2. Inspect the cached MCP manifest fingerprint and client routing map. Refresh
    live tool discovery after connection, context, plugin, role, capability, or
    configured maximum-age change.
@@ -49,8 +51,10 @@ the manifest; the client never substitutes get or broad retrieval.
    last-updated label, age, maximum age, coverage, elapsed time, and usage
    scope.
 7. Aggregate only after all execution units reach completed, failed, or
-   unavailable. Preserve per-source sections in every mode. `merged_view` may
-   correlate exact approved identities and keeps ambiguous matches separate.
+   unavailable. Preserve per-source sections in every mode. `merged_view`
+   follows `client-policy.json`: one exact normalized email may correlate
+   records across distinct sources; phone is supporting evidence; duplicates,
+   conflicts, and transitive matches remain separate.
 
 ## Explain
 
@@ -84,8 +88,8 @@ timing, cache, failures, and available usage evidence.
    record its returned receipt or error in the task execution ledger.
 4. Report every source state. A cross-source result carries no distributed
    atomicity claim.
-5. Reconcile an uncertain source by re-reading it and by using an existing
-   status/idempotency operation when that source advertises one. Retry only
-   when the existing operation contract proves the retry safe. Continue toward
-   eventual consistency within the task or return the precise remaining
-   user-action requirement. My CRM creates no server recovery record.
+5. Reconcile an uncertain source with one verification read and an existing
+   status/idempotency operation when that source advertises one. Perform at most
+   one replay and only when the operation contract proves it safe. Then return
+   complete, stable partial, or `user_action_required`. My CRM creates no
+   server recovery record or background work.

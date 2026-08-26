@@ -22,7 +22,7 @@ local human-readable label, age, configured maximum age, and status.
 Use monotonically increasing sequence values with these event types:
 
 - `plan_created`
-- `catalog_cache_used` or `catalog_refreshed`
+- `manifest_map_cache_used` or `manifest_map_refreshed`
 - `source_started`
 - `source_cache_hit`, `source_cache_stale`, or `source_refresh_started`
 - `source_result_available`
@@ -45,3 +45,10 @@ Use one of:
 
 Include input, output, and total tokens only when measured or estimated. Keep
 the scope visible beside every value.
+
+## Bounded mutation recovery
+
+For each uncertain source, perform one verification read. Perform at most one
+replay when the discovered operation's version, receipt, or idempotency
+contract proves it safe. Return `user_action_required` after that bound. Create
+no client-owned server record or background retry.

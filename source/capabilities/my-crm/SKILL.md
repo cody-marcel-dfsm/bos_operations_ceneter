@@ -43,7 +43,8 @@ freshness.
   semantic. Call only a tool returned by the active MCP connection.
 
 Read [tool workflows](references/tool-workflows.md) before a federated query or
-mutation.
+mutation. Load [client policy](references/client-policy.json) for identity,
+freshness, confirmation, and recovery defaults.
 
 Treat `explain <request>` as a client plan-only request. Compile it from the
 live/cached manifest and skill configuration. Return selected skills, sources,

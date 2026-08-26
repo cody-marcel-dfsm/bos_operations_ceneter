@@ -22,6 +22,8 @@ the first federated execution or explain request in a task.
 2. Compile the request into a plan containing the domain skill, dataset,
    normalized filter shape, selected discovered source tools, cache policy,
    execution dependencies, aggregation mode, and expected result schema.
+   Require the caller's callable-tool set and reject every selected tool absent
+   from that set.
 3. For `explain`, return the sanitized plan and stop before source data calls or
    mutations. For `explain analyze`, execute and attach observed evidence.
 4. Run the bounded cache-maintenance preflight for each selected source and
@@ -45,10 +47,11 @@ source-result, execution-event, or aggregate envelopes are useful.
 
 Single-source mutations inherit the source's declared guarantee. Multi-source
 mutations use an explicitly confirmed task-local plan of existing source tools.
-Preserve every source receipt and error. Reconcile through existing read,
-status, version, and idempotency operations when discovered, and retry only
-when those contracts prove safety. Report every committed, failed, uncertain,
-and reconciled source. This skill creates no server state or schema.
+Preserve every source receipt and error. Reconcile with one verification read
+through existing read, status, version, and idempotency operations when
+discovered. Perform at most one replay and only when those contracts prove
+safety. Report every committed, failed, uncertain, and reconciled source. This
+skill creates no server state, schema, or background work.
 
 The execution ledger contains observable operations and sanitized outcomes. It
 excludes private model reasoning, credentials, raw authority identifiers, and
