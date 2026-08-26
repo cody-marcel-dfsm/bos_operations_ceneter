@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.47",
+  "version": "0.4.48",
   "client": "gemini",
   "application_name": "leaddirector",
   "mcp_group_name": "education-center",
