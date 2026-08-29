@@ -28,7 +28,7 @@ The private Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Select
 **Connect** or **Sign in** when the host presents it, then complete BOS consent.
 
-Current desktop marketplace release: `0.4.52`. If `0.4.51` is installed,
+Current desktop marketplace release: `0.4.53`. If `0.4.52` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -108,6 +108,23 @@ npm run clean-install:claude -- \
 This removes the two BOS plugin registrations, the BOS marketplace registration,
 and the exact `~/.claude/plugins/cache/bos-education-center` tree, then installs
 both products from the current repository and verifies their active paths.
+
+### Complete local removal
+
+To remove BOS and Education Operation Center from every supported local client,
+including their generated package, tool-catalog, document, and settings caches,
+inspect the exact plan and then apply it:
+
+```bash
+./scripts/uninstall-bos-all-clients.sh --dry-run
+./scripts/uninstall-bos-all-clients.sh \
+  --confirmation "DELETE ALL BOS CLIENT PLUGIN STATE AND CACHES"
+```
+
+Add `--copilot-root /absolute/repository/path` once for each repository-scoped
+Copilot installation. The remover preserves unrelated plugins, client history,
+and source repositories, creates no backup, and verifies that every targeted
+registration and filesystem artifact is absent.
 
 Claude reads `.claude-plugin/marketplace.json`. The BOS plugin owns the account
 connector metadata. Education Operation Center contributes skills and contains no

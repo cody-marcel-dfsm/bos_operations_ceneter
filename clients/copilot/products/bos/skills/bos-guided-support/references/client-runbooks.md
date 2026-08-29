@@ -18,6 +18,27 @@ connection and never add another BOS login. Use the exact generated BOS
 connector metadata when private installation requires Claude's custom connector
 flow. Never ask the user to reconstruct or modify the endpoint.
 
+## Complete all-client removal
+
+Use the repository-owned command when the user explicitly asks to remove BOS,
+Education Center, and their local caches from every client:
+
+`./scripts/uninstall-bos-all-clients.sh --dry-run`
+
+Review the identity-bounded removal plan, then run:
+
+`./scripts/uninstall-bos-all-clients.sh --confirmation "DELETE ALL BOS CLIENT PLUGIN STATE AND CACHES"`
+
+The command unregisters the BOS and Education Center packages and marketplace
+from Codex and Claude, removes their validated package caches and generated app
+catalog state, removes Gemini CLI and Antigravity product directories, clears
+the shared BOS document/settings caches, and verifies absence. Add one
+`--copilot-root /absolute/repository/path` for each repository-scoped Copilot
+installation. It preserves unrelated plugins, client history, customer source
+repositories, and the BOS Operations Center source repository. The deletion is
+permanent and creates no backup. Quit and reopen running clients after the
+verified command so their in-memory catalogs are discarded.
+
 ## Stale OAuth client registration
 
 An OAuth token-endpoint `invalid_client` response means the server no longer
