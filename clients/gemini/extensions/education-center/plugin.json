@@ -1,5 +1,5 @@
 {
   "$schema": "https://antigravity.google/schemas/v1/plugin.json",
   "name": "education-center",
-  "description": "Agent-first education operations for complex, human-centered work. Version 0.4.48."
+  "description": "Agent-first education operations for complex, human-centered work. Version 0.4.50."
 }

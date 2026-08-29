@@ -13,7 +13,7 @@ gemini extensions install clients/gemini/extensions/bos
 gemini extensions install clients/gemini/extensions/education-center
 ```
 
-Restart Gemini CLI. Run `/mcp auth education-center`, complete BOS sign-in, then
+Restart Gemini CLI. Run `/mcp auth platform`, complete BOS sign-in once, then
 run `/extensions list` and `/skills list` to verify the extensions and bundled skills.
 
 ## Antigravity 2.0 Desktop
@@ -24,8 +24,7 @@ locates this repository from its own file path, and requires typed confirmation 
 `DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS` before changing files,
 and creates one product symlink in `~/.gemini/config/plugins/` for each active product.
 After each Git pull, restart Antigravity, open Settings > Customizations, and
-select Authenticate for the
-`education-center` MCP server. Complete BOS sign-in in the browser.
+select Authenticate for the `platform` BOS MCP server. Complete BOS sign-in once.
 
 The Gemini package contains no BOS key, token, authorization header, or client secret.
 Each product has detailed CLI and desktop instructions in its own README.

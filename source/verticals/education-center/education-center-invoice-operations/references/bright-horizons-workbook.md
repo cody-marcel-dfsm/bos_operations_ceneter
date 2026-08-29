@@ -12,7 +12,7 @@ the same prompt.
 
 1. Resolve the user's requested period to inclusive ISO `start_date` and
    `end_date`. State the resolved dates.
-2. Call `bos_education_center.bos_get_context` and copy the authorized Calimatic, Gmail,
+2. Call `bos_get_context` through the authenticated BOS connection and copy the authorized Calimatic, Gmail,
    and Drive scope identifiers exactly.
 3. List Calimatic enrollments for the period. Retain candidate records whose course
    is `Bright Horizons Enrollment` or whose class name begins

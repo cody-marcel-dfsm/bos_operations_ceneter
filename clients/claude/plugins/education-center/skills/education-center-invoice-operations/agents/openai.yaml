@@ -2,12 +2,5 @@ interface:
   display_name: "Education Center Invoice Operations"
   short_description: "Create BH invoices or reconcile invoice evidence"
   default_prompt: "Use $education-center-invoice-operations to create the exact Bright Horizons reimbursement Excel report for last week from the distributed client template. Return a short summary and attach the workbook."
-dependencies:
-  tools:
-    - type: "mcp"
-      value: "bos_education_center"
-      description: "BOS remote agent gateway for Education Center organization"
-      transport: "streamable_http"
-      url: "https://dfsm.ai/mcp/apps/leaddirector/education-center"
 policy:
   allow_implicit_invocation: true

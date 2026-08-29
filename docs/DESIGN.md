@@ -154,25 +154,23 @@ composing `bos:*` foundation skills with `lead-director-*` repository skills.
 Lead Director therefore has no companion plugin that republishes BOS
 foundations.
 
-Every product that owns a BOS runtime connection includes `bos-mcp-client` so
-the active agent owns transport recovery, live tool discovery, context
-validation, and safe request resumption. The BOS product publishes the other
-general foundations. Runtime products such as Education Center carry
-their fixed named application/group connection and the shared client-lifecycle
-skill. Products requiring a restricted tool surface register a uniquely named
-server and a BOS-owned named route. Current mappings include
-`/mcp/apps/leaddirector/education-center`,
-`/mcp/apps/leaddirector/video-ads`; the BOS platform package is skills-only.
+The BOS product owns the single runtime connection and includes
+`bos-mcp-client` so the active agent owns transport recovery, live tool
+discovery, context validation, and safe request resumption. Education Center,
+CRM, Marketing Director, and every other subservice package contribute skills
+without an app binding, connector, MCP declaration, or separate login. All
+operations use `/mcp/apps/bos/platform`; the server filters tools and validates
+organization, application, installation, subservice, plugin, role, capability,
+provider, and tool scope on every request.
 
 ### In-memory BOS Plugin Console
 
-The skills-only BOS package includes `bos-plugin-console` as the cross-product
-interaction contract. The console uses named BOS product connections already
-available in the active client's MCP context. It does not enumerate local
-plugin folders, execute a command-line plugin listing, or create a new broad BOS
-runtime connection.
+The BOS package includes `bos-plugin-console` as the cross-product interaction
+contract. The console uses the authenticated BOS connection and server-returned
+subservice state. It does not enumerate local plugin folders or execute a
+command-line plugin listing.
 
-Each eligible product route exposes its scoped plugin-service snapshot as MCP
+The BOS route exposes the authorized plugin-service snapshot as MCP
 `structuredContent`. BOS orders the rows, supplies display-safe properties and
 opaque action selectors, and associates the status response with a remotely
 served MCP App resource. The active client renders the component directly in
@@ -187,7 +185,7 @@ browser, or service. The component's selected row, expanded property state, and
 pending indicator exist only for the active client view. Canonical plugin state,
 provider readiness, optimistic revisions, and audits remain server-owned.
 
-**Connect** invokes the owning product route's scoped provider-authorization
+**Connect** invokes the BOS route's scoped provider-authorization
 tool. The **Enabled** toggle invokes its revisioned, idempotent PO/GO mutation.
 Neither action installs, removes, starts, stops, or edits software on the user's
 machine. See `Vault/specs/plugin-service-console.md` for the response, action,
@@ -469,7 +467,7 @@ keys, tenant grants, or role assignments.
 
 Initialization follows a derive-then-ask contract. The installer creates a
 customer-owned initialization draft and derives the local IANA timezone. The
-customer-initialization skill completes the product connection's host-managed
+customer-initialization skill verifies the BOS connection's host-managed
 authentication before eliciting settings, preserves confirmed settings, reads
 unambiguous display metadata from the active client and authenticated BOS
 context, and uses connected-account metadata to identify a mailbox only when there is one
@@ -527,11 +525,13 @@ settings. The distribution contains configuration and skills; it contains no
 proxy executable, Python runtime, subprocess server, loopback listener, mobile
 client, or OS-specific transport adapter.
 
-The BOS platform package registers no MCP endpoint. Application products use
-their own immutable named routes. The BOS service validates the OAuth token,
-resolves tenant and installation context, and advertises only the tools
-authorized for that endpoint. Tool discovery, routing, administrative-tool
-suppression, and provider recovery are server responsibilities.
+The BOS platform package owns the single MCP endpoint at
+`/mcp/apps/bos/platform`. Every subservice package contains skills and product
+metadata without an MCP declaration, app binding, connector, or login. The BOS
+service validates the OAuth token and evaluates organization, installation,
+application, subservice, plugin, role, capability, provider, and tool scope for
+each request. Tool discovery, routing, administrative-tool suppression, and
+provider recovery are server responsibilities.
 
 This follows the transport guidance published by OpenAI, Anthropic, and the
 MCP maintainers: Streamable HTTP serves remote integrations; stdio serves
@@ -596,14 +596,13 @@ authenticate BOS and does not authorize provider access.
 
 ### 3. Connect the account
 
-The client loads each selected product's host-native runtime binding. Codex
-loads the registered app named by `.app.json`; Claude loads the credential-free
-remote MCP declaration. The host presents Connect, completes OAuth discovery
-and consent, and stores the resource-scoped grant. BOS validates that grant on
-every secured request and fails closed when it is absent, invalid, expired,
-revoked, or outside the endpoint's authorized product scope. A failed product connection
-or provider credential cannot affect another product or organization. The
-customer completes only the host-presented BOS authorization flow.
+The client loads the BOS product's host-native runtime binding. Codex loads the
+registered BOS app named by `.app.json`; Claude uses the account-level BOS Web
+connector. The host presents Connect once, completes OAuth discovery and consent,
+and stores the BOS resource-scoped grant. Subservice packages load skills and
+add no authentication surface. BOS validates the grant and canonical subservice
+authority on every secured request. A provider authorization failure affects
+only the operation requiring that provider.
 
 ### 4. Resolve tenant and capabilities
 

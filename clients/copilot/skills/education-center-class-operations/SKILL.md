@@ -4,24 +4,26 @@ description: Handle Education Center class rosters, schedules, capacity, camp en
 ---
 
 
-## Product first-run preflight
+## Product initialization preflight
 
-Before performing this skill's workflow, resolve the installed product root and
-validate its customer-owned `config/customer-settings.json` against
+Before performing this skill's workflow, preserve the pending request and
+complete the product's host-managed BOS authentication. Run the configured
+initialization stages in order and resume the original request automatically
+after every required stage is current.
+
+First validate the customer-owned `config/customer-settings.json` against
 `config/customer-settings.template.json`. Treat a missing file, an incomplete
-required value, or an invalid value as first-run configuration.
+required value, or an invalid value as first-run configuration. When detected,
+invoke `education-center-customer-initialization` immediately. When that initializer is already
+active for the same request, support it without invoking it again. Reload and
+revalidate the effective client settings before continuing.
 
-When first-run configuration is detected, invoke `education-center-customer-initialization`
-immediately. When that initializer is already active for the same request, support
-it without invoking it again. Preserve the user's original request while
-initialization runs.
-Complete the product's host-managed BOS authentication before asking any settings
-question. If direct sign-in is required, ask only for that action and resume
-initialization automatically afterward. Do not perform the original workflow or
-substitute generic customer values while configuration remains unresolved. After
-the user accepts the consolidated recommendation and the initializer writes and
-revalidates `config/customer-settings.json`, reload the effective settings and
-resume the original request automatically.
+After client settings are current, validate the server plugin-settings
+initialization epoch, required canonical field states, and local completion
+receipt. Invoke `bos-plugin-settings-initialization` when the receipt is missing or
+stale, a required field is unset or invalid partial, or the server schema changed.
+Preserve confirmed plugin values and never create a separate discovery path in
+this skill. Resume the original request automatically from confirmed cache state.
 
 # Education Center Class Operations
 
@@ -40,15 +42,15 @@ operators. Access and display only the minimum student or family information
 needed for the requested roster, capacity, attendance, or placement task. Do
 not publish, export, or distribute it without a separate authorized request.
 
-Use the named `education-center` MCP connection and follow the
-`bos-mcp-client` context workflow.
+Use the authenticated BOS MCP connection and follow the `bos-mcp-client`
+context workflow. BOS resolves the Education Center subservice for each tool.
 Use Calimatic for class/enrollment state and Calendar only as schedule evidence.
 Resolve the effective customer settings by loading the packaged settings
 template and recursively overlaying the preserved customer settings file. For
 Care.com Backup Care evidence, follow `source_routes.care_com`:
 
 - `bos`: use published `education_center_search_email_evidence` and
-  `education_center_get_email_thread` through the named Education Center connection.
+  `education_center_get_email_thread` through the BOS connection.
 - `connected_gmail`: invoke `email-account-routing`, select the exact
   `mailboxes.care_com` account, and use the normal Gmail connector's bounded
   search and full-thread retrieval tools.
@@ -61,8 +63,8 @@ camp-assignment results.
 For a standalone class roster or family contact list, return the requested
 records directly in the conversation. For a camp-enrollment report, return the
 five-day roster image and separate family contact list defined below.
-When the user requests Calimatic, use the packaged Education Center skill-group connection
-and omit `org_id`, `app_code`, `installed_app_id`, and `delegated_role_id`; BOS
+When the user requests Calimatic, use the BOS connection and omit `org_id`,
+`app_code`, `installed_app_id`, and `delegated_role_id`; BOS
 derives them from the authenticated installation. Never use a direct provider
 client or browser session as a fallback for a BOS-routed domain. When BOS
 reports an authentication or credential error, follow its secure handoff flow.

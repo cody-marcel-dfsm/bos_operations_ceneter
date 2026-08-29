@@ -69,7 +69,7 @@ the client skill:
 5. Adds only the minimum sanitized reproduction context needed to understand
    the issue.
 6. Presents the sanitized payload for explicit user confirmation, then calls
-   `bos_submit_feedback` through the product's existing named MCP connection.
+   `bos_submit_feedback` through the BOS MCP connection.
 7. Shows the returned feedback ID, status, target, and timestamp.
 
 The explicit imperative authorizes preparation of the feedback described in

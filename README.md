@@ -28,7 +28,7 @@ The private Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Select
 **Connect** or **Sign in** when the host presents it, then complete BOS consent.
 
-Current desktop marketplace release: `0.4.48`. If `0.4.47` is installed,
+Current desktop marketplace release: `0.4.50`. If `0.4.49` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -41,7 +41,7 @@ Open a new Codex task and paste:
 
 > Add https://github.com/cody-marcel-dfsm/bos_operations_ceneter as a Codex
 > plugin marketplace, install and enable `bos` and `education-center`, connect
-> Education Operation Center to BOS through the host's sign-in flow, start a new task if
+> BOS once through the host's sign-in flow, start a new task if
 > required to load the plugin, and verify one authenticated Education Operation Center
 > read. Do not request or configure a BOS API key, environment variable,
 > secret-manager name, or installed application ID. If authorization is
@@ -50,9 +50,10 @@ Open a new Codex task and paste:
 
 Codex reads the repository catalog at
 `.agents/plugins/marketplace.json`, installs the plugins into its managed
-cache, and loads the registered Education Operation Center app from the plugin's
-`.app.json`. That app owns the immutable BOS MCP resource and host-managed OAuth
-grant. Start a new task after installation or upgrade.
+cache, and loads the registered BOS app from the BOS plugin's `.app.json`. BOS
+owns the immutable MCP resource and host-managed OAuth grant. Education Operation
+Center uses that connection without another app binding or login. Start a new
+task after installation or upgrade.
 
 ### Claude Cowork/Desktop
 
@@ -61,21 +62,20 @@ grant. Start a new task after installation or upgrade.
    `https://github.com/cody-marcel-dfsm/bos_operations_ceneter` as a
    marketplace.
 3. Install **BOS** and **Education Operation Center**.
-4. Open **Customize → Connectors**. Add the package-owned Education Operation
-   Center Web connector when it is not already present through your organization
+4. Open **Customize → Connectors**. Add the package-owned BOS Web connector when
+   it is not already present through your organization
    or Anthropic's Connector Directory:
-   - Name: `education-center`
-   - URL: `https://dfsm.ai/mcp/apps/leaddirector/education-center`
+   - Name: `BOS`
+   - URL: `https://dfsm.ai/mcp/apps/bos/platform`
 5. Select **Connect** on that Web connector and complete BOS sign-in.
 6. Start a new Cowork task and request one authenticated Education Operation
    Center read to verify the connection.
 
-Claude reads `.claude-plugin/marketplace.json`. The Education Operation Center
-plugin contains skills and account-connector metadata. It intentionally contains
-no `.mcp.json`, `mcpServers`, API-key field, or authorization-header template;
-plugin-owned MCP declarations appear as **Connects in sessions**. The account-level
-Web connector has the persistent **Connect** control, discovers OAuth from the
-immutable MCP resource, and stores and refreshes the resulting grant across tasks.
+Claude reads `.claude-plugin/marketplace.json`. The BOS plugin owns the account
+connector metadata. Education Operation Center contributes skills and contains no
+connector or MCP declaration. The BOS account-level Web connector has the persistent
+**Connect** control, discovers OAuth from the immutable MCP resource, and stores and
+refreshes the resulting grant across tasks.
 
 ### Updates
 
@@ -144,10 +144,10 @@ that works before MCP is connected. When a user is stuck, paste:
 > a screenshot when the current state is unclear, and confirm success with one
 > authenticated read. Never ask me for a BOS API key or token.
 
-The desktop host authorizes one immutable product resource:
+The desktop host authorizes one immutable BOS resource:
 
 ```text
-https://dfsm.ai/mcp/apps/leaddirector/education-center
+https://dfsm.ai/mcp/apps/bos/platform
 ```
 
 BOS maps the validated OAuth grant to canonical actor, tenant, organization,
@@ -188,6 +188,18 @@ npm run check
 npm test
 ```
 
+The BOS server repository or CI can verify the portable client/server
+connection contract directly:
+
+```bash
+npm run contract:check
+```
+
+The command reads `contracts/single-bos-mcp-connection.v1.json`, writes a
+machine-readable JSON verdict to standard output, and exits nonzero for any
+additional connection artifact, subservice MCP declaration, retired
+subservice connection identifier, or root-resource mismatch.
+
 `source/` and `products/` are canonical. `clients/` contains generated output.
 Change canonical sources, regenerate, and verify generated parity.
 
@@ -200,8 +212,8 @@ codex plugin marketplace add ./
 ```
 
 Install **BOS** and **Education Operation Center** from the ChatGPT Desktop Plugins
-Directory. Confirm that Education Operation Center shows **Connect**, complete BOS OAuth,
-and test in a new task. After source changes,
+Directory. Confirm that BOS shows **Connect**, complete BOS OAuth once, and test
+Education Operation Center in a new task. After source changes,
 rebuild the packages, update or reinstall the plugin, and use another new task
 so the managed cache cannot hide stale output.
 
@@ -222,13 +234,13 @@ Validate and install the local marketplace:
 ```bash
 claude plugin validate .
 claude plugin marketplace add ./
+claude plugin install bos@bos-education-center
 claude plugin install education-center@bos-education-center
 ```
 
-Under **Customize → Connectors**, add or select the account-level
-`education-center` Web connector, select **Connect**, complete BOS sign-in, and
-test in a new Claude/Cowork task. The plugin must never appear as a connector
-with status **Connects in sessions**.
+Under **Customize → Connectors**, add or select the account-level `BOS` Web
+connector, select **Connect**, complete BOS sign-in once, and test the installed
+subservices in a new Claude/Cowork task.
 After source changes, update the marketplace and plugin before retesting.
 
 ### Local validation
@@ -271,8 +283,8 @@ retrieve a reusable BOS access token.
 ## Other clients
 
 Claude, ChatGPT/Codex, OAuth-capable Copilot hosts, Gemini CLI, and Antigravity Desktop use host-managed
-OAuth for the immutable BOS product resource. Claude provisions it as an
-account-level Web connector while the marketplace plugin remains skills-only.
+OAuth for the immutable BOS resource. Claude provisions it as one account-level
+Web connector owned by the BOS plugin. Subservice plugins use that connection.
 
 ### Gemini CLI and Antigravity 2.0 Desktop
 
@@ -288,7 +300,7 @@ Give Hardik this instruction:
 > Use the single Gemini client in `clients/gemini`. For Gemini CLI, install
 > `clients/gemini/extensions/bos` and
 > `clients/gemini/extensions/education-center`, restart Gemini CLI, run
-> `/mcp auth education-center`, and complete BOS sign-in. For Antigravity 2.0
+> `/mcp auth platform`, and complete BOS sign-in once. For Antigravity 2.0
 > Desktop, run `./scripts/clean-install-antigravity.sh` once from the synced repository.
 > This is an intentionally destructive clean install: it deletes prior BOS product
 > folders and symlinks from `~/.gemini/config/plugins/`, including local
@@ -298,7 +310,7 @@ Give Hardik this instruction:
 > locates the repository from its own file path.
 > After each Git pull,
 > restart Antigravity, open Settings >
-> Customizations, select Authenticate for `education-center`, complete BOS
+> Customizations, select Authenticate for `platform`, complete BOS
 > sign-in, and verify one authenticated Education Operation Center read. Keep the
 > synced repository in place and do not request a BOS API key, token, client secret,
 > environment variable, or installed application ID.
@@ -310,11 +322,12 @@ OAuth discovery and the host-managed resource-scoped grant.
 
 ### GitHub Copilot
 
-1. Copy `clients/copilot/products/<product>/skills` into the repository's
+1. Install `clients/copilot/products/bos` for the BOS connection and copy the
+   required subservice skills from `clients/copilot/products/<product>/skills` into the repository's
    supported agent-skills directory.
-2. Install the runtime product's generated `.github/mcp.json` for Copilot CLI,
+2. Install the BOS product's generated `.github/mcp.json` for Copilot CLI,
    or copy its server entry into `.vscode/mcp.json` for Copilot in VS Code.
-3. Run `/mcp auth <group>` in Copilot CLI or select `Auth` above the VS Code
+3. Run `/mcp auth platform` in Copilot CLI or select `Auth` above the VS Code
    server entry, then complete BOS sign-in.
 
 Copilot cloud agent and code review currently lack remote MCP OAuth support, so

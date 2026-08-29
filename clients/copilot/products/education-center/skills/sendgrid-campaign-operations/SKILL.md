@@ -4,31 +4,33 @@ description: Build, approve, test, send, recover, monitor, and report Education 
 ---
 
 
-## Product first-run preflight
+## Product initialization preflight
 
-Before performing this skill's workflow, resolve the installed product root and
-validate its customer-owned `config/customer-settings.json` against
+Before performing this skill's workflow, preserve the pending request and
+complete the product's host-managed BOS authentication. Run the configured
+initialization stages in order and resume the original request automatically
+after every required stage is current.
+
+First validate the customer-owned `config/customer-settings.json` against
 `config/customer-settings.template.json`. Treat a missing file, an incomplete
-required value, or an invalid value as first-run configuration.
+required value, or an invalid value as first-run configuration. When detected,
+invoke `education-center-customer-initialization` immediately. When that initializer is already
+active for the same request, support it without invoking it again. Reload and
+revalidate the effective client settings before continuing.
 
-When first-run configuration is detected, invoke `education-center-customer-initialization`
-immediately. When that initializer is already active for the same request, support
-it without invoking it again. Preserve the user's original request while
-initialization runs.
-Complete the product's host-managed BOS authentication before asking any settings
-question. If direct sign-in is required, ask only for that action and resume
-initialization automatically afterward. Do not perform the original workflow or
-substitute generic customer values while configuration remains unresolved. After
-the user accepts the consolidated recommendation and the initializer writes and
-revalidates `config/customer-settings.json`, reload the effective settings and
-resume the original request automatically.
+After client settings are current, validate the server plugin-settings
+initialization epoch, required canonical field states, and local completion
+receipt. Invoke `bos-plugin-settings-initialization` when the receipt is missing or
+stale, a required field is unset or invalid partial, or the server schema changed.
+Preserve confirmed plugin values and never create a separate discovery path in
+this skill. Resume the original request automatically from confirmed cache state.
 
 # SendGrid Campaign Operations
 
 Use `bos-mcp-client` for authenticated context, live tool discovery, manifest
 refresh, same-task continuation, and provider authorization recovery. Use
 `education-center-service-routing` for every configured evidence source. Use
-only the installed `education-center` OAuth connection for runtime authority.
+only the installed BOS OAuth connection for runtime authority.
 BOS derives organization, application, installation, role, plugin, SendGrid
 binding, sender configuration, and credentials from the validated grant.
 
@@ -73,7 +75,7 @@ against a sanitized trace when validating an end-to-end client execution.
   or `delegated_role_id` as client inputs. Never use legacy filesystem tokens,
   repository-specific sender scripts, direct database access, raw SendGrid
   calls, browser authority, native Gmail/Calendar connectors, or another
-  product connection for this workflow.
+  BOS connection for this workflow.
 - Keep recipient addresses out of logs, continuation envelopes, result
   displays, and local diagnostics unless explicitly requested. Use server-owned
   contact identities or salted/tenant-scoped hashes in diagnostic artifacts.

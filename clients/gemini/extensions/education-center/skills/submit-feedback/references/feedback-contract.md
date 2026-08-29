@@ -1,7 +1,7 @@
 # BOS Feedback Client Contract
 
 Use `bos_submit_feedback` through the package's static
-`POST /mcp/apps/{application-name}/{skill-group-name}` connection with the
+`POST /mcp/apps/bos/platform` connection with the
 existing host-managed, resource-scoped BOS OAuth grant. Both route segments
 are immutable human-readable package configuration; the client never derives
 them from an installation ID or customer setting. Execution scope never

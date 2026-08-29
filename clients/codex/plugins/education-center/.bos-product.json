@@ -1,10 +1,8 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.48",
+  "version": "0.4.50",
   "client": "codex",
-  "application_name": "leaddirector",
-  "mcp_group_name": "education-center",
-  "codex_app_id": "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
-  "authentication": "oauth_2_1"
+  "connection_owner": "bos",
+  "authentication": "bos_managed"
 }

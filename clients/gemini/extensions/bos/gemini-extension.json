@@ -1,5 +1,13 @@
 {
   "name": "bos",
-  "version": "0.4.48",
-  "description": "Agent-first Business Operating System foundations for governed agent workflows."
+  "version": "0.4.50",
+  "description": "Agent-first Business Operating System foundations for governed agent workflows.",
+  "mcpServers": {
+    "platform": {
+      "httpUrl": "https://dfsm.ai/mcp/apps/bos/platform",
+      "oauth": {
+        "enabled": true
+      }
+    }
+  }
 }

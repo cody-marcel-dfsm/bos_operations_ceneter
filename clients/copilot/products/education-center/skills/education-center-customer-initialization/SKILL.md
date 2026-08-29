@@ -20,7 +20,7 @@ secrets.
    skill.
 2. Preserve every existing valid user-confirmed value. Package rebuilds and
    upgrades replace the template while leaving the customer overlay unchanged.
-3. Build candidates for all four required base values before asking the user.
+3. Build candidates for all five required base values before asking the user.
    Inspect non-secret customer metadata already available in the current
    conversation, installation draft, active client, and configured product.
    Preserve an existing user-confirmed `brand_display_name`. Otherwise prefer
@@ -36,17 +36,22 @@ secrets.
    non-secret labels from client metadata as suggested defaults when BOS
    context remains unavailable. Request selectors remain untrusted and never
    become authority.
-6. Preserve the package's per-domain `source_routes` defaults unless the
+6. Preserve an existing confirmed `organization_website_url`. Otherwise derive
+   it only from explicit non-secret customer configuration or exact canonical
+   BOS organization metadata. Validate it as a public HTTP or HTTPS URL and
+   present it as a suggestion requiring confirmation. Never substitute the
+   package publisher website or infer customer identity from public search.
+7. Preserve the package's per-domain `source_routes` defaults unless the
    customer explicitly selects another supported source. For
    `connected_gmail`, inspect connected-account metadata already visible to the
    client and use a Care.com mailbox only when exactly one connected mailbox
    receives the configured Care.com sender. Never inspect message bodies merely
    to derive configuration.
-7. Derive billing fields only from explicit non-secret customer configuration
+8. Derive billing fields only from explicit non-secret customer configuration
    already present in the client or canonical BOS organization metadata. Never
    infer a billing address, contact, phone number, rate, or invoice prefix from
    unrelated messages or public web data.
-8. Track each value with its source and status: `confirmed`, `derived`, or
+9. Track each value with its source and status: `confirmed`, `derived`, or
    `suggested`. Resolve conflicts in favor of user-confirmed values, then
    exact canonical metadata. Keep lower-confidence guesses as suggestions for
    confirmation. Never use public web research or unrelated message content to
@@ -67,7 +72,8 @@ no settings questions.
 
 Ask one concise consolidated question in the agent conversation. Always show a
 `Recommended defaults` block containing brand display name, organization
-display name, location display name, and IANA timezone. Include each value's
+display name, organization website URL, location display name, and IANA
+timezone. Include each value's
 status and source. Fill every field with the best customer-specific candidate
 available; use the generic product display name only as a clearly labeled
 low-confidence last-resort suggestion. End with: “Reply **Use these defaults**
@@ -75,7 +81,8 @@ to accept all values, or send any corrections.” Do not require the user to
 retype derived values or answer separate field-by-field questions.
 
 Required base values are brand display name, organization display name,
-location display name, and IANA timezone. Ask for the Care.com mailbox and billing
+organization website URL, location display name, and IANA timezone. Ask for the
+Care.com mailbox and billing
 fields only when the customer uses those workflows. Ask for a Care.com mailbox
 only when `source_routes.care_com` is `connected_gmail` and the client cannot
 resolve exactly one configured account. Ask for a parent-communications mailbox
@@ -110,6 +117,10 @@ client source retains its native account authorization and recovery boundary.
 4. Re-read the file, confirm required values, and report which values were
    derived, confirmed, or intentionally left unused.
 5. Preserve the file as customer-owned configuration across package upgrades.
+6. Invoke `bos-plugin-settings-initialization` immediately after the client
+   settings file is revalidated. Preserve the pending request, let that stage
+   research and persist required canonical plugin settings, then resume the
+   request automatically.
 
 The completed `brand_display_name` is the default tenant terminology for every
 Education Center skill. A typed customer extension may override

@@ -36,6 +36,15 @@ configuration as distinct validated dimensions.
 - Provider credentials remain scoped to their installed app and plugin.
 - Reconnect or reauthorization replaces the scoped grant and preserves
   application configuration.
+- The user authenticates to BOS once per user-facing client context. The root
+  BOS plugin owns that host-managed connection. Education Center, CRM,
+  Marketing Director, and other subservice plugins never create or request an
+  additional BOS login.
+- Every subservice request uses the authenticated BOS connection. The server
+  derives and evaluates organization, application, installation, subservice,
+  plugin, role, capability, provider, and tool scope for that request.
+- Platform BOS operations use the BOS connection directly. They never transit
+  an Education Center, CRM, Marketing Director, or other subservice connection.
 - Background jobs carry the same validated scope as interactive operations.
 - The agent owns MCP transport and session recovery. On a closed stream or
   session, it reconnects the configured endpoint, rediscovers tools,
@@ -52,18 +61,19 @@ configuration as distinct validated dimensions.
   authorization flow. The host discovers BOS
   authorization metadata, launches consent, stores and refreshes the grant,
   and attaches the resulting resource-scoped access token. The package never
-  asks for or stores a BOS API key. Multiple named product connections may
-  hold distinct grants. Every secured call fails closed when authorization is
+  asks for or stores a BOS API key. Subservice packages reference the existing
+  BOS connection and carry no separate BOS authentication binding. Every
+  secured call fails closed when authorization is
   absent, invalid, expired, revoked, or scoped to another resource.
-- Register the package's immutable
-  `/mcp/apps/{application-name}/{skill-group-name}` endpoint and verify the
+- Register the root BOS package's immutable MCP endpoint and verify the
   server-returned context. Never discover, prompt for, repair, or materialize
-  the route from an `installed_app_id`, and never retain an unnamed endpoint as
-  an installed product's runtime connection. For Claude, declare the resource
+  the route from an `installed_app_id`, customer setting, or subservice
+  package. For Claude, declare the BOS resource
   in an account or organization Web connector and complete authorization from
   **Customize → Connectors**. For ChatGPT/Codex,
   never package `.mcp.json` or `mcpServers`; bind
-  the registered app through `.app.json`.
+  the root BOS registered app through `.app.json`. Subservice plugins ship
+  skills and metadata without another BOS app binding.
   For every client, never add `bearer_token_env_var`, literal authorization
   headers, or a plugin key field. The server derives actor, tenant, organization, installation,
   role, plugin, and capability scope from the validated OAuth grant; client
@@ -73,8 +83,9 @@ configuration as distinct validated dimensions.
   only when the selected role carries their explicit administrative
   capability.
 - Keep provider authorization scoped to its organization, installation, and
-  plugin. Missing provider readiness never changes another named connection's
-  tools, authentication, build gate, or release state.
+  plugin. Missing provider readiness affects only server-evaluated operations
+  that require that provider; it never creates another BOS authentication
+  boundary or removes unrelated subservice capabilities.
 - When a domain call returns `authorization_required`, automatically complete
   the provider-specific recovery flow in the active request, verify it, and
   resume the original operation at most once. Never send the user to settings

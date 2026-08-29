@@ -12,8 +12,8 @@ function read(relativePath) {
 test("Education Center class operations route requested Calimatic access through BOS", () => {
   const skill = read("source/verticals/education-center/education-center-class-operations/SKILL.md");
 
-  assert.match(skill, /packaged Education Center skill-group connection/i);
-  assert.match(skill, /omit `org_id`, `app_code`, `installed_app_id`, and `delegated_role_id`/i);
+  assert.match(skill, /use the BOS connection/i);
+  assert.match(skill, /omit `org_id`,\s*`app_code`, `installed_app_id`, and `delegated_role_id`/i);
   assert.match(skill, /BOS\s+derives them from the authenticated installation/i);
   assert.match(skill, /Never use a direct provider\s+client/i);
   assert.match(skill, /secure handoff flow/i);
