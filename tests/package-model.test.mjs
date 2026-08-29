@@ -1281,7 +1281,7 @@ test("disabled products are absent while active runtime products remain scoped",
   assert.deepEqual(app, {
     apps: {
       bos: {
-        id: "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
+        id: "plugin_asdk_app_6a932992592081919cdc88c60e4ff2dd",
         required: true
       }
     }

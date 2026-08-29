@@ -127,6 +127,8 @@ function validateContractShape(contract, contractPath) {
     "resource_url",
     "codex_app_id",
     "owner_authentication_policy",
+    "provider_account_selection_policy",
+    "identity_organization_resolution_policy",
     "subservice_authentication_policy"
   ];
   if (contract.schema_version !== "1") {
