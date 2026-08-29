@@ -1,5 +1,7 @@
 # Marketplace submission assets
 
+Current BOS marketplace package release: `0.4.50`.
+
 ## BOS connection submission
 
 The BOS marketplace plugin is the sole connection-owning package.

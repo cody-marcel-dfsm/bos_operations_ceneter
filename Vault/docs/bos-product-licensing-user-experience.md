@@ -1,5 +1,7 @@
 # BOS product licensing and user experience
 
+Current BOS Operations Center release: `0.4.50`.
+
 ## Connection ownership
 
 BOS owns one authenticated MCP connection per user-facing client context.
