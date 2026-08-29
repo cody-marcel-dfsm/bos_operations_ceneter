@@ -83,6 +83,29 @@ login or BOS MCP connection.
    connection.
 9. ChatGPT/Codex packages accept only a durable `asdk_app_*` registered-app
    identity and reject installation-scoped `plugin_asdk_app_*` wrappers.
+10. ChatGPT/Codex readiness jointly verifies the native plugin registry,
+    marketplace registration, one current managed-cache version per active
+    product, the immutable registered-app wrapper, and every product-declared
+    runtime verification tool in the callable catalog. A package cache alone
+    is not installation evidence.
+11. ChatGPT/Codex recovery removes only state owned by the BOS marketplace or
+    immutable BOS app ID, backs up any edited host state, reinstalls both active
+    products, restarts the host, and reruns the same readiness verification.
+12. Claude readiness follows the active user-scoped plugin registry entry and
+    its `installPath`, verifies the current package version and BOS metadata,
+    and reports inactive seven-day cache retention separately. Claude recovery
+    removes only the BOS marketplace cache and registrations before reinstalling
+    both products.
+13. Gemini CLI readiness verifies its native extension install metadata and
+    every installed package file against the current generated extension.
+    Recovery removes only validated BOS extension copies, invokes native
+    uninstall and install operations, restarts the host, and reruns readiness.
+14. Antigravity readiness requires exact symlinks from every active BOS product
+    path to the current generated Gemini extension and validates release
+    metadata after installation.
+15. Copilot readiness compares the selected product's repository MCP and skill
+    files directly against generated output. The Copilot repository adapter has
+    no BOS package-cache state.
 
 ## Portable contract verification
 

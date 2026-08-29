@@ -1,5 +1,5 @@
 {
   "$schema": "https://antigravity.google/schemas/v1/plugin.json",
   "name": "bos",
-  "description": "Agent-first Business Operating System foundations for governed agent workflows. Version 0.4.51."
+  "description": "Agent-first Business Operating System foundations for governed agent workflows. Version 0.4.52."
 }

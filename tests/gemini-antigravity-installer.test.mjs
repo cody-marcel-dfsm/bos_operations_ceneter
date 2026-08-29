@@ -144,10 +144,23 @@ test("Antigravity preflight preserves existing plugins when any active source is
   const priorPlugin = join(home, ".gemini", "config", "plugins", "bos");
 
   await mkdir(scriptsRoot, { recursive: true });
+  await mkdir(join(scriptsRoot, "lib"), { recursive: true });
   await copyFile(script, join(scriptsRoot, "clean-install-antigravity.sh"));
   await copyFile(
     join(repositoryRoot, "scripts", "preflight-antigravity.mjs"),
     join(scriptsRoot, "preflight-antigravity.mjs")
+  );
+  await copyFile(
+    join(repositoryRoot, "scripts", "verify-antigravity-runtime.mjs"),
+    join(scriptsRoot, "verify-antigravity-runtime.mjs")
+  );
+  await copyFile(
+    join(repositoryRoot, "scripts", "lib", "client-runtime-verification.mjs"),
+    join(scriptsRoot, "lib", "client-runtime-verification.mjs")
+  );
+  await copyFile(
+    join(repositoryRoot, "scripts", "lib", "package-model.mjs"),
+    join(scriptsRoot, "lib", "package-model.mjs")
   );
   const runtimeRoot = join(fakeRepository, "source", "runtime", "bos");
   await mkdir(runtimeRoot, { recursive: true });
@@ -247,10 +260,23 @@ test("Antigravity preflight preserves existing plugins when disabled inventory i
   const priorPlugin = join(home, ".gemini", "config", "plugins", "bos");
 
   await mkdir(scriptsRoot, { recursive: true });
+  await mkdir(join(scriptsRoot, "lib"), { recursive: true });
   await copyFile(script, join(scriptsRoot, "clean-install-antigravity.sh"));
   await copyFile(
     join(repositoryRoot, "scripts", "preflight-antigravity.mjs"),
     join(scriptsRoot, "preflight-antigravity.mjs")
+  );
+  await copyFile(
+    join(repositoryRoot, "scripts", "verify-antigravity-runtime.mjs"),
+    join(scriptsRoot, "verify-antigravity-runtime.mjs")
+  );
+  await copyFile(
+    join(repositoryRoot, "scripts", "lib", "client-runtime-verification.mjs"),
+    join(scriptsRoot, "lib", "client-runtime-verification.mjs")
+  );
+  await copyFile(
+    join(repositoryRoot, "scripts", "lib", "package-model.mjs"),
+    join(scriptsRoot, "lib", "package-model.mjs")
   );
   const runtimeRoot = join(fakeRepository, "source", "runtime", "bos");
   await mkdir(runtimeRoot, { recursive: true });

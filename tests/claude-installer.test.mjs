@@ -2,7 +2,20 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { installClaudeLocal } from "../scripts/install-claude-local.mjs";
-import { root } from "../scripts/lib/package-model.mjs";
+import { readJson, root } from "../scripts/lib/package-model.mjs";
+
+const releaseVersion = (await readJson(`${root}/products/bos/product.json`)).version;
+
+function installed(id, enabled = true) {
+  const name = id.split("@")[0];
+  return {
+    id,
+    scope: "user",
+    enabled,
+    version: releaseVersion,
+    installPath: `${root}/clients/claude/plugins/${name}`
+  };
+}
 
 test("Claude installer contains no BOS credential handling", async () => {
   const source = await readFile(
@@ -26,10 +39,7 @@ test("Claude local installer directs users to the persistent account connector",
       pluginListCount += 1;
       return pluginListCount === 1
         ? "[]"
-        : JSON.stringify([{
-            id: "bos@bos-education-center",
-            enabled: true
-          }]);
+        : JSON.stringify([installed("bos@bos-education-center")]);
     }
     return "";
   };
@@ -84,8 +94,8 @@ test("Claude local installer updates an existing local installation without cred
     }
     if (args[0] === "plugin" && args[1] === "list") {
       return JSON.stringify([
-        { id: selector, scope: "user", enabled: true },
-        { id: "education-center@bos-education-center", scope: "user", enabled: true }
+        installed(selector),
+        installed("education-center@bos-education-center")
       ]);
     }
     return "";
@@ -122,7 +132,7 @@ test("Claude local installer enables an installed disabled plugin", async () => 
       }]);
     }
     if (args[0] === "plugin" && args[1] === "list") {
-      return JSON.stringify([{ id: selector, enabled }]);
+      return JSON.stringify([installed(selector, enabled)]);
     }
     if (args[0] === "plugin" && args[1] === "enable") enabled = true;
     return "";
@@ -148,7 +158,7 @@ test("Claude subservice installation uses the existing BOS connector", async () 
       pluginListCount += 1;
       return pluginListCount === 1
         ? "[]"
-        : JSON.stringify([{ id: "education-center@bos-education-center", enabled: true }]);
+        : JSON.stringify([installed("education-center@bos-education-center")]);
     }
     return "";
   };
@@ -176,8 +186,8 @@ test("Claude local installer replaces a same-named remote marketplace with the l
     }
     if (args[0] === "plugin" && args[1] === "list") {
       return JSON.stringify([
-        { id: selector, scope: "user", enabled: true },
-        { id: "bos@bos-education-center", scope: "user", enabled: true }
+        installed(selector),
+        installed("bos@bos-education-center")
       ]);
     }
     return "";

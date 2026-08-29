@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { verifyInstalledMetadata } from "./lib/client-runtime-verification.mjs";
 
 const projectRoot = resolve(import.meta.dirname, "..");
 const defaultProduct = "bos";
@@ -40,7 +41,8 @@ function parseJsonOutput(output, label) {
 export async function installClaudeLocal({
   base = projectRoot,
   product = defaultProduct,
-  run = defaultRun
+  run = defaultRun,
+  verifyMetadata = verifyInstalledMetadata
 } = {}) {
   const marketplaceRoot = join(base, "clients", "claude");
   const manifestPath = join(
@@ -143,6 +145,21 @@ export async function installClaudeLocal({
   const verified = verifiedPlugins.find((entry) => entry.id === selector);
   if (!verified?.enabled) {
     throw new Error(`Claude did not enable ${selector}`);
+  }
+  if (verified.version !== productMetadata.version) {
+    throw new Error(
+      `Claude activated ${selector} version ${verified.version ?? "missing"}; expected ${productMetadata.version}`
+    );
+  }
+  if (!verified.installPath) {
+    throw new Error(`Claude did not report an active installPath for ${selector}`);
+  }
+  const metadataFailures = await verifyMetadata(
+    join(verified.installPath, ".bos-product.json"),
+    { name: product, version: productMetadata.version, client: "claude" }
+  );
+  if (metadataFailures.length > 0) {
+    throw new Error(`Claude active package verification failed:\n${metadataFailures.join("\n")}`);
   }
 
   const completionMessage = productMetadata.connection_scope === "claude_account"
