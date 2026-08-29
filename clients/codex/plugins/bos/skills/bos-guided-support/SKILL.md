@@ -137,6 +137,13 @@ confirm the user reached the intended result.
 
 ## Recover or escalate
 
+For a requested complete local removal across every supported client, use the
+repository-owned `scripts/uninstall-bos-all-clients.sh`. Read the **Complete
+all-client removal** section in
+[references/client-runbooks.md](references/client-runbooks.md), inspect its dry
+run, obtain explicit destructive authorization, run it, and report the script's
+post-removal verification. Never substitute broad cache-directory deletion.
+
 After a failed action, compare the new evidence with the expected result and
 change branches. Do not repeat the same instruction unchanged. Prefer a safe
 inspection before reinstalling. Preserve unrelated plugins and connections.

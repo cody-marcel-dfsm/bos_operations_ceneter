@@ -195,6 +195,14 @@ release system for portable BOS skills and native remote MCP client adapters.
     product-declared runtime verification tool. Remediation is identity-bounded
     to the BOS marketplace and immutable app ID and backs up host state before
     removing BOS-owned catalog entries.
+    A user-authorized complete local uninstall is a separate destructive
+    lifecycle: one repository-owned command unregisters BOS and active
+    subservice packages from every detected client, deletes only validated
+    package/app/catalog artifacts and the shared BOS document/settings cache,
+    accepts explicit repository-scoped Copilot targets, preserves unrelated
+    plugins and source repositories, creates no backup, and verifies registry
+    and filesystem absence before success. Running clients restart afterward to
+    discard their in-memory tool catalogs.
 18. Keep repository builds and release checks credential-free and local. They
     regenerate clients, validate canonical-source parity, scan for credentials
     and customer data, and run deterministic tests without a live MCP query or

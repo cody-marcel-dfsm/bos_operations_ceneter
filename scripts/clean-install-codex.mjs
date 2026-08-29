@@ -100,7 +100,7 @@ export async function planCodexCleanup(rawOptions = {}) {
   };
 }
 
-function removeBosToolsFromGlobalState(state, appId) {
+export function removeBosToolsFromGlobalState(state, appId) {
   const catalog = state?.["electron-persisted-atom-state"]
     ?.["mcp-extension-sidebar-catalog"]?.catalog;
   if (!Array.isArray(catalog)) return 0;
