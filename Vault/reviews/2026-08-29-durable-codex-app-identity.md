@@ -21,7 +21,7 @@ No material findings remain.
   unregistered durable-looking app identity.
 - Claude, Copilot, Gemini CLI, and Antigravity retain their native single-root
   BOS connection declarations at `https://dfsm.ai/mcp/apps/bos/platform`.
-- `npm run release:check` regenerated every client, passed package and
+- `npm run release:check` for release `0.4.51` regenerated every client, passed package and
   credential validation, passed the portable single-BOS-connection contract,
   and passed all 161 tests.
 
