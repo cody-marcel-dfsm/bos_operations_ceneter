@@ -1,5 +1,5 @@
 {
-  "indexed_at": "20260829T163530.188708Z",
+  "indexed_at": "20260829T163138.922843Z",
   "schema_version": "bos-vault-manifest/v1",
   "source_count": 53,
   "sources": {
@@ -172,8 +172,8 @@
       "sha256": "3186bcb5685d6a971b5bcb08b806b95d4dc3a9d35d8bb82ab7ba5b438c728729"
     },
     "Vault/specs/single-bos-mcp-connection.md": {
-      "bytes": 4967,
-      "sha256": "87b12498aa297fd1bcf24d58b2e31c15309a925d8c26db4d08ab3c5b5a419a64"
+      "bytes": 4470,
+      "sha256": "19bf25f637c384f18a472eb9eb94c053436eae2d620127b0a9f1eabf78e76757"
     },
     "Vault/submissions/openai/education-operation-center/README.md": {
       "bytes": 2988,

@@ -88,3 +88,17 @@ process exit code. A passing result proves that BOS owns the only client
 connection artifacts, every subservice remains transport-free, canonical and
 generated skills contain no subservice connection identifiers, and every
 client points to the immutable BOS root resource.
+
+Marketplace and host install smoke tests pass the captured OAuth authorization
+URL to the same verifier:
+
+```bash
+node scripts/verify-single-bos-contract.mjs \
+  --format json \
+  --oauth-authorize-url "<captured-authorize-url>"
+```
+
+The verifier accepts only an OAuth `resource` equal to the immutable BOS root
+resource. This makes a marketplace record, cached client package, or host
+adapter that attempts to create a subservice connection fail the portable
+contract before release acceptance.
