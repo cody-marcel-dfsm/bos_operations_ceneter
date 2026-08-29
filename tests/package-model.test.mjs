@@ -1164,7 +1164,7 @@ test("package schema reserves runtime ownership for BOS", () => {
     description: "Example runtime package.",
     publisher: "Example Publisher",
     category: "Productivity",
-    authentication: "ON_USE",
+    authentication: "ON_INSTALL",
     release_status: "active",
     clients: ["codex"],
     includes: ["platform/bos-mcp-client"],
@@ -1210,6 +1210,25 @@ test("package schema reserves runtime ownership for BOS", () => {
   assert.match(
     validateProduct({ ...base, name: "education-center" }).join("\n"),
     /subservice products must use the BOS-owned connection/
+  );
+  assert.match(
+    validateProduct({ ...base, authentication: "ON_USE" }).join("\n"),
+    /BOS authentication must be ON_INSTALL/
+  );
+  const subservice = {
+    ...base,
+    name: "education-center",
+    authentication: "ON_USE",
+    runtime: undefined,
+    application_name: undefined,
+    mcp_group_name: undefined,
+    codex_app_id: undefined,
+    includes: ["platform/bos-mcp-client"]
+  };
+  assert.deepEqual(validateProduct(subservice), []);
+  assert.match(
+    validateProduct({ ...subservice, authentication: "ON_INSTALL" }).join("\n"),
+    /subservice authentication policy must be ON_USE/
   );
 });
 

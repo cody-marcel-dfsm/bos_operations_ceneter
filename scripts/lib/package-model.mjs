@@ -126,6 +126,12 @@ export function validateProduct(manifest, path = "product.json") {
   if (!["ON_INSTALL", "ON_USE"].includes(manifest.authentication)) {
     failures.push(`${path}: authentication must be ON_INSTALL or ON_USE`);
   }
+  if (manifest.name === "bos" && manifest.authentication !== "ON_INSTALL") {
+    failures.push(`${path}: BOS authentication must be ON_INSTALL`);
+  }
+  if (manifest.name !== "bos" && manifest.authentication !== "ON_USE") {
+    failures.push(`${path}: subservice authentication policy must be ON_USE`);
+  }
   if (!Array.isArray(manifest.clients) || manifest.clients.length === 0) {
     failures.push(`${path}: clients must be a non-empty array`);
   } else {

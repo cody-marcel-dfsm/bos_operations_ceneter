@@ -5,6 +5,8 @@ import test from "node:test";
 
 import {
   inspectForbiddenIdentifiers,
+  inspectMcpResourceUrls,
+  inspectOAuthAuthorizeTarget,
   inspectSubserviceAgentDescriptor,
   verifySingleBosContract
 } from "../scripts/lib/single-bos-contract.mjs";
@@ -59,5 +61,57 @@ test("single BOS contract rejects retired subservice connection identifiers", ()
   assert.deepEqual(
     findings.map(({ code }) => code),
     ["subservice_connection_identifier", "subservice_connection_identifier"]
+  );
+});
+
+test("single BOS contract rejects every non-root BOS MCP resource", () => {
+  const canonical = "https://dfsm.ai/mcp/apps/bos/platform";
+  assert.deepEqual(inspectMcpResourceUrls(canonical, "good.json", canonical), []);
+  const findings = inspectMcpResourceUrls(
+    "resource=https://dfsm.ai/mcp/apps/leaddirector/education-center",
+    "bad.json",
+    canonical
+  );
+  assert.deepEqual(findings.map(({ code }) => code), ["subservice_mcp_resource"]);
+});
+
+test("single BOS contract validates captured OAuth authorize resource evidence", () => {
+  const canonical = "https://dfsm.ai/mcp/apps/bos/platform";
+  const good = new URL("https://dfsm.ai/api/v1/mcp/oauth/authorize");
+  good.searchParams.set("resource", canonical);
+  assert.deepEqual(inspectOAuthAuthorizeTarget(good.href, canonical), []);
+
+  const bad = new URL(good);
+  bad.searchParams.set("resource", "https://dfsm.ai/mcp/apps/leaddirector/education-center");
+  assert.deepEqual(
+    inspectOAuthAuthorizeTarget(bad.href, canonical).map(({ code }) => code),
+    ["oauth_resource_target"]
+  );
+});
+
+test("single BOS contract CLI rejects marketplace OAuth evidence for a subservice route", async () => {
+  const bad = new URL("https://dfsm.ai/api/v1/mcp/oauth/authorize");
+  bad.searchParams.set("resource", "https://dfsm.ai/mcp/apps/leaddirector/education-center");
+  await assert.rejects(
+    execFileAsync(
+      process.execPath,
+      [
+        `${root}/scripts/verify-single-bos-contract.mjs`,
+        "--format",
+        "json",
+        "--oauth-authorize-url",
+        bad.href
+      ],
+      { cwd: root }
+    ),
+    (error) => {
+      const result = JSON.parse(error.stdout);
+      assert.equal(result.status, "failed");
+      assert.deepEqual(
+        result.violations.map(({ code }) => code),
+        ["oauth_resource_target"]
+      );
+      return true;
+    }
   );
 });
