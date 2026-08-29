@@ -1,6 +1,6 @@
 {
   "name": "bos",
-  "version": "0.4.50",
+  "version": "0.4.52",
   "description": "Agent-first Business Operating System foundations for governed agent workflows.",
   "author": {
     "name": "Infinite State Machines LLC"

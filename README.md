@@ -28,7 +28,7 @@ The private Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Select
 **Connect** or **Sign in** when the host presents it, then complete BOS consent.
 
-Current desktop marketplace release: `0.4.50`. If `0.4.49` is installed,
+Current desktop marketplace release: `0.4.52`. If `0.4.51` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -53,7 +53,27 @@ Codex reads the repository catalog at
 cache, and loads the registered BOS app from the BOS plugin's `.app.json`. BOS
 owns the immutable MCP resource and host-managed OAuth grant. Education Operation
 Center uses that connection without another app binding or login. Start a new
-task after installation or upgrade.
+task after installation or upgrade. A complete installation must pass
+`npm run install:verify:codex-runtime`; this checks the plugin registry,
+marketplace registration, installed package versions, registered-app wrapper,
+and required callable tools together.
+
+If Codex reports a fresh package cache while either plugin is absent from the
+plugin registry or required Education Operation Center tools are absent, quit
+Codex completely and run the repository's bounded recovery command from a
+terminal:
+
+```bash
+npm run clean-install:codex -- \
+  --confirmation "DELETE ALL BOS CODEX PLUGIN STATE"
+```
+
+The command removes only the `bos-education-center` marketplace packages, the
+registered BOS app wrapper, and cache/catalog records carrying the immutable BOS
+app ID. It backs up the Codex global state file before removing those catalog
+records, reinstalls both products from this repository, and preserves OAuth and
+unrelated plugin state. Reopen Codex, complete BOS sign-in when prompted, start
+a new task, and run `npm run install:verify:codex-runtime` again.
 
 ### Claude Cowork/Desktop
 
@@ -70,6 +90,24 @@ task after installation or upgrade.
 5. Select **Connect** on that Web connector and complete BOS sign-in.
 6. Start a new Cowork task and request one authenticated Education Operation
    Center read to verify the connection.
+
+Run `npm run install:verify:claude-runtime` after installation and each update.
+The verifier follows Claude's active `plugin list --json` `installPath`, checks
+that both active packages match the current release, and reports inactive cache
+versions separately. Claude may retain inactive versions for seven days so live
+sessions can finish. Those retained directories are never accepted as evidence
+that a product is installed.
+
+For a bounded clean recovery, quit every Claude session and run:
+
+```bash
+npm run clean-install:claude -- \
+  --confirmation "DELETE ALL BOS CLAUDE PLUGIN STATE"
+```
+
+This removes the two BOS plugin registrations, the BOS marketplace registration,
+and the exact `~/.claude/plugins/cache/bos-education-center` tree, then installs
+both products from the current repository and verifies their active paths.
 
 Claude reads `.claude-plugin/marketplace.json`. The BOS plugin owns the account
 connector metadata. Education Operation Center contributes skills and contains no
@@ -200,6 +238,21 @@ machine-readable JSON verdict to standard output, and exits nonzero for any
 additional connection artifact, subservice MCP declaration, retired
 subservice connection identifier, or root-resource mismatch.
 
+The BOS server integration suite must also generate a valid, short-lived DCR
+authorization URL for the canonical resource and pass it to the live OAuth
+contract probe:
+
+```bash
+npm run contract:oauth-live -- --authorize-url "$BOS_OAUTH_AUTHORIZE_URL" --format json
+```
+
+The probe stops at the first redirect. It requires a 302/303/307 response to
+`accounts.google.com` with `prompt` containing `select_account`; an HTTP 500,
+the wrong provider, or automatic account selection fails the contract. After
+the selected Google identity returns, the BOS server resolves organization and
+role from that verified identity on every authorization. The client never
+chooses or stores an organization mapping.
+
 `source/` and `products/` are canonical. `clients/` contains generated output.
 Change canonical sources, regenerate, and verify generated parity.
 
@@ -215,7 +268,11 @@ Install **BOS** and **Education Operation Center** from the ChatGPT Desktop Plug
 Directory. Confirm that BOS shows **Connect**, complete BOS OAuth once, and test
 Education Operation Center in a new task. After source changes,
 rebuild the packages, update or reinstall the plugin, and use another new task
-so the managed cache cannot hide stale output.
+so the managed cache cannot hide stale output. Run
+`npm run install:verify:codex-runtime` after reopening Codex. Use
+`npm run clean-install:codex -- --confirmation "DELETE ALL BOS CODEX PLUGIN STATE"`
+with Codex fully quit when verification identifies orphaned registry or catalog
+state.
 
 For direct canonical-skill development on an authorized machine, use:
 
@@ -298,8 +355,8 @@ and [Gemini CLI MCP OAuth command](https://geminicli.com/docs/tools/mcp-server/)
 Give Hardik this instruction:
 
 > Use the single Gemini client in `clients/gemini`. For Gemini CLI, install
-> `clients/gemini/extensions/bos` and
-> `clients/gemini/extensions/education-center`, restart Gemini CLI, run
+> both products with `npm run clean-install:gemini -- --confirmation
+> "DELETE ALL BOS GEMINI EXTENSION STATE"`, restart Gemini CLI, run
 > `/mcp auth platform`, and complete BOS sign-in once. For Antigravity 2.0
 > Desktop, run `./scripts/clean-install-antigravity.sh` once from the synced repository.
 > This is an intentionally destructive clean install: it deletes prior BOS product
@@ -315,6 +372,13 @@ Give Hardik this instruction:
 > synced repository in place and do not request a BOS API key, token, client secret,
 > environment variable, or installed application ID.
 
+Run `npm run install:verify:gemini-runtime` after Gemini CLI restarts. It compares
+the managed copies under `~/.gemini/extensions` with every generated source file
+and validates Gemini's native install metadata. Run
+`npm run install:verify:antigravity-runtime` after Antigravity restarts; it
+requires every BOS product path to resolve to the current repository symlink and
+release metadata.
+
 The same generated product directory contains `gemini-extension.json` for
 Gemini CLI and `plugin.json` plus `mcp_config.json` for Antigravity Desktop.
 Both load the same skills and product metadata. Runtime authentication uses
@@ -329,6 +393,10 @@ OAuth discovery and the host-managed resource-scoped grant.
    or copy its server entry into `.vscode/mcp.json` for Copilot in VS Code.
 3. Run `/mcp auth platform` in Copilot CLI or select `Auth` above the VS Code
    server entry, then complete BOS sign-in.
+4. Run `npm run install:verify:copilot-runtime -- --target <repository>
+   --product education-center`. The verifier compares the target repository's
+   MCP entry and product skills directly with the generated package. Copilot's
+   repository adapter has no BOS package-cache layer.
 
 Copilot cloud agent and code review currently lack remote MCP OAuth support, so
 the BOS runtime plugin is unavailable on those two hosts.

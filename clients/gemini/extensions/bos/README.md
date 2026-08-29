@@ -13,7 +13,9 @@ and connects to the fixed HTTPS MCP route declared by this extension.
 
 This package owns the single BOS connection at `/mcp/apps/bos/platform`.
 
-Restart Gemini CLI after installation or update. Run `/extensions list` to
+For a bounded recovery, run `npm run clean-install:gemini -- --confirmation
+"DELETE ALL BOS GEMINI EXTENSION STATE"`. Restart Gemini CLI after installation
+or update. Run `npm run install:verify:gemini-runtime`, `/extensions list`, and
 confirm the extension is enabled and `/skills list` to confirm its skills are
 discoverable. Use `gemini extensions update bos` for later releases.
 
@@ -26,7 +28,7 @@ then links every generated Gemini product into `~/.gemini/config/plugins/`.
 It resolves the repository from the installer's own location, independent of the
 current working directory. Before changing files, it displays the deletion warning and
 requires `DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS` as typed confirmation.
-After each Git pull, restart Antigravity.
+After each Git pull, restart Antigravity and run `npm run install:verify:antigravity-runtime`.
 Open Settings > Customizations, find the `platform` MCP server,
 select Authenticate, complete BOS sign-in in the browser, and return to Antigravity.
 The desktop host stores and refreshes the resource-scoped OAuth grant.

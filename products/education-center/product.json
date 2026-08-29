@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.50",
+  "version": "0.4.52",
   "release_status": "active",
   "display_name": "Education Operation Center",
   "description": "Agent-first education operations for complex, human-centered work.",
@@ -21,6 +21,12 @@
     "claude",
     "copilot",
     "gemini"
+  ],
+  "runtime_verification_tools": [
+    "education_center_get_camp_roster_report",
+    "education_center_list_enrollments",
+    "education_center_search_leads",
+    "education_center_search_students"
   ],
   "includes": [
     "platform/bos-mcp-client",

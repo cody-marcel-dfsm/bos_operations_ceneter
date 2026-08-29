@@ -1,8 +1,14 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.50",
+  "version": "0.4.52",
   "client": "codex",
+  "runtime_verification_tools": [
+    "education_center_get_camp_roster_report",
+    "education_center_list_enrollments",
+    "education_center_search_leads",
+    "education_center_search_students"
+  ],
   "connection_owner": "bos",
   "authentication": "bos_managed"
 }
