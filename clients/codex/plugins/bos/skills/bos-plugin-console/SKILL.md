@@ -73,6 +73,16 @@ content surface in memory.
 The toggle changes canonical BOS plugin enablement. It never installs, removes,
 starts, stops, or edits a plugin package on the user's machine.
 
+## Settings
+
+A row whose server response exposes a valid settings action displays
+**Settings**. Selecting it invokes `bos-plugin-settings` with the latest opaque
+context and plugin selector from that same product response. The settings skill
+uses the server field schema, native controls, authority-scoped cache, and
+audited mutation workflow. The console remains memory-only; the packaged cache
+helper belongs to the settings workflow and is never executed by a console
+status query.
+
 ## Client behavior
 
 ChatGPT, Codex, Claude, Copilot, Gemini, and Antigravity use their native

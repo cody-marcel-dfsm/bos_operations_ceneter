@@ -11,6 +11,7 @@ import {
   geminiExtensionManifest,
   geminiPluginManifest,
   geminiPluginMcpManifest,
+  injectProductInitializationPreflight,
   injectSettingsPreflight,
   materializeMcpUrl,
   pathExists,
@@ -103,6 +104,7 @@ test("Education Center packages include customer-neutral settings defaults", asy
     assert.equal(settings.schema_version, "1");
     assert.equal(settings.brand_display_name, "");
     assert.equal(settings.organization_display_name, "");
+    assert.equal(settings.organization_website_url, "");
     assert.equal(settings.location_display_name, "");
     assert.equal(settings.timezone, "");
     assert.equal(settings.mailboxes.care_com, "");
@@ -126,6 +128,10 @@ test("settings products declare an included initializer", async () => {
     education.settings_initializer,
     "education-center-customer-initialization"
   );
+  assert.equal(
+    education.plugin_settings_initializer,
+    "bos-plugin-settings-initialization"
+  );
   assert.deepEqual(validateProduct(education), []);
 
   const withoutInitializer = { ...education };
@@ -140,6 +146,28 @@ test("settings products declare an included initializer", async () => {
   );
 });
 
+test("plugin settings initializer is runtime-scoped and included", async () => {
+  const education = (await listProducts()).find(
+    ({ manifest }) => manifest.name === "education-center"
+  )?.manifest;
+  assert(education);
+  assert.deepEqual(validateProduct(education), []);
+  assert.match(
+    validateProduct({ ...education, plugin_settings_initializer: "missing-skill" })
+      .join("\n"),
+    /plugin_settings_initializer must name an included skill/
+  );
+  const withoutRuntime = { ...education };
+  delete withoutRuntime.runtime;
+  delete withoutRuntime.application_name;
+  delete withoutRuntime.mcp_group_name;
+  delete withoutRuntime.codex_app_id;
+  assert.match(
+    validateProduct(withoutRuntime).join("\n"),
+    /plugin_settings_initializer requires runtime/
+  );
+});
+
 test("settings preflight injection preserves frontmatter and adds resumable initialization", () => {
   const source = "---\nname: example\ndescription: Example.\n---\n\n# Example\n";
   const output = injectSettingsPreflight(source, "initialize-example");
@@ -148,6 +176,21 @@ test("settings preflight injection preserves frontmatter and adds resumable init
   assert.match(output, /invoke `initialize-example`[\s\S]*immediately/i);
   assert.match(output, /initializer is already active[\s\S]*without invoking it again/i);
   assert.match(output, /Preserve the user's original request/i);
+  assert.match(output, /resume the original request automatically/i);
+});
+
+test("product initialization preflight orders client settings before plugin settings", () => {
+  const source = "---\nname: example\ndescription: Example skill guidance.\n---\n\n# Example\n";
+  const output = injectProductInitializationPreflight(source, {
+    settingsInitializer: "initialize-client-settings",
+    pluginSettingsInitializer: "initialize-plugin-settings"
+  });
+  assert.match(output, /## Product initialization preflight/);
+  assert.match(
+    output,
+    /invoke `initialize-client-settings`[\s\S]*Invoke `initialize-plugin-settings`/i
+  );
+  assert.match(output, /preserve the pending request/i);
   assert.match(output, /resume the original request automatically/i);
 });
 
@@ -171,10 +214,15 @@ test("every generated Education Center skill enforces first-run initialization o
         assert.match(guidance, /Run this workflow immediately after installing or upgrading/i);
         continue;
       }
-      assert.match(guidance, /## Product first-run preflight/, `${clientRoot}/${skill.name}`);
+      if (skill.name === education.plugin_settings_initializer) {
+        assert.match(guidance, /## Product first-run preflight/, `${clientRoot}/${skill.name}`);
+        assert.doesNotMatch(guidance, /## Product initialization preflight/);
+        continue;
+      }
+      assert.match(guidance, /## Product initialization preflight/, `${clientRoot}/${skill.name}`);
       assert.match(guidance, /missing file, an incomplete[\s\S]*or an invalid value/i);
       assert.match(guidance, /invoke `education-center-customer-initialization`[\s\S]*immediately/i);
-      assert.match(guidance, /initializer is already active[\s\S]*without invoking it again/i);
+      assert.match(guidance, /invoke `bos-plugin-settings-initialization`/i);
       assert.match(guidance, /host-managed BOS authentication/i);
       assert.match(guidance, /resume the original request automatically/i);
     }
@@ -1158,6 +1206,9 @@ test("Video Ads composes workflow skills and a scoped BOS endpoint", async () =>
     skills.map((skill) => skill.name),
     [
       "bos-mcp-client",
+      "bos-plugin-settings",
+      "bos-plugin-settings-initialization",
+      "submit-feedback",
       "manage-customer-extension",
       "video-ad-briefing",
       "video-ad-generation",
@@ -1474,7 +1525,7 @@ test("Education Center composition contains only approved shared runtime foundat
   const shared = educationCenter
     .filter((skill) => bosNames.has(skill.name))
     .map((skill) => skill.name);
-  assert.deepEqual(shared, ["manage-customer-extension"]);
+  assert.deepEqual(shared, ["bos-plugin-settings", "manage-customer-extension"]);
 });
 
 test("My CRM composes the approved reusable federated runtime skills", async () => {
@@ -1486,8 +1537,11 @@ test("My CRM composes the approved reusable federated runtime skills", async () 
     myCrm.includes.filter((include) => include.startsWith("platform/")),
     [
       "platform/bos-mcp-client",
+      "platform/bos-plugin-settings",
+      "platform/bos-plugin-settings-initialization",
       "platform/bos-federated-query",
       "platform/bos-cache-maintenance",
+      "platform/submit-feedback",
       "platform/manage-customer-extension"
     ]
   );
@@ -1574,6 +1628,7 @@ test("every product and client ships tenant extension management metadata", asyn
 test("generated feedback skill automatically discovers customer customizations", async () => {
   const products = await listProducts();
   for (const { manifest } of products) {
+    if (manifest.release_status === "disabled") continue;
     const skills = await resolveProductSkills(manifest);
     if (!skills.some((skill) => skill.name === "submit-feedback")) continue;
     for (const client of manifest.clients) {

@@ -4,24 +4,26 @@ description: Operate a packaged application MCP resource group, including scope 
 ---
 
 
-## Product first-run preflight
+## Product initialization preflight
 
-Before performing this skill's workflow, resolve the installed product root and
-validate its customer-owned `config/customer-settings.json` against
+Before performing this skill's workflow, preserve the pending request and
+complete the product's host-managed BOS authentication. Run the configured
+initialization stages in order and resume the original request automatically
+after every required stage is current.
+
+First validate the customer-owned `config/customer-settings.json` against
 `config/customer-settings.template.json`. Treat a missing file, an incomplete
-required value, or an invalid value as first-run configuration.
+required value, or an invalid value as first-run configuration. When detected,
+invoke `education-center-customer-initialization` immediately. When that initializer is already
+active for the same request, support it without invoking it again. Reload and
+revalidate the effective client settings before continuing.
 
-When first-run configuration is detected, invoke `education-center-customer-initialization`
-immediately. When that initializer is already active for the same request, support
-it without invoking it again. Preserve the user's original request while
-initialization runs.
-Complete the product's host-managed BOS authentication before asking any settings
-question. If direct sign-in is required, ask only for that action and resume
-initialization automatically afterward. Do not perform the original workflow or
-substitute generic customer values while configuration remains unresolved. After
-the user accepts the consolidated recommendation and the initializer writes and
-revalidates `config/customer-settings.json`, reload the effective settings and
-resume the original request automatically.
+After client settings are current, validate the server plugin-settings
+initialization epoch, required canonical field states, and local completion
+receipt. Invoke `bos-plugin-settings-initialization` when the receipt is missing or
+stale, a required field is unset or invalid partial, or the server schema changed.
+Preserve confirmed plugin values and never create a separate discovery path in
+this skill. Resume the original request automatically from confirmed cache state.
 
 # BOS MCP Client
 
@@ -199,6 +201,22 @@ role, and before/after capabilities; never claim success when the server does
 not return the completed update. After success, refresh `bos_get_context`. On a
 revision conflict, read the current configuration and have the user resolve any
 material difference before retrying.
+
+## Plugin settings cache
+
+Use the packaged `scripts/plugin-settings-cache.mjs` helper for confirmed,
+display-safe plugin configuration snapshots and plugin-settings initialization
+receipts. Read
+[references/plugin-settings-cache-protocol.md](references/plugin-settings-cache-protocol.md)
+before a settings read, commit, invalidation, or receipt operation.
+
+Validate live BOS context first and use only the server-returned opaque
+`cache_scope`, current `settings_epoch`, and canonical snapshot. Commit from a
+completed BOS read, completed apply response, or reconciled committed result.
+Never commit recommendations, drafts, secrets, raw authority identifiers, or
+unknown mutation outcomes. A required unset or invalid partial field resumes
+the packaged plugin-settings initializer; domain skills never create a separate
+discovery path.
 
 ## Shared local document cache
 
