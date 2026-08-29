@@ -200,6 +200,21 @@ machine-readable JSON verdict to standard output, and exits nonzero for any
 additional connection artifact, subservice MCP declaration, retired
 subservice connection identifier, or root-resource mismatch.
 
+The BOS server integration suite must also generate a valid, short-lived DCR
+authorization URL for the canonical resource and pass it to the live OAuth
+contract probe:
+
+```bash
+npm run contract:oauth-live -- --authorize-url "$BOS_OAUTH_AUTHORIZE_URL" --format json
+```
+
+The probe stops at the first redirect. It requires a 302/303/307 response to
+`accounts.google.com` with `prompt` containing `select_account`; an HTTP 500,
+the wrong provider, or automatic account selection fails the contract. After
+the selected Google identity returns, the BOS server resolves organization and
+role from that verified identity on every authorization. The client never
+chooses or stores an organization mapping.
+
 `source/` and `products/` are canonical. `clients/` contains generated output.
 Change canonical sources, regenerate, and verify generated parity.
 

@@ -12,6 +12,7 @@
     "build": "npm run build:packages",
     "check": "node scripts/check-package.mjs",
     "contract:check": "node scripts/verify-single-bos-contract.mjs --format json",
+    "contract:oauth-live": "node scripts/verify-bos-oauth-live.mjs",
     "inventory": "node scripts/inventory-skills.mjs",
     "install:inspect": "node scripts/install-package.mjs inspect",
     "install:plan": "node scripts/install-package.mjs plan",
