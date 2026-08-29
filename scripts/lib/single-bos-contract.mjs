@@ -13,6 +13,11 @@ function portable(path) {
   return path.split("\\").join("/");
 }
 
+function isInspectableTextFile(path) {
+  return /\.(?:json|md|mjs|js|py|txt|ya?ml)$/i.test(path) &&
+    !portable(path).includes("/__pycache__/");
+}
+
 async function pathExists(path) {
   try {
     await readFile(path);
@@ -72,6 +77,46 @@ export function inspectForbiddenIdentifiers(content, path, identifiers) {
     ));
 }
 
+export function inspectMcpResourceUrls(content, path, canonicalResourceUrl) {
+  const resources = content.match(/https:\/\/dfsm\.ai\/mcp\/apps\/[A-Za-z0-9._~!$&'()*+,;=:@%\/-]+/g) ?? [];
+  return [...new Set(resources)]
+    .filter((resource) => resource !== canonicalResourceUrl)
+    .map((resource) => finding(
+      "subservice_mcp_resource",
+      path,
+      `Forbidden MCP resource URL: ${resource}`
+    ));
+}
+
+export function inspectOAuthAuthorizeTarget(authorizeUrl, canonicalResourceUrl) {
+  if (!authorizeUrl) return [];
+  let parsed;
+  try {
+    parsed = new URL(authorizeUrl);
+  } catch {
+    return [finding(
+      "oauth_authorize_url",
+      "oauth-authorize-url",
+      "OAuth authorize evidence must be an absolute URL."
+    )];
+  }
+  const resource = parsed.searchParams.get("resource");
+  if (resource !== canonicalResourceUrl) {
+    return [finding(
+      "oauth_resource_target",
+      "oauth-authorize-url",
+      `OAuth resource must equal ${canonicalResourceUrl}; found ${resource ?? "missing"}.`
+    )];
+  }
+  return [];
+}
+
+function containsConnectionBinding(value) {
+  if (!value || typeof value !== "object") return false;
+  if (Object.hasOwn(value, "apps") || Object.hasOwn(value, "mcpServers")) return true;
+  return Object.values(value).some(containsConnectionBinding);
+}
+
 function validateContractShape(contract, contractPath) {
   const findings = [];
   const requiredStrings = [
@@ -80,7 +125,11 @@ function validateContractShape(contract, contractPath) {
     "application_name",
     "mcp_group_name",
     "resource_url",
-    "codex_app_id"
+    "codex_app_id",
+    "owner_authentication_policy",
+    "provider_account_selection_policy",
+    "identity_organization_resolution_policy",
+    "subservice_authentication_policy"
   ];
   if (contract.schema_version !== "1") {
     findings.push(finding("contract_schema", contractPath, "schema_version must be 1."));
@@ -104,11 +153,13 @@ function validateContractShape(contract, contractPath) {
 
 export async function verifySingleBosContract({
   root,
-  contractPath = join(root, "contracts", "single-bos-mcp-connection.v1.json")
+  contractPath = join(root, "contracts", "single-bos-mcp-connection.v1.json"),
+  oauthAuthorizeUrl
 }) {
   const violations = [];
   const contract = await readJson(contractPath);
   violations.push(...validateContractShape(contract, relative(root, contractPath)));
+  violations.push(...inspectOAuthAuthorizeTarget(oauthAuthorizeUrl, contract.resource_url));
   if (violations.length) return contractResult(contract, violations);
 
   const productFiles = (await readdir(join(root, "products"), { withFileTypes: true }))
@@ -246,6 +297,23 @@ export async function verifySingleBosContract({
     }
 
     const productRoot = metadataPath.slice(0, -"/.bos-product.json".length);
+    for (const manifestName of [
+      ".codex-plugin/plugin.json",
+      ".claude-plugin/plugin.json",
+      "gemini-extension.json",
+      "plugin.json"
+    ]) {
+      const manifestPath = join(productRoot, manifestName);
+      if (!await pathExists(manifestPath)) continue;
+      const manifest = await readJson(manifestPath);
+      if (containsConnectionBinding(manifest)) {
+        violations.push(finding(
+          "subservice_inline_connection",
+          relative(root, manifestPath),
+          "Subservice manifest declares an inline app or MCP server binding."
+        ));
+      }
+    }
     for (const path of (await walkFiles(productRoot)).filter((candidate) => candidate.endsWith("/agents/openai.yaml"))) {
       violations.push(...inspectSubserviceAgentDescriptor(
         await readFile(path, "utf8"),
@@ -262,14 +330,57 @@ export async function verifySingleBosContract({
     ));
   }
 
-  for (const base of [join(root, "source"), join(root, "clients")]) {
+  for (const base of [
+    join(root, "source"),
+    join(root, "clients"),
+    join(root, "products"),
+    join(root, ".agents")
+  ]) {
     for (const path of await walkFiles(base)) {
+      if (!isInspectableTextFile(path)) continue;
       const content = await readFile(path, "utf8");
       violations.push(...inspectForbiddenIdentifiers(
         content,
         relative(root, path),
         contract.forbidden_subservice_connection_identifiers
       ));
+      violations.push(...inspectMcpResourceUrls(
+        content,
+        relative(root, path),
+        contract.resource_url
+      ));
+    }
+  }
+
+  for (const marketplacePath of [
+    join(root, ".agents", "plugins", "marketplace.json"),
+    join(root, "clients", "codex", ".agents", "plugins", "marketplace.json")
+  ]) {
+    if (!await pathExists(marketplacePath)) continue;
+    const marketplace = await readJson(marketplacePath);
+    for (const entry of marketplace.plugins ?? []) {
+      const expectedAuthentication = entry.name === contract.owner_product
+        ? contract.owner_authentication_policy
+        : contract.subservice_authentication_policy;
+      if (entry.policy?.authentication !== expectedAuthentication) {
+        violations.push(finding(
+          "marketplace_authentication_policy",
+          relative(root, marketplacePath),
+          `${entry.name} authentication must equal ${expectedAuthentication}.`
+        ));
+      }
+      if (
+        entry.name !== contract.owner_product &&
+        (containsConnectionBinding(entry) ||
+          "codex_app_id" in entry ||
+          "resource_url" in entry)
+      ) {
+        violations.push(finding(
+          "marketplace_subservice_connection",
+          relative(root, marketplacePath),
+          `${entry.name} marketplace entry declares a connection binding.`
+        ));
+      }
     }
   }
 

@@ -96,7 +96,7 @@ release system for portable BOS skills and native remote MCP client adapters.
     `DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS`. The root Claude BOS plugin owns
     account-connector metadata with no packaged MCP declaration. The root
     ChatGPT/Codex BOS plugin contains `apps: "./.app.json"` and no `.mcp.json`
-    or `mcpServers`; its manifest records the stable `plugin_asdk_app_*`
+    or `mcpServers`; its manifest records the durable `asdk_app_*`
     technical identifier. Subservice plugins contain neither connection
     declaration. One host-managed BOS grant identifies the actor and available
     organizations; every request is evaluated against canonical application,
@@ -104,6 +104,12 @@ release system for portable BOS skills and native remote MCP client adapters.
     state. Domain skills choose semantic operations while connection selection
     stays fixed on BOS. No plugin package reads, prompts for, substitutes, or
     persists BOS access or refresh tokens.
+    Client readiness follows each host's authoritative state: Claude's active
+    registry `installPath`; Gemini CLI's native extension metadata plus copied
+    package bytes; Antigravity's exact repository symlinks; Copilot's selected
+    repository MCP and skill files; and Codex's registry, managed package cache,
+    registered-app wrapper, and callable-tool catalog. Retained inactive Claude
+    versions are informational and never satisfy installation readiness.
 12. Treat generated client packages as build outputs. The complete
     cross-platform build materializes Codex, Claude, Copilot, and Gemini clients
     directly under `clients/` and validates them against canonical `source/`
@@ -182,6 +188,13 @@ release system for portable BOS skills and native remote MCP client adapters.
     desktop process environment, or use an OS-specific launcher. Plugin source
     changes require marketplace update or reinstall, cache refresh as supported
     by the host, and a new task.
+    Codex installation acceptance is an atomic cross-layer check: the native
+    registry and marketplace contain the active products, each product has
+    exactly one current managed-cache version, the registered-app wrapper
+    matches the immutable BOS app ID, and the callable catalog contains every
+    product-declared runtime verification tool. Remediation is identity-bounded
+    to the BOS marketplace and immutable app ID and backs up host state before
+    removing BOS-owned catalog entries.
 18. Keep repository builds and release checks credential-free and local. They
     regenerate clients, validate canonical-source parity, scan for credentials
     and customer data, and run deterministic tests without a live MCP query or

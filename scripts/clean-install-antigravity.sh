@@ -81,4 +81,9 @@ for NAME in $ACTIVE_PRODUCTS; do
   echo "Linked $TARGET -> $SOURCE"
 done
 
+if ! node "$SCRIPT_DIR/verify-antigravity-runtime.mjs"; then
+  echo "Error: Antigravity post-install verification failed." >&2
+  exit 1
+fi
+
 echo "Destructive clean install complete. Restart Antigravity after each Git pull."

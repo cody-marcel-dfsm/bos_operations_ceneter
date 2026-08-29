@@ -5,7 +5,11 @@
   "application_name": "bos",
   "mcp_group_name": "platform",
   "resource_url": "https://dfsm.ai/mcp/apps/bos/platform",
-  "codex_app_id": "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
+  "codex_app_id": "asdk_app_6a932992592081919cdc88c60e4ff2dd",
+  "owner_authentication_policy": "ON_INSTALL",
+  "provider_account_selection_policy": "ALWAYS_SELECT_ACCOUNT",
+  "identity_organization_resolution_policy": "SERVER_EVALUATED_PER_VERIFIED_IDENTITY",
+  "subservice_authentication_policy": "ON_USE",
   "subservice_products": [
     "education-center",
     "my-crm",

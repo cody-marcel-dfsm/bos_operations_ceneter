@@ -12,6 +12,7 @@ import { basename, join, relative, resolve, sep } from "node:path";
 export const root = resolve(import.meta.dirname, "../..");
 export const supportedClients = new Set(["codex", "claude", "copilot", "gemini"]);
 export const productNamePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+export const publicToolNamePattern = /^[a-z][a-z0-9_]*$/;
 
 export async function readJson(path) {
   return JSON.parse(await readFile(path, "utf8"));
@@ -66,6 +67,7 @@ export function validateProduct(manifest, path = "product.json") {
     "settings_template",
     "settings_initializer",
     "plugin_settings_initializer",
+    "runtime_verification_tools",
     "default_prompts"
   ]);
   for (const field of Object.keys(manifest)) {
@@ -126,6 +128,12 @@ export function validateProduct(manifest, path = "product.json") {
   if (!["ON_INSTALL", "ON_USE"].includes(manifest.authentication)) {
     failures.push(`${path}: authentication must be ON_INSTALL or ON_USE`);
   }
+  if (manifest.name === "bos" && manifest.authentication !== "ON_INSTALL") {
+    failures.push(`${path}: BOS authentication must be ON_INSTALL`);
+  }
+  if (manifest.name !== "bos" && manifest.authentication !== "ON_USE") {
+    failures.push(`${path}: subservice authentication policy must be ON_USE`);
+  }
   if (!Array.isArray(manifest.clients) || manifest.clients.length === 0) {
     failures.push(`${path}: clients must be a non-empty array`);
   } else {
@@ -164,6 +172,22 @@ export function validateProduct(manifest, path = "product.json") {
   ) {
     failures.push(`${path}: default_prompts must contain up to 3 strings`);
   }
+  const runtimeVerificationTools = manifest.runtime_verification_tools;
+  if (
+    (manifest.release_status === "active" && !Array.isArray(runtimeVerificationTools)) ||
+    (runtimeVerificationTools !== undefined && (
+      !Array.isArray(runtimeVerificationTools) ||
+      runtimeVerificationTools.length === 0 ||
+      runtimeVerificationTools.some(
+        (tool) => typeof tool !== "string" || !publicToolNamePattern.test(tool)
+      ) ||
+      new Set(runtimeVerificationTools).size !== runtimeVerificationTools.length
+    ))
+  ) {
+    failures.push(
+      `${path}: runtime_verification_tools must contain unique public tool names`
+    );
+  }
   if (
     manifest.application_name !== undefined &&
     !productNamePattern.test(manifest.application_name)
@@ -184,9 +208,9 @@ export function validateProduct(manifest, path = "product.json") {
   }
   if (
     manifest.codex_app_id !== undefined &&
-    !/^plugin_asdk_app_[a-z0-9]+$/.test(manifest.codex_app_id)
+    !/^asdk_app_[a-z0-9]+$/.test(manifest.codex_app_id)
   ) {
-    failures.push(`${path}: codex_app_id must be a plugin_asdk_app identifier`);
+    failures.push(`${path}: codex_app_id must be a durable asdk_app identifier`);
   }
   if (
     manifest.release_status === "active" &&
@@ -497,7 +521,7 @@ export function pluginManifest(product) {
 
 export function codexAppManifest(product) {
   if (!product.runtime) return { apps: {} };
-  if (!/^plugin_asdk_app_[a-z0-9]+$/.test(product.codex_app_id ?? "")) {
+  if (!/^asdk_app_[a-z0-9]+$/.test(product.codex_app_id ?? "")) {
     throw new Error(`Product ${product.name} has no registered Codex app ID`);
   }
   return {

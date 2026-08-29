@@ -1164,14 +1164,15 @@ test("package schema reserves runtime ownership for BOS", () => {
     description: "Example runtime package.",
     publisher: "Example Publisher",
     category: "Productivity",
-    authentication: "ON_USE",
+    authentication: "ON_INSTALL",
     release_status: "active",
     clients: ["codex"],
     includes: ["platform/bos-mcp-client"],
     runtime: "bos",
     application_name: "bos",
     mcp_group_name: "platform",
-    codex_app_id: "plugin_asdk_app_example123",
+    codex_app_id: "asdk_app_example123",
+    runtime_verification_tools: ["bos_get_context"],
     default_prompts: []
   };
   assert.deepEqual(validateProduct(base), []);
@@ -1204,12 +1205,31 @@ test("package schema reserves runtime ownership for BOS", () => {
   const { codex_app_id: _appRemoved, ...unregistered } = base;
   assert.match(validateProduct(unregistered).join("\n"), /active Codex runtime requires codex_app_id/);
   assert.match(
-    validateProduct({ ...base, codex_app_id: "asdk_app_wrong" }).join("\n"),
-    /codex_app_id must be a plugin_asdk_app identifier/
+    validateProduct({ ...base, codex_app_id: "plugin_asdk_app_installation_wrapper" }).join("\n"),
+    /codex_app_id must be a durable asdk_app identifier/
   );
   assert.match(
     validateProduct({ ...base, name: "education-center" }).join("\n"),
     /subservice products must use the BOS-owned connection/
+  );
+  assert.match(
+    validateProduct({ ...base, authentication: "ON_USE" }).join("\n"),
+    /BOS authentication must be ON_INSTALL/
+  );
+  const subservice = {
+    ...base,
+    name: "education-center",
+    authentication: "ON_USE",
+    runtime: undefined,
+    application_name: undefined,
+    mcp_group_name: undefined,
+    codex_app_id: undefined,
+    includes: ["platform/bos-mcp-client"]
+  };
+  assert.deepEqual(validateProduct(subservice), []);
+  assert.match(
+    validateProduct({ ...subservice, authentication: "ON_INSTALL" }).join("\n"),
+    /subservice authentication policy must be ON_USE/
   );
 });
 
@@ -1262,7 +1282,7 @@ test("disabled products are absent while active runtime products remain scoped",
   assert.deepEqual(app, {
     apps: {
       bos: {
-        id: "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
+        id: "asdk_app_6a932992592081919cdc88c60e4ff2dd",
         required: true
       }
     }
@@ -1629,6 +1649,9 @@ test("every product and client ships tenant extension management metadata", asyn
         name: manifest.name,
         version: manifest.version,
         client,
+        ...(client === "codex" ? {
+          runtime_verification_tools: manifest.runtime_verification_tools
+        } : {}),
         ...(manifest.runtime ? {
           application_name: manifest.application_name,
           mcp_group_name: manifest.mcp_group_name,
