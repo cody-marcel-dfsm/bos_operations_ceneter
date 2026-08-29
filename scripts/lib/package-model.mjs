@@ -65,6 +65,7 @@ export function validateProduct(manifest, path = "product.json") {
     "codex_app_id",
     "settings_template",
     "settings_initializer",
+    "plugin_settings_initializer",
     "default_prompts"
   ]);
   for (const field of Object.keys(manifest)) {
@@ -233,6 +234,25 @@ export function validateProduct(manifest, path = "product.json") {
   ) {
     failures.push(`${path}: settings_initializer must name an included skill`);
   }
+  if (
+    manifest.plugin_settings_initializer !== undefined &&
+    !productNamePattern.test(manifest.plugin_settings_initializer)
+  ) {
+    failures.push(`${path}: invalid plugin_settings_initializer`);
+  }
+  if (manifest.plugin_settings_initializer && !manifest.runtime) {
+    failures.push(`${path}: plugin_settings_initializer requires runtime`);
+  }
+  if (
+    manifest.plugin_settings_initializer &&
+    !manifest.includes?.some(
+      (include) => include.split("/").at(-1) === manifest.plugin_settings_initializer
+    )
+  ) {
+    failures.push(
+      `${path}: plugin_settings_initializer must name an included skill`
+    );
+  }
   return failures;
 }
 
@@ -312,18 +332,39 @@ export async function copyProductSkills(product, skills, target) {
       recursive: true,
       filter: publicPackagePath
     });
-    if (
-      product.settings_initializer &&
-      skill.name !== product.settings_initializer
-    ) {
-      const skillFile = join(skillTarget, "SKILL.md");
-      const guidance = await readFile(skillFile, "utf8");
-      await writeFile(
-        skillFile,
-        injectSettingsPreflight(guidance, product.settings_initializer)
-      );
-    }
+    const skillFile = join(skillTarget, "SKILL.md");
+    const guidance = await readFile(skillFile, "utf8");
+    const transformed = transformProductSkillGuidance(
+      product,
+      skill.name,
+      guidance
+    );
+    if (transformed !== guidance) await writeFile(skillFile, transformed);
   }
+}
+
+export function transformProductSkillGuidance(product, skillName, guidance) {
+  if (skillName === product.settings_initializer) return guidance;
+  if (skillName === product.plugin_settings_initializer) {
+    return product.settings_initializer
+      ? injectSettingsPreflight(guidance, product.settings_initializer)
+      : guidance;
+  }
+  if (product.settings_initializer && product.plugin_settings_initializer) {
+    return injectProductInitializationPreflight(guidance, {
+      settingsInitializer: product.settings_initializer,
+      pluginSettingsInitializer: product.plugin_settings_initializer
+    });
+  }
+  if (product.settings_initializer) {
+    return injectSettingsPreflight(guidance, product.settings_initializer);
+  }
+  if (product.plugin_settings_initializer) {
+    return injectProductInitializationPreflight(guidance, {
+      pluginSettingsInitializer: product.plugin_settings_initializer
+    });
+  }
+  return guidance;
 }
 
 export function injectSettingsPreflight(guidance, initializer) {
@@ -350,6 +391,50 @@ export function injectSettingsPreflight(guidance, initializer) {
     "resume the original request automatically.",
     ""
   ].join("\n");
+  return `${guidance.slice(0, frontmatter[0].length)}\n${preflight}\n${guidance.slice(frontmatter[0].length)}`;
+}
+
+export function injectProductInitializationPreflight(guidance, {
+  settingsInitializer,
+  pluginSettingsInitializer
+}) {
+  const frontmatter = guidance.match(/^---\s*\n[\s\S]*?^---\s*\n/m);
+  if (!frontmatter) {
+    throw new Error("Cannot inject product initialization preflight without frontmatter");
+  }
+  if (!settingsInitializer && !pluginSettingsInitializer) return guidance;
+  const lines = [
+    "## Product initialization preflight",
+    "",
+    "Before performing this skill's workflow, preserve the pending request and",
+    "complete the product's host-managed BOS authentication. Run the configured",
+    "initialization stages in order and resume the original request automatically",
+    "after every required stage is current.",
+    ""
+  ];
+  if (settingsInitializer) {
+    lines.push(
+      "First validate the customer-owned `config/customer-settings.json` against",
+      "`config/customer-settings.template.json`. Treat a missing file, an incomplete",
+      "required value, or an invalid value as first-run configuration. When detected,",
+      `invoke \`${settingsInitializer}\` immediately. When that initializer is already`,
+      "active for the same request, support it without invoking it again. Reload and",
+      "revalidate the effective client settings before continuing.",
+      ""
+    );
+  }
+  if (pluginSettingsInitializer) {
+    lines.push(
+      "After client settings are current, validate the server plugin-settings",
+      "initialization epoch, required canonical field states, and local completion",
+      `receipt. Invoke \`${pluginSettingsInitializer}\` when the receipt is missing or`,
+      "stale, a required field is unset or invalid partial, or the server schema changed.",
+      "Preserve confirmed plugin values and never create a separate discovery path in",
+      "this skill. Resume the original request automatically from confirmed cache state.",
+      ""
+    );
+  }
+  const preflight = lines.join("\n");
   return `${guidance.slice(0, frontmatter[0].length)}\n${preflight}\n${guidance.slice(frontmatter[0].length)}`;
 }
 

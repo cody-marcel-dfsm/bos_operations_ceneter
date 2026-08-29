@@ -107,6 +107,13 @@ The **Enabled** control is a toggle backed by the enablement mutation. The
 The component calls remote MCP tools through the host bridge and replaces its
 ephemeral state from the completed tool response.
 
+When a row exposes configurable settings, its **Settings** action invokes the
+packaged `bos-plugin-settings` workflow for that row's owning named product
+connection. The settings workflow renders server-described typed fields,
+supports equivalent prompt edits, and maintains its separate authority-scoped
+confirmed-snapshot cache. The console itself remains an in-memory view and
+stores no settings state.
+
 Clients with an equivalent native structured-content surface may render the
 same response through that surface. A client without interactive component
 support renders the same table in the conversation and accepts equivalent

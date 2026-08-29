@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.48",
+  "version": "0.4.49",
   "release_status": "active",
   "display_name": "BOS — Business Operating System",
   "description": "Agent-first Business Operating System foundations for governed agent workflows.",
@@ -22,6 +22,7 @@
   "includes": [
     "platform/bos-guided-support",
     "platform/bos-plugin-console",
+    "platform/bos-plugin-settings",
     "platform/planning",
     "platform/implementation",
     "platform/review",

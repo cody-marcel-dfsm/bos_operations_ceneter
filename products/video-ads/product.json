@@ -11,6 +11,7 @@
   "publisher": "Infinite State Machines LLC",
   "category": "Marketing",
   "authentication": "ON_USE",
+  "plugin_settings_initializer": "bos-plugin-settings-initialization",
   "clients": [
     "codex",
     "claude",
@@ -19,6 +20,9 @@
   ],
   "includes": [
     "platform/bos-mcp-client",
+    "platform/bos-plugin-settings",
+    "platform/bos-plugin-settings-initialization",
+    "platform/submit-feedback",
     "platform/manage-customer-extension",
     "capabilities/video-ad-briefing",
     "capabilities/video-ad-generation",

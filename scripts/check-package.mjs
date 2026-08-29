@@ -6,13 +6,13 @@ import { promisify } from "node:util";
 import {
   geminiPluginManifest,
   hashTree,
-  injectSettingsPreflight,
   listProducts,
   materializeMcpUrl,
   pathExists,
   readJson,
   resolveProductSkills,
   root,
+  transformProductSkillGuidance,
   validateProduct
 } from "./lib/package-model.mjs";
 
@@ -60,6 +60,8 @@ const failures = [];
 const execFileAsync = promisify(execFile);
 const reusableRuntimePlatformSkills = new Set([
   "platform/bos-mcp-client",
+  "platform/bos-plugin-settings",
+  "platform/bos-plugin-settings-initialization",
   "platform/bos-federated-query",
   "platform/bos-cache-maintenance",
   "platform/submit-feedback",
@@ -68,13 +70,15 @@ const reusableRuntimePlatformSkills = new Set([
 
 async function expectedSkillHashes(product, skill) {
   const hashes = await hashTree(skill.sourcePath);
-  if (
-    product.settings_initializer &&
-    skill.name !== product.settings_initializer
-  ) {
-    const source = await readFile(skill.skillFile, "utf8");
+  const source = await readFile(skill.skillFile, "utf8");
+  const transformed = transformProductSkillGuidance(
+    product,
+    skill.name,
+    source
+  );
+  if (transformed !== source) {
     hashes["SKILL.md"] = createHash("sha256")
-      .update(injectSettingsPreflight(source, product.settings_initializer))
+      .update(transformed)
       .digest("hex");
   }
   return hashes;

@@ -180,6 +180,22 @@ not return the completed update. After success, refresh `bos_get_context`. On a
 revision conflict, read the current configuration and have the user resolve any
 material difference before retrying.
 
+## Plugin settings cache
+
+Use the packaged `scripts/plugin-settings-cache.mjs` helper for confirmed,
+display-safe plugin configuration snapshots and plugin-settings initialization
+receipts. Read
+[references/plugin-settings-cache-protocol.md](references/plugin-settings-cache-protocol.md)
+before a settings read, commit, invalidation, or receipt operation.
+
+Validate live BOS context first and use only the server-returned opaque
+`cache_scope`, current `settings_epoch`, and canonical snapshot. Commit from a
+completed BOS read, completed apply response, or reconciled committed result.
+Never commit recommendations, drafts, secrets, raw authority identifiers, or
+unknown mutation outcomes. A required unset or invalid partial field resumes
+the packaged plugin-settings initializer; domain skills never create a separate
+discovery path.
+
 ## Shared local document cache
 
 Use the packaged `scripts/document-cache.mjs` helper for every reusable
