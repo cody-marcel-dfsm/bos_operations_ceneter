@@ -8,13 +8,13 @@
    state; application graphs own business decisions.
 4. **PO/GO mutation boundary.** Routers validate and dispatch, POs orchestrate,
    and GOs persist.
-5. **Credential containment.** Public source and generated clients contain no
-   secrets or customer data. Claude, ChatGPT/Codex desktop, OAuth-capable
-   GitHub Copilot hosts, and Gemini authorize each named BOS MCP resource
-   through host-managed OAuth 2.1. A Claude account or organization Web connector,
-   Copilot, and Gemini declare the immutable remote resource directly, while
-   Codex binds a required
-   registered app that owns it.
+5. **Credential containment and one BOS login.** Public source and generated
+   clients contain no secrets or customer data. Each user-facing client context
+   authorizes one root BOS MCP resource through host-managed OAuth 2.1. Claude
+   uses one BOS account or organization Web connector; Copilot and Gemini
+   declare the BOS resource directly; ChatGPT/Codex binds the root BOS
+   registered app. Education Center, CRM, Marketing Director, and other
+   subservice plugins never create another BOS connection or login.
    Packages contain no user-entered BOS credential. Missing provider grants recover through
    BOS-hosted HTTPS authorization or credential collection and are stored only
    by the BOS service.
@@ -49,3 +49,12 @@
     supplies its customer-facing franchise or brand name through the
     customer-owned settings initialization workflow. Skills apply that value to
     display copy only; technical identifiers remain package-owned.
+15. **Server-evaluated subservices.** Every subservice request travels through
+   the authenticated BOS connection. The server derives and validates
+   organization, application, installation, subservice, plugin, role,
+   capability, provider, and tool scope from canonical state for every request.
+   Platform BOS operations never transit a subservice connection.
+16. **Present-product completeness.** Implement and validate current products
+   from their present contracts. Future products, anticipated growth, and
+   expected package composition never satisfy a missing current capability or
+   justify deferring its implementation.

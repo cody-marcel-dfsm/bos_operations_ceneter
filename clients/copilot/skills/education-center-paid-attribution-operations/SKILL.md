@@ -4,24 +4,26 @@ description: Reconcile Education Center organization paid leads and outcomes acr
 ---
 
 
-## Product first-run preflight
+## Product initialization preflight
 
-Before performing this skill's workflow, resolve the installed product root and
-validate its customer-owned `config/customer-settings.json` against
+Before performing this skill's workflow, preserve the pending request and
+complete the product's host-managed BOS authentication. Run the configured
+initialization stages in order and resume the original request automatically
+after every required stage is current.
+
+First validate the customer-owned `config/customer-settings.json` against
 `config/customer-settings.template.json`. Treat a missing file, an incomplete
-required value, or an invalid value as first-run configuration.
+required value, or an invalid value as first-run configuration. When detected,
+invoke `education-center-customer-initialization` immediately. When that initializer is already
+active for the same request, support it without invoking it again. Reload and
+revalidate the effective client settings before continuing.
 
-When first-run configuration is detected, invoke `education-center-customer-initialization`
-immediately. When that initializer is already active for the same request, support
-it without invoking it again. Preserve the user's original request while
-initialization runs.
-Complete the product's host-managed BOS authentication before asking any settings
-question. If direct sign-in is required, ask only for that action and resume
-initialization automatically afterward. Do not perform the original workflow or
-substitute generic customer values while configuration remains unresolved. After
-the user accepts the consolidated recommendation and the initializer writes and
-revalidates `config/customer-settings.json`, reload the effective settings and
-resume the original request automatically.
+After client settings are current, validate the server plugin-settings
+initialization epoch, required canonical field states, and local completion
+receipt. Invoke `bos-plugin-settings-initialization` when the receipt is missing or
+stale, a required field is unset or invalid partial, or the server schema changed.
+Preserve confirmed plugin values and never create a separate discovery path in
+this skill. Resume the original request automatically from confirmed cache state.
 
 # Education Center Paid Attribution Operations
 
@@ -34,7 +36,7 @@ customer-facing output names the franchise or brand. Keep technical product,
 skill, route, server, environment-variable, tool, capability, authorization,
 and record identifiers unchanged.
 
-Use `bos_education_center` and follow `bos-mcp-client` for every provider call. Treat the
+Use the authenticated BOS connection and follow `bos-mcp-client` for every provider call. Treat the
 live BOS context and tool manifest as authoritative. Preserve the selected Education Center organization
 scope exactly and keep provider evidence separate until the lead is reconciled.
 Use `bos-visual-output` for source-to-outcome flows, conversion counts, missing
@@ -47,7 +49,7 @@ browser handoff, poll readiness, and resume the pending operation once.
 
 1. Resolve an explicit date range using `timezone` from the installed product's
    `config/customer-settings.json` and call
-   `mcp__bos_education_center__bos_get_context` once.
+   `bos_get_context` once through the BOS connection.
 2. Confirm the live capabilities needed for Gmail, Calendar, Lead Director,
    Calimatic, and Google Ads. Read
    [references/integration-contract.md](references/integration-contract.md).

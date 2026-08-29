@@ -1,13 +1,5 @@
 {
   "name": "education-center",
-  "version": "0.4.48",
-  "description": "Agent-first education operations for complex, human-centered work.",
-  "mcpServers": {
-    "education-center": {
-      "httpUrl": "https://dfsm.ai/mcp/apps/leaddirector/education-center",
-      "oauth": {
-        "enabled": true
-      }
-    }
-  }
+  "version": "0.4.50",
+  "description": "Agent-first education operations for complex, human-centered work."
 }

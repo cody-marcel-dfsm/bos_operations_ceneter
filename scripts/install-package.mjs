@@ -67,7 +67,7 @@ async function isRetiredBosBrokerConfig(path) {
   }
 }
 
-async function isLegacyCodexOAuthConfig(path, expectedName, expectedUrl) {
+async function isDirectBosOAuthConfig(path, expectedName, expectedUrl) {
   try {
     const config = await readJson(path);
     const entries = Object.entries(config?.mcpServers ?? {});
@@ -113,13 +113,16 @@ async function configureCodexBosMcp(_options, paths) {
   const metadata = await readJson(join(paths.target, ".bos-product.json"));
   const appPath = join(paths.target, ".app.json");
   const runtimePath = join(paths.target, ".mcp.json");
-  if (metadata.authentication === "none") {
+  if (metadata.authentication === "bos_managed") {
     if (metadata.application_name !== undefined ||
         metadata.mcp_group_name !== undefined ||
         await pathExists(appPath) || await pathExists(runtimePath)) {
-      throw new Error("Skills-only Codex package contains an MCP binding");
+      throw new Error("BOS subservice package contains an additional MCP binding");
     }
-    return { state: "not_applicable" };
+    if (metadata.connection_owner !== "bos") {
+      throw new Error("BOS subservice package does not declare BOS connection ownership");
+    }
+    return { state: "bos_managed", connection_owner: "bos" };
   }
   if (metadata.authentication !== "oauth_2_1" ||
       !(await pathExists(appPath)) || await pathExists(runtimePath)) {
@@ -128,8 +131,7 @@ async function configureCodexBosMcp(_options, paths) {
   const appManifest = await readJson(appPath);
   const appEntries = Object.entries(appManifest.apps ?? {});
   const [appName, app] = appEntries[0] ?? [];
-  const expectedUrl =
-    `https://dfsm.ai/mcp/apps/${metadata.application_name}/${metadata.mcp_group_name}`;
+  const expectedUrl = "https://dfsm.ai/mcp/apps/bos/platform";
   if (appEntries.length !== 1 || appName !== metadata.name ||
       app?.id !== metadata.codex_app_id || app?.required !== true ||
       !/^plugin_asdk_app_[a-z0-9]+$/.test(app?.id ?? "") ||
@@ -148,25 +150,6 @@ async function configureCodexBosMcp(_options, paths) {
 
 function commandOutput(result) {
   return `${result?.stdout ?? result ?? ""}\n${result?.stderr ?? ""}`;
-}
-
-async function inspectDisabledMcp(runCommand, product, endpoint) {
-  let result;
-  try {
-    result = await runCommand("codex", ["mcp", "get", product.mcp_group_name]);
-  } catch (error) {
-    const diagnostic = commandOutput(error);
-    if (diagnostic.includes(
-      `Error: No MCP server named '${product.mcp_group_name}' found.`
-    )) return "absent";
-    throw new Error(`Unable to inspect disabled MCP ${product.mcp_group_name}`);
-  }
-  const output = commandOutput(result);
-  if (output.includes(
-    `Error: No MCP server named '${product.mcp_group_name}' found.`
-  )) return "absent";
-  if (output.includes(`url: ${endpoint}`)) return "owned";
-  return "unrelated";
 }
 
 async function inspectDisabledPlugin(runCommand, product) {
@@ -195,18 +178,8 @@ export async function reconcileDisabledCodexProducts(options = {}) {
   const actions = [];
   for (const product of disabled.products ?? []) {
     const stableName = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-    if (!stableName.test(product.name ?? "") ||
-        !stableName.test(product.application_name ?? "") ||
-        !stableName.test(product.mcp_group_name ?? "")) {
+    if (!stableName.test(product.name ?? "")) {
       throw new Error("Disabled product inventory contains an invalid identity");
-    }
-    const endpoint = `https://dfsm.ai/mcp/apps/${product.application_name}/${product.mcp_group_name}`;
-    if (await inspectDisabledMcp(runCommand, product, endpoint) === "owned") {
-      await runCommand("codex", ["mcp", "remove", product.mcp_group_name]);
-      if (await inspectDisabledMcp(runCommand, product, endpoint) !== "absent") {
-        throw new Error(`Disabled MCP ${product.mcp_group_name} remains registered`);
-      }
-      actions.push(`removed_mcp:${product.mcp_group_name}`);
     }
 
     const home = options.home ?? homedir();
@@ -614,6 +587,9 @@ async function inspectTarget(paths, desired) {
   const retiredBrokerPresent = Object.keys(currentFiles).some(
     isRetiredBosBrokerPath
   );
+  const desiredMetadata = await readJson(
+    join(paths.desired, ".bos-product.json")
+  );
 
   let previousState = null;
   if (hasState) {
@@ -690,17 +666,24 @@ async function inspectTarget(paths, desired) {
     ".mcp.json" in currentFiles &&
     !(".mcp.json" in desired.hashes)
   ) {
-    const metadata = await readJson(join(paths.desired, ".bos-product.json"));
-    const expectedUrl =
-      `https://dfsm.ai/mcp/apps/${metadata.application_name}/${metadata.mcp_group_name}`;
-    if (await isLegacyCodexOAuthConfig(
+    const expectedUrl = "https://dfsm.ai/mcp/apps/bos/platform";
+    if (await isDirectBosOAuthConfig(
       join(paths.target, ".mcp.json"),
-      metadata.mcp_group_name,
+      desiredMetadata.mcp_group_name,
       expectedUrl
     )) {
       remove.push(".mcp.json");
       preserve = preserve.filter((path) => path !== ".mcp.json");
     }
+  }
+  if (
+    !previousState &&
+    desiredMetadata.authentication === "bos_managed" &&
+    ".mcp.json" in currentFiles &&
+    !(".mcp.json" in desired.hashes)
+  ) {
+    remove.push(".mcp.json");
+    preserve = preserve.filter((path) => path !== ".mcp.json");
   }
   if (retiredBrokerPresent) {
     for (const path of Object.keys(currentFiles).filter(isRetiredBosBrokerPath)) {
@@ -1009,7 +992,7 @@ export async function verifyInstallation(options = {}) {
   report.runtime = await configureCodexBosMcp(options, report.paths);
   report.ok =
     report.state === "managed-current" && report.marketplace === "current" &&
-    ["current", "host_managed", "not_applicable"].includes(report.runtime.state);
+    ["current", "host_managed", "bos_managed"].includes(report.runtime.state);
   return report;
 }
 

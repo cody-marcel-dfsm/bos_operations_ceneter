@@ -4,24 +4,26 @@ description: Create daily plans and multi-area weekly director summaries from te
 ---
 
 
-## Product first-run preflight
+## Product initialization preflight
 
-Before performing this skill's workflow, resolve the installed product root and
-validate its customer-owned `config/customer-settings.json` against
+Before performing this skill's workflow, preserve the pending request and
+complete the product's host-managed BOS authentication. Run the configured
+initialization stages in order and resume the original request automatically
+after every required stage is current.
+
+First validate the customer-owned `config/customer-settings.json` against
 `config/customer-settings.template.json`. Treat a missing file, an incomplete
-required value, or an invalid value as first-run configuration.
+required value, or an invalid value as first-run configuration. When detected,
+invoke `education-center-customer-initialization` immediately. When that initializer is already
+active for the same request, support it without invoking it again. Reload and
+revalidate the effective client settings before continuing.
 
-When first-run configuration is detected, invoke `education-center-customer-initialization`
-immediately. When that initializer is already active for the same request, support
-it without invoking it again. Preserve the user's original request while
-initialization runs.
-Complete the product's host-managed BOS authentication before asking any settings
-question. If direct sign-in is required, ask only for that action and resume
-initialization automatically afterward. Do not perform the original workflow or
-substitute generic customer values while configuration remains unresolved. After
-the user accepts the consolidated recommendation and the initializer writes and
-revalidates `config/customer-settings.json`, reload the effective settings and
-resume the original request automatically.
+After client settings are current, validate the server plugin-settings
+initialization epoch, required canonical field states, and local completion
+receipt. Invoke `bos-plugin-settings-initialization` when the receipt is missing or
+stale, a required field is unset or invalid partial, or the server schema changed.
+Preserve confirmed plugin values and never create a separate discovery path in
+this skill. Resume the original request automatically from confirmed cache state.
 
 # Education Center Director Plans and Summaries
 
@@ -41,8 +43,8 @@ the requested operating plan. Do not use this workflow for admissions,
 disciplinary, eligibility, or other high-impact decisions about students.
 
 Create a concise, action-oriented daily planner or weekly director summary.
-Retrieve BOS-routed live data through the named `education-center` MCP
-connection and separately connected read-only evidence through the effective
+Retrieve BOS-routed live data through the authenticated BOS MCP connection and
+separately connected read-only evidence through the effective
 customer source route. Never distribute or send the result unless the user
 separately requests and authorizes distribution. “For my director” identifies
 the report audience and never requires the director's identity for preparation.
@@ -68,7 +70,7 @@ Read and follow these installed skills before retrieving data:
 - `education-center-student-operations` for student, enrollment, and family identity handling.
 
 Use the single user and role resolved by `bos_get_context` from the authorized
-product connection. Claude and ChatGPT/Codex use the host-managed BOS OAuth
+BOS connection. Claude and ChatGPT/Codex use the host-managed BOS OAuth
 grant; another client uses only its generated product adapter. BOS derives
 organization, installation, plugin, and capability scope. Treat the live MCP
 manifest as authoritative. Never ask the user to choose a director, organization, source, key, or role for preparation.
@@ -91,7 +93,7 @@ sections while authorization is pending.
    Monday-through-Sunday week, including remaining upcoming days. Resolve
    “next week,” “last week,” or an explicitly supplied date from that local
    week calendar. State the resolved period and continue without asking.
-2. Call `bos_get_context` once through `education-center`. Require exactly one
+2. Call `bos_get_context` once through BOS. Require exactly one
    authenticated user and role and accept the server-derived Education Center scope. A
    server violation is a configuration error, never a user selection question.
 3. Retrieve every camp occurrence in the resolved reporting window before

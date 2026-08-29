@@ -2,7 +2,7 @@
   "mcpServers": {
     "bos": {
       "type": "http",
-      "url": "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}"
+      "url": "https://dfsm.ai/mcp/apps/bos/platform"
     }
   }
 }

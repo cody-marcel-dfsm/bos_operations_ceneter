@@ -5,7 +5,7 @@ description: Operate customer, lead, opportunity, pipeline, and activity data ac
 
 # My CRM
 
-Use the named `crm` BOS MCP connection. Follow `bos-mcp-client` for OAuth,
+Use the authenticated BOS MCP connection. Follow `bos-mcp-client` for OAuth,
 opaque context selection, discovery, recovery, and continuation. Use
 `bos-federated-query` and `bos-cache-maintenance` for source execution and
 freshness.
@@ -26,7 +26,7 @@ freshness.
    configured maximum age remain current.
 4. Select only operations actually present in the live manifest. Absence means
    unavailable in the selected context; it never triggers server registration,
-   capability creation, a database write, or a fallback to another connection.
+   capability creation or a database write.
 5. Delegate CRM semantics to the focused skill and source mechanics to
    `bos-federated-query`.
 

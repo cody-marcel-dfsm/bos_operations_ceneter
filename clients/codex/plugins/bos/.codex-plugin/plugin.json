@@ -1,6 +1,6 @@
 {
   "name": "bos",
-  "version": "0.4.48",
+  "version": "0.4.50",
   "description": "Agent-first Business Operating System foundations for governed agent workflows.",
   "author": {
     "name": "Infinite State Machines LLC"
@@ -9,7 +9,7 @@
   "interface": {
     "displayName": "BOS — Business Operating System",
     "shortDescription": "Agent-first Business Operating System foundations for governed agent workflows.",
-    "longDescription": "BOS is an agent-first Business Operating System foundation for planning, implementing, reviewing, and governing agent-ready business platforms. This skills-only plugin provides application-neutral architecture, authentication, execution-boundary, implementation, review, and support expertise; industry- and sector-specific skills are distributed in separate product packages. The broader BOS architecture is designed around an integration mesh where intelligent orchestrators can coordinate deterministic work across connected apps and services. Third-party development, distribution, and independent monetization are future platform directions and are not included in this plugin.",
+    "longDescription": "BOS is an agent-first Business Operating System for planning, implementing, reviewing, governing, and executing agent-ready business operations. BOS owns the authenticated MCP connection used by every installed BOS subservice. Education Center, CRM, Marketing Director, and other BOS-maintained plugins add domain workflows through server-evaluated tools while BOS preserves organization, installation, role, plugin, capability, provider, and tool authorization on every request.",
     "developerName": "Infinite State Machines LLC",
     "category": "Productivity",
     "capabilities": [
@@ -26,5 +26,6 @@
     "composerIcon": "./assets/bos-logo.png",
     "logo": "./assets/bos-logo.png"
   },
-  "homepage": "https://dfsm.ai"
+  "homepage": "https://dfsm.ai",
+  "apps": "./.app.json"
 }

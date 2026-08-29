@@ -19,17 +19,12 @@ or family records without a separate authorized request. They do not make
 admissions, disciplinary, eligibility, or other high-impact decisions about
 students.
 
-## Authentication and security
+## BOS connection and security
 
-The remote HTTPS MCP uses OAuth 2.1 through the account-level
-`education-center` Web connector under **Customize → Connectors**.
-Install the plugin, add or select that account connector, select **Connect**,
-and complete BOS sign-in. Private installations use the package-owned
-resource URL documented in `CONNECTORS.md`; published installations use
-the same resource through Anthropic's Connector Directory or organization
-provisioning.
-Claude stores and refreshes the resulting authorization, and the plugin never
-asks the user to paste a BOS key.
+Install and connect the BOS plugin once. Education Operation Center uses that
+existing BOS connection and contains no connector, registered app, MCP server,
+or separate BOS login. BOS evaluates organization, installation, role, plugin,
+capability, provider, and tool authorization on every request.
 The customer-facing franchise or brand name is supplied during tenant setup
 and applies only to customer-facing copy and output.
 Credentials are never included in this package,

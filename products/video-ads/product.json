@@ -11,6 +11,7 @@
   "publisher": "Infinite State Machines LLC",
   "category": "Marketing",
   "authentication": "ON_USE",
+  "plugin_settings_initializer": "bos-plugin-settings-initialization",
   "clients": [
     "codex",
     "claude",
@@ -19,14 +20,14 @@
   ],
   "includes": [
     "platform/bos-mcp-client",
+    "platform/bos-plugin-settings",
+    "platform/bos-plugin-settings-initialization",
+    "platform/submit-feedback",
     "platform/manage-customer-extension",
     "capabilities/video-ad-briefing",
     "capabilities/video-ad-generation",
     "capabilities/video-ad-drive-delivery"
   ],
-  "runtime": "bos",
-  "application_name": "leaddirector",
-  "mcp_group_name": "video-ads",
   "default_prompts": [
     "Turn this offer into a production-ready video ad brief.",
     "Generate a video ad from this approved brief.",

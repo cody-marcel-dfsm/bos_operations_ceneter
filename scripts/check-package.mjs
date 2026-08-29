@@ -6,13 +6,13 @@ import { promisify } from "node:util";
 import {
   geminiPluginManifest,
   hashTree,
-  injectSettingsPreflight,
   listProducts,
   materializeMcpUrl,
   pathExists,
   readJson,
   resolveProductSkills,
   root,
+  transformProductSkillGuidance,
   validateProduct
 } from "./lib/package-model.mjs";
 
@@ -60,6 +60,8 @@ const failures = [];
 const execFileAsync = promisify(execFile);
 const reusableRuntimePlatformSkills = new Set([
   "platform/bos-mcp-client",
+  "platform/bos-plugin-settings",
+  "platform/bos-plugin-settings-initialization",
   "platform/bos-federated-query",
   "platform/bos-cache-maintenance",
   "platform/submit-feedback",
@@ -68,13 +70,15 @@ const reusableRuntimePlatformSkills = new Set([
 
 async function expectedSkillHashes(product, skill) {
   const hashes = await hashTree(skill.sourcePath);
-  if (
-    product.settings_initializer &&
-    skill.name !== product.settings_initializer
-  ) {
-    const source = await readFile(skill.skillFile, "utf8");
+  const source = await readFile(skill.skillFile, "utf8");
+  const transformed = transformProductSkillGuidance(
+    product,
+    skill.name,
+    source
+  );
+  if (transformed !== source) {
     hashes["SKILL.md"] = createHash("sha256")
-      .update(injectSettingsPreflight(source, product.settings_initializer))
+      .update(transformed)
       .digest("hex");
   }
   return hashes;
@@ -216,8 +220,9 @@ async function validateProducts() {
       const metadata = await readJson(metadataPath);
       const expectedAuthentication = manifest.runtime
         ? "oauth_2_1"
-        : "none";
+        : "bos_managed";
       if (
+        metadata.connection_owner !== "bos" ||
         metadata.application_name !== manifest.application_name ||
         metadata.mcp_group_name !== manifest.mcp_group_name ||
         metadata.authentication !== expectedAuthentication ||
@@ -320,7 +325,7 @@ async function validateProducts() {
         }
         const metadata = await readJson(join(pluginRoot, ".bos-product.json"));
         const expectedUrl = materializeMcpUrl(
-          "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
+          "https://dfsm.ai/mcp/apps/bos/platform",
           manifest
         );
         if (metadata.connection_scope !== "claude_account" ||
@@ -360,7 +365,7 @@ async function validateProducts() {
         const runtime = await readJson(runtimePath);
         const server = runtime.mcpServers?.[manifest.mcp_group_name];
         const expectedUrl = materializeMcpUrl(
-          "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
+          "https://dfsm.ai/mcp/apps/bos/platform",
           manifest
         );
         if (
@@ -414,7 +419,7 @@ async function validateProducts() {
           }
         } else {
           const expectedUrl = materializeMcpUrl(
-            "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
+            "https://dfsm.ai/mcp/apps/bos/platform",
             manifest
           );
           if (
@@ -449,7 +454,7 @@ async function validateProducts() {
       } else {
         const desktopMcp = await readJson(pluginMcpPath);
         const expectedUrl = materializeMcpUrl(
-          "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
+          "https://dfsm.ai/mcp/apps/bos/platform",
           manifest
         );
         const server = desktopMcp.mcpServers?.[manifest.mcp_group_name];

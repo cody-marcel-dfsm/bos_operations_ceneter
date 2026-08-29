@@ -6,7 +6,8 @@
 - **Owner:** BOS Operations Center platform skills and packaged client runtime
 - **Server dependency:** existing operations exposed by each BOS application;
   this contract adds no service, schema, capability, grant, or persistence
-- **First consumer:** My CRM over the Lead Director `crm` MCP group
+- **First consumer:** My CRM through the BOS MCP connection and server-resolved
+  CRM subservice
 
 ## Purpose
 
@@ -140,7 +141,7 @@ or configured tool name that is absent from that set fails closed.
 The plan records:
 
 - domain and platform skills used;
-- named product connection and MCP group;
+- root BOS connection and server-evaluated subservice/tool scope;
 - selected context label without raw authority identifiers;
 - dataset/entity type and normalized filter shape;
 - selected sources and why each qualifies;
@@ -161,7 +162,7 @@ calls or mutations.
 The explain result includes:
 
 1. interpreted intent;
-2. skills and MCP group that would be used;
+2. skills and BOS-resolved subservices that would be used;
 3. selected or eligible sources;
 4. sanitized tool calls and parameter shapes;
 5. cache hit, stale, or refresh decisions based on metadata only;

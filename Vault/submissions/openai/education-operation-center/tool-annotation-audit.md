@@ -4,13 +4,14 @@ Status: implemented, Oracle-approved, and deployed to staging; authenticated liv
 
 Official semantics: [OpenAI MCP tool annotations](https://developers.openai.com/plugins/build/mcp-server#tool-annotations-and-elicitation) and [plugin annotation reference](https://developers.openai.com/plugins/reference#annotations)
 
-The Education Center resource group exposes 50 public tools. Commit
+The BOS platform tool projection exposes 50 Education Center public tools to an
+authorized Education Center installation. Commit
 `1e4de4e5fe0a6c1240acf018718c98231ae4397f` implements the final annotation
 contract in Lead Director.
 
 The canonical operation registry remains authoritative for `readOnlyHint`,
 `idempotentHint`, and provider-derived `openWorldHint`. The Education Center
-resource-group projection applies a public-name overlay after aliasing:
+BOS subservice projection applies a public-name overlay after aliasing:
 
 - Every public tool receives an explicit `destructiveHint` classification.
 - `bos_resume_operation` explicitly receives `openWorldHint: true` because it

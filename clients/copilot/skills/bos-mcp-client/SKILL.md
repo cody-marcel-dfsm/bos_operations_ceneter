@@ -1,40 +1,45 @@
 ---
 name: bos-mcp-client
-description: Operate a packaged application MCP resource group, including scope resolution, live tool discovery, transport recovery, and provider authorization recovery.
+description: Operate the shared BOS MCP connection, including server-evaluated subservice scope, live tool discovery, transport recovery, and provider authorization recovery.
 ---
 
 
-## Product first-run preflight
+## Product initialization preflight
 
-Before performing this skill's workflow, resolve the installed product root and
-validate its customer-owned `config/customer-settings.json` against
+Before performing this skill's workflow, preserve the pending request and
+complete the product's host-managed BOS authentication. Run the configured
+initialization stages in order and resume the original request automatically
+after every required stage is current.
+
+First validate the customer-owned `config/customer-settings.json` against
 `config/customer-settings.template.json`. Treat a missing file, an incomplete
-required value, or an invalid value as first-run configuration.
+required value, or an invalid value as first-run configuration. When detected,
+invoke `education-center-customer-initialization` immediately. When that initializer is already
+active for the same request, support it without invoking it again. Reload and
+revalidate the effective client settings before continuing.
 
-When first-run configuration is detected, invoke `education-center-customer-initialization`
-immediately. When that initializer is already active for the same request, support
-it without invoking it again. Preserve the user's original request while
-initialization runs.
-Complete the product's host-managed BOS authentication before asking any settings
-question. If direct sign-in is required, ask only for that action and resume
-initialization automatically afterward. Do not perform the original workflow or
-substitute generic customer values while configuration remains unresolved. After
-the user accepts the consolidated recommendation and the initializer writes and
-revalidates `config/customer-settings.json`, reload the effective settings and
-resume the original request automatically.
+After client settings are current, validate the server plugin-settings
+initialization epoch, required canonical field states, and local completion
+receipt. Invoke `bos-plugin-settings-initialization` when the receipt is missing or
+stale, a required field is unset or invalid partial, or the server schema changed.
+Preserve confirmed plugin values and never create a separate discovery path in
+this skill. Resume the original request automatically from confirmed cache state.
 
 # BOS MCP Client
 
-Use this skill for client-side application resource-group operations.
-Each installed runtime product owns one named remote MCP resource. A Claude
-account or organization Web connector declares it and exposes the persistent
-host-managed **Connect** action; ChatGPT/Codex authorizes
-it through the registered app's host-managed OAuth 2.1 connection.
-Other supported clients use the product adapter declared by their generated
-package until they receive an equivalent OAuth migration.
-The triggered domain skill selects the matching product connection; BOS derives
-canonical execution scope from the validated grant. Authorization never falls
-through from another product connection.
+Use this skill for every client-side BOS operation. The root BOS plugin owns one
+remote MCP resource and one host-managed OAuth connection for the user-facing
+client context. A Claude account or organization Web connector declares that
+resource and exposes the persistent host-managed **Connect** action;
+ChatGPT/Codex authorizes it through the root BOS registered app. Other supported
+clients use the single BOS adapter declared by their generated package.
+
+Education Center, CRM, Marketing Director, and other subservice plugins add
+skills and server capabilities without adding another BOS connection. Their
+skills call through the existing BOS connection. BOS derives and evaluates
+organization, application, installation, subservice, plugin, role, capability,
+provider, and tool scope from the validated grant and canonical server state on
+every request. Never route platform BOS work through a subservice package.
 
 Developer and operator work is outside this skill when the request explicitly
 targets BOS source code, deployment infrastructure, Cloud Run, GCP Secret
@@ -53,26 +58,34 @@ Read [references/runtime-continuation-contract.md](references/runtime-continuati
 before recovering authorization, refreshing a tool manifest, or continuing a
 stateful mutation workflow.
 
-- Discover and use the installed product's configured BOS MCP connection.
+- Discover and use the root BOS plugin's configured MCP connection.
 - If BOS is absent from the callable tool manifest, inspect the active client's
-  plugin and runtime binding immediately. Repair or reinstall the configured
-  local product and restore its declared authorization connection. For Codex,
-  verify the required registered app binding; for Claude, verify the package's
+  BOS plugin and runtime binding immediately. Repair or reinstall BOS and
+  restore its declared authorization connection. For Codex, verify the root
+  BOS registered app binding; for Claude, verify the BOS package's
   account-connector metadata and the matching Web connector under
   **Customize → Connectors**, then use its persistent **Connect** action. When a
   private installation lacks that connector, add it with the exact name and URL
-  from the generated `CONNECTORS.md`; never reconstruct or modify the
-  package-owned route. Preserve every other installed product connection.
-  Restore only the immutable
-  `/mcp/apps/{application-name}/{skill-group-name}` package route for every
-  application runtime product, then verify that named server is registered.
-  Packages own both human-readable route segments.
+  from the generated BOS `CONNECTORS.md`; never reconstruct or modify the
+  package-owned resource. Preserve installed subservice plugins while repairing
+  only the BOS connection. Never create an Education Center, CRM, Marketing
+  Director, or other subservice connection as recovery.
   Never discover, prompt for, repair,
   or materialize a URL from `installed_app_id` or customer settings.
   Do not stop at diagnosing client registration.
 - If the transport, stream, or MCP session closes, reconnect or reinitialize
   that same configured connection, rediscover its live tools, call
   `bos_get_context` again, and retry the interrupted read-only operation once.
+- If the BOS OAuth token endpoint returns `invalid_client`, classify it as a
+  stale host-owned public-client registration and return to **Register BOS**.
+  Preserve the sanitized continuation envelope, keep the same sealed BOS
+  resource, have the host discard the stale client registration, repeat dynamic
+  client registration from the resource's current authorization metadata, and
+  restart authorization once. After authorization succeeds, rediscover live
+  tools, call `bos_get_context`, and resume the interrupted request. Use the
+  host's supported connection reset or **Connect/Sign in** surface when it does
+  not expose programmatic registration replacement. Keep the root BOS endpoint
+  and installed subservice plugins unchanged throughout recovery.
 - Refresh the callable tool manifest immediately after OAuth reconnection,
   permission or role changes, plugin install/update, capability enablement, or
   an explicit server capability refresh. Discard stale schemas and validate the
@@ -107,29 +120,29 @@ Apply provider recovery as one request interceptor around every BOS domain
 or bypass authentication recovery. Preserve the pending call before execution
 and inspect its sanitized result before producing a final answer.
 
-1. Use the immutable connection URL recorded by the package and declared by
-   the product's native host adapter. Treat its application name
-   and skill-group name as immutable package configuration, never as tenant
-   authority or user-selectable settings.
-2. On an application skill-group connection, do not send `org_id`, `app_code`,
-   `installed_app_id`, or `delegated_role_id`; BOS derives execution scope from
-   the authenticated principal and installed-app group enablement. Call
+1. Use the immutable BOS connection recorded by the root package and declared
+   by the client's native host adapter. Treat the resource as sealed package
+   configuration, never as tenant authority or a user-selectable setting.
+2. Do not send `org_id`, `app_code`, `installed_app_id`,
+   `delegated_role_id`, or a client-selected subservice authority. BOS derives
+   execution scope from the authenticated principal, installed services,
+   plugin enablement, role, capability, provider readiness, and requested tool. Call
    `bos_get_context`, use the server-marked default role context, and pass only
    its opaque `context_id` to domain tools. When the user explicitly requests
    another available role, use that role's opaque context for the request.
 3. Fail closed when context is absent or ambiguous.
-4. Use the triggered product skill to choose its matching named connection.
-   For example, Education Center operations use `education-center`; Video Ads operations
-   use `video-ads`. The endpoint selects a tool group; it never selects an
-   organization or another authorization grant.
-5. Authenticate a selected Claude account-level Web connector through its
-   persistent **Connect** control, and a ChatGPT/Codex connection
-   through its registered app. Both use a host-managed
+4. Use the triggered subservice skill to choose the requested workflow and
+   semantic operation. Keep connection selection fixed on BOS. The server
+   decides whether that subservice and tool are available to the authenticated
+   context.
+5. Authenticate the BOS Claude account-level Web connector through its
+   persistent **Connect** control, and the ChatGPT/Codex BOS connection
+   through the root registered app. Both use one host-managed
    OAuth grant. Other clients use only the generated product
-   adapter declared for that client. Keep access tokens, refresh tokens,
+   adapter declared for BOS. Keep access tokens, refresh tokens,
    authorization codes, bearer values, and grant metadata out of chat, tool
-   arguments, package files, and logs. Never reuse or fall back to another
-   product's authorization. If BOS rejects a desktop OAuth grant after
+   arguments, package files, and logs. Never create or fall back to a
+   subservice-specific BOS authorization. If BOS rejects a desktop OAuth grant after
    reconnecting once, invoke the host's Connect/Sign in flow and resume once
    after it succeeds.
 6. When a domain call returns `authorization_required`, preserve its original
@@ -155,16 +168,15 @@ a request for the user to report completion. The same interceptor owns Gmail
 OAuth, Calimatic API-key collection, and every future provider authorization
 kind returned by BOS.
 
-Provider readiness and authorization are local to the selected organization,
-installation, and plugin. A missing provider credential can block only the
-affected provider operation. It never removes another product's tools, changes
-another connection's authentication state, or blocks another product's build,
-installation, or release gate.
+Provider readiness and authorization are local to the server-resolved
+organization, installation, and plugin. A missing provider credential blocks
+only the affected provider operation. It never creates another BOS login,
+removes unrelated subservice tools, or changes the BOS connection state.
 
-Domain skills interpret their workflows and execute only through their matching
-configured product MCP. BOS derives actor, tenant, organization, application,
-installation, role, plugin, and capability scope from that connection's
-validated OAuth grant and canonical server records.
+Domain skills interpret their workflows and execute through the configured BOS
+MCP. BOS derives actor, tenant, organization, application, installation,
+subservice, role, plugin, capability, and provider scope from the validated
+OAuth grant, requested tool, and canonical server records.
 
 ## Role-aware execution
 
@@ -199,6 +211,22 @@ role, and before/after capabilities; never claim success when the server does
 not return the completed update. After success, refresh `bos_get_context`. On a
 revision conflict, read the current configuration and have the user resolve any
 material difference before retrying.
+
+## Plugin settings cache
+
+Use the packaged `scripts/plugin-settings-cache.mjs` helper for confirmed,
+display-safe plugin configuration snapshots and plugin-settings initialization
+receipts. Read
+[references/plugin-settings-cache-protocol.md](references/plugin-settings-cache-protocol.md)
+before a settings read, commit, invalidation, or receipt operation.
+
+Validate live BOS context first and use only the server-returned opaque
+`cache_scope`, current `settings_epoch`, and canonical snapshot. Commit from a
+completed BOS read, completed apply response, or reconciled committed result.
+Never commit recommendations, drafts, secrets, raw authority identifiers, or
+unknown mutation outcomes. A required unset or invalid partial field resumes
+the packaged plugin-settings initializer; domain skills never create a separate
+discovery path.
 
 ## Shared local document cache
 

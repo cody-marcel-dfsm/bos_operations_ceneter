@@ -2,7 +2,7 @@
 
 ## 1. Start and preserve state
 
-Select only the installed `education-center` connection. Call
+Select only the installed BOS connection. Call
 `bos_get_context`, discover tools, and fingerprint names plus input schemas.
 Create a sanitized campaign continuation envelope containing a task-local
 request reference and request hash, manifest fingerprint, server-owned
