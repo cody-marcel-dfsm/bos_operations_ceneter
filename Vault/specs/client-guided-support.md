@@ -29,6 +29,11 @@ MCP context and read tools strengthen verification when available.
 8. Preserve unrelated plugins and connections during repair. Escalations carry
    only sanitized client, package, stage, error, attempted-action, expected, and
    observed evidence.
+9. When a user explicitly requests complete local removal, use the
+   repository-owned all-client uninstaller. Inspect its identity-bounded dry
+   run, require exact destructive authorization, delete no unrelated client or
+   source state, create no backup, verify registry and filesystem absence, and
+   restart running clients to discard in-memory catalogs.
 
 ## Composition
 

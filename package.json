@@ -1,6 +1,6 @@
 {
   "name": "bos-operations-center",
-  "version": "0.4.52",
+  "version": "0.4.53",
   "private": false,
   "description": "Cross-client source repository for Education Center Agent Skills.",
   "author": "Infinite State Machines LLC",
@@ -28,6 +28,7 @@
     "clean-install:claude": "node scripts/clean-install-claude.mjs",
     "clean-install:gemini": "node scripts/clean-install-gemini.mjs",
     "clean-install:antigravity": "./scripts/clean-install-antigravity.sh",
+    "uninstall:all-clients": "./scripts/uninstall-bos-all-clients.sh",
     "extension:create": "node scripts/create-extension.mjs",
     "dev:link:codex": "node scripts/link-codex-development.mjs",
     "release": "npm run release:check",
