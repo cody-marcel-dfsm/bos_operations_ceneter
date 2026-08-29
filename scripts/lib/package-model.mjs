@@ -206,6 +206,22 @@ export function validateProduct(manifest, path = "product.json") {
       !manifest.includes?.includes("platform/bos-mcp-client")) {
     failures.push(`${path}: runtime requires platform/bos-mcp-client`);
   }
+  if (manifest.name === "bos") {
+    if (
+      manifest.runtime !== "bos" ||
+      manifest.application_name !== "bos" ||
+      manifest.mcp_group_name !== "platform"
+    ) {
+      failures.push(`${path}: BOS must own the bos/platform MCP runtime`);
+    }
+  } else if (
+    manifest.runtime !== undefined ||
+    manifest.application_name !== undefined ||
+    manifest.mcp_group_name !== undefined ||
+    manifest.codex_app_id !== undefined
+  ) {
+    failures.push(`${path}: subservice products must use the BOS-owned connection`);
+  }
   if (
     manifest.settings_template !== undefined &&
     (typeof manifest.settings_template !== "string" ||
@@ -239,9 +255,6 @@ export function validateProduct(manifest, path = "product.json") {
     !productNamePattern.test(manifest.plugin_settings_initializer)
   ) {
     failures.push(`${path}: invalid plugin_settings_initializer`);
-  }
-  if (manifest.plugin_settings_initializer && !manifest.runtime) {
-    failures.push(`${path}: plugin_settings_initializer requires runtime`);
   }
   if (
     manifest.plugin_settings_initializer &&
@@ -445,13 +458,11 @@ function publicPackagePath(path) {
 }
 
 export function materializeMcpUrl(template, product) {
-  const expected = "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}";
+  const expected = "https://dfsm.ai/mcp/apps/bos/platform";
   if (template !== expected) {
     throw new Error(`Runtime ${product.runtime} has an invalid BOS MCP URL template`);
   }
-  return template
-    .replace("{application_name}", product.application_name)
-    .replace("{mcp_group_name}", product.mcp_group_name);
+  return template;
 }
 
 export function pluginManifest(product) {
@@ -506,7 +517,7 @@ export function claudePluginMcpManifest(product) {
       [product.mcp_group_name]: {
         type: "http",
         url: materializeMcpUrl(
-          "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
+          "https://dfsm.ai/mcp/apps/bos/platform",
           product
         )
       }
@@ -581,7 +592,7 @@ export async function copilotMcpManifest(product, base = root) {
     mcpServers: {
       [product.mcp_group_name]: {
         type: "http",
-        url: materializeMcpUrl(sourceServer.url, product),
+      url: materializeMcpUrl(sourceServer.url, product),
         tools: ["*"]
       }
     }

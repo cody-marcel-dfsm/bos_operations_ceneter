@@ -13,9 +13,9 @@ complete the same OAuth flow as a customer.
 ## Authorization scope
 
 The reviewer identity must resolve exactly one synthetic tenant, one
-non-administrative review role, the Lead Director application, and the
-`education-center` resource group. Grant only the capabilities required by the
-eight submitted test cases.
+non-administrative review role, and one BOS installation with the Education
+Center subservice enabled. Grant only the capabilities required by the eight
+submitted test cases. The reviewer authenticates to BOS once.
 
 Use the existing synthetic BOS acceptance-test organization as the foundation
 only after confirming that it contains no real customer, student, family,

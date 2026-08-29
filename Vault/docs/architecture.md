@@ -10,9 +10,10 @@ release system for portable BOS skills and native remote MCP client adapters.
 - `source/platform/` owns tenant-neutral BOS operating and architecture skills.
 - `source/capabilities/` owns reusable business capabilities.
 - `source/verticals/` owns industry and franchise specialization.
-- `source/runtime/` owns credential-free remote MCP connection templates for
-  clients that distribute an endpoint directly. Product manifests own the
-  stable registered Codex app ID for each Codex runtime product.
+- `source/runtime/` owns credential-free root BOS MCP connection templates for
+  clients that distribute an endpoint directly. The root BOS product manifest
+  owns the stable registered ChatGPT/Codex app ID. Subservice products contain
+  no additional BOS connection binding.
 - `products/` declares versioned compositions; build scripts generate client
   packages from those declarations.
 - The BOS service owns authentication, authorization, tenant data, provider
@@ -23,24 +24,21 @@ release system for portable BOS skills and native remote MCP client adapters.
 ## Runtime invariants
 
 1. Resolve authenticated tenant, organization, application, installation,
-   role, and plugin scope on the server before private execution. Client route
-   names select an application-owned MCP tool group; they do not supply or
-   grant operational authority.
+   subservice, role, plugin, capability, provider, and tool scope on the server
+   before private execution. The client uses the root BOS connection and never
+   supplies or selects operational authority.
 2. Keep platform behavior application-neutral and place business behavior in
    the owning application graph or capability.
 3. Route mutations through PO orchestration and GO persistence.
 4. Store provider credentials only in BOS-managed credential storage.
 5. Authenticate Claude, ChatGPT/Codex desktop, OAuth-capable GitHub Copilot
-   hosts, Gemini CLI, and Google Antigravity 2.0 Desktop product connections
-   through the host's OAuth 2.1 MCP
-   authorization flow. Claude account or organization Web connectors, Copilot,
-   and Gemini packages declare the immutable HTTPS MCP resource directly. Claude
-   marketplace plugins remain skills-only and contain no `.mcp.json` or
-   `mcpServers`, preventing Claude from classifying the resource as **Connects in
-   sessions**. Codex packages declare a required
-   registered app in `.app.json`; that app owns the immutable resource. None of
-   these packages contains an API-key field, authorization header template, or
-   credential environment-variable binding. The host
+   hosts, Gemini CLI, and Google Antigravity 2.0 Desktop once through the root
+   BOS OAuth 2.1 MCP connection. Claude declares one BOS account or organization
+   Web connector; Copilot and Gemini declare the immutable BOS resource
+   directly; ChatGPT/Codex binds the root BOS registered app through
+   `.app.json`. Subservice plugins contain no additional BOS connection or
+   registered-app binding. No package contains an API-key field, authorization
+   header template, or credential environment-variable binding. The host
    discovers BOS authorization metadata, launches consent, stores and refreshes
    the grant, and attaches a resource-scoped token. Recover missing underlying
    provider grants through the BOS service's server-returned OAuth or secure
@@ -64,7 +62,7 @@ release system for portable BOS skills and native remote MCP client adapters.
    package files. A source
    role may select a separately connected client service for read-only evidence
    without changing BOS identity, scope, or mutation authority.
-10. Initialize customer settings only after the runtime product connection is
+10. Initialize customer settings only after the BOS connection is
     authenticated. Preserve confirmed values, derive unambiguous non-secret
     client and canonical BOS metadata, and present sourced suggestions for
     unresolved or conflicting display values. Ask the user once to accept or
@@ -78,10 +76,12 @@ release system for portable BOS skills and native remote MCP client adapters.
     or invalid, preserve the pending request through authentication and
     confirmation, then reload settings and resume it automatically. Apply this
     composition equally to Claude, Codex, Copilot, and Gemini packages.
-11. Connect clients directly to BOS over HTTPS Streamable HTTP. Use a registered
-    app binding in Codex, an account-level Web connector in Claude, the
-    OAuth-discovered remote connection in Copilot IDE/CLI, and one Gemini extension umbrella
-    for Gemini CLI and Antigravity 2.0 Desktop. The Gemini product directory
+11. Connect clients directly to one BOS HTTPS Streamable HTTP resource. Use the
+    root BOS registered app binding in Codex, one BOS account-level Web
+    connector in Claude, one OAuth-discovered BOS connection in Copilot
+    IDE/CLI, and one BOS connection in Gemini CLI and Antigravity 2.0 Desktop.
+    Subservice packages add skills and metadata behind that connection. The
+    Gemini product directory
     contains shared skills and product metadata, `gemini-extension.json` with
     OAuth enabled for Gemini CLI, and Antigravity's `plugin.json` plus a runtime
     `mcp_config.json` using `serverUrl`. A repository-local installer resolves
@@ -93,22 +93,16 @@ release system for portable BOS skills and native remote MCP client adapters.
     BOS product entries. Before any filesystem mutation, the installer displays
     the destructive scope and target, warns that local BOS product customizations
     have no backup, and requires the exact typed confirmation
-    `DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS`. A Claude
-    runtime plugin contains account-connector metadata and no MCP declaration.
-    A Codex runtime plugin contains
-    `apps: "./.app.json"` and no `.mcp.json` or `mcpServers`; its product
-    manifest records the complete stable `plugin_asdk_app_*` technical identifier
-    copied from the registered ChatGPT connection. Every runtime product declares one immutable
-    package-owned route using the exact static form
-    `/mcp/apps/{application-name}/{skill-group-name}`. Both path segments are
-    stable human-readable slugs, never IDs or customer settings. Each active
-    Claude, ChatGPT/Codex, OAuth-capable Copilot, or Gemini runtime product obtains exactly one host-managed
-    OAuth grant for its named MCP resource. That grant resolves exactly one
-    server-owned actor, organization, installation, delegated role, plugin,
-    and capability scope for that connection. Products may resolve different
-    organizations and actors in the same client. Domain-skill routing chooses
-    the matching named connection; authorization never falls through between
-    products. The plugin package never reads, prompts for, substitutes, or
+    `DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS`. The root Claude BOS plugin owns
+    account-connector metadata with no packaged MCP declaration. The root
+    ChatGPT/Codex BOS plugin contains `apps: "./.app.json"` and no `.mcp.json`
+    or `mcpServers`; its manifest records the stable `plugin_asdk_app_*`
+    technical identifier. Subservice plugins contain neither connection
+    declaration. One host-managed BOS grant identifies the actor and available
+    organizations; every request is evaluated against canonical application,
+    installation, subservice, role, plugin, capability, provider, and tool
+    state. Domain skills choose semantic operations while connection selection
+    stays fixed on BOS. No plugin package reads, prompts for, substitutes, or
     persists BOS access or refresh tokens.
 12. Treat generated client packages as build outputs. The complete
     cross-platform build materializes Codex, Claude, Copilot, and Gemini clients
@@ -124,8 +118,8 @@ release system for portable BOS skills and native remote MCP client adapters.
     Copilot, and the combined Gemini CLI/Antigravity Desktop client. Generated
     Antigravity `plugin.json` descriptions repeat the product release version
     so the plugin information UI exposes it directly.
-14. Route feedback mutations through the runtime product's canonical named MCP
-    route. Keep organization, application, installation, and delegated-role
+14. Route feedback mutations through the root BOS MCP connection. Keep
+    organization, application, installation, and delegated-role
     scope out of feedback arguments. Derive operational scope from the
     authenticated server context and fail closed on missing or ambiguous
     authority without broad-endpoint fallback.
@@ -145,13 +139,18 @@ release system for portable BOS skills and native remote MCP client adapters.
     identity before replay. Require user action only for secure provider
     authorization or credential-entry surfaces that inherently need direct
     user interaction.
+    Treat token-endpoint `invalid_client` as a stale host-owned public-client
+    registration: preserve the active request, keep the BOS resource fixed,
+    replace the registration through current OAuth metadata, restart
+    authorization once, refresh tools and context, and resume through the same
+    BOS connection.
 16. Distribute pre-publication Claude and Codex products through their native
     local or private Git marketplaces. Claude uses
     `.claude-plugin/marketplace.json`; Codex uses
     `.agents/plugins/marketplace.json`. Keep separate host manifests and share
     canonical skills through deterministic generation. Installation adds the
     marketplace and installs the product skills. Claude account or organization
-    connector provisioning registers the runtime resource separately and presents
+    connector provisioning registers the BOS resource once and presents
     the persistent **Connect** action under **Customize → Connectors**. A new task loads
     the installed skills after updates. Git marketplace installation is the
     skill-distribution path; repository release workflows create no customer archive.
@@ -173,15 +172,13 @@ release system for portable BOS skills and native remote MCP client adapters.
     the Codex marketplace upgrade control; public ChatGPT/Codex directory releases
     require a separately reviewed and published OpenAI submission. Git pull-request
     history grants neither OpenAI publication nor client refresh authority.
-17. Treat a Claude, ChatGPT/Codex, OAuth-capable Copilot, Gemini CLI, or Antigravity Desktop product
-    connection as ready only when the
-    installed product points to its exact immutable MCP resource—through an
-    account connector for Claude, directly for Copilot and Gemini, and through
-    its required registered app for Codex—OAuth
-    discovery succeeds, the host holds a valid resource-scoped grant, the
-    server returns one canonical context, and the required scoped tool group is
-    discoverable. A missing or expired grant triggers the host's **Connect** or
-    **Sign in** flow. Installation and recovery never request a BOS key, manipulate the
+17. Treat a client as BOS-ready only when the root BOS plugin points to its
+    immutable MCP resource—through one account connector for Claude, directly
+    for Copilot and Gemini, and through the root registered app for Codex—OAuth
+    discovery succeeds, the host holds a valid BOS grant, the server returns an
+    authorized context, and tools for authorized installed subservices are
+    discoverable. A missing or expired BOS grant triggers the host's single
+    **Connect** or **Sign in** flow. Installation and recovery never request a BOS key, manipulate the
     desktop process environment, or use an OS-specific launcher. Plugin source
     changes require marketplace update or reinstall, cache refresh as supported
     by the host, and a new task.
@@ -192,7 +189,7 @@ release system for portable BOS skills and native remote MCP client adapters.
     installation through each supported host's managed OAuth flow. Disabled or
     unreleased products are excluded from generated marketplaces, installation
     instructions, and release checks.
-19. Give every BOS-family runtime product on one OS user account a shared local
+19. Give every BOS-family plugin on one OS user account a shared local
     document cache. The packaged `bos-mcp-client` resolves the same
     platform-native cache root from every client and product. It partitions
     indexes by a hash of the current server-derived authority and source
@@ -217,20 +214,20 @@ release system for portable BOS skills and native remote MCP client adapters.
     uses explicit `bos.roles.read` and `bos.roles.update`, complete replacement
     lists, optimistic revisions, and server-side audit. See
     `Vault/specs/role-aware-mcp-client.md`.
-21. Present BOS product connections, server plugin enablement,
+21. Present the BOS connection, installed subservices, server plugin enablement,
     provider-service readiness, and display-safe properties through the BOS
     Plugin Console inside the active client's content window. A console request
     remains memory-only: it writes no runtime artifact, executes no packaged
     renderer, starts no local process or service, and inspects no local plugin
-    directory. Each product's named MCP resource and OAuth grant remain
-    independent. The server returns ordered `structuredContent`, owns plugin
+    directory. The root BOS MCP resource and OAuth grant are shared by the
+    installed subservices. The server returns ordered `structuredContent`, owns plugin
     state, revisions, connection actions, and audited enablement mutations, and
     remotely serves the associated MCP App resource. Clients render that state
     through their native structured-content or component surface and invoke the
     same authenticated remote tools for **Connect** buttons and enablement
     toggles. See `Vault/specs/plugin-service-console.md`.
 22. Manage typed plugin settings through one application-neutral client
-    contract and each product's independent named BOS connection. Establish
+    contract and the shared root BOS connection. Establish
     non-secret recommendation inputs through the customer/client-settings
     initializer first, then run plugin-settings initialization after BOS
     authentication. The BOS service owns profiles, canonical values, revisions,
@@ -243,6 +240,10 @@ release system for portable BOS skills and native remote MCP client adapters.
     cache only from confirmed server reads or commits. Required unset or invalid
     partial values resume the same initialization coordinator. See
     `Vault/docs/plugin-settings-streaming-sync-design.md`.
+23. Prove current-product completeness from current implemented components.
+    Future products, anticipated growth, and expected package composition are
+    never dependencies that satisfy missing current behavior. See
+    `Vault/specs/single-bos-mcp-connection.md`.
 
 ## Knowledge and review
 

@@ -65,19 +65,18 @@ const customerSettings = {
   }
 };
 
-const legacyCredentialEnvVar = "LEGACY_BOS_CREDENTIAL";
-const resourceGroupUrl = "https://dfsm.ai/mcp/apps/leaddirector/education-center";
+const unusedCredentialEnvVar = "UNUSED_BOS_CREDENTIAL";
+const resourceGroupUrl = "https://dfsm.ai/mcp/apps/bos/platform";
 const codexAppId = "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91";
 
 async function fakeCodex(_command, args) {
   if (args[0] === "mcp" && args[1] === "get") {
     const group = args[2];
-    if (["crm", "video-ads"].includes(group)) return {
+    if (group !== "platform") return {
       stderr: `Error: No MCP server named '${group}' found.`
     };
-    const url = `https://dfsm.ai/mcp/apps/leaddirector/${group}`;
     return {
-      stdout: [group, `  url: ${url}`].join("\n")
+      stdout: [group, `  url: ${resourceGroupUrl}`].join("\n")
     };
   }
   return { stdout: "" };
@@ -99,15 +98,15 @@ function verifyInstallation(options) {
   });
 }
 
-test("Codex runtime installation derives app and resource group from product", async () => {
+test("Codex runtime installation binds the BOS app and platform resource", async () => {
   const home = await temporaryHome();
   const report = await applyInstallationRaw({
     home,
-    product: "education-center"
+    product: "bos"
   });
   assert.deepEqual(report.runtime, {
     state: "host_managed",
-    name: "education-center",
+    name: "platform",
     url: resourceGroupUrl,
     app_id: codexAppId,
     authentication: "oauth_2_1",
@@ -115,14 +114,14 @@ test("Codex runtime installation derives app and resource group from product", a
   });
 });
 
-test("Codex OAuth installation ignores legacy customer environment keys", async () => {
+test("Codex OAuth installation ignores credential environment keys", async () => {
   const home = await temporaryHome();
   let inspectedHost = false;
   const codexCalls = [];
   const report = await applyInstallationRaw({
     home,
-    product: "education-center",
-    environment: { [legacyCredentialEnvVar]: "legacy-value-must-not-be-read" },
+    product: "bos",
+    environment: { [unusedCredentialEnvVar]: "value-must-not-be-read" },
     inspectCodexHost: async () => {
       inspectedHost = true;
       return { state: "current" };
@@ -139,7 +138,7 @@ test("Codex OAuth installation ignores legacy customer environment keys", async 
   assert.equal(inspectedHost, false);
   assert.equal(
     codexCalls.some((args) =>
-      args[0] === "mcp" && args[1] === "add" && args[2] === "education-center"
+      args[0] === "mcp" && args[1] === "add" && args[2] === "platform"
     ),
     false
   );
@@ -151,33 +150,33 @@ test("Codex OAuth installation rejects a direct MCP file beside the app binding"
   const home = await temporaryHome();
   await applyInstallationRaw({
     home,
-    product: "education-center"
+    product: "bos"
   });
-  const runtimePath = join(installedProduct(home, "education-center"), ".mcp.json");
+  const runtimePath = join(installedProduct(home, "bos"), ".mcp.json");
   await writeFile(runtimePath, JSON.stringify({
     mcpServers: {
-      "education-center": {
+      platform: {
         type: "http",
         url: resourceGroupUrl
       }
     }
   }));
   await assert.rejects(
-    verifyInstallationRaw({ home, product: "education-center" }),
+    verifyInstallationRaw({ home, product: "bos" }),
     /Packaged Codex app binding is invalid/
   );
 });
 
 test("Codex OAuth installation rejects an unregistered app identifier", async () => {
   const home = await temporaryHome();
-  await applyInstallationRaw({ home, product: "education-center" });
-  const appPath = join(installedProduct(home, "education-center"), ".app.json");
+  await applyInstallationRaw({ home, product: "bos" });
+  const appPath = join(installedProduct(home, "bos"), ".app.json");
   const app = JSON.parse(await readFile(appPath, "utf8"));
-  app.apps["education-center"].id = "asdk_app_6a7cb1cc330c81918aa63d96aeeaba91";
+  app.apps.bos.id = "asdk_app_6a7cb1cc330c81918aa63d96aeeaba91";
   await chmod(appPath, 0o644);
   await writeFile(appPath, JSON.stringify(app));
   await assert.rejects(
-    verifyInstallationRaw({ home, product: "education-center" }),
+    verifyInstallationRaw({ home, product: "bos" }),
     /Packaged Codex app binding is invalid/
   );
 });
@@ -202,24 +201,11 @@ test("disabled products are pruned without touching active product bindings", as
     }]
   }));
   const calls = [];
-  let mcpRegistered = true;
   let pluginInstalled = true;
   const actions = await reconcileDisabledCodexProducts({
     home,
     runCommand: async (_command, args) => {
       calls.push(args);
-      if (args[0] === "mcp" && args[1] === "get") {
-        if (mcpRegistered) return {
-          stdout: "url: https://dfsm.ai/mcp/apps/leaddirector/video-ads"
-        };
-        throw Object.assign(new Error("missing"), {
-          stderr: "Error: No MCP server named 'video-ads' found."
-        });
-      }
-      if (args[0] === "mcp" && args[1] === "remove") {
-        mcpRegistered = false;
-        return { stdout: "Removed global MCP server 'video-ads'." };
-      }
       if (args[0] === "plugin" && args[1] === "list") return {
         stdout: pluginInstalled
           ? "video-ads@bos-education-center installed, enabled 0.1.3 /tmp/video-ads"
@@ -232,10 +218,9 @@ test("disabled products are pruned without touching active product bindings", as
       return { stdout: "" };
     }
   });
-  assert.equal(actions[0], "removed_mcp:video-ads");
-  assert.match(actions[1], /^retired_plugin:video-ads:/);
-  assert.equal(actions[2], "removed_marketplace_entry:video-ads");
-  assert(calls.some((args) => args.join(" ") === "mcp remove video-ads"));
+  assert.match(actions[0], /^retired_plugin:video-ads:/);
+  assert.equal(actions[1], "removed_marketplace_entry:video-ads");
+  assert.equal(calls.some((args) => args[0] === "mcp"), false);
   assert(calls.some((args) =>
     args.join(" ") === "plugin remove video-ads@bos-education-center --json"
   ));
@@ -300,19 +285,6 @@ test("disabled-product removal failure is retryable and fail closed", async () =
   });
   assert.match(retry[0], /^retired_plugin:video-ads:/);
   await assert.rejects(stat(disabledRoot));
-});
-
-test("disabled MCP removal failure stops active-product installation", async () => {
-  const home = await temporaryHome();
-  await assert.rejects(reconcileDisabledCodexProducts({
-    home,
-    runCommand: async (_command, args) => {
-      if (args[0] === "mcp" && args[1] === "get") return {
-        stdout: "url: https://dfsm.ai/mcp/apps/leaddirector/video-ads"
-      };
-      throw new Error("simulated MCP removal failure");
-    }
-  }), /simulated MCP removal failure/);
 });
 
 test("retry converges after plugin removal succeeds and source backup fails", async () => {
@@ -734,10 +706,10 @@ test("compatible unmanaged plugin is adopted", async () => {
   assert.equal(after.state, "managed-current");
 });
 
-test("legacy unmanaged Codex MCP package migrates to the registered app binding", async () => {
+test("unmanaged BOS MCP package migrates to the registered BOS app binding", async () => {
   const home = await temporaryHome();
-  const desired = join(root, "clients", "codex", "plugins", "education-center");
-  const target = installedProduct(home, "education-center");
+  const desired = join(root, "clients", "codex", "plugins", "bos");
+  const target = installedProduct(home, "bos");
   await mkdir(join(codexMarketplaceRoot(home), "plugins"), { recursive: true });
   await cp(desired, target, { recursive: true });
   await rm(join(target, ".app.json"));
@@ -748,43 +720,44 @@ test("legacy unmanaged Codex MCP package migrates to the registered app binding"
   await writeFile(manifestPath, JSON.stringify(manifest));
   await writeFile(join(target, ".mcp.json"), JSON.stringify({
     mcpServers: {
-      "education-center": { type: "http", url: resourceGroupUrl }
+      platform: { type: "http", url: resourceGroupUrl }
     }
   }));
 
-  const before = await inspectInstallation({ home, product: "education-center" });
+  const before = await inspectInstallation({ home, product: "bos" });
   assert(before.actions.remove.includes(".mcp.json"));
-  const after = await applyInstallationRaw({ home, product: "education-center" });
+  const after = await applyInstallationRaw({ home, product: "bos" });
   assert.equal(after.state, "managed-current");
   await assert.rejects(access(join(target, ".mcp.json")));
   const app = JSON.parse(await readFile(join(target, ".app.json"), "utf8"));
-  assert.equal(app.apps["education-center"].id, codexAppId);
+  assert.equal(app.apps.bos.id, codexAppId);
 });
 
-test("unmanaged Codex migration preserves an unrelated direct MCP file", async () => {
+test("subservice package installation removes an additional direct MCP file", async () => {
   const home = await temporaryHome();
   const desired = join(root, "clients", "codex", "plugins", "education-center");
   const target = installedProduct(home, "education-center");
   await mkdir(join(codexMarketplaceRoot(home), "plugins"), { recursive: true });
   await cp(desired, target, { recursive: true });
-  await rm(join(target, ".app.json"));
   const manifestPath = join(target, ".codex-plugin", "plugin.json");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-  delete manifest.apps;
   manifest.mcpServers = "./.mcp.json";
   await writeFile(manifestPath, JSON.stringify(manifest));
   await writeFile(join(target, ".mcp.json"), JSON.stringify({
     mcpServers: {
-      "video-ads": {
+      platform: {
         type: "http",
-        url: "https://dfsm.ai/mcp/apps/leaddirector/video-ads"
+        url: resourceGroupUrl
       }
     }
   }));
 
   const report = await inspectInstallation({ home, product: "education-center" });
-  assert(report.actions.preserve.includes(".mcp.json"));
-  assert(!report.actions.remove.includes(".mcp.json"));
+  assert.equal(report.state, "partial");
+  assert(report.actions.remove.includes(".mcp.json"));
+  const applied = await applyInstallationRaw({ home, product: "education-center" });
+  assert.equal(applied.state, "managed-current");
+  await assert.rejects(access(join(target, ".mcp.json")));
 });
 
 test("stale managed file updates when prior hash proves ownership", async () => {

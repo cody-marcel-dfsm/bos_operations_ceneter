@@ -43,8 +43,8 @@ the requested enrollment or progress-report task. Do not publish, bulk export,
 or use these records for admissions, disciplinary, eligibility, or other
 high-impact decisions.
 
-Use the named `education-center` MCP connection and follow the
-`bos-mcp-client` context workflow. Preserve
+Use the authenticated BOS MCP connection and follow the `bos-mcp-client`
+context workflow. BOS resolves the Education Center subservice for each tool. Preserve
 student identity and provider provenance across every source.
 Use `bos-visual-output` for enrollment cohorts, progress trends, class
 distribution, and cross-source reconciliation.
@@ -61,7 +61,7 @@ native account recovery for the exact configured mailbox.
 - Use Calimatic student and enrollment tools as the enrolled-student source.
 - Use Lead Director for prospect and lead state.
 - Use published `education_center_search_email_evidence` and `education_center_get_email_thread`
-  through the same named connection only as correspondence/source evidence.
+  through the same BOS connection only as correspondence/source evidence.
 - Resolve the packaged settings defaults plus the preserved customer overlay.
   Follow `source_routes.care_com`: use published Education Center email evidence tools for
   `bos`, or invoke `email-account-routing` and the normal Gmail connector for

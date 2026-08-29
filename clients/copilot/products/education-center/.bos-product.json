@@ -3,7 +3,6 @@
   "name": "education-center",
   "version": "0.4.49",
   "client": "copilot",
-  "application_name": "leaddirector",
-  "mcp_group_name": "education-center",
-  "authentication": "oauth_2_1"
+  "connection_owner": "bos",
+  "authentication": "bos_managed"
 }

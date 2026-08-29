@@ -27,7 +27,7 @@ test("Claude local installer directs users to the persistent account connector",
       return pluginListCount === 1
         ? "[]"
         : JSON.stringify([{
-            id: "education-center@bos-education-center",
+            id: "bos@bos-education-center",
             enabled: true
           }]);
     }
@@ -38,7 +38,7 @@ test("Claude local installer directs users to the persistent account connector",
     base: root,
     run
   });
-  assert.equal(result.selector, "education-center@bos-education-center");
+  assert.equal(result.selector, "bos@bos-education-center");
   assert.deepEqual(
     calls.find(([, args]) => args[1] === "marketplace" && args[2] === "add")?.[1],
     [
@@ -55,7 +55,7 @@ test("Claude local installer directs users to the persistent account connector",
     [
       "plugin",
       "install",
-      "education-center@bos-education-center",
+      "bos@bos-education-center",
       "--scope",
       "user"
     ]
@@ -64,13 +64,13 @@ test("Claude local installer directs users to the persistent account connector",
   assert.equal(result.connectionScope, "claude_account");
   assert.equal(
     result.resourceUrl,
-    "https://dfsm.ai/mcp/apps/leaddirector/education-center"
+    "https://dfsm.ai/mcp/apps/bos/platform"
   );
 });
 
 test("Claude local installer updates an existing local installation without credential prompts", async () => {
   const calls = [];
-  const selector = "education-center@bos-education-center";
+  const selector = "bos@bos-education-center";
   const run = (command, args) => {
     calls.push([command, args]);
     if (args[0] === "--version") return "2.1.220\n";
@@ -85,7 +85,7 @@ test("Claude local installer updates an existing local installation without cred
     if (args[0] === "plugin" && args[1] === "list") {
       return JSON.stringify([
         { id: selector, scope: "user", enabled: true },
-        { id: "bos@bos-education-center", scope: "user", enabled: true }
+        { id: "education-center@bos-education-center", scope: "user", enabled: true }
       ]);
     }
     return "";
@@ -108,7 +108,7 @@ test("Claude local installer updates an existing local installation without cred
 
 test("Claude local installer enables an installed disabled plugin", async () => {
   const calls = [];
-  const selector = "education-center@bos-education-center";
+  const selector = "bos@bos-education-center";
   let enabled = false;
   const run = (command, args) => {
     calls.push([command, args]);
@@ -134,7 +134,7 @@ test("Claude local installer enables an installed disabled plugin", async () => 
   ));
 });
 
-test("Claude local installer keeps skills-only products free of connector setup", async () => {
+test("Claude subservice installation uses the existing BOS connector", async () => {
   const calls = [];
   let pluginListCount = 0;
   const run = (command, args) => {
@@ -148,16 +148,16 @@ test("Claude local installer keeps skills-only products free of connector setup"
       pluginListCount += 1;
       return pluginListCount === 1
         ? "[]"
-        : JSON.stringify([{ id: "bos@bos-education-center", enabled: true }]);
+        : JSON.stringify([{ id: "education-center@bos-education-center", enabled: true }]);
     }
     return "";
   };
 
-  const result = await installClaudeLocal({ base: root, product: "bos", run });
-  assert.equal(result.selector, "bos@bos-education-center");
-  assert.equal(result.connectionScope, "none");
+  const result = await installClaudeLocal({ base: root, product: "education-center", run });
+  assert.equal(result.selector, "education-center@bos-education-center");
+  assert.equal(result.connectionScope, "bos_managed");
   assert.equal(result.resourceUrl, undefined);
-  assert.doesNotMatch(JSON.stringify(calls), /mcp|connector|api[_-]?key/i);
+  assert.doesNotMatch(JSON.stringify(calls), /api[_-]?key/i);
 });
 
 test("Claude local installer replaces a same-named remote marketplace with the local build", async () => {

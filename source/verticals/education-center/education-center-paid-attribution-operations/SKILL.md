@@ -14,7 +14,7 @@ customer-facing output names the franchise or brand. Keep technical product,
 skill, route, server, environment-variable, tool, capability, authorization,
 and record identifiers unchanged.
 
-Use `bos_education_center` and follow `bos-mcp-client` for every provider call. Treat the
+Use the authenticated BOS connection and follow `bos-mcp-client` for every provider call. Treat the
 live BOS context and tool manifest as authoritative. Preserve the selected Education Center organization
 scope exactly and keep provider evidence separate until the lead is reconciled.
 Use `bos-visual-output` for source-to-outcome flows, conversion counts, missing
@@ -27,7 +27,7 @@ browser handoff, poll readiness, and resume the pending operation once.
 
 1. Resolve an explicit date range using `timezone` from the installed product's
    `config/customer-settings.json` and call
-   `mcp__bos_education_center__bos_get_context` once.
+   `bos_get_context` once through the BOS connection.
 2. Confirm the live capabilities needed for Gmail, Calendar, Lead Director,
    Calimatic, and Google Ads. Read
    [references/integration-contract.md](references/integration-contract.md).

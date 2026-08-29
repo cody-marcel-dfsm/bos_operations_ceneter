@@ -444,8 +444,9 @@ remote MCP transport on macOS, Windows, and Linux.
 - Replace subprocess MCP definitions with HTTPS endpoint definitions.
 - Remove the Python broker, compiled executable, loopback listeners, broker
   tests, and platform-specific broker build dependencies.
-- Give restricted product profiles unique MCP server names and endpoints.
-- Move tool filtering, routing, and provider-recovery state to the BOS service.
+- Give BOS one MCP server name and endpoint.
+- Keep tool filtering, subservice routing, authorization, and provider-recovery
+  state in the BOS service.
 
 **Acceptance criteria:**
 
@@ -454,10 +455,10 @@ remote MCP transport on macOS, Windows, and Linux.
   the immutable HTTPS URL without credential fields or authorization headers.
 - Generated client packages contain no `command`, `stdio`, executable, Python
   runtime, or local credential listener.
-- The Video Ads product targets only `/mcp/apps/leaddirector/video-ads`
-  through the `video-ads` server identity.
-- A missing OAuth grant fails at that BOS service boundary, invokes the
-  host-managed connection flow, and cannot affect another product connection.
+- The BOS product targets `/mcp/apps/bos/platform`; Video Ads and every other
+  subservice contain no additional MCP binding.
+- A missing BOS grant invokes the single host-managed BOS connection flow. A
+  missing provider grant affects only its server-evaluated operation.
 
 **Dependencies:** BOSPKG-012, BOSPKG-015.
 
@@ -471,7 +472,7 @@ marketplace packages without a compiled client transport or customer archive.
 - Generate all client distributions under `clients/`.
 - Publish through each host's native Git marketplace or repository mechanism.
 - Run credential-free validation on a platform-neutral CI runner.
-- Document native host-managed OAuth installation per active runtime product.
+- Document one native host-managed BOS OAuth installation for all subservices.
 
 **Acceptance criteria:**
 

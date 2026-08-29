@@ -43,8 +43,8 @@ the requested operating plan. Do not use this workflow for admissions,
 disciplinary, eligibility, or other high-impact decisions about students.
 
 Create a concise, action-oriented daily planner or weekly director summary.
-Retrieve BOS-routed live data through the named `education-center` MCP
-connection and separately connected read-only evidence through the effective
+Retrieve BOS-routed live data through the authenticated BOS MCP connection and
+separately connected read-only evidence through the effective
 customer source route. Never distribute or send the result unless the user
 separately requests and authorizes distribution. “For my director” identifies
 the report audience and never requires the director's identity for preparation.
@@ -70,7 +70,7 @@ Read and follow these installed skills before retrieving data:
 - `education-center-student-operations` for student, enrollment, and family identity handling.
 
 Use the single user and role resolved by `bos_get_context` from the authorized
-product connection. Claude and ChatGPT/Codex use the host-managed BOS OAuth
+BOS connection. Claude and ChatGPT/Codex use the host-managed BOS OAuth
 grant; another client uses only its generated product adapter. BOS derives
 organization, installation, plugin, and capability scope. Treat the live MCP
 manifest as authoritative. Never ask the user to choose a director, organization, source, key, or role for preparation.
@@ -93,7 +93,7 @@ sections while authorization is pending.
    Monday-through-Sunday week, including remaining upcoming days. Resolve
    “next week,” “last week,” or an explicitly supplied date from that local
    week calendar. State the resolved period and continue without asking.
-2. Call `bos_get_context` once through `education-center`. Require exactly one
+2. Call `bos_get_context` once through BOS. Require exactly one
    authenticated user and role and accept the server-derived Education Center scope. A
    server violation is a configuration error, never a user selection question.
 3. Retrieve every camp occurrence in the resolved reporting window before

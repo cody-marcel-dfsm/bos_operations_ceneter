@@ -56,11 +56,11 @@ persisted record identifiers. Return `configuration_required` and invoke
 
 ## Routing workflow
 
-1. Route every domain marked `bos` through the installed `education-center` MCP
-   connection. In Claude and ChatGPT/Codex, its host-managed OAuth grant
-   identifies the canonical BOS authorization; another client uses only its
-   generated product adapter. The named endpoint selects the Education Center
-   tool group.
+1. Route every domain marked `bos` through the installed BOS MCP connection.
+   In Claude and ChatGPT/Codex, its host-managed OAuth grant identifies the
+   canonical BOS authorization; another client uses only its generated BOS
+   adapter. The server resolves the Education Center subservice and authorized
+   tool set for each request.
 2. Identify the requested operation and any provider preference stated by the
    user.
 3. Call `bos_get_context` once and accept the exact organization, application,

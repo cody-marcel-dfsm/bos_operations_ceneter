@@ -95,7 +95,7 @@ Do not claim that Google Ads was updated.
 
 ## Education Center offline conversion MCP action
 
-When the live `bos_education_center` manifest publishes
+When the live BOS manifest publishes
 `education_center_create_offline_ad_conversions`, prefer it for the complete bounded
 Gmail-to-Google-Ads workflow. The client instruction can be:
 

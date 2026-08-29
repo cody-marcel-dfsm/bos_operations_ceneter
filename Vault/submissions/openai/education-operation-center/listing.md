@@ -29,10 +29,9 @@ tenant-scoped data from BOS and customer-authorized services, including student
 and enrollment systems, email, calendars, files, advertising, calling, and
 campaign delivery. Read workflows summarize evidence with provenance. Write or
 external-communication workflows preserve the user's authority, required
-approvals, organizational settings, and provider boundaries. Installing the
-plugin does not create an education-center account or grant access to an
-organization; each user must sign in and can access only the BOS tenant, role,
-application, tools, and provider connections authorized for that identity.
+approvals, organizational settings, and provider boundaries. Users connect to
+BOS once. This subservice adds no login or connection and can access only tools
+that BOS authorizes for the authenticated identity.
 
 **Website URL**
 
@@ -65,7 +64,7 @@ background). Brand approval and portal-format export remain required.
 - The plugin is an operational staff tool. It is not designed for direct use by
   children or students.
 - Each user signs in with an individual identity. Access is limited by the
-  server-resolved organization, role, installed application, resource group,
+  server-resolved organization, role, installed application, subservice,
   and connected-provider permissions.
 
 ## Recommended initial availability
@@ -76,18 +75,11 @@ This conservative launch scope aligns with the current business, customer, and
 support footprint. Expand availability after legal terms, support coverage, and
 provider behavior are validated for additional countries.
 
-## Production MCP configuration
+## BOS dependency
 
-- URL type: Universal
-- URL: `https://dfsm.ai/mcp/apps/leaddirector/education-center`
-- Authentication: OAuth 2.1 authorization-code flow with PKCE and refresh-token
-  support; the grant is resource-scoped to this exact MCP URL.
-- MCP UI: none identified in the current route contract. A content security
-  policy is therefore not expected for the initial submission. Confirm this
-  after Scan Tools.
-- Workspace domain restrictions: optional. The current authorization metadata
-  does not advertise the UserInfo endpoint and `openid email` support OpenAI
-  requires for that optional feature.
+- Install the BOS plugin and complete its OAuth 2.1 connection once.
+- Education Operation Center contains no MCP configuration or authentication.
+- BOS evaluates Education Operation Center tool availability for each request.
 
 ## Starter prompts
 

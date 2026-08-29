@@ -220,8 +220,9 @@ async function validateProducts() {
       const metadata = await readJson(metadataPath);
       const expectedAuthentication = manifest.runtime
         ? "oauth_2_1"
-        : "none";
+        : "bos_managed";
       if (
+        metadata.connection_owner !== "bos" ||
         metadata.application_name !== manifest.application_name ||
         metadata.mcp_group_name !== manifest.mcp_group_name ||
         metadata.authentication !== expectedAuthentication ||
@@ -324,7 +325,7 @@ async function validateProducts() {
         }
         const metadata = await readJson(join(pluginRoot, ".bos-product.json"));
         const expectedUrl = materializeMcpUrl(
-          "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
+          "https://dfsm.ai/mcp/apps/bos/platform",
           manifest
         );
         if (metadata.connection_scope !== "claude_account" ||
@@ -364,7 +365,7 @@ async function validateProducts() {
         const runtime = await readJson(runtimePath);
         const server = runtime.mcpServers?.[manifest.mcp_group_name];
         const expectedUrl = materializeMcpUrl(
-          "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
+          "https://dfsm.ai/mcp/apps/bos/platform",
           manifest
         );
         if (
@@ -418,7 +419,7 @@ async function validateProducts() {
           }
         } else {
           const expectedUrl = materializeMcpUrl(
-            "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
+            "https://dfsm.ai/mcp/apps/bos/platform",
             manifest
           );
           if (
@@ -453,7 +454,7 @@ async function validateProducts() {
       } else {
         const desktopMcp = await readJson(pluginMcpPath);
         const expectedUrl = materializeMcpUrl(
-          "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
+          "https://dfsm.ai/mcp/apps/bos/platform",
           manifest
         );
         const server = desktopMcp.mcpServers?.[manifest.mcp_group_name];

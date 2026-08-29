@@ -9,17 +9,17 @@ to connect, enable, or disable them.
 
 A console request creates no report, cache, HTML file, Markdown file, local
 database, process, listener, browser session, or machine-local service. The BOS
-server returns structured state through the product's existing remote MCP
-connection, and the client renders that response directly from memory.
+server returns structured state through the root BOS MCP connection, and the
+client renders that response directly from memory.
 
 ## Ownership and boundaries
 
-- The active client's existing context identifies which named BOS product
-  connections are available. The console does not inspect local plugin folders
+- The active client's BOS context identifies which installed subservices and
+  plugins are available. The console does not inspect local plugin folders
   or invoke a client command-line inventory.
-- Each operational product retains its independent named MCP resource and OAuth
-  grant. Aggregation in the conversation never creates a broad administrative
-  connection or transfers authority between products.
+- The root BOS plugin owns the single MCP resource and OAuth grant. The server
+  evaluates each subservice row against canonical installation, enablement,
+  role, capability, and provider state without creating another login.
 - The BOS service owns organization, installation, role, plugin enablement,
   capability grants, provider readiness, display-safe properties, revisions,
   mutations, and audit records.
@@ -33,7 +33,7 @@ The view distinguishes three independent states:
 
 | State | Owner | Meaning |
 | --- | --- | --- |
-| Product connection | Client host and BOS OAuth | The current client can call the named BOS resource. |
+| BOS connection | Client host and BOS OAuth | The current client can call the root BOS resource. |
 | BOS plugin enabled | BOS service | The plugin may expose its authorized capabilities for this installation. |
 | Service connected | BOS credential service | The scoped provider grant is ready for that plugin service. |
 
@@ -42,8 +42,8 @@ on the user's machine.
 
 ## In-memory read contract
 
-Each eligible runtime product exposes `bos_list_plugin_services` to an
-authenticated context carrying `bos.plugins.read`:
+The root BOS resource exposes `bos_list_plugin_services` to an authenticated
+context carrying `bos.plugins.read`:
 
 ```json
 {
@@ -80,7 +80,7 @@ it as MCP `structuredContent`:
 Allowed connection states are `connected`, `connection_required`,
 `bos_sign_in_required`, `not_required`, and `unavailable`. `plugin_ref`,
 `service_ref`, and `revision` are opaque, short-lived selectors usable only
-with the same authenticated product scope. Responses contain no credentials,
+with the same authenticated BOS context. Responses contain no credentials,
 tokens, authorization URLs, provider payloads, raw database IDs, customer
 records, or cross-tenant counts.
 
@@ -108,8 +108,8 @@ The component calls remote MCP tools through the host bridge and replaces its
 ephemeral state from the completed tool response.
 
 When a row exposes configurable settings, its **Settings** action invokes the
-packaged `bos-plugin-settings` workflow for that row's owning named product
-connection. The settings workflow renders server-described typed fields,
+packaged `bos-plugin-settings` workflow through the BOS connection. The
+settings workflow renders server-described typed fields,
 supports equivalent prompt edits, and maintains its separate authority-scoped
 confirmed-snapshot cache. The console itself remains an in-memory view and
 stores no settings state.
@@ -129,8 +129,9 @@ starting a bounded remote authorization transaction. It returns the established
 URL-mode elicitation or sanitized resource-link result. After verification, the
 client refreshes tools and replaces the in-memory console snapshot.
 
-An unavailable product OAuth grant activates only that product connection's
-host-native **Connect**, **Sign in**, or **Authenticate** action.
+An unavailable BOS OAuth grant activates the root BOS connection's host-native
+**Connect**, **Sign in**, or **Authenticate** action. A subservice row never
+requests another BOS login.
 
 ## Enablement mutation
 
@@ -173,8 +174,7 @@ contains no query-time script, renderer, executable, local server, or cache.
 - A status request performs no filesystem write, local process launch, port
   bind, browser launch, or local service start.
 - Identical canonical state returns identical ordered `structuredContent`.
-- Missing product OAuth exposes only that product's host-owned connection
-  action and never falls through to another connection.
+- Missing BOS OAuth exposes the root BOS host-owned connection action.
 - Disabled plugins remain visible and expose none of their domain tools.
 - Connect rejects stale, foreign, disabled, or unauthorized selectors.
 - Enablement rejects missing capability, stale revision, illegal transition,

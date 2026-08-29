@@ -1,0 +1,26 @@
+{
+  "schema_version": "1",
+  "contract_id": "bos.single-mcp-connection",
+  "owner_product": "bos",
+  "application_name": "bos",
+  "mcp_group_name": "platform",
+  "resource_url": "https://dfsm.ai/mcp/apps/bos/platform",
+  "codex_app_id": "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
+  "subservice_products": [
+    "education-center",
+    "my-crm",
+    "video-ads"
+  ],
+  "connection_artifacts": [
+    "clients/claude/plugins/bos/CONNECTORS.md",
+    "clients/codex/plugins/bos/.app.json",
+    "clients/copilot/products/bos/.github/mcp.json",
+    "clients/gemini/extensions/bos/mcp_config.json"
+  ],
+  "forbidden_subservice_connection_identifiers": [
+    "bos_education_center",
+    "mcp__bos_education_center__",
+    "connection must be education-center",
+    "trace.get(\"connection\") == \"education-center\""
+  ]
+}

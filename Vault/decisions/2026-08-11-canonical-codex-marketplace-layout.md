@@ -27,12 +27,13 @@ customer-owned locations:
 The settings template and packaged skills remain package-owned. A customer
 extension directory exists only after a tenant requests a per-skill change.
 
-The same marketplace also owns application skill-group packages managed by
-this project. `ism-meta-ads` is the private Lead Director package for the
-`meta-ads` skill group. It is a separate product from `video-ads`; the latter
-is a disabled creative-generation product. A managed private package remains
-`AVAILABLE` until its named MCP route, tool catalog, and authority contract are
-current, then it may be installed explicitly.
+The same marketplace also owns subservice skill packages managed by this
+project. `ism-meta-ads` is the private Lead Director package for Meta Ads
+workflows. It is a separate product from `video-ads`; the latter is a disabled
+creative-generation product. A managed private package remains `AVAILABLE`
+until its BOS-routed tool catalog and authority contract are current, then it
+may be installed explicitly. Subservice packages contain no MCP connection or
+app binding.
 
 ## Upgrade behavior
 
@@ -42,7 +43,7 @@ product metadata and link target, the installer removes the link and moves the
 physical product directory into the canonical marketplace tree. Existing
 settings, extensions, and unmanaged customer files move with the product.
 
-If both legacy and canonical physical directories exist, installation stops
+If both retired and canonical physical directories exist, installation stops
 for review. This avoids choosing between two potentially divergent customer
 states.
 

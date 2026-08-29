@@ -163,7 +163,7 @@ The new skill follows this sequence:
    from the current task and working changes.
 10. Generate one UUID `client_submission_id` and retain it for the submission
    attempt and one retry.
-11. Call `bos_submit_feedback` through the package's named MCP connection with
+11. Call `bos_submit_feedback` through the BOS MCP connection with
     `delegated_role_id` and the allowlisted payload. Never put route scope in
     the body or retry through an unnamed transport.
 12. Display the receipt ID, canonical target, status, and received time.

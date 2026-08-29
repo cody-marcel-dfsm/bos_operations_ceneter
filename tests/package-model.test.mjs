@@ -146,7 +146,7 @@ test("settings products declare an included initializer", async () => {
   );
 });
 
-test("plugin settings initializer is runtime-scoped and included", async () => {
+test("plugin settings initializer is included by subservices using the BOS connection", async () => {
   const education = (await listProducts()).find(
     ({ manifest }) => manifest.name === "education-center"
   )?.manifest;
@@ -157,15 +157,10 @@ test("plugin settings initializer is runtime-scoped and included", async () => {
       .join("\n"),
     /plugin_settings_initializer must name an included skill/
   );
-  const withoutRuntime = { ...education };
-  delete withoutRuntime.runtime;
-  delete withoutRuntime.application_name;
-  delete withoutRuntime.mcp_group_name;
-  delete withoutRuntime.codex_app_id;
-  assert.match(
-    validateProduct(withoutRuntime).join("\n"),
-    /plugin_settings_initializer requires runtime/
-  );
+  assert.equal(education.runtime, undefined);
+  assert.equal(education.application_name, undefined);
+  assert.equal(education.mcp_group_name, undefined);
+  assert.equal(education.codex_app_id, undefined);
 });
 
 test("settings preflight injection preserves frontmatter and adds resumable initialization", () => {
@@ -361,7 +356,7 @@ test("SendGrid client trace validates the governed 229-recipient acceptance path
     });
     const trace = {
       schema_version: "education-center-sendgrid-campaign-trace/v1",
-      connection: "education-center",
+      connection: "bos",
       context_verified: true,
       same_task_continuation_supported: true,
       manifest_refresh_policy: [
@@ -516,6 +511,11 @@ test("application runtime packages ship agent-owned MCP lifecycle recovery", asy
     assert.match(guidance, /reconcile by[\s\S]*idempotency identifier/i);
     assert.match(guidance, /If BOS is absent from the callable tool manifest/i);
     assert.match(guidance, /Do not stop at\s+diagnosing client registration/i);
+    assert.match(guidance, /invalid_client/i);
+    assert.match(guidance, /stale host-owned public-client registration/i);
+    assert.match(guidance, /dynamic\s+client registration/i);
+    assert.match(guidance, /same sealed BOS\s+resource/i);
+    assert.match(guidance, /restart authorization once/i);
     assert.match(guidance, /authorization_required/i);
     assert.match(guidance, /authorization path immediately[\s\S]*active request/i);
     assert.match(guidance, /request interceptor around every BOS domain[\s\S]*tools\/call/i);
@@ -529,6 +529,35 @@ test("application runtime packages ship agent-owned MCP lifecycle recovery", asy
     await access(`${client.sourcePath}/scripts/document-cache.mjs`);
     await access(`${client.sourcePath}/references/document-cache-protocol.md`);
     await access(`${client.sourcePath}/references/runtime-continuation-contract.md`);
+  }
+});
+
+test("guided support classifies OAuth invalid_client as registration recovery", async () => {
+  const stateMachine = await readFile(
+    `${root}/source/platform/bos-guided-support/references/support-state-machine.md`,
+    "utf8"
+  );
+  assert.match(stateMachine, /invalid_client[\s\S]*Register BOS/i);
+  assert.match(stateMachine, /discard[\s\S]*stale[\s\S]*registration/i);
+  assert.doesNotMatch(stateMachine, /invalid_client[\s\S]{0,120}Provider ready/i);
+});
+
+test("generated clients ship stale OAuth registration recovery", async () => {
+  for (const path of [
+    `${root}/clients/codex/plugins/bos/skills/bos-mcp-client/SKILL.md`,
+    `${root}/clients/codex/plugins/education-center/skills/bos-mcp-client/SKILL.md`,
+    `${root}/clients/claude/plugins/bos/skills/bos-mcp-client/SKILL.md`,
+    `${root}/clients/claude/plugins/education-center/skills/bos-mcp-client/SKILL.md`,
+    `${root}/clients/copilot/products/bos/skills/bos-mcp-client/SKILL.md`,
+    `${root}/clients/copilot/products/education-center/skills/bos-mcp-client/SKILL.md`,
+    `${root}/clients/copilot/skills/bos-mcp-client/SKILL.md`,
+    `${root}/clients/gemini/extensions/bos/skills/bos-mcp-client/SKILL.md`,
+    `${root}/clients/gemini/extensions/education-center/skills/bos-mcp-client/SKILL.md`
+  ]) {
+    const guidance = await readFile(path, "utf8");
+    assert.match(guidance, /invalid_client/i, path);
+    assert.match(guidance, /stale host-owned public-client registration/i, path);
+    assert.match(guidance, /restart authorization once/i, path);
   }
 });
 
@@ -984,12 +1013,9 @@ test("BOS marketplace metadata explains the platform and links to its website", 
   assert.equal(bos.display_name, "BOS — Business Operating System");
   assert.equal(bos.description.length, 79);
   assert.match(bos.description, /Agent-first Business Operating System/);
-  assert.match(bos.long_description, /skills-only plugin/);
-  assert.match(bos.long_description, /industry- and sector-specific skills/);
-  assert.match(bos.long_description, /integration mesh/);
-  assert.match(bos.long_description, /deterministic work/);
-  assert.match(bos.long_description, /future platform directions/);
-  assert.match(bos.long_description, /not included in this plugin/);
+  assert.match(bos.long_description, /owns the authenticated MCP connection/);
+  assert.match(bos.long_description, /server-evaluated tools/);
+  assert.match(bos.long_description, /authorization on every request/);
   assert.equal(bos.website_url, "https://dfsm.ai");
   assert.equal(bos.brand_color, "#061638");
   assert.equal(bos.composer_icon, "assets/bos-logo.png");
@@ -1041,7 +1067,7 @@ test("Education Operation Center marketplace metadata presents independent workf
   await access(`${root}/clients/codex/plugins/education-center/assets/education-center-logo.png`);
 });
 
-test("runtime manifests use explicit human-readable application and MCP group names", async () => {
+test("only BOS owns runtime application and MCP group names", async () => {
   const products = await listProducts();
   assert.deepEqual(
     Object.fromEntries(
@@ -1051,10 +1077,10 @@ test("runtime manifests use explicit human-readable application and MCP group na
       ])
     ),
     {
-      bos: [undefined, undefined],
-      "education-center": ["leaddirector", "education-center"],
-      "my-crm": ["leaddirector", "crm"],
-      "video-ads": ["leaddirector", "video-ads"]
+      bos: ["bos", "platform"],
+      "education-center": [undefined, undefined],
+      "my-crm": [undefined, undefined],
+      "video-ads": [undefined, undefined]
     }
   );
   for (const { manifest } of products) {
@@ -1064,11 +1090,11 @@ test("runtime manifests use explicit human-readable application and MCP group na
   }
 });
 
-test("runtime package model materializes named application routes", async () => {
-  const template = "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}";
+test("runtime package model materializes the single BOS route", async () => {
+  const template = "https://dfsm.ai/mcp/apps/bos/platform";
   for (const { manifest } of await listProducts()) {
     if (!manifest.runtime) continue;
-    const expected = `${template.split("{application_name}")[0]}${manifest.application_name}/${manifest.mcp_group_name}`;
+    const expected = template;
     assert.equal(materializeMcpUrl(template, manifest), expected);
     const gemini = await geminiExtensionManifest(manifest);
     assert.equal(gemini.mcpServers[manifest.mcp_group_name].httpUrl, expected);
@@ -1103,7 +1129,7 @@ test("Copilot products bundle GitHub's repository MCP configuration", async () =
     if (!product.runtime) {
       await assert.rejects(access(`${productRoot}/.github/mcp.json`));
       const readme = await readFile(`${productRoot}/README.md`, "utf8");
-      assert.match(readme, /skills-only package/i);
+      assert.match(readme, /existing BOS connection/i);
       continue;
     }
     const config = JSON.parse(
@@ -1112,7 +1138,7 @@ test("Copilot products bundle GitHub's repository MCP configuration", async () =
     assert.deepEqual(Object.keys(config.mcpServers), [product.mcp_group_name]);
     assert.deepEqual(config.mcpServers[product.mcp_group_name], {
       type: "http",
-      url: `https://dfsm.ai/mcp/apps/${product.application_name}/${product.mcp_group_name}`,
+      url: "https://dfsm.ai/mcp/apps/bos/platform",
       tools: ["*"]
     });
     assert.doesNotMatch(
@@ -1124,15 +1150,15 @@ test("Copilot products bundle GitHub's repository MCP configuration", async () =
     assert.match(readme, /complete BOS sign-in/i);
     assert.match(
       readme,
-      new RegExp(`/mcp/apps/${product.application_name}/${product.mcp_group_name}`)
+      /mcp\/apps\/bos\/platform/
     );
   }
 });
 
-test("package schema rejects legacy or incomplete MCP route fields", () => {
+test("package schema reserves runtime ownership for BOS", () => {
   const base = {
     schema_version: "1",
-    name: "example",
+    name: "bos",
     version: "1.0.0",
     display_name: "Example",
     description: "Example runtime package.",
@@ -1143,8 +1169,8 @@ test("package schema rejects legacy or incomplete MCP route fields", () => {
     clients: ["codex"],
     includes: ["platform/bos-mcp-client"],
     runtime: "bos",
-    application_name: "leaddirector",
-    mcp_group_name: "example",
+    application_name: "bos",
+    mcp_group_name: "platform",
     codex_app_id: "plugin_asdk_app_example123",
     default_prompts: []
   };
@@ -1181,9 +1207,13 @@ test("package schema rejects legacy or incomplete MCP route fields", () => {
     validateProduct({ ...base, codex_app_id: "asdk_app_wrong" }).join("\n"),
     /codex_app_id must be a plugin_asdk_app identifier/
   );
+  assert.match(
+    validateProduct({ ...base, name: "education-center" }).join("\n"),
+    /subservice products must use the BOS-owned connection/
+  );
 });
 
-test("Video Ads composes workflow skills and a scoped BOS endpoint", async () => {
+test("Video Ads composes workflows without another BOS endpoint", async () => {
   const products = await listProducts();
   const videoAds = products.find(
     ({ manifest }) => manifest.name === "video-ads"
@@ -1196,9 +1226,9 @@ test("Video Ads composes workflow skills and a scoped BOS endpoint", async () =>
   assert.equal(manifest.interface.composerIcon, "./assets/marketing-director-logo.png");
   assert.equal(manifest.interface.logo, "./assets/marketing-director-logo.png");
   await access(`${root}/products/video-ads/assets/marketing-director-logo.png`);
-  assert.equal(videoAds.runtime, "bos");
-  assert.equal(videoAds.application_name, "leaddirector");
-  assert.equal(videoAds.mcp_group_name, "video-ads");
+  assert.equal(videoAds.runtime, undefined);
+  assert.equal(videoAds.application_name, undefined);
+  assert.equal(videoAds.mcp_group_name, undefined);
   assert.equal(videoAds.release_status, "disabled");
   assert.equal("credential_env_var" in videoAds, false);
   const skills = await resolveProductSkills(videoAds);
@@ -1226,12 +1256,12 @@ test("disabled products are absent while active runtime products remain scoped",
     access(`${root}/clients/codex/plugins/education-center/.mcp.json`)
   );
   const app = JSON.parse(await readFile(
-    `${root}/clients/codex/plugins/education-center/.app.json`,
+    `${root}/clients/codex/plugins/bos/.app.json`,
     "utf8"
   ));
   assert.deepEqual(app, {
     apps: {
-      "education-center": {
+      bos: {
         id: "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
         required: true
       }
@@ -1250,33 +1280,29 @@ test("disabled product inventory is generated for idempotent client pruning", as
     schema_version: "1",
     products: [
       {
-        name: "my-crm",
-        application_name: "leaddirector",
-        mcp_group_name: "crm"
+        name: "my-crm"
       },
       {
-        name: "video-ads",
-        application_name: "leaddirector",
-        mcp_group_name: "video-ads"
+        name: "video-ads"
       }
     ]
   });
 });
 
-test("Education Center packages use persistent host-native OAuth bindings", async () => {
-  const codexRoot = `${root}/clients/codex/plugins/education-center`;
+test("BOS owns OAuth while Education Center adds no connection binding", async () => {
+  const codexRoot = `${root}/clients/codex/plugins/bos`;
   const metadata = JSON.parse(await readFile(`${codexRoot}/.bos-product.json`, "utf8"));
   const plugin = JSON.parse(await readFile(`${codexRoot}/.codex-plugin/plugin.json`, "utf8"));
   const app = JSON.parse(await readFile(`${codexRoot}/.app.json`, "utf8"));
-  assert.equal(metadata.application_name, "leaddirector");
-  assert.equal(metadata.mcp_group_name, "education-center");
-  assert.equal(metadata.codex_app_id, app.apps["education-center"].id);
+  assert.equal(metadata.application_name, "bos");
+  assert.equal(metadata.mcp_group_name, "platform");
+  assert.equal(metadata.codex_app_id, app.apps.bos.id);
   assert.equal(plugin.apps, "./.app.json");
   assert.equal(plugin.mcpServers, undefined);
-  assert.equal(app.apps["education-center"].required, true);
+  assert.equal(app.apps.bos.required, true);
   await assert.rejects(access(`${codexRoot}/.mcp.json`));
 
-  const claudeRoot = `${root}/clients/claude/plugins/education-center`;
+  const claudeRoot = `${root}/clients/claude/plugins/bos`;
   const claudeMetadata = JSON.parse(await readFile(
     `${claudeRoot}/.bos-product.json`,
     "utf8"
@@ -1288,7 +1314,7 @@ test("Education Center packages use persistent host-native OAuth bindings", asyn
   assert.equal(claudeMetadata.connection_scope, "claude_account");
   assert.equal(
     claudeMetadata.resource_url,
-    "https://dfsm.ai/mcp/apps/leaddirector/education-center"
+    "https://dfsm.ai/mcp/apps/bos/platform"
   );
   assert.equal(claudePlugin.mcpServers, undefined);
   assert.equal("userConfig" in claudePlugin, false);
@@ -1296,8 +1322,12 @@ test("Education Center packages use persistent host-native OAuth bindings", asyn
   const connectorGuide = await readFile(`${claudeRoot}/CONNECTORS.md`, "utf8");
   assert.match(connectorGuide, /account-level Web connector/);
   assert.match(connectorGuide, /Connect/);
-  assert.match(connectorGuide, /https:\/\/dfsm\.ai\/mcp\/apps\/leaddirector\/education-center/);
-  assert.match(connectorGuide, /Connects in sessions/);
+  assert.match(connectorGuide, /https:\/\/dfsm\.ai\/mcp\/apps\/bos\/platform/);
+  const educationRoot = `${root}/clients/codex/plugins/education-center`;
+  await assert.rejects(access(`${educationRoot}/.app.json`));
+  const educationMetadata = JSON.parse(await readFile(`${educationRoot}/.bos-product.json`, "utf8"));
+  assert.equal(educationMetadata.connection_owner, "bos");
+  assert.equal(educationMetadata.authentication, "bos_managed");
 });
 
 test("Claude distribution is a marketplace of self-contained plugins", async () => {
@@ -1417,7 +1447,7 @@ test("one Gemini extension bundles CLI and Antigravity Desktop with OAuth MCP", 
     if (!product.runtime) {
       assert.equal(manifest.mcpServers, undefined);
       await assert.rejects(access(`${extensionRoot}/mcp_config.json`));
-      assert.match(readme, /skills-only extension/i);
+      assert.match(readme, /existing BOS connection/i);
       continue;
     }
     assert.match(readme, new RegExp(`/mcp auth ${product.mcp_group_name}`));
@@ -1425,13 +1455,13 @@ test("one Gemini extension bundles CLI and Antigravity Desktop with OAuth MCP", 
     assert.match(readme, /Authenticate/);
     assert.match(
       readme,
-      new RegExp(`/mcp/apps/${product.application_name}/${product.mcp_group_name}`)
+      /mcp\/apps\/bos\/platform/
     );
     assert.deepEqual(Object.keys(manifest.mcpServers), [product.mcp_group_name]);
     const server = manifest.mcpServers[product.mcp_group_name];
     assert.equal(
       server.httpUrl,
-      `https://dfsm.ai/mcp/apps/${product.application_name}/${product.mcp_group_name}`
+      "https://dfsm.ai/mcp/apps/bos/platform"
     );
     assert.equal(server.url, undefined);
     assert.equal(server.command, undefined);
@@ -1444,7 +1474,7 @@ test("one Gemini extension bundles CLI and Antigravity Desktop with OAuth MCP", 
     assert.deepEqual(desktopMcp, await geminiPluginMcpManifest(product));
     assert.equal(
       desktopMcp.mcpServers[product.mcp_group_name].serverUrl,
-      `https://dfsm.ai/mcp/apps/${product.application_name}/${product.mcp_group_name}`
+      "https://dfsm.ai/mcp/apps/bos/platform"
     );
     assert.doesNotMatch(
       JSON.stringify(manifest),
@@ -1472,25 +1502,25 @@ test("Gemini client package provides one CLI and desktop extension umbrella", as
   assert.match(readme, /clean installer/);
   assert.match(readme, /without backups/);
   assert.match(readme, /After each Git pull, restart Antigravity/);
-  assert.match(readme, /\/mcp auth education-center/);
+  assert.match(readme, /\/mcp auth platform/);
   assert.match(readme, /Settings > Customizations/);
   assert.doesNotMatch(readme, /API key|sensitive BOS setting/i);
   assert.match(readme, /\/extensions list/);
   assert.match(readme, /\/skills list/);
 });
 
-test("feedback contract keeps app resource-group selection static and retry identity stable", async () => {
+test("feedback contract uses the BOS app and stable retry identity", async () => {
   const metadata = JSON.parse(await readFile(
-    `${root}/clients/codex/plugins/education-center/.bos-product.json`,
+    `${root}/clients/codex/plugins/bos/.bos-product.json`,
     "utf8"
   ));
   const app = JSON.parse(await readFile(
-    `${root}/clients/codex/plugins/education-center/.app.json`,
+    `${root}/clients/codex/plugins/bos/.app.json`,
     "utf8"
   ));
   const url = `https://dfsm.ai/mcp/apps/${metadata.application_name}/${metadata.mcp_group_name}`;
-  assert.equal(url, "https://dfsm.ai/mcp/apps/leaddirector/education-center");
-  assert.equal(metadata.codex_app_id, app.apps["education-center"].id);
+  assert.equal(url, "https://dfsm.ai/mcp/apps/bos/platform");
+  assert.equal(metadata.codex_app_id, app.apps.bos.id);
   assert.doesNotMatch(JSON.stringify({ metadata, app }), /BOS_INSTALLED_APP_ID/);
 
   const skill = await readFile(
@@ -1525,7 +1555,12 @@ test("Education Center composition contains only approved shared runtime foundat
   const shared = educationCenter
     .filter((skill) => bosNames.has(skill.name))
     .map((skill) => skill.name);
-  assert.deepEqual(shared, ["bos-plugin-settings", "manage-customer-extension"]);
+  assert.deepEqual(shared, [
+    "bos-mcp-client",
+    "bos-plugin-settings",
+    "submit-feedback",
+    "manage-customer-extension"
+  ]);
 });
 
 test("My CRM composes the approved reusable federated runtime skills", async () => {
@@ -1594,9 +1629,6 @@ test("every product and client ships tenant extension management metadata", asyn
         name: manifest.name,
         version: manifest.version,
         client,
-        authentication: manifest.runtime
-          ? "oauth_2_1"
-          : "none",
         ...(manifest.runtime ? {
           application_name: manifest.application_name,
           mcp_group_name: manifest.mcp_group_name,
@@ -1604,9 +1636,13 @@ test("every product and client ships tenant extension management metadata", asyn
             codex_app_id: manifest.codex_app_id
           } : client === "claude" ? {
             connection_scope: "claude_account",
-            resource_url: `https://dfsm.ai/mcp/apps/${manifest.application_name}/${manifest.mcp_group_name}`
+            resource_url: "https://dfsm.ai/mcp/apps/bos/platform"
           } : {})
-        } : {})
+        } : {}),
+        connection_owner: "bos",
+        authentication: manifest.runtime
+          ? "oauth_2_1"
+          : "bos_managed"
       });
       const manager = await readFile(
         `${productRoot}/skills/manage-customer-extension/SKILL.md`,
@@ -1726,7 +1762,7 @@ test("README routes customer, development, and credential-free release validatio
   assert.equal(repositoryPackage.scripts.build, "npm run build:packages");
   assert.equal(
     repositoryPackage.scripts["release:check"],
-    "npm run build && npm run check && npm test"
+    "npm run build && npm run check && npm run contract:check && npm test"
   );
   for (const removed of [
     "build:artifacts",
@@ -1838,12 +1874,12 @@ test("repository marketplaces expose native Claude and Codex desktop packages", 
     {
       name: "bos",
       path: "./clients/codex/plugins/bos",
-      authentication: "ON_USE"
+      authentication: "ON_INSTALL"
     },
     {
       name: "education-center",
       path: "./clients/codex/plugins/education-center",
-      authentication: "ON_INSTALL"
+      authentication: "ON_USE"
     }
   ]);
   assert.deepEqual(claude.plugins.map(({ name, source }) => ({ name, source })), [

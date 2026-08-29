@@ -25,7 +25,7 @@ After an audited server success, clients refresh context and tool discovery.
 
 The effective interactive authority is the intersection of:
 
-1. the host-managed OAuth identity and named MCP resource;
+1. the host-managed OAuth identity and BOS MCP resource;
 2. the current BOS user and installed-app membership;
 3. the selected assigned role and its explicit capabilities;
 4. the installation and plugin grant ceiling;
@@ -102,7 +102,7 @@ elevates an interactive user and never selects provider credential ownership.
   result.
 - Provider recovery remains scoped to the affected organization, installation,
   and plugin and never widens role authority.
-- Clients never substitute another product connection, role, tenant, or cached
+- Clients never substitute another connection, role, tenant, or cached
   context to make an operation succeed.
 
 ## Packaging ownership
@@ -115,4 +115,4 @@ artifacts and never independent editing surfaces.
 
 Lead Director currently provides the reference server implementation. The BOS
 client contract remains application-neutral and applies to every installed
-application resource group that exposes role-aware context.
+subservice resolved through the BOS connection.

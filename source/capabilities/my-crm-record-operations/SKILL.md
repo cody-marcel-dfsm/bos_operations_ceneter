@@ -5,7 +5,8 @@ description: Search, inspect, create, update, and manage CRM records through pro
 
 # My CRM Record Operations
 
-Use `my-crm` for routing and the `crm` MCP connection for execution.
+Use `my-crm` for routing and the authenticated BOS MCP connection for
+execution. BOS resolves the CRM subservice for each tool.
 
 ## Reads
 

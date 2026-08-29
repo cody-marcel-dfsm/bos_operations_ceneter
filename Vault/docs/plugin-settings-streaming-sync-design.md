@@ -1,5 +1,9 @@
 # Plugin settings streaming and sync design
 
+All settings reads and mutations use the authenticated BOS connection. The
+server evaluates the selected subservice, installation, plugin, role, and
+capability for each opaque plugin selector.
+
 ## Status
 
 - **Status:** approved; packaged client contract implemented, remote BOS service
@@ -17,7 +21,7 @@
 Every installed BOS plugin can expose typed, editable settings through the
 active Agent Harness client. The client can discover a sourced recommendation,
 show it beside the current value, collect one explicit user confirmation, apply
-the confirmed change through the plugin's owning BOS product connection, and
+the confirmed change through the BOS connection, and
 keep an authority-scoped local snapshot synchronized with canonical service
 state.
 
@@ -32,7 +36,7 @@ response updates the local cache and completes that initialization stage.
 
 1. The BOS service owns canonical plugin settings, revisions, validation,
    history, and audit records.
-2. The authenticated product connection and server-issued context establish
+2. The authenticated BOS connection and server-issued context establish
    tenant, organization, application, installation, role, and plugin scope.
 3. Plugin definitions own setting meaning, constraints, defaults, and
    recommendation strategies. The platform supplies common types, interaction,
@@ -196,7 +200,7 @@ contain no customer website, identity, or location value.
 ## Remote MCP contract
 
 All tools receive only a current opaque `context_id` plus short-lived selectors
-returned by the same product connection. Clients never send raw organization,
+returned by the BOS connection. Clients never send raw organization,
 installation, delegated-role, provider-account, or database identifiers.
 
 ### Read initialization inventory
@@ -404,7 +408,7 @@ Cache rules:
 
 ### Cache-first read sequence
 
-1. Resolve the named product connection and validate its current BOS context.
+1. Resolve the BOS connection and validate its current context.
    `bos_get_context` returns or confirms the stable opaque cache scope and
    current product `settings_epoch`.
 2. Read the local entry for that cache scope, plugin, and settings schema.
@@ -413,7 +417,7 @@ Cache rules:
    same record.
 4. On a miss, changed epoch, expired entry, schema mismatch, or revision
    invalidation, use cursor catch-up when possible and otherwise call
-   `bos_get_plugin_settings` through the plugin's owning MCP connection.
+   `bos_get_plugin_settings` through the BOS connection.
 5. Validate the complete response and atomically cache it.
 6. When the returned canonical field is `configured`, answer the question and
    render the controls from the newly committed cache record.
@@ -472,7 +476,7 @@ visible settings surface.
 The worker receives the complete task context required for the operation:
 
 - exact user intent or widget Apply event;
-- named product connection;
+- BOS connection;
 - selected role context or a directive to refresh it;
 - cached confirmed snapshot, field definitions, revision, and cursor;
 - prepared draft reference and hash when already available;
@@ -483,7 +487,7 @@ The worker receives the complete task context required for the operation:
 
 The context excludes credentials, tokens, raw authority IDs, raw provider
 payloads, unrelated customer records, and hidden reasoning. The worker uses the
-same authenticated product connection and interactive user role as the parent.
+same authenticated BOS connection and interactive user role as the parent.
 Delegation grants no additional authority. A harness without parallel-agent
 support executes the identical worker contract in the active agent.
 
@@ -585,7 +589,7 @@ update never submits feedback automatically.
    prompt authorizes that exact change. Editing the hours grid and selecting
    **Apply** creates the equivalent authorization.
 7. The harness launches the settings mutation worker with the exact intent,
-   current snapshot, schema, revision, product connection, and stable
+   current snapshot, schema, revision, BOS connection, and stable
    idempotency key.
 8. The worker prepares and applies the typed draft. It reports recoveries and
    bounded retry progress to the harness.
@@ -610,7 +614,7 @@ runtime skill never creates a separate discovery implementation.
 
 1. The client initialization pipeline reaches the plugin-settings stage after
    local client settings and BOS authentication are complete.
-2. The coordinator resolves the plugin's owning product connection, calls
+2. The coordinator resolves the BOS connection, calls
    `bos_get_context`, selects the server-marked default role, and verifies the
    required read and recommendation capabilities.
 3. `bos_get_plugin_settings_initialization` returns Business Hours as required

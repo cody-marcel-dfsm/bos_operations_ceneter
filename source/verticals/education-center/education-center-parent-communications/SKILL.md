@@ -20,8 +20,9 @@ the authorized parent or guardian unless an approved school policy and
 capability explicitly provides otherwise. Minimize contact and transcript data
 and never expose it outside the selected tenant and requested workflow.
 
-Use the named `education-center` MCP connection and follow the `bos-mcp-client`
-context workflow for every BOS-routed domain. Resolve effective customer
+Use the authenticated BOS MCP connection and follow the `bos-mcp-client`
+context workflow for every BOS-routed domain. BOS resolves the Education
+Center subservice for each tool. Resolve effective customer
 settings from the packaged template plus the preserved customer overlay.
 For email correspondence evidence, follow
 `source_routes.parent_communications`:

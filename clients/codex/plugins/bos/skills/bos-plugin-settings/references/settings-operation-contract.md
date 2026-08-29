@@ -5,7 +5,7 @@
 Give the worker the complete operational context required for one update:
 
 - exact prompt authorization or widget Apply event;
-- named product connection and selected interactive role context;
+- BOS connection and selected interactive role context;
 - current confirmed snapshot, field schema, revision, and cursor;
 - exact prepared draft reference and hash;
 - stable client operation identity and idempotency key for the current draft;
@@ -14,7 +14,7 @@ Give the worker the complete operational context required for one update:
 
 Exclude credentials, tokens, raw authority IDs, raw provider payloads,
 unrelated customer records, and hidden reasoning. Delegation carries the same
-authenticated product connection and interactive user role. It grants no new
+authenticated BOS connection and interactive user role. It grants no new
 capability and never uses plugin `run_as_role`.
 
 ## Expected server result
@@ -32,7 +32,7 @@ recovery action, current revision, or schema fingerprint.
 | Transport closure, timeout, or temporary unavailability | Reconnect the same endpoint, refresh tools and context, reconcile, and retry. |
 | Rate limit | Honor the server retry time within the task deadline. |
 | Stale tool or field schema | Refresh live schemas, rebuild from original intent, and retry once when the semantic change is identical. |
-| Expired BOS context | Complete host-managed recovery for the same product, then resume once. |
+| Expired BOS context | Complete host-managed recovery for the BOS connection, then resume once. |
 | Provider authorization required | Complete the BOS-hosted provider flow and resume once. |
 | Stale revision | Refresh. Rebase only when the target is unchanged and the authorized change set remains identical; otherwise return the conflict for user review. |
 | Correctable client request shape | Rebuild from the live field schema and retry once. |

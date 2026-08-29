@@ -27,7 +27,7 @@ this skill. Resume the original request automatically from confirmed cache state
 
 # Submit Feedback
 
-Submit privacy-minimized feedback through the packaged application MCP group. Read
+Submit privacy-minimized feedback through the BOS MCP connection. Read
 [references/feedback-contract.md](references/feedback-contract.md) before the
 first submission in a task.
 
@@ -48,13 +48,13 @@ first submission in a task.
 
 1. Call `bos_get_context` once.
 2. Select exactly one authorized scope relevant to the active package.
-3. Submit through the product's immutable packaged
-   `/mcp/apps/{application-name}/{skill-group-name}` connection.
+3. Submit through the immutable root BOS connection. Use the active package or
+   subservice only as the feedback target; it never owns another BOS login.
 4. Do not send execution-scope fields. The authenticated server derives
    `org_id`, `app_code`, `installed_app_id`, and `delegated_role_id`.
 5. Fail closed and run the existing context/authentication recovery flow when
    execution scope is missing, invalid, unauthorized, or ambiguous. Never
-   retry feedback through an unnamed endpoint.
+   retry feedback through a subservice or unnamed endpoint.
 6. Follow `bos-mcp-client` for the local authentication flow. Never request or accept
    a BOS credential in chat.
 
@@ -129,7 +129,7 @@ feedback meaningless.
 ## Submit and report
 
 1. Create one UUID `client_submission_id` and retain it for the attempt.
-2. Call `bos_submit_feedback` through the package's named MCP connection with
+2. Call `bos_submit_feedback` through the BOS connection with
    only the allowlisted feedback fields. The server derives execution scope.
 3. On a transport or server failure, retry once with the same submission ID.
 4. On success, report the feedback ID, canonical target, `received` status, and

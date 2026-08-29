@@ -3,5 +3,8 @@
   "name": "bos",
   "version": "0.4.49",
   "client": "gemini",
-  "authentication": "none"
+  "application_name": "bos",
+  "mcp_group_name": "platform",
+  "connection_owner": "bos",
+  "authentication": "oauth_2_1"
 }

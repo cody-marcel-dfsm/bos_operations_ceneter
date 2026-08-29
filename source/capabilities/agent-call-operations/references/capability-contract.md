@@ -3,7 +3,7 @@
 The public MCP operations are `education_center_initiate_agent_call` and the
 read-only `education_center_get_agent_call_status`. They are owned by the
 `education-center-automated-outreach` plugin and exposed only through
-`/mcp/apps/leaddirector/education-center`.
+`/mcp/apps/bos/platform`.
 
 ## Public input
 
@@ -57,7 +57,7 @@ adds it to the Education Center resource-group allowlist, and advertises it only
 when all of these are true:
 
 - the OAuth grant resolves exactly one Education Center installation and role;
-- that installation enables the `education-center` MCP resource group;
+- that installation enables the Education Center subservice and requested tool;
 - `education-center-automated-outreach` is installed and enabled; and
 - the authenticated actor's server-selected role and immutable OAuth ceiling
   grant the requested capability.

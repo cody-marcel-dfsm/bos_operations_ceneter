@@ -68,7 +68,8 @@ for (const { product, skills } of resolved) {
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
       codex_app_id: product.codex_app_id,
-      authentication: product.runtime ? "oauth_2_1" : "none"
+      connection_owner: "bos",
+      authentication: product.runtime ? "oauth_2_1" : "bos_managed"
     });
     await writeJson(
       join(pluginRoot, ".codex-plugin", "plugin.json"),
@@ -93,7 +94,7 @@ for (const { product, skills } of resolved) {
     await mkdir(join(pluginRoot, ".claude-plugin"), { recursive: true });
     const claudeResourceUrl = product.runtime
       ? materializeMcpUrl(
-          "https://dfsm.ai/mcp/apps/{application_name}/{mcp_group_name}",
+          "https://dfsm.ai/mcp/apps/bos/platform",
           product
         )
       : undefined;
@@ -108,7 +109,8 @@ for (const { product, skills } of resolved) {
         connection_scope: "claude_account",
         resource_url: claudeResourceUrl
       } : {}),
-      authentication: product.runtime ? "oauth_2_1" : "none"
+      connection_owner: "bos",
+      authentication: product.runtime ? "oauth_2_1" : "bos_managed"
     });
     const claudePlugin = {
       name: product.name,
@@ -135,9 +137,7 @@ for (const { product, skills } of resolved) {
           "",
           `This plugin uses the account-level Web connector named \`${product.mcp_group_name}\`.`,
           "It must appear under **Customize → Connectors** with its own **Connect** control.",
-          "The plugin intentionally contains no `.mcp.json` or `mcpServers` declaration;",
-          "plugin-owned MCP declarations are session-scoped in Claude and appear as",
-          "**Connects in sessions**.",
+          "The plugin contains account-connector metadata and no plugin-level MCP declaration.",
           "",
           "For a private or development installation, an account owner adds a custom",
           `connector with the package-owned resource URL \`${claudeResourceUrl}\`, then`,
@@ -176,17 +176,12 @@ for (const { product, skills } of resolved) {
           "admissions, disciplinary, eligibility, or other high-impact decisions about",
           "students.",
           "",
-          "## Authentication and security",
+          "## BOS connection and security",
           "",
-          "The remote HTTPS MCP uses OAuth 2.1 through the account-level",
-          "`education-center` Web connector under **Customize → Connectors**.",
-          "Install the plugin, add or select that account connector, select **Connect**,",
-          "and complete BOS sign-in. Private installations use the package-owned",
-          "resource URL documented in `CONNECTORS.md`; published installations use",
-          "the same resource through Anthropic's Connector Directory or organization",
-          "provisioning.",
-          "Claude stores and refreshes the resulting authorization, and the plugin never",
-          "asks the user to paste a BOS key.",
+          "Install and connect the BOS plugin once. Education Operation Center uses that",
+          "existing BOS connection and contains no connector, registered app, MCP server,",
+          "or separate BOS login. BOS evaluates organization, installation, role, plugin,",
+          "capability, provider, and tool authorization on every request.",
           "The customer-facing franchise or brand name is supplied during tenant setup",
           "and applies only to customer-facing copy and output.",
           "Credentials are never included in this package,",
@@ -223,7 +218,8 @@ for (const { product, skills } of resolved) {
       client: "copilot",
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
-      authentication: product.runtime ? "oauth_2_1" : "none"
+      connection_owner: "bos",
+      authentication: product.runtime ? "oauth_2_1" : "bos_managed"
     });
     if (product.runtime) {
       await writeJson(
@@ -249,10 +245,10 @@ for (const { product, skills } of resolved) {
           "GitHub Copilot cloud agent and code review cannot use this remote OAuth",
           "connection until those hosts support OAuth-authenticated MCP servers.",
           "",
-          `This package is fixed to \`/mcp/apps/${product.application_name}/${product.mcp_group_name}\`.`,
-          "The package does not select or provision a BOS application."
+          "This package owns the single BOS connection at `/mcp/apps/bos/platform`."
         ] : [
-          "This is a skills-only package and registers no MCP server."
+          "Install and authenticate the BOS package once. This subservice adds workflows",
+          "through the existing BOS connection and registers no additional MCP server."
         ]),
         ""
       ].join("\n")
@@ -273,7 +269,8 @@ for (const { product, skills } of resolved) {
       client: "gemini",
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
-      authentication: product.runtime ? "oauth_2_1" : "none"
+      connection_owner: "bos",
+      authentication: product.runtime ? "oauth_2_1" : "bos_managed"
     });
     await writeJson(
       join(extensionRoot, "gemini-extension.json"),
@@ -308,10 +305,10 @@ for (const { product, skills } of resolved) {
           "Gemini CLI discovers BOS OAuth, stores and refreshes the resource-scoped grant,",
           "and connects to the fixed HTTPS MCP route declared by this extension.",
           "",
-          `This package is fixed to \`/mcp/apps/${product.application_name}/${product.mcp_group_name}\`.`,
-          "The package does not select or provision a BOS application."
+          "This package owns the single BOS connection at `/mcp/apps/bos/platform`."
         ] : [
-          "This is a skills-only extension and registers no MCP server."
+          "Install and authenticate the BOS extension once. This subservice adds workflows",
+          "through the existing BOS connection and registers no additional MCP server."
         ]),
         "",
         "Restart Gemini CLI after installation or update. Run `/extensions list` to",
@@ -333,7 +330,7 @@ for (const { product, skills } of resolved) {
           "select Authenticate, complete BOS sign-in in the browser, and return to Antigravity.",
           "The desktop host stores and refreshes the resource-scoped OAuth grant."
         ] : [
-          "Open Settings > Customizations and confirm the plugin and its skills are enabled."
+          "Confirm the BOS connection is authenticated, then enable this plugin and its skills."
         ]),
         ""
       ].join("\n")
@@ -366,9 +363,9 @@ await writeFile(
     "# BOS Operations Center Copilot Packages",
     "",
     "Select a product under `products/<product>/skills` and install those",
-    "skills into the target repository's `.agents/skills` directory. Each product",
-    "also includes a `.github/mcp.json` registration for its fixed named BOS MCP",
-    "route and product-specific setup instructions.",
+    "skills into the target repository's `.agents/skills` directory. Install the BOS",
+    "product once for the shared `.github/mcp.json` connection. Subservice products",
+    "add workflows through that connection and include no additional MCP registration.",
     ""
   ].join("\n")
 );
@@ -390,7 +387,7 @@ await writeFile(
     "gemini extensions install clients/gemini/extensions/education-center",
     "```",
     "",
-    "Restart Gemini CLI. Run `/mcp auth education-center`, complete BOS sign-in, then",
+    "Restart Gemini CLI. Run `/mcp auth platform`, complete BOS sign-in once, then",
     "run `/extensions list` and `/skills list` to verify the extensions and bundled skills.",
     "",
     "## Antigravity 2.0 Desktop",
@@ -401,8 +398,7 @@ await writeFile(
     "`DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS` before changing files,",
     "and creates one product symlink in `~/.gemini/config/plugins/` for each active product.",
     "After each Git pull, restart Antigravity, open Settings > Customizations, and",
-    "select Authenticate for the",
-    "`education-center` MCP server. Complete BOS sign-in in the browser.",
+    "select Authenticate for the `platform` BOS MCP server. Complete BOS sign-in once.",
     "",
     "The Gemini package contains no BOS key, token, authorization header, or client secret.",
     "Each product has detailed CLI and desktop instructions in its own README.",

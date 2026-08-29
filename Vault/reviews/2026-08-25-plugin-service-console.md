@@ -12,8 +12,8 @@ remote MCP structured content and server-owned actions.
 
 ## Evidence
 
-- `Vault/docs/architecture.md:220-231` establishes the console as a memory-only
-  client-content interaction, preserves independent product grants, assigns
+- `Vault/docs/architecture.md:212-225` establishes the console as a memory-only
+  client-content interaction, preserves the single BOS grant, assigns
   canonical state and actions to BOS, and prohibits a packaged renderer or
   machine-local service.
 - `docs/DESIGN.md:167-194` describes the cross-product context source, remote
@@ -21,7 +21,7 @@ remote MCP structured content and server-owned actions.
   state, and the absence of local files, ports, processes, browsers, or
   services.
 - `Vault/specs/plugin-service-console.md:5-41` assigns client, server, OAuth,
-  provider, PO, and GO ownership and separates product connection, plugin
+  provider, PO, and GO ownership and separates the BOS connection, plugin
   enablement, and provider readiness.
 - `Vault/specs/plugin-service-console.md:43-89` requires an authenticated opaque
   context, server-side sorting, display-safe structured content, scoped opaque

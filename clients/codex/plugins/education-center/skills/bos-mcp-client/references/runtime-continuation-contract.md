@@ -9,6 +9,7 @@ Refresh the callable manifest immediately after:
 
 - initial connection or task continuation;
 - OAuth connection or reconnection;
+- OAuth `invalid_client` registration replacement and restarted authorization;
 - actor permission, delegated-role, or plugin execution-role change;
 - plugin install, update, enablement, or disablement;
 - capability grant or server capability refresh;
@@ -16,9 +17,10 @@ Refresh the callable manifest immediately after:
 - a server response indicating a stale or unavailable tool schema.
 
 Fingerprint the refreshed tool names, versions when exposed, and input schemas.
-Call `bos_get_context` again and prove that the same named product connection
-resolves one authorized context. Never reuse a tool definition absent from the
-new manifest.
+Call `bos_get_context` again and prove that the same BOS connection resolves an
+authorized context. Let the server re-evaluate installed subservices, plugins,
+roles, capabilities, providers, and tools. Never reuse a tool definition absent
+from the new manifest.
 
 ## Sanitized continuation envelope
 
@@ -26,7 +28,7 @@ Retain only the minimum state required to resume:
 
 - task-local request reference, sanitized request summary/hash, and bounded
   workflow goal;
-- named product connection and non-secret manifest fingerprint;
+- BOS connection identity and non-secret manifest fingerprint;
 - server-owned draft, audience, campaign, operation, and issue identities;
 - approval state and the exact approved content/audience hashes or versions;
 - stable idempotency keys and the last reconciled operation result;
