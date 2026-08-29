@@ -21,6 +21,10 @@ description: Implement application-neutral Business Operating System platform ch
 
 ## Required boundaries
 
+- Back every required file, marker, manifest field, boundary, and release
+  precondition with an automated test that exercises the real repository
+  shape. Fixture-only tests may supplement this coverage; they never replace
+  verification of required canonical files.
 - Implement every current product from its present contract and observable
   user journey. Never defer a required connection, capability, or workflow to
   an assumed future product, future package composition, or anticipated growth.
