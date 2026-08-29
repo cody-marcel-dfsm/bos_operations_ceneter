@@ -5,7 +5,7 @@
   "client": "codex",
   "application_name": "bos",
   "mcp_group_name": "platform",
-  "codex_app_id": "plugin_asdk_app_6a932992592081919cdc88c60e4ff2dd",
+  "codex_app_id": "asdk_app_6a932992592081919cdc88c60e4ff2dd",
   "connection_owner": "bos",
   "authentication": "oauth_2_1"
 }

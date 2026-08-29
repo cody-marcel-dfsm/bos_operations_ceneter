@@ -504,7 +504,7 @@ connector. External connector evidence never expands BOS identity or authority.
 Credentials and access authority remain outside customer configuration.
 Claude and ChatGPT/Codex authorize the named BOS resource through host-managed
 OAuth 2.1. Claude packages carry a credential-free remote MCP declaration.
-Codex packages carry a required `.app.json` entry whose stable `plugin_asdk_app_*`
+Codex packages carry a required `.app.json` entry whose durable `asdk_app_*`
 identifier refers to the registered BOS resource; Codex packages carry no
 `.mcp.json`. The hosts discover authorization metadata from the resource,
 collect consent, store and refresh the grant, and attach its resource-scoped
