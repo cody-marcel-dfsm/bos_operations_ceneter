@@ -96,7 +96,7 @@ release system for portable BOS skills and native remote MCP client adapters.
     `DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS`. The root Claude BOS plugin owns
     account-connector metadata with no packaged MCP declaration. The root
     ChatGPT/Codex BOS plugin contains `apps: "./.app.json"` and no `.mcp.json`
-    or `mcpServers`; its manifest records the stable `plugin_asdk_app_*`
+    or `mcpServers`; its manifest records the durable `asdk_app_*`
     technical identifier. Subservice plugins contain neither connection
     declaration. One host-managed BOS grant identifies the actor and available
     organizations; every request is evaluated against canonical application,

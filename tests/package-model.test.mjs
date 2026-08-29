@@ -1171,7 +1171,7 @@ test("package schema reserves runtime ownership for BOS", () => {
     runtime: "bos",
     application_name: "bos",
     mcp_group_name: "platform",
-    codex_app_id: "plugin_asdk_app_example123",
+    codex_app_id: "asdk_app_example123",
     default_prompts: []
   };
   assert.deepEqual(validateProduct(base), []);
@@ -1204,8 +1204,8 @@ test("package schema reserves runtime ownership for BOS", () => {
   const { codex_app_id: _appRemoved, ...unregistered } = base;
   assert.match(validateProduct(unregistered).join("\n"), /active Codex runtime requires codex_app_id/);
   assert.match(
-    validateProduct({ ...base, codex_app_id: "asdk_app_wrong" }).join("\n"),
-    /codex_app_id must be a plugin_asdk_app identifier/
+    validateProduct({ ...base, codex_app_id: "plugin_asdk_app_installation_wrapper" }).join("\n"),
+    /codex_app_id must be a durable asdk_app identifier/
   );
   assert.match(
     validateProduct({ ...base, name: "education-center" }).join("\n"),
@@ -1281,7 +1281,7 @@ test("disabled products are absent while active runtime products remain scoped",
   assert.deepEqual(app, {
     apps: {
       bos: {
-        id: "plugin_asdk_app_6a932992592081919cdc88c60e4ff2dd",
+        id: "asdk_app_6a932992592081919cdc88c60e4ff2dd",
         required: true
       }
     }

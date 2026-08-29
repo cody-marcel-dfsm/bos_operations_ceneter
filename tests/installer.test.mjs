@@ -67,7 +67,7 @@ const customerSettings = {
 
 const unusedCredentialEnvVar = "UNUSED_BOS_CREDENTIAL";
 const resourceGroupUrl = "https://dfsm.ai/mcp/apps/bos/platform";
-const codexAppId = "plugin_asdk_app_6a932992592081919cdc88c60e4ff2dd";
+const codexAppId = "asdk_app_6a932992592081919cdc88c60e4ff2dd";
 
 async function fakeCodex(_command, args) {
   if (args[0] === "mcp" && args[1] === "get") {
@@ -172,7 +172,7 @@ test("Codex OAuth installation rejects an unregistered app identifier", async ()
   await applyInstallationRaw({ home, product: "bos" });
   const appPath = join(installedProduct(home, "bos"), ".app.json");
   const app = JSON.parse(await readFile(appPath, "utf8"));
-  app.apps.bos.id = "asdk_app_6a932992592081919cdc88c60e4ff2dd";
+  app.apps.bos.id = "asdk_app_unregistered";
   await chmod(appPath, 0o644);
   await writeFile(appPath, JSON.stringify(app));
   await assert.rejects(
