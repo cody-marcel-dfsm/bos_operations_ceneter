@@ -30,7 +30,7 @@ this skill. Resume the original request automatically from confirmed cache state
 Use `bos-mcp-client` for authenticated context, live tool discovery, manifest
 refresh, same-task continuation, and provider authorization recovery. Use
 `education-center-service-routing` for every configured evidence source. Use
-only the installed `education-center` OAuth connection for runtime authority.
+only the installed BOS OAuth connection for runtime authority.
 BOS derives organization, application, installation, role, plugin, SendGrid
 binding, sender configuration, and credentials from the validated grant.
 
@@ -75,7 +75,7 @@ against a sanitized trace when validating an end-to-end client execution.
   or `delegated_role_id` as client inputs. Never use legacy filesystem tokens,
   repository-specific sender scripts, direct database access, raw SendGrid
   calls, browser authority, native Gmail/Calendar connectors, or another
-  product connection for this workflow.
+  BOS connection for this workflow.
 - Keep recipient addresses out of logs, continuation envelopes, result
   displays, and local diagnostics unless explicitly requested. Use server-owned
   contact identities or salted/tenant-scoped hashes in diagnostic artifacts.

@@ -78,8 +78,10 @@ before confirmation.
 ## Persist and complete
 
 After authorization, launch one settings mutation worker per independent
-plugin through `bos-plugin-settings`. Each worker uses its plugin's owning named
-product connection and returns a sanitized terminal result.
+plugin through `bos-plugin-settings`. Every worker uses the same authenticated
+BOS connection; the server evaluates the owning subservice, installation,
+plugin, role, and capability for its opaque selector and returns a sanitized
+terminal result.
 
 Atomically commit every completed server snapshot to the settings cache. Re-read
 the initialization inventory and required cache entries. Write the local

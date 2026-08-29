@@ -2,12 +2,5 @@ interface:
   display_name: "Education Center Instructor Operations"
   short_description: "Handle instructor lifecycle through BOS"
   default_prompt: "Use $education-center-instructor-operations to handle an instructor hiring, onboarding, teaching, or offboarding request through BOS."
-dependencies:
-  tools:
-    - type: "mcp"
-      value: "bos_education_center"
-      description: "BOS remote agent gateway for Education Center organization"
-      transport: "streamable_http"
-      url: "https://dfsm.ai/mcp/apps/leaddirector/education-center"
 policy:
   allow_implicit_invocation: true

@@ -180,12 +180,12 @@ test("Antigravity preflight preserves existing plugins when any active source is
         category: "test",
         authentication: "ON_USE",
         clients: ["gemini"],
-        includes: name === "education-center"
+        includes: name === "bos"
           ? ["platform/bos-mcp-client"]
           : ["platform/test"],
-        runtime: name === "education-center" ? "bos" : undefined,
-        application_name: name === "education-center" ? "leaddirector" : undefined,
-        mcp_group_name: name === "education-center" ? "education-center" : undefined,
+        runtime: name === "bos" ? "bos" : undefined,
+        application_name: name === "bos" ? "bos" : undefined,
+        mcp_group_name: name === "bos" ? "platform" : undefined,
         default_prompts: []
       })
     );
@@ -196,9 +196,10 @@ test("Antigravity preflight preserves existing plugins when any active source is
         name,
         version: "0.4.46",
         client: "gemini",
-        application_name: name === "education-center" ? "leaddirector" : undefined,
-        mcp_group_name: name === "education-center" ? "education-center" : undefined,
-        authentication: name === "education-center" ? "oauth_2_1" : "none"
+        connection_owner: "bos",
+        application_name: name === "bos" ? "bos" : undefined,
+        mcp_group_name: name === "bos" ? "platform" : undefined,
+        authentication: name === "bos" ? "oauth_2_1" : "bos_managed"
       })
     );
     await writeFile(
@@ -209,13 +210,13 @@ test("Antigravity preflight preserves existing plugins when any active source is
         description: `Test product. Version 0.4.46.`
       })
     );
-    if (name === "education-center") {
+    if (name === "bos") {
       await writeFile(
         join(extensionRoot, "mcp_config.json"),
         JSON.stringify({
           mcpServers: {
-            "education-center": {
-              serverUrl: "https://dfsm.ai/mcp/apps/leaddirector/education-center"
+            platform: {
+              serverUrl: "https://dfsm.ai/mcp/apps/bos/platform"
             },
             unexpected: { command: "unsafe" }
           }
@@ -269,7 +270,7 @@ test("Antigravity preflight preserves existing plugins when disabled inventory i
     const extensionRoot = join(fakeRepository, "clients", "gemini", "extensions", name);
     await mkdir(productRoot, { recursive: true });
     await mkdir(extensionRoot, { recursive: true });
-    const runtime = name === "education-center";
+    const runtime = name === "bos";
     await writeFile(
       join(productRoot, "product.json"),
       JSON.stringify({
@@ -285,8 +286,8 @@ test("Antigravity preflight preserves existing plugins when disabled inventory i
         release_status: "active",
         clients: ["gemini"],
         runtime: runtime ? "bos" : undefined,
-        application_name: runtime ? "leaddirector" : undefined,
-        mcp_group_name: runtime ? "education-center" : undefined,
+        application_name: runtime ? "bos" : undefined,
+        mcp_group_name: runtime ? "platform" : undefined,
         default_prompts: []
       })
     );
@@ -297,9 +298,10 @@ test("Antigravity preflight preserves existing plugins when disabled inventory i
         name,
         version: "0.4.46",
         client: "gemini",
-        application_name: runtime ? "leaddirector" : undefined,
-        mcp_group_name: runtime ? "education-center" : undefined,
-        authentication: runtime ? "oauth_2_1" : "none"
+        connection_owner: "bos",
+        application_name: runtime ? "bos" : undefined,
+        mcp_group_name: runtime ? "platform" : undefined,
+        authentication: runtime ? "oauth_2_1" : "bos_managed"
       })
     );
     await writeFile(
@@ -315,8 +317,8 @@ test("Antigravity preflight preserves existing plugins when disabled inventory i
         join(extensionRoot, "mcp_config.json"),
         JSON.stringify({
           mcpServers: {
-            "education-center": {
-              serverUrl: "https://dfsm.ai/mcp/apps/leaddirector/education-center"
+            platform: {
+              serverUrl: "https://dfsm.ai/mcp/apps/bos/platform"
             }
           }
         })

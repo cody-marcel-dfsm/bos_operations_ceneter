@@ -2,12 +2,5 @@ interface:
   display_name: "Education Center Parent Communications"
   short_description: "Handle parent calls, texts, and reviews"
   default_prompt: "Use $education-center-parent-communications to handle parent calls, texts, or reviews through BOS."
-dependencies:
-  tools:
-    - type: "mcp"
-      value: "bos_education_center"
-      description: "BOS remote agent gateway for Education Center organization"
-      transport: "streamable_http"
-      url: "https://dfsm.ai/mcp/apps/leaddirector/education-center"
 policy:
   allow_implicit_invocation: true

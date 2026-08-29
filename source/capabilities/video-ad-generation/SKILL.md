@@ -8,9 +8,9 @@ description: Generate and monitor a video advertisement from an approved brief t
 Generate video only through the BOS capability authorized for the active
 organization, installed application, and Video Ads plugin.
 
-Follow `bos-mcp-client` and use only the installed `video-ads` MCP connection.
-The host-managed, resource-scoped OAuth grant identifies the server-side
-principal; the named endpoint selects the Video Ads tool group.
+Follow `bos-mcp-client` and use only the installed BOS MCP connection. The
+host-managed, resource-scoped OAuth grant identifies the server-side principal;
+BOS resolves the Video Ads subservice and authorized tool set per request.
 
 ## Workflow
 

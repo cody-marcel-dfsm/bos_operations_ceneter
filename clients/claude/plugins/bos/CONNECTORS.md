@@ -1,13 +1,11 @@
 # Claude account connector
 
-This plugin uses the account-level Web connector named `education-center`.
+This plugin uses the account-level Web connector named `platform`.
 It must appear under **Customize → Connectors** with its own **Connect** control.
-The plugin intentionally contains no `.mcp.json` or `mcpServers` declaration;
-plugin-owned MCP declarations are session-scoped in Claude and appear as
-**Connects in sessions**.
+The plugin contains account-connector metadata and no plugin-level MCP declaration.
 
 For a private or development installation, an account owner adds a custom
-connector with the package-owned resource URL `https://dfsm.ai/mcp/apps/leaddirector/education-center`, then
+connector with the package-owned resource URL `https://dfsm.ai/mcp/apps/bos/platform`, then
 each authorized user completes BOS OAuth from **Customize → Connectors**.
 For customer distribution, publish the same resource in Anthropic's Connector
 Directory or provision it as an organization connector.

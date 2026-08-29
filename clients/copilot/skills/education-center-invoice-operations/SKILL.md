@@ -36,7 +36,7 @@ customer-facing output names the franchise or brand. Keep technical product,
 skill, route, server, environment-variable, tool, capability, authorization,
 and record identifiers unchanged.
 
-Use `bos_education_center` and follow the `bos-mcp-client` context workflow. Identify the
+Use the authenticated BOS connection and follow the `bos-mcp-client` context workflow. Identify the
 invoice system of record before using Gmail, Drive, or enrollment evidence.
 Use `bos-visual-output` for explicitly requested billing variances, child-day
 comparisons, exception counts, and multi-period invoice summaries. Never invoke

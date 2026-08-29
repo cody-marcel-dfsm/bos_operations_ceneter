@@ -26,6 +26,5 @@
     "composerIcon": "./assets/education-center-logo.png",
     "logo": "./assets/education-center-logo.png"
   },
-  "homepage": "https://dfsm.ai",
-  "apps": "./.app.json"
+  "homepage": "https://dfsm.ai"
 }

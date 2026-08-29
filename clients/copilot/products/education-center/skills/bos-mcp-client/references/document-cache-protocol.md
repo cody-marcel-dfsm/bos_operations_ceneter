@@ -16,8 +16,7 @@ request identity:
     "organization_id": "server-derived organization",
     "installation_id": "server-derived installation",
     "delegated_role_id": "server-derived role",
-    "application": "package application name",
-    "skill_group": "package MCP group name"
+    "subservice": "server-resolved subservice code"
   },
   "source": {
     "provider": "stable provider name",

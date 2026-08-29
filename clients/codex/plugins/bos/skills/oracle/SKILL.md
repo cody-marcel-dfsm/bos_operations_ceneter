@@ -27,6 +27,12 @@ review. Never answer BOS package architecture from memory alone.
   proposing a new abstraction.
 - Keep reusable BOS contracts in this repository and application-specific
   runtime or approval machinery in the owning application repository.
+- Evaluate products from their current contract. Never infer that a future
+  product, future package split, or anticipated growth supplies a missing
+  present capability.
+- Preserve one host-managed BOS authentication connection. Subservice plugins
+  contribute skills and server-evaluated capabilities through that connection;
+  they never own independent BOS logins or carry platform BOS traffic.
 - If source and Vault conflict, flag the conflict. The architecture and
   constitution control until an explicit decision updates them.
 
@@ -38,8 +44,12 @@ Review the completed diff after focused validation. Verify:
 - application-neutral platform behavior and correct specialization ownership;
 - Router-to-PO-to-GO mutation boundaries where service behavior is described;
 - credential-free tracked sources, generated artifacts, and logs;
-- one host-managed OAuth grant per Claude or ChatGPT/Codex runtime product
-  connection and BOS-hosted, installation-scoped provider authorization;
+- one host-managed BOS OAuth connection per user-facing client context, with
+  server-evaluated subservice, installation, plugin, role, capability, provider,
+  and tool authorization;
+- no independent BOS authentication owned by a subservice plugin and no
+  platform BOS operation routed through a subservice;
+- no present requirement deferred to assumed future product growth;
 - product manifest completeness and canonical-source/client-package parity;
 - deterministic builds, version consistency, tests, and extension preservation;
 - updated Vault knowledge when the change establishes a durable rule.

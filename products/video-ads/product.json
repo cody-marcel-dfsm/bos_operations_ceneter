@@ -28,9 +28,6 @@
     "capabilities/video-ad-generation",
     "capabilities/video-ad-drive-delivery"
   ],
-  "runtime": "bos",
-  "application_name": "leaddirector",
-  "mcp_group_name": "video-ads",
   "default_prompts": [
     "Turn this offer into a production-ready video ad brief.",
     "Generate a video ad from this approved brief.",

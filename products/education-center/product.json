@@ -12,7 +12,7 @@
   "logo": "assets/education-center-logo.png",
   "publisher": "Infinite State Machines LLC",
   "category": "Productivity",
-  "authentication": "ON_INSTALL",
+  "authentication": "ON_USE",
   "settings_template": "config/education-center.settings.template.json",
   "settings_initializer": "education-center-customer-initialization",
   "plugin_settings_initializer": "bos-plugin-settings-initialization",
@@ -42,10 +42,6 @@
     "verticals/education-center/education-center-student-operations",
     "verticals/education-center/education-center-trial-reconciliation"
   ],
-  "runtime": "bos",
-  "application_name": "leaddirector",
-  "mcp_group_name": "education-center",
-  "codex_app_id": "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
   "default_prompts": [
     "Initialize my education center, including its customer-facing brand name.",
     "Create today's education center operations plan.",

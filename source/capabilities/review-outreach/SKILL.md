@@ -6,7 +6,7 @@ description: Run and report Education Center Google Business Profile review outr
 # BOS Google Review Outreach
 
 Use `bos-mcp-client` for context and live tool discovery. Use only authenticated
-BOS MCP operations. On the packaged Education Center skill-group connection, omit
+BOS MCP operations. On the BOS connection, omit
 `org_id`, `app_code`, `installed_app_id`, and `delegated_role_id`; BOS derives
 them from the authenticated installation.
 Use `bos-visual-output` for campaign, cohort, rating, and completion reporting.

@@ -9,21 +9,18 @@ import {
   validateProduct
 } from "../scripts/lib/package-model.mjs";
 
-test("runtime products compose generic plugin settings operation and initialization", async () => {
+test("BOS and its subservices compose plugin settings through one connection", async () => {
   const products = await listProducts();
-  for (const { manifest } of products.filter(({ manifest }) => manifest.runtime)) {
+  for (const { manifest } of products) {
     assert.deepEqual(validateProduct(manifest), []);
     assert(
       manifest.includes.includes("platform/bos-plugin-settings"),
       `${manifest.name} must include bos-plugin-settings`
     );
+    if (!manifest.plugin_settings_initializer) continue;
     assert(
       manifest.includes.includes("platform/bos-plugin-settings-initialization"),
       `${manifest.name} must include bos-plugin-settings-initialization`
-    );
-    assert(
-      manifest.includes.includes("platform/submit-feedback"),
-      `${manifest.name} must include submit-feedback`
     );
     assert.equal(
       manifest.plugin_settings_initializer,

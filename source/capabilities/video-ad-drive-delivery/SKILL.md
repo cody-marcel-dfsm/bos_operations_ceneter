@@ -8,8 +8,9 @@ description: Deliver an approved generated video and traceable production metada
 Store an approved generation result through the Drive capability authorized in
 the same BOS organization and application context.
 
-Follow `bos-mcp-client` and use only the installed `video-ads` MCP connection.
-Its bearer principal supplies all server-derived tenant and application scope.
+Follow `bos-mcp-client` and use only the installed BOS MCP connection. Its
+bearer principal supplies all server-derived tenant and application scope, and
+BOS resolves the Video Ads subservice for each tool.
 
 ## Workflow
 

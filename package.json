@@ -11,6 +11,7 @@
     "build:packages": "node scripts/build-packages.mjs",
     "build": "npm run build:packages",
     "check": "node scripts/check-package.mjs",
+    "contract:check": "node scripts/verify-single-bos-contract.mjs --format json",
     "inventory": "node scripts/inventory-skills.mjs",
     "install:inspect": "node scripts/install-package.mjs inspect",
     "install:plan": "node scripts/install-package.mjs plan",
@@ -22,7 +23,7 @@
     "dev:link:codex": "node scripts/link-codex-development.mjs",
     "release": "npm run release:check",
     "test": "node --test tests/*.test.mjs",
-    "release:check": "npm run build && npm run check && npm test"
+    "release:check": "npm run build && npm run check && npm run contract:check && npm test"
   },
   "engines": {
     "node": ">=20"

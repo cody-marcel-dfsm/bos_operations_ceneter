@@ -27,7 +27,7 @@ this skill. Resume the original request automatically from confirmed cache state
 
 # Education Center Agent Calls
 
-Use the named `education-center` MCP connection and follow `bos-mcp-client`
+Use the authenticated BOS MCP connection and follow `bos-mcp-client`
 for context validation, manifest refresh, transport recovery, and provider
 authorization recovery. Resolve source routing and customer-facing terminology
 through `education-center-service-routing`.

@@ -21,6 +21,17 @@ description: Implement application-neutral Business Operating System platform ch
 
 ## Required boundaries
 
+- Implement every current product from its present contract and observable
+  user journey. Never defer a required connection, capability, or workflow to
+  an assumed future product, future package composition, or anticipated growth.
+- BOS owns one host-managed OAuth connection per user-facing client context.
+  Subservice plugins use that existing BOS connection and never register,
+  borrow, or require another BOS login. The server evaluates product,
+  installation, plugin, role, capability, and provider scope for every request.
+- Keep transport ownership separate from capability ownership. A subservice
+  plugin may contribute skills and server capabilities without owning the BOS
+  transport. Never route platform BOS operations through Education Center,
+  CRM, Marketing Director, or another subservice.
 - Derive authority from authenticated context and canonical installed-app
   records.
 - Treat request identifiers as selectors that require authorization.
@@ -29,6 +40,10 @@ description: Implement application-neutral Business Operating System platform ch
 - Preserve idempotency for mutations and migrations.
 - Keep application-specific paths, terminology, tests, and release gates in
   application specialization skills.
+
+Treat a passing implementation that depends on another product's connection or
+on an unimplemented future product as incomplete. Record the missing current
+capability explicitly and block release until its present owner implements it.
 
 Report changed files, validation results, migration effects, and remaining
 risks. Require independent architecture review when the owning repository

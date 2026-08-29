@@ -5,9 +5,11 @@ description: Read and change typed BOS plugin settings through native client con
 
 # BOS Plugin Settings
 
-Use the plugin's owning named BOS product connection. This skill operates
+Use the single root BOS connection. This skill operates
 server-owned plugin configuration and the display-safe local replica. It never
-edits package files, customer extensions, or provider credentials.
+edits package files, customer extensions, or provider credentials. The server
+resolves the selected subservice and plugin from opaque selectors and canonical
+state; the client never authenticates again for that subservice.
 
 Read [references/settings-operation-contract.md](references/settings-operation-contract.md)
 before changing a setting or handling an update failure.

@@ -51,7 +51,7 @@ for (const entry of await readdir(productsRoot, { withFileTypes: true })) {
   const extensionRoot = join(extensionsRoot, name);
   const metadata = await readJson(join(extensionRoot, ".bos-product.json"));
   const plugin = await readJson(join(extensionRoot, "plugin.json"));
-  const expectedAuthentication = product.runtime ? "oauth_2_1" : "none";
+  const expectedAuthentication = product.runtime ? "oauth_2_1" : "bos_managed";
   const expectedMetadata = {
     schema_version: "1",
     name,
@@ -59,6 +59,7 @@ for (const entry of await readdir(productsRoot, { withFileTypes: true })) {
     client: "gemini",
     ...(product.application_name ? { application_name: product.application_name } : {}),
     ...(product.mcp_group_name ? { mcp_group_name: product.mcp_group_name } : {}),
+    connection_owner: "bos",
     authentication: expectedAuthentication
   };
 
@@ -78,7 +79,7 @@ for (const entry of await readdir(productsRoot, { withFileTypes: true })) {
   } else {
     try {
       await access(join(extensionRoot, "mcp_config.json"));
-      throw new Error(`skills-only Antigravity product ${name} declares MCP configuration`);
+      throw new Error(`BOS subservice ${name} declares an additional MCP configuration`);
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
     }

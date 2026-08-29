@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const projectRoot = resolve(import.meta.dirname, "..");
-const defaultProduct = "education-center";
+const defaultProduct = "bos";
 
 function defaultRun(command, args, { capture = false } = {}) {
   const result = spawnSync(command, args, {
@@ -146,15 +146,15 @@ export async function installClaudeLocal({
   }
 
   const completionMessage = productMetadata.connection_scope === "claude_account"
-    ? `Connect the ${productMetadata.mcp_group_name} account-level Web connector under Customize > Connectors, then complete BOS sign-in.`
-    : "This is a skills-only plugin and requires no BOS connector.";
+    ? "Connect the BOS account-level Web connector under Customize > Connectors, then complete BOS sign-in once."
+    : "This subservice uses the existing BOS connector and requires no additional BOS sign-in.";
   process.stdout.write(`Installed ${selector}. ${completionMessage}\n`);
   return {
     marketplace: marketplace.name,
     marketplaceRoot,
     product,
     selector,
-    connectionScope: productMetadata.connection_scope ?? "none",
+    connectionScope: productMetadata.connection_scope ?? "bos_managed",
     resourceUrl: productMetadata.resource_url,
     installed: true
   };

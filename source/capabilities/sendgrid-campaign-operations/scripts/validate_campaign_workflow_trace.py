@@ -98,7 +98,7 @@ def validate(trace: dict[str, Any]) -> list[str]:
             errors.append(message)
 
     require(trace.get("schema_version") == SCHEMA, "invalid schema_version")
-    require(trace.get("connection") == "education-center", "connection must be education-center")
+    require(trace.get("connection") == "bos", "connection must be bos")
     require(trace.get("context_verified") is True, "authenticated BOS context was not verified")
     require(trace.get("same_task_continuation_supported") is True, "same-task continuation is not supported")
 

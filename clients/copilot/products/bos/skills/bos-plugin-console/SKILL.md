@@ -11,15 +11,16 @@ helper, start a local process or service, or persist the returned snapshot.
 
 ## Display
 
-1. Use the installed BOS product connections already present in the client's
-   MCP context. Never inspect the local filesystem or invoke client command-line
+1. Use the single installed BOS connection already present in the client's MCP
+   context. Never inspect the local filesystem or invoke client command-line
    plugin inventory for this view.
-2. For each available named product connection, call `bos_get_context`, use the
-   server-marked default role context, and call `bos_list_plugin_services` with
-   only its opaque `context_id`.
-3. Keep every product connection as an independent authorization boundary.
-   Never substitute one connection for another or send tenant, organization,
-   installation, role, credential, or raw plugin identifiers.
+2. Call `bos_get_context` once through BOS, use the server-marked default role
+   context, and call `bos_list_plugin_services` with only its opaque
+   `context_id`.
+3. Let the server evaluate every product and plugin row from canonical
+   installation, enablement, role, capability, and provider state. Never send
+   tenant, organization, installation, role, credential, or raw plugin
+   identifiers, and never call through a subservice connection.
 4. Pass the server-returned `structuredContent` directly to the client's native
    interactive content surface. The server owns row order, labels, status
    vocabulary, display-safe properties, action availability, and optimistic
@@ -46,8 +47,9 @@ A row with a valid connection action displays **Connect**. Selecting it calls
 `bos_begin_plugin_service_connection` with the latest opaque `context_id`,
 `plugin_ref`, and `service_ref` from that same response.
 
-- For a missing product grant, activate that product connection's host-native
-  **Connect**, **Sign in**, or **Authenticate** action.
+- For a missing BOS grant, activate the root BOS connection's host-native
+  **Connect**, **Sign in**, or **Authenticate** action. Subservice rows never
+  request another BOS login.
 - For a provider grant, use the BOS-returned URL elicitation or resource link.
   The customer signs in or enters a credential only on the provider or
   BOS-hosted secure page.
@@ -60,7 +62,7 @@ provider payloads in chat, client files, or local storage.
 ## Enable or disable
 
 The **Enabled** toggle and an equivalent user request call
-`bos_set_plugin_enabled` through the plugin's owning product connection. Send
+`bos_set_plugin_enabled` through the BOS connection. Send
 the latest opaque `context_id`, `plugin_ref`, complete target boolean, server
 revision, and stable idempotency key.
 
