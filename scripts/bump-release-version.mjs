@@ -105,16 +105,14 @@ export async function bumpReleaseVersion({ root = scriptRoot, requested = "patch
   );
   const nextLicensing = replaceExactly(
     licensing,
-    `| Education Center | Active package, version \`${current}\` |`,
-    `| Education Center | Active package, version \`${next}\` |`,
+    `Current BOS Operations Center release: \`${current}\`.`,
+    `Current BOS Operations Center release: \`${next}\`.`,
     licensingPath
   );
-  const currentColumns = activeProducts.map(() => current).join(" | ");
-  const nextColumns = activeProducts.map(() => next).join(" | ");
   const nextMarketplace = replaceExactly(
     marketplace,
-    `| Current version | ${currentColumns} |`,
-    `| Current version | ${nextColumns} |`,
+    `Current BOS marketplace package release: \`${current}\`.`,
+    `Current BOS marketplace package release: \`${next}\`.`,
     marketplacePath
   );
 

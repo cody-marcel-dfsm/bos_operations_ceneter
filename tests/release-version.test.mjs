@@ -41,11 +41,11 @@ test("release bump updates canonical active versions and current-release documen
   );
   await writeFile(
     join(root, "Vault", "docs", "bos-product-licensing-user-experience.md"),
-    "| Education Center | Active package, version `0.4.27` | Active |\n"
+    "Current BOS Operations Center release: `0.4.27`.\n"
   );
   await writeFile(
     join(root, "Vault", "docs", "marketplace-submission-assets.md"),
-    "| Current version | 0.4.27 | 0.4.27 | 0.1.3 | Ready |\n"
+    "Current BOS marketplace package release: `0.4.27`.\n"
   );
 
   const result = await bumpReleaseVersion({ root });
@@ -66,7 +66,11 @@ test("release bump updates canonical active versions and current-release documen
   );
   assert.match(await readFile(join(root, "README.md"), "utf8"), /release: `0\.4\.28`\. If `0\.4\.27`/);
   assert.match(
+    await readFile(join(root, "Vault", "docs", "bos-product-licensing-user-experience.md"), "utf8"),
+    /Current BOS Operations Center release: `0\.4\.28`\./
+  );
+  assert.match(
     await readFile(join(root, "Vault", "docs", "marketplace-submission-assets.md"), "utf8"),
-    /0\.4\.28 \| 0\.4\.28 \| 0\.1\.3/
+    /Current BOS marketplace package release: `0\.4\.28`\./
   );
 });
