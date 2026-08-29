@@ -1,11 +1,16 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.51",
+  "version": "0.4.52",
   "client": "codex",
   "application_name": "bos",
   "mcp_group_name": "platform",
   "codex_app_id": "asdk_app_6a932992592081919cdc88c60e4ff2dd",
+  "runtime_verification_tools": [
+    "bos_get_authorization_status",
+    "bos_get_context",
+    "bos_resume_operation"
+  ],
   "connection_owner": "bos",
   "authentication": "oauth_2_1"
 }

@@ -6,15 +6,19 @@ native manifest and MCP format required by each Google surface.
 
 ## Gemini CLI
 
-Install both product extensions from a terminal:
+Cleanly install both product extensions from a terminal:
 
 ```bash
-gemini extensions install clients/gemini/extensions/bos
-gemini extensions install clients/gemini/extensions/education-center
+npm run clean-install:gemini -- --confirmation "DELETE ALL BOS GEMINI EXTENSION STATE"
 ```
 
+The equivalent native first-install commands are
+`gemini extensions install clients/gemini/extensions/bos` and
+`gemini extensions install clients/gemini/extensions/education-center`.
+
 Restart Gemini CLI. Run `/mcp auth platform`, complete BOS sign-in once, then
-run `/extensions list` and `/skills list` to verify the extensions and bundled skills.
+run `npm run install:verify:gemini-runtime`, `/extensions list`, and `/skills list`
+to verify the native installation and bundled skills.
 
 ## Antigravity 2.0 Desktop
 
@@ -23,7 +27,8 @@ deletes prior BOS product entries, including local customizations, without backu
 locates this repository from its own file path, and requires typed confirmation of
 `DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS` before changing files,
 and creates one product symlink in `~/.gemini/config/plugins/` for each active product.
-After each Git pull, restart Antigravity, open Settings > Customizations, and
+After each Git pull, restart Antigravity, run `npm run install:verify:antigravity-runtime`,
+open Settings > Customizations, and
 select Authenticate for the `platform` BOS MCP server. Complete BOS sign-in once.
 
 The Gemini package contains no BOS key, token, authorization header, or client secret.

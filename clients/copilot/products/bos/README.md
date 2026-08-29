@@ -11,3 +11,6 @@ GitHub Copilot cloud agent and code review cannot use this remote OAuth
 connection until those hosts support OAuth-authenticated MCP servers.
 
 This package owns the single BOS connection at `/mcp/apps/bos/platform`.
+
+Verify this product in the target repository with `npm run install:verify:copilot-runtime -- --target <repository> --product bos`.
+Copilot reads repository configuration directly and has no BOS package-cache layer.

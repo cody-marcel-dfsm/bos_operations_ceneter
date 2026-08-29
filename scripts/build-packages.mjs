@@ -68,6 +68,7 @@ for (const { product, skills } of resolved) {
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
       codex_app_id: product.codex_app_id,
+      runtime_verification_tools: product.runtime_verification_tools,
       connection_owner: "bos",
       authentication: product.runtime ? "oauth_2_1" : "bos_managed"
     });
@@ -250,6 +251,9 @@ for (const { product, skills } of resolved) {
           "Install and authenticate the BOS package once. This subservice adds workflows",
           "through the existing BOS connection and registers no additional MCP server."
         ]),
+        "",
+        `Verify this product in the target repository with \`npm run install:verify:copilot-runtime -- --target <repository> --product ${product.name}\`.`,
+        "Copilot reads repository configuration directly and has no BOS package-cache layer.",
         ""
       ].join("\n")
     );
@@ -311,7 +315,9 @@ for (const { product, skills } of resolved) {
           "through the existing BOS connection and registers no additional MCP server."
         ]),
         "",
-        "Restart Gemini CLI after installation or update. Run `/extensions list` to",
+        "For a bounded recovery, run `npm run clean-install:gemini -- --confirmation",
+        "\"DELETE ALL BOS GEMINI EXTENSION STATE\"`. Restart Gemini CLI after installation",
+        "or update. Run `npm run install:verify:gemini-runtime`, `/extensions list`, and",
         "confirm the extension is enabled and `/skills list` to confirm its skills are",
         "discoverable. Use `gemini extensions update " + product.name + "` for later releases.",
         "",
@@ -324,7 +330,7 @@ for (const { product, skills } of resolved) {
         "It resolves the repository from the installer's own location, independent of the",
         "current working directory. Before changing files, it displays the deletion warning and",
         "requires `DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS` as typed confirmation.",
-        "After each Git pull, restart Antigravity.",
+        "After each Git pull, restart Antigravity and run `npm run install:verify:antigravity-runtime`.",
         ...(product.runtime ? [
           `Open Settings > Customizations, find the \`${product.mcp_group_name}\` MCP server,`,
           "select Authenticate, complete BOS sign-in in the browser, and return to Antigravity.",
@@ -366,6 +372,8 @@ await writeFile(
     "skills into the target repository's `.agents/skills` directory. Install the BOS",
     "product once for the shared `.github/mcp.json` connection. Subservice products",
     "add workflows through that connection and include no additional MCP registration.",
+    "Run `npm run install:verify:copilot-runtime -- --target <repository> --product <product>`",
+    "to compare the repository files directly with the selected generated package.",
     ""
   ].join("\n")
 );
@@ -380,15 +388,19 @@ await writeFile(
     "",
     "## Gemini CLI",
     "",
-    "Install both product extensions from a terminal:",
+    "Cleanly install both product extensions from a terminal:",
     "",
     "```bash",
-    "gemini extensions install clients/gemini/extensions/bos",
-    "gemini extensions install clients/gemini/extensions/education-center",
+    "npm run clean-install:gemini -- --confirmation \"DELETE ALL BOS GEMINI EXTENSION STATE\"",
     "```",
     "",
+    "The equivalent native first-install commands are",
+    "`gemini extensions install clients/gemini/extensions/bos` and",
+    "`gemini extensions install clients/gemini/extensions/education-center`.",
+    "",
     "Restart Gemini CLI. Run `/mcp auth platform`, complete BOS sign-in once, then",
-    "run `/extensions list` and `/skills list` to verify the extensions and bundled skills.",
+    "run `npm run install:verify:gemini-runtime`, `/extensions list`, and `/skills list`",
+    "to verify the native installation and bundled skills.",
     "",
     "## Antigravity 2.0 Desktop",
     "",
@@ -397,7 +409,8 @@ await writeFile(
     "locates this repository from its own file path, and requires typed confirmation of",
     "`DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS` before changing files,",
     "and creates one product symlink in `~/.gemini/config/plugins/` for each active product.",
-    "After each Git pull, restart Antigravity, open Settings > Customizations, and",
+    "After each Git pull, restart Antigravity, run `npm run install:verify:antigravity-runtime`,",
+    "open Settings > Customizations, and",
     "select Authenticate for the `platform` BOS MCP server. Complete BOS sign-in once.",
     "",
     "The Gemini package contains no BOS key, token, authorization header, or client secret.",

@@ -12,6 +12,7 @@ import { basename, join, relative, resolve, sep } from "node:path";
 export const root = resolve(import.meta.dirname, "../..");
 export const supportedClients = new Set(["codex", "claude", "copilot", "gemini"]);
 export const productNamePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+export const publicToolNamePattern = /^[a-z][a-z0-9_]*$/;
 
 export async function readJson(path) {
   return JSON.parse(await readFile(path, "utf8"));
@@ -66,6 +67,7 @@ export function validateProduct(manifest, path = "product.json") {
     "settings_template",
     "settings_initializer",
     "plugin_settings_initializer",
+    "runtime_verification_tools",
     "default_prompts"
   ]);
   for (const field of Object.keys(manifest)) {
@@ -169,6 +171,22 @@ export function validateProduct(manifest, path = "product.json") {
     )
   ) {
     failures.push(`${path}: default_prompts must contain up to 3 strings`);
+  }
+  const runtimeVerificationTools = manifest.runtime_verification_tools;
+  if (
+    (manifest.release_status === "active" && !Array.isArray(runtimeVerificationTools)) ||
+    (runtimeVerificationTools !== undefined && (
+      !Array.isArray(runtimeVerificationTools) ||
+      runtimeVerificationTools.length === 0 ||
+      runtimeVerificationTools.some(
+        (tool) => typeof tool !== "string" || !publicToolNamePattern.test(tool)
+      ) ||
+      new Set(runtimeVerificationTools).size !== runtimeVerificationTools.length
+    ))
+  ) {
+    failures.push(
+      `${path}: runtime_verification_tools must contain unique public tool names`
+    );
   }
   if (
     manifest.application_name !== undefined &&

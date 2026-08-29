@@ -1172,6 +1172,7 @@ test("package schema reserves runtime ownership for BOS", () => {
     application_name: "bos",
     mcp_group_name: "platform",
     codex_app_id: "asdk_app_example123",
+    runtime_verification_tools: ["bos_get_context"],
     default_prompts: []
   };
   assert.deepEqual(validateProduct(base), []);
@@ -1648,6 +1649,9 @@ test("every product and client ships tenant extension management metadata", asyn
         name: manifest.name,
         version: manifest.version,
         client,
+        ...(client === "codex" ? {
+          runtime_verification_tools: manifest.runtime_verification_tools
+        } : {}),
         ...(manifest.runtime ? {
           application_name: manifest.application_name,
           mcp_group_name: manifest.mcp_group_name,
