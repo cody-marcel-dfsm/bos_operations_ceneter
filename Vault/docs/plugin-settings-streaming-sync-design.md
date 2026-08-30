@@ -25,6 +25,13 @@ the confirmed change through the BOS connection, and
 keep an authority-scoped local snapshot synchronized with canonical service
 state.
 
+Broad requests for plugin settings, server settings, connection state,
+enablement, services, or display-safe properties are inventory requests. They
+route to the memory-only BOS Plugin Console before this typed-settings workflow
+and never trigger customer-settings initialization or cache access. This
+workflow starts only from one plugin's **Settings** action or an unambiguous
+request for one named plugin property.
+
 Business hours are the reference workflow. The client reads the organization
 website established in its customer-owned client settings, retrieves the
 currently published hours during client initialization, presents those hours

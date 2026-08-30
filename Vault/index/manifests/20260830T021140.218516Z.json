@@ -1,7 +1,7 @@
 {
-  "indexed_at": "20260830T021726.925323Z",
+  "indexed_at": "20260830T021140.218516Z",
   "schema_version": "bos-vault-manifest/v1",
-  "source_count": 62,
+  "source_count": 60,
   "sources": {
     "Vault/README.md": {
       "bytes": 1032,
@@ -24,12 +24,12 @@
       "sha256": "63877da78ab0243a38979f56d50510a338d470fa26a4a100e42579d3f390794e"
     },
     "Vault/docs/architecture.md": {
-      "bytes": 21260,
-      "sha256": "84a9e13c27f75259032d5895b1bbc54be548dee22df3ab1f3bd9c8debe58ec82"
+      "bytes": 20675,
+      "sha256": "35cccd68e25ec1323ceefcfc862dc1dbacdc932e0ccff67ce5c3e0d14feb04df"
     },
     "Vault/docs/bos-product-licensing-user-experience.md": {
       "bytes": 1377,
-      "sha256": "dbbda8d692091cc5b2ee48dbee8aec9de700d1a7d63585edee2cc4721884f6c7"
+      "sha256": "0f34e381c8f4a35ecfb1838a599e1558138aeac343e09b105084864b2ad1a6f1"
     },
     "Vault/docs/marketplace-agent-harness-plan.md": {
       "bytes": 1883,
@@ -37,7 +37,7 @@
     },
     "Vault/docs/marketplace-submission-assets.md": {
       "bytes": 1198,
-      "sha256": "b606decf224af8ee8959b2d748e1712530e2b60f21f0b834dc3739b2d458132f"
+      "sha256": "5f069ba21a4a8496afcf881105a9e449e62706c65b91d78da820ebaf642d84aa"
     },
     "Vault/docs/my-crm-developer-platform-work-matrix.md": {
       "bytes": 810,
@@ -48,8 +48,8 @@
       "sha256": "de384b4b0d2125ea533e1a3fd747fb1b66f53207180a21d0e70914e1c71b5b4b"
     },
     "Vault/docs/plugin-settings-streaming-sync-design.md": {
-      "bytes": 43818,
-      "sha256": "00ed7447d653def22c283bc93d951d6d3d344f8fbc17ba23604879f0f96f5d5c"
+      "bytes": 43399,
+      "sha256": "fb688689e9e3f5fcccc0873f0ac411f9371e140c994643eb8fe54346c0e63541"
     },
     "Vault/reviews/2026-08-09-customer-skill-extension-v2.md": {
       "bytes": 3182,
@@ -151,10 +151,6 @@
       "bytes": 1199,
       "sha256": "61fd42e224d0b8f2cb40a6e856f17a0463d4513597dbed5c551ceb0e53650b4c"
     },
-    "Vault/reviews/2026-08-29-plugin-console-initialization-routing.md": {
-      "bytes": 1891,
-      "sha256": "7dc6bbeac17b920e9b0cb56711d77fd8f72bf6639a60a3142776b592092b41cc"
-    },
     "Vault/reviews/2026-08-29-release-0.4.53.md": {
       "bytes": 2492,
       "sha256": "75c29c992ea8f08d4e33bc5d7515deb94209be6f0f9ca0bb2d649b4fdf647cf6"
@@ -170,10 +166,6 @@
     "Vault/reviews/2026-08-29-release-0.4.56.md": {
       "bytes": 2468,
       "sha256": "70c292ab878f8082bea5788c38cd0069df3c69a5d18aea29690e56c6f8d63199"
-    },
-    "Vault/reviews/2026-08-29-release-0.4.57.md": {
-      "bytes": 2266,
-      "sha256": "1192b61a4212d7a46014f55c21181aa14c02297cb5833d629e3a1beb41a4feee"
     },
     "Vault/schemas/decision-record.md": {
       "bytes": 439,
@@ -196,8 +188,8 @@
       "sha256": "f83bbe0c4179b651f033f21fb2725b2a4efb7ed7484266afdd3b48f546f63c4b"
     },
     "Vault/specs/plugin-service-console.md": {
-      "bytes": 9318,
-      "sha256": "2910a112663bf1dafdae250e1480a5a411580f8e73c7ae7942b6838caf077426"
+      "bytes": 8855,
+      "sha256": "cbbdf8c6f100e671f1ea09b1aed069837d0f95c2b4fa9a87fc69a6bd8ebb59b5"
     },
     "Vault/specs/role-aware-mcp-client.md": {
       "bytes": 5669,

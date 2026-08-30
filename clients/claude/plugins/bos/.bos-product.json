@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.56",
+  "version": "0.4.57",
   "client": "claude",
   "application_name": "bos",
   "mcp_group_name": "platform",

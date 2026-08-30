@@ -3,28 +3,6 @@ name: bos-plugin-settings
 description: Read and change typed BOS plugin settings through native client controls or conversation, using authority-scoped cache, confirmed server mutations, bounded recovery, and feedback-ready failures.
 ---
 
-
-## Product initialization preflight
-
-Before performing this skill's workflow, preserve the pending request and
-complete the product's host-managed BOS authentication. Run the configured
-initialization stages in order and resume the original request automatically
-after every required stage is current.
-
-First validate the customer-owned `config/customer-settings.json` against
-`config/customer-settings.template.json`. Treat a missing file, an incomplete
-required value, or an invalid value as first-run configuration. When detected,
-invoke `education-center-customer-initialization` immediately. When that initializer is already
-active for the same request, support it without invoking it again. Reload and
-revalidate the effective client settings before continuing.
-
-After client settings are current, validate the server plugin-settings
-initialization epoch, required canonical field states, and local completion
-receipt. Invoke `bos-plugin-settings-initialization` when the receipt is missing or
-stale, a required field is unset or invalid partial, or the server schema changed.
-Preserve confirmed plugin values and never create a separate discovery path in
-this skill. Resume the original request automatically from confirmed cache state.
-
 # BOS Plugin Settings
 
 Use the single root BOS connection. This skill operates
@@ -35,6 +13,19 @@ state; the client never authenticates again for that subservice.
 
 Read [references/settings-operation-contract.md](references/settings-operation-contract.md)
 before changing a setting or handling an update failure.
+
+## Route before preflight
+
+A broad request for BOS plugin settings, server settings, connection status,
+enablement, services, or display properties belongs to `bos-plugin-console`.
+Invoke that skill immediately through the root BOS connection. This routing
+happens before product customer initialization, plugin-settings initialization,
+filesystem access, or settings-cache access, so the response remains an
+in-memory status view in the active client.
+
+Continue below only for a **Settings** action on one server-returned plugin or
+an unambiguous request to read or change one named plugin property. A specific
+field that is required and unset may then invoke the initialization workflow.
 
 ## Read
 

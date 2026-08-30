@@ -1,7 +1,7 @@
 {
-  "indexed_at": "20260830T021726.925323Z",
+  "indexed_at": "20260830T021431.119120Z",
   "schema_version": "bos-vault-manifest/v1",
-  "source_count": 62,
+  "source_count": 60,
   "sources": {
     "Vault/README.md": {
       "bytes": 1032,
@@ -24,12 +24,12 @@
       "sha256": "63877da78ab0243a38979f56d50510a338d470fa26a4a100e42579d3f390794e"
     },
     "Vault/docs/architecture.md": {
-      "bytes": 21260,
-      "sha256": "84a9e13c27f75259032d5895b1bbc54be548dee22df3ab1f3bd9c8debe58ec82"
+      "bytes": 21256,
+      "sha256": "e07cac23ea3cd919dea9448b7a73d99ee294d7bbe01bb29a3b1f137d02d263b1"
     },
     "Vault/docs/bos-product-licensing-user-experience.md": {
       "bytes": 1377,
-      "sha256": "dbbda8d692091cc5b2ee48dbee8aec9de700d1a7d63585edee2cc4721884f6c7"
+      "sha256": "0f34e381c8f4a35ecfb1838a599e1558138aeac343e09b105084864b2ad1a6f1"
     },
     "Vault/docs/marketplace-agent-harness-plan.md": {
       "bytes": 1883,
@@ -37,7 +37,7 @@
     },
     "Vault/docs/marketplace-submission-assets.md": {
       "bytes": 1198,
-      "sha256": "b606decf224af8ee8959b2d748e1712530e2b60f21f0b834dc3739b2d458132f"
+      "sha256": "5f069ba21a4a8496afcf881105a9e449e62706c65b91d78da820ebaf642d84aa"
     },
     "Vault/docs/my-crm-developer-platform-work-matrix.md": {
       "bytes": 810,
@@ -151,10 +151,6 @@
       "bytes": 1199,
       "sha256": "61fd42e224d0b8f2cb40a6e856f17a0463d4513597dbed5c551ceb0e53650b4c"
     },
-    "Vault/reviews/2026-08-29-plugin-console-initialization-routing.md": {
-      "bytes": 1891,
-      "sha256": "7dc6bbeac17b920e9b0cb56711d77fd8f72bf6639a60a3142776b592092b41cc"
-    },
     "Vault/reviews/2026-08-29-release-0.4.53.md": {
       "bytes": 2492,
       "sha256": "75c29c992ea8f08d4e33bc5d7515deb94209be6f0f9ca0bb2d649b4fdf647cf6"
@@ -170,10 +166,6 @@
     "Vault/reviews/2026-08-29-release-0.4.56.md": {
       "bytes": 2468,
       "sha256": "70c292ab878f8082bea5788c38cd0069df3c69a5d18aea29690e56c6f8d63199"
-    },
-    "Vault/reviews/2026-08-29-release-0.4.57.md": {
-      "bytes": 2266,
-      "sha256": "1192b61a4212d7a46014f55c21181aa14c02297cb5833d629e3a1beb41a4feee"
     },
     "Vault/schemas/decision-record.md": {
       "bytes": 439,

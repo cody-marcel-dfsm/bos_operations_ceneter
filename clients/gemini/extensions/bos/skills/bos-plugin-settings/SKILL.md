@@ -14,6 +14,19 @@ state; the client never authenticates again for that subservice.
 Read [references/settings-operation-contract.md](references/settings-operation-contract.md)
 before changing a setting or handling an update failure.
 
+## Route before preflight
+
+A broad request for BOS plugin settings, server settings, connection status,
+enablement, services, or display properties belongs to `bos-plugin-console`.
+Invoke that skill immediately through the root BOS connection. This routing
+happens before product customer initialization, plugin-settings initialization,
+filesystem access, or settings-cache access, so the response remains an
+in-memory status view in the active client.
+
+Continue below only for a **Settings** action on one server-returned plugin or
+an unambiguous request to read or change one named plugin property. A specific
+field that is required and unset may then invoke the initialization workflow.
+
 ## Read
 
 1. Call `bos_get_context`, select the server-marked default interactive role,
