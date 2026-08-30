@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.53",
+  "version": "0.4.54",
   "client": "codex",
   "application_name": "bos",
   "mcp_group_name": "platform",

@@ -1387,22 +1387,7 @@ test("Claude distribution is a marketplace of self-contained plugins", async () 
   assert.match(educationCenterReadme, /minimum-necessary disclosure/);
   assert.match(educationCenterReadme, /https:\/\/dfsm\.ai\/apps\/bos\/privacy\.html/);
 
-  const repositoryMarketplace = JSON.parse(
-    await readFile(`${root}/.claude-plugin/marketplace.json`, "utf8")
-  );
-  assert.equal(repositoryMarketplace.name, "bos-education-center");
-  assert.equal(
-    repositoryMarketplace.plugins.every(({ version }) => version === undefined),
-    true,
-    "repository Claude marketplace entries must not duplicate plugin.json versions"
-  );
-  assert.deepEqual(
-    repositoryMarketplace.plugins.map(({ name, source }) => ({ name, source })),
-    marketplace.plugins.map(({ name }) => ({
-      name,
-      source: `./clients/claude/plugins/${name}`
-    }))
-  );
+  await assert.rejects(access(`${root}/.claude-plugin/marketplace.json`), /ENOENT/);
 
   const educationCenterManifest = JSON.parse(
     await readFile(
@@ -1855,7 +1840,7 @@ test("desktop marketplace versions match the repository release", async () => {
     "utf8"
   ));
   const claudeMarketplace = JSON.parse(await readFile(
-    `${root}/.claude-plugin/marketplace.json`,
+    `${root}/clients/claude/.claude-plugin/marketplace.json`,
     "utf8"
   ));
 
@@ -1880,13 +1865,13 @@ test("desktop marketplace versions match the repository release", async () => {
   }
 });
 
-test("repository marketplaces expose native Claude and Codex desktop packages", async () => {
+test("generated client marketplaces expose native Claude and Codex desktop packages", async () => {
   const codex = JSON.parse(await readFile(
-    `${root}/.agents/plugins/marketplace.json`,
+    `${root}/clients/codex/.agents/plugins/marketplace.json`,
     "utf8"
   ));
   const claude = JSON.parse(await readFile(
-    `${root}/.claude-plugin/marketplace.json`,
+    `${root}/clients/claude/.claude-plugin/marketplace.json`,
     "utf8"
   ));
   assert.deepEqual(codex.plugins.map(({ name, source, policy }) => ({
@@ -1896,20 +1881,69 @@ test("repository marketplaces expose native Claude and Codex desktop packages", 
   })), [
     {
       name: "bos",
-      path: "./clients/codex/plugins/bos",
+      path: "./plugins/bos",
       authentication: "ON_INSTALL"
     },
     {
       name: "education-center",
-      path: "./clients/codex/plugins/education-center",
+      path: "./plugins/education-center",
       authentication: "ON_USE"
     }
   ]);
   assert.deepEqual(claude.plugins.map(({ name, source }) => ({ name, source })), [
-    { name: "bos", source: "./clients/claude/plugins/bos" },
+    { name: "bos", source: "./plugins/bos" },
     {
       name: "education-center",
-      source: "./clients/claude/plugins/education-center"
+      source: "./plugins/education-center"
     }
   ]);
+  await assert.rejects(access(`${root}/.agents/plugins/marketplace.json`), /ENOENT/);
+  await assert.rejects(access(`${root}/.claude-plugin/marketplace.json`), /ENOENT/);
+});
+
+test("migrated BOS personal workflows are canonical and generated for every applicable client", async () => {
+  const customerMarkers = new RegExp([
+    "/Users/" + "cody",
+    "cody" + "\\.marcel",
+    "i" + "Code Cherry Creek",
+    "M" + "Asset Holdings"
+  ].join("|"));
+  const bosSkills = [
+    "bos-visual-output",
+    "campaign-offer-marketing-sales",
+    "collision-call-audit-email",
+    "collision-repair-proposal-builder",
+    "corporate-counsel",
+    "email-account-routing",
+    "landing-page-copywriting",
+    "marketing-analysis",
+    "meta-ads-conversion-optimization",
+    "sendgrid-campaigns",
+    "seo-improvement-loop"
+  ];
+  const educationSkills = [
+    "camp-capacity-planning",
+    "local-school-market-research",
+    "partnership-proposal-builder"
+  ];
+  const clientRoots = {
+    codex: "clients/codex/plugins",
+    claude: "clients/claude/plugins",
+    copilot: "clients/copilot/products",
+    gemini: "clients/gemini/extensions"
+  };
+  for (const [client, clientRoot] of Object.entries(clientRoots)) {
+    for (const skill of bosSkills) {
+      const text = await readFile(`${root}/${clientRoot}/bos/skills/${skill}/SKILL.md`, "utf8");
+      assert.doesNotMatch(text, customerMarkers);
+    }
+    for (const skill of educationSkills) {
+      const text = await readFile(
+        `${root}/${clientRoot}/education-center/skills/${skill}/SKILL.md`,
+        "utf8"
+      );
+      assert.doesNotMatch(text, customerMarkers);
+    }
+  }
+  await access(`${root}/.agents/skills/codex-token-usage-analysis/SKILL.md`);
 });

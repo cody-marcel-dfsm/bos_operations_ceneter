@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.53",
+  "version": "0.4.54",
   "release_status": "active",
   "display_name": "BOS — Business Operating System",
   "description": "Agent-first Business Operating System foundations for governed agent workflows.",
@@ -22,6 +22,7 @@
   "includes": [
     "platform/bos-mcp-client",
     "platform/bos-guided-support",
+    "platform/bos-visual-output",
     "platform/bos-plugin-console",
     "platform/bos-plugin-settings",
     "platform/planning",
@@ -31,7 +32,17 @@
     "platform/po-go-boundary-enforcement",
     "platform/authentication-context-integrity",
     "platform/submit-feedback",
-    "platform/manage-customer-extension"
+    "platform/manage-customer-extension",
+    "capabilities/campaign-offer-marketing-sales",
+    "capabilities/collision-call-audit-email",
+    "capabilities/collision-repair-proposal-builder",
+    "capabilities/corporate-counsel",
+    "capabilities/email-account-routing",
+    "capabilities/landing-page-copywriting",
+    "capabilities/marketing-analysis",
+    "capabilities/meta-ads-conversion-optimization",
+    "capabilities/sendgrid-campaigns",
+    "capabilities/seo-improvement-loop"
   ],
   "runtime": "bos",
   "application_name": "bos",
