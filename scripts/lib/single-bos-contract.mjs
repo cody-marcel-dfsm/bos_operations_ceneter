@@ -125,7 +125,6 @@ function validateContractShape(contract, contractPath) {
     "application_name",
     "mcp_group_name",
     "resource_url",
-    "codex_app_id",
     "owner_authentication_policy",
     "provider_account_selection_policy",
     "identity_organization_resolution_policy",
@@ -173,8 +172,7 @@ export async function verifySingleBosContract({
     for (const [field, expected] of [
       ["runtime", "bos"],
       ["application_name", contract.application_name],
-      ["mcp_group_name", contract.mcp_group_name],
-      ["codex_app_id", contract.codex_app_id]
+      ["mcp_group_name", contract.mcp_group_name]
     ]) {
       if (owner[field] !== expected) {
         violations.push(finding(
@@ -189,8 +187,7 @@ export async function verifySingleBosContract({
   const forbiddenProductFields = [
     "runtime",
     "application_name",
-    "mcp_group_name",
-    "codex_app_id"
+    "mcp_group_name"
   ];
   for (const product of products.filter(({ name }) => name !== contract.owner_product)) {
     for (const field of forbiddenProductFields) {
@@ -243,23 +240,23 @@ export async function verifySingleBosContract({
     }
   }
 
-  const appPath = join(root, "clients", "codex", "plugins", "bos", ".app.json");
-  if (await pathExists(appPath)) {
-    const app = await readJson(appPath);
+  const codexMcpPath = join(root, "clients", "codex", "plugins", "bos", ".mcp.json");
+  if (await pathExists(codexMcpPath)) {
+    const codexMcp = await readJson(codexMcpPath);
     if (
-      Object.keys(app.apps ?? {}).length !== 1 ||
-      app.apps?.bos?.id !== contract.codex_app_id ||
-      app.apps?.bos?.required !== true
+      Object.keys(codexMcp.mcpServers ?? {}).length !== 1 ||
+      codexMcp.mcpServers?.platform?.type !== "http" ||
+      codexMcp.mcpServers?.platform?.url !== contract.resource_url
     ) {
       violations.push(finding(
-        "codex_app_binding",
-        relative(root, appPath),
-        "Codex must bind exactly one required BOS registered app."
+        "codex_mcp_binding",
+        relative(root, codexMcpPath),
+        "Codex must declare exactly one package-owned BOS HTTPS MCP server."
       ));
     }
   }
 
-  for (const artifact of expectedArtifacts.filter((path) => path !== portable(relative(root, appPath)))) {
+  for (const artifact of expectedArtifacts) {
     const content = await readFile(join(root, artifact), "utf8");
     if (!content.includes(contract.resource_url)) {
       violations.push(finding(
@@ -286,7 +283,7 @@ export async function verifySingleBosContract({
         "Subservice metadata must reference BOS-managed authentication."
       ));
     }
-    for (const field of ["application_name", "mcp_group_name", "codex_app_id", "resource_url"] ) {
+    for (const field of ["application_name", "mcp_group_name", "resource_url"] ) {
       if (metadata[field] !== undefined) {
         violations.push(finding(
           "subservice_connection_metadata",

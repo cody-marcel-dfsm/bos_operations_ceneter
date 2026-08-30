@@ -57,31 +57,36 @@ async function installedCacheVersions(home, marketplace, product) {
     .sort();
 }
 
-async function inspectRegisteredAppWrapper(home, appId) {
-  const suffix = appId.replace(/^asdk_app_/, "");
-  const wrapperRoot = join(
-    home,
-    ".codex",
-    "plugins",
-    "cache",
-    "created-by-me-remote",
-    `dev-${suffix}`
-  );
-  const installPath = join(wrapperRoot, ".codex-remote-plugin-install.json");
-  if (!(await pathExists(installPath))) {
-    return { state: "missing", path: wrapperRoot };
+async function currentDirectSource(sourcePath, product) {
+  if (!sourcePath || !(await pathExists(sourcePath))) return null;
+  try {
+    const metadata = await readJson(join(sourcePath, ".bos-product.json"));
+    return metadata.name === product.name &&
+      metadata.client === "codex" &&
+      metadata.version === product.version
+      ? sourcePath
+      : null;
+  } catch {
+    return null;
   }
-  const install = await readJson(installPath);
-  const versions = (await readdir(wrapperRoot, { withFileTypes: true }))
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .sort();
-  const validIdentity = install.remote_plugin_id === `plugin_${appId}`;
+}
+
+async function inspectInstalledMcpBinding(home, marketplace, product, versions, sourcePath) {
+  const packageRoot = sourcePath ?? (versions.length === 1
+    ? join(home, ".codex", "plugins", "cache", marketplace, product, versions[0])
+    : null);
+  const path = packageRoot ? join(packageRoot, ".mcp.json") : null;
+  if (!path || !(await pathExists(path))) return { state: "missing", path };
+  const manifest = await readJson(path);
+  const entries = Object.entries(manifest.mcpServers ?? {});
+  const [name, server] = entries[0] ?? [];
+  const current = entries.length === 1 && name === "platform" &&
+    server?.type === "http" &&
+    server?.url === "https://dfsm.ai/mcp/apps/bos/platform";
   return {
-    state: validIdentity && versions.length === 1 ? "current" : "invalid",
-    path: wrapperRoot,
-    remote_plugin_id: install.remote_plugin_id,
-    versions
+    state: current ? "current" : "invalid",
+    path,
+    server: current ? server : null
   };
 }
 
@@ -105,7 +110,7 @@ export async function inspectCodexRuntime(rawOptions = {}) {
     .map(({ manifest }) => manifest)
     .filter((manifest) => manifest.release_status === "active" && manifest.clients.includes("codex"));
   const bos = activeProducts.find((product) => product.name === "bos");
-  if (!bos?.codex_app_id) throw new Error("Active BOS product has no Codex app ID");
+  if (!bos?.runtime) throw new Error("Active BOS product has no runtime declaration");
 
   const pluginListing = parseCommandJson(
     await options.runCommand("codex", ["plugin", "list", "--json"]),
@@ -120,28 +125,38 @@ export async function inspectCodexRuntime(rawOptions = {}) {
   );
   const installedProducts = {};
   const cacheVersions = {};
+  const packageRoots = {};
   for (const product of activeProducts) {
     const pluginId = `${product.name}@${options.marketplace}`;
     const entry = installedById.get(pluginId);
+    const sourcePath = typeof entry?.source?.path === "string" ? entry.source.path : null;
     installedProducts[product.name] = {
       plugin_id: pluginId,
       state: entry?.installed && entry?.enabled ? "current" : "missing",
-      version: entry?.version ?? null
+      version: entry?.version ?? null,
+      source_path: sourcePath
     };
     cacheVersions[product.name] = await installedCacheVersions(
       options.home,
       options.marketplace,
       product.name
     );
+    packageRoots[product.name] = await currentDirectSource(sourcePath, product);
   }
 
   const marketplaceCurrent = marketplaceEntries(marketplaceListing).some((entry) =>
     entry?.name === options.marketplace || entry?.marketplaceName === options.marketplace
   );
-  const wrapper = await inspectRegisteredAppWrapper(options.home, bos.codex_app_id);
+  const mcpBinding = await inspectInstalledMcpBinding(
+    options.home,
+    options.marketplace,
+    bos.name,
+    cacheVersions[bos.name],
+    packageRoots[bos.name]
+  );
   const catalogPath = options.catalogPath ?? await newestJsonContaining(
     join(options.home, ".codex", "cache", "codex_apps_tools"),
-    bos.codex_app_id
+    "https://dfsm.ai/mcp/apps/bos/platform"
   );
   const catalog = catalogPath ? await readJson(catalogPath) : null;
   const discovered = publicToolNames(catalog);
@@ -151,9 +166,11 @@ export async function inspectCodexRuntime(rawOptions = {}) {
   const missingTools = requiredTools.filter((tool) => !discovered.has(tool));
   const packageFailures = activeProducts.flatMap((product) => {
     const versions = cacheVersions[product.name];
-    return versions.length === 1 && versions[0] === product.version
+    const entry = installedProducts[product.name];
+    const directSourceCurrent = packageRoots[product.name] && entry.version === product.version;
+    return directSourceCurrent || (versions.length === 1 && versions[0] === product.version)
       ? []
-      : [`${product.name} cache versions=${versions.join(",") || "missing"}`];
+      : [`${product.name} package version=${entry.version ?? "missing"}; cache versions=${versions.join(",") || "missing"}`];
   });
   const registryFailures = Object.values(installedProducts)
     .filter((entry) => entry.state !== "current")
@@ -162,7 +179,7 @@ export async function inspectCodexRuntime(rawOptions = {}) {
     ...registryFailures,
     ...(marketplaceCurrent ? [] : [`${options.marketplace} marketplace is not registered`]),
     ...packageFailures,
-    ...(wrapper.state === "current" ? [] : ["registered BOS app wrapper is missing or invalid"]),
+    ...(mcpBinding.state === "current" ? [] : ["package-owned BOS MCP binding is missing or invalid"]),
     ...(catalogPath ? [] : ["Codex callable-tool catalog is missing"]),
     ...missingTools.map((tool) => `callable tool is missing: ${tool}`)
   ];
@@ -170,14 +187,15 @@ export async function inspectCodexRuntime(rawOptions = {}) {
   return {
     schema_version: "1",
     ok: failures.length === 0,
-    app_id: bos.codex_app_id,
+    resource_url: "https://dfsm.ai/mcp/apps/bos/platform",
     marketplace: {
       name: options.marketplace,
       state: marketplaceCurrent ? "current" : "missing"
     },
     installed_products: installedProducts,
     cache_versions: cacheVersions,
-    registered_app_wrapper: wrapper,
+    package_roots: packageRoots,
+    mcp_binding: mcpBinding,
     callable_catalog: {
       path: catalogPath,
       discovered_tool_count: discovered.size,

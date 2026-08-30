@@ -89,3 +89,18 @@ test("Codex clean install requires exact destructive confirmation", async () => 
     /Confirmation must equal/
   );
 });
+
+test("Codex clean install defers all mutations until a running client is stopped", async () => {
+  const commands = [];
+  const report = await cleanInstallCodex({
+    confirmation: CODEX_CLEAN_CONFIRMATION,
+    runCommand: async (_command, args) => {
+      commands.push(args);
+      return { stdout: "{}" };
+    },
+    deferRunningInstall: async () => ["ChatGPT"]
+  });
+  assert.equal(report.ok, true);
+  assert.deepEqual(report.actions, ["clean_install_scheduled:ChatGPT"]);
+  assert.deepEqual(commands, []);
+});

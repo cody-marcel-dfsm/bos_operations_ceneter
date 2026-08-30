@@ -67,7 +67,6 @@ const customerSettings = {
 
 const unusedCredentialEnvVar = "UNUSED_BOS_CREDENTIAL";
 const resourceGroupUrl = "https://dfsm.ai/mcp/apps/bos/platform";
-const codexAppId = "asdk_app_6a932992592081919cdc88c60e4ff2dd";
 
 async function fakeCodex(_command, args) {
   if (args[0] === "mcp" && args[1] === "get") {
@@ -98,7 +97,7 @@ function verifyInstallation(options) {
   });
 }
 
-test("Codex runtime installation binds the BOS app and platform resource", async () => {
+test("Codex runtime installation binds the package-owned BOS MCP resource", async () => {
   const home = await temporaryHome();
   const report = await applyInstallationRaw({
     home,
@@ -108,7 +107,6 @@ test("Codex runtime installation binds the BOS app and platform resource", async
     state: "host_managed",
     name: "platform",
     url: resourceGroupUrl,
-    app_id: codexAppId,
     authentication: "oauth_2_1",
     next_action: "connect"
   });
@@ -146,38 +144,32 @@ test("Codex OAuth installation ignores credential environment keys", async () =>
   assert.equal(report.runtime.next_action, "connect");
 });
 
-test("Codex OAuth installation rejects a direct MCP file beside the app binding", async () => {
+test("Codex OAuth installation rejects an app file beside the MCP binding", async () => {
   const home = await temporaryHome();
   await applyInstallationRaw({
     home,
     product: "bos"
   });
-  const runtimePath = join(installedProduct(home, "bos"), ".mcp.json");
-  await writeFile(runtimePath, JSON.stringify({
-    mcpServers: {
-      platform: {
-        type: "http",
-        url: resourceGroupUrl
-      }
-    }
-  }));
+  const target = installedProduct(home, "bos");
+  await chmod(target, 0o755);
+  await writeFile(join(target, ".app.json"), JSON.stringify({ apps: {} }));
   await assert.rejects(
     verifyInstallationRaw({ home, product: "bos" }),
-    /Packaged Codex app binding is invalid/
+    /Packaged Codex MCP binding is invalid/
   );
 });
 
-test("Codex OAuth installation rejects an unregistered app identifier", async () => {
+test("Codex OAuth installation rejects a mismatched MCP resource", async () => {
   const home = await temporaryHome();
   await applyInstallationRaw({ home, product: "bos" });
-  const appPath = join(installedProduct(home, "bos"), ".app.json");
-  const app = JSON.parse(await readFile(appPath, "utf8"));
-  app.apps.bos.id = "asdk_app_unregistered";
-  await chmod(appPath, 0o644);
-  await writeFile(appPath, JSON.stringify(app));
+  const runtimePath = join(installedProduct(home, "bos"), ".mcp.json");
+  const runtime = JSON.parse(await readFile(runtimePath, "utf8"));
+  runtime.mcpServers.platform.url = "https://example.com/wrong";
+  await chmod(runtimePath, 0o644);
+  await writeFile(runtimePath, JSON.stringify(runtime));
   await assert.rejects(
     verifyInstallationRaw({ home, product: "bos" }),
-    /Packaged Codex app binding is invalid/
+    /Packaged Codex MCP binding is invalid/
   );
 });
 
@@ -706,31 +698,29 @@ test("compatible unmanaged plugin is adopted", async () => {
   assert.equal(after.state, "managed-current");
 });
 
-test("unmanaged BOS MCP package migrates to the registered BOS app binding", async () => {
+test("unmanaged registered-app package migrates to the package-owned BOS MCP binding", async () => {
   const home = await temporaryHome();
   const desired = join(root, "clients", "codex", "plugins", "bos");
   const target = installedProduct(home, "bos");
   await mkdir(join(codexMarketplaceRoot(home), "plugins"), { recursive: true });
   await cp(desired, target, { recursive: true });
-  await rm(join(target, ".app.json"));
+  await rm(join(target, ".mcp.json"));
   const manifestPath = join(target, ".codex-plugin", "plugin.json");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-  delete manifest.apps;
-  manifest.mcpServers = "./.mcp.json";
+  delete manifest.mcpServers;
+  manifest.apps = "./.app.json";
   await writeFile(manifestPath, JSON.stringify(manifest));
-  await writeFile(join(target, ".mcp.json"), JSON.stringify({
-    mcpServers: {
-      platform: { type: "http", url: resourceGroupUrl }
+  await writeFile(join(target, ".app.json"), JSON.stringify({
+    apps: {
+      bos: { id: "asdk_app_legacy", required: true }
     }
   }));
 
-  const before = await inspectInstallation({ home, product: "bos" });
-  assert(before.actions.remove.includes(".mcp.json"));
   const after = await applyInstallationRaw({ home, product: "bos" });
   assert.equal(after.state, "managed-current");
-  await assert.rejects(access(join(target, ".mcp.json")));
-  const app = JSON.parse(await readFile(join(target, ".app.json"), "utf8"));
-  assert.equal(app.apps.bos.id, codexAppId);
+  await assert.rejects(access(join(target, ".app.json")));
+  const runtime = JSON.parse(await readFile(join(target, ".mcp.json"), "utf8"));
+  assert.equal(runtime.mcpServers.platform.url, resourceGroupUrl);
 });
 
 test("subservice package installation removes an additional direct MCP file", async () => {

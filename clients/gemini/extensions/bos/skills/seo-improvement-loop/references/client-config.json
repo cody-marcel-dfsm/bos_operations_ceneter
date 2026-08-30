@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0.0",
+  "reports_root": "~/Documents/BOS Reports/SEO Improver",
+  "mode": "observe_and_propose",
+  "max_selected_proposals_per_site_run": 1,
+  "website_mutation_enabled": false,
+  "report_transport_over_mcp": false
+}

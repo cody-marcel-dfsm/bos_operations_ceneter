@@ -55,8 +55,8 @@ configuration as distinct validated dimensions.
   the immutable resource URL. Claude marketplace plugins contain skills and
   account-connector metadata with no `.mcp.json` or `mcpServers`; this preserves
   the persistent account-level **Connect** control. ChatGPT/Codex
-  packages declare a required registered app binding that owns the resource and
-  carry no direct MCP server declaration. Every runtime host
+  packages declare the immutable resource in `.mcp.json` and carry no
+  account-scoped app identifier. Every runtime host
   uses its OAuth 2.1 MCP
   authorization flow. The host discovers BOS
   authorization metadata, launches consent, stores and refreshes the grant,
@@ -71,9 +71,8 @@ configuration as distinct validated dimensions.
   package. For Claude, declare the BOS resource
   in an account or organization Web connector and complete authorization from
   **Customize → Connectors**. For ChatGPT/Codex,
-  never package `.mcp.json` or `mcpServers`; bind
-  the root BOS registered app through `.app.json`. Subservice plugins ship
-  skills and metadata without another BOS app binding.
+  package exactly one `.mcp.json` declaration for the root BOS resource.
+  Subservice plugins ship skills and metadata without another BOS MCP binding.
   For every client, never add `bearer_token_env_var`, literal authorization
   headers, or a plugin key field. The server derives actor, tenant, organization, installation,
   role, plugin, and capability scope from the validated OAuth grant; client
