@@ -41,6 +41,37 @@ test("BOS distributes the in-memory Plugin Console to every supported client", a
   }
 });
 
+test("broad BOS server-settings requests stay in the in-memory console", async () => {
+  const consoleGuidance = await readFile(
+    `${root}/source/platform/bos-plugin-console/SKILL.md`,
+    "utf8"
+  );
+  const settingsGuidance = await readFile(
+    `${root}/source/platform/bos-plugin-settings/SKILL.md`,
+    "utf8"
+  );
+
+  assert.match(consoleGuidance, /show the server settings for the BOS plugins/i);
+  assert.match(consoleGuidance, /Do not invoke a product customer\s+initializer/i);
+  assert.match(settingsGuidance, /## Route before preflight/);
+  assert.match(
+    settingsGuidance,
+    /broad request[\s\S]*belongs to `bos-plugin-console`[\s\S]*before product customer initialization/i
+  );
+
+  for (const skillRoot of [
+    `${root}/clients/codex/plugins/education-center/skills/bos-plugin-settings`,
+    `${root}/clients/claude/plugins/education-center/skills/bos-plugin-settings`,
+    `${root}/clients/copilot/products/education-center/skills/bos-plugin-settings`,
+    `${root}/clients/gemini/extensions/education-center/skills/bos-plugin-settings`
+  ]) {
+    const guidance = await readFile(`${skillRoot}/SKILL.md`, "utf8");
+    assert.match(guidance, /## Route before preflight/);
+    assert.doesNotMatch(guidance, /## Product initialization preflight/);
+    assert.doesNotMatch(guidance, /config\/customer-settings\.json/);
+  }
+});
+
 async function listRelativeFiles(rootPath, prefix = "") {
   const files = [];
   const entries = await readdir(rootPath, { withFileTypes: true });

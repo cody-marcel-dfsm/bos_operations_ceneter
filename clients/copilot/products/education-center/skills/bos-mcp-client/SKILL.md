@@ -3,28 +3,6 @@ name: bos-mcp-client
 description: Operate the shared BOS MCP connection, including server-evaluated subservice scope, live tool discovery, transport recovery, and provider authorization recovery.
 ---
 
-
-## Product initialization preflight
-
-Before performing this skill's workflow, preserve the pending request and
-complete the product's host-managed BOS authentication. Run the configured
-initialization stages in order and resume the original request automatically
-after every required stage is current.
-
-First validate the customer-owned `config/customer-settings.json` against
-`config/customer-settings.template.json`. Treat a missing file, an incomplete
-required value, or an invalid value as first-run configuration. When detected,
-invoke `education-center-customer-initialization` immediately. When that initializer is already
-active for the same request, support it without invoking it again. Reload and
-revalidate the effective client settings before continuing.
-
-After client settings are current, validate the server plugin-settings
-initialization epoch, required canonical field states, and local completion
-receipt. Invoke `bos-plugin-settings-initialization` when the receipt is missing or
-stale, a required field is unset or invalid partial, or the server schema changed.
-Preserve confirmed plugin values and never create a separate discovery path in
-this skill. Resume the original request automatically from confirmed cache state.
-
 # BOS MCP Client
 
 Use this skill for every client-side BOS operation. The root BOS plugin owns one
