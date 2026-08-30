@@ -28,7 +28,7 @@ The private Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Select
 **Connect** or **Sign in** when the host presents it, then complete BOS consent.
 
-Current desktop marketplace release: `0.4.55`. If `0.4.54` is installed,
+Current desktop marketplace release: `0.4.56`. If `0.4.55` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -114,22 +114,24 @@ This removes the two BOS plugin registrations, the BOS marketplace registration,
 and the exact `~/.claude/plugins/cache/bos-education-center` tree, then installs
 both products from the current repository and verifies their active paths.
 
-### Complete local removal
+### Local client cache reset
 
-To remove BOS and Education Operation Center from every supported local client,
-including their generated package, tool-catalog, document, and settings caches,
-inspect the exact plan and then apply it:
+To clear BOS package and catalog cache artifacts from local ChatGPT/Codex and
+Claude clients, inspect the exact plan and then apply it:
 
 ```bash
-./scripts/uninstall-bos-all-clients.sh --dry-run
-./scripts/uninstall-bos-all-clients.sh \
-  --confirmation "DELETE ALL BOS CLIENT PLUGIN STATE AND CACHES"
+./scripts/reset-bos-client-caches.sh --dry-run
+./scripts/reset-bos-client-caches.sh \
+  --confirmation "DELETE BOS CHATGPT AND CLAUDE CACHES"
 ```
 
-Add `--copilot-root /absolute/repository/path` once for each repository-scoped
-Copilot installation. The remover preserves unrelated plugins, client history,
-and source repositories, creates no backup, and verifies that every targeted
-registration and filesystem artifact is absent.
+The command deletes only validated BOS package caches under
+`~/.codex/plugins/cache` and `~/.claude/plugins/cache`, plus individual matching
+BOS catalog-cache files under `~/.codex/cache`. It never unregisters plugins,
+changes account state, edits client configuration, removes personal skills,
+touches Gemini or Copilot, or accesses repository files. The legacy
+`scripts/uninstall-bos-all-clients.sh` entrypoint delegates to this same bounded
+cache reset for safety.
 
 Claude reads `clients/claude/.claude-plugin/marketplace.json`. The BOS plugin owns the account
 connector metadata. Education Operation Center contributes skills and contains no
