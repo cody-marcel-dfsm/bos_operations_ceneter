@@ -1,6 +1,6 @@
 ---
 name: bos-plugin-console
-description: Show and manage BOS plugin, connection, enablement, and display-property status as an in-memory interactive view inside the active client. Use when a user asks which BOS plugins or services are enabled, connected, ready, or configurable, or asks to connect, enable, or disable one.
+description: Show and manage BOS plugin, connection, enablement, server-settings summary, and display-property status as an in-memory interactive view inside the active client. Use when a user asks for BOS plugin or server settings broadly, which plugins or services are enabled, connected, ready, or configurable, or asks to connect, enable, or disable one.
 ---
 
 # BOS Plugin Console
@@ -8,6 +8,13 @@ description: Show and manage BOS plugin, connection, enablement, and display-pro
 Render the BOS Plugin Console directly in the active client's content window.
 The interaction is memory-only: never create a report file, execute a packaged
 helper, start a local process or service, or persist the returned snapshot.
+
+Treat broad requests such as “show the server settings for the BOS plugins,”
+“show plugin settings,” or “which BOS services are connected?” as console
+status requests. Run this console directly. Do not invoke a product customer
+initializer, plugin-settings initializer, or settings cache for these requests.
+Only a **Settings** action on one returned plugin, or an unambiguous request for
+one named plugin property, enters the separate typed settings workflow.
 
 ## Display
 

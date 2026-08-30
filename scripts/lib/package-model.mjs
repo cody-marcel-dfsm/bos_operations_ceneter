@@ -13,6 +13,11 @@ export const root = resolve(import.meta.dirname, "../..");
 export const supportedClients = new Set(["codex", "claude", "copilot", "gemini"]);
 export const productNamePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const publicToolNamePattern = /^[a-z][a-z0-9_]*$/;
+export const productInitializationIndependentSkills = new Set([
+  "bos-mcp-client",
+  "bos-plugin-console",
+  "bos-plugin-settings"
+]);
 
 export async function readJson(path) {
   return JSON.parse(await readFile(path, "utf8"));
@@ -360,6 +365,7 @@ export async function copyProductSkills(product, skills, target) {
 
 export function transformProductSkillGuidance(product, skillName, guidance) {
   if (skillName === product.settings_initializer) return guidance;
+  if (productInitializationIndependentSkills.has(skillName)) return guidance;
   if (skillName === product.plugin_settings_initializer) {
     return product.settings_initializer
       ? injectSettingsPreflight(guidance, product.settings_initializer)
