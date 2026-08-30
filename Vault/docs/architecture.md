@@ -207,22 +207,16 @@ release system for portable BOS skills and native remote MCP client adapters.
     product-declared runtime verification tool. Remediation is identity-bounded
     to the BOS marketplace and immutable resource URL and backs up host state before
     removing BOS-owned catalog entries.
-    A user-authorized complete local uninstall is a separate destructive
-    lifecycle: the repository-owned shell command uses active Codex ChatGPT
-    authentication to remove any retired account-app record left by releases
-    before the package-owned MCP migration. It then unregisters BOS and active
-    subservice packages from every detected
-    client and deletes only validated package/app/catalog artifacts and the shared
-    BOS document/settings cache. It also removes the exact deprecated personal
-    skill directories after validating each skill's declared identity; canonical
-    sources and generated client packages remain intact for later installation.
-    The lifecycle accepts explicit repository-scoped Copilot targets, preserves unrelated
-    plugins and source repositories, creates no backup, and verifies registry
-    and filesystem absence before success. The final authenticated account
-    refresh verifies the source used by subsequent host catalog reads; a
-    preexisting rendered view cannot recreate deleted account or disk state.
-    A running ChatGPT/Codex Desktop process is force-restarted after the command
-    reports success so stale in-memory plugin enablement cannot be persisted.
+    The repository-owned cache reset is a filesystem-only maintenance lifecycle.
+    Its deletion authority is limited to validated BOS package caches below
+    `~/.codex/plugins/cache` and `~/.claude/plugins/cache`, plus individual BOS
+    catalog-cache files below `~/.codex/cache`. It performs no account mutation,
+    plugin or marketplace registration change, client configuration edit,
+    personal-skill removal, process restart, or traversal of a source repository,
+    generated client package, Gemini installation, or Copilot project. Resolve
+    every target from those fixed client cache roots, validate BOS identity before
+    deletion, reject symlinked package roots, and complete all preflight checks
+    before removing any path.
 18. Keep repository builds and release checks credential-free and local. They
     regenerate clients, validate canonical-source parity, scan for credentials
     and customer data, and run deterministic tests without a live MCP query or

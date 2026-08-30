@@ -18,38 +18,27 @@ connection and never add another BOS login. Use the exact generated BOS
 connector metadata when private installation requires Claude's custom connector
 flow. Never ask the user to reconstruct or modify the endpoint.
 
-## Complete all-client removal
+## Local client cache reset
 
-Use the repository-owned command when the user explicitly asks to remove BOS,
-Education Center, and their local caches from every client:
+Use the repository-owned command when the user explicitly asks to clear local
+BOS caches from ChatGPT/Codex and Claude:
 
-`./scripts/uninstall-bos-all-clients.sh --dry-run`
+`./scripts/reset-bos-client-caches.sh --dry-run`
 
-Review the identity-bounded removal plan, then run:
+Review the bounded cache plan, then run:
 
-`./scripts/uninstall-bos-all-clients.sh --confirmation "DELETE ALL BOS CLIENT PLUGIN STATE AND CACHES"`
+`./scripts/reset-bos-client-caches.sh --confirmation "DELETE BOS CHATGPT AND CLAUDE CACHES"`
 
-The shell command uses the active Codex ChatGPT authentication to delete the
-developer-owned **Created by you** BOS app through the same account resource as
-the native **Delete** control. It then refreshes the remote
-`created-by-me-remote` catalog and requires the account record to be absent.
-This prevents the signed-in client from
-recreating its installed icon, app wrapper, and callable-tool catalog after
-local cleanup. The command then unregisters the BOS and
-Education Center packages and marketplace from Codex and Claude, removes their
-validated package caches and generated app catalog state, removes Gemini CLI
-and Antigravity product directories, clears the shared BOS document/settings
-caches, and verifies account, registry, and filesystem absence. Add one
-`--copilot-root /absolute/repository/path` for each repository-scoped Copilot
-installation. No manual settings action is required. It preserves unrelated plugins, client history, customer source
-repositories, and generated customer marketplace packages. The deletion is
-permanent and creates no backup. The command refreshes and verifies the account
-catalog after deletion. If ChatGPT/Codex Desktop is running, it schedules a
-forced process restart after reporting success so stale in-memory plugin state
-cannot be written back to disk; no manual settings or restart action is required. It also removes
-the BOS-only root repo marketplace manifests so opening the BOS Operations Center
-source repository cannot advertise uninstalled BOS or Education Center cards.
-Installable release catalogs remain under `clients/codex` and `clients/claude`.
+The command deletes only validated BOS package caches below
+`~/.codex/plugins/cache` and `~/.claude/plugins/cache`, plus individual catalog
+cache files below `~/.codex/cache` whose contents identify the BOS resource or
+retired BOS account app. It completes all identity and containment checks before
+deleting any target. It performs no account operation, plugin or marketplace
+registration change, configuration edit, personal-skill removal, process
+restart, Gemini or Copilot cleanup, shared document-cache deletion, or source
+repository traversal. Repository manifests and generated packages always remain
+untouched. The legacy `scripts/uninstall-bos-all-clients.sh` command delegates to
+this same bounded reset.
 
 ## Stale OAuth client registration
 
