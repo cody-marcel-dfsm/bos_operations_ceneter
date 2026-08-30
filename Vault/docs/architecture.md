@@ -11,8 +11,8 @@ release system for portable BOS skills and native remote MCP client adapters.
 - `source/capabilities/` owns reusable business capabilities.
 - `source/verticals/` owns industry and franchise specialization.
 - `source/runtime/` owns credential-free root BOS MCP connection templates for
-  clients that distribute an endpoint directly. The root BOS product manifest
-  owns the stable registered ChatGPT/Codex app ID. Subservice products contain
+  clients that distribute an endpoint directly. The root BOS Codex package
+  owns the immutable MCP URL declaration. Subservice products contain
   no additional BOS connection binding.
 - `products/` declares versioned compositions; build scripts generate client
   packages from those declarations.
@@ -35,9 +35,8 @@ release system for portable BOS skills and native remote MCP client adapters.
    hosts, Gemini CLI, and Google Antigravity 2.0 Desktop once through the root
    BOS OAuth 2.1 MCP connection. Claude declares one BOS account or organization
    Web connector; Copilot and Gemini declare the immutable BOS resource
-   directly; ChatGPT/Codex binds the root BOS registered app through
-   `.app.json`. Subservice plugins contain no additional BOS connection or
-   registered-app binding. No package contains an API-key field, authorization
+   directly; ChatGPT/Codex declares the root BOS endpoint through `.mcp.json`.
+   Subservice plugins contain no additional BOS connection binding. No package contains an API-key field, authorization
    header template, or credential environment-variable binding. The host
    discovers BOS authorization metadata, launches consent, stores and refreshes
    the grant, and attaches a resource-scoped token. Recover missing underlying
@@ -77,7 +76,7 @@ release system for portable BOS skills and native remote MCP client adapters.
     confirmation, then reload settings and resume it automatically. Apply this
     composition equally to Claude, Codex, Copilot, and Gemini packages.
 11. Connect clients directly to one BOS HTTPS Streamable HTTP resource. Use the
-    root BOS registered app binding in Codex, one BOS account-level Web
+    package-owned root BOS MCP declaration in Codex, one BOS account-level Web
     connector in Claude, one OAuth-discovered BOS connection in Copilot
     IDE/CLI, and one BOS connection in Gemini CLI and Antigravity 2.0 Desktop.
     Subservice packages add skills and metadata behind that connection. The
@@ -95,9 +94,9 @@ release system for portable BOS skills and native remote MCP client adapters.
     have no backup, and requires the exact typed confirmation
     `DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS`. The root Claude BOS plugin owns
     account-connector metadata with no packaged MCP declaration. The root
-    ChatGPT/Codex BOS plugin contains `apps: "./.app.json"` and no `.mcp.json`
-    or `mcpServers`; its manifest records the durable `asdk_app_*`
-    technical identifier. Subservice plugins contain neither connection
+    ChatGPT/Codex BOS plugin contains `mcpServers: "./.mcp.json"`; the MCP file
+    records the immutable HTTPS BOS endpoint and contains no account-scoped app
+    identifier. Subservice plugins contain neither connection
     declaration. One host-managed BOS grant identifies the actor and available
     organizations; every request is evaluated against canonical application,
     installation, subservice, role, plugin, capability, provider, and tool
@@ -108,7 +107,7 @@ release system for portable BOS skills and native remote MCP client adapters.
     registry `installPath`; Gemini CLI's native extension metadata plus copied
     package bytes; Antigravity's exact repository symlinks; Copilot's selected
     repository MCP and skill files; and Codex's registry, managed package cache,
-    registered-app wrapper, and callable-tool catalog. Retained inactive Claude
+    package-owned MCP declaration, and callable-tool catalog. Retained inactive Claude
     versions are informational and never satisfy installation readiness.
 12. Treat generated client packages as build outputs. The complete
     cross-platform build materializes Codex, Claude, Copilot, and Gemini clients
@@ -152,8 +151,10 @@ release system for portable BOS skills and native remote MCP client adapters.
     BOS connection.
 16. Distribute pre-publication Claude and Codex products through their native
     local or private Git marketplaces. Claude uses
-    `.claude-plugin/marketplace.json`; Codex uses
-    `.agents/plugins/marketplace.json`. Keep separate host manifests and share
+    `clients/claude/.claude-plugin/marketplace.json`; Codex uses
+    `clients/codex/.agents/plugins/marketplace.json`. Keep marketplace manifests
+    out of the repository root so merely opening the source project does not
+    advertise its plugins. Keep separate host manifests and share
     canonical skills through deterministic generation. Installation adds the
     marketplace and installs the product skills. Claude account or organization
     connector provisioning registers the BOS resource once and presents
@@ -178,9 +179,19 @@ release system for portable BOS skills and native remote MCP client adapters.
     the Codex marketplace upgrade control; public ChatGPT/Codex directory releases
     require a separately reviewed and published OpenAI submission. Git pull-request
     history grants neither OpenAI publication nor client refresh authority.
+    Portable business workflows belong to canonical product composition instead of
+    a developer's personal skill directory. BOS owns its reusable operating,
+    marketing, counsel, communications, and visual-output skills. Education
+    Operation Center owns camp capacity, local school market research, and
+    partnership proposal skills, and invokes BOS visual output through the
+    installed BOS foundation. Deterministic
+    generation places those skills in the Codex, Claude, Copilot, and Gemini
+    packages. Codex token-usage analysis remains a repository-maintainer skill
+    under `.agents/skills` because it inspects Codex-local session data rather than
+    delivering a customer product capability.
 17. Treat a client as BOS-ready only when the root BOS plugin points to its
     immutable MCP resource—through one account connector for Claude, directly
-    for Copilot and Gemini, and through the root registered app for Codex—OAuth
+    for Copilot and Gemini, and directly from the root package for Codex—OAuth
     discovery succeeds, the host holds a valid BOS grant, the server returns an
     authorized context, and tools for authorized installed subservices are
     discoverable. A missing or expired BOS grant triggers the host's single
@@ -189,20 +200,28 @@ release system for portable BOS skills and native remote MCP client adapters.
     changes require marketplace update or reinstall, cache refresh as supported
     by the host, and a new task.
     Codex installation acceptance is an atomic cross-layer check: the native
-    registry and marketplace contain the active products, each product has
-    exactly one current managed-cache version, the registered-app wrapper
-    matches the immutable BOS app ID, and the callable catalog contains every
+    registry and marketplace contain the active products, each product resolves
+    to the current direct-source or managed-cache version, the package-owned MCP declaration
+    matches the immutable BOS resource URL, and the callable catalog contains every
     product-declared runtime verification tool. Remediation is identity-bounded
-    to the BOS marketplace and immutable app ID and backs up host state before
+    to the BOS marketplace and immutable resource URL and backs up host state before
     removing BOS-owned catalog entries.
     A user-authorized complete local uninstall is a separate destructive
-    lifecycle: one repository-owned command unregisters BOS and active
-    subservice packages from every detected client, deletes only validated
-    package/app/catalog artifacts and the shared BOS document/settings cache,
-    accepts explicit repository-scoped Copilot targets, preserves unrelated
+    lifecycle: the repository-owned shell command uses active Codex ChatGPT
+    authentication to remove any retired account-app record left by releases
+    before the package-owned MCP migration. It then unregisters BOS and active
+    subservice packages from every detected
+    client and deletes only validated package/app/catalog artifacts and the shared
+    BOS document/settings cache. It also removes the exact deprecated personal
+    skill directories after validating each skill's declared identity; canonical
+    sources and generated client packages remain intact for later installation.
+    The lifecycle accepts explicit repository-scoped Copilot targets, preserves unrelated
     plugins and source repositories, creates no backup, and verifies registry
-    and filesystem absence before success. Running clients restart afterward to
-    discard their in-memory tool catalogs.
+    and filesystem absence before success. The final authenticated account
+    refresh verifies the source used by subsequent host catalog reads; a
+    preexisting rendered view cannot recreate deleted account or disk state.
+    A running ChatGPT/Codex Desktop process is force-restarted after the command
+    reports success so stale in-memory plugin enablement cannot be persisted.
 18. Keep repository builds and release checks credential-free and local. They
     regenerate clients, validate canonical-source parity, scan for credentials
     and customer data, and run deterministic tests without a live MCP query or

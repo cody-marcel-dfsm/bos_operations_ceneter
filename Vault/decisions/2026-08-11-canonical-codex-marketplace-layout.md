@@ -33,7 +33,8 @@ workflows. It is a separate product from `video-ads`; the latter is a disabled
 creative-generation product. A managed private package remains `AVAILABLE`
 until its BOS-routed tool catalog and authority contract are current, then it
 may be installed explicitly. Subservice packages contain no MCP connection or
-app binding.
+MCP binding. The account-app form of this binding is superseded by
+`2026-08-29-codex-package-owned-mcp.md`.
 
 ## Upgrade behavior
 

@@ -1,6 +1,6 @@
 # Marketplace submission assets
 
-Current BOS marketplace package release: `0.4.53`.
+Current BOS marketplace package release: `0.4.54`.
 
 ## BOS connection submission
 
@@ -14,7 +14,7 @@ The BOS marketplace plugin is the sole connection-owning package.
 | Connection action | Connect once to BOS |
 | Tool scope | Server-evaluated for each authenticated request |
 
-The BOS submission includes the registered app or host-native connector metadata
+The BOS submission includes the package-owned MCP declaration or host-native connector metadata
 required by the target marketplace. It contains no API key, bearer token,
 authorization header template, customer authority identifier, or provider
 credential.

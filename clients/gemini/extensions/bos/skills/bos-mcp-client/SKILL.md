@@ -9,7 +9,7 @@ Use this skill for every client-side BOS operation. The root BOS plugin owns one
 remote MCP resource and one host-managed OAuth connection for the user-facing
 client context. A Claude account or organization Web connector declares that
 resource and exposes the persistent host-managed **Connect** action;
-ChatGPT/Codex authorizes it through the root BOS registered app. Other supported
+ChatGPT/Codex authorizes it through the root BOS package-owned MCP declaration. Other supported
 clients use the single BOS adapter declared by their generated package.
 
 Education Center, CRM, Marketing Director, and other subservice plugins add
@@ -40,7 +40,7 @@ stateful mutation workflow.
 - If BOS is absent from the callable tool manifest, inspect the active client's
   BOS plugin and runtime binding immediately. Repair or reinstall BOS and
   restore its declared authorization connection. For Codex, verify the root
-  BOS registered app binding; for Claude, verify the BOS package's
+  BOS `.mcp.json` declaration; for Claude, verify the BOS package's
   account-connector metadata and the matching Web connector under
   **Customize → Connectors**, then use its persistent **Connect** action. When a
   private installation lacks that connector, add it with the exact name and URL
@@ -115,7 +115,7 @@ and inspect its sanitized result before producing a final answer.
    context.
 5. Authenticate the BOS Claude account-level Web connector through its
    persistent **Connect** control, and the ChatGPT/Codex BOS connection
-   through the root registered app. Both use one host-managed
+   through the root package-owned MCP declaration. Both use one host-managed
    OAuth grant. Other clients use only the generated product
    adapter declared for BOS. Keep access tokens, refresh tokens,
    authorization codes, bearer values, and grant metadata out of chat, tool
