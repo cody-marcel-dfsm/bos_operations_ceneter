@@ -31,9 +31,18 @@ MCP context and read tools strengthen verification when available.
    observed evidence.
 9. When a user explicitly requests complete local removal, use the
    repository-owned all-client uninstaller. Inspect its identity-bounded dry
-   run, require exact destructive authorization, delete no unrelated client or
-   source state, create no backup, verify registry and filesystem absence, and
-   restart running clients to discard in-memory catalogs.
+   run, require exact destructive authorization, automatically delete the
+   developer-owned **Created by you** account app through the authenticated
+   ChatGPT connector resource before removing local state, delete no unrelated client or source
+   state, create no backup, verify account, registry, and filesystem absence,
+   and refresh the authenticated account catalog. When ChatGPT/Codex Desktop is
+   running, schedule a forced restart after reporting success so stale process
+   state cannot be persisted again and no manual restart is required. Remove the
+   BOS-only root repository marketplace manifests so no source-availability cards
+   remain in the open source project. Preserve generated installable catalogs under
+   their client package roots. Remove deprecated personal BOS and Education skill
+   copies only after their exact directory and declared skill identities match the
+   migration inventory. Preserve unrelated personal and system skills.
 
 ## Composition
 
@@ -41,3 +50,12 @@ Canonical source lives at `source/platform/bos-guided-support`. The BOS product
 manifest composes it into generated Codex, Claude, Copilot, and Gemini packages.
 Runtime-product skills may invoke it from the installed BOS foundation product.
 Generated copies remain build outputs.
+
+Portable workflow ownership follows the same product model. BOS composes reusable
+business capabilities from `source/capabilities` plus BOS visual output from
+`source/platform`. Education Operation Center composes camp capacity, local school
+market research, and partnership proposal workflows from
+`source/verticals/education-center`; installed Education workflows may invoke the
+BOS product's visual output without republishing that platform skill. Codex-only
+repository maintenance workflows live under `.agents/skills` and are excluded from
+customer packages.

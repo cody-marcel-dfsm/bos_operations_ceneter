@@ -28,7 +28,7 @@ The private Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Select
 **Connect** or **Sign in** when the host presents it, then complete BOS consent.
 
-Current desktop marketplace release: `0.4.53`. If `0.4.52` is installed,
+Current desktop marketplace release: `0.4.54`. If `0.4.53` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -39,8 +39,9 @@ desktop Plugins Directory, connection prompt, and new-task activation flow.
 
 Open a new Codex task and paste:
 
-> Add https://github.com/cody-marcel-dfsm/bos_operations_ceneter as a Codex
-> plugin marketplace, install and enable `bos` and `education-center`, connect
+> Clone or update https://github.com/cody-marcel-dfsm/bos_operations_ceneter,
+> add its `clients/codex` directory as a Codex plugin marketplace, install and
+> enable `bos` and `education-center`, connect
 > BOS once through the host's sign-in flow, start a new task if
 > required to load the plugin, and verify one authenticated Education Operation Center
 > read. Do not request or configure a BOS API key, environment variable,
@@ -48,8 +49,8 @@ Open a new Codex task and paste:
 > incomplete, report `authentication_required`; do not generate an
 > unavailable-data report.
 
-Codex reads the repository catalog at
-`.agents/plugins/marketplace.json`, installs the plugins into its managed
+Codex reads the generated catalog at
+`clients/codex/.agents/plugins/marketplace.json`, installs the plugins into its managed
 cache, and loads the registered BOS app from the BOS plugin's `.app.json`. BOS
 owns the immutable MCP resource and host-managed OAuth grant. Education Operation
 Center uses that connection without another app binding or login. Start a new
@@ -126,7 +127,7 @@ Copilot installation. The remover preserves unrelated plugins, client history,
 and source repositories, creates no backup, and verifies that every targeted
 registration and filesystem artifact is absent.
 
-Claude reads `.claude-plugin/marketplace.json`. The BOS plugin owns the account
+Claude reads `clients/claude/.claude-plugin/marketplace.json`. The BOS plugin owns the account
 connector metadata. Education Operation Center contributes skills and contains no
 connector or MCP declaration. The BOS account-level Web connector has the persistent
 **Connect** control, discovers OAuth from the immutable MCP resource, and stores and
@@ -278,7 +279,7 @@ Change canonical sources, regenerate, and verify generated parity.
 Add the repository checkout as a local marketplace:
 
 ```bash
-codex plugin marketplace add ./
+codex plugin marketplace add ./clients/codex
 ```
 
 Install **BOS** and **Education Operation Center** from the ChatGPT Desktop Plugins
@@ -306,8 +307,8 @@ packages.
 Validate and install the local marketplace:
 
 ```bash
-claude plugin validate .
-claude plugin marketplace add ./
+claude plugin validate ./clients/claude
+claude plugin marketplace add ./clients/claude
 claude plugin install bos@bos-education-center
 claude plugin install education-center@bos-education-center
 ```
@@ -428,8 +429,9 @@ the BOS runtime plugin is unavailable on those two hosts.
 | `source/runtime/` | Credential-free remote MCP templates |
 | `products/` | Versioned product composition manifests |
 | `clients/` | Generated client packages |
-| `.agents/plugins/marketplace.json` | Repository Codex marketplace |
-| `.claude-plugin/marketplace.json` | Repository Claude marketplace |
+| `.agents/skills/` | Repository-maintainer skills excluded from customer products |
+| `clients/codex/.agents/plugins/marketplace.json` | Generated Codex marketplace |
+| `clients/claude/.claude-plugin/marketplace.json` | Generated Claude marketplace |
 | `scripts/` | Generation, validation, installation, and release tools |
 | `tests/` | Package, security, portability, and workflow tests |
 | `Vault/` | Canonical architecture, decisions, specifications, and reviews |

@@ -152,8 +152,10 @@ release system for portable BOS skills and native remote MCP client adapters.
     BOS connection.
 16. Distribute pre-publication Claude and Codex products through their native
     local or private Git marketplaces. Claude uses
-    `.claude-plugin/marketplace.json`; Codex uses
-    `.agents/plugins/marketplace.json`. Keep separate host manifests and share
+    `clients/claude/.claude-plugin/marketplace.json`; Codex uses
+    `clients/codex/.agents/plugins/marketplace.json`. Keep marketplace manifests
+    out of the repository root so merely opening the source project does not
+    advertise its plugins. Keep separate host manifests and share
     canonical skills through deterministic generation. Installation adds the
     marketplace and installs the product skills. Claude account or organization
     connector provisioning registers the BOS resource once and presents
@@ -178,6 +180,16 @@ release system for portable BOS skills and native remote MCP client adapters.
     the Codex marketplace upgrade control; public ChatGPT/Codex directory releases
     require a separately reviewed and published OpenAI submission. Git pull-request
     history grants neither OpenAI publication nor client refresh authority.
+    Portable business workflows belong to canonical product composition instead of
+    a developer's personal skill directory. BOS owns its reusable operating,
+    marketing, counsel, communications, and visual-output skills. Education
+    Operation Center owns camp capacity, local school market research, and
+    partnership proposal skills, and invokes BOS visual output through the
+    installed BOS foundation. Deterministic
+    generation places those skills in the Codex, Claude, Copilot, and Gemini
+    packages. Codex token-usage analysis remains a repository-maintainer skill
+    under `.agents/skills` because it inspects Codex-local session data rather than
+    delivering a customer product capability.
 17. Treat a client as BOS-ready only when the root BOS plugin points to its
     immutable MCP resource—through one account connector for Claude, directly
     for Copilot and Gemini, and through the root registered app for Codex—OAuth
@@ -196,13 +208,22 @@ release system for portable BOS skills and native remote MCP client adapters.
     to the BOS marketplace and immutable app ID and backs up host state before
     removing BOS-owned catalog entries.
     A user-authorized complete local uninstall is a separate destructive
-    lifecycle: one repository-owned command unregisters BOS and active
-    subservice packages from every detected client, deletes only validated
-    package/app/catalog artifacts and the shared BOS document/settings cache,
-    accepts explicit repository-scoped Copilot targets, preserves unrelated
+    lifecycle: the repository-owned shell command uses active Codex ChatGPT
+    authentication to delete the developer-owned **Created by you** BOS app
+    through its account connector resource, refreshes the remote account
+    catalog, and requires that record to be absent without a manual UI step.
+    It then unregisters BOS and active subservice packages from every detected
+    client and deletes only validated package/app/catalog artifacts and the shared
+    BOS document/settings cache. It also removes the exact deprecated personal
+    skill directories after validating each skill's declared identity; canonical
+    sources and generated client packages remain intact for later installation.
+    The lifecycle accepts explicit repository-scoped Copilot targets, preserves unrelated
     plugins and source repositories, creates no backup, and verifies registry
-    and filesystem absence before success. Running clients restart afterward to
-    discard their in-memory tool catalogs.
+    and filesystem absence before success. The final authenticated account
+    refresh verifies the source used by subsequent host catalog reads; a
+    preexisting rendered view cannot recreate deleted account or disk state.
+    A running ChatGPT/Codex Desktop process is force-restarted after the command
+    reports success so stale in-memory plugin enablement cannot be persisted.
 18. Keep repository builds and release checks credential-free and local. They
     regenerate clients, validate canonical-source parity, scan for credentials
     and customer data, and run deterministic tests without a live MCP query or

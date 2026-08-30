@@ -22,7 +22,7 @@ function marketplaceEntries(value) {
 }
 
 function parseArgs(argv) {
-  const options = { home: homedir(), source: root, json: false };
+  const options = { home: homedir(), source: join(root, "clients", "codex"), json: false };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--home") options.home = resolve(argv[++index]);
@@ -128,7 +128,7 @@ async function commandJson(runCommand, args) {
 export async function cleanInstallCodex(rawOptions = {}) {
   const options = {
     home: homedir(),
-    source: root,
+    source: join(root, "clients", "codex"),
     runCommand: execFileAsync,
     ...rawOptions
   };

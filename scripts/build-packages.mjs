@@ -441,25 +441,6 @@ for (const client of ["codex", "claude", "copilot", "gemini"]) {
   }
 }
 
-await writeJson(join(root, ".claude-plugin", "marketplace.json"), {
-  ...claudeMarketplace,
-  plugins: claudeMarketplace.plugins.map((plugin) => ({
-    ...plugin,
-    source: `./clients/claude/plugins/${plugin.name}`
-  }))
-});
-
-await writeJson(join(root, ".agents", "plugins", "marketplace.json"), {
-  ...marketplace,
-  plugins: marketplace.plugins.map((plugin) => ({
-    ...plugin,
-    source: {
-      source: "local",
-      path: `./clients/codex/plugins/${plugin.name}`
-    }
-  }))
-});
-
 await writeJson(join(root, "clients", "disabled-products.json"), {
   schema_version: "1",
   products: products
