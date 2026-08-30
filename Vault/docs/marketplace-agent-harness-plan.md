@@ -8,7 +8,7 @@ Validate every marketplace package against one BOS connection:
 https://dfsm.ai/mcp/apps/bos/platform
 ```
 
-The BOS package owns the registered app, connector, MCP declaration, OAuth
+The BOS package owns the MCP declaration, OAuth
 grant, transport recovery, and tool discovery. Education Center, CRM, Marketing
 Director, and other subservice packages contribute skills and contain no
 connection binding.
@@ -35,7 +35,7 @@ For Claude, ChatGPT/Codex, Copilot, Gemini CLI, and Antigravity:
 
 - `products/bos/product.json` is the only manifest with runtime coordinates or
   a registered ChatGPT/Codex app ID.
-- Only generated BOS packages contain `.app.json`, `CONNECTORS.md`,
+- Only generated BOS packages contain the client-appropriate `.mcp.json`, `CONNECTORS.md`,
   `.github/mcp.json`, `mcp_config.json`, or `mcpServers`.
 - Every generated subservice package records `connection_owner: "bos"` and
   `authentication: "bos_managed"`.

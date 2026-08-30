@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { cp, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -10,12 +10,37 @@ const execFileAsync = promisify(execFile);
 export const CODEX_CLEAN_CONFIRMATION = "DELETE ALL BOS CODEX PLUGIN STATE";
 const marketplace = "bos-education-center";
 const products = ["education-center", "bos"];
+const bosResourceUrl = "https://dfsm.ai/mcp/apps/bos/platform";
+const legacyCodexAppIds = ["asdk_app_6a932992592081919cdc88c60e4ff2dd"];
 const cacheKinds = [
   "codex_app_directory",
   "codex_apps_server_info",
   "codex_apps_tools",
   "remote_plugin_catalog"
 ];
+
+async function deferCodexDesktopInstall({ home, source, runCommand }) {
+  if (process.platform !== "darwin") return [];
+  const result = await runCommand("ps", ["-axo", "pid=,args="]);
+  const processLine = String(result?.stdout ?? result ?? "").split("\n").find((line) =>
+    line.includes("/Applications/ChatGPT.app/Contents/MacOS/ChatGPT")
+  );
+  if (!processLine) return [];
+  const pid = Number(processLine.trim().split(/\s+/, 1)[0]);
+  if (!Number.isSafeInteger(pid) || pid <= 1) {
+    throw new Error("Could not resolve the running ChatGPT process ID");
+  }
+  const helper = join(dirname(fileURLToPath(import.meta.url)), "deferred-clean-install-codex.mjs");
+  const child = spawn(process.execPath, [
+    helper,
+    "--delay-ms", "45000",
+    "--pid", String(pid),
+    "--home", home,
+    "--source", source
+  ], { detached: true, stdio: "ignore" });
+  child.unref();
+  return ["ChatGPT"];
+}
 
 function marketplaceEntries(value) {
   return Array.isArray(value) ? value : value?.marketplaces ?? [];
@@ -62,8 +87,7 @@ async function validatePackageCache(path) {
 
 export async function planCodexCleanup(rawOptions = {}) {
   const options = { home: homedir(), ...rawOptions };
-  const bosManifest = await readJson(join(root, "products", "bos", "product.json"));
-  const appId = bosManifest.codex_app_id;
+  const appId = legacyCodexAppIds[0];
   const suffix = appId.replace(/^asdk_app_/, "");
   const packageCache = join(options.home, ".codex", "plugins", "cache", marketplace);
   await validatePackageCache(packageCache);
@@ -83,24 +107,30 @@ export async function planCodexCleanup(rawOptions = {}) {
   }
   const cacheFiles = [];
   for (const kind of cacheKinds) {
-    cacheFiles.push(...await filesContaining(
-      join(options.home, ".codex", "cache", kind),
-      appId
-    ));
+    for (const needle of [bosResourceUrl, ...legacyCodexAppIds]) {
+      cacheFiles.push(...await filesContaining(
+        join(options.home, ".codex", "cache", kind),
+        needle
+      ));
+    }
   }
   const globalState = join(options.home, ".codex", ".codex-global-state.json");
+  const globalStateContent = (await pathExists(globalState))
+    ? await readFile(globalState, "utf8")
+    : "";
   return {
     schema_version: "1",
     app_id: appId,
     package_cache: (await pathExists(packageCache)) ? packageCache : null,
     registered_app_wrapper: (await pathExists(wrapper)) ? wrapper : null,
-    cache_files: cacheFiles,
-    global_state: (await pathExists(globalState)) &&
-      (await readFile(globalState, "utf8")).includes(appId) ? globalState : null
+    cache_files: [...new Set(cacheFiles)].sort(),
+    global_state: [bosResourceUrl, ...legacyCodexAppIds].some((needle) =>
+      globalStateContent.includes(needle)
+    ) ? globalState : null
   };
 }
 
-export function removeBosToolsFromGlobalState(state, appId) {
+export function removeBosToolsFromGlobalState(state, appId = legacyCodexAppIds[0]) {
   const catalog = state?.["electron-persisted-atom-state"]
     ?.["mcp-extension-sidebar-catalog"]?.catalog;
   if (!Array.isArray(catalog)) return 0;
@@ -112,6 +142,8 @@ export function removeBosToolsFromGlobalState(state, appId) {
       const connector = tool?._meta?.connector_id;
       const resource = tool?._meta?._codex_apps?.resource_uri;
       return connector !== appId &&
+        !legacyCodexAppIds.includes(connector) &&
+        !(typeof resource === "string" && resource.includes(bosResourceUrl)) &&
         !(typeof resource === "string" && resource.includes(`/${appId}/`));
     });
     removed += before - entry.tools.length;
@@ -130,10 +162,23 @@ export async function cleanInstallCodex(rawOptions = {}) {
     home: homedir(),
     source: join(root, "clients", "codex"),
     runCommand: execFileAsync,
+    deferWhileRunning: true,
+    deferRunningInstall: deferCodexDesktopInstall,
     ...rawOptions
   };
   if (options.confirmation !== CODEX_CLEAN_CONFIRMATION) {
     throw new Error(`Confirmation must equal: ${CODEX_CLEAN_CONFIRMATION}`);
+  }
+  if (options.deferWhileRunning) {
+    const deferredClients = await options.deferRunningInstall(options);
+    if (deferredClients.length > 0) {
+      return {
+        schema_version: "1",
+        ok: true,
+        actions: deferredClients.map((client) => `clean_install_scheduled:${client}`),
+        next_action: "The clean install will close ChatGPT, reinstall BOS while it is stopped, and reopen ChatGPT automatically."
+      };
+    }
   }
   const plan = await planCodexCleanup(options);
   const actions = [];
@@ -199,7 +244,7 @@ export async function cleanInstallCodex(rawOptions = {}) {
     schema_version: "1",
     ok: true,
     actions,
-    next_action: "Quit and reopen Codex, complete BOS sign-in if prompted, then run npm run install:verify:codex-runtime."
+    next_action: "The package installation is complete. The host will present BOS sign-in during OAuth discovery."
   };
 }
 

@@ -51,12 +51,12 @@ Open a new Codex task and paste:
 
 Codex reads the generated catalog at
 `clients/codex/.agents/plugins/marketplace.json`, installs the plugins into its managed
-cache, and loads the registered BOS app from the BOS plugin's `.app.json`. BOS
+cache, and registers the immutable BOS endpoint from the BOS plugin's `.mcp.json`. BOS
 owns the immutable MCP resource and host-managed OAuth grant. Education Operation
-Center uses that connection without another app binding or login. Start a new
+Center uses that connection without another MCP binding or login. Start a new
 task after installation or upgrade. A complete installation must pass
 `npm run install:verify:codex-runtime`; this checks the plugin registry,
-marketplace registration, installed package versions, registered-app wrapper,
+marketplace registration, installed package versions, package-owned MCP binding,
 and required callable tools together.
 
 If Codex reports a fresh package cache while either plugin is absent from the

@@ -12,8 +12,8 @@
    clients contain no secrets or customer data. Each user-facing client context
    authorizes one root BOS MCP resource through host-managed OAuth 2.1. Claude
    uses one BOS account or organization Web connector; Copilot and Gemini
-   declare the BOS resource directly; ChatGPT/Codex binds the root BOS
-   registered app. Education Center, CRM, Marketing Director, and other
+   declare the BOS resource directly; ChatGPT/Codex loads it from the root BOS
+   package's MCP declaration. Education Center, CRM, Marketing Director, and other
    subservice plugins never create another BOS connection or login.
    Packages contain no user-entered BOS credential. Missing provider grants recover through
    BOS-hosted HTTPS authorization or credential collection and are stored only

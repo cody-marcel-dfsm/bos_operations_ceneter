@@ -1,43 +1,39 @@
 {
-  "indexed_at": "20260830T011555.871771Z",
+  "indexed_at": "20260830T005531.387198Z",
   "schema_version": "bos-vault-manifest/v1",
-  "source_count": 58,
+  "source_count": 56,
   "sources": {
     "Vault/README.md": {
       "bytes": 1032,
       "sha256": "151db2b63b813c58a5634e28bc5f6690beec6750cf970a2dea8b4b6f067d8906"
     },
     "Vault/decisions/2026-08-11-canonical-codex-marketplace-layout.md": {
-      "bytes": 2642,
-      "sha256": "761164f4ef2664742d14e5c24924969b5cc811b361f5b0298511b64ffd017873"
+      "bytes": 2547,
+      "sha256": "ef61b39167716c298837d61b3b8e97e46c08420f33228ffbb9d8165205a95951"
     },
     "Vault/decisions/2026-08-11-desktop-private-marketplace-oauth.md": {
-      "bytes": 3208,
-      "sha256": "839a55f8edd268f0117784b8ba2bed7fc9b5eefd54ee22709fd0efd8a6d0275e"
-    },
-    "Vault/decisions/2026-08-29-codex-package-owned-mcp.md": {
-      "bytes": 1525,
-      "sha256": "8ea4e724ff6e0980f4b8db54e448e0aa579376d20e9738711a204aec6790459d"
+      "bytes": 3160,
+      "sha256": "a0f4d6eec628e6d83421e1fdf05e59c0506ec2a5a489c21981740b8cb0b5d920"
     },
     "Vault/docs/CONSTITUTION.md": {
-      "bytes": 4082,
-      "sha256": "63877da78ab0243a38979f56d50510a338d470fa26a4a100e42579d3f390794e"
+      "bytes": 4063,
+      "sha256": "09456e19ff768e1231bae4a5e618d741eabb21f83f3e8739ed13435b4e2979c4"
     },
     "Vault/docs/architecture.md": {
-      "bytes": 21039,
-      "sha256": "e4e119f3ee59926c9d4281307463066db5c242d0fc8ba0c4ab588d646d2ef701"
+      "bytes": 21127,
+      "sha256": "6075a7d9ad962b73026eba9fda95a6d3c3da2e1e6f0e6db48dbd78461a901df0"
     },
     "Vault/docs/bos-product-licensing-user-experience.md": {
       "bytes": 1377,
       "sha256": "d8556b77a36d31b1f459efacc9fd99702278fc1c3b6e97c6953248f5034f198e"
     },
     "Vault/docs/marketplace-agent-harness-plan.md": {
-      "bytes": 1883,
-      "sha256": "c6e3c5ea404c2a2c3e386ed144e69ac019937877b6b89e75059be8c81751c65e"
+      "bytes": 1887,
+      "sha256": "6c6cad9ed49ee26d94837464fe61ca22fec926211b92c280d7d44f4dc3a7f123"
     },
     "Vault/docs/marketplace-submission-assets.md": {
-      "bytes": 1198,
-      "sha256": "f05a0c4a81ca9efae1698e4ec6a57676f48e489609f28ba8f240feafe83619b0"
+      "bytes": 1183,
+      "sha256": "e36e3c3fb28bc00f900ba0cf05222b516afc89605b6a38cc6d201ae35731bb7f"
     },
     "Vault/docs/my-crm-developer-platform-work-matrix.md": {
       "bytes": 810,
@@ -143,10 +139,6 @@
       "bytes": 3644,
       "sha256": "6212e7bd82c4bd28ec468b02584f2fd2cd6d3d4453687a7a02714f1f5bd1adb2"
     },
-    "Vault/reviews/2026-08-29-codex-package-owned-mcp.md": {
-      "bytes": 2124,
-      "sha256": "428d341f3b02ad73afbb73e7a3fea43c827438646b351d156ff224b0edfaf5ca"
-    },
     "Vault/reviews/2026-08-29-durable-codex-app-identity.md": {
       "bytes": 1199,
       "sha256": "61fd42e224d0b8f2cb40a6e856f17a0463d4513597dbed5c551ceb0e53650b4c"
@@ -164,8 +156,8 @@
       "sha256": "3922907624221572a243f58b3684dc8a2eb7b7d221b4a3d6ac5dd1317b9baef4"
     },
     "Vault/specs/client-guided-support.md": {
-      "bytes": 3623,
-      "sha256": "5c32c1cf24e8dd6c8d410f2a5d30aab0b9d0be33c62aa877470b6f7612ac4eec"
+      "bytes": 3615,
+      "sha256": "51b1a92203f3b8fe7c890ff08a74ad5457f44509d397e4c02bfd65b295d50bf5"
     },
     "Vault/specs/customer-skill-extensions.md": {
       "bytes": 5632,
@@ -192,8 +184,8 @@
       "sha256": "3186bcb5685d6a971b5bcb08b806b95d4dc3a9d35d8bb82ab7ba5b438c728729"
     },
     "Vault/specs/single-bos-mcp-connection.md": {
-      "bytes": 6887,
-      "sha256": "ee982fcc5cec7356a2f8a50fabc6f97759b9a2e43d02b5f3869ab65831c1749f"
+      "bytes": 6885,
+      "sha256": "d02c4fd71808b4a5aac083359c1f1b54e93dbb700476ea5784cf20b708e07af0"
     },
     "Vault/submissions/openai/education-operation-center/README.md": {
       "bytes": 2988,

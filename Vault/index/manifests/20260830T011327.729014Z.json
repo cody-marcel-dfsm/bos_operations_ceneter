@@ -1,7 +1,7 @@
 {
-  "indexed_at": "20260830T011555.871771Z",
+  "indexed_at": "20260830T011327.729014Z",
   "schema_version": "bos-vault-manifest/v1",
-  "source_count": 58,
+  "source_count": 57,
   "sources": {
     "Vault/README.md": {
       "bytes": 1032,
@@ -24,8 +24,8 @@
       "sha256": "63877da78ab0243a38979f56d50510a338d470fa26a4a100e42579d3f390794e"
     },
     "Vault/docs/architecture.md": {
-      "bytes": 21039,
-      "sha256": "e4e119f3ee59926c9d4281307463066db5c242d0fc8ba0c4ab588d646d2ef701"
+      "bytes": 21022,
+      "sha256": "d9b8a79c5b5a697d3611ec3d8ad1cfa1174e1336f3e145832410cde80386df82"
     },
     "Vault/docs/bos-product-licensing-user-experience.md": {
       "bytes": 1377,
@@ -142,10 +142,6 @@
     "Vault/reviews/2026-08-28-release-0.4.49.md": {
       "bytes": 3644,
       "sha256": "6212e7bd82c4bd28ec468b02584f2fd2cd6d3d4453687a7a02714f1f5bd1adb2"
-    },
-    "Vault/reviews/2026-08-29-codex-package-owned-mcp.md": {
-      "bytes": 2124,
-      "sha256": "428d341f3b02ad73afbb73e7a3fea43c827438646b351d156ff224b0edfaf5ca"
     },
     "Vault/reviews/2026-08-29-durable-codex-app-identity.md": {
       "bytes": 1199,

@@ -32,7 +32,7 @@ MCP context and read tools strengthen verification when available.
 9. When a user explicitly requests complete local removal, use the
    repository-owned all-client uninstaller. Inspect its identity-bounded dry
    run, require exact destructive authorization, automatically delete the
-   developer-owned **Created by you** account app through the authenticated
+   retired developer-owned **Created by you** account app through the authenticated
    ChatGPT connector resource before removing local state, delete no unrelated client or source
    state, create no backup, verify account, registry, and filesystem absence,
    and refresh the authenticated account catalog. When ChatGPT/Codex Desktop is

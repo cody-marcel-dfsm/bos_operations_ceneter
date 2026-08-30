@@ -3,8 +3,8 @@
 ## Status
 
 Accepted on 2026-08-11. The Claude packaging portion is superseded by
-`2026-08-22-claude-account-connector-separation.md`; the Codex decision remains
-active.
+`2026-08-22-claude-account-connector-separation.md`; the Codex app-ID portion is
+superseded by `2026-08-29-codex-package-owned-mcp.md`.
 
 ## Decision
 

@@ -10,7 +10,7 @@ reported stage only when later evidence contradicts it.
 |---|---|---|---|
 | Install | Marketplace/plugin/extension listing or package metadata | Install or update the named BOS product from its canonical distribution | Correct product and expected version are present |
 | Load | Skill list, plugin enabled state, or a new task/session | Enable the product and restart or start a new task as the client requires | Current session recognizes `bos-guided-support` and product skills |
-| Register | Client connection/MCP listing, package runtime metadata, and OAuth client status | Restore the package-owned registered app or remote MCP declaration; discard and recreate a stale host registration for the same BOS resource | Exact BOS resource is visible and its host-owned public client is accepted |
+| Register | Client connection/MCP listing, package runtime metadata, and OAuth client status | Restore the package-owned remote MCP declaration; discard and recreate a stale host registration for the same BOS resource | Exact BOS resource is visible and its host-owned public client is accepted |
 | Sign in | Host connection state or OAuth result | Invoke the client's Connect/Sign in/Authenticate flow | Valid resource-scoped BOS OAuth grant is accepted |
 | Discover | Fresh callable tool manifest | Reconnect or refresh MCP/tool discovery | Required product tools, including context discovery, appear |
 | Verify | `bos_get_context` plus a bounded authenticated product read | Classify the returned server/provider error and recover that boundary | One canonical context and one read succeed |
