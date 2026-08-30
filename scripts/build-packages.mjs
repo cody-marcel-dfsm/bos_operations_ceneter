@@ -352,6 +352,24 @@ await writeJson(
   claudeMarketplace
 );
 
+const repositoryCodexMarketplace = {
+  ...marketplace,
+  plugins: marketplace.plugins.map((entry) => ({
+    ...entry,
+    source: {
+      ...entry.source,
+      path: `./clients/codex/plugins/${entry.name}`
+    }
+  }))
+};
+const repositoryClaudeMarketplace = {
+  ...claudeMarketplace,
+  plugins: claudeMarketplace.plugins.map((entry) => ({
+    ...entry,
+    source: `./clients/claude/plugins/${entry.name}`
+  }))
+};
+
 const educationCenterCopilot = join(
   stagedClients,
   "copilot",
@@ -451,6 +469,17 @@ await writeJson(join(root, "clients", "disabled-products.json"), {
       mcp_group_name
     }))
 });
+
+// These repository-root entrypoints make the Git repository itself installable
+// in Codex and Claude. The all-client uninstaller must preserve source files.
+await writeJson(
+  join(root, ".agents", "plugins", "marketplace.json"),
+  repositoryCodexMarketplace
+);
+await writeJson(
+  join(root, ".claude-plugin", "marketplace.json"),
+  repositoryClaudeMarketplace
+);
 
 await rm(stage, { recursive: true, force: true });
 console.log(
