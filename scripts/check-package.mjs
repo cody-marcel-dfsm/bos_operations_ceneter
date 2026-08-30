@@ -510,9 +510,56 @@ async function validateProducts() {
   }
 }
 
+async function validateRepositoryMarketplaceEntrypoints() {
+  const codexPath = join(root, ".agents", "plugins", "marketplace.json");
+  const claudePath = join(root, ".claude-plugin", "marketplace.json");
+  const generatedCodexPath = join(
+    root, "clients", "codex", ".agents", "plugins", "marketplace.json"
+  );
+  const generatedClaudePath = join(
+    root, "clients", "claude", ".claude-plugin", "marketplace.json"
+  );
+  if (!(await pathExists(codexPath))) {
+    failures.push(`Missing repository Codex marketplace entrypoint: ${codexPath}`);
+  } else {
+    const manifest = await readJson(codexPath);
+    const generated = await readJson(generatedCodexPath);
+    const expected = {
+      ...generated,
+      plugins: generated.plugins.map((entry) => ({
+        ...entry,
+        source: {
+          ...entry.source,
+          path: `./clients/codex/plugins/${entry.name}`
+        }
+      }))
+    };
+    if (JSON.stringify(manifest) !== JSON.stringify(expected)) {
+      failures.push(`Repository Codex marketplace entrypoint drift: ${codexPath}`);
+    }
+  }
+  if (!(await pathExists(claudePath))) {
+    failures.push(`Missing repository Claude marketplace entrypoint: ${claudePath}`);
+  } else {
+    const manifest = await readJson(claudePath);
+    const generated = await readJson(generatedClaudePath);
+    const expected = {
+      ...generated,
+      plugins: generated.plugins.map((entry) => ({
+        ...entry,
+        source: `./clients/claude/plugins/${entry.name}`
+      }))
+    };
+    if (JSON.stringify(manifest) !== JSON.stringify(expected)) {
+      failures.push(`Repository Claude marketplace entrypoint drift: ${claudePath}`);
+    }
+  }
+}
+
 await scan(root);
 await validateTrackedCredentialFiles();
 await validateProducts();
+await validateRepositoryMarketplaceEntrypoints();
 
 if (failures.length) {
   console.error([...new Set(failures)].join("\n"));

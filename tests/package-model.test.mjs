@@ -1384,7 +1384,7 @@ test("Claude distribution is a marketplace of self-contained plugins", async () 
   assert.match(educationCenterReadme, /minimum-necessary disclosure/);
   assert.match(educationCenterReadme, /https:\/\/dfsm\.ai\/apps\/bos\/privacy\.html/);
 
-  await assert.rejects(access(`${root}/.claude-plugin/marketplace.json`), /ENOENT/);
+  await access(`${root}/.claude-plugin/marketplace.json`);
 
   const educationCenterManifest = JSON.parse(
     await readFile(
@@ -1892,8 +1892,25 @@ test("generated client marketplaces expose native Claude and Codex desktop packa
       source: "./plugins/education-center"
     }
   ]);
-  await assert.rejects(access(`${root}/.agents/plugins/marketplace.json`), /ENOENT/);
-  await assert.rejects(access(`${root}/.claude-plugin/marketplace.json`), /ENOENT/);
+  const repositoryCodex = JSON.parse(await readFile(
+    `${root}/.agents/plugins/marketplace.json`,
+    "utf8"
+  ));
+  const repositoryClaude = JSON.parse(await readFile(
+    `${root}/.claude-plugin/marketplace.json`,
+    "utf8"
+  ));
+  assert.deepEqual(repositoryCodex.plugins.map(({ name, source }) => ({
+    name,
+    path: source.path
+  })), [
+    { name: "bos", path: "./clients/codex/plugins/bos" },
+    { name: "education-center", path: "./clients/codex/plugins/education-center" }
+  ]);
+  assert.deepEqual(repositoryClaude.plugins.map(({ name, source }) => ({ name, source })), [
+    { name: "bos", source: "./clients/claude/plugins/bos" },
+    { name: "education-center", source: "./clients/claude/plugins/education-center" }
+  ]);
 });
 
 test("migrated BOS personal workflows are canonical and generated for every applicable client", async () => {
