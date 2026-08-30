@@ -12,6 +12,13 @@ database, process, listener, browser session, or machine-local service. The BOS
 server returns structured state through the root BOS MCP connection, and the
 client renders that response directly from memory.
 
+Broad user language including “plugin settings,” “server settings for BOS
+plugins,” connection status, enablement, services, or display properties routes
+to this console before any product customer-settings or plugin-settings
+initialization preflight. The request neither reads nor creates a customer
+settings overlay. A user enters the cached typed-settings workflow only by
+selecting **Settings** for one returned plugin or naming one plugin property.
+
 ## Ownership and boundaries
 
 - The active client's BOS context identifies which installed subservices and

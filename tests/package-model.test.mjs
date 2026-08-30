@@ -16,6 +16,8 @@ import {
   materializeMcpUrl,
   pathExists,
   pluginManifest,
+  productInitializationIndependentSkills,
+  transformProductSkillGuidance,
   resolveProductSkills,
   root,
   walkFiles,
@@ -189,7 +191,16 @@ test("product initialization preflight orders client settings before plugin sett
   assert.match(output, /resume the original request automatically/i);
 });
 
-test("every generated Education Center skill enforces first-run initialization on every client", async () => {
+test("runtime plugin settings routing is independent of product initialization", () => {
+  const source = "---\nname: bos-plugin-settings\ndescription: Settings.\n---\n\n# Settings\n";
+  const output = transformProductSkillGuidance({
+    settings_initializer: "initialize-client-settings",
+    plugin_settings_initializer: "initialize-plugin-settings"
+  }, "bos-plugin-settings", source);
+  assert.equal(output, source);
+});
+
+test("every generated Education Center domain skill enforces first-run initialization", async () => {
   const education = (await listProducts()).find(
     ({ manifest }) => manifest.name === "education-center"
   )?.manifest;
@@ -212,6 +223,14 @@ test("every generated Education Center skill enforces first-run initialization o
       if (skill.name === education.plugin_settings_initializer) {
         assert.match(guidance, /## Product first-run preflight/, `${clientRoot}/${skill.name}`);
         assert.doesNotMatch(guidance, /## Product initialization preflight/);
+        continue;
+      }
+      if (productInitializationIndependentSkills.has(skill.name)) {
+        if (skill.name === "bos-plugin-settings") {
+          assert.match(guidance, /## Route before preflight/);
+        }
+        assert.doesNotMatch(guidance, /## Product initialization preflight/);
+        assert.doesNotMatch(guidance, /config\/customer-settings\.json/);
         continue;
       }
       assert.match(guidance, /## Product initialization preflight/, `${clientRoot}/${skill.name}`);

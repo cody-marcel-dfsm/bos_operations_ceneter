@@ -69,12 +69,15 @@ release system for portable BOS skills and native remote MCP client adapters.
     confirmation. Derived configuration never grants authority.
     A product that declares a customer-settings template also declares one
     included settings-initialization skill. During deterministic client
-    generation, every other skill in that product receives the same first-run
+    generation, every domain workflow in that product receives the same first-run
     preflight: validate the preserved customer overlay before its normal
     workflow, invoke the initializer when the overlay is missing, incomplete,
     or invalid, preserve the pending request through authentication and
     confirmation, then reload settings and resume it automatically. Apply this
-    composition equally to Claude, Codex, Copilot, and Gemini packages.
+    composition equally to Claude, Codex, Copilot, and Gemini packages. Root BOS
+    control-plane routing remains initialization-independent so connection,
+    plugin-console, and broad server-settings status requests can diagnose and
+    configure the product without creating a customer overlay.
 11. Connect clients directly to one BOS HTTPS Streamable HTTP resource. Use the
     package-owned root BOS MCP declaration in Codex, one BOS account-level Web
     connector in Claude, one OAuth-discovered BOS connection in Copilot
@@ -254,15 +257,20 @@ release system for portable BOS skills and native remote MCP client adapters.
     Plugin Console inside the active client's content window. A console request
     remains memory-only: it writes no runtime artifact, executes no packaged
     renderer, starts no local process or service, and inspects no local plugin
-    directory. The root BOS MCP resource and OAuth grant are shared by the
-    installed subservices. The server returns ordered `structuredContent`, owns plugin
-    state, revisions, connection actions, and audited enablement mutations, and
-    remotely serves the associated MCP App resource. Clients render that state
+    directory. Broad requests for plugin settings, server settings, connection
+    status, enablement, services, or display properties route here before any
+    product initialization preflight. The root BOS MCP resource and OAuth grant
+    are shared by the installed subservices. The server returns ordered
+    `structuredContent`, owns plugin state, revisions, connection actions, and
+    audited enablement mutations, and remotely serves the associated MCP App resource.
+    Clients render that state
     through their native structured-content or component surface and invoke the
     same authenticated remote tools for **Connect** buttons and enablement
     toggles. See `Vault/specs/plugin-service-console.md`.
 22. Manage typed plugin settings through one application-neutral client
-    contract and the shared root BOS connection. Establish
+    contract and the shared root BOS connection. Route broad plugin inventory
+    and server-settings status requests to the memory-only Plugin Console.
+    For a specific required setting that needs sourced discovery, establish
     non-secret recommendation inputs through the customer/client-settings
     initializer first, then run plugin-settings initialization after BOS
     authentication. The BOS service owns profiles, canonical values, revisions,
