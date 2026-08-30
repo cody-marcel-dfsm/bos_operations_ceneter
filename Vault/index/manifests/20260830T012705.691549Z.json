@@ -1,7 +1,7 @@
 {
-  "indexed_at": "20260830T012806.388768Z",
+  "indexed_at": "20260830T012705.691549Z",
   "schema_version": "bos-vault-manifest/v1",
-  "source_count": 59,
+  "source_count": 58,
   "sources": {
     "Vault/README.md": {
       "bytes": 1032,
@@ -158,10 +158,6 @@
     "Vault/reviews/2026-08-29-release-0.4.54.md": {
       "bytes": 2624,
       "sha256": "2167fdf65df55f9904f2e6f767a2e0f39e4bb33a32d581147da0add3d26e05d4"
-    },
-    "Vault/reviews/2026-08-29-release-0.4.55.md": {
-      "bytes": 2321,
-      "sha256": "c2074509858614489e6d2afd1f34d12f196fc007c4bbe6b3ad6de3a0a31eece5"
     },
     "Vault/schemas/decision-record.md": {
       "bytes": 439,

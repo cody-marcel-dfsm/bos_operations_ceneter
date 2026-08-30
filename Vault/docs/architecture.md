@@ -152,10 +152,11 @@ release system for portable BOS skills and native remote MCP client adapters.
 16. Distribute pre-publication Claude and Codex products through their native
     local or private Git marketplaces. Claude uses
     `clients/claude/.claude-plugin/marketplace.json`; Codex uses
-    `clients/codex/.agents/plugins/marketplace.json`. Keep marketplace manifests
-    out of the repository root so merely opening the source project does not
-    advertise its plugins. Keep separate host manifests and share
-    canonical skills through deterministic generation. Installation adds the
+    `clients/codex/.agents/plugins/marketplace.json`. Generate matching
+    repository-root entrypoints at `.claude-plugin/marketplace.json` and
+    `.agents/plugins/marketplace.json` so a Git URL resolves without a sparse
+    checkout. Preserve those source manifests during every local uninstall.
+    Keep separate host manifests and share canonical skills through deterministic generation. Installation adds the
     marketplace and installs the product skills. Claude account or organization
     connector provisioning registers the BOS resource once and presents
     the persistent **Connect** action under **Customize → Connectors**. A new task loads

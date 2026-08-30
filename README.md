@@ -28,7 +28,7 @@ The private Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Select
 **Connect** or **Sign in** when the host presents it, then complete BOS consent.
 
-Current desktop marketplace release: `0.4.54`. If `0.4.53` is installed,
+Current desktop marketplace release: `0.4.55`. If `0.4.54` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -49,6 +49,10 @@ Open a new Codex task and paste:
 > incomplete, report `authentication_required`; do not generate an
 > unavailable-data report.
 
+For the Plugins settings form, enter the repository URL above, use `main` as
+the Git ref, and leave **Sparse paths** empty. The repository-root
+`.agents/plugins/marketplace.json` routes Codex to both generated plugins.
+
 Codex reads the generated catalog at
 `clients/codex/.agents/plugins/marketplace.json`, installs the plugins into its managed
 cache, and registers the immutable BOS endpoint from the BOS plugin's `.mcp.json`. BOS
@@ -60,21 +64,21 @@ marketplace registration, installed package versions, package-owned MCP binding,
 and required callable tools together.
 
 If Codex reports a fresh package cache while either plugin is absent from the
-plugin registry or required Education Operation Center tools are absent, quit
-Codex completely and run the repository's bounded recovery command from a
-terminal:
+plugin registry or required Education Operation Center tools are absent, run
+the repository's bounded recovery command from a terminal:
 
 ```bash
 npm run clean-install:codex -- \
   --confirmation "DELETE ALL BOS CODEX PLUGIN STATE"
 ```
 
-The command removes only the `bos-education-center` marketplace packages, the
-registered BOS app wrapper, and cache/catalog records carrying the immutable BOS
-app ID. It backs up the Codex global state file before removing those catalog
-records, reinstalls both products from this repository, and preserves OAuth and
-unrelated plugin state. Reopen Codex, complete BOS sign-in when prompted, start
-a new task, and run `npm run install:verify:codex-runtime` again.
+The command removes only the `bos-education-center` marketplace packages and
+cache/catalog records carrying the canonical BOS MCP resource or retired app
+identity. It backs up the Codex global state file before removing those catalog
+records, stops a running ChatGPT client, reinstalls both products while the
+client is stopped, reopens it automatically, and preserves OAuth and unrelated
+plugin state. Complete BOS sign-in when prompted, start a new task, and run
+`npm run install:verify:codex-runtime` again.
 
 ### Claude Cowork/Desktop
 

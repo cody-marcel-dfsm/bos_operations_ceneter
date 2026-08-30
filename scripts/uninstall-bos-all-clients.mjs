@@ -161,17 +161,6 @@ async function removePath(path, actions, dryRun) {
   if (!dryRun) await rm(path, { recursive: true, force: true });
 }
 
-async function removeRepositoryMarketplaceManifest(path, actions, dryRun) {
-  if (!(await pathPresent(path))) return;
-  const manifest = await readJson(path);
-  const names = (manifest.plugins ?? []).map((entry) => entry?.name).filter(Boolean);
-  if (manifest.name !== marketplace ||
-      names.some((name) => !products.includes(name))) {
-    throw new Error(`Refusing to remove a non-BOS repository marketplace: ${path}`);
-  }
-  await removePath(path, actions, dryRun);
-}
-
 async function removeLegacyPersonalSkills(home, actions, dryRun) {
   for (const [folder, expectedName] of legacyPersonalSkills) {
     const path = join(home, ".codex", "skills", folder);
@@ -256,7 +245,6 @@ async function removeCopilotRoot(target, actions, dryRun) {
 export async function uninstallBosAllClients({
   confirmation,
   home = homedir(),
-  sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), ".."),
   copilotRoots = [],
   dryRun = false,
   runCommand = execFileAsync,
@@ -271,12 +259,6 @@ export async function uninstallBosAllClients({
   const codexPlan = await planCodexCleanup({ home });
   const claudeCache = await preflightClaudeCache(home);
   const actions = [];
-  for (const manifestPath of [
-    join(sourceRoot, ".agents", "plugins", "marketplace.json"),
-    join(sourceRoot, ".claude-plugin", "marketplace.json")
-  ]) {
-    await removeRepositoryMarketplaceManifest(manifestPath, actions, dryRun);
-  }
   await removeLegacyPersonalSkills(home, actions, dryRun);
   const accountApps = await codexAccount.inspect(codexPlan.app_id);
   if (accountApps.length) {
@@ -349,7 +331,7 @@ export async function uninstallBosAllClients({
     blockers: [],
     visibility: {
       account_app: accountApps.length ? "scheduled_for_automatic_deletion" : "absent",
-      repository_marketplace_cards: "scheduled_for_removal"
+      repository_marketplace_manifests: "preserved"
     }
     };
   }
@@ -389,14 +371,6 @@ export async function uninstallBosAllClients({
       (await readFile(codexPlan.global_state, "utf8")).includes(codexPlan.app_id)) {
     failures.push(`Codex global state still references ${codexPlan.app_id}`);
   }
-  for (const manifestPath of [
-    join(sourceRoot, ".agents", "plugins", "marketplace.json"),
-    join(sourceRoot, ".claude-plugin", "marketplace.json")
-  ]) {
-    if (await pathPresent(manifestPath)) {
-      failures.push(`Repository marketplace remains: ${manifestPath}`);
-    }
-  }
   const clientsToRestart = failures.length
     ? []
     : await restartRunningClients({ dryRun: false, runCommand });
@@ -415,7 +389,7 @@ export async function uninstallBosAllClients({
     },
     visibility: {
       account_app: accountAppsAfter.length ? "present" : "verified_absent",
-      repository_marketplace_cards: "verified_absent"
+      repository_marketplace_manifests: "preserved"
     },
     runtime_refresh: clientsToRestart.length
       ? { status: "scheduled", clients: clientsToRestart, delay_seconds: 45 }

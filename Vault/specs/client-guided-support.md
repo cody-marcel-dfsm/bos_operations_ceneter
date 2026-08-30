@@ -37,9 +37,9 @@ MCP context and read tools strengthen verification when available.
    state, create no backup, verify account, registry, and filesystem absence,
    and refresh the authenticated account catalog. When ChatGPT/Codex Desktop is
    running, schedule a forced restart after reporting success so stale process
-   state cannot be persisted again and no manual restart is required. Remove the
-   BOS-only root repository marketplace manifests so no source-availability cards
-   remain in the open source project. Preserve generated installable catalogs under
+   state cannot be persisted again and no manual restart is required. Preserve the
+   root repository marketplace manifests because they are package source and the
+   Git URL installation entrypoints. Preserve generated installable catalogs under
    their client package roots. Remove deprecated personal BOS and Education skill
    copies only after their exact directory and declared skill identities match the
    migration inventory. Preserve unrelated personal and system skills.
