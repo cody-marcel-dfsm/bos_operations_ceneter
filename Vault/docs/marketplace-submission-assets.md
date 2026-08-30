@@ -1,6 +1,6 @@
 # Marketplace submission assets
 
-Current BOS marketplace package release: `0.4.54`.
+Current BOS marketplace package release: `0.4.55`.
 
 ## BOS connection submission
 

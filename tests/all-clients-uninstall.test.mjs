@@ -136,8 +136,8 @@ test("all-client uninstall removes validated BOS state and preserves unrelated c
     await pathExists(join(home, ".codex/skills/partnership-proposal-builder")),
     false
   );
-  assert.equal(await pathExists(join(sourceRoot, ".agents/plugins/marketplace.json")), false);
-  assert.equal(await pathExists(join(sourceRoot, ".claude-plugin/marketplace.json")), false);
+  assert.equal(await pathExists(join(sourceRoot, ".agents/plugins/marketplace.json")), true);
+  assert.equal(await pathExists(join(sourceRoot, ".claude-plugin/marketplace.json")), true);
   const global = JSON.parse(await readFile(globalState, "utf8"));
   assert.deepEqual(global["electron-persisted-atom-state"]
     ["mcp-extension-sidebar-catalog"].catalog[0].tools.map((tool) => tool.name), ["other"]);
@@ -145,7 +145,7 @@ test("all-client uninstall removes validated BOS state and preserves unrelated c
   assert(calls.includes("claude plugin uninstall bos@bos-education-center --scope user"));
   assert.deepEqual(account.calls, ["inspect", "inspect"]);
   assert.equal(report.visibility.account_app, "verified_absent");
-  assert.equal(report.visibility.repository_marketplace_cards, "verified_absent");
+  assert.equal(report.visibility.repository_marketplace_manifests, "preserved");
 });
 
 test("all-client uninstall requires exact destructive confirmation", async () => {

@@ -1,7 +1,7 @@
 {
   "name": "education-center",
   "displayName": "Education Operation Center",
-  "version": "0.4.54",
+  "version": "0.4.55",
   "description": "Agent-first education operations for complex, human-centered work.",
   "author": {
     "name": "Infinite State Machines LLC"
