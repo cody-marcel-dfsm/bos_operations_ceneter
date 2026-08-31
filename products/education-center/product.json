@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.59",
+  "version": "0.4.60",
   "release_status": "active",
   "display_name": "Education Operation Center",
   "description": "Agent-first education operations for complex, human-centered work.",
@@ -23,6 +23,7 @@
     "gemini"
   ],
   "runtime_verification_tools": [
+    "bos_get_plugin_settings_initialization",
     "education_center_get_camp_roster_report",
     "education_center_list_enrollments",
     "education_center_search_leads",
