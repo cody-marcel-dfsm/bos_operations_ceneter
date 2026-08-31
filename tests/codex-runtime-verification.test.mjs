@@ -86,8 +86,16 @@ function runLocalCommand(sourceRoot) {
 
 const requiredTools = [
   "bos_get_authorization_status",
+  "bos_apply_plugin_settings",
+  "bos_begin_plugin_service_connection",
   "bos_get_context",
+  "bos_get_plugin_setting_changes",
+  "bos_get_plugin_settings",
+  "bos_get_plugin_settings_initialization",
+  "bos_list_plugin_services",
+  "bos_prepare_plugin_settings",
   "bos_resume_operation",
+  "bos_set_plugin_enabled",
   "education_center_get_camp_roster_report",
   "education_center_list_enrollments",
   "education_center_search_leads",
@@ -150,6 +158,25 @@ test("Codex runtime verification reproduces the incomplete Calimatic tool catalo
     "education_center_get_camp_roster_report",
     "education_center_list_enrollments",
     "education_center_search_students"
+  ]);
+});
+
+test("Codex runtime verification rejects a catalog without native settings tools", async () => {
+  const { home, catalog } = await fixtureHome(requiredTools.filter((name) => ![
+    "bos_get_plugin_settings",
+    "bos_prepare_plugin_settings",
+    "bos_apply_plugin_settings"
+  ].includes(name)));
+  const report = await inspectCodexRuntime({
+    home,
+    catalogPath: catalog,
+    runCommand: runCommand()
+  });
+  assert.equal(report.ok, false);
+  assert.deepEqual(report.callable_catalog.missing_tools, [
+    "bos_apply_plugin_settings",
+    "bos_get_plugin_settings",
+    "bos_prepare_plugin_settings"
   ]);
 });
 

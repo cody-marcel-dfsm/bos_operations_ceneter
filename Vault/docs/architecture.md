@@ -269,11 +269,16 @@ release system for portable BOS skills and native remote MCP client adapters.
     provider-service readiness, and display-safe properties through the BOS
     Plugin Console inside the active client's content window. A console request
     remains memory-only: it writes no runtime artifact, executes no packaged
-    renderer, starts no local process or service, and inspects no local plugin
-    directory. Broad requests for plugin settings, server settings, connection
-    status, enablement, services, or display properties route here before any
-    product initialization preflight. The root BOS MCP resource and OAuth grant
-    are shared by the installed subservices. The server returns ordered
+    renderer, starts no local renderer or service, and inspects no local plugin
+    directory. Its sole local preflight reads the shared display-label default
+    through the packaged client-preferences helper and validates it against the
+    organizations returned by the current `bos_get_context`. Broad requests for
+    plugin settings, server settings, connection status, enablement, services,
+    or display properties route here before any product initialization
+    preflight. A request for all settings of one unambiguously named plugin
+    resolves that plugin from the live inventory and opens the typed settings
+    surface directly. The root BOS MCP resource and OAuth grant are shared by the
+    installed subservices. The server returns ordered
     `structuredContent`, owns plugin state, revisions, connection actions, and
     audited enablement mutations, and remotely serves the associated MCP App resource.
     Clients render that state
@@ -283,7 +288,9 @@ release system for portable BOS skills and native remote MCP client adapters.
     the selected default or explicit organization, preserves healthy and
     disabled rows, and walks actionable provider connections one at a time
     before organization-scoped plugin-settings discovery. It never queries all
-    accessible organizations by default. See
+    accessible organizations by default. A failed live console query never
+    falls back to a prior task, typed-settings cache, local inventory, or
+    cross-organization summary. See
     `Vault/specs/plugin-service-console.md`.
 22. Manage typed plugin settings through one application-neutral client
     contract and the shared root BOS connection. Route broad plugin inventory
@@ -296,7 +303,11 @@ release system for portable BOS skills and native remote MCP client adapters.
     selected-organization connection guidance, source research, consolidated
     confirmation, native or conversational
     controls, bounded delegated recovery, and an authority-scoped local cache
-    containing confirmed display-safe snapshots only. Validate current
+    containing confirmed display-safe snapshots only. Codex Agent Harness
+    renders the ordered fields as an in-memory client-native settings table
+    with an inline control for each editable value and native **Apply** and
+    **Discard** actions; it creates no file, renderer, browser, localhost
+    process, or separate UI service. Validate current
     authority before every cache read or mutation; fetch and cache the canonical
     snapshot on a miss; reconcile uncertain writes before replay; update the
     cache only from confirmed server reads or commits. Required unset or invalid

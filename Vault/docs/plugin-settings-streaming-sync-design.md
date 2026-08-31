@@ -29,8 +29,11 @@ Broad requests for plugin settings, server settings, connection state,
 enablement, services, or display-safe properties are inventory requests. They
 route to the memory-only BOS Plugin Console before this typed-settings workflow
 and never trigger customer-settings initialization or cache access. This
-workflow starts only from one plugin's **Settings** action or an unambiguous
-request for one named plugin property.
+workflow starts from one plugin's **Settings** action, a request for all
+settings of one unambiguously named plugin, or an unambiguous request for one
+named plugin property. A direct named-plugin request resolves its opaque
+selector from the live service inventory and opens settings without rendering
+the console as an intermediate surface.
 
 Business hours are the reference workflow. The client reads the organization
 website established in its customer-owned client settings, retrieves the
@@ -472,6 +475,14 @@ The standard settings surface contains:
 Clients preserve server field order, constraints, action availability, and
 revision. A native component invokes the same remote tools as the conversation
 workflow.
+
+Codex Agent Harness renders this as an in-memory client-native settings table.
+Each editable field receives its server-described inline widget, and native
+**Apply** and **Discard** actions remove the need to type a value into the
+conversation. This path materializes no HTML or Markdown file, report, UI
+bundle, renderer, localhost process, browser session, or separate UI service.
+The remote BOS connection supplies authenticated data and mutations only; the
+Agent Harness owns the rendering surface.
 
 ## Delegated mutation execution
 

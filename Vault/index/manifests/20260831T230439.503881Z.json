@@ -1,5 +1,5 @@
 {
-  "indexed_at": "20260831T230552.951434Z",
+  "indexed_at": "20260831T230439.503881Z",
   "schema_version": "bos-vault-manifest/v1",
   "source_count": 65,
   "sources": {
@@ -184,8 +184,8 @@
       "sha256": "a7a948ac193503d434cfa84ef6f47001a6cd6b964f74e06e2751ad73ff500c47"
     },
     "Vault/reviews/2026-08-31-plugin-console-default-organization.md": {
-      "bytes": 2499,
-      "sha256": "297eff476a50d05a9117cce7de54fcbb7c6ba933514d766c5a6e75402b163414"
+      "bytes": 2446,
+      "sha256": "edee893991c9844b8205834a7f2eea31a876ce5100be6c2e6dc8ebf5ff97862e"
     },
     "Vault/schemas/decision-record.md": {
       "bytes": 439,

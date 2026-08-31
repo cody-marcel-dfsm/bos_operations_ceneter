@@ -7,35 +7,58 @@ description: Show and manage BOS plugin, connection, enablement, server-settings
 
 Render the BOS Plugin Console directly in the active client's content window.
 The interaction is memory-only: never create a report file, execute a packaged
-helper, start a local process or service, or persist the returned snapshot.
+renderer, start a local renderer or service, or persist the returned snapshot.
+The organization-selection preflight below may execute only the packaged
+`bos-mcp-client/scripts/client-preferences.mjs` helper's read operation. That
+read validates an existing display-label preference and creates no console
+state.
 
 Treat broad requests such as “show the server settings for the BOS plugins,”
 “show plugin settings,” or “which BOS services are connected?” as console
 status requests. Run this console directly. Do not invoke a product customer
 initializer, plugin-settings initializer, or settings cache for these requests.
-Only a **Settings** action on one returned plugin, or an unambiguous request for
-one named plugin property, enters the separate typed settings workflow.
+Only a **Settings** action on one returned plugin, an unambiguous request for
+all settings of one unambiguously named plugin, or a request for one named
+plugin property enters the separate typed settings workflow.
+A named-plugin request resolves its opaque selector from the live service
+inventory and opens the settings surface directly. It does not render the
+console as an intermediate step.
 
 ## Display
 
 1. Use the single installed BOS connection already present in the client's MCP
-   context. Never inspect the local filesystem or invoke client command-line
-   plugin inventory for this view.
-2. Call `bos_get_context` once through BOS. Select an explicitly named
-   organization for the current request; otherwise use the validated shared
-   default organization, or the sole available organization. Within it, use
-   the server-marked default role context and call `bos_list_plugin_services`
-   with only its opaque `context_id`. Never enumerate service data for every
-   accessible organization by default.
-3. Let the server evaluate every product and plugin row from canonical
+   context. Never directly inspect the local filesystem or invoke client
+   command-line plugin inventory for this view. The governed preference-helper
+   read described below is the sole local selection operation.
+2. Call `bos_get_context` once through BOS and deduplicate its returned
+   organization labels. Resolve exactly one organization before any console
+   data call:
+   - an organization explicitly named in the current request takes precedence
+     after it matches exactly one returned label;
+   - otherwise run the packaged `client-preferences.mjs read` operation with
+     all current returned organization labels on standard input and use its
+     exact `default_organization_label` when it returns `state: current`;
+   - otherwise use the sole returned organization;
+   - when several organizations remain and the preference is missing, stale,
+     malformed, or ambiguous, return `configuration_required` and stop.
+3. Within the selected organization, use its unique server-marked default role
+   context and call `bos_list_plugin_services` with only that opaque
+   `context_id`. Never enumerate service data for every accessible
+   organization by default.
+4. Treat inability to load the live console as a live-console failure. Never
+   substitute a prior-task response, typed-settings cache, last-confirmed
+   settings table, local plugin inventory, or multi-organization summary. A
+   tool refresh or reconnect repeats this same organization selection before
+   the console call.
+5. Let the server evaluate every product and plugin row from canonical
    installation, enablement, role, capability, and provider state. Never send
    tenant, organization, installation, role, credential, or raw plugin
    identifiers, and never call through a subservice connection.
-4. Pass the server-returned `structuredContent` directly to the client's native
+6. Pass the server-returned `structuredContent` directly to the client's native
    interactive content surface. The server owns row order, labels, status
    vocabulary, display-safe properties, action availability, and optimistic
    revision.
-5. Render one service-status table with these columns in this order:
+7. Render one service-status table with these columns in this order:
 
 | Product | Plugin | Enabled | Service | Connection | Properties | Action |
 | --- | --- | :---: | --- | --- | --- | --- |
@@ -94,6 +117,10 @@ uses the server field schema, native controls, authority-scoped cache, and
 audited mutation workflow. The console remains memory-only; the packaged cache
 helper belongs to the settings workflow and is never executed by a console
 status query.
+
+A request such as “show me the Automation Plugin settings” invokes the same
+settings workflow directly. Resolve exactly one matching server-returned plugin
+row, pass its opaque selector in memory, and render the typed settings surface.
 
 ## Client behavior
 

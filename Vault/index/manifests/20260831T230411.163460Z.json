@@ -1,5 +1,5 @@
 {
-  "indexed_at": "20260831T230552.951434Z",
+  "indexed_at": "20260831T230411.163460Z",
   "schema_version": "bos-vault-manifest/v1",
   "source_count": 65,
   "sources": {
@@ -24,8 +24,8 @@
       "sha256": "4357fc7c6f809c693af7c64a452fd5f729ebd584d763843b9233794997b112e3"
     },
     "Vault/docs/architecture.md": {
-      "bytes": 23422,
-      "sha256": "7cdf2681c2b921f946cb538f51b681996d31d78ae4a58618b148befe36b03eaa"
+      "bytes": 22978,
+      "sha256": "11a8a03e7bfe2766d144b1c821bbb1ecc814a09d75326a8f7be15b82d3968ff4"
     },
     "Vault/docs/bos-product-licensing-user-experience.md": {
       "bytes": 1377,
@@ -48,8 +48,8 @@
       "sha256": "de384b4b0d2125ea533e1a3fd747fb1b66f53207180a21d0e70914e1c71b5b4b"
     },
     "Vault/docs/plugin-settings-streaming-sync-design.md": {
-      "bytes": 44547,
-      "sha256": "a9dac128dedd27dddae9bfd37426e3012f355bc39a28b417f49318b0a6a20106"
+      "bytes": 43818,
+      "sha256": "00ed7447d653def22c283bc93d951d6d3d344f8fbc17ba23604879f0f96f5d5c"
     },
     "Vault/reviews/2026-08-09-customer-skill-extension-v2.md": {
       "bytes": 3182,
@@ -184,8 +184,8 @@
       "sha256": "a7a948ac193503d434cfa84ef6f47001a6cd6b964f74e06e2751ad73ff500c47"
     },
     "Vault/reviews/2026-08-31-plugin-console-default-organization.md": {
-      "bytes": 2499,
-      "sha256": "297eff476a50d05a9117cce7de54fcbb7c6ba933514d766c5a6e75402b163414"
+      "bytes": 2446,
+      "sha256": "edee893991c9844b8205834a7f2eea31a876ce5100be6c2e6dc8ebf5ff97862e"
     },
     "Vault/schemas/decision-record.md": {
       "bytes": 439,
@@ -208,8 +208,8 @@
       "sha256": "f83bbe0c4179b651f033f21fb2725b2a4efb7ed7484266afdd3b48f546f63c4b"
     },
     "Vault/specs/plugin-service-console.md": {
-      "bytes": 11911,
-      "sha256": "bb9e26078f491764155d2600a2ffbbb6fd492c4897193c4cbce87979723b6aba"
+      "bytes": 11357,
+      "sha256": "1551fb15eaf4edefa586ef3c3c8679f3a941b8da5337291a3678d0c91bbbca1c"
     },
     "Vault/specs/role-aware-mcp-client.md": {
       "bytes": 8182,

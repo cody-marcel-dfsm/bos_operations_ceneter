@@ -8,16 +8,30 @@ service connections, and display-safe properties and allows an authorized user
 to connect, enable, or disable them.
 
 A console request creates no report, cache, HTML file, Markdown file, local
-database, process, listener, browser session, or machine-local service. The BOS
-server returns structured state through the root BOS MCP connection, and the
-client renders that response directly from memory.
+database, renderer process, listener, browser session, or machine-local
+service. The BOS server returns structured state through the root BOS MCP
+connection, and the client renders that response directly from memory.
+
+Before the remote console query, the shared BOS client performs its standard
+organization-selection preflight. It calls `bos_get_context`, validates an
+explicit organization override or reads the existing
+`default_organization_label` through the packaged client-preferences helper,
+and selects exactly one returned organization before its default role. This
+read creates no console snapshot or cache. A missing, stale, malformed, or
+ambiguous preference with several available organizations returns
+`configuration_required`. The console never substitutes a previous task's
+response, typed-settings cache, local inventory, or cross-organization summary
+when the live query cannot run.
 
 Broad user language including “plugin settings,” “server settings for BOS
 plugins,” connection status, enablement, services, or display properties routes
 to this console before any product customer-settings or plugin-settings
 initialization preflight. The request neither reads nor creates a customer
-settings overlay. A user enters the cached typed-settings workflow only by
-selecting **Settings** for one returned plugin or naming one plugin property.
+settings overlay. A user enters the cached typed-settings workflow by selecting
+**Settings** for one returned plugin, requesting all settings of one
+unambiguously named plugin, or naming one plugin property. A direct named-plugin
+request resolves the opaque selector through this live inventory and opens the
+settings surface without rendering the console as an intermediate view.
 The product initialization coordinator also reuses the same canonical service
 inventory before plugin-settings discovery, scoped to the selected default or
 explicit organization. It presents unresolved connection actions one at a time
@@ -134,6 +148,12 @@ supports equivalent prompt edits, and maintains its separate authority-scoped
 confirmed-snapshot cache. The console itself remains an in-memory view and
 stores no settings state.
 
+A direct named-plugin settings request uses the same server-returned selector.
+In Codex Agent Harness, the resulting settings table and each editable inline
+control are client-native and memory-only. The workflow creates no HTML or
+Markdown file, report, renderer, localhost process, browser session, or
+separate UI service.
+
 Clients with an equivalent native structured-content surface may render the
 same response through that surface. A client without interactive component
 support renders the same table in the conversation and accepts equivalent
@@ -191,8 +211,15 @@ contains no query-time script, renderer, executable, local server, or cache.
 ## Validation gates
 
 - Console skill packages contain no executable or query-time renderer.
-- A status request performs no filesystem write, local process launch, port
-  bind, browser launch, or local service start.
+- A status request performs no filesystem write, local renderer launch, port
+  bind, browser launch, or local service start. Its sole packaged-helper
+  operation is the read-only default-organization validation preflight.
+- The organization preflight validates the shared default display label
+  against the current BOS context before calling `bos_list_plugin_services`.
+- An unqualified request queries only the validated default organization; an
+  explicit organization override applies only to that request.
+- Live-console failure never renders cached settings or prior
+  cross-organization results as the current console.
 - Identical canonical state returns identical ordered `structuredContent`.
 - Missing BOS OAuth exposes the root BOS host-owned connection action.
 - Disabled plugins remain visible and expose none of their domain tools.
