@@ -1,7 +1,7 @@
 {
-  "indexed_at": "20260831T230634.705041Z",
+  "indexed_at": "20260831T230552.951434Z",
   "schema_version": "bos-vault-manifest/v1",
-  "source_count": 66,
+  "source_count": 65,
   "sources": {
     "Vault/README.md": {
       "bytes": 1032,
@@ -182,10 +182,6 @@
     "Vault/reviews/2026-08-30-plugin-connection-initialization.md": {
       "bytes": 2645,
       "sha256": "a7a948ac193503d434cfa84ef6f47001a6cd6b964f74e06e2751ad73ff500c47"
-    },
-    "Vault/reviews/2026-08-31-native-plugin-settings-controls.md": {
-      "bytes": 2311,
-      "sha256": "0c656ede61a963a1ca2d2e2109863825114874af245271f8bd58b396185bc69a"
     },
     "Vault/reviews/2026-08-31-plugin-console-default-organization.md": {
       "bytes": 2499,

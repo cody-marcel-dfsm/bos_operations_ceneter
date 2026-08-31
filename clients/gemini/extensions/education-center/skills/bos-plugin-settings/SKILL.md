@@ -23,24 +23,32 @@ happens before product customer initialization, plugin-settings initialization,
 filesystem access, or settings-cache access, so the response remains an
 in-memory status view in the active client.
 
-Continue below only for a **Settings** action on one server-returned plugin or
-an unambiguous request to read or change one named plugin property. A specific
-field that is required and unset may then invoke the initialization workflow.
+Continue below only for a **Settings** action on one server-returned plugin, a
+request for all settings of one unambiguously named plugin, or an unambiguous
+request to read or change one named plugin property. Each enters the typed
+settings workflow. A specific field that is required and unset may then invoke
+the initialization workflow.
 
 ## Read
 
-1. Call `bos_get_context`, select the server-marked default interactive role,
-   and verify `bos.plugin_settings.read`.
-2. Use the returned opaque `cache_scope` and `settings_epoch` with
+1. Call `bos_get_context`, resolve the explicit or validated default
+   organization, select its server-marked default interactive role, and verify
+   `bos.plugin_settings.read`.
+2. When the request names a plugin without carrying a server-returned selector,
+   call `bos_list_plugin_services` with that context and match exactly one
+   configurable plugin display label. Use its opaque `plugin_ref` in memory.
+   Do not render the Plugin Console as an intermediate view. Zero or several
+   matches require a concise clarification and no settings read.
+3. Use the returned opaque `cache_scope` and `settings_epoch` with
    `../bos-mcp-client/scripts/plugin-settings-cache.mjs`. Never derive cache
    authority from client settings or request text.
-3. On a current cache hit, answer from its confirmed snapshot and pass the
+4. On a current cache hit, answer from its confirmed snapshot and pass the
    stored field definitions to the client's native structured-content surface.
-4. On a miss or stale entry, use cursor catch-up when the live tools support it;
+5. On a miss or stale entry, use cursor catch-up when the live tools support it;
    otherwise call `bos_get_plugin_settings` with only `context_id` and the
    server-returned plugin selector. Commit the complete validated snapshot with
    `canonical_source: bos_read`, then answer from the committed cache entry.
-5. If a required field is `unset` or invalid `partial`, preserve the user's
+6. If a required field is `unset` or invalid `partial`, preserve the user's
    request and invoke `bos-plugin-settings-initialization`. Resume the read from
    confirmed cache state after initialization.
 
@@ -48,6 +56,15 @@ Render the server's field order, labels, value types, controls, editability,
 reasons, revision, source, and sync time. A boolean renders as a toggle; a
 weekly schedule renders as an hours grid when the host supports it. A host
 without native controls renders the same structure in conversation.
+
+In Codex Agent Harness and every client with native component support, render a
+client-native settings table whose editable values use an inline control
+matching the server type, with **Apply** and **Discard** actions.
+Never ask the user to type a value when the native control can capture that
+field. Keep the interaction in memory: create no HTML or Markdown file, report
+file, UI bundle, renderer, localhost process, browser session, or separate UI
+service. The BOS connection remains the authenticated data and mutation
+transport; it is not the renderer.
 
 ## Change
 
