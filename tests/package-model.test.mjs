@@ -873,6 +873,8 @@ test("Education Center initialization proposes sourced defaults with one-step ac
   assert.match(guidance, /store it as `brand_display_name`/i);
   assert.match(guidance, /set-default-organization[\s\S]*state: committed/i);
   assert.match(guidance, /never inside\s+`customer-settings\.json`/i);
+  assert.match(guidance, /inspect every plugin-service connection[\s\S]*selected organization/i);
+  assert.match(guidance, /connection actions one at a time/i);
 });
 
 test("Bright Horizons report prompts deterministically generate the reimbursement workbook", async () => {
