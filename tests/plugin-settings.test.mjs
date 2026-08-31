@@ -51,7 +51,7 @@ test("plugin settings skills encode cache-first reads and delegated resilient mu
   assert.match(operation, /submit-feedback/);
   assert.match(
     operation,
-    /request for all settings of one unambiguously named plugin[\s\S]*typed settings workflow/i
+    /request for all settings of one unambiguously named plugin[\s\S]*typed\s+settings workflow/i
   );
   assert.match(
     operation,
@@ -63,7 +63,7 @@ test("plugin settings skills encode cache-first reads and delegated resilient mu
   );
   assert.match(
     operation,
-    /no HTML[\s\S]*report file[\s\S]*renderer[\s\S]*UI service/i
+    /no HTML[\s\S]*report\s+file[\s\S]*renderer[\s\S]*UI\s+service/i
   );
   assert.match(operationContract, /five total apply attempts/i);
   assert.match(operationContract, /1, 2, 4, and 8 seconds/i);

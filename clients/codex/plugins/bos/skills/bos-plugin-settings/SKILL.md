@@ -25,9 +25,9 @@ in-memory status view in the active client.
 
 Continue below only for a **Settings** action on one server-returned plugin, a
 request for all settings of one unambiguously named plugin, or an unambiguous
-request to read or change one named plugin property. Each enters the typed settings workflow.
-A specific field that is required and unset may then invoke the initialization
-workflow.
+request to read or change one named plugin property. Each enters the typed
+settings workflow. A specific field that is required and unset may then invoke
+the initialization workflow.
 
 ## Read
 
@@ -60,11 +60,11 @@ without native controls renders the same structure in conversation.
 In Codex Agent Harness and every client with native component support, render a
 client-native settings table whose editable values use an inline control
 matching the server type, with **Apply** and **Discard** actions.
-Never ask the user to type a value when the native control can capture that field. Keep the
-interaction in memory: create no HTML or Markdown file, report file, UI bundle,
-renderer, localhost process, browser session, or separate UI service. The BOS
-connection remains the authenticated data and mutation transport; it is not
-the renderer.
+Never ask the user to type a value when the native control can capture that
+field. Keep the interaction in memory: create no HTML or Markdown file, report
+file, UI bundle, renderer, localhost process, browser session, or separate UI
+service. The BOS connection remains the authenticated data and mutation
+transport; it is not the renderer.
 
 ## Change
 
