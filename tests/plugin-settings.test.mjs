@@ -49,6 +49,22 @@ test("plugin settings skills encode cache-first reads and delegated resilient mu
   assert.match(operation, /bos_apply_plugin_settings/);
   assert.match(operation, /status: committed/);
   assert.match(operation, /submit-feedback/);
+  assert.match(
+    operation,
+    /request for all settings of one unambiguously named plugin[\s\S]*typed settings workflow/i
+  );
+  assert.match(
+    operation,
+    /Codex Agent Harness[\s\S]*native[\s\S]*settings table[\s\S]*inline control/i
+  );
+  assert.match(
+    operation,
+    /never ask the user to type a value when the native control/i
+  );
+  assert.match(
+    operation,
+    /no HTML[\s\S]*report file[\s\S]*renderer[\s\S]*UI service/i
+  );
   assert.match(operationContract, /five total apply attempts/i);
   assert.match(operationContract, /1, 2, 4, and 8 seconds/i);
   assert.match(operationContract, /reconcile an uncertain mutation before replay/i);
@@ -79,6 +95,24 @@ test("plugin settings skills encode cache-first reads and delegated resilient mu
   assert.match(initialization, /bounded parallel research workers/i);
   assert.match(initialization, /Business Hours prioritizes the[\s\S]*client website/i);
   assert.match(initialization, /Persist no recommendation\s+before confirmation/i);
+});
+
+test("BOS runtime verification requires the complete native settings tool path", async () => {
+  const bos = (await listProducts()).find(
+    ({ manifest }) => manifest.name === "bos"
+  )?.manifest;
+  assert(bos);
+  for (const tool of [
+    "bos_list_plugin_services",
+    "bos_get_plugin_settings",
+    "bos_prepare_plugin_settings",
+    "bos_apply_plugin_settings"
+  ]) {
+    assert(
+      bos.runtime_verification_tools.includes(tool),
+      `BOS runtime verification must require ${tool}`
+    );
+  }
 });
 
 test("active generated clients contain equivalent plugin settings skills and helper", async () => {

@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.59",
+  "version": "0.4.60",
   "release_status": "active",
   "display_name": "BOS — Business Operating System",
   "description": "Agent-first Business Operating System foundations for governed agent workflows.",
@@ -49,8 +49,15 @@
   "mcp_group_name": "platform",
   "runtime_verification_tools": [
     "bos_get_authorization_status",
+    "bos_apply_plugin_settings",
+    "bos_begin_plugin_service_connection",
     "bos_get_context",
-    "bos_resume_operation"
+    "bos_get_plugin_setting_changes",
+    "bos_get_plugin_settings",
+    "bos_list_plugin_services",
+    "bos_prepare_plugin_settings",
+    "bos_resume_operation",
+    "bos_set_plugin_enabled"
   ],
   "default_prompts": [
     "List the BOS apps and skills installed for my organization.",
