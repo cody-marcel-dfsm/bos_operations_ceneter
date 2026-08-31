@@ -137,8 +137,10 @@ client source retains its native account authorization and recovery boundary.
    package upgrades.
 7. Invoke `bos-plugin-settings-initialization` immediately after the client
    settings file is revalidated. Preserve the pending request, let that stage
-   research and persist required canonical plugin settings, then resume the
-   request automatically.
+   inspect every plugin-service connection in the selected organization, walk
+   unresolved server-returned connection actions one at a time, then research
+   and persist required canonical plugin settings. Resume the request
+   automatically after both stages complete.
 
 The completed `brand_display_name` is the default tenant terminology for every
 Education Center skill. A typed customer extension may override

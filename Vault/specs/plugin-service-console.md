@@ -18,6 +18,10 @@ to this console before any product customer-settings or plugin-settings
 initialization preflight. The request neither reads nor creates a customer
 settings overlay. A user enters the cached typed-settings workflow only by
 selecting **Settings** for one returned plugin or naming one plugin property.
+The product initialization coordinator also reuses the same canonical service
+inventory before plugin-settings discovery, scoped to the selected default or
+explicit organization. It presents unresolved connection actions one at a time
+and does not render or query other organizations by default.
 
 ## Ownership and boundaries
 
@@ -46,6 +50,15 @@ The view distinguishes three independent states:
 
 Changing one state never silently changes another or starts or stops software
 on the user's machine.
+
+The initialization coordinator treats `connected` and `not_required` rows as
+ready, preserves disabled rows, and advances one enabled
+`connection_required` row at a time through its current server-returned action.
+It pauses with `connection_required` for user-owned sign-in, consent, secure
+credential entry, or explicit deferral. It refreshes context, tools, and the
+canonical service inventory after each completed action before proceeding to
+plugin settings. It never enables a plugin implicitly or stores connection
+state in a local receipt.
 
 ## In-memory read contract
 

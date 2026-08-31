@@ -62,6 +62,19 @@ test("plugin settings skills encode cache-first reads and delegated resilient mu
     initialization,
     /selected organization[\s\S]*unique[\s\S]*default interactive role/i
   );
+  assert.match(initialization, /bos_list_plugin_services/);
+  assert.match(initialization, /every server-returned plugin-service row/i);
+  assert.match(initialization, /never repeat the call for[\s\S]*other organizations/i);
+  assert.match(initialization, /Preserve `connected` rows[\s\S]*never reconnect/i);
+  assert.match(initialization, /`not_required` rows as ready/i);
+  assert.match(initialization, /exactly one \*\*Connect\*\* action/i);
+  assert.match(initialization, /bos_begin_plugin_service_connection/);
+  assert.match(initialization, /bos_get_authorization_status/);
+  assert.match(initialization, /Never silently enable a plugin/i);
+  assert.match(initialization, /Poll `bos_get_authorization_status`[\s\S]*refresh context and tools[\s\S]*bos_list_plugin_services/i);
+  assert.match(initialization, /Walk unresolved services one at a time/i);
+  assert.match(initialization, /Return `connection_required`[\s\S]*preserve[\s\S]*pending request/i);
+  assert.match(initialization, /no actionable connection row[\s\S]*receipt/i);
   assert.match(initialization, /bos_get_plugin_settings_initialization/);
   assert.match(initialization, /bounded parallel research workers/i);
   assert.match(initialization, /Business Hours prioritizes the[\s\S]*client website/i);
