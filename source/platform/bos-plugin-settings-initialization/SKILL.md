@@ -1,15 +1,16 @@
 ---
 name: bos-plugin-settings-initialization
-description: Initialize or repair the default organization and required BOS plugin settings after client settings and BOS authentication are ready, using sourced recommendations, consolidated confirmation, delegated persistence, and authority-scoped cache receipts.
+description: Initialize or repair the default organization, plugin-service connections, and required BOS plugin settings after client settings and BOS authentication are ready, using guided secure connection actions, sourced recommendations, consolidated confirmation, delegated persistence, and authority-scoped cache receipts.
 ---
 
 # BOS Plugin Settings Initialization
 
 Run this common product-client stage after host-managed BOS authentication and
 the product's customer/client-settings initializer. It establishes the shared
-client default organization before initializing server-owned, organization-scoped
-plugin configuration. It preserves confirmed settings and never treats local
-client values as authority.
+client default organization, verifies every installed plugin service in that
+organization, and then initializes server-owned, organization-scoped plugin
+configuration. It preserves healthy connections and confirmed settings and
+never treats local client values as authority.
 
 Read [references/initialization-contract.md](references/initialization-contract.md)
 before running discovery or persisting initialization drafts.
@@ -35,15 +36,59 @@ before running discovery or persisting initialization drafts.
    `configuration_required` and make no organization-scoped settings call until
    the helper returns `state: committed` or `current`.
 4. Within the selected organization and installed app, select the unique
-   server-marked default interactive role. Verify `bos.plugin_settings.read`
-   and `bos.plugin_settings.recommend`. Require `bos.plugin_settings.update`
-   before persistence. Pass only that role's opaque `context_id`; the saved
-   display label grants no authority.
-5. Read the local initialization receipt with
+   server-marked default interactive role. Verify `bos.plugins.read`,
+   `bos.plugin_settings.read`, and `bos.plugin_settings.recommend`. Require
+   `bos.plugins.connect` only when a server-returned connection action is used,
+   and require `bos.plugin_settings.update` before settings persistence. Pass
+   only that role's opaque `context_id`; the saved display label grants no
+   authority.
+5. Call `bos_list_plugin_services` with that selected `context_id`. Inspect
+   every server-returned plugin-service row before querying the plugin-settings
+   inventory. Follow **Connection readiness** below until every actionable
+   `connection_required` row is resolved. An explicit deferral returns
+   `connection_required` and stops before the receipt or settings inventory.
+6. Read the local initialization receipt with
    `../bos-mcp-client/scripts/plugin-settings-cache.mjs`.
-6. Call `bos_get_plugin_settings_initialization` with only the selected
+7. Call `bos_get_plugin_settings_initialization` with only the selected
    `context_id`. Skip the workflow when its initialization epoch, required
    canonical field states, and local receipt are current.
+
+## Connection readiness
+
+Treat the ordered `bos_list_plugin_services` response as the canonical
+connection inventory for the selected organization. Never repeat the call for
+other organizations unless the user explicitly names one for the current
+request. Show a compact checklist grouped by plugin and service, preserving the
+server's labels, connection-state vocabulary, action availability, and order.
+
+- Preserve `connected` rows and never reconnect them.
+- Record `not_required` rows as ready without prompting.
+- For each enabled `connection_required` row with `can_connect: true`, present
+  exactly one **Connect** action. After the user selects it, call
+  `bos_begin_plugin_service_connection` with the latest opaque `context_id`,
+  `plugin_ref`, and `service_ref` from that same response.
+- For `bos_sign_in_required`, activate the root BOS connection's host-native
+  **Connect**, **Sign in**, or **Authenticate** action. A subservice never owns
+  another BOS login.
+- Show disabled and `unavailable` rows with their server-returned status and
+  available action. Never silently enable a plugin. Enablement requires the
+  user's explicit toggle or request through `bos-plugin-console`, followed by
+  fresh context, tool, and service discovery.
+
+Use only the BOS-returned URL-mode elicitation or sanitized resource link for a
+provider connection. The user signs in, consents, or enters credentials only on
+the provider or BOS-hosted secure page. Poll `bos_get_authorization_status` with
+the returned transaction's exact recovery token, refresh context and tools, and
+call `bos_list_plugin_services` again. Advance only when the replacement row is
+`connected` or `not_required`; otherwise present its new server-owned status
+and one next action.
+
+Walk unresolved services one at a time. Return `connection_required`, preserve
+the pending request and initialization progress, and pause only for the current
+user-owned sign-in, consent, secure credential entry, or explicit deferral.
+Resume automatically after each successful connection. Never place credentials,
+authorization URLs, recovery tokens, provider payloads, or raw authority IDs in
+chat, package files, settings caches, or receipts.
 
 ## Discover and review
 
@@ -80,8 +125,9 @@ terminal result.
 
 Atomically commit every completed server snapshot to the settings cache. Re-read
 the initialization inventory and required cache entries. Write the local
-initialization receipt only when the server confirms all required fields for
-that receipt are configured and every corresponding cache commit succeeded.
+initialization receipt only when no actionable connection row remains deferred,
+the server confirms all required fields for that receipt are configured, and
+every corresponding cache commit succeeded.
 
 Partial success preserves confirmed server mutations and caches. Report each
 incomplete plugin, apply bounded recovery, retain the sanitized continuation,

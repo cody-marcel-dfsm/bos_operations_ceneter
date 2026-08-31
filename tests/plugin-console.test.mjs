@@ -24,6 +24,8 @@ test("BOS Plugin Console is an instructions-only in-memory client feature", asyn
   assert.match(guidance, /never create a report file/i);
   assert.match(guidance, /start a local process or service/i);
   assert.match(guidance, /never inspect the local filesystem/i);
+  assert.match(guidance, /explicitly named[\s\S]*validated shared[\s\S]*default organization/i);
+  assert.match(guidance, /Never enumerate service data for every[\s\S]*organization by default/i);
 });
 
 test("BOS distributes the in-memory Plugin Console to every supported client", async () => {

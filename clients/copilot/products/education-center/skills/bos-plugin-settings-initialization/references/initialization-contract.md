@@ -20,15 +20,21 @@ confirmed cache, or an explicit repair request.
    the user's consolidated confirmation. An explicit organization in the
    pending request applies to that request and does not silently rewrite the
    saved default.
-4. BOS returns the canonical plugin inventory, field states, schemas, and
+4. BOS returns the canonical plugin-service connection inventory for that
+   organization's selected context. The client preserves ready services and
+   walks actionable connections one at a time through server-returned secure
+   flows. Disabled plugins remain disabled unless the user explicitly changes
+   enablement. An unresolved actionable connection pauses initialization with
+   `connection_required` and preserves the pending request.
+5. BOS returns the canonical plugin settings inventory, field states, schemas, and
    allowlisted recommendation strategies.
-5. Client research workers resolve those strategies from validated client
+6. Client research workers resolve those strategies from validated client
    settings and public evidence.
-6. BOS validates prepared drafts.
-7. The Agent Harness collects one consolidated user authorization.
-8. Delegated mutation workers persist each independent plugin through BOS.
-9. The client commits confirmed snapshots and the completion receipt.
-10. The Agent Harness resumes the pending request.
+7. BOS validates prepared drafts.
+8. The Agent Harness collects one consolidated user authorization.
+9. Delegated mutation workers persist each independent plugin through BOS.
+10. The client commits confirmed snapshots and the completion receipt.
+11. The Agent Harness resumes the pending request.
 
 The server owns canonical completion. The local receipt is a fast client
 preflight bound to its opaque authority scope, server initialization epoch,
@@ -39,6 +45,16 @@ state. Store only its display label and update time through
 `client-preferences.mjs`; never place organization IDs, context IDs, roles,
 tokens, credentials, or grant metadata in that file. Revalidate it against the
 current authenticated context before every organization-scoped initialization.
+
+Connection readiness uses `bos_list_plugin_services` with only the selected
+role's opaque context. The server owns row membership, order, labels,
+enablement, connection state, and action availability. `connected` and
+`not_required` rows need no interaction. Each enabled `connection_required`
+row exposes at most one current connection action; after user activation, the
+client starts that exact BOS-owned flow, polls its sanitized transaction,
+refreshes context and tools, and replaces the inventory. The initializer does
+not enumerate other organizations, batch authorization pages, infer provider
+requirements, or persist connection state locally.
 
 ## Business Hours
 
