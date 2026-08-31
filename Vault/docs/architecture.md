@@ -279,7 +279,12 @@ release system for portable BOS skills and native remote MCP client adapters.
     Clients render that state
     through their native structured-content or component surface and invoke the
     same authenticated remote tools for **Connect** buttons and enablement
-    toggles. See `Vault/specs/plugin-service-console.md`.
+    toggles. Product initialization reuses this canonical service inventory for
+    the selected default or explicit organization, preserves healthy and
+    disabled rows, and walks actionable provider connections one at a time
+    before organization-scoped plugin-settings discovery. It never queries all
+    accessible organizations by default. See
+    `Vault/specs/plugin-service-console.md`.
 22. Manage typed plugin settings through one application-neutral client
     contract and the shared root BOS connection. Route broad plugin inventory
     and server-settings status requests to the memory-only Plugin Console.
@@ -288,7 +293,8 @@ release system for portable BOS skills and native remote MCP client adapters.
     initializer first, then run plugin-settings initialization after BOS
     authentication. The BOS service owns profiles, canonical values, revisions,
     preparation, mutations, audit, and initialization epochs. The client owns
-    source research, consolidated confirmation, native or conversational
+    selected-organization connection guidance, source research, consolidated
+    confirmation, native or conversational
     controls, bounded delegated recovery, and an authority-scoped local cache
     containing confirmed display-safe snapshots only. Validate current
     authority before every cache read or mutation; fetch and cache the canonical

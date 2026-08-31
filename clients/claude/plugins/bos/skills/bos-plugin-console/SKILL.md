@@ -21,9 +21,12 @@ one named plugin property, enters the separate typed settings workflow.
 1. Use the single installed BOS connection already present in the client's MCP
    context. Never inspect the local filesystem or invoke client command-line
    plugin inventory for this view.
-2. Call `bos_get_context` once through BOS, use the server-marked default role
-   context, and call `bos_list_plugin_services` with only its opaque
-   `context_id`.
+2. Call `bos_get_context` once through BOS. Select an explicitly named
+   organization for the current request; otherwise use the validated shared
+   default organization, or the sole available organization. Within it, use
+   the server-marked default role context and call `bos_list_plugin_services`
+   with only its opaque `context_id`. Never enumerate service data for every
+   accessible organization by default.
 3. Let the server evaluate every product and plugin row from canonical
    installation, enablement, role, capability, and provider state. Never send
    tenant, organization, installation, role, credential, or raw plugin
