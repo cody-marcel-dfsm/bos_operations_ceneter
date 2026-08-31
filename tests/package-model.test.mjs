@@ -543,9 +543,15 @@ test("application runtime packages ship agent-owned MCP lifecycle recovery", asy
     assert.match(guidance, /poll[\s\S]*bos_resume_operation[\s\S]*without asking the user to resubmit/i);
     assert.doesNotMatch(guidance, /unnamed endpoint as.*runtime connection/is);
     assert.match(guidance, /shared local document cache/i);
+    assert.match(guidance, /select exactly one authorized organization/i);
+    assert.match(guidance, /default_organization_label/i);
+    assert.match(guidance, /never stores an organization ID, context ID/i);
+    assert.match(guidance, /explicit organization[\s\S]*does not rewrite the saved defaults/i);
+    assert.match(guidance, /unless the user explicitly asks for that cross-organization/i);
     assert.match(guidance, /request exactly those intervals plus\s+changes after its cursor/i);
     assert.match(guidance, /sync_completed_at/);
     await access(`${client.sourcePath}/scripts/document-cache.mjs`);
+    await access(`${client.sourcePath}/scripts/client-preferences.mjs`);
     await access(`${client.sourcePath}/references/document-cache-protocol.md`);
     await access(`${client.sourcePath}/references/runtime-continuation-contract.md`);
   }
@@ -590,6 +596,24 @@ test("generated runtime clients ship the canonical shared document cache helper"
     `${root}/clients/copilot/products/education-center/skills/bos-mcp-client/scripts/document-cache.mjs`,
     `${root}/clients/copilot/skills/bos-mcp-client/scripts/document-cache.mjs`,
     `${root}/clients/gemini/extensions/education-center/skills/bos-mcp-client/scripts/document-cache.mjs`
+  ]) {
+    assert.deepEqual(await readFile(path), canonical, path);
+  }
+});
+
+test("generated BOS-family clients ship the canonical organization preference helper", async () => {
+  const canonical = await readFile(
+    `${root}/source/platform/bos-mcp-client/scripts/client-preferences.mjs`
+  );
+  for (const path of [
+    `${root}/clients/codex/plugins/bos/skills/bos-mcp-client/scripts/client-preferences.mjs`,
+    `${root}/clients/codex/plugins/education-center/skills/bos-mcp-client/scripts/client-preferences.mjs`,
+    `${root}/clients/claude/plugins/bos/skills/bos-mcp-client/scripts/client-preferences.mjs`,
+    `${root}/clients/claude/plugins/education-center/skills/bos-mcp-client/scripts/client-preferences.mjs`,
+    `${root}/clients/copilot/products/bos/skills/bos-mcp-client/scripts/client-preferences.mjs`,
+    `${root}/clients/copilot/products/education-center/skills/bos-mcp-client/scripts/client-preferences.mjs`,
+    `${root}/clients/gemini/extensions/bos/skills/bos-mcp-client/scripts/client-preferences.mjs`,
+    `${root}/clients/gemini/extensions/education-center/skills/bos-mcp-client/scripts/client-preferences.mjs`
   ]) {
     assert.deepEqual(await readFile(path), canonical, path);
   }
@@ -837,7 +861,7 @@ test("Education Center initialization proposes sourced defaults with one-step ac
   );
   assert.match(
     guidance,
-    /Recommended defaults[\s\S]*brand display name[\s\S]*organization display name[\s\S]*location display name[\s\S]*IANA timezone/i
+    /Recommended defaults[\s\S]*brand display name[\s\S]*organization\s+display name[\s\S]*Default BOS organization[\s\S]*location\s+display name[\s\S]*IANA timezone/i
   );
   assert.match(guidance, /Reply \*\*Use these defaults\*\*[\s\S]*accept all values/i);
   assert.match(guidance, /status and source/i);
@@ -847,6 +871,8 @@ test("Education Center initialization proposes sourced defaults with one-step ac
   assert.match(guidance, /Claude[\s\S]*persistent \*\*Connect\*\* action[\s\S]*Customize\s*→\s*Connectors/i);
   assert.match(guidance, /authentication_required[\s\S]*preserve the initialization draft[\s\S]*ask[\s\S]*no settings questions/i);
   assert.match(guidance, /store it as `brand_display_name`/i);
+  assert.match(guidance, /set-default-organization[\s\S]*state: committed/i);
+  assert.match(guidance, /never inside\s+`customer-settings\.json`/i);
 });
 
 test("Bright Horizons report prompts deterministically generate the reimbursement workbook", async () => {

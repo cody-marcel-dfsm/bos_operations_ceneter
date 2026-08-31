@@ -240,16 +240,29 @@ release system for portable BOS skills and native remote MCP client adapters.
     after every page succeeds. Failed or partial refreshes retain the previous
     watermark. See `Vault/specs/shared-local-document-cache.md`.
 20. Resolve interactive execution roles from the authenticated user's current
-    installed-app membership. `bos_get_context` returns one opaque context for
-    each assigned role and marks the unique highest `agent_authority_rank` as
-    the default. An explicit lower-role request uses only another returned
-    context and applies to that request. Clients preflight against the selected
-    context and pass only its `context_id`; the service revalidates membership,
-    capabilities, installation and plugin grants, semantic operation support,
-    tenant scope, and provider readiness before every read or mutation. Plugin
-    `run_as_role` remains reserved for callbacks and autonomous service work and
-    never elevates an interactive OAuth actor. Role capability administration
-    uses explicit `bos.roles.read` and `bos.roles.update`, complete replacement
+    installed-app membership. When `bos_get_context` returns several
+    organizations, select exactly one before selecting its role. An explicit
+    organization in the request overrides the shared local default for that
+    request; otherwise use the validated `default_organization_label` client
+    preference or the sole available organization. The preference stores only
+    a display label in a private platform-native file, is revalidated against
+    the current authenticated context, and grants no authority. Missing, stale,
+    or ambiguous selection stops before a domain data call. Cross-organization
+    execution requires explicit user scope. Product initialization establishes
+    or repairs this preference after authentication and before calling an
+    organization-scoped plugin-settings inventory. A sole available
+    organization may be committed directly; multiple organizations require the
+    default in the initializer's consolidated confirmation. Within the selected organization,
+    `bos_get_context` returns one opaque context for each assigned role and
+    marks the unique highest `agent_authority_rank` as the default. An explicit
+    lower-role request uses only another returned context and applies to that
+    request. Clients preflight against the selected context and pass only its
+    `context_id`; the service revalidates membership, capabilities,
+    installation and plugin grants, semantic operation support, tenant scope,
+    and provider readiness before every read or mutation. Plugin `run_as_role`
+    remains reserved for callbacks and autonomous service work and never
+    elevates an interactive OAuth actor. Role capability administration uses
+    explicit `bos.roles.read` and `bos.roles.update`, complete replacement
     lists, optimistic revisions, and server-side audit. See
     `Vault/specs/role-aware-mcp-client.md`.
 21. Present the BOS connection, installed subservices, server plugin enablement,

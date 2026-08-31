@@ -20,7 +20,8 @@ secrets.
    skill.
 2. Preserve every existing valid user-confirmed value. Package rebuilds and
    upgrades replace the template while leaving the customer overlay unchanged.
-3. Build candidates for all five required base values before asking the user.
+3. Build candidates for all five required base values and the shared
+   **Default BOS organization** preference before asking the user.
    Inspect non-secret customer metadata already available in the current
    conversation, installation draft, active client, and configured product.
    Preserve an existing user-confirmed `brand_display_name`. Otherwise prefer
@@ -31,7 +32,12 @@ secrets.
 4. Derive the IANA timezone from the active client's local system context.
 5. After BOS authentication, call `bos_get_context`. If that alias is
    absent, follow `bos-mcp-client` connection recovery and live-tool discovery
-   once, then retry. Use an organization or location display name as derived
+   once, then retry. Read the current default through
+   `../bos-mcp-client/scripts/client-preferences.mjs`. Preserve it when it still
+   matches one returned organization. Otherwise recommend an exact returned
+   organization matching the explicit request or confirmed
+   `organization_display_name`; when only one organization is available, use
+   that sole label as derived. Use an organization or location display name as derived
    when exactly one authorized matching scope exists. Use consistent
    non-secret labels from client metadata as suggested defaults when BOS
    context remains unavailable. Request selectors remain untrusted and never
@@ -72,8 +78,8 @@ no settings questions.
 
 Ask one concise consolidated question in the agent conversation. Always show a
 `Recommended defaults` block containing brand display name, organization
-display name, organization website URL, location display name, and IANA
-timezone. Include each value's
+display name, **Default BOS organization**, organization website URL, location
+display name, and IANA timezone. Include each value's
 status and source. Fill every field with the best customer-specific candidate
 available; use the generic product display name only as a clearly labeled
 low-confidence last-resort suggestion. End with: “Reply **Use these defaults**
@@ -81,7 +87,10 @@ to accept all values, or send any corrections.” Do not require the user to
 retype derived values or answer separate field-by-field questions.
 
 Required base values are brand display name, organization display name,
-organization website URL, location display name, and IANA timezone. Ask for the
+organization website URL, location display name, and IANA timezone. A current
+default BOS organization is also required before organization-scoped plugin
+initialization. Store it only through `client-preferences.mjs`, never inside
+`customer-settings.json`. Ask for the
 Care.com mailbox and billing
 fields only when the customer uses those workflows. Ask for a Care.com mailbox
 only when `source_routes.care_com` is `connected_gmail` and the client cannot
@@ -94,7 +103,8 @@ in drafts, reports, and communications.” Trim the accepted value, validate it
 as a single-line display value, and store it as `brand_display_name`.
 
 Treat “Use these defaults,” “Accept defaults,” and an equivalent unambiguous
-confirmation as approval of the complete displayed recommendation. Apply
+confirmation as approval of the complete displayed recommendation, including
+the displayed default BOS organization. Apply
 nothing from a new or repaired initialization until the recommendation is
 confirmed. Existing valid user-confirmed settings require no reconfirmation.
 
@@ -116,8 +126,16 @@ client source retains its native account authorization and recovery boundary.
    file is safely written.
 4. Re-read the file, confirm required values, and report which values were
    derived, confirmed, or intentionally left unused.
-5. Preserve the file as customer-owned configuration across package upgrades.
-6. Invoke `bos-plugin-settings-initialization` immediately after the client
+5. Call `set-default-organization` through
+   `../bos-mcp-client/scripts/client-preferences.mjs` with the accepted display
+   label and all current `bos_get_context` organization labels on standard
+   input. Require `state: committed`, then read it back and require `current`.
+   When exactly one organization exists, the initializer may commit that sole
+   label without asking a redundant choice. Never store an organization ID or
+   context ID.
+6. Preserve the customer settings file and shared client preference across
+   package upgrades.
+7. Invoke `bos-plugin-settings-initialization` immediately after the client
    settings file is revalidated. Preserve the pending request, let that stage
    research and persist required canonical plugin settings, then resume the
    request automatically.

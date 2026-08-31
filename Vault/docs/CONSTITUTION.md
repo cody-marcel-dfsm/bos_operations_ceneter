@@ -55,6 +55,12 @@
    capability, provider, and tool scope from canonical state for every request.
    Platform BOS operations never transit a subservice connection.
 16. **Present-product completeness.** Implement and validate current products
-   from their present contracts. Future products, anticipated growth, and
-   expected package composition never satisfy a missing current capability or
-   justify deferring its implementation.
+    from their present contracts. Future products, anticipated growth, and
+    expected package composition never satisfy a missing current capability or
+    justify deferring its implementation.
+17. **Single-organization default.** A multi-organization login selects exactly
+    one authorized organization before ordinary domain execution. A validated
+    local display-label preference supplies the default, and an explicit
+    organization in the current request overrides it for that request.
+    Cross-organization execution requires explicit scope. The preference never
+    grants membership or stores an authority identifier.

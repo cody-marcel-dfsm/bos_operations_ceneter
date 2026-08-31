@@ -1,12 +1,13 @@
 ---
 name: bos-plugin-settings-initialization
-description: Initialize or repair required BOS plugin settings after client settings and BOS authentication are ready, using sourced recommendations, consolidated confirmation, delegated persistence, and authority-scoped cache receipts.
+description: Initialize or repair the default organization and required BOS plugin settings after client settings and BOS authentication are ready, using sourced recommendations, consolidated confirmation, delegated persistence, and authority-scoped cache receipts.
 ---
 
 # BOS Plugin Settings Initialization
 
 Run this common product-client stage after host-managed BOS authentication and
-the product's customer/client-settings initializer. It initializes server-owned
+the product's customer/client-settings initializer. It establishes the shared
+client default organization before initializing server-owned, organization-scoped
 plugin configuration. It preserves confirmed settings and never treats local
 client values as authority.
 
@@ -20,13 +21,27 @@ before running discovery or persisting initialization drafts.
    every source role required by the product's plugin recommendation profiles.
    Invoke the product customer-settings initializer first when any required
    client value is missing or invalid.
-3. Call `bos_get_context`, select the server-marked default interactive role,
-   and verify `bos.plugin_settings.read` and
-   `bos.plugin_settings.recommend`. Require
-   `bos.plugin_settings.update` before persistence.
-4. Read the local initialization receipt with
+3. Call `bos_get_context` and deduplicate its returned `organization_label`
+   values. Read the shared default with
+   `../bos-mcp-client/scripts/client-preferences.mjs`. When it is current, use
+   that organization. When exactly one organization is available and the
+   setting is missing, commit that sole label as the default. When several are
+   available and the setting is missing or stale, resolve a candidate from an
+   exact confirmed `organization_display_name` match or an explicit user
+   instruction, then include **Default BOS organization** in the product
+   initializer's consolidated recommendation. Require confirmation before
+   calling `set-default-organization`. If no exact candidate is available, ask
+   for the default organization in that same consolidated review. Return
+   `configuration_required` and make no organization-scoped settings call until
+   the helper returns `state: committed` or `current`.
+4. Within the selected organization and installed app, select the unique
+   server-marked default interactive role. Verify `bos.plugin_settings.read`
+   and `bos.plugin_settings.recommend`. Require `bos.plugin_settings.update`
+   before persistence. Pass only that role's opaque `context_id`; the saved
+   display label grants no authority.
+5. Read the local initialization receipt with
    `../bos-mcp-client/scripts/plugin-settings-cache.mjs`.
-5. Call `bos_get_plugin_settings_initialization` with only the current
+6. Call `bos_get_plugin_settings_initialization` with only the selected
    `context_id`. Skip the workflow when its initialization epoch, required
    canonical field states, and local receipt are current.
 
