@@ -54,6 +54,14 @@ test("plugin settings skills encode cache-first reads and delegated resilient mu
   assert.match(operationContract, /reconcile an uncertain mutation before replay/i);
   assert.match(initialization, /after host-managed BOS authentication/i);
   assert.match(initialization, /customer\/client-settings initializer/i);
+  assert.match(initialization, /client-preferences\.mjs/i);
+  assert.match(initialization, /Default BOS organization/i);
+  assert.match(initialization, /exactly one organization[\s\S]*commit that sole label/i);
+  assert.match(initialization, /configuration_required[\s\S]*no organization-scoped settings call/i);
+  assert.match(
+    initialization,
+    /selected organization[\s\S]*unique[\s\S]*default interactive role/i
+  );
   assert.match(initialization, /bos_get_plugin_settings_initialization/);
   assert.match(initialization, /bounded parallel research workers/i);
   assert.match(initialization, /Business Hours prioritizes the[\s\S]*client website/i);
@@ -78,6 +86,7 @@ test("active generated clients contain equivalent plugin settings skills and hel
     await access(`${clientRoot}/bos-plugin-settings/SKILL.md`);
     await access(`${clientRoot}/bos-plugin-settings-initialization/SKILL.md`);
     await access(`${clientRoot}/bos-mcp-client/scripts/plugin-settings-cache.mjs`);
+    await access(`${clientRoot}/bos-mcp-client/scripts/client-preferences.mjs`);
     await access(
       `${clientRoot}/bos-mcp-client/references/plugin-settings-cache-protocol.md`
     );

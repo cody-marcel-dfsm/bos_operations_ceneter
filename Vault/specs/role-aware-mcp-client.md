@@ -5,15 +5,18 @@ packages; server deployment and live multi-role validation remain release gates.
 
 ## Purpose
 
-Application runtime clients resolve role authority through `bos_get_context`.
-They use the server-marked default role context unless the user explicitly
+Application runtime clients resolve organization and role scope through
+`bos_get_context`. They select exactly one authorized organization first, use
+that organization's server-marked default role unless the user explicitly
 requests another available role, pass only its opaque `context_id`, and
 preflight requested operations against that context's advertised capabilities.
 
 Clients never infer authority from plugin `run_as_role`, role text, customer
-configuration, or prompt instructions. A missing capability stops the client
-operation, and the server repeats the same authorization check before any data
-read or mutation.
+configuration, a saved organization display label, or prompt instructions. A
+saved organization preference selects only among contexts returned for the
+current authenticated actor. A missing capability stops the client operation,
+and the server repeats the same authorization check before any data read or
+mutation.
 
 Role administration begins with `bos_list_role_capabilities` when the selected
 role advertises `bos.roles.read`. A requested change uses
@@ -37,12 +40,44 @@ context is a selector for server state, not a portable credential. Role labels,
 capability text, prompt instructions, organization IDs, installation IDs, and
 plugin `run_as_role` values never create client authority.
 
+## Default organization and request override
+
+`bos_get_context` may return role entries for several organizations. The
+client selects an organization in this order:
+
+1. an organization explicitly named in the current request;
+2. the shared local `default_organization_label` preference after exact
+   normalized matching to one returned organization; or
+3. the sole returned organization when only one is available.
+
+Several organizations with no current preference produce
+`configuration_required` before any domain data call. A stale preference also
+stops before execution. The client never treats role `is_default` markers as a
+global organization default, never substitutes another organization, and never
+fans out across organizations unless the user explicitly requests that scope.
+
+The preference is OS-user client configuration shared by BOS-family packages.
+It stores one display label and update time in a private platform-native file.
+It contains no organization ID, context ID, role, token, credential, or grant
+metadata. Every read revalidates the label against the current authenticated
+context. An explicit organization override applies only to the current request
+and does not rewrite the saved preference.
+
+Product initialization establishes this preference after authentication and
+before any organization-scoped plugin-settings inventory call. A sole returned
+organization may be committed directly. When several organizations are
+available and the preference is missing or stale, the product initializer
+includes **Default BOS organization** in its consolidated recommendation and
+commits the confirmed label through the shared helper before selecting the
+organization's default role.
+
 ## Default role and explicit downgrade
 
-For a user with multiple assigned roles, every role declares an integer
-`agent_authority_rank`. The unique largest rank is marked as the default.
-Missing or tied ranks fail closed. List order, label text, and the number of
-capabilities never imply authority.
+For a user with multiple assigned roles inside the selected organization and
+installed app, every role declares an integer `agent_authority_rank`. The
+unique largest rank is marked as the default. Missing or tied ranks fail
+closed. List order, label text, and the number of capabilities never imply
+authority.
 
 The client uses the default unless the user explicitly asks to operate through
 another returned role. An explicit downgrade uses only that role's opaque
@@ -52,14 +87,16 @@ saved default.
 ## Client workflow
 
 1. Call `bos_get_context` before the first domain operation.
-2. Select the server-marked default context or the explicitly requested
-   available lower-role context.
-3. Confirm the requested operation is present and invocable for that context.
-4. Pass only `context_id` with the domain arguments defined by the tool.
-5. Preserve that context for related calls in the active request.
-6. Refresh context and live tool discovery after authorization, membership,
+2. Resolve exactly one organization from the explicit request, validated local
+   default, or sole authorized organization.
+3. Within that organization, select the server-marked default context or the
+   explicitly requested available lower-role context.
+4. Confirm the requested operation is present and invocable for that context.
+5. Pass only `context_id` with the domain arguments defined by the tool.
+6. Preserve that context for related calls in the active request.
+7. Refresh context and live tool discovery after authorization, membership,
    role-capability, plugin, or connection changes.
-7. After a denial or missing context, refresh once. Treat the repeated server
+8. After a denial or missing context, refresh once. Treat the repeated server
    result as authoritative.
 
 Client preflight is a usability and request-filtering layer. The server repeats
@@ -97,6 +134,8 @@ elevates an interactive user and never selects provider credential ownership.
 ## Failure behavior
 
 - Missing, stale, malformed, or ambiguous context fails closed.
+- A missing, stale, unavailable, or ambiguous default organization stops before
+  a domain data call when more than one organization is available.
 - An operation absent from the selected context stops before invocation.
 - A server denial after one refresh is reported as the current authorization
   result.
@@ -104,14 +143,18 @@ elevates an interactive user and never selects provider credential ownership.
   and plugin and never widens role authority.
 - Clients never substitute another connection, role, tenant, or cached
   context to make an operation succeed.
+- Clients never query every accessible organization unless the current request
+  explicitly asks for bounded cross-organization scope.
 
 ## Packaging ownership
 
 The canonical behavior lives in
 `source/platform/authentication-context-integrity/SKILL.md` and
-`source/platform/bos-mcp-client/SKILL.md`. Builds copy those contracts into the
-Claude, Codex, Copilot, and Gemini products. Generated client copies are parity
-artifacts and never independent editing surfaces.
+`source/platform/bos-mcp-client/SKILL.md`. The shared preference implementation
+lives in `source/platform/bos-mcp-client/scripts/client-preferences.mjs`.
+Builds copy those contracts into the Claude, Codex, Copilot, and Gemini
+products. Generated client copies are parity artifacts and never independent
+editing surfaces.
 
 Lead Director currently provides the reference server implementation. The BOS
 client contract remains application-neutral and applies to every installed
