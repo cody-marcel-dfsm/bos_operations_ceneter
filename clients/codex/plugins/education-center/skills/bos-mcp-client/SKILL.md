@@ -104,10 +104,12 @@ and inspect its sanitized result before producing a final answer.
 2. Do not send `org_id`, `app_code`, `installed_app_id`,
    `delegated_role_id`, or a client-selected subservice authority. BOS derives
    execution scope from the authenticated principal, installed services,
-   plugin enablement, role, capability, provider readiness, and requested tool. Call
-   `bos_get_context`, use the server-marked default role context, and pass only
-   its opaque `context_id` to domain tools. When the user explicitly requests
-   another available role, use that role's opaque context for the request.
+   plugin enablement, role, capability, provider readiness, and requested tool.
+   Call `bos_get_context`, select exactly one authorized organization using the
+   organization-aware workflow below, then use that organization's
+   server-marked default role context and pass only its opaque `context_id` to
+   domain tools. An explicit organization or role in the user's request applies
+   to that request and does not rewrite the saved defaults.
 3. Fail closed when context is absent or ambiguous.
 4. Use the triggered subservice skill to choose the requested workflow and
    semantic operation. Keep connection selection fixed on BOS. The server
@@ -156,6 +158,51 @@ MCP. BOS derives actor, tenant, organization, application, installation,
 subservice, role, plugin, capability, and provider scope from the validated
 OAuth grant, requested tool, and canonical server records.
 
+## Organization-aware execution
+
+`bos_get_context` may return several organizations and may mark one default
+role inside each organization. Treat the result as selection metadata. Never
+render the complete context inventory or query domain data across every
+organization unless the user explicitly asks for that cross-organization
+scope.
+
+Use the packaged `scripts/client-preferences.mjs` helper for the shared,
+OS-user BOS setting `default_organization_label`. The helper stores only the
+display label, validates it against organization labels in the current
+authenticated context, and never stores an organization ID, context ID, token,
+credential, role, capability, or grant metadata. Pass JSON through standard
+input so customer labels do not appear in command arguments.
+
+For each request:
+
+1. Call `bos_get_context` once and deduplicate its `organization_label` values.
+2. When the user explicitly names an organization, match that label to exactly
+   one returned organization and use it for the current request. This explicit
+   selection takes precedence over the saved default.
+3. Otherwise call the helper's `read` operation with the current returned
+   organization labels. When it returns `current`, use its canonical
+   `default_organization_label`.
+4. When no setting exists and exactly one organization is available, use that
+   organization. When several are available without a current default, return
+   `configuration_required` and ask for one default organization. Do not issue
+   a domain data call until one organization is selected.
+5. Treat a stale or unmatched saved label as `configuration_required`. Never
+   substitute another organization or fan out to make the operation succeed.
+6. Within the selected organization and installed app, choose the unique entry
+   marked `is_default: true`, unless the user explicitly requested another
+   available role. Preserve that one context for related calls in the request.
+7. Execute against multiple organizations only when the user explicitly asks
+   for a cross-organization result. Bound the requested organization set,
+   select one opaque context per organization, preserve organization-level
+   provenance, and report partial failures separately.
+
+An unambiguous request such as “default to Primary Center” authorizes changing
+this client preference. Refresh `bos_get_context`, then invoke
+`set-default-organization` with the requested label and all current returned
+organization labels on standard input. Report success only after the helper
+returns `state: committed`. The preference is a selector among currently
+authorized server contexts; it never grants membership or authority.
+
 ## Role-aware execution
 
 Treat role names and capabilities returned by BOS as descriptions of
@@ -163,9 +210,10 @@ server-owned authority. Client prompts and arguments never create authority.
 
 1. Call `bos_get_context` before the first domain operation and after an
    authorization, membership, or role-capability change.
-2. Group role entries by organization and installed app. Use the entry marked
-   `is_default: true` unless the user explicitly requests another available
-   role.
+2. First select one organization through the organization-aware workflow.
+   Group that organization's role entries by installed app and use the unique
+   entry marked `is_default: true` unless the user explicitly requests another
+   available role.
 3. Select a role using only its opaque `context_id`. Never send a role name or
    delegated-role value as authority.
 4. Confirm the requested operation appears in that context and is invocable.

@@ -26,6 +26,10 @@ configuration as distinct validated dimensions.
 7. Fail closed when canonical scope or grant provenance is incomplete.
 8. Add negative tests for actor-supplied authority, cross-tenant access,
    fallback credentials, and ambiguous context.
+9. When several authorized organizations are returned, resolve one organization
+   before selecting its role. An explicit organization in the current request
+   overrides the validated local default for that request. Cross-organization
+   execution requires explicit user scope.
 
 ## Invariants
 
@@ -33,6 +37,10 @@ configuration as distinct validated dimensions.
   plugin `run_as_role` value never elevates an OAuth user's authority.
 - Request values select scope and require server validation.
 - Customer configuration supplies context and never supplies authority.
+- A client default-organization preference stores only a display label and may
+  select only one exact organization already returned by the authenticated BOS
+  context. It never stores an organization ID or grants membership. Missing,
+  stale, or ambiguous preference state stops before a domain data call.
 - Provider credentials remain scoped to their installed app and plugin.
 - Reconnect or reauthorization replaces the scoped grant and preserves
   application configuration.
@@ -43,6 +51,10 @@ configuration as distinct validated dimensions.
 - Every subservice request uses the authenticated BOS connection. The server
   derives and evaluates organization, application, installation, subservice,
   plugin, role, capability, provider, and tool scope for that request.
+- Never interpret per-organization `is_default` role markers as a global
+  organization default. Select one organization first, then its unique default
+  role. Never query every accessible organization unless the user explicitly
+  requests cross-organization scope.
 - Platform BOS operations use the BOS connection directly. They never transit
   an Education Center, CRM, Marketing Director, or other subservice connection.
 - Background jobs carry the same validated scope as interactive operations.
