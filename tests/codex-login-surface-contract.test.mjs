@@ -4,10 +4,11 @@ import test from "node:test";
 import { join } from "node:path";
 import { root } from "../scripts/lib/package-model.mjs";
 
+const provenBosAppId = "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91";
 const bosResourceUrl = "https://dfsm.ai/mcp/apps/bos/platform";
 const pluginRoot = join(root, "clients", "codex", "plugins", "bos");
 
-test("Codex BOS plugin declares one portable package-owned MCP server", async () => {
+test("Codex BOS plugin preserves the proven required app binding that renders Login", async () => {
   const product = JSON.parse(await readFile(
     join(root, "products", "bos", "product.json"),
     "utf8"
@@ -16,28 +17,32 @@ test("Codex BOS plugin declares one portable package-owned MCP server", async ()
     join(pluginRoot, ".codex-plugin", "plugin.json"),
     "utf8"
   ));
-  const mcp = JSON.parse(await readFile(join(pluginRoot, ".mcp.json"), "utf8"));
+  const app = JSON.parse(await readFile(join(pluginRoot, ".app.json"), "utf8"));
 
-  assert.equal(product.codex_app_id, undefined);
-  assert.equal(plugin.mcpServers, "./.mcp.json");
-  assert.equal(plugin.apps, undefined);
-  assert.deepEqual(mcp, {
-    mcpServers: {
-      platform: {
-        type: "http",
-        url: bosResourceUrl
+  assert.equal(product.codex_app_id, provenBosAppId);
+  assert.equal(plugin.apps, "./.app.json");
+  assert.equal(plugin.mcpServers, undefined);
+  assert.deepEqual(app, {
+    apps: {
+      bos: {
+        id: provenBosAppId,
+        required: true
       }
     }
   });
-  await assert.rejects(access(join(pluginRoot, ".app.json")), /ENOENT/);
+  await assert.rejects(access(join(pluginRoot, ".mcp.json")), /ENOENT/);
 });
 
-test("Codex package never embeds credentials or account-scoped app IDs", async () => {
-  const content = await readFile(join(pluginRoot, ".mcp.json"), "utf8");
-  assert.doesNotMatch(content, /authorization|bearer_token_env_var|asdk_app_/i);
+test("Codex Login cannot regress to direct-MCP-only or optional app packaging", async () => {
+  const app = JSON.parse(await readFile(join(pluginRoot, ".app.json"), "utf8"));
+  const content = JSON.stringify(app);
+
+  assert.equal(app.apps.bos.required, true);
+  assert.deepEqual(Object.keys(app.apps.bos).sort(), ["id", "required"]);
+  assert.doesNotMatch(content, /authorization|bearer_token_env_var/i);
 });
 
-test("Codex package and portable contract use the same root resource", async () => {
+test("Codex Login display binding remains independent from server OAuth discovery", async () => {
   const contract = JSON.parse(await readFile(
     join(root, "contracts", "single-bos-mcp-connection.v1.json"),
     "utf8"
@@ -47,12 +52,13 @@ test("Codex package and portable contract use the same root resource", async () 
     "utf8"
   ));
 
-  assert.equal(contract.codex_app_id, undefined);
+  assert.equal(contract.codex_app_id, provenBosAppId);
+  assert.equal(contract.codex_app_required, true);
   assert(contract.connection_artifacts.includes(
-    "clients/codex/plugins/bos/.mcp.json"
+    "clients/codex/plugins/bos/.app.json"
   ));
   assert(!contract.connection_artifacts.includes(
-    "clients/codex/plugins/bos/.app.json"
+    "clients/codex/plugins/bos/.mcp.json"
   ));
   assert.equal(runtime.mcpServers.bos.url, bosResourceUrl);
 });

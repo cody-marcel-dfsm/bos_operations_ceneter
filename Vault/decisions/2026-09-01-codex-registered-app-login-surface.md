@@ -2,19 +2,19 @@
 
 ## Status
 
-Superseded on 2026-09-01 by the incident RCA and the restored
-`2026-08-29-codex-package-owned-mcp.md` contract.
+Accepted on 2026-09-01 after live 0.4.70 UI evidence invalidated the direct-MCP
+remediation. Supersedes `2026-08-29-codex-package-owned-mcp.md` for Codex.
 
-The implementation embedded an `asdk_app_*` public-submission draft ID where a
-private developer-mode connection would require a separately registered
-connection. The signed-in Codex resolver returned `Connector not found`, and
-the replacement Platform draft remained absent from the callable directory.
-This made the package account-dependent and prevented BOS tool exposure.
+The accepted identity is the exact root BOS app binding introduced by commit
+`e46546c`: `plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91`.
+Later commits replaced it with `asdk_app_*` Platform submission drafts and then
+removed `.app.json` entirely. Those later identities are retired migration
+inputs and never substitute for the proven root BOS binding.
 
 ## Decision
 
 The root BOS Codex plugin declares `apps: "./.app.json"`. The app file contains
-exactly one durable BOS app identity marked `required: true`. The Codex package
+exactly the proven BOS app identity marked `required: true`. The Codex package
 contains no direct `.mcp.json` binding. Subservice plugins contain neither app
 nor MCP bindings and continue through the root BOS connection.
 
@@ -25,13 +25,16 @@ challenge separately owns runtime OAuth discovery and activation.
 
 ## Evidence and reason
 
-A direct `.mcp.json` package produced a server-settings row while removing the
-plugin-page authentication control. A valid protected-resource challenge could
+A direct `.mcp.json` package in 0.4.55 through 0.4.64 and again in 0.4.70
+produced a server-settings row while removing the plugin-page authentication
+control. A valid protected-resource challenge could
 not restore a control whose registered app declaration was absent. The durable
 BOS app identity marked as required restores the client-native login surface
-while preserving one root BOS connection. Version 0.4.65 demonstrated that an
-app identity without `required: true` can be silently omitted from the plugin
-page even when the plugin manifest points to `.app.json`. Package validation
+while preserving one root BOS connection. Version 0.4.65 demonstrated that a
+replacement app identity without `required: true` can be silently omitted from
+the plugin page even when the plugin manifest points to `.app.json`. Versions
+0.4.66 through 0.4.69 retained replacement identities and did not restore the
+known-good root BOS binding. Package validation
 therefore treats a missing or false `required` value as a display-binding
 failure.
 

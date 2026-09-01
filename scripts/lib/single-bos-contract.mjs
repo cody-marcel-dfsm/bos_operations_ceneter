@@ -125,6 +125,7 @@ function validateContractShape(contract, contractPath) {
     "application_name",
     "mcp_group_name",
     "resource_url",
+    "codex_app_id",
     "owner_authentication_policy",
     "provider_account_selection_policy",
     "identity_organization_resolution_policy",
@@ -146,6 +147,13 @@ function validateContractShape(contract, contractPath) {
     if (!Array.isArray(contract[field]) || contract[field].length === 0) {
       findings.push(finding("contract_shape", contractPath, `${field} must be a non-empty array.`));
     }
+  }
+  if (contract.codex_app_required !== true) {
+    findings.push(finding(
+      "contract_shape",
+      contractPath,
+      "codex_app_required must be true."
+    ));
   }
   return findings;
 }
@@ -172,7 +180,8 @@ export async function verifySingleBosContract({
     for (const [field, expected] of [
       ["runtime", "bos"],
       ["application_name", contract.application_name],
-      ["mcp_group_name", contract.mcp_group_name]
+      ["mcp_group_name", contract.mcp_group_name],
+      ["codex_app_id", contract.codex_app_id]
     ]) {
       if (owner[field] !== expected) {
         violations.push(finding(
@@ -187,7 +196,8 @@ export async function verifySingleBosContract({
   const forbiddenProductFields = [
     "runtime",
     "application_name",
-    "mcp_group_name"
+    "mcp_group_name",
+    "codex_app_id"
   ];
   for (const product of products.filter(({ name }) => name !== contract.owner_product)) {
     for (const field of forbiddenProductFields) {
@@ -242,7 +252,25 @@ export async function verifySingleBosContract({
 
   for (const artifact of expectedArtifacts) {
     const content = await readFile(join(root, artifact), "utf8");
-    if (!content.includes(contract.resource_url)) {
+    if (artifact.endsWith("/.app.json")) {
+      const appManifest = JSON.parse(content);
+      const entries = Object.entries(appManifest.apps ?? {});
+      const [name, app] = entries[0] ?? [];
+      if (
+        entries.length !== 1 ||
+        name !== contract.owner_product ||
+        app?.id !== contract.codex_app_id ||
+        app?.required !== contract.codex_app_required ||
+        JSON.stringify(Object.keys(app ?? {}).sort()) !==
+          JSON.stringify(["id", "required"])
+      ) {
+        violations.push(finding(
+          "codex_app_binding",
+          artifact,
+          "Codex must declare the exact required BOS registered app."
+        ));
+      }
+    } else if (!content.includes(contract.resource_url)) {
       violations.push(finding(
         "root_resource_url",
         artifact,

@@ -30,8 +30,8 @@ MCP context and read tools strengthen verification when available.
    only sanitized client, package, stage, error, attempted-action, expected, and
    observed evidence.
 9. Treat a missing Codex **Login**, **Connect**, or **Authenticate** action
-   after the package-owned `.mcp.json` loads as **Register**. Repair and reload
-   the root package binding while preserving the request. Treat MCP-startup
+   after the required `.app.json` loads as **Register**. Repair and reload the
+   root registered-app display binding while preserving the request. Treat MCP-startup
    `reauthenticationRequired` as **Sign in**. The user activates the native
    control and completes consent; the
    agent refreshes tools and context and resumes. Generic app permissions and

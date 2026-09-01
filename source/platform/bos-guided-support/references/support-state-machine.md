@@ -21,8 +21,10 @@ reported stage only when later evidence contradicts it.
 - Skill exists but current conversation cannot invoke it: **Load**.
 - Product skills load but the BOS connection is absent: **Register BOS**.
 - The Codex host has no **Login**, **Connect**, or **Authenticate** control
-  after loading the BOS `.mcp.json`: **Register BOS**. Inspect and repair that
-  package-owned binding before evaluating server behavior.
+  after loading the required BOS `.app.json`: **Register BOS**. Inspect and
+  repair that registered-app display binding before evaluating server behavior.
+  A valid HTTP 401 OAuth challenge does not satisfy the independent display
+  contract.
 - OAuth token endpoint `invalid_client`: **Register BOS**. Preserve the active
   request, keep the sealed BOS resource fixed, discard the stale host-owned
   public-client registration, repeat dynamic client registration from current

@@ -4,7 +4,8 @@
 
 Accepted on 2026-08-11. The Claude packaging portion is superseded by
 `2026-08-22-claude-account-connector-separation.md`; the Codex app-ID portion is
-superseded by `2026-08-29-codex-package-owned-mcp.md`.
+refined by `2026-09-01-codex-registered-app-login-surface.md`, which pins the
+proven root BOS identity.
 
 ## Decision
 

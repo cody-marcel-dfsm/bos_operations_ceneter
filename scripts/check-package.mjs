@@ -225,6 +225,8 @@ async function validateProducts() {
         metadata.connection_owner !== "bos" ||
         metadata.application_name !== manifest.application_name ||
         metadata.mcp_group_name !== manifest.mcp_group_name ||
+        metadata.codex_app_id !==
+          (client === "codex" ? manifest.codex_app_id : undefined) ||
         metadata.authentication !== expectedAuthentication ||
         "credential_env_var" in metadata ||
         "mcp_application" in metadata ||
@@ -248,8 +250,8 @@ async function validateProducts() {
           failures.push(`Generated Codex identity drift: ${pluginPath}`);
         }
         if (manifest.runtime) {
-          if (generated.mcpServers !== "./.mcp.json" || "apps" in generated) {
-            failures.push(`Generated Codex MCP binding drift: ${pluginPath}`);
+          if (generated.apps !== "./.app.json" || "mcpServers" in generated) {
+            failures.push(`Generated Codex app binding drift: ${pluginPath}`);
           }
         } else if ("apps" in generated || "mcpServers" in generated) {
           failures.push(`Skills-only Codex product contains runtime binding: ${pluginPath}`);
@@ -259,23 +261,23 @@ async function validateProducts() {
       const runtimePath = join(pluginRoot, ".mcp.json");
       if (manifest.runtime) {
         if (
-          await pathExists(appPath) ||
-          !(await pathExists(runtimePath))
+          !(await pathExists(appPath)) ||
+          await pathExists(runtimePath)
         ) {
-          failures.push(`Generated Codex MCP file drift: ${runtimePath}`);
+          failures.push(`Generated Codex app file drift: ${appPath}`);
         } else {
-          const runtimeManifest = await readJson(runtimePath);
-          const entries = Object.entries(runtimeManifest.mcpServers ?? {});
-          const [name, server] = entries[0] ?? [];
+          const appManifest = await readJson(appPath);
+          const entries = Object.entries(appManifest.apps ?? {});
+          const [name, app] = entries[0] ?? [];
           if (
             entries.length !== 1 ||
-            name !== manifest.mcp_group_name ||
-            server?.type !== "http" ||
-            server?.url !== "https://dfsm.ai/mcp/apps/bos/platform" ||
-            JSON.stringify(Object.keys(server ?? {}).sort()) !==
-              JSON.stringify(["type", "url"])
+            name !== manifest.name ||
+            app?.id !== manifest.codex_app_id ||
+            app?.required !== true ||
+            JSON.stringify(Object.keys(app ?? {}).sort()) !==
+              JSON.stringify(["id", "required"])
           ) {
-            failures.push(`Generated Codex MCP declaration drift: ${runtimePath}`);
+            failures.push(`Generated Codex registered app drift: ${appPath}`);
           }
         }
       } else if (await pathExists(appPath) || await pathExists(runtimePath)) {

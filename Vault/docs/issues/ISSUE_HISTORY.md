@@ -6,7 +6,7 @@ before implementation guidance and review. Resolved issue details remain in
 
 ## Issue #0001: Installed BOS skills appeared while Codex exposed no login or callable tools
 
-- Status: RESOLVED in 0.4.70
+- Status: FIXED IN 0.4.71; host verification pending
 - Priority: CRITICAL
 - Date identified: 2026-09-01
 - Area: Codex package binding, authentication display, and tool discovery
@@ -24,34 +24,44 @@ tools after authorization, and explain failures at the exact failing layer.
 
 ### Observed evidence
 
-Codex 0.4.65 displayed installed BOS skills and plugin settings while omitting a
-login action. A task then reported that BOS tools were absent. The installed
+Codex 0.4.65 and 0.4.70 displayed installed BOS skills and plugin settings while
+omitting a login action. A task then reported that BOS tools were absent. The installed
 package state, registered connection state, OAuth grant state, and callable-tool
 manifest had been treated as one readiness signal.
 
 ### Root cause
 
-The 0.4.65 package switched to an optional registered-app binding. Release
-0.4.66 restored `required: true`, yet the referenced `asdk_app_*` identity was
-an account-scoped Platform submission draft rather than a portable package
-runtime connection. The first ID was deleted; its replacement still could not
-resolve as a customer connection. Skills remained readable because skill loading
-and MCP connection loading are independent.
+Commit `e46546c` moved the working Education Center app binding to the root BOS
+plugin and used `plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91`; that
+conversion displayed the BOS login. Subsequent commits replaced that exact
+identity, removed `required: true`, and then removed `.app.json` in favor of a
+direct `.mcp.json`. The same direct-MCP regression shipped in 0.4.55 through
+0.4.64 and again in 0.4.70. Direct MCP receipt produced the Platform server row,
+while the absent registered-app declaration left the independent Login display
+contract unsatisfied. Skills remained readable because skill loading,
+authentication display, OAuth activation, and callable discovery are
+independent.
 
 ### Required correction
 
-Use the root package's credential-free `.mcp.json` to bind the immutable BOS
-HTTPS resource. Keep subservices transport-free. Validate install, skill load,
-connection load, OAuth, callable discovery, and execution independently. Keep
-OpenAI submission drafts in their publication lifecycle.
+Restore the exact proven root BOS `.app.json` binding with
+`plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91` and `required: true`.
+Keep the Codex package free of a shadow `.mcp.json` and keep subservices
+transport-free. Validate Login display separately from server OAuth discovery,
+callable discovery, and execution.
 
 ### Attempts
 
-- 0.4.65: optional registered app; native login display absent.
-- 0.4.66: `required: true`; display contract improved while the account-scoped
-  app identity remained unresolvable for customers.
-- 0.4.70: package-owned MCP resource restored and registered-app IDs removed
-  from the portable runtime contract.
+- 0.4.50: root BOS app binding from `e46546c`; user-observed BOS login worked.
+- 0.4.51–0.4.54: the proven identity was replaced by later app IDs.
+- 0.4.55–0.4.64: `.app.json` was removed for direct `.mcp.json`; Login absent.
+- 0.4.65: replacement app was optional; Login absent.
+- 0.4.66–0.4.69: required replacement IDs did not restore the proven binding.
+- 0.4.70: direct `.mcp.json` was restored; live screenshot again proved Login
+  absent even though the Platform MCP server row rendered.
+- 0.4.71: restores the exact 0.4.50 root BOS app binding and migrates both
+  direct-MCP and replacement-ID installations. Repository acceptance passed;
+  visual host verification of the native Login action remains pending.
 
 ### Validation and Oracle review
 
@@ -63,7 +73,9 @@ declared tool discovery, `bos_get_context`, and one bounded authenticated read.
 ### Prevention guidance
 
 Treat receiving an MCP response and displaying an authentication action as
-separate host behaviors. Treat package binding, registered-app resolution,
+separate host behaviors. Pin the last user-proven app identity in product
+metadata, generated artifacts, the portable contract, installer migrations,
+runtime verification, and regression tests. Treat package binding, registered-app resolution,
 OAuth grant state, callable discovery, and execution as independent gates. Test
 fresh-account portability instead of validating only an embedded identity's
 shape.

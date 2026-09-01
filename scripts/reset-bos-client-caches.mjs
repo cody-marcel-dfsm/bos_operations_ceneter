@@ -10,9 +10,22 @@ const marketplace = "bos-education-center";
 const products = ["bos", "education-center"];
 const bosResourceUrl = "https://dfsm.ai/mcp/apps/bos/platform";
 const bosCodexAppIds = [
+  "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
   "asdk_app_6a95a014a0a08191a9e6d16453a8b831",
   "asdk_app_6a932992592081919cdc88c60e4ff2dd"
 ];
+
+function codexAppRecordId(id) {
+  return id.replace(/^plugin_/, "");
+}
+
+function codexAppWrapperSuffix(id) {
+  return codexAppRecordId(id).replace(/^asdk_app_/, "");
+}
+
+function codexRemotePluginId(id) {
+  return id.startsWith("plugin_") ? id : `plugin_${id}`;
+}
 const codexCatalogCacheKinds = [
   "codex_app_directory",
   "codex_apps_server_info",
@@ -85,7 +98,7 @@ async function validateRemoteWrapper(wrapper, appId) {
     throw new Error(`Refusing non-directory remote wrapper cache: ${wrapper}`);
   }
   const metadata = await readJson(join(wrapper, ".codex-remote-plugin-install.json"));
-  if (metadata.remote_plugin_id !== `plugin_${appId}`) {
+  if (metadata.remote_plugin_id !== codexRemotePluginId(appId)) {
     throw new Error(`Refusing mismatched remote wrapper cache: ${wrapper}`);
   }
 }
@@ -117,7 +130,7 @@ export async function planBosClientCacheReset({ home = homedir() } = {}) {
     join(
       codexPluginCacheRoot,
       "created-by-me-remote",
-      `dev-${knownAppId.replace(/^asdk_app_/, "")}`
+      `dev-${codexAppWrapperSuffix(knownAppId)}`
     ),
     codexPluginCacheRoot
   ));

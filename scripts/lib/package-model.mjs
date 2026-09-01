@@ -68,6 +68,7 @@ export function validateProduct(manifest, path = "product.json") {
     "runtime",
     "application_name",
     "mcp_group_name",
+    "codex_app_id",
     "settings_template",
     "settings_initializer",
     "plugin_settings_initializer",
@@ -210,6 +211,26 @@ export function validateProduct(manifest, path = "product.json") {
   if (manifest.runtime && (!manifest.application_name || !manifest.mcp_group_name)) {
     failures.push(`${path}: runtime requires application_name and mcp_group_name`);
   }
+  if (
+    manifest.codex_app_id !== undefined &&
+    !/^plugin_asdk_app_[a-z0-9]+$/.test(manifest.codex_app_id)
+  ) {
+    failures.push(`${path}: codex_app_id must be a plugin_asdk_app identifier`);
+  }
+  if (
+    manifest.release_status === "active" &&
+    manifest.runtime &&
+    manifest.clients?.includes("codex") &&
+    !manifest.codex_app_id
+  ) {
+    failures.push(`${path}: active Codex runtime requires codex_app_id`);
+  }
+  if (
+    manifest.codex_app_id !== undefined &&
+    (!manifest.runtime || !manifest.clients?.includes("codex"))
+  ) {
+    failures.push(`${path}: codex_app_id requires a Codex runtime product`);
+  }
   if (manifest.runtime &&
       !manifest.includes?.includes("platform/bos-mcp-client")) {
     failures.push(`${path}: runtime requires platform/bos-mcp-client`);
@@ -225,7 +246,8 @@ export function validateProduct(manifest, path = "product.json") {
   } else if (
     manifest.runtime !== undefined ||
     manifest.application_name !== undefined ||
-    manifest.mcp_group_name !== undefined
+    manifest.mcp_group_name !== undefined ||
+    manifest.codex_app_id !== undefined
   ) {
     failures.push(`${path}: subservice products must use the BOS-owned connection`);
   }
@@ -499,17 +521,20 @@ export function pluginManifest(product) {
     manifest.interface.composerIcon = `./${product.composer_icon}`;
   }
   if (product.logo) manifest.interface.logo = `./${product.logo}`;
-  if (product.runtime) manifest.mcpServers = "./.mcp.json";
+  if (product.runtime) manifest.apps = "./.app.json";
   return manifest;
 }
 
-export function codexPluginMcpManifest(product) {
-  if (!product.runtime) return { mcpServers: {} };
+export function codexAppManifest(product) {
+  if (!product.runtime) return { apps: {} };
+  if (!/^plugin_asdk_app_[a-z0-9]+$/.test(product.codex_app_id ?? "")) {
+    throw new Error(`Product ${product.name} has no registered Codex app ID`);
+  }
   return {
-    mcpServers: {
-      [product.mcp_group_name]: {
-        type: "http",
-        url: materializeMcpUrl("https://dfsm.ai/mcp/apps/bos/platform", product)
+    apps: {
+      [product.name]: {
+        id: product.codex_app_id,
+        required: true
       }
     }
   };

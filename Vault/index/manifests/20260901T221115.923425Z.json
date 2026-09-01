@@ -1,0 +1,17 @@
+{
+  "canonical_source_snapshot_sha256": "7d106552923b4bac864e0bfa1150287a1f23e5d5ae8ec186700d2fed0e5fafb4",
+  "changed_sources": [
+    "Vault/docs/CONSTITUTION.md",
+    "Vault/docs/architecture.md",
+    "Vault/specs/client-guided-support.md",
+    "Vault/specs/single-bos-mcp-connection.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 194,
+  "duration_seconds": 0.902,
+  "index_version": 1,
+  "indexed_at": "20260901T221115.923425Z",
+  "indexed_chunks": 18,
+  "removed_sources": [],
+  "source_count": 87
+}

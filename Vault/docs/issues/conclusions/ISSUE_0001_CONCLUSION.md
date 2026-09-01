@@ -1,7 +1,7 @@
 # Issue #0001 conclusion: Codex BOS login and callable-tool exposure
 
-- Status: RESOLVED
-- Resolution version: 0.4.70
+- Status: FIXED IN 0.4.71; host verification pending
+- Resolution version: 0.4.71
 - Date: 2026-09-01
 - Category: Codex package binding and authentication readiness
 - Related incident: `Vault/docs/codex-registered-app-incident.md`
@@ -15,21 +15,24 @@ described the callable manifest as generally unavailable.
 
 ## Root cause
 
-Skill loading and MCP connection loading are independent. The package had moved
-from a portable package-owned MCP resource to an optional registered app in
-0.4.65. Adding `required: true` in 0.4.66 could influence the display binding,
-yet the referenced `asdk_app_*` value remained an account-scoped OpenAI Platform
-submission draft. The deleted first identity returned `Connector not found`;
-the replacement draft also lacked customer-directory registration. A package
-could therefore pass shape checks while failing fresh-account resolution.
+Skill loading, authentication display, MCP activation, and callable discovery
+are independent. Commit `e46546c` converted the Education Center login to the
+root BOS app and used
+`plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91`; the user observed that
+configuration working. Later changes replaced the identity and then removed
+the registered-app declaration for a direct `.mcp.json`. Releases 0.4.55 through
+0.4.64 and 0.4.70 therefore rendered the Platform MCP row while omitting Login.
+The 0.4.70 review verified receipt and callable-tool packaging, then incorrectly
+treated those as evidence for the separate display contract.
 
 ## Fix applied
 
-Release 0.4.70 restored one credential-free root `.mcp.json` pointing to the
-immutable BOS HTTPS resource, removed account-scoped app IDs from the portable
-product contract, kept subservices transport-free, and added bounded migration
-for the known stale app identities. Runtime verification now reports package
-binding and callable discovery independently.
+The correction restores the exact proven root BOS `.app.json` binding with
+`required: true`, removes the direct Codex `.mcp.json`, keeps subservices
+transport-free, and migrates both direct-MCP packages and the later replacement
+app IDs. Product validation, installation verification, runtime verification,
+and focused regression tests all pin the exact identity and required display
+contract independently from server OAuth discovery.
 
 ## Verification
 
@@ -44,10 +47,11 @@ binding and callable discovery independently.
 ## Prevention
 
 - Query the issue history before changing Codex authentication or transport.
-- Keep portable package runtime identity credential-free and account-neutral.
+- Preserve the last user-proven root BOS app identity until an intentional,
+  independently verified replacement is accepted.
 - Validate install, skills, connection, OAuth, callable discovery, and execution
   as separate gates.
-- Require fresh-account portability evidence for any externally registered
-  identity.
+- Require plugin-page Login display evidence in addition to transport receipt,
+  OAuth discovery, and callable-tool evidence.
 - Record failed attempts and the accepted correction in the Vault, then refresh
   the Chroma index.

@@ -12,9 +12,22 @@ const marketplace = "bos-education-center";
 const products = ["education-center", "bos"];
 const bosResourceUrl = "https://dfsm.ai/mcp/apps/bos/platform";
 const bosCodexAppIds = [
+  "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
   "asdk_app_6a95a014a0a08191a9e6d16453a8b831",
   "asdk_app_6a932992592081919cdc88c60e4ff2dd"
 ];
+
+function codexAppRecordId(id) {
+  return id.replace(/^plugin_/, "");
+}
+
+function codexAppWrapperSuffix(id) {
+  return codexAppRecordId(id).replace(/^asdk_app_/, "");
+}
+
+function codexRemotePluginId(id) {
+  return id.startsWith("plugin_") ? id : `plugin_${id}`;
+}
 const cacheKinds = [
   "codex_app_directory",
   "codex_apps_server_info",
@@ -95,7 +108,7 @@ export async function planCodexCleanup(rawOptions = {}) {
   await validatePackageCache(packageCache);
   const registeredAppWrappers = [];
   for (const knownAppId of bosCodexAppIds) {
-    const suffix = knownAppId.replace(/^asdk_app_/, "");
+    const suffix = codexAppWrapperSuffix(knownAppId);
     const wrapper = join(
       options.home,
       ".codex",
@@ -106,7 +119,7 @@ export async function planCodexCleanup(rawOptions = {}) {
     );
     if (await pathExists(wrapper)) {
       const wrapperInstall = await readJson(join(wrapper, ".codex-remote-plugin-install.json"));
-      if (wrapperInstall.remote_plugin_id !== `plugin_${knownAppId}`) {
+      if (wrapperInstall.remote_plugin_id !== codexRemotePluginId(knownAppId)) {
         throw new Error(`Refusing to remove mismatched registered-app wrapper: ${wrapper}`);
       }
       registeredAppWrappers.push(wrapper);

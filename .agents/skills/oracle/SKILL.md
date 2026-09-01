@@ -68,8 +68,9 @@ prior verdict and requires a fresh Oracle review of the complete updated diff.
 - Preserve one host-managed BOS authentication connection. Subservice plugins
   contribute workflows through that connection and never own independent BOS
   logins or platform traffic.
-- Evaluate Codex package binding, OAuth grant state, and callable-tool discovery
-  as independent readiness layers. Evidence from
+- Evaluate Codex registered-app display binding, OAuth activation, grant state,
+  and callable-tool discovery as independent readiness layers. A direct MCP
+  server row never proves that the native Login action is present. Evidence from
   one layer never proves another layer ready.
 - Flag conflicts between source and Vault. The constitution and accepted Vault
   decisions control until an explicit decision updates them.
