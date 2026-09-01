@@ -11,7 +11,7 @@ export const CODEX_CLEAN_CONFIRMATION = "DELETE ALL BOS CODEX PLUGIN STATE";
 const marketplace = "bos-education-center";
 const products = ["education-center", "bos"];
 const bosResourceUrl = "https://dfsm.ai/mcp/apps/bos/platform";
-const legacyCodexAppIds = ["asdk_app_6a932992592081919cdc88c60e4ff2dd"];
+const bosCodexAppIds = ["asdk_app_6a932992592081919cdc88c60e4ff2dd"];
 const cacheKinds = [
   "codex_app_directory",
   "codex_apps_server_info",
@@ -87,7 +87,7 @@ async function validatePackageCache(path) {
 
 export async function planCodexCleanup(rawOptions = {}) {
   const options = { home: homedir(), ...rawOptions };
-  const appId = legacyCodexAppIds[0];
+  const appId = bosCodexAppIds[0];
   const suffix = appId.replace(/^asdk_app_/, "");
   const packageCache = join(options.home, ".codex", "plugins", "cache", marketplace);
   await validatePackageCache(packageCache);
@@ -107,7 +107,7 @@ export async function planCodexCleanup(rawOptions = {}) {
   }
   const cacheFiles = [];
   for (const kind of cacheKinds) {
-    for (const needle of [bosResourceUrl, ...legacyCodexAppIds]) {
+    for (const needle of [bosResourceUrl, ...bosCodexAppIds]) {
       cacheFiles.push(...await filesContaining(
         join(options.home, ".codex", "cache", kind),
         needle
@@ -124,13 +124,13 @@ export async function planCodexCleanup(rawOptions = {}) {
     package_cache: (await pathExists(packageCache)) ? packageCache : null,
     registered_app_wrapper: (await pathExists(wrapper)) ? wrapper : null,
     cache_files: [...new Set(cacheFiles)].sort(),
-    global_state: [bosResourceUrl, ...legacyCodexAppIds].some((needle) =>
+    global_state: [bosResourceUrl, ...bosCodexAppIds].some((needle) =>
       globalStateContent.includes(needle)
     ) ? globalState : null
   };
 }
 
-export function removeBosToolsFromGlobalState(state, appId = legacyCodexAppIds[0]) {
+export function removeBosToolsFromGlobalState(state, appId = bosCodexAppIds[0]) {
   const catalog = state?.["electron-persisted-atom-state"]
     ?.["mcp-extension-sidebar-catalog"]?.catalog;
   if (!Array.isArray(catalog)) return 0;
@@ -142,7 +142,7 @@ export function removeBosToolsFromGlobalState(state, appId = legacyCodexAppIds[0
       const connector = tool?._meta?.connector_id;
       const resource = tool?._meta?._codex_apps?.resource_uri;
       return connector !== appId &&
-        !legacyCodexAppIds.includes(connector) &&
+        !bosCodexAppIds.includes(connector) &&
         !(typeof resource === "string" && resource.includes(bosResourceUrl)) &&
         !(typeof resource === "string" && resource.includes(`/${appId}/`));
     });

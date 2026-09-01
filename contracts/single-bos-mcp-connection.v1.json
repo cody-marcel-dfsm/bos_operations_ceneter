@@ -5,6 +5,7 @@
   "application_name": "bos",
   "mcp_group_name": "platform",
   "resource_url": "https://dfsm.ai/mcp/apps/bos/platform",
+  "codex_app_id": "asdk_app_6a932992592081919cdc88c60e4ff2dd",
   "owner_authentication_policy": "ON_INSTALL",
   "provider_account_selection_policy": "ALWAYS_SELECT_ACCOUNT",
   "identity_organization_resolution_policy": "SERVER_EVALUATED_PER_VERIFIED_IDENTITY",
@@ -16,7 +17,7 @@
   ],
   "connection_artifacts": [
     "clients/claude/plugins/bos/CONNECTORS.md",
-    "clients/codex/plugins/bos/.mcp.json",
+    "clients/codex/plugins/bos/.app.json",
     "clients/copilot/products/bos/.github/mcp.json",
     "clients/gemini/extensions/bos/mcp_config.json"
   ],

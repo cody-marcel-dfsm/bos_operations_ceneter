@@ -1,7 +1,7 @@
 {
-  "indexed_at": "20260901T191859.786962Z",
+  "indexed_at": "20260901T191432.688034Z",
   "schema_version": "bos-vault-manifest/v1",
-  "source_count": 71,
+  "source_count": 70,
   "sources": {
     "Vault/README.md": {
       "bytes": 1032,
@@ -33,7 +33,7 @@
     },
     "Vault/docs/bos-product-licensing-user-experience.md": {
       "bytes": 1377,
-      "sha256": "7c8258957ac383b03110d64082f3aa60d6cc92b266f3be51ddeca494af81181a"
+      "sha256": "5d33290acb0c695538a44c5b817be77f5a75cadd6bed38993363d784f8cc3e45"
     },
     "Vault/docs/marketplace-agent-harness-plan.md": {
       "bytes": 1957,
@@ -41,7 +41,7 @@
     },
     "Vault/docs/marketplace-submission-assets.md": {
       "bytes": 1203,
-      "sha256": "1db50a46d72003f862ef4a36385c0f7b40d7a17627216ddea4cb57303b8ea2ce"
+      "sha256": "581d04382cf1f2766387496626fcf0d6e92b2bcdd7462507a6fb7e1dabc069ef"
     },
     "Vault/docs/my-crm-developer-platform-work-matrix.md": {
       "bytes": 810,
@@ -202,10 +202,6 @@
     "Vault/reviews/2026-08-31-release-0.4.61.md": {
       "bytes": 2527,
       "sha256": "90025ac92b425bfe73dd1c704510a0a7917dfff93cc93378d8edf57cc6be4de0"
-    },
-    "Vault/reviews/2026-09-01-codex-registered-app-login-surface.md": {
-      "bytes": 2821,
-      "sha256": "1530fd22716a3a0b087d195d8821f1b6609360562ae8ed6cfe24a83fcc1cbb6e"
     },
     "Vault/reviews/2026-09-01-release-0.4.64.md": {
       "bytes": 2453,

@@ -29,12 +29,14 @@ MCP context and read tools strengthen verification when available.
 8. Preserve unrelated plugins and connections during repair. Escalations carry
    only sanitized client, package, stage, error, attempted-action, expected, and
    observed evidence.
-9. Treat Codex MCP-startup `reauthenticationRequired` as **Sign in** even when
-   the plugin detail page exposes no **Connect** action. Preserve the request,
-   resolve the exact root server name from the package-owned `.mcp.json`, invoke
-   `codex mcp login <server-name>` from the active request, wait for direct user
-   consent, refresh tools and context, and resume. Generic app permissions are
-   outside the MCP OAuth recovery path.
+9. Treat a missing Codex plugin-page **Login**, **Connect**, or **Authenticate**
+   action as **Register**. The required registered app declaration renders that
+   control independently of runtime MCP responses. Repair and reload the root
+   package binding while preserving the request. Treat MCP-startup
+   `reauthenticationRequired` as **Sign in** only after the display binding is
+   present. The user activates the native control and completes consent; the
+   agent refreshes tools and context and resumes. Generic app permissions and
+   CLI login are outside the MCP OAuth recovery path.
 10. When a user explicitly requests complete local removal, use the
    repository-owned all-client uninstaller. Inspect its identity-bounded dry
    run, require exact destructive authorization, automatically delete the

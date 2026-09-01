@@ -125,7 +125,8 @@ Direct the user only to the host-managed **Connect**, **Sign in**,
 
 Connection success requires evidence, not the absence of an error. Confirm:
 
-1. the exact package-owned named resource is registered;
+1. the exact root connection is registered and, on Codex, the required app
+   binding renders the plugin-page authentication control;
 2. BOS OAuth completes;
 3. one canonical context resolves;
 4. the expected scoped tools are discoverable; and

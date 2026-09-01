@@ -12,7 +12,7 @@ release system for portable BOS skills and native remote MCP client adapters.
 - `source/verticals/` owns industry and franchise specialization.
 - `source/runtime/` owns credential-free root BOS MCP connection templates for
   clients that distribute an endpoint directly. The root BOS Codex package
-  owns the immutable MCP URL declaration. Subservice products contain
+  owns the registered app declaration. Subservice products contain
   no additional BOS connection binding.
 - `products/` declares versioned compositions; build scripts generate client
   packages from those declarations.
@@ -39,7 +39,8 @@ release system for portable BOS skills and native remote MCP client adapters.
    hosts, Gemini CLI, and Google Antigravity 2.0 Desktop once through the root
    BOS OAuth 2.1 MCP connection. Claude declares one BOS account or organization
    Web connector; Copilot and Gemini declare the immutable BOS resource
-   directly; ChatGPT/Codex declares the root BOS endpoint through `.mcp.json`.
+   directly; ChatGPT/Codex declares the registered root BOS app through
+   `.app.json`.
    Subservice plugins contain no additional BOS connection binding. No package contains an API-key field, authorization
    header template, or credential environment-variable binding. The host
    discovers BOS authorization metadata, launches consent, stores and refreshes
@@ -82,8 +83,8 @@ release system for portable BOS skills and native remote MCP client adapters.
     control-plane routing remains initialization-independent so connection,
     plugin-console, and broad server-settings status requests can diagnose and
     configure the product without creating a customer overlay.
-11. Connect clients directly to one BOS HTTPS Streamable HTTP resource. Use the
-    package-owned root BOS MCP declaration in Codex, one BOS account-level Web
+11. Connect clients to one BOS HTTPS Streamable HTTP resource. Use the
+    registered root BOS app declaration in Codex, one BOS account-level Web
     connector in Claude, one OAuth-discovered BOS connection in Copilot
     IDE/CLI, and one BOS connection in Gemini CLI and Antigravity 2.0 Desktop.
     Subservice packages add skills and metadata behind that connection. The
@@ -101,9 +102,9 @@ release system for portable BOS skills and native remote MCP client adapters.
     have no backup, and requires the exact typed confirmation
     `DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS`. The root Claude BOS plugin owns
     account-connector metadata with no packaged MCP declaration. The root
-    ChatGPT/Codex BOS plugin contains `mcpServers: "./.mcp.json"`; the MCP file
-    records the immutable HTTPS BOS endpoint and contains no account-scoped app
-    identifier. Subservice plugins contain neither connection
+    ChatGPT/Codex BOS plugin contains `apps: "./.app.json"`; the app file
+    records exactly one durable registered BOS app and the package
+    contains no direct `.mcp.json`. Subservice plugins contain neither connection
     declaration. One host-managed BOS grant identifies the actor and available
     organizations; every request is evaluated against canonical application,
     installation, subservice, role, plugin, capability, provider, and tool
@@ -114,7 +115,7 @@ release system for portable BOS skills and native remote MCP client adapters.
     registry `installPath`; Gemini CLI's native extension metadata plus copied
     package bytes; Antigravity's exact repository symlinks; Copilot's selected
     repository MCP and skill files; and Codex's registry, managed package cache,
-    package-owned MCP declaration, and callable-tool catalog. Retained inactive Claude
+    registered app declaration, and callable-tool catalog. Retained inactive Claude
     versions are informational and never satisfy installation readiness.
 12. Treat generated client packages as build outputs. The complete
     cross-platform build materializes Codex, Claude, Copilot, and Gemini clients
@@ -156,11 +157,15 @@ release system for portable BOS skills and native remote MCP client adapters.
     replace the registration through current OAuth metadata, restart
     authorization once, refresh tools and context, and resume through the same
     BOS connection.
-    Treat Codex MCP-startup `reauthenticationRequired` as a **Sign in** state for
+    The Codex plugin page renders its native authentication control from the
+    registered app binding before any MCP response is received. A missing
+    control is a package display-binding defect. Treat Codex MCP-startup
+    `reauthenticationRequired` as a **Sign in** state for
     the already registered root connection. The BOS resource answers
     unauthenticated discovery with HTTP 401 and a `WWW-Authenticate` challenge
     containing the exact protected-resource metadata URL so Codex classifies
-    the server as `notLoggedIn` and renders its native authentication action.
+    the runtime connection as `notLoggedIn` and activates OAuth through the
+    already declared native authentication action.
     The user selects that action and completes consent; the agent then refreshes
     the connection, tools, and context and resumes. If the action is absent,
     preserve the request and report an authentication-activation defect. Never
@@ -209,20 +214,21 @@ release system for portable BOS skills and native remote MCP client adapters.
     delivering a customer product capability.
 17. Treat a client as BOS-ready only when the root BOS plugin points to its
     immutable MCP resource—through one account connector for Claude, directly
-    for Copilot and Gemini, and directly from the root package for Codex—OAuth
+    for Copilot and Gemini, and through the registered root app for Codex—OAuth
     discovery succeeds, the host holds a valid BOS grant, the server returns an
     authorized context, and tools for authorized installed subservices are
     discoverable. A missing or expired BOS grant triggers the host's single
-    authentication flow. Codex uses its native authentication action after the
-    protected-resource challenge establishes the `notLoggedIn` state.
+    authentication flow. Codex displays its native authentication action from
+    the registered app binding; the protected-resource challenge independently
+    establishes the runtime `notLoggedIn` state.
     Installation and recovery never request a BOS key, manipulate the
     desktop process environment, or use an OS-specific launcher. Plugin source
     changes require marketplace update or reinstall, cache refresh as supported
     by the host, and a new task.
     Codex installation acceptance is an atomic cross-layer check: the native
     registry and marketplace contain the active products, each product resolves
-    to the current direct-source or managed-cache version, the package-owned MCP declaration
-    matches the immutable BOS resource URL, and the callable catalog contains every
+    to the current direct-source or managed-cache version, the registered app
+    declaration matches the durable BOS app identity, and the callable catalog contains every
     product-declared runtime verification tool. Remediation is identity-bounded
     to the BOS marketplace and immutable resource URL and backs up host state before
     removing BOS-owned catalog entries.
