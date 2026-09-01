@@ -557,6 +557,49 @@ test("application runtime packages ship agent-owned MCP lifecycle recovery", asy
   }
 });
 
+test("Codex reauthentication recovers in the active request without a Connect button", async () => {
+  const client = await readFile(
+    `${root}/source/platform/bos-mcp-client/SKILL.md`,
+    "utf8"
+  );
+  const stateMachine = await readFile(
+    `${root}/source/platform/bos-guided-support/references/support-state-machine.md`,
+    "utf8"
+  );
+  const runbook = await readFile(
+    `${root}/source/platform/bos-guided-support/references/client-runbooks.md`,
+    "utf8"
+  );
+
+  assert.match(client, /reauthenticationRequired/i);
+  assert.match(client, /Codex[\s\S]*no\s+\*\*Connect\*\*\s+action/i);
+  assert.match(
+    client,
+    /package-owned[\s\S]*`\.mcp\.json`[\s\S]*`codex mcp login <server-name>`/i
+  );
+  assert.match(client, /Do not ask the\s+user to run the command/i);
+  assert.match(client, /Do not use\s+generic app-permission tools/i);
+  assert.match(client, /refresh[\s\S]*`bos_get_context`[\s\S]*resume/i);
+  assert.match(
+    stateMachine,
+    /reauthenticationRequired[\s\S]*Sign in[\s\S]*never.*unavailable tools/i
+  );
+  assert.match(
+    runbook,
+    /When Codex reports\s+`reauthenticationRequired`[\s\S]*no\s+\*\*Connect\*\*[\s\S]*`codex mcp login <server-name>`/i
+  );
+
+  for (const path of [
+    `${root}/clients/codex/plugins/bos/skills/bos-mcp-client/SKILL.md`,
+    `${root}/clients/codex/plugins/education-center/skills/bos-mcp-client/SKILL.md`
+  ]) {
+    const generated = await readFile(path, "utf8");
+    assert.match(generated, /reauthenticationRequired/i, path);
+    assert.match(generated, /codex mcp login <server-name>/i, path);
+    assert.match(generated, /Do not use\s+generic app-permission tools/i, path);
+  }
+});
+
 test("guided support classifies OAuth invalid_client as registration recovery", async () => {
   const stateMachine = await readFile(
     `${root}/source/platform/bos-guided-support/references/support-state-machine.md`,

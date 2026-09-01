@@ -26,6 +26,13 @@ reported stage only when later evidence contradicts it.
   authorization metadata, and restart BOS authorization once.
 - `authentication_required`, missing/expired/revoked/out-of-scope grant:
   **Sign in**.
+- Codex `reauthenticationRequired` or `requires OAuth reauthentication`:
+  **Sign in**. Preserve the active request and activate the exact root BOS MCP
+  connection. When Codex exposes no **Connect**, **Sign in**, or
+  **Authenticate** control, resolve the server name from the package-owned
+  `.mcp.json` and invoke `codex mcp login <server-name>` from the active
+  request. Never translate this state into unavailable tools, missing business
+  data, or a generic app-permission problem.
 - OAuth succeeded but schemas/tools are stale or absent: **Discover**.
 - Context is canonical and a specific Google/SendGrid/Calimatic operation asks
   for authorization: **Provider ready**, after BOS connection verification.

@@ -152,6 +152,13 @@ release system for portable BOS skills and native remote MCP client adapters.
     replace the registration through current OAuth metadata, restart
     authorization once, refresh tools and context, and resume through the same
     BOS connection.
+    Treat Codex MCP-startup `reauthenticationRequired` as a **Sign in** state for
+    the already registered root connection. Use the native authentication
+    action when present. When the Codex plugin page exposes no **Connect**
+    action, resolve the exact server name from the package-owned `.mcp.json`,
+    invoke `codex mcp login <server-name>` from the active request, wait for
+    direct user consent, refresh the connection, tools, and context, and resume.
+    Generic app permissions do not represent or repair MCP OAuth.
 16. Distribute pre-publication Claude and Codex products through their native
     local or private Git marketplaces. Claude uses
     `clients/claude/.claude-plugin/marketplace.json`; Codex uses
@@ -199,7 +206,9 @@ release system for portable BOS skills and native remote MCP client adapters.
     discovery succeeds, the host holds a valid BOS grant, the server returns an
     authorized context, and tools for authorized installed subservices are
     discoverable. A missing or expired BOS grant triggers the host's single
-    **Connect** or **Sign in** flow. Installation and recovery never request a BOS key, manipulate the
+    authentication flow. Codex uses its native authentication action when
+    available and the exact package-declared `codex mcp login` fallback when
+    the registered server has no **Connect** action. Installation and recovery never request a BOS key, manipulate the
     desktop process environment, or use an OS-specific launcher. Plugin source
     changes require marketplace update or reinstall, cache refresh as supported
     by the host, and a new task.

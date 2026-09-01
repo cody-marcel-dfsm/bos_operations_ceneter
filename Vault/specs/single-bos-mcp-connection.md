@@ -33,6 +33,14 @@ server from canonical authenticated state.
   replaces that registration through current OAuth metadata, restarts
   authorization once, refreshes tools and context, and resumes the preserved
   request. Registration recovery never creates a subservice connection.
+- A Codex MCP-startup `reauthenticationRequired` response identifies a missing
+  or unusable grant for the already registered root resource. The active
+  request invokes the host authentication action when present. When the Codex
+  plugin page exposes no **Connect** action, the agent resolves the exact server
+  name from the package-owned `.mcp.json`, invokes
+  `codex mcp login <server-name>`, waits for direct user consent, refreshes the
+  same MCP connection and callable manifest, validates context, and resumes.
+  Generic app permissions never substitute for MCP OAuth recovery.
 
 ## Server evaluation contract
 
@@ -106,6 +114,10 @@ login or BOS MCP connection.
 15. Copilot readiness compares the selected product's repository MCP and skill
     files directly against generated output. The Copilot repository adapter has
     no BOS package-cache state.
+16. Codex reauthentication remains recoverable when its plugin detail page has
+    no **Connect** action: the active request invokes the exact package-declared
+    MCP login, refreshes tools and context after consent, and resumes without
+    asking the user to run a command or resubmit the request.
 
 ## Portable contract verification
 

@@ -29,7 +29,13 @@ MCP context and read tools strengthen verification when available.
 8. Preserve unrelated plugins and connections during repair. Escalations carry
    only sanitized client, package, stage, error, attempted-action, expected, and
    observed evidence.
-9. When a user explicitly requests complete local removal, use the
+9. Treat Codex MCP-startup `reauthenticationRequired` as **Sign in** even when
+   the plugin detail page exposes no **Connect** action. Preserve the request,
+   resolve the exact root server name from the package-owned `.mcp.json`, invoke
+   `codex mcp login <server-name>` from the active request, wait for direct user
+   consent, refresh tools and context, and resume. Generic app permissions are
+   outside the MCP OAuth recovery path.
+10. When a user explicitly requests complete local removal, use the
    repository-owned all-client uninstaller. Inspect its identity-bounded dry
    run, require exact destructive authorization, automatically delete the
    retired developer-owned **Created by you** account app through the authenticated
