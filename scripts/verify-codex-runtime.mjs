@@ -71,22 +71,22 @@ async function currentDirectSource(sourcePath, product) {
   }
 }
 
-async function inspectInstalledMcpBinding(home, marketplace, product, versions, sourcePath) {
+async function inspectInstalledAppBinding(home, marketplace, product, versions, sourcePath) {
   const packageRoot = sourcePath ?? (versions.length === 1
-    ? join(home, ".codex", "plugins", "cache", marketplace, product, versions[0])
+    ? join(home, ".codex", "plugins", "cache", marketplace, product.name, versions[0])
     : null);
-  const path = packageRoot ? join(packageRoot, ".mcp.json") : null;
+  const path = packageRoot ? join(packageRoot, ".app.json") : null;
   if (!path || !(await pathExists(path))) return { state: "missing", path };
   const manifest = await readJson(path);
-  const entries = Object.entries(manifest.mcpServers ?? {});
-  const [name, server] = entries[0] ?? [];
-  const current = entries.length === 1 && name === "platform" &&
-    server?.type === "http" &&
-    server?.url === "https://dfsm.ai/mcp/apps/bos/platform";
+  const entries = Object.entries(manifest.apps ?? {});
+  const [name, app] = entries[0] ?? [];
+  const current = entries.length === 1 && name === product.name &&
+    app?.id === product.codex_app_id &&
+    Object.keys(app ?? {}).length === 1;
   return {
     state: current ? "current" : "invalid",
     path,
-    server: current ? server : null
+    app: current ? app : null
   };
 }
 
@@ -147,10 +147,10 @@ export async function inspectCodexRuntime(rawOptions = {}) {
   const marketplaceCurrent = marketplaceEntries(marketplaceListing).some((entry) =>
     entry?.name === options.marketplace || entry?.marketplaceName === options.marketplace
   );
-  const mcpBinding = await inspectInstalledMcpBinding(
+  const appBinding = await inspectInstalledAppBinding(
     options.home,
     options.marketplace,
-    bos.name,
+    bos,
     cacheVersions[bos.name],
     packageRoots[bos.name]
   );
@@ -179,7 +179,7 @@ export async function inspectCodexRuntime(rawOptions = {}) {
     ...registryFailures,
     ...(marketplaceCurrent ? [] : [`${options.marketplace} marketplace is not registered`]),
     ...packageFailures,
-    ...(mcpBinding.state === "current" ? [] : ["package-owned BOS MCP binding is missing or invalid"]),
+    ...(appBinding.state === "current" ? [] : ["registered BOS app binding is missing or invalid"]),
     ...(catalogPath ? [] : ["Codex callable-tool catalog is missing"]),
     ...missingTools.map((tool) => `callable tool is missing: ${tool}`)
   ];
@@ -195,7 +195,7 @@ export async function inspectCodexRuntime(rawOptions = {}) {
     installed_products: installedProducts,
     cache_versions: cacheVersions,
     package_roots: packageRoots,
-    mcp_binding: mcpBinding,
+    app_binding: appBinding,
     callable_catalog: {
       path: catalogPath,
       discovered_tool_count: discovered.size,

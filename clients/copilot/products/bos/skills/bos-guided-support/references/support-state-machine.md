@@ -10,7 +10,7 @@ reported stage only when later evidence contradicts it.
 |---|---|---|---|
 | Install | Marketplace/plugin/extension listing or package metadata | Install or update the named BOS product from its canonical distribution | Correct product and expected version are present |
 | Load | Skill list, plugin enabled state, or a new task/session | Enable the product and restart or start a new task as the client requires | Current session recognizes `bos-guided-support` and product skills |
-| Register | Client connection/MCP listing, package runtime metadata, and OAuth client status | Restore the package-owned remote MCP declaration; discard and recreate a stale host registration for the same BOS resource | Exact BOS resource is visible and its host-owned public client is accepted |
+| Register | Client connection listing, package binding metadata, plugin-page authentication control, and OAuth client status | Restore the client-native root binding; on Codex restore the registered app declaration; discard and recreate a stale host registration for the same BOS resource | Exact BOS resource is visible, Codex displays its native authentication control, and the host-owned public client is accepted |
 | Sign in | Host connection state or OAuth result | Invoke the client's Connect/Sign in/Authenticate flow | Valid resource-scoped BOS OAuth grant is accepted |
 | Discover | Fresh callable tool manifest | Reconnect or refresh MCP/tool discovery | Required product tools, including context discovery, appear |
 | Verify | `bos_get_context` plus a bounded authenticated product read | Classify the returned server/provider error and recover that boundary | One canonical context and one read succeed |
@@ -20,6 +20,10 @@ reported stage only when later evidence contradicts it.
 - `skill missing`, plugin absent, extension absent: **Install**.
 - Skill exists but current conversation cannot invoke it: **Load**.
 - Product skills load but the BOS connection is absent: **Register BOS**.
+- The Codex plugin page has no **Login**, **Connect**, or **Authenticate**
+  control: **Register BOS**. The display control comes from the
+  `.app.json` registered-app binding and does not depend on an MCP response.
+  Inspect and repair that package binding before evaluating server behavior.
 - OAuth token endpoint `invalid_client`: **Register BOS**. Preserve the active
   request, keep the sealed BOS resource fixed, discard the stale host-owned
   public-client registration, repeat dynamic client registration from current
@@ -28,12 +32,13 @@ reported stage only when later evidence contradicts it.
   **Sign in**.
 - Codex `reauthenticationRequired` or `requires OAuth reauthentication`:
   **Sign in**. Preserve the active request and activate the exact root BOS MCP
-  connection through the native **Authenticate** control. Its visibility
-  requires an unauthenticated HTTP 401 protected-resource challenge. When the
-  control is absent, report an authentication-activation defect and preserve
-  the pending request; never invoke CLI login or launch authentication for the
-  user. Never translate this state into unavailable tools, missing business
-  data, or a generic app-permission problem.
+  connection through the already visible native authentication control. The
+  HTTP 401 protected-resource challenge independently activates runtime OAuth
+  discovery. When the display control is present and activation fails, report
+  an authentication-activation defect and preserve the pending request; never
+  invoke CLI login or launch authentication for the user. Never translate this
+  state into unavailable tools, missing business data, or a generic
+  app-permission problem.
 - OAuth succeeded but schemas/tools are stale or absent: **Discover**.
 - Context is canonical and a specific Google/SendGrid/Calimatic operation asks
   for authorization: **Provider ready**, after BOS connection verification.

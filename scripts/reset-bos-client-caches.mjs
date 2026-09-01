@@ -9,7 +9,7 @@ export const CACHE_RESET_CONFIRMATION = "DELETE BOS CHATGPT AND CLAUDE CACHES";
 const marketplace = "bos-education-center";
 const products = ["bos", "education-center"];
 const bosResourceUrl = "https://dfsm.ai/mcp/apps/bos/platform";
-const legacyCodexAppIds = ["asdk_app_6a932992592081919cdc88c60e4ff2dd"];
+const bosCodexAppIds = ["asdk_app_6a932992592081919cdc88c60e4ff2dd"];
 const codexCatalogCacheKinds = [
   "codex_app_directory",
   "codex_apps_server_info",
@@ -81,7 +81,7 @@ async function validateRemoteWrapper(wrapper) {
   if (stat.isSymbolicLink() || !stat.isDirectory()) {
     throw new Error(`Refusing non-directory remote wrapper cache: ${wrapper}`);
   }
-  const appId = legacyCodexAppIds[0];
+  const appId = bosCodexAppIds[0];
   const metadata = await readJson(join(wrapper, ".codex-remote-plugin-install.json"));
   if (metadata.remote_plugin_id !== `plugin_${appId}`) {
     throw new Error(`Refusing mismatched remote wrapper cache: ${wrapper}`);
@@ -95,7 +95,7 @@ async function matchingCatalogFiles(cacheDirectory) {
     if (!entry.isFile()) continue;
     const path = join(cacheDirectory, entry.name);
     const content = await readFile(path, "utf8");
-    if ([bosResourceUrl, ...legacyCodexAppIds].some((needle) => content.includes(needle))) {
+    if ([bosResourceUrl, ...bosCodexAppIds].some((needle) => content.includes(needle))) {
       matches.push(path);
     }
   }
@@ -107,7 +107,7 @@ export async function planBosClientCacheReset({ home = homedir() } = {}) {
   const codexPluginCacheRoot = join(safeHome, ".codex", "plugins", "cache");
   const codexCatalogCacheRoot = join(safeHome, ".codex", "cache");
   const claudePluginCacheRoot = join(safeHome, ".claude", "plugins", "cache");
-  const appId = legacyCodexAppIds[0];
+  const appId = bosCodexAppIds[0];
   const suffix = appId.replace(/^asdk_app_/, "");
   const codexPackageCache = assertContained(
     join(codexPluginCacheRoot, marketplace), codexPluginCacheRoot
