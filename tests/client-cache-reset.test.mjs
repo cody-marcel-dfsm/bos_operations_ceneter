@@ -10,7 +10,8 @@ import {
 } from "../scripts/reset-bos-client-caches.mjs";
 import { pathExists } from "../scripts/lib/package-model.mjs";
 
-const appId = "asdk_app_6a932992592081919cdc88c60e4ff2dd";
+const appId = "asdk_app_6a95a014a0a08191a9e6d16453a8b831";
+const retiredAppId = "asdk_app_6a932992592081919cdc88c60e4ff2dd";
 
 async function fixtureHome(context) {
   const home = await mkdtemp(join(tmpdir(), "bos-cache-reset-"));
@@ -33,6 +34,15 @@ async function fixtureHome(context) {
   await writeFile(join(wrapper, ".codex-remote-plugin-install.json"), JSON.stringify({
     remote_plugin_id: `plugin_${appId}`
   }));
+  const retiredWrapper = join(
+    home,
+    ".codex/plugins/cache/created-by-me-remote",
+    `dev-${retiredAppId.replace(/^asdk_app_/, "")}`
+  );
+  await mkdir(retiredWrapper, { recursive: true });
+  await writeFile(join(retiredWrapper, ".codex-remote-plugin-install.json"), JSON.stringify({
+    remote_plugin_id: `plugin_${retiredAppId}`
+  }));
   const matchingCatalog = join(home, ".codex/cache/codex_apps_tools/bos.json");
   const unrelatedCatalog = join(home, ".codex/cache/codex_apps_tools/unrelated.json");
   await mkdir(join(matchingCatalog, ".."), { recursive: true });
@@ -53,7 +63,16 @@ async function fixtureHome(context) {
     await mkdir(join(path, ".."), { recursive: true });
     await writeFile(path, `preserve:${path}\n`);
   }
-  return { home, codexCache, claudeCache, wrapper, matchingCatalog, unrelatedCatalog, preserved };
+  return {
+    home,
+    codexCache,
+    claudeCache,
+    wrapper,
+    retiredWrapper,
+    matchingCatalog,
+    unrelatedCatalog,
+    preserved
+  };
 }
 
 test("cache reset removes only validated ChatGPT/Codex and Claude cache artifacts", async (context) => {
@@ -68,6 +87,7 @@ test("cache reset removes only validated ChatGPT/Codex and Claude cache artifact
     fixture.codexCache,
     fixture.claudeCache,
     fixture.wrapper,
+    fixture.retiredWrapper,
     fixture.matchingCatalog
   ]) assert.equal(await pathExists(path), false, path);
   assert.equal(await pathExists(fixture.unrelatedCatalog), true);

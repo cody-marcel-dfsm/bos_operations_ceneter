@@ -1,0 +1,4 @@
+interface:
+  display_name: "Operations Center Planning"
+  short_description: "Plan from current Vault and issue history"
+  default_prompt: "Use $operations-center-planning to plan this repository change from current architecture, issue history, ownership boundaries, and acceptance evidence."

@@ -43,13 +43,28 @@ Knowledge root: `Vault/`
   with their owning components.
 - Before knowledge-dependent architecture or review work, run
   `python3 tools/vault_index.py sync --quiet`.
+- During a session that adds, moves, or edits Vault knowledge, ensure the local
+  watcher is running with `python3 tools/vault_index.py watch --daemon`.
 - After changing Vault sources, run the sync again and verify that
   `Vault/index/manifests/latest.json` describes the current sources.
+- Chroma data belongs under `Vault/index/chroma/` and is rebuildable local
+  cache. Canonical Vault sources and timestamped manifests are durable evidence.
 
 ## Oracle review contract
 
 - The repository-local `.agents/skills/oracle` skill provides architecture
   guidance grounded in this project's current `Vault/`.
+- Every implementation, fix, refactor, test mutation, documentation mutation,
+  generated-package mutation, and release change must use the repository-local
+  `operations-center-implementation` workflow and submit the completed actual
+  diff plus focused validation evidence to the repository-local Oracle.
+- A repository mutation is incomplete until Oracle returns the literal verdict
+  `APPROVED`. `REJECTED` blocks completion. Every correction invalidates the
+  prior verdict and requires a fresh review of the complete updated diff.
+- Oracle maintains durable issue history under `Vault/docs/issues/`, reads that
+  history before implementation guidance or review, and records new causal and
+  prevention knowledge when a change resolves or materially reclassifies an
+  issue.
 - Oracle is a repository-maintainer workflow. Customer BOS plugins and generated
   client packages never distribute it.
 - Repository-change approval requires review of the actual diff and validation

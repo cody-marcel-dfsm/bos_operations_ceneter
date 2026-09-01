@@ -9,7 +9,10 @@ export const CACHE_RESET_CONFIRMATION = "DELETE BOS CHATGPT AND CLAUDE CACHES";
 const marketplace = "bos-education-center";
 const products = ["bos", "education-center"];
 const bosResourceUrl = "https://dfsm.ai/mcp/apps/bos/platform";
-const bosCodexAppIds = ["asdk_app_6a932992592081919cdc88c60e4ff2dd"];
+const bosCodexAppIds = [
+  "asdk_app_6a95a014a0a08191a9e6d16453a8b831",
+  "asdk_app_6a932992592081919cdc88c60e4ff2dd"
+];
 const codexCatalogCacheKinds = [
   "codex_app_directory",
   "codex_apps_server_info",
@@ -75,13 +78,12 @@ async function validateProductCache(cacheRoot, expectedClient) {
   }
 }
 
-async function validateRemoteWrapper(wrapper) {
+async function validateRemoteWrapper(wrapper, appId) {
   if (!(await pathPresent(wrapper))) return;
   const stat = await lstat(wrapper);
   if (stat.isSymbolicLink() || !stat.isDirectory()) {
     throw new Error(`Refusing non-directory remote wrapper cache: ${wrapper}`);
   }
-  const appId = bosCodexAppIds[0];
   const metadata = await readJson(join(wrapper, ".codex-remote-plugin-install.json"));
   if (metadata.remote_plugin_id !== `plugin_${appId}`) {
     throw new Error(`Refusing mismatched remote wrapper cache: ${wrapper}`);
@@ -108,24 +110,29 @@ export async function planBosClientCacheReset({ home = homedir() } = {}) {
   const codexCatalogCacheRoot = join(safeHome, ".codex", "cache");
   const claudePluginCacheRoot = join(safeHome, ".claude", "plugins", "cache");
   const appId = bosCodexAppIds[0];
-  const suffix = appId.replace(/^asdk_app_/, "");
   const codexPackageCache = assertContained(
     join(codexPluginCacheRoot, marketplace), codexPluginCacheRoot
   );
-  const codexRemoteWrapper = assertContained(
-    join(codexPluginCacheRoot, "created-by-me-remote", `dev-${suffix}`),
+  const codexRemoteWrappers = bosCodexAppIds.map((knownAppId) => assertContained(
+    join(
+      codexPluginCacheRoot,
+      "created-by-me-remote",
+      `dev-${knownAppId.replace(/^asdk_app_/, "")}`
+    ),
     codexPluginCacheRoot
-  );
+  ));
   const claudePackageCache = assertContained(
     join(claudePluginCacheRoot, marketplace), claudePluginCacheRoot
   );
 
   await validateProductCache(codexPackageCache);
   await validateProductCache(claudePackageCache, "claude");
-  await validateRemoteWrapper(codexRemoteWrapper);
+  for (let index = 0; index < codexRemoteWrappers.length; index += 1) {
+    await validateRemoteWrapper(codexRemoteWrappers[index], bosCodexAppIds[index]);
+  }
 
   const targets = [];
-  for (const path of [codexPackageCache, codexRemoteWrapper, claudePackageCache]) {
+  for (const path of [codexPackageCache, ...codexRemoteWrappers, claudePackageCache]) {
     if (await pathPresent(path)) targets.push(path);
   }
   for (const kind of codexCatalogCacheKinds) {

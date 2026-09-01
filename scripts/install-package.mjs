@@ -47,6 +47,10 @@ const retiredBosBrokerPaths = new Set([
   "tests/test_bos_mcp_broker.py",
   "tests/test_bos_mcp_broker_live.py"
 ]);
+const retiredCodexAppIds = new Set([
+  "asdk_app_6a932992592081919cdc88c60e4ff2dd",
+  "asdk_app_6a95a014a0a08191a9e6d16453a8b831"
+]);
 
 function isRetiredBosBrokerPath(path) {
   return retiredBosBrokerPaths.has(path) ||
@@ -76,8 +80,19 @@ async function isDirectBosOAuthConfig(path, expectedName, expectedUrl) {
     return name === expectedName &&
       server?.type === "http" &&
       server.url === expectedUrl &&
-      !("headers" in server) &&
-      !("bearer_token_env_var" in server);
+      JSON.stringify(Object.keys(server).sort()) === JSON.stringify(["type", "url"]);
+  } catch {
+    return false;
+  }
+}
+
+async function isRetiredCodexAppConfig(path, expectedName) {
+  try {
+    const config = await readJson(path);
+    const entries = Object.entries(config?.apps ?? {});
+    if (entries.length !== 1) return false;
+    const [name, app] = entries[0];
+    return name === expectedName && retiredCodexAppIds.has(app?.id);
   } catch {
     return false;
   }
@@ -125,25 +140,22 @@ async function configureCodexBosMcp(_options, paths) {
     return { state: "bos_managed", connection_owner: "bos" };
   }
   if (metadata.authentication !== "oauth_2_1" ||
-      !(await pathExists(appPath)) || await pathExists(runtimePath)) {
-    throw new Error("Packaged Codex app binding is invalid");
+      await pathExists(appPath) || !(await pathExists(runtimePath))) {
+    throw new Error("Packaged Codex MCP binding is invalid");
   }
-  const appManifest = await readJson(appPath);
-  const appEntries = Object.entries(appManifest.apps ?? {});
-  const [appName, app] = appEntries[0] ?? [];
   const expectedUrl = "https://dfsm.ai/mcp/apps/bos/platform";
-  if (appEntries.length !== 1 || appName !== metadata.name ||
-      app?.id !== metadata.codex_app_id || app?.required !== true ||
-      Object.keys(app ?? {}).length !== 2 ||
-      !/^asdk_app_[a-z0-9]+$/.test(app?.id ?? "") ||
+  if (!(await isDirectBosOAuthConfig(
+    runtimePath,
+    metadata.mcp_group_name,
+    expectedUrl
+  )) ||
       "credential_env_var" in metadata) {
-    throw new Error("Packaged Codex app binding is invalid");
+    throw new Error("Packaged Codex MCP binding is invalid");
   }
   return {
     state: "host_managed",
     name: metadata.mcp_group_name,
     url: expectedUrl,
-    app_id: app.id,
     authentication: "oauth_2_1",
     next_action: "connect"
   };
@@ -663,18 +675,16 @@ async function inspectTarget(paths, desired) {
   }
   if (
     !previousState &&
-    desired.manifest.apps &&
-    ".mcp.json" in currentFiles &&
-    !(".mcp.json" in desired.hashes)
+    desired.manifest.mcpServers &&
+    ".app.json" in currentFiles &&
+    !(".app.json" in desired.hashes)
   ) {
-    const expectedUrl = "https://dfsm.ai/mcp/apps/bos/platform";
-    if (await isDirectBosOAuthConfig(
-      join(paths.target, ".mcp.json"),
-      desiredMetadata.mcp_group_name,
-      expectedUrl
+    if (await isRetiredCodexAppConfig(
+      join(paths.target, ".app.json"),
+      desiredMetadata.name
     )) {
-      remove.push(".mcp.json");
-      preserve = preserve.filter((path) => path !== ".mcp.json");
+      remove.push(".app.json");
+      preserve = preserve.filter((path) => path !== ".app.json");
     }
   }
   if (
@@ -879,7 +889,7 @@ async function mergeMarketplace(options, paths, desiredManifest) {
   };
   const entry = marketplaceEntry({
     name: options.product,
-    authentication: desiredManifest.apps ? "ON_INSTALL" : "ON_USE",
+    authentication: desiredManifest.mcpServers ? "ON_INSTALL" : "ON_USE",
     category: desiredManifest.interface?.category ?? "Productivity"
   });
   const index = marketplace.plugins.findIndex(
