@@ -557,7 +557,7 @@ test("application runtime packages ship agent-owned MCP lifecycle recovery", asy
   }
 });
 
-test("Codex reauthentication recovers in the active request without a Connect button", async () => {
+test("Codex reauthentication exposes native user-controlled authentication", async () => {
   const client = await readFile(
     `${root}/source/platform/bos-mcp-client/SKILL.md`,
     "utf8"
@@ -572,21 +572,18 @@ test("Codex reauthentication recovers in the active request without a Connect bu
   );
 
   assert.match(client, /reauthenticationRequired/i);
-  assert.match(client, /Codex[\s\S]*no\s+\*\*Connect\*\*\s+action/i);
-  assert.match(
-    client,
-    /package-owned[\s\S]*`\.mcp\.json`[\s\S]*`codex mcp login <server-name>`/i
-  );
-  assert.match(client, /Do not ask the\s+user to run the command/i);
+  assert.match(client, /HTTP 401[\s\S]*WWW-Authenticate[\s\S]*resource_metadata/i);
+  assert.match(client, /notLoggedIn[\s\S]*render \*\*Authenticate\*\*/i);
+  assert.match(client, /Do not invoke a CLI login/i);
   assert.match(client, /Do not use\s+generic app-permission tools/i);
   assert.match(client, /refresh[\s\S]*`bos_get_context`[\s\S]*resume/i);
   assert.match(
     stateMachine,
-    /reauthenticationRequired[\s\S]*Sign in[\s\S]*never.*unavailable tools/i
+    /reauthenticationRequired[\s\S]*Sign in[\s\S]*never[\s\S]*unavailable tools/i
   );
   assert.match(
     runbook,
-    /When Codex reports\s+`reauthenticationRequired`[\s\S]*no\s+\*\*Connect\*\*[\s\S]*`codex mcp login <server-name>`/i
+    /HTTP 401 protected-resource challenge[\s\S]*native[\s\S]*authentication action/i
   );
 
   for (const path of [
@@ -595,7 +592,8 @@ test("Codex reauthentication recovers in the active request without a Connect bu
   ]) {
     const generated = await readFile(path, "utf8");
     assert.match(generated, /reauthenticationRequired/i, path);
-    assert.match(generated, /codex mcp login <server-name>/i, path);
+    assert.match(generated, /notLoggedIn/i, path);
+    assert.doesNotMatch(generated, /codex mcp login/i, path);
     assert.match(generated, /Do not use\s+generic app-permission tools/i, path);
   }
 });
@@ -1807,7 +1805,7 @@ test("customer installation guidance contains no maintainer build commands", asy
   );
   assert.match(
     normalizedInstallSection,
-    /authorization is incomplete.*do not generate an unavailable-data report/i
+    /authorization is incomplete.*native action is absent.*do not launch authentication.*unavailable-data report/i
   );
 });
 
