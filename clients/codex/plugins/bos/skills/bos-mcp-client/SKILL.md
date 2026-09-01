@@ -22,10 +22,22 @@ every request. Never route platform BOS work through a subservice package.
 Developer and operator work is outside this skill when the request explicitly
 targets BOS source code, deployment infrastructure, Cloud Run, GCP Secret
 Manager, an approved administrative provisioning path, or another
-developer-controlled service surface. Perform that work through the owning
-repository workflow and the developer's existing infrastructure identity. A
-credential being created for a BOS MCP client does not make its server-side
-provisioning a client runtime operation.
+developer-controlled service surface. From BOS Operations Center, never enter
+or mutate the owning server repository: do not create a sibling worktree, edit
+backend code, commit or push a server branch, create or merge its pull request,
+or deploy its infrastructure. Return a paste-ready prompt for a server-side
+agent that states the sanitized evidence, required protocol invariant,
+deployment scope, and post-deployment verification. The handoff makes the
+client-owned Operations Center acceptance suite mandatory: `npm run
+contract:check`, `npm run contract:oauth-discovery-live -- --resource-url
+"$BOS_MCP_RESOURCE_URL" --format json`, and `npm run contract:oauth-live --
+--authorize-url "$BOS_OAUTH_AUTHORIZE_URL" --format json`. The server-side
+agent performs the work through the owning repository workflow and the
+developer's existing infrastructure identity. A credential being created for a
+BOS MCP client does not make its server-side provisioning a client runtime
+operation. Return exactly one continuous Markdown prompt as the entire server
+handoff response. Keep the protocol contract, client-owned commands, and
+acceptance criteria in that single copyable prompt.
 
 ## Connection ownership
 
