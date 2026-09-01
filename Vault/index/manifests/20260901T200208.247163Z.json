@@ -1,7 +1,7 @@
 {
-  "indexed_at": "20260901T200356.298877Z",
+  "indexed_at": "20260901T200208.247163Z",
   "schema_version": "bos-vault-manifest/v1",
-  "source_count": 72,
+  "source_count": 71,
   "sources": {
     "Vault/README.md": {
       "bytes": 1032,
@@ -28,8 +28,8 @@
       "sha256": "d1b69f051d122a0c811239a591bef26e09ac7c1fd3afb6a4c33561da818446de"
     },
     "Vault/docs/architecture.md": {
-      "bytes": 25297,
-      "sha256": "6d8ba282f6dc824215d1b0f268a3dcf62fc1714956c97ec09867df1142523232"
+      "bytes": 25296,
+      "sha256": "d8d3ffae9d13c0b4144d9af8665feeb12ef707fc54bc5eed6032a82e0b82f2d6"
     },
     "Vault/docs/bos-product-licensing-user-experience.md": {
       "bytes": 1377,
@@ -207,10 +207,6 @@
       "bytes": 2821,
       "sha256": "1530fd22716a3a0b087d195d8821f1b6609360562ae8ed6cfe24a83fcc1cbb6e"
     },
-    "Vault/reviews/2026-09-01-codex-required-app-login-surface.md": {
-      "bytes": 3046,
-      "sha256": "7026a7cd2e926d5804babe3c4121e5b33b6c11669c74a8f032d2ae378c6b55ab"
-    },
     "Vault/reviews/2026-09-01-release-0.4.64.md": {
       "bytes": 2453,
       "sha256": "88474ba40c8b1c66c50b8da62e41b3f5f8aafce3188763bd2cec91d3809b73c7"
@@ -248,8 +244,8 @@
       "sha256": "3186bcb5685d6a971b5bcb08b806b95d4dc3a9d35d8bb82ab7ba5b438c728729"
     },
     "Vault/specs/single-bos-mcp-connection.md": {
-      "bytes": 9932,
-      "sha256": "d4a442501257be57b910fb42bcc0cadecb0ace26339e9e8f29c6bf7bd13ad7d7"
+      "bytes": 9911,
+      "sha256": "f61276b27b5becc9169db80335748c7bff18647493e4d6d45b034c9d260b3d3f"
     },
     "Vault/submissions/openai/education-operation-center/README.md": {
       "bytes": 2988,

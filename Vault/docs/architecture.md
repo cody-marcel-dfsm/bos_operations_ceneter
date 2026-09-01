@@ -12,7 +12,8 @@ release system for portable BOS skills and native remote MCP client adapters.
 - `source/verticals/` owns industry and franchise specialization.
 - `source/runtime/` owns credential-free root BOS MCP connection templates for
   clients that distribute an endpoint directly. The root BOS Codex package
-  owns the registered app declaration. Subservice products contain
+  owns the single registered app declaration and marks it `required: true`.
+  Subservice products contain
   no additional BOS connection binding.
 - `products/` declares versioned compositions; build scripts generate client
   packages from those declarations.
@@ -103,10 +104,10 @@ release system for portable BOS skills and native remote MCP client adapters.
     `DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS`. The root Claude BOS plugin owns
     account-connector metadata with no packaged MCP declaration. The root
     ChatGPT/Codex BOS plugin contains `apps: "./.app.json"`; the app file
-    records exactly one durable registered BOS app and the package
-    contains no direct `.mcp.json`. Subservice plugins contain neither connection
-    declaration. One host-managed BOS grant identifies the actor and available
-    organizations; every request is evaluated against canonical application,
+    records exactly one durable registered BOS app with `required: true`, and
+    the package contains no direct `.mcp.json`. Subservice plugins contain
+    neither connection declaration. One host-managed BOS grant identifies the
+    actor and available organizations; every request is evaluated against canonical application,
     installation, subservice, role, plugin, capability, provider, and tool
     state. Domain skills choose semantic operations while connection selection
     stays fixed on BOS. No plugin package reads, prompts for, substitutes, or
@@ -158,8 +159,9 @@ release system for portable BOS skills and native remote MCP client adapters.
     authorization once, refresh tools and context, and resume through the same
     BOS connection.
     The Codex plugin page renders its native authentication control from the
-    registered app binding before any MCP response is received. A missing
-    control is a package display-binding defect. Treat Codex MCP-startup
+    required registered app binding before any MCP response is received. A
+    missing or false `required` value is a package display-binding defect even
+    when the durable app ID is present. Treat Codex MCP-startup
     `reauthenticationRequired` as a **Sign in** state for
     the already registered root connection. The BOS resource answers
     unauthenticated discovery with HTTP 401 and a `WWW-Authenticate` challenge

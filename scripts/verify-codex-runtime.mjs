@@ -82,7 +82,8 @@ async function inspectInstalledAppBinding(home, marketplace, product, versions, 
   const [name, app] = entries[0] ?? [];
   const current = entries.length === 1 && name === product.name &&
     app?.id === product.codex_app_id &&
-    Object.keys(app ?? {}).length === 1;
+    app?.required === true &&
+    Object.keys(app ?? {}).length === 2;
   return {
     state: current ? "current" : "invalid",
     path,

@@ -573,6 +573,7 @@ test("Codex reauthentication exposes native user-controlled authentication", asy
 
   assert.match(client, /reauthenticationRequired/i);
   assert.match(client, /\.app\.json[\s\S]*plugin-page \*\*Login\*\*/i);
+  assert.match(client, /registered BOS app with `required: true`/i);
   assert.match(client, /presence does not depend on receiving an MCP response/i);
   assert.match(client, /HTTP 401[\s\S]*WWW-Authenticate[\s\S]*resource_metadata/i);
   assert.match(client, /notLoggedIn[\s\S]*complete OAuth discovery/i);
@@ -593,7 +594,7 @@ test("Codex reauthentication exposes native user-controlled authentication", asy
   );
   assert.match(
     runbook,
-    /registered app binding renders this control[\s\S]*independently of any MCP response/i
+    /required: true[\s\S]*registered app binding renders this control[\s\S]*independently of any MCP response/i
   );
 
   for (const path of [
@@ -602,6 +603,7 @@ test("Codex reauthentication exposes native user-controlled authentication", asy
   ]) {
     const generated = await readFile(path, "utf8");
     assert.match(generated, /reauthenticationRequired/i, path);
+    assert.match(generated, /required: true/i, path);
     assert.match(generated, /notLoggedIn/i, path);
     assert.doesNotMatch(generated, /codex mcp login/i, path);
     assert.match(generated, /Do not use\s+generic app-permission tools/i, path);
@@ -656,7 +658,8 @@ test("canonical single-connection knowledge requires native auth and client-owne
   );
 
   assert.match(specification, /registered root BOS app[\s\S]*renders the plugin-page/i);
-  assert.match(specification, /Receiving an OAuth challenge[\s\S]*independent contracts/i);
+  assert.match(specification, /required: true/i);
+  assert.match(specification, /Receiving an\s+OAuth challenge[\s\S]*independent\s+contracts/i);
   assert.match(specification, /HTTP 401[\s\S]*notLoggedIn[\s\S]*already[\s\S]*native action/i);
   assert.match(specification, /exactly one continuous copyable Markdown\s+prompt/i);
   assert.match(specification, /npm run contract:check/i);
@@ -1435,7 +1438,8 @@ test("disabled products are absent while active runtime products remain scoped",
   assert.deepEqual(app, {
     apps: {
       bos: {
-        id: "asdk_app_6a932992592081919cdc88c60e4ff2dd"
+        id: "asdk_app_6a932992592081919cdc88c60e4ff2dd",
+        required: true
       }
     }
   });
@@ -1473,7 +1477,8 @@ test("BOS owns OAuth while Education Center adds no connection binding", async (
   assert.equal(plugin.apps, "./.app.json");
   assert.equal(plugin.mcpServers, undefined);
   assert.equal(app.apps.bos.id, metadata.codex_app_id);
-  assert.deepEqual(Object.keys(app.apps.bos), ["id"]);
+  assert.equal(app.apps.bos.required, true);
+  assert.deepEqual(Object.keys(app.apps.bos), ["id", "required"]);
   await assert.rejects(access(`${codexRoot}/.mcp.json`));
 
   const claudeRoot = `${root}/clients/claude/plugins/bos`;
@@ -1685,6 +1690,7 @@ test("feedback contract uses the BOS MCP resource and stable retry identity", as
   assert.equal(url, "https://dfsm.ai/mcp/apps/bos/platform");
   assert.equal(runtime.mcpServers.bos.url, url);
   assert.equal(app.apps.bos.id, metadata.codex_app_id);
+  assert.equal(app.apps.bos.required, true);
   assert.doesNotMatch(JSON.stringify({ metadata, runtime, app }), /BOS_INSTALLED_APP_ID/);
 
   const skill = await readFile(
