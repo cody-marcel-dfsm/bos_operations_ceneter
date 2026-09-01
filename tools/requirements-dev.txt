@@ -1,0 +1,2 @@
+# Repository-local Oracle and Vault indexing dependencies.
+chromadb>=1.0.0,<1.1.0

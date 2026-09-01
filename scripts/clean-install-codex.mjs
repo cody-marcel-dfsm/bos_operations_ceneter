@@ -11,7 +11,10 @@ export const CODEX_CLEAN_CONFIRMATION = "DELETE ALL BOS CODEX PLUGIN STATE";
 const marketplace = "bos-education-center";
 const products = ["education-center", "bos"];
 const bosResourceUrl = "https://dfsm.ai/mcp/apps/bos/platform";
-const bosCodexAppIds = ["asdk_app_6a932992592081919cdc88c60e4ff2dd"];
+const bosCodexAppIds = [
+  "asdk_app_6a95a014a0a08191a9e6d16453a8b831",
+  "asdk_app_6a932992592081919cdc88c60e4ff2dd"
+];
 const cacheKinds = [
   "codex_app_directory",
   "codex_apps_server_info",
@@ -88,21 +91,25 @@ async function validatePackageCache(path) {
 export async function planCodexCleanup(rawOptions = {}) {
   const options = { home: homedir(), ...rawOptions };
   const appId = bosCodexAppIds[0];
-  const suffix = appId.replace(/^asdk_app_/, "");
   const packageCache = join(options.home, ".codex", "plugins", "cache", marketplace);
   await validatePackageCache(packageCache);
-  const wrapper = join(
-    options.home,
-    ".codex",
-    "plugins",
-    "cache",
-    "created-by-me-remote",
-    `dev-${suffix}`
-  );
-  if (await pathExists(wrapper)) {
-    const wrapperInstall = await readJson(join(wrapper, ".codex-remote-plugin-install.json"));
-    if (wrapperInstall.remote_plugin_id !== `plugin_${appId}`) {
-      throw new Error(`Refusing to remove mismatched registered-app wrapper: ${wrapper}`);
+  const registeredAppWrappers = [];
+  for (const knownAppId of bosCodexAppIds) {
+    const suffix = knownAppId.replace(/^asdk_app_/, "");
+    const wrapper = join(
+      options.home,
+      ".codex",
+      "plugins",
+      "cache",
+      "created-by-me-remote",
+      `dev-${suffix}`
+    );
+    if (await pathExists(wrapper)) {
+      const wrapperInstall = await readJson(join(wrapper, ".codex-remote-plugin-install.json"));
+      if (wrapperInstall.remote_plugin_id !== `plugin_${knownAppId}`) {
+        throw new Error(`Refusing to remove mismatched registered-app wrapper: ${wrapper}`);
+      }
+      registeredAppWrappers.push(wrapper);
     }
   }
   const cacheFiles = [];
@@ -122,7 +129,7 @@ export async function planCodexCleanup(rawOptions = {}) {
     schema_version: "1",
     app_id: appId,
     package_cache: (await pathExists(packageCache)) ? packageCache : null,
-    registered_app_wrapper: (await pathExists(wrapper)) ? wrapper : null,
+    registered_app_wrappers: registeredAppWrappers,
     cache_files: [...new Set(cacheFiles)].sort(),
     global_state: [bosResourceUrl, ...bosCodexAppIds].some((needle) =>
       globalStateContent.includes(needle)
@@ -223,7 +230,7 @@ export async function cleanInstallCodex(rawOptions = {}) {
   }
   for (const path of [
     plan.package_cache,
-    plan.registered_app_wrapper,
+    ...plan.registered_app_wrappers,
     ...plan.cache_files
   ].filter(Boolean)) {
     await rm(path, { recursive: true, force: true });

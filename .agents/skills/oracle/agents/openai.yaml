@@ -1,4 +1,4 @@
 interface:
   display_name: "Operations Center Oracle"
   short_description: "Review this repository against its local Vault"
-  default_prompt: "Use $oracle to answer this architecture question or review this repository change against the local project Vault."
+  default_prompt: "Use $oracle to query the local Vault and issue history, then answer this architecture question or review the complete repository diff and validation evidence."

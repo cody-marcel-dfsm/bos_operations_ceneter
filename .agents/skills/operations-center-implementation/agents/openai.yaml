@@ -1,0 +1,4 @@
+interface:
+  display_name: "Operations Center Implementation"
+  short_description: "Implement locally with mandatory Oracle review"
+  default_prompt: "Use $operations-center-implementation to implement this repository change from current Vault and issue-history evidence, validate it, and obtain a fresh Oracle verdict."
