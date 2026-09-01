@@ -31,7 +31,7 @@ The BOS resource's protected-resource challenge lets Codex identify a signed-out
 connection and render **Authenticate**. The user selects that native action and
 completes consent. The agent refreshes tools and resumes the request afterward.
 
-Current desktop marketplace release: `0.4.63`. If `0.4.62` is installed,
+Current desktop marketplace release: `0.4.64`. If `0.4.63` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -268,6 +268,21 @@ The command reads `contracts/single-bos-mcp-connection.v1.json`, writes a
 machine-readable JSON verdict to standard output, and exits nonzero for any
 additional connection artifact, subservice MCP declaration, retired
 subservice connection identifier, or root-resource mismatch.
+
+Every server release affecting MCP authentication must also pass the client-owned
+signed-out discovery probe against the deployed candidate environment:
+
+```bash
+npm run contract:oauth-discovery-live -- \
+  --resource-url "$BOS_MCP_RESOURCE_URL" \
+  --format json
+```
+
+For staging, `BOS_MCP_RESOURCE_URL` is the deployed candidate's exact BOS
+platform resource. The probe requires HTTP 401, the canonical
+`WWW-Authenticate` protected-resource challenge, and the structured
+`authentication_required` error. HTTP 405, a missing challenge, or a different
+metadata resource fails acceptance.
 
 The BOS server integration suite must also generate a valid, short-lived DCR
 authorization URL for the canonical resource and pass it to the live OAuth
