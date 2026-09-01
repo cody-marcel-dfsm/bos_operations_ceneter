@@ -2082,6 +2082,35 @@ test("generated client marketplaces expose native Claude and Codex desktop packa
   ]);
 });
 
+test("Oracle is repository-local and excluded from customer packages", async () => {
+  const product = JSON.parse(await readFile(`${root}/products/bos/product.json`, "utf8"));
+  const localOracle = await readFile(
+    `${root}/.agents/skills/oracle/SKILL.md`,
+    "utf8"
+  );
+  const repositoryInstructions = await readFile(`${root}/AGENTS.md`, "utf8");
+
+  assert.equal(product.includes.includes("platform/oracle"), false);
+  assert.match(localOracle, /python3 tools\/vault_index\.py sync --quiet/i);
+  assert.match(localOracle, /Vault\/docs\/architecture\.md/i);
+  assert.match(localOracle, /never distributed in customer BOS plugins/i);
+  assert.match(repositoryInstructions, /repository-local `.agents\/skills\/oracle`/i);
+  assert.equal(await pathExists(`${root}/source/platform/oracle/SKILL.md`), false);
+
+  for (const clientRoot of [
+    "clients/codex/plugins",
+    "clients/claude/plugins",
+    "clients/copilot/products",
+    "clients/gemini/extensions"
+  ]) {
+    assert.equal(
+      await pathExists(`${root}/${clientRoot}/bos/skills/oracle/SKILL.md`),
+      false,
+      `${clientRoot} must not distribute the repository-local Oracle`
+    );
+  }
+});
+
 test("migrated BOS personal workflows are canonical and generated for every applicable client", async () => {
   const customerMarkers = new RegExp([
     "/Users/" + "cody",
