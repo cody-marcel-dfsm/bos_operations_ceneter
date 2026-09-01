@@ -25,11 +25,19 @@ test("Codex BOS plugin declares the registered app that renders Login", async ()
   assert.deepEqual(app, {
     apps: {
       bos: {
-        id: durableBosAppId
+        id: durableBosAppId,
+        required: true
       }
     }
   });
   await assert.rejects(access(join(pluginRoot, ".mcp.json")), /ENOENT/);
+});
+
+test("Codex BOS Login surface cannot regress to an optional app dependency", async () => {
+  const app = JSON.parse(await readFile(join(pluginRoot, ".app.json"), "utf8"));
+
+  assert.equal(app.apps.bos.required, true);
+  assert.deepEqual(Object.keys(app.apps.bos).sort(), ["id", "required"]);
 });
 
 test("Codex Login display binding remains independent from server OAuth discovery", async () => {
@@ -43,6 +51,7 @@ test("Codex Login display binding remains independent from server OAuth discover
   ));
 
   assert.equal(contract.codex_app_id, durableBosAppId);
+  assert.equal(contract.codex_app_required, true);
   assert(contract.connection_artifacts.includes(
     "clients/codex/plugins/bos/.app.json"
   ));

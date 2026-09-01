@@ -57,8 +57,10 @@ installed subservice plugin and avoid creating another BOS connection.
 1. Confirm **BOS** and the requested subservice plugins are installed and
    enabled in the Plugins Directory.
 2. Confirm BOS's plugin manifest declares `apps: "./.app.json"`, that file
-   contains exactly one registered BOS app, and the package has no
-   `.mcp.json`; subservice plugins carry no additional BOS binding.
+   contains exactly one registered BOS app with `required: true`, and the
+   package has no `.mcp.json`; subservice plugins carry no additional BOS
+   binding. A missing or false `required` value is a display-binding defect
+   even when the durable app ID is present.
 3. Start a new task after install or update when the existing task cannot see
    the plugin.
 4. Confirm the plugin page shows its native **Login**, **Connect**, or

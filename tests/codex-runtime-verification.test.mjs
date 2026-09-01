@@ -21,7 +21,8 @@ async function fixtureHome(toolNames) {
     JSON.stringify({
       apps: {
         bos: {
-          id: "asdk_app_6a932992592081919cdc88c60e4ff2dd"
+          id: "asdk_app_6a932992592081919cdc88c60e4ff2dd",
+          required: true
         }
       }
     })
@@ -130,7 +131,8 @@ test("Codex runtime verification accepts a direct local marketplace without pack
   await writeFile(join(sourceRoot, "bos", ".app.json"), JSON.stringify({
     apps: {
       bos: {
-        id: "asdk_app_6a932992592081919cdc88c60e4ff2dd"
+        id: "asdk_app_6a932992592081919cdc88c60e4ff2dd",
+        required: true
       }
     }
   }));
@@ -174,6 +176,36 @@ test("Codex runtime verification rejects a direct-MCP-only package with no Login
   });
   assert.equal(report.ok, false);
   assert.equal(report.app_binding.state, "missing");
+  assert(report.failures.includes("registered BOS app binding is missing or invalid"));
+});
+
+test("Codex runtime verification rejects an optional app that does not require the Login surface", async () => {
+  const { home, catalog } = await fixtureHome(requiredTools);
+  const appPath = join(
+    home,
+    ".codex",
+    "plugins",
+    "cache",
+    "bos-education-center",
+    "bos",
+    releaseVersion,
+    ".app.json"
+  );
+  await writeFile(appPath, JSON.stringify({
+    apps: {
+      bos: {
+        id: "asdk_app_6a932992592081919cdc88c60e4ff2dd"
+      }
+    }
+  }));
+
+  const report = await inspectCodexRuntime({
+    home,
+    catalogPath: catalog,
+    runCommand: runCommand()
+  });
+  assert.equal(report.ok, false);
+  assert.equal(report.app_binding.state, "invalid");
   assert(report.failures.includes("registered BOS app binding is missing or invalid"));
 });
 
