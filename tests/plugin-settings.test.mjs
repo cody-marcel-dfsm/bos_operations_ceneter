@@ -63,6 +63,22 @@ test("plugin settings skills encode cache-first reads and delegated resilient mu
   );
   assert.match(
     operation,
+    /generic[\s\S]*?Structured output[\s\S]*?does not count as rendering/i
+  );
+  assert.match(
+    operation,
+    /URLs[\s\S]*?clickable Markdown links[\s\S]*?email[\s\S]*?phone/i
+  );
+  assert.match(
+    operation,
+    /objects[\s\S]*?nested labeled[\s\S]*?raw JSON/i
+  );
+  assert.match(
+    operation,
+    /Never label the user-facing result[\s\S]*?Structured output/i
+  );
+  assert.match(
+    operation,
     /no HTML[\s\S]*report\s+file[\s\S]*renderer[\s\S]*UI\s+service/i
   );
   assert.match(operationContract, /five total apply attempts/i);
