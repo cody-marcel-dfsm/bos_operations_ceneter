@@ -28,10 +28,11 @@ reported stage only when later evidence contradicts it.
   **Sign in**.
 - Codex `reauthenticationRequired` or `requires OAuth reauthentication`:
   **Sign in**. Preserve the active request and activate the exact root BOS MCP
-  connection. When Codex exposes no **Connect**, **Sign in**, or
-  **Authenticate** control, resolve the server name from the package-owned
-  `.mcp.json` and invoke `codex mcp login <server-name>` from the active
-  request. Never translate this state into unavailable tools, missing business
+  connection through the native **Authenticate** control. Its visibility
+  requires an unauthenticated HTTP 401 protected-resource challenge. When the
+  control is absent, report an authentication-activation defect and preserve
+  the pending request; never invoke CLI login or launch authentication for the
+  user. Never translate this state into unavailable tools, missing business
   data, or a generic app-permission problem.
 - OAuth succeeded but schemas/tools are stale or absent: **Discover**.
 - Context is canonical and a specific Google/SendGrid/Calimatic operation asks

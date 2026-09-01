@@ -68,19 +68,20 @@ stateful mutation workflow.
   reauthentication`, or an equivalent MCP-startup authentication failure,
   classify it as **Sign in** and preserve the active request. Use the native
   host **Connect**, **Sign in**, or **Authenticate** action when Codex exposes
-  one. When the registered MCP server appears on the Codex plugin page with no
-  **Connect** action, read the exact server name from the root BOS package-owned
-  `.mcp.json` and execute `codex mcp login <server-name>` in the local terminal
-  from the active request. Tell the user that the secure browser consent window
-  is opening, then wait for their direct sign-in and consent. Do not ask the
-  user to run the command, reconnect BOS, or resubmit the request. Do not use
-  generic app-permission tools, app-dependency tools, the plugin console, or a
-  subservice connection to repair MCP OAuth. After login succeeds, refresh the
-  MCP session and callable tool manifest, call `bos_get_context`, verify one
+  one. The root MCP resource must answer unauthenticated OAuth discovery with
+  HTTP 401 and a `WWW-Authenticate` challenge containing its exact
+  `resource_metadata` URL; this lets Codex classify the server as
+  `notLoggedIn` and render **Authenticate**. When Codex instead reports
+  `reauthenticationRequired` while the server row exposes no authentication
+  action, report a host authentication-activation defect with the sanitized
+  startup error and keep the request pending. Do not invoke a CLI login or
+  launch browser authentication on the user's behalf. Do not ask the user to
+  reconnect BOS or resubmit the request. Do not use generic app-permission tools,
+  app-dependency tools, the plugin console, or a subservice connection
+  to repair MCP OAuth. After the user selects the native action and login
+  succeeds, refresh the MCP session and callable tool manifest, call
+  `bos_get_context`, verify one
   bounded authenticated read, and resume the original request automatically.
-  If the active Codex environment cannot execute the CLI and exposes no native
-  authentication action, report a host authentication-activation defect with
-  the exact sanitized startup error and keep the request pending.
 - Refresh the callable tool manifest immediately after OAuth reconnection,
   permission or role changes, plugin install/update, capability enablement, or
   an explicit server capability refresh. Discard stale schemas and validate the
