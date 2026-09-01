@@ -67,6 +67,22 @@ async function isRetiredBosBrokerConfig(path) {
   }
 }
 
+async function isDirectBosOAuthConfig(path, expectedName, expectedUrl) {
+  try {
+    const config = await readJson(path);
+    const entries = Object.entries(config?.mcpServers ?? {});
+    if (entries.length !== 1) return false;
+    const [name, server] = entries[0];
+    return name === expectedName &&
+      server?.type === "http" &&
+      server.url === expectedUrl &&
+      !("headers" in server) &&
+      !("bearer_token_env_var" in server);
+  } catch {
+    return false;
+  }
+}
+
 function parseArgs(argv) {
   const [command = "inspect", ...rest] = argv;
   const options = {
@@ -109,22 +125,24 @@ async function configureCodexBosMcp(_options, paths) {
     return { state: "bos_managed", connection_owner: "bos" };
   }
   if (metadata.authentication !== "oauth_2_1" ||
-      await pathExists(appPath) || !(await pathExists(runtimePath))) {
-    throw new Error("Packaged Codex MCP binding is invalid");
+      !(await pathExists(appPath)) || await pathExists(runtimePath)) {
+    throw new Error("Packaged Codex app binding is invalid");
   }
-  const runtimeManifest = await readJson(runtimePath);
-  const runtimeEntries = Object.entries(runtimeManifest.mcpServers ?? {});
-  const [serverName, server] = runtimeEntries[0] ?? [];
+  const appManifest = await readJson(appPath);
+  const appEntries = Object.entries(appManifest.apps ?? {});
+  const [appName, app] = appEntries[0] ?? [];
   const expectedUrl = "https://dfsm.ai/mcp/apps/bos/platform";
-  if (runtimeEntries.length !== 1 || serverName !== metadata.mcp_group_name ||
-      server?.type !== "http" || server?.url !== expectedUrl ||
+  if (appEntries.length !== 1 || appName !== metadata.name ||
+      app?.id !== metadata.codex_app_id || Object.keys(app ?? {}).length !== 1 ||
+      !/^asdk_app_[a-z0-9]+$/.test(app?.id ?? "") ||
       "credential_env_var" in metadata) {
-    throw new Error("Packaged Codex MCP binding is invalid");
+    throw new Error("Packaged Codex app binding is invalid");
   }
   return {
     state: "host_managed",
     name: metadata.mcp_group_name,
     url: expectedUrl,
+    app_id: app.id,
     authentication: "oauth_2_1",
     next_action: "connect"
   };
@@ -644,21 +662,18 @@ async function inspectTarget(paths, desired) {
   }
   if (
     !previousState &&
-    desired.manifest.mcpServers &&
-    ".app.json" in currentFiles &&
-    !(".app.json" in desired.hashes)
+    desired.manifest.apps &&
+    ".mcp.json" in currentFiles &&
+    !(".mcp.json" in desired.hashes)
   ) {
-    try {
-      const legacy = await readJson(join(paths.target, ".app.json"));
-      const entries = Object.entries(legacy.apps ?? {});
-      const [name, app] = entries[0] ?? [];
-      if (entries.length === 1 && name === desiredMetadata.name &&
-          app?.required === true && /^asdk_app_[a-z0-9]+$/.test(app?.id ?? "")) {
-        remove.push(".app.json");
-        preserve = preserve.filter((path) => path !== ".app.json");
-      }
-    } catch {
-      // An unrecognized app file remains user-owned and will fail closed below.
+    const expectedUrl = "https://dfsm.ai/mcp/apps/bos/platform";
+    if (await isDirectBosOAuthConfig(
+      join(paths.target, ".mcp.json"),
+      desiredMetadata.mcp_group_name,
+      expectedUrl
+    )) {
+      remove.push(".mcp.json");
+      preserve = preserve.filter((path) => path !== ".mcp.json");
     }
   }
   if (

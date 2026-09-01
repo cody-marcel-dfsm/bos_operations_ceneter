@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.64",
+  "version": "0.4.65",
   "client": "copilot",
   "connection_owner": "bos",
   "authentication": "bos_managed"
