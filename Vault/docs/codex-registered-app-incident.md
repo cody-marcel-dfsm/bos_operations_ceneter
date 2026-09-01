@@ -1,6 +1,6 @@
 # Codex BOS skill and tool exposure RCA
 
-Status: fixed in 0.4.71; host verification pending
+Status: 0.4.71 release blocked pending GPT UI Login/Connect screenshot
 Date: 2026-09-01
 
 ## Executive conclusion
@@ -100,8 +100,9 @@ prove that the active task loaded its MCP catalog.
 ## Acceptance
 
 Repository acceptance requires deterministic generation, focused package and
-installer tests, `npm run release:check`, `npm run contract:check`, and a local
-Oracle review of the actual diff. Live signed-in acceptance additionally
+installer tests, `npm run release:check`, `npm run contract:check`, a
+version-matched GPT client screenshot visibly showing the native BOS Login or
+Connect control, and a local Oracle review of the actual diff. Live signed-in acceptance additionally
 requires the current task to load the package-owned resource, complete OAuth,
 discover every declared tool, resolve one canonical context, and complete one
 bounded authenticated read.

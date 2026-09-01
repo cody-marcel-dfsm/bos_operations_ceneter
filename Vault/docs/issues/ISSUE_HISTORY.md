@@ -6,7 +6,7 @@ before implementation guidance and review. Resolved issue details remain in
 
 ## Issue #0001: Installed BOS skills appeared while Codex exposed no login or callable tools
 
-- Status: FIXED IN 0.4.71; host verification pending
+- Status: 0.4.71 RELEASE BLOCKED; GPT UI Login/Connect screenshot missing
 - Priority: CRITICAL
 - Date identified: 2026-09-01
 - Area: Codex package binding, authentication display, and tool discovery
@@ -59,15 +59,17 @@ callable discovery, and execution.
 - 0.4.66–0.4.69: required replacement IDs did not restore the proven binding.
 - 0.4.70: direct `.mcp.json` was restored; live screenshot again proved Login
   absent even though the Platform MCP server row rendered.
-- 0.4.71: restores the exact 0.4.50 root BOS app binding and migrates both
-  direct-MCP and replacement-ID installations. Repository acceptance passed;
-  visual host verification of the native Login action remains pending.
+- 0.4.71 candidate: restores the exact 0.4.50 root BOS app binding and migrates
+  both direct-MCP and replacement-ID installations. Release acceptance remains
+  blocked until `Vault/evidence/codex-login/0.4.71-connect-button.png` visibly
+  shows the native BOS Login or Connect control in the GPT client.
 
 ### Validation and Oracle review
 
 Repository acceptance requires deterministic package generation, focused Codex
 install/login/runtime tests, `npm run release:check`, `npm run contract:check`,
-and Oracle review of the actual diff. Live acceptance additionally proves OAuth,
+the version-matched GPT UI Login/Connect screenshot, and Oracle review of the
+actual diff. Live signed-in acceptance additionally proves OAuth,
 declared tool discovery, `bos_get_context`, and one bounded authenticated read.
 
 ### Prevention guidance

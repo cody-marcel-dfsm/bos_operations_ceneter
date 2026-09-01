@@ -1,7 +1,7 @@
 # Issue #0001 conclusion: Codex BOS login and callable-tool exposure
 
-- Status: FIXED IN 0.4.71; host verification pending
-- Resolution version: 0.4.71
+- Status: 0.4.71 RELEASE BLOCKED; GPT UI Login/Connect screenshot missing
+- Resolution version: pending visual acceptance
 - Date: 2026-09-01
 - Category: Codex package binding and authentication readiness
 - Related incident: `Vault/docs/codex-registered-app-incident.md`
@@ -39,7 +39,9 @@ contract independently from server OAuth discovery.
 - Deterministic generated-client parity and package validation.
 - Positive and negative Codex install, login-surface, cleanup, and runtime tests.
 - `npm run release:check` and `npm run contract:check`.
-- Post-install live acceptance remains a separate host check: OAuth discovery
+- Version-matched GPT client screenshot visibly showing the native BOS Login or
+  Connect control on the plugin page.
+- Post-install signed-in acceptance remains a separate host check: OAuth discovery
   and grant, declared tool discovery, `bos_get_context`, and one bounded
   authenticated read.
 - Repository-local Oracle review of the complete diff and evidence.

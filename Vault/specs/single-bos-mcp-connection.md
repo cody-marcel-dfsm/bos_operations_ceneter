@@ -146,6 +146,12 @@ login or BOS MCP connection.
     CLI login or launches authentication for the user.
 17. Every server release that changes MCP authentication passes the complete
     client-owned Operations Center acceptance suite before release acceptance.
+18. Every Codex package release that changes the Login display binding includes
+    a version-matched GPT client screenshot at
+    `Vault/evidence/codex-login/<version>-connect-button.png`. The screenshot
+    must visibly show the native BOS **Login** or **Connect** control on the BOS
+    plugin page. Package shape, a Platform MCP server row, OAuth discovery, and
+    callable-tool evidence never substitute for this visual acceptance artifact.
 
 ## Portable contract verification
 
