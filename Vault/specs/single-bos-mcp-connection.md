@@ -20,11 +20,9 @@ server from canonical authenticated state.
   capabilities. They contain no independent BOS app binding,
   connector, MCP server declaration, OAuth grant, token field, or fallback
   connection.
-- ChatGPT/Codex loads the registered root BOS app from the BOS plugin's
-  `.app.json`. The single app entry has the durable BOS app ID and
-  `required: true`. That required app binding renders the plugin-page **Login**,
-  **Connect**, or **Authenticate** control independently of any MCP response.
-  The package contains no direct `.mcp.json` binding.
+- ChatGPT/Codex loads the root BOS plugin's package-owned `.mcp.json`. It
+  declares exactly one credential-free HTTPS server for the immutable BOS
+  resource and contains no account-scoped app identifier or `.app.json`.
   Claude exposes one persistent
   BOS Web connector. Copilot, Gemini, and Antigravity expose one BOS MCP server
   connection through their native adapter.
@@ -35,18 +33,15 @@ server from canonical authenticated state.
   replaces that registration through current OAuth metadata, restarts
   authorization once, refreshes tools and context, and resumes the preserved
   request. Registration recovery never creates a subservice connection.
-- A missing authentication control on the Codex plugin page identifies a
-  registered-app display-binding defect. A missing or false `required` value is
-  the same defect even when the durable app ID is present. Repair and reload the
-  root package declaration before evaluating server behavior. Receiving an
-  OAuth challenge and displaying the plugin-page control are independent
-  contracts.
+- A missing Codex authentication action after the package-owned server loads
+  identifies an authentication-activation defect. Repair and reload the root
+  `.mcp.json` declaration before evaluating server behavior.
 - A Codex MCP-startup `reauthenticationRequired` response identifies a missing
-  or unusable grant for the already registered root resource. The resource's
+  or unusable grant for the package-owned root resource. The resource's
   unauthenticated discovery response returns HTTP 401 with the canonical
   protected-resource `WWW-Authenticate` challenge so Codex classifies the
-  runtime connection as `notLoggedIn` and activates OAuth through the already
-  declared native action.
+  runtime connection as `notLoggedIn` and activates OAuth through the
+  host-managed connection.
   The user selects that action and completes consent; the client then refreshes
   the same MCP connection and callable manifest, validates context, and resumes.
   A missing native action is an authentication-activation defect. Generic app
@@ -115,16 +110,14 @@ login or BOS MCP connection.
 8. A stale host-owned public client receives `invalid_client`, replaces its
    registration for the same BOS resource, and resumes through the single BOS
    connection.
-9. ChatGPT/Codex packages require exactly one registered root BOS app binding,
-   require its stable durable app identifier and `required: true`, and reject
-   direct or additional MCP bindings.
+9. ChatGPT/Codex packages require exactly one package-owned root BOS MCP
+   binding, contain no account-scoped app identifier, and reject app or
+   additional MCP bindings.
 10. ChatGPT/Codex readiness jointly verifies the native plugin registry,
     marketplace registration, one current managed-cache version per active
-    product, the registered app declaration, host resolution evidence for its
-    exact durable app ID, and every product-declared runtime verification tool
-    in the callable catalog. An exact resolver HTTP 404 with `Connector not
-    found` fails readiness even when package files and a stale callable cache
-    are present. A package cache alone is not installation evidence.
+    product, the package-owned MCP declaration, and every product-declared
+    runtime verification tool in the callable catalog. A package cache alone is
+    not installation evidence.
 11. ChatGPT/Codex recovery removes only state owned by the BOS marketplace or
     immutable BOS resource URL, backs up any edited host state, reinstalls both active
     products, restarts the host, and reruns the same readiness verification.
@@ -143,8 +136,7 @@ login or BOS MCP connection.
 15. Copilot readiness compares the selected product's repository MCP and skill
     files directly against generated output. The Copilot repository adapter has
     no BOS package-cache state.
-16. Codex installation exposes the native plugin-page authentication action
-    from its registered app declaration. Reauthentication independently
+16. Codex installation loads the package-owned MCP declaration. Reauthentication
     requires an unauthenticated resource GET to return HTTP 401, the exact protected-resource
     `WWW-Authenticate` challenge, and `authentication_required`. An authenticated
     resource GET remains HTTP 405 with `Allow: POST`. The client never invokes

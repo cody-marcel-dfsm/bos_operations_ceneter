@@ -12,8 +12,8 @@
    clients contain no secrets or customer data. Each user-facing client context
    authorizes one root BOS MCP resource through host-managed OAuth 2.1. Claude
    uses one BOS account or organization Web connector; Copilot and Gemini
-   declare the BOS resource directly; ChatGPT/Codex loads the registered BOS
-   app from the root package's app declaration. Education Center, CRM,
+   declare the BOS resource directly; ChatGPT/Codex loads the immutable BOS
+   resource from the root package's credential-free `.mcp.json`. Education Center, CRM,
    Marketing Director, and other
    subservice plugins never create another BOS connection or login.
    Packages contain no user-entered BOS credential. Missing provider grants recover through
@@ -26,7 +26,10 @@
 8. **Customer-safe updates.** Package updates replace package-owned content and
    preserve customer-owned extensions with explicit compatibility warnings.
 9. **Evidence-based approval.** Reviews inspect the actual diff, controlling
-   Vault sources, and validation results before approval.
+   Vault sources, current issue history, and validation results before approval.
+   Every repository mutation requires the local Oracle's literal `APPROVED`
+   verdict. A correction after review requires a fresh review of the complete
+   updated diff.
 10. **Repository specialization.** Application-specific rules extend these
     principles in the owning application repository and never weaken them.
 11. **Customer configuration isolation.** Skills and generated clients contain

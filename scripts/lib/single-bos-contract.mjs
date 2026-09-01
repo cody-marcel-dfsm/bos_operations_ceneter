@@ -125,7 +125,6 @@ function validateContractShape(contract, contractPath) {
     "application_name",
     "mcp_group_name",
     "resource_url",
-    "codex_app_id",
     "owner_authentication_policy",
     "provider_account_selection_policy",
     "identity_organization_resolution_policy",
@@ -133,13 +132,6 @@ function validateContractShape(contract, contractPath) {
   ];
   if (contract.schema_version !== "1") {
     findings.push(finding("contract_schema", contractPath, "schema_version must be 1."));
-  }
-  if (contract.codex_app_required !== true) {
-    findings.push(finding(
-      "contract_shape",
-      contractPath,
-      "codex_app_required must be true."
-    ));
   }
   for (const field of requiredStrings) {
     if (typeof contract[field] !== "string" || !contract[field]) {
@@ -180,8 +172,7 @@ export async function verifySingleBosContract({
     for (const [field, expected] of [
       ["runtime", "bos"],
       ["application_name", contract.application_name],
-      ["mcp_group_name", contract.mcp_group_name],
-      ["codex_app_id", contract.codex_app_id]
+      ["mcp_group_name", contract.mcp_group_name]
     ]) {
       if (owner[field] !== expected) {
         violations.push(finding(
@@ -196,8 +187,7 @@ export async function verifySingleBosContract({
   const forbiddenProductFields = [
     "runtime",
     "application_name",
-    "mcp_group_name",
-    "codex_app_id"
+    "mcp_group_name"
   ];
   for (const product of products.filter(({ name }) => name !== contract.owner_product)) {
     for (const field of forbiddenProductFields) {
@@ -250,26 +240,7 @@ export async function verifySingleBosContract({
     }
   }
 
-  const appPath = join(root, "clients", "codex", "plugins", "bos", ".app.json");
-  if (await pathExists(appPath)) {
-    const app = await readJson(appPath);
-    if (
-      Object.keys(app.apps ?? {}).length !== 1 ||
-      app.apps?.bos?.id !== contract.codex_app_id ||
-      app.apps?.bos?.required !== contract.codex_app_required ||
-      Object.keys(app.apps?.bos ?? {}).length !== 2
-    ) {
-      violations.push(finding(
-        "codex_app_binding",
-        relative(root, appPath),
-        "Codex must bind exactly one required BOS registered app."
-      ));
-    }
-  }
-
-  for (const artifact of expectedArtifacts.filter(
-    (path) => path !== portable(relative(root, appPath))
-  )) {
+  for (const artifact of expectedArtifacts) {
     const content = await readFile(join(root, artifact), "utf8");
     if (!content.includes(contract.resource_url)) {
       violations.push(finding(
@@ -382,7 +353,6 @@ export async function verifySingleBosContract({
       if (
         entry.name !== contract.owner_product &&
         (containsConnectionBinding(entry) ||
-          "codex_app_id" in entry ||
           "resource_url" in entry)
       ) {
         violations.push(finding(

@@ -2,6 +2,11 @@
 
 Date: 2026-09-01
 
+Status: superseded by the 0.4.70 package-owned MCP correction documented in
+`Vault/docs/codex-registered-app-incident.md` and
+`Vault/docs/issues/conclusions/ISSUE_0001_CONCLUSION.md`. The rejected finding
+below records the pre-correction state and is no longer current guidance.
+
 ## Scope
 
 Review the complete `main` branch after the repository-local Oracle ownership

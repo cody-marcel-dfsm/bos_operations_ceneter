@@ -16,7 +16,7 @@ remote MCP structured content and server-owned actions.
   client-content interaction, preserves the single BOS grant, assigns
   canonical state and actions to BOS, and prohibits a packaged renderer or
   machine-local service.
-- `docs/DESIGN.md:167-194` describes the cross-product context source, remote
+- `Vault/docs/DESIGN.md:167-194` describes the cross-product context source, remote
   `structuredContent`, remotely served MCP App resource, ephemeral component
   state, and the absence of local files, ports, processes, browsers, or
   services.

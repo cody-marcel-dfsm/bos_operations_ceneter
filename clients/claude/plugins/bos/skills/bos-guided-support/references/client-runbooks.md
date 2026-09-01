@@ -53,8 +53,8 @@ control, invoke that control and request user consent there. Preserve every
 installed subservice plugin and avoid creating another BOS connection.
 
 An OAuth token-endpoint `invalid_grant`, including `Refresh token replay
-detected`, means the existing BOS grant is unusable. Keep the registered root
-app and immutable BOS resource unchanged, stop refresh retries, and use the
+detected`, means the existing BOS grant is unusable. Keep the root
+package-owned connection and immutable BOS resource unchanged, stop refresh retries, and use the
 native **Connect**, **Sign in**, **Auth**, or **Authenticate** control for fresh
 consent. Refresh tools and context after consent, then resume the preserved
 request.
@@ -63,20 +63,17 @@ request.
 
 1. Confirm **BOS** and the requested subservice plugins are installed and
    enabled in the Plugins Directory.
-2. Confirm BOS's plugin manifest declares `apps: "./.app.json"`, that file
-   contains exactly one registered BOS app with `required: true`, and the
-   package has no `.mcp.json`; subservice plugins carry no additional BOS
-   binding. A missing or false `required` value is a display-binding defect
-   even when the durable app ID is present.
+2. Confirm BOS's plugin manifest declares `mcpServers: "./.mcp.json"`, that
+   file contains exactly one credential-free HTTPS BOS server, and the package
+   has no `.app.json`; subservice plugins carry no additional BOS binding.
 3. Start a new task after install or update when the existing task cannot see
    the plugin.
-4. Confirm the plugin page shows its native **Login**, **Connect**, or
-   **Authenticate** action. The registered app binding renders this control
-   independently of any MCP response. If it is absent, report a registered-app
-   display-binding defect and repair the package binding.
-5. Complete BOS consent from that native action. The MCP resource independently
+4. Confirm the host loads the BOS server and shows its native **Login**, **Connect**, or
+   **Authenticate** action when authentication is required. If it is absent,
+   report an authentication-activation defect and repair the package binding.
+5. Complete BOS consent from that native action. The MCP resource
    returns the HTTP 401 protected-resource challenge required for runtime OAuth
-   discovery. If the action exists and runtime activation fails, preserve the
+   discovery. If runtime activation fails, preserve the
    request and report an authentication-activation defect. The agent never
    invokes CLI login or launches authentication for the customer.
 6. After browser consent succeeds, refresh the MCP session and callable tools,

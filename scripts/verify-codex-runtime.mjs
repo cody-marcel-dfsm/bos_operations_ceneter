@@ -19,8 +19,6 @@ function parseArgs(argv) {
     const argument = argv[index];
     if (argument === "--home") options.home = resolve(argv[++index]);
     else if (argument === "--catalog") options.catalogPath = resolve(argv[++index]);
-    else if (argument === "--app-directory") options.appDirectoryPath = resolve(argv[++index]);
-    else if (argument === "--desktop-log-root") options.desktopLogRoot = resolve(argv[++index]);
     else if (argument === "--json") options.json = true;
     else throw new Error(`Unknown argument: ${argument}`);
   }
@@ -50,33 +48,6 @@ async function newestJsonContaining(directory, needle) {
   return candidates[0]?.path ?? null;
 }
 
-async function filesBelow(directory, suffix, depth = 0) {
-  if (depth > 4 || !(await pathExists(directory))) return [];
-  const files = [];
-  for (const entry of await readdir(directory, { withFileTypes: true })) {
-    const path = join(directory, entry.name);
-    if (entry.isDirectory()) files.push(...await filesBelow(path, suffix, depth + 1));
-    else if (entry.isFile() && entry.name.endsWith(suffix)) files.push(path);
-  }
-  return files;
-}
-
-async function newestLineContaining(directory, suffix, needle) {
-  const candidates = [];
-  for (const path of await filesBelow(directory, suffix)) {
-    const content = await readFile(path, "utf8");
-    const lines = content.split(/\r?\n/).filter((line) => line.includes(needle));
-    if (lines.length === 0) continue;
-    candidates.push({
-      path,
-      line: lines.at(-1),
-      observed: Date.parse(lines.at(-1).slice(0, 24)) || (await stat(path)).mtimeMs
-    });
-  }
-  candidates.sort((left, right) => right.observed - left.observed);
-  return candidates[0] ?? null;
-}
-
 async function installedCacheVersions(home, marketplace, product) {
   const productRoot = join(home, ".codex", "plugins", "cache", marketplace, product);
   if (!(await pathExists(productRoot))) return [];
@@ -100,23 +71,38 @@ async function currentDirectSource(sourcePath, product) {
   }
 }
 
-async function inspectInstalledAppBinding(home, marketplace, product, versions, sourcePath) {
+async function inspectInstalledMcpBinding(home, marketplace, product, versions, sourcePath) {
   const packageRoot = sourcePath ?? (versions.length === 1
     ? join(home, ".codex", "plugins", "cache", marketplace, product.name, versions[0])
     : null);
-  const path = packageRoot ? join(packageRoot, ".app.json") : null;
-  if (!path || !(await pathExists(path))) return { state: "missing", path };
+  const path = packageRoot ? join(packageRoot, ".mcp.json") : null;
+  const pluginPath = packageRoot ? join(packageRoot, ".codex-plugin", "plugin.json") : null;
+  const appPath = packageRoot ? join(packageRoot, ".app.json") : null;
+  if (
+    !path ||
+    !pluginPath ||
+    !(await pathExists(path)) ||
+    !(await pathExists(pluginPath))
+  ) {
+    return { state: "missing", path, plugin_path: pluginPath };
+  }
   const manifest = await readJson(path);
-  const entries = Object.entries(manifest.apps ?? {});
-  const [name, app] = entries[0] ?? [];
-  const current = entries.length === 1 && name === product.name &&
-    app?.id === product.codex_app_id &&
-    app?.required === true &&
-    Object.keys(app ?? {}).length === 2;
+  const plugin = await readJson(pluginPath);
+  const entries = Object.entries(manifest.mcpServers ?? {});
+  const [name, server] = entries[0] ?? [];
+  const current = entries.length === 1 && name === product.mcp_group_name &&
+    plugin.mcpServers === "./.mcp.json" &&
+    !("apps" in plugin) &&
+    !(await pathExists(appPath)) &&
+    server?.type === "http" &&
+    server?.url === "https://dfsm.ai/mcp/apps/bos/platform" &&
+    JSON.stringify(Object.keys(server ?? {}).sort()) ===
+      JSON.stringify(["type", "url"]);
   return {
     state: current ? "current" : "invalid",
     path,
-    app: current ? app : null
+    plugin_path: pluginPath,
+    server: current ? server : null
   };
 }
 
@@ -127,54 +113,6 @@ function publicToolNames(catalog) {
       .filter((name) => typeof name === "string")
       .map((name) => name.split(".").at(-1))
   );
-}
-
-async function inspectRegisteredAppResolution(options, appId, catalogPath, catalogIsComplete) {
-  const directoryPath = options.appDirectoryPath ?? await newestJsonContaining(
-    join(options.home, ".codex", "cache", "codex_app_directory"),
-    "\"connectors\""
-  );
-  const directory = directoryPath ? await readJson(directoryPath) : null;
-  const directoryEntry = (directory?.connectors ?? []).find((entry) => entry?.id === appId);
-  const successObserved = Math.max(
-    directoryEntry ? (await stat(directoryPath)).mtimeMs : 0,
-    catalogIsComplete ? (await stat(catalogPath)).mtimeMs : 0
-  );
-  const logRoot = options.desktopLogRoot ?? join(
-    options.home,
-    "Library",
-    "Logs",
-    "com.openai.codex"
-  );
-  const logEvidence = await newestLineContaining(
-    logRoot,
-    ".log",
-    `/aip/connectors/${appId}`
-  );
-  const unavailable = Boolean(
-    logEvidence?.line.includes("status=404") &&
-    logEvidence.line.includes("Connector not found") &&
-    logEvidence.observed >= successObserved
-  );
-  const state = unavailable
-    ? "unavailable"
-    : directoryEntry
-      ? "directory-listed"
-      : catalogIsComplete
-        ? "callable"
-        : "unverified";
-  return {
-    app_id: appId,
-    state,
-    directory: {
-      path: directoryPath,
-      state: directoryEntry ? "listed" : directoryPath ? "not-listed" : "missing"
-    },
-    resolver_log: {
-      path: logEvidence?.path ?? null,
-      state: unavailable ? "connector-not-found" : logEvidence ? "observed" : "missing"
-    }
-  };
 }
 
 export async function inspectCodexRuntime(rawOptions = {}) {
@@ -225,7 +163,7 @@ export async function inspectCodexRuntime(rawOptions = {}) {
   const marketplaceCurrent = marketplaceEntries(marketplaceListing).some((entry) =>
     entry?.name === options.marketplace || entry?.marketplaceName === options.marketplace
   );
-  const appBinding = await inspectInstalledAppBinding(
+  const mcpBinding = await inspectInstalledMcpBinding(
     options.home,
     options.marketplace,
     bos,
@@ -242,12 +180,6 @@ export async function inspectCodexRuntime(rawOptions = {}) {
     (product) => product.runtime_verification_tools ?? []
   ))].sort();
   const missingTools = requiredTools.filter((tool) => !discovered.has(tool));
-  const appResolution = await inspectRegisteredAppResolution(
-    options,
-    bos.codex_app_id,
-    catalogPath,
-    Boolean(catalogPath) && missingTools.length === 0
-  );
   const packageFailures = activeProducts.flatMap((product) => {
     const versions = cacheVersions[product.name];
     const entry = installedProducts[product.name];
@@ -263,10 +195,7 @@ export async function inspectCodexRuntime(rawOptions = {}) {
     ...registryFailures,
     ...(marketplaceCurrent ? [] : [`${options.marketplace} marketplace is not registered`]),
     ...packageFailures,
-    ...(appBinding.state === "current" ? [] : ["registered BOS app binding is missing or invalid"]),
-    ...(appResolution.state === "unavailable"
-      ? [`registered BOS app is unavailable to Codex: ${bos.codex_app_id}`]
-      : []),
+    ...(mcpBinding.state === "current" ? [] : ["package-owned BOS MCP binding is missing or invalid"]),
     ...(catalogPath ? [] : ["Codex callable-tool catalog is missing"]),
     ...missingTools.map((tool) => `callable tool is missing: ${tool}`)
   ];
@@ -282,8 +211,7 @@ export async function inspectCodexRuntime(rawOptions = {}) {
     installed_products: installedProducts,
     cache_versions: cacheVersions,
     package_roots: packageRoots,
-    app_binding: appBinding,
-    registered_app_resolution: appResolution,
+    mcp_binding: mcpBinding,
     callable_catalog: {
       path: catalogPath,
       discovered_tool_count: discovered.size,

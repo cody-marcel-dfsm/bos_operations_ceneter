@@ -9,9 +9,8 @@ Use this skill for every client-side BOS operation. The root BOS plugin owns one
 remote MCP resource and one host-managed OAuth connection for the user-facing
 client context. A Claude account or organization Web connector declares that
 resource and exposes the persistent host-managed **Connect** action;
-ChatGPT/Codex binds the registered BOS app through the root package's
-`.app.json`, which supplies the plugin-page **Login**, **Connect**, or
-**Authenticate** control. Other supported clients use the single BOS adapter
+ChatGPT/Codex loads the root package's credential-free `.mcp.json` and performs
+OAuth discovery from that immutable resource. Other supported clients use the single BOS adapter
 declared by their generated package.
 
 Education Center, CRM, Marketing Director, and other subservice plugins add
@@ -54,10 +53,9 @@ stateful mutation workflow.
 - If BOS is absent from the callable tool manifest, inspect the active client's
   BOS plugin and runtime binding immediately. Repair or reinstall BOS and
   restore its declared authorization connection. For Codex, verify the root
-  BOS plugin declares `apps: "./.app.json"`, the file contains its one
-  registered BOS app with `required: true`, and no `.mcp.json` shadows that
-  binding. Treat a missing or false `required` value as a package
-  display-binding defect even when the app ID is present. For Claude,
+  BOS plugin declares `mcpServers: "./.mcp.json"`, the file contains exactly
+  one credential-free HTTPS server for the immutable BOS resource, and no
+  `.app.json` account identity shadows that portable binding. For Claude,
   verify the BOS package's
   account-connector metadata and the matching Web connector under
   **Customize → Connectors**, then use its persistent **Connect** action. When a
@@ -86,14 +84,12 @@ stateful mutation workflow.
   reauthentication`, or an equivalent MCP-startup authentication failure,
   classify it as **Sign in** and preserve the active request. Use the native
   host **Connect**, **Sign in**, or **Authenticate** action when Codex exposes
-  one. The plugin-page action is rendered from the registered app binding; its
-  presence does not depend on receiving an MCP response. The root MCP resource
-  independently answers an unauthenticated connection attempt with HTTP 401
+  one. The root MCP resource answers an unauthenticated connection attempt with HTTP 401
   and a `WWW-Authenticate` challenge containing its exact `resource_metadata`
   URL so the runtime can enter `notLoggedIn` and complete OAuth discovery.
-  When the plugin page has no authentication action, classify it as a Codex
-  registered-app display-binding defect and inspect the package declaration
-  before evaluating server behavior. When the action exists and the runtime
+  When the host has no authentication action after loading the package-owned
+  server, classify it as an authentication-activation defect and inspect the
+  `.mcp.json` declaration before evaluating server behavior. When the action exists and the runtime
   cannot activate it after a challenge, report an authentication-activation
   defect with the sanitized startup error and keep the request pending. Do not
   invoke a CLI login or
@@ -164,7 +160,7 @@ and inspect its sanitized result before producing a final answer.
    context.
 5. Authenticate the BOS Claude account-level Web connector through its
    persistent **Connect** control, and the ChatGPT/Codex BOS connection
-   through the root registered-app binding. Both use one host-managed
+   through the root package-owned MCP binding. Both use one host-managed
    OAuth grant. Other clients use only the generated product
    adapter declared for BOS. Keep access tokens, refresh tokens,
    authorization codes, bearer values, and grant metadata out of chat, tool

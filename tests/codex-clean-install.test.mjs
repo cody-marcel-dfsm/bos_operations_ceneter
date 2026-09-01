@@ -9,7 +9,8 @@ import {
   planCodexCleanup
 } from "../scripts/clean-install-codex.mjs";
 
-const appId = "asdk_app_6a932992592081919cdc88c60e4ff2dd";
+const appId = "asdk_app_6a95a014a0a08191a9e6d16453a8b831";
+const retiredAppId = "asdk_app_6a932992592081919cdc88c60e4ff2dd";
 const suffix = appId.replace("asdk_app_", "");
 
 async function fixtureHome() {
@@ -25,6 +26,16 @@ async function fixtureHome() {
     join(wrapper, ".codex-remote-plugin-install.json"),
     JSON.stringify({ remote_plugin_id: `plugin_${appId}` })
   );
+  const retiredWrapper = join(
+    home,
+    ".codex/plugins/cache/created-by-me-remote",
+    `dev-${retiredAppId.replace("asdk_app_", "")}`
+  );
+  await mkdir(join(retiredWrapper, "1.0.0"), { recursive: true });
+  await writeFile(
+    join(retiredWrapper, ".codex-remote-plugin-install.json"),
+    JSON.stringify({ remote_plugin_id: `plugin_${retiredAppId}` })
+  );
   const toolCache = join(home, ".codex/cache/codex_apps_tools/catalog.json");
   await mkdir(join(home, ".codex/cache/codex_apps_tools"), { recursive: true });
   await writeFile(toolCache, JSON.stringify({ app_id: appId }));
@@ -39,7 +50,7 @@ async function fixtureHome() {
       }
     }
   }));
-  return { home, globalState };
+  return { home, globalState, retiredWrapper };
 }
 
 test("Codex cleanup plan is bounded to BOS-owned identities", async () => {
@@ -47,7 +58,8 @@ test("Codex cleanup plan is bounded to BOS-owned identities", async () => {
   const plan = await planCodexCleanup({ home });
   assert.equal(plan.app_id, appId);
   assert.match(plan.package_cache, /bos-education-center$/);
-  assert.match(plan.registered_app_wrapper, new RegExp(`dev-${suffix}$`));
+  assert.equal(plan.registered_app_wrappers.length, 2);
+  assert(plan.registered_app_wrappers.some((path) => new RegExp(`dev-${suffix}$`).test(path)));
   assert.equal(plan.cache_files.length, 1);
 });
 

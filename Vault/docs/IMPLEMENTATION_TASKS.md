@@ -6,11 +6,9 @@ Implement the architecture in [DESIGN.md](DESIGN.md) as a sequence of
 independently reviewable changes. Preserve the current Education Center
 distributions throughout the migration.
 
-Use
-[LOCAL_FIRST_SKILL_IMPLEMENTATION_PLAN.md](LOCAL_FIRST_SKILL_IMPLEMENTATION_PLAN.md)
-as the execution plan. It establishes and tests the hierarchy locally before
-promoting the proven BOS plugin into this package and completing the
-product-aware builder, idempotent installer, and release system.
+This task record establishes and tests the hierarchy locally before promoting
+the proven BOS plugin into this package and completing the product-aware
+builder, idempotent installer, and release system.
 
 ## Delivery order
 
@@ -316,8 +314,8 @@ scope resolution, provider setup, verification, and retry sequence.
 
 - Represent BOS client authorization, tenant resolution, capability
   authorization, and provider credential health as distinct states.
-- Generate a required registered app binding for Codex and native remote
-  Streamable HTTP configuration for Claude.
+- Generate a package-owned remote Streamable HTTP binding for Codex and
+  account-connector metadata for Claude.
 - Use host-managed OAuth for Codex and Claude without packaged BOS credential
   fields or authorization-header templates.
 - Consume BOS-returned provider OAuth and HTTPS credential-collection actions
@@ -450,9 +448,9 @@ remote MCP transport on macOS, Windows, and Linux.
 
 **Acceptance criteria:**
 
-- Generated Codex runtime products contain a required `.app.json` binding and
-  no `.mcp.json`; generated Claude runtime products contain `type: http` and
-  the immutable HTTPS URL without credential fields or authorization headers.
+- Generated Codex runtime products contain one credential-free `.mcp.json`
+  binding and no `.app.json`; generated Claude runtime products contain
+  account-connector metadata with the immutable HTTPS URL and no credentials.
 - Generated client packages contain no `command`, `stdio`, executable, Python
   runtime, or local credential listener.
 - The BOS product targets `/mcp/apps/bos/platform`; Video Ads and every other

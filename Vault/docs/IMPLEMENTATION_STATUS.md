@@ -11,8 +11,8 @@
 
 ## Package contract
 
-`products/bos/product.json` owns the runtime, application name, MCP group, and
-registered ChatGPT/Codex app ID. Every subservice manifest omits those fields.
+`products/bos/product.json` owns the runtime, application name, and MCP group.
+Every subservice manifest omits those fields.
 The generator emits host-native connection files only for BOS and records the
 BOS-owned connection in subservice metadata.
 

@@ -2,8 +2,14 @@
 
 ## Status
 
-Accepted on 2026-09-01. Supersedes
-`2026-08-29-codex-package-owned-mcp.md` for ChatGPT/Codex packaging.
+Superseded on 2026-09-01 by the incident RCA and the restored
+`2026-08-29-codex-package-owned-mcp.md` contract.
+
+The implementation embedded an `asdk_app_*` public-submission draft ID where a
+private developer-mode connection would require a separately registered
+connection. The signed-in Codex resolver returned `Connector not found`, and
+the replacement Platform draft remained absent from the callable directory.
+This made the package account-dependent and prevented BOS tool exposure.
 
 ## Decision
 

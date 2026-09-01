@@ -4,7 +4,7 @@
 - **Objective:** Replace the client-side BOS broker with native remote MCP
   configuration and produce an OS-neutral release package.
 - **Controlling sources:** `Vault/docs/architecture.md`,
-  `Vault/docs/CONSTITUTION.md`, `docs/DESIGN.md`
+  `Vault/docs/CONSTITUTION.md`, `Vault/docs/DESIGN.md`
 
 ## Evidence reviewed
 

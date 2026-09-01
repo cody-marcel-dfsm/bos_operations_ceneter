@@ -29,19 +29,17 @@ MCP context and read tools strengthen verification when available.
 8. Preserve unrelated plugins and connections during repair. Escalations carry
    only sanitized client, package, stage, error, attempted-action, expected, and
    observed evidence.
-9. Treat a missing Codex plugin-page **Login**, **Connect**, or **Authenticate**
-   action as **Register**. The required registered app declaration renders that
-   control independently of runtime MCP responses. Repair and reload the root
-   package binding while preserving the request. Treat MCP-startup
-   `reauthenticationRequired` as **Sign in** only after the display binding is
-   present. The user activates the native control and completes consent; the
+9. Treat a missing Codex **Login**, **Connect**, or **Authenticate** action
+   after the package-owned `.mcp.json` loads as **Register**. Repair and reload
+   the root package binding while preserving the request. Treat MCP-startup
+   `reauthenticationRequired` as **Sign in**. The user activates the native
+   control and completes consent; the
    agent refreshes tools and context and resumes. Generic app permissions and
    CLI login are outside the MCP OAuth recovery path.
 10. When a user explicitly requests complete local removal, use the
    repository-owned all-client uninstaller. Inspect its identity-bounded dry
-   run, require exact destructive authorization, automatically delete the
-   retired developer-owned **Created by you** account app through the authenticated
-   ChatGPT connector resource before removing local state, delete no unrelated client or source
+   run, require exact destructive authorization, remove only recognized retired
+   BOS app cache identities before removing local state, delete no unrelated client or source
    state, create no backup, verify account, registry, and filesystem absence,
    and refresh the authenticated account catalog. When ChatGPT/Codex Desktop is
    running, schedule a forced restart after reporting success so stale process
