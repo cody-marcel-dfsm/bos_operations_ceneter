@@ -32,7 +32,7 @@ resource's protected-resource challenge separately identifies a signed-out
 runtime connection and activates OAuth after the user selects the action. The
 user completes consent, and the agent refreshes tools and resumes the request.
 
-Current desktop marketplace release: `0.4.66`. If `0.4.65` is installed,
+Current desktop marketplace release: `0.4.67`. If `0.4.66` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
