@@ -62,3 +62,25 @@ test("Codex Login display binding remains independent from server OAuth discover
   ));
   assert.equal(runtime.mcpServers.bos.url, bosResourceUrl);
 });
+
+test("Codex Login release acceptance includes a version-matched GPT UI screenshot", async () => {
+  const product = JSON.parse(await readFile(
+    join(root, "products", "bos", "product.json"),
+    "utf8"
+  ));
+  const evidencePath = join(
+    root,
+    "Vault",
+    "evidence",
+    "codex-login",
+    `${product.version}-connect-button.png`
+  );
+  const evidence = await readFile(evidencePath);
+
+  assert(evidence.length > 1024, "Login screenshot evidence is unexpectedly small");
+  assert.deepEqual(
+    [...evidence.subarray(0, 8)],
+    [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+    "Login acceptance evidence must be a PNG screenshot"
+  );
+});
