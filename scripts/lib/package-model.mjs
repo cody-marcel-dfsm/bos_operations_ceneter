@@ -533,7 +533,8 @@ export function codexAppManifest(product) {
   return {
     apps: {
       [product.name]: {
-        id: product.codex_app_id
+        id: product.codex_app_id,
+        required: true
       }
     }
   };

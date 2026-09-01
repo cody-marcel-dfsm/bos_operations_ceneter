@@ -179,6 +179,20 @@ test("Codex OAuth installation rejects a mismatched registered app", async () =>
   );
 });
 
+test("Codex OAuth installation rejects an optional registered app", async () => {
+  const home = await temporaryHome();
+  await applyInstallationRaw({ home, product: "bos" });
+  const appPath = join(installedProduct(home, "bos"), ".app.json");
+  const app = JSON.parse(await readFile(appPath, "utf8"));
+  delete app.apps.bos.required;
+  await chmod(appPath, 0o644);
+  await writeFile(appPath, JSON.stringify(app));
+  await assert.rejects(
+    verifyInstallationRaw({ home, product: "bos" }),
+    /Packaged Codex app binding is invalid/
+  );
+});
+
 test("disabled products are pruned without touching active product bindings", async () => {
   const home = await temporaryHome();
   const disabledRoot = join(home, "plugins", "video-ads");
@@ -726,7 +740,7 @@ test("unmanaged direct-MCP package migrates to the registered BOS app binding", 
   assert.equal(after.state, "managed-current");
   await assert.rejects(access(join(target, ".mcp.json")));
   const app = JSON.parse(await readFile(join(target, ".app.json"), "utf8"));
-  assert.deepEqual(app.apps.bos, { id: codexAppId });
+  assert.deepEqual(app.apps.bos, { id: codexAppId, required: true });
 });
 
 test("subservice package installation removes an additional direct MCP file", async () => {

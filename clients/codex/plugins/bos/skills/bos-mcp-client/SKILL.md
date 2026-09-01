@@ -55,7 +55,9 @@ stateful mutation workflow.
   BOS plugin and runtime binding immediately. Repair or reinstall BOS and
   restore its declared authorization connection. For Codex, verify the root
   BOS plugin declares `apps: "./.app.json"`, the file contains its one
-  registered BOS app, and no `.mcp.json` shadows that binding. For Claude,
+  registered BOS app with `required: true`, and no `.mcp.json` shadows that
+  binding. Treat a missing or false `required` value as a package
+  display-binding defect even when the app ID is present. For Claude,
   verify the BOS package's
   account-connector metadata and the matching Web connector under
   **Customize → Connectors**, then use its persistent **Connect** action. When a

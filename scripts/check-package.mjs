@@ -272,7 +272,8 @@ async function validateProducts() {
             entries.length !== 1 ||
             name !== manifest.name ||
             app?.id !== manifest.codex_app_id ||
-            Object.keys(app ?? {}).length !== 1
+            app?.required !== true ||
+            Object.keys(app ?? {}).length !== 2
           ) {
             failures.push(`Generated Codex app declaration drift: ${appPath}`);
           }
