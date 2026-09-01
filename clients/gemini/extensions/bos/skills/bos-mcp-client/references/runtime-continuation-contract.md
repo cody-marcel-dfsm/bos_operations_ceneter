@@ -9,6 +9,8 @@ Refresh the callable manifest immediately after:
 
 - initial connection or task continuation;
 - OAuth connection or reconnection;
+- Codex MCP-startup `reauthenticationRequired` recovery through the native
+  authentication action or package-declared `codex mcp login` fallback;
 - OAuth `invalid_client` registration replacement and restarted authorization;
 - actor permission, delegated-role, or plugin execution-role change;
 - plugin install, update, enablement, or disablement;
@@ -53,3 +55,9 @@ same content hash, audience version, and send action.
 If any approved input changed during recovery, invalidate the affected
 approval and present the new exact preview. Reconcile every uncertain mutation
 by operation identity or idempotency key before retrying.
+
+On Codex, a registered root BOS MCP server with no visible **Connect** action is
+still the same connection. Resolve its server name only from the root package's
+`.mcp.json`, invoke `codex mcp login <server-name>` from the active request,
+wait for direct user consent, then refresh and resume. Generic app permissions
+do not represent or repair this OAuth state.

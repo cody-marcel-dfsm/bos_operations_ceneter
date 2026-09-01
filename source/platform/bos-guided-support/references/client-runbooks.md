@@ -60,9 +60,16 @@ installed subservice plugin and avoid creating another BOS connection.
    resource; subservice plugins carry no additional BOS MCP binding.
 3. Start a new task after install or update when the existing task cannot see
    the plugin.
-4. Select **Connect** or **Sign in** for BOS and complete BOS consent once in
-   the host flow.
-5. Refresh tools, resolve BOS context, and run one bounded read.
+4. Complete BOS consent from the host's **Connect**, **Sign in**, or
+   **Authenticate** action when it is present. When Codex reports
+   `reauthenticationRequired` and the registered server row has no
+   **Connect** action, keep the request active, read the exact server name from
+   the root package-owned `.mcp.json`, and invoke
+   `codex mcp login <server-name>` from the local terminal. The agent launches
+   this recovery; it does not send the customer away to run the command or use
+   generic app permissions.
+5. After browser consent succeeds, refresh the MCP session and callable tools,
+   resolve BOS context, run one bounded read, and resume the original request.
 
 Official source:
 `https://developers.openai.com/plugins/build/plugins`

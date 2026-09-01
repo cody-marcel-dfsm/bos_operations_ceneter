@@ -25,10 +25,14 @@ authorization remains a separate BOS-hosted workflow.
 ## Install
 
 The private Git marketplace is the normal pre-publication installation and
-update channel. Installing a plugin grants no organization access. Select
-**Connect** or **Sign in** when the host presents it, then complete BOS consent.
+update channel. Installing a plugin grants no organization access. Complete BOS
+consent when the host presents **Connect**, **Sign in**, or **Authenticate**.
+When Codex reports OAuth reauthentication and its plugin page has no connection
+button, ask Codex to authenticate BOS in the active task. Codex resolves the
+package-declared MCP server, launches its supported OAuth login, refreshes tools,
+and resumes the request.
 
-Current desktop marketplace release: `0.4.61`. If `0.4.60` is installed,
+Current desktop marketplace release: `0.4.62`. If `0.4.61` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -46,8 +50,10 @@ Open a new Codex task and paste:
 > required to load the plugin, and verify one authenticated Education Operation Center
 > read. Do not request or configure a BOS API key, environment variable,
 > secret-manager name, or installed application ID. If authorization is
-> incomplete, report `authentication_required`; do not generate an
-> unavailable-data report.
+> incomplete, activate BOS authentication in this request, wait for browser
+> consent, refresh tools, and resume. Treat `reauthenticationRequired` as sign-in
+> recovery even when the plugin page has no Connect button. Do not generate an
+> unavailable-data report or use generic app permissions for MCP OAuth.
 
 For the Plugins settings form, enter the repository URL above, use `main` as
 the Git ref, and leave **Sparse paths** empty. The repository-root
@@ -289,8 +295,12 @@ codex plugin marketplace add ./clients/codex
 ```
 
 Install **BOS** and **Education Operation Center** from the ChatGPT Desktop Plugins
-Directory. Confirm that BOS shows **Connect**, complete BOS OAuth once, and test
-Education Operation Center in a new task. After source changes,
+Directory. Complete BOS OAuth from the native authentication prompt. When the
+registered **Platform** server has no **Connect** action and Codex reports
+`reauthenticationRequired`, resolve its exact package-declared server name and
+run `codex mcp login <server-name>` from the active Codex request, complete the
+browser consent, refresh tools, and resume. Then test Education Operation Center
+in a new task. After source changes,
 rebuild the packages, update or reinstall the plugin, and use another new task
 so the managed cache cannot hide stale output. Run
 `npm run install:verify:codex-runtime` after reopening Codex. Use
