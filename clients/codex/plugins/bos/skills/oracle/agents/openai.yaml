@@ -1,4 +1,0 @@
-interface:
-  display_name: "BOS Oracle"
-  short_description: "Ground BOS architecture and reviews in the project Vault"
-  default_prompt: "Use $oracle to answer this BOS architecture question or review this package change against the project Vault."
