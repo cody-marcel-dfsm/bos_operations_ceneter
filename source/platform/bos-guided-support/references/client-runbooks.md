@@ -61,13 +61,12 @@ installed subservice plugin and avoid creating another BOS connection.
 3. Start a new task after install or update when the existing task cannot see
    the plugin.
 4. Complete BOS consent from the host's **Connect**, **Sign in**, or
-   **Authenticate** action when it is present. When Codex reports
-   `reauthenticationRequired` and the registered server row has no
-   **Connect** action, keep the request active, read the exact server name from
-   the root package-owned `.mcp.json`, and invoke
-   `codex mcp login <server-name>` from the local terminal. The agent launches
-   this recovery; it does not send the customer away to run the command or use
-   generic app permissions.
+   **Authenticate** action. Codex renders this action after the BOS MCP resource
+   returns an unauthenticated HTTP 401 protected-resource challenge. When
+   Codex reports `reauthenticationRequired` and the server row has no native
+   authentication action, keep the request active and report an
+   authentication-activation defect. The agent never invokes CLI login or
+   launches authentication for the customer.
 5. After browser consent succeeds, refresh the MCP session and callable tools,
    resolve BOS context, run one bounded read, and resume the original request.
 
