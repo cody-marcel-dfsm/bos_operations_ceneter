@@ -1,9 +1,93 @@
 import { inspectOAuthAuthorizeTarget } from "./single-bos-contract.mjs";
 
-const CANONICAL_RESOURCE_URL = "https://dfsm.ai/mcp/apps/bos/platform";
+export const CANONICAL_RESOURCE_URL = "https://dfsm.ai/mcp/apps/bos/platform";
+export const CANONICAL_PROTECTED_RESOURCE_METADATA_URL =
+  "https://dfsm.ai/.well-known/oauth-protected-resource/mcp/apps/bos/platform";
+export const CANONICAL_RESOURCE_CHALLENGE =
+  `Bearer resource_metadata="${CANONICAL_PROTECTED_RESOURCE_METADATA_URL}", scope="mcp:tools"`;
+
+export function expectedBosResourceChallenge(resourceUrl) {
+  const resource = new URL(resourceUrl);
+  const metadata = new URL(
+    `/.well-known/oauth-protected-resource${resource.pathname}`,
+    resource.origin
+  );
+  return `Bearer resource_metadata="${metadata.href}", scope="mcp:tools"`;
+}
 
 function finding(code, message) {
   return { code, path: "oauth-authorize", message };
+}
+
+function discoveryFinding(code, message) {
+  return { code, path: "mcp-resource-get", message };
+}
+
+export async function probeBosOAuthDiscovery({
+  resourceUrl = CANONICAL_RESOURCE_URL,
+  fetchImpl = fetch
+} = {}) {
+  let expectedChallenge;
+  try {
+    expectedChallenge = expectedBosResourceChallenge(resourceUrl);
+  } catch (error) {
+    return discoveryResult([discoveryFinding(
+      "oauth_resource_url",
+      `BOS protected-resource URL is invalid: ${error.message}`
+    )], resourceUrl);
+  }
+
+  let response;
+  try {
+    response = await fetchImpl(resourceUrl, {
+      method: "GET",
+      redirect: "manual",
+      headers: { accept: "application/json" }
+    });
+  } catch (error) {
+    return discoveryResult([discoveryFinding(
+      "oauth_resource_request",
+      `BOS protected-resource discovery failed: ${error.message}`
+    )], resourceUrl);
+  }
+
+  const violations = [];
+  if (response.status !== 401) {
+    violations.push(discoveryFinding(
+      "oauth_resource_status",
+      `Unauthenticated BOS resource discovery must return HTTP 401; found HTTP ${response.status}.`
+    ));
+  }
+
+  const challenge = response.headers.get("www-authenticate");
+  if (challenge !== expectedChallenge) {
+    violations.push(discoveryFinding(
+      "oauth_resource_challenge",
+      `BOS resource discovery must return the canonical WWW-Authenticate challenge; found ${challenge ?? "no challenge"}.`
+    ));
+  }
+
+  let errorCode = null;
+  try {
+    const payload = await response.json();
+    errorCode = payload?.detail?.error ?? null;
+  } catch {
+    // The contract violation below reports the missing structured error.
+  }
+  if (errorCode !== "authentication_required") {
+    violations.push(discoveryFinding(
+      "oauth_resource_error",
+      `BOS resource discovery must identify authentication_required; found ${errorCode ?? "no structured error"}.`
+    ));
+  }
+
+  return discoveryResult(
+    violations,
+    resourceUrl,
+    response.status,
+    challenge,
+    errorCode
+  );
 }
 
 export function inspectGoogleAccountSelectorRedirect(location) {
@@ -81,6 +165,25 @@ function result(violations, httpStatus = null) {
     status: violations.length ? "failed" : "passed",
     resource_url: CANONICAL_RESOURCE_URL,
     http_status: httpStatus,
+    violations
+  };
+}
+
+function discoveryResult(
+  violations,
+  resourceUrl,
+  httpStatus = null,
+  challenge = null,
+  errorCode = null
+) {
+  return {
+    schema_version: "1",
+    contract_id: "bos.oauth-protected-resource-discovery",
+    status: violations.length ? "failed" : "passed",
+    resource_url: resourceUrl,
+    http_status: httpStatus,
+    www_authenticate: challenge,
+    error: errorCode,
     violations
   };
 }

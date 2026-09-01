@@ -2,7 +2,7 @@
 
 Status: canonical
 Owner: BOS platform
-Date: 2026-08-28
+Date: 2026-09-01
 
 ## Objective
 
@@ -34,13 +34,25 @@ server from canonical authenticated state.
   authorization once, refreshes tools and context, and resumes the preserved
   request. Registration recovery never creates a subservice connection.
 - A Codex MCP-startup `reauthenticationRequired` response identifies a missing
-  or unusable grant for the already registered root resource. The active
-  request invokes the host authentication action when present. When the Codex
-  plugin page exposes no **Connect** action, the agent resolves the exact server
-  name from the package-owned `.mcp.json`, invokes
-  `codex mcp login <server-name>`, waits for direct user consent, refreshes the
-  same MCP connection and callable manifest, validates context, and resumes.
-  Generic app permissions never substitute for MCP OAuth recovery.
+  or unusable grant for the already registered root resource. The resource's
+  unauthenticated discovery response returns HTTP 401 with the canonical
+  protected-resource `WWW-Authenticate` challenge so Codex classifies the
+  connection as `notLoggedIn` and renders its native **Authenticate** action.
+  The user selects that action and completes consent; the client then refreshes
+  the same MCP connection and callable manifest, validates context, and resumes.
+  A missing native action is an authentication-activation defect. Generic app
+  permissions, CLI login, and agent-launched browser authentication never
+  substitute for the native MCP OAuth lifecycle.
+
+## Repository handoff boundary
+
+BOS Operations Center owns the portable client contract, skills, generated
+packages, and client-owned acceptance probes. It never edits, commits, pushes,
+merges, or deploys the owning BOS server repository or infrastructure. A server
+requirement leaves this repository as exactly one continuous copyable Markdown
+prompt containing the protocol contract, deployment acceptance criteria, and
+the complete client-owned acceptance suite. The server-side repository owns
+implementation, review, merge, and deployment.
 
 ## Server evaluation contract
 
@@ -114,10 +126,13 @@ login or BOS MCP connection.
 15. Copilot readiness compares the selected product's repository MCP and skill
     files directly against generated output. The Copilot repository adapter has
     no BOS package-cache state.
-16. Codex reauthentication remains recoverable when its plugin detail page has
-    no **Connect** action: the active request invokes the exact package-declared
-    MCP login, refreshes tools and context after consent, and resumes without
-    asking the user to run a command or resubmit the request.
+16. Codex reauthentication exposes the native **Authenticate** action after an
+    unauthenticated resource GET returns HTTP 401, the exact protected-resource
+    `WWW-Authenticate` challenge, and `authentication_required`. An authenticated
+    resource GET remains HTTP 405 with `Allow: POST`. The client never invokes
+    CLI login or launches authentication for the user.
+17. Every server release that changes MCP authentication passes the complete
+    client-owned Operations Center acceptance suite before release acceptance.
 
 ## Portable contract verification
 
@@ -128,6 +143,23 @@ process exit code. A passing result proves that BOS owns the only client
 connection artifacts, every subservice remains transport-free, canonical and
 generated skills contain no subservice connection identifiers, and every
 client points to the immutable BOS root resource.
+
+The complete client-owned server acceptance suite is:
+
+```bash
+npm run contract:check
+npm run contract:oauth-discovery-live -- \
+  --resource-url "$BOS_MCP_RESOURCE_URL" \
+  --format json
+npm run contract:oauth-live -- \
+  --authorize-url "$BOS_OAUTH_AUTHORIZE_URL" \
+  --format json
+```
+
+The signed-out discovery probe requires HTTP 401, the exact canonical
+`WWW-Authenticate` challenge, `authentication_required`, and no violations.
+The authorization probe requires a valid provider redirect for the same
+immutable resource with explicit Google account selection.
 
 Marketplace and host install smoke tests pass the captured OAuth authorization
 URL to the same verifier:

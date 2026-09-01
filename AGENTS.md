@@ -15,6 +15,25 @@ Knowledge root: `Vault/`
   installation dependency chain. Consult them only when the request explicitly
   concerns that application's server deployment or runtime implementation.
 
+## Repository execution boundary
+
+- This checkout owns BOS package contracts, skills, generated client packages,
+  release metadata, and customer installation guidance.
+- Never edit, commit, push, merge, or deploy BOS server code or infrastructure
+  from work performed in this checkout. Do not create or use a sibling server
+  worktree as part of an Operations Center task.
+- When a client or package change depends on server behavior, stop at this
+  repository boundary and return a paste-ready prompt for an agent operating in
+  the owning server repository. Include the observed evidence, required
+  invariant, deployment scope, and post-deployment verification. Make the
+  client-owned acceptance suite mandatory in that prompt: `npm run
+  contract:check`, `npm run contract:oauth-discovery-live -- --resource-url
+  "$BOS_MCP_RESOURCE_URL" --format json`, and `npm run contract:oauth-live --
+  --authorize-url "$BOS_OAUTH_AUTHORIZE_URL" --format json`. The server-side
+  agent owns implementation and release choices. Return exactly one continuous
+  Markdown prompt as the entire handoff response. Keep the contract, commands,
+  and acceptance criteria together in that single copyable prompt.
+
 ## Vault knowledge contract
 
 - Store authored architecture, decisions, specifications, plans, review records,

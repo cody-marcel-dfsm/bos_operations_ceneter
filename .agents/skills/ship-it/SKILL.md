@@ -7,6 +7,27 @@ description: Create the next repository release version, review and validate all
 
 Complete the current repository's release loop. A successful invocation creates a new version even when the pending source change did not edit version metadata. The invocation itself authorizes the repository-native version bump, generated package updates, staging all current changes, one commit, creation of a temporary release branch and pull request, merging that pull request into the default branch, returning the workspace to the updated default branch, and deleting the merged local release branch. A merged version-bump pull request is the publication event used by Claude organization marketplace GitHub sync when an owner has enabled **Sync automatically**. Independently added Claude marketplaces and official marketplace submissions have separate host-owned publication lifecycles. Do not request redundant confirmation.
 
+## Repository boundary
+
+This skill ships BOS Operations Center only. It never edits, commits, pushes,
+merges, or deploys a BOS server repository or server infrastructure, and it
+never creates or uses a sibling server worktree. A request to "ship it" grants
+release authority only for this repository.
+
+When the release depends on a server change, complete only the independently
+valid Operations Center work. Report the server dependency separately and
+return a paste-ready prompt for an agent operating in the owning server
+repository. Include sanitized failure evidence, the required protocol or
+runtime invariant, deployment scope, and post-deployment verification. Require
+the server release to pass the client-owned Operations Center acceptance suite:
+`npm run contract:check`, `npm run contract:oauth-discovery-live --
+--resource-url "$BOS_MCP_RESOURCE_URL" --format json`, and `npm run
+contract:oauth-live -- --authorize-url "$BOS_OAUTH_AUTHORIZE_URL" --format
+json`. Leave implementation, review, merge, and deployment decisions to that
+server-side agent. Return exactly one continuous Markdown prompt as the entire
+server handoff response. Keep every contract requirement, command, and
+acceptance criterion in that single copyable prompt.
+
 ## Preflight
 
 1. Resolve the repository root, current branch, default branch, upstream, remotes, and complete status, including staged, unstaged, untracked, renamed, and deleted files.

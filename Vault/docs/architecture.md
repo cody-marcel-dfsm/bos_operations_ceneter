@@ -20,6 +20,10 @@ release system for portable BOS skills and native remote MCP client adapters.
   credentials, and business mutations.
 - Client packages contain instructions and transports. They never contain
   customer credentials, reusable authority, or customer data.
+- Operations Center work stops at this repository boundary. Server requirements
+  leave as one continuous copyable contract prompt containing the client-owned
+  acceptance suite; implementation, review, merge, infrastructure, and
+  deployment remain in the owning server repository.
 
 ## Runtime invariants
 

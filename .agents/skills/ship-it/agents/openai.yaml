@@ -1,4 +1,4 @@
 interface:
   display_name: "Ship It"
   short_description: "Version, validate, package, commit, and push a release"
-  default_prompt: "Use $ship-it to create the next release version, review and validate all current work, regenerate client packages without archives or live-token gates, commit everything, and push it."
+  default_prompt: "Use $ship-it to release the current BOS Operations Center repository only: create the next version, review and validate all current work, regenerate client packages without archives or live-token gates, commit everything, and publish through its pull-request workflow. Return a handoff prompt for any required server-repository work."
