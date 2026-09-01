@@ -576,6 +576,10 @@ test("Codex reauthentication exposes native user-controlled authentication", asy
   assert.match(client, /notLoggedIn[\s\S]*render \*\*Authenticate\*\*/i);
   assert.match(client, /Do not invoke a CLI login/i);
   assert.match(client, /Do not use\s+generic app-permission tools/i);
+  assert.match(
+    client,
+    /From BOS Operations Center, never enter[\s\S]*paste-ready prompt for a server-side\s+agent/i
+  );
   assert.match(client, /refresh[\s\S]*`bos_get_context`[\s\S]*resume/i);
   assert.match(
     stateMachine,
@@ -596,6 +600,61 @@ test("Codex reauthentication exposes native user-controlled authentication", asy
     assert.doesNotMatch(generated, /codex mcp login/i, path);
     assert.match(generated, /Do not use\s+generic app-permission tools/i, path);
   }
+});
+
+test("implementation skill hands server work to the owning repository", async () => {
+  const implementation = await readFile(
+    `${root}/source/platform/implementation/SKILL.md`,
+    "utf8"
+  );
+
+  assert.match(implementation, /Repository ownership boundary/i);
+  assert.match(
+    implementation,
+    /Never enter or mutate a BOS server repository from an Operations Center task/i
+  );
+  assert.match(implementation, /paste-ready prompt for an agent running in the owning\s+server repository/i);
+  assert.match(implementation, /server-side agent\s+independently\s+determines/i);
+  assert.match(implementation, /npm run contract:check/i);
+  assert.match(implementation, /npm run\s+contract:oauth-discovery-live/i);
+  assert.match(implementation, /npm run contract:oauth-live/i);
+  assert.match(
+    implementation,
+    /Return exactly one continuous\s+Markdown prompt as the entire server handoff response/i
+  );
+});
+
+test("repository release skill cannot cross into the BOS server repository", async () => {
+  const shipIt = await readFile(
+    `${root}/.agents/skills/ship-it/SKILL.md`,
+    "utf8"
+  );
+  const repositoryInstructions = await readFile(`${root}/AGENTS.md`, "utf8");
+
+  assert.match(shipIt, /ships BOS Operations Center only/i);
+  assert.match(shipIt, /never creates or uses a sibling server worktree/i);
+  assert.match(shipIt, /paste-ready prompt for an agent operating in the owning server\s+repository/i);
+  assert.match(repositoryInstructions, /Never edit, commit, push, merge, or deploy BOS server code/i);
+  assert.match(repositoryInstructions, /paste-ready prompt for an agent operating in\s+the owning server repository/i);
+  assert.match(shipIt, /client-owned Operations Center acceptance suite/i);
+  assert.match(shipIt, /contract:oauth-discovery-live/i);
+  assert.match(shipIt, /exactly one continuous Markdown prompt/i);
+  assert.match(repositoryInstructions, /contract:oauth-discovery-live/i);
+  assert.match(repositoryInstructions, /exactly one continuous\s+Markdown prompt/i);
+});
+
+test("canonical single-connection knowledge requires native auth and client-owned server AC", async () => {
+  const specification = await readFile(
+    `${root}/Vault/specs/single-bos-mcp-connection.md`,
+    "utf8"
+  );
+
+  assert.match(specification, /HTTP 401[\s\S]*notLoggedIn[\s\S]*native \*\*Authenticate\*\*/i);
+  assert.match(specification, /exactly one continuous copyable Markdown\s+prompt/i);
+  assert.match(specification, /npm run contract:check/i);
+  assert.match(specification, /contract:oauth-discovery-live/i);
+  assert.match(specification, /contract:oauth-live/i);
+  assert.doesNotMatch(specification, /codex mcp login/i);
 });
 
 test("guided support classifies OAuth invalid_client as registration recovery", async () => {

@@ -5,6 +5,31 @@ description: Implement application-neutral Business Operating System platform ch
 
 # BOS Implementation
 
+## Repository ownership boundary
+
+When this skill runs from BOS Operations Center, implement only package-owned
+surfaces: canonical skills and documentation, product and plugin manifests,
+client generators and generated packages, release metadata, and package tests.
+
+Never enter or mutate a BOS server repository from an Operations Center task.
+Do not create a sibling server worktree, edit backend routes, commit or push a
+server branch, open or merge a server pull request, operate Cloud Run or GCP,
+change a server database, or deploy server code.
+
+If the requested behavior requires server implementation, preserve the package
+finding and return a paste-ready prompt for an agent running in the owning
+server repository. Give that agent the sanitized evidence, required invariant,
+relevant protocol contract, deployment scope, and observable post-deployment
+verification. Make the client-owned Operations Center acceptance suite part of
+the server change's acceptance criteria: `npm run contract:check`, `npm run
+contract:oauth-discovery-live -- --resource-url "$BOS_MCP_RESOURCE_URL"
+--format json`, and `npm run contract:oauth-live -- --authorize-url
+"$BOS_OAUTH_AUTHORIZE_URL" --format json`. The server-side agent independently
+determines the implementation and release path. Return exactly one continuous
+Markdown prompt as the entire server handoff response. Keep all protocol
+requirements, client-owned commands, and acceptance criteria in that single
+copyable prompt.
+
 ## Workflow
 
 1. Read the controlling architecture and locate the owning platform component.
