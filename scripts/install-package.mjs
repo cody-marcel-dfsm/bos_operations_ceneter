@@ -133,7 +133,8 @@ async function configureCodexBosMcp(_options, paths) {
   const [appName, app] = appEntries[0] ?? [];
   const expectedUrl = "https://dfsm.ai/mcp/apps/bos/platform";
   if (appEntries.length !== 1 || appName !== metadata.name ||
-      app?.id !== metadata.codex_app_id || Object.keys(app ?? {}).length !== 1 ||
+      app?.id !== metadata.codex_app_id || app?.required !== true ||
+      Object.keys(app ?? {}).length !== 2 ||
       !/^asdk_app_[a-z0-9]+$/.test(app?.id ?? "") ||
       "credential_env_var" in metadata) {
     throw new Error("Packaged Codex app binding is invalid");

@@ -1,7 +1,8 @@
 {
   "apps": {
     "bos": {
-      "id": "asdk_app_6a932992592081919cdc88c60e4ff2dd"
+      "id": "asdk_app_6a932992592081919cdc88c60e4ff2dd",
+      "required": true
     }
   }
 }

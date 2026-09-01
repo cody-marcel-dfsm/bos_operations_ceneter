@@ -134,6 +134,13 @@ function validateContractShape(contract, contractPath) {
   if (contract.schema_version !== "1") {
     findings.push(finding("contract_schema", contractPath, "schema_version must be 1."));
   }
+  if (contract.codex_app_required !== true) {
+    findings.push(finding(
+      "contract_shape",
+      contractPath,
+      "codex_app_required must be true."
+    ));
+  }
   for (const field of requiredStrings) {
     if (typeof contract[field] !== "string" || !contract[field]) {
       findings.push(finding("contract_shape", contractPath, `${field} must be a non-empty string.`));
@@ -249,12 +256,13 @@ export async function verifySingleBosContract({
     if (
       Object.keys(app.apps ?? {}).length !== 1 ||
       app.apps?.bos?.id !== contract.codex_app_id ||
-      Object.keys(app.apps?.bos ?? {}).length !== 1
+      app.apps?.bos?.required !== contract.codex_app_required ||
+      Object.keys(app.apps?.bos ?? {}).length !== 2
     ) {
       violations.push(finding(
         "codex_app_binding",
         relative(root, appPath),
-        "Codex must bind exactly one BOS registered app."
+        "Codex must bind exactly one required BOS registered app."
       ));
     }
   }
