@@ -19,6 +19,8 @@ function parseArgs(argv) {
     const argument = argv[index];
     if (argument === "--home") options.home = resolve(argv[++index]);
     else if (argument === "--catalog") options.catalogPath = resolve(argv[++index]);
+    else if (argument === "--app-directory") options.appDirectoryPath = resolve(argv[++index]);
+    else if (argument === "--desktop-log-root") options.desktopLogRoot = resolve(argv[++index]);
     else if (argument === "--json") options.json = true;
     else throw new Error(`Unknown argument: ${argument}`);
   }
@@ -46,6 +48,33 @@ async function newestJsonContaining(directory, needle) {
   }
   candidates.sort((left, right) => right.modified - left.modified);
   return candidates[0]?.path ?? null;
+}
+
+async function filesBelow(directory, suffix, depth = 0) {
+  if (depth > 4 || !(await pathExists(directory))) return [];
+  const files = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...await filesBelow(path, suffix, depth + 1));
+    else if (entry.isFile() && entry.name.endsWith(suffix)) files.push(path);
+  }
+  return files;
+}
+
+async function newestLineContaining(directory, suffix, needle) {
+  const candidates = [];
+  for (const path of await filesBelow(directory, suffix)) {
+    const content = await readFile(path, "utf8");
+    const lines = content.split(/\r?\n/).filter((line) => line.includes(needle));
+    if (lines.length === 0) continue;
+    candidates.push({
+      path,
+      line: lines.at(-1),
+      observed: Date.parse(lines.at(-1).slice(0, 24)) || (await stat(path)).mtimeMs
+    });
+  }
+  candidates.sort((left, right) => right.observed - left.observed);
+  return candidates[0] ?? null;
 }
 
 async function installedCacheVersions(home, marketplace, product) {
@@ -94,10 +123,58 @@ async function inspectInstalledAppBinding(home, marketplace, product, versions, 
 function publicToolNames(catalog) {
   return new Set(
     (catalog?.tools ?? [])
-      .map((tool) => tool?.name)
+      .map((entry) => entry?.name ?? entry?.tool?.name)
       .filter((name) => typeof name === "string")
       .map((name) => name.split(".").at(-1))
   );
+}
+
+async function inspectRegisteredAppResolution(options, appId, catalogPath, catalogIsComplete) {
+  const directoryPath = options.appDirectoryPath ?? await newestJsonContaining(
+    join(options.home, ".codex", "cache", "codex_app_directory"),
+    "\"connectors\""
+  );
+  const directory = directoryPath ? await readJson(directoryPath) : null;
+  const directoryEntry = (directory?.connectors ?? []).find((entry) => entry?.id === appId);
+  const successObserved = Math.max(
+    directoryEntry ? (await stat(directoryPath)).mtimeMs : 0,
+    catalogIsComplete ? (await stat(catalogPath)).mtimeMs : 0
+  );
+  const logRoot = options.desktopLogRoot ?? join(
+    options.home,
+    "Library",
+    "Logs",
+    "com.openai.codex"
+  );
+  const logEvidence = await newestLineContaining(
+    logRoot,
+    ".log",
+    `/aip/connectors/${appId}`
+  );
+  const unavailable = Boolean(
+    logEvidence?.line.includes("status=404") &&
+    logEvidence.line.includes("Connector not found") &&
+    logEvidence.observed >= successObserved
+  );
+  const state = unavailable
+    ? "unavailable"
+    : directoryEntry
+      ? "directory-listed"
+      : catalogIsComplete
+        ? "callable"
+        : "unverified";
+  return {
+    app_id: appId,
+    state,
+    directory: {
+      path: directoryPath,
+      state: directoryEntry ? "listed" : directoryPath ? "not-listed" : "missing"
+    },
+    resolver_log: {
+      path: logEvidence?.path ?? null,
+      state: unavailable ? "connector-not-found" : logEvidence ? "observed" : "missing"
+    }
+  };
 }
 
 export async function inspectCodexRuntime(rawOptions = {}) {
@@ -165,6 +242,12 @@ export async function inspectCodexRuntime(rawOptions = {}) {
     (product) => product.runtime_verification_tools ?? []
   ))].sort();
   const missingTools = requiredTools.filter((tool) => !discovered.has(tool));
+  const appResolution = await inspectRegisteredAppResolution(
+    options,
+    bos.codex_app_id,
+    catalogPath,
+    Boolean(catalogPath) && missingTools.length === 0
+  );
   const packageFailures = activeProducts.flatMap((product) => {
     const versions = cacheVersions[product.name];
     const entry = installedProducts[product.name];
@@ -181,6 +264,9 @@ export async function inspectCodexRuntime(rawOptions = {}) {
     ...(marketplaceCurrent ? [] : [`${options.marketplace} marketplace is not registered`]),
     ...packageFailures,
     ...(appBinding.state === "current" ? [] : ["registered BOS app binding is missing or invalid"]),
+    ...(appResolution.state === "unavailable"
+      ? [`registered BOS app is unavailable to Codex: ${bos.codex_app_id}`]
+      : []),
     ...(catalogPath ? [] : ["Codex callable-tool catalog is missing"]),
     ...missingTools.map((tool) => `callable tool is missing: ${tool}`)
   ];
@@ -197,6 +283,7 @@ export async function inspectCodexRuntime(rawOptions = {}) {
     cache_versions: cacheVersions,
     package_roots: packageRoots,
     app_binding: appBinding,
+    registered_app_resolution: appResolution,
     callable_catalog: {
       path: catalogPath,
       discovered_tool_count: discovered.size,

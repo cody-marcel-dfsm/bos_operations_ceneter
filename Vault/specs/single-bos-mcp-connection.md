@@ -52,6 +52,11 @@ server from canonical authenticated state.
   A missing native action is an authentication-activation defect. Generic app
   permissions, CLI login, and agent-launched browser authentication never
   substitute for the native MCP OAuth lifecycle.
+- A token-endpoint `invalid_grant`, including `Refresh token replay detected`,
+  identifies an unusable host-held grant. The client stops refresh retries,
+  preserves the active request, obtains fresh consent through the same native
+  root BOS authentication action, refreshes tools and context, and resumes.
+  This state does not indicate missing skills or authorize another connection.
 
 ## Repository handoff boundary
 
@@ -115,9 +120,11 @@ login or BOS MCP connection.
    direct or additional MCP bindings.
 10. ChatGPT/Codex readiness jointly verifies the native plugin registry,
     marketplace registration, one current managed-cache version per active
-    product, the registered app declaration, and every product-declared
-    runtime verification tool in the callable catalog. A package cache alone
-    is not installation evidence.
+    product, the registered app declaration, host resolution evidence for its
+    exact durable app ID, and every product-declared runtime verification tool
+    in the callable catalog. An exact resolver HTTP 404 with `Connector not
+    found` fails readiness even when package files and a stale callable cache
+    are present. A package cache alone is not installation evidence.
 11. ChatGPT/Codex recovery removes only state owned by the BOS marketplace or
     immutable BOS resource URL, backs up any edited host state, reinstalls both active
     products, restarts the host, and reruns the same readiness verification.

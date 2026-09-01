@@ -32,7 +32,7 @@ resource's protected-resource challenge separately identifies a signed-out
 runtime connection and activates OAuth after the user selects the action. The
 user completes consent, and the agent refreshes tools and resumes the request.
 
-Current desktop marketplace release: `0.4.67`. If `0.4.66` is installed,
+Current desktop marketplace release: `0.4.68`. If `0.4.67` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -74,7 +74,10 @@ Center uses that connection without another MCP binding or login. Start a new
 task after installation or upgrade. A complete installation must pass
 `npm run install:verify:codex-runtime`; this checks the plugin registry,
 marketplace registration, installed package versions, registered app binding,
-and required callable tools together.
+registered-app resolver evidence, and required callable tools together. An
+exact `Connector not found` resolver response means the declared app ID is
+unavailable to the signed-in Codex account or environment; reinstalling the
+same package cannot make that external registration resolvable.
 
 If Codex reports a fresh package cache while either plugin is absent from the
 plugin registry or required Education Operation Center tools are absent, run

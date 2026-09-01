@@ -52,6 +52,13 @@ through its native **Connect**, **Sign in**, **Auth**, or **Authenticate**
 control, invoke that control and request user consent there. Preserve every
 installed subservice plugin and avoid creating another BOS connection.
 
+An OAuth token-endpoint `invalid_grant`, including `Refresh token replay
+detected`, means the existing BOS grant is unusable. Keep the registered root
+app and immutable BOS resource unchanged, stop refresh retries, and use the
+native **Connect**, **Sign in**, **Auth**, or **Authenticate** control for fresh
+consent. Refresh tools and context after consent, then resume the preserved
+request.
+
 ## ChatGPT/Codex Desktop
 
 1. Confirm **BOS** and the requested subservice plugins are installed and

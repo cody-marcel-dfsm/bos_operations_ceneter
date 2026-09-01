@@ -577,6 +577,8 @@ test("Codex reauthentication exposes native user-controlled authentication", asy
   assert.match(client, /presence does not depend on receiving an MCP response/i);
   assert.match(client, /HTTP 401[\s\S]*WWW-Authenticate[\s\S]*resource_metadata/i);
   assert.match(client, /notLoggedIn[\s\S]*complete OAuth discovery/i);
+  assert.match(client, /invalid_grant[\s\S]*Refresh token[\s\S]*replay detected/i);
+  assert.match(client, /stop the refresh retry loop[\s\S]*fresh consent/i);
   assert.match(client, /Do not\s+invoke a CLI login/i);
   assert.match(client, /Do not use\s+generic app-permission tools/i);
   assert.match(
@@ -587,6 +589,10 @@ test("Codex reauthentication exposes native user-controlled authentication", asy
   assert.match(
     stateMachine,
     /reauthenticationRequired[\s\S]*Sign in[\s\S]*never[\s\S]*unavailable tools/i
+  );
+  assert.match(
+    stateMachine,
+    /invalid_grant[\s\S]*Refresh token replay[\s\S]*Sign in[\s\S]*stop the refresh retry/i
   );
   assert.match(
     stateMachine,

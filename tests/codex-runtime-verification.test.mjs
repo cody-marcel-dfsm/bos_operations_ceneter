@@ -36,6 +36,15 @@ async function fixtureHome(toolNames) {
       _meta: { _codex_apps: { resource_uri: "https://dfsm.ai/mcp/apps/bos/platform" } }
     }))
   }));
+  const appDirectory = join(home, ".codex", "cache", "codex_app_directory", "directory.json");
+  await mkdir(join(home, ".codex", "cache", "codex_app_directory"), { recursive: true });
+  await writeFile(appDirectory, JSON.stringify({
+    schema_version: 1,
+    connectors: [{
+      id: "asdk_app_6a932992592081919cdc88c60e4ff2dd",
+      name: "Business Operating System"
+    }]
+  }));
   return { home, catalog };
 }
 
@@ -107,6 +116,25 @@ const requiredTools = [
 
 test("Codex runtime verification accepts one registered app binding and complete tool catalog", async () => {
   const { home, catalog } = await fixtureHome(requiredTools);
+  const report = await inspectCodexRuntime({
+    home,
+    catalogPath: catalog,
+    runCommand: runCommand()
+  });
+  assert.equal(report.ok, true, JSON.stringify(report.failures));
+  assert.deepEqual(report.callable_catalog.missing_tools, []);
+  assert.equal(report.registered_app_resolution.state, "directory-listed");
+});
+
+test("Codex runtime verification accepts the host's nested callable-tool cache schema", async () => {
+  const { home, catalog } = await fixtureHome([]);
+  await writeFile(catalog, JSON.stringify({
+    schema_version: 1,
+    tools: requiredTools.map((name) => ({
+      server_name: "codex_apps",
+      tool: { name: `bos_business_operating_system.${name}` }
+    }))
+  }));
   const report = await inspectCodexRuntime({
     home,
     catalogPath: catalog,
@@ -257,4 +285,52 @@ test("Codex runtime verification rejects orphan caches without installed registr
   assert.equal(report.ok, false);
   assert.match(report.failures.join("\n"), /is not installed and enabled/);
   assert.match(report.failures.join("\n"), /marketplace is not registered/);
+});
+
+test("Codex runtime verification reports the exact registered app as unavailable after a resolver 404", async () => {
+  const { home, catalog } = await fixtureHome(requiredTools);
+  const appDirectory = join(home, ".codex", "cache", "codex_app_directory", "directory.json");
+  await writeFile(appDirectory, JSON.stringify({ schema_version: 1, connectors: [] }));
+  const logRoot = join(home, "Library", "Logs", "com.openai.codex", "2026", "09", "01");
+  await mkdir(logRoot, { recursive: true });
+  await writeFile(join(logRoot, "codex-desktop.log"), [
+    "2099-09-01T19:53:57.476Z warning sa_server_request_failed",
+    "errorMessage=\"{\\\"detail\\\":\\\"Connector not found\\\"}\"",
+    "status=404",
+    "url=/aip/connectors/asdk_app_6a932992592081919cdc88c60e4ff2dd?include_actions=false"
+  ].join(" "));
+
+  const report = await inspectCodexRuntime({
+    home,
+    catalogPath: catalog,
+    runCommand: runCommand()
+  });
+  assert.equal(report.ok, false);
+  assert.equal(report.registered_app_resolution.state, "unavailable");
+  assert.equal(report.registered_app_resolution.directory.state, "not-listed");
+  assert.equal(report.registered_app_resolution.resolver_log.state, "connector-not-found");
+  assert(report.failures.includes(
+    "registered BOS app is unavailable to Codex: asdk_app_6a932992592081919cdc88c60e4ff2dd"
+  ));
+});
+
+test("Codex runtime verification does not let historical resolver failure override newer success evidence", async () => {
+  const { home, catalog } = await fixtureHome(requiredTools);
+  const logRoot = join(home, "Library", "Logs", "com.openai.codex");
+  await mkdir(logRoot, { recursive: true });
+  await writeFile(join(logRoot, "historical.log"), [
+    "2000-01-01T00:00:00.000Z warning sa_server_request_failed",
+    "errorMessage=\"{\\\"detail\\\":\\\"Connector not found\\\"}\"",
+    "status=404",
+    "url=/aip/connectors/asdk_app_6a932992592081919cdc88c60e4ff2dd?include_actions=false"
+  ].join(" "));
+
+  const report = await inspectCodexRuntime({
+    home,
+    catalogPath: catalog,
+    runCommand: runCommand()
+  });
+  assert.equal(report.ok, true, JSON.stringify(report.failures));
+  assert.equal(report.registered_app_resolution.state, "directory-listed");
+  assert.equal(report.registered_app_resolution.resolver_log.state, "observed");
 });

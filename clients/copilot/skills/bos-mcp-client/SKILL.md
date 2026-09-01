@@ -104,6 +104,13 @@ stateful mutation workflow.
   succeeds, refresh the MCP session and callable tool manifest, call
   `bos_get_context`, verify one
   bounded authenticated read, and resume the original request automatically.
+- If the token endpoint returns `invalid_grant`, including `Refresh token
+  replay detected`, classify the existing BOS grant as unusable and remain at
+  **Sign in**. Preserve the active request, stop the refresh retry loop, and use
+  the same native root BOS authentication action for fresh consent. Never
+  classify this as missing skills, generic app permissions, or a new
+  subservice connection. After consent, refresh tools and context, run the
+  bounded authenticated read, and resume the preserved request.
 - Refresh the callable tool manifest immediately after OAuth reconnection,
   permission or role changes, plugin install/update, capability enablement, or
   an explicit server capability refresh. Discard stale schemas and validate the

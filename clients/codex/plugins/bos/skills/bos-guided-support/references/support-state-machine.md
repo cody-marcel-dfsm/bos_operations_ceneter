@@ -30,6 +30,11 @@ reported stage only when later evidence contradicts it.
   authorization metadata, and restart BOS authorization once.
 - `authentication_required`, missing/expired/revoked/out-of-scope grant:
   **Sign in**.
+- OAuth token endpoint `invalid_grant`, including `Refresh token replay
+  detected`: **Sign in**. The current grant is unusable. Stop the refresh retry
+  loop, preserve the pending request, and obtain fresh consent through the
+  native root BOS authentication action before refreshing discovery and
+  resuming.
 - Codex `reauthenticationRequired` or `requires OAuth reauthentication`:
   **Sign in**. Preserve the active request and activate the exact root BOS MCP
   connection through the already visible native authentication control. The

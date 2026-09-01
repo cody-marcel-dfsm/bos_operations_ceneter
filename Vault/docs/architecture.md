@@ -116,7 +116,8 @@ release system for portable BOS skills and native remote MCP client adapters.
     registry `installPath`; Gemini CLI's native extension metadata plus copied
     package bytes; Antigravity's exact repository symlinks; Copilot's selected
     repository MCP and skill files; and Codex's registry, managed package cache,
-    registered app declaration, and callable-tool catalog. Retained inactive Claude
+    registered app declaration, exact resolver evidence, and callable-tool
+    catalog. Retained inactive Claude
     versions are informational and never satisfy installation readiness.
 12. Treat generated client packages as build outputs. The complete
     cross-platform build materializes Codex, Claude, Copilot, and Gemini clients
@@ -232,8 +233,11 @@ release system for portable BOS skills and native remote MCP client adapters.
     Codex installation acceptance is an atomic cross-layer check: the native
     registry and marketplace contain the active products, each product resolves
     to the current direct-source or managed-cache version, the registered app
-    declaration matches the durable BOS app identity, and the callable catalog contains every
-    product-declared runtime verification tool. Remediation is identity-bounded
+    declaration matches the durable BOS app identity, the host has no exact
+    resolver evidence that this identity is unavailable, and the callable catalog
+    contains every product-declared runtime verification tool. An exact
+    `Connector not found` resolver response fails readiness independently of
+    package correctness and stale cache contents. Remediation is identity-bounded
     to the BOS marketplace and immutable resource URL and backs up host state before
     removing BOS-owned catalog entries.
     The repository-owned cache reset is a filesystem-only maintenance lifecycle.
