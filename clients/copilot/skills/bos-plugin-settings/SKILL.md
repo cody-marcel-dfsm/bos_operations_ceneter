@@ -42,8 +42,8 @@ the initialization workflow.
 3. Use the returned opaque `cache_scope` and `settings_epoch` with
    `../bos-mcp-client/scripts/plugin-settings-cache.mjs`. Never derive cache
    authority from client settings or request text.
-4. On a current cache hit, answer from its confirmed snapshot and pass the
-   stored field definitions to the client's native structured-content surface.
+4. On a current cache hit, answer from its confirmed snapshot and render the
+   stored field definitions through the visible-value contract below.
 5. On a miss or stale entry, use cursor catch-up when the live tools support it;
    otherwise call `bos_get_plugin_settings` with only `context_id` and the
    server-returned plugin selector. Commit the complete validated snapshot with
@@ -65,6 +65,36 @@ field. Keep the interaction in memory: create no HTML or Markdown file, report
 file, UI bundle, renderer, localhost process, browser session, or separate UI
 service. The BOS connection remains the authenticated data and mutation
 transport; it is not the renderer.
+
+### Visible-value contract
+
+A successful read is complete only after the actual settings values are visible
+in the conversation or in a mounted interactive component. A generic tool card
+labeled **Structured output** does not count as rendering. A collapsed payload,
+raw JSON, schema, type name, or message saying that structured data is available
+also does not count. Never label the user-facing result **Structured output**.
+
+When the remote MCP App or a native component is actually mounted, show every
+field's readable label and current value inside it. Each editable value has an
+actual host control appropriate to its type, and **Apply** and **Discard** are
+clickable host actions. Merely printing those action names does not claim that
+they are controls.
+
+When an interactive component is unavailable, immediately render the complete
+snapshot in the assistant response:
+
+- Put one field on each labeled row and show its actual current value before
+  revision, source, sync time, constraints, or other metadata.
+- Render empty values as **Not configured**; booleans as **Enabled** or
+  **Disabled**; arrays as readable item lists; and objects as nested labeled
+  rows instead of raw JSON or `[object Object]`.
+- Render URLs as descriptive clickable Markdown links. Render display-safe
+  email addresses and phone numbers as `mailto:` and `tel:` links.
+- Render enums with their allowed labels, dates and times in the user's locale,
+  and weekly schedules as a seven-day hours table.
+- After the values, list only the actions currently allowed by the server. Give
+  each conversational action as a short exact request the user can send, such
+  as “Set Business Hours timezone to Etc/UTC.”
 
 ## Change
 
