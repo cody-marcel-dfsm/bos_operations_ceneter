@@ -48,11 +48,14 @@ Knowledge root: `Vault/`
 
 ## Oracle review contract
 
-- `bos:oracle` provides architecture guidance grounded in the current Vault.
+- The repository-local `.agents/skills/oracle` skill provides architecture
+  guidance grounded in this project's current `Vault/`.
+- Oracle is a repository-maintainer workflow. Customer BOS plugins and generated
+  client packages never distribute it.
 - Repository-change approval requires review of the actual diff and validation
   evidence. Loading the skill alone grants no approval.
 - Oracle findings identify exact files and lines and end with `APPROVED` or
   `REJECTED`.
-- Application repositories may specialize the BOS Oracle with their own
-  architecture and external approval services. Those services remain owned by
-  the application repository.
+- Application repositories own their own local Oracle skills, architecture, and
+  external approval services. Those services remain owned by the application
+  repository.

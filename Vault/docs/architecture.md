@@ -211,9 +211,11 @@ release system for portable BOS skills and native remote MCP client adapters.
     partnership proposal skills, and invokes BOS visual output through the
     installed BOS foundation. Deterministic
     generation places those skills in the Codex, Claude, Copilot, and Gemini
-    packages. Codex token-usage analysis remains a repository-maintainer skill
-    under `.agents/skills` because it inspects Codex-local session data rather than
-    delivering a customer product capability.
+    packages. Oracle review and Codex token-usage analysis remain
+    repository-maintainer skills under `.agents/skills` because they operate on
+    this repository's local Vault or Codex-local session data rather than
+    delivering customer product capabilities. Generated client packages never
+    contain the Oracle skill.
 17. Treat a client as BOS-ready only when the root BOS plugin points to its
     immutable MCP resource—through one account connector for Claude, directly
     for Copilot and Gemini, and through the registered root app for Codex—OAuth
@@ -347,9 +349,12 @@ release system for portable BOS skills and native remote MCP client adapters.
 
 ## Knowledge and review
 
-`Vault/` owns durable project knowledge. `bos:oracle` reads the architecture,
+`Vault/` owns durable project knowledge. The repository-local
+`.agents/skills/oracle` workflow reads this project's architecture,
 constitution, relevant specifications, current diff, and validation evidence
-before answering architecture questions or issuing a repository review.
+before answering architecture questions or issuing a repository review. Oracle
+is not part of the BOS customer product and is absent from generated client
+packages.
 
 Lead Director and other BOS applications compose these platform contracts with
 their own Vault knowledge and application-specific Oracle gates. External

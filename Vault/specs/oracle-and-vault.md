@@ -1,4 +1,4 @@
-# BOS Vault and Oracle specification
+# Operations Center Vault and local Oracle specification
 
 ## Vault
 
@@ -7,9 +7,9 @@ rules, specifications, decisions, review evidence, and durable operational
 knowledge. The checked-in manifest records exact source paths and SHA-256
 digests. Search is local and sends no project knowledge to an external service.
 
-## Oracle
+## Local Oracle ownership
 
-The BOS Oracle supports two use cases:
+The repository-local Oracle at `.agents/skills/oracle` supports two use cases:
 
 - answer architecture and implementation-pattern questions from current
   canonical evidence;
@@ -20,9 +20,14 @@ recommendations. For review, it inspects the actual diff and validation
 evidence, reports actionable findings with exact locations, and ends with one
 verdict: `APPROVED` or `REJECTED`.
 
+The local skill reads this repository's `Vault/`, actual diff, and validation
+evidence. It is a repository-maintainer workflow and is excluded from the BOS
+product manifest and every generated customer package. Installed `bos:oracle`
+skills are never an authority for this repository.
+
 Skill invocation supplies the workflow and context. Independent approval, when
 required by an owning application or high-risk deployment, comes from that
-repository's reviewer or external approval service.
+repository's own local reviewer or external approval service.
 
 ## Package-specific review gates
 

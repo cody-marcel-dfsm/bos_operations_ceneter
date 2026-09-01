@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.66",
+  "version": "0.4.67",
   "release_status": "active",
   "display_name": "BOS — Business Operating System",
   "description": "Agent-first Business Operating System foundations for governed agent workflows.",
@@ -28,7 +28,6 @@
     "platform/planning",
     "platform/implementation",
     "platform/review",
-    "platform/oracle",
     "platform/po-go-boundary-enforcement",
     "platform/authentication-context-integrity",
     "platform/submit-feedback",
