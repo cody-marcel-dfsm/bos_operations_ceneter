@@ -54,10 +54,12 @@ console as an intermediate step.
    installation, enablement, role, capability, and provider state. Never send
    tenant, organization, installation, role, credential, or raw plugin
    identifiers, and never call through a subservice connection.
-6. Pass the server-returned `structuredContent` directly to the client's native
-   interactive content surface. The server owns row order, labels, status
-   vocabulary, display-safe properties, action availability, and optimistic
-   revision.
+6. Use the server-returned `structuredContent` to populate the visible console.
+   A mounted MCP App or native interactive component is the preferred surface.
+   A generic tool-result card labeled **Structured output** is unsupported
+   presentation, so render the complete readable table directly in the
+   conversation instead. The server owns row order, labels, status vocabulary,
+   display-safe properties, action availability, and optimistic revision.
 7. Render one service-status table with these columns in this order:
 
 | Product | Plugin | Enabled | Service | Connection | Properties | Action |
@@ -69,6 +71,19 @@ renders inside the conversation and binds controls to remote MCP tool calls.
 If a client exposes structured tool results without interactive components,
 render the same table directly in the conversation from the in-memory result
 and accept equivalent natural-language actions.
+
+The visible console shows the actual values. Expand property objects into
+labeled lines within their row; render empty values as **Not configured** and
+booleans as **Enabled** or **Disabled**. Render safe URLs as descriptive
+clickable Markdown links and display-safe email addresses and phone numbers as
+`mailto:` and `tel:` links. Never show raw JSON, `[object Object]`, a schema, or
+**Structured output** in place of the values.
+
+Every server-allowed interactive action is an actual host control: **Connect**
+and **Settings** are buttons, and **Enabled** is a toggle. When the host cannot
+mount those controls, show the readable table followed by exact conversational
+actions for only the actions the server allows. Do not describe printed labels
+as clickable controls.
 
 Do not run a local renderer, materialize HTML or Markdown files, download a UI
 bundle, open a localhost port, or start a browser or background service. A query

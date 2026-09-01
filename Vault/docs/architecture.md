@@ -281,10 +281,11 @@ release system for portable BOS skills and native remote MCP client adapters.
     installed subservices. The server returns ordered
     `structuredContent`, owns plugin state, revisions, connection actions, and
     audited enablement mutations, and remotely serves the associated MCP App resource.
-    Clients render that state
-    through their native structured-content or component surface and invoke the
-    same authenticated remote tools for **Connect** buttons and enablement
-    toggles. Product initialization reuses this canonical service inventory for
+    Clients render the actual readable values through a mounted component or an
+    immediate conversational table; a generic structured-result tool card does
+    not satisfy the UI contract. Mounted components invoke the same
+    authenticated remote tools for **Connect** buttons and enablement toggles.
+    Product initialization reuses this canonical service inventory for
     the selected default or explicit organization, preserves healthy and
     disabled rows, and walks actionable provider connections one at a time
     before organization-scoped plugin-settings discovery. It never queries all
@@ -306,8 +307,10 @@ release system for portable BOS skills and native remote MCP client adapters.
     containing confirmed display-safe snapshots only. Codex Agent Harness
     renders the ordered fields as an in-memory client-native settings table
     with an inline control for each editable value and native **Apply** and
-    **Discard** actions; it creates no file, renderer, browser, localhost
-    process, or separate UI service. Validate current
+    **Discard** actions. When only the generic tool-result viewer is available,
+    it renders the complete readable values and authorized natural-language
+    actions directly in the conversation. It creates no file, renderer,
+    browser, localhost process, or separate UI service. Validate current
     authority before every cache read or mutation; fetch and cache the canonical
     snapshot on a miss; reconcile uncertain writes before replay; update the
     cache only from confirmed server reads or commits. Required unset or invalid

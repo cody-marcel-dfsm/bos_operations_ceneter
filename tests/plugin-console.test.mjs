@@ -26,6 +26,22 @@ test("BOS Plugin Console is an instructions-only in-memory client feature", asyn
 
   const guidance = await readFile(`${sourceRoot}/SKILL.md`, "utf8");
   assert.match(guidance, /structuredContent/);
+  assert.match(
+    guidance,
+    /generic[\s\S]*?Structured output[\s\S]*?unsupported[\s\S]*?presentation/i
+  );
+  assert.match(
+    guidance,
+    /safe URLs[\s\S]*?clickable Markdown links[\s\S]*?email[\s\S]*?phone/i
+  );
+  assert.match(
+    guidance,
+    /Never show raw JSON[\s\S]*?object[\s\S]*?Structured output/i
+  );
+  assert.match(
+    guidance,
+    /actual host control[\s\S]*?button[\s\S]*?toggle/i
+  );
   assert.match(guidance, /client's content window/);
   assert.match(guidance, /never create a report file/i);
   assert.match(guidance, /start a local renderer or service/i);

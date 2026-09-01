@@ -1,7 +1,7 @@
 {
-  "indexed_at": "20260901T015526.368662Z",
+  "indexed_at": "20260901T012602.458219Z",
   "schema_version": "bos-vault-manifest/v1",
-  "source_count": 68,
+  "source_count": 67,
   "sources": {
     "Vault/README.md": {
       "bytes": 1032,
@@ -29,7 +29,7 @@
     },
     "Vault/docs/bos-product-licensing-user-experience.md": {
       "bytes": 1377,
-      "sha256": "6570135ef1f5b80d063b7520d07726e05184a7b992dd6117502d64bf72a2cd08"
+      "sha256": "b533d5a491b8b5ea1d5e3e39dbeb7ff0ac38ce78423e3ff21e8b2648c0cf31a4"
     },
     "Vault/docs/marketplace-agent-harness-plan.md": {
       "bytes": 1883,
@@ -37,7 +37,7 @@
     },
     "Vault/docs/marketplace-submission-assets.md": {
       "bytes": 1198,
-      "sha256": "49fe0898ccb7dba52284c96165c27bb9dc25d40af0cc3960d0a81dcaf4dfd199"
+      "sha256": "be891fda9c64a51309efaf1269aaabdd7c593fb0c7abc75ca9111441b9a6c16d"
     },
     "Vault/docs/my-crm-developer-platform-work-matrix.md": {
       "bytes": 810,
@@ -194,10 +194,6 @@
     "Vault/reviews/2026-08-31-readable-plugin-values.md": {
       "bytes": 2639,
       "sha256": "961ecd5a33066b178b33d7c7ea3f98e86c7ff0a1b71da3d0d522d593e29b3aa2"
-    },
-    "Vault/reviews/2026-08-31-release-0.4.61.md": {
-      "bytes": 2527,
-      "sha256": "90025ac92b425bfe73dd1c704510a0a7917dfff93cc93378d8edf57cc6be4de0"
     },
     "Vault/schemas/decision-record.md": {
       "bytes": 439,

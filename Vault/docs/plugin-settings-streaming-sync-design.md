@@ -460,6 +460,15 @@ clients supporting MCP Apps. Agent Harness clients with native schema-driven
 widgets may render equivalent controls directly. Conversation-only clients
 show the same values, evidence, diff, and actions as structured text.
 
+Rendering means that the actual field labels and values are visible. A generic
+tool-result card labeled **Structured output**, a collapsed payload, raw JSON,
+schema metadata, or `[object Object]` does not satisfy the interaction contract.
+If the remote MCP App or native widgets are not actually mounted, the client
+immediately expands the complete snapshot in the conversation. Nested values
+use labeled rows, empty values read **Not configured**, and safe URLs,
+display-safe email addresses, and phone numbers are clickable. The phrase
+**Structured output** is never the user-facing name of the settings result.
+
 The standard settings surface contains:
 
 - plugin and installation display labels;
@@ -483,6 +492,11 @@ conversation. This path materializes no HTML or Markdown file, report, UI
 bundle, renderer, localhost process, browser session, or separate UI service.
 The remote BOS connection supplies authenticated data and mutations only; the
 Agent Harness owns the rendering surface.
+
+When Codex exposes only its generic tool-result viewer, the conversation
+fallback is mandatory. It shows the readable values first and exact authorized
+natural-language edit requests after them; it does not describe printed action
+labels as buttons.
 
 ## Delegated mutation execution
 

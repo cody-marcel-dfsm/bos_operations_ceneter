@@ -160,6 +160,17 @@ support renders the same table in the conversation and accepts equivalent
 natural-language actions. Every path remains in memory and uses the same remote
 tools and authority.
 
+A client has rendered the console only when the actual row values are visible.
+A generic tool-result card labeled **Structured output**, a collapsed payload,
+raw JSON, schema metadata, or `[object Object]` is not a console surface. When a
+remote MCP App or native component is not actually mounted, the client expands
+the values into the conversation immediately. Nested properties become labeled
+lines; empty values become **Not configured**; safe URLs, display-safe email
+addresses, and phone numbers become clickable links. Native **Connect** and
+**Settings** actions are real buttons and **Enabled** is a real toggle. A
+conversation-only fallback presents exact natural-language actions and never
+claims that printed labels are clickable controls.
+
 ## Connection action
 
 `bos_begin_plugin_service_connection` accepts the latest `context_id`,
@@ -227,6 +238,8 @@ contains no query-time script, renderer, executable, local server, or cache.
 - Enablement rejects missing capability, stale revision, illegal transition,
   cross-tenant scope, and conflicting idempotency reuse.
 - Successful actions refresh tools, context, and the same in-memory view.
+- A generic **Structured output** tool card never satisfies the visible console
+  requirement; actual values and available actions are rendered readably.
 - Structured content and UI payloads contain no secrets, raw authority IDs,
   customer records, or volatile authorization URLs.
 
