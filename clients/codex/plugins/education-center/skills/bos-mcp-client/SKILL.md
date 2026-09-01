@@ -9,8 +9,10 @@ Use this skill for every client-side BOS operation. The root BOS plugin owns one
 remote MCP resource and one host-managed OAuth connection for the user-facing
 client context. A Claude account or organization Web connector declares that
 resource and exposes the persistent host-managed **Connect** action;
-ChatGPT/Codex authorizes it through the root BOS package-owned MCP declaration. Other supported
-clients use the single BOS adapter declared by their generated package.
+ChatGPT/Codex binds the registered BOS app through the root package's
+`.app.json`, which supplies the plugin-page **Login**, **Connect**, or
+**Authenticate** control. Other supported clients use the single BOS adapter
+declared by their generated package.
 
 Education Center, CRM, Marketing Director, and other subservice plugins add
 skills and server capabilities without adding another BOS connection. Their
@@ -52,7 +54,9 @@ stateful mutation workflow.
 - If BOS is absent from the callable tool manifest, inspect the active client's
   BOS plugin and runtime binding immediately. Repair or reinstall BOS and
   restore its declared authorization connection. For Codex, verify the root
-  BOS `.mcp.json` declaration; for Claude, verify the BOS package's
+  BOS plugin declares `apps: "./.app.json"`, the file contains its one
+  registered BOS app, and no `.mcp.json` shadows that binding. For Claude,
+  verify the BOS package's
   account-connector metadata and the matching Web connector under
   **Customize → Connectors**, then use its persistent **Connect** action. When a
   private installation lacks that connector, add it with the exact name and URL
@@ -80,13 +84,17 @@ stateful mutation workflow.
   reauthentication`, or an equivalent MCP-startup authentication failure,
   classify it as **Sign in** and preserve the active request. Use the native
   host **Connect**, **Sign in**, or **Authenticate** action when Codex exposes
-  one. The root MCP resource must answer unauthenticated OAuth discovery with
-  HTTP 401 and a `WWW-Authenticate` challenge containing its exact
-  `resource_metadata` URL; this lets Codex classify the server as
-  `notLoggedIn` and render **Authenticate**. When Codex instead reports
-  `reauthenticationRequired` while the server row exposes no authentication
-  action, report a host authentication-activation defect with the sanitized
-  startup error and keep the request pending. Do not invoke a CLI login or
+  one. The plugin-page action is rendered from the registered app binding; its
+  presence does not depend on receiving an MCP response. The root MCP resource
+  independently answers an unauthenticated connection attempt with HTTP 401
+  and a `WWW-Authenticate` challenge containing its exact `resource_metadata`
+  URL so the runtime can enter `notLoggedIn` and complete OAuth discovery.
+  When the plugin page has no authentication action, classify it as a Codex
+  registered-app display-binding defect and inspect the package declaration
+  before evaluating server behavior. When the action exists and the runtime
+  cannot activate it after a challenge, report an authentication-activation
+  defect with the sanitized startup error and keep the request pending. Do not
+  invoke a CLI login or
   launch browser authentication on the user's behalf. Do not ask the user to
   reconnect BOS or resubmit the request. Do not use generic app-permission tools,
   app-dependency tools, the plugin console, or a subservice connection
@@ -147,7 +155,7 @@ and inspect its sanitized result before producing a final answer.
    context.
 5. Authenticate the BOS Claude account-level Web connector through its
    persistent **Connect** control, and the ChatGPT/Codex BOS connection
-   through the root package-owned MCP declaration. Both use one host-managed
+   through the root registered-app binding. Both use one host-managed
    OAuth grant. Other clients use only the generated product
    adapter declared for BOS. Keep access tokens, refresh tokens,
    authorization codes, bearer values, and grant metadata out of chat, tool

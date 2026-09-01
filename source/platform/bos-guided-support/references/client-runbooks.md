@@ -56,18 +56,21 @@ installed subservice plugin and avoid creating another BOS connection.
 
 1. Confirm **BOS** and the requested subservice plugins are installed and
    enabled in the Plugins Directory.
-2. Confirm BOS's package-owned `.mcp.json` is present and declares the root BOS
-   resource; subservice plugins carry no additional BOS MCP binding.
+2. Confirm BOS's plugin manifest declares `apps: "./.app.json"`, that file
+   contains exactly one registered BOS app, and the package has no
+   `.mcp.json`; subservice plugins carry no additional BOS binding.
 3. Start a new task after install or update when the existing task cannot see
    the plugin.
-4. Complete BOS consent from the host's **Connect**, **Sign in**, or
-   **Authenticate** action. Codex renders this action after the BOS MCP resource
-   returns an unauthenticated HTTP 401 protected-resource challenge. When
-   Codex reports `reauthenticationRequired` and the server row has no native
-   authentication action, keep the request active and report an
-   authentication-activation defect. The agent never invokes CLI login or
-   launches authentication for the customer.
-5. After browser consent succeeds, refresh the MCP session and callable tools,
+4. Confirm the plugin page shows its native **Login**, **Connect**, or
+   **Authenticate** action. The registered app binding renders this control
+   independently of any MCP response. If it is absent, report a registered-app
+   display-binding defect and repair the package binding.
+5. Complete BOS consent from that native action. The MCP resource independently
+   returns the HTTP 401 protected-resource challenge required for runtime OAuth
+   discovery. If the action exists and runtime activation fails, preserve the
+   request and report an authentication-activation defect. The agent never
+   invokes CLI login or launches authentication for the customer.
+6. After browser consent succeeds, refresh the MCP session and callable tools,
    resolve BOS context, run one bounded read, and resume the original request.
 
 Official source:

@@ -31,7 +31,7 @@ The BOS resource's protected-resource challenge lets Codex identify a signed-out
 connection and render **Authenticate**. The user selects that native action and
 completes consent. The agent refreshes tools and resumes the request afterward.
 
-Current desktop marketplace release: `0.4.64`. If `0.4.63` is installed,
+Current desktop marketplace release: `0.4.65`. If `0.4.64` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -49,10 +49,13 @@ Open a new Codex task and paste:
 > required to load the plugin, and verify one authenticated Education Operation Center
 > read. Do not request or configure a BOS API key, environment variable,
 > secret-manager name, or installed application ID. If authorization is
-> incomplete, present the native BOS **Authenticate** action, wait for the user
-> to select it and complete browser consent, refresh tools, and resume. Treat
-> `reauthenticationRequired` as sign-in recovery. If the native action is
-> absent, preserve the request and report an authentication-activation defect.
+> incomplete, use the native BOS **Login**, **Connect**, or **Authenticate**
+> action, wait for the user to select it and complete browser consent, refresh
+> tools, and resume. The registered app binding renders this plugin-page action;
+> the server's 401 challenge independently activates runtime OAuth discovery.
+> Treat `reauthenticationRequired` as sign-in recovery. If the plugin-page
+> action is absent, preserve the request and report a registered-app
+> display-binding defect.
 > Do not launch authentication, generate an unavailable-data report, or use
 > generic app permissions for MCP OAuth.
 
@@ -62,12 +65,12 @@ the Git ref, and leave **Sparse paths** empty. The repository-root
 
 Codex reads the generated catalog at
 `clients/codex/.agents/plugins/marketplace.json`, installs the plugins into its managed
-cache, and registers the immutable BOS endpoint from the BOS plugin's `.mcp.json`. BOS
+cache, and loads the registered BOS app from the plugin's `.app.json`. BOS
 owns the immutable MCP resource and host-managed OAuth grant. Education Operation
 Center uses that connection without another MCP binding or login. Start a new
 task after installation or upgrade. A complete installation must pass
 `npm run install:verify:codex-runtime`; this checks the plugin registry,
-marketplace registration, installed package versions, package-owned MCP binding,
+marketplace registration, installed package versions, registered app binding,
 and required callable tools together.
 
 If Codex reports a fresh package cache while either plugin is absent from the
@@ -311,11 +314,13 @@ codex plugin marketplace add ./clients/codex
 ```
 
 Install **BOS** and **Education Operation Center** from the ChatGPT Desktop Plugins
-Directory. Complete BOS OAuth from the native **Authenticate** action. The BOS
-resource's HTTP 401 protected-resource challenge makes Codex render that action
-for a signed-out connection. If Codex reports `reauthenticationRequired` while
-the action is absent, preserve the request and report the client activation
-defect. The agent does not invoke CLI login or launch authentication. Complete the
+Directory. Confirm the BOS plugin page displays its native **Login**, **Connect**,
+or **Authenticate** action from the registered app binding. The BOS resource's
+HTTP 401 protected-resource challenge separately activates OAuth discovery for
+a signed-out runtime connection. If the plugin-page action is absent, preserve
+the request and report a registered-app display-binding defect. If the action
+exists and runtime activation fails, report a client activation defect. The
+agent does not invoke CLI login or launch authentication. Complete the
 browser consent yourself; the agent then refreshes tools and resumes. Test
 Education Operation Center
 in a new task. After source changes,
