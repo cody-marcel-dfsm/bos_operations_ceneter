@@ -1,5 +1,5 @@
 {
-  "indexed_at": "20260901T161246.490815Z",
+  "indexed_at": "20260901T155605.359378Z",
   "schema_version": "bos-vault-manifest/v1",
   "source_count": 68,
   "sources": {
@@ -24,12 +24,12 @@
       "sha256": "4357fc7c6f809c693af7c64a452fd5f729ebd584d763843b9233794997b112e3"
     },
     "Vault/docs/architecture.md": {
-      "bytes": 24407,
-      "sha256": "0676c5f7a6928f4a8cdca971a0bed955ff1f98511ce33c92310191e5f7fa4f57"
+      "bytes": 23707,
+      "sha256": "962a1018e4a6f8f16c663d3201298724cf7e0cd8f9ba8e6a0dde76cf91f7c44c"
     },
     "Vault/docs/bos-product-licensing-user-experience.md": {
       "bytes": 1377,
-      "sha256": "7c1525918e383eb606a1f8b5c8115006ea9f502347eeb559c8fa6e6bb0b30628"
+      "sha256": "6570135ef1f5b80d063b7520d07726e05184a7b992dd6117502d64bf72a2cd08"
     },
     "Vault/docs/marketplace-agent-harness-plan.md": {
       "bytes": 1883,
@@ -37,7 +37,7 @@
     },
     "Vault/docs/marketplace-submission-assets.md": {
       "bytes": 1198,
-      "sha256": "28349868c7281c62e7ae1fefa70a5ce4e43cd55c25ae4931aa273385e38f4858"
+      "sha256": "49fe0898ccb7dba52284c96165c27bb9dc25d40af0cc3960d0a81dcaf4dfd199"
     },
     "Vault/docs/my-crm-developer-platform-work-matrix.md": {
       "bytes": 810,
@@ -204,8 +204,8 @@
       "sha256": "3922907624221572a243f58b3684dc8a2eb7b7d221b4a3d6ac5dd1317b9baef4"
     },
     "Vault/specs/client-guided-support.md": {
-      "bytes": 4063,
-      "sha256": "48b3d75c4c54107fff0d348fcf6bb9007840436cee616b9ae4fd723b228741c4"
+      "bytes": 3623,
+      "sha256": "709a306e92b368acccdafbadfbd169cfda35e771a9c8fbf3c61547d9d6aae885"
     },
     "Vault/specs/customer-skill-extensions.md": {
       "bytes": 5632,
@@ -232,8 +232,8 @@
       "sha256": "3186bcb5685d6a971b5bcb08b806b95d4dc3a9d35d8bb82ab7ba5b438c728729"
     },
     "Vault/specs/single-bos-mcp-connection.md": {
-      "bytes": 7773,
-      "sha256": "c7b0b5b57a5db53d88c10747792b2dc28225b481e5c14c1225b081394f1b8f0b"
+      "bytes": 6887,
+      "sha256": "ee982fcc5cec7356a2f8a50fabc6f97759b9a2e43d02b5f3869ab65831c1749f"
     },
     "Vault/submissions/openai/education-operation-center/README.md": {
       "bytes": 2988,

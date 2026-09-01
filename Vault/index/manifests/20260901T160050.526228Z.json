@@ -1,5 +1,5 @@
 {
-  "indexed_at": "20260901T161246.490815Z",
+  "indexed_at": "20260901T160050.526228Z",
   "schema_version": "bos-vault-manifest/v1",
   "source_count": 68,
   "sources": {
@@ -29,7 +29,7 @@
     },
     "Vault/docs/bos-product-licensing-user-experience.md": {
       "bytes": 1377,
-      "sha256": "7c1525918e383eb606a1f8b5c8115006ea9f502347eeb559c8fa6e6bb0b30628"
+      "sha256": "6570135ef1f5b80d063b7520d07726e05184a7b992dd6117502d64bf72a2cd08"
     },
     "Vault/docs/marketplace-agent-harness-plan.md": {
       "bytes": 1883,
@@ -37,7 +37,7 @@
     },
     "Vault/docs/marketplace-submission-assets.md": {
       "bytes": 1198,
-      "sha256": "28349868c7281c62e7ae1fefa70a5ce4e43cd55c25ae4931aa273385e38f4858"
+      "sha256": "49fe0898ccb7dba52284c96165c27bb9dc25d40af0cc3960d0a81dcaf4dfd199"
     },
     "Vault/docs/my-crm-developer-platform-work-matrix.md": {
       "bytes": 810,
