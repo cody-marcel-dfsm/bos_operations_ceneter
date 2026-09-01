@@ -53,9 +53,9 @@ stateful mutation workflow.
 - If BOS is absent from the callable tool manifest, inspect the active client's
   BOS plugin and runtime binding immediately. Repair or reinstall BOS and
   restore its declared authorization connection. For Codex, verify the root
-  BOS plugin declares `mcpServers: "./.mcp.json"`, the file contains exactly
-  one credential-free HTTPS server for the immutable BOS resource, and no
-  `.app.json` account identity shadows that portable binding. For Claude,
+  BOS plugin declares `apps: "./.app.json"`, the app file contains exactly one
+  required BOS entry with the product's `plugin_asdk_app_...` identity, and no
+  `.mcp.json` shadows that native login binding. For Claude,
   verify the BOS package's
   account-connector metadata and the matching Web connector under
   **Customize → Connectors**, then use its persistent **Connect** action. When a
@@ -87,9 +87,11 @@ stateful mutation workflow.
   one. The root MCP resource answers an unauthenticated connection attempt with HTTP 401
   and a `WWW-Authenticate` challenge containing its exact `resource_metadata`
   URL so the runtime can enter `notLoggedIn` and complete OAuth discovery.
-  When the host has no authentication action after loading the package-owned
-  server, classify it as an authentication-activation defect and inspect the
-  `.mcp.json` declaration before evaluating server behavior. When the action exists and the runtime
+  When the host has no authentication action after loading the registered BOS
+  app, classify it as an authentication-activation defect and inspect the
+  `.app.json` declaration before evaluating server behavior. Receiving an OAuth
+  challenge and displaying the native authentication action are separate
+  contracts. When the action exists and the runtime
   cannot activate it after a challenge, report an authentication-activation
   defect with the sanitized startup error and keep the request pending. Do not
   invoke a CLI login or

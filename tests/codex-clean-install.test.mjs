@@ -9,9 +9,9 @@ import {
   planCodexCleanup
 } from "../scripts/clean-install-codex.mjs";
 
-const appId = "asdk_app_6a95a014a0a08191a9e6d16453a8b831";
+const appId = "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91";
 const retiredAppId = "asdk_app_6a932992592081919cdc88c60e4ff2dd";
-const suffix = appId.replace("asdk_app_", "");
+const suffix = appId.replace("plugin_asdk_app_", "");
 
 async function fixtureHome() {
   const home = await mkdtemp(join(tmpdir(), "bos-codex-clean-"));
@@ -24,7 +24,7 @@ async function fixtureHome() {
   await mkdir(join(wrapper, "1.0.0"), { recursive: true });
   await writeFile(
     join(wrapper, ".codex-remote-plugin-install.json"),
-    JSON.stringify({ remote_plugin_id: `plugin_${appId}` })
+    JSON.stringify({ remote_plugin_id: appId })
   );
   const retiredWrapper = join(
     home,

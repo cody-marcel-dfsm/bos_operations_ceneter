@@ -63,9 +63,10 @@ request.
 
 1. Confirm **BOS** and the requested subservice plugins are installed and
    enabled in the Plugins Directory.
-2. Confirm BOS's plugin manifest declares `mcpServers: "./.mcp.json"`, that
-   file contains exactly one credential-free HTTPS BOS server, and the package
-   has no `.app.json`; subservice plugins carry no additional BOS binding.
+2. Confirm BOS's plugin manifest declares `apps: "./.app.json"`, that app file
+   contains exactly one required BOS entry using the product's
+   `plugin_asdk_app_...` identity, and the package has no `.mcp.json`;
+   subservice plugins carry no additional BOS binding.
 3. Start a new task after install or update when the existing task cannot see
    the plugin.
 4. Confirm the host loads the BOS server and shows its native **Login**, **Connect**, or
@@ -73,7 +74,8 @@ request.
    report an authentication-activation defect and repair the package binding.
 5. Complete BOS consent from that native action. The MCP resource
    returns the HTTP 401 protected-resource challenge required for runtime OAuth
-   discovery. If runtime activation fails, preserve the
+   discovery. The app declaration owns display of the action; the server
+   challenge owns activation after selection. If runtime activation fails, preserve the
    request and report an authentication-activation defect. The agent never
    invokes CLI login or launches authentication for the customer.
 6. After browser consent succeeds, refresh the MCP session and callable tools,
