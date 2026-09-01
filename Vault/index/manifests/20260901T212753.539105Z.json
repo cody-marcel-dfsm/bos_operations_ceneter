@@ -1,0 +1,14 @@
+{
+  "canonical_source_snapshot_sha256": "c684ea3db30d8877cc2680d9093351b24900c5b2d03a968bc75afcc9628f9690",
+  "changed_sources": [
+    "Vault/reviews/2026-09-01-oracle-issue-history-implementation-lifecycle.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 192,
+  "duration_seconds": 0.21,
+  "index_version": 1,
+  "indexed_at": "20260901T212753.539105Z",
+  "indexed_chunks": 2,
+  "removed_sources": [],
+  "source_count": 86
+}

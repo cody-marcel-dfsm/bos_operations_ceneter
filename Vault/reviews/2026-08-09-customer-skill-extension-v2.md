@@ -11,7 +11,7 @@ release gates.
 - `Vault/docs/architecture.md`
 - `Vault/docs/CONSTITUTION.md`
 - `Vault/specs/customer-skill-extensions.md`
-- `docs/DESIGN.md`
+- `Vault/docs/DESIGN.md`
 
 ## Diff review
 

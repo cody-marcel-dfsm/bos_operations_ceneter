@@ -27,12 +27,12 @@ authorization remains a separate BOS-hosted workflow.
 The private Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Complete BOS
 consent when the host presents **Connect**, **Sign in**, or **Authenticate**.
-The required registered-app binding renders that native action. The BOS
-resource's protected-resource challenge separately identifies a signed-out
-runtime connection and activates OAuth after the user selects the action. The
+The package-owned BOS MCP declaration loads the immutable resource. Its
+protected-resource challenge identifies a signed-out runtime connection and
+activates OAuth. The
 user completes consent, and the agent refreshes tools and resumes the request.
 
-Current desktop marketplace release: `0.4.67`. If `0.4.66` is installed,
+Current desktop marketplace release: `0.4.70`. If `0.4.69` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -50,14 +50,13 @@ Open a new Codex task and paste:
 > required to load the plugin, and verify one authenticated Education Operation Center
 > read. Do not request or configure a BOS API key, environment variable,
 > secret-manager name, or installed application ID. If authorization is
-> incomplete, use the native BOS **Login**, **Connect**, or **Authenticate**
-> action, wait for the user to select it and complete browser consent, refresh
-> tools, and resume. The registered app binding renders this plugin-page action;
-> its single BOS app entry must include `required: true`. The server's 401
-> challenge independently activates runtime OAuth discovery.
+> incomplete, verify the root package-owned `.mcp.json`, use the native BOS
+> **Login**, **Connect**, or **Authenticate** action, wait for the user to select
+> it and complete browser consent, refresh tools, and resume. The server's 401
+> challenge activates runtime OAuth discovery.
 > Treat `reauthenticationRequired` as sign-in recovery. If the plugin-page
-> action is absent, preserve the request and report a registered-app
-> display-binding defect.
+> action is absent after the package-owned server loads, preserve the request
+> and report an authentication-activation defect.
 > Do not launch authentication, generate an unavailable-data report, or use
 > generic app permissions for MCP OAuth.
 
@@ -67,14 +66,14 @@ the Git ref, and leave **Sparse paths** empty. The repository-root
 
 Codex reads the generated catalog at
 `clients/codex/.agents/plugins/marketplace.json`, installs the plugins into its managed
-cache, and loads the registered BOS app from the plugin's `.app.json`. BOS
-marks that app `required: true` so the plugin page renders the native connection
-action, and owns the immutable MCP resource and host-managed OAuth grant. Education Operation
+cache, and loads the immutable BOS resource from the plugin's credential-free
+`.mcp.json`. BOS owns that MCP resource and host-managed OAuth grant. Education Operation
 Center uses that connection without another MCP binding or login. Start a new
 task after installation or upgrade. A complete installation must pass
 `npm run install:verify:codex-runtime`; this checks the plugin registry,
-marketplace registration, installed package versions, registered app binding,
-and required callable tools together.
+marketplace registration, installed package versions, package-owned MCP
+binding, and required callable tools together. A package cache alone never
+proves that the current task has a callable BOS tool surface.
 
 If Codex reports a fresh package cache while either plugin is absent from the
 plugin registry or required Education Operation Center tools are absent, run
@@ -258,10 +257,18 @@ checkout. It is distinct from customer installation.
 
 ```bash
 npm install
+python3 -m pip install -r tools/requirements-dev.txt
+python3 tools/vault_index.py sync --quiet
 npm run build:packages
 npm run check
 npm test
 ```
+
+The repository-local Oracle uses the same Chroma-backed Vault workflow as the
+sibling BOS repository. Durable designs, decisions, specifications, issue
+history, and reviews live under `Vault/`. During Vault editing, run
+`python3 tools/vault_index.py watch --daemon`; query related implementation and
+regression history with `python3 tools/vault_index.py query "<question>"`.
 
 The BOS server repository or CI can verify the portable client/server
 connection contract directly:
@@ -317,12 +324,12 @@ codex plugin marketplace add ./clients/codex
 ```
 
 Install **BOS** and **Education Operation Center** from the ChatGPT Desktop Plugins
-Directory. Confirm the BOS plugin page displays its native **Login**, **Connect**,
-or **Authenticate** action from the registered app binding marked
-`required: true`. The BOS resource's
-HTTP 401 protected-resource challenge separately activates OAuth discovery for
-a signed-out runtime connection. If the plugin-page action is absent, preserve
-the request and report a registered-app display-binding defect. If the action
+Directory. Confirm the BOS plugin loads its package-owned `.mcp.json` and the
+host displays its native **Login**, **Connect**, or **Authenticate** action when
+needed. The BOS resource's HTTP 401 protected-resource challenge activates OAuth
+discovery for a signed-out runtime connection. If the action is absent after
+the server loads, preserve the request and report an authentication-activation
+defect. If the action
 exists and runtime activation fails, report a client activation defect. The
 agent does not invoke CLI login or launch authentication. Complete the
 browser consent yourself; the agent then refreshes tools and resumes. Test
@@ -364,6 +371,7 @@ After source changes, update the marketplace and plugin before retesting.
 ### Local validation
 
 ```bash
+python3 tools/vault_index.py sync --quiet
 npm run check
 npm test
 git diff --check
@@ -372,6 +380,11 @@ git diff --check
 The package checks enforce generated parity, credential containment, immutable
 MCP routes, marketplace structure, customer-neutral source, and disabled-product
 exclusion.
+
+Every repository mutation then receives a repository-local Oracle review of the
+complete actual diff and focused validation evidence. `REJECTED` blocks
+completion; every correction requires a fresh review until the verdict is
+`APPROVED`.
 
 ## Release validation
 
@@ -490,10 +503,10 @@ installation instructions, and release checks.
 - [Constitution](Vault/docs/CONSTITUTION.md)
 - [Desktop marketplace and OAuth decision](Vault/decisions/2026-08-11-desktop-private-marketplace-oauth.md)
 - [OAuth-only runtime product decision](Vault/decisions/2026-08-16-all-runtime-products-oauth-only.md)
-- [Detailed design](docs/DESIGN.md)
-- [Implementation tasks](docs/IMPLEMENTATION_TASKS.md)
-- [Implementation status](docs/IMPLEMENTATION_STATUS.md)
-- [Skill hierarchy and composition](docs/SKILL_HIERARCHY_AND_COMPOSITION.md)
+- [Detailed design](Vault/docs/DESIGN.md)
+- [Implementation tasks](Vault/docs/IMPLEMENTATION_TASKS.md)
+- [Implementation status](Vault/docs/IMPLEMENTATION_STATUS.md)
+- [Skill hierarchy and composition](Vault/docs/SKILL_HIERARCHY_AND_COMPOSITION.md)
 - [Security policy](SECURITY.md)
 
 ## Security invariant

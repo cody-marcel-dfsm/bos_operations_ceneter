@@ -1,11 +1,10 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.67",
+  "version": "0.4.70",
   "client": "codex",
   "application_name": "bos",
   "mcp_group_name": "platform",
-  "codex_app_id": "asdk_app_6a932992592081919cdc88c60e4ff2dd",
   "runtime_verification_tools": [
     "bos_get_authorization_status",
     "bos_apply_plugin_settings",

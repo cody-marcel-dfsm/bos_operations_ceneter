@@ -1,0 +1,4 @@
+interface:
+  display_name: "Operations Center Review"
+  short_description: "Review the actual diff before Oracle approval"
+  default_prompt: "Use $operations-center-review to inspect the complete actual diff, current Vault and issue history, and focused validation evidence."

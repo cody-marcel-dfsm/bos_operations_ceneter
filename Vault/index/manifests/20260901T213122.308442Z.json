@@ -1,0 +1,15 @@
+{
+  "canonical_source_snapshot_sha256": "5e43e742c9ba77369b861c68a490fdef076d75e9f2bcded4bc5d14ac37789035",
+  "changed_sources": [
+    "Vault/docs/issues/conclusions/ISSUE_0001_CONCLUSION.md",
+    "Vault/reviews/2026-09-01-codex-skill-exposure-main-validation.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 192,
+  "duration_seconds": 0.357,
+  "index_version": 1,
+  "indexed_at": "20260901T213122.308442Z",
+  "indexed_chunks": 3,
+  "removed_sources": [],
+  "source_count": 86
+}

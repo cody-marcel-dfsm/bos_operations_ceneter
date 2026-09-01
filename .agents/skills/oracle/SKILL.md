@@ -9,16 +9,53 @@ Use current evidence from this repository and its local `Vault/`. Never answer
 Operations Center architecture questions from a packaged BOS plugin or from
 memory alone.
 
+## Mandatory reviewer role
+
+Oracle is the final reviewer for every repository mutation. Skill invocation
+supplies review instructions and never substitutes for the review itself.
+
+For every implementation, fix, refactor, test mutation, documentation mutation,
+generated-package mutation, or release change:
+
+1. Review the complete actual diff after focused validation.
+2. Read the controlling architecture, constitution, specifications, decisions,
+   and current issue history.
+3. Query the current Chroma-backed Vault index for related implementation and
+   regression history.
+4. Report findings with exact file and line evidence.
+5. End with exactly one verdict: `APPROVED` or `REJECTED`.
+
+`REJECTED` blocks completion. Any corrective repository mutation invalidates a
+prior verdict and requires a fresh Oracle review of the complete updated diff.
+
 ## Evidence workflow
 
 1. Run `python3 tools/vault_index.py sync --quiet` from this repository root.
 2. Read `AGENTS.md`, `Vault/docs/architecture.md`, and
    `Vault/docs/CONSTITUTION.md` completely.
-3. Read the relevant local specification under `Vault/specs/`, plus the owning
+3. Read `Vault/docs/issues/ISSUE_HISTORY.md`, relevant issue conclusions under
+   `Vault/docs/issues/conclusions/`, and the relevant local specification under
+   `Vault/specs/`, plus the owning
    source, product manifest, tests, and package documentation.
-4. Query the local Vault when the controlling source is unclear:
+   For a missing Codex BOS login action, unavailable BOS connection, or absent
+   callable tools, also read
+   `Vault/docs/codex-registered-app-incident.md`.
+4. Query the local Vault for related architecture, decisions, and issue history:
    `python3 tools/vault_index.py query "<question>"`.
 5. Cite exact repository files and lines for every material conclusion.
+
+## Issue-history ownership
+
+- Record active issues in `Vault/docs/issues/ISSUE_HISTORY.md` using
+  `Vault/schemas/ISSUE_HISTORY_TEMPLATE.md`.
+- Preserve problem evidence, root cause, failed attempts, accepted correction,
+  validation, review verdict, and prevention guidance.
+- Move resolved detail into a conclusion record under
+  `Vault/docs/issues/conclusions/` while retaining the tracker entry and
+  bidirectional links.
+- Update issue history after resolution or material reclassification, then
+  synchronize the Vault index before review.
+- Reuse proven implementation and prevention guidance from related issues.
 
 ## Architecture guidance
 
@@ -31,6 +68,9 @@ memory alone.
 - Preserve one host-managed BOS authentication connection. Subservice plugins
   contribute workflows through that connection and never own independent BOS
   logins or platform traffic.
+- Evaluate Codex package binding, OAuth grant state, and callable-tool discovery
+  as independent readiness layers. Evidence from
+  one layer never proves another layer ready.
 - Flag conflicts between source and Vault. The constitution and accepted Vault
   decisions control until an explicit decision updates them.
 

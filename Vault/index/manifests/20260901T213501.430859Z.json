@@ -1,0 +1,14 @@
+{
+  "canonical_source_snapshot_sha256": "4496c88d2e24fe53097045b232f9e89a3ed0ae1199b1a110d391f4934e769ea5",
+  "changed_sources": [
+    "Vault/reviews/2026-09-01-release-0.4.70-codex-skill-tool-exposure.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 194,
+  "duration_seconds": 0.212,
+  "index_version": 1,
+  "indexed_at": "20260901T213501.430859Z",
+  "indexed_chunks": 2,
+  "removed_sources": [],
+  "source_count": 87
+}

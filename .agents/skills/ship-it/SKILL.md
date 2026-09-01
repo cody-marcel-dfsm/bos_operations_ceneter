@@ -62,6 +62,20 @@ validation. Do not invoke a live MCP release smoke or require a release OAuth
 access token. Apply any repository-required review skill or approval contract
 to the actual diff and evidence.
 
+Run the repository-local Oracle remediation loop before committing:
+
+1. Use `operations-center-review` on the complete release diff and validation
+   evidence.
+2. Submit that same complete diff and evidence to the repository-local `oracle`
+   skill.
+3. Require findings with exact file-and-line evidence and exactly one verdict:
+   `APPROVED` or `REJECTED`.
+4. Resolve every rejection with `operations-center-implementation`, rerun all
+   affected validation, refresh the Vault index, and request a fresh complete
+   Oracle review.
+5. Continue until the literal verdict is `APPROVED`. Any mutation after approval
+   invalidates that verdict and returns the release to this review loop.
+
 - Fix failures caused by the pending changes when the correction is clearly within their scope, then rerun affected checks.
 - Stop without committing or pushing when a required check still fails, a required external gate is unavailable, or a safe correction would materially change intent.
 - Record commands and outcomes for the final report.

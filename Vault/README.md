@@ -9,7 +9,9 @@ repository.
   operational knowledge.
 - `specs/` — feature specifications, implementation plans, and contracts.
 - `schemas/` — schemas governing Vault records.
-- `index/manifests/` — generated inventories of indexed Vault source bytes.
+- `docs/issues/` — Oracle-owned active and resolved issue history.
+- `index/chroma/` — rebuildable local Chroma vector data.
+- `index/manifests/` — timestamped canonical-source/index snapshots.
 - `tmp/<workflow>/` — disposable builders, logs, inspections, and other
   workflow intermediates.
 
@@ -19,7 +21,7 @@ artifacts.
 
 ## Lifecycle
 
-Synchronize the source manifest:
+Synchronize the local Chroma index and source manifest:
 
 ```bash
 python3 tools/vault_index.py sync
@@ -31,5 +33,13 @@ Search canonical knowledge:
 python3 tools/vault_index.py query "credential handoff"
 ```
 
-The index is credential-free and deterministic. It inventories Git-visible
-text sources and excludes `Vault/index/` and `Vault/tmp/`.
+Keep the index synchronized while editing Vault knowledge:
+
+```bash
+python3 tools/vault_index.py watch --daemon
+```
+
+The index is credential-free and local. It chunks Git-visible text sources,
+stores vectors under `Vault/index/chroma/`, writes durable manifests under
+`Vault/index/manifests/`, and excludes `Vault/index/` and `Vault/tmp/` from its
+canonical source set.

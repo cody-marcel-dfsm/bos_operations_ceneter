@@ -503,10 +503,9 @@ connector. External connector evidence never expands BOS identity or authority.
 
 Credentials and access authority remain outside customer configuration.
 Claude and ChatGPT/Codex authorize the named BOS resource through host-managed
-OAuth 2.1. Claude packages carry a credential-free remote MCP declaration.
-Codex packages carry a required `.app.json` entry whose durable `asdk_app_*`
-identifier refers to the registered BOS resource; Codex packages carry no
-`.mcp.json`. The hosts discover authorization metadata from the resource,
+OAuth 2.1. Claude uses an account-level Web connector. Codex packages carry one
+credential-free `.mcp.json` declaration for the immutable BOS resource and no
+account-scoped `.app.json`. The hosts discover authorization metadata from the resource,
 collect consent, store and refresh the grant, and attach its resource-scoped
 access token. Skill files, generated packages, logs, customer settings,
 customer-entered commands, and model chat remain credential-free. BOS owns encrypted provider-credential
@@ -518,7 +517,7 @@ callback processing, token exchange, and storage.
 ## MCP transport and client boundary
 
 BOS runs as an independently deployed Streamable HTTP MCP server. Codex loads
-the registered app referenced by the plugin, while Claude uses its native
+the package-owned MCP resource, while Claude uses its native
 remote MCP transport. Copilot packages contain skills
 and configure the same remote endpoint through the host's supported MCP
 settings. The distribution contains configuration and skills; it contains no
@@ -597,7 +596,7 @@ authenticate BOS and does not authorize provider access.
 ### 3. Connect the account
 
 The client loads the BOS product's host-native runtime binding. Codex loads the
-registered BOS app named by `.app.json`; Claude uses the account-level BOS Web
+package-owned BOS server named by `.mcp.json`; Claude uses the account-level BOS Web
 connector. The host presents Connect once, completes OAuth discovery and consent,
 and stores the BOS resource-scoped grant. Subservice packages load skills and
 add no authentication surface. BOS validates the grant and canonical subservice
