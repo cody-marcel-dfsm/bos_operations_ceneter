@@ -8,10 +8,17 @@ import {
   planBosClientCacheReset,
   resetBosClientCaches
 } from "../scripts/reset-bos-client-caches.mjs";
-import { pathExists } from "../scripts/lib/package-model.mjs";
+import {
+  codexConnectorContract,
+  readJson,
+  root,
+  pathExists
+} from "../scripts/lib/package-model.mjs";
 
-const appId = "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91";
-const retiredAppId = "asdk_app_6a932992592081919cdc88c60e4ff2dd";
+const bosProduct = await readJson(join(root, "products", "bos", "product.json"));
+const bosConnector = codexConnectorContract(bosProduct);
+const appId = bosConnector.id;
+const retiredAppId = bosConnector.retired_ids[0];
 
 async function fixtureHome(context) {
   const home = await mkdtemp(join(tmpdir(), "bos-cache-reset-"));
@@ -46,7 +53,7 @@ async function fixtureHome(context) {
   const matchingCatalog = join(home, ".codex/cache/codex_apps_tools/bos.json");
   const unrelatedCatalog = join(home, ".codex/cache/codex_apps_tools/unrelated.json");
   await mkdir(join(matchingCatalog, ".."), { recursive: true });
-  await writeFile(matchingCatalog, JSON.stringify({ url: "https://dfsm.ai/mcp/apps/bos/platform" }));
+  await writeFile(matchingCatalog, JSON.stringify({ url: bosProduct.mcp_resource_url }));
   await writeFile(unrelatedCatalog, JSON.stringify({ url: "https://example.com/mcp" }));
 
   const preserved = [

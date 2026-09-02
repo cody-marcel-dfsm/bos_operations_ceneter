@@ -31,7 +31,7 @@ import {
   codexMarketplaceRoot,
   codexProductRoot
 } from "../scripts/lib/codex-layout.mjs";
-import { hashFile, root } from "../scripts/lib/package-model.mjs";
+import { hashFile, readJson, root } from "../scripts/lib/package-model.mjs";
 
 async function temporaryHome() {
   return mkdtemp(join(tmpdir(), "bos-install-test-"));
@@ -66,7 +66,9 @@ const customerSettings = {
 };
 
 const unusedCredentialEnvVar = "UNUSED_BOS_CREDENTIAL";
-const resourceGroupUrl = "https://dfsm.ai/mcp/apps/bos/platform";
+const bosProduct = await readJson(join(root, "products", "bos", "product.json"));
+const resourceGroupUrl = bosProduct.mcp_resource_url;
+const bosAppId = bosProduct.codex_connector.id;
 
 async function fakeCodex(_command, args) {
   if (args[0] === "mcp" && args[1] === "get") {
@@ -107,7 +109,7 @@ test("Codex runtime installation binds the required BOS app", async () => {
     state: "host_managed",
     name: "platform",
     url: resourceGroupUrl,
-    app_id: "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
+    app_id: bosAppId,
     authentication: "oauth_2_1",
     next_action: "connect"
   });
@@ -715,7 +717,7 @@ test("compatible unmanaged plugin is adopted", async () => {
   assert.equal(after.state, "managed-current");
 });
 
-test("unmanaged direct-MCP package migrates to the required BOS app binding", async () => {
+test("unmanaged direct-MCP package converges to the required BOS app binding", async () => {
   const home = await temporaryHome();
   const desired = join(root, "clients", "codex", "plugins", "bos");
   const target = installedProduct(home, "bos");
@@ -738,12 +740,12 @@ test("unmanaged direct-MCP package migrates to the required BOS app binding", as
   await assert.rejects(access(join(target, ".mcp.json")));
   const app = JSON.parse(await readFile(join(target, ".app.json"), "utf8"));
   assert.deepEqual(app.apps.bos, {
-    id: "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
+    id: bosAppId,
     required: true
   });
 });
 
-test("unmanaged replacement-app package migrates back to the proven BOS app identity", async () => {
+test("unmanaged replacement-app package converges to the proven BOS app identity", async () => {
   const home = await temporaryHome();
   const desired = join(root, "clients", "codex", "plugins", "bos");
   const target = installedProduct(home, "bos");
@@ -751,14 +753,14 @@ test("unmanaged replacement-app package migrates back to the proven BOS app iden
   await cp(desired, target, { recursive: true });
   const appPath = join(target, ".app.json");
   const app = JSON.parse(await readFile(appPath, "utf8"));
-  app.apps.bos.id = "asdk_app_6a932992592081919cdc88c60e4ff2dd";
+  app.apps.bos.id = bosProduct.codex_connector.retired_ids[0];
   await writeFile(appPath, JSON.stringify(app));
 
   const after = await applyInstallationRaw({ home, product: "bos" });
   assert.equal(after.state, "managed-current");
   const restored = JSON.parse(await readFile(appPath, "utf8"));
   assert.deepEqual(restored.apps.bos, {
-    id: "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
+    id: bosAppId,
     required: true
   });
 });

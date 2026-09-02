@@ -155,6 +155,24 @@ function validateContractShape(contract, contractPath) {
       "codex_app_required must be true."
     ));
   }
+  const requestTime = contract.request_time_authentication;
+  const expectedRequestTime = {
+    activation_owner: "SELECTED_OAUTH_TOOL",
+    preauthentication_tool_surface: "DESCRIPTORS_ONLY",
+    tool_security_scheme: "OAUTH2_PER_TOOL",
+    unauthenticated_tool_result: "MCP_WWW_AUTHENTICATE",
+    unauthenticated_business_execution: "DENIED",
+    post_authentication_tool_catalog: "SERVER_AUTHORITY_SCOPED",
+    native_action_surface: "ACTIVE_CHAT",
+    continuation_policy: "RESUME_ORIGINAL_REQUEST"
+  };
+  if (JSON.stringify(requestTime) !== JSON.stringify(expectedRequestTime)) {
+    findings.push(finding(
+      "contract_shape",
+      contractPath,
+      "request_time_authentication must require OAuth-tagged tool descriptors, a selected-tool mcp/www_authenticate challenge, denied pre-consent business execution, native chat authentication, post-auth authority-scoped discovery, and same-request continuation."
+    ));
+  }
   return findings;
 }
 
@@ -181,9 +199,13 @@ export async function verifySingleBosContract({
       ["runtime", "bos"],
       ["application_name", contract.application_name],
       ["mcp_group_name", contract.mcp_group_name],
-      ["codex_app_id", contract.codex_app_id]
+      ["mcp_resource_url", contract.resource_url],
+      ["codex_connector.id", contract.codex_app_id]
     ]) {
-      if (owner[field] !== expected) {
+      const observed = field === "codex_connector.id"
+        ? owner.codex_connector?.id
+        : owner[field];
+      if (observed !== expected) {
         violations.push(finding(
           "owner_manifest_mismatch",
           `products/${owner.name}/product.json`,
@@ -197,7 +219,8 @@ export async function verifySingleBosContract({
     "runtime",
     "application_name",
     "mcp_group_name",
-    "codex_app_id"
+    "mcp_resource_url",
+    "codex_connector"
   ];
   for (const product of products.filter(({ name }) => name !== contract.owner_product)) {
     for (const field of forbiddenProductFields) {
@@ -217,17 +240,6 @@ export async function verifySingleBosContract({
         relative(root, descriptorPath)
       ));
     }
-  }
-
-  const runtimePath = join(root, "source", "runtime", "bos", ".mcp.json");
-  const runtime = await readJson(runtimePath);
-  const runtimeServers = Object.values(runtime.mcpServers ?? {});
-  if (runtimeServers.length !== 1 || runtimeServers[0]?.url !== contract.resource_url) {
-    violations.push(finding(
-      "root_runtime_mismatch",
-      relative(root, runtimePath),
-      "The BOS runtime must declare exactly the canonical root resource URL."
-    ));
   }
 
   const clientFiles = await walkFiles(join(root, "clients"));
@@ -407,6 +419,7 @@ function contractResult(contract, violations) {
     status: unique.length ? "failed" : "passed",
     resource_url: contract.resource_url,
     owner_product: contract.owner_product,
+    request_time_authentication: contract.request_time_authentication,
     violations: unique
   };
 }

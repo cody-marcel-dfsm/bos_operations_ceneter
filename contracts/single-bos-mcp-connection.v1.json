@@ -11,10 +11,18 @@
   "provider_account_selection_policy": "ALWAYS_SELECT_ACCOUNT",
   "identity_organization_resolution_policy": "SERVER_EVALUATED_PER_VERIFIED_IDENTITY",
   "subservice_authentication_policy": "ON_USE",
+  "request_time_authentication": {
+    "activation_owner": "SELECTED_OAUTH_TOOL",
+    "preauthentication_tool_surface": "DESCRIPTORS_ONLY",
+    "tool_security_scheme": "OAUTH2_PER_TOOL",
+    "unauthenticated_tool_result": "MCP_WWW_AUTHENTICATE",
+    "unauthenticated_business_execution": "DENIED",
+    "post_authentication_tool_catalog": "SERVER_AUTHORITY_SCOPED",
+    "native_action_surface": "ACTIVE_CHAT",
+    "continuation_policy": "RESUME_ORIGINAL_REQUEST"
+  },
   "subservice_products": [
-    "education-center",
-    "my-crm",
-    "video-ads"
+    "education-center"
   ],
   "connection_artifacts": [
     "clients/claude/plugins/bos/CONNECTORS.md",

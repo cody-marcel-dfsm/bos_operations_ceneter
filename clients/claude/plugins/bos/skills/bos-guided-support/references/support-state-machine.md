@@ -10,8 +10,8 @@ reported stage only when later evidence contradicts it.
 |---|---|---|---|
 | Install | Marketplace/plugin/extension listing or package metadata | Install or update the named BOS product from its canonical distribution | Correct product and expected version are present |
 | Load | Skill list, plugin enabled state, or a new task/session | Enable the product and restart or start a new task as the client requires | Current session recognizes `bos-guided-support` and product skills |
-| Register | Client connection listing, package binding metadata, authentication control, and OAuth client status | Restore the client-native root binding; on Codex restore the package-owned MCP declaration; discard and recreate a stale host registration for the same BOS resource | Exact BOS resource is visible and the host-owned public client is accepted |
-| Sign in | Host connection state or OAuth result | Invoke the client's Connect/Sign in/Authenticate flow | Valid resource-scoped BOS OAuth grant is accepted |
+| Register | Client connection listing, package binding metadata, authentication control, and OAuth client status | Restore the client-native root binding; on Codex restore the required package-owned `.app.json` registered-app declaration; discard and recreate a stale host registration for the same BOS resource | Exact BOS resource is visible and the host-owned public client is accepted |
+| Sign in | Resolved registered-app connection state or OAuth result | Invoke the client's inline Connect/Sign in/Authenticate flow | Valid resource-scoped BOS OAuth grant is accepted |
 | Discover | Fresh callable tool manifest | Reconnect or refresh MCP/tool discovery | Required product tools, including context discovery, appear |
 | Verify | `bos_get_context` plus a bounded authenticated product read | Classify the returned server/provider error and recover that boundary | One canonical context and one read succeed |
 
@@ -30,18 +30,25 @@ reported stage only when later evidence contradicts it.
   public-client registration, repeat dynamic client registration from current
   authorization metadata, and restart BOS authorization once.
 - `authentication_required`, missing/expired/revoked/out-of-scope grant:
-  **Sign in**.
+  **Sign in**. Select the requested OAuth-declared BOS tool. Its descriptor is
+  visible before consent, while customer data and business execution stay
+  protected. Its unauthenticated result returns
+  `_meta["mcp/www_authenticate"]`, which renders the simple inline action in the
+  current chat. Preserve the request through consent, then refresh
+  authority-scoped tools, call `bos_get_context`, and resume.
 - OAuth token endpoint `invalid_grant`, including `Refresh token replay
   detected`: **Sign in**. The current grant is unusable. Stop the refresh retry
   loop, preserve the pending request, and obtain fresh consent through the
   native root BOS authentication action before refreshing discovery and
   resuming.
 - Codex `reauthenticationRequired` or `requires OAuth reauthentication`:
-  **Sign in**. Preserve the active request and activate the exact root BOS MCP
-  connection through the already visible native authentication control. The
-  HTTP 401 protected-resource challenge independently activates runtime OAuth
-  discovery. When the display control is present and activation fails, report
-  an authentication-activation defect and preserve the pending request; never
+  **Sign in**. Preserve the active request, select the exact OAuth-declared BOS
+  tool required by the prompt, and invoke it once. Its signed-out
+  `_meta["mcp/www_authenticate"]` result activates the native inline
+  authentication control. When the descriptor or challenge is missing, report
+  a tool-auth-contract defect. When the host receives the challenge but omits
+  the action, report an authentication-activation defect. Preserve the pending
+  request; never
   invoke CLI login or launch authentication for the user. Never translate this
   state into unavailable tools, missing business data, or a generic
   app-permission problem.

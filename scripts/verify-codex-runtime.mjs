@@ -94,7 +94,7 @@ async function inspectInstalledAppBinding(home, marketplace, product, versions, 
     plugin.apps === "./.app.json" &&
     !("mcpServers" in plugin) &&
     !(await pathExists(runtimePath)) &&
-    app?.id === product.codex_app_id &&
+    app?.id === product.codex_connector?.id &&
     app?.required === true &&
     JSON.stringify(Object.keys(app ?? {}).sort()) ===
       JSON.stringify(["id", "required"]);
@@ -172,7 +172,7 @@ export async function inspectCodexRuntime(rawOptions = {}) {
   );
   const catalogPath = options.catalogPath ?? await newestJsonContaining(
     join(options.home, ".codex", "cache", "codex_apps_tools"),
-    "https://dfsm.ai/mcp/apps/bos/platform"
+    bos.mcp_resource_url
   );
   const catalog = catalogPath ? await readJson(catalogPath) : null;
   const discovered = publicToolNames(catalog);
@@ -203,7 +203,7 @@ export async function inspectCodexRuntime(rawOptions = {}) {
   return {
     schema_version: "1",
     ok: failures.length === 0,
-    resource_url: "https://dfsm.ai/mcp/apps/bos/platform",
+    resource_url: bos.mcp_resource_url,
     marketplace: {
       name: options.marketplace,
       state: marketplaceCurrent ? "current" : "missing"

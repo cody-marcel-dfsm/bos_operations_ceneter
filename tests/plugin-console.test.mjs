@@ -47,6 +47,36 @@ test("BOS Plugin Console is an instructions-only in-memory client feature", asyn
   assert.match(guidance, /start a local renderer or service/i);
   assert.match(guidance, /never directly inspect the local filesystem/i);
   assert.match(guidance, /sole local selection operation/i);
+  assert.match(
+    guidance,
+    /select the matching OAuth-declared BOS tool[\s\S]*native login action[\s\S]*preserve the request[\s\S]*resume it afterward/i
+  );
+  assert.match(
+    guidance,
+    /requested capability[\s\S]*matching BOS tool descriptor[\s\S]*securitySchemes/i
+  );
+  assert.match(
+    guidance,
+    /descriptor[\s\S]*visibility[\s\S]*do not authorize business execution[\s\S]*expose[\s\S]*customer data/i
+  );
+  assert.match(
+    guidance,
+    /Invoke the selected tool once[\s\S]*mcp\/www_authenticate[\s\S]*simple[\s\S]*Sign in/i
+  );
+  assert.match(
+    guidance,
+    /Never[\s\S]*plugin-install recommendation[\s\S]*external install page/i
+  );
+  assert.doesNotMatch(guidance, /list_available_plugins_to_install/i);
+  assert.doesNotMatch(guidance, /`request_plugin_install`/i);
+  assert.match(
+    guidance,
+    /Preserve\s+the\s+current request[\s\S]*signs\s+in[\s\S]*refresh the authority-scoped tool state[\s\S]*same\s+request/i
+  );
+  assert.match(
+    guidance,
+    /manual navigation[\s\S]*Never ask[\s\S]*repeat\s+the\s+prompt/i
+  );
   assert.match(guidance, /explicitly named[\s\S]*default_organization_label/i);
   assert.match(guidance, /Never enumerate service data for every[\s\S]*organization by default/i);
   assert.match(
@@ -112,6 +142,26 @@ test("BOS distributes the in-memory Plugin Console to every supported client", a
     assert.equal(await readFile(`${skillRoot}/SKILL.md`, "utf8"), canonicalGuidance);
     const files = await listRelativeFiles(skillRoot);
     assert.deepEqual(files, ["SKILL.md", "agents/openai.yaml"]);
+  }
+});
+
+test("generated Plugin Consoles preserve tool-triggered OAuth presentation", async () => {
+  for (const generatedSkillRoot of generatedSkillRoots) {
+    const guidance = await readFile(`${generatedSkillRoot}/SKILL.md`, "utf8");
+    assert.match(
+      guidance,
+      /requested capability[\s\S]*matching BOS tool descriptor[\s\S]*securitySchemes/i,
+      `${generatedSkillRoot} must preserve tool-bound OAuth selection`
+    );
+    assert.match(
+      guidance,
+      /mcp\/www_authenticate[\s\S]*native[\s\S]*Sign in/i,
+      `${generatedSkillRoot} must preserve native authentication presentation`
+    );
+    assert.match(guidance, /authorize business execution[\s\S]*customer data/i);
+    assert.match(guidance, /anonymous[\s\S]*bootstrap business tool/i);
+    assert.doesNotMatch(guidance, /list_available_plugins_to_install/i);
+    assert.doesNotMatch(guidance, /`request_plugin_install`/i);
   }
 });
 

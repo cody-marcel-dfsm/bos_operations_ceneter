@@ -4,18 +4,24 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { pathExists, readJson, root, stableJson } from "./lib/package-model.mjs";
+import { createCodexAccountPluginClient } from "./lib/codex-account-plugin-client.mjs";
+import {
+  codexConnectorContract,
+  pathExists,
+  readJson,
+  root,
+  stableJson
+} from "./lib/package-model.mjs";
 
 const execFileAsync = promisify(execFile);
 export const CODEX_CLEAN_CONFIRMATION = "DELETE ALL BOS CODEX PLUGIN STATE";
 const marketplace = "bos-education-center";
 const products = ["education-center", "bos"];
-const bosResourceUrl = "https://dfsm.ai/mcp/apps/bos/platform";
-const bosCodexAppIds = [
-  "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
-  "asdk_app_6a95a014a0a08191a9e6d16453a8b831",
-  "asdk_app_6a932992592081919cdc88c60e4ff2dd"
-];
+const bosProduct = await readJson(join(root, "products", "bos", "product.json"));
+const bosConnector = codexConnectorContract(bosProduct);
+const bosResourceUrl = bosProduct.mcp_resource_url;
+const bosCodexAppIds = [bosConnector.id, ...bosConnector.retired_ids];
+const retiredRawBosCodexAppIds = new Set(bosConnector.retired_ids.map(codexAppRecordId));
 
 function codexAppRecordId(id) {
   return id.replace(/^plugin_/, "");
@@ -135,18 +141,18 @@ export async function planCodexCleanup(rawOptions = {}) {
     }
   }
   const globalState = join(options.home, ".codex", ".codex-global-state.json");
-  const globalStateContent = (await pathExists(globalState))
-    ? await readFile(globalState, "utf8")
-    : "";
+  const globalStateValue = (await pathExists(globalState))
+    ? await readJson(globalState)
+    : null;
   return {
     schema_version: "1",
     app_id: appId,
     package_cache: (await pathExists(packageCache)) ? packageCache : null,
     registered_app_wrappers: registeredAppWrappers,
     cache_files: [...new Set(cacheFiles)].sort(),
-    global_state: [bosResourceUrl, ...bosCodexAppIds].some((needle) =>
-      globalStateContent.includes(needle)
-    ) ? globalState : null
+    global_state: globalStateValue && hasBosPluginState(globalStateValue)
+      ? globalState
+      : null
   };
 }
 
@@ -169,6 +175,36 @@ export function removeBosToolsFromGlobalState(state, appId = bosCodexAppIds[0]) 
     removed += before - entry.tools.length;
   }
   return removed;
+}
+
+function containsBosIdentity(value) {
+  const content = JSON.stringify(value);
+  return [bosResourceUrl, ...bosCodexAppIds].some((needle) =>
+    content.includes(needle)
+  );
+}
+
+function bosOauthResumeEntries(state) {
+  const resume = state?.["electron-persisted-atom-state"]
+    ?.["app-connect-oauth-plugin-install-resume-by-state-v1"];
+  if (!resume || typeof resume !== "object" || Array.isArray(resume)) return [];
+  return Object.entries(resume).filter(([, value]) => containsBosIdentity(value));
+}
+
+export function removeBosPluginStateFromGlobalState(state) {
+  let removed = removeBosToolsFromGlobalState(state);
+  const resume = state?.["electron-persisted-atom-state"]
+    ?.["app-connect-oauth-plugin-install-resume-by-state-v1"];
+  for (const [key] of bosOauthResumeEntries(state)) {
+    delete resume[key];
+    removed += 1;
+  }
+  return removed;
+}
+
+function hasBosPluginState(state) {
+  const copy = structuredClone(state);
+  return removeBosPluginStateFromGlobalState(copy) > 0;
 }
 
 async function commandJson(runCommand, args) {
@@ -195,13 +231,31 @@ export async function cleanInstallCodex(rawOptions = {}) {
       return {
         schema_version: "1",
         ok: true,
-        actions: deferredClients.map((client) => `clean_install_scheduled:${client}`),
-        next_action: "The clean install will close ChatGPT, reinstall BOS while it is stopped, and reopen ChatGPT automatically."
+        actions: deferredClients.map((client) => `clean_removal_scheduled:${client}`),
+        next_action: "The cleanup will close ChatGPT, remove BOS plugin state while it is stopped, and reopen ChatGPT automatically. Nothing will be reinstalled."
       };
     }
   }
   const plan = await planCodexCleanup(options);
   const actions = [];
+  const codexAccount = options.codexAccount ?? createCodexAccountPluginClient({
+    debug: process.env.BOS_HTTP_DEBUG !== "0"
+  });
+  // Cleanup preserves the permanent product record. Only explicitly retired
+  // accidental records from product.json are eligible for account deletion.
+  for (const appId of retiredRawBosCodexAppIds) {
+    const inspection = await codexAccount.inspectConnector(appId);
+    if (inspection.http_status === 404) continue;
+    if (!inspection.ok) {
+      throw new Error(
+        `BOS account app inspection failed for ${appId}: HTTP ${inspection.http_status}`
+      );
+    }
+    const deletion = await codexAccount.remove(appId);
+    actions.push(deletion.alreadyAbsent
+      ? `account_app_already_absent:${appId}`
+      : `removed_account_app:${appId}`);
+  }
   const listing = await commandJson(options.runCommand, ["plugin", "list", "--json"]);
   const installedIds = new Set((listing?.installed ?? []).map((entry) => entry.pluginId));
   for (const product of products) {
@@ -234,11 +288,11 @@ export async function cleanInstallCodex(rawOptions = {}) {
     await mkdir(dirname(backup), { recursive: true });
     await cp(plan.global_state, backup);
     const state = await readJson(plan.global_state);
-    const removed = removeBosToolsFromGlobalState(state, plan.app_id);
+    const removed = removeBosPluginStateFromGlobalState(state);
     const temporary = `${plan.global_state}.tmp-${process.pid}`;
     await writeFile(temporary, stableJson(state));
     await rename(temporary, plan.global_state);
-    actions.push(`removed_global_catalog_tools:${removed}`);
+    actions.push(`removed_global_plugin_state:${removed}`);
     actions.push(`global_state_backup:${backup}`);
   }
   for (const path of [
@@ -250,21 +304,61 @@ export async function cleanInstallCodex(rawOptions = {}) {
     actions.push(`removed_cache:${path}`);
   }
 
-  await commandJson(
-    options.runCommand,
-    ["plugin", "marketplace", "add", options.source, "--json"]
-  );
-  actions.push(`added_marketplace:${options.source}`);
-  for (const product of ["bos", "education-center"]) {
-    const selector = `${product}@${marketplace}`;
-    await commandJson(options.runCommand, ["plugin", "add", selector, "--json"]);
-    actions.push(`installed_plugin:${selector}`);
+  for (const appId of retiredRawBosCodexAppIds) {
+    const inspection = await codexAccount.inspectConnector(appId);
+    if (inspection.http_status !== 404) {
+      throw new Error(`BOS account app cleanup failed for ${appId}`);
+    }
   }
+  actions.push("verified_accidental_account_apps_absent");
+
+  const listingAfter = await commandJson(options.runCommand, ["plugin", "list", "--json"]);
+  const installedAfter = new Set(
+    (listingAfter?.installed ?? []).map((entry) => entry.pluginId)
+  );
+  const remainingProducts = products
+    .map((product) => `${product}@${marketplace}`)
+    .filter((selector) => installedAfter.has(selector));
+  if (remainingProducts.length) {
+    throw new Error(`BOS plugin cleanup failed: ${remainingProducts.join(", ")}`);
+  }
+  actions.push("verified_plugins_absent");
+
+  const marketplacesAfter = await commandJson(
+    options.runCommand,
+    ["plugin", "marketplace", "list", "--json"]
+  );
+  if (marketplaceEntries(marketplacesAfter).some((entry) =>
+    entry?.name === marketplace || entry?.marketplaceName === marketplace
+  )) {
+    throw new Error(`BOS marketplace cleanup failed: ${marketplace}`);
+  }
+  actions.push("verified_marketplace_absent");
+
+  const remainingPaths = [];
+  for (const path of [
+    plan.package_cache,
+    ...plan.registered_app_wrappers,
+    ...plan.cache_files
+  ].filter(Boolean)) {
+    if (await pathExists(path)) remainingPaths.push(path);
+  }
+  if (remainingPaths.length) {
+    throw new Error(`BOS local artifact cleanup failed: ${remainingPaths.join(", ")}`);
+  }
+  actions.push("verified_local_artifacts_absent");
+
+  const globalState = join(options.home, ".codex", ".codex-global-state.json");
+  if ((await pathExists(globalState)) && hasBosPluginState(await readJson(globalState))) {
+    throw new Error("BOS global plugin state cleanup failed");
+  }
+  actions.push("verified_global_plugin_state_absent");
+
   return {
     schema_version: "1",
     ok: true,
     actions,
-    next_action: "The package installation is complete. The host will present BOS sign-in during OAuth discovery."
+    next_action: "All retired accidental BOS account apps and all BOS plugin, marketplace, and local artifacts were removed. The permanent product record was preserved. Nothing was reinstalled."
   };
 }
 
@@ -273,7 +367,7 @@ async function main() {
   const report = await cleanInstallCodex(options);
   if (options.json) process.stdout.write(stableJson(report));
   else {
-    console.log("BOS Codex clean install completed.");
+    console.log("BOS Codex cleanup completed.");
     console.log(report.next_action);
   }
 }

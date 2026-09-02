@@ -13,7 +13,11 @@
     "check": "node scripts/check-package.mjs",
     "contract:check": "node scripts/verify-single-bos-contract.mjs --format json",
     "contract:oauth-discovery-live": "node scripts/verify-bos-auth-discovery-live.mjs",
+    "contract:oauth-tool-auth-live": "node scripts/verify-bos-tool-auth-live.mjs",
     "contract:oauth-live": "node scripts/verify-bos-oauth-live.mjs",
+    "diagnose:codex-app": "node scripts/diagnose-codex-registered-app.mjs",
+    "acceptance:codex-login": "node scripts/verify-codex-login-evidence.mjs",
+    "product:codex": "node scripts/manage-codex-product.mjs",
     "inventory": "node scripts/inventory-skills.mjs",
     "install:inspect": "node scripts/install-package.mjs inspect",
     "install:plan": "node scripts/install-package.mjs plan",
@@ -34,7 +38,7 @@
     "dev:link:codex": "node scripts/link-codex-development.mjs",
     "release": "npm run release:check",
     "test": "node --test tests/*.test.mjs",
-    "release:check": "npm run build && npm run check && npm run contract:check && npm test"
+    "release:check": "npm run build && npm run check && npm run contract:check && npm test && npm run acceptance:codex-login -- --json"
   },
   "engines": {
     "node": ">=20"

@@ -12,9 +12,14 @@ import {
   readJson,
   resolveProductSkills,
   root,
+  stableJson,
   transformProductSkillGuidance,
   validateProduct
 } from "./lib/package-model.mjs";
+import {
+  codexLoginSurfaceContract,
+  singleBosConnectionContract
+} from "./lib/product-contracts.mjs";
 
 const forbiddenNames = new Set([
   ".env",
@@ -225,8 +230,15 @@ async function validateProducts() {
         metadata.connection_owner !== "bos" ||
         metadata.application_name !== manifest.application_name ||
         metadata.mcp_group_name !== manifest.mcp_group_name ||
+        metadata.resource_url !== (manifest.runtime
+          ? materializeMcpUrl(manifest)
+          : undefined) ||
         metadata.codex_app_id !==
-          (client === "codex" ? manifest.codex_app_id : undefined) ||
+          (client === "codex" ? manifest.codex_connector?.id : undefined) ||
+        JSON.stringify(metadata.retired_codex_app_ids) !==
+          JSON.stringify(client === "codex"
+            ? manifest.codex_connector?.retired_ids
+            : undefined) ||
         metadata.authentication !== expectedAuthentication ||
         "credential_env_var" in metadata ||
         "mcp_application" in metadata ||
@@ -272,7 +284,7 @@ async function validateProducts() {
           if (
             entries.length !== 1 ||
             name !== manifest.name ||
-            app?.id !== manifest.codex_app_id ||
+            app?.id !== manifest.codex_connector?.id ||
             app?.required !== true ||
             JSON.stringify(Object.keys(app ?? {}).sort()) !==
               JSON.stringify(["id", "required"])
@@ -328,10 +340,7 @@ async function validateProducts() {
           failures.push(`Generated Claude plugin contains session-scoped MCP: ${runtimePath}`);
         }
         const metadata = await readJson(join(pluginRoot, ".bos-product.json"));
-        const expectedUrl = materializeMcpUrl(
-          "https://dfsm.ai/mcp/apps/bos/platform",
-          manifest
-        );
+        const expectedUrl = materializeMcpUrl(manifest);
         if (metadata.connection_scope !== "claude_account" ||
             metadata.resource_url !== expectedUrl ||
             !(await pathExists(join(pluginRoot, "CONNECTORS.md")))) {
@@ -368,10 +377,7 @@ async function validateProducts() {
       } else if (manifest.runtime) {
         const runtime = await readJson(runtimePath);
         const server = runtime.mcpServers?.[manifest.mcp_group_name];
-        const expectedUrl = materializeMcpUrl(
-          "https://dfsm.ai/mcp/apps/bos/platform",
-          manifest
-        );
+        const expectedUrl = materializeMcpUrl(manifest);
         if (
           server?.type !== "http" ||
           server?.url !== expectedUrl ||
@@ -422,10 +428,7 @@ async function validateProducts() {
             failures.push(`Skills-only Gemini product contains MCP configuration: ${extensionPath}`);
           }
         } else {
-          const expectedUrl = materializeMcpUrl(
-            "https://dfsm.ai/mcp/apps/bos/platform",
-            manifest
-          );
+          const expectedUrl = materializeMcpUrl(manifest);
           if (
             generated.mcpServers?.[manifest.mcp_group_name]?.httpUrl !== expectedUrl ||
             generated.mcpServers?.[manifest.mcp_group_name]?.oauth?.enabled !== true ||
@@ -457,10 +460,7 @@ async function validateProducts() {
         failures.push(`Missing generated Antigravity MCP configuration: ${pluginMcpPath}`);
       } else {
         const desktopMcp = await readJson(pluginMcpPath);
-        const expectedUrl = materializeMcpUrl(
-          "https://dfsm.ai/mcp/apps/bos/platform",
-          manifest
-        );
+        const expectedUrl = materializeMcpUrl(manifest);
         const server = desktopMcp.mcpServers?.[manifest.mcp_group_name];
         if (
           Object.keys(desktopMcp.mcpServers ?? {}).length !== 1 ||
@@ -560,10 +560,33 @@ async function validateRepositoryMarketplaceEntrypoints() {
   }
 }
 
+async function validateGeneratedProductContracts() {
+  const products = (await listProducts())
+    .map(({ manifest }) => manifest)
+    .filter(({ release_status }) => release_status === "active");
+  const bos = products.find(({ name }) => name === "bos");
+  for (const [path, expected] of [
+    [
+      join(root, "contracts", "single-bos-mcp-connection.v1.json"),
+      singleBosConnectionContract(products)
+    ],
+    [
+      join(root, "contracts", "codex-login-surface.v1.json"),
+      codexLoginSurfaceContract(bos)
+    ]
+  ]) {
+    const actual = await readFile(path, "utf8");
+    if (actual !== stableJson(expected)) {
+      failures.push(`Generated product contract drift: ${path}`);
+    }
+  }
+}
+
 await scan(root);
 await validateTrackedCredentialFiles();
 await validateProducts();
 await validateRepositoryMarketplaceEntrypoints();
+await validateGeneratedProductContracts();
 
 if (failures.length) {
   console.error([...new Set(failures)].join("\n"));

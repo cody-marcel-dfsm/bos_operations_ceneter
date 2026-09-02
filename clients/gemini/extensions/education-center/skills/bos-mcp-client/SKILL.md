@@ -9,8 +9,8 @@ Use this skill for every client-side BOS operation. The root BOS plugin owns one
 remote MCP resource and one host-managed OAuth connection for the user-facing
 client context. A Claude account or organization Web connector declares that
 resource and exposes the persistent host-managed **Connect** action;
-ChatGPT/Codex loads the root package's credential-free `.mcp.json` and performs
-OAuth discovery from that immutable resource. Other supported clients use the single BOS adapter
+ChatGPT/Codex loads the root package's required `.app.json` registered-app
+binding and performs OAuth discovery from that immutable resource. Other supported clients use the single BOS adapter
 declared by their generated package.
 
 Education Center, CRM, Marketing Director, and other subservice plugins add
@@ -31,7 +31,9 @@ agent that states the sanitized evidence, required protocol invariant,
 deployment scope, and post-deployment verification. The handoff makes the
 client-owned Operations Center acceptance suite mandatory: `npm run
 contract:check`, `npm run contract:oauth-discovery-live -- --resource-url
-"$BOS_MCP_RESOURCE_URL" --format json`, and `npm run contract:oauth-live --
+"$BOS_MCP_RESOURCE_URL" --format json`, `npm run
+contract:oauth-tool-auth-live -- --resource-url "$BOS_MCP_RESOURCE_URL" --tool
+bos_get_context --format json`, and `npm run contract:oauth-live --
 --authorize-url "$BOS_OAUTH_AUTHORIZE_URL" --format json`. The server-side
 agent performs the work through the owning repository workflow and the
 developer's existing infrastructure identity. A credential being created for a
@@ -54,8 +56,8 @@ stateful mutation workflow.
   BOS plugin and runtime binding immediately. Repair or reinstall BOS and
   restore its declared authorization connection. For Codex, verify the root
   BOS plugin declares `apps: "./.app.json"`, the app file contains exactly one
-  required BOS entry with the product's `plugin_asdk_app_...` identity, and no
-  `.mcp.json` shadows that native login binding. For Claude,
+  required BOS entry with the product's canonical raw `asdk_app_...` connector
+  identity, and no `.mcp.json` shadows that native login binding. For Claude,
   verify the BOS package's
   account-connector metadata and the matching Web connector under
   **Customize → Connectors**, then use its persistent **Connect** action. When a
@@ -82,23 +84,29 @@ stateful mutation workflow.
   and installed subservice plugins unchanged throughout recovery.
 - If Codex reports `reauthenticationRequired`, `requires OAuth
   reauthentication`, or an equivalent MCP-startup authentication failure,
-  classify it as **Sign in** and preserve the active request. Use the native
-  host **Connect**, **Sign in**, or **Authenticate** action when Codex exposes
-  one. The root MCP resource answers an unauthenticated connection attempt with HTTP 401
-  and a `WWW-Authenticate` challenge containing its exact `resource_metadata`
-  URL so the runtime can enter `notLoggedIn` and complete OAuth discovery.
-  When the host has no authentication action after loading the registered BOS
-  app, classify it as an authentication-activation defect and inspect the
-  `.app.json` declaration before evaluating server behavior. Receiving an OAuth
-  challenge and displaying the native authentication action are separate
-  contracts. When the action exists and the runtime
-  cannot activate it after a challenge, report an authentication-activation
-  defect with the sanitized startup error and keep the request pending. Do not
+  classify it as **Sign in** and preserve the active request. Use the requested
+  BOS capability to select the matching tool descriptor. Each authenticated BOS
+  tool declares `securitySchemes: [{ type: "oauth2", scopes: [...] }]` before
+  consent so the host knows that the selected capability requires BOS OAuth.
+  Descriptor visibility and selection expose no customer data and authorize no
+  business execution. Invoke the selected tool once; when the signed-out result
+  contains `isError: true` and `_meta["mcp/www_authenticate"]`, the host renders
+  the native **Connect**, **Sign in**, or **Authenticate** action in the active
+  chat. That challenge must include `resource_metadata`, `error`, and
+  `error_description`. After consent, refresh the authority-scoped tool state,
+  call `bos_get_context`, and resume the original request.
+  When the OAuth tool descriptor is absent or its signed-out invocation omits
+  the challenge, report a tool-auth-contract defect and keep the request
+  pending. When the descriptor and challenge exist but the host omits the
+  native action, report a client authentication-activation defect. Do not
   invoke a CLI login or
   launch browser authentication on the user's behalf. Do not ask the user to
   reconnect BOS or resubmit the request. Do not use generic app-permission tools,
-  app-dependency tools, the plugin console, or a subservice connection
-  to repair MCP OAuth. After the user selects the native action and login
+  unrelated app-dependency tools, the plugin console's business-data workflow,
+  an anonymous bootstrap business tool, or a subservice connection to repair
+  MCP OAuth. Never use `request_plugin_install`, a plugin recommendation, or an
+  external install page as MCP OAuth recovery. After the
+  user selects the native action and login
   succeeds, refresh the MCP session and callable tool manifest, call
   `bos_get_context`, verify one
   bounded authenticated read, and resume the original request automatically.
@@ -162,7 +170,7 @@ and inspect its sanitized result before producing a final answer.
    context.
 5. Authenticate the BOS Claude account-level Web connector through its
    persistent **Connect** control, and the ChatGPT/Codex BOS connection
-   through the root package-owned MCP binding. Both use one host-managed
+   through the root package-owned registered-app binding. Both use one host-managed
    OAuth grant. Other clients use only the generated product
    adapter declared for BOS. Keep access tokens, refresh tokens,
    authorization codes, bearer values, and grant metadata out of chat, tool

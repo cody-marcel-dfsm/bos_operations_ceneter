@@ -46,7 +46,21 @@
   "runtime": "bos",
   "application_name": "bos",
   "mcp_group_name": "platform",
-  "codex_app_id": "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
+  "mcp_resource_url": "https://dfsm.ai/mcp/apps/bos/platform",
+  "codex_connector": {
+    "lifecycle_state": "ESTABLISHED",
+    "id": "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
+    "required": true,
+    "identity_policy": "IMMUTABLE",
+    "metadata_policy": "UPDATE_IN_PLACE",
+    "missing_record_policy": "REGISTRY_INTEGRITY_FAILURE",
+    "provisioning_policy": "NEW_PRODUCT_ONLY",
+    "retired_ids": [
+      "asdk_app_6a97966a296c8191a5f9b937e7650be3",
+      "asdk_app_6a95a014a0a08191a9e6d16453a8b831",
+      "asdk_app_6a932992592081919cdc88c60e4ff2dd"
+    ]
+  },
   "runtime_verification_tools": [
     "bos_get_authorization_status",
     "bos_apply_plugin_settings",
