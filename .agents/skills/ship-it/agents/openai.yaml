@@ -1,4 +1,4 @@
 interface:
   display_name: "Ship It"
   short_description: "Approve and complete the full repository release"
-  default_prompt: "Use $ship-it to approve and complete the current BOS Operations Center release through versioning, validation, commit, push, pull-request merge, and workspace cleanup without requesting another release approval."
+  default_prompt: "Use $ship-it as my complete and final approval to execute the entire evolving, reviewed BOS Operations Center release through versioning, validation, commit, push, pull-request merge, and workspace cleanup. Ask zero approval, confirmation, or intent questions; report concrete execution blockers declaratively."
