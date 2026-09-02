@@ -2140,6 +2140,10 @@ test("ship-it invocation is the approval for push and merge", async () => {
   assert.match(workflow, /complete,[\s\S]*unambiguous execution instructions/i);
   assert.match(workflow, /explicit and final[\s\S]*approval/i);
   assert.match(workflow, /complete evolving, reviewed release payload[\s\S]*normal pushes[\s\S]*merging/i);
+  assert.match(workflow, /exact prospective[\s\S]*explicitly approve creating and pushing[\s\S]*bos_operations_ceneter\.git[\s\S]*merging that pull request/i);
+  assert.match(workflow, /before the final version, payload,[\s\S]*commit hashes exist/i);
+  assert.match(workflow, /remains attached to the final reviewed[\s\S]*values/i);
+  assert.match(workflow, /never requires the user to restate the[\s\S]*destination or approve the concrete result again/i);
   assert.match(workflow, /ask zero conversational approval, confirmation, or intent questions/i);
   assert.match(workflow, /expanded[\s\S]*release payload is approved/i);
   assert.match(workflow, /every repository file amended before completion/i);
@@ -2147,11 +2151,14 @@ test("ship-it invocation is the approval for push and merge", async () => {
   assert.match(workflow, /include it[\s\S]*inspect it[\s\S]*validation relevant to it/i);
   assert.match(workflow, /never create a new approval boundary/i);
   assert.match(workflow, /blocker[\s\S]*declaratively/i);
+  assert.match(workflow, /exact resolved remote URL,[\s\S]*final reviewed commit/i);
+  assert.match(workflow, /never characterize the final commit as a newly introduced payload/i);
+  assert.match(workflow, /resolved push remote to equal[\s\S]*bos_operations_ceneter\.git/i);
   assert.match(workflow, /merge without asking a question/i);
   assert.doesNotMatch(workflow, /authority the user has not provided/i);
   assert.match(
     interfaceMetadata,
-    /complete and final approval[\s\S]*push, pull-request merge[\s\S]*ask zero approval, confirmation, or intent questions/i
+    /explicit, complete, prospective, and final approval[\s\S]*bos_operations_ceneter\.git[\s\S]*before the final version, payload, branch, and commit hashes exist[\s\S]*ask zero approval, confirmation, or intent questions/i
   );
 });
 
