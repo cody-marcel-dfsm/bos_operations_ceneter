@@ -82,6 +82,15 @@ validation, and prohibit reclassifying it as unrelated.
   The watcher was stopped, and release 0.4.77 includes that amended evidence so
   the completed workspace can remain clean with only `main` locally and
   remotely.
+- The 0.4.77 push exposed a third ambiguity: a host command-security reviewer
+  treated the newly created release commit and its configured destination as a
+  new payload requiring approval after the user had invoked `ship it`. The
+  contract now includes the user's exact prospective approval for the final
+  Oracle-approved commit or commits, the repository's exact configured GitHub
+  remote, the release branch, the pull request into `main`, and its merge. It
+  states that approval is necessarily given before the workflow creates the
+  final version, payload, branch name, or commit hashes and remains attached to
+  those reviewed results.
 
 ### Validation and Oracle review
 
@@ -104,7 +113,9 @@ evolving reviewed payload includes every amended repository file, all
 approval/confirmation/intent questions are forbidden, concrete validation
 blockers are declarative, push and merge
 proceed under the original authorization, and no superseded missing-authority
-escape clause remains.
+escape clause remains. Bind the prospective approval to the exact repository
+remote and eventual reviewed commit so values created during the workflow
+cannot be reclassified as new authorization scope.
 
 ## Issue #0001: Installed BOS skills appeared while Codex exposed no login or callable tools
 
