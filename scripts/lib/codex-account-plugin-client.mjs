@@ -385,11 +385,19 @@ export function createCodexAccountPluginClient(options = {}) {
       if (!/^asdk_app_[a-z0-9]+$/.test(rawAppId)) {
         throw new Error(`Invalid Codex connector ID: ${appId}`);
       }
-      const response = await accountRequest(`${accountApiRoot}/${rawAppId}`, {
-        method: "GET",
-        headers: await accountHeaders()
-      });
-      const text = await response.text();
+      const headers = await accountHeaders();
+      let response;
+      let text;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        response = await accountRequest(`${accountApiRoot}/${rawAppId}`, {
+          method: "GET",
+          headers
+        });
+        const contentType = response.headers?.get?.("content-type") ?? "";
+        if (response.status !== 403 || !contentType.includes("text/html")) break;
+        if (attempt < 2) await response.text();
+      }
+      text = await response.text();
       let body = text;
       try {
         body = JSON.parse(text);

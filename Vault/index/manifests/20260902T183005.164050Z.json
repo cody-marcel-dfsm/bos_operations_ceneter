@@ -1,0 +1,16 @@
+{
+  "canonical_source_snapshot_sha256": "11d77eab63b6c7980814b4b8b74a2943c62246ff52845f923fd2886414d17c87",
+  "changed_sources": [
+    "Vault/docs/issues/ISSUE_HISTORY.md",
+    "Vault/docs/issues/conclusions/ISSUE_0001_CONCLUSION.md",
+    "Vault/evidence/codex-login/0.4.71-wrong-oauth-target-analysis.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 253,
+  "duration_seconds": 1.369,
+  "index_version": 1,
+  "indexed_at": "20260902T183005.164050Z",
+  "indexed_chunks": 40,
+  "removed_sources": [],
+  "source_count": 93
+}

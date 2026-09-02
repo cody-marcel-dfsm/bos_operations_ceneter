@@ -6,7 +6,8 @@ before implementation guidance and review. Resolved issue details remain in
 
 ## Issue #0001: Installed BOS skills appeared while Codex exposed no login or callable tools
 
-- Status: 0.4.71 SOURCE RELEASE READY; original GPT UI Login/Connect AC pending
+- Status: ACTIVE; Connect is visible, but the immutable connector record is
+  missing and the action opens ChatGPT account onboarding instead of BOS OAuth
 - Priority: CRITICAL
 - Date identified: 2026-09-01
 - Area: Codex package binding, authentication display, and tool discovery
@@ -19,7 +20,9 @@ before implementation guidance and review. Resolved issue details remain in
   `tests/codex-runtime-verification.test.mjs`
 - Conclusion: `Vault/docs/issues/conclusions/ISSUE_0001_CONCLUSION.md`
 - Client evidence:
-  `Vault/evidence/codex-login/0.4.71-gpt-plugin-detail-analysis.md`
+  `Vault/evidence/codex-login/0.4.71-gpt-plugin-detail-analysis.md`,
+  `Vault/evidence/codex-login/0.4.71-wrong-oauth-target-analysis.md`, and
+  `Vault/evidence/codex-login/0.4.71-wrong-oauth-target.png`
 
 ### User goal and definition of done
 
@@ -33,6 +36,13 @@ Codex 0.4.65 and 0.4.70 displayed installed BOS skills and plugin settings while
 omitting a login action. A task then reported that BOS tools were absent. The installed
 package state, registered connection state, OAuth grant state, and callable-tool
 manifest had been treated as one readiness signal.
+
+After installing 0.4.71, the native Connect flow became visible. Invoking it
+opened `auth.openai.com/about-you`, requested ChatGPT profile information, and
+failed with `duplicate_email`. This satisfies the display portion of the issue
+and exposes a second failure in the same registered-app binding: the declared
+immutable connector has no live account record from which ChatGPT can obtain
+the BOS MCP resource and OAuth discovery URLs.
 
 ### Root cause
 
@@ -95,6 +105,18 @@ is therefore correct. The registered-app identity is unresolved in the current
 account and the plugin-detail renderer converts that request failure into an
 absent action.
 
+The 2026-09-02 post-install reproduction refined that final sentence. The host
+now preserves and renders the unresolved declaration, but generates a
+ChatGPT-hosted app URL for it. `app/read` returns the immutable raw ID in
+`missingAppIds`, the complete paginated app catalog has no matching record, the
+created-by-me catalog is empty, and the authenticated connector GET returns
+HTTP 404 `Connector not found`. In the same reproduction, the BOS protected
+resource and authorization-server discovery remain healthy and advertise
+issuer `https://dfsm.ai` and authorization endpoint
+`https://dfsm.ai/api/v1/mcp/oauth/authorize`. The OpenAI onboarding target is
+therefore the host fallback for an unresolved registered-app ID; it is not an
+OAuth URL authored by the BOS package.
+
 The narrow account-side recovery used the native ChatGPT connector-settings
 contract with automatic connection disabled. OAuth metadata discovery succeeded
 and connector creation returned
@@ -123,6 +145,17 @@ Show **Connect** when no usable connection exists and **Reconnect** for an
 existing valid, expired, or invalid grant. Validate display independently from
 server OAuth discovery, callable discovery, and execution.
 
+The sole product source must also declare the expected OAuth issuer,
+authorization endpoint, identity-provider endpoint, and account-selection
+policy. Generated product metadata and contracts must preserve those values.
+Post-release acceptance must read the immutable connector record and require
+its exact ID and MCP resource URL before accepting visual Connect evidence.
+That gate converts a missing or misdirected external record into an explicit
+release failure. The repository-native `product:codex sync` workflow requests
+restoration through the exact permanent ID and accepts success only after an
+exact same-ID, same-BOS-resource post-read. It never enters new-product
+provisioning for the established BOS product.
+
 ### Attempts
 
 - 0.4.50: root BOS app binding from `e46546c`; user-observed BOS login worked.
@@ -136,8 +169,9 @@ server OAuth discovery, callable discovery, and execution.
   historical wrapper, then proved that wrapper's backing connector record had
   been unavailable in the inspected account state. The later replacement-ID
   candidate created a duplicate private BOS product and is retired. The current
-  source candidate restores the product-owned permanent identity. Release acceptance remains
-  blocked until `Vault/evidence/codex-login/0.4.71-connect-button.png` visibly
+  0.4.72 source candidate restores the product-owned permanent identity. Release
+  acceptance remains blocked until
+  `Vault/evidence/codex-login/0.4.72-connect-button.png` visibly
   shows native **Connect** or **Reconnect** in the GPT client.
 - 2026-09-01 21:22 America/Denver: created the missing BOS connector metadata
   through the native account contract without starting OAuth. ChatGPT returned
@@ -162,16 +196,27 @@ server OAuth discovery, callable discovery, and execution.
   lock the requested/source name guard, same-record post-read, and every
   new-product eligibility condition. Visual acceptance requires an
   Oracle-inspected, SHA-256-bound review receipt. The complete source release
-  suite passes 277 of 277 tests. The separately tracked post-release checks are
-  the Issue #0001 plugin-detail screenshot
-  `Vault/evidence/codex-login/0.4.71-connect-button.png` and Issue #0002's
-  request-time chat screenshot
+  suite passes 285 of 285 tests. Issue #0001 post-release acceptance requires
+  both the exact immutable connector/resource binding and the plugin-detail
+  screenshot. Issue #0002 separately owns its request-time chat screenshot
   `Vault/evidence/codex-login/0.4.71-request-time-sign-in-button.png`. Issue
   #0001's source, lifecycle, cleanup, package-shape, contract, and Antigravity
   regressions pass, and `npm run acceptance:codex-login -- --json` reports the
-  exact missing Issue #0001 artifact. The user will manually install the source
-  release before visual acceptance. These original-goal artifacts do not block
-  the explicit source-publication instruction.
+  exact current failure: immutable connector resolution returns HTTP 404 before
+  screenshot inspection. These original-goal artifacts do not block the
+  explicit source-publication instruction.
+- 2026-09-02: the user installed 0.4.71 and confirmed that Connect now appears,
+  then captured its incorrect destination. Chrome opened
+  `auth.openai.com/about-you` and failed with `duplicate_email` instead of
+  entering BOS OAuth. A fresh read-only diagnostic proved the package still
+  declares immutable connector
+  `plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91`; `app/read` reports that
+  ID missing, the full 3,373-record catalog has no match, the account-owned
+  catalog is empty, and the connector GET returns HTTP 404. The generated host
+  fallback URL begins `https://chatgpt.com/apps/`, while independent BOS OAuth
+  discovery advertises `https://dfsm.ai/api/v1/mcp/oauth/authorize`. The issue
+  remains ACTIVE until the exact immutable connector is present with the exact
+  BOS resource target and a clean manual install reaches BOS authentication.
 - 2026-09-01 22:29 America/Denver: checked the official production appcast and
   found the newer ChatGPT build 26.831.21537 (bundle 7579). Read-only inspection
   of its temporary archive showed the plugin-detail page still calls `Pdo` when
@@ -346,16 +391,17 @@ of validating only an embedded identity's shape.
 
 The exact archived Issue #0002 customer-prompt trace contains no BOS catalog
 entry, BOS tool selection, or BOS transport call, so that trace proves the
-missing activation without establishing a connector or server cause. Current
-live diagnostics now resolve one friendly canonical BOS app record with
-`missingAppIds: []`, and the canonical connector metadata GET returns HTTP 200.
-Issue #0001 therefore owns the remaining native plugin-page rendering defect
-and its screenshot. Issue #0002 independently owns selected-tool activation,
-and its conversation screenshot. The deployed server contract now passes
-unauthenticated initialization, tool discovery, and the OAuth-declared
-`bos_get_context` challenge. Codex still resolves the declared BOS app without
-mounting its MCP server or selecting that tool, so the valid challenge never
-reaches the conversation renderer.
+missing activation without establishing a connector or server cause. The
+current Issue #0001 diagnostic reports immutable connector 6a7 missing from
+`app/read` and the full app catalog, an empty account-owned catalog, and an
+authenticated connector HTTP 404. Issue #0001 now renders Connect, while its
+unresolved declaration opens ChatGPT account onboarding instead of BOS OAuth.
+Issue #0001 owns the exact registered connector binding and plugin-page flow.
+Issue #0002 independently owns selected-tool activation and its conversation
+screenshot. The deployed server contract passes unauthenticated initialization,
+tool discovery, and the OAuth-declared `bos_get_context` challenge. The missing
+registered-app record remains a plausible shared upstream cause for Issue #0002;
+Issue #0002 must establish that cause through its own prompt trace.
 The combined invariant remains: a failed metadata, connection-inventory,
 initialization, or tool-discovery request may select a recovery state and
 diagnostic; it never removes the plugin-page **Connect/Reconnect** action or an

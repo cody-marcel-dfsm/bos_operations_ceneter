@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  CANONICAL_AUTHORIZATION_ENDPOINT,
+  CANONICAL_IDENTITY_PROVIDER_AUTHORIZATION_ENDPOINT,
+  CANONICAL_OAUTH_TARGET,
   CANONICAL_RESOURCE_CHALLENGE,
   expectedBosResourceChallenge,
   inspectGoogleAccountSelectorRedirect,
@@ -15,7 +18,8 @@ import {
 } from "../scripts/lib/http-debug-log.mjs";
 import { readJson, root } from "../scripts/lib/package-model.mjs";
 
-const resource = (await readJson(`${root}/products/bos/product.json`)).mcp_resource_url;
+const bosProduct = await readJson(`${root}/products/bos/product.json`);
+const resource = bosProduct.mcp_resource_url;
 
 test("HTTP debug logging pairs every request with a redacted response", async () => {
   const lines = [];
@@ -259,10 +263,22 @@ test("protocol diagnostics bound the final serialized event after oversized summ
 });
 
 function authorizeUrl() {
-  const authorize = new URL("https://dfsm.ai/api/v1/mcp/oauth/authorize");
+  const authorize = new URL(CANONICAL_AUTHORIZATION_ENDPOINT);
   authorize.searchParams.set("resource", resource);
   return authorize.href;
 }
+
+test("BOS OAuth live targets derive from the product source", () => {
+  assert.deepEqual(CANONICAL_OAUTH_TARGET, bosProduct.oauth);
+  assert.equal(
+    CANONICAL_AUTHORIZATION_ENDPOINT,
+    bosProduct.oauth.authorization_endpoint
+  );
+  assert.equal(
+    CANONICAL_IDENTITY_PROVIDER_AUTHORIZATION_ENDPOINT,
+    bosProduct.oauth.identity_provider_authorization_endpoint
+  );
+});
 
 function authenticationRequiredResponse({
   status = 401,
@@ -278,15 +294,56 @@ function authenticationRequiredResponse({
   });
 }
 
+function discoveryFetch(resourceUrl = resource, overrides = {}) {
+  const protectedResourceMetadataUrl = new URL(
+    `/.well-known/oauth-protected-resource${new URL(resourceUrl).pathname}`,
+    resourceUrl
+  ).href;
+  const authorizationServerMetadataUrl = new URL(
+    "/.well-known/oauth-authorization-server",
+    bosProduct.oauth.authorization_server_issuer
+  ).href;
+  return async (url) => {
+    if (url === resourceUrl) {
+      return authenticationRequiredResponse({
+        challenge: expectedBosResourceChallenge(resourceUrl)
+      });
+    }
+    if (url === protectedResourceMetadataUrl) {
+      return Response.json({
+        resource: resourceUrl,
+        authorization_servers: [bosProduct.oauth.authorization_server_issuer],
+        ...overrides.protectedResource
+      });
+    }
+    if (url === authorizationServerMetadataUrl) {
+      return Response.json({
+        issuer: bosProduct.oauth.authorization_server_issuer,
+        authorization_endpoint: bosProduct.oauth.authorization_endpoint,
+        ...overrides.authorizationServer
+      });
+    }
+    throw new Error(`Unexpected discovery URL: ${url}`);
+  };
+}
+
 test("BOS OAuth discovery accepts the canonical signed-out challenge", async () => {
   const result = await probeBosOAuthDiscovery({
-    fetchImpl: async () => authenticationRequiredResponse()
+    fetchImpl: discoveryFetch()
   });
 
   assert.equal(result.status, "passed");
   assert.equal(result.http_status, 401);
   assert.equal(result.www_authenticate, CANONICAL_RESOURCE_CHALLENGE);
   assert.equal(result.error, "authentication_required");
+  assert.equal(
+    result.authorization_server_issuer,
+    bosProduct.oauth.authorization_server_issuer
+  );
+  assert.equal(
+    result.authorization_endpoint,
+    bosProduct.oauth.authorization_endpoint
+  );
   assert.deepEqual(result.violations, []);
 });
 
@@ -343,9 +400,7 @@ test("BOS OAuth discovery validates and reports the deployed candidate resource"
   const resourceUrl = "https://candidate.example/mcp/apps/bos/platform";
   const result = await probeBosOAuthDiscovery({
     resourceUrl,
-    fetchImpl: async () => authenticationRequiredResponse({
-      challenge: expectedBosResourceChallenge(resourceUrl)
-    })
+    fetchImpl: discoveryFetch(resourceUrl)
   });
 
   assert.equal(result.status, "passed");
@@ -356,9 +411,28 @@ test("BOS OAuth discovery validates and reports the deployed candidate resource"
   );
 });
 
+test("BOS OAuth discovery rejects a wrong authorization endpoint", async () => {
+  const result = await probeBosOAuthDiscovery({
+    fetchImpl: discoveryFetch(resource, {
+      authorizationServer: {
+        authorization_endpoint: "https://auth.openai.com/about-you"
+      }
+    })
+  });
+
+  assert.equal(result.status, "failed");
+  assert.deepEqual(
+    result.violations.map(({ code }) => code),
+    ["oauth_authorization_endpoint"]
+  );
+});
+
 test("BOS OAuth live contract accepts a Google account-selector redirect", async () => {
-  const google = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-  google.searchParams.set("prompt", "consent select_account");
+  const google = new URL(CANONICAL_IDENTITY_PROVIDER_AUTHORIZATION_ENDPOINT);
+  google.searchParams.set(
+    "prompt",
+    `consent ${CANONICAL_OAUTH_TARGET.provider_account_selection_prompt}`
+  );
   const result = await probeBosOAuthAuthorize({
     authorizeUrl: authorizeUrl(),
     fetchImpl: async () => new Response(null, {
@@ -384,10 +458,45 @@ test("BOS OAuth live contract rejects an authorization server exception", async 
 });
 
 test("BOS OAuth live contract requires explicit Google account selection", () => {
-  const redirect = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  const redirect = new URL(CANONICAL_IDENTITY_PROVIDER_AUTHORIZATION_ENDPOINT);
   redirect.searchParams.set("prompt", "consent");
   assert.deepEqual(
     inspectGoogleAccountSelectorRedirect(redirect.href).map(({ code }) => code),
     ["oauth_account_selector"]
+  );
+});
+
+test("BOS OAuth live contract rejects off-contract provider endpoints", () => {
+  const valid = new URL(CANONICAL_IDENTITY_PROVIDER_AUTHORIZATION_ENDPOINT);
+  valid.searchParams.set(
+    "prompt",
+    CANONICAL_OAUTH_TARGET.provider_account_selection_prompt
+  );
+  for (const candidate of [
+    new URL(valid.href.replace("https:", "http:")),
+    new URL(valid.href.replace(valid.host, "wrong.example")),
+    new URL(valid.href.replace(valid.pathname, "/wrong/oauth")),
+    new URL(`${valid.href}#fragment`)
+  ]) {
+    assert.deepEqual(
+      inspectGoogleAccountSelectorRedirect(candidate.href).map(({ code }) => code),
+      ["oauth_provider_redirect"],
+      candidate.href
+    );
+  }
+});
+
+test("BOS OAuth live contract rejects a provider contract other than product Google", () => {
+  const redirect = new URL(CANONICAL_IDENTITY_PROVIDER_AUTHORIZATION_ENDPOINT);
+  redirect.searchParams.set(
+    "prompt",
+    CANONICAL_OAUTH_TARGET.provider_account_selection_prompt
+  );
+  assert.deepEqual(
+    inspectGoogleAccountSelectorRedirect(redirect.href, {
+      ...CANONICAL_OAUTH_TARGET,
+      identity_provider: "other"
+    }).map(({ code }) => code),
+    ["oauth_provider_contract"]
   );
 });

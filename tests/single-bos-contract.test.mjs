@@ -22,6 +22,7 @@ test("single BOS contract passes canonical and generated clients", async () => {
   assert.equal(result.status, "passed");
   assert.equal(result.owner_product, "bos");
   assert.equal(result.resource_url, bosProduct.mcp_resource_url);
+  assert.deepEqual(result.oauth, bosProduct.oauth);
   assert.deepEqual(result.request_time_authentication, {
     activation_owner: "SELECTED_OAUTH_TOOL",
     preauthentication_tool_surface: "DESCRIPTORS_ONLY",
@@ -119,21 +120,61 @@ test("single BOS contract rejects every non-root BOS MCP resource", () => {
 });
 
 test("single BOS contract validates captured OAuth authorize resource evidence", () => {
-  const canonical = "https://dfsm.ai/mcp/apps/bos/platform";
-  const good = new URL("https://dfsm.ai/api/v1/mcp/oauth/authorize");
+  const canonical = bosProduct.mcp_resource_url;
+  const good = new URL(bosProduct.oauth.authorization_endpoint);
   good.searchParams.set("resource", canonical);
-  assert.deepEqual(inspectOAuthAuthorizeTarget(good.href, canonical), []);
+  assert.deepEqual(
+    inspectOAuthAuthorizeTarget(good.href, canonical, bosProduct.oauth),
+    []
+  );
 
   const bad = new URL(good);
   bad.searchParams.set("resource", "https://dfsm.ai/mcp/apps/leaddirector/education-center");
   assert.deepEqual(
-    inspectOAuthAuthorizeTarget(bad.href, canonical).map(({ code }) => code),
+    inspectOAuthAuthorizeTarget(
+      bad.href,
+      canonical,
+      bosProduct.oauth
+    ).map(({ code }) => code),
+    ["oauth_resource_target"]
+  );
+});
+
+test("single BOS contract rejects off-contract OAuth authorization targets", () => {
+  const canonical = bosProduct.mcp_resource_url;
+  const valid = new URL(bosProduct.oauth.authorization_endpoint);
+  valid.searchParams.set("resource", canonical);
+  for (const candidate of [
+    new URL(valid.href.replace("https:", "http:")),
+    new URL(valid.href.replace(valid.host, "wrong.example")),
+    new URL(valid.href.replace(valid.pathname, "/wrong/authorize")),
+    new URL(`${valid.href}#fragment`)
+  ]) {
+    assert.deepEqual(
+      inspectOAuthAuthorizeTarget(
+        candidate.href,
+        canonical,
+        bosProduct.oauth
+      ).map(({ code }) => code),
+      ["oauth_authorize_target"],
+      candidate.href
+    );
+  }
+
+  const duplicateResource = new URL(valid);
+  duplicateResource.searchParams.append("resource", canonical);
+  assert.deepEqual(
+    inspectOAuthAuthorizeTarget(
+      duplicateResource.href,
+      canonical,
+      bosProduct.oauth
+    ).map(({ code }) => code),
     ["oauth_resource_target"]
   );
 });
 
 test("single BOS contract CLI rejects marketplace OAuth evidence for a subservice route", async () => {
-  const bad = new URL("https://dfsm.ai/api/v1/mcp/oauth/authorize");
+  const bad = new URL(bosProduct.oauth.authorization_endpoint);
   bad.searchParams.set("resource", "https://dfsm.ai/mcp/apps/leaddirector/education-center");
   await assert.rejects(
     execFileAsync(
