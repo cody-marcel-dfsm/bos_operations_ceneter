@@ -1,0 +1,14 @@
+{
+  "canonical_source_snapshot_sha256": "3f4f1b88dc94c2b2a1339443e24c262ada6d0fb9fe199a51d86dd0afe87951c1",
+  "changed_sources": [
+    "Vault/evidence/codex-login/0.4.72-request-time-auth-challenge-trace.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 256,
+  "duration_seconds": 0.993,
+  "index_version": 1,
+  "indexed_at": "20260902T192200.959447Z",
+  "indexed_chunks": 2,
+  "removed_sources": [],
+  "source_count": 94
+}

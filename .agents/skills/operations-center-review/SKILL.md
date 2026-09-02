@@ -16,8 +16,10 @@ description: Review BOS Operations Center repository changes against its archite
    version consistency, extension preservation, and credential-free artifacts.
    For BOS connector changes, verify every identity-bearing artifact derives
    from `products/bos/product.json`, the established ID did not change,
-   metadata updates require that ID and post-read it, cleanup targets only
-   declared retired IDs, and only a different disabled `UNPROVISIONED_NEW`
+   supported name and description updates require an existing exact ID and
+   post-read that ID plus the BOS resource, missing or misbound established
+   records cause zero account mutation and a registry-owner correction, cleanup
+   targets only declared retired IDs, and only a different disabled `UNPROVISIONED_NEW`
    product with a matching requested source name and no retired IDs can
    provision after complete metadata-fingerprint reconciliation. Reject any
    identity-migration concept or replacement-ID repair.

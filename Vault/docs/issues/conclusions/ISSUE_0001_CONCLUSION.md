@@ -1,8 +1,8 @@
 # Issue #0001 conclusion: Codex BOS login display regression
 
-- Status: superseded by active regression evidence; Connect is visible and its
-  unresolved connector routes to ChatGPT onboarding instead of BOS OAuth
-- Resolution version: 0.4.72 candidate
+- Status: superseded by active regression evidence; the immutable registry
+  record is missing and the current plugin page has no Connect/Reconnect action
+- Correction version: 0.4.73 candidate; client acceptance remains open
 - Date: 2026-09-02
 - Category: Codex product identity, package binding, and login display
 - Related incident: `Vault/docs/codex-registered-app-incident.md`
@@ -17,10 +17,11 @@ native **Connect** or **Reconnect** action. Later diagnostics incorrectly tied
 display to connection, metadata, or callable-tool availability. A failed repair
 also created a second private “Created by you” BOS product with a new ID.
 
-The 0.4.71 manual-install result advances the symptom: Connect is now visible,
-yet invoking it opens `auth.openai.com/about-you` and fails with
-`duplicate_email`. The required destination is the BOS authorization endpoint
-discovered through the registered connector's MCP resource.
+One 0.4.71 manual-install attempt rendered Connect, yet invoking it opened
+`auth.openai.com/about-you` and failed with `duplicate_email`. A later clean
+installation rendered no Connect or Reconnect action. The required destination
+is the BOS authorization endpoint discovered through the registered
+connector's MCP resource.
 
 ## Root cause
 
@@ -69,22 +70,25 @@ healthy and advertises `https://dfsm.ai` as issuer and
 `https://dfsm.ai/api/v1/mcp/oauth/authorize` as its authorization endpoint.
 Because `.app.json` contains a registered connection ID rather than an OAuth
 URL, ChatGPT cannot resolve the BOS target while that external record is absent.
-The deterministic `product:codex sync` recovery path supplies the exact
-permanent ID to native save, then requires the restored record to retain that
-identity and map to `https://dfsm.ai/mcp/apps/bos/platform`. BOS restoration
-never calls the new-product provisioning path.
+The deterministic `product:codex sync` path uses the account connector-settings
+contract only for supported name and description patches on an existing exact
+permanent ID. It then requires the record to retain that identity and map to
+`https://dfsm.ai/mcp/apps/bos/platform`. HTTP 404 and resource mismatch produce
+an explicit registry-owner correction with zero account mutation. The account
+create route mints a different identity and is reserved for a different product
+explicitly authored as new.
 
 ## Verification
 
 - Generated `.app.json`, `.bos-product.json`, cross-client MCP artifacts, and
   both contracts match `products/bos/product.json`.
-- Regression tests cover immutable identity, update-in-place, same-record
-  restoration and post-read,
+- Regression tests cover immutable identity, supported update-in-place,
+  missing-record zero mutation, resource-mismatch zero mutation, and post-read,
   package-to-account ID normalization, distinct registry failures, explicit
   new-product creation, interrupted-create reconciliation, retired-only cleanup,
   and a second cleanup run.
 - `npm run build:packages`, `npm run check`, and `npm run contract:check` pass.
-  The complete source release suite passes 285 of 285 tests. Issue #0001's
+  The complete 0.4.73 source release suite passes 288 of 288 tests. Issue #0001's
   source, lifecycle, cleanup, package-shape, contract, and Antigravity tests all
   pass. The separately invoked post-release verifier reports the exact current
   Issue #0001 failure: immutable connector resolution returns HTTP 404. Issue

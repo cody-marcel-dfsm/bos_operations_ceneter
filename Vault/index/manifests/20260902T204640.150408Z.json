@@ -1,13 +1,13 @@
 {
-  "canonical_source_snapshot_sha256": "2da277cfeea20fa9e5ce35fe5405930058209cbca15bff6d4bdf67cd2965d13a",
+  "canonical_source_snapshot_sha256": "1f81d88b945f3495bb0d1875e5304a368a3df6ad3dfe36dddd3ec879599eed4b",
   "changed_sources": [
     "Vault/docs/issues/ISSUE_HISTORY.md"
   ],
   "collection": "vault_knowledge",
   "collection_count": 258,
-  "duration_seconds": 0.991,
+  "duration_seconds": 1.019,
   "index_version": 1,
-  "indexed_at": "20260902T204828.795382Z",
+  "indexed_at": "20260902T204640.150408Z",
   "indexed_chunks": 39,
   "removed_sources": [],
   "source_count": 94
