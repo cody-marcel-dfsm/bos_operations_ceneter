@@ -356,6 +356,36 @@ for the established BOS product.
   coverage across active Vault guidance, regenerated every client, and added
   separately owned Issue #0002 to the combined release review findings. The two
   version-matched GPT screenshots remain the only intended release gates.
+- 2026-09-02 15:21 America/Denver: the 0.4.75 release Oracle review found two
+  additional active `Vault/docs/DESIGN.md` passages still prescribed the
+  superseded direct Codex `.mcp.json` binding despite the accepted registered-
+  app decision. Corrected both passages to require the immutable product-owned,
+  required `.app.json`, prohibit a direct `.mcp.json`, and preserve Claude's
+  separate account-level Web connector. This correction invalidates the prior
+  release verdict and requires synchronized Vault evidence, affected
+  validation, and a fresh complete-diff Oracle review.
+- 2026-09-02 15:29 America/Denver: the fresh 0.4.75 complete-diff Oracle review
+  verified that both `Vault/docs/DESIGN.md` passages now match the accepted
+  registered-app contract and independently reproduced the credential-free
+  release gate at 289 of 289 tests. The review remains `REJECTED` because the
+  semantic guidance regression test enumerates only
+  `marketplace-agent-harness-plan.md` and `IMPLEMENTATION_TASKS.md`; it does not
+  inspect `DESIGN.md`, the exact active guidance source that regressed and
+  caused the prior rejection. Extend the existing positive and negative
+  `.app.json` versus direct `.mcp.json` assertions to `DESIGN.md`, rerun affected
+  validation, synchronize the Vault, and request a fresh complete-diff review.
+- 2026-09-02 15:32 America/Denver: added `Vault/docs/DESIGN.md` to the existing
+  semantic guidance regression set, so the same positive required `.app.json`
+  and negative direct `.mcp.json` assertions now cover the exact source that
+  regressed. The focused Codex login contract suite passes 10 of 10 and
+  `git diff --check` passes. Vault synchronization, the complete release gate,
+  and a fresh complete-diff Oracle review remain required.
+- 2026-09-02 15:38 America/Denver: adversarial Oracle review proved the first
+  corrected `DESIGN.md` passage could satisfy the document-wide positive match
+  while the separate “Connect the account” passage regressed. Added independent
+  positive assertions for both corrected passages and a negative assertion for
+  the former direct `.mcp.json` account-connection wording. A fresh focused and
+  complete validation, Vault sync, and complete-diff Oracle review are required.
 - 2026-09-01 19:29 America/Denver: added a read-only registered-app diagnostic
   with default-on redacted NDJSON tracing for every Codex app-server and
   connector request/response. The live run proved the local declaration is
