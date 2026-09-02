@@ -2127,6 +2127,27 @@ test("ship-it publishes releases through a merged pull request", async () => {
   );
 });
 
+test("ship-it invocation is the approval for push and merge", async () => {
+  const workflow = await readFile(
+    `${root}/.agents/skills/ship-it/SKILL.md`,
+    "utf8"
+  );
+  const interfaceMetadata = await readFile(
+    `${root}/.agents/skills/ship-it/agents/openai.yaml`,
+    "utf8"
+  );
+
+  assert.match(workflow, /invocation[\s\S]*explicit\s+approval/i);
+  assert.match(workflow, /approval covers[\s\S]*pushing[\s\S]*merging/i);
+  assert.match(workflow, /without asking the user to approve[\s\S]*push[\s\S]*merge/i);
+  assert.match(workflow, /never ask for a second approval/i);
+  assert.doesNotMatch(workflow, /authority the user has not provided/i);
+  assert.match(
+    interfaceMetadata,
+    /approve and complete[\s\S]*push, pull-request merge[\s\S]*without requesting another release approval/i
+  );
+});
+
 test("desktop marketplace versions match the repository release", async () => {
   const repositoryPackage = JSON.parse(await readFile(`${root}/package.json`, "utf8"));
   const expectedVersion = repositoryPackage.version;

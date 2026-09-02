@@ -4,6 +4,71 @@ This tracker is the Oracle's durable issue and regression history. Read it
 before implementation guidance and review. Resolved issue details remain in
 `Vault/docs/issues/conclusions/` and are indexed with the rest of the Vault.
 
+## Issue #0003: Ship-it asked for approval after the release was already authorized
+
+- Status: FIXED LOCALLY
+- Priority: HIGH
+- Date identified: 2026-09-02
+- Area: release
+- Files: `.agents/skills/ship-it/SKILL.md`,
+  `.agents/skills/ship-it/agents/openai.yaml`,
+  `tests/package-model.test.mjs`
+
+### User goal and definition of done
+
+An unambiguous `ship it` invocation is the approval to complete the full
+repository-scoped release. The agent proceeds through push, pull-request
+creation, merge, workspace restoration, and merged local branch cleanup without
+asking for another conversational approval.
+
+### Observed evidence
+
+The 0.4.74 release workflow completed local commit `8cd6aad`, received Oracle
+`APPROVED`, and passed 288 tests. It then stopped because the release contained
+50 files, Vault evidence, and generated packages, and asked whether pushing the
+commit and completing the pull-request merge was explicitly approved. Those
+operations were already part of the user's `ship it` instruction.
+
+### Root cause
+
+The skill's opening paragraph said the invocation authorized the release and
+prohibited redundant confirmation, while the preflight later allowed a stop
+when the agent believed required “authority” had not been provided. Push and
+merge steps also lacked a local instruction tying each mutation back to the
+invocation. The distributed wording allowed a cautious agent to reinterpret
+the size or contents of a reviewed release as a new approval boundary.
+
+### Required correction
+
+Define one explicit invocation-authorization contract before preflight. Name
+every covered release mutation, prohibit new approval gates based on diff size
+or generated/Vault content, distinguish user authorization from actual missing
+credentials or host protections, and repeat the no-second-approval invariant at
+the push and merge steps.
+
+### Attempts
+
+- The prior generic sentence “Do not request redundant confirmation” did not
+  prevent the post-commit approval prompt shown in the 0.4.74 release evidence.
+- The corrected skill makes the authorization operational at preflight, push,
+  and merge, and the UI default prompt now describes invocation as approval for
+  the complete release.
+
+### Validation and Oracle review
+
+The focused ship-it regression passes 2 of 2. The skill validator reports
+`Skill is valid!`. `git diff --check` passes. The complete credential-free
+`npm run release:check` gate regenerated both active products, passed package
+and credential checks, passed the single-BOS-connection contract, and passed
+289 of 289 tests. Complete-diff Oracle review is pending.
+
+### Prevention guidance
+
+Encode high-level authorization at every later decision point where an agent
+might otherwise pause. Test that release workflow text grants push and merge
+authority, forbids repeat confirmation, and contains no superseded missing-
+authority escape clause.
+
 ## Issue #0001: Installed BOS skills appeared while Codex exposed no login or callable tools
 
 - Status: ACTIVE; the immutable connector record is missing, and the current
