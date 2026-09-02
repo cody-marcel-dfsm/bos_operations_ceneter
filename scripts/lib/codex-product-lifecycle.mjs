@@ -4,7 +4,7 @@ export const CODEX_CONNECTOR_LIFECYCLE = Object.freeze({
   lifecycle_state: "ESTABLISHED",
   identity_policy: "IMMUTABLE",
   metadata_policy: "UPDATE_IN_PLACE",
-  missing_record_policy: "REGISTRY_INTEGRITY_FAILURE",
+  missing_record_policy: "RESTORE_SAME_RECORD",
   provisioning_policy: "NEW_PRODUCT_ONLY"
 });
 

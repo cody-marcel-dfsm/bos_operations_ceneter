@@ -88,9 +88,14 @@ export function inspectMcpResourceUrls(content, path, canonicalResourceUrl) {
     ));
 }
 
-export function inspectOAuthAuthorizeTarget(authorizeUrl, canonicalResourceUrl) {
+export function inspectOAuthAuthorizeTarget(
+  authorizeUrl,
+  canonicalResourceUrl,
+  oauthTarget
+) {
   if (!authorizeUrl) return [];
   let parsed;
+  let expected;
   try {
     parsed = new URL(authorizeUrl);
   } catch {
@@ -100,15 +105,36 @@ export function inspectOAuthAuthorizeTarget(authorizeUrl, canonicalResourceUrl) 
       "OAuth authorize evidence must be an absolute URL."
     )];
   }
-  const resource = parsed.searchParams.get("resource");
-  if (resource !== canonicalResourceUrl) {
+  try {
+    expected = new URL(oauthTarget?.authorization_endpoint);
+  } catch {
     return [finding(
-      "oauth_resource_target",
+      "oauth_authorize_contract",
       "oauth-authorize-url",
-      `OAuth resource must equal ${canonicalResourceUrl}; found ${resource ?? "missing"}.`
+      "The generated contract has no valid canonical OAuth authorization endpoint."
     )];
   }
-  return [];
+  const findings = [];
+  if (parsed.protocol !== expected.protocol || parsed.host !== expected.host ||
+      parsed.pathname !== expected.pathname || parsed.username || parsed.password ||
+      parsed.hash) {
+    findings.push(finding(
+      "oauth_authorize_target",
+      "oauth-authorize-url",
+      `OAuth authorization must use ${expected.origin}${expected.pathname}.`
+    ));
+  }
+  const resources = parsed.searchParams.getAll("resource");
+  if (resources.length !== 1 || resources[0] !== canonicalResourceUrl) {
+    const observed = resources.length === 1 ? resources[0] :
+      resources.length === 0 ? "missing" : "multiple values";
+    findings.push(finding(
+      "oauth_resource_target",
+      "oauth-authorize-url",
+      `OAuth resource must equal ${canonicalResourceUrl}; found ${observed}.`
+    ));
+  }
+  return findings;
 }
 
 function containsConnectionBinding(value) {
@@ -155,6 +181,15 @@ function validateContractShape(contract, contractPath) {
       "codex_app_required must be true."
     ));
   }
+  if (!contract.oauth || typeof contract.oauth !== "object" ||
+      contract.provider_account_selection_policy !==
+        contract.oauth.provider_account_selection_policy) {
+    findings.push(finding(
+      "contract_shape",
+      contractPath,
+      "oauth must contain the product-owned OAuth target contract and account-selection policy."
+    ));
+  }
   const requestTime = contract.request_time_authentication;
   const expectedRequestTime = {
     activation_owner: "SELECTED_OAUTH_TOOL",
@@ -184,7 +219,11 @@ export async function verifySingleBosContract({
   const violations = [];
   const contract = await readJson(contractPath);
   violations.push(...validateContractShape(contract, relative(root, contractPath)));
-  violations.push(...inspectOAuthAuthorizeTarget(oauthAuthorizeUrl, contract.resource_url));
+  violations.push(...inspectOAuthAuthorizeTarget(
+    oauthAuthorizeUrl,
+    contract.resource_url,
+    contract.oauth
+  ));
   if (violations.length) return contractResult(contract, violations);
 
   const productFiles = (await readdir(join(root, "products"), { withFileTypes: true }))
@@ -200,12 +239,13 @@ export async function verifySingleBosContract({
       ["application_name", contract.application_name],
       ["mcp_group_name", contract.mcp_group_name],
       ["mcp_resource_url", contract.resource_url],
+      ["oauth", contract.oauth],
       ["codex_connector.id", contract.codex_app_id]
     ]) {
       const observed = field === "codex_connector.id"
         ? owner.codex_connector?.id
         : owner[field];
-      if (observed !== expected) {
+      if (JSON.stringify(observed) !== JSON.stringify(expected)) {
         violations.push(finding(
           "owner_manifest_mismatch",
           `products/${owner.name}/product.json`,
@@ -220,6 +260,7 @@ export async function verifySingleBosContract({
     "application_name",
     "mcp_group_name",
     "mcp_resource_url",
+    "oauth",
     "codex_connector"
   ];
   for (const product of products.filter(({ name }) => name !== contract.owner_product)) {
@@ -307,7 +348,7 @@ export async function verifySingleBosContract({
         "Subservice metadata must reference BOS-managed authentication."
       ));
     }
-    for (const field of ["application_name", "mcp_group_name", "resource_url"] ) {
+    for (const field of ["application_name", "mcp_group_name", "resource_url", "oauth"] ) {
       if (metadata[field] !== undefined) {
         violations.push(finding(
           "subservice_connection_metadata",
@@ -418,6 +459,7 @@ function contractResult(contract, violations) {
     contract_id: contract.contract_id ?? "bos.single-mcp-connection",
     status: unique.length ? "failed" : "passed",
     resource_url: contract.resource_url,
+    oauth: contract.oauth,
     owner_product: contract.owner_product,
     request_time_authentication: contract.request_time_authentication,
     violations: unique

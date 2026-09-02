@@ -175,11 +175,14 @@ export async function manageCodexProduct(rawOptions = {}) {
     const configured = establishedConnectorFromProduct(product);
     const inspection = await client.inspectConnector(configured.id);
     const plan = inspectionPlan(product, inspection);
-    if (plan.action !== "update_in_place") {
+    if (!new Set(["update_in_place", "restore_same_record"]).has(plan.action)) {
       return { schema_version: "1", product: product.name, operation: "sync", ...plan };
     }
-    // Existing products always pass their permanent remote ID. Native save then
-    // updates mutable plugin metadata in place instead of provisioning a product.
+    // Existing products always pass their permanent remote ID. Native save is
+    // the single deterministic path for both metadata updates and restoration
+    // of a missing registry projection. It never invokes new-product
+    // provisioning and the post-read below requires the same identity and
+    // product-owned BOS resource before the operation can succeed.
     const saved = await client.updateEstablishedProduct(pluginPath, {
       remotePluginId: configured.id
     });
@@ -202,8 +205,10 @@ export async function manageCodexProduct(rawOptions = {}) {
       ok: true,
       product: product.name,
       operation: "sync",
-      state: "synchronized",
-      action: "updated_in_place",
+      state: plan.action === "restore_same_record" ? "restored" : "synchronized",
+      action: plan.action === "restore_same_record"
+        ? "restored_same_record"
+        : "updated_in_place",
       connector_id: configured.id,
       changes: plan.changes
     };

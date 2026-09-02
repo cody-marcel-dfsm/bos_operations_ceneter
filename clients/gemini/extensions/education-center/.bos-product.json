@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.71",
+  "version": "0.4.72",
   "client": "gemini",
   "connection_owner": "bos",
   "authentication": "bos_managed"

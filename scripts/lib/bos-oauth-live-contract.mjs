@@ -1,10 +1,15 @@
 import { inspectOAuthAuthorizeTarget } from "./single-bos-contract.mjs";
 import { createHttpDebugFetch } from "./http-debug-log.mjs";
 import { join } from "node:path";
-import { readJson, root } from "./package-model.mjs";
+import { oauthTargetContract, readJson, root } from "./package-model.mjs";
 
 const bosProduct = await readJson(join(root, "products", "bos", "product.json"));
 export const CANONICAL_RESOURCE_URL = bosProduct.mcp_resource_url;
+export const CANONICAL_OAUTH_TARGET = oauthTargetContract(bosProduct);
+export const CANONICAL_AUTHORIZATION_ENDPOINT =
+  CANONICAL_OAUTH_TARGET.authorization_endpoint;
+export const CANONICAL_IDENTITY_PROVIDER_AUTHORIZATION_ENDPOINT =
+  CANONICAL_OAUTH_TARGET.identity_provider_authorization_endpoint;
 
 export function expectedBosResourceChallenge(resourceUrl) {
   const resource = new URL(resourceUrl);
@@ -26,12 +31,13 @@ function finding(code, message) {
   return { code, path: "oauth-authorize", message };
 }
 
-function discoveryFinding(code, message) {
-  return { code, path: "mcp-resource-get", message };
+function discoveryFinding(code, message, path = "mcp-resource-get") {
+  return { code, path, message };
 }
 
 export async function probeBosOAuthDiscovery({
   resourceUrl = CANONICAL_RESOURCE_URL,
+  oauthTarget = CANONICAL_OAUTH_TARGET,
   fetchImpl = fetch,
   debug = false,
   debugWriter
@@ -99,17 +105,125 @@ export async function probeBosOAuthDiscovery({
     ));
   }
 
-  return discoveryResult(
+  const result = discoveryResult(
     violations,
     resourceUrl,
     response.status,
     challenge === expectedChallenge ? expectedChallenge : null,
     errorCode === "authentication_required" ? errorCode : null
   );
+  if (violations.length) return result;
+
+  const protectedResourceMetadataUrl = new URL(
+    `/.well-known/oauth-protected-resource${new URL(resourceUrl).pathname}`,
+    resourceUrl
+  ).href;
+  let protectedResourceMetadata;
+  try {
+    const metadataResponse = await request(protectedResourceMetadataUrl, {
+      method: "GET",
+      redirect: "manual",
+      headers: { accept: "application/json" }
+    });
+    if (metadataResponse.status !== 200) {
+      result.violations.push(discoveryFinding(
+        "oauth_protected_resource_metadata_status",
+        `Protected-resource metadata must return HTTP 200; found HTTP ${metadataResponse.status}.`,
+        "protected-resource-metadata"
+      ));
+    } else {
+      protectedResourceMetadata = await metadataResponse.json();
+    }
+  } catch (error) {
+    result.violations.push(discoveryFinding(
+      "oauth_protected_resource_metadata_request",
+      `Protected-resource metadata discovery failed: ${error.message}`,
+      "protected-resource-metadata"
+    ));
+  }
+
+  const expectedIssuer = oauthTarget.authorization_server_issuer;
+  if (protectedResourceMetadata) {
+    if (protectedResourceMetadata.resource !== resourceUrl) {
+      result.violations.push(discoveryFinding(
+        "oauth_protected_resource_target",
+        "Protected-resource metadata does not identify the requested BOS MCP resource.",
+        "protected-resource-metadata"
+      ));
+    }
+    if (JSON.stringify(protectedResourceMetadata.authorization_servers) !==
+        JSON.stringify([expectedIssuer])) {
+      result.violations.push(discoveryFinding(
+        "oauth_authorization_server_issuer",
+        "Protected-resource metadata does not identify the product-owned authorization-server issuer.",
+        "protected-resource-metadata"
+      ));
+    }
+  }
+
+  const authorizationServerMetadataUrl = new URL(
+    "/.well-known/oauth-authorization-server",
+    expectedIssuer
+  ).href;
+  let authorizationServerMetadata;
+  if (!result.violations.length) {
+    try {
+      const metadataResponse = await request(authorizationServerMetadataUrl, {
+        method: "GET",
+        redirect: "manual",
+        headers: { accept: "application/json" }
+      });
+      if (metadataResponse.status !== 200) {
+        result.violations.push(discoveryFinding(
+          "oauth_authorization_server_metadata_status",
+          `Authorization-server metadata must return HTTP 200; found HTTP ${metadataResponse.status}.`,
+          "authorization-server-metadata"
+        ));
+      } else {
+        authorizationServerMetadata = await metadataResponse.json();
+      }
+    } catch (error) {
+      result.violations.push(discoveryFinding(
+        "oauth_authorization_server_metadata_request",
+        `Authorization-server metadata discovery failed: ${error.message}`,
+        "authorization-server-metadata"
+      ));
+    }
+  }
+
+  if (authorizationServerMetadata) {
+    if (authorizationServerMetadata.issuer !== expectedIssuer) {
+      result.violations.push(discoveryFinding(
+        "oauth_authorization_server_metadata_issuer",
+        "Authorization-server metadata issuer does not match the product source.",
+        "authorization-server-metadata"
+      ));
+    }
+    if (authorizationServerMetadata.authorization_endpoint !==
+        oauthTarget.authorization_endpoint) {
+      result.violations.push(discoveryFinding(
+        "oauth_authorization_endpoint",
+        "Authorization-server metadata endpoint does not match the product source.",
+        "authorization-server-metadata"
+      ));
+    }
+  }
+
+  result.status = result.violations.length ? "failed" : "passed";
+  result.protected_resource_metadata_url = protectedResourceMetadataUrl;
+  result.authorization_server_metadata_url = authorizationServerMetadataUrl;
+  result.authorization_server_issuer = authorizationServerMetadata?.issuer ?? null;
+  result.authorization_endpoint =
+    authorizationServerMetadata?.authorization_endpoint ?? null;
+  return result;
 }
 
-export function inspectGoogleAccountSelectorRedirect(location) {
+export function inspectGoogleAccountSelectorRedirect(
+  location,
+  oauthTarget = CANONICAL_OAUTH_TARGET
+) {
   let redirect;
+  let expected;
   try {
     redirect = new URL(location);
   } catch {
@@ -118,23 +232,40 @@ export function inspectGoogleAccountSelectorRedirect(location) {
       "The BOS authorization response must redirect to an absolute Google authorization URL."
     )];
   }
-
-  if (redirect.protocol !== "https:" || redirect.hostname !== "accounts.google.com") {
+  try {
+    expected = new URL(oauthTarget.identity_provider_authorization_endpoint);
+  } catch {
+    return [finding(
+      "oauth_provider_contract",
+      "The BOS product contract has no valid identity-provider authorization endpoint."
+    )];
+  }
+  if (oauthTarget.identity_provider !== "google" ||
+      oauthTarget.provider_account_selection_policy !== "ALWAYS_SELECT_ACCOUNT") {
+    return [finding(
+      "oauth_provider_contract",
+      "The BOS product contract must select the Google identity provider and always require account selection."
+    )];
+  }
+  if (redirect.protocol !== expected.protocol || redirect.host !== expected.host ||
+      redirect.pathname !== expected.pathname || redirect.username || redirect.password ||
+      redirect.hash) {
     return [finding(
       "oauth_provider_redirect",
-      `BOS authorization must redirect to accounts.google.com; found ${redirect.origin}.`
+      `BOS authorization must redirect to ${expected.origin}${expected.pathname}.`
     )];
   }
 
+  const requiredPrompt = oauthTarget.provider_account_selection_prompt;
   const prompts = new Set(
     (redirect.searchParams.get("prompt") ?? "")
       .split(/\s+/)
       .filter(Boolean)
   );
-  if (!prompts.has("select_account")) {
+  if (!prompts.has(requiredPrompt)) {
     return [finding(
       "oauth_account_selector",
-      "Google authorization must require select_account so every BOS user chooses the intended identity."
+      `Google authorization must require ${requiredPrompt} so every BOS user chooses the intended identity.`
     )];
   }
   return [];
@@ -144,6 +275,7 @@ export async function probeBosOAuthAuthorize({
   authorizeUrl,
   fetchImpl = fetch,
   canonicalResourceUrl = CANONICAL_RESOURCE_URL,
+  oauthTarget = CANONICAL_OAUTH_TARGET,
   debug = false,
   debugWriter
 }) {
@@ -154,7 +286,8 @@ export async function probeBosOAuthAuthorize({
   });
   const violations = inspectOAuthAuthorizeTarget(
     authorizeUrl,
-    canonicalResourceUrl
+    canonicalResourceUrl,
+    oauthTarget
   );
   if (violations.length) return result(violations);
 
@@ -179,7 +312,7 @@ export async function probeBosOAuthAuthorize({
   }
 
   const location = response.headers.get("location");
-  const redirectViolations = inspectGoogleAccountSelectorRedirect(location);
+  const redirectViolations = inspectGoogleAccountSelectorRedirect(location, oauthTarget);
   return result(redirectViolations, response.status);
 }
 
