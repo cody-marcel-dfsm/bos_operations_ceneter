@@ -1398,7 +1398,7 @@ test("package schema reserves runtime ownership for BOS", () => {
       required: true,
       identity_policy: "IMMUTABLE",
       metadata_policy: "UPDATE_IN_PLACE",
-      missing_record_policy: "RESTORE_SAME_RECORD",
+      missing_record_policy: "REGISTRY_OWNER_RESTORE_SAME_RECORD",
       provisioning_policy: "NEW_PRODUCT_ONLY",
       retired_ids: []
     },
@@ -2124,6 +2124,27 @@ test("ship-it publishes releases through a merged pull request", async () => {
       workflow.indexOf("## Create the release version"),
     true,
     "release branch creation must precede the version bump"
+  );
+});
+
+test("ship-it invocation is the approval for push and merge", async () => {
+  const workflow = await readFile(
+    `${root}/.agents/skills/ship-it/SKILL.md`,
+    "utf8"
+  );
+  const interfaceMetadata = await readFile(
+    `${root}/.agents/skills/ship-it/agents/openai.yaml`,
+    "utf8"
+  );
+
+  assert.match(workflow, /invocation[\s\S]*explicit\s+approval/i);
+  assert.match(workflow, /approval covers[\s\S]*pushing[\s\S]*merging/i);
+  assert.match(workflow, /without asking the user to approve[\s\S]*push[\s\S]*merge/i);
+  assert.match(workflow, /never ask for a second approval/i);
+  assert.doesNotMatch(workflow, /authority the user has not provided/i);
+  assert.match(
+    interfaceMetadata,
+    /approve and complete[\s\S]*push, pull-request merge[\s\S]*without requesting another release approval/i
   );
 });
 

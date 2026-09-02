@@ -20,7 +20,7 @@ test("BOS product.json is the single authored connector identity and resource so
   assert.equal(bosProduct.codex_connector.lifecycle_state, "ESTABLISHED");
   assert.equal(connector.identity_policy, "IMMUTABLE");
   assert.equal(connector.metadata_policy, "UPDATE_IN_PLACE");
-  assert.equal(connector.missing_record_policy, "RESTORE_SAME_RECORD");
+  assert.equal(connector.missing_record_policy, "REGISTRY_OWNER_RESTORE_SAME_RECORD");
   assert.equal(connector.provisioning_policy, "NEW_PRODUCT_ONLY");
   assert.equal(connector.metadata.mcp_url, bosProduct.mcp_resource_url);
 
@@ -75,7 +75,7 @@ test("established connector metadata changes plan an in-place update with the sa
 test("a missing established connector is an integrity failure and never provisioning", () => {
   const plan = planEstablishedConnectorSync(bosProduct, null);
   assert.equal(plan.state, "registry_integrity_failure");
-  assert.equal(plan.action, "restore_same_record");
+  assert.equal(plan.action, bosProduct.codex_connector.missing_record_policy.toLowerCase());
   assert.equal(plan.connector_id, connector.id);
 });
 
@@ -94,7 +94,7 @@ test("provisioning is only selected for a disabled new product without an identi
   assert.equal(planNewProductProvisioning(newProduct).action, "provision_once");
   assert.equal(planNewProductProvisioning(bosProduct).action, "use_existing_connector");
   assert.equal(
-    connectorContractForProvisionedId("asdk_app_newproduct").id,
+    connectorContractForProvisionedId(newProduct, "asdk_app_newproduct").id,
     "plugin_asdk_app_newproduct"
   );
   assert.throws(
@@ -150,7 +150,7 @@ test("product lifecycle commands reject a requested/source name mismatch", async
 });
 
 test("metadata synchronization passes the permanent ID and is idempotent", async () => {
-  const saveCalls = [];
+  const updateCalls = [];
   let inspections = 0;
   let current = {
     id: connector.raw_id,
@@ -165,13 +165,13 @@ test("metadata synchronization passes the permanent ID and is idempotent", async
       inspections += 1;
       return { ok: true, http_status: 200, body: current };
     },
-    async updateEstablishedProduct(pluginPath, options) {
-      saveCalls.push({ pluginPath, options });
+    async updateEstablishedConnector(appId, changes) {
+      updateCalls.push({ appId, changes });
       current = {
         ...current,
         name: bosProduct.display_name
       };
-      return { remotePluginId: connector.id };
+      return { connectorId: connector.id };
     }
   };
 
@@ -190,9 +190,9 @@ test("metadata synchronization passes the permanent ID and is idempotent", async
 
   assert.equal(first.action, "updated_in_place");
   assert.equal(second.action, "none");
-  assert.deepEqual(saveCalls, [{
-    pluginPath: "/tmp/generated-bos",
-    options: { remotePluginId: connector.id }
+  assert.deepEqual(updateCalls, [{
+    appId: connector.id,
+    changes: { name: bosProduct.display_name }
   }]);
   assert.equal(inspections, 3);
 });
@@ -222,8 +222,8 @@ test("metadata synchronization fails unless the same record post-read is current
               ? { ok: true, http_status: 200, body: stale }
               : postRead;
           },
-          async updateEstablishedProduct() {
-            return { remotePluginId: connector.id };
+          async updateEstablishedConnector() {
+            return { connectorId: connector.id };
           }
         }
       }),
@@ -291,7 +291,7 @@ test("registry HTTP failures remain distinct and never update or provision", asy
         async inspectConnector() {
           return { ok: false, http_status: status, body: null };
         },
-        async updateEstablishedProduct() { mutations += 1; },
+        async updateEstablishedConnector() { mutations += 1; },
         async provisionNewProduct() { mutations += 1; }
       }
     });
@@ -301,94 +301,58 @@ test("registry HTTP failures remain distinct and never update or provision", asy
   }
 });
 
-test("missing established record restores the same identity and BOS resource idempotently", async () => {
-  const saveCalls = [];
-  let inspections = 0;
-  let current = null;
+test("missing established record requires registry-owner same-ID restoration with zero mutation", async () => {
+  let mutations = 0;
   const client = {
     async inspectConnector() {
-      inspections += 1;
-      return current
-        ? { ok: true, http_status: 200, body: current }
-        : { ok: false, http_status: 404, body: null };
+      return { ok: false, http_status: 404, body: null };
     },
-    async updateEstablishedProduct(pluginPath, options) {
-      saveCalls.push({ pluginPath, options });
-      current = {
-        id: connector.raw_id,
-        name: bosProduct.display_name,
-        description: bosProduct.description,
-        base_url: bosProduct.mcp_resource_url,
-        branding: { website: bosProduct.website_url },
-        logo: bosProduct.logo
-      };
-      return { remotePluginId: connector.id };
+    async updateEstablishedConnector() {
+      mutations += 1;
     },
     async provisionNewProduct() {
-      throw new Error("new-product provisioning must never run");
+      mutations += 1;
     }
   };
-  const first = await manageCodexProduct({
+  const result = await manageCodexProduct({
     command: "sync",
     productManifest: bosProduct,
     client,
     pluginPath: "/tmp/generated-bos"
   });
-  const second = await manageCodexProduct({
-    command: "sync",
-    productManifest: bosProduct,
-    client,
-    pluginPath: "/tmp/generated-bos"
-  });
-  assert.equal(first.ok, true);
-  assert.equal(first.state, "restored");
-  assert.equal(first.action, "restored_same_record");
-  assert.equal(second.action, "none");
-  assert.deepEqual(saveCalls, [{
-    pluginPath: "/tmp/generated-bos",
-    options: { remotePluginId: connector.id }
-  }]);
-  assert.equal(inspections, 3);
+  assert.equal(result.ok, false);
+  assert.equal(result.state, "registry_integrity_failure");
+  assert.equal(result.action, bosProduct.codex_connector.missing_record_policy.toLowerCase());
+  assert.equal(result.connector_id, connector.id);
+  assert.equal(mutations, 0);
 });
 
-test("same-record restoration rejects a changed identity or wrong BOS resource", async () => {
-  for (const scenario of [
-    {
-      saved: { remotePluginId: "plugin_asdk_app_wrongidentity" },
-      postRead: null,
-      failure: /changed connector identity/
-    },
-    {
-      saved: { remotePluginId: connector.id },
-      postRead: {
-        id: connector.raw_id,
-        name: bosProduct.display_name,
-        description: bosProduct.description,
-        base_url: "https://wrong.example/mcp",
-        branding: { website: bosProduct.website_url },
-        logo: bosProduct.logo
+test("wrong BOS resource requires registry-owner correction with zero mutation", async () => {
+  let mutations = 0;
+  const result = await manageCodexProduct({
+    command: "sync",
+    productManifest: bosProduct,
+    client: {
+      async inspectConnector() {
+        return {
+          ok: true,
+          http_status: 200,
+          body: {
+            id: connector.raw_id,
+            name: bosProduct.display_name,
+            description: bosProduct.description,
+            base_url: "https://wrong.example/mcp"
+          }
+        };
       },
-      failure: /did not verify the permanent connector record/
+      async updateEstablishedConnector() { mutations += 1; },
+      async provisionNewProduct() { mutations += 1; }
     }
-  ]) {
-    let inspections = 0;
-    await assert.rejects(
-      manageCodexProduct({
-        command: "sync",
-        productManifest: bosProduct,
-        client: {
-          async inspectConnector() {
-            inspections += 1;
-            return inspections === 1
-              ? { ok: false, http_status: 404, body: null }
-              : { ok: true, http_status: 200, body: scenario.postRead };
-          },
-          async updateEstablishedProduct() { return scenario.saved; }
-        }
-      }),
-      scenario.failure
-    );
-  }
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.state, "binding_integrity_failure");
+  assert.equal(result.action, "registry_owner_correction_required");
+  assert.equal(mutations, 0);
 });
 
 test("metadata synchronization rejects missing or changed returned identity", async () => {
@@ -410,8 +374,8 @@ test("metadata synchronization rejects missing or changed returned identity", as
           }
         };
       },
-      async updateEstablishedProduct() {
-        return returned ? { remotePluginId: returned } : {};
+      async updateEstablishedConnector() {
+        return returned ? { connectorId: returned } : {};
       }
     };
     await assert.rejects(

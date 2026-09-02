@@ -5,7 +5,30 @@ description: Create the next repository release version, review and validate all
 
 # Ship It
 
-Complete the current repository's release loop. A successful invocation creates a new version even when the pending source change did not edit version metadata. The invocation itself authorizes the repository-native version bump, generated package updates, staging all current changes, one commit, creation of a temporary release branch and pull request, merging that pull request into the default branch, returning the workspace to the updated default branch, and deleting the merged local release branch. A merged version-bump pull request is the publication event used by Claude organization marketplace GitHub sync when an owner has enabled **Sync automatically**. Independently added Claude marketplaces and official marketplace submissions have separate host-owned publication lifecycles. Do not request redundant confirmation.
+Complete the current repository's release loop. A successful invocation creates a new version even when the pending source change did not edit version metadata. A merged version-bump pull request is the publication event used by Claude organization marketplace GitHub sync when an owner has enabled **Sync automatically**. Independently added Claude marketplaces and official marketplace submissions have separate host-owned publication lifecycles.
+
+## Invocation authorization
+
+Treat the user's unambiguous invocation of this skill—including `$ship-it`,
+“ship it,” and “send it” in a repository-release context—as the user's explicit
+approval for the complete repository-scoped release workflow. That single
+approval covers the version bump, generated package updates, staging every
+current repository change, committing, pushing the resolved release branch to
+the resolved repository remote, opening the release pull request, waiting for
+required checks, merging it into the resolved default branch, returning the
+workspace to the updated default branch, and deleting the merged local release
+branch.
+
+Proceed through those authorized operations without asking the user to approve
+the push, pull-request creation, merge, branch switch, pull, or local release-
+branch deletion. Do not turn file count, generated packages, Vault evidence, or
+the size of the reviewed release diff into a new approval gate. If the host or
+tool presents its own permission control, issue the intended operation directly
+and let that control collect any required platform permission; never add a
+separate conversational confirmation first. The invocation supplies user
+authorization for this repository workflow; it does not supply missing
+credentials, select an ambiguous target, bypass branch protection, waive a
+failed check, or expand authority beyond this repository.
 
 ## Repository boundary
 
@@ -34,7 +57,14 @@ acceptance criterion in that single copyable prompt.
 
 1. Resolve the repository root, current branch, default branch, upstream, remotes, and complete status, including staged, unstaged, untracked, renamed, and deleted files.
 2. Read the repository's applicable instructions and release/build documentation. Use its native review, validation, build, and release checks.
-3. Stop before mutation when the repository is in a merge, rebase, cherry-pick, conflicted, or detached-HEAD state; when the default branch, push target, or pull-request target is ambiguous; or when completing the workflow requires credentials or authority the user has not provided.
+3. Stop before mutation when the repository is in a merge, rebase,
+   cherry-pick, conflicted, or detached-HEAD state; when the default branch,
+   push target, or pull-request target is ambiguous; or when required
+   credentials are absent. Treat the invocation authorization above as complete
+   user authority for the resolved repository-scoped release operations. A
+   concrete authentication failure, authorization denial, or host protection
+   is a blocker to report with its exact evidence, never a reason to ask the
+   user whether the already-authorized push or merge is approved.
 4. Review the entire pending change set. Inspect untracked files before staging. Treat every existing change as user-owned and in scope for this invocation.
 5. Block the shipment and report exact findings when the changes expose credentials or private data, contain a material correctness or security defect, include an obviously accidental large artifact, or conflict with repository instructions. Never discard or rewrite the user's work while resolving a blocker.
 
@@ -95,10 +125,17 @@ Run the repository-local Oracle remediation loop before committing:
 
 ## Publish through a pull request
 
-1. Push the release branch to its configured upstream. When no upstream exists, set one only when the release branch and a single intended remote are unambiguous. Never force-push.
+1. Push the release branch to its configured upstream under the invocation's
+   existing authorization. When no upstream exists, set one only when the
+   release branch and a single intended remote are unambiguous. Never ask for a
+   second approval and never force-push.
 2. Open a pull request from the release branch to the resolved default branch. The title must identify the new release version, and the body must summarize generated clients and validation evidence.
 3. Wait for all required pull-request checks. Fix in-scope failures on the release branch, rerun affected local validation, push the correction, and wait again.
-4. Merge the pull request only after every required check passes and the repository reports that it is mergeable. Use a repository-supported merge method; GitHub must record the pull request as merged. Do not bypass protections or required reviews.
+4. Merge the pull request under the invocation's existing authorization only
+   after every required check passes and the repository reports that it is
+   mergeable. Use a repository-supported merge method; GitHub must record the
+   pull request as merged. Never ask for a second approval, and do not bypass
+   protections or required reviews.
 5. Verify that the remote default branch contains the release version after the merge. For a connected Claude organization marketplace with **Sync automatically** enabled, this merge supplies its synchronization event.
 6. Treat independent Claude marketplace publication as a separate host lifecycle. The merged commit makes the new version discoverable, while each account must refresh the marketplace through Claude's supported control. The publisher cannot force a refresh across independently added marketplaces.
 7. Treat official Anthropic marketplace publication as a separate reviewed submission. A Git commit or pull request does not publish a new official-marketplace version.

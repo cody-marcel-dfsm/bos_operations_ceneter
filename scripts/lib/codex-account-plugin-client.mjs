@@ -242,7 +242,7 @@ export function createCodexAccountPluginClient(options = {}) {
     });
   }
 
-  async function accountHeaders() {
+  async function accountHeaders({ connectorSettings = false } = {}) {
     const auth = JSON.parse(await readFile(authPath, "utf8"));
     const accessToken = auth?.tokens?.access_token;
     const accountId = auth?.tokens?.account_id;
@@ -256,7 +256,43 @@ export function createCodexAccountPluginClient(options = {}) {
     return {
       Authorization: `Bearer ${accessToken}`,
       "ChatGPT-Account-Id": accountId,
-      "User-Agent": `codex_cli_rs/${version}`
+      "User-Agent": `codex_cli_rs/${version}`,
+      ...(connectorSettings
+        ? {
+            "OAI-Product-Sku": "CONNECTOR_SETTING",
+            Accept: "application/json",
+            "Content-Type": "application/json"
+          }
+        : {})
+    };
+  }
+
+  async function patchConnectorMetadata(appId, changes) {
+    const rawAppId = codexRawAppId(appId);
+    if (!/^asdk_app_[a-z0-9]+$/.test(rawAppId)) {
+      throw new Error(`Invalid Codex connector ID: ${appId}`);
+    }
+    const supported = new Set(["name", "description"]);
+    const fields = Object.keys(changes ?? {});
+    if (!fields.length || fields.some((field) => !supported.has(field))) {
+      throw new Error("Connector metadata updates require supported name or description changes");
+    }
+    const headers = await accountHeaders({ connectorSettings: true });
+    for (const field of fields) {
+      const response = await accountRequest(`${accountApiRoot}/${rawAppId}/${field}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ [field]: changes[field] })
+      });
+      if (!response.ok) {
+        await response.text();
+        throw new Error(`Codex connector ${field} update failed with HTTP ${response.status}`);
+      }
+      await response.text();
+    }
+    return {
+      connectorId: `plugin_${rawAppId}`,
+      updatedFields: fields
     };
   }
 
@@ -295,16 +331,8 @@ export function createCodexAccountPluginClient(options = {}) {
     async inspectSharedPlugins() {
       return withSession((session) => session.request("plugin/share/list", {}));
     },
-    async updateEstablishedProduct(pluginPath, { remotePluginId } = {}) {
-      if (!/^plugin_asdk_app_[a-z0-9]+$/.test(remotePluginId ?? "")) {
-        throw new Error("Established product metadata updates require the permanent plugin_asdk_app ID");
-      }
-      return withSession((session) => session.request("plugin/share/save", {
-        pluginPath,
-        remotePluginId,
-        discoverability: "PRIVATE",
-        shareTargets: []
-      }));
+    async updateEstablishedConnector(appId, changes) {
+      return patchConnectorMetadata(appId, changes);
     },
     async provisionNewProduct(pluginPath) {
       return withSession((session) => session.request("plugin/share/save", {

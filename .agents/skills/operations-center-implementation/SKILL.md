@@ -18,9 +18,13 @@ description: Implement BOS Operations Center repository changes using its archit
    repository tooling.
    For BOS connector work, treat `products/bos/product.json` as the only
    authored product authority. An `ESTABLISHED` connector ID is immutable;
-   update mutable metadata in place with `npm run product:codex -- sync`, then
-   verify the same ID. Never infer new-product status from a missing registry
-   record. Provisioning applies only to a different disabled product explicitly
+   update only the connector-settings API's supported name and description
+   fields in place with `npm run product:codex -- sync`, then verify the same
+   ID and BOS resource. When the established record is missing or its BOS
+   resource binding differs, report the exact registry-owner correction and
+   perform zero account mutation; the available create route mints a different
+   identity. Never infer new-product status from a missing registry record.
+   Provisioning applies only to a different disabled product explicitly
    authored as `UNPROVISIONED_NEW`, with a matching requested source name and no
    retired IDs; retries reconcile the complete metadata fingerprint first.
 8. Store durable architecture, design, issue, and implementation knowledge under

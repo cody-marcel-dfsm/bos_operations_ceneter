@@ -13,8 +13,11 @@ description: Plan BOS Operations Center changes using current Vault architecture
 4. Identify the canonical source, every generated client consumer, contract
    tests, and the server-repository boundary.
    For BOS connector work, the canonical product authority is
-   `products/bos/product.json`. Plan established-ID metadata updates in place.
-   There is no identity migration. Reserve connector creation for a different
+   `products/bos/product.json`. Plan only supported name and description updates
+   against an existing established ID, followed by an exact-ID and BOS-resource
+   post-read. A missing record or resource mismatch requires a registry-owner
+   correction and zero account mutation because the available create route
+   mints a different identity. There is no identity migration. Reserve connector creation for a different
    disabled product explicitly marked `UNPROVISIONED_NEW`, with a matching
    requested source name, no retired IDs, and complete-metadata reconciliation
    before retry.

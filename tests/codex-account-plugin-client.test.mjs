@@ -112,7 +112,7 @@ test("Codex registered-app diagnostics log every protocol and HTTP request/respo
   });
 
   assert.equal(client.createConnectorMetadata, undefined);
-  assert.equal(typeof client.updateEstablishedProduct, "function");
+  assert.equal(typeof client.updateEstablishedConnector, "function");
   assert.equal(typeof client.provisionNewProduct, "function");
   const localPlugin = await client.readPlugin({
     pluginName: "bos",
@@ -193,25 +193,61 @@ test("Codex registered-app diagnostics log every protocol and HTTP request/respo
   );
 });
 
-test("Codex established-product update requires and passes the permanent ID", async () => {
-  const protocolRequests = [];
+test("Codex established-product update patches only supported metadata on the permanent ID", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "bos-codex-connector-update-"));
+  const authPath = join(directory, "auth.json");
+  await writeFile(authPath, JSON.stringify({
+    tokens: {
+      access_token: "update-secret",
+      account_id: "update-account"
+    }
+  }));
+  const requests = [];
   const client = createCodexAccountPluginClient({
+    authPath,
     debug: false,
-    spawnProcess: () => appServerProcess(protocolRequests)
+    runCommand: async () => ({ stdout: "codex-cli 1.2.3\n" }),
+    fetchRequest: async (url, init) => {
+      requests.push({ url, init });
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      });
+    }
   });
-  await client.updateEstablishedProduct("/tmp/generated-product", {
-    remotePluginId: pluginAppId
+  const result = await client.updateEstablishedConnector(pluginAppId, {
+    name: "Updated BOS",
+    description: "Updated description"
   });
-  const save = protocolRequests.find(({ method }) => method === "plugin/share/save");
-  assert.deepEqual(save.params, {
-    pluginPath: "/tmp/generated-product",
-    remotePluginId: pluginAppId,
-    discoverability: "PRIVATE",
-    shareTargets: []
+  assert.deepEqual(result, {
+    connectorId: pluginAppId,
+    updatedFields: ["name", "description"]
   });
+  assert.deepEqual(requests.map(({ url }) => url), [
+    `https://chatgpt.com/backend-api/aip/connectors/${canonicalAppId}/name`,
+    `https://chatgpt.com/backend-api/aip/connectors/${canonicalAppId}/description`
+  ]);
+  assert.deepEqual(requests.map(({ init }) => JSON.parse(init.body)), [
+    { name: "Updated BOS" },
+    { description: "Updated description" }
+  ]);
+  for (const { init } of requests) {
+    assert.equal(init.method, "PATCH");
+    assert.equal(init.headers.Authorization, "Bearer update-secret");
+    assert.equal(init.headers["ChatGPT-Account-Id"], "update-account");
+    assert.equal(init.headers["OAI-Product-Sku"], "CONNECTOR_SETTING");
+  }
   await assert.rejects(
-    client.updateEstablishedProduct("/tmp/generated-product", {}),
-    /require the permanent/
+    client.updateEstablishedConnector(pluginAppId, { mcp_url: "https://wrong.example/mcp" }),
+    /supported name or description/
+  );
+  await assert.rejects(
+    client.updateEstablishedConnector(pluginAppId, { logo_url: "https://dfsm.ai/bos.png" }),
+    /supported name or description/
+  );
+  await assert.rejects(
+    client.updateEstablishedConnector("plugin_invalid", { name: "Invalid" }),
+    /Invalid Codex connector ID/
   );
 });
 

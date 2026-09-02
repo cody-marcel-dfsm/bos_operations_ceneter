@@ -137,7 +137,7 @@ function interruptedProvisioningCandidate(product, listing) {
 }
 
 async function recordProvisionedConnector(productPath, product, remoteId) {
-  const connector = connectorContractForProvisionedId(remoteId);
+  const connector = connectorContractForProvisionedId(product, remoteId);
   const updated = { ...product, codex_connector: connector };
   const temporary = `${productPath}.tmp-${process.pid}`;
   await writeFile(temporary, stableJson(updated));
@@ -175,18 +175,18 @@ export async function manageCodexProduct(rawOptions = {}) {
     const configured = establishedConnectorFromProduct(product);
     const inspection = await client.inspectConnector(configured.id);
     const plan = inspectionPlan(product, inspection);
-    if (!new Set(["update_in_place", "restore_same_record"]).has(plan.action)) {
+    if (plan.action !== "update_in_place") {
       return { schema_version: "1", product: product.name, operation: "sync", ...plan };
     }
-    // Existing products always pass their permanent remote ID. Native save is
-    // the single deterministic path for both metadata updates and restoration
-    // of a missing registry projection. It never invokes new-product
-    // provisioning and the post-read below requires the same identity and
-    // product-owned BOS resource before the operation can succeed.
-    const saved = await client.updateEstablishedProduct(pluginPath, {
-      remotePluginId: configured.id
-    });
-    const observed = remotePluginId(saved);
+    // Existing records use the connector-settings API's supported exact-ID
+    // metadata patches. A missing record stays a registry-owner restoration
+    // requirement because the account API's create route always mints a new
+    // identity. The post-read below proves both identity and resource binding.
+    const updated = await client.updateEstablishedConnector(
+      configured.id,
+      Object.fromEntries(Object.entries(plan.changes).map(([field, change]) => [field, change.to]))
+    );
+    const observed = updated?.connectorId;
     if (!observed) {
       throw new Error("Metadata synchronization returned no connector identity");
     }
@@ -205,10 +205,8 @@ export async function manageCodexProduct(rawOptions = {}) {
       ok: true,
       product: product.name,
       operation: "sync",
-      state: plan.action === "restore_same_record" ? "restored" : "synchronized",
-      action: plan.action === "restore_same_record"
-        ? "restored_same_record"
-        : "updated_in_place",
+      state: "synchronized",
+      action: "updated_in_place",
       connector_id: configured.id,
       changes: plan.changes
     };
