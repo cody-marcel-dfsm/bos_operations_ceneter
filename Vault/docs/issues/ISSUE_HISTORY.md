@@ -6,8 +6,8 @@ before implementation guidance and review. Resolved issue details remain in
 
 ## Issue #0001: Installed BOS skills appeared while Codex exposed no login or callable tools
 
-- Status: ACTIVE; Connect is visible, but the immutable connector record is
-  missing and the action opens ChatGPT account onboarding instead of BOS OAuth
+- Status: ACTIVE; the immutable connector record is missing, and the current
+  plugin detail page exposes no Connect or Reconnect action
 - Priority: CRITICAL
 - Date identified: 2026-09-01
 - Area: Codex package binding, authentication display, and tool discovery
@@ -37,12 +37,13 @@ omitting a login action. A task then reported that BOS tools were absent. The in
 package state, registered connection state, OAuth grant state, and callable-tool
 manifest had been treated as one readiness signal.
 
-After installing 0.4.71, the native Connect flow became visible. Invoking it
-opened `auth.openai.com/about-you`, requested ChatGPT profile information, and
-failed with `duplicate_email`. This satisfies the display portion of the issue
-and exposes a second failure in the same registered-app binding: the declared
+After installing 0.4.71, one native Connect attempt opened
+`auth.openai.com/about-you`, requested ChatGPT profile information, and failed
+with `duplicate_email`. A later clean installation again exposed no Connect or
+Reconnect action. Both results share the same verified condition: the declared
 immutable connector has no live account record from which ChatGPT can obtain
-the BOS MCP resource and OAuth discovery URLs.
+the BOS MCP resource and OAuth discovery URLs. The transient fallback action
+did not satisfy the display or target acceptance criteria.
 
 ### Root cause
 
@@ -151,10 +152,12 @@ policy. Generated product metadata and contracts must preserve those values.
 Post-release acceptance must read the immutable connector record and require
 its exact ID and MCP resource URL before accepting visual Connect evidence.
 That gate converts a missing or misdirected external record into an explicit
-release failure. The repository-native `product:codex sync` workflow requests
-restoration through the exact permanent ID and accepts success only after an
-exact same-ID, same-BOS-resource post-read. It never enters new-product
-provisioning for the established BOS product.
+release failure. The repository-native `product:codex sync` workflow patches
+only supported mutable metadata on an existing exact permanent ID and accepts
+success only after an exact same-ID, same-BOS-resource post-read. If the record
+is missing or its resource differs, it reports the registry-owner correction
+and performs zero account mutation. It never enters new-product provisioning
+for the established BOS product.
 
 ### Attempts
 
@@ -169,9 +172,9 @@ provisioning for the established BOS product.
   historical wrapper, then proved that wrapper's backing connector record had
   been unavailable in the inspected account state. The later replacement-ID
   candidate created a duplicate private BOS product and is retired. The current
-  0.4.72 source candidate restores the product-owned permanent identity. Release
+  0.4.73 source candidate restores the product-owned permanent identity. Release
   acceptance remains blocked until
-  `Vault/evidence/codex-login/0.4.72-connect-button.png` visibly
+  `Vault/evidence/codex-login/0.4.73-connect-button.png` visibly
   shows native **Connect** or **Reconnect** in the GPT client.
 - 2026-09-01 21:22 America/Denver: created the missing BOS connector metadata
   through the native account contract without starting OAuth. ChatGPT returned
@@ -389,19 +392,24 @@ of validating only an embedded identity's shape.
 
 ### Cross-issue coordination
 
-The exact archived Issue #0002 customer-prompt trace contains no BOS catalog
-entry, BOS tool selection, or BOS transport call, so that trace proves the
-missing activation without establishing a connector or server cause. The
+The exact archived 0.4.66 Issue #0002 customer-prompt trace contains no BOS
+catalog entry, BOS tool selection, or BOS transport call, so that historical
+trace proved the original missing activation without establishing a connector
+or server cause. The
 current Issue #0001 diagnostic reports immutable connector 6a7 missing from
 `app/read` and the full app catalog, an empty account-owned catalog, and an
-authenticated connector HTTP 404. Issue #0001 now renders Connect, while its
-unresolved declaration opens ChatGPT account onboarding instead of BOS OAuth.
+authenticated connector HTTP 404. One reproduction rendered a fallback Connect
+action targeting ChatGPT onboarding; the later clean install rendered no
+action. Neither satisfies Issue #0001.
 Issue #0001 owns the exact registered connector binding and plugin-page flow.
 Issue #0002 independently owns selected-tool activation and its conversation
 screenshot. The deployed server contract passes unauthenticated initialization,
 tool discovery, and the OAuth-declared `bos_get_context` challenge. The missing
-registered-app record remains a plausible shared upstream cause for Issue #0002;
-Issue #0002 must establish that cause through its own prompt trace.
+registered-app record is excluded as a current Issue #0002 blocker by the clean
+0.4.72 and installed-0.4.73 direct-MCP traces: the exact prompt mounts, selects,
+and invokes `bos_get_context`, and its canonical challenge reaches the Desktop
+renderer event. That record remains Issue #0001 evidence for its separate
+plugin-page surface.
 The combined invariant remains: a failed metadata, connection-inventory,
 initialization, or tool-discovery request may select a recovery state and
 diagnostic; it never removes the plugin-page **Connect/Reconnect** action or an
@@ -412,11 +420,27 @@ applicable in-chat sign-in action.
   action and screenshot; Issue #0002 owns request-time activation and its
   conversation screenshot. Both workstreams must preserve the other's shared
   contract clauses and reconcile this file before review or commit.
+- 2026-09-02 13:07 America/Denver — Reproduced the immutable connector HTTP 404
+  with the repository lifecycle command after the later clean-install
+  screenshot again showed no Connect or Reconnect. Source review found the
+  earlier sync path called an obsolete native publisher and inaccurately
+  claimed it could recreate a deleted account registry record. The corrected
+  lifecycle patches only supported name and description fields on an existing
+  exact ID, post-reads the exact ID and BOS resource, and performs zero mutation
+  on a missing or misbound record. `products/bos/product.json` names that policy
+  `REGISTRY_OWNER_RESTORE_SAME_RECORD`; lifecycle output derives from that file
+  instead of a second code constant. Focused connector-client, lifecycle, and
+  package-model validation passed 92 of 92 tests; the expanded focused run with
+  Antigravity coverage passed 98 of 98, and the complete 0.4.73 release suite
+  passed 288 of 288. The registry owner must still
+  restore the same record before the installed GPT plugin can resolve BOS and
+  satisfy the visible Connect/Reconnect acceptance criterion.
 
 ## Issue #0002: BOS-dependent prompt failed instead of surfacing request-time sign-in
 
-- Status: ACTIVE; customer-blocking for more than one week; deployed server
-  contract verified; awaiting client activation and genuine chat screenshot
+- Status: ACTIVE; customer-blocking for more than one week; deployed server,
+  tool selection, authentication challenge, and Desktop event delivery verified;
+  awaiting the genuine chat screenshot
 - Priority: CRITICAL
 - Customer severity: P0
 - Date identified: 2026-09-01
@@ -431,7 +455,8 @@ applicable in-chat sign-in action.
   `Vault/specs/client-guided-support.md`, `tests/package-model.test.mjs`,
   `tests/plugin-console.test.mjs`,
   `tests/bos-tool-auth-live-contract.test.mjs`,
-  `tests/codex-request-time-login-surface.test.mjs`
+  `tests/codex-request-time-login-surface.test.mjs`,
+  `Vault/evidence/codex-login/0.4.72-request-time-auth-challenge-trace.md`
 - Related issue: Issue #0001 tracks the separate missing plugin-page
   Login/Connect control and remains owned by its existing workstream.
 
@@ -471,16 +496,17 @@ deployed server now satisfies that contract: unauthenticated initialization,
 initialized notification, and tool discovery succeed; `bos_get_context`
 declares the `mcp:tools` OAuth scope; and its signed-out invocation returns the
 canonical `_meta["mcp/www_authenticate"]` challenge with no live-probe
-violations. The remaining confirmed blocker is in the Codex client activation
-path. The exact post-deployment prompt still reports that the task has no live
-BOS connection and renders no inline authentication control, so the client does
-not select or invoke the now-valid auth-gated tool.
+violations. A clean Desktop task now also selects and invokes the auth-gated
+tool for the exact prompt. Its completed MCP event retains the full challenge
+that the installed renderer's authentication listener accepts.
 
-The exact archived customer turn contains eight local `exec` calls, zero BOS
-calls, and zero other custom tool calls. The model loaded the Plugin Console
-skill, yet no OAuth-declared BOS tool descriptor was available for it to select.
-The post-deployment reproduction retains that same client-visible failure even
-though the server can now supply the descriptor and challenge when called.
+The exact archived 0.4.66 customer turn contains eight local `exec` calls, zero
+BOS calls, and zero other custom tool calls. That historical failure is now
+superseded for activation diagnosis by clean Desktop task
+`01a0638d-17ad-73f1-a041-4edfba4804a8`: its 0.4.72 turn and installed-0.4.73
+repeat both called `platform.bos_get_context` and received the canonical
+challenge. The durable trace is
+`Vault/evidence/codex-login/0.4.72-request-time-auth-challenge-trace.md`.
 
 Official OpenAI plugin authentication guidance states that the host starts
 OAuth when the user first invokes a tool. Tool-level OAuth presentation requires
@@ -494,47 +520,47 @@ previous premise that authentication must occur before the relevant tool is
 available conflated tool metadata with authorized tool execution. Source:
 `https://developers.openai.com/plugins/build/auth#triggering-authentication-ui`.
 
-The installed live connector resolves successfully, while the exact prompt
-still receives no BOS tool descriptor and makes no BOS call. The separate
-connector HTTP 404 and synthetic unauthenticated MCP `initialize` HTTP 401 were
-diagnostic states and never established the request-time flow. The
+The current exact prompt receives the BOS tool descriptor, makes the correct BOS
+call, and delivers the complete challenge to the Desktop event stream. The
+separate connector HTTP 404 and earlier synthetic unauthenticated MCP
+`initialize` HTTP 401 were diagnostic states and never established the current
+request-time flow. The
 `request_plugin_install` path is also unrelated: it owns plugin installation and
 opens an external page instead of returning an installed tool's OAuth challenge.
-Issue #0001 and Issue #0002 retain separate UI acceptance criteria; Issue #0002
-now depends on the selected-tool auth contract rather than declaration-only or
-connection-error recovery.
+Issue #0001 and Issue #0002 retain separate UI acceptance criteria. Issue #0002
+now awaits visual proof of the renderer-owned persistent authentication action;
+the model transcript cannot prove or disprove that separate UI state.
 
-The native client also presents a confirmed catalog metadata defect.
+The native client also presented a catalog metadata defect during the earlier
+registered-app path.
 Exact `app/read` resolves the live BOS connector with friendly metadata and no
 missing IDs, while paginated `app/list` exposes the same ID only as an
 inaccessible placeholder and the committed installed-app snapshot omits BOS.
 Issue #0001 confirms that this list/read inconsistency suppresses its
-connection-control path. Post-deployment Issue #0002 evidence now confirms the
-same boundary is relevant to request-time activation: the package declaration
-resolves the live app, while the task-visible plugin resource advertises
-`mcp_servers: []` and plugin management reports the app as `not_installed`.
-The precise shared client implementation site remains under Issue #0001's
-investigation, while Issue #0002 owns proof that no BOS tool is mounted or
-invoked from the customer prompt. The installed-snapshot omission remains
-runtime/callability evidence independent from button visibility.
+connection-control path. For Issue #0002, the clean direct-MCP reproduction
+supersedes `mcp_servers: []`, `not_installed`, and zero-tool-call observations as
+current causal evidence: the exact prompt now mounts, selects, and invokes
+`bos_get_context`, and its authentication challenge reaches the Desktop event
+stream. The registered-app catalog defect remains historical evidence for Issue
+#0001 and does not block Issue #0002's request-time renderer verification.
 
 ### Required correction
 
-Codex must activate the package's required registered BOS app for the customer
-task before consent, mount its descriptor-only MCP surface, and make the
-OAuth-declared `bos_get_context` descriptor selectable for the exact prompt.
-The client then invokes that selected tool once and renders the server's
+Codex must preserve the proven single direct `platform` MCP activation path so
+the OAuth-declared `bos_get_context` descriptor remains selectable before
+consent. The client invokes that selected tool once and renders the server's
 canonical `_meta["mcp/www_authenticate"]` result as a native **Connect**, **Sign
 in**, or **Authenticate** button directly in the active chat. The deployed
-server already satisfies the descriptor and signed-out challenge contract; no
-customer data or business execution is permitted before a valid grant. Issue
-#0002 stops at the visible action. The broader product lifecycle may preserve
-the pending request, complete consent, refresh authority-scoped tools and
-context, and resume execution, but none of those post-action steps are
-acceptance criteria for this issue. Plugin recommendations, installation URLs,
-declaration-only preflight, generic settings instructions, manual settings
-navigation, and anonymous bootstrap business tools never substitute for the
-selected tool's OAuth challenge.
+server, exact-prompt tool selection, invocation, challenge, and Desktop event
+delivery are verified; no customer data or business execution is permitted
+before a valid grant. Issue #0002 stops at the visible action, so its sole
+remaining behavioral gate is the genuine 0.4.73 chat screenshot. The broader
+product lifecycle may preserve the pending request, complete consent, refresh
+authority-scoped tools and context, and resume execution, but none of those
+post-action steps are acceptance criteria for this issue. Plugin
+recommendations, installation URLs, declaration-only preflight, generic
+settings instructions, manual settings navigation, and anonymous bootstrap
+business tools never substitute for the selected tool's OAuth challenge.
 
 If reproduction identifies a BOS server discovery or challenge defect, stop at
 this repository boundary and hand the protocol requirement to the owning server
@@ -597,9 +623,32 @@ skill corrections in this repository.
   and the live Desktop accepted path opened an external ChatGPT plugin-install
   page instead of presenting inline BOS authentication. Plugin installation does
   not satisfy or repair the root connector's OAuth state.
+- After removing only the stale `platform` OAuth credential, fresh CLI thread
+  `01a0638a-48a9-7641-97f0-67b850491231` ran the exact prompt, selected
+  `platform.bos_get_context`, and received the complete canonical
+  `_meta["mcp/www_authenticate"]` result without exposing business data. No OAuth
+  authorization was completed.
+- Clean projectless Desktop task `01a0638d-17ad-73f1-a041-4edfba4804a8`
+  reproduced that selection and challenge first with BOS 0.4.72 and again after
+  the installed package advanced to 0.4.73. Both completed `mcpToolCall` events
+  retain the full authentication metadata consumed by the installed Desktop
+  renderer's persistent **Reconnect** prompt. The model-facing wrapper exposed
+  only `Authentication required.`, so the model's follow-up prose is not
+  evidence of renderer state. The version-matched 0.4.73 screenshot remains the
+  sole unmet Issue #0002 acceptance artifact.
 
 ### Coordination log
 
+- 2026-09-02 13:31 America/Denver — Reclassified Issue #0002 from missing client
+  activation to pending visual confirmation using the clean CLI and Desktop
+  traces recorded in
+  `Vault/evidence/codex-login/0.4.72-request-time-auth-challenge-trace.md`.
+  The exact prompt now selects `bos_get_context`; the signed-out result carries
+  the canonical authentication challenge through the Desktop event pipeline;
+  and the installed renderer has a matching listener that creates a persistent
+  **Reconnect** action. Issue #0001 continues its separate plugin-page visual
+  verification. Issue #0002 proceeds independently and remains ACTIVE until the
+  genuine 0.4.73 in-chat screenshot and screenshot-bound Oracle approval exist.
 - 2026-09-02 08:55 America/Denver — Independently reverified the reported
   production deployment. `npm run contract:check` passed. The network-enabled
   protected-resource probe returned HTTP 401 with the exact canonical

@@ -1,7 +1,7 @@
 # Codex BOS skill and tool exposure RCA
 
-Status: active; Connect is visible and the unresolved immutable connector opens
-ChatGPT account onboarding instead of BOS OAuth
+Status: active; the immutable connector record is missing and the current GPT
+plugin page exposes no Connect/Reconnect action
 Date: 2026-09-01
 
 ## Authoritative 2026-09-02 correction
@@ -17,10 +17,10 @@ superseded by this correction and the Issue #0001 conclusion.
 The source correction generates every identity-bearing client artifact and
 contract from the product file, restores one required root `.app.json`, removes
 the second authored runtime URL file, and gives established maintenance and new
-product creation separate deterministic workflows. The 0.4.71 manual install
-now renders Connect. Its unresolved immutable connector opens
-`auth.openai.com/about-you` and fails with `duplicate_email` because the
-external record that carries the BOS MCP resource is absent.
+product creation separate deterministic workflows. One 0.4.71 attempt rendered
+Connect and opened `auth.openai.com/about-you`; the later clean install again
+rendered no action. The external record that carries the BOS MCP resource is
+absent in both reproductions.
 
 ## Failed registry recovery attempt
 
@@ -59,7 +59,7 @@ plugin-page Login display.
 Release 0.4.70 repeated the direct-MCP implementation and therefore repeated
 the missing Login defect. The first 0.4.71 candidate restored the historical
 root BOS wrapper, but its connector metadata had already been deleted. The
-current 0.4.72 source candidate restores the permanent established ID from
+current 0.4.73 source candidate restores the permanent established ID from
 `products/bos/product.json` with `required: true`; every subservice continues
 through that same root connection. The independent GPT display
 contract remains: render first, then use connection and grant state only to
@@ -112,18 +112,19 @@ The current app-server now marks every historical BOS identity missing.
    declaration without removing the app. The plugin-detail merge can adopt that
    established fallback instead of filtering unresolved declarations.
 10. The historical desktop diagnostic recorded authenticated connector HTTP 404
-    for the permanent BOS ID, while the exact Issue #0002 customer turn made no
-    BOS transport call. The later failed registry-recovery attempt proved only
-    that the accidental replacement could resolve friendly metadata and return
-    HTTP 200; it did not supersede the permanent identity. The
-    deployed Issue #0002 server contract now passes unauthenticated
-    `initialize`, `tools/list`, and signed-out `tools/call`, including the OAuth
-    descriptor and canonical tool-bound authentication challenge. Issue #0002's
-    remaining failure is client activation: Codex resolves the declared app but
-    exposes `mcp_servers: []`, reports it as `not_installed`, and never mounts,
-    selects, or invokes the available BOS tool. That request-time mount failure
-    remains separate from this Issue #0001 plugin-page renderer incident even
-    though both may share the app catalog resolution boundary.
+    for the permanent BOS ID, while the archived 0.4.66 Issue #0002 customer turn
+    made no BOS transport call. The later failed registry-recovery attempt proved
+    only that the accidental replacement could resolve friendly metadata and
+    return HTTP 200; it did not supersede the permanent identity. The deployed
+    Issue #0002 server contract now passes unauthenticated `initialize`,
+    `tools/list`, and signed-out `tools/call`, including the OAuth descriptor and
+    canonical tool-bound authentication challenge. Clean 0.4.72 and
+    installed-0.4.73 direct-MCP evidence supersedes `mcp_servers: []`,
+    `not_installed`, and zero-invocation observations as current Issue #0002
+    evidence: the exact prompt mounts, selects, and invokes `bos_get_context`,
+    and its challenge reaches the Desktop renderer event. Issue #0002 now awaits
+    only its renderer screenshot. The registered-app catalog evidence remains
+    scoped to this Issue #0001 plugin-page incident.
 11. A repository-owned correlated diagnostic reproduced the complete split on
     the authenticated client. `plugin/read` returned BOS 0.4.71 installed and
     enabled with the required prefixed app, while the created-by-me plugin list
@@ -143,8 +144,16 @@ The current app-server now marks every historical BOS identity missing.
     connector HTTP 404. Live BOS discovery independently resolves the exact
     product-owned issuer and authorization endpoint. The active correction is
     therefore exact connector binding and target acceptance. Repository-native
-    sync requests restoration through the permanent ID and accepts it only when
-    the exact same ID resolves to the product-owned BOS resource.
+    sync updates supported metadata only when the permanent record already
+    exists; a missing or misbound record produces a zero-mutation registry-owner
+    correction report.
+14. A later clean-install screenshot again showed no Connect or Reconnect.
+    Live `product:codex sync` returned HTTP 404 for the immutable ID. Inspection
+    also found that the earlier sync path used an obsolete native publisher and
+    overstated its ability to recreate a deleted registry record. The corrected
+    path uses exact-ID connector-settings PATCH operations only for supported
+    name and description drift, verifies the same ID and BOS resource afterward,
+    and never invokes connector creation for established BOS.
 
 ## Five whys
 

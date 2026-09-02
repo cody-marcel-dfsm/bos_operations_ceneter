@@ -326,7 +326,7 @@ export function validateProduct(manifest, path = "product.json") {
       if (connector.required !== true ||
           connector.identity_policy !== "IMMUTABLE" ||
           connector.metadata_policy !== "UPDATE_IN_PLACE" ||
-          connector.missing_record_policy !== "RESTORE_SAME_RECORD" ||
+          connector.missing_record_policy !== "REGISTRY_OWNER_RESTORE_SAME_RECORD" ||
           connector.provisioning_policy !== "NEW_PRODUCT_ONLY") {
         failures.push(`${path}: codex_connector lifecycle policies are invalid`);
       }

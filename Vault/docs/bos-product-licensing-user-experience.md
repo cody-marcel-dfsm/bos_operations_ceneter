@@ -1,6 +1,6 @@
 # BOS product licensing and user experience
 
-Current BOS Operations Center release: `0.4.72`.
+Current BOS Operations Center release: `0.4.73`.
 
 ## Connection ownership
 
