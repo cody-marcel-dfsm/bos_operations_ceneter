@@ -70,6 +70,13 @@ validation, and prohibit reclassifying it as unrelated.
   forbids approval, confirmation, and intent questions, covers every amended
   repository file in the evolving, reviewed payload, and requires concrete
   validation blockers to be reported declaratively.
+- The post-0.4.75 branch audit found an amended secondary worktree containing
+  the superseded direct-Codex-MCP experiment. Its exact amendment was committed
+  on its owning branch, rebased onto current `main`, and reverted in a distinct
+  follow-up commit so the branch history is preserved while the accepted
+  required `.app.json` architecture remains the released state. Release 0.4.76
+  includes and validates that reconciled history before the branch and worktree
+  are removed.
 
 ### Validation and Oracle review
 
