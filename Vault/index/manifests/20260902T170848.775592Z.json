@@ -1,0 +1,14 @@
+{
+  "canonical_source_snapshot_sha256": "a4b14d3fc468aff26965549cae8ff69dcabfc6c2ae7a6abef6f223ba3024575d",
+  "changed_sources": [
+    "Vault/evidence/codex-login/0.4.71-gpt-plugin-detail-analysis.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 249,
+  "duration_seconds": 1.337,
+  "index_version": 1,
+  "indexed_at": "20260902T170848.775592Z",
+  "indexed_chunks": 5,
+  "removed_sources": [],
+  "source_count": 92
+}

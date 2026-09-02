@@ -23,7 +23,9 @@ relevant protocol contract, deployment scope, and observable post-deployment
 verification. Make the client-owned Operations Center acceptance suite part of
 the server change's acceptance criteria: `npm run contract:check`, `npm run
 contract:oauth-discovery-live -- --resource-url "$BOS_MCP_RESOURCE_URL"
---format json`, and `npm run contract:oauth-live -- --authorize-url
+--format json`, `npm run contract:oauth-tool-auth-live -- --resource-url
+"$BOS_MCP_RESOURCE_URL" --tool bos_get_context --format json`, and `npm run
+contract:oauth-live -- --authorize-url
 "$BOS_OAUTH_AUTHORIZE_URL" --format json`. The server-side agent independently
 determines the implementation and release path. Return exactly one continuous
 Markdown prompt as the entire server handoff response. Keep all protocol

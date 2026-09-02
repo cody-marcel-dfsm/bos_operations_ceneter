@@ -18,6 +18,10 @@ import {
   validateProduct,
   writeJson
 } from "./lib/package-model.mjs";
+import {
+  codexLoginSurfaceContract,
+  singleBosConnectionContract
+} from "./lib/product-contracts.mjs";
 
 const stage = join(root, "tmp", `build-${process.pid}`);
 const stagedClients = join(stage, "clients");
@@ -67,7 +71,9 @@ for (const { product, skills } of resolved) {
       client: "codex",
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
-      codex_app_id: product.codex_app_id,
+      codex_app_id: product.codex_connector?.id,
+      retired_codex_app_ids: product.codex_connector?.retired_ids,
+      resource_url: product.runtime ? materializeMcpUrl(product) : undefined,
       runtime_verification_tools: product.runtime_verification_tools,
       connection_owner: "bos",
       authentication: product.runtime ? "oauth_2_1" : "bos_managed"
@@ -94,10 +100,7 @@ for (const { product, skills } of resolved) {
     );
     await mkdir(join(pluginRoot, ".claude-plugin"), { recursive: true });
     const claudeResourceUrl = product.runtime
-      ? materializeMcpUrl(
-          "https://dfsm.ai/mcp/apps/bos/platform",
-          product
-        )
+      ? materializeMcpUrl(product)
       : undefined;
     await writeJson(join(pluginRoot, ".bos-product.json"), {
       schema_version: "1",
@@ -219,6 +222,7 @@ for (const { product, skills } of resolved) {
       client: "copilot",
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
+      resource_url: product.runtime ? materializeMcpUrl(product) : undefined,
       connection_owner: "bos",
       authentication: product.runtime ? "oauth_2_1" : "bos_managed"
     });
@@ -273,6 +277,7 @@ for (const { product, skills } of resolved) {
       client: "gemini",
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
+      resource_url: product.runtime ? materializeMcpUrl(product) : undefined,
       connection_owner: "bos",
       authentication: product.runtime ? "oauth_2_1" : "bos_managed"
     });
@@ -480,6 +485,19 @@ await writeJson(
 await writeJson(
   join(root, ".claude-plugin", "marketplace.json"),
   repositoryClaudeMarketplace
+);
+
+// Product contracts are derived outputs. Product identity and connection
+// metadata are authored only in products/<name>/product.json.
+const activeProducts = resolved.map(({ product }) => product);
+const bosProduct = activeProducts.find(({ name }) => name === "bos");
+await writeJson(
+  join(root, "contracts", "single-bos-mcp-connection.v1.json"),
+  singleBosConnectionContract(activeProducts)
+);
+await writeJson(
+  join(root, "contracts", "codex-login-surface.v1.json"),
+  codexLoginSurfaceContract(bosProduct)
 );
 
 await rm(stage, { recursive: true, force: true });

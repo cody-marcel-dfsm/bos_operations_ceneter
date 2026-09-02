@@ -5,6 +5,7 @@
   "client": "copilot",
   "application_name": "bos",
   "mcp_group_name": "platform",
+  "resource_url": "https://dfsm.ai/mcp/apps/bos/platform",
   "connection_owner": "bos",
   "authentication": "oauth_2_1"
 }

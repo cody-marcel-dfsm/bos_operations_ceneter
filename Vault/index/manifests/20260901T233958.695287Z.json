@@ -1,0 +1,17 @@
+{
+  "canonical_source_snapshot_sha256": "b36181dccefc372f583950a845fe2169740f776a7178f8f5e0089c3004787809",
+  "changed_sources": [
+    "Vault/docs/issues/ISSUE_HISTORY.md",
+    "Vault/docs/issues/conclusions/ISSUE_0001_CONCLUSION.md",
+    "Vault/evidence/codex-login/0.4.71-gpt-plugin-detail-analysis.md",
+    "Vault/reviews/2026-09-01-release-0.4.71-codex-login-regression.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 209,
+  "duration_seconds": 0.921,
+  "index_version": 1,
+  "indexed_at": "20260901T233958.695287Z",
+  "indexed_chunks": 15,
+  "removed_sources": [],
+  "source_count": 90
+}

@@ -66,7 +66,13 @@ test("Vault query returns semantic source, chunk, timestamp, and distance eviden
     execFileSync("python3", ["tools/vault_index.py", "sync", "--quiet"], { cwd: root, env });
     const result = JSON.parse(execFileSync(
       "python3",
-      ["tools/vault_index.py", "query", "fresh-account portability account-scoped Platform submission draft", "--limit", "10"],
+      [
+        "tools/vault_index.py",
+        "query",
+        "GPT connector metadata visibility predicate Connect Reconnect Issue 0001",
+        "--limit",
+        "10",
+      ],
       { cwd: root, env, encoding: "utf8" },
     ));
     assert.ok(result.some((match) => match.source.startsWith("Vault/docs/issues/")));

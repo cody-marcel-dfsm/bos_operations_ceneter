@@ -1,0 +1,16 @@
+{
+  "canonical_source_snapshot_sha256": "bfa62256b87e9ab1bee9cd2cb6d98be5db472b537ae0aeaf18d77b335606a12d",
+  "changed_sources": [
+    "Vault/docs/issues/ISSUE_HISTORY.md",
+    "Vault/docs/issues/conclusions/ISSUE_0001_CONCLUSION.md",
+    "Vault/evidence/codex-login/0.4.71-gpt-plugin-detail-analysis.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 222,
+  "duration_seconds": 1.287,
+  "index_version": 1,
+  "indexed_at": "20260902T024637.001691Z",
+  "indexed_chunks": 21,
+  "removed_sources": [],
+  "source_count": 91
+}

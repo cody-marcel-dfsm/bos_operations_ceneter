@@ -1,0 +1,17 @@
+{
+  "canonical_source_snapshot_sha256": "eba92579d8230c09f3ef6ef0f6fda71dc9f44ff3aaea98ea0de62ecc8f50f396",
+  "changed_sources": [
+    "Vault/docs/codex-registered-app-incident.md",
+    "Vault/docs/issues/ISSUE_HISTORY.md",
+    "Vault/docs/issues/conclusions/ISSUE_0001_CONCLUSION.md",
+    "Vault/reviews/2026-09-01-release-0.4.71-codex-login-regression.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 205,
+  "duration_seconds": 0.885,
+  "index_version": 1,
+  "indexed_at": "20260901T230718.982745Z",
+  "indexed_chunks": 14,
+  "removed_sources": [],
+  "source_count": 89
+}

@@ -1,0 +1,16 @@
+{
+  "canonical_source_snapshot_sha256": "04e155e527f4d3c5942b83f765296145bf3c311c1af24649051a555a4af0d065",
+  "changed_sources": [
+    "Vault/docs/IMPLEMENTATION_TASKS.md",
+    "Vault/docs/marketplace-agent-harness-plan.md",
+    "Vault/reviews/2026-09-01-release-0.4.71-codex-login-regression.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 211,
+  "duration_seconds": 0.898,
+  "index_version": 1,
+  "indexed_at": "20260901T235800.753130Z",
+  "indexed_chunks": 14,
+  "removed_sources": [],
+  "source_count": 90
+}

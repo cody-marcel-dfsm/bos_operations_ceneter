@@ -2,18 +2,21 @@ import { lstat, readFile, readdir, rm } from "node:fs/promises";
 import { homedir } from "node:os";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readJson, stableJson } from "./lib/package-model.mjs";
+import {
+  codexConnectorContract,
+  readJson,
+  root,
+  stableJson
+} from "./lib/package-model.mjs";
 
 export const CACHE_RESET_CONFIRMATION = "DELETE BOS CHATGPT AND CLAUDE CACHES";
 
 const marketplace = "bos-education-center";
 const products = ["bos", "education-center"];
-const bosResourceUrl = "https://dfsm.ai/mcp/apps/bos/platform";
-const bosCodexAppIds = [
-  "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
-  "asdk_app_6a95a014a0a08191a9e6d16453a8b831",
-  "asdk_app_6a932992592081919cdc88c60e4ff2dd"
-];
+const bosProduct = await readJson(join(root, "products", "bos", "product.json"));
+const bosConnector = codexConnectorContract(bosProduct);
+const bosResourceUrl = bosProduct.mcp_resource_url;
+const bosCodexAppIds = [bosConnector.id, ...bosConnector.retired_ids];
 
 function codexAppRecordId(id) {
   return id.replace(/^plugin_/, "");

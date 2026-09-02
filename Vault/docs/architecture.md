@@ -10,11 +10,13 @@ release system for portable BOS skills and native remote MCP client adapters.
 - `source/platform/` owns tenant-neutral BOS operating and architecture skills.
 - `source/capabilities/` owns reusable business capabilities.
 - `source/verticals/` owns industry and franchise specialization.
-- `source/runtime/` owns credential-free root BOS MCP connection templates for
-  clients that distribute an endpoint directly. The root BOS Codex package
-  owns one required registered-app declaration that renders native Login.
-  Subservice products contain
-  no additional BOS connection binding.
+- `products/bos/product.json` is the sole authored BOS product authority. It
+  owns the MCP resource URL, immutable established Codex connector ID, mutable
+  metadata policy, and retired accidental IDs. Build scripts generate every
+  identity-bearing client artifact and repository contract from it.
+- The root BOS Codex package owns one required registered-app declaration that
+  renders native Login. Subservice products contain no additional BOS
+  connection binding.
 - `products/` declares versioned compositions; build scripts generate client
   packages from those declarations.
 - The BOS service owns authentication, authorization, tenant data, provider
@@ -159,16 +161,19 @@ release system for portable BOS skills and native remote MCP client adapters.
     replace the registration through current OAuth metadata, restart
     authorization once, refresh tools and context, and resume through the same
     BOS connection.
-    Treat Codex MCP-startup
-    `reauthenticationRequired` as a **Sign in** state for
-    the registered root BOS connection. The BOS resource answers
-    unauthenticated discovery with HTTP 401 and a `WWW-Authenticate` challenge
-    containing the exact protected-resource metadata URL so Codex classifies
-    the runtime connection as `notLoggedIn` and activates OAuth through the
-    host-managed authentication action.
-    The user selects that action and completes consent; the agent then refreshes
-    the connection, tools, and context and resumes. If the action is absent,
-    preserve the request and report an authentication-activation defect. Never
+    Treat Codex request-time and MCP-startup `reauthenticationRequired` as a
+    **Sign in** state. The package-owned root connection exposes the requested
+    BOS tool descriptor with a per-tool OAuth `securitySchemes` declaration
+    before consent. Descriptor visibility permits capability selection only;
+    customer data and business execution remain protected. The selected tool's
+    signed-out result returns `isError: true` and
+    `_meta["mcp/www_authenticate"]` with `resource_metadata`, `error`, and
+    `error_description`, causing the host to render the simple inline **Sign
+    in** action. The user completes consent; the host refreshes the server
+    authority-scoped tool state, the agent calls `bos_get_context`, and the
+    original request resumes. A missing descriptor or challenge is a tool-auth
+    contract defect; a received challenge without the action is a host
+    authentication-activation defect. Never
     invoke CLI login or launch browser authentication on the user's behalf.
     Generic app permissions do not represent or repair MCP OAuth.
 16. Distribute pre-publication Claude and Codex products through their native

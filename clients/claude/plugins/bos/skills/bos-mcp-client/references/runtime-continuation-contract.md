@@ -9,8 +9,9 @@ Refresh the callable manifest immediately after:
 
 - initial connection or task continuation;
 - OAuth connection or reconnection;
-- Codex MCP-startup `reauthenticationRequired` recovery through the native
-  authentication action exposed after protected-resource discovery;
+- Codex request-time or MCP-startup `reauthenticationRequired` recovery through
+  the native authentication action owned by the resolved registered-app
+  connection;
 - OAuth `invalid_client` registration replacement and restarted authorization;
 - actor permission, delegated-role, or plugin execution-role change;
 - plugin install, update, enablement, or disablement;
@@ -56,10 +57,15 @@ If any approved input changed during recovery, invalidate the affected
 approval and present the new exact preview. Reconcile every uncertain mutation
 by operation identity or idempotency key before retrying.
 
-On Codex, the registered root BOS MCP server exposes **Authenticate** when its
-unauthenticated resource discovery returns HTTP 401 with the exact
-`resource_metadata` challenge. Preserve the request while the user selects that
-native action and completes consent. If the action is absent, report the host
-authentication-activation defect and keep the request pending. Never invoke a
-CLI login or launch browser authentication for the user. Generic app
-permissions do not represent or repair this OAuth state.
+On Codex, a signed-out BOS-dependent prompt selects the matching OAuth-declared
+BOS tool descriptor. The descriptor and its scopes are visible before consent;
+customer data and business execution remain protected. Its signed-out
+invocation returns `isError: true` with `_meta["mcp/www_authenticate"]`, which
+lets the host render the simple inline **Sign in** button in the current chat.
+Preserve the request while the user selects the native action and completes
+consent, then refresh authority-scoped tool state, call `bos_get_context`, and
+resume automatically. If the descriptor, challenge, or inline action is absent,
+report the exact tool-auth or host-activation defect and keep the request
+pending. Never invoke a CLI login, launch browser authentication for the user,
+or substitute an anonymous bootstrap business tool. Generic app permissions do
+not represent or repair this OAuth state.

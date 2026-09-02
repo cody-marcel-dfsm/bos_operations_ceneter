@@ -72,6 +72,14 @@ prior verdict and requires a fresh Oracle review of the complete updated diff.
   and callable-tool discovery as independent readiness layers. A direct MCP
   server row never proves that the native Login action is present. Evidence from
   one layer never proves another layer ready.
+- Treat `products/bos/product.json` as the sole authored BOS product authority.
+  Its `ESTABLISHED` connector ID is immutable and has no migration workflow.
+  Mutable metadata updates in place and must post-read the same ID. A missing
+  registry record is an integrity failure, never permission to create a
+  replacement. New connector creation requires a different disabled product
+  explicitly authored as `UNPROVISIONED_NEW`, a matching requested source name,
+  no retired IDs, and deterministic complete-metadata reconciliation before
+  retry.
 - Flag conflicts between source and Vault. The constitution and accepted Vault
   decisions control until an explicit decision updates them.
 
@@ -87,6 +95,9 @@ Review the completed diff and focused validation evidence. Verify:
 - product-manifest completeness and canonical-source/client-package parity;
 - deterministic builds, version consistency, tests, and extension preservation;
 - updated Vault knowledge when a change establishes a durable rule; and
+- visual inspection of required screenshot evidence plus an Oracle-authored
+  receipt binding the exact SHA-256, product version, client surface, and
+  observed native action; and
 - repository-maintainer workflows remain local under `.agents/skills` and are
   absent from every generated customer plugin.
 

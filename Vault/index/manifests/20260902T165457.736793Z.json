@@ -1,0 +1,17 @@
+{
+  "canonical_source_snapshot_sha256": "32bc3b6bad9c9ae10685fa1a723197f5a4f57f2071f54bf0aa493055daf2a9b1",
+  "changed_sources": [
+    "Vault/decisions/2026-09-01-codex-registered-app-login-surface.md",
+    "Vault/docs/codex-registered-app-incident.md",
+    "Vault/docs/issues/ISSUE_HISTORY.md",
+    "Vault/docs/issues/conclusions/ISSUE_0001_CONCLUSION.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 249,
+  "duration_seconds": 2.558,
+  "index_version": 1,
+  "indexed_at": "20260902T165457.736793Z",
+  "indexed_chunks": 44,
+  "removed_sources": [],
+  "source_count": 92
+}

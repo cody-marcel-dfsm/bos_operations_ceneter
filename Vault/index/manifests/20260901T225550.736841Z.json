@@ -1,0 +1,17 @@
+{
+  "canonical_source_snapshot_sha256": "d6a978a6b48418472ba0dda793133688eec6313483b373a9b5ff79a5de49ee89",
+  "changed_sources": [
+    "Vault/docs/codex-registered-app-incident.md",
+    "Vault/docs/issues/ISSUE_HISTORY.md",
+    "Vault/docs/issues/conclusions/ISSUE_0001_CONCLUSION.md",
+    "Vault/specs/single-bos-mcp-connection.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 202,
+  "duration_seconds": 0.891,
+  "index_version": 1,
+  "indexed_at": "20260901T225550.736841Z",
+  "indexed_chunks": 14,
+  "removed_sources": [],
+  "source_count": 89
+}

@@ -32,10 +32,14 @@ MCP context and read tools strengthen verification when available.
 9. Treat a missing Codex **Login**, **Connect**, or **Authenticate** action
    after the required `.app.json` loads as **Register**. Repair and reload the
    root registered-app display binding while preserving the request. Treat MCP-startup
-   `reauthenticationRequired` as **Sign in**. The user activates the native
-   control and completes consent; the
-   agent refreshes tools and context and resumes. Generic app permissions and
-   CLI login are outside the MCP OAuth recovery path.
+   `reauthenticationRequired` as **Sign in**. The host selects the OAuth-declared
+   BOS tool required by the prompt. Its descriptor and scopes are visible before
+   consent, while business execution and customer data remain protected. The
+   selected tool's `_meta["mcp/www_authenticate"]` error result renders the native
+   control in the active chat. The user completes consent; the agent refreshes
+   authority-scoped tools and context and resumes the original request. Generic
+   app permissions, CLI login, plugin installation, anonymous bootstrap business
+   tools, and manual settings navigation are outside this MCP OAuth path.
 10. When a user explicitly requests complete local removal, use the
    repository-owned all-client uninstaller. Inspect its identity-bounded dry
    run, require exact destructive authorization, remove only recognized retired

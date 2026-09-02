@@ -47,13 +47,6 @@ const retiredBosBrokerPaths = new Set([
   "tests/test_bos_mcp_broker.py",
   "tests/test_bos_mcp_broker_live.py"
 ]);
-const retiredCodexAppIds = new Set([
-  "plugin_asdk_app_6a932992592081919cdc88c60e4ff2dd",
-  "plugin_asdk_app_6a95a014a0a08191a9e6d16453a8b831",
-  "asdk_app_6a932992592081919cdc88c60e4ff2dd",
-  "asdk_app_6a95a014a0a08191a9e6d16453a8b831"
-]);
-
 function isRetiredBosBrokerPath(path) {
   return retiredBosBrokerPaths.has(path) ||
     /^tests\/__pycache__\/test_bos_mcp_broker(?:_live)?\..+\.pyc$/.test(path);
@@ -88,13 +81,14 @@ async function isDirectBosOAuthConfig(path, expectedName, expectedUrl) {
   }
 }
 
-async function isRetiredCodexAppConfig(path, expectedName) {
+async function isRetiredCodexAppConfig(path, expectedName, retiredIds = []) {
   try {
     const config = await readJson(path);
     const entries = Object.entries(config?.apps ?? {});
     if (entries.length !== 1) return false;
     const [name, app] = entries[0];
-    return name === expectedName && retiredCodexAppIds.has(app?.id);
+    const retired = new Set(retiredIds.flatMap((id) => [id, `plugin_${id}`]));
+    return name === expectedName && retired.has(app?.id);
   } catch {
     return false;
   }
@@ -148,12 +142,13 @@ async function configureCodexBosMcp(_options, paths) {
   const appManifest = await readJson(appPath);
   const appEntries = Object.entries(appManifest.apps ?? {});
   const [appName, app] = appEntries[0] ?? [];
-  const expectedUrl = "https://dfsm.ai/mcp/apps/bos/platform";
+  const expectedUrl = metadata.resource_url;
   if (appEntries.length !== 1 || appName !== metadata.name ||
       app?.id !== metadata.codex_app_id || app?.required !== true ||
       JSON.stringify(Object.keys(app ?? {}).sort()) !==
         JSON.stringify(["id", "required"]) ||
       !/^plugin_asdk_app_[a-z0-9]+$/.test(app?.id ?? "") ||
+      typeof expectedUrl !== "string" ||
       "credential_env_var" in metadata) {
     throw new Error("Packaged Codex app binding is invalid");
   }
@@ -659,7 +654,11 @@ async function inspectTarget(paths, desired) {
       update.push(path);
     }
     else if (!hasState && path === ".app.json" &&
-      await isRetiredCodexAppConfig(join(paths.target, path), desiredMetadata.name)) {
+      await isRetiredCodexAppConfig(
+        join(paths.target, path),
+        desiredMetadata.name,
+        desiredMetadata.retired_codex_app_ids
+      )) {
       update.push(path);
     }
     else if (!hasState && path === ".codex-plugin/plugin.json") {
@@ -689,7 +688,7 @@ async function inspectTarget(paths, desired) {
     ".mcp.json" in currentFiles &&
     !(".mcp.json" in desired.hashes)
   ) {
-    const expectedUrl = "https://dfsm.ai/mcp/apps/bos/platform";
+    const expectedUrl = desiredMetadata.resource_url;
     if (await isDirectBosOAuthConfig(
       join(paths.target, ".mcp.json"),
       desiredMetadata.mcp_group_name,

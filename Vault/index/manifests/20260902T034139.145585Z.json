@@ -1,0 +1,15 @@
+{
+  "canonical_source_snapshot_sha256": "6996a03a2b0c3ded5bd654ba1721832970b509a352b28fcad3c03bf187527b7e",
+  "changed_sources": [
+    "Vault/docs/issues/ISSUE_HISTORY.md",
+    "Vault/evidence/codex-login/0.4.71-request-time-chat-trace-analysis.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 230,
+  "duration_seconds": 0.949,
+  "index_version": 1,
+  "indexed_at": "20260902T034139.145585Z",
+  "indexed_chunks": 21,
+  "removed_sources": [],
+  "source_count": 92
+}

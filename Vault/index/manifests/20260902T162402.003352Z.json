@@ -1,0 +1,14 @@
+{
+  "canonical_source_snapshot_sha256": "5f6f37e58e696f9415bc4aa8fb167fdc7c1127fa2c6ce7ae4d702c9c78628baf",
+  "changed_sources": [
+    "Vault/decisions/2026-09-01-codex-registered-app-login-surface.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 249,
+  "duration_seconds": 0.247,
+  "index_version": 1,
+  "indexed_at": "20260902T162402.003352Z",
+  "indexed_chunks": 2,
+  "removed_sources": [],
+  "source_count": 92
+}

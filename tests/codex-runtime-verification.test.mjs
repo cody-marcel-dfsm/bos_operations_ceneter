@@ -6,8 +6,9 @@ import test from "node:test";
 import { inspectCodexRuntime } from "../scripts/verify-codex-runtime.mjs";
 import { readJson, root } from "../scripts/lib/package-model.mjs";
 
-const releaseVersion = (await readJson(join(root, "products", "bos", "product.json"))).version;
-const bosAppId = "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91";
+const bosProduct = await readJson(join(root, "products", "bos", "product.json"));
+const releaseVersion = bosProduct.version;
+const bosAppId = bosProduct.codex_connector.id;
 
 async function fixtureHome(toolNames) {
   const home = await mkdtemp(join(tmpdir(), "bos-codex-runtime-"));
@@ -39,7 +40,7 @@ async function fixtureHome(toolNames) {
     schema_version: 1,
     tools: toolNames.map((name) => ({
       name: `bos_business_operating_system.${name}`,
-      _meta: { _codex_apps: { resource_uri: "https://dfsm.ai/mcp/apps/bos/platform" } }
+      _meta: { _codex_apps: { resource_uri: bosProduct.mcp_resource_url } }
     }))
   }));
   return { home, catalog };
@@ -234,7 +235,7 @@ test("Codex runtime verification rejects a shadow direct-MCP binding", async () 
     releaseVersion
   );
   await writeFile(join(bosRoot, ".mcp.json"), JSON.stringify({
-    mcpServers: { platform: { type: "http", url: "https://dfsm.ai/mcp/apps/bos/platform" } }
+    mcpServers: { platform: { type: "http", url: bosProduct.mcp_resource_url } }
   }));
 
   const report = await inspectCodexRuntime({
