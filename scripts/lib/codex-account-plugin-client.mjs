@@ -272,14 +272,14 @@ export function createCodexAccountPluginClient(options = {}) {
     if (!/^asdk_app_[a-z0-9]+$/.test(rawAppId)) {
       throw new Error(`Invalid Codex connector ID: ${appId}`);
     }
-    const supported = new Set(["name", "description", "logo_url"]);
+    const supported = new Set(["name", "description"]);
     const fields = Object.keys(changes ?? {});
     if (!fields.length || fields.some((field) => !supported.has(field))) {
-      throw new Error("Connector metadata updates require supported name, description, or logo_url changes");
+      throw new Error("Connector metadata updates require supported name or description changes");
     }
     const headers = await accountHeaders({ connectorSettings: true });
     for (const field of fields) {
-      const response = await accountRequest(`${accountApiRoot}/${rawAppId}/${field === "logo_url" ? "logo" : field}`, {
+      const response = await accountRequest(`${accountApiRoot}/${rawAppId}/${field}`, {
         method: "PATCH",
         headers,
         body: JSON.stringify({ [field]: changes[field] })
