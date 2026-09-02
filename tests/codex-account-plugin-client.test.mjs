@@ -217,22 +217,19 @@ test("Codex established-product update patches only supported metadata on the pe
   });
   const result = await client.updateEstablishedConnector(pluginAppId, {
     name: "Updated BOS",
-    description: "Updated description",
-    logo_url: "https://dfsm.ai/bos.png"
+    description: "Updated description"
   });
   assert.deepEqual(result, {
     connectorId: pluginAppId,
-    updatedFields: ["name", "description", "logo_url"]
+    updatedFields: ["name", "description"]
   });
   assert.deepEqual(requests.map(({ url }) => url), [
     `https://chatgpt.com/backend-api/aip/connectors/${canonicalAppId}/name`,
-    `https://chatgpt.com/backend-api/aip/connectors/${canonicalAppId}/description`,
-    `https://chatgpt.com/backend-api/aip/connectors/${canonicalAppId}/logo`
+    `https://chatgpt.com/backend-api/aip/connectors/${canonicalAppId}/description`
   ]);
   assert.deepEqual(requests.map(({ init }) => JSON.parse(init.body)), [
     { name: "Updated BOS" },
-    { description: "Updated description" },
-    { logo_url: "https://dfsm.ai/bos.png" }
+    { description: "Updated description" }
   ]);
   for (const { init } of requests) {
     assert.equal(init.method, "PATCH");
@@ -242,7 +239,11 @@ test("Codex established-product update patches only supported metadata on the pe
   }
   await assert.rejects(
     client.updateEstablishedConnector(pluginAppId, { mcp_url: "https://wrong.example/mcp" }),
-    /supported name, description, or logo_url/
+    /supported name or description/
+  );
+  await assert.rejects(
+    client.updateEstablishedConnector(pluginAppId, { logo_url: "https://dfsm.ai/bos.png" }),
+    /supported name or description/
   );
   await assert.rejects(
     client.updateEstablishedConnector("plugin_invalid", { name: "Invalid" }),
