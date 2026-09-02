@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "owner": "GPT client plugin detail surface",
+  "plugin": "bos",
+  "connector_id": "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
+  "resource_url": "https://dfsm.ai/mcp/apps/bos/platform",
+  "action": {
+    "always_visible": true,
+    "allowed_labels": [
+      "Connect",
+      "Reconnect"
+    ],
+    "display_metadata_fallback_order": [
+      "connector_metadata",
+      "directory_app",
+      "plugin_declaration"
+    ],
+    "raw_id_is_renderable": true,
+    "visibility_inputs": [
+      "plugin_declares_root_bos_app"
+    ],
+    "forbidden_visibility_inputs": [
+      "connector_metadata_resolved",
+      "connector_metadata_request_succeeded",
+      "display_name_is_friendly",
+      "connection_exists",
+      "connection_inventory_request_succeeded",
+      "oauth_grant_valid",
+      "callable_tools_loaded",
+      "tool_discovery_request_succeeded"
+    ]
+  },
+  "states": [
+    {
+      "connector_metadata": "missing",
+      "connector_metadata_request": "failed",
+      "display_name": "raw_id",
+      "connection": "missing",
+      "connection_inventory_request": "failed",
+      "grant": "missing",
+      "tool_discovery_request": "failed",
+      "visible": true,
+      "label": "Connect"
+    },
+    {
+      "connector_metadata": "resolved",
+      "connection": "missing",
+      "grant": "missing",
+      "visible": true,
+      "label": "Connect"
+    },
+    {
+      "connector_metadata": "resolved",
+      "connection": "present",
+      "grant": "expired_or_invalid",
+      "visible": true,
+      "label": "Reconnect"
+    },
+    {
+      "connector_metadata": "resolved",
+      "connection": "present",
+      "grant": "valid",
+      "visible": true,
+      "label": "Reconnect"
+    }
+  ],
+  "visual_acceptance": {
+    "required": true,
+    "phase": "POST_RELEASE",
+    "blocks_publication": false,
+    "artifact_pattern": "Vault/evidence/codex-login/<version>-connect-button.png",
+    "review_artifact_pattern": "Vault/evidence/codex-login/<version>-connect-button.review.json",
+    "must_show": [
+      "BOS plugin detail page",
+      "Connect or Reconnect action"
+    ]
+  },
+  "diagnostics": {
+    "default_enabled": true,
+    "disable_environment_variable": "BOS_HTTP_DEBUG=0",
+    "stream": "stderr",
+    "format": "ndjson",
+    "correlation_field": "request_id",
+    "required_pairs": [
+      "http.request:http.response_or_http.error",
+      "protocol.request:protocol.response_or_protocol.error"
+    ],
+    "required_redactions": [
+      "authorization",
+      "cookie",
+      "set-cookie",
+      "access_token",
+      "refresh_token",
+      "id_token",
+      "oauth_code",
+      "oauth_state",
+      "oauth_verifier",
+      "account_id",
+      "organization_id"
+    ],
+    "preserve_stdout_contract_output": true
+  }
+}

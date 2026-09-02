@@ -2,17 +2,33 @@ import { lstat, readFile, readdir, rm } from "node:fs/promises";
 import { homedir } from "node:os";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readJson, stableJson } from "./lib/package-model.mjs";
+import {
+  codexConnectorContract,
+  readJson,
+  root,
+  stableJson
+} from "./lib/package-model.mjs";
 
 export const CACHE_RESET_CONFIRMATION = "DELETE BOS CHATGPT AND CLAUDE CACHES";
 
 const marketplace = "bos-education-center";
 const products = ["bos", "education-center"];
-const bosResourceUrl = "https://dfsm.ai/mcp/apps/bos/platform";
-const bosCodexAppIds = [
-  "asdk_app_6a95a014a0a08191a9e6d16453a8b831",
-  "asdk_app_6a932992592081919cdc88c60e4ff2dd"
-];
+const bosProduct = await readJson(join(root, "products", "bos", "product.json"));
+const bosConnector = codexConnectorContract(bosProduct);
+const bosResourceUrl = bosProduct.mcp_resource_url;
+const bosCodexAppIds = [bosConnector.id, ...bosConnector.retired_ids];
+
+function codexAppRecordId(id) {
+  return id.replace(/^plugin_/, "");
+}
+
+function codexAppWrapperSuffix(id) {
+  return codexAppRecordId(id).replace(/^asdk_app_/, "");
+}
+
+function codexRemotePluginId(id) {
+  return id.startsWith("plugin_") ? id : `plugin_${id}`;
+}
 const codexCatalogCacheKinds = [
   "codex_app_directory",
   "codex_apps_server_info",
@@ -85,7 +101,7 @@ async function validateRemoteWrapper(wrapper, appId) {
     throw new Error(`Refusing non-directory remote wrapper cache: ${wrapper}`);
   }
   const metadata = await readJson(join(wrapper, ".codex-remote-plugin-install.json"));
-  if (metadata.remote_plugin_id !== `plugin_${appId}`) {
+  if (metadata.remote_plugin_id !== codexRemotePluginId(appId)) {
     throw new Error(`Refusing mismatched remote wrapper cache: ${wrapper}`);
   }
 }
@@ -117,7 +133,7 @@ export async function planBosClientCacheReset({ home = homedir() } = {}) {
     join(
       codexPluginCacheRoot,
       "created-by-me-remote",
-      `dev-${knownAppId.replace(/^asdk_app_/, "")}`
+      `dev-${codexAppWrapperSuffix(knownAppId)}`
     ),
     codexPluginCacheRoot
   ));

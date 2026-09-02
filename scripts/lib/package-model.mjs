@@ -48,6 +48,11 @@ export async function listProducts(base = root) {
 
 export function validateProduct(manifest, path = "product.json") {
   const failures = [];
+  const standaloneCodexCandidate = manifest.name !== "bos" &&
+    manifest.release_status === "disabled" &&
+    Boolean(manifest.runtime) &&
+    manifest.clients?.includes("codex") &&
+    manifest.codex_connector !== undefined;
   const allowed = new Set([
     "schema_version",
     "name",
@@ -68,6 +73,8 @@ export function validateProduct(manifest, path = "product.json") {
     "runtime",
     "application_name",
     "mcp_group_name",
+    "mcp_resource_url",
+    "codex_connector",
     "settings_template",
     "settings_initializer",
     "plugin_settings_initializer",
@@ -135,7 +142,11 @@ export function validateProduct(manifest, path = "product.json") {
   if (manifest.name === "bos" && manifest.authentication !== "ON_INSTALL") {
     failures.push(`${path}: BOS authentication must be ON_INSTALL`);
   }
-  if (manifest.name !== "bos" && manifest.authentication !== "ON_USE") {
+  if (standaloneCodexCandidate && manifest.authentication !== "ON_INSTALL") {
+    failures.push(`${path}: standalone runtime authentication must be ON_INSTALL`);
+  }
+  if (manifest.name !== "bos" && !standaloneCodexCandidate &&
+      manifest.authentication !== "ON_USE") {
     failures.push(`${path}: subservice authentication policy must be ON_USE`);
   }
   if (!Array.isArray(manifest.clients) || manifest.clients.length === 0) {
@@ -204,11 +215,73 @@ export function validateProduct(manifest, path = "product.json") {
   ) {
     failures.push(`${path}: invalid mcp_group_name`);
   }
-  if ((manifest.application_name || manifest.mcp_group_name) && !manifest.runtime) {
+  if ((manifest.application_name || manifest.mcp_group_name || manifest.mcp_resource_url) &&
+      !manifest.runtime) {
     failures.push(`${path}: application and MCP group names require runtime`);
   }
-  if (manifest.runtime && (!manifest.application_name || !manifest.mcp_group_name)) {
-    failures.push(`${path}: runtime requires application_name and mcp_group_name`);
+  if (manifest.runtime && (!manifest.application_name || !manifest.mcp_group_name ||
+      typeof manifest.mcp_resource_url !== "string" ||
+      !/^https:\/\/[^\s]+$/.test(manifest.mcp_resource_url))) {
+    failures.push(`${path}: runtime requires application_name, mcp_group_name, and an HTTPS mcp_resource_url`);
+  }
+  const connector = manifest.codex_connector;
+  if (connector !== undefined) {
+    const expectedKeys = [
+      "id",
+      "identity_policy",
+      "lifecycle_state",
+      "metadata_policy",
+      "missing_record_policy",
+      "provisioning_policy",
+      "required",
+      "retired_ids"
+    ];
+    if (!connector || typeof connector !== "object" || Array.isArray(connector) ||
+        JSON.stringify(Object.keys(connector).sort()) !== JSON.stringify(expectedKeys)) {
+      failures.push(`${path}: codex_connector must contain the complete lifecycle contract`);
+    } else {
+      if (!new Set(["ESTABLISHED", "UNPROVISIONED_NEW"]).has(connector.lifecycle_state)) {
+        failures.push(`${path}: codex_connector.lifecycle_state is invalid`);
+      }
+      if (connector.lifecycle_state === "ESTABLISHED" &&
+          !/^plugin_asdk_app_[a-z0-9]+$/.test(connector.id ?? "")) {
+        failures.push(`${path}: an established codex_connector.id must be a plugin_asdk_app identifier`);
+      }
+      if (connector.lifecycle_state === "UNPROVISIONED_NEW" && connector.id !== null) {
+        failures.push(`${path}: an unprovisioned new connector must have a null ID`);
+      }
+      if (connector.lifecycle_state === "UNPROVISIONED_NEW" &&
+          (manifest.name === "bos" || connector.retired_ids?.length !== 0)) {
+        failures.push(`${path}: UNPROVISIONED_NEW is only valid for a different product with no retired IDs`);
+      }
+      if (connector.required !== true ||
+          connector.identity_policy !== "IMMUTABLE" ||
+          connector.metadata_policy !== "UPDATE_IN_PLACE" ||
+          connector.missing_record_policy !== "REGISTRY_INTEGRITY_FAILURE" ||
+          connector.provisioning_policy !== "NEW_PRODUCT_ONLY") {
+        failures.push(`${path}: codex_connector lifecycle policies are invalid`);
+      }
+      if (!Array.isArray(connector.retired_ids) ||
+          connector.retired_ids.some((id) => !/^asdk_app_[a-z0-9]+$/.test(id)) ||
+          new Set(connector.retired_ids).size !== connector.retired_ids.length ||
+          (connector.id && connector.retired_ids.includes(codexRawAppId(connector.id)))) {
+        failures.push(`${path}: codex_connector.retired_ids must contain unique noncanonical raw IDs`);
+      }
+    }
+  }
+  if (
+    manifest.release_status === "active" &&
+    manifest.runtime &&
+    manifest.clients?.includes("codex") &&
+    manifest.codex_connector?.lifecycle_state !== "ESTABLISHED"
+  ) {
+    failures.push(`${path}: active Codex runtime requires codex_connector`);
+  }
+  if (
+    manifest.codex_connector !== undefined &&
+    (!manifest.runtime || !manifest.clients?.includes("codex"))
+  ) {
+    failures.push(`${path}: codex_connector requires a Codex runtime product`);
   }
   if (manifest.runtime &&
       !manifest.includes?.includes("platform/bos-mcp-client")) {
@@ -222,11 +295,13 @@ export function validateProduct(manifest, path = "product.json") {
     ) {
       failures.push(`${path}: BOS must own the bos/platform MCP runtime`);
     }
-  } else if (
+  } else if (!standaloneCodexCandidate && (
     manifest.runtime !== undefined ||
     manifest.application_name !== undefined ||
-    manifest.mcp_group_name !== undefined
-  ) {
+    manifest.mcp_group_name !== undefined ||
+    manifest.mcp_resource_url !== undefined ||
+    manifest.codex_connector !== undefined
+  )) {
     failures.push(`${path}: subservice products must use the BOS-owned connection`);
   }
   if (
@@ -465,12 +540,34 @@ function publicPackagePath(path) {
   return !parts.includes("__pycache__") && !name.endsWith(".pyc");
 }
 
-export function materializeMcpUrl(template, product) {
-  const expected = "https://dfsm.ai/mcp/apps/bos/platform";
-  if (template !== expected) {
-    throw new Error(`Runtime ${product.runtime} has an invalid BOS MCP URL template`);
+export function materializeMcpUrl(product) {
+  const resourceUrl = product?.mcp_resource_url;
+  if (typeof resourceUrl !== "string" || !/^https:\/\/[^\s]+$/.test(resourceUrl)) {
+    throw new Error(`Runtime ${product?.runtime ?? "unknown"} has no valid MCP resource URL`);
   }
-  return template;
+  return resourceUrl;
+}
+
+export function codexRawAppId(id) {
+  return String(id ?? "").replace(/^plugin_/, "");
+}
+
+export function codexConnectorContract(product) {
+  const connector = product?.codex_connector;
+  if (!connector || connector.lifecycle_state !== "ESTABLISHED" ||
+      connector.identity_policy !== "IMMUTABLE" ||
+      !/^plugin_asdk_app_[a-z0-9]+$/.test(connector.id ?? "")) {
+    throw new Error(`Product ${product?.name ?? "unknown"} has no immutable Codex connector`);
+  }
+  return connector;
+}
+
+export function codexKnownRawAppIds(product) {
+  const connector = codexConnectorContract(product);
+  return [...new Set([
+    codexRawAppId(connector.id),
+    ...(connector.retired_ids ?? []).map(codexRawAppId)
+  ])];
 }
 
 export function pluginManifest(product) {
@@ -499,17 +596,18 @@ export function pluginManifest(product) {
     manifest.interface.composerIcon = `./${product.composer_icon}`;
   }
   if (product.logo) manifest.interface.logo = `./${product.logo}`;
-  if (product.runtime) manifest.mcpServers = "./.mcp.json";
+  if (product.runtime) manifest.apps = "./.app.json";
   return manifest;
 }
 
-export function codexPluginMcpManifest(product) {
-  if (!product.runtime) return { mcpServers: {} };
+export function codexAppManifest(product) {
+  if (!product.runtime) return { apps: {} };
+  const connector = codexConnectorContract(product);
   return {
-    mcpServers: {
-      [product.mcp_group_name]: {
-        type: "http",
-        url: materializeMcpUrl("https://dfsm.ai/mcp/apps/bos/platform", product)
+    apps: {
+      [product.name]: {
+        id: connector.id,
+        required: connector.required
       }
     }
   };
@@ -521,16 +619,13 @@ export function claudePluginMcpManifest(product) {
     mcpServers: {
       [product.mcp_group_name]: {
         type: "http",
-        url: materializeMcpUrl(
-          "https://dfsm.ai/mcp/apps/bos/platform",
-          product
-        )
+        url: materializeMcpUrl(product)
       }
     }
   };
 }
 
-export async function geminiExtensionManifest(product, base = root) {
+export async function geminiExtensionManifest(product) {
   const manifest = {
     name: product.name,
     version: product.version,
@@ -538,14 +633,7 @@ export async function geminiExtensionManifest(product, base = root) {
   };
   if (!product.runtime) return manifest;
 
-  const runtime = await readJson(
-    join(base, "source", "runtime", product.runtime, ".mcp.json")
-  );
-  const sourceServer = runtime.mcpServers?.bos;
-  if (!sourceServer || sourceServer.type !== "http") {
-    throw new Error(`Runtime ${product.runtime} has no remote BOS MCP server`);
-  }
-  const httpUrl = materializeMcpUrl(sourceServer.url, product);
+  const httpUrl = materializeMcpUrl(product);
   const serverName = product.mcp_group_name;
   manifest.mcpServers = {
     [serverName]: {
@@ -564,40 +652,24 @@ export function geminiPluginManifest(product) {
   };
 }
 
-export async function geminiPluginMcpManifest(product, base = root) {
+export async function geminiPluginMcpManifest(product) {
   if (!product.runtime) return { mcpServers: {} };
-
-  const runtime = await readJson(
-    join(base, "source", "runtime", product.runtime, ".mcp.json")
-  );
-  const sourceServer = runtime.mcpServers?.bos;
-  if (!sourceServer || sourceServer.type !== "http") {
-    throw new Error(`Runtime ${product.runtime} has no remote BOS MCP server`);
-  }
   return {
     mcpServers: {
       [product.mcp_group_name]: {
-        serverUrl: materializeMcpUrl(sourceServer.url, product)
+        serverUrl: materializeMcpUrl(product)
       }
     }
   };
 }
 
-export async function copilotMcpManifest(product, base = root) {
+export async function copilotMcpManifest(product) {
   if (!product.runtime) return { mcpServers: {} };
-
-  const runtime = await readJson(
-    join(base, "source", "runtime", product.runtime, ".mcp.json")
-  );
-  const sourceServer = runtime.mcpServers?.bos;
-  if (!sourceServer || sourceServer.type !== "http") {
-    throw new Error(`Runtime ${product.runtime} has no remote BOS MCP server`);
-  }
   return {
     mcpServers: {
       [product.mcp_group_name]: {
         type: "http",
-      url: materializeMcpUrl(sourceServer.url, product),
+      url: materializeMcpUrl(product),
         tools: ["*"]
       }
     }

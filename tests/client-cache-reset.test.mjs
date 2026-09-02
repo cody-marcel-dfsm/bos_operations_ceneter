@@ -8,10 +8,17 @@ import {
   planBosClientCacheReset,
   resetBosClientCaches
 } from "../scripts/reset-bos-client-caches.mjs";
-import { pathExists } from "../scripts/lib/package-model.mjs";
+import {
+  codexConnectorContract,
+  readJson,
+  root,
+  pathExists
+} from "../scripts/lib/package-model.mjs";
 
-const appId = "asdk_app_6a95a014a0a08191a9e6d16453a8b831";
-const retiredAppId = "asdk_app_6a932992592081919cdc88c60e4ff2dd";
+const bosProduct = await readJson(join(root, "products", "bos", "product.json"));
+const bosConnector = codexConnectorContract(bosProduct);
+const appId = bosConnector.id;
+const retiredAppId = bosConnector.retired_ids[0];
 
 async function fixtureHome(context) {
   const home = await mkdtemp(join(tmpdir(), "bos-cache-reset-"));
@@ -28,11 +35,11 @@ async function fixtureHome(context) {
       await writeFile(join(version, ".bos-product.json"), JSON.stringify({ name: product, client }));
     }
   }
-  const suffix = appId.replace(/^asdk_app_/, "");
+  const suffix = appId.replace(/^plugin_asdk_app_/, "");
   const wrapper = join(home, ".codex/plugins/cache/created-by-me-remote", `dev-${suffix}`);
   await mkdir(wrapper, { recursive: true });
   await writeFile(join(wrapper, ".codex-remote-plugin-install.json"), JSON.stringify({
-    remote_plugin_id: `plugin_${appId}`
+    remote_plugin_id: appId
   }));
   const retiredWrapper = join(
     home,
@@ -46,7 +53,7 @@ async function fixtureHome(context) {
   const matchingCatalog = join(home, ".codex/cache/codex_apps_tools/bos.json");
   const unrelatedCatalog = join(home, ".codex/cache/codex_apps_tools/unrelated.json");
   await mkdir(join(matchingCatalog, ".."), { recursive: true });
-  await writeFile(matchingCatalog, JSON.stringify({ url: "https://dfsm.ai/mcp/apps/bos/platform" }));
+  await writeFile(matchingCatalog, JSON.stringify({ url: bosProduct.mcp_resource_url }));
   await writeFile(unrelatedCatalog, JSON.stringify({ url: "https://example.com/mcp" }));
 
   const preserved = [

@@ -21,9 +21,11 @@ repository. Include sanitized failure evidence, the required protocol or
 runtime invariant, deployment scope, and post-deployment verification. Require
 the server release to pass the client-owned Operations Center acceptance suite:
 `npm run contract:check`, `npm run contract:oauth-discovery-live --
---resource-url "$BOS_MCP_RESOURCE_URL" --format json`, and `npm run
-contract:oauth-live -- --authorize-url "$BOS_OAUTH_AUTHORIZE_URL" --format
-json`. Leave implementation, review, merge, and deployment decisions to that
+--resource-url "$BOS_MCP_RESOURCE_URL" --format json`, `npm run
+contract:oauth-tool-auth-live -- --resource-url "$BOS_MCP_RESOURCE_URL" --tool
+bos_get_context --format json`, and `npm run contract:oauth-live --
+--authorize-url "$BOS_OAUTH_AUTHORIZE_URL" --format json`. Leave implementation,
+review, merge, and deployment decisions to that
 server-side agent. Return exactly one continuous Markdown prompt as the entire
 server handoff response. Keep every contract requirement, command, and
 acceptance criterion in that single copyable prompt.
@@ -60,7 +62,11 @@ repository-defined credential-free local checks that are practical for the
 complete release diff, including focused tests plus canonical package
 validation. Do not invoke a live MCP release smoke or require a release OAuth
 access token. Apply any repository-required review skill or approval contract
-to the actual diff and evidence.
+to the actual diff and evidence. GPT screenshots are post-release verification
+and never block the source release or pull-request merge. Preserve the explicit
+post-release acceptance command. When screenshot evidence is supplied, Oracle
+must inspect it and author the hash-bound review receipt; file presence,
+dimensions, or a PNG signature never complete client verification.
 
 Run the repository-local Oracle remediation loop before committing:
 
