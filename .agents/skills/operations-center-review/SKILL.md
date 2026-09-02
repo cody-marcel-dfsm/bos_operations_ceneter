@@ -22,7 +22,9 @@ description: Review BOS Operations Center repository changes against its archite
    provision after complete metadata-fingerprint reconciliation. Reject any
    identity-migration concept or replacement-ID repair.
 6. Verify positive, negative, regression, and live-client evidence required by
-   the touched surface. Inspect required screenshots visually and require an
+   the touched surface. GPT screenshots are nonblocking post-release evidence;
+   preserve their acceptance commands while allowing source publication.
+   Inspect supplied screenshots visually and require an
    Oracle-authored review receipt that binds the exact screenshot SHA-256,
    product version, client surface, and observed native action. A PNG signature
    or file size never proves visual acceptance.

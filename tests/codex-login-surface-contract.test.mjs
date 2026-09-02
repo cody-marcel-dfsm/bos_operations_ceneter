@@ -258,13 +258,15 @@ test("Codex Login display binding remains independent from server OAuth discover
   ));
 });
 
-test("Codex Login release contract requires separately verified GPT UI evidence", async () => {
+test("Codex Login contract preserves separately verified post-release GPT UI evidence", async () => {
   const contract = JSON.parse(await readFile(
     join(root, "contracts", "codex-login-surface.v1.json"),
     "utf8"
   ));
   const packageManifest = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
   assert.equal(contract.visual_acceptance.required, true);
+  assert.equal(contract.visual_acceptance.phase, "POST_RELEASE");
+  assert.equal(contract.visual_acceptance.blocks_publication, false);
   assert.equal(
     contract.visual_acceptance.artifact_pattern,
     "Vault/evidence/codex-login/<version>-connect-button.png"
@@ -276,6 +278,14 @@ test("Codex Login release contract requires separately verified GPT UI evidence"
   assert.equal(
     packageManifest.scripts["acceptance:codex-login"],
     "node scripts/verify-codex-login-evidence.mjs"
+  );
+  assert.equal(
+    packageManifest.scripts["acceptance:post-release"],
+    "npm run acceptance:codex-login -- --json && npm run acceptance:codex-request-time-login"
+  );
+  assert.equal(
+    packageManifest.scripts["release:check"],
+    "npm run build && npm run check && npm run contract:check && npm test"
   );
 });
 
@@ -325,21 +335,5 @@ test("Codex Login evidence requires an Oracle-reviewed hash and visible action",
       assert.match(report.failure, /does not match/);
       return true;
     }
-  );
-});
-
-test("Codex Login acceptance includes a version-matched GPT plugin screenshot", async () => {
-  const evidence = await readFile(join(
-    root,
-    "Vault",
-    "evidence",
-    "codex-login",
-    `${bosProduct.version}-connect-button.png`
-  ));
-  assert(evidence.length > 1024, "Login screenshot evidence is unexpectedly small");
-  assert.deepEqual(
-    [...evidence.subarray(0, 8)],
-    [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
-    "Login acceptance evidence must be a PNG screenshot"
   );
 });

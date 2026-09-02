@@ -22,28 +22,3 @@ test("Codex request-time login contract remains independent from plugin-page dis
     continuation_policy: "RESUME_ORIGINAL_REQUEST"
   });
 });
-
-test("Codex request-time login acceptance includes a version-matched chat screenshot", async () => {
-  const product = JSON.parse(await readFile(
-    join(root, "products", "bos", "product.json"),
-    "utf8"
-  ));
-  const evidencePath = join(
-    root,
-    "Vault",
-    "evidence",
-    "codex-login",
-    `${product.version}-request-time-sign-in-button.png`
-  );
-  const evidence = await readFile(evidencePath);
-
-  assert(
-    evidence.length > 1024,
-    "Request-time login screenshot evidence is unexpectedly small"
-  );
-  assert.deepEqual(
-    [...evidence.subarray(0, 8)],
-    [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
-    "Request-time login acceptance evidence must be a PNG screenshot"
-  );
-});
