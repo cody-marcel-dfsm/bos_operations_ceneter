@@ -173,15 +173,16 @@ login or BOS MCP connection.
     CLI login or launches authentication for the user.
 17. Every server release that changes MCP authentication passes the complete
     client-owned Operations Center acceptance suite before release acceptance.
-18. Every Codex package release that changes the request-time authentication
-    contract includes a version-matched signed-out conversation screenshot at
+18. After publishing a Codex package release that changes request-time
+    authentication, capture a version-matched signed-out conversation screenshot at
     `Vault/evidence/codex-login/<version>-request-time-sign-in-button.png`. It
     must show a BOS-dependent customer prompt and the simple native inline
     **Sign in**, **Connect**, or **Authenticate** button in that same chat.
     Startup status, protocol output, manual settings instructions, and a plugin
-    page control never substitute for this visual request-time artifact.
-19. Every Codex package release that changes the Login display binding includes
-    a version-matched GPT client screenshot at
+    page control never substitute for this visual request-time artifact. Its
+    absence does not block source publication.
+19. After publishing a Codex package release that changes the Login display
+    binding, capture a version-matched GPT client screenshot at
     `Vault/evidence/codex-login/<version>-connect-button.png`. A matching
     `<version>-connect-button.review.json` binds the screenshot SHA-256 to an
     Oracle-approved visual finding of **Connect** or **Reconnect** on the GPT
@@ -189,6 +190,7 @@ login or BOS MCP connection.
     must visibly show the native BOS **Connect** or **Reconnect** control on the BOS
     plugin page. Package shape, a Platform MCP server row, OAuth discovery, and
     callable-tool evidence never substitute for this visual acceptance artifact.
+    Its absence does not block source publication.
 20. GPT renders the root BOS **Connect** or **Reconnect** action for every state
     in `contracts/codex-login-surface.v1.json`. Connector metadata, connection
     inventory, OAuth grant validity, and callable-tool presence or request

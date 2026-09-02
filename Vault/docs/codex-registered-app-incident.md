@@ -1,6 +1,6 @@
 # Codex BOS skill and tool exposure RCA
 
-Status: 0.4.71 release blocked pending GPT UI Login/Connect screenshot
+Status: 0.4.71 source release ready; original GPT UI Login/Connect AC pending
 Date: 2026-09-01
 
 ## Authoritative 2026-09-02 correction
@@ -17,8 +17,9 @@ The source correction generates every identity-bearing client artifact and
 contract from the product file, restores one required root `.app.json`, removes
 the second authored runtime URL file, and gives established maintenance and new
 product creation separate deterministic workflows. GPT UI acceptance remains a
-manual post-install screenshot; this repository task does not operate the GPT
-client.
+manual post-install screenshot from the original goal. Its absence does not
+block a later explicit source-publication instruction; this repository task
+does not operate the GPT client.
 
 ## Failed registry recovery attempt
 
@@ -208,13 +209,14 @@ prove that the active task loaded its MCP catalog.
 
 ## Acceptance
 
-Repository acceptance requires deterministic generation, focused package and
-installer tests, `npm run release:check`, `npm run contract:check`, a
-version-matched GPT client screenshot visibly showing the native BOS Login or
-Connect control, and a local Oracle review of the actual diff. Live signed-in acceptance additionally
-requires the current task to load the package-owned resource, complete OAuth,
-discover every declared tool, resolve one canonical context, and complete one
-bounded authenticated read.
+Source-publication acceptance requires deterministic generation, focused
+package and installer tests, `npm run release:check`, `npm run contract:check`,
+and a local Oracle review of the actual diff. Post-release client acceptance
+requires a version-matched GPT client screenshot visibly showing the native BOS
+Login or Connect control. Live signed-in acceptance additionally requires the
+current task to load the package-owned resource, complete OAuth, discover every
+declared tool, resolve one canonical context, and complete one bounded
+authenticated read.
 
 Public OpenAI submission, domain verification, tool scanning, review, and
 publication are separate release activities and do not control private Git

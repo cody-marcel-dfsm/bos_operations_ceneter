@@ -111,6 +111,8 @@ export function codexLoginSurfaceContract(product) {
     ],
     visual_acceptance: {
       required: true,
+      phase: "POST_RELEASE",
+      blocks_publication: false,
       artifact_pattern: "Vault/evidence/codex-login/<version>-connect-button.png",
       review_artifact_pattern: "Vault/evidence/codex-login/<version>-connect-button.review.json",
       must_show: ["BOS plugin detail page", "Connect or Reconnect action"]

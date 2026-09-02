@@ -62,9 +62,11 @@ repository-defined credential-free local checks that are practical for the
 complete release diff, including focused tests plus canonical package
 validation. Do not invoke a live MCP release smoke or require a release OAuth
 access token. Apply any repository-required review skill or approval contract
-to the actual diff and evidence. When a release requires GPT visual evidence,
-Oracle must inspect the screenshot and author the hash-bound review receipt;
-file presence, dimensions, or a PNG signature never satisfy the gate.
+to the actual diff and evidence. GPT screenshots are post-release verification
+and never block the source release or pull-request merge. Preserve the explicit
+post-release acceptance command. When screenshot evidence is supplied, Oracle
+must inspect it and author the hash-bound review receipt; file presence,
+dimensions, or a PNG signature never complete client verification.
 
 Run the repository-local Oracle remediation loop before committing:
 

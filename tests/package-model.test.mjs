@@ -1998,7 +1998,11 @@ test("README routes customer, development, and credential-free release validatio
   assert.equal(repositoryPackage.scripts.build, "npm run build:packages");
   assert.equal(
     repositoryPackage.scripts["release:check"],
-    "npm run build && npm run check && npm run contract:check && npm test && npm run acceptance:codex-login -- --json"
+    "npm run build && npm run check && npm run contract:check && npm test"
+  );
+  assert.equal(
+    repositoryPackage.scripts["acceptance:post-release"],
+    "npm run acceptance:codex-login -- --json && npm run acceptance:codex-request-time-login"
   );
   for (const removed of [
     "build:artifacts",

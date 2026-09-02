@@ -1,6 +1,6 @@
 # Issue #0001 conclusion: Codex BOS login display regression
 
-- Status: source correction complete; GPT UI visual acceptance pending manual install
+- Status: source release ready; original GPT UI acceptance pending manual install
 - Resolution version: 0.4.71 candidate
 - Date: 2026-09-02
 - Category: Codex product identity, package binding, and login display
@@ -64,16 +64,16 @@ request/response logs by default.
   new-product creation, interrupted-create reconciliation, retired-only cleanup,
   and a second cleanup run.
 - `npm run build:packages`, `npm run check`, and `npm run contract:check` pass.
-  The complete repository run passes 277 of 279 tests. Its two failures are the
-  separately owned Issue #0001 plugin-detail screenshot and Issue #0002
-  request-time chat screenshot gates. Issue #0001's source, lifecycle, cleanup,
-  package-shape, contract, and Antigravity tests all pass; the explicit Issue
-  #0001 evidence verifier reports the exact missing artifact.
+  The complete source release suite passes 277 of 277 tests. Issue #0001's
+  source, lifecycle, cleanup, package-shape, contract, and Antigravity tests all
+  pass. The separately invoked post-release verifier reports the exact missing
+  Issue #0001 artifact; Issue #0002 retains its independent post-release check.
 - The final host acceptance artifact is a version-matched screenshot showing the
   native BOS **Connect** or **Reconnect** action after the user manually installs
   the candidate. Oracle visually inspects it and authors a matching review
   receipt binding its SHA-256, version, surface, and observed action. The source
-  task does not operate the GPT client.
+  task does not operate the GPT client. This original-goal AC remains open
+  without blocking a later explicit source-publication instruction.
 
 ## Prevention
 

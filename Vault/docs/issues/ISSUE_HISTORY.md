@@ -6,7 +6,7 @@ before implementation guidance and review. Resolved issue details remain in
 
 ## Issue #0001: Installed BOS skills appeared while Codex exposed no login or callable tools
 
-- Status: 0.4.71 RELEASE BLOCKED; GPT UI Login/Connect screenshot missing
+- Status: 0.4.71 SOURCE RELEASE READY; original GPT UI Login/Connect AC pending
 - Priority: CRITICAL
 - Date identified: 2026-09-01
 - Area: Codex package binding, authentication display, and tool discovery
@@ -44,6 +44,12 @@ failed repair that created the duplicate private BOS product. Any later text in
 this history calling that replacement live or canonical is preserved interim
 evidence and is superseded by this correction and
 `Vault/docs/issues/conclusions/ISSUE_0001_CONCLUSION.md`.
+
+Publication boundary clarified by the user on 2026-09-02: the screenshot is an
+unmet acceptance criterion from the original implementation goal. It is not a
+prerequisite for the later explicit instruction to ship the committed source.
+The screenshot and Oracle receipt remain required before Issue #0001 client
+verification is complete and run through `npm run acceptance:post-release`.
 
 The regression has two causal stages. Commit `e46546c` moved the working
 Education Center app binding to the root BOS plugin and used the historical
@@ -155,16 +161,17 @@ server OAuth discovery, callable discovery, and execution.
   ID, with URL-level regression coverage for both forms. Lifecycle tests now
   lock the requested/source name guard, same-record post-read, and every
   new-product eligibility condition. Visual acceptance requires an
-  Oracle-inspected, SHA-256-bound review receipt. The complete release-candidate
-  run passes 277 of 279 tests. The two failures are
-  the separately owned Issue #0001 plugin-detail screenshot
+  Oracle-inspected, SHA-256-bound review receipt. The complete source release
+  suite passes 277 of 277 tests. The separately tracked post-release checks are
+  the Issue #0001 plugin-detail screenshot
   `Vault/evidence/codex-login/0.4.71-connect-button.png` and Issue #0002's
   request-time chat screenshot
   `Vault/evidence/codex-login/0.4.71-request-time-sign-in-button.png`. Issue
   #0001's source, lifecycle, cleanup, package-shape, contract, and Antigravity
   regressions pass, and `npm run acceptance:codex-login -- --json` reports the
   exact missing Issue #0001 artifact. The user will manually install the source
-  candidate before visual acceptance.
+  release before visual acceptance. These original-goal artifacts do not block
+  the explicit source-publication instruction.
 - 2026-09-01 22:29 America/Denver: checked the official production appcast and
   found the newer ChatGPT build 26.831.21537 (bundle 7579). Read-only inspection
   of its temporary archive showed the plugin-detail page still calls `Pdo` when
@@ -318,11 +325,12 @@ server OAuth discovery, callable discovery, and execution.
 
 ### Validation and Oracle review
 
-Repository acceptance requires deterministic package generation, focused Codex
-install/login/runtime tests, `npm run release:check`, `npm run contract:check`,
-the version-matched GPT UI Login/Connect screenshot, and Oracle review of the
-actual diff. Live signed-in acceptance additionally proves OAuth,
-declared tool discovery, `bos_get_context`, and one bounded authenticated read.
+Source-publication acceptance requires deterministic package generation,
+focused Codex install/login/runtime tests, `npm run release:check`,
+`npm run contract:check`, and Oracle review of the actual diff. Post-release
+client acceptance requires the version-matched GPT UI Login/Connect screenshot.
+Live signed-in acceptance additionally proves OAuth, declared tool discovery,
+`bos_get_context`, and one bounded authenticated read.
 
 ### Prevention guidance
 
