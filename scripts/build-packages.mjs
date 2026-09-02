@@ -1,7 +1,7 @@
 import { cp, mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
-  codexAppManifest,
+  codexPluginMcpManifest,
   copyProductAssets,
   copyProductSkills,
   copySettingsTemplate,
@@ -87,7 +87,7 @@ for (const { product, skills } of resolved) {
     await copyProductSkills(product, skills, join(pluginRoot, "skills"));
     await copyProductAssets(product, pluginRoot);
     if (product.runtime) {
-      await writeJson(join(pluginRoot, ".app.json"), codexAppManifest(product));
+      await writeJson(join(pluginRoot, ".mcp.json"), codexPluginMcpManifest(product));
     }
     await copySettingsTemplate(product, pluginRoot);
     marketplace.plugins.push(marketplaceEntry(product));
