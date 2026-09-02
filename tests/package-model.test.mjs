@@ -14,6 +14,7 @@ import {
   injectProductInitializationPreflight,
   injectSettingsPreflight,
   materializeMcpUrl,
+  oauthTargetContract,
   pathExists,
   pluginManifest,
   productInitializationIndependentSkills,
@@ -1293,6 +1294,32 @@ test("runtime package model materializes the single BOS route", async () => {
   }
 });
 
+test("BOS OAuth targets and generated product metadata derive from product.json", async () => {
+  const expected = canonicalBosProduct.oauth;
+  assert.deepEqual(oauthTargetContract(canonicalBosProduct), expected);
+  for (const path of [
+    "clients/codex/plugins/bos/.bos-product.json",
+    "clients/claude/plugins/bos/.bos-product.json",
+    "clients/copilot/products/bos/.bos-product.json",
+    "clients/gemini/extensions/bos/.bos-product.json"
+  ]) {
+    const generated = JSON.parse(await readFile(`${root}/${path}`, "utf8"));
+    assert.deepEqual(generated.oauth, expected, path);
+  }
+  const codexApp = JSON.parse(await readFile(
+    `${root}/clients/codex/plugins/bos/.app.json`,
+    "utf8"
+  ));
+  assert.deepEqual(codexApp, {
+    apps: {
+      bos: {
+        id: canonicalBosProduct.codex_connector.id,
+        required: true
+      }
+    }
+  });
+});
+
 test("runtime products declare credential-free OAuth bindings", async () => {
   const runtimeProducts = (await listProducts())
     .map(({ manifest }) => manifest)
@@ -1357,13 +1384,21 @@ test("package schema reserves runtime ownership for BOS", () => {
     application_name: "bos",
     mcp_group_name: "platform",
     mcp_resource_url: "https://example.com/mcp/apps/bos/platform",
+    oauth: {
+      authorization_server_issuer: "https://example.com",
+      authorization_endpoint: "https://example.com/api/v1/mcp/oauth/authorize",
+      identity_provider: "google",
+      identity_provider_authorization_endpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+      provider_account_selection_policy: "ALWAYS_SELECT_ACCOUNT",
+      provider_account_selection_prompt: "select_account"
+    },
     codex_connector: {
       lifecycle_state: "ESTABLISHED",
       id: "plugin_asdk_app_example123",
       required: true,
       identity_policy: "IMMUTABLE",
       metadata_policy: "UPDATE_IN_PLACE",
-      missing_record_policy: "REGISTRY_INTEGRITY_FAILURE",
+      missing_record_policy: "RESTORE_SAME_RECORD",
       provisioning_policy: "NEW_PRODUCT_ONLY",
       retired_ids: []
     },
@@ -1397,6 +1432,32 @@ test("package schema reserves runtime ownership for BOS", () => {
   );
   const { mcp_group_name: _removed, ...incomplete } = base;
   assert.match(validateProduct(incomplete).join("\n"), /runtime requires application_name, mcp_group_name/);
+  const { oauth: _oauthRemoved, ...missingOAuth } = base;
+  assert.match(
+    validateProduct(missingOAuth).join("\n"),
+    /runtime requires a complete OAuth target contract/
+  );
+  assert.match(
+    validateProduct({
+      ...base,
+      oauth: { ...base.oauth, authorization_endpoint: "https://other.example/authorize" }
+    }).join("\n"),
+    /authorization_endpoint must be an exact HTTPS endpoint on the authorization-server issuer/
+  );
+  assert.match(
+    validateProduct({
+      ...base,
+      oauth: { ...base.oauth, identity_provider: "other" }
+    }).join("\n"),
+    /identity_provider must be google/
+  );
+  assert.match(
+    validateProduct({
+      ...base,
+      oauth: { ...base.oauth, provider_account_selection_prompt: "consent" }
+    }).join("\n"),
+    /must require select_account/
+  );
   const { codex_connector: _appRemoved, ...unregistered } = base;
   assert.match(validateProduct(unregistered).join("\n"), /active Codex runtime requires codex_connector/);
   assert.match(
@@ -1448,6 +1509,7 @@ test("package schema reserves runtime ownership for BOS", () => {
     application_name: undefined,
     mcp_group_name: undefined,
     mcp_resource_url: undefined,
+    oauth: undefined,
     codex_connector: undefined,
     includes: ["platform/bos-mcp-client"]
   };
@@ -1871,6 +1933,7 @@ test("every product and client ships tenant extension management metadata", asyn
           application_name: manifest.application_name,
           mcp_group_name: manifest.mcp_group_name,
           resource_url: manifest.mcp_resource_url,
+          oauth: manifest.oauth,
           ...(client === "claude" ? {
             connection_scope: "claude_account"
           } : {})
@@ -2002,7 +2065,7 @@ test("README routes customer, development, and credential-free release validatio
   );
   assert.equal(
     repositoryPackage.scripts["acceptance:post-release"],
-    "npm run acceptance:codex-login -- --json && npm run acceptance:codex-request-time-login"
+    "npm run contract:oauth-discovery-live -- --format json && npm run acceptance:codex-login -- --json && npm run acceptance:codex-request-time-login"
   );
   for (const removed of [
     "build:artifacts",

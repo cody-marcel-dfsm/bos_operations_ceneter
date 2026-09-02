@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.71",
+  "version": "0.4.72",
   "release_status": "active",
   "display_name": "BOS — Business Operating System",
   "description": "Agent-first Business Operating System foundations for governed agent workflows.",
@@ -47,13 +47,21 @@
   "application_name": "bos",
   "mcp_group_name": "platform",
   "mcp_resource_url": "https://dfsm.ai/mcp/apps/bos/platform",
+  "oauth": {
+    "authorization_server_issuer": "https://dfsm.ai",
+    "authorization_endpoint": "https://dfsm.ai/api/v1/mcp/oauth/authorize",
+    "identity_provider": "google",
+    "identity_provider_authorization_endpoint": "https://accounts.google.com/o/oauth2/v2/auth",
+    "provider_account_selection_policy": "ALWAYS_SELECT_ACCOUNT",
+    "provider_account_selection_prompt": "select_account"
+  },
   "codex_connector": {
     "lifecycle_state": "ESTABLISHED",
     "id": "plugin_asdk_app_6a7cb1cc330c81918aa63d96aeeaba91",
     "required": true,
     "identity_policy": "IMMUTABLE",
     "metadata_policy": "UPDATE_IN_PLACE",
-    "missing_record_policy": "REGISTRY_INTEGRITY_FAILURE",
+    "missing_record_policy": "RESTORE_SAME_RECORD",
     "provisioning_policy": "NEW_PRODUCT_ONLY",
     "retired_ids": [
       "asdk_app_6a97966a296c8191a5f9b937e7650be3",

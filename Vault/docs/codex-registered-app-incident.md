@@ -1,6 +1,7 @@
 # Codex BOS skill and tool exposure RCA
 
-Status: 0.4.71 source release ready; original GPT UI Login/Connect AC pending
+Status: active; Connect is visible and the unresolved immutable connector opens
+ChatGPT account onboarding instead of BOS OAuth
 Date: 2026-09-01
 
 ## Authoritative 2026-09-02 correction
@@ -16,10 +17,10 @@ superseded by this correction and the Issue #0001 conclusion.
 The source correction generates every identity-bearing client artifact and
 contract from the product file, restores one required root `.app.json`, removes
 the second authored runtime URL file, and gives established maintenance and new
-product creation separate deterministic workflows. GPT UI acceptance remains a
-manual post-install screenshot from the original goal. Its absence does not
-block a later explicit source-publication instruction; this repository task
-does not operate the GPT client.
+product creation separate deterministic workflows. The 0.4.71 manual install
+now renders Connect. Its unresolved immutable connector opens
+`auth.openai.com/about-you` and fails with `duplicate_email` because the
+external record that carries the BOS MCP resource is absent.
 
 ## Failed registry recovery attempt
 
@@ -58,7 +59,7 @@ plugin-page Login display.
 Release 0.4.70 repeated the direct-MCP implementation and therefore repeated
 the missing Login defect. The first 0.4.71 candidate restored the historical
 root BOS wrapper, but its connector metadata had already been deleted. The
-current 0.4.71 source candidate restores the permanent established ID from
+current 0.4.72 source candidate restores the permanent established ID from
 `products/bos/product.json` with `required: true`; every subservice continues
 through that same root connection. The independent GPT display
 contract remains: render first, then use connection and grant state only to
@@ -104,8 +105,8 @@ The current app-server now marks every historical BOS identity missing.
    `f56ac8d5254a10fc4a04e7417fa787d135c3bbca49bad7d668d4ae65833d40c7`)
    showed that the plugin loader returned the declared BOS app, the connector
    metadata lookup returned no BOS entry, and the plugin detail merge removed
-   the app before row/action rendering. The current missing action is therefore
-   a client visibility regression, not a connection-state result.
+   the app before row/action rendering. That historical missing action was a
+   client visibility regression rather than a connection-state result.
 9. The same build's install/connect lifecycle uses a separate merge that falls
    back from connector metadata to directory data and then the plugin
    declaration without removing the app. The plugin-detail merge can adopt that
@@ -135,6 +136,15 @@ The current app-server now marks every historical BOS identity missing.
     comparison of desktop builds 26.825.41651 and 26.825.51511 found the same
     renderer predicate in both, reclassifying the desktop defect as latent and
     the partial account uninstall as its trigger.
+13. The 2026-09-02 manual install renders Connect and exposes the next boundary:
+    invoking it opens ChatGPT account onboarding and fails `duplicate_email`.
+    A fresh read-only diagnostic reports the immutable 6a7 ID missing from
+    `app/read` and the complete app catalog, an empty account-owned catalog, and
+    connector HTTP 404. Live BOS discovery independently resolves the exact
+    product-owned issuer and authorization endpoint. The active correction is
+    therefore exact connector binding and target acceptance. Repository-native
+    sync requests restoration through the permanent ID and accepts it only when
+    the exact same ID resolves to the product-owned BOS resource.
 
 ## Five whys
 
@@ -212,11 +222,13 @@ prove that the active task loaded its MCP catalog.
 Source-publication acceptance requires deterministic generation, focused
 package and installer tests, `npm run release:check`, `npm run contract:check`,
 and a local Oracle review of the actual diff. Post-release client acceptance
-requires a version-matched GPT client screenshot visibly showing the native BOS
-Login or Connect control. Live signed-in acceptance additionally requires the
-current task to load the package-owned resource, complete OAuth, discover every
-declared tool, resolve one canonical context, and complete one bounded
-authenticated read.
+requires a read-only lookup proving the exact immutable connector resolves to
+the product-owned BOS MCP resource, plus a version-matched GPT client screenshot
+visibly showing the native BOS Login or Connect control. The current verifier
+reports connector HTTP 404 and stops before screenshot inspection. Live
+signed-in acceptance additionally requires the current task to load the
+package-owned resource, complete OAuth, discover every declared tool, resolve
+one canonical context, and complete one bounded authenticated read.
 
 Public OpenAI submission, domain verification, tool scanning, review, and
 publication are separate release activities and do not control private Git

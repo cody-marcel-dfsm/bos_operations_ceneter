@@ -254,6 +254,74 @@ test("Codex connector inspection normalizes package and raw IDs to one account U
   );
 });
 
+test("Codex connector inspection retries a transient HTML challenge", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "bos-codex-connector-retry-"));
+  const authPath = join(directory, "auth.json");
+  await writeFile(authPath, JSON.stringify({
+    tokens: {
+      access_token: "retry-secret",
+      account_id: "retry-account"
+    }
+  }));
+  const requests = [];
+  const client = createCodexAccountPluginClient({
+    authPath,
+    async fetchRequest(url, options) {
+      requests.push({ url, options });
+      if (requests.length < 3) {
+        return new Response("challenge", {
+          status: 403,
+          headers: { "content-type": "text/html; charset=UTF-8" }
+        });
+      }
+      return new Response(JSON.stringify({
+        id: canonicalAppId,
+        base_url: bosProduct.mcp_resource_url
+      }), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      });
+    },
+    async runCommand() { return { stdout: "codex-cli 0.152.1" }; }
+  });
+
+  const result = await client.inspectConnector(pluginAppId);
+  assert.equal(requests.length, 3);
+  assert.equal(result.ok, true);
+  assert.equal(result.body.id, canonicalAppId);
+  assert.equal(result.body.base_url, bosProduct.mcp_resource_url);
+});
+
+test("Codex connector inspection returns the final exhausted HTML challenge", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "bos-codex-connector-exhausted-"));
+  const authPath = join(directory, "auth.json");
+  await writeFile(authPath, JSON.stringify({
+    tokens: {
+      access_token: "exhausted-secret",
+      account_id: "exhausted-account"
+    }
+  }));
+  let requests = 0;
+  const client = createCodexAccountPluginClient({
+    authPath,
+    async fetchRequest() {
+      requests += 1;
+      return new Response("challenge", {
+        status: 403,
+        headers: { "content-type": "text/html; charset=UTF-8" }
+      });
+    },
+    async runCommand() { return { stdout: "codex-cli 0.152.1" }; },
+    debug: false
+  });
+
+  const result = await client.inspectConnector(pluginAppId);
+  assert.equal(requests, 3);
+  assert.equal(result.ok, false);
+  assert.equal(result.http_status, 403);
+  assert.equal(result.body, "challenge");
+});
+
 test("Codex new-product provisioning is an explicit native workflow", async () => {
   const protocolRequests = [];
   const client = createCodexAccountPluginClient({

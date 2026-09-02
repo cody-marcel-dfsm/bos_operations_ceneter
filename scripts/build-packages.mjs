@@ -12,6 +12,7 @@ import {
   listProducts,
   marketplaceEntry,
   materializeMcpUrl,
+  oauthTargetContract,
   pluginManifest,
   resolveProductSkills,
   root,
@@ -74,6 +75,7 @@ for (const { product, skills } of resolved) {
       codex_app_id: product.codex_connector?.id,
       retired_codex_app_ids: product.codex_connector?.retired_ids,
       resource_url: product.runtime ? materializeMcpUrl(product) : undefined,
+      oauth: product.runtime ? oauthTargetContract(product) : undefined,
       runtime_verification_tools: product.runtime_verification_tools,
       connection_owner: "bos",
       authentication: product.runtime ? "oauth_2_1" : "bos_managed"
@@ -111,7 +113,8 @@ for (const { product, skills } of resolved) {
       mcp_group_name: product.mcp_group_name,
       ...(product.runtime ? {
         connection_scope: "claude_account",
-        resource_url: claudeResourceUrl
+        resource_url: claudeResourceUrl,
+        oauth: oauthTargetContract(product)
       } : {}),
       connection_owner: "bos",
       authentication: product.runtime ? "oauth_2_1" : "bos_managed"
@@ -223,6 +226,7 @@ for (const { product, skills } of resolved) {
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
       resource_url: product.runtime ? materializeMcpUrl(product) : undefined,
+      oauth: product.runtime ? oauthTargetContract(product) : undefined,
       connection_owner: "bos",
       authentication: product.runtime ? "oauth_2_1" : "bos_managed"
     });
@@ -278,6 +282,7 @@ for (const { product, skills } of resolved) {
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
       resource_url: product.runtime ? materializeMcpUrl(product) : undefined,
+      oauth: product.runtime ? oauthTargetContract(product) : undefined,
       connection_owner: "bos",
       authentication: product.runtime ? "oauth_2_1" : "bos_managed"
     });

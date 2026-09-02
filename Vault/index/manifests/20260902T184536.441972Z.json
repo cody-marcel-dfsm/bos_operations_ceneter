@@ -1,0 +1,14 @@
+{
+  "canonical_source_snapshot_sha256": "129b27af8f58570a73227e96b17e0c9fba88a4e061de6300adf8b7c331500066",
+  "changed_sources": [
+    "Vault/docs/codex-registered-app-incident.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 253,
+  "duration_seconds": 0.337,
+  "index_version": 1,
+  "indexed_at": "20260902T184536.441972Z",
+  "indexed_chunks": 6,
+  "removed_sources": [],
+  "source_count": 93
+}

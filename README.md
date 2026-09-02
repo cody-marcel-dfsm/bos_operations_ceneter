@@ -32,7 +32,7 @@ action and resolves the immutable resource. Its protected-resource challenge
 then identifies a signed-out runtime connection and activates OAuth. The
 user completes consent, and the agent refreshes tools and resumes the request.
 
-Current desktop marketplace release: `0.4.71`. If `0.4.70` is installed,
+Current desktop marketplace release: `0.4.72`. If `0.4.71` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -362,10 +362,13 @@ The BOS product contract is authored only in `products/bos/product.json`.
 Inspect its established connector with `npm run product:codex -- inspect`.
 Apply mutable name, description, logo, website, or MCP-resource metadata with
 `npm run product:codex -- sync`; the command passes the permanent ID and
-post-verifies that same record. A missing established record is a registry
-integrity failure and never creates a replacement. `provision` applies only to
-a different disabled product explicitly authored as `UNPROVISIONED_NEW` and
-reconciles an interrupted prior creation before retrying.
+post-verifies that same record. When the established record is missing, the
+same command restores it through the permanent ID and rejects success unless
+the post-read returns that identity with the product-owned BOS resource. The
+command never enters new-product provisioning for BOS. `provision` applies
+only to a different disabled product explicitly authored as
+`UNPROVISIONED_NEW` and reconciles an interrupted prior creation before
+retrying.
 
 Add the repository checkout as a local marketplace:
 

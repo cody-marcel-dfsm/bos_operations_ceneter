@@ -1,14 +1,11 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { execFile } from "node:child_process";
 import { access, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import test from "node:test";
 import { join } from "node:path";
-import { promisify } from "node:util";
-import { root } from "../scripts/lib/package-model.mjs";
-
-const execFileAsync = promisify(execFile);
+import { codexRawAppId, root } from "../scripts/lib/package-model.mjs";
+import { verifyCodexLoginEvidence } from "../scripts/verify-codex-login-evidence.mjs";
 
 const bosProduct = JSON.parse(await readFile(
   join(root, "products", "bos", "product.json"),
@@ -17,6 +14,46 @@ const bosProduct = JSON.parse(await readFile(
 const provenBosAppId = bosProduct.codex_connector.id;
 const bosResourceUrl = bosProduct.mcp_resource_url;
 const pluginRoot = join(root, "clients", "codex", "plugins", "bos");
+
+function resolvedConnectorClient(overrides = {}) {
+  return {
+    async inspectConnector(appId) {
+      return {
+        app_id: codexRawAppId(appId),
+        http_status: 200,
+        ok: true,
+        body: {
+          id: appId,
+          base_url: bosResourceUrl
+        },
+        ...overrides
+      };
+    }
+  };
+}
+
+async function createLoginEvidence() {
+  const directory = await mkdtemp(join(tmpdir(), "bos-login-evidence-"));
+  const screenshot = join(directory, `${bosProduct.version}-connect-button.png`);
+  const review = join(directory, `${bosProduct.version}-connect-button.review.json`);
+  const image = Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    Buffer.alloc(2048)
+  ]);
+  await writeFile(screenshot, image);
+  const receipt = {
+    schema_version: "1",
+    product_version: bosProduct.version,
+    screenshot: `${bosProduct.version}-connect-button.png`,
+    screenshot_sha256: createHash("sha256").update(image).digest("hex"),
+    surface: "GPT_PLUGIN_DETAIL",
+    visible_action: "Connect",
+    reviewer: "ORACLE",
+    verdict: "APPROVED"
+  };
+  await writeFile(review, `${JSON.stringify(receipt, null, 2)}\n`);
+  return { review, receipt, screenshot };
+}
 
 test("Codex BOS plugin preserves the required root app declaration", async () => {
   const product = JSON.parse(await readFile(
@@ -258,6 +295,24 @@ test("Codex Login display binding remains independent from server OAuth discover
   ));
 });
 
+test("Codex Login acceptance requires the exact live product connector binding", async () => {
+  const contract = JSON.parse(await readFile(
+    join(root, "contracts", "codex-login-surface.v1.json"),
+    "utf8"
+  ));
+
+  assert.deepEqual(contract.connector_binding_acceptance, {
+    required: true,
+    phase: "POST_RELEASE",
+    registry_record_must_resolve: true,
+    connector_id_must_equal_product_source: true,
+    resource_url_must_equal_product_source: true
+  });
+  assert.equal(contract.connector_id, provenBosAppId);
+  assert.equal(contract.resource_url, bosResourceUrl);
+  assert.deepEqual(contract.oauth, bosProduct.oauth);
+});
+
 test("Codex Login contract preserves separately verified post-release GPT UI evidence", async () => {
   const contract = JSON.parse(await readFile(
     join(root, "contracts", "codex-login-surface.v1.json"),
@@ -281,7 +336,7 @@ test("Codex Login contract preserves separately verified post-release GPT UI evi
   );
   assert.equal(
     packageManifest.scripts["acceptance:post-release"],
-    "npm run acceptance:codex-login -- --json && npm run acceptance:codex-request-time-login"
+    "npm run contract:oauth-discovery-live -- --format json && npm run acceptance:codex-login -- --json && npm run acceptance:codex-request-time-login"
   );
   assert.equal(
     packageManifest.scripts["release:check"],
@@ -290,50 +345,121 @@ test("Codex Login contract preserves separately verified post-release GPT UI evi
 });
 
 test("Codex Login evidence requires an Oracle-reviewed hash and visible action", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "bos-login-evidence-"));
-  const screenshot = join(directory, `${bosProduct.version}-connect-button.png`);
-  const review = join(directory, `${bosProduct.version}-connect-button.review.json`);
-  const image = Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    Buffer.alloc(2048)
-  ]);
-  await writeFile(screenshot, image);
-  const receipt = {
-    schema_version: "1",
-    product_version: bosProduct.version,
-    screenshot: `${bosProduct.version}-connect-button.png`,
-    screenshot_sha256: createHash("sha256").update(image).digest("hex"),
-    surface: "GPT_PLUGIN_DETAIL",
-    visible_action: "Connect",
-    reviewer: "ORACLE",
-    verdict: "APPROVED"
-  };
-  await writeFile(review, `${JSON.stringify(receipt, null, 2)}\n`);
-  const command = join(root, "scripts", "verify-codex-login-evidence.mjs");
-  const accepted = await execFileAsync(process.execPath, [
-    command,
-    "--screenshot", screenshot,
-    "--review", review,
-    "--json"
-  ]);
-  assert.equal(JSON.parse(accepted.stdout).ok, true);
+  const { receipt, review, screenshot } = await createLoginEvidence();
+  const calls = [];
+  const client = resolvedConnectorClient();
+  const accepted = await verifyCodexLoginEvidence({
+    client: {
+      async inspectConnector(appId) {
+        calls.push(appId);
+        return client.inspectConnector(appId);
+      }
+    },
+    screenshot,
+    review
+  });
+  assert.equal(accepted.ok, true);
+  assert.deepEqual(calls, [provenBosAppId]);
+  assert.equal(accepted.connector_binding.observed_connector_id, provenBosAppId);
+  assert.equal(accepted.connector_binding.observed_resource_url, bosResourceUrl);
 
   await writeFile(review, `${JSON.stringify({
     ...receipt,
     screenshot_sha256: "0".repeat(64)
   }, null, 2)}\n`);
-  await assert.rejects(
-    execFileAsync(process.execPath, [
-      command,
-      "--screenshot", screenshot,
-      "--review", review,
-      "--json"
-    ]),
-    (error) => {
-      const report = JSON.parse(error.stdout);
-      assert.equal(report.ok, false);
-      assert.match(report.failure, /does not match/);
-      return true;
+  const rejected = await verifyCodexLoginEvidence({
+    client: resolvedConnectorClient(),
+    screenshot,
+    review
+  });
+  assert.equal(rejected.ok, false);
+  assert.match(rejected.failure, /does not match/);
+});
+
+test("Codex Login evidence rejects unresolved or misdirected connector bindings", async () => {
+  const { review, screenshot } = await createLoginEvidence();
+  const cases = [
+    {
+      name: "missing connector",
+      result: {
+        app_id: codexRawAppId(provenBosAppId),
+        http_status: 404,
+        ok: false,
+        body: { detail: "Connector not found" }
+      },
+      failure: /resolution failed with HTTP 404/
+    },
+    {
+      name: "different identity",
+      result: {
+        app_id: codexRawAppId(provenBosAppId),
+        http_status: 200,
+        ok: true,
+        body: {
+          id: "plugin_asdk_app_wrong",
+          base_url: bosResourceUrl
+        }
+      },
+      failure: /different immutable identity/
+    },
+    {
+      name: "different normalized inspection identity",
+      result: {
+        app_id: "asdk_app_wrong",
+        http_status: 200,
+        ok: true,
+        body: {
+          id: provenBosAppId,
+          base_url: bosResourceUrl
+        }
+      },
+      failure: /different immutable identity/
+    },
+    {
+      name: "missing resource",
+      result: {
+        app_id: codexRawAppId(provenBosAppId),
+        http_status: 200,
+        ok: true,
+        body: { id: provenBosAppId }
+      },
+      failure: /canonical MCP resource/
+    },
+    {
+      name: "different resource",
+      result: {
+        app_id: codexRawAppId(provenBosAppId),
+        http_status: 200,
+        ok: true,
+        body: {
+          id: provenBosAppId,
+          base_url: "https://example.com/mcp/apps/bos/platform"
+        }
+      },
+      failure: /canonical MCP resource/
     }
-  );
+  ];
+
+  for (const fixture of cases) {
+    const report = await verifyCodexLoginEvidence({
+      client: resolvedConnectorClient(fixture.result),
+      screenshot,
+      review
+    });
+    assert.equal(report.ok, false, fixture.name);
+    assert.match(report.failure, fixture.failure, fixture.name);
+  }
+
+  const inspectionFailure = await verifyCodexLoginEvidence({
+    client: {
+      async inspectConnector() {
+        throw new Error("private diagnostic detail");
+      }
+    },
+    screenshot,
+    review
+  });
+  assert.equal(inspectionFailure.ok, false);
+  assert.equal(inspectionFailure.failure, "registered BOS connector inspection failed");
+  assert.doesNotMatch(JSON.stringify(inspectionFailure), /private diagnostic detail/);
 });

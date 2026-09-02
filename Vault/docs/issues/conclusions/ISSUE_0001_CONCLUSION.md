@@ -1,12 +1,14 @@
 # Issue #0001 conclusion: Codex BOS login display regression
 
-- Status: source release ready; original GPT UI acceptance pending manual install
-- Resolution version: 0.4.71 candidate
+- Status: superseded by active regression evidence; Connect is visible and its
+  unresolved connector routes to ChatGPT onboarding instead of BOS OAuth
+- Resolution version: 0.4.72 candidate
 - Date: 2026-09-02
 - Category: Codex product identity, package binding, and login display
 - Related incident: `Vault/docs/codex-registered-app-incident.md`
 - Negative client evidence:
-  `Vault/evidence/codex-login/0.4.71-missing-connect-current.png`
+  `Vault/evidence/codex-login/0.4.71-missing-connect-current.png` and
+  `Vault/evidence/codex-login/0.4.71-wrong-oauth-target.png`
 
 ## Symptom
 
@@ -14,6 +16,11 @@ The BOS plugin and skills appeared installed while its detail page exposed no
 native **Connect** or **Reconnect** action. Later diagnostics incorrectly tied
 display to connection, metadata, or callable-tool availability. A failed repair
 also created a second private “Created by you” BOS product with a new ID.
+
+The 0.4.71 manual-install result advances the symptom: Connect is now visible,
+yet invoking it opens `auth.openai.com/about-you` and fails with
+`duplicate_email`. The required destination is the BOS authorization endpoint
+discovered through the registered connector's MCP resource.
 
 ## Root cause
 
@@ -55,25 +62,43 @@ IDs, verifies each exact record is HTTP 404 afterward, never installs, and is
 idempotent. Repository diagnostics emit correlated, bounded, redacted
 request/response logs by default.
 
+The immutable connector currently returns HTTP 404 from the account connector
+registry. `app/read`, full catalog enumeration, and the account-owned plugin
+catalog independently confirm that the record is absent. The BOS resource is
+healthy and advertises `https://dfsm.ai` as issuer and
+`https://dfsm.ai/api/v1/mcp/oauth/authorize` as its authorization endpoint.
+Because `.app.json` contains a registered connection ID rather than an OAuth
+URL, ChatGPT cannot resolve the BOS target while that external record is absent.
+The deterministic `product:codex sync` recovery path supplies the exact
+permanent ID to native save, then requires the restored record to retain that
+identity and map to `https://dfsm.ai/mcp/apps/bos/platform`. BOS restoration
+never calls the new-product provisioning path.
+
 ## Verification
 
 - Generated `.app.json`, `.bos-product.json`, cross-client MCP artifacts, and
   both contracts match `products/bos/product.json`.
-- Regression tests cover immutable identity, update-in-place and post-read,
+- Regression tests cover immutable identity, update-in-place, same-record
+  restoration and post-read,
   package-to-account ID normalization, distinct registry failures, explicit
   new-product creation, interrupted-create reconciliation, retired-only cleanup,
   and a second cleanup run.
 - `npm run build:packages`, `npm run check`, and `npm run contract:check` pass.
-  The complete source release suite passes 277 of 277 tests. Issue #0001's
+  The complete source release suite passes 285 of 285 tests. Issue #0001's
   source, lifecycle, cleanup, package-shape, contract, and Antigravity tests all
-  pass. The separately invoked post-release verifier reports the exact missing
-  Issue #0001 artifact; Issue #0002 retains its independent post-release check.
+  pass. The separately invoked post-release verifier reports the exact current
+  Issue #0001 failure: immutable connector resolution returns HTTP 404. Issue
+  #0002 retains its independent post-release check.
 - The final host acceptance artifact is a version-matched screenshot showing the
   native BOS **Connect** or **Reconnect** action after the user manually installs
   the candidate. Oracle visually inspects it and authors a matching review
   receipt binding its SHA-256, version, surface, and observed action. The source
   task does not operate the GPT client. This original-goal AC remains open
   without blocking a later explicit source-publication instruction.
+- The 0.4.71 post-install evidence shows that screenshot-only acceptance was
+  incomplete: Connect can render while targeting an unresolved ChatGPT-hosted
+  fallback. Acceptance requires both the exact immutable connector/resource
+  binding and the version-matched visual evidence.
 
 ## Prevention
 
