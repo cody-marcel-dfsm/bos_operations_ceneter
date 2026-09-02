@@ -27,5 +27,5 @@
     "logo": "./assets/bos-logo.png"
   },
   "homepage": "https://dfsm.ai",
-  "apps": "./.app.json"
+  "mcpServers": "./.mcp.json"
 }
