@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.76",
+  "version": "0.4.77",
   "client": "gemini",
   "application_name": "bos",
   "mcp_group_name": "platform",
