@@ -77,9 +77,11 @@ prior verdict and requires a fresh Oracle review of the complete updated diff.
   and a hash-bound Oracle receipt before client verification is complete.
 - Treat `products/bos/product.json` as the sole authored BOS product authority.
   Its `ESTABLISHED` connector ID is immutable and has no migration workflow.
-  Mutable metadata updates in place and must post-read the same ID. A missing
-  registry record is an integrity failure, never permission to create a
-  replacement. New connector creation requires a different disabled product
+  Supported name and description metadata updates apply only to an existing
+  exact ID and must post-read that ID plus the BOS resource. A missing or
+  misbound registry record is an integrity failure requiring a registry-owner
+  correction and zero account mutation; the available create route mints a
+  different identity. New connector creation requires a different disabled product
   explicitly authored as `UNPROVISIONED_NEW`, a matching requested source name,
   no retired IDs, and deterministic complete-metadata reconciliation before
   retry.

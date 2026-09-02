@@ -1398,7 +1398,7 @@ test("package schema reserves runtime ownership for BOS", () => {
       required: true,
       identity_policy: "IMMUTABLE",
       metadata_policy: "UPDATE_IN_PLACE",
-      missing_record_policy: "RESTORE_SAME_RECORD",
+      missing_record_policy: "REGISTRY_OWNER_RESTORE_SAME_RECORD",
       provisioning_policy: "NEW_PRODUCT_ONLY",
       retired_ids: []
     },

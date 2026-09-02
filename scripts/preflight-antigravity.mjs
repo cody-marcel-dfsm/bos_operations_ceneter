@@ -59,7 +59,9 @@ for (const entry of await readdir(productsRoot, { withFileTypes: true })) {
     client: "gemini",
     ...(product.application_name ? { application_name: product.application_name } : {}),
     ...(product.mcp_group_name ? { mcp_group_name: product.mcp_group_name } : {}),
-    ...(product.runtime ? { resource_url: product.mcp_resource_url } : {}),
+    ...(product.runtime
+      ? { resource_url: product.mcp_resource_url, oauth: product.oauth }
+      : {}),
     connection_owner: "bos",
     authentication: expectedAuthentication
   };

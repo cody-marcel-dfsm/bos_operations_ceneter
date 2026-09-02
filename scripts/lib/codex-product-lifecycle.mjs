@@ -1,13 +1,5 @@
 import { codexConnectorContract, codexRawAppId, materializeMcpUrl } from "./package-model.mjs";
 
-export const CODEX_CONNECTOR_LIFECYCLE = Object.freeze({
-  lifecycle_state: "ESTABLISHED",
-  identity_policy: "IMMUTABLE",
-  metadata_policy: "UPDATE_IN_PLACE",
-  missing_record_policy: "RESTORE_SAME_RECORD",
-  provisioning_policy: "NEW_PRODUCT_ONLY"
-});
-
 export function connectorMetadataFromProduct(product) {
   return {
     name: product.display_name,
@@ -21,10 +13,8 @@ export function connectorMetadataFromProduct(product) {
 export function establishedConnectorFromProduct(product) {
   const connector = codexConnectorContract(product);
   return {
-    id: connector.id,
+    ...connector,
     raw_id: codexRawAppId(connector.id),
-    required: connector.required,
-    ...CODEX_CONNECTOR_LIFECYCLE,
     metadata: connectorMetadataFromProduct(product),
     retired_ids: [...connector.retired_ids]
   };
@@ -34,14 +24,16 @@ export function planEstablishedConnectorSync(product, registryRecord) {
   const desired = establishedConnectorFromProduct(product);
   if (!registryRecord) {
     return {
+      ok: false,
       state: "registry_integrity_failure",
-      action: "restore_same_record",
+      action: desired.missing_record_policy.toLowerCase(),
       connector_id: desired.id,
       desired
     };
   }
   if (codexRawAppId(registryRecord.id) !== desired.raw_id) {
     return {
+      ok: false,
       state: "wrong_identity",
       action: "inspect_configured_record",
       connector_id: desired.id,
@@ -49,16 +41,26 @@ export function planEstablishedConnectorSync(product, registryRecord) {
       desired
     };
   }
+  const observedMcpUrl = registryRecord.base_url ?? registryRecord.mcp_url ?? null;
+  if (observedMcpUrl !== desired.metadata.mcp_url) {
+    return {
+      ok: false,
+      state: "binding_integrity_failure",
+      action: "registry_owner_correction_required",
+      connector_id: desired.id,
+      observed_mcp_url: observedMcpUrl,
+      desired
+    };
+  }
   const current = {
     name: registryRecord.name ?? null,
     description: registryRecord.description ?? null,
-    mcp_url: registryRecord.base_url ?? registryRecord.mcp_url ?? null,
-    website_url: registryRecord.branding?.website ?? registryRecord.website_url ?? null,
-    logo: registryRecord.logo ?? null
+    mcp_url: observedMcpUrl
   };
   const changes = Object.fromEntries(
-    Object.entries(desired.metadata)
-      .filter(([field, value]) => value !== null && current[field] !== value)
+    ["name", "description"]
+      .filter((field) => desired.metadata[field] !== null && current[field] !== desired.metadata[field])
+      .map((field) => [field, desired.metadata[field]])
       .map(([field, value]) => [field, { from: current[field], to: value }])
   );
   return {
@@ -94,15 +96,15 @@ export function planNewProductProvisioning(product) {
   };
 }
 
-export function connectorContractForProvisionedId(remotePluginId) {
+export function connectorContractForProvisionedId(product, remotePluginId) {
   const raw = codexRawAppId(remotePluginId);
   if (!/^asdk_app_[a-z0-9]+$/.test(raw)) {
     throw new Error(`Provisioning returned an invalid connector ID: ${remotePluginId}`);
   }
   return {
+    ...product.codex_connector,
+    lifecycle_state: "ESTABLISHED",
     id: `plugin_${raw}`,
-    required: true,
-    ...CODEX_CONNECTOR_LIFECYCLE,
     retired_ids: []
   };
 }
