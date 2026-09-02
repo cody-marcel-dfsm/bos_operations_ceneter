@@ -16,10 +16,10 @@ before implementation guidance and review. Resolved issue details remain in
 
 ### User goal and definition of done
 
-An unambiguous `ship it` invocation is the approval to complete the full
-repository-scoped release. The agent proceeds through push, pull-request
-creation, merge, workspace restoration, and merged local branch cleanup without
-asking for another conversational approval.
+The `ship it` command is complete and final approval to execute the full
+evolving, reviewed repository-scoped release. The agent proceeds through push,
+pull-request creation, merge, workspace restoration, and merged local branch
+cleanup with zero conversational approval, confirmation, or intent questions.
 
 ### Observed evidence
 
@@ -29,6 +29,15 @@ The 0.4.74 release workflow completed local commit `8cd6aad`, received Oracle
 commit and completing the pull-request merge was explicitly approved. Those
 operations were already part of the user's `ship it` instruction.
 
+A second screenshot captured the same redundant question for an expanded
+54-file payload: “Do you explicitly approve pushing this expanded 0.4.74
+release ... and completing the PR merge?” The user's follow-up confirmed that
+the original command covered the complete evolving, reviewed payload. Payload
+growth from release generation, corrections, or any other amended repository
+file cannot become a new authorization boundary. The user explicitly clarified
+that there are no unrelated amended files: every amended file belongs in the
+release and its validation scope.
+
 ### Root cause
 
 The skill's opening paragraph said the invocation authorized the release and
@@ -36,15 +45,19 @@ prohibited redundant confirmation, while the preflight later allowed a stop
 when the agent believed required “authority” had not been provided. Push and
 merge steps also lacked a local instruction tying each mutation back to the
 invocation. The distributed wording allowed a cautious agent to reinterpret
-the size or contents of a reviewed release as a new approval boundary.
+the size or contents of a reviewed release as a new approval boundary. The
+first correction still focused on “a second approval,” leaving room to ask a
+differently worded confirmation or intent question when the payload evolved.
 
 ### Required correction
 
 Define one explicit invocation-authorization contract before preflight. Name
 every covered release mutation, prohibit new approval gates based on diff size
 or generated/Vault content, distinguish user authorization from actual missing
-credentials or host protections, and repeat the no-second-approval invariant at
-the push and merge steps.
+credentials or host protections, and repeat a zero-questions invariant at the
+push and merge steps. Explicitly define every repository file amended before
+completion as part of the authorized evolving payload, require its review and
+validation, and prohibit reclassifying it as unrelated.
 
 ### Attempts
 
@@ -53,21 +66,33 @@ the push and merge steps.
 - The corrected skill makes the authorization operational at preflight, push,
   and merge, and the UI default prompt now describes invocation as approval for
   the complete release.
+- The strengthened contract defines the command as complete and unambiguous,
+  forbids approval, confirmation, and intent questions, covers every amended
+  repository file in the evolving, reviewed payload, and requires concrete
+  validation blockers to be reported declaratively.
 
 ### Validation and Oracle review
 
-The focused ship-it regression passes 2 of 2. The skill validator reports
-`Skill is valid!`. `git diff --check` passes. The complete credential-free
-`npm run release:check` gate regenerated both active products, passed package
-and credential checks, passed the single-BOS-connection contract, and passed
-289 of 289 tests. Complete-diff Oracle review is pending.
+The focused ship-it regression passes 2 of 2 with the strengthened wording.
+The skill validator reports `Skill is valid!`, and `git diff --check` passes.
+The fresh credential-free release gate regenerated both active products,
+passed package and credential checks, and passed the single-BOS-connection
+contract. Its default concurrent test run encountered only a transient Vault
+sync-lock collision; the complete suite then passed 289 of 289 with test
+concurrency set to one. The first complete-diff Oracle review found no material
+issues and returned literal `APPROVED`. The strengthened wording, regression,
+validation evidence, and synchronized Vault snapshot require this final
+complete-diff Oracle review.
 
 ### Prevention guidance
 
 Encode high-level authorization at every later decision point where an agent
-might otherwise pause. Test that release workflow text grants push and merge
-authority, forbids repeat confirmation, and contains no superseded missing-
-authority escape clause.
+might otherwise pause. Test that the command is complete and unambiguous, the
+evolving reviewed payload includes every amended repository file, all
+approval/confirmation/intent questions are forbidden, concrete validation
+blockers are declarative, push and merge
+proceed under the original authorization, and no superseded missing-authority
+escape clause remains.
 
 ## Issue #0001: Installed BOS skills appeared while Codex exposed no login or callable tools
 
@@ -331,6 +356,36 @@ for the established BOS product.
   coverage across active Vault guidance, regenerated every client, and added
   separately owned Issue #0002 to the combined release review findings. The two
   version-matched GPT screenshots remain the only intended release gates.
+- 2026-09-02 15:21 America/Denver: the 0.4.75 release Oracle review found two
+  additional active `Vault/docs/DESIGN.md` passages still prescribed the
+  superseded direct Codex `.mcp.json` binding despite the accepted registered-
+  app decision. Corrected both passages to require the immutable product-owned,
+  required `.app.json`, prohibit a direct `.mcp.json`, and preserve Claude's
+  separate account-level Web connector. This correction invalidates the prior
+  release verdict and requires synchronized Vault evidence, affected
+  validation, and a fresh complete-diff Oracle review.
+- 2026-09-02 15:29 America/Denver: the fresh 0.4.75 complete-diff Oracle review
+  verified that both `Vault/docs/DESIGN.md` passages now match the accepted
+  registered-app contract and independently reproduced the credential-free
+  release gate at 289 of 289 tests. The review remains `REJECTED` because the
+  semantic guidance regression test enumerates only
+  `marketplace-agent-harness-plan.md` and `IMPLEMENTATION_TASKS.md`; it does not
+  inspect `DESIGN.md`, the exact active guidance source that regressed and
+  caused the prior rejection. Extend the existing positive and negative
+  `.app.json` versus direct `.mcp.json` assertions to `DESIGN.md`, rerun affected
+  validation, synchronize the Vault, and request a fresh complete-diff review.
+- 2026-09-02 15:32 America/Denver: added `Vault/docs/DESIGN.md` to the existing
+  semantic guidance regression set, so the same positive required `.app.json`
+  and negative direct `.mcp.json` assertions now cover the exact source that
+  regressed. The focused Codex login contract suite passes 10 of 10 and
+  `git diff --check` passes. Vault synchronization, the complete release gate,
+  and a fresh complete-diff Oracle review remain required.
+- 2026-09-02 15:38 America/Denver: adversarial Oracle review proved the first
+  corrected `DESIGN.md` passage could satisfy the document-wide positive match
+  while the separate “Connect the account” passage regressed. Added independent
+  positive assertions for both corrected passages and a negative assertion for
+  the former direct `.mcp.json` account-connection wording. A fresh focused and
+  complete validation, Vault sync, and complete-diff Oracle review are required.
 - 2026-09-01 19:29 America/Denver: added a read-only registered-app diagnostic
   with default-on redacted NDJSON tracing for every Codex app-server and
   connector request/response. The live run proved the local declaration is

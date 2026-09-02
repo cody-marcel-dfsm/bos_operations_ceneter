@@ -2137,14 +2137,21 @@ test("ship-it invocation is the approval for push and merge", async () => {
     "utf8"
   );
 
-  assert.match(workflow, /invocation[\s\S]*explicit\s+approval/i);
-  assert.match(workflow, /approval covers[\s\S]*pushing[\s\S]*merging/i);
-  assert.match(workflow, /without asking the user to approve[\s\S]*push[\s\S]*merge/i);
-  assert.match(workflow, /never ask for a second approval/i);
+  assert.match(workflow, /complete,[\s\S]*unambiguous execution instructions/i);
+  assert.match(workflow, /explicit and final[\s\S]*approval/i);
+  assert.match(workflow, /complete evolving, reviewed release payload[\s\S]*normal pushes[\s\S]*merging/i);
+  assert.match(workflow, /ask zero conversational approval, confirmation, or intent questions/i);
+  assert.match(workflow, /expanded[\s\S]*release payload is approved/i);
+  assert.match(workflow, /every repository file amended before completion/i);
+  assert.match(workflow, /never classify[\s\S]*amended repository file as unrelated/i);
+  assert.match(workflow, /include it[\s\S]*inspect it[\s\S]*validation relevant to it/i);
+  assert.match(workflow, /never create a new approval boundary/i);
+  assert.match(workflow, /blocker[\s\S]*declaratively/i);
+  assert.match(workflow, /merge without asking a question/i);
   assert.doesNotMatch(workflow, /authority the user has not provided/i);
   assert.match(
     interfaceMetadata,
-    /approve and complete[\s\S]*push, pull-request merge[\s\S]*without requesting another release approval/i
+    /complete and final approval[\s\S]*push, pull-request merge[\s\S]*ask zero approval, confirmation, or intent questions/i
   );
 });
 
