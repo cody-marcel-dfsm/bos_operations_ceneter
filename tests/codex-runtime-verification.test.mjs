@@ -8,6 +8,7 @@ import { readJson, root } from "../scripts/lib/package-model.mjs";
 
 const bosProduct = await readJson(join(root, "products", "bos", "product.json"));
 const releaseVersion = bosProduct.version;
+const bosAppId = bosProduct.codex_connector.id;
 
 async function fixtureHome(toolNames) {
   const home = await mkdtemp(join(tmpdir(), "bos-codex-runtime-"));
@@ -18,13 +19,10 @@ async function fixtureHome(toolNames) {
     );
   }
   await writeFile(
-    join(home, ".codex", "plugins", "cache", "bos-education-center", "bos", releaseVersion, ".mcp.json"),
+    join(home, ".codex", "plugins", "cache", "bos-education-center", "bos", releaseVersion, ".app.json"),
     JSON.stringify({
-      mcpServers: {
-        platform: {
-          type: "http",
-          url: bosProduct.mcp_resource_url
-        }
+      apps: {
+        bos: { id: bosAppId, required: true }
       }
     })
   );
@@ -34,7 +32,7 @@ async function fixtureHome(toolNames) {
   );
   await writeFile(
     join(home, ".codex", "plugins", "cache", "bos-education-center", "bos", releaseVersion, ".codex-plugin", "plugin.json"),
-    JSON.stringify({ name: "bos", version: releaseVersion, mcpServers: "./.mcp.json" })
+    JSON.stringify({ name: "bos", version: releaseVersion, apps: "./.app.json" })
   );
   const catalog = join(home, ".codex", "cache", "codex_apps_tools", "catalog.json");
   await mkdir(join(home, ".codex", "cache", "codex_apps_tools"), { recursive: true });
@@ -114,7 +112,7 @@ const requiredTools = [
   "education_center_search_students"
 ];
 
-test("Codex runtime verification accepts one package-owned MCP binding and complete tool catalog", async () => {
+test("Codex runtime verification accepts the required BOS app binding and complete tool catalog", async () => {
   const { home, catalog } = await fixtureHome(requiredTools);
   const report = await inspectCodexRuntime({
     home,
@@ -123,7 +121,7 @@ test("Codex runtime verification accepts one package-owned MCP binding and compl
   });
   assert.equal(report.ok, true, JSON.stringify(report.failures));
   assert.deepEqual(report.callable_catalog.missing_tools, []);
-  assert.equal(report.mcp_binding.state, "current");
+  assert.equal(report.app_binding.state, "current");
 });
 
 test("Codex runtime verification accepts the host's nested callable-tool cache schema", async () => {
@@ -156,18 +154,13 @@ test("Codex runtime verification accepts a direct local marketplace without pack
       version: releaseVersion
     }));
   }
-  await writeFile(join(sourceRoot, "bos", ".mcp.json"), JSON.stringify({
-    mcpServers: {
-      platform: {
-        type: "http",
-        url: bosProduct.mcp_resource_url
-      }
-    }
+  await writeFile(join(sourceRoot, "bos", ".app.json"), JSON.stringify({
+    apps: { bos: { id: bosAppId, required: true } }
   }));
   await mkdir(join(sourceRoot, "bos", ".codex-plugin"), { recursive: true });
   await writeFile(
     join(sourceRoot, "bos", ".codex-plugin", "plugin.json"),
-    JSON.stringify({ name: "bos", version: releaseVersion, mcpServers: "./.mcp.json" })
+    JSON.stringify({ name: "bos", version: releaseVersion, apps: "./.app.json" })
   );
   const cacheRoot = join(home, ".codex", "plugins", "cache", "bos-education-center");
   await rm(cacheRoot, { recursive: true });
@@ -177,11 +170,11 @@ test("Codex runtime verification accepts a direct local marketplace without pack
     runCommand: runLocalCommand(sourceRoot)
   });
   assert.equal(report.ok, true, JSON.stringify(report.failures));
-  assert.equal(report.mcp_binding.path, join(sourceRoot, "bos", ".mcp.json"));
+  assert.equal(report.app_binding.path, join(sourceRoot, "bos", ".app.json"));
   assert.deepEqual(report.cache_versions, { bos: [], "education-center": [] });
 });
 
-test("Codex runtime verification rejects a package with no MCP binding", async () => {
+test("Codex runtime verification rejects a package with no app binding", async () => {
   const { home, catalog } = await fixtureHome(requiredTools);
   const bosRoot = join(
     home,
@@ -192,7 +185,7 @@ test("Codex runtime verification rejects a package with no MCP binding", async (
     "bos",
     releaseVersion
   );
-  await rm(join(bosRoot, ".mcp.json"));
+  await rm(join(bosRoot, ".app.json"));
 
   const report = await inspectCodexRuntime({
     home,
@@ -200,13 +193,13 @@ test("Codex runtime verification rejects a package with no MCP binding", async (
     runCommand: runCommand()
   });
   assert.equal(report.ok, false);
-  assert.equal(report.mcp_binding.state, "missing");
-  assert(report.failures.includes("package-owned BOS MCP binding is missing or invalid"));
+  assert.equal(report.app_binding.state, "missing");
+  assert(report.failures.includes("registered BOS app binding is missing or invalid"));
 });
 
-test("Codex runtime verification rejects a credential-bearing MCP binding", async () => {
+test("Codex runtime verification rejects an optional BOS app binding", async () => {
   const { home, catalog } = await fixtureHome(requiredTools);
-  const mcpPath = join(
+  const appPath = join(
     home,
     ".codex",
     "plugins",
@@ -214,16 +207,10 @@ test("Codex runtime verification rejects a credential-bearing MCP binding", asyn
     "bos-education-center",
     "bos",
     releaseVersion,
-    ".mcp.json"
+    ".app.json"
   );
-  await writeFile(mcpPath, JSON.stringify({
-    mcpServers: {
-      platform: {
-        type: "http",
-        url: bosProduct.mcp_resource_url,
-        headers: { Authorization: "Bearer forbidden" }
-      }
-    }
+  await writeFile(appPath, JSON.stringify({
+    apps: { bos: { id: bosAppId, required: false } }
   }));
 
   const report = await inspectCodexRuntime({
@@ -232,11 +219,11 @@ test("Codex runtime verification rejects a credential-bearing MCP binding", asyn
     runCommand: runCommand()
   });
   assert.equal(report.ok, false);
-  assert.equal(report.mcp_binding.state, "invalid");
-  assert(report.failures.includes("package-owned BOS MCP binding is missing or invalid"));
+  assert.equal(report.app_binding.state, "invalid");
+  assert(report.failures.includes("registered BOS app binding is missing or invalid"));
 });
 
-test("Codex runtime verification rejects a shadow registered-app binding", async () => {
+test("Codex runtime verification rejects a shadow direct-MCP binding", async () => {
   const { home, catalog } = await fixtureHome(requiredTools);
   const bosRoot = join(
     home,
@@ -247,8 +234,8 @@ test("Codex runtime verification rejects a shadow registered-app binding", async
     "bos",
     releaseVersion
   );
-  await writeFile(join(bosRoot, ".app.json"), JSON.stringify({
-    apps: { bos: { id: "asdk_app_shadow", required: true } }
+  await writeFile(join(bosRoot, ".mcp.json"), JSON.stringify({
+    mcpServers: { platform: { type: "http", url: bosProduct.mcp_resource_url } }
   }));
 
   const report = await inspectCodexRuntime({
@@ -257,8 +244,8 @@ test("Codex runtime verification rejects a shadow registered-app binding", async
     runCommand: runCommand()
   });
   assert.equal(report.ok, false);
-  assert.equal(report.mcp_binding.state, "invalid");
-  assert(report.failures.includes("package-owned BOS MCP binding is missing or invalid"));
+  assert.equal(report.app_binding.state, "invalid");
+  assert(report.failures.includes("registered BOS app binding is missing or invalid"));
 });
 
 test("Codex runtime verification reproduces the incomplete Calimatic tool catalog", async () => {

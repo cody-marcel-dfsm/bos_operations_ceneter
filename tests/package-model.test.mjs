@@ -7,7 +7,6 @@ import { promisify } from "node:util";
 import test from "node:test";
 import {
   listProducts,
-  codexPluginMcpManifest,
   copilotMcpManifest,
   geminiExtensionManifest,
   geminiPluginManifest,
@@ -1307,12 +1306,18 @@ test("BOS OAuth targets and generated product metadata derive from product.json"
     const generated = JSON.parse(await readFile(`${root}/${path}`, "utf8"));
     assert.deepEqual(generated.oauth, expected, path);
   }
-  const codexMcp = JSON.parse(await readFile(
-    `${root}/clients/codex/plugins/bos/.mcp.json`,
+  const codexApp = JSON.parse(await readFile(
+    `${root}/clients/codex/plugins/bos/.app.json`,
     "utf8"
   ));
-  assert.deepEqual(codexMcp, codexPluginMcpManifest(canonicalBosProduct));
-  await assert.rejects(access(`${root}/clients/codex/plugins/bos/.app.json`));
+  assert.deepEqual(codexApp, {
+    apps: {
+      bos: {
+        id: canonicalBosProduct.codex_connector.id,
+        required: true
+      }
+    }
+  });
 });
 
 test("runtime products declare credential-free OAuth bindings", async () => {
@@ -1454,7 +1459,7 @@ test("package schema reserves runtime ownership for BOS", () => {
     /must require select_account/
   );
   const { codex_connector: _appRemoved, ...unregistered } = base;
-  assert.deepEqual(validateProduct(unregistered), []);
+  assert.match(validateProduct(unregistered).join("\n"), /active Codex runtime requires codex_connector/);
   assert.match(
     validateProduct({
       ...base,
@@ -1550,19 +1555,26 @@ test("Video Ads composes workflows without another BOS endpoint", async () => {
 });
 
 test("disabled products are absent while active runtime products remain scoped", async () => {
-  await access(`${root}/clients/codex/plugins/bos/.mcp.json`);
+  await access(`${root}/clients/codex/plugins/bos/.app.json`);
   await assert.rejects(access(`${root}/clients/codex/plugins/video-ads`));
   await assert.rejects(access(`${root}/clients/claude/plugins/bos/.mcp.json`));
   await assert.rejects(access(`${root}/clients/claude/plugins/video-ads`));
   await assert.rejects(
     access(`${root}/clients/codex/plugins/education-center/.mcp.json`)
   );
-  const codexMcp = JSON.parse(await readFile(
-    `${root}/clients/codex/plugins/bos/.mcp.json`,
+  const codexApp = JSON.parse(await readFile(
+    `${root}/clients/codex/plugins/bos/.app.json`,
     "utf8"
   ));
-  assert.deepEqual(codexMcp, codexPluginMcpManifest(canonicalBosProduct));
-  await assert.rejects(access(`${root}/clients/codex/plugins/bos/.app.json`));
+  assert.deepEqual(codexApp, {
+    apps: {
+      bos: {
+        id: canonicalBosProduct.codex_connector.id,
+        required: true
+      }
+    }
+  });
+  await assert.rejects(access(`${root}/clients/codex/plugins/bos/.mcp.json`));
   await assert.rejects(
     access(`${root}/clients/claude/plugins/education-center/.mcp.json`)
   );
@@ -1589,15 +1601,14 @@ test("BOS owns OAuth while Education Center adds no connection binding", async (
   const codexRoot = `${root}/clients/codex/plugins/bos`;
   const metadata = JSON.parse(await readFile(`${codexRoot}/.bos-product.json`, "utf8"));
   const plugin = JSON.parse(await readFile(`${codexRoot}/.codex-plugin/plugin.json`, "utf8"));
-  const codexMcp = JSON.parse(await readFile(`${codexRoot}/.mcp.json`, "utf8"));
+  const codexApp = JSON.parse(await readFile(`${codexRoot}/.app.json`, "utf8"));
   assert.equal(metadata.application_name, "bos");
   assert.equal(metadata.mcp_group_name, "platform");
-  assert.equal(metadata.codex_app_id, canonicalBosProduct.codex_connector.id);
-  assert.equal(plugin.mcpServers, "./.mcp.json");
-  assert.equal(plugin.apps, undefined);
-  assert.deepEqual(codexMcp, codexPluginMcpManifest(canonicalBosProduct));
-  assert.equal(codexMcp.mcpServers.platform.headers, undefined);
-  await assert.rejects(access(`${codexRoot}/.app.json`));
+  assert.equal(metadata.codex_app_id, codexApp.apps.bos.id);
+  assert.equal(plugin.apps, "./.app.json");
+  assert.equal(plugin.mcpServers, undefined);
+  assert.equal(codexApp.apps.bos.required, true);
+  await assert.rejects(access(`${codexRoot}/.mcp.json`));
 
   const claudeRoot = `${root}/clients/claude/plugins/bos`;
   const claudeMetadata = JSON.parse(await readFile(
@@ -1791,20 +1802,19 @@ test("Gemini client package provides one CLI and desktop extension umbrella", as
   assert.match(readme, /\/skills list/);
 });
 
-test("feedback contract uses the package-owned BOS MCP and stable retry identity", async () => {
+test("feedback contract uses the BOS app and stable retry identity", async () => {
   const metadata = JSON.parse(await readFile(
     `${root}/clients/codex/plugins/bos/.bos-product.json`,
     "utf8"
   ));
-  const codexMcp = JSON.parse(await readFile(
-    `${root}/clients/codex/plugins/bos/.mcp.json`,
+  const codexApp = JSON.parse(await readFile(
+    `${root}/clients/codex/plugins/bos/.app.json`,
     "utf8"
   ));
   const url = canonicalBosProduct.mcp_resource_url;
   assert.equal(metadata.resource_url, url);
-  assert.equal(codexMcp.mcpServers.platform.url, url);
-  assert.equal(metadata.codex_app_id, canonicalBosProduct.codex_connector.id);
-  assert.doesNotMatch(JSON.stringify({ metadata, codexMcp }), /BOS_INSTALLED_APP_ID/);
+  assert.equal(metadata.codex_app_id, codexApp.apps.bos.id);
+  assert.doesNotMatch(JSON.stringify({ metadata, codexApp }), /BOS_INSTALLED_APP_ID/);
 
   const skill = await readFile(
     `${root}/source/platform/submit-feedback/SKILL.md`,
