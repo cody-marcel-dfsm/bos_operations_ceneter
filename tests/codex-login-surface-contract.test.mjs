@@ -248,6 +248,10 @@ test("Canonical customer guidance requires the registered app and rejects a dire
     join(root, "Vault", "docs", "IMPLEMENTATION_TASKS.md"),
     "utf8"
   );
+  const design = await readFile(
+    join(root, "Vault", "docs", "DESIGN.md"),
+    "utf8"
+  );
 
   assert.match(
     authenticationGuidance,
@@ -266,7 +270,11 @@ test("Canonical customer guidance requires the registered app and rejects a dire
     /Codex restore the required package-owned `\.app\.json` registered-app declaration/
   );
   assert.doesNotMatch(supportStateMachine, /package-owned MCP declaration/);
-  for (const activeVaultGuidance of [marketplaceHarness, implementationTasks]) {
+  for (const activeVaultGuidance of [
+    marketplaceHarness,
+    implementationTasks,
+    design
+  ]) {
     assert.match(
       activeVaultGuidance,
       /Codex[\s\S]{0,160}required[\s\S]{0,120}`\.app\.json`[\s\S]{0,160}no direct[\s\S]{0,80}`\.mcp\.json`/
@@ -276,6 +284,18 @@ test("Canonical customer guidance requires the registered app and rejects a dire
       /Codex(?: runtime products| uses)[\s\S]{0,120}`\.mcp\.json`[\s\S]{0,120}no `\.app\.json`/
     );
   }
+  assert.match(
+    design,
+    /Codex packages carry one[\s\S]{0,80}required `\.app\.json` declaration[\s\S]{0,120}no direct `\.mcp\.json`/
+  );
+  assert.match(
+    design,
+    /Codex loads the[\s\S]{0,80}required package-owned BOS app declared by `\.app\.json`[\s\S]{0,120}immutable BOS resource/
+  );
+  assert.doesNotMatch(
+    design,
+    /Codex loads the[\s\S]{0,120}(?:server|resource)[\s\S]{0,80}`\.mcp\.json`/
+  );
 });
 
 test("Codex Login display binding remains independent from server OAuth discovery", async () => {
