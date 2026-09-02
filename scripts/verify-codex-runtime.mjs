@@ -71,13 +71,13 @@ async function currentDirectSource(sourcePath, product) {
   }
 }
 
-async function inspectInstalledMcpBinding(home, marketplace, product, versions, sourcePath) {
+async function inspectInstalledAppBinding(home, marketplace, product, versions, sourcePath) {
   const packageRoot = sourcePath ?? (versions.length === 1
     ? join(home, ".codex", "plugins", "cache", marketplace, product.name, versions[0])
     : null);
-  const path = packageRoot ? join(packageRoot, ".mcp.json") : null;
+  const path = packageRoot ? join(packageRoot, ".app.json") : null;
   const pluginPath = packageRoot ? join(packageRoot, ".codex-plugin", "plugin.json") : null;
-  const appPath = packageRoot ? join(packageRoot, ".app.json") : null;
+  const runtimePath = packageRoot ? join(packageRoot, ".mcp.json") : null;
   if (
     !path ||
     !pluginPath ||
@@ -88,21 +88,21 @@ async function inspectInstalledMcpBinding(home, marketplace, product, versions, 
   }
   const manifest = await readJson(path);
   const plugin = await readJson(pluginPath);
-  const entries = Object.entries(manifest.mcpServers ?? {});
-  const [name, server] = entries[0] ?? [];
-  const current = entries.length === 1 && name === product.mcp_group_name &&
-    plugin.mcpServers === "./.mcp.json" &&
-    !("apps" in plugin) &&
-    !(await pathExists(appPath)) &&
-    server?.type === "http" &&
-    server?.url === product.mcp_resource_url &&
-    JSON.stringify(Object.keys(server ?? {}).sort()) ===
-      JSON.stringify(["type", "url"]);
+  const entries = Object.entries(manifest.apps ?? {});
+  const [name, app] = entries[0] ?? [];
+  const current = entries.length === 1 && name === product.name &&
+    plugin.apps === "./.app.json" &&
+    !("mcpServers" in plugin) &&
+    !(await pathExists(runtimePath)) &&
+    app?.id === product.codex_connector?.id &&
+    app?.required === true &&
+    JSON.stringify(Object.keys(app ?? {}).sort()) ===
+      JSON.stringify(["id", "required"]);
   return {
     state: current ? "current" : "invalid",
     path,
     plugin_path: pluginPath,
-    server: current ? server : null
+    app: current ? app : null
   };
 }
 
@@ -163,7 +163,7 @@ export async function inspectCodexRuntime(rawOptions = {}) {
   const marketplaceCurrent = marketplaceEntries(marketplaceListing).some((entry) =>
     entry?.name === options.marketplace || entry?.marketplaceName === options.marketplace
   );
-  const mcpBinding = await inspectInstalledMcpBinding(
+  const appBinding = await inspectInstalledAppBinding(
     options.home,
     options.marketplace,
     bos,
@@ -195,7 +195,7 @@ export async function inspectCodexRuntime(rawOptions = {}) {
     ...registryFailures,
     ...(marketplaceCurrent ? [] : [`${options.marketplace} marketplace is not registered`]),
     ...packageFailures,
-    ...(mcpBinding.state === "current" ? [] : ["package-owned BOS MCP binding is missing or invalid"]),
+    ...(appBinding.state === "current" ? [] : ["registered BOS app binding is missing or invalid"]),
     ...(catalogPath ? [] : ["Codex callable-tool catalog is missing"]),
     ...missingTools.map((tool) => `callable tool is missing: ${tool}`)
   ];
@@ -211,7 +211,7 @@ export async function inspectCodexRuntime(rawOptions = {}) {
     installed_products: installedProducts,
     cache_versions: cacheVersions,
     package_roots: packageRoots,
-    mcp_binding: mcpBinding,
+    app_binding: appBinding,
     callable_catalog: {
       path: catalogPath,
       discovered_tool_count: discovered.size,

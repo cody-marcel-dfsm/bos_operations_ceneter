@@ -339,6 +339,14 @@ export function validateProduct(manifest, path = "product.json") {
     }
   }
   if (
+    manifest.release_status === "active" &&
+    manifest.runtime &&
+    manifest.clients?.includes("codex") &&
+    manifest.codex_connector?.lifecycle_state !== "ESTABLISHED"
+  ) {
+    failures.push(`${path}: active Codex runtime requires codex_connector`);
+  }
+  if (
     manifest.codex_connector !== undefined &&
     (!manifest.runtime || !manifest.clients?.includes("codex"))
   ) {
@@ -673,20 +681,8 @@ export function pluginManifest(product) {
     manifest.interface.composerIcon = `./${product.composer_icon}`;
   }
   if (product.logo) manifest.interface.logo = `./${product.logo}`;
-  if (product.runtime) manifest.mcpServers = "./.mcp.json";
+  if (product.runtime) manifest.apps = "./.app.json";
   return manifest;
-}
-
-export function codexPluginMcpManifest(product) {
-  if (!product.runtime) return { mcpServers: {} };
-  return {
-    mcpServers: {
-      [product.mcp_group_name]: {
-        type: "http",
-        url: materializeMcpUrl(product)
-      }
-    }
-  };
 }
 
 export function codexAppManifest(product) {
