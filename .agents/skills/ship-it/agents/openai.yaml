@@ -1,4 +1,4 @@
 interface:
   display_name: "Ship It"
   short_description: "Approve and complete the full repository release"
-  default_prompt: "Use $ship-it as my complete and final approval to execute the entire evolving, reviewed BOS Operations Center release through versioning, validation, commit, push, pull-request merge, and workspace cleanup. Ask zero approval, confirmation, or intent questions; report concrete execution blockers declaratively."
+  default_prompt: "Use $ship-it as my explicit, complete, prospective, and final approval to create and push every final Oracle-approved release commit produced by this invocation to https://github.com/cody-marcel-dfsm/bos_operations_ceneter.git on its release branch, open or update the pull request into main, merge it after required checks pass, and clean up the workspace. This approval is given before the final version, payload, branch, and commit hashes exist and remains attached to those reviewed results. Ask zero approval, confirmation, or intent questions; report concrete execution blockers declaratively."
