@@ -1,9 +1,14 @@
-import { codexConnectorContract, materializeMcpUrl } from "./package-model.mjs";
+import {
+  codexConnectorContract,
+  materializeMcpUrl,
+  oauthTargetContract
+} from "./package-model.mjs";
 
 export function singleBosConnectionContract(products) {
   const owner = products.find(({ name }) => name === "bos");
   if (!owner) throw new Error("The BOS owner product is missing");
   const connector = codexConnectorContract(owner);
+  const oauth = oauthTargetContract(owner);
   return {
     schema_version: "1",
     contract_id: "bos.single-mcp-connection",
@@ -11,10 +16,11 @@ export function singleBosConnectionContract(products) {
     application_name: owner.application_name,
     mcp_group_name: owner.mcp_group_name,
     resource_url: materializeMcpUrl(owner),
+    oauth,
     codex_app_id: connector.id,
     codex_app_required: connector.required,
     owner_authentication_policy: owner.authentication,
-    provider_account_selection_policy: "ALWAYS_SELECT_ACCOUNT",
+    provider_account_selection_policy: oauth.provider_account_selection_policy,
     identity_organization_resolution_policy: "SERVER_EVALUATED_PER_VERIFIED_IDENTITY",
     subservice_authentication_policy: "ON_USE",
     request_time_authentication: {
@@ -54,6 +60,14 @@ export function codexLoginSurfaceContract(product) {
     plugin: product.name,
     connector_id: connector.id,
     resource_url: materializeMcpUrl(product),
+    oauth: oauthTargetContract(product),
+    connector_binding_acceptance: {
+      required: true,
+      phase: "POST_RELEASE",
+      registry_record_must_resolve: true,
+      connector_id_must_equal_product_source: true,
+      resource_url_must_equal_product_source: true
+    },
     action: {
       always_visible: true,
       allowed_labels: ["Connect", "Reconnect"],

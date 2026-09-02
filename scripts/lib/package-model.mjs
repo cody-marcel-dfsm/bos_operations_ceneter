@@ -74,6 +74,7 @@ export function validateProduct(manifest, path = "product.json") {
     "application_name",
     "mcp_group_name",
     "mcp_resource_url",
+    "oauth",
     "codex_connector",
     "settings_template",
     "settings_initializer",
@@ -224,6 +225,74 @@ export function validateProduct(manifest, path = "product.json") {
       !/^https:\/\/[^\s]+$/.test(manifest.mcp_resource_url))) {
     failures.push(`${path}: runtime requires application_name, mcp_group_name, and an HTTPS mcp_resource_url`);
   }
+  const oauth = manifest.oauth;
+  if (manifest.runtime && (!oauth || typeof oauth !== "object" || Array.isArray(oauth))) {
+    failures.push(`${path}: runtime requires a complete OAuth target contract`);
+  } else if (!manifest.runtime && oauth !== undefined) {
+    failures.push(`${path}: OAuth target contract is only valid for a runtime product`);
+  } else if (oauth) {
+    const expectedOAuthKeys = [
+      "authorization_endpoint",
+      "authorization_server_issuer",
+      "identity_provider",
+      "identity_provider_authorization_endpoint",
+      "provider_account_selection_policy",
+      "provider_account_selection_prompt"
+    ];
+    if (JSON.stringify(Object.keys(oauth).sort()) !== JSON.stringify(expectedOAuthKeys)) {
+      failures.push(`${path}: oauth must contain the complete OAuth target contract`);
+    } else {
+      let issuer;
+      let authorizationEndpoint;
+      let providerEndpoint;
+      try {
+        issuer = new URL(oauth.authorization_server_issuer);
+      } catch {
+        // The failure below reports the invalid issuer.
+      }
+      try {
+        authorizationEndpoint = new URL(oauth.authorization_endpoint);
+      } catch {
+        // The failure below reports the invalid endpoint.
+      }
+      try {
+        providerEndpoint = new URL(oauth.identity_provider_authorization_endpoint);
+      } catch {
+        // The failure below reports the invalid endpoint.
+      }
+      if (!issuer || issuer.protocol !== "https:" || issuer.username || issuer.password ||
+          issuer.pathname !== "/" || issuer.search || issuer.hash ||
+          oauth.authorization_server_issuer !== issuer.origin) {
+        failures.push(`${path}: oauth.authorization_server_issuer must be an exact HTTPS origin`);
+      }
+      if (!authorizationEndpoint || authorizationEndpoint.protocol !== "https:" ||
+          authorizationEndpoint.username || authorizationEndpoint.password ||
+          authorizationEndpoint.pathname === "/" || authorizationEndpoint.search ||
+          authorizationEndpoint.hash || authorizationEndpoint.origin !== issuer?.origin) {
+        failures.push(`${path}: oauth.authorization_endpoint must be an exact HTTPS endpoint on the authorization-server issuer`);
+      }
+      if (oauth.identity_provider !== "google") {
+        failures.push(`${path}: oauth.identity_provider must be google`);
+      }
+      if (!providerEndpoint || providerEndpoint.protocol !== "https:" ||
+          providerEndpoint.username || providerEndpoint.password ||
+          providerEndpoint.hostname !== "accounts.google.com" ||
+          providerEndpoint.pathname === "/" || providerEndpoint.search || providerEndpoint.hash) {
+        failures.push(`${path}: oauth.identity_provider_authorization_endpoint must be an exact Google HTTPS endpoint`);
+      }
+      if (oauth.provider_account_selection_policy !== "ALWAYS_SELECT_ACCOUNT" ||
+          oauth.provider_account_selection_prompt !== "select_account") {
+        failures.push(`${path}: oauth provider account selection must require select_account`);
+      }
+      try {
+        if (issuer && new URL(manifest.mcp_resource_url).origin !== issuer.origin) {
+          failures.push(`${path}: BOS resource and OAuth authorization-server issuer must share one origin`);
+        }
+      } catch {
+        // The runtime URL validation above reports an invalid resource URL.
+      }
+    }
+  }
   const connector = manifest.codex_connector;
   if (connector !== undefined) {
     const expectedKeys = [
@@ -257,7 +326,7 @@ export function validateProduct(manifest, path = "product.json") {
       if (connector.required !== true ||
           connector.identity_policy !== "IMMUTABLE" ||
           connector.metadata_policy !== "UPDATE_IN_PLACE" ||
-          connector.missing_record_policy !== "REGISTRY_INTEGRITY_FAILURE" ||
+          connector.missing_record_policy !== "RESTORE_SAME_RECORD" ||
           connector.provisioning_policy !== "NEW_PRODUCT_ONLY") {
         failures.push(`${path}: codex_connector lifecycle policies are invalid`);
       }
@@ -546,6 +615,22 @@ export function materializeMcpUrl(product) {
     throw new Error(`Runtime ${product?.runtime ?? "unknown"} has no valid MCP resource URL`);
   }
   return resourceUrl;
+}
+
+export function oauthTargetContract(product) {
+  const oauth = product?.oauth;
+  if (!oauth || typeof oauth !== "object" || Array.isArray(oauth)) {
+    throw new Error(`Runtime ${product?.runtime ?? "unknown"} has no OAuth target contract`);
+  }
+  return {
+    authorization_server_issuer: oauth.authorization_server_issuer,
+    authorization_endpoint: oauth.authorization_endpoint,
+    identity_provider: oauth.identity_provider,
+    identity_provider_authorization_endpoint:
+      oauth.identity_provider_authorization_endpoint,
+    provider_account_selection_policy: oauth.provider_account_selection_policy,
+    provider_account_selection_prompt: oauth.provider_account_selection_prompt
+  };
 }
 
 export function codexRawAppId(id) {
