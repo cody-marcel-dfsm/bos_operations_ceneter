@@ -77,6 +77,11 @@ validation, and prohibit reclassifying it as unrelated.
   required `.app.json` architecture remains the released state. Release 0.4.76
   includes and validates that reconciled history before the branch and worktree
   are removed.
+- After 0.4.76 merged and all redundant branches were removed, the active Vault
+  watcher generated one final indexed manifest for the updated `main` sources.
+  The watcher was stopped, and release 0.4.77 includes that amended evidence so
+  the completed workspace can remain clean with only `main` locally and
+  remotely.
 
 ### Validation and Oracle review
 
