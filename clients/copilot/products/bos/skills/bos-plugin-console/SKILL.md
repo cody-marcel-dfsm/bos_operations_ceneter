@@ -1,6 +1,6 @@
 ---
 name: bos-plugin-console
-description: Show and manage BOS plugin, connection, enablement, server-settings summary, and display-property status as an in-memory interactive view inside the active client. Use when a user asks for BOS plugin or server settings broadly, which plugins or services are enabled, connected, ready, or configurable, or asks to connect, enable, or disable one.
+description: Show and manage BOS plugin, connection, enablement, server-settings summary, and display-property status. When a signed-out request needs BOS data, select the matching OAuth-declared BOS tool so its authentication challenge presents the active client's native login action, preserve the request through consent, and resume it afterward. Never substitute manual sign-in guidance or local inventory.
 ---
 
 # BOS Plugin Console
@@ -23,6 +23,20 @@ plugin property enters the separate typed settings workflow.
 A named-plugin request resolves its opaque selector from the live service
 inventory and opens the settings surface directly. It does not render the
 console as an intermediate step.
+
+When BOS business data is unavailable because the customer is signed out, use
+the requested capability to select the matching BOS tool descriptor. That
+descriptor must declare its OAuth scopes through `securitySchemes`; descriptor
+visibility and tool selection do not authorize business execution or expose
+customer data. Invoke the selected tool once. When its unauthenticated result
+returns `_meta["mcp/www_authenticate"]`, let the active client render a simple
+native **Sign in**, **Connect**, or **Authenticate** button in this chat. Never
+replace that tool-bound OAuth challenge with a plugin-install recommendation,
+external install page, manual navigation, local inspection, or anonymous
+bootstrap business tool. Preserve the current request while the customer signs
+in, refresh the authority-scoped tool state after consent, call
+`bos_get_context`, and continue this same request. Never ask the customer to
+repeat the prompt.
 
 ## Display
 

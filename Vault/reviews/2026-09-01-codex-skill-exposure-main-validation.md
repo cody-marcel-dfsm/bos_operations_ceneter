@@ -2,10 +2,10 @@
 
 Date: 2026-09-01
 
-Status: superseded by the 0.4.70 package-owned MCP correction documented in
-`Vault/docs/codex-registered-app-incident.md` and
-`Vault/docs/issues/conclusions/ISSUE_0001_CONCLUSION.md`. The rejected finding
-below records the pre-correction state and is no longer current guidance.
+Status: historical rejected finding. The later 0.4.70 package-owned MCP
+correction was itself invalidated by live missing-Login evidence. Current
+guidance is in `Vault/docs/codex-registered-app-incident.md` and
+`Vault/docs/issues/ISSUE_HISTORY.md`.
 
 ## Scope
 

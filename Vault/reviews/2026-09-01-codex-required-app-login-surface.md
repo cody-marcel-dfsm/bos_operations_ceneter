@@ -2,6 +2,11 @@
 
 Date: 2026-09-01
 
+Status: INVALIDATED as final resolution evidence. The review proved
+`required: true` on a replacement identity and did not restore the exact
+user-proven root BOS identity from commit `e46546c`. Retained as failed-review
+history.
+
 ## Scope
 
 Review the actual BOS Operations Center diff for release 0.4.66. The change

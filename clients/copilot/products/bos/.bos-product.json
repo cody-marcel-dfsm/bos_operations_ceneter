@@ -1,10 +1,11 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.70",
+  "version": "0.4.71",
   "client": "copilot",
   "application_name": "bos",
   "mcp_group_name": "platform",
+  "resource_url": "https://dfsm.ai/mcp/apps/bos/platform",
   "connection_owner": "bos",
   "authentication": "oauth_2_1"
 }

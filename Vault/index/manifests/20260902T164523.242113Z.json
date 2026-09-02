@@ -1,0 +1,15 @@
+{
+  "canonical_source_snapshot_sha256": "05606d60232be816694c2495a917ec88d02d71efbf06cc6364e44ebf8ffcf293",
+  "changed_sources": [
+    "Vault/docs/codex-registered-app-incident.md",
+    "Vault/specs/single-bos-mcp-connection.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 249,
+  "duration_seconds": 0.55,
+  "index_version": 1,
+  "indexed_at": "20260902T164523.242113Z",
+  "indexed_chunks": 11,
+  "removed_sources": [],
+  "source_count": 92
+}

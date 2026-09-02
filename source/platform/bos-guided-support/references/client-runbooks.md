@@ -63,24 +63,29 @@ request.
 
 1. Confirm **BOS** and the requested subservice plugins are installed and
    enabled in the Plugins Directory.
-2. Confirm BOS's plugin manifest declares `mcpServers: "./.mcp.json"`, that
-   file contains exactly one credential-free HTTPS BOS server, and the package
-   has no `.app.json`; subservice plugins carry no additional BOS binding.
+2. Confirm BOS's plugin manifest declares `apps: "./.app.json"`, that app file
+   contains exactly one required BOS entry using the product's
+   canonical raw `asdk_app_...` connector identity, and the package has no `.mcp.json`;
+   subservice plugins carry no additional BOS binding.
 3. Start a new task after install or update when the existing task cannot see
    the plugin.
-4. Confirm the host loads the BOS server and shows its native **Login**, **Connect**, or
-   **Authenticate** action when authentication is required. If it is absent,
-   report an authentication-activation defect and repair the package binding.
-5. Complete BOS consent from that native action. The MCP resource
-   returns the HTTP 401 protected-resource challenge required for runtime OAuth
-   discovery. If runtime activation fails, preserve the
+4. Confirm the host shows the plugin-page **Login**, **Connect**, or
+   **Authenticate** action from the required app declaration. For request-time
+   chat authentication, select the requested OAuth-declared BOS tool and invoke
+   it once without business execution.
+5. The signed-out selected tool returns `isError: true` and
+   `_meta["mcp/www_authenticate"]` with `resource_metadata`, `error`, and
+   `error_description`; that tool result owns activation of the inline chat
+   action. The transport HTTP 401 challenge owns protected-resource discovery,
+   and the app declaration owns the persistent plugin-page action. If the
+   selected-tool challenge does not render the inline action, preserve the
    request and report an authentication-activation defect. The agent never
    invokes CLI login or launches authentication for the customer.
 6. After browser consent succeeds, refresh the MCP session and callable tools,
    resolve BOS context, run one bounded read, and resume the original request.
 
 Official source:
-`https://developers.openai.com/plugins/build/plugins`
+`https://developers.openai.com/plugins/build/auth#triggering-authentication-ui`
 
 ## Claude Cowork/Desktop
 

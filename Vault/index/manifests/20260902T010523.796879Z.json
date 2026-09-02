@@ -1,0 +1,15 @@
+{
+  "canonical_source_snapshot_sha256": "f464e4fda64bbde563b8cf9e24ef3d658538acad801f7da10ffeb2a91d08927b",
+  "changed_sources": [
+    "Vault/decisions/2026-08-11-desktop-private-marketplace-oauth.md",
+    "Vault/reviews/2026-08-29-durable-codex-app-identity.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 212,
+  "duration_seconds": 0.363,
+  "index_version": 1,
+  "indexed_at": "20260902T010523.796879Z",
+  "indexed_chunks": 3,
+  "removed_sources": [],
+  "source_count": 90
+}

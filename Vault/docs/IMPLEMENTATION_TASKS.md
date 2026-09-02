@@ -448,9 +448,10 @@ remote MCP transport on macOS, Windows, and Linux.
 
 **Acceptance criteria:**
 
-- Generated Codex runtime products contain one credential-free `.mcp.json`
-  binding and no `.app.json`; generated Claude runtime products contain
-  account-connector metadata with the immutable HTTPS URL and no credentials.
+- Generated Codex runtime products contain one required credential-free
+  `.app.json` registered-app binding and no direct `.mcp.json`; generated Claude
+  runtime products contain account-connector metadata with the immutable HTTPS
+  URL and no credentials.
 - Generated client packages contain no `command`, `stdio`, executable, Python
   runtime, or local credential listener.
 - The BOS product targets `/mcp/apps/bos/platform`; Video Ads and every other

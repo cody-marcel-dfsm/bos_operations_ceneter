@@ -1,0 +1,14 @@
+{
+  "canonical_source_snapshot_sha256": "1a0e78893ba272a61802fc9fdf3bce932ae8d24dfe876ef3ec61766ec8b1503f",
+  "changed_sources": [
+    "Vault/docs/issues/ISSUE_HISTORY.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 241,
+  "duration_seconds": 0.774,
+  "index_version": 1,
+  "indexed_at": "20260902T073538.012431Z",
+  "indexed_chunks": 27,
+  "removed_sources": [],
+  "source_count": 92
+}

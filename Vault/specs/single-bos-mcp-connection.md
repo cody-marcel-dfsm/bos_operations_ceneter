@@ -20,9 +20,14 @@ server from canonical authenticated state.
   capabilities. They contain no independent BOS app binding,
   connector, MCP server declaration, OAuth grant, token field, or fallback
   connection.
-- ChatGPT/Codex loads the root BOS plugin's package-owned `.mcp.json`. It
-  declares exactly one credential-free HTTPS server for the immutable BOS
-  resource and contains no account-scoped app identifier or `.app.json`.
+- ChatGPT/Codex loads the root BOS plugin's package-owned `.app.json`. It
+  declares exactly one registered BOS app using the permanent identity in
+  `products/bos/product.json` with `required: true`, and contains no direct
+  `.mcp.json`. That product file is the sole authored identity and MCP-resource
+  source. Generated package and contract files derive from it. Established
+  metadata changes update that same ID in place; a missing record is an
+  integrity failure and never authorizes a replacement. There is no identity
+  migration.
   Claude exposes one persistent
   BOS Web connector. Copilot, Gemini, and Antigravity expose one BOS MCP server
   connection through their native adapter.
@@ -33,20 +38,33 @@ server from canonical authenticated state.
   replaces that registration through current OAuth metadata, restarts
   authorization once, refreshes tools and context, and resumes the preserved
   request. Registration recovery never creates a subservice connection.
-- A missing Codex authentication action after the package-owned server loads
-  identifies an authentication-activation defect. Repair and reload the root
-  `.mcp.json` declaration before evaluating server behavior.
-- A Codex MCP-startup `reauthenticationRequired` response identifies a missing
-  or unusable grant for the package-owned root resource. The resource's
-  unauthenticated discovery response returns HTTP 401 with the canonical
-  protected-resource `WWW-Authenticate` challenge so Codex classifies the
-  runtime connection as `notLoggedIn` and activates OAuth through the
-  host-managed connection.
-  The user selects that action and completes consent; the client then refreshes
-  the same MCP connection and callable manifest, validates context, and resumes.
-  A missing native action is an authentication-activation defect. Generic app
-  permissions, CLI login, and agent-launched browser authentication never
-  substitute for the native MCP OAuth lifecycle.
+- The GPT plugin detail page always renders exactly one root BOS authentication
+  action after the plugin declaration loads. Connector-metadata resolution,
+  connection inventory, grant validity, and callable-tool discovery never gate
+  visibility. The action reads **Connect** when no usable connection exists and
+  **Reconnect** when a connection exists with a valid, expired, or invalid
+  grant. A valid server OAuth response never satisfies this independent display
+  contract.
+- A missing Codex authentication action after the root app declaration loads
+  identifies a GPT client display defect. Package correction is applicable only
+  when the root declaration itself is absent or malformed. Resolver, connection,
+  and server OAuth failures remain separate states and never explain a hidden
+  action.
+- A Codex request-time or MCP-startup `reauthenticationRequired` response
+  identifies a missing or unusable grant for the selected BOS tool. Before
+  consent, the host receives the requested tool descriptor with
+  `securitySchemes: [{ type: "oauth2", scopes: [...] }]`. This metadata permits
+  tool selection while customer data and business execution remain protected.
+  The selected tool returns `isError: true` and
+  `_meta["mcp/www_authenticate"]` with `resource_metadata`, `error`, and
+  `error_description`; that tool-bound challenge causes the native inline
+  **Sign in** action to render. After consent, the client refreshes the server
+  authority-scoped callable state, validates context with `bos_get_context`,
+  and resumes the original request. A missing descriptor or challenge is a
+  tool-auth-contract defect; a received challenge without a native action is an
+  authentication-activation defect. Generic app permissions, CLI login,
+  agent-launched browser authentication, anonymous bootstrap business tools,
+  and plugin-install recommendations never substitute for this lifecycle.
 - A token-endpoint `invalid_grant`, including `Refresh token replay detected`,
   identifies an unusable host-held grant. The client stops refresh retries,
   preserves the active request, obtains fresh consent through the same native
@@ -71,10 +89,13 @@ application, installation, subservice, plugin, interactive role, capability,
 provider readiness, and requested tool from the OAuth grant, opaque context,
 tool identity, and canonical records.
 
-The live tool manifest contains only capabilities available to the current
-authenticated context. Plugin installation, enablement, role changes,
-capability changes, and provider readiness trigger tool and context refresh;
-they never create another BOS authentication boundary.
+Before authentication, the BOS tool manifest exposes only capability descriptors,
+input schemas, and per-tool OAuth `securitySchemes` required for selection. It
+contains no customer data, authority context, or permission to execute business
+logic. After authentication, the refreshed live tool state contains only
+capabilities available to the current authenticated context. Plugin installation,
+enablement, role changes, capability changes, and provider readiness trigger tool
+and context refresh; they never create another BOS authentication boundary.
 
 Subservice skills select a workflow or semantic operation. They never select a
 connection, token, organization, installation, or authority scope. Missing or
@@ -110,17 +131,19 @@ login or BOS MCP connection.
 8. A stale host-owned public client receives `invalid_client`, replaces its
    registration for the same BOS resource, and resumes through the single BOS
    connection.
-9. ChatGPT/Codex packages require exactly one package-owned root BOS MCP
-   binding, contain no account-scoped app identifier, and reject app or
-   additional MCP bindings.
+9. ChatGPT/Codex packages require exactly one package-owned root BOS app
+   binding with the proven identity and `required: true`, contain no direct
+   `.mcp.json`, and reject optional, replacement, or additional bindings.
 10. ChatGPT/Codex readiness jointly verifies the native plugin registry,
     marketplace registration, one current managed-cache version per active
-    product, the package-owned MCP declaration, and every product-declared
+    product, the required registered-app declaration, and every product-declared
     runtime verification tool in the callable catalog. A package cache alone is
     not installation evidence.
-11. ChatGPT/Codex recovery removes only state owned by the BOS marketplace or
-    immutable BOS resource URL, backs up any edited host state, reinstalls both active
-    products, restarts the host, and reruns the same readiness verification.
+11. ChatGPT/Codex cleanup removes only product-declared retired accidental
+    account records and local state owned by the BOS marketplace or immutable
+    BOS resource URL, preserves the permanent established account record, and
+    backs up any edited host state. It reinstalls nothing. The user installs the
+    intended package explicitly after cleanup succeeds.
 12. Claude readiness follows the active user-scoped plugin registry entry and
     its `installPath`, verifies the current package version and BOS metadata,
     and reports inactive seven-day cache retention separately. Claude recovery
@@ -136,13 +159,45 @@ login or BOS MCP connection.
 15. Copilot readiness compares the selected product's repository MCP and skill
     files directly against generated output. The Copilot repository adapter has
     no BOS package-cache state.
-16. Codex installation loads the package-owned MCP declaration. Reauthentication
-    requires an unauthenticated resource GET to return HTTP 401, the exact protected-resource
-    `WWW-Authenticate` challenge, and `authentication_required`. An authenticated
+16. Codex installation loads the required registered-app declaration and its
+    OAuth-declared BOS tool descriptors. Request-time authentication selects the
+    tool required by the prompt; its unauthenticated result returns
+    `_meta["mcp/www_authenticate"]`, which renders the inline action. Descriptor
+    visibility and selection precede consent, while business execution and
+    customer data remain denied. After consent, the host refreshes the server
+    authority-scoped callable state, validates context with `bos_get_context`,
+    and resumes the original request.
+    Protected-resource discovery returns the exact canonical
+    `WWW-Authenticate` challenge and `authentication_required`. An authenticated
     resource GET remains HTTP 405 with `Allow: POST`. The client never invokes
     CLI login or launches authentication for the user.
 17. Every server release that changes MCP authentication passes the complete
     client-owned Operations Center acceptance suite before release acceptance.
+18. After publishing a Codex package release that changes request-time
+    authentication, capture a version-matched signed-out conversation screenshot at
+    `Vault/evidence/codex-login/<version>-request-time-sign-in-button.png`. It
+    must show a BOS-dependent customer prompt and the simple native inline
+    **Sign in**, **Connect**, or **Authenticate** button in that same chat.
+    Startup status, protocol output, manual settings instructions, and a plugin
+    page control never substitute for this visual request-time artifact. Its
+    absence does not block source publication.
+19. After publishing a Codex package release that changes the Login display
+    binding, capture a version-matched GPT client screenshot at
+    `Vault/evidence/codex-login/<version>-connect-button.png`. A matching
+    `<version>-connect-button.review.json` binds the screenshot SHA-256 to an
+    Oracle-approved visual finding of **Connect** or **Reconnect** on the GPT
+    plugin-detail surface. The screenshot
+    must visibly show the native BOS **Connect** or **Reconnect** control on the BOS
+    plugin page. Package shape, a Platform MCP server row, OAuth discovery, and
+    callable-tool evidence never substitute for this visual acceptance artifact.
+    Its absence does not block source publication.
+20. GPT renders the root BOS **Connect** or **Reconnect** action for every state
+    in `contracts/codex-login-surface.v1.json`. Connector metadata, connection
+    inventory, OAuth grant validity, and callable-tool presence or request
+    failures may select the label, recovery state, or subsequent flow; none may
+    suppress the action. Optional display metadata resolves from connector
+    metadata, then directory data, then the plugin declaration. A raw technical
+    ID remains renderable with the native action.
 
 ## Portable contract verification
 
@@ -161,13 +216,21 @@ npm run contract:check
 npm run contract:oauth-discovery-live -- \
   --resource-url "$BOS_MCP_RESOURCE_URL" \
   --format json
+npm run contract:oauth-tool-auth-live -- \
+  --resource-url "$BOS_MCP_RESOURCE_URL" \
+  --tool bos_get_context \
+  --format json
 npm run contract:oauth-live -- \
   --authorize-url "$BOS_OAUTH_AUTHORIZE_URL" \
   --format json
 ```
 
-The signed-out discovery probe requires HTTP 401, the exact canonical
-`WWW-Authenticate` challenge, `authentication_required`, and no violations.
+The signed-out discovery probe requires HTTP 401 with the exact canonical
+`WWW-Authenticate` challenge and `authentication_required`. The tool-auth probe
+then requires the pre-consent `bos_get_context` descriptor and OAuth scopes,
+followed by its signed-out `mcp/www_authenticate` result with no business data.
+Registered-app and connector diagnostics separately prove that the host can
+resolve the installed app. Any violation fails the applicable probe.
 The authorization probe requires a valid provider redirect for the same
 immutable resource with explicit Google account selection.
 

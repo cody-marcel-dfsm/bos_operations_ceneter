@@ -1,0 +1,19 @@
+{
+  "canonical_source_snapshot_sha256": "41dc0d84efd18419f4909a0f03725f7d4cad721d76cb383952fd54f20837c60a",
+  "changed_sources": [
+    "Vault/decisions/2026-09-01-codex-registered-app-login-surface.md",
+    "Vault/docs/codex-registered-app-incident.md",
+    "Vault/docs/issues/ISSUE_HISTORY.md",
+    "Vault/docs/issues/conclusions/ISSUE_0001_CONCLUSION.md",
+    "Vault/evidence/codex-login/0.4.71-gpt-plugin-detail-analysis.md",
+    "Vault/specs/single-bos-mcp-connection.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 212,
+  "duration_seconds": 1.068,
+  "index_version": 1,
+  "indexed_at": "20260902T004856.632214Z",
+  "indexed_chunks": 23,
+  "removed_sources": [],
+  "source_count": 90
+}

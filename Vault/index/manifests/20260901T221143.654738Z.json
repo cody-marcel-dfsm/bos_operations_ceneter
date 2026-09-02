@@ -1,0 +1,14 @@
+{
+  "canonical_source_snapshot_sha256": "b89bb91bd86797e84a33280e39c1e9a2847577c56a7fc3ab8843205eb6fe6fe3",
+  "changed_sources": [
+    "Vault/decisions/2026-08-29-codex-package-owned-mcp.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 194,
+  "duration_seconds": 0.206,
+  "index_version": 1,
+  "indexed_at": "20260901T221143.654738Z",
+  "indexed_chunks": 1,
+  "removed_sources": [],
+  "source_count": 87
+}

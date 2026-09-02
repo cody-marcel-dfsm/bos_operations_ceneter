@@ -1,53 +1,91 @@
-# Issue #0001 conclusion: Codex BOS login and callable-tool exposure
+# Issue #0001 conclusion: Codex BOS login display regression
 
-- Status: RESOLVED
-- Resolution version: 0.4.70
-- Date: 2026-09-01
-- Category: Codex package binding and authentication readiness
+- Status: source release ready; original GPT UI acceptance pending manual install
+- Resolution version: 0.4.71 candidate
+- Date: 2026-09-02
+- Category: Codex product identity, package binding, and login display
 - Related incident: `Vault/docs/codex-registered-app-incident.md`
+- Negative client evidence:
+  `Vault/evidence/codex-login/0.4.71-missing-connect-current.png`
 
-## User-visible symptom and impact
+## Symptom
 
-The BOS plugin and its skills appeared installed, while the plugin page exposed
-no login control and active tasks received no BOS callable tools. Users had no
-native way to authorize the connection and the diagnostic response incorrectly
-described the callable manifest as generally unavailable.
+The BOS plugin and skills appeared installed while its detail page exposed no
+native **Connect** or **Reconnect** action. Later diagnostics incorrectly tied
+display to connection, metadata, or callable-tool availability. A failed repair
+also created a second private “Created by you” BOS product with a new ID.
 
 ## Root cause
 
-Skill loading and MCP connection loading are independent. The package had moved
-from a portable package-owned MCP resource to an optional registered app in
-0.4.65. Adding `required: true` in 0.4.66 could influence the display binding,
-yet the referenced `asdk_app_*` value remained an account-scoped OpenAI Platform
-submission draft. The deleted first identity returned `Connector not found`;
-the replacement draft also lacked customer-directory registration. A package
-could therefore pass shape checks while failing fresh-account resolution.
+Commit `e46546c` converted the working Education Center login into one root BOS
+login. Later changes replaced that working product identity, removed the
+required app declaration, and used a direct MCP binding. At least ten builds
+carried one or more parts of that regression. An ad-hoc account connector POST
+then minted another ID and changed generated package files to follow it.
 
-## Fix applied
+The tooling allowed this because identity, resource metadata, generated
+contracts, cleanup IDs, and tests were spread across several files. A calling
+agent could choose an account-creation path instead of the established-product
+update path. Connection receipt and metadata resolution were also treated as
+evidence for the separate plugin-page display contract.
 
-Release 0.4.70 restored one credential-free root `.mcp.json` pointing to the
-immutable BOS HTTPS resource, removed account-scoped app IDs from the portable
-product contract, kept subservices transport-free, and added bounded migration
-for the known stale app identities. Runtime verification now reports package
-binding and callable discovery independently.
+## Correction
+
+`products/bos/product.json` is now the single authored product authority. It
+contains the permanent established connector, MCP resource URL, immutable and
+mutable lifecycle policies, and retired accidental IDs. There is no identity
+migration.
+
+All client packages and root contracts are generated from that file. The Codex
+package contains one required root `.app.json` declaration and no direct
+`.mcp.json`. Subservices contain no separate connection declaration.
+
+Established metadata synchronization requires the permanent ID, updates that
+record in place, and post-reads the same ID before success. HTTP 404 is a
+registry-integrity failure; authentication and registry outages remain distinct
+failures and never create a replacement. The account API boundary converts the
+package-facing `plugin_asdk_app_*` form to the raw `asdk_app_*` connector path,
+and tests prove both accepted inputs inspect the same URL. A new ID can be created only for a
+different disabled product explicitly authored as `UNPROVISIONED_NEW`, with a
+matching requested source name and no retired IDs; retry first reconciles its
+complete declared metadata fingerprint.
+
+Cleanup preserves the permanent record, deletes only product-declared retired
+IDs, verifies each exact record is HTTP 404 afterward, never installs, and is
+idempotent. Repository diagnostics emit correlated, bounded, redacted
+request/response logs by default.
 
 ## Verification
 
-- Deterministic generated-client parity and package validation.
-- Positive and negative Codex install, login-surface, cleanup, and runtime tests.
-- `npm run release:check` and `npm run contract:check`.
-- Post-install live acceptance remains a separate host check: OAuth discovery
-  and grant, declared tool discovery, `bos_get_context`, and one bounded
-  authenticated read.
-- Repository-local Oracle review of the complete diff and evidence.
+- Generated `.app.json`, `.bos-product.json`, cross-client MCP artifacts, and
+  both contracts match `products/bos/product.json`.
+- Regression tests cover immutable identity, update-in-place and post-read,
+  package-to-account ID normalization, distinct registry failures, explicit
+  new-product creation, interrupted-create reconciliation, retired-only cleanup,
+  and a second cleanup run.
+- `npm run build:packages`, `npm run check`, and `npm run contract:check` pass.
+  The complete source release suite passes 277 of 277 tests. Issue #0001's
+  source, lifecycle, cleanup, package-shape, contract, and Antigravity tests all
+  pass. The separately invoked post-release verifier reports the exact missing
+  Issue #0001 artifact; Issue #0002 retains its independent post-release check.
+- The final host acceptance artifact is a version-matched screenshot showing the
+  native BOS **Connect** or **Reconnect** action after the user manually installs
+  the candidate. Oracle visually inspects it and authors a matching review
+  receipt binding its SHA-256, version, surface, and observed action. The source
+  task does not operate the GPT client. This original-goal AC remains open
+  without blocking a later explicit source-publication instruction.
 
 ## Prevention
 
-- Query the issue history before changing Codex authentication or transport.
-- Keep portable package runtime identity credential-free and account-neutral.
-- Validate install, skills, connection, OAuth, callable discovery, and execution
-  as separate gates.
-- Require fresh-account portability evidence for any externally registered
-  identity.
-- Record failed attempts and the accepted correction in the Vault, then refresh
-  the Chroma index.
+- Start every product operation from `products/bos/product.json`.
+- Generate identity-bearing artifacts and contracts; never author them by hand.
+- Use established inspect/update commands for BOS maintenance.
+- Use explicit `UNPROVISIONED_NEW` provisioning only for a different disabled
+  product with a matching requested source name and no prior IDs; reconcile its
+  complete metadata before retry.
+- Treat display, metadata, connection, OAuth, tool discovery, and execution as
+  independent acceptance layers.
+- Require Oracle review of the actual diff and validation evidence after every
+  repository mutation.
+- Bind visual acceptance to an Oracle-inspected screenshot hash and explicit
+  observed **Connect** or **Reconnect** action; image format alone never passes.

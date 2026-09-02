@@ -1,0 +1,17 @@
+{
+  "canonical_source_snapshot_sha256": "294c3413caa303bc35731a5d5a5b7246aa7169e4007d22254f01eba7ea79a1d1",
+  "changed_sources": [
+    "Vault/decisions/2026-08-11-desktop-private-marketplace-oauth.md",
+    "Vault/reviews/2026-09-01-codex-required-app-login-surface.md",
+    "Vault/reviews/2026-09-01-codex-skill-exposure-main-validation.md",
+    "Vault/reviews/2026-09-01-release-0.4.70-codex-skill-tool-exposure.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 194,
+  "duration_seconds": 0.732,
+  "index_version": 1,
+  "indexed_at": "20260901T221419.626949Z",
+  "indexed_chunks": 8,
+  "removed_sources": [],
+  "source_count": 87
+}

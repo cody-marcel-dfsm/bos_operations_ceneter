@@ -1,0 +1,16 @@
+{
+  "canonical_source_snapshot_sha256": "2a8a79e4da829d0e16e2bcfee3aeb03b5023981a943cb62129956c1b4a062c55",
+  "changed_sources": [
+    "Vault/docs/codex-registered-app-incident.md",
+    "Vault/docs/issues/conclusions/ISSUE_0001_CONCLUSION.md",
+    "Vault/evidence/codex-login/0.4.71-gpt-plugin-detail-analysis.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 216,
+  "duration_seconds": 0.567,
+  "index_version": 1,
+  "indexed_at": "20260902T013132.752683Z",
+  "indexed_chunks": 10,
+  "removed_sources": [],
+  "source_count": 90
+}

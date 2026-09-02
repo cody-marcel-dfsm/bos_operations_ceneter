@@ -1,0 +1,14 @@
+{
+  "canonical_source_snapshot_sha256": "0cfcce1aa8e2c1774ebfc767b614feabd945870d52653717b4c0be1392eb0c58",
+  "changed_sources": [
+    "Vault/evidence/codex-login/0.4.71-live-connector-metadata.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 249,
+  "duration_seconds": 0.231,
+  "index_version": 1,
+  "indexed_at": "20260902T164023.912640Z",
+  "indexed_chunks": 1,
+  "removed_sources": [],
+  "source_count": 92
+}

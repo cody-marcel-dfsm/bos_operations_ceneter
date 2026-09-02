@@ -4,7 +4,8 @@
 
 Accepted on 2026-08-11. The Claude packaging portion is superseded by
 `2026-08-22-claude-account-connector-separation.md`; the Codex app-ID portion is
-superseded by `2026-08-29-codex-package-owned-mcp.md`.
+refined by `2026-09-01-codex-registered-app-login-surface.md`, which pins the
+proven root BOS identity.
 
 ## Decision
 
@@ -16,8 +17,10 @@ catalogs, with host-specific plugin manifests generated from shared canonical
 skills.
 
 Claude runtime plugins contain the immutable remote HTTPS Streamable HTTP MCP
-URL. Codex runtime plugins contain a required `.app.json` entry referencing a
-registered durable `asdk_app_*` connection that owns that immutable URL. Neither has a
+URL. Codex runtime plugins contain a required `.app.json` entry referencing the
+complete stable registered-app technical identifier that owns that immutable
+URL. The exact identifier format and value are governed by the superseding
+2026-09-01 Codex login-surface decision. Neither has a
 customer credential binding. The desktop host performs OAuth 2.1 MCP
 discovery, presents Connect/Sign in, stores and refreshes the grant, and sends
 the resource-scoped access token. BOS derives tenant, organization,

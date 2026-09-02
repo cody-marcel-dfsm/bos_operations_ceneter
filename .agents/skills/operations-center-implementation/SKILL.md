@@ -16,10 +16,20 @@ description: Implement BOS Operations Center repository changes using its archit
    behavior when practical.
 7. Implement in canonical sources and regenerate derived client packages through
    repository tooling.
+   For BOS connector work, treat `products/bos/product.json` as the only
+   authored product authority. An `ESTABLISHED` connector ID is immutable;
+   update mutable metadata in place with `npm run product:codex -- sync`, then
+   verify the same ID. Never infer new-product status from a missing registry
+   record. Provisioning applies only to a different disabled product explicitly
+   authored as `UNPROVISIONED_NEW`, with a matching requested source name and no
+   retired IDs; retries reconcile the complete metadata fingerprint first.
 8. Store durable architecture, design, issue, and implementation knowledge under
    `Vault/`; store disposable evidence under `Vault/tmp/<workflow>/`.
 9. Run focused validation and every applicable package, contract, and release
-   gate.
+   gate. GPT screenshots are post-release verification and never block source
+   publication. Keep the version-matched screenshot and an
+   Oracle-authored review receipt that binds its SHA-256 to the observed native
+   action and surface; file presence alone is never acceptance.
 10. Update issue history with root cause, resolution, evidence, and prevention
     guidance when the work fixes or materially reclassifies an issue.
 11. Synchronize the Vault index after every Vault mutation.

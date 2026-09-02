@@ -1,0 +1,15 @@
+{
+  "canonical_source_snapshot_sha256": "46cc555ac9c69cac8e210be7c20df4ea2eb45d8dac42a759854273c829471aca",
+  "changed_sources": [
+    "Vault/docs/issues/ISSUE_HISTORY.md",
+    "Vault/reviews/2026-09-01-release-0.4.71-codex-login-regression.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 218,
+  "duration_seconds": 0.604,
+  "index_version": 1,
+  "indexed_at": "20260902T014050.636681Z",
+  "indexed_chunks": 15,
+  "removed_sources": [],
+  "source_count": 91
+}

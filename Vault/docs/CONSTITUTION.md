@@ -12,8 +12,9 @@
    clients contain no secrets or customer data. Each user-facing client context
    authorizes one root BOS MCP resource through host-managed OAuth 2.1. Claude
    uses one BOS account or organization Web connector; Copilot and Gemini
-   declare the BOS resource directly; ChatGPT/Codex loads the immutable BOS
-   resource from the root package's credential-free `.mcp.json`. Education Center, CRM,
+   declare the BOS resource directly; ChatGPT/Codex loads the root package's
+   required registered BOS app from `.app.json`, which owns the native Login
+   display and resolves the immutable BOS resource. Education Center, CRM,
    Marketing Director, and other
    subservice plugins never create another BOS connection or login.
    Packages contain no user-entered BOS credential. Missing provider grants recover through

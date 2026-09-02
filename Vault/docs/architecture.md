@@ -10,11 +10,13 @@ release system for portable BOS skills and native remote MCP client adapters.
 - `source/platform/` owns tenant-neutral BOS operating and architecture skills.
 - `source/capabilities/` owns reusable business capabilities.
 - `source/verticals/` owns industry and franchise specialization.
-- `source/runtime/` owns credential-free root BOS MCP connection templates for
-  clients that distribute an endpoint directly. The root BOS Codex package
-  owns one package-owned MCP declaration.
-  Subservice products contain
-  no additional BOS connection binding.
+- `products/bos/product.json` is the sole authored BOS product authority. It
+  owns the MCP resource URL, immutable established Codex connector ID, mutable
+  metadata policy, and retired accidental IDs. Build scripts generate every
+  identity-bearing client artifact and repository contract from it.
+- The root BOS Codex package owns one required registered-app declaration that
+  renders native Login. Subservice products contain no additional BOS
+  connection binding.
 - `products/` declares versioned compositions; build scripts generate client
   packages from those declarations.
 - The BOS service owns authentication, authorization, tenant data, provider
@@ -40,8 +42,8 @@ release system for portable BOS skills and native remote MCP client adapters.
    hosts, Gemini CLI, and Google Antigravity 2.0 Desktop once through the root
    BOS OAuth 2.1 MCP connection. Claude declares one BOS account or organization
    Web connector; Copilot and Gemini declare the immutable BOS resource
-   directly; ChatGPT/Codex declares the immutable root BOS resource through
-   `.mcp.json`.
+   directly; ChatGPT/Codex declares the required registered BOS app through
+   `.app.json`, and that app resolves the immutable root BOS resource.
    Subservice plugins contain no additional BOS connection binding. No package contains an API-key field, authorization
    header template, or credential environment-variable binding. The host
    discovers BOS authorization metadata, launches consent, stores and refreshes
@@ -85,7 +87,7 @@ release system for portable BOS skills and native remote MCP client adapters.
     plugin-console, and broad server-settings status requests can diagnose and
     configure the product without creating a customer overlay.
 11. Connect clients to one BOS HTTPS Streamable HTTP resource. Use the
-    package-owned root BOS MCP declaration in Codex, one BOS account-level Web
+    package-owned required BOS app declaration in Codex, one BOS account-level Web
     connector in Claude, one OAuth-discovered BOS connection in Copilot
     IDE/CLI, and one BOS connection in Gemini CLI and Antigravity 2.0 Desktop.
     Subservice packages add skills and metadata behind that connection. The
@@ -103,9 +105,9 @@ release system for portable BOS skills and native remote MCP client adapters.
     have no backup, and requires the exact typed confirmation
     `DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS`. The root Claude BOS plugin owns
     account-connector metadata with no packaged MCP declaration. The root
-    ChatGPT/Codex BOS plugin contains `mcpServers: "./.mcp.json"`; the MCP file
-    records exactly one credential-free HTTPS BOS resource and the package
-    contains no `.app.json` account identity. Subservice plugins contain
+    ChatGPT/Codex BOS plugin contains `apps: "./.app.json"`; the app file records
+    exactly one required BOS identity, and the package contains no direct
+    `.mcp.json`. Subservice plugins contain
     neither connection declaration. One host-managed BOS grant identifies the
     actor and available organizations; every request is evaluated against canonical application,
     installation, subservice, role, plugin, capability, provider, and tool
@@ -116,7 +118,7 @@ release system for portable BOS skills and native remote MCP client adapters.
     registry `installPath`; Gemini CLI's native extension metadata plus copied
     package bytes; Antigravity's exact repository symlinks; Copilot's selected
     repository MCP and skill files; and Codex's registry, managed package cache,
-    package-owned MCP declaration and callable-tool
+    required registered-app declaration and callable-tool
     catalog. Retained inactive Claude
     versions are informational and never satisfy installation readiness.
 12. Treat generated client packages as build outputs. The complete
@@ -159,16 +161,19 @@ release system for portable BOS skills and native remote MCP client adapters.
     replace the registration through current OAuth metadata, restart
     authorization once, refresh tools and context, and resume through the same
     BOS connection.
-    Treat Codex MCP-startup
-    `reauthenticationRequired` as a **Sign in** state for
-    the package-owned root connection. The BOS resource answers
-    unauthenticated discovery with HTTP 401 and a `WWW-Authenticate` challenge
-    containing the exact protected-resource metadata URL so Codex classifies
-    the runtime connection as `notLoggedIn` and activates OAuth through the
-    host-managed authentication action.
-    The user selects that action and completes consent; the agent then refreshes
-    the connection, tools, and context and resumes. If the action is absent,
-    preserve the request and report an authentication-activation defect. Never
+    Treat Codex request-time and MCP-startup `reauthenticationRequired` as a
+    **Sign in** state. The package-owned root connection exposes the requested
+    BOS tool descriptor with a per-tool OAuth `securitySchemes` declaration
+    before consent. Descriptor visibility permits capability selection only;
+    customer data and business execution remain protected. The selected tool's
+    signed-out result returns `isError: true` and
+    `_meta["mcp/www_authenticate"]` with `resource_metadata`, `error`, and
+    `error_description`, causing the host to render the simple inline **Sign
+    in** action. The user completes consent; the host refreshes the server
+    authority-scoped tool state, the agent calls `bos_get_context`, and the
+    original request resumes. A missing descriptor or challenge is a tool-auth
+    contract defect; a received challenge without the action is a host
+    authentication-activation defect. Never
     invoke CLI login or launch browser authentication on the user's behalf.
     Generic app permissions do not represent or repair MCP OAuth.
 16. Distribute pre-publication Claude and Codex products through their native
@@ -228,8 +233,8 @@ release system for portable BOS skills and native remote MCP client adapters.
     by the host, and a new task.
     Codex installation acceptance is an atomic cross-layer check: the native
     registry and marketplace contain the active products, each product resolves
-    to the current direct-source or managed-cache version, the package-owned MCP
-    declaration matches the immutable BOS resource, and the callable catalog
+    to the current direct-source or managed-cache version, the required BOS app
+    declaration matches the proven registered identity, and the callable catalog
     contains every product-declared runtime verification tool. Remediation is identity-bounded
     to the BOS marketplace and immutable resource URL and backs up host state before
     removing BOS-owned catalog entries.

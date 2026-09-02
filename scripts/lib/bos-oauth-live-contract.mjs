@@ -1,10 +1,10 @@
 import { inspectOAuthAuthorizeTarget } from "./single-bos-contract.mjs";
+import { createHttpDebugFetch } from "./http-debug-log.mjs";
+import { join } from "node:path";
+import { readJson, root } from "./package-model.mjs";
 
-export const CANONICAL_RESOURCE_URL = "https://dfsm.ai/mcp/apps/bos/platform";
-export const CANONICAL_PROTECTED_RESOURCE_METADATA_URL =
-  "https://dfsm.ai/.well-known/oauth-protected-resource/mcp/apps/bos/platform";
-export const CANONICAL_RESOURCE_CHALLENGE =
-  `Bearer resource_metadata="${CANONICAL_PROTECTED_RESOURCE_METADATA_URL}", scope="mcp:tools"`;
+const bosProduct = await readJson(join(root, "products", "bos", "product.json"));
+export const CANONICAL_RESOURCE_URL = bosProduct.mcp_resource_url;
 
 export function expectedBosResourceChallenge(resourceUrl) {
   const resource = new URL(resourceUrl);
@@ -14,6 +14,13 @@ export function expectedBosResourceChallenge(resourceUrl) {
   );
   return `Bearer resource_metadata="${metadata.href}", scope="mcp:tools"`;
 }
+
+export const CANONICAL_PROTECTED_RESOURCE_METADATA_URL = new URL(
+  `/.well-known/oauth-protected-resource${new URL(CANONICAL_RESOURCE_URL).pathname}`,
+  CANONICAL_RESOURCE_URL
+).href;
+export const CANONICAL_RESOURCE_CHALLENGE =
+  expectedBosResourceChallenge(CANONICAL_RESOURCE_URL);
 
 function finding(code, message) {
   return { code, path: "oauth-authorize", message };
@@ -25,8 +32,15 @@ function discoveryFinding(code, message) {
 
 export async function probeBosOAuthDiscovery({
   resourceUrl = CANONICAL_RESOURCE_URL,
-  fetchImpl = fetch
+  fetchImpl = fetch,
+  debug = false,
+  debugWriter
 } = {}) {
+  const request = createHttpDebugFetch(fetchImpl, {
+    enabled: debug,
+    writer: debugWriter,
+    source: "bos-oauth-discovery"
+  });
   let expectedChallenge;
   try {
     expectedChallenge = expectedBosResourceChallenge(resourceUrl);
@@ -39,7 +53,7 @@ export async function probeBosOAuthDiscovery({
 
   let response;
   try {
-    response = await fetchImpl(resourceUrl, {
+    response = await request(resourceUrl, {
       method: "GET",
       redirect: "manual",
       headers: { accept: "application/json" }
@@ -63,7 +77,9 @@ export async function probeBosOAuthDiscovery({
   if (challenge !== expectedChallenge) {
     violations.push(discoveryFinding(
       "oauth_resource_challenge",
-      `BOS resource discovery must return the canonical WWW-Authenticate challenge; found ${challenge ?? "no challenge"}.`
+      challenge == null
+        ? "BOS resource discovery must return the canonical WWW-Authenticate challenge; no challenge was present."
+        : "BOS resource discovery returned a noncanonical WWW-Authenticate challenge."
     ));
   }
 
@@ -77,7 +93,9 @@ export async function probeBosOAuthDiscovery({
   if (errorCode !== "authentication_required") {
     violations.push(discoveryFinding(
       "oauth_resource_error",
-      `BOS resource discovery must identify authentication_required; found ${errorCode ?? "no structured error"}.`
+      errorCode == null
+        ? "BOS resource discovery must identify authentication_required; no structured error was present."
+        : "BOS resource discovery returned a noncanonical structured error."
     ));
   }
 
@@ -85,8 +103,8 @@ export async function probeBosOAuthDiscovery({
     violations,
     resourceUrl,
     response.status,
-    challenge,
-    errorCode
+    challenge === expectedChallenge ? expectedChallenge : null,
+    errorCode === "authentication_required" ? errorCode : null
   );
 }
 
@@ -125,8 +143,15 @@ export function inspectGoogleAccountSelectorRedirect(location) {
 export async function probeBosOAuthAuthorize({
   authorizeUrl,
   fetchImpl = fetch,
-  canonicalResourceUrl = CANONICAL_RESOURCE_URL
+  canonicalResourceUrl = CANONICAL_RESOURCE_URL,
+  debug = false,
+  debugWriter
 }) {
+  const request = createHttpDebugFetch(fetchImpl, {
+    enabled: debug,
+    writer: debugWriter,
+    source: "bos-oauth-authorize"
+  });
   const violations = inspectOAuthAuthorizeTarget(
     authorizeUrl,
     canonicalResourceUrl
@@ -135,7 +160,7 @@ export async function probeBosOAuthAuthorize({
 
   let response;
   try {
-    response = await fetchImpl(authorizeUrl, {
+    response = await request(authorizeUrl, {
       redirect: "manual",
       headers: { accept: "text/html" }
     });
