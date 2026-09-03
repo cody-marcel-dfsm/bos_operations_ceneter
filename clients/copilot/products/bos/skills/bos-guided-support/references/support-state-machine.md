@@ -54,6 +54,12 @@ reported stage only when later evidence contradicts it.
   **Discover**. Catalog presence proves operation shape, not authorization.
 - Context is canonical and a specific Google/SendGrid/Calimatic operation asks
   for authorization: **Provider ready**, after BOS connection verification.
+- A provider recovery page requests root BOS sign-in after an authenticated BOS
+  context or provider call succeeded: **Provider ready** remains the current
+  stage. Never click, follow, launch, or restart BOS authentication. Poll the
+  existing transaction once and classify a still-missing provider surface as
+  `provider_recovery_identity_boundary`; preserve the pending provider request
+  for the owning server repair.
 - Empty business records after an authenticated read are a valid data result.
   They are never evidence that installation or authentication failed.
 - Multiple or ambiguous BOS contexts fail closed and require BOS-side account or

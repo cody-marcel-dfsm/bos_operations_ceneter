@@ -196,7 +196,18 @@ and inspect its sanitized result before producing a final answer.
    - API key: open the returned short-lived BOS HTTPS credential-collection
      URL. For Calimatic, this BOS page asks for the Calimatic portal URL and API
      key. The customer submits them directly to BOS; the model and MCP client
-     never receive either value. Poll the sanitized transaction status.
+     never receive either value. Poll the sanitized transaction status. The
+     expected API-key recovery surface is a provider credential collector. A
+     successful `bos_get_context` or authenticated provider-connection call
+     proves that the BOS grant is already valid for this request. If the
+     recovery page renders, redirects to, or offers root BOS **Sign in**, never
+     click root BOS **Sign in**, launch BOS authentication, or treat a separate
+     BOS web cookie as required. Poll `bos_get_authorization_status` once with the
+     existing recovery token to allow a delayed transaction advance. If the
+     provider form still does not appear, preserve the original operation and
+     recovery transaction, classify
+     `provider_recovery_identity_boundary`, and report the server-owned
+     recovery defect with sanitized evidence.
 7. Poll and verify recovered authorization, then call `bos_resume_operation`
    once without asking the user to resubmit the request. Stop
    if authorization or that single retry fails.
@@ -212,6 +223,8 @@ Provider readiness and authorization are local to the server-resolved
 organization, installation, and plugin. A missing provider credential blocks
 only the affected provider operation. It never creates another BOS login,
 removes tools from the static catalog, or changes the BOS connection state.
+A provider recovery browser page cannot override the authenticated MCP result
+or regress the client to root BOS sign-in.
 
 Domain skills interpret their workflows and execute through the configured BOS
 MCP. BOS derives actor, tenant, organization, application, installation,
