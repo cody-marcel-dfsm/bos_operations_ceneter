@@ -27,12 +27,12 @@ authorization remains a separate BOS-hosted workflow.
 The private Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Complete BOS
 consent when the host presents **Connect**, **Sign in**, or **Authenticate**.
-The package-owned required BOS app declaration renders the native authentication
-action and resolves the immutable resource. Its protected-resource challenge
+The package-owned BOS MCP declaration supplies the resource. Its
+protected-resource challenge
 then identifies a signed-out runtime connection and activates OAuth. The
 user completes consent, and the agent refreshes tools and resumes the request.
 
-Current desktop marketplace release: `0.4.77`. If `0.4.76` is installed,
+Current desktop marketplace release: `0.4.78`. If `0.4.77` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -50,12 +50,12 @@ Open a new Codex task and paste:
 > required to load the plugin, and verify one authenticated Education Operation Center
 > read. Do not request or configure a BOS API key, environment variable,
 > secret-manager name, or installed application ID. If authorization is
-> incomplete, verify the root package-owned required `.app.json`, use the native BOS
+> incomplete, verify the root package-owned `.mcp.json`, use the native BOS
 > **Login**, **Connect**, or **Authenticate** action, wait for the user to select
 > it and complete browser consent, refresh tools, and resume. The server's 401
 > challenge activates runtime OAuth discovery.
 > Treat `reauthenticationRequired` as sign-in recovery. If the plugin-page
-> action is absent after the registered BOS app loads, preserve the request
+> action is absent after the packaged BOS MCP resource loads, preserve the request
 > and report an authentication-activation defect.
 > Do not launch authentication, generate an unavailable-data report, or use
 > generic app permissions for MCP OAuth.
@@ -66,13 +66,13 @@ the Git ref, and leave **Sparse paths** empty. The repository-root
 
 Codex reads the generated catalog at
 `clients/codex/.agents/plugins/marketplace.json`, installs the plugins into its managed
-cache, and loads the required registered BOS app from the plugin's `.app.json`.
-That declaration owns Login display; the resolved BOS resource owns OAuth
-activation and the host-managed grant. Education Operation
+cache, and loads the BOS resource from the plugin's `.mcp.json`.
+The framework derives OAuth activation from that resource and stores the
+host-managed grant. Education Operation
 Center uses that connection without another MCP binding or login. Start a new
 task after installation or upgrade. A complete installation must pass
 `npm run install:verify:codex-runtime`; this checks the plugin registry,
-marketplace registration, installed package versions, required registered-app
+marketplace registration, installed package versions, required package MCP
 binding, and required callable tools together. A package cache alone never
 proves that the current task has a callable BOS tool surface.
 
@@ -85,17 +85,10 @@ npm run clean-install:codex -- \
   --confirmation "DELETE ALL BOS CODEX PLUGIN STATE"
 ```
 
-The command removes only product-declared retired accidental BOS account-app
-records, the
-`bos-education-center` marketplace packages, and cache/catalog records carrying
-the canonical BOS MCP resource or retired app identity. It backs up the Codex
-global state file before removing those catalog records, stops a running ChatGPT
-client, performs the cleanup while the client is stopped, and reopens it
-automatically. Before reporting success it verifies that the retired accidental
-BOS account apps, installed products, marketplace, wrappers, and targeted caches
-are absent while the permanent established account record remains untouched. It
-never reinstalls a marketplace or plugin and preserves unrelated plugin state.
-Install the intended package explicitly after confirming the client is clean.
+The command removes the installed BOS plugins and their validated local package
+cache. It performs no account mutation, connector lookup, marketplace removal,
+or private API request. Reinstall the intended package from the existing local
+marketplace afterward.
 
 ### Claude Cowork/Desktop
 
@@ -133,7 +126,7 @@ both products from the current repository and verifies their active paths.
 
 ### Local client cache reset
 
-To clear BOS package and catalog cache artifacts from local ChatGPT/Codex and
+To clear BOS package cache artifacts from local ChatGPT/Codex and
 Claude clients, inspect the exact plan and then apply it:
 
 ```bash
@@ -143,8 +136,7 @@ Claude clients, inspect the exact plan and then apply it:
 ```
 
 The command deletes only validated BOS package caches under
-`~/.codex/plugins/cache` and `~/.claude/plugins/cache`, plus individual matching
-BOS catalog-cache files under `~/.codex/cache`. It never unregisters plugins,
+`~/.codex/plugins/cache` and `~/.claude/plugins/cache`. It never unregisters plugins,
 changes account state, edits client configuration, removes personal skills,
 touches Gemini or Copilot, or accesses repository files. The legacy
 `scripts/uninstall-bos-all-clients.sh` entrypoint delegates to this same bounded
@@ -299,8 +291,8 @@ npm run contract:oauth-discovery-live -- \
 For staging, `BOS_MCP_RESOURCE_URL` is the deployed candidate's exact BOS
 platform resource. The probe requires the HTTP 401 canonical
 protected-resource challenge and structured `authentication_required` error.
-The installed registered-app connection supplies the host with the BOS identity
-and OAuth activation route. The pre-consent tool manifest exposes capability
+The installed package MCP resource supplies the OAuth discovery route. The
+pre-consent tool manifest exposes capability
 descriptors and per-tool OAuth scopes without customer data or business
 execution. Validate that selected-tool contract against the deployed candidate:
 
@@ -333,7 +325,7 @@ the selected Google identity returns, the BOS server resolves organization and
 role from that verified identity on every authorization. The client never
 chooses or stores an organization mapping.
 
-The live contract and registered-app diagnostic tools emit one redacted NDJSON
+The live contract tools emit one redacted NDJSON
 event to standard error for every outbound request and one correlated response
 or error event. Events include `request_id`, method, sanitized URL, headers,
 bounded body, status, and duration. Authorization, cookies, OAuth values,
@@ -341,17 +333,9 @@ account identifiers, and organization identifiers are redacted. Standard output
 remains the machine-readable contract result. Tracing is enabled by default;
 set `BOS_HTTP_DEBUG=0` only when quiet output is explicitly required.
 
-Diagnose the installed BOS declaration and its authenticated GPT connector
-resolution without starting authentication:
-
-```bash
-npm run diagnose:codex-app -- --format json
-```
-
-The command records the local `plugin/read`, account-plugin listing, and exact
-connector metadata GET. A declared BOS app paired with connector HTTP 404 is a
-client registration/display failure. It is not an MCP transport or OAuth
-failure and must never hide the plugin-page **Connect** action.
+Validate the generated Codex package binding with `npm run check`. After a
+fresh client load, run the screenshot-gated native login acceptance with
+`npm run acceptance:codex-login -- --screenshot <png> --review <receipt.json> --json`.
 
 `source/` and `products/` are canonical. `clients/` contains generated output.
 Change canonical sources, regenerate, and verify generated parity.
@@ -359,17 +343,8 @@ Change canonical sources, regenerate, and verify generated parity.
 ### Test Codex locally
 
 The BOS product contract is authored only in `products/bos/product.json`.
-Inspect its established connector with `npm run product:codex -- inspect`.
-Apply supported mutable name and description metadata with `npm run
-product:codex -- sync`; the command patches the permanent ID and post-verifies
-that same record and BOS resource. When the established record is missing or
-its resource binding differs, the command reports the exact registry-owner
-correction and performs zero account mutation because the available create
-route mints a different identity. The command never enters new-product
-provisioning for BOS. `provision` applies
-only to a different disabled product explicitly authored as
-`UNPROVISIONED_NEW` and reconciles an interrupted prior creation before
-retrying.
+The build derives the Codex `.mcp.json` and every other client transport from
+that product source.
 
 Add the repository checkout as a local marketplace:
 
@@ -378,9 +353,9 @@ codex plugin marketplace add ./clients/codex
 ```
 
 Install **BOS** and **Education Operation Center** from the ChatGPT Desktop Plugins
-Directory. Confirm the BOS plugin loads its package-owned required `.app.json` and the
+Directory. Confirm the BOS plugin loads its package-owned `.mcp.json` and the
 host displays its native **Login**, **Connect**, or **Authenticate** action when
-needed. For a signed-out BOS-dependent prompt, the resolved registered app makes
+needed. For a signed-out BOS-dependent prompt, the packaged MCP resource makes
 the installed capability available, and the requested BOS tool's OAuth descriptor
 permits selection without business execution. Its signed-out
 `_meta["mcp/www_authenticate"]` result renders the simple inline action in the

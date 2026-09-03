@@ -1,0 +1,15 @@
+{
+  "canonical_source_snapshot_sha256": "59435c9e1fe37c26fd7239dddc35f2667804293728df36c4b36fadf7af88e31a",
+  "changed_sources": [
+    "Vault/docs/CONSTITUTION.md",
+    "Vault/docs/architecture.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 247,
+  "duration_seconds": 0.532,
+  "index_version": 1,
+  "indexed_at": "20260903T001714.823465Z",
+  "indexed_chunks": 12,
+  "removed_sources": [],
+  "source_count": 94
+}

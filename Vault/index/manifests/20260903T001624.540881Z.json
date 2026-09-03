@@ -1,0 +1,15 @@
+{
+  "canonical_source_snapshot_sha256": "c0ecd87b8226f4d023ede55f3baa48f20c3df00d043d3f834438a26f81d5e7c5",
+  "changed_sources": [],
+  "collection": "vault_knowledge",
+  "collection_count": 245,
+  "duration_seconds": 0.09,
+  "index_version": 1,
+  "indexed_at": "20260903T001624.540881Z",
+  "indexed_chunks": 0,
+  "removed_sources": [
+    "Vault/decisions/2026-08-29-codex-package-owned-mcp.md",
+    "Vault/decisions/2026-09-01-codex-registered-app-login-surface.md"
+  ],
+  "source_count": 92
+}

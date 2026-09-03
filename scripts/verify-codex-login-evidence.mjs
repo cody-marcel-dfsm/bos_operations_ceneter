@@ -4,13 +4,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createCodexAccountPluginClient } from "./lib/codex-account-plugin-client.mjs";
-import {
-  codexRawAppId,
-  readJson,
-  root,
-  stableJson
-} from "./lib/package-model.mjs";
+import { readJson, root, stableJson } from "./lib/package-model.mjs";
 
 function parseArgs(argv) {
   const options = { json: false };
@@ -23,79 +17,37 @@ function parseArgs(argv) {
   return options;
 }
 
-function failedConnectorBinding(product, connectorBinding, failure) {
-  return {
+export async function verifyCodexLoginEvidence(options = {}) {
+  const product = await readJson(join(root, "products", "bos", "product.json"));
+  const pluginRoot = join(root, "clients", "codex", "plugins", "bos");
+  const plugin = await readJson(join(pluginRoot, ".codex-plugin", "plugin.json"));
+  const mcp = await readJson(join(pluginRoot, ".mcp.json"));
+  const entries = Object.entries(mcp.mcpServers ?? {});
+  const [name, server] = entries[0] ?? [];
+  const packageBinding = entries.length === 1 &&
+    plugin.mcpServers === "./.mcp.json" &&
+    !("apps" in plugin) &&
+    name === product.mcp_group_name &&
+    server?.type === "http" &&
+    server?.url === product.mcp_resource_url &&
+    JSON.stringify(Object.keys(server ?? {}).sort()) === JSON.stringify(["type", "url"]);
+  const serialized = await readFile(join(pluginRoot, ".mcp.json"), "utf8");
+  const forbiddenOpenAiTarget = /auth\.openai\.com|chatgpt\.com/i.test(serialized);
+  const packageBindingReport = {
+    plugin_manifest: ".codex-plugin/plugin.json",
+    mcp_manifest: ".mcp.json",
+    server_name: name ?? null,
+    server_type: server?.type ?? null,
+    resource_url: server?.url ?? null
+  };
+  if (!packageBinding || forbiddenOpenAiTarget) return {
     schema_version: "1",
     ok: false,
     product_version: product.version,
-    connector_binding: connectorBinding,
-    failure
+    package_binding: packageBindingReport,
+    oauth_authorization_endpoint: product.oauth.authorization_endpoint,
+    failure: "Codex package does not declare the canonical package-owned BOS MCP binding"
   };
-}
-
-async function verifyConnectorBinding(product, client) {
-  const expectedId = product.codex_connector.id;
-  const expectedRawId = codexRawAppId(expectedId);
-  const expectedResourceUrl = product.mcp_resource_url;
-  let inspection;
-  try {
-    inspection = await client.inspectConnector(expectedId);
-  } catch {
-    return failedConnectorBinding(product, {
-      connector_id: expectedId,
-      resource_url: expectedResourceUrl,
-      http_status: null
-    }, "registered BOS connector inspection failed");
-  }
-
-  const record = inspection.body?.connector ?? inspection.body;
-  const observedId = record?.id ?? null;
-  const observedResourceUrl = record?.base_url ?? record?.mcp_url ?? null;
-  const connectorBinding = {
-    connector_id: expectedId,
-    resource_url: expectedResourceUrl,
-    http_status: inspection.http_status ?? null,
-    observed_connector_id: observedId,
-    observed_resource_url: observedResourceUrl
-  };
-  if (!inspection.ok) {
-    return failedConnectorBinding(
-      product,
-      connectorBinding,
-      `registered BOS connector resolution failed with HTTP ${inspection.http_status ?? "unknown"}`
-    );
-  }
-  if (codexRawAppId(inspection.app_id) !== expectedRawId ||
-      codexRawAppId(observedId) !== expectedRawId) {
-    return failedConnectorBinding(
-      product,
-      connectorBinding,
-      "registered BOS connector resolved to a different immutable identity"
-    );
-  }
-  if (observedResourceUrl !== expectedResourceUrl) {
-    return failedConnectorBinding(
-      product,
-      connectorBinding,
-      "registered BOS connector does not resolve to the canonical MCP resource"
-    );
-  }
-  return {
-    schema_version: "1",
-    ok: true,
-    product_version: product.version,
-    connector_binding: connectorBinding,
-    failure: null
-  };
-}
-
-export async function verifyCodexLoginEvidence(options = {}) {
-  const product = await readJson(join(root, "products", "bos", "product.json"));
-  const connector = await verifyConnectorBinding(
-    product,
-    options.client ?? createCodexAccountPluginClient()
-  );
-  if (!connector.ok) return connector;
   const screenshot = options.screenshot ?? join(
     root,
     "Vault",
@@ -119,10 +71,11 @@ export async function verifyCodexLoginEvidence(options = {}) {
       schema_version: "1",
       ok: false,
       product_version: product.version,
-      connector_binding: connector.connector_binding,
+      package_binding: packageBindingReport,
+      oauth_authorization_endpoint: product.oauth.authorization_endpoint,
       screenshot,
       review,
-      failure: "version-matched Connect/Reconnect screenshot is missing"
+      failure: "version-matched BOS authentication-action screenshot is missing"
     };
   }
   const png = image.length > 1024 &&
@@ -131,7 +84,8 @@ export async function verifyCodexLoginEvidence(options = {}) {
     schema_version: "1",
     ok: false,
     product_version: product.version,
-    connector_binding: connector.connector_binding,
+    package_binding: packageBindingReport,
+    oauth_authorization_endpoint: product.oauth.authorization_endpoint,
     screenshot,
     review,
     failure: "acceptance evidence is not a nontrivial PNG screenshot"
@@ -145,33 +99,38 @@ export async function verifyCodexLoginEvidence(options = {}) {
       schema_version: "1",
       ok: false,
       product_version: product.version,
-      connector_binding: connector.connector_binding,
+      package_binding: packageBindingReport,
+      oauth_authorization_endpoint: product.oauth.authorization_endpoint,
       screenshot,
       review,
       failure: "version-matched Oracle visual review receipt is missing or invalid"
     };
   }
   const screenshotSha256 = createHash("sha256").update(image).digest("hex");
+  const allowedActions = new Set(["Connect", "Sign in", "Authenticate", "Reconnect"]);
   const receiptValid = receipt.schema_version === "1" &&
     receipt.product_version === product.version &&
     receipt.screenshot === basename(screenshot) &&
     receipt.screenshot_sha256 === screenshotSha256 &&
     receipt.surface === "GPT_PLUGIN_DETAIL" &&
-    new Set(["Connect", "Reconnect"]).has(receipt.visible_action) &&
+    allowedActions.has(receipt.visible_action) &&
+    receipt.observed_authorization_target === product.oauth.authorization_endpoint &&
     receipt.reviewer === "ORACLE" &&
     receipt.verdict === "APPROVED";
   return {
     schema_version: "1",
     ok: receiptValid,
     product_version: product.version,
-    connector_binding: connector.connector_binding,
+    package_binding: packageBindingReport,
+    oauth_authorization_endpoint: product.oauth.authorization_endpoint,
     screenshot,
     review,
     screenshot_sha256: screenshotSha256,
     visible_action: receiptValid ? receipt.visible_action : null,
+    observed_authorization_target: receiptValid ? receipt.observed_authorization_target : null,
     failure: receiptValid
       ? null
-      : "Oracle visual review receipt does not match the screenshot and Connect/Reconnect contract"
+      : "Oracle visual review receipt does not match the screenshot, BOS authentication action, and exact BOS authorization target"
   };
 }
 
@@ -179,13 +138,10 @@ async function main() {
   const options = parseArgs(process.argv.slice(2));
   const report = await verifyCodexLoginEvidence(options);
   if (options.json) process.stdout.write(stableJson(report));
-  else console.log(report.ok ? "Codex Login visual acceptance passed." : report.failure);
+  else console.log(report.ok ? "Codex BOS login visual acceptance passed." : report.failure);
   if (!report.ok) process.exitCode = 1;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  main().catch((error) => {
-    console.error(error.message);
-    process.exitCode = 1;
-  });
+  main().catch((error) => { console.error(error.message); process.exitCode = 1; });
 }

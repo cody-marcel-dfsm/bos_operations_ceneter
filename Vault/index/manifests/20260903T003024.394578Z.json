@@ -1,0 +1,16 @@
+{
+  "canonical_source_snapshot_sha256": "9f3e3f30ce6b43feb4ecbc62396ea0d302d213d93105d56a3d8cbeaa3027adb2",
+  "changed_sources": [
+    "Vault/docs/codex-registered-app-incident.md",
+    "Vault/docs/issues/ISSUE_HISTORY.md",
+    "Vault/docs/issues/conclusions/ISSUE_0001_CONCLUSION.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 246,
+  "duration_seconds": 1.372,
+  "index_version": 1,
+  "indexed_at": "20260903T003024.394578Z",
+  "indexed_chunks": 43,
+  "removed_sources": [],
+  "source_count": 94
+}

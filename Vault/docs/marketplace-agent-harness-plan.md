@@ -35,8 +35,8 @@ For Claude, ChatGPT/Codex, Copilot, Gemini CLI, and Antigravity:
 
 - `products/bos/product.json` is the only manifest with runtime coordinates.
 - Only generated BOS packages contain the client-appropriate root binding:
-  Codex uses one required package-owned `.app.json` registered-app declaration
-  and contains no direct `.mcp.json`; other clients use their native
+  Codex uses one package-owned `.mcp.json` remote HTTP declaration and contains
+  no `.app.json`; other clients use their native
   `CONNECTORS.md`, `.github/mcp.json`, `mcp_config.json`, or `mcpServers`
   adapter.
 - Every generated subservice package records `connection_owner: "bos"` and

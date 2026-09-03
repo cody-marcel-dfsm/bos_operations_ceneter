@@ -504,9 +504,8 @@ connector. External connector evidence never expands BOS identity or authority.
 Credentials and access authority remain outside customer configuration.
 Claude and ChatGPT/Codex authorize the named BOS resource through host-managed
 OAuth 2.1. Claude uses an account-level Web connector. Codex packages carry one
-credential-free, required `.app.json` declaration containing the immutable
-product-owned BOS app identity and no direct `.mcp.json`. That app resolves the
-immutable BOS resource. The hosts discover authorization metadata from the
+credential-free `.mcp.json` declaration containing the product-owned BOS
+resource and no `.app.json`. The hosts discover authorization metadata from the
 resource, collect consent, store and refresh the grant, and attach its
 resource-scoped access token. Skill files, generated packages, logs, customer settings,
 customer-entered commands, and model chat remain credential-free. BOS owns encrypted provider-credential
@@ -597,8 +596,8 @@ authenticate BOS and does not authorize provider access.
 ### 3. Connect the account
 
 The client loads the BOS product's host-native runtime binding. Codex loads the
-required package-owned BOS app declared by `.app.json`, which resolves the
-immutable BOS resource; Claude uses the account-level BOS Web connector. The
+package-owned BOS resource declared by `.mcp.json`; Claude uses the
+account-level BOS Web connector. The
 host presents Connect once, completes OAuth discovery and consent, and stores
 the BOS resource-scoped grant. Subservice packages load skills and add no
 authentication surface. BOS validates the grant and canonical subservice

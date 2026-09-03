@@ -119,17 +119,14 @@ cannot be reclassified as new authorization scope.
 
 ## Issue #0001: Installed BOS skills appeared while Codex exposed no login or callable tools
 
-- Status: ACTIVE; the immutable connector record is missing, and the current
-  plugin detail page exposes no Connect or Reconnect action
+- Status: FIXED LOCALLY; package and BOS OAuth protocol pass, native visual acceptance pending
 - Priority: CRITICAL
 - Date identified: 2026-09-01
 - Area: Codex package binding, authentication display, and tool discovery
 - Files: `products/bos/product.json`, `scripts/lib/package-model.mjs`,
   `scripts/install-package.mjs`, `scripts/verify-codex-runtime.mjs`,
-  `scripts/diagnose-codex-registered-app.mjs`,
-  `scripts/lib/http-debug-log.mjs`,
+  `scripts/build-packages.mjs`, `scripts/check-package.mjs`,
   `tests/codex-login-surface-contract.test.mjs`,
-  `tests/codex-account-plugin-client.test.mjs`,
   `tests/codex-runtime-verification.test.mjs`
 - Conclusion: `Vault/docs/issues/conclusions/ISSUE_0001_CONCLUSION.md`
 - Client evidence:
@@ -160,7 +157,33 @@ did not satisfy the display or target acceptance criteria.
 
 ### Root cause
 
-Authoritative 2026-09-02 correction: `products/bos/product.json` is the sole
+Authoritative 2026-09-02 correction: the independent registered-app model was
+itself the defect. The generated root plugin used `.app.json` and a private
+`plugin_asdk_app_*` account record instead of packaging the BOS MCP endpoint.
+When that record failed to resolve, Codex entered OpenAI account onboarding at
+`auth.openai.com/about-you`. The correct Git-marketplace package declares
+`mcpServers: "./.mcp.json"`; that file points directly to
+`https://dfsm.ai/mcp/apps/bos/platform`, and the framework derives BOS OAuth
+from its discovery challenge. All later Issue #0001 text advocating immutable
+connector IDs or `.app.json` is superseded historical analysis.
+
+The implemented correction removes the connector lifecycle, private account
+client, diagnostic, provisioning, replacement-ID, and account-deletion logic.
+Generation, installation, verification, and acceptance now require the exact
+package-owned MCP binding and reject `.app.json` and OpenAI/ChatGPT auth
+targets. See `Vault/docs/issues/conclusions/ISSUE_0001_CONCLUSION.md`.
+
+This differs from the failed 0.4.70 direct-MCP attempt at the deployed protocol
+layer. The earlier package rendered a Platform server row but did not provide a
+verified selected-tool BOS authentication challenge. The current live contract
+passes unauthenticated initialization and discovery, exposes
+`bos_get_context`, and returns its complete BOS `mcp/www_authenticate`
+challenge on a signed-out call. Package correctness and server challenge
+correctness are now established; the native plugin-detail action remains
+pending until a version-matched screenshot and Oracle receipt pass
+`npm run acceptance:post-release`.
+
+Superseded prior correction: `products/bos/product.json` is the sole
 active BOS product authority. The established connector ID is immutable; its
 metadata updates in place; retired IDs are cleanup evidence. There is no
 identity migration. The ad-hoc 2026-09-01 connector creation and adoption was a

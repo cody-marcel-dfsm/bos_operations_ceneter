@@ -16,17 +16,10 @@ description: Implement BOS Operations Center repository changes using its archit
    behavior when practical.
 7. Implement in canonical sources and regenerate derived client packages through
    repository tooling.
-   For BOS connector work, treat `products/bos/product.json` as the only
-   authored product authority. An `ESTABLISHED` connector ID is immutable;
-   update only the connector-settings API's supported name and description
-   fields in place with `npm run product:codex -- sync`, then verify the same
-   ID and BOS resource. When the established record is missing or its BOS
-   resource binding differs, report the exact registry-owner correction and
-   perform zero account mutation; the available create route mints a different
-   identity. Never infer new-product status from a missing registry record.
-   Provisioning applies only to a different disabled product explicitly
-   authored as `UNPROVISIONED_NEW`, with a matching requested source name and no
-   retired IDs; retries reconcile the complete metadata fingerprint first.
+   For Codex, generate the root plugin's `.mcp.json` directly from the product
+   MCP resource. Reject `.app.json`, registered connector identifiers, and
+   private account connector APIs. The host derives OAuth from the packaged
+   resource and BOS discovery metadata.
 8. Store durable architecture, design, issue, and implementation knowledge under
    `Vault/`; store disposable evidence under `Vault/tmp/<workflow>/`.
 9. Run focused validation and every applicable package, contract, and release
