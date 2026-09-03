@@ -184,6 +184,16 @@ An unavailable BOS OAuth grant activates the root BOS connection's host-native
 **Connect**, **Sign in**, or **Authenticate** action. A subservice row never
 requests another BOS login.
 
+An authenticated `bos_get_context` or
+`bos_begin_plugin_service_connection` call proves that the root BOS grant is
+valid for the returned provider transaction. An API-key recovery URL therefore
+renders the provider credential collector directly. If it instead renders,
+redirects to, or offers root BOS sign-in, the client does not follow that action
+or launch BOS authentication. It polls the existing transaction once, preserves
+the pending operation, and reports `provider_recovery_identity_boundary` when
+the provider surface remains absent. A separate BOS browser cookie never
+controls provider readiness.
+
 ## Enablement mutation
 
 `bos_set_plugin_enabled` accepts:

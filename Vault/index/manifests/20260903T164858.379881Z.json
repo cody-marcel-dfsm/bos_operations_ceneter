@@ -1,0 +1,15 @@
+{
+  "canonical_source_snapshot_sha256": "dd6f8b71d488628e7a433c40fc851bb9fc90c067b38e347de2e6c353b92f2568",
+  "changed_sources": [
+    "Vault/docs/issues/ISSUE_HISTORY.md",
+    "Vault/evidence/provider-recovery/0.4.79-calimatic-second-bos-login-rca.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 260,
+  "duration_seconds": 1.319,
+  "index_version": 1,
+  "indexed_at": "20260903T164858.379881Z",
+  "indexed_chunks": 47,
+  "removed_sources": [],
+  "source_count": 98
+}

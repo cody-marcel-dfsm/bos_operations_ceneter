@@ -19,7 +19,9 @@
    subservice plugins never create another BOS connection or login.
    Packages contain no user-entered BOS credential. Missing provider grants recover through
    BOS-hosted HTTPS authorization or credential collection and are stored only
-   by the BOS service.
+   by the BOS service. A valid authenticated BOS MCP call proves the root grant
+   for its provider-recovery transaction. Provider recovery never requires or
+   initiates a second BOS browser login.
 6. **Fail-closed execution.** Missing or ambiguous canonical state produces an
    explicit error and no fallback authority.
 7. **Canonical generation.** Product manifests compose canonical sources into

@@ -109,6 +109,13 @@ configuration as distinct validated dimensions.
 - For API-key providers, open the short-lived BOS-hosted HTTPS
   credential-collection URL returned by the service. BOS owns validation and
   encrypted credential persistence. Keep the key out of chat and client files.
+- A successful authenticated BOS context or provider-connection call proves the
+  BOS grant is valid for its recovery transaction. The API-key recovery page
+  must render the provider credential collector without requiring a separate
+  BOS browser session. If it renders or redirects to root BOS sign-in, never
+  click, follow, launch, or restart BOS authentication. Poll the existing
+  transaction once, preserve it, and classify the result as
+  `provider_recovery_identity_boundary` when the provider form remains absent.
 - Calimatic uses that API-key path. Its first blocked request or explicit
   connect request activates the BOS-hosted page for portal URL and API-key
   entry, polls the installation-scoped transaction, and resumes the pending
