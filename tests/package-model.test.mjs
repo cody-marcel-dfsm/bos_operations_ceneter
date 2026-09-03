@@ -170,6 +170,54 @@ test("plugin settings initializer is included by subservices using the BOS conne
   assert.equal(education.codex_app_id, undefined);
 });
 
+test("authority-state mutations preserve the complete static tool catalog", async () => {
+  const roleContract = await readFile(
+    `${root}/Vault/specs/role-aware-mcp-client.md`,
+    "utf8"
+  );
+  assert.match(roleContract, /After an audited server success, clients refresh context and operation status/i);
+  assert.match(roleContract, /After success, clients refresh[\s\S]*context and operation status before further operations/i);
+  assert.doesNotMatch(roleContract, /refresh context and (?:tool )?discovery/i);
+
+  const consoleContract = await readFile(
+    `${root}/Vault/specs/plugin-service-console.md`,
+    "utf8"
+  );
+  assert.match(consoleContract, /Success invalidates[\s\S]*context and operation status/i);
+  assert.match(consoleContract, /refreshes the static catalog only when the server[\s\S]*schema also changed/i);
+  assert.match(consoleContract, /server denies their domain operations[\s\S]*static operation descriptors remain discoverable/i);
+  assert.doesNotMatch(consoleContract, /invalidates[\s\S]{0,40}tool manifests/i);
+
+  for (const relativePath of [
+    "source/platform/bos-plugin-settings-initialization/SKILL.md",
+    "source/platform/bos-plugin-settings-initialization/references/initialization-contract.md",
+    "source/capabilities/sendgrid-campaign-operations/SKILL.md",
+    "source/capabilities/sendgrid-campaign-operations/references/client-workflow.md",
+    "source/capabilities/agent-call-operations/SKILL.md",
+    "source/verticals/education-center/education-center-paid-attribution-operations/references/integration-contract.md"
+  ]) {
+    const initialization = await readFile(`${root}/${relativePath}`, "utf8");
+    assert.match(initialization, /(?:refresh(?:es)?|recheck)[\s\S]{0,80}context\s+(?:and|or)\s+operation status/i, relativePath);
+    assert.doesNotMatch(initialization, /refresh(?:es)? context and tools/i, relativePath);
+    assert.doesNotMatch(initialization, /fresh context, tool, and service discovery/i, relativePath);
+    assert.doesNotMatch(initialization, /permission, plugin, or capability change[\s\S]{0,80}refresh/i, relativePath);
+    assert.doesNotMatch(initialization, /provider authorization[\s\S]{0,160}refresh the manifest/i, relativePath);
+    assert.doesNotMatch(initialization, /plugins and capabilities can[\s\S]{0,80}tool discovery/i, relativePath);
+  }
+
+  for (const relativePath of [
+    "Vault/docs/architecture.md",
+    "Vault/docs/marketplace-agent-harness-plan.md",
+    "Vault/docs/bos-product-licensing-user-experience.md"
+  ]) {
+    const contract = await readFile(`${root}/${relativePath}`, "utf8");
+    assert.match(contract, /static\s+(?:BOS\s+)?(?:operation\/schema\s+|tool\s+)?catalog/i, relativePath);
+    assert.doesNotMatch(contract, /tools\/list` contains only tools authorized/i, relativePath);
+    assert.doesNotMatch(contract, /License changes refresh context and tool discovery/i, relativePath);
+    assert.doesNotMatch(contract, /tools for authorized installed subservices are[\s\S]{0,30}discoverable/i, relativePath);
+  }
+});
+
 test("settings preflight injection preserves frontmatter and adds resumable initialization", () => {
   const source = "---\nname: example\ndescription: Example.\n---\n\n# Example\n";
   const output = injectSettingsPreflight(source, "initialize-example");
@@ -529,7 +577,8 @@ test("application runtime packages ship agent-owned MCP lifecycle recovery", asy
     assert.match(guidance, /agent owns the BOS MCP client lifecycle/i);
     assert.match(guidance, /reconnect or reinitialize/i);
     assert.match(guidance, /Never ask the user to reconnect BOS, resend the request/i);
-    assert.match(guidance, /permission or role changes[\s\S]*plugin install\/update[\s\S]*capability enablement/i);
+    assert.match(guidance, /plugin\/package[\s\S]*schema[\s\S]*transport\/session replacement/i);
+    assert.match(guidance, /Permission, role, plugin enablement, capability,[\s\S]*provider changes[\s\S]*do not filter the static tool catalog/i);
     assert.match(guidance, /sanitized continuation envelope/i);
     assert.match(guidance, /same-task session/i);
     assert.match(guidance, /reconcile by[\s\S]*idempotency identifier/i);
@@ -584,7 +633,9 @@ test("Codex reauthentication exposes native user-controlled authentication", asy
   assert.match(client, /Descriptor visibility[\s\S]*no customer data[\s\S]*no[\s\S]*business execution/i);
   assert.match(client, /mcp\/www_authenticate[\s\S]*native[\s\S]*Sign in/i);
   assert.match(client, /resource_metadata[\s\S]*error[\s\S]*error_description/i);
-  assert.match(client, /authority-scoped tool state[\s\S]*After consent/i);
+  assert.match(client, /complete static BOS tool[\s\S]*After consent/i);
+  assert.match(client, /Catalog\s+presence[\s\S]*never proves[\s\S]*authorized/i);
+  assert.match(client, /server result[\s\S]*authoritative[\s\S]*role[\s\S]*provider access/i);
   assert.match(client, /call[\s\S]*`bos_get_context`[\s\S]*resume the original request/i);
   assert.match(client, /invalid_grant[\s\S]*Refresh token[\s\S]*replay detected/i);
   assert.match(client, /stop the refresh retry loop[\s\S]*fresh consent/i);
@@ -621,7 +672,9 @@ test("Codex reauthentication exposes native user-controlled authentication", asy
     assert.match(generated, /mcpServers: "\.\/\.mcp\.json"/i, path);
     assert.match(generated, /matching tool descriptor[\s\S]*securitySchemes[\s\S]*oauth2/i, path);
     assert.match(generated, /mcp\/www_authenticate[\s\S]*native[\s\S]*Sign in/i, path);
-    assert.match(generated, /authority-scoped tool state[\s\S]*After consent/i, path);
+    assert.match(generated, /complete static BOS tool[\s\S]*After consent/i, path);
+    assert.match(generated, /Catalog\s+presence[\s\S]*never proves[\s\S]*authorized/i, path);
+    assert.match(generated, /server result[\s\S]*authoritative[\s\S]*role[\s\S]*provider access/i, path);
     assert.doesNotMatch(generated, /codex mcp login/i, path);
     assert.match(generated, /Do not use\s+generic app-permission tools/i, path);
   }
@@ -1189,8 +1242,8 @@ test("BOS marketplace metadata explains the platform and links to its website", 
   assert.equal(bos.description.length, 79);
   assert.match(bos.description, /Agent-first Business Operating System/);
   assert.match(bos.long_description, /owns the authenticated MCP connection/);
-  assert.match(bos.long_description, /server-evaluated tools/);
-  assert.match(bos.long_description, /authorization on every request/);
+  assert.match(bos.long_description, /complete static operation catalog/);
+  assert.match(bos.long_description, /authorization on every private operation/);
   assert.equal(bos.website_url, "https://dfsm.ai");
   assert.equal(bos.brand_color, "#061638");
   assert.equal(bos.composer_icon, "assets/bos-logo.png");
@@ -1302,7 +1355,10 @@ test("BOS OAuth targets and generated product metadata derive from product.json"
     mcpServers: {
       platform: {
         type: "http",
-        url: canonicalBosProduct.mcp_resource_url
+        url: canonicalBosProduct.mcp_resource_url,
+        oauth_resource: canonicalBosProduct.mcp_resource_url,
+        required: true,
+        startup_timeout_sec: canonicalBosProduct.codex_mcp_startup_timeout_sec
       }
     }
   });
@@ -1372,6 +1428,7 @@ test("package schema reserves runtime ownership for BOS", () => {
     application_name: "bos",
     mcp_group_name: "platform",
     mcp_resource_url: "https://example.com/mcp/apps/bos/platform",
+    codex_mcp_startup_timeout_sec: 45,
     oauth: {
       authorization_server_issuer: "https://example.com",
       authorization_endpoint: "https://example.com/api/v1/mcp/oauth/authorize",
@@ -1448,6 +1505,10 @@ test("package schema reserves runtime ownership for BOS", () => {
     validateProduct({ ...base, authentication: "ON_USE" }).join("\n"),
     /BOS authentication must be ON_INSTALL/
   );
+  assert.match(
+    validateProduct({ ...base, codex_mcp_startup_timeout_sec: 30 }).join("\n"),
+    /codex_mcp_startup_timeout_sec greater than 30/
+  );
   const subservice = {
     ...base,
     name: "education-center",
@@ -1456,6 +1517,7 @@ test("package schema reserves runtime ownership for BOS", () => {
     application_name: undefined,
     mcp_group_name: undefined,
     mcp_resource_url: undefined,
+    codex_mcp_startup_timeout_sec: undefined,
     oauth: undefined,
     includes: ["platform/bos-mcp-client"]
   };
@@ -1516,7 +1578,10 @@ test("disabled products are absent while active runtime products remain scoped",
     mcpServers: {
       platform: {
         type: "http",
-        url: canonicalBosProduct.mcp_resource_url
+        url: canonicalBosProduct.mcp_resource_url,
+        oauth_resource: canonicalBosProduct.mcp_resource_url,
+        required: true,
+        startup_timeout_sec: canonicalBosProduct.codex_mcp_startup_timeout_sec
       }
     }
   });
@@ -1551,6 +1616,12 @@ test("BOS owns OAuth while Education Center adds no connection binding", async (
   assert.equal(metadata.application_name, "bos");
   assert.equal(metadata.mcp_group_name, "platform");
   assert.equal(metadata.resource_url, codexMcp.mcpServers.platform.url);
+  assert.equal(metadata.resource_url, codexMcp.mcpServers.platform.oauth_resource);
+  assert.equal(codexMcp.mcpServers.platform.required, true);
+  assert.equal(
+    codexMcp.mcpServers.platform.startup_timeout_sec,
+    canonicalBosProduct.codex_mcp_startup_timeout_sec
+  );
   assert.equal(plugin.mcpServers, "./.mcp.json");
   assert.equal(plugin.apps, undefined);
   await assert.rejects(access(`${codexRoot}/.app.json`));
@@ -1875,6 +1946,9 @@ test("every product and client ships tenant extension management metadata", asyn
           mcp_group_name: manifest.mcp_group_name,
           resource_url: manifest.mcp_resource_url,
           oauth: manifest.oauth,
+          ...(client === "codex" ? {
+            codex_mcp_startup_timeout_sec: manifest.codex_mcp_startup_timeout_sec
+          } : {}),
           ...(client === "claude" ? {
             connection_scope: "claude_account"
           } : {})

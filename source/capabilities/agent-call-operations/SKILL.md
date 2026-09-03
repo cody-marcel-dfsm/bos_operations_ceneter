@@ -40,8 +40,8 @@ before invoking the call mutation.
 6. Reuse that key only for a transport retry, provider-authorization recovery,
    or reconciliation of this exact dispatch request. If provider authorization
    is required, preserve the same lead and idempotency key, complete the
-   BOS-hosted recovery flow, refresh the manifest, revalidate context, and
-   resume once.
+   BOS-hosted recovery flow, refresh context and operation status, and retry the
+   same `tools/call` once.
 7. If the result is uncertain after a disconnect, call
    `education_center_get_agent_call_status` with the same lead and the returned
    call-log or provider-call reference. This is the only operation used for

@@ -81,8 +81,10 @@ request.
    selected-tool challenge does not render the inline action, preserve the
    request and report an authentication-activation defect. The agent never
    invokes CLI login or launches authentication for the customer.
-6. After browser consent succeeds, refresh the MCP session and callable tools,
-   resolve BOS context, run one bounded read, and resume the original request.
+6. After browser consent succeeds, refresh the MCP session and complete static
+   BOS tool catalog, resolve BOS context, run one bounded read, and resume the
+   original request. Treat the call result—not catalog presence—as the
+   authorization and provider-readiness decision.
 
 Official source:
 `https://developers.openai.com/plugins/build/auth#triggering-authentication-ui`

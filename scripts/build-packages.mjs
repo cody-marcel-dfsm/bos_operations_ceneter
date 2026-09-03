@@ -73,6 +73,9 @@ for (const { product, skills } of resolved) {
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
       resource_url: product.runtime ? materializeMcpUrl(product) : undefined,
+      codex_mcp_startup_timeout_sec: product.runtime
+        ? product.codex_mcp_startup_timeout_sec
+        : undefined,
       oauth: product.runtime ? oauthTargetContract(product) : undefined,
       runtime_verification_tools: product.runtime_verification_tools,
       connection_owner: "bos",
@@ -185,8 +188,9 @@ for (const { product, skills } of resolved) {
           "",
           "Install and connect the BOS plugin once. Education Operation Center uses that",
           "existing BOS connection and contains no connector, registered app, MCP server,",
-          "or separate BOS login. BOS evaluates organization, installation, role, plugin,",
-          "capability, provider, and tool authorization on every request.",
+          "or separate BOS login. BOS exposes one static operation catalog and evaluates",
+          "organization, installation, role, plugin, capability, provider, and tool",
+          "authorization on every private operation.",
           "The customer-facing franchise or brand name is supplied during tenant setup",
           "and applies only to customer-facing copy and output.",
           "Credentials are never included in this package,",

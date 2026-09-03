@@ -108,6 +108,9 @@ test("Codex runtime installation binds the package-owned BOS MCP resource", asyn
     state: "host_managed",
     name: "platform",
     url: resourceGroupUrl,
+    oauth_resource: resourceGroupUrl,
+    required: true,
+    startup_timeout_sec: 45,
     authentication: "oauth_2_1",
     next_action: "connect"
   });
@@ -182,6 +185,48 @@ test("Codex OAuth installation rejects a malformed MCP transport", async () => {
   const mcpPath = join(installedProduct(home, "bos"), ".mcp.json");
   const mcp = JSON.parse(await readFile(mcpPath, "utf8"));
   mcp.mcpServers.platform.type = "stdio";
+  await chmod(mcpPath, 0o644);
+  await writeFile(mcpPath, JSON.stringify(mcp));
+  await assert.rejects(
+    verifyInstallationRaw({ home, product: "bos" }),
+    /Packaged Codex MCP binding is invalid/
+  );
+});
+
+test("Codex OAuth installation rejects an optional MCP server", async () => {
+  const home = await temporaryHome();
+  await applyInstallationRaw({ home, product: "bos" });
+  const mcpPath = join(installedProduct(home, "bos"), ".mcp.json");
+  const mcp = JSON.parse(await readFile(mcpPath, "utf8"));
+  mcp.mcpServers.platform.required = false;
+  await chmod(mcpPath, 0o644);
+  await writeFile(mcpPath, JSON.stringify(mcp));
+  await assert.rejects(
+    verifyInstallationRaw({ home, product: "bos" }),
+    /Packaged Codex MCP binding is invalid/
+  );
+});
+
+test("Codex OAuth installation rejects a mismatched OAuth resource", async () => {
+  const home = await temporaryHome();
+  await applyInstallationRaw({ home, product: "bos" });
+  const mcpPath = join(installedProduct(home, "bos"), ".mcp.json");
+  const mcp = JSON.parse(await readFile(mcpPath, "utf8"));
+  mcp.mcpServers.platform.oauth_resource = "https://example.com/mcp";
+  await chmod(mcpPath, 0o644);
+  await writeFile(mcpPath, JSON.stringify(mcp));
+  await assert.rejects(
+    verifyInstallationRaw({ home, product: "bos" }),
+    /Packaged Codex MCP binding is invalid/
+  );
+});
+
+test("Codex OAuth installation rejects an insufficient startup timeout", async () => {
+  const home = await temporaryHome();
+  await applyInstallationRaw({ home, product: "bos" });
+  const mcpPath = join(installedProduct(home, "bos"), ".mcp.json");
+  const mcp = JSON.parse(await readFile(mcpPath, "utf8"));
+  mcp.mcpServers.platform.startup_timeout_sec = 10;
   await chmod(mcpPath, 0o644);
   await writeFile(mcpPath, JSON.stringify(mcp));
   await assert.rejects(

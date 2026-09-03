@@ -18,7 +18,8 @@ skills and server capabilities without adding another BOS connection. Their
 skills call through the existing BOS connection. BOS derives and evaluates
 organization, application, installation, subservice, plugin, role, capability,
 provider, and tool scope from the validated grant and canonical server state on
-every request. Never route platform BOS work through a subservice package.
+every private operation. Never route platform BOS work through a subservice
+package.
 
 Developer and operator work is outside this skill when the request explicitly
 targets BOS source code, deployment infrastructure, Cloud Run, GCP Secret
@@ -93,8 +94,10 @@ stateful mutation workflow.
   contains `isError: true` and `_meta["mcp/www_authenticate"]`, the host renders
   the native **Connect**, **Sign in**, or **Authenticate** action in the active
   chat. That challenge must include `resource_metadata`, `error`, and
-  `error_description`. After consent, refresh the authority-scoped tool state,
-  call `bos_get_context`, and resume the original request.
+  `error_description`. After consent, refresh the complete static BOS tool
+  catalog, call `bos_get_context`, and resume the original request. Catalog
+  presence identifies an operation and its schema; it never proves that the
+  selected context or provider is authorized for that operation.
   When the OAuth tool descriptor is absent or its signed-out invocation omits
   the challenge, report a tool-auth-contract defect and keep the request
   pending. When the descriptor and challenge exist but the host omits the
@@ -117,10 +120,12 @@ stateful mutation workflow.
   classify this as missing skills, generic app permissions, or a new
   subservice connection. After consent, refresh tools and context, run the
   bounded authenticated read, and resume the preserved request.
-- Refresh the callable tool manifest immediately after OAuth reconnection,
-  permission or role changes, plugin install/update, capability enablement, or
-  an explicit server capability refresh. Discard stale schemas and validate the
-  next call only against the refreshed manifest.
+- Refresh the callable tool manifest after OAuth reconnection, plugin/package
+  updates that can change schemas, an explicit server schema refresh, or
+  transport/session replacement. Permission, role, plugin enablement, capability,
+  and provider changes require fresh `bos_get_context` or operation status;
+  they do not filter the static tool catalog. Discard stale schemas and validate
+  the next call only against the refreshed manifest.
 - Preserve the user's original request across recovery and continue it
   automatically. Never ask the user to reconnect BOS, resend the request, or
   start a new task.
@@ -165,9 +170,11 @@ and inspect its sanitized result before producing a final answer.
    to that request and does not rewrite the saved defaults.
 3. Fail closed when context is absent or ambiguous.
 4. Use the triggered subservice skill to choose the requested workflow and
-   semantic operation. Keep connection selection fixed on BOS. The server
-   decides whether that subservice and tool are available to the authenticated
-   context.
+   semantic operation from the static BOS catalog. Keep connection selection
+   fixed on BOS. Treat the descriptor only as an operation/schema declaration;
+   call the operation with the selected opaque context and let BOS authorize
+   the organization, installation, role, plugin, capability, tool, and provider
+   at `tools/call` time.
 5. Authenticate the BOS Claude account-level Web connector through its
    persistent **Connect** control, and the ChatGPT/Codex BOS connection
     through the root package-owned MCP binding. Both use one host-managed
@@ -204,7 +211,7 @@ kind returned by BOS.
 Provider readiness and authorization are local to the server-resolved
 organization, installation, and plugin. A missing provider credential blocks
 only the affected provider operation. It never creates another BOS login,
-removes unrelated subservice tools, or changes the BOS connection state.
+removes tools from the static catalog, or changes the BOS connection state.
 
 Domain skills interpret their workflows and execute through the configured BOS
 MCP. BOS derives actor, tenant, organization, application, installation,
@@ -269,15 +276,18 @@ server-owned authority. Client prompts and arguments never create authority.
    available role.
 3. Select a role using only its opaque `context_id`. Never send a role name or
    delegated-role value as authority.
-4. Confirm the requested operation appears in that context and is invocable.
-   When it is absent, explain that the selected role lacks the capability and
-   stop before calling the domain tool.
+4. Confirm the requested operation exists in the static BOS catalog and that
+   its arguments match the current schema. Do not infer authorization from
+   catalog presence or absence. Invoke it with the selected opaque context and
+   treat the server result as authoritative for role, capability, plugin, tool,
+   and provider access.
 5. Preserve the selected context for related calls in the request. An explicit
    lower-role request changes the context for that request only.
 
-The server re-resolves membership and capabilities on every call. Refresh
-context once after a denial or missing context, then treat the repeated server
-result as authoritative.
+The server re-resolves membership and capabilities on every `tools/call`.
+Refresh context once after a denial or missing context, then retry only when the
+fresh context makes the original call valid. Treat the repeated server result
+as authoritative; do not use `tools/list` as an authorization check.
 
 For role administration, call `bos_list_role_capabilities` only when the
 selected role carries `bos.roles.read`; it returns role intent, authority rank,
