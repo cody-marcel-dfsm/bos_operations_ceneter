@@ -2,7 +2,10 @@
   "mcpServers": {
     "platform": {
       "type": "http",
-      "url": "https://dfsm.ai/mcp/apps/bos/platform"
+      "url": "https://dfsm.ai/mcp/apps/bos/platform",
+      "oauth_resource": "https://dfsm.ai/mcp/apps/bos/platform",
+      "required": true,
+      "startup_timeout_sec": 45
     }
   }
 }

@@ -89,10 +89,13 @@ configuration as distinct validated dimensions.
   headers, or a plugin key field. The server derives actor, tenant, organization, installation,
   role, plugin, and capability scope from the validated OAuth grant; client
   prompts and tool arguments never supply those authority dimensions.
-- Advertise only the tools allowed for the resolved endpoint, tenant,
-  installation, plugin, and execution role. Advertise administrative tools
-  only when the selected role carries their explicit administrative
-  capability.
+- Before consent, expose only the OAuth-declared descriptor surface required to
+  activate BOS authentication; it authorizes no business execution. After a
+  valid BOS token proves access to at least one organization, advertise
+  the complete static BOS tool catalog. A descriptor declares an operation and
+  schema; it grants no tenant, role, plugin, capability, tool, or provider
+  authority. Re-evaluate those dimensions when the selected `tools/call`
+  executes, including for administrative operations.
 - Keep provider authorization scoped to its organization, installation, and
   plugin. Missing provider readiness affects only server-evaluated operations
   that require that provider; it never creates another BOS authentication

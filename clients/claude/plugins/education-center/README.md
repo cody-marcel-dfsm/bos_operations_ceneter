@@ -23,8 +23,9 @@ students.
 
 Install and connect the BOS plugin once. Education Operation Center uses that
 existing BOS connection and contains no connector, registered app, MCP server,
-or separate BOS login. BOS evaluates organization, installation, role, plugin,
-capability, provider, and tool authorization on every request.
+or separate BOS login. BOS exposes one static operation catalog and evaluates
+organization, installation, role, plugin, capability, provider, and tool
+authorization on every private operation.
 The customer-facing franchise or brand name is supplied during tenant setup
 and applies only to customer-facing copy and output.
 Credentials are never included in this package,

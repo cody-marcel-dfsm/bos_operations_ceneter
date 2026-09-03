@@ -73,12 +73,12 @@ server's labels, connection-state vocabulary, action availability, and order.
 - Show disabled and `unavailable` rows with their server-returned status and
   available action. Never silently enable a plugin. Enablement requires the
   user's explicit toggle or request through `bos-plugin-console`, followed by
-  fresh context, tool, and service discovery.
+  fresh context, operation status, and service inventory.
 
 Use only the BOS-returned URL-mode elicitation or sanitized resource link for a
 provider connection. The user signs in, consents, or enters credentials only on
 the provider or BOS-hosted secure page. Poll `bos_get_authorization_status` with
-the returned transaction's exact recovery token, refresh context and tools, and
+the returned transaction's exact recovery token, refresh context and operation status, and
 call `bos_list_plugin_services` again. Advance only when the replacement row is
 `connected` or `not_required`; otherwise present its new server-owned status
 and one next action.

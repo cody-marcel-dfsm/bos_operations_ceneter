@@ -41,9 +41,11 @@ against a sanitized trace when validating an end-to-end client execution.
 
 ## Required sequence
 
-1. Resolve context and discover current tool schemas. Refresh immediately after
-   any OAuth, permission, plugin, or capability change. Preserve the sanitized
-   campaign continuation envelope and resume automatically.
+1. Resolve context and discover the static tool schemas. Refresh discovery after
+   OAuth reconnection, package/schema change, or transport/session replacement.
+   After permission, plugin, capability, or provider changes, refresh context or
+   operation status and let the next `tools/call` authorize execution. Preserve
+   the sanitized campaign continuation envelope and resume automatically.
 2. Build one server-owned audience from the requested configured sources and
    explicit cohort priorities. Preserve overlapping cohort tags, source
    provenance, eligibility reasons, and one normalized guardian identity.

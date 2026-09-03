@@ -52,7 +52,7 @@ enablement, connection state, and action availability. `connected` and
 `not_required` rows need no interaction. Each enabled `connection_required`
 row exposes at most one current connection action; after user activation, the
 client starts that exact BOS-owned flow, polls its sanitized transaction,
-refreshes context and tools, and replaces the inventory. The initializer does
+refreshes context and operation status, and replaces the inventory. The initializer does
 not enumerate other organizations, batch authorization pages, infer provider
 requirements, or persist connection state locally.
 

@@ -69,6 +69,7 @@ export function validateProduct(manifest, path = "product.json") {
     "application_name",
     "mcp_group_name",
     "mcp_resource_url",
+    "codex_mcp_startup_timeout_sec",
     "oauth",
     "settings_template",
     "settings_initializer",
@@ -215,6 +216,11 @@ export function validateProduct(manifest, path = "product.json") {
       !/^https:\/\/[^\s]+$/.test(manifest.mcp_resource_url))) {
     failures.push(`${path}: runtime requires application_name, mcp_group_name, and an HTTPS mcp_resource_url`);
   }
+  if (manifest.runtime &&
+      (!Number.isInteger(manifest.codex_mcp_startup_timeout_sec) ||
+        manifest.codex_mcp_startup_timeout_sec <= 30)) {
+    failures.push(`${path}: runtime requires codex_mcp_startup_timeout_sec greater than 30`);
+  }
   const oauth = manifest.oauth;
   if (manifest.runtime && (!oauth || typeof oauth !== "object" || Array.isArray(oauth))) {
     failures.push(`${path}: runtime requires a complete OAuth target contract`);
@@ -300,6 +306,7 @@ export function validateProduct(manifest, path = "product.json") {
     manifest.application_name !== undefined ||
     manifest.mcp_group_name !== undefined ||
     manifest.mcp_resource_url !== undefined ||
+    manifest.codex_mcp_startup_timeout_sec !== undefined ||
     manifest.oauth !== undefined
   ) {
     failures.push(`${path}: subservice products must use the BOS-owned connection`);
@@ -600,7 +607,10 @@ export function codexPluginMcpManifest(product) {
     mcpServers: {
       [product.mcp_group_name]: {
         type: "http",
-        url: materializeMcpUrl(product)
+        url: materializeMcpUrl(product),
+        oauth_resource: materializeMcpUrl(product),
+        required: true,
+        startup_timeout_sec: product.codex_mcp_startup_timeout_sec
       }
     }
   };

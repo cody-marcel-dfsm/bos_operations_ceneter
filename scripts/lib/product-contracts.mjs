@@ -16,6 +16,9 @@ export function singleBosConnectionContract(products) {
     resource_url: materializeMcpUrl(owner),
     oauth,
     owner_authentication_policy: owner.authentication,
+    codex_mcp_server_required: true,
+    codex_oauth_resource_equals_resource_url: true,
+    codex_mcp_startup_timeout_sec: owner.codex_mcp_startup_timeout_sec,
     provider_account_selection_policy: oauth.provider_account_selection_policy,
     identity_organization_resolution_policy: "SERVER_EVALUATED_PER_VERIFIED_IDENTITY",
     subservice_authentication_policy: "ON_USE",
@@ -25,7 +28,10 @@ export function singleBosConnectionContract(products) {
       tool_security_scheme: "OAUTH2_PER_TOOL",
       unauthenticated_tool_result: "MCP_WWW_AUTHENTICATE",
       unauthenticated_business_execution: "DENIED",
-      post_authentication_tool_catalog: "SERVER_AUTHORITY_SCOPED",
+      post_authentication_tool_catalog: "COMPLETE_STATIC_BOS_CATALOG",
+      authenticated_tools_list_gate: "VALID_TOKEN_AND_AUTHORIZED_ORGANIZATION",
+      catalog_authorization_semantics: "DESCRIPTORS_DO_NOT_GRANT_AUTHORITY",
+      operation_authorization: "SERVER_EVALUATED_ON_TOOLS_CALL",
       native_action_surface: "ACTIVE_CHAT",
       continuation_policy: "RESUME_ORIGINAL_REQUEST"
     },
@@ -61,7 +67,10 @@ export function codexLoginSurfaceContract(product) {
       manifest_path: "./.mcp.json",
       server_name: product.mcp_group_name,
       server_type: "http",
-      resource_url_must_equal_product_source: true
+      resource_url_must_equal_product_source: true,
+      oauth_resource_must_equal_resource_url: true,
+      server_required: true,
+      startup_timeout_sec: product.codex_mcp_startup_timeout_sec
     },
     action: {
       trigger: "MCP_OAUTH_CHALLENGE",

@@ -10,6 +10,17 @@ import { verifyCodexLoginEvidence } from "../scripts/verify-codex-login-evidence
 const pluginRoot = join(root, "clients", "codex", "plugins", "bos");
 const product = await readJson(join(root, "products", "bos", "product.json"));
 
+test("generated contracts require one durable BOS OAuth resource", async () => {
+  const login = await readJson(join(root, "contracts", "codex-login-surface.v1.json"));
+  const connection = await readJson(join(root, "contracts", "single-bos-mcp-connection.v1.json"));
+  assert.equal(login.package_binding_acceptance.oauth_resource_must_equal_resource_url, true);
+  assert.equal(login.package_binding_acceptance.server_required, true);
+  assert.equal(login.package_binding_acceptance.startup_timeout_sec, 45);
+  assert.equal(connection.codex_oauth_resource_equals_resource_url, true);
+  assert.equal(connection.codex_mcp_server_required, true);
+  assert.equal(connection.codex_mcp_startup_timeout_sec, 45);
+});
+
 test("BOS Codex package derives authentication from its bundled MCP resource", async () => {
   const plugin = JSON.parse(await readFile(join(pluginRoot, ".codex-plugin/plugin.json"), "utf8"));
   const mcp = JSON.parse(await readFile(join(pluginRoot, ".mcp.json"), "utf8"));
@@ -17,7 +28,13 @@ test("BOS Codex package derives authentication from its bundled MCP resource", a
   assert.equal("apps" in plugin, false);
   assert.deepEqual(mcp, {
     mcpServers: {
-      platform: { type: "http", url: "https://dfsm.ai/mcp/apps/bos/platform" }
+      platform: {
+        type: "http",
+        url: "https://dfsm.ai/mcp/apps/bos/platform",
+        oauth_resource: "https://dfsm.ai/mcp/apps/bos/platform",
+        required: true,
+        startup_timeout_sec: 45
+      }
     }
   });
   await assert.rejects(access(join(pluginRoot, ".app.json")));
