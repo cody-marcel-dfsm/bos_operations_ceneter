@@ -82,6 +82,11 @@ continuing the domain workflow. Gmail opens the provider OAuth consent path.
 Calimatic opens the short-lived BOS credential page that asks for the portal
 URL and API key. Never replace either path with dashboard navigation, written
 setup steps, or a request for the customer to return and confirm completion.
+When the BOS context is already authenticated, a Calimatic recovery page that
+asks for root BOS sign-in is `provider_recovery_identity_boundary`. Never click,
+follow, launch, or restart BOS authentication from that page. Preserve and poll
+the existing provider transaction once, then report the server-owned defect if
+the Calimatic credential form remains absent.
 
 ## Domain routes
 

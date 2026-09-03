@@ -44,5 +44,22 @@ test("BOS request interception distinguishes Gmail OAuth from Calimatic API-key 
   assert.match(client, /model and MCP client[\s\S]*never receive either value/i);
   assert.match(client, /poll[\s\S]*bos_resume_operation/i);
   assert.match(client, /explicit request to connect or authenticate[\s\S]*server-returned recovery `next_action`/i);
+  assert.match(client, /API-key recovery surface[\s\S]*provider credential collector/i);
+  assert.match(client, /never\s+click[\s\S]*root BOS[\s\S]*(Sign in|authentication)/i);
+  assert.match(client, /poll `bos_get_authorization_status` once[\s\S]*provider_recovery_identity_boundary/i);
+  assert.match(client, /successful `bos_get_context`[\s\S]*BOS grant is already valid/i);
   assert.doesNotMatch(client, /go to (settings|the BOS dashboard)/i);
+});
+
+test("provider recovery cannot regress an authenticated BOS client to root sign-in", () => {
+  const integrity = read("source/platform/authentication-context-integrity/SKILL.md");
+  const consoleSkill = read("source/platform/bos-plugin-console/SKILL.md");
+  const routing = read("source/verticals/education-center/education-center-service-routing/SKILL.md");
+  const support = read("source/platform/bos-guided-support/references/support-state-machine.md");
+
+  for (const contract of [integrity, consoleSkill, routing, support]) {
+    assert.match(contract, /provider_recovery_identity_boundary/i);
+    assert.match(contract, /BOS (grant|connection|context)[\s\S]*(valid|authenticated)/i);
+    assert.match(contract, /(do not|never)[\s\S]*(click|follow|launch|restart)[\s\S]*(BOS|root)[\s\S]*(sign-in|sign in|authentication)/i);
+  }
 });
