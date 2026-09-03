@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
 
@@ -16,6 +18,40 @@ import { readJson, root } from "../scripts/lib/package-model.mjs";
 const execFileAsync = promisify(execFile);
 const bosProduct = await readJson(`${root}/products/bos/product.json`);
 
+async function temporaryContractRoot() {
+  const fixture = await mkdtemp(join(tmpdir(), "bos-single-contract-"));
+  const contract = await readJson(`${root}/contracts/single-bos-mcp-connection.v1.json`);
+  contract.connection_artifacts = ["clients/codex/plugins/bos/.mcp.json"];
+  for (const path of [
+    "contracts",
+    "products/bos",
+    "products/education-center",
+    "clients/codex/plugins/bos",
+    "source",
+    ".agents"
+  ]) await mkdir(join(fixture, path), { recursive: true });
+  await writeFile(
+    join(fixture, "contracts/single-bos-mcp-connection.v1.json"),
+    JSON.stringify(contract)
+  );
+  await writeFile(join(fixture, "products/bos/product.json"), JSON.stringify(bosProduct));
+  await writeFile(
+    join(fixture, "products/education-center/product.json"),
+    JSON.stringify({ name: "education-center" })
+  );
+  await writeFile(
+    join(fixture, "clients/codex/plugins/bos/.mcp.json"),
+    JSON.stringify({ mcpServers: { platform: {
+      type: "http",
+      url: contract.resource_url,
+      oauth_resource: contract.resource_url,
+      required: true,
+      startup_timeout_sec: contract.codex_mcp_startup_timeout_sec
+    } } })
+  );
+  return fixture;
+}
+
 test("single BOS contract passes canonical and generated clients", async () => {
   const result = await verifySingleBosContract({ root });
   assert.deepEqual(result.violations, []);
@@ -29,10 +65,37 @@ test("single BOS contract passes canonical and generated clients", async () => {
     tool_security_scheme: "OAUTH2_PER_TOOL",
     unauthenticated_tool_result: "MCP_WWW_AUTHENTICATE",
     unauthenticated_business_execution: "DENIED",
-    post_authentication_tool_catalog: "SERVER_AUTHORITY_SCOPED",
+    post_authentication_tool_catalog: "COMPLETE_STATIC_BOS_CATALOG",
+    authenticated_tools_list_gate: "VALID_TOKEN_AND_AUTHORIZED_ORGANIZATION",
+    catalog_authorization_semantics: "DESCRIPTORS_DO_NOT_GRANT_AUTHORITY",
+    operation_authorization: "SERVER_EVALUATED_ON_TOOLS_CALL",
     native_action_surface: "ACTIVE_CHAT",
     continuation_policy: "RESUME_ORIGINAL_REQUEST"
   });
+});
+
+test("single BOS contract binds startup timeout to the BOS product source", async () => {
+  const fixture = await temporaryContractRoot();
+  const productPath = join(fixture, "products/bos/product.json");
+  const product = await readJson(productPath);
+  product.codex_mcp_startup_timeout_sec = 46;
+  await writeFile(productPath, JSON.stringify(product));
+  const result = await verifySingleBosContract({ root: fixture });
+  assert.ok(result.violations.some(({ code, message }) =>
+    code === "owner_manifest_mismatch" && message.includes("codex_mcp_startup_timeout_sec")));
+});
+
+test("single BOS contract rejects subservice startup policy", async () => {
+  const fixture = await temporaryContractRoot();
+  const productPath = join(fixture, "products/education-center/product.json");
+  await writeFile(productPath, JSON.stringify({
+    name: "education-center",
+    codex_mcp_startup_timeout_sec: 45
+  }));
+  const result = await verifySingleBosContract({ root: fixture });
+  assert.ok(result.violations.some(({ code, message }) =>
+    code === "subservice_transport_owner" &&
+    message.includes("codex_mcp_startup_timeout_sec")));
 });
 
 test("selected-tool authentication guidance preserves failure ownership", async () => {

@@ -159,9 +159,12 @@ The BOS product owns the single runtime connection and includes
 discovery, context validation, and safe request resumption. Education Center,
 CRM, Marketing Director, and every other subservice package contribute skills
 without an app binding, connector, MCP declaration, or separate login. All
-operations use `/mcp/apps/bos/platform`; the server filters tools and validates
+operations use `/mcp/apps/bos/platform`. For an authenticated user with at least
+one authorized organization, `tools/list` returns the complete static BOS
+operation/schema catalog without per-tool, role, plugin, capability, or provider
+filtering. Catalog presence grants no authority. The server validates
 organization, application, installation, subservice, plugin, role, capability,
-provider, and tool scope on every request.
+provider, and tool scope when `tools/call` executes.
 
 ### In-memory BOS Plugin Console
 
@@ -505,7 +508,9 @@ Credentials and access authority remain outside customer configuration.
 Claude and ChatGPT/Codex authorize the named BOS resource through host-managed
 OAuth 2.1. Claude uses an account-level Web connector. Codex packages carry one
 credential-free `.mcp.json` declaration containing the product-owned BOS
-resource and no `.app.json`. The hosts discover authorization metadata from the
+resource, an identical `oauth_resource`, `required: true`, and no `.app.json`.
+Codex gives this required server a 45-second startup budget.
+The hosts discover authorization metadata from the
 resource, collect consent, store and refresh the grant, and attach its
 resource-scoped access token. Skill files, generated packages, logs, customer settings,
 customer-entered commands, and model chat remain credential-free. BOS owns encrypted provider-credential
@@ -527,10 +532,13 @@ client, or OS-specific transport adapter.
 The BOS platform package owns the single MCP endpoint at
 `/mcp/apps/bos/platform`. Every subservice package contains skills and product
 metadata without an MCP declaration, app binding, connector, or login. The BOS
-service validates the OAuth token and evaluates organization, installation,
-application, subservice, plugin, role, capability, provider, and tool scope for
-each request. Tool discovery, routing, administrative-tool suppression, and
-provider recovery are server responsibilities.
+service validates the OAuth token and confirms at least one authorized
+organization before returning the complete static BOS tool catalog. It performs
+no per-tool permission, provider-health, plugin-credential, or role-based
+catalog filtering. Catalog descriptors define operation names and schemas only.
+The server evaluates organization, installation, application, subservice,
+plugin, role, capability, provider, and tool scope when the client invokes
+`tools/call`. Routing and provider recovery remain server responsibilities.
 
 This follows the transport guidance published by OpenAI, Anthropic, and the
 MCP maintainers: Streamable HTTP serves remote integrations; stdio serves
@@ -596,10 +604,11 @@ authenticate BOS and does not authorize provider access.
 ### 3. Connect the account
 
 The client loads the BOS product's host-native runtime binding. Codex loads the
-package-owned BOS resource declared by `.mcp.json`; Claude uses the
+package-owned, required BOS resource declared by `.mcp.json`; Claude uses the
 account-level BOS Web connector. The
 host presents Connect once, completes OAuth discovery and consent, and stores
-the BOS resource-scoped grant. Subservice packages load skills and add no
+the BOS resource-scoped grant. On later tasks BOS accepts that grant without a
+new login; when BOS challenges, the host presents Connect. Subservice packages load skills and add no
 authentication surface. BOS validates the grant and canonical subservice
 authority on every secured request. A provider authorization failure affects
 only the operation requiring that provider.

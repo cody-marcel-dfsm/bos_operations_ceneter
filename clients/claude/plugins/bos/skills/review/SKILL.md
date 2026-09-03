@@ -32,7 +32,8 @@ description: Review Business Operating System platform changes for architecture,
   subservices. Reject additional BOS logins or registered BOS connections owned
   by Education Center, CRM, Marketing Director, or another subservice plugin.
 - The server evaluates subservice, installation, plugin, role, capability,
-  provider, and tool scope for every request over the BOS connection.
+  provider, and tool scope for every private operation over the BOS connection;
+  the static catalog itself grants no authority.
 - Platform BOS operations never transit a subservice connection.
 - Current-product completeness is proven from current components. Future
   products and anticipated growth do not satisfy a present requirement.

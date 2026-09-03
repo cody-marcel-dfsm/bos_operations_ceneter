@@ -69,8 +69,9 @@ must never be implied by a conversion-upload request.
 selected Education Center organization has successfully executed the BOS
 `education_center_create_offline_ad_conversions` mutation. Treat that provider-confirmed
 execution as evidence that the workflow is implemented. Recheck live context
-and tool discovery every task because installed plugins and capabilities can
-change.
+and operation status every task because installed plugins and capabilities can
+change. Refresh the static tool catalog only after a package/schema change,
+OAuth reconnection, or transport/session replacement.
 
 The canonical capability is
 `education-center-offline-ad-conversions.conversions.create`. The legacy capability

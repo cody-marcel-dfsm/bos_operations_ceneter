@@ -96,8 +96,11 @@ async function inspectInstalledMcpBinding(home, marketplace, product, versions, 
     !(await pathExists(appPath)) &&
     server?.type === "http" &&
     server?.url === product.mcp_resource_url &&
+    server?.oauth_resource === product.mcp_resource_url &&
+    server?.required === true &&
+    server?.startup_timeout_sec === product.codex_mcp_startup_timeout_sec &&
     JSON.stringify(Object.keys(server ?? {}).sort()) ===
-      JSON.stringify(["type", "url"]);
+      JSON.stringify(["oauth_resource", "required", "startup_timeout_sec", "type", "url"]);
   return {
     state: current ? "current" : "invalid",
     path,
@@ -196,8 +199,8 @@ export async function inspectCodexRuntime(rawOptions = {}) {
     ...(marketplaceCurrent ? [] : [`${options.marketplace} marketplace is not registered`]),
     ...packageFailures,
     ...(mcpBinding.state === "current" ? [] : ["package-owned BOS MCP binding is missing or invalid"]),
-    ...(catalogPath ? [] : ["Codex callable-tool catalog is missing"]),
-    ...missingTools.map((tool) => `callable tool is missing: ${tool}`)
+    ...(catalogPath ? [] : ["Codex static BOS tool catalog is missing"]),
+    ...missingTools.map((tool) => `static catalog operation is missing: ${tool}`)
   ];
 
   return {
@@ -214,6 +217,8 @@ export async function inspectCodexRuntime(rawOptions = {}) {
     mcp_binding: mcpBinding,
     callable_catalog: {
       path: catalogPath,
+      semantics: "operation_schema_only",
+      authorization_source: "tools_call_server_result",
       discovered_tool_count: discovered.size,
       required_tools: requiredTools,
       missing_tools: missingTools

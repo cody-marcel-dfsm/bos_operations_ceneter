@@ -1,0 +1,14 @@
+{
+  "canonical_source_snapshot_sha256": "25ce9e380a59dd00df698eea5ddccbac654614d78bb8dc171558194bab895687",
+  "changed_sources": [
+    "Vault/docs/architecture.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 251,
+  "duration_seconds": 0.393,
+  "index_version": 1,
+  "indexed_at": "20260903T030036.421112Z",
+  "indexed_chunks": 10,
+  "removed_sources": [],
+  "source_count": 95
+}

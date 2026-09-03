@@ -172,6 +172,22 @@ function validateContractShape(contract, contractPath) {
       findings.push(finding("contract_shape", contractPath, `${field} must be a non-empty array.`));
     }
   }
+  for (const field of [
+    "codex_mcp_server_required",
+    "codex_oauth_resource_equals_resource_url"
+  ]) {
+    if (contract[field] !== true) {
+      findings.push(finding("contract_shape", contractPath, `${field} must be true.`));
+    }
+  }
+  if (!Number.isInteger(contract.codex_mcp_startup_timeout_sec) ||
+      contract.codex_mcp_startup_timeout_sec <= 30) {
+    findings.push(finding(
+      "contract_shape",
+      contractPath,
+      "codex_mcp_startup_timeout_sec must be an integer greater than 30."
+    ));
+  }
   if (!contract.oauth || typeof contract.oauth !== "object" ||
       contract.provider_account_selection_policy !==
         contract.oauth.provider_account_selection_policy) {
@@ -188,7 +204,10 @@ function validateContractShape(contract, contractPath) {
     tool_security_scheme: "OAUTH2_PER_TOOL",
     unauthenticated_tool_result: "MCP_WWW_AUTHENTICATE",
     unauthenticated_business_execution: "DENIED",
-    post_authentication_tool_catalog: "SERVER_AUTHORITY_SCOPED",
+    post_authentication_tool_catalog: "COMPLETE_STATIC_BOS_CATALOG",
+    authenticated_tools_list_gate: "VALID_TOKEN_AND_AUTHORIZED_ORGANIZATION",
+    catalog_authorization_semantics: "DESCRIPTORS_DO_NOT_GRANT_AUTHORITY",
+    operation_authorization: "SERVER_EVALUATED_ON_TOOLS_CALL",
     native_action_surface: "ACTIVE_CHAT",
     continuation_policy: "RESUME_ORIGINAL_REQUEST"
   };
@@ -196,7 +215,7 @@ function validateContractShape(contract, contractPath) {
     findings.push(finding(
       "contract_shape",
       contractPath,
-      "request_time_authentication must require OAuth-tagged tool descriptors, a selected-tool mcp/www_authenticate challenge, denied pre-consent business execution, native chat authentication, post-auth authority-scoped discovery, and same-request continuation."
+      "request_time_authentication must require OAuth-tagged tool descriptors, a selected-tool mcp/www_authenticate challenge, denied pre-consent business execution, native chat authentication, a complete static authenticated catalog whose descriptors grant no authority, server-evaluated tools/call authorization, and same-request continuation."
     ));
   }
   return findings;
@@ -230,6 +249,7 @@ export async function verifySingleBosContract({
       ["application_name", contract.application_name],
       ["mcp_group_name", contract.mcp_group_name],
       ["mcp_resource_url", contract.resource_url],
+      ["codex_mcp_startup_timeout_sec", contract.codex_mcp_startup_timeout_sec],
       ["oauth", contract.oauth]
     ]) {
       const observed = owner[field];
@@ -248,6 +268,7 @@ export async function verifySingleBosContract({
     "application_name",
     "mcp_group_name",
     "mcp_resource_url",
+    "codex_mcp_startup_timeout_sec",
     "oauth"
   ];
   for (const product of products.filter(({ name }) => name !== contract.owner_product)) {
@@ -301,8 +322,11 @@ export async function verifySingleBosContract({
         name !== contract.mcp_group_name ||
         server?.type !== "http" ||
         server?.url !== contract.resource_url ||
+        server?.oauth_resource !== contract.resource_url ||
+        server?.required !== true ||
+        server?.startup_timeout_sec !== contract.codex_mcp_startup_timeout_sec ||
         JSON.stringify(Object.keys(server ?? {}).sort()) !==
-          JSON.stringify(["type", "url"])
+          JSON.stringify(["oauth_resource", "required", "startup_timeout_sec", "type", "url"])
       ) {
         violations.push(finding(
           "codex_mcp_binding",

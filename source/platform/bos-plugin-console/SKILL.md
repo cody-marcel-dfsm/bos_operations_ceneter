@@ -34,7 +34,7 @@ native **Sign in**, **Connect**, or **Authenticate** button in this chat. Never
 replace that tool-bound OAuth challenge with a plugin-install recommendation,
 external install page, manual navigation, local inspection, or anonymous
 bootstrap business tool. Preserve the current request while the customer signs
-in, refresh the authority-scoped tool state after consent, call
+in, refresh the complete static BOS tool catalog after consent, call
 `bos_get_context`, and continue this same request. Never ask the customer to
 repeat the prompt.
 
@@ -115,7 +115,8 @@ A row with a valid connection action displays **Connect**. Selecting it calls
 - For a provider grant, use the BOS-returned URL elicitation or resource link.
   The customer signs in or enters a credential only on the provider or
   BOS-hosted secure page.
-- Poll the remote authorization transaction, refresh context and tools, call
+- Poll the remote authorization transaction, refresh context or operation
+  status, call
   `bos_list_plugin_services` again, and replace the component state in memory.
 
 Never place passwords, API keys, OAuth codes, tokens, authorization URLs, or
@@ -131,7 +132,7 @@ revision, and stable idempotency key.
 Require the user's explicit toggle or request. The server revalidates
 `bos.plugins.update`, scope, revision, and transition, then performs the audited
 PO/GO mutation. Claim success only from the completed remote result. Refresh
-tools and context, read the replacement snapshot, and update the same client
+context, read the replacement snapshot, and update the same client
 content surface in memory.
 
 The toggle changes canonical BOS plugin enablement. It never installs, removes,

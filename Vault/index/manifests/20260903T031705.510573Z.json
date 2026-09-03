@@ -1,0 +1,16 @@
+{
+  "canonical_source_snapshot_sha256": "e05e0d5778ece351617905e6d3110cb78b1a35a89816719f857510fb8d660c2f",
+  "changed_sources": [
+    "Vault/docs/architecture.md",
+    "Vault/docs/bos-product-licensing-user-experience.md",
+    "Vault/docs/marketplace-agent-harness-plan.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 252,
+  "duration_seconds": 0.737,
+  "index_version": 1,
+  "indexed_at": "20260903T031705.510573Z",
+  "indexed_chunks": 12,
+  "removed_sources": [],
+  "source_count": 95
+}

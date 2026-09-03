@@ -1,0 +1,15 @@
+{
+  "canonical_source_snapshot_sha256": "53408bd7bfb08bdfe5cd38a9c7240d531065978cdc9649f6da8d2d2865b9ee16",
+  "changed_sources": [
+    "Vault/specs/plugin-service-console.md",
+    "Vault/specs/role-aware-mcp-client.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 252,
+  "duration_seconds": 0.485,
+  "index_version": 1,
+  "indexed_at": "20260903T031210.859974Z",
+  "indexed_chunks": 8,
+  "removed_sources": [],
+  "source_count": 95
+}

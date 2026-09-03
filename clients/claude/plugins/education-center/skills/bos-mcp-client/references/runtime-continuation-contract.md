@@ -13,17 +13,19 @@ Refresh the callable manifest immediately after:
   the native authentication action owned by the resolved registered-app
   connection;
 - OAuth `invalid_client` registration replacement and restarted authorization;
-- actor permission, delegated-role, or plugin execution-role change;
-- plugin install, update, enablement, or disablement;
-- capability grant or server capability refresh;
+- plugin or package update that changes the public tool schema;
+- an explicit server schema refresh;
 - transport/session replacement; or
 - a server response indicating a stale or unavailable tool schema.
 
 Fingerprint the refreshed tool names, versions when exposed, and input schemas.
 Call `bos_get_context` again and prove that the same BOS connection resolves an
-authorized context. Let the server re-evaluate installed subservices, plugins,
-roles, capabilities, providers, and tools. Never reuse a tool definition absent
-from the new manifest.
+authorized context. The authenticated manifest is the complete static BOS
+catalog: its entries declare operations and schemas without granting authority.
+Permission, role, plugin enablement, capability, and provider changes refresh
+context or operation status rather than the catalog. BOS re-evaluates those
+dimensions when `tools/call` executes. Never reuse a tool definition absent from
+the refreshed schema catalog.
 
 ## Sanitized continuation envelope
 
@@ -63,7 +65,7 @@ customer data and business execution remain protected. Its signed-out
 invocation returns `isError: true` with `_meta["mcp/www_authenticate"]`, which
 lets the host render the simple inline **Sign in** button in the current chat.
 Preserve the request while the user selects the native action and completes
-consent, then refresh authority-scoped tool state, call `bos_get_context`, and
+consent, then refresh the complete static BOS tool catalog, call `bos_get_context`, and
 resume automatically. If the descriptor, challenge, or inline action is absent,
 report the exact tool-auth or host-activation defect and keep the request
 pending. Never invoke a CLI login, launch browser authentication for the user,

@@ -1,0 +1,28 @@
+{
+  "canonical_source_snapshot_sha256": "0ade5203fad58f4cbb275ce8bd814529423d7848c6a0d5835317dca07b583f38",
+  "changed_sources": [
+    "Vault/decisions/2026-08-11-desktop-private-marketplace-oauth.md",
+    "Vault/decisions/2026-08-29-codex-package-owned-mcp.md",
+    "Vault/decisions/2026-09-01-codex-registered-app-login-surface.md",
+    "Vault/docs/CONSTITUTION.md",
+    "Vault/docs/DESIGN.md",
+    "Vault/docs/IMPLEMENTATION_TASKS.md",
+    "Vault/docs/architecture.md",
+    "Vault/docs/bos-product-licensing-user-experience.md",
+    "Vault/docs/codex-registered-app-incident.md",
+    "Vault/docs/issues/ISSUE_HISTORY.md",
+    "Vault/docs/issues/conclusions/ISSUE_0001_CONCLUSION.md",
+    "Vault/docs/marketplace-agent-harness-plan.md",
+    "Vault/docs/marketplace-submission-assets.md",
+    "Vault/specs/client-guided-support.md",
+    "Vault/specs/single-bos-mcp-connection.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 248,
+  "duration_seconds": 3.77,
+  "index_version": 1,
+  "indexed_at": "20260903T011135.194317Z",
+  "indexed_chunks": 87,
+  "removed_sources": [],
+  "source_count": 94
+}

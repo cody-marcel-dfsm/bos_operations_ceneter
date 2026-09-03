@@ -1,0 +1,19 @@
+{
+  "canonical_source_snapshot_sha256": "f4f00f476c6a6aca802bb47e3e535e15f4d52c165f0d6038c19d4f111e857a13",
+  "changed_sources": [
+    "Vault/docs/DESIGN.md",
+    "Vault/docs/architecture.md",
+    "Vault/docs/issues/ISSUE_HISTORY.md",
+    "Vault/docs/issues/conclusions/ISSUE_0001_CONCLUSION.md",
+    "Vault/evidence/codex-login/0.4.78-plugin-auth-session-rca.md",
+    "Vault/specs/single-bos-mcp-connection.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 251,
+  "duration_seconds": 2.118,
+  "index_version": 1,
+  "indexed_at": "20260903T024329.600963Z",
+  "indexed_chunks": 69,
+  "removed_sources": [],
+  "source_count": 95
+}

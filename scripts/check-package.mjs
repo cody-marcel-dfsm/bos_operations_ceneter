@@ -279,8 +279,11 @@ async function validateProducts() {
             name !== manifest.mcp_group_name ||
             server?.type !== "http" ||
             server?.url !== materializeMcpUrl(manifest) ||
+            server?.oauth_resource !== materializeMcpUrl(manifest) ||
+            server?.required !== true ||
+            server?.startup_timeout_sec !== manifest.codex_mcp_startup_timeout_sec ||
             JSON.stringify(Object.keys(server ?? {}).sort()) !==
-              JSON.stringify(["type", "url"])
+              JSON.stringify(["oauth_resource", "required", "startup_timeout_sec", "type", "url"])
           ) {
             failures.push(`Generated Codex MCP declaration drift: ${runtimePath}`);
           }

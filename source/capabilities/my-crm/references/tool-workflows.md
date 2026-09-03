@@ -6,13 +6,14 @@
    Load `client-policy.json` and apply its dataset defaults unless an approved
    customer policy or explicit request supplies a stricter value.
 2. Inspect the cached MCP manifest fingerprint and client routing map. Refresh
-   live tool discovery after connection, context, plugin, role, capability, or
-   configured maximum-age change.
+   live tool discovery after connection, transport, package/schema, or
+   configured maximum-age change. Refresh context or operation status after
+   plugin, role, capability, or provider changes.
 3. Build the source map only from tools returned by the active named CRM
    connection. Combine each tool's schema with package-owned semantic routing;
    do not write discovery results to BOS or infer unavailable tools.
-4. Treat the map as routing metadata only. Every data call still performs
-   current server authorization.
+4. Treat the map as routing and schema metadata only. Catalog presence grants
+   no authority; every data call performs current server authorization.
 5. Build each dataset cache key from the authority scope, source/tool digest,
    dataset, and normalized query digest. Run the document-cache planning
    operation on every invocation.
@@ -31,9 +32,10 @@ in the live manifest:
 | Google Calendar activity evidence | `crm_search_calendar_activity` |
 | Calimatic customer/student evidence | `crm_search_calimatic_students`, `crm_list_calimatic_enrollments` |
 
-This table supplies semantic routing, not availability or authority. For
-example, GoHighLevel search remains unavailable until a search tool appears in
-the manifest; the client never substitutes get or broad retrieval.
+This table supplies semantic routing, not authorization or provider readiness.
+For example, a GoHighLevel search descriptor defines its schema; the call may
+still return provider authorization or an operation denial. The client never
+substitutes get or broad retrieval.
 
 ## Federated read
 

@@ -59,7 +59,7 @@ The view distinguishes three independent states:
 | State | Owner | Meaning |
 | --- | --- | --- |
 | BOS connection | Client host and BOS OAuth | The current client can call the root BOS resource. |
-| BOS plugin enabled | BOS service | The plugin may expose its authorized capabilities for this installation. |
+| BOS plugin enabled | BOS service | The server may authorize the plugin's operations for this installation. |
 | Service connected | BOS credential service | The scoped provider grant is ready for that plugin service. |
 
 Changing one state never silently changes another or starts or stops software
@@ -69,7 +69,7 @@ The initialization coordinator treats `connected` and `not_required` rows as
 ready, preserves disabled rows, and advances one enabled
 `connection_required` row at a time through its current server-returned action.
 It pauses with `connection_required` for user-owned sign-in, consent, secure
-credential entry, or explicit deferral. It refreshes context, tools, and the
+credential entry, or explicit deferral. It refreshes context, operation status, and the
 canonical service inventory after each completed action before proceeding to
 plugin settings. It never enables a plugin implicitly or stores connection
 state in a local receipt.
@@ -178,7 +178,7 @@ claims that printed labels are clickable controls.
 plugin enablement, provider binding, and exact installation scope before
 starting a bounded remote authorization transaction. It returns the established
 URL-mode elicitation or sanitized resource-link result. After verification, the
-client refreshes tools and replaces the in-memory console snapshot.
+client refreshes context, operation status, and the in-memory console snapshot.
 
 An unavailable BOS OAuth grant activates the root BOS connection's host-native
 **Connect**, **Sign in**, or **Authenticate** action. A subservice row never
@@ -202,8 +202,9 @@ The PO requires `bos.plugins.update`, validates the target state and revision,
 rejects cross-scope or illegal transitions, applies the change through a GO,
 and records actor, acting role, before/after state, operation ID, and result.
 Repeated idempotency keys reconcile to the original result. Success invalidates
-affected tool manifests; the client refreshes tools and context before replacing
-the in-memory snapshot.
+affected context and operation status; the client refreshes both before replacing
+the in-memory snapshot. It refreshes the static catalog only when the server
+schema also changed.
 
 This mutation changes canonical BOS plugin enablement only. It never installs,
 removes, enables, disables, starts, stops, or edits a local client package.
@@ -233,11 +234,13 @@ contains no query-time script, renderer, executable, local server, or cache.
   cross-organization results as the current console.
 - Identical canonical state returns identical ordered `structuredContent`.
 - Missing BOS OAuth exposes the root BOS host-owned connection action.
-- Disabled plugins remain visible and expose none of their domain tools.
+- Disabled plugins remain visible, and the server denies their domain operations
+  at `tools/call`; their static operation descriptors remain discoverable.
 - Connect rejects stale, foreign, disabled, or unauthorized selectors.
 - Enablement rejects missing capability, stale revision, illegal transition,
   cross-tenant scope, and conflicting idempotency reuse.
-- Successful actions refresh tools, context, and the same in-memory view.
+- Successful actions refresh context, operation status, and the same in-memory
+  view. They refresh tool discovery only for a server-schema change.
 - A generic **Structured output** tool card never satisfies the visible console
   requirement; actual values and available actions are rendered readably.
 - Structured content and UI payloads contain no secrets, raw authority IDs,
