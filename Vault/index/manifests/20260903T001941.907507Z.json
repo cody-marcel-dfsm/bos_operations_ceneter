@@ -1,0 +1,17 @@
+{
+  "canonical_source_snapshot_sha256": "7db01338baa307679fd3af6a40a560d6baba53c381ea8edfca4ebbd363c9098a",
+  "changed_sources": [
+    "Vault/docs/DESIGN.md",
+    "Vault/docs/IMPLEMENTATION_TASKS.md",
+    "Vault/docs/marketplace-agent-harness-plan.md",
+    "Vault/specs/client-guided-support.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 247,
+  "duration_seconds": 1.044,
+  "index_version": 1,
+  "indexed_at": "20260903T001941.907507Z",
+  "indexed_chunks": 24,
+  "removed_sources": [],
+  "source_count": 94
+}

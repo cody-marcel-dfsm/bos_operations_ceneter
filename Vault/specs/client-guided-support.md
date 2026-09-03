@@ -30,8 +30,8 @@ MCP context and read tools strengthen verification when available.
    only sanitized client, package, stage, error, attempted-action, expected, and
    observed evidence.
 9. Treat a missing Codex **Login**, **Connect**, or **Authenticate** action
-   after the required `.app.json` loads as **Register**. Repair and reload the
-   root registered-app display binding while preserving the request. Treat MCP-startup
+   after the root `.mcp.json` loads as an authentication-activation failure.
+   Preserve the request and validate BOS discovery. Treat MCP-startup
    `reauthenticationRequired` as **Sign in**. The host selects the OAuth-declared
    BOS tool required by the prompt. Its descriptor and scopes are visible before
    consent, while business execution and customer data remain protected. The

@@ -9,8 +9,8 @@ Use this skill for every client-side BOS operation. The root BOS plugin owns one
 remote MCP resource and one host-managed OAuth connection for the user-facing
 client context. A Claude account or organization Web connector declares that
 resource and exposes the persistent host-managed **Connect** action;
-ChatGPT/Codex loads the root package's required `.app.json` registered-app
-binding and performs OAuth discovery from that immutable resource. Other supported clients use the single BOS adapter
+ChatGPT/Codex loads the root package's `.mcp.json` and performs OAuth discovery
+from that resource. Other supported clients use the single BOS adapter
 declared by their generated package.
 
 Education Center, CRM, Marketing Director, and other subservice plugins add
@@ -55,9 +55,9 @@ stateful mutation workflow.
 - If BOS is absent from the callable tool manifest, inspect the active client's
   BOS plugin and runtime binding immediately. Repair or reinstall BOS and
   restore its declared authorization connection. For Codex, verify the root
-  BOS plugin declares `apps: "./.app.json"`, the app file contains exactly one
-  required BOS entry with the product's canonical raw `asdk_app_...` connector
-  identity, and no `.mcp.json` shadows that native login binding. For Claude,
+  BOS plugin declares `mcpServers: "./.mcp.json"`, the MCP file contains exactly
+  one remote HTTP `platform` entry at the product-owned BOS resource, and no
+  `.app.json` exists. For Claude,
   verify the BOS package's
   account-connector metadata and the matching Web connector under
   **Customize → Connectors**, then use its persistent **Connect** action. When a
@@ -170,7 +170,7 @@ and inspect its sanitized result before producing a final answer.
    context.
 5. Authenticate the BOS Claude account-level Web connector through its
    persistent **Connect** control, and the ChatGPT/Codex BOS connection
-   through the root package-owned registered-app binding. Both use one host-managed
+    through the root package-owned MCP binding. Both use one host-managed
    OAuth grant. Other clients use only the generated product
    adapter declared for BOS. Keep access tokens, refresh tokens,
    authorization codes, bearer values, and grant metadata out of chat, tool

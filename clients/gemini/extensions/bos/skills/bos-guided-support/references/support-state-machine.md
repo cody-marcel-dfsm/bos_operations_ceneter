@@ -10,7 +10,7 @@ reported stage only when later evidence contradicts it.
 |---|---|---|---|
 | Install | Marketplace/plugin/extension listing or package metadata | Install or update the named BOS product from its canonical distribution | Correct product and expected version are present |
 | Load | Skill list, plugin enabled state, or a new task/session | Enable the product and restart or start a new task as the client requires | Current session recognizes `bos-guided-support` and product skills |
-| Register | Client connection listing, package binding metadata, authentication control, and OAuth client status | Restore the client-native root binding; on Codex restore the required package-owned `.app.json` registered-app declaration; discard and recreate a stale host registration for the same BOS resource | Exact BOS resource is visible and the host-owned public client is accepted |
+| Register | Client connection listing, package binding metadata, authentication control, and OAuth client status | Restore the client-native root binding; on Codex restore the package-owned `.mcp.json` BOS resource | Exact BOS resource is visible and the host-owned public client is accepted |
 | Sign in | Resolved registered-app connection state or OAuth result | Invoke the client's inline Connect/Sign in/Authenticate flow | Valid resource-scoped BOS OAuth grant is accepted |
 | Discover | Fresh callable tool manifest | Reconnect or refresh MCP/tool discovery | Required product tools, including context discovery, appear |
 | Verify | `bos_get_context` plus a bounded authenticated product read | Classify the returned server/provider error and recover that boundary | One canonical context and one read succeed |
@@ -21,10 +21,8 @@ reported stage only when later evidence contradicts it.
 - Skill exists but current conversation cannot invoke it: **Load**.
 - Product skills load but the BOS connection is absent: **Register BOS**.
 - The Codex host has no **Login**, **Connect**, or **Authenticate** control
-  after loading the required BOS `.app.json`: **Register BOS**. Inspect and
-  repair that registered-app display binding before evaluating server behavior.
-  A valid HTTP 401 OAuth challenge does not satisfy the independent display
-  contract.
+  after loading the BOS `.mcp.json`: **Register BOS**. Inspect the package MCP
+  binding and BOS OAuth discovery before evaluating later stages.
 - OAuth token endpoint `invalid_client`: **Register BOS**. Preserve the active
   request, keep the sealed BOS resource fixed, discard the stale host-owned
   public-client registration, repeat dynamic client registration from current

@@ -48,11 +48,6 @@ export async function listProducts(base = root) {
 
 export function validateProduct(manifest, path = "product.json") {
   const failures = [];
-  const standaloneCodexCandidate = manifest.name !== "bos" &&
-    manifest.release_status === "disabled" &&
-    Boolean(manifest.runtime) &&
-    manifest.clients?.includes("codex") &&
-    manifest.codex_connector !== undefined;
   const allowed = new Set([
     "schema_version",
     "name",
@@ -75,7 +70,6 @@ export function validateProduct(manifest, path = "product.json") {
     "mcp_group_name",
     "mcp_resource_url",
     "oauth",
-    "codex_connector",
     "settings_template",
     "settings_initializer",
     "plugin_settings_initializer",
@@ -143,11 +137,7 @@ export function validateProduct(manifest, path = "product.json") {
   if (manifest.name === "bos" && manifest.authentication !== "ON_INSTALL") {
     failures.push(`${path}: BOS authentication must be ON_INSTALL`);
   }
-  if (standaloneCodexCandidate && manifest.authentication !== "ON_INSTALL") {
-    failures.push(`${path}: standalone runtime authentication must be ON_INSTALL`);
-  }
-  if (manifest.name !== "bos" && !standaloneCodexCandidate &&
-      manifest.authentication !== "ON_USE") {
+  if (manifest.name !== "bos" && manifest.authentication !== "ON_USE") {
     failures.push(`${path}: subservice authentication policy must be ON_USE`);
   }
   if (!Array.isArray(manifest.clients) || manifest.clients.length === 0) {
@@ -293,65 +283,6 @@ export function validateProduct(manifest, path = "product.json") {
       }
     }
   }
-  const connector = manifest.codex_connector;
-  if (connector !== undefined) {
-    const expectedKeys = [
-      "id",
-      "identity_policy",
-      "lifecycle_state",
-      "metadata_policy",
-      "missing_record_policy",
-      "provisioning_policy",
-      "required",
-      "retired_ids"
-    ];
-    if (!connector || typeof connector !== "object" || Array.isArray(connector) ||
-        JSON.stringify(Object.keys(connector).sort()) !== JSON.stringify(expectedKeys)) {
-      failures.push(`${path}: codex_connector must contain the complete lifecycle contract`);
-    } else {
-      if (!new Set(["ESTABLISHED", "UNPROVISIONED_NEW"]).has(connector.lifecycle_state)) {
-        failures.push(`${path}: codex_connector.lifecycle_state is invalid`);
-      }
-      if (connector.lifecycle_state === "ESTABLISHED" &&
-          !/^plugin_asdk_app_[a-z0-9]+$/.test(connector.id ?? "")) {
-        failures.push(`${path}: an established codex_connector.id must be a plugin_asdk_app identifier`);
-      }
-      if (connector.lifecycle_state === "UNPROVISIONED_NEW" && connector.id !== null) {
-        failures.push(`${path}: an unprovisioned new connector must have a null ID`);
-      }
-      if (connector.lifecycle_state === "UNPROVISIONED_NEW" &&
-          (manifest.name === "bos" || connector.retired_ids?.length !== 0)) {
-        failures.push(`${path}: UNPROVISIONED_NEW is only valid for a different product with no retired IDs`);
-      }
-      if (connector.required !== true ||
-          connector.identity_policy !== "IMMUTABLE" ||
-          connector.metadata_policy !== "UPDATE_IN_PLACE" ||
-          connector.missing_record_policy !== "REGISTRY_OWNER_RESTORE_SAME_RECORD" ||
-          connector.provisioning_policy !== "NEW_PRODUCT_ONLY") {
-        failures.push(`${path}: codex_connector lifecycle policies are invalid`);
-      }
-      if (!Array.isArray(connector.retired_ids) ||
-          connector.retired_ids.some((id) => !/^asdk_app_[a-z0-9]+$/.test(id)) ||
-          new Set(connector.retired_ids).size !== connector.retired_ids.length ||
-          (connector.id && connector.retired_ids.includes(codexRawAppId(connector.id)))) {
-        failures.push(`${path}: codex_connector.retired_ids must contain unique noncanonical raw IDs`);
-      }
-    }
-  }
-  if (
-    manifest.release_status === "active" &&
-    manifest.runtime &&
-    manifest.clients?.includes("codex") &&
-    manifest.codex_connector?.lifecycle_state !== "ESTABLISHED"
-  ) {
-    failures.push(`${path}: active Codex runtime requires codex_connector`);
-  }
-  if (
-    manifest.codex_connector !== undefined &&
-    (!manifest.runtime || !manifest.clients?.includes("codex"))
-  ) {
-    failures.push(`${path}: codex_connector requires a Codex runtime product`);
-  }
   if (manifest.runtime &&
       !manifest.includes?.includes("platform/bos-mcp-client")) {
     failures.push(`${path}: runtime requires platform/bos-mcp-client`);
@@ -364,13 +295,13 @@ export function validateProduct(manifest, path = "product.json") {
     ) {
       failures.push(`${path}: BOS must own the bos/platform MCP runtime`);
     }
-  } else if (!standaloneCodexCandidate && (
+  } else if (
     manifest.runtime !== undefined ||
     manifest.application_name !== undefined ||
     manifest.mcp_group_name !== undefined ||
     manifest.mcp_resource_url !== undefined ||
-    manifest.codex_connector !== undefined
-  )) {
+    manifest.oauth !== undefined
+  ) {
     failures.push(`${path}: subservice products must use the BOS-owned connection`);
   }
   if (
@@ -633,28 +564,6 @@ export function oauthTargetContract(product) {
   };
 }
 
-export function codexRawAppId(id) {
-  return String(id ?? "").replace(/^plugin_/, "");
-}
-
-export function codexConnectorContract(product) {
-  const connector = product?.codex_connector;
-  if (!connector || connector.lifecycle_state !== "ESTABLISHED" ||
-      connector.identity_policy !== "IMMUTABLE" ||
-      !/^plugin_asdk_app_[a-z0-9]+$/.test(connector.id ?? "")) {
-    throw new Error(`Product ${product?.name ?? "unknown"} has no immutable Codex connector`);
-  }
-  return connector;
-}
-
-export function codexKnownRawAppIds(product) {
-  const connector = codexConnectorContract(product);
-  return [...new Set([
-    codexRawAppId(connector.id),
-    ...(connector.retired_ids ?? []).map(codexRawAppId)
-  ])];
-}
-
 export function pluginManifest(product) {
   const manifest = {
     name: product.name,
@@ -681,18 +590,17 @@ export function pluginManifest(product) {
     manifest.interface.composerIcon = `./${product.composer_icon}`;
   }
   if (product.logo) manifest.interface.logo = `./${product.logo}`;
-  if (product.runtime) manifest.apps = "./.app.json";
+  if (product.runtime) manifest.mcpServers = "./.mcp.json";
   return manifest;
 }
 
-export function codexAppManifest(product) {
-  if (!product.runtime) return { apps: {} };
-  const connector = codexConnectorContract(product);
+export function codexPluginMcpManifest(product) {
+  if (!product.runtime) return { mcpServers: {} };
   return {
-    apps: {
-      [product.name]: {
-        id: connector.id,
-        required: connector.required
+    mcpServers: {
+      [product.mcp_group_name]: {
+        type: "http",
+        url: materializeMcpUrl(product)
       }
     }
   };

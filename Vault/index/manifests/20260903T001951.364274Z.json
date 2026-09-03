@@ -1,0 +1,14 @@
+{
+  "canonical_source_snapshot_sha256": "b41148469343b61e5b8e43c625a0c8f105ba9bad0178a3cf3e4265749c2486c6",
+  "changed_sources": [
+    "Vault/decisions/2026-08-11-desktop-private-marketplace-oauth.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 246,
+  "duration_seconds": 0.213,
+  "index_version": 1,
+  "indexed_at": "20260903T001951.364274Z",
+  "indexed_chunks": 1,
+  "removed_sources": [],
+  "source_count": 94
+}
