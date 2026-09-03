@@ -1,0 +1,14 @@
+{
+  "canonical_source_snapshot_sha256": "a3002dc508dc584413a49ae279dc3e6454035ce85828ddb9d222a5e2e8cd5e0f",
+  "changed_sources": [
+    "Vault/docs/DESIGN.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 250,
+  "duration_seconds": 0.51,
+  "index_version": 1,
+  "indexed_at": "20260903T023124.066310Z",
+  "indexed_chunks": 12,
+  "removed_sources": [],
+  "source_count": 95
+}

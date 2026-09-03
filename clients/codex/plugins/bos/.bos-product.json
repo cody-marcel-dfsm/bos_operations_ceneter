@@ -1,11 +1,12 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.78",
+  "version": "0.4.79",
   "client": "codex",
   "application_name": "bos",
   "mcp_group_name": "platform",
   "resource_url": "https://dfsm.ai/mcp/apps/bos/platform",
+  "codex_mcp_startup_timeout_sec": 45,
   "oauth": {
     "authorization_server_issuer": "https://dfsm.ai",
     "authorization_endpoint": "https://dfsm.ai/api/v1/mcp/oauth/authorize",

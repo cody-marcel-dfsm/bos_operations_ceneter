@@ -14,9 +14,11 @@ customer-facing output names the franchise or brand. Keep technical product,
 skill, route, server, environment-variable, tool, capability, authorization,
 and record identifiers unchanged.
 
-Use the authenticated BOS connection and follow `bos-mcp-client` for every provider call. Treat the
-live BOS context and tool manifest as authoritative. Preserve the selected Education Center organization
-scope exactly and keep provider evidence separate until the lead is reconciled.
+Use the authenticated BOS connection and follow `bos-mcp-client` for every
+provider call. Treat the live BOS context and operation result as authoritative
+for access, and the static tool manifest as authoritative only for schemas.
+Preserve the selected Education Center organization scope exactly and keep
+provider evidence separate until the lead is reconciled.
 Use `bos-visual-output` for source-to-outcome flows, conversion counts, missing
 GCLID cohorts, and attribution trends.
 When a Google or Calimatic source reports an authentication error, follow
@@ -50,13 +52,15 @@ browser handoff, poll readiness, and resume the pending operation once.
 8. Produce a preview with counts, proposed conversion action, conversion time,
    value, currency, dedupe key, and source evidence before any provider update.
 9. Execute an offline conversion or Google Ads campaign update only when the
-   live BOS manifest publishes the exact mutation capability and the user has
+   static BOS catalog contains the exact mutation schema and the user has
    requested or approved the exact target and payload. Re-read the target before
    mutation, use the provider's idempotency/version fields, and verify afterward.
-10. When Google Ads is absent from BOS, report
+   Treat the call result as authoritative for capability and provider access.
+10. When the operation returns an authorization or capability denial, report
     `BLOCKED: BOS Google Ads capability unavailable`, preserve the upload-ready
-    preview, and identify the missing capability. Do not route around the BOS
-    tenant boundary with local credentials during a BOS workflow.
+    preview, and identify the server-returned missing capability or provider
+    recovery. Do not route around the BOS tenant boundary with local credentials
+    during a BOS workflow.
 
 ## Conversion rules
 

@@ -1,0 +1,14 @@
+{
+  "canonical_source_snapshot_sha256": "17e5fc836e900ee510b60e46b65a7c733028d1b4b596431fe1789edb64533aa9",
+  "changed_sources": [
+    "Vault/evidence/codex-login/0.4.78-plugin-auth-session-rca.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 249,
+  "duration_seconds": 0.302,
+  "index_version": 1,
+  "indexed_at": "20260903T023024.768218Z",
+  "indexed_chunks": 2,
+  "removed_sources": [],
+  "source_count": 95
+}

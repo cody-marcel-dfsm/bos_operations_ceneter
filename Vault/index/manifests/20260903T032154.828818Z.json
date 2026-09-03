@@ -1,0 +1,15 @@
+{
+  "canonical_source_snapshot_sha256": "9ab12c9d5d5cf3476bd02c101f3ebf03a900aefdad414483d19823ee44c1bfeb",
+  "changed_sources": [
+    "Vault/docs/issues/ISSUE_HISTORY.md",
+    "Vault/reviews/2026-09-02-release-0.4.78-issue-0001-static-catalog.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 254,
+  "duration_seconds": 1.268,
+  "index_version": 1,
+  "indexed_at": "20260903T032154.828818Z",
+  "indexed_chunks": 45,
+  "removed_sources": [],
+  "source_count": 96
+}

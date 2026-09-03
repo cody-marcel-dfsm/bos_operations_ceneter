@@ -1598,6 +1598,34 @@ actual diff. A server-owned correction additionally requires
 `npm run contract:oauth-live -- --authorize-url "$BOS_OAUTH_AUTHORIZE_URL"
 --format json` against the deployed candidate.
 
+- 2026-09-02 20:32 America/Denver — User-supplied 0.4.78 screenshots showed a
+  plugin detail page without **Connect** and added two related observations: an existing BOS login appeared not to
+  be reused in another task, and the exact Gmail-on-BOS request fell back to manual
+  prose instead of native authentication. Local runtime logs repeatedly state
+  `omitting pending optional MCP server server_name=platform`; later in the same
+  desktop process the host loads the existing credential for that same resource
+  identity and initializes the BOS gateway. Follow-up server evidence proves the
+  grant refresh succeeded and remained valid: two authenticated `tools/list`
+  calls crossed the 30-second server deadline and returned HTTP 200 JSON-RPC
+  timeout results; a later call reused the same grant and returned all 49 tools
+  in 27.45 seconds. Because the grant was valid during the plugin-page capture,
+  that screenshot is an authenticated or indeterminate UI state and cannot
+  prove a signed-out missing-Connect defect. The apparent cross-task sign-out was a discovery timeout plus
+  client misclassification, not a lost OAuth session. The package already has the correct
+  single endpoint and `ON_INSTALL` policy. The remaining package defect is the
+  generated server entry's omission of `oauth_resource`, `required: true`, and
+  an explicit startup budget. Codex's documented default is 10 seconds, below
+  both the observed 27.45-second success and the 30-second server deadline.
+  Generation and validation now bind `oauth_resource` to the exact BOS endpoint
+  and require startup with a 45-second budget so tasks cannot silently omit or
+  prematurely fail a pending root server. BOS
+  remains authoritative over login need through credential acceptance or its
+  OAuth challenge. The package fields do not themselves prove or cause native
+  plugin-detail authentication rendering. Native signed-out Connect after a
+  deliberate sign-out and authenticated cross-task reuse
+  remain the visual acceptance gates, with server discovery latency tracked as
+  a separate owning-server defect.
+
 ### Prevention guidance
 
 Test request-time authentication activation independently from plugin-page
@@ -1605,3 +1633,56 @@ Login display, OAuth discovery, callable-tool presence, and authenticated
 execution. Preserve a host-visible acceptance artifact for the prompt-triggered
 Sign in transition. Keep terminal manual-navigation guidance from satisfying a
 workflow whose contract requires an active native authentication action.
+
+- 2026-09-02 21:02 America/Denver — The server owner supplied the accepted
+  replacement discovery flow: authenticated `tools/list` validates the BOS
+  bearer token once, confirms at least one authorized organization, and returns
+  the complete static BOS operation/schema catalog with no per-tool permission,
+  provider-health, plugin-credential, or role filtering. `tools/call` validates
+  the selected opaque organization context and performs operation-specific
+  capability and provider authorization. The client contract now treats catalog
+  entries as operation/schema declarations that grant no authority, refreshes
+  catalog only for connection, transport, package, or server-schema changes,
+  refreshes context or operation status for authorization/provider changes, and
+  starts recovery only from the selected call's structured server response.
+  Generated-client parity passed across Codex, Claude, Copilot, and Gemini;
+  focused regression tests passed 88/88; package and contract checks passed;
+  and the complete release gate passed 248/248 tests. Oracle's first review
+  identified older role-capability, plugin-enablement, and provider-connection
+  workflows that still refreshed discovery. Those workflows now refresh context,
+  operation status, and service inventory while preserving the static catalog;
+  regression coverage enforces the distinction. A second review found and drove
+  the same correction through licensing, marketplace harness, SendGrid, Agent
+  Call, and paid-attribution contracts, and the broadened regression scans those
+  active paths. Vault synchronization and a fresh Oracle review remain required.
+- 2026-09-02 21:20 America/Denver — A third fresh Oracle review inspected the
+  complete corrected diff, current Vault, Issue #0001 records, generated clients,
+  repository boundaries, and validation evidence. No material findings remain.
+  The canonical and distributed workflows now consistently preserve the complete
+  static catalog across role, plugin, capability, provider, and license changes;
+  authorization remains server-evaluated at `tools/call`. `npm run
+  release:check` regenerated all clients and passed package validation,
+  credential scanning, contract validation, and 248/248 tests. The focused
+  package/plugin suite passed 79/79 during review, the submitted focused suite
+  passed 88/88, `git diff --check` passed, and the final 96-source Vault,
+  including the Oracle review record, was current.
+  Oracle recorded
+  `Vault/reviews/2026-09-02-release-0.4.78-issue-0001-static-catalog.md` with
+  verdict `APPROVED`. The deliberately signed-out native **Connect** capture
+  remains a nonblocking post-publication acceptance gate, so Issue #0001 remains
+  ACTIVE until that evidence is produced and reviewed.
+- 2026-09-02 21:48 America/Denver — Ship-it advanced the complete approved change
+  set to release 0.4.79 and regenerated every active Codex, Claude, Copilot, and
+  Gemini package. A fresh release-scoped Oracle review found no material issues:
+  version metadata is consistent; BOS remains the sole transport owner; Codex
+  carries one required remote `platform` binding with the canonical URL,
+  matching `oauth_resource`, and 45-second startup timeout; pre-authentication
+  remains descriptor-only; authenticated discovery returns the complete static
+  catalog; and `tools/call` remains authoritative for operation access. `npm run
+  release:check` passed the build, package and credential validation, contract
+  validation, and 248/248 tests. Reviewer-focused version, package-model, and
+  single-connection tests passed 84/84; `git diff --check` passed. Oracle recorded
+  `Vault/reviews/2026-09-02-release-0.4.79.md` with verdict `APPROVED`, and the
+  final synchronized Vault contains 97 canonical sources. Issue #0001 remains
+  ACTIVE only for the nonblocking post-release signed-out native **Connect**
+  evidence gate.

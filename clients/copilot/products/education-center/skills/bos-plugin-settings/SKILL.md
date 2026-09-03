@@ -119,8 +119,9 @@ recommendation requires the user to confirm the displayed draft.
 6. Accept success only from `status: committed` or a reconciled committed
    operation. Atomically commit the returned complete snapshot with
    `canonical_source: bos_committed` or `bos_reconciled`.
-7. Refresh context and tool discovery when the result changes capabilities,
-   then render the confirmed replacement values.
+7. Refresh context when the result changes capabilities. Refresh tool discovery
+   only when the server reports a schema change, then render the confirmed
+   replacement values.
 
 On ordinary success say what changed and show the new confirmed values. When
 the server commits and local cache repair fails, report the committed server

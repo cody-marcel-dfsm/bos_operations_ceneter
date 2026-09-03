@@ -1,0 +1,16 @@
+{
+  "canonical_source_snapshot_sha256": "05384813d4ce7728883b86baed384c860a2ab123c2d8c76ed283fd444e3b3655",
+  "changed_sources": [
+    "Vault/docs/issues/ISSUE_HISTORY.md",
+    "Vault/docs/issues/conclusions/ISSUE_0001_CONCLUSION.md",
+    "Vault/evidence/codex-login/0.4.78-plugin-auth-session-rca.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 251,
+  "duration_seconds": 1.408,
+  "index_version": 1,
+  "indexed_at": "20260903T025117.425765Z",
+  "indexed_chunks": 46,
+  "removed_sources": [],
+  "source_count": 95
+}

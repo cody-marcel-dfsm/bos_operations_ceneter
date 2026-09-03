@@ -18,7 +18,13 @@ test("Codex runtime verifier requires the package-owned MCP binding", async () =
     name: "bos", version: currentVersion, mcpServers: "./.mcp.json"
   }));
   await writeFile(join(source, ".mcp.json"), JSON.stringify({
-    mcpServers: { platform: { type: "http", url: "https://dfsm.ai/mcp/apps/bos/platform" } }
+    mcpServers: { platform: {
+      type: "http",
+      url: "https://dfsm.ai/mcp/apps/bos/platform",
+      oauth_resource: "https://dfsm.ai/mcp/apps/bos/platform",
+      required: true,
+      startup_timeout_sec: 45
+    } }
   }));
   const catalog = join(home, "catalog.json");
   await writeFile(catalog, JSON.stringify({ tools: [
@@ -45,4 +51,9 @@ test("Codex runtime verifier requires the package-owned MCP binding", async () =
   const report = await inspectCodexRuntime({ home, runCommand, catalogPath: catalog });
   assert.equal(report.mcp_binding.state, "current");
   assert.equal(report.mcp_binding.server.url, "https://dfsm.ai/mcp/apps/bos/platform");
+  assert.equal(report.mcp_binding.server.oauth_resource, "https://dfsm.ai/mcp/apps/bos/platform");
+  assert.equal(report.mcp_binding.server.required, true);
+  assert.equal(report.mcp_binding.server.startup_timeout_sec, 45);
+  assert.equal(report.callable_catalog.semantics, "operation_schema_only");
+  assert.equal(report.callable_catalog.authorization_source, "tools_call_server_result");
 });

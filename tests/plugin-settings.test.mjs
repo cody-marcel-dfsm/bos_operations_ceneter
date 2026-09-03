@@ -103,7 +103,8 @@ test("plugin settings skills encode cache-first reads and delegated resilient mu
   assert.match(initialization, /bos_begin_plugin_service_connection/);
   assert.match(initialization, /bos_get_authorization_status/);
   assert.match(initialization, /Never silently enable a plugin/i);
-  assert.match(initialization, /Poll `bos_get_authorization_status`[\s\S]*refresh context and tools[\s\S]*bos_list_plugin_services/i);
+  assert.match(initialization, /Poll `bos_get_authorization_status`[\s\S]*refresh context and operation status[\s\S]*bos_list_plugin_services/i);
+  assert.doesNotMatch(initialization, /refresh context and tools/i);
   assert.match(initialization, /Walk unresolved services one at a time/i);
   assert.match(initialization, /Return `connection_required`[\s\S]*preserve[\s\S]*pending request/i);
   assert.match(initialization, /no actionable connection row[\s\S]*receipt/i);

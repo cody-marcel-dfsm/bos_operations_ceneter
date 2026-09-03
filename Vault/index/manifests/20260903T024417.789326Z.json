@@ -1,0 +1,14 @@
+{
+  "canonical_source_snapshot_sha256": "8b3ebeef748a35a579ad015ba05852264d521848e1e902d74a1796ec9c78a786",
+  "changed_sources": [
+    "Vault/specs/single-bos-mcp-connection.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 251,
+  "duration_seconds": 0.22,
+  "index_version": 1,
+  "indexed_at": "20260903T024417.789326Z",
+  "indexed_chunks": 1,
+  "removed_sources": [],
+  "source_count": 95
+}

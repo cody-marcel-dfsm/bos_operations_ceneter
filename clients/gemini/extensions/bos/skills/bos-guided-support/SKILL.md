@@ -72,11 +72,14 @@ MCP is an enhancement, never a prerequisite for this skill.
 - With no BOS tools: inspect local package files, product metadata, client UI,
   command output, and screenshots. Guide installation, enablement, restart,
   registration, and host sign-in from client-side evidence.
-- With BOS tools: refresh live tool discovery, call `bos_get_context`, and run
-  the product runbook's bounded read-only verification. Treat MCP evidence as
-  authoritative for server-derived context.
-- After an install, update, reconnect, permission change, or capability change:
-  refresh the client's tools before testing.
+- With BOS tools: refresh the static tool schema catalog when needed, call
+  `bos_get_context`, and run the product runbook's bounded read-only
+  verification. Treat the context and operation result as authoritative for
+  server-derived access; catalog presence alone is never authorization evidence.
+- After an install, package update, reconnect, schema change, or transport
+  replacement, refresh the client's tools before testing. After permission,
+  role, capability, plugin-enablement, or provider changes, refresh context or
+  operation status and verify with a bounded `tools/call`.
 - If the host requires a new task or restart to load package changes, preserve
   the goal and tell the user exactly how to resume.
 
@@ -111,7 +114,7 @@ Distinguish these states in plain language:
 - **Loaded:** the current client session can see the skill/plugin.
 - **Registered:** the product's named remote resource appears in the client.
 - **BOS signed in:** the host holds a resource-scoped BOS OAuth grant.
-- **Discovered:** required scoped BOS tools are callable.
+- **Discovered:** the complete static BOS operation/schema catalog is loaded.
 - **Provider ready:** any separate Google, SendGrid, Calimatic, or other
   provider grant required by the requested operation is ready.
 
@@ -129,7 +132,7 @@ Connection success requires evidence, not the absence of an error. Confirm:
    binding renders the plugin-page authentication control;
 2. BOS OAuth completes;
 3. one canonical context resolves;
-4. the expected scoped tools are discoverable; and
+4. the expected operation descriptor and schema are discoverable; and
 5. one safe, bounded, authenticated read succeeds.
 
 Then say what is working and give one useful first request the user can try.

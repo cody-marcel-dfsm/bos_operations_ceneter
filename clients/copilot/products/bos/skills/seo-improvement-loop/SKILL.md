@@ -7,8 +7,9 @@ description: Run recurring tenant-scoped SEO and Google Business Profile review 
 
 Use BOS for configured sites, provider health, Search Console, SERP, page,
 conversion, reputation, and proposal evidence. Operate in
-`observe_and_propose` mode unless the live manifest explicitly grants a
-separate mutation workflow.
+`observe_and_propose` mode unless the user authorizes a separate mutation
+workflow and its `tools/call` result confirms server authorization. A static
+catalog descriptor alone never grants mutation authority.
 
 ## Workflow
 

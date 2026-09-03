@@ -24,21 +24,25 @@ freshness.
    the discovered tool names and schemas plus this package's client routing
    configuration. Reuse the map only while its manifest fingerprint and
    configured maximum age remain current.
-4. Select only operations actually present in the live manifest. Absence means
-   unavailable in the selected context; it never triggers server registration,
-   capability creation or a database write.
+4. Select only operations actually present in the static BOS manifest. Presence
+   defines operation shape, not context or provider authorization. Absence is a
+   schema/publication mismatch; it never triggers server registration,
+   capability creation, or a database write.
 5. Delegate CRM semantics to the focused skill and source mechanics to
    `bos-federated-query`.
 
 ## Use discovered BOS operations
 
-- Treat `tools/list` and `bos_get_context` as the authoritative discovery
-  surfaces. Tool schemas define the parameters the client may send.
+- Treat `tools/list` as the operation/schema registry and `bos_get_context` as
+  the organization/context surface. Tool schemas define the parameters the
+  client may send; only `tools/call` decides whether that context and provider
+  may execute the operation.
 - Use existing CRM aliases when discovered. The initial Lead Director route
   provides `crm_search_leads`, `crm_get_lead`, `crm_create_lead`, and the
   server-advertised availability of `crm_update_lead`.
 - Map additional discovered provider operations to CRM source semantics in the
-  client. Preserve the exact source tool name and result provenance.
+  client. Preserve the exact source tool name and result provenance, and handle
+  any server-returned authorization recovery at call time.
 - Never call a generic CRM operation merely because this skill names a desired
   semantic. Call only a tool returned by the active MCP connection.
 

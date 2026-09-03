@@ -8,21 +8,20 @@ packages; server deployment and live multi-role validation remain release gates.
 Application runtime clients resolve organization and role scope through
 `bos_get_context`. They select exactly one authorized organization first, use
 that organization's server-marked default role unless the user explicitly
-requests another available role, pass only its opaque `context_id`, and
-preflight requested operations against that context's advertised capabilities.
+requests another available role, and pass only its opaque `context_id`.
 
 Clients never infer authority from plugin `run_as_role`, role text, customer
 configuration, a saved organization display label, or prompt instructions. A
 saved organization preference selects only among contexts returned for the
-current authenticated actor. A missing capability stops the client operation,
-and the server repeats the same authorization check before any data read or
-mutation.
+current authenticated actor. The complete static tool catalog declares
+operations and schemas without granting role authority; the server authorizes
+the selected context when `tools/call` executes.
 
 Role administration begins with `bos_list_role_capabilities` when the selected
 role advertises `bos.roles.read`. A requested change uses
 `bos_update_role_capabilities` with the exact current revision and complete
 replacement list. The selected role must also advertise `bos.roles.update`.
-After an audited server success, clients refresh context and tool discovery.
+After an audited server success, clients refresh context and operation status.
 
 ## Authority model
 
@@ -91,15 +90,17 @@ saved default.
    default, or sole authorized organization.
 3. Within that organization, select the server-marked default context or the
    explicitly requested available lower-role context.
-4. Confirm the requested operation is present and invocable for that context.
+4. Confirm the requested operation exists in the static catalog and validate
+   arguments against its schema without treating presence as authorization.
 5. Pass only `context_id` with the domain arguments defined by the tool.
 6. Preserve that context for related calls in the active request.
-7. Refresh context and live tool discovery after authorization, membership,
-   role-capability, plugin, or connection changes.
+7. Refresh context after authorization, membership, role-capability, plugin, or
+   provider changes. Refresh tool discovery only after connection, transport,
+   package, or server schema changes.
 8. After a denial or missing context, refresh once. Treat the repeated server
    result as authoritative.
 
-Client preflight is a usability and request-filtering layer. The server repeats
+Client preflight is a schema and context-selection layer. The server performs
 membership, capability, grant, operation, tenant, and provider checks before
 every data read or mutation and filters results through its canonical scope.
 
@@ -119,7 +120,7 @@ The update changes only the target role's explicit capability list. It does not
 change membership, authority rank, provider credentials, or another
 installation. A revision conflict requires a fresh read and user resolution of
 any material difference before retrying. After success, clients refresh
-context and discovery before further operations. The server atomically records
+context and operation status before further operations. The server atomically records
 the authenticated actor, acting role, target role, and before/after capability
 lists in the installation audit; clients never manufacture or substitute that
 audit evidence.
@@ -136,7 +137,8 @@ elevates an interactive user and never selects provider credential ownership.
 - Missing, stale, malformed, or ambiguous context fails closed.
 - A missing, stale, unavailable, or ambiguous default organization stops before
   a domain data call when more than one organization is available.
-- An operation absent from the selected context stops before invocation.
+- An operation absent from the static catalog is a schema/publication defect;
+  it is never evidence that the selected context lacks authority.
 - A server denial after one refresh is reported as the current authorization
   result.
 - Provider recovery remains scoped to the affected organization, installation,

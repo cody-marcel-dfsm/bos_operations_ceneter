@@ -1,0 +1,15 @@
+{
+  "canonical_source_snapshot_sha256": "54a690c6779d3af48a104265ec60677c3edf2e2661c3c9b6b8e459e93a012d50",
+  "changed_sources": [
+    "Vault/specs/federated-query-execution.md",
+    "Vault/specs/role-aware-mcp-client.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 251,
+  "duration_seconds": 0.54,
+  "index_version": 1,
+  "indexed_at": "20260903T030119.779801Z",
+  "indexed_chunks": 10,
+  "removed_sources": [],
+  "source_count": 95
+}
