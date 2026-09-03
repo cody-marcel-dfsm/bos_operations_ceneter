@@ -1,0 +1,29 @@
+{
+  "canonical_source_snapshot_sha256": "b71cb9b014758ea50d69f2690022009733f7334c9e07865c708549195cb140c7",
+  "changed_sources": [
+    "Vault/docs/DESIGN.md",
+    "Vault/docs/architecture.md",
+    "Vault/docs/bos-product-licensing-user-experience.md",
+    "Vault/docs/issues/ISSUE_HISTORY.md",
+    "Vault/docs/issues/conclusions/ISSUE_0001_CONCLUSION.md",
+    "Vault/docs/marketplace-agent-harness-plan.md",
+    "Vault/docs/marketplace-submission-assets.md",
+    "Vault/specs/client-guided-support.md",
+    "Vault/specs/federated-query-execution.md",
+    "Vault/specs/plugin-service-console.md",
+    "Vault/specs/role-aware-mcp-client.md",
+    "Vault/specs/single-bos-mcp-connection.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 251,
+  "duration_seconds": 3.594,
+  "index_version": 1,
+  "indexed_at": "20260903T035004.112306Z",
+  "indexed_chunks": 89,
+  "removed_sources": [
+    "Vault/evidence/codex-login/0.4.78-plugin-auth-session-rca.md",
+    "Vault/reviews/2026-09-02-release-0.4.78-issue-0001-static-catalog.md",
+    "Vault/reviews/2026-09-02-release-0.4.79.md"
+  ],
+  "source_count": 94
+}

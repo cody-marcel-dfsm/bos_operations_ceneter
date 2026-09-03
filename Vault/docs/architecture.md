@@ -54,6 +54,12 @@ release system for portable BOS skills and native remote MCP client adapters.
    provider-credential flow in the active request, then verify and resume the
    interrupted operation automatically; keep secrets out of
    model chat, package files, customer settings, setup scripts, and logs.
+   A successful authenticated BOS context or provider call establishes the root
+   identity boundary for its recovery transaction. The server-returned provider
+   URL proceeds directly to provider consent or secure credential collection and
+   never gates on a second BOS web session. The client refuses any root BOS
+   sign-in presented inside provider recovery, preserves the transaction, and
+   reports `provider_recovery_identity_boundary`.
 6. Fail closed on missing, malformed, unauthorized, or ambiguous canonical
    state.
 7. Generate every client package from canonical `source/`; generated client

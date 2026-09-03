@@ -1,0 +1,14 @@
+{
+  "canonical_source_snapshot_sha256": "6a1f83d0a42c5485a848ef154c2a965e1d154181f537c44194685f229b25d559",
+  "changed_sources": [
+    "Vault/reviews/2026-09-03-issue-0004-calimatic-provider-recovery.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 262,
+  "duration_seconds": 0.225,
+  "index_version": 1,
+  "indexed_at": "20260903T165356.606641Z",
+  "indexed_chunks": 2,
+  "removed_sources": [],
+  "source_count": 99
+}

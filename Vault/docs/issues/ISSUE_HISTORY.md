@@ -4,6 +4,99 @@ This tracker is the Oracle's durable issue and regression history. Read it
 before implementation guidance and review. Resolved issue details remain in
 `Vault/docs/issues/conclusions/` and are indexed with the rest of the Vault.
 
+## Issue #0004: Calimatic provider recovery opened a second BOS login
+
+- Status: ACTIVE; client guard fixed locally, server correction required
+- Priority: CRITICAL
+- Date identified: 2026-09-03
+- Area: client auth and server provider recovery
+- Files: `source/platform/bos-mcp-client/SKILL.md`,
+  `source/platform/authentication-context-integrity/SKILL.md`,
+  `source/platform/bos-plugin-console/SKILL.md`,
+  `source/platform/bos-guided-support/references/support-state-machine.md`,
+  `source/verticals/education-center/education-center-service-routing/SKILL.md`,
+  `Vault/specs/plugin-service-console.md`,
+  `tests/education-center-direct-calimatic-routing.test.mjs`
+- Evidence:
+  `Vault/evidence/provider-recovery/0.4.79-calimatic-second-bos-login-rca.md`
+
+### User goal and definition of done
+
+One root BOS login controls all BOS plugins and skills for the user's authorized
+organization. A Calimatic connection request uses that authenticated BOS context
+to open the secure Calimatic portal URL and API-key form. It never starts BOS
+authentication again. The completed provider transaction is verified and the
+original request resumes.
+
+### Observed evidence
+
+Authenticated `bos_get_context`, plugin-service inventory, and provider-connect
+calls succeeded before the browser opened the exact server-returned API-key
+recovery URL. That URL displayed **Sign in to authorize BOS**, linked to the BOS
+application, and waited for a separate BOS web session. The client followed the
+link and initiated root Google/BOS consent. Even after that second login, the
+provider transaction remained pending and never displayed the Calimatic form.
+The supplied screenshots and sanitized chronology are recorded in the linked
+evidence file.
+
+### Root cause
+
+The server-issued provider-recovery URL gated the transaction on a separate BOS
+browser cookie after the authenticated MCP request had already established the
+root BOS identity and recovery scope. The client lacked a surface-kind guard and
+blindly followed the page's root BOS sign-in link. This conflated root BOS OAuth,
+Gmail provider OAuth, and Calimatic API-key readiness.
+
+### Required correction
+
+The server must bind the short-lived browser transaction to the validated MCP
+recovery request and directly serve the provider-specific consent or credential
+collector. The client must verify that the browser surface matches
+`authorization_kind`, refuse root BOS sign-in during provider recovery, poll the
+existing transaction once, preserve the pending operation, and report
+`provider_recovery_identity_boundary` when the provider surface remains absent.
+
+### Attempts
+
+- The prior client contract correctly stated that provider authorization never
+  creates another BOS login, but it did not define how the client must react
+  when a server-returned provider page itself presented BOS sign-in.
+- The 0.4.79 runtime followed that unexpected link, causing the redundant BOS
+  consent flow while leaving the Calimatic transaction unresolved.
+- The current client correction adds an explicit first-surface invariant and a
+  bounded, fail-closed recovery classification across platform, console,
+  support, and Education Center routing instructions.
+- Release candidate 0.4.80 carries the correction and regenerated client
+  packages. The server-owned recovery-page correction remains independently
+  tracked and does not weaken the released client guard.
+
+### Validation and Oracle review
+
+The focused Calimatic routing suite passes 4 of 4. Deterministic package
+generation propagated the guard across Codex, Claude, Copilot, and Gemini.
+`npm run contract:check` passes with one canonical BOS resource and no
+violations. `npm run release:check` passes package generation, package and
+credential validation, the single-connection contract, and 249 of 249 tests.
+The same complete release gate passes again after advancing the package and both
+active products from 0.4.79 to 0.4.80.
+The complete-diff Oracle review visually inspected both supplied screenshots,
+independently verified their documented SHA-256 values, found no material
+repository issue, and recorded
+`Vault/reviews/2026-09-03-issue-0004-calimatic-provider-recovery.md` with verdict
+`APPROVED`. After the 0.4.80 version advance and client regeneration, a fresh
+release-scoped Oracle review inspected the complete updated diff and recorded
+`Vault/reviews/2026-09-03-release-0.4.80.md` with verdict `APPROVED`. The final
+synchronized Vault contains 100 canonical sources. The live end-to-end
+Calimatic credential form remains blocked on the owning server correction and
+deployment.
+
+### Prevention guidance
+
+Test root BOS OAuth, each provider authorization kind, browser handoff identity,
+and operation resumption as distinct states. Every provider recovery surface
+must match the server-declared authorization kind. An authenticated MCP result
+remains authoritative over a browser page's request for root BOS login.
+
 ## Issue #0003: Ship-it asked for approval after the release was already authorized
 
 - Status: FIXED LOCALLY
