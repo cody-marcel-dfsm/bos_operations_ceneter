@@ -63,9 +63,9 @@ request.
 
 1. Confirm **BOS** and the requested subservice plugins are installed and
    enabled in the Plugins Directory.
-2. Confirm BOS's plugin manifest declares `apps: "./.app.json"`, that app file
-   contains exactly one required BOS entry using the product's
-   canonical raw `asdk_app_...` connector identity, and the package has no `.mcp.json`;
+2. Confirm BOS's plugin manifest declares `mcpServers: "./.mcp.json"`, that MCP
+   file contains exactly one remote HTTP `platform` entry using the product's
+   BOS resource, and the package has no `.app.json`;
    subservice plugins carry no additional BOS binding.
 3. Start a new task after install or update when the existing task cannot see
    the plugin.
@@ -77,7 +77,7 @@ request.
    `_meta["mcp/www_authenticate"]` with `resource_metadata`, `error`, and
    `error_description`; that tool result owns activation of the inline chat
    action. The transport HTTP 401 challenge owns protected-resource discovery,
-   and the app declaration owns the persistent plugin-page action. If the
+   and the packaged MCP resource owns the connection. If the
    selected-tool challenge does not render the inline action, preserve the
    request and report an authentication-activation defect. The agent never
    invokes CLI login or launches authentication for the customer.
