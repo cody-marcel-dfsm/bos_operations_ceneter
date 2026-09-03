@@ -1,40 +1,13 @@
-import { lstat, readFile, readdir, rm } from "node:fs/promises";
+import { lstat, readdir, rm } from "node:fs/promises";
 import { homedir } from "node:os";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  codexConnectorContract,
-  readJson,
-  root,
-  stableJson
-} from "./lib/package-model.mjs";
+import { readJson, stableJson } from "./lib/package-model.mjs";
 
 export const CACHE_RESET_CONFIRMATION = "DELETE BOS CHATGPT AND CLAUDE CACHES";
 
 const marketplace = "bos-education-center";
 const products = ["bos", "education-center"];
-const bosProduct = await readJson(join(root, "products", "bos", "product.json"));
-const bosConnector = codexConnectorContract(bosProduct);
-const bosResourceUrl = bosProduct.mcp_resource_url;
-const bosCodexAppIds = [bosConnector.id, ...bosConnector.retired_ids];
-
-function codexAppRecordId(id) {
-  return id.replace(/^plugin_/, "");
-}
-
-function codexAppWrapperSuffix(id) {
-  return codexAppRecordId(id).replace(/^asdk_app_/, "");
-}
-
-function codexRemotePluginId(id) {
-  return id.startsWith("plugin_") ? id : `plugin_${id}`;
-}
-const codexCatalogCacheKinds = [
-  "codex_app_directory",
-  "codex_apps_server_info",
-  "codex_apps_tools",
-  "remote_plugin_catalog"
-];
 
 async function pathPresent(path) {
   try {
@@ -94,75 +67,28 @@ async function validateProductCache(cacheRoot, expectedClient) {
   }
 }
 
-async function validateRemoteWrapper(wrapper, appId) {
-  if (!(await pathPresent(wrapper))) return;
-  const stat = await lstat(wrapper);
-  if (stat.isSymbolicLink() || !stat.isDirectory()) {
-    throw new Error(`Refusing non-directory remote wrapper cache: ${wrapper}`);
-  }
-  const metadata = await readJson(join(wrapper, ".codex-remote-plugin-install.json"));
-  if (metadata.remote_plugin_id !== codexRemotePluginId(appId)) {
-    throw new Error(`Refusing mismatched remote wrapper cache: ${wrapper}`);
-  }
-}
-
-async function matchingCatalogFiles(cacheDirectory) {
-  if (!(await pathPresent(cacheDirectory))) return [];
-  const matches = [];
-  for (const entry of await readdir(cacheDirectory, { withFileTypes: true })) {
-    if (!entry.isFile()) continue;
-    const path = join(cacheDirectory, entry.name);
-    const content = await readFile(path, "utf8");
-    if ([bosResourceUrl, ...bosCodexAppIds].some((needle) => content.includes(needle))) {
-      matches.push(path);
-    }
-  }
-  return matches.sort();
-}
-
 export async function planBosClientCacheReset({ home = homedir() } = {}) {
   const safeHome = assertSafeHome(home);
   const codexPluginCacheRoot = join(safeHome, ".codex", "plugins", "cache");
-  const codexCatalogCacheRoot = join(safeHome, ".codex", "cache");
   const claudePluginCacheRoot = join(safeHome, ".claude", "plugins", "cache");
-  const appId = bosCodexAppIds[0];
   const codexPackageCache = assertContained(
     join(codexPluginCacheRoot, marketplace), codexPluginCacheRoot
   );
-  const codexRemoteWrappers = bosCodexAppIds.map((knownAppId) => assertContained(
-    join(
-      codexPluginCacheRoot,
-      "created-by-me-remote",
-      `dev-${codexAppWrapperSuffix(knownAppId)}`
-    ),
-    codexPluginCacheRoot
-  ));
   const claudePackageCache = assertContained(
     join(claudePluginCacheRoot, marketplace), claudePluginCacheRoot
   );
 
   await validateProductCache(codexPackageCache);
   await validateProductCache(claudePackageCache, "claude");
-  for (let index = 0; index < codexRemoteWrappers.length; index += 1) {
-    await validateRemoteWrapper(codexRemoteWrappers[index], bosCodexAppIds[index]);
-  }
-
   const targets = [];
-  for (const path of [codexPackageCache, ...codexRemoteWrappers, claudePackageCache]) {
+  for (const path of [codexPackageCache, claudePackageCache]) {
     if (await pathPresent(path)) targets.push(path);
-  }
-  for (const kind of codexCatalogCacheKinds) {
-    const directory = assertContained(join(codexCatalogCacheRoot, kind), codexCatalogCacheRoot);
-    for (const path of await matchingCatalogFiles(directory)) {
-      targets.push(assertContained(path, directory));
-    }
   }
   return {
     schema_version: "1",
     home: safeHome,
     allowed_roots: [
       codexPluginCacheRoot,
-      codexCatalogCacheRoot,
       claudePluginCacheRoot
     ],
     targets: [...new Set(targets)].sort()

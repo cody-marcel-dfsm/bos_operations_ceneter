@@ -68,23 +68,16 @@ prior verdict and requires a fresh Oracle review of the complete updated diff.
 - Preserve one host-managed BOS authentication connection. Subservice plugins
   contribute workflows through that connection and never own independent BOS
   logins or platform traffic.
-- Evaluate Codex registered-app display binding, OAuth activation, grant state,
-  and callable-tool discovery as independent readiness layers. A direct MCP
-  server row never proves that the native Login action is present. Evidence from
-  one layer never proves another layer ready.
+- Evaluate Codex package MCP binding, OAuth activation, grant state, and
+  callable-tool discovery as distinct readiness layers. Require the package MCP
+  endpoint to drive BOS OAuth discovery.
 - Treat GPT screenshots as post-release verification. Their absence never
   blocks source publication; a supplied screenshot requires visual inspection
   and a hash-bound Oracle receipt before client verification is complete.
-- Treat `products/bos/product.json` as the sole authored BOS product authority.
-  Its `ESTABLISHED` connector ID is immutable and has no migration workflow.
-  Supported name and description metadata updates apply only to an existing
-  exact ID and must post-read that ID plus the BOS resource. A missing or
-  misbound registry record is an integrity failure requiring a registry-owner
-  correction and zero account mutation; the available create route mints a
-  different identity. New connector creation requires a different disabled product
-  explicitly authored as `UNPROVISIONED_NEW`, a matching requested source name,
-  no retired IDs, and deterministic complete-metadata reconciliation before
-  retry.
+- Treat `products/bos/product.json` as the sole authored BOS transport
+  authority. Require generated Codex `.mcp.json`, reject `.app.json` and
+  registered connector IDs, and reject repository access to private account
+  connector APIs.
 - Flag conflicts between source and Vault. The constitution and accepted Vault
   decisions control until an explicit decision updates them.
 

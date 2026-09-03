@@ -2,7 +2,6 @@ import { readFile, readdir } from "node:fs/promises";
 import { basename, join, relative } from "node:path";
 
 const CONNECTION_ARTIFACT_NAMES = new Set([
-  ".app.json",
   ".mcp.json",
   "CONNECTORS.md",
   "mcp.json",
@@ -151,7 +150,6 @@ function validateContractShape(contract, contractPath) {
     "application_name",
     "mcp_group_name",
     "resource_url",
-    "codex_app_id",
     "owner_authentication_policy",
     "provider_account_selection_policy",
     "identity_organization_resolution_policy",
@@ -173,13 +171,6 @@ function validateContractShape(contract, contractPath) {
     if (!Array.isArray(contract[field]) || contract[field].length === 0) {
       findings.push(finding("contract_shape", contractPath, `${field} must be a non-empty array.`));
     }
-  }
-  if (contract.codex_app_required !== true) {
-    findings.push(finding(
-      "contract_shape",
-      contractPath,
-      "codex_app_required must be true."
-    ));
   }
   if (!contract.oauth || typeof contract.oauth !== "object" ||
       contract.provider_account_selection_policy !==
@@ -239,12 +230,9 @@ export async function verifySingleBosContract({
       ["application_name", contract.application_name],
       ["mcp_group_name", contract.mcp_group_name],
       ["mcp_resource_url", contract.resource_url],
-      ["oauth", contract.oauth],
-      ["codex_connector.id", contract.codex_app_id]
+      ["oauth", contract.oauth]
     ]) {
-      const observed = field === "codex_connector.id"
-        ? owner.codex_connector?.id
-        : owner[field];
+      const observed = owner[field];
       if (JSON.stringify(observed) !== JSON.stringify(expected)) {
         violations.push(finding(
           "owner_manifest_mismatch",
@@ -260,8 +248,7 @@ export async function verifySingleBosContract({
     "application_name",
     "mcp_group_name",
     "mcp_resource_url",
-    "oauth",
-    "codex_connector"
+    "oauth"
   ];
   for (const product of products.filter(({ name }) => name !== contract.owner_product)) {
     for (const field of forbiddenProductFields) {
@@ -305,22 +292,22 @@ export async function verifySingleBosContract({
 
   for (const artifact of expectedArtifacts) {
     const content = await readFile(join(root, artifact), "utf8");
-    if (artifact.endsWith("/.app.json")) {
-      const appManifest = JSON.parse(content);
-      const entries = Object.entries(appManifest.apps ?? {});
-      const [name, app] = entries[0] ?? [];
+    if (artifact.endsWith("/.mcp.json")) {
+      const mcpManifest = JSON.parse(content);
+      const entries = Object.entries(mcpManifest.mcpServers ?? {});
+      const [name, server] = entries[0] ?? [];
       if (
         entries.length !== 1 ||
-        name !== contract.owner_product ||
-        app?.id !== contract.codex_app_id ||
-        app?.required !== contract.codex_app_required ||
-        JSON.stringify(Object.keys(app ?? {}).sort()) !==
-          JSON.stringify(["id", "required"])
+        name !== contract.mcp_group_name ||
+        server?.type !== "http" ||
+        server?.url !== contract.resource_url ||
+        JSON.stringify(Object.keys(server ?? {}).sort()) !==
+          JSON.stringify(["type", "url"])
       ) {
         violations.push(finding(
-          "codex_app_binding",
+          "codex_mcp_binding",
           artifact,
-          "Codex must declare the exact required BOS registered app."
+          "Codex must declare the exact package-owned BOS MCP resource."
         ));
       }
     } else if (!content.includes(contract.resource_url)) {
