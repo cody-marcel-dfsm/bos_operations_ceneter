@@ -170,23 +170,21 @@ test("plugin settings initializer is included by subservices using the BOS conne
   assert.equal(education.codex_app_id, undefined);
 });
 
-test("authority-state mutations preserve the complete static tool catalog", async () => {
+test("authority-state mutations refresh dynamic domain service tooling", async () => {
   const roleContract = await readFile(
     `${root}/Vault/specs/role-aware-mcp-client.md`,
     "utf8"
   );
-  assert.match(roleContract, /After an audited server success, clients refresh context and operation status/i);
-  assert.match(roleContract, /After success, clients refresh[\s\S]*context and operation status before further operations/i);
-  assert.doesNotMatch(roleContract, /refresh context and (?:tool )?discovery/i);
+  assert.match(roleContract, /dynamic\s+domain-specific MCP service\s+and\s+tool\s+surface/i);
+  assert.match(roleContract, /After an audited server success, clients refresh[\s\S]*context[\s\S]*live tool discovery/i);
 
   const consoleContract = await readFile(
     `${root}/Vault/specs/plugin-service-console.md`,
     "utf8"
   );
   assert.match(consoleContract, /Success invalidates[\s\S]*context and operation status/i);
-  assert.match(consoleContract, /refreshes the static catalog only when the server[\s\S]*schema also changed/i);
-  assert.match(consoleContract, /server denies their domain operations[\s\S]*static operation descriptors remain discoverable/i);
-  assert.doesNotMatch(consoleContract, /invalidates[\s\S]{0,40}tool manifests/i);
+  assert.match(consoleContract, /refreshes live tool discovery[\s\S]*domain-specific MCP service/i);
+  assert.match(consoleContract, /server denies their domain operations[\s\S]*dynamic tool surface/i);
 
   for (const relativePath of [
     "source/platform/bos-plugin-settings-initialization/SKILL.md",
@@ -198,11 +196,7 @@ test("authority-state mutations preserve the complete static tool catalog", asyn
   ]) {
     const initialization = await readFile(`${root}/${relativePath}`, "utf8");
     assert.match(initialization, /(?:refresh(?:es)?|recheck)[\s\S]{0,80}context\s+(?:and|or)\s+operation status/i, relativePath);
-    assert.doesNotMatch(initialization, /refresh(?:es)? context and tools/i, relativePath);
-    assert.doesNotMatch(initialization, /fresh context, tool, and service discovery/i, relativePath);
-    assert.doesNotMatch(initialization, /permission, plugin, or capability change[\s\S]{0,80}refresh/i, relativePath);
-    assert.doesNotMatch(initialization, /provider authorization[\s\S]{0,160}refresh the manifest/i, relativePath);
-    assert.doesNotMatch(initialization, /plugins and capabilities can[\s\S]{0,80}tool discovery/i, relativePath);
+    assert.doesNotMatch(initialization, /complete static|static (?:tool|operation|schema) catalog/i, relativePath);
   }
 
   for (const relativePath of [
@@ -211,11 +205,29 @@ test("authority-state mutations preserve the complete static tool catalog", asyn
     "Vault/docs/bos-product-licensing-user-experience.md"
   ]) {
     const contract = await readFile(`${root}/${relativePath}`, "utf8");
-    assert.match(contract, /static\s+(?:BOS\s+)?(?:operation\/schema\s+|tool\s+)?catalog/i, relativePath);
-    assert.doesNotMatch(contract, /tools\/list` contains only tools authorized/i, relativePath);
-    assert.doesNotMatch(contract, /License changes refresh context and tool discovery/i, relativePath);
-    assert.doesNotMatch(contract, /tools for authorized installed subservices are[\s\S]{0,30}discoverable/i, relativePath);
+    assert.match(contract, /dynamic(?:ally resolves the)?\s+domain-specific MCP services and tooling/i, relativePath);
+    assert.doesNotMatch(contract, /complete static|static (?:tool|operation|schema) catalog/i, relativePath);
   }
+
+  const activeRoots = [
+    "products",
+    "source",
+    "clients",
+    "scripts",
+    "contracts",
+    "Vault/docs",
+    "Vault/specs"
+  ];
+  const obsoleteContract = /\b(?:complete\s+)?static(?:\s+[\w-]+){0,4}\s+(?:catalog|registry)\b|COMPLETE_STATIC_BOS_CATALOG|post_authentication_tool_catalog|catalog_authorization_semantics/i;
+  const stalePaths = [];
+  for (const relativeRoot of activeRoots) {
+    for (const path of await walkFiles(`${root}/${relativeRoot}`)) {
+      if (path.includes("/Vault/docs/issues/")) continue;
+      const content = await readFile(path, "utf8");
+      if (obsoleteContract.test(content)) stalePaths.push(path.slice(root.length + 1));
+    }
+  }
+  assert.deepEqual(stalePaths, []);
 });
 
 test("settings preflight injection preserves frontmatter and adds resumable initialization", () => {
@@ -577,8 +589,10 @@ test("application runtime packages ship agent-owned MCP lifecycle recovery", asy
     assert.match(guidance, /agent owns the BOS MCP client lifecycle/i);
     assert.match(guidance, /reconnect or reinitialize/i);
     assert.match(guidance, /Never ask the user to reconnect BOS, resend the request/i);
-    assert.match(guidance, /plugin\/package[\s\S]*schema[\s\S]*transport\/session replacement/i);
-    assert.match(guidance, /Permission, role, plugin enablement, capability,[\s\S]*provider changes[\s\S]*do not filter the static tool catalog/i);
+    assert.match(guidance, /plugin\/package[\s\S]*transport\/session replacement/i);
+    assert.match(guidance, /server-schema (?:updates|changes)/i);
+    assert.match(guidance, /dynamic\s+domain-specific MCP services and tooling/i);
+    assert.match(guidance, /permission[\s\S]*role[\s\S]*plugin-enable(?:ment)?[\s\S]*capability[\s\S]*provider[\s\S]*refresh live tool discovery/i);
     assert.match(guidance, /sanitized continuation envelope/i);
     assert.match(guidance, /same-task session/i);
     assert.match(guidance, /reconcile by[\s\S]*idempotency identifier/i);
@@ -633,8 +647,8 @@ test("Codex reauthentication exposes native user-controlled authentication", asy
   assert.match(client, /Descriptor visibility[\s\S]*no customer data[\s\S]*no[\s\S]*business execution/i);
   assert.match(client, /mcp\/www_authenticate[\s\S]*native[\s\S]*Sign in/i);
   assert.match(client, /resource_metadata[\s\S]*error[\s\S]*error_description/i);
-  assert.match(client, /complete static BOS tool[\s\S]*After consent/i);
-  assert.match(client, /Catalog\s+presence[\s\S]*never proves[\s\S]*authorized/i);
+  assert.match(client, /After consent[\s\S]*dynamic\s+domain-specific MCP services and tooling/i);
+  assert.match(client, /Tool\s+presence[\s\S]*never proves[\s\S]*authorized/i);
   assert.match(client, /server result[\s\S]*authoritative[\s\S]*role[\s\S]*provider access/i);
   assert.match(client, /call[\s\S]*`bos_get_context`[\s\S]*resume the original request/i);
   assert.match(client, /invalid_grant[\s\S]*Refresh token[\s\S]*replay detected/i);
@@ -672,8 +686,8 @@ test("Codex reauthentication exposes native user-controlled authentication", asy
     assert.match(generated, /mcpServers: "\.\/\.mcp\.json"/i, path);
     assert.match(generated, /matching tool descriptor[\s\S]*securitySchemes[\s\S]*oauth2/i, path);
     assert.match(generated, /mcp\/www_authenticate[\s\S]*native[\s\S]*Sign in/i, path);
-    assert.match(generated, /complete static BOS tool[\s\S]*After consent/i, path);
-    assert.match(generated, /Catalog\s+presence[\s\S]*never proves[\s\S]*authorized/i, path);
+    assert.match(generated, /After consent[\s\S]*dynamic\s+domain-specific MCP services and tooling/i, path);
+    assert.match(generated, /Tool\s+presence[\s\S]*never proves[\s\S]*authorized/i, path);
     assert.match(generated, /server result[\s\S]*authoritative[\s\S]*role[\s\S]*provider access/i, path);
     assert.doesNotMatch(generated, /codex mcp login/i, path);
     assert.match(generated, /Do not use\s+generic app-permission tools/i, path);
@@ -968,11 +982,6 @@ test("director skill handles weekly summaries without scope questions", async ()
   assert.match(weeklyContract, /## Family calls and camp exceptions/);
   assert.match(weeklyContract, /## Upcoming events/);
   assert.match(weeklyContract, /confirmed but unassigned[\s\S]*Needs review/);
-  const product = (await listProducts()).find(
-    ({ manifest }) => manifest.name === "education-center"
-  )?.manifest;
-  assert(product);
-  assert(product.default_prompts.includes("Give me a weekly summary for my director."));
 });
 
 test("BOS starter prompts provide operating-system-style discovery", async () => {
@@ -1242,7 +1251,8 @@ test("BOS marketplace metadata explains the platform and links to its website", 
   assert.equal(bos.description.length, 79);
   assert.match(bos.description, /Agent-first Business Operating System/);
   assert.match(bos.long_description, /owns the authenticated MCP connection/);
-  assert.match(bos.long_description, /complete static operation catalog/);
+  assert.match(bos.long_description, /dynamic domain-specific MCP services and tooling/);
+  assert.doesNotMatch(bos.long_description, /static (?:registry|operation|tool|schema|catalog)/i);
   assert.match(bos.long_description, /authorization on every private operation/);
   assert.equal(bos.website_url, "https://dfsm.ai");
   assert.equal(bos.brand_color, "#061638");
@@ -1262,22 +1272,31 @@ test("BOS marketplace metadata explains the platform and links to its website", 
   await access(`${root}/clients/codex/plugins/bos/assets/bos-logo.png`);
 });
 
-test("Education Operation Center marketplace metadata presents independent workflows", async () => {
+test("Education Operation Center marketplace metadata presents specific cross-system workflows", async () => {
   const education = (await listProducts()).find(
     ({ manifest }) => manifest.name === "education-center"
   )?.manifest;
   assert(education);
   assert.equal(education.display_name, "Education Operation Center");
   assert.ok(education.description.length <= 80);
-  assert.match(education.description, /Agent-first education operations/);
-  assert.match(
-    education.long_description,
-    /Ads and Customer Outreach → Free Trial Class, Session, or Booking → Enrollment/
-  );
-  assert.match(education.long_description, /independent deterministic workflow/);
-  assert.match(education.long_description, /Intelligent orchestrators select and coordinate/);
-  assert.match(education.long_description, /complex, human-centered tasks/);
+  assert.match(education.description, /email, calendars, billing, and enrollment/);
+  assert.match(education.long_description, /Northstar Coding Academy/);
+  assert.match(education.long_description, /Bright Horizons invoices/);
+  assert.match(education.long_description, /payment records in its configured accounting system/);
+  assert.match(education.long_description, /source-linked exception ledger/);
+  assert.doesNotMatch(education.long_description, /My CRM/);
+  assert.match(education.long_description, /deterministic workflow/);
   assert.match(education.long_description, /preserving human judgment, approvals/);
+  assert.deepEqual(education.default_prompts, [
+    "For Northstar Coding Academy, reconcile Bright Horizons email invoices with accounting payments; cite every mismatch.",
+    "For Northstar Coding Academy, reconcile next week's registrations, partner child-days, staff, cancellations, and camp capacity.",
+    "For Northstar Coding Academy, reconcile paid leads across Gmail, Calendar, Lead Director, Calimatic, and Google Ads; flag gaps."
+  ]);
+  assert.equal(new Set(education.default_prompts).size, 3);
+  assert.ok(education.default_prompts.every((prompt) => prompt.length <= 128));
+  assert.ok(education.default_prompts.every((prompt) => prompt.includes("Northstar Coding Academy")));
+  assert.ok(education.default_prompts.every((prompt) => /reconcil|exception/i.test(prompt)));
+  assert.ok(education.default_prompts.every((prompt) => !/my education center|today's education center|my director/i.test(prompt)));
   assert.equal(education.website_url, "https://dfsm.ai");
   assert.equal(education.brand_color, "#061638");
   assert.equal(education.composer_icon, "assets/education-center-logo.png");

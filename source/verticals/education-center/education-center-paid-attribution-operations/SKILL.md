@@ -16,7 +16,8 @@ and record identifiers unchanged.
 
 Use the authenticated BOS connection and follow `bos-mcp-client` for every
 provider call. Treat the live BOS context and operation result as authoritative
-for access, and the static tool manifest as authoritative only for schemas.
+for access, and live discovery as the current domain-specific service and schema
+surface.
 Preserve the selected Education Center organization scope exactly and keep
 provider evidence separate until the lead is reconciled.
 Use `bos-visual-output` for source-to-outcome flows, conversion counts, missing
@@ -51,8 +52,8 @@ browser handoff, poll readiness, and resume the pending operation once.
    `conflict`, or `not_ads_attributable` using the integration contract.
 8. Produce a preview with counts, proposed conversion action, conversion time,
    value, currency, dedupe key, and source evidence before any provider update.
-9. Execute an offline conversion or Google Ads campaign update only when the
-   static BOS catalog contains the exact mutation schema and the user has
+9. Execute an offline conversion or Google Ads campaign update only when live
+   domain-specific tool discovery contains the exact mutation schema and the user has
    requested or approved the exact target and payload. Re-read the target before
    mutation, use the provider's idempotency/version fields, and verify afterward.
    Treat the call result as authoritative for capability and provider access.

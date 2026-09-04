@@ -20,12 +20,13 @@ Refresh the callable manifest immediately after:
 
 Fingerprint the refreshed tool names, versions when exposed, and input schemas.
 Call `bos_get_context` again and prove that the same BOS connection resolves an
-authorized context. The authenticated manifest is the complete static BOS
-catalog: its entries declare operations and schemas without granting authority.
-Permission, role, plugin enablement, capability, and provider changes refresh
-context or operation status rather than the catalog. BOS re-evaluates those
-dimensions when `tools/call` executes. Never reuse a tool definition absent from
-the refreshed schema catalog.
+authorized context. The authenticated manifest is the current dynamic
+domain-specific MCP service and tool surface: its entries declare exposed
+operations and schemas without granting authority. Permission, role, plugin
+enablement, capability, provider, installation, and domain-service changes
+require context or operation-status refresh plus live tool rediscovery. BOS
+re-evaluates those dimensions when `tools/call` executes. Never reuse a tool
+definition absent from the refreshed live manifest.
 
 ## Sanitized continuation envelope
 
@@ -65,7 +66,7 @@ customer data and business execution remain protected. Its signed-out
 invocation returns `isError: true` with `_meta["mcp/www_authenticate"]`, which
 lets the host render the simple inline **Sign in** button in the current chat.
 Preserve the request while the user selects the native action and completes
-consent, then refresh the complete static BOS tool catalog, call `bos_get_context`, and
+consent, then refresh live discovery of dynamic domain-specific MCP services and tooling, call `bos_get_context`, and
 resume automatically. If the descriptor, challenge, or inline action is absent,
 report the exact tool-auth or host-activation defect and keep the request
 pending. Never invoke a CLI login, launch browser authentication for the user,

@@ -34,7 +34,8 @@ native **Sign in**, **Connect**, or **Authenticate** button in this chat. Never
 replace that tool-bound OAuth challenge with a plugin-install recommendation,
 external install page, manual navigation, local inspection, or anonymous
 bootstrap business tool. Preserve the current request while the customer signs
-in, refresh the complete static BOS tool catalog after consent, call
+in, refresh live discovery of dynamic domain-specific MCP services and tooling
+after consent, call
 `bos_get_context`, and continue this same request. Never ask the customer to
 repeat the prompt.
 

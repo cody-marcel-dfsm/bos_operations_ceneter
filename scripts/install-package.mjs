@@ -14,6 +14,7 @@ import {
   writeFile
 } from "node:fs/promises";
 import { homedir } from "node:os";
+import { BlockList, isIP } from "node:net";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -42,6 +43,60 @@ const codexMarketplaceIdentity = Object.freeze({
   displayName: "BOS + Education Operation Center"
 });
 const execFileAsync = promisify(execFile);
+const nonPublicWebsiteIpv4Addresses = new BlockList();
+const nonPublicWebsiteIpv6Addresses = new BlockList();
+const nonPublicWebsiteSuffixes = new Set([
+  "alt",
+  "arpa",
+  "corp",
+  "example",
+  "home",
+  "internal",
+  "intranet",
+  "invalid",
+  "lan",
+  "local",
+  "localdomain",
+  "localhost",
+  "onion",
+  "test"
+]);
+for (const [address, prefix, type] of [
+  ["0.0.0.0", 8, "ipv4"],
+  ["10.0.0.0", 8, "ipv4"],
+  ["100.64.0.0", 10, "ipv4"],
+  ["127.0.0.0", 8, "ipv4"],
+  ["169.254.0.0", 16, "ipv4"],
+  ["172.16.0.0", 12, "ipv4"],
+  ["192.0.0.0", 24, "ipv4"],
+  ["192.0.2.0", 24, "ipv4"],
+  ["192.168.0.0", 16, "ipv4"],
+  ["198.18.0.0", 15, "ipv4"],
+  ["198.51.100.0", 24, "ipv4"],
+  ["203.0.113.0", 24, "ipv4"],
+  ["224.0.0.0", 4, "ipv4"],
+  ["240.0.0.0", 4, "ipv4"],
+  ["::", 128, "ipv6"],
+  ["::1", 128, "ipv6"],
+  ["::", 96, "ipv6"],
+  ["::ffff:0:0", 96, "ipv6"],
+  ["::ffff:0:0:0", 96, "ipv6"],
+  ["64:ff9b::", 96, "ipv6"],
+  ["64:ff9b:1::", 48, "ipv6"],
+  ["100::", 64, "ipv6"],
+  ["2001::", 32, "ipv6"],
+  ["2001:db8::", 32, "ipv6"],
+  ["2002::", 16, "ipv6"],
+  ["fc00::", 7, "ipv6"],
+  ["fe80::", 10, "ipv6"],
+  ["fec0::", 10, "ipv6"],
+  ["ff00::", 8, "ipv6"]
+]) {
+  const blockList = type === "ipv4"
+    ? nonPublicWebsiteIpv4Addresses
+    : nonPublicWebsiteIpv6Addresses;
+  blockList.addSubnet(address, prefix, type);
+}
 const retiredBosBrokerPaths = new Set([
   "scripts/bos_mcp_broker.py",
   "tests/test_bos_mcp_broker.py",
@@ -245,17 +300,43 @@ export function validateCustomerSettings(settings) {
   }
   if (settings.schema_version !== "1") failures.push('schema_version must be "1"');
   const allowedTopLevel = new Set([
-    "schema_version", "brand_display_name", "organization_display_name", "location_display_name",
-    "timezone", "mailboxes", "source_routes", "billing"
+    "schema_version", "brand_display_name", "organization_display_name",
+    "organization_website_url", "location_display_name", "timezone", "mailboxes",
+    "source_routes", "billing"
   ]);
   for (const field of Object.keys(settings)) {
     if (!allowedTopLevel.has(field)) failures.push(`unknown settings field: ${field}`);
   }
   for (const field of [
-    "brand_display_name", "organization_display_name", "location_display_name", "timezone"
+    "brand_display_name", "organization_display_name", "organization_website_url",
+    "location_display_name", "timezone"
   ]) {
     if (typeof settings[field] !== "string" || !settings[field].trim()) {
       failures.push(`${field} must be a non-empty string`);
+    }
+  }
+  if (typeof settings.organization_website_url === "string" &&
+      settings.organization_website_url.trim()) {
+    try {
+      const website = new URL(settings.organization_website_url);
+      const hostname = website.hostname
+        .replace(/^\[|\]$/g, "")
+        .replace(/\.+$/, "")
+        .toLowerCase();
+      const addressType = isIP(hostname);
+      const hasNonPublicSuffix = [...nonPublicWebsiteSuffixes].some(
+        (suffix) => hostname === suffix || hostname.endsWith(`.${suffix}`)
+      );
+      if (!new Set(["http:", "https:"]).has(website.protocol) ||
+          website.username || website.password ||
+          (!addressType && !hostname.includes(".")) ||
+          (addressType === 4 && nonPublicWebsiteIpv4Addresses.check(hostname, "ipv4")) ||
+          (addressType === 6 && nonPublicWebsiteIpv6Addresses.check(hostname, "ipv6")) ||
+          hasNonPublicSuffix) {
+        throw new Error("not a public website URL");
+      }
+    } catch {
+      failures.push("organization_website_url must be a public HTTP or HTTPS URL");
     }
   }
   if (typeof settings.brand_display_name === "string" &&
@@ -344,6 +425,7 @@ export function deriveInitialCustomerSettings(template, clientContext = {}) {
   const candidates = {
     brand_display_name: clientContext.brand_display_name,
     organization_display_name: clientContext.organization_display_name,
+    organization_website_url: clientContext.organization_website_url,
     location_display_name: clientContext.location_display_name,
     timezone:
       clientContext.timezone ||
