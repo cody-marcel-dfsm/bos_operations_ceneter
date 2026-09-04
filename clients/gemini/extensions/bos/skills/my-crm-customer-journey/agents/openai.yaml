@@ -1,0 +1,4 @@
+interface:
+  display_name: "My CRM Customer Journey"
+  short_description: "Discover a lead's exact graph journey"
+  default_prompt: "Use $my-crm-customer-journey to discover Lead Director's installed graph and APIs, then show this lead's current node, history, reachable goals, paths, gates, blockers, and next steps."
