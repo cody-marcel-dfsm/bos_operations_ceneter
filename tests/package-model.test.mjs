@@ -2562,3 +2562,23 @@ test("migrated BOS personal workflows are canonical and generated for every appl
   }
   await access(`${root}/.agents/skills/codex-token-usage-analysis/SKILL.md`);
 });
+
+test("active BOS distributes the customer journey graph workflow", async () => {
+  const bos = (await listProducts()).find(({ manifest }) => manifest.name === "bos").manifest;
+  const skills = await resolveProductSkills(bos);
+  const journey = skills.find((skill) => skill.name === "my-crm-customer-journey");
+  assert(journey, "active BOS must ship journey rendering independently of My CRM activation");
+  assert(skills.some((skill) => skill.name === "bos-app-discovery"));
+  for (const folder of [
+    "clients/codex/plugins/bos", "clients/claude/plugins/bos",
+    "clients/copilot/products/bos", "clients/gemini/extensions/bos"
+  ]) {
+    const actual = await readFile(`${root}/${folder}/skills/${journey.name}/SKILL.md`, "utf8");
+    const expected = transformProductSkillGuidance(bos, journey.name, await readFile(journey.skillFile, "utf8"));
+    assert.equal(actual, expected, folder);
+    assert.equal(await readFile(`${root}/${folder}/skills/${journey.name}/references/journey-graph-contract.md`, "utf8"),
+      await readFile(`${journey.sourcePath}/references/journey-graph-contract.md`, "utf8"));
+  }
+  const myCrm = (await listProducts()).find(({ manifest }) => manifest.name === "my-crm").manifest;
+  assert.equal(myCrm.release_status, "disabled");
+});

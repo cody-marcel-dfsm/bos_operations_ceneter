@@ -9,6 +9,14 @@ Use `bos-app-discovery` for routing, app MCP discovery, contract validation, and
 deterministic HTTPS invocation. Read [the Lead Director journey
 contract](references/journey-graph-contract.md) before discovery or rendering.
 
+This workflow ships with the active BOS foundation and is usable independently
+of the My CRM product. A request for one person's journey status or progress
+toward a goal selects this workflow even when the user does not say “graph.”
+
+Start with `bos-mcp-client` live discovery and `bos_get_context` on the original
+request. Resolve deferred tools through the host's discovery facility before
+reporting them missing. Resume this workflow automatically after recovery.
+
 ## Discover and resolve
 
 1. Use the selected default or explicit organization to query the authenticated
@@ -67,12 +75,44 @@ blocked and conditional edges with their app-returned gate conditions and
 required evidence. Never invent a generic stage or infer a transition from list
 order, prior screenshots, or sales conventions.
 
+## Partial evidence presentation
+
+When authorized reads have already verified a record's current state but full
+graph topology or path results are unavailable, render a **Partial journey —
+verified milestones only** diagram on the first response. This presentation
+uses evidence already obtained through an authorized workflow; it grants no
+alternate endpoint, compatibility alias, or authentication bypass. Preserve
+any typed discovery or provider failure and state which graph evidence is
+missing. With no verified current state, report the failure without a fabricated
+journey.
+
+Show the verified current state and the user's requested goal as distinct nodes.
+Label the goal **Requested goal — attainment unverified** unless verified.
+Place confirmed dated milestones in their observed chronology; label timeline
+links **Recorded chronology**, never as completed graph transitions. Use a
+non-directional dotted connector labeled **Progression unverified** between
+current state and goal when no path is known. Include a legend that this link
+indicates missing evidence and establishes no reachability or eligible next
+step. Add no inferred intermediate stages or percentage complete. Keep future
+events pending. Put this visual before record details, with source freshness
+and limitations immediately below it. Do not wait for the user to ask for a
+visual or retry. An optional provider check failing does not erase independent
+verified record evidence.
+
 ## Render the native graph
 
 Lead with a Mermaid `flowchart LR` built only from the discovered graph and
 lead/path API results. Use no local HTML, browser renderer, attachment, or
 external visualization service. Keep node labels concise and exclude contact
 details, raw record identifiers, private notes, and authority values.
+
+Place the person's verified current node and the requested goal prominently
+in the same diagram. Emphasize the app-returned route between them and show
+relevant branches and gates. Completed history requires observed transition
+evidence; future or eligible steps remain distinct from completed steps.
+If the goal is unreachable, show that goal and the app-returned blocker without
+drawing an invented connecting edge. If goal resolution is ambiguous, ask for
+the intended goal rather than choosing one silently.
 
 Apply direct text labels plus these high-contrast status styles:
 

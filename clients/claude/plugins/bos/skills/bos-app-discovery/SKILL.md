@@ -68,6 +68,15 @@ app-directory or per-app MCP query in a request.
    digest/version, role, plugin, authorization, context-expiry, or app-contract
    changes. Re-resolve the operation from the refreshed contract before retrying.
 
+## Journey-position requests
+
+For a lead or customer's position in a journey, enrollment progress, or path to
+a goal, use the installed `my-crm-customer-journey` workflow after selecting
+the owning app. Discover graph, journey, and read-only path evidence before
+rendering. Lead with a native graph marking the current node and requested
+goal; keep record details below it. A single-record request still requires
+the journey visual. Retain typed failures when graph evidence is unavailable.
+
 ## Validation and failure behavior
 
 Accept an app contact only when it came from the current authenticated BOS

@@ -40,14 +40,27 @@ When one of these conditions is present, deliver an actual chart, timeline,
 Mermaid diagram, map, image, or inline visualization. A Markdown table with
 emoji or status icons does not satisfy this requirement by itself.
 
-Use concise prose for a single fact, one record, a short draft, an error, or a
-result whose visual would add decoration without information.
+For a person's journey position relative to a goal, invoke the installed
+`my-crm-customer-journey` skill and lead with its native graph, including for
+one record. A stage label, detail table, or history list alone is incomplete.
+Keep the current node, requested goal, verified connecting paths, and known
+gates or blockers visible on the diagram. Obtain application-owned graph and
+path evidence before drawing transitions; explicitly report unavailable graph
+evidence without inventing a path. When independently verified current-state
+facts are available, use the journey skill's labeled partial-evidence diagram
+on the first response; keep unknown progression explicit.
+
+Use concise prose for a single fact, one record outside journey-position work,
+a short draft, an error, or a result whose visual would add decoration without
+information.
 
 ## Preferred forms
 
 - Schedule, trials, camps, and staff coverage: chronological timeline or
   calendar lanes.
 - Capacity and attendance: stacked bars, occupancy bars, or day-by-day heatmap.
+- Individual journey or progress toward a goal: application-owned journey
+  graph with current position and target goal emphasized.
 - Lead pipeline and conversion: ordered funnel or stage bars with counts and
   rates.
 - Reconciliation: source-to-record flow, compact match matrix, or status bars.

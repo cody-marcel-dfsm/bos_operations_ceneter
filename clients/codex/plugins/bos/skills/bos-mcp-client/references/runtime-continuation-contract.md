@@ -3,6 +3,15 @@
 Use this contract for an active request that must survive connection recovery,
 authorization changes, tool-manifest refresh, or a host session replacement.
 
+## First-request discovery
+
+Invoke an already callable `bos_get_context` immediately. Resolve deferred BOS
+tools through the host's available search/discovery or advertised orchestration
+inventory before concluding that tools are missing. Apply one supported refresh
+and discovery retry after failure, preserve the exact failure evidence, and
+resume the original request automatically when tools become callable. Inspect
+package installation only after live discovery establishes a connection problem.
+
 ## Refresh triggers
 
 Refresh the callable manifest immediately after:

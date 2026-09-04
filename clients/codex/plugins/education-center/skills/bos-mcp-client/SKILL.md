@@ -92,7 +92,21 @@ Read [references/runtime-continuation-contract.md](references/runtime-continuati
 before recovering authorization, refreshing a tool manifest, or continuing a
 stateful mutation workflow.
 
-- Discover and use the root BOS plugin's configured MCP connection.
+- On the first BOS-dependent request, discover and use the root BOS plugin's
+  configured MCP connection. If `bos_get_context` is callable, invoke it
+  immediately and continue the pending request from its result. When tools are
+  deferred, use the host's available tool search or discovery facility to locate
+  BOS and `bos_get_context` before declaring them unavailable. With a tool
+  orchestration runtime, inspect its advertised tool inventory and invoke the
+  discovered callable there. Absence from the initially visible tool list does
+  not establish a missing connection.
+- If discovery fails, perform one supported refresh of the same connection and
+  retry discovery once. Report the exact observed failure and missing host
+  capability when recovery is unavailable. Never invent a tool call or claim
+  discovery failed without attempting an available discovery facility.
+  Preserve the original request and resume automatically after recovery; the
+  user should not need to ask for rediscovery. Package-file inspection and
+  desktop UI automation do not establish whether live tools are callable.
 - If BOS is absent from the callable tool manifest, inspect the active client's
   BOS plugin and runtime binding immediately. Repair or reinstall BOS and
   restore its declared authorization connection. For Codex, verify the root
