@@ -255,17 +255,14 @@ checkout. It is distinct from customer installation.
 ```bash
 npm install
 python3 -m pip install -r tools/requirements-dev.txt
-python3 tools/vault_index.py sync --quiet
 npm run build:packages
 npm run check
 npm test
 ```
 
-The repository-local Oracle uses the same Chroma-backed Vault workflow as the
-sibling BOS repository. Durable designs, decisions, specifications, issue
-history, and reviews live under `Vault/`. During Vault editing, run
-`python3 tools/vault_index.py watch --daemon`; query related implementation and
-regression history with `python3 tools/vault_index.py query "<question>"`.
+Maintainers use a private, untracked local knowledge store for architecture,
+decisions, specifications, issue history, and reviews. Its contents are never
+part of this public repository or its release artifacts.
 
 The BOS server repository or CI can verify the portable client/server
 connection contract directly:
@@ -522,7 +519,6 @@ the BOS runtime plugin is unavailable on those two hosts.
 | `clients/claude/.claude-plugin/marketplace.json` | Generated Claude marketplace |
 | `scripts/` | Generation, validation, installation, and release tools |
 | `tests/` | Package, security, portability, and workflow tests |
-| `Vault/` | Canonical architecture, decisions, specifications, and reviews |
 
 Private application skill groups may coexist in a managed marketplace while
 remaining outside public customer releases. Disabled products are listed in
@@ -531,14 +527,6 @@ installation instructions, and release checks.
 
 ## Project documentation
 
-- [Architecture](Vault/docs/architecture.md)
-- [Constitution](Vault/docs/CONSTITUTION.md)
-- [Desktop marketplace and OAuth decision](Vault/decisions/2026-08-11-desktop-private-marketplace-oauth.md)
-- [OAuth-only runtime product decision](Vault/decisions/2026-08-16-all-runtime-products-oauth-only.md)
-- [Detailed design](Vault/docs/DESIGN.md)
-- [Implementation tasks](Vault/docs/IMPLEMENTATION_TASKS.md)
-- [Implementation status](Vault/docs/IMPLEMENTATION_STATUS.md)
-- [Skill hierarchy and composition](Vault/docs/SKILL_HIERARCHY_AND_COMPOSITION.md)
 - [Security policy](SECURITY.md)
 
 ## Security invariant

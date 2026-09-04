@@ -1,14 +1,8 @@
 #!/usr/bin/env python3
-"""Synchronize and stage canonical Vault evidence before a commit."""
+"""Block private Vault content from entering Git history."""
 
-import json
-from pathlib import Path
 import subprocess
 import sys
-
-
-MANIFEST_DIR = Path("Vault/index/manifests")
-EXCLUDED_VAULT_PARTS = {"index", "tmp"}
 
 
 def _git_paths(*arguments: str) -> list[str] | None:
@@ -21,84 +15,20 @@ def _git_paths(*arguments: str) -> list[str] | None:
     if result.returncode != 0:
         return None
     return [line for line in result.stdout.splitlines() if line]
-
-
-def _vault_sources(paths: list[str]) -> list[str]:
-    sources = []
-    for value in paths:
-        path = Path(value)
-        if not path.parts or path.parts[0] != "Vault":
-            continue
-        if len(path.parts) > 1 and path.parts[1] in EXCLUDED_VAULT_PARTS:
-            continue
-        sources.append(value)
-    return sources
-
-
 def main() -> int:
     staged = _git_paths(
         "diff", "--cached", "--name-only", "--diff-filter=ACMRTD", "--", "Vault"
     )
     if staged is None:
         return 1
-    staged_sources = _vault_sources(staged)
-    if not staged_sources:
-        return 0
-
-    unstaged = _git_paths("diff", "--name-only", "--", "Vault")
-    untracked = _git_paths(
-        "ls-files", "--others", "--exclude-standard", "--", "Vault"
-    )
-    if unstaged is None or untracked is None:
-        return 1
-    pending_sources = _vault_sources([*unstaged, *untracked])
-    if pending_sources:
+    if staged:
         print(
-            "Commit blocked: stage or revert all Vault source changes before "
-            "generating index evidence.",
+            "Commit blocked: Vault/ is private maintainer material and must "
+            "never enter Git history.",
             file=sys.stderr,
         )
         return 1
-
-    sync_result = subprocess.run(
-        [
-            sys.executable,
-            "tools/vault_index.py",
-            "sync",
-            "--quiet",
-            "--force-manifest",
-        ],
-        check=False,
-    )
-    if sync_result.returncode != 0:
-        return sync_result.returncode
-
-    latest = MANIFEST_DIR / "latest.json"
-    try:
-        indexed_at = json.loads(latest.read_text())["indexed_at"]
-    except (OSError, KeyError, TypeError, json.JSONDecodeError):
-        print(
-            "Commit blocked: Vault sync did not produce valid manifest evidence.",
-            file=sys.stderr,
-        )
-        return 1
-    timestamped = MANIFEST_DIR / f"{indexed_at}.json"
-    if not timestamped.is_file():
-        print(
-            "Commit blocked: timestamped Vault manifest is missing.",
-            file=sys.stderr,
-        )
-        return 1
-    restore_result = subprocess.run(
-        ["git", "restore", "--staged", "--", str(MANIFEST_DIR)],
-        check=False,
-    )
-    if restore_result.returncode != 0:
-        return restore_result.returncode
-    return subprocess.run(
-        ["git", "add", "--", str(latest), str(timestamped)],
-        check=False,
-    ).returncode
+    return 0
 
 
 if __name__ == "__main__":

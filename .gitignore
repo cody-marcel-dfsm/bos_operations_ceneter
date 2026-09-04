@@ -1,4 +1,5 @@
 tmp/
+/Vault/
 Vault/index/chroma/
 node_modules/
 __pycache__/

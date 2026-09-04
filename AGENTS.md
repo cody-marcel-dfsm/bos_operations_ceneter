@@ -1,8 +1,8 @@
 # BOS Operations Center
 
-Canonical architecture: `Vault/docs/architecture.md`
-Project constitution: `Vault/docs/CONSTITUTION.md`
-Knowledge root: `Vault/`
+Private local architecture: `Vault/docs/architecture.md`
+Private local constitution: `Vault/docs/CONSTITUTION.md`
+Private knowledge root: `Vault/` (never tracked or published)
 
 ## Customer installation routing
 
@@ -38,6 +38,9 @@ Knowledge root: `Vault/`
 
 ## Vault knowledge contract
 
+- `Vault/` is private maintainer material. Never stage, commit, push, package,
+  publish, or attach any Vault file to a public repository, release, pull
+  request, issue, or other public artifact.
 - Store authored architecture, decisions, specifications, plans, review records,
   and durable project knowledge under `Vault/`.
 - Store disposable workflow artifacts under `Vault/tmp/<workflow>/`.
@@ -47,10 +50,11 @@ Knowledge root: `Vault/`
   `python3 tools/vault_index.py sync --quiet`.
 - During a session that adds, moves, or edits Vault knowledge, ensure the local
   watcher is running with `python3 tools/vault_index.py watch --daemon`.
-- After changing Vault sources, run the sync again and verify that
+- After changing Vault sources, run the sync again and verify locally that
   `Vault/index/manifests/latest.json` describes the current sources.
 - Chroma data belongs under `Vault/index/chroma/` and is rebuildable local
-  cache. Canonical Vault sources and timestamped manifests are durable evidence.
+  cache. Canonical Vault sources and timestamped manifests remain private local
+  evidence.
 
 ## Oracle review contract
 
