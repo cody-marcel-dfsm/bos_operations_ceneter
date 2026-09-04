@@ -199,8 +199,8 @@ export async function inspectCodexRuntime(rawOptions = {}) {
     ...(marketplaceCurrent ? [] : [`${options.marketplace} marketplace is not registered`]),
     ...packageFailures,
     ...(mcpBinding.state === "current" ? [] : ["package-owned BOS MCP binding is missing or invalid"]),
-    ...(catalogPath ? [] : ["Codex static BOS tool catalog is missing"]),
-    ...missingTools.map((tool) => `static catalog operation is missing: ${tool}`)
+    ...(catalogPath ? [] : ["Codex live BOS tool discovery result is missing"]),
+    ...missingTools.map((tool) => `required live-discovered operation is missing: ${tool}`)
   ];
 
   return {
@@ -215,7 +215,7 @@ export async function inspectCodexRuntime(rawOptions = {}) {
     cache_versions: cacheVersions,
     package_roots: packageRoots,
     mcp_binding: mcpBinding,
-    callable_catalog: {
+    live_tool_surface: {
       path: catalogPath,
       semantics: "operation_schema_only",
       authorization_source: "tools_call_server_result",

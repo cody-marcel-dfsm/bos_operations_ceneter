@@ -60,7 +60,8 @@
    the authenticated BOS connection. The server derives and validates
    organization, application, installation, subservice, plugin, role,
    capability, provider, and tool scope from canonical state for every request.
-   Platform BOS operations never transit a subservice connection.
+   It dynamically resolves domain-specific MCP services and tooling for that
+   scope. Platform BOS operations never transit a subservice connection.
 16. **Present-product completeness.** Implement and validate current products
     from their present contracts. Future products, anticipated growth, and
     expected package composition never satisfy a missing current capability or

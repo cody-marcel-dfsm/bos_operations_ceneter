@@ -71,7 +71,7 @@ test("BOS Plugin Console is an instructions-only in-memory client feature", asyn
   assert.doesNotMatch(guidance, /`request_plugin_install`/i);
   assert.match(
     guidance,
-    /Preserve\s+the\s+current request[\s\S]*signs\s+in[\s\S]*refresh the complete static BOS tool catalog[\s\S]*same\s+request/i
+    /Preserve\s+the\s+current request[\s\S]*signs\s+in[\s\S]*refresh live discovery of dynamic domain-specific MCP services and tooling[\s\S]*same\s+request/i
   );
   assert.match(
     guidance,

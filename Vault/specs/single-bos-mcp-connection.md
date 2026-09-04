@@ -35,14 +35,12 @@ account-management logic.
 
 ## Discovery and execution
 
-For authenticated discovery, BOS validates the bearer token once, confirms the
-grant reaches at least one authorized organization, and returns the complete
-static BOS operation/schema catalog. `tools/list` performs no per-tool
-permission, provider-health, plugin-credential, or role-based filtering. A tool
-descriptor proves only that the operation exists and defines the arguments the
-client may send.
+For authenticated discovery, BOS validates the bearer token and dynamically
+resolves the domain-specific MCP services and tooling available to the current
+authenticated scope. A tool descriptor proves only that the operation is
+currently exposed and defines the arguments the client may send.
 
-The client selects the semantic operation from that catalog, resolves one
+The client selects the semantic operation from that live tool surface, resolves one
 server-returned opaque organization context through `bos_get_context`, and
 invokes `tools/call`. BOS then evaluates organization, installation, role,
 plugin, capability, tool, and provider authorization for that operation. An

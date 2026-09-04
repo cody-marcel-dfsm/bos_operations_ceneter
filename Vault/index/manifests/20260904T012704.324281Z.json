@@ -1,0 +1,14 @@
+{
+  "canonical_source_snapshot_sha256": "a1f45a1894ee11b5496f05ea37507355ee4ac14c2abe94c8a71666cdebbfb430",
+  "changed_sources": [
+    "Vault/specs/federated-query-execution.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 270,
+  "duration_seconds": 0.366,
+  "index_version": 1,
+  "indexed_at": "20260904T012704.324281Z",
+  "indexed_chunks": 7,
+  "removed_sources": [],
+  "source_count": 102
+}

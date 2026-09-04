@@ -159,10 +159,9 @@ The BOS product owns the single runtime connection and includes
 discovery, context validation, and safe request resumption. Education Center,
 CRM, Marketing Director, and every other subservice package contribute skills
 without an app binding, connector, MCP declaration, or separate login. All
-operations use `/mcp/apps/bos/platform`. For an authenticated user with at least
-one authorized organization, `tools/list` returns the complete static BOS
-operation/schema catalog without per-tool, role, plugin, capability, or provider
-filtering. Catalog presence grants no authority. The server validates
+operations use `/mcp/apps/bos/platform`. For an authenticated user, `tools/list`
+dynamically resolves the domain-specific MCP services and tooling available to
+the current scope. Tool presence grants no authority. The server validates
 organization, application, installation, subservice, plugin, role, capability,
 provider, and tool scope when `tools/call` executes.
 
@@ -532,10 +531,9 @@ client, or OS-specific transport adapter.
 The BOS platform package owns the single MCP endpoint at
 `/mcp/apps/bos/platform`. Every subservice package contains skills and product
 metadata without an MCP declaration, app binding, connector, or login. The BOS
-service validates the OAuth token and confirms at least one authorized
-organization before returning the complete static BOS tool catalog. It performs
-no per-tool permission, provider-health, plugin-credential, or role-based
-catalog filtering. Catalog descriptors define operation names and schemas only.
+service validates the OAuth token and resolves the authenticated scope's dynamic
+domain-specific MCP services and tooling. Tool descriptors define currently
+exposed operation names and schemas only.
 The server evaluates organization, installation, application, subservice,
 plugin, role, capability, provider, and tool scope when the client invokes
 `tools/call`. Routing and provider recovery remain server responsibilities.

@@ -63,7 +63,7 @@ contain:
 - supported read, create, update, delete, pipeline, activity, link, merge, and
   synchronization operations;
 - query filters, pagination, versions, cursors, and snapshot behavior;
-- operation/schema presence in the static BOS catalog;
+- operation/schema presence in the live domain-specific MCP tool surface;
 - declared transactional and atomicity guarantees when the tool returns them;
 - whether the source can act as an authoritative input or synchronization
   target; and
@@ -72,8 +72,10 @@ contain:
 The client may cache this sanitized map. It refreshes after MCP connection,
 tool-manifest/schema, package, or transport changes and after the configured
 maximum age expires. Permission, role, plugin enablement, capability, and
-provider changes refresh context or operation status rather than the static
-catalog. A normal query may reuse a current map.
+provider changes refresh context, operation status, and live discovery because
+they may change the dynamically resolved domain service and tool surface. A
+normal query may reuse a current map only while those invalidation inputs remain
+unchanged.
 
 The map grants no authority. Every source call remains subject to live server
 authorization. An absent tool identifies a schema/publication mismatch, never
@@ -84,7 +86,8 @@ The effective cache-reuse decision combines the client-configured maximum age
 with manifest/schema invalidation evidence. A package, transport, or manifest
 change forces refresh even when the client age window has not expired. Context,
 authorization, role, plugin enablement, capability, and provider changes
-invalidate authority-scoped data reuse without requiring a catalog refresh.
+invalidate authority-scoped data reuse and the cached source/tool map whenever
+they may change the dynamically resolved service and tool surface.
 
 ## My CRM identity policy
 

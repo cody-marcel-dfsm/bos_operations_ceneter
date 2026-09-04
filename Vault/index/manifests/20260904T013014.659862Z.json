@@ -1,0 +1,15 @@
+{
+  "canonical_source_snapshot_sha256": "0fcf009157e1d2f1c75099237b407f36456c2baddaf9dc16c04f915095046609",
+  "changed_sources": [
+    "Vault/docs/issues/ISSUE_HISTORY.md",
+    "Vault/reviews/2026-09-03-issue-0005-dynamic-mcp-services.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 270,
+  "duration_seconds": 1.478,
+  "index_version": 1,
+  "indexed_at": "20260904T013014.659862Z",
+  "indexed_chunks": 49,
+  "removed_sources": [],
+  "source_count": 102
+}

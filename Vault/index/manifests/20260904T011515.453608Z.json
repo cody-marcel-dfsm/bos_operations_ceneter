@@ -1,0 +1,18 @@
+{
+  "canonical_source_snapshot_sha256": "5c662cc9d13126a9b4c3aa606263dbf638d3aae1da6b9fecb21d98099cda7597",
+  "changed_sources": [
+    "Vault/docs/bos-product-licensing-user-experience.md",
+    "Vault/docs/marketplace-agent-harness-plan.md",
+    "Vault/specs/federated-query-execution.md",
+    "Vault/specs/plugin-service-console.md",
+    "Vault/specs/role-aware-mcp-client.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 265,
+  "duration_seconds": 1.274,
+  "index_version": 1,
+  "indexed_at": "20260904T011515.453608Z",
+  "indexed_chunks": 18,
+  "removed_sources": [],
+  "source_count": 100
+}

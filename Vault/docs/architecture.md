@@ -118,10 +118,10 @@ release system for portable BOS skills and native remote MCP client adapters.
     equals its URL and whose startup timeout is 45 seconds, and the package contains no
     `.app.json`. Subservice plugins contain
     neither connection declaration. One host-managed BOS grant identifies the
-    actor and available organizations. After the token proves access to at least
-    one organization, `tools/list` returns the complete static BOS
-    operation/schema catalog without per-tool, role, plugin, capability, or
-    provider filtering. Catalog presence grants no authority. `tools/call`
+    actor and available organizations. After the token proves access,
+    `tools/list` dynamically exposes the domain-specific MCP services and
+    tooling currently resolved for the authenticated scope. Tool presence
+    grants no authority. `tools/call`
     validates the selected opaque context and evaluates application,
     installation, subservice, role, plugin, capability, provider, and tool state
     for the requested operation. Domain skills choose semantic operations while
@@ -183,8 +183,9 @@ release system for portable BOS skills and native remote MCP client adapters.
     signed-out result returns `isError: true` and
     `_meta["mcp/www_authenticate"]` with `resource_metadata`, `error`, and
     `error_description`, causing the host to render the simple inline **Sign
-    in** action. The user completes consent; the host refreshes the complete
-    static BOS operation/schema catalog, the agent calls `bos_get_context`, and the
+    in** action. The user completes consent; the host refreshes live discovery
+    of dynamic domain-specific MCP services and tooling, the agent calls
+    `bos_get_context`, and the
     original request resumes. A missing descriptor or challenge is a tool-auth
     contract defect; a received challenge without the action is a host
     authentication-activation defect. Never
@@ -237,8 +238,9 @@ release system for portable BOS skills and native remote MCP client adapters.
     immutable MCP resource—through one account connector for Claude and directly
     for Codex, Copilot, and Gemini—OAuth
     discovery succeeds, the host holds a valid BOS grant, the server returns an
-    authorized context, and the complete static BOS operation catalog is
-    discoverable. Context, operation status, and `tools/call` results determine
+    authorized context, and the dynamic domain-specific MCP services and current
+    tooling are discoverable. Context, operation status, live discovery, and
+    `tools/call` results determine
     current subservice authorization. A missing or expired BOS grant triggers the host's single
     authentication flow. The protected-resource challenge establishes Codex's
     runtime `notLoggedIn` state.

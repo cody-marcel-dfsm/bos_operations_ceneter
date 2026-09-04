@@ -37,7 +37,8 @@ MCP context and read tools strengthen verification when available.
    consent, while business execution and customer data remain protected. The
    selected tool's `_meta["mcp/www_authenticate"]` error result renders the native
    control in the active chat. The user completes consent; the agent refreshes
-   complete static BOS tool catalog and context and resumes the original request. Generic
+   live discovery of dynamic domain-specific MCP services and tooling plus
+   context, then resumes the original request. Generic
    app permissions, CLI login, plugin installation, anonymous bootstrap business
    tools, and manual settings navigation are outside this MCP OAuth path.
 10. When a user explicitly requests complete local removal, use the

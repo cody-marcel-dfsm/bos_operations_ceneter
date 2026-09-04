@@ -1,11 +1,11 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.80",
+  "version": "0.4.81",
   "release_status": "active",
   "display_name": "BOS — Business Operating System",
   "description": "Agent-first Business Operating System foundations for governed agent workflows.",
-  "long_description": "BOS is an agent-first Business Operating System for planning, implementing, reviewing, governing, and executing agent-ready business operations. BOS owns the authenticated MCP connection used by every installed BOS subservice. Education Center, CRM, Marketing Director, and other BOS-maintained plugins add domain workflows through a complete static operation catalog while BOS evaluates organization, installation, role, plugin, capability, provider, and tool authorization on every private operation.",
+  "long_description": "BOS is an agent-first Business Operating System for planning, implementing, reviewing, governing, and executing agent-ready business operations. BOS owns the authenticated MCP connection used by every installed BOS subservice. Education Center, CRM, Marketing Director, and other BOS-maintained plugins contribute dynamic domain-specific MCP services and tooling while BOS evaluates organization, installation, role, plugin, capability, provider, and tool authorization on every private operation.",
   "website_url": "https://dfsm.ai",
   "brand_color": "#061638",
   "composer_icon": "assets/bos-logo.png",

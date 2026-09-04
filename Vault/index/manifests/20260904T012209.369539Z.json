@@ -1,0 +1,14 @@
+{
+  "canonical_source_snapshot_sha256": "eced94767b3ba0c84d92b3e024924bfa07e7abf53f34dd2235a1ef4236bd3ff7",
+  "changed_sources": [
+    "Vault/submissions/openai/education-operation-center/listing.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 268,
+  "duration_seconds": 0.266,
+  "index_version": 1,
+  "indexed_at": "20260904T012209.369539Z",
+  "indexed_chunks": 2,
+  "removed_sources": [],
+  "source_count": 101
+}

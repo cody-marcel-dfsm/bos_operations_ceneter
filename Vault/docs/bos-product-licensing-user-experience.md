@@ -1,6 +1,6 @@
 # BOS product licensing and user experience
 
-Current BOS Operations Center release: `0.4.80`.
+Current BOS Operations Center release: `0.4.81`.
 
 ## Connection ownership
 
@@ -25,9 +25,9 @@ BOS OAuth grants.
 For every tool request, BOS evaluates the authenticated actor and canonical
 organization, application, installation, subservice, product entitlement,
 plugin, role, capability, provider, and tool records. Missing or ambiguous
-authorization fails closed. License changes refresh context and operation status
-through the existing BOS connection. They do not filter or refresh the static
-tool catalog unless the server schema also changed.
+authorization fails closed. License changes refresh context, operation status,
+and live discovery of dynamic domain-specific MCP services and tooling through
+the existing BOS connection.
 
 ## Product presentation
 

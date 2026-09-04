@@ -17,21 +17,22 @@ Productivity
 
 **Short description**
 
-Agent-first education operations for complex, human-centered work.
+Coordinate operations across email, calendars, billing, and enrollment.
 
 **Long description**
 
-Education Operation Center helps authorized adult education-center staff plan
-and execute work across the growth and enrollment lifecycle: outreach, free
-trials, enrollment, classes, camps, parent communication, instructor
-operations, attribution, and reimbursement. Its focused skills coordinate
-tenant-scoped data from BOS and customer-authorized services, including student
-and enrollment systems, email, calendars, files, advertising, calling, and
-campaign delivery. Read workflows summarize evidence with provenance. Write or
-external-communication workflows preserve the user's authority, required
-approvals, organizational settings, and provider boundaries. Users connect to
-BOS once. This subservice adds no login or connection and can access only tools
-that BOS authorizes for the authenticated identity.
+Education Operation Center coordinates complex, evidence-backed work across an
+education company's authorized email, calendars, advertising, enrollment,
+staffing, and billing systems. For example, Northstar Coding Academy could ask
+it to find Bright Horizons invoices in its billing inbox, reconcile them
+against payment records in its configured accounting system, and produce a
+source-linked exception ledger.
+Other workflows connect outreach to trials and enrollments, balance camps
+against registrations and instructor availability, prepare parent
+communications, and trace advertising outcomes. Each focused skill follows its
+own deterministic workflow through the tenant-scoped BOS connection while
+preserving human judgment, approvals, organizational settings, roles,
+application scope, and provider boundaries.
 
 **Website URL**
 
@@ -83,9 +84,12 @@ provider behavior are validated for additional countries.
 
 ## Starter prompts
 
-1. Initialize my education center, including its customer-facing brand name.
-2. Create today's education center operations plan.
-3. Give me a weekly summary for my director.
+1. For Northstar Coding Academy, reconcile Bright Horizons email invoices with
+   accounting payments; cite every mismatch.
+2. For Northstar Coding Academy, reconcile next week's registrations, partner
+   child-days, staff, cancellations, and camp capacity.
+3. For Northstar Coding Academy, reconcile paid leads across Gmail, Calendar,
+   Lead Director, Calimatic, and Google Ads; flag gaps.
 
 Recommended reviewer-friendly additions:
 

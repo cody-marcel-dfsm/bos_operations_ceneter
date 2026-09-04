@@ -88,10 +88,10 @@ cross-tenant stable identifier.
 
 ## 6. Missing capability
 
-On a missing required operation, treat the static catalog as a package or server
-schema publication defect. Refresh discovery once only after confirming a
-package/schema or transport/session change. For authorization failures, refresh
-context or operation status and retry the same `tools/call` once. Preserve all
-completed work and approval/idempotency state. If the operation remains absent,
+On a missing required operation, refresh the dynamic domain-specific MCP service
+and tool surface once. Treat a still-missing operation as a package, service
+resolution, or server schema-publication defect. For authorization failures,
+refresh context or operation status and retry the same `tools/call` once.
+Preserve all completed work and approval/idempotency state. If the operation remains absent,
 upsert the structured issue defined in `capability-contract.md` and return its
 durable ID with the blocked step and exact acceptance criteria.

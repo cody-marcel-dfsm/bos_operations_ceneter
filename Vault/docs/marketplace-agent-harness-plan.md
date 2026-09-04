@@ -22,13 +22,13 @@ For Claude, ChatGPT/Codex, Copilot, Gemini CLI, and Antigravity:
    server entry.
 3. Complete BOS OAuth once.
 4. Call `bos_get_context` through the BOS resource.
-5. Verify that authenticated `tools/list` returns the complete static BOS
-   operation/schema catalog after token and authorized-organization validation.
-   Verify that catalog presence grants no execution authority.
+5. Verify that authenticated `tools/list` dynamically resolves the
+   domain-specific MCP services and tooling available to the current scope.
+   Verify that tool presence grants no execution authority.
 6. Execute one authorized operation from each installed subservice.
-7. Change a role, plugin, or provider state and verify that refreshed context or
-   operation status reflects the server-side change without another BOS login;
-   verify the static catalog remains unchanged and `tools/call` enforces it.
+7. Change a role, plugin, or provider state and verify that refreshed context,
+   operation status, and live tool discovery reflect the server-side change
+   without another BOS login; verify `tools/call` still enforces it.
 8. Verify fail-closed behavior for missing context, unauthorized tools,
    cross-tenant selectors, and revoked grants.
 

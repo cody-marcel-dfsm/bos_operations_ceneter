@@ -1,0 +1,15 @@
+{
+  "canonical_source_snapshot_sha256": "e0d0570a1be41ab13022e0a78b6b1eb7f7e787e55a7f35e4ef04c055a46e9577",
+  "changed_sources": [
+    "Vault/docs/bos-product-licensing-user-experience.md",
+    "Vault/docs/marketplace-submission-assets.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 270,
+  "duration_seconds": 0.402,
+  "index_version": 1,
+  "indexed_at": "20260904T013635.439851Z",
+  "indexed_chunks": 2,
+  "removed_sources": [],
+  "source_count": 102
+}

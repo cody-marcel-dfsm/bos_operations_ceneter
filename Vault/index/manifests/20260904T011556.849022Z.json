@@ -1,0 +1,16 @@
+{
+  "canonical_source_snapshot_sha256": "73761609e2f4cb86623b922816765127655b094dc98531ab3bdf419f6b81fe90",
+  "changed_sources": [
+    "Vault/docs/CONSTITUTION.md",
+    "Vault/docs/issues/ISSUE_HISTORY.md",
+    "Vault/evidence/dynamic-mcp-services/0.4.80-static-catalog-copy-correction.md"
+  ],
+  "collection": "vault_knowledge",
+  "collection_count": 268,
+  "duration_seconds": 1.698,
+  "index_version": 1,
+  "indexed_at": "20260904T011556.849022Z",
+  "indexed_chunks": 50,
+  "removed_sources": [],
+  "source_count": 101
+}

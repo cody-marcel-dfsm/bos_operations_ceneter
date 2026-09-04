@@ -213,8 +213,8 @@ rejects cross-scope or illegal transitions, applies the change through a GO,
 and records actor, acting role, before/after state, operation ID, and result.
 Repeated idempotency keys reconcile to the original result. Success invalidates
 affected context and operation status; the client refreshes both before replacing
-the in-memory snapshot. It refreshes the static catalog only when the server
-schema also changed.
+the in-memory snapshot. It also refreshes live tool discovery because plugin
+state can change the resolved domain-specific MCP service and tool surface.
 
 This mutation changes canonical BOS plugin enablement only. It never installs,
 removes, enables, disables, starts, stops, or edits a local client package.
@@ -245,12 +245,12 @@ contains no query-time script, renderer, executable, local server, or cache.
 - Identical canonical state returns identical ordered `structuredContent`.
 - Missing BOS OAuth exposes the root BOS host-owned connection action.
 - Disabled plugins remain visible, and the server denies their domain operations
-  at `tools/call`; their static operation descriptors remain discoverable.
+  at `tools/call`; live discovery reflects the resulting dynamic tool surface.
 - Connect rejects stale, foreign, disabled, or unauthorized selectors.
 - Enablement rejects missing capability, stale revision, illegal transition,
   cross-tenant scope, and conflicting idempotency reuse.
-- Successful actions refresh context, operation status, and the same in-memory
-  view. They refresh tool discovery only for a server-schema change.
+- Successful actions refresh context, operation status, live tool discovery,
+  and the same in-memory view.
 - A generic **Structured output** tool card never satisfies the visible console
   requirement; actual values and available actions are rendered readably.
 - Structured content and UI payloads contain no secrets, raw authority IDs,

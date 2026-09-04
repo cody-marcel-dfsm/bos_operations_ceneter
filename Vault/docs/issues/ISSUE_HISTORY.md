@@ -4,6 +4,143 @@ This tracker is the Oracle's durable issue and regression history. Read it
 before implementation guidance and review. Resolved issue details remain in
 `Vault/docs/issues/conclusions/` and are indexed with the rest of the Vault.
 
+## Issue #0006: Education Center website setting failed installer validation
+
+- Status: FIXED LOCALLY
+- Priority: HIGH
+- Date identified: 2026-09-03
+- Area: installation and customer initialization
+- Files: `scripts/install-package.mjs`, `tests/installer.test.mjs`,
+  `source/config/education-center.settings.template.json`, and
+  `source/verticals/education-center/education-center-customer-initialization/SKILL.md`
+
+### User goal and definition of done
+
+Education Center initialization accepts, validates, derives, persists, and
+preserves the required customer organization website URL without weakening the
+settings schema or allowing internal and non-web destinations.
+
+### Observed evidence
+
+The Education Center settings template declared `organization_website_url`,
+and the initializer required it as a confirmed base value. The installer
+validator omitted that field from both its top-level allowlist and its required
+display-value validation. A complete settings object was rejected with
+`unknown settings field: organization_website_url`, while an incomplete object
+without the required website could pass.
+
+### Root cause
+
+The settings template and initialization workflow added the organization
+website field without updating the independently maintained installer schema
+and its end-to-end installation fixture.
+
+### Required correction
+
+Add `organization_website_url` to the installer-owned schema, require a
+non-empty public HTTP or HTTPS URL, derive it from explicit non-secret client
+context, and cover successful persistence plus rejection of missing, non-web,
+localhost, and internal-domain values.
+
+### Attempts
+
+- Release review for 0.4.81 reproduced the schema contradiction and rejected
+  the release before commit or publication.
+- The corrected validator now accepts the declared field, validates its public
+  web shape, and includes it in client-context derivation.
+
+### Validation and Oracle review
+
+Six focused initialization and customer-settings tests pass, including the
+complete install-and-update persistence path and negative URL cases.
+Deterministic package generation, the complete release gate, Vault
+synchronization, and final Oracle review remain required before resolution.
+
+### Prevention guidance
+
+Every required customer-settings template field must appear in one positive
+validator and persistence fixture, one missing-field assertion, and applicable
+type or safety rejection cases. Template changes and installer schema changes
+ship together.
+
+## Issue #0005: BOS was described as a static operation registry
+
+- Status: FIXED LOCALLY
+- Priority: HIGH
+- Date identified: 2026-09-03
+- Area: package, client discovery, and marketplace presentation
+- Files: `products/bos/product.json`, `source/platform/bos-mcp-client/SKILL.md`,
+  `source/platform/authentication-context-integrity/SKILL.md`,
+  `source/platform/bos-guided-support/`,
+  `source/platform/bos-plugin-console/SKILL.md`, active domain skills,
+  `Vault/docs/architecture.md`, `Vault/docs/DESIGN.md`, current MCP
+  specifications, and `tests/package-model.test.mjs`
+- Evidence:
+  `Vault/evidence/dynamic-mcp-services/0.4.80-static-catalog-copy-correction.md`
+
+### User goal and definition of done
+
+BOS is presented and operated as one authenticated connection that dynamically
+resolves domain-specific MCP services and tooling. Marketplace copy, platform
+skills, domain workflows, specifications, generated clients, and regression
+tests contain no active static-registry contract.
+
+### Observed evidence
+
+The 0.4.80 plugin detail page said installed BOS subservices add workflows
+through “a complete static operation catalog.” The user identified this as
+incorrect and clarified that the services and tooling are dynamic and domain
+specific. The supplied screenshot and exact SHA-256 are recorded in the linked
+evidence file.
+
+### Root cause
+
+The earlier discovery correction treated the stable root MCP transport as proof
+that the exposed operation surface should also be static. That conflated
+connection identity with dynamic service resolution. The inaccurate premise
+was copied into authorization recovery, role and provider transitions, plugin
+console refresh behavior, domain workflows, current specifications, tests, and
+marketplace copy.
+
+### Required correction
+
+Preserve one root BOS connection while defining `tools/list` as live discovery
+of dynamic domain-specific MCP services and tooling. Refresh live discovery
+after scope, service, plugin, capability, provider, role, license, transport, or
+schema changes that may alter the surface. Continue treating tool presence as a
+schema/discovery signal and `tools/call` as the authoritative execution check.
+Regenerate every client package from the corrected canonical sources.
+
+### Attempts
+
+- Releases 0.4.78 through 0.4.80 encoded a complete static catalog and prevented
+  rediscovery after most authority and service-state changes. Those releases
+  correctly preserved one root BOS connection but modeled its downstream tool
+  surface incorrectly.
+- The current correction separates stable transport identity from dynamic
+  domain-service discovery and updates the active canonical contracts without
+  rewriting historical evidence.
+
+### Validation and Oracle review
+
+The first complete-diff Oracle review rejected stale static-catalog behavior in
+the federated-query cache contract, guided-support recovery reference, SEO
+skill, and regression coverage. Those findings were corrected, generated
+clients were rebuilt, and the fresh complete gate passed deterministic
+generation, package structure and credential scanning, the dynamic
+single-connection contract, and all 249 tests. The final complete-diff Oracle
+review is `APPROVED`; see
+`Vault/reviews/2026-09-03-issue-0005-dynamic-mcp-services.md`.
+
+### Prevention guidance
+
+Test transport identity and tool-surface composition independently. A stable
+MCP endpoint never implies a static registry. Marketplace descriptions and
+client workflows must describe live, domain-specific service resolution using
+the same vocabulary as the runtime contract. Regression scans must include all
+active specifications, support references, and generated packages and tolerate
+qualifiers and line breaks between obsolete static-catalog terms.
+
 ## Issue #0004: Calimatic provider recovery opened a second BOS login
 
 - Status: ACTIVE; client guard fixed locally, server correction required
