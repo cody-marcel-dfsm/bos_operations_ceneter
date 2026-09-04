@@ -204,9 +204,9 @@ function validateContractShape(contract, contractPath) {
     tool_security_scheme: "OAUTH2_PER_TOOL",
     unauthenticated_tool_result: "MCP_WWW_AUTHENTICATE",
     unauthenticated_business_execution: "DENIED",
-    post_authentication_tool_catalog: "COMPLETE_STATIC_BOS_CATALOG",
+    post_authentication_tool_surface: "DYNAMIC_DOMAIN_SPECIFIC_MCP_SERVICES_AND_TOOLING",
     authenticated_tools_list_gate: "VALID_TOKEN_AND_AUTHORIZED_ORGANIZATION",
-    catalog_authorization_semantics: "DESCRIPTORS_DO_NOT_GRANT_AUTHORITY",
+    tool_surface_authorization_semantics: "DESCRIPTORS_DO_NOT_GRANT_AUTHORITY",
     operation_authorization: "SERVER_EVALUATED_ON_TOOLS_CALL",
     native_action_surface: "ACTIVE_CHAT",
     continuation_policy: "RESUME_ORIGINAL_REQUEST"
@@ -215,7 +215,7 @@ function validateContractShape(contract, contractPath) {
     findings.push(finding(
       "contract_shape",
       contractPath,
-      "request_time_authentication must require OAuth-tagged tool descriptors, a selected-tool mcp/www_authenticate challenge, denied pre-consent business execution, native chat authentication, a complete static authenticated catalog whose descriptors grant no authority, server-evaluated tools/call authorization, and same-request continuation."
+      "request_time_authentication must require OAuth-tagged tool descriptors, a selected-tool mcp/www_authenticate challenge, denied pre-consent business execution, native chat authentication, a dynamic domain-specific MCP service and tool surface whose descriptors grant no authority, server-evaluated tools/call authorization, and same-request continuation."
     ));
   }
   return findings;

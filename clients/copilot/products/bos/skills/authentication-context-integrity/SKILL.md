@@ -91,11 +91,11 @@ configuration as distinct validated dimensions.
   prompts and tool arguments never supply those authority dimensions.
 - Before consent, expose only the OAuth-declared descriptor surface required to
   activate BOS authentication; it authorizes no business execution. After a
-  valid BOS token proves access to at least one organization, advertise
-  the complete static BOS tool catalog. A descriptor declares an operation and
-  schema; it grants no tenant, role, plugin, capability, tool, or provider
-  authority. Re-evaluate those dimensions when the selected `tools/call`
-  executes, including for administrative operations.
+  valid BOS token proves access, dynamically resolve the authenticated scope's
+  domain-specific MCP services and current tooling. A descriptor declares a
+  currently exposed operation and schema; it grants no tenant, role, plugin,
+  capability, tool, or provider authority. Re-evaluate those dimensions when
+  the selected `tools/call` executes, including for administrative operations.
 - Keep provider authorization scoped to its organization, installation, and
   plugin. Missing provider readiness affects only server-evaluated operations
   that require that provider; it never creates another BOS authentication

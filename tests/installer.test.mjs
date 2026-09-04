@@ -45,6 +45,7 @@ const customerSettings = {
   schema_version: "1",
   brand_display_name: "Example Learning",
   organization_display_name: "Example Learning LLC",
+  organization_website_url: "https://example.com",
   location_display_name: "Example Center",
   timezone: "America/New_York",
   mailboxes: { care_com: "operations@example.com", parent_communications: "" },
@@ -400,6 +401,7 @@ test("initialization derives safe client values, including an explicit brand", (
     schema_version: "1",
     brand_display_name: "",
     organization_display_name: "",
+    organization_website_url: "",
     location_display_name: "",
     timezone: "",
     mailboxes: { care_com: "", parent_communications: "" },
@@ -410,16 +412,22 @@ test("initialization derives safe client values, including an explicit brand", (
     timezone: "America/Chicago",
     brand_display_name: "Example Learning",
     organization_display_name: "Example Organization",
+    organization_website_url: "https://example.com/locations/example-learning",
     care_com_mailbox: "care@example.com"
   });
   assert.equal(draft.timezone, "America/Chicago");
   assert.equal(draft.brand_display_name, "Example Learning");
   assert.equal(draft.organization_display_name, "Example Organization");
+  assert.equal(
+    draft.organization_website_url,
+    "https://example.com/locations/example-learning"
+  );
   assert.equal(draft.location_display_name, "");
   assert.equal(draft.mailboxes.care_com, "care@example.com");
   assert.deepEqual(draft._initialization.derived_sources, {
     brand_display_name: "client_context",
     organization_display_name: "client_context",
+    organization_website_url: "client_context",
     timezone: "client_context",
     "mailboxes.care_com": "client_connected_account_metadata"
   });
@@ -516,7 +524,56 @@ test("customer settings reject missing identity and invalid timezone", () => {
   });
   assert(failures.some((failure) => failure.includes("brand_display_name")));
   assert(failures.some((failure) => failure.includes("organization_display_name")));
+  assert(failures.some((failure) => failure.includes("organization_website_url")));
   assert(failures.some((failure) => failure.includes("IANA timezone")));
+});
+
+test("customer settings require a public organization website URL", () => {
+  assert.deepEqual(validateCustomerSettings({
+    ...customerSettings,
+    organization_website_url: "http://8.8.8.8"
+  }), []);
+  for (const organizationWebsiteUrl of [
+    "ftp://example.com",
+    "http://localhost:3000",
+    "http://localhost.:3000",
+    "https://education.internal",
+    "https://education.internal.",
+    "https://education.test",
+    "https://school.alt",
+    "https://school.alt.",
+    "https://education.invalid",
+    "https://education.example",
+    "https://router.home.arpa",
+    "https://router.corp",
+    "https://router.home",
+    "https://router.intranet",
+    "https://router.lan",
+    "https://education.onion",
+    "https://education.localdomain",
+    "http://127.0.0.1",
+    "http://10.0.0.1",
+    "http://169.254.169.254/latest/meta-data",
+    "http://[::1]",
+    "http://[::7f00:1]",
+    "http://[64:ff9b::7f00:1]",
+    "http://[64:ff9b::a9fe:a9fe]/latest/meta-data",
+    "http://[2001:0:7f00:1::]",
+    "http://[2002:7f00:1::]",
+    "http://[fc00::1]",
+    "https://admin:secret@example.com"
+  ]) {
+    const failures = validateCustomerSettings({
+      ...customerSettings,
+      organization_website_url: organizationWebsiteUrl
+    });
+    assert(
+      failures.includes(
+        "organization_website_url must be a public HTTP or HTTPS URL"
+      ),
+      organizationWebsiteUrl
+    );
+  }
 });
 
 test("customer settings reject undeclared fields and credential-like values", () => {

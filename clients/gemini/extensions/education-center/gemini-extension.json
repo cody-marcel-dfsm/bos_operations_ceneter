@@ -1,5 +1,5 @@
 {
   "name": "education-center",
-  "version": "0.4.80",
-  "description": "Agent-first education operations for complex, human-centered work."
+  "version": "0.4.81",
+  "description": "Coordinate operations across email, calendars, billing, and enrollment."
 }

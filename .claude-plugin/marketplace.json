@@ -13,7 +13,7 @@
     {
       "name": "education-center",
       "source": "./clients/claude/plugins/education-center",
-      "description": "Agent-first education operations for complex, human-centered work."
+      "description": "Coordinate operations across email, calendars, billing, and enrollment."
     }
   ]
 }

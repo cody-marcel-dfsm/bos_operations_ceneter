@@ -1,11 +1,11 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.80",
+  "version": "0.4.81",
   "release_status": "active",
   "display_name": "Education Operation Center",
-  "description": "Agent-first education operations for complex, human-centered work.",
-  "long_description": "Education Operation Center is an agent-first Business Operating System organized around the education growth and enrollment funnel: Ads and Customer Outreach → Free Trial Class, Session, or Booking → Enrollment. It provides a collection of domain-specific skills, each with its own independent deterministic workflow. Intelligent orchestrators select and coordinate these skills to help authorized adult staff accomplish complex, human-centered tasks across marketing, lead follow-up, scheduling, trials, parent communications, enrollment, classes, camps, students, instructors, attribution, and reimbursement. Through a tenant-scoped BOS connection, each skill works with authorized data and connected services while preserving human judgment, approvals, organizational settings, roles, application scope, and provider boundaries.",
+  "description": "Coordinate operations across email, calendars, billing, and enrollment.",
+  "long_description": "Education Operation Center coordinates complex, evidence-backed work across an education company's authorized email, calendars, advertising, enrollment, staffing, and billing systems. For example, Northstar Coding Academy could ask it to find Bright Horizons invoices in its billing inbox, reconcile them against payment records in its configured accounting system, and produce a source-linked exception ledger. Other workflows connect outreach to trials and enrollments, balance camps against registrations and instructor availability, prepare parent communications, and trace advertising outcomes. Each focused skill follows its own deterministic workflow through the tenant-scoped BOS connection while preserving human judgment, approvals, organizational settings, roles, application scope, and provider boundaries.",
   "website_url": "https://dfsm.ai",
   "brand_color": "#061638",
   "composer_icon": "assets/education-center-logo.png",
@@ -53,8 +53,8 @@
     "verticals/education-center/education-center-trial-reconciliation"
   ],
   "default_prompts": [
-    "Initialize my education center, including its customer-facing brand name.",
-    "Create today's education center operations plan.",
-    "Give me a weekly summary for my director."
+    "For Northstar Coding Academy, reconcile Bright Horizons email invoices with accounting payments; cite every mismatch.",
+    "For Northstar Coding Academy, reconcile next week's registrations, partner child-days, staff, cancellations, and camp capacity.",
+    "For Northstar Coding Academy, reconcile paid leads across Gmail, Calendar, Lead Director, Calimatic, and Google Ads; flag gaps."
   ]
 }

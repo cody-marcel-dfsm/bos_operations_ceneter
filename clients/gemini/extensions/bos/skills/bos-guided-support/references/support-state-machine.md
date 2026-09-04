@@ -12,7 +12,7 @@ reported stage only when later evidence contradicts it.
 | Load | Skill list, plugin enabled state, or a new task/session | Enable the product and restart or start a new task as the client requires | Current session recognizes `bos-guided-support` and product skills |
 | Register | Client connection listing, package binding metadata, authentication control, and OAuth client status | Restore the client-native root binding; on Codex restore the package-owned `.mcp.json` BOS resource | Exact BOS resource is visible and the host-owned public client is accepted |
 | Sign in | Resolved registered-app connection state or OAuth result | Invoke the client's inline Connect/Sign in/Authenticate flow | Valid resource-scoped BOS OAuth grant is accepted |
-| Discover | Fresh static BOS tool manifest | Reconnect or refresh MCP/tool discovery | Complete operation/schema catalog, including context discovery, appears |
+| Discover | Fresh live MCP tool manifest | Reconnect or refresh MCP/tool discovery | Current dynamic domain-specific services and tooling appear |
 | Verify | `bos_get_context` plus a bounded authenticated product read | Classify the returned server/provider error and recover that boundary | One canonical context and one read succeed |
 
 ## Classification rules
@@ -32,8 +32,9 @@ reported stage only when later evidence contradicts it.
   visible before consent, while customer data and business execution stay
   protected. Its unauthenticated result returns
   `_meta["mcp/www_authenticate"]`, which renders the simple inline action in the
-  current chat. Preserve the request through consent, then refresh the static
-  BOS tool catalog, call `bos_get_context`, and resume.
+  current chat. Preserve the request through consent, then refresh live
+  discovery of dynamic domain-specific MCP services and tooling, call
+  `bos_get_context`, and resume.
 - OAuth token endpoint `invalid_grant`, including `Refresh token replay
   detected`: **Sign in**. The current grant is unusable. Stop the refresh retry
   loop, preserve the pending request, and obtain fresh consent through the
@@ -50,7 +51,7 @@ reported stage only when later evidence contradicts it.
   invoke CLI login or launch authentication for the user. Never translate this
   state into unavailable tools, missing business data, or a generic
   app-permission problem.
-- OAuth succeeded but the static schema catalog is stale or absent:
+- OAuth succeeded but the live domain-specific tool surface is stale or absent:
   **Discover**. Catalog presence proves operation shape, not authorization.
 - Context is canonical and a specific Google/SendGrid/Calimatic operation asks
   for authorization: **Provider ready**, after BOS connection verification.

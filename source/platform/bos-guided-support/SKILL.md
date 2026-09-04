@@ -72,7 +72,7 @@ MCP is an enhancement, never a prerequisite for this skill.
 - With no BOS tools: inspect local package files, product metadata, client UI,
   command output, and screenshots. Guide installation, enablement, restart,
   registration, and host sign-in from client-side evidence.
-- With BOS tools: refresh the static tool schema catalog when needed, call
+- With BOS tools: refresh the live domain-specific tool surface when needed, call
   `bos_get_context`, and run the product runbook's bounded read-only
   verification. Treat the context and operation result as authoritative for
   server-derived access; catalog presence alone is never authorization evidence.
@@ -114,7 +114,8 @@ Distinguish these states in plain language:
 - **Loaded:** the current client session can see the skill/plugin.
 - **Registered:** the product's named remote resource appears in the client.
 - **BOS signed in:** the host holds a resource-scoped BOS OAuth grant.
-- **Discovered:** the complete static BOS operation/schema catalog is loaded.
+- **Discovered:** the authenticated scope's dynamic domain-specific MCP services
+  and current tooling are loaded.
 - **Provider ready:** any separate Google, SendGrid, Calimatic, or other
   provider grant required by the requested operation is ready.
 

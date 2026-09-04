@@ -30,7 +30,8 @@ description: Plan application-neutral Business Operating System changes, migrati
   additional BOS login.
 - Let the server evaluate installed services, plugin enablement, roles,
   capabilities, provider readiness, and tool authorization on every private
-  operation. Treat the static tool catalog as schemas, never authority.
+  operation. Treat the live dynamic tool surface as discovery and schemas,
+  never authority.
 - Keep platform BOS traffic on the BOS connection. Never use Education Center,
   CRM, Marketing Director, or another subservice as a platform transport.
 - Let app graphs own business behavior after BOS establishes app context.
