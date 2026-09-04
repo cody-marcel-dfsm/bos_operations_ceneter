@@ -65,6 +65,7 @@ const failures = [];
 const execFileAsync = promisify(execFile);
 const reusableRuntimePlatformSkills = new Set([
   "platform/bos-mcp-client",
+  "platform/bos-app-discovery",
   "platform/bos-plugin-settings",
   "platform/bos-plugin-settings-initialization",
   "platform/bos-federated-query",
@@ -92,6 +93,7 @@ async function expectedSkillHashes(product, skill) {
 async function scan(directory) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     if (ignoredDirectories.has(entry.name)) continue;
+    if (directory === root && entry.name === "Vault") continue;
     if (directory === root && entry.name === ".env") continue;
     const path = join(directory, entry.name);
     for (const pattern of retiredProductIdentityPatterns) {

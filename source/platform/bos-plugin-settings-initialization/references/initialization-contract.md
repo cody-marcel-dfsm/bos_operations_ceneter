@@ -22,10 +22,11 @@ confirmed cache, or an explicit repair request.
    saved default.
 4. BOS returns the canonical plugin-service connection inventory for that
    organization's selected context. The client preserves ready services and
-   walks actionable connections one at a time through server-returned secure
-   flows. Disabled plugins remain disabled unless the user explicitly changes
-   enablement. An unresolved actionable connection pauses initialization with
-   `connection_required` and preserves the pending request.
+   walks actionable connections for enabled, selected services one at a time
+   through server-returned secure flows. Disabled, unselected, and inapplicable
+   services remain unchanged unless the user explicitly changes their canonical
+   configuration. An unresolved actionable connection pauses initialization
+   with `connection_required` and preserves the pending request.
 5. BOS returns the canonical plugin settings inventory, field states, schemas, and
    allowlisted recommendation strategies.
 6. Client research workers resolve those strategies from validated client
@@ -35,6 +36,13 @@ confirmed cache, or an explicit repair request.
 9. Delegated mutation workers persist each independent plugin through BOS.
 10. The client commits confirmed snapshots and the completion receipt.
 11. The Agent Harness resumes the pending request.
+
+Together, steps 4 through 10 establish the organization's business profile.
+The service-owned settings profiles declare routing, automation,
+communications, terminology, schedules, and other configurable behavior. The
+client never carries a provider-to-operation map. A domain skill asks for a
+semantic operation, and BOS applies the selected organization's current profile
+and service bindings.
 
 The server owns canonical completion. The local receipt is a fast client
 preflight bound to its opaque authority scope, server initialization epoch,
@@ -48,13 +56,21 @@ current authenticated context before every organization-scoped initialization.
 
 Connection readiness uses `bos_list_plugin_services` with only the selected
 role's opaque context. The server owns row membership, order, labels,
-enablement, connection state, and action availability. `connected` and
+enablement, selection, applicability, connection state, and action
+availability. `connected` and
 `not_required` rows need no interaction. Each enabled `connection_required`
-row exposes at most one current connection action; after user activation, the
-client starts that exact BOS-owned flow, polls its sanitized transaction,
-refreshes context and operation status, and replaces the inventory. The initializer does
-not enumerate other organizations, batch authorization pages, infer provider
-requirements, or persist connection state locally.
+row for a selected service exposes at most one current connection action; after
+user activation, the client starts that exact BOS-owned flow, polls its
+sanitized transaction, refreshes context and operation status, and replaces the
+inventory. The initializer does not connect a disabled, unselected, or
+inapplicable row, enumerate other organizations, batch authorization pages,
+infer provider requirements, or persist connection state locally.
+
+Required service-routing and communication preferences arrive through the
+server settings inventory. When several service choices are eligible, the
+consolidated review shows their server-returned labels and the current canonical
+selection. The client never chooses from package examples or provider-specific
+skill language.
 
 ## Business Hours
 

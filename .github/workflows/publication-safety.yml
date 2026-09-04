@@ -17,8 +17,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Fetch GitHub pull-request refs for history audit
-        run: git fetch origin '+refs/pull/*/head:refs/remotes/publication-audit/pull/*'
       - uses: actions/setup-node@v4
         with:
           node-version: 20

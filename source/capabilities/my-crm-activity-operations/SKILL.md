@@ -5,15 +5,18 @@ description: Build authorized CRM activity timelines from connected email, calen
 
 # My CRM Activity Operations
 
-Use source discovery to select authorized activity providers. Query each source
-independently with minimum-necessary filters and bounded time windows. Apply the
-shared cache freshness policy and run sources in parallel when supported.
+Discover the app-owned provider-neutral CRM activity service. Query it once with
+minimum-necessary filters and bounded time windows. Omit source selection for
+all enabled and authorized sources, or use only opaque handles returned by the
+current service discovery. The server owns source fan-out and concurrency.
+Apply the shared client-cache freshness policy to the complete returned dataset.
 
-Match activity to a CRM record only through deterministic server-returned
-identities or the product's approved identity policy. Keep ambiguous evidence
-separate. Normalize activity type, timestamp, direction, subject, participants,
-source, and source record reference while minimizing message bodies and private
-content.
+Present activity-to-record relationships only when the service returns them.
+Preserve ambiguous evidence as separate server-returned results. Present the
+server-normalized activity type, timestamp, direction, subject, participants,
+source, and opaque source record handle while minimizing message bodies and
+private content. Never correlate records or normalize provider vocabulary in
+the client.
 
 Return a chronological timeline plus per-source sections, local freshness,
 coverage, source errors, and usage scope. Read-only activity evidence grants no

@@ -19,7 +19,7 @@ apply to later campaigns. A checksum change blocks delivery for an active
 campaign.
 
 HTML may use validated same-folder images with `data-drive-asset`. BOS converts
-them to SendGrid inline attachments. Templates support simple allowlisted
+them to the selected delivery service's inline attachments. Templates support simple allowlisted
 variables, including `first_name` and `review_confirmation_url`. Unresolved
 variables, traversal, missing assets, unsafe filenames, invalid MIME types, and
 oversized content fail before provider effects.

@@ -7,28 +7,46 @@
 - `merged_view`: correlate records into a composite presentation with
   field-level provenance and conflicts.
 - `synchronize_from`: use one selected source as field authority for an
-  explicitly confirmed task-local plan targeting discovered source tools.
+  explicitly confirmed server plan executed through one provider-neutral
+  operation.
+
+## Invocation boundary
+
+The client issues one app-service invocation for a logical federated query. The
+request omits source selection to mean all sources currently enabled and
+authorized by the server. Explicit source selection contains only opaque handles
+from the current service discovery response. The server owns source resolution,
+integration fan-out, concurrency, translation, and partial-source execution.
+
+The client never derives sources from provider tool names and never dispatches
+one call or agent per source.
 
 ## Source result
 
-Each source returns a client `source_handle`, the exact discovered `tool`,
-`source_label`, `status`, `origin`,
-`freshness`, `coverage`, `records`, a sanitized `error`, timings, and `usage`.
-Origin is `cache`, `live`, or `mixed`. Freshness includes the ISO update time,
-local human-readable label, age, configured maximum age, and status.
+The current service response returns `sourceResults[]`. Each item contains
+`source.sourceHandle`, `source.displayName`, source readiness and capabilities,
+`status`, `records`, `observedAt`, `freshness`, and a sanitized `error`. The
+client adapter converts that exact envelope to its local `source_handle`,
+`source_label`, cache origin, coverage, and human-readable freshness shape. It
+does not rename, select, or invoke an underlying source operation.
+
+The response's top-level `records` array is the server-resolved federated view.
+The client presents it directly for `merged_view`; it never repeats identity
+matching over `sourceResults`.
 
 ## Execution events
 
-Use monotonically increasing sequence values with these event types:
+Use monotonically increasing sequence values. The client may create only its
+own planning, cache, aggregation, and finalization events. Source lifecycle
+events come from the server response or stream:
 
 - `plan_created`
-- `manifest_map_cache_used` or `manifest_map_refreshed`
-- `source_started`
-- `source_cache_hit`, `source_cache_stale`, or `source_refresh_started`
-- `source_result_available`
-- `source_failed` or `source_recovery_started`
+- `discovery_contract_cache_used` or `discovery_contract_refreshed`
+- `dataset_cache_hit` or `dataset_cache_stale`
+- `service_invocation_started`
+- server `source_completed` or `source_failed`
+- server `federation_completed`
 - `aggregation_started`
-- `mutation_committed`, `mutation_failed`, or `mutation_uncertain`
 - `query_finalized`
 
 Event details contain counts, classifications, digested handles, and timings.
@@ -48,7 +66,30 @@ the scope visible beside every value.
 
 ## Bounded mutation recovery
 
-For each uncertain source, perform one verification read. Perform at most one
-replay when the discovered operation's version, receipt, or idempotency
-contract proves it safe. Return `user_action_required` after that bound. Create
-no client-owned server record or background retry.
+Explicit source selection and mutation planning use only source descriptors
+validated from the discovered `crm.sources.list` operation's exact
+`lead-director-crm-sources/v1` response for the current context and authority.
+
+Single-record get sends `{recordHandle}`. Create sends `{sourceHandle, changes,
+idempotencyKey}` and update sends `{recordHandle, expectedVersion, changes,
+idempotencyKey}`. Handles and versions must come from current server results.
+Create and update require explicit confirmation and one provider-neutral
+app-service invocation. Their response reports the underlying source guarantee.
+
+Cross-source synchronization invokes `crm.sync.plan` once with an application
+identity and 1–50 exact targets. The client validates the returned opaque plan,
+target dispositions, expiry, and `non_atomic_per_source` guarantee. After
+confirmation it invokes `crm.sync.apply` once with only the application and
+plan handles. The server owns target fan-out and returns committed, failed, or
+uncertain receipts plus convergence or reconciliation status.
+
+The discovered plan operation is `write` and non-idempotent because each call
+creates a distinct expiring plan. Never replay it automatically. The apply
+operation is `write` and idempotent through the stable per-target keys bound
+into that plan.
+
+For uncertain work, preserve the service-returned reconciliation action. The
+server owns recovery and replay decisions. The client issues no per-target
+recovery call and never replays synchronization planning or apply. Return
+`user_action_required` when server evidence requires it. Create no client-owned
+server record or background retry.

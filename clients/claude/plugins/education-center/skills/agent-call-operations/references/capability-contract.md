@@ -43,7 +43,8 @@ The read operation uses the same authenticated tenant, installation, role, and
 lead scope. It returns persisted BOS evidence including call-log and provider
 references, dispatch/provider state, timestamps, duration, outcome, bounded
 summary and sentiment, transcript availability, and the sanitized public log
-URL when available. It remains read-only when Retell is disconnected.
+URL when available. Status discovery remains read-only when the selected voice
+service is disconnected.
 
 Expected public states include `accepted`, `queued`, `in_progress`,
 `completed`, `failed`, and `duplicate`. Sanitize provider errors and use the
@@ -64,8 +65,11 @@ when all of these are true:
 
 Interactive MCP execution uses the authenticated actor and server-selected
 actor role. Metadata `run_as_role` applies only to autonomous callbacks and
-background work. Dispatch discovery additionally requires healthy, exactly
-scoped Retell bindings. Durable status discovery depends on persisted BOS data
-and remains advertised when Retell is disconnected.
+background work. Dispatch discovery additionally requires the healthy,
+exactly-scoped voice-service binding selected by the organization's canonical
+business profile. Durable status discovery depends on persisted BOS data and
+remains advertised when the selected voice service is disconnected. Provider
+labels and adapters remain server-owned data; the client contract contains no
+provider-selection rule.
 
 The client package needs no reusable authority and carries no provider secret.

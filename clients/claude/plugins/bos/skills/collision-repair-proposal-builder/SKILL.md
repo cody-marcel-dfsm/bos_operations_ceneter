@@ -3,6 +3,30 @@ name: collision-repair-proposal-builder
 description: Build and revise collision-repair automation offers, scripts, onboarding questionnaires, proposals, contract-style scope, payment sections, PDFs, and prospect demo sites using the active tenant's verified offer and systems.
 ---
 
+
+## Organization scope preflight
+
+Before the first private or organization-scoped operation, follow
+`bos-mcp-client` and call `bos_get_context`. Select exactly one authorized
+organization in this order: an organization explicitly named in the current request;
+the shared `default_organization_label` after exact normalized validation against
+the returned organization labels; or the sole authorized organization. Read and
+validate the saved label with
+`../bos-mcp-client/scripts/client-preferences.mjs`. For tools whose live schema
+requires a context selector, pass only the selected role's opaque `context_id`.
+Never add organization or context arguments to an operation whose schema derives
+scope from the authenticated server context.
+Use this same selection for BOS installed-app discovery. Pass only the opaque app
+context and API authority returned under that selection to a discovered app MCP
+or deterministic HTTPS API; never reconstruct or substitute raw authority IDs.
+
+When several organizations are available and the default is missing, stale, or
+ambiguous, return `configuration_required` and resolve one default before domain
+execution. An organization named for the current request overrides the selection
+and does not rewrite the saved default. Never fan out across organizations unless
+the user explicitly requests that bounded scope. The display-label preference selects among
+current server-returned contexts and never grants authority.
+
 # Collision Repair Proposal Builder
 
 Use collision-specific language and the current canonical campaign source.

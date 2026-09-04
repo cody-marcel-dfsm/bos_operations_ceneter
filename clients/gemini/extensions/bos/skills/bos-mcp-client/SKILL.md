@@ -21,6 +21,20 @@ provider, and tool scope from the validated grant and canonical server state on
 every private operation. Never route platform BOS work through a subservice
 package.
 
+## Target per-app discovery migration
+
+When the BOS MCP advertises an authenticated installed-app directory and
+per-app MCP contacts, invoke `bos-app-discovery` for domain requests. BOS remains
+the identity and app-discovery root. GPT selects the app, queries its returned
+MCP contact, reads its graph and service contracts, invokes the discovered
+deterministic HTTPS API, and composes the answer.
+
+Treat the current BOS domain-tool surface as migration compatibility state.
+Never use a compatibility alias as the target implementation when the selected
+app contact and required host capabilities are available. Keep app endpoints,
+graph identities, service names, and API operation names out of static client
+configuration and resolve them from current authenticated discovery.
+
 Developer and operator work is outside this skill when the request explicitly
 targets BOS source code, deployment infrastructure, Cloud Run, GCP Secret
 Manager, an approved administrative provisioning path, or another

@@ -109,6 +109,17 @@ test("plugin settings skills encode cache-first reads and delegated resilient mu
   assert.match(initialization, /Return `connection_required`[\s\S]*preserve[\s\S]*pending request/i);
   assert.match(initialization, /no actionable connection row[\s\S]*receipt/i);
   assert.match(initialization, /bos_get_plugin_settings_initialization/);
+  assert.match(initialization, /organization business profile/i);
+  assert.match(initialization, /server-declared plugin configuration/i);
+  assert.match(initialization, /routing, automation, and communication[\s\S]*preference/i);
+  assert.match(
+    initialization,
+    /Never infer[\s\S]*provider[\s\S]*package (?:text|example)/i
+  );
+  assert.match(
+    initialization,
+    /enabled[\s\S]*selected[\s\S]*service[\s\S]*connection/i
+  );
   assert.match(initialization, /bounded parallel research workers/i);
   assert.match(initialization, /Business Hours prioritizes the[\s\S]*client website/i);
   assert.match(initialization, /Persist no recommendation\s+before confirmation/i);
@@ -128,6 +139,26 @@ test("BOS runtime verification requires the complete native settings tool path",
     assert(
       bos.runtime_verification_tools.includes(tool),
       `BOS runtime verification must require ${tool}`
+    );
+  }
+});
+
+test("Education Center runtime verification requires initialization and connection tools", async () => {
+  const education = (await listProducts()).find(
+    ({ manifest }) => manifest.name === "education-center"
+  )?.manifest;
+  assert(education);
+  for (const tool of [
+    "bos_list_plugin_services",
+    "bos_begin_plugin_service_connection",
+    "bos_get_authorization_status",
+    "bos_get_plugin_settings_initialization",
+    "bos_prepare_plugin_settings",
+    "bos_apply_plugin_settings"
+  ]) {
+    assert(
+      education.runtime_verification_tools.includes(tool),
+      `Education Center runtime verification must require ${tool}`
     );
   }
 });

@@ -3,6 +3,30 @@ name: manage-customer-extension
 description: Create, inspect, validate, or update a customer-owned extension of an installed packaged skill. Use when a user asks to update, customize, override, specialize, or change a skill for their tenant, organization, location, or customer while preserving package upgrades and BOS authority boundaries.
 ---
 
+
+## Organization scope preflight
+
+Before the first private or organization-scoped operation, follow
+`bos-mcp-client` and call `bos_get_context`. Select exactly one authorized
+organization in this order: an organization explicitly named in the current request;
+the shared `default_organization_label` after exact normalized validation against
+the returned organization labels; or the sole authorized organization. Read and
+validate the saved label with
+`../bos-mcp-client/scripts/client-preferences.mjs`. For tools whose live schema
+requires a context selector, pass only the selected role's opaque `context_id`.
+Never add organization or context arguments to an operation whose schema derives
+scope from the authenticated server context.
+Use this same selection for BOS installed-app discovery. Pass only the opaque app
+context and API authority returned under that selection to a discovered app MCP
+or deterministic HTTPS API; never reconstruct or substitute raw authority IDs.
+
+When several organizations are available and the default is missing, stale, or
+ambiguous, return `configuration_required` and resolve one default before domain
+execution. An organization named for the current request overrides the selection
+and does not rewrite the saved default. Never fan out across organizations unless
+the user explicitly requests that bounded scope. The display-label preference selects among
+current server-returned contexts and never grants authority.
+
 # Manage Customer Extension
 
 Apply customer changes through a typed extension. Keep the packaged base skill
