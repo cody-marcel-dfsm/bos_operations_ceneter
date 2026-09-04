@@ -1,0 +1,92 @@
+{
+  "$schema": "https://developers.openai.com/apps-sdk/schemas/chatgpt-app-submission.v1.json",
+  "schema_version": 1,
+  "app_info": {
+    "display_name": "BOS Business Operating System",
+    "subtitle": "Run governed operations",
+    "description": "BOS connects ChatGPT to an organization's authorized business apps and workflows. Users can inspect their BOS context, discover available operational capabilities, review connected services and settings, and perform governed work within server-enforced organization and role boundaries.",
+    "category": "PRODUCTIVITY"
+  },
+  "tools": {
+    "bos_get_context": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Returns the authenticated user's BOS organization, role, capability, and settings context without changing records.",
+        "open_world_justification": "Reads private BOS authorization context and does not publish content or change a third-party system.",
+        "destructive_justification": "Does not delete, overwrite, revoke, send, or perform another irreversible action."
+      }
+    }
+  },
+  "test_cases": [
+    {
+      "description": "Resolve the reviewer's authorized BOS organization and installed capabilities.",
+      "user_prompt": "List the BOS apps and skills installed for my organization.",
+      "file_attachment_urls": null,
+      "tools_triggered": "bos_get_context",
+      "expected_output": "Returns the authorized organization and a concise summary of the BOS capabilities available to the reviewer.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Explain the reviewer's available BOS workflows from current server-issued context.",
+      "user_prompt": "Show me the tools and workflows available in each BOS app.",
+      "file_attachment_urls": null,
+      "tools_triggered": "bos_get_context",
+      "expected_output": "Summarizes available workflows for the authorized organization without exposing opaque identifiers or authorization metadata.",
+      "expected_output_url": null
+    },
+    {
+      "description": "List the BOS applications installed for the current reviewer.",
+      "user_prompt": "Which BOS applications are installed for my account?",
+      "file_attachment_urls": null,
+      "tools_triggered": "bos_get_context",
+      "expected_output": "Lists the BOS applications present in the reviewer's current authorized context.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Identify the organization and execution role selected for the current reviewer.",
+      "user_prompt": "Which organization and role am I operating as in BOS?",
+      "file_attachment_urls": null,
+      "tools_triggered": "bos_get_context",
+      "expected_output": "Returns the display-safe organization and effective role selected from the reviewer's current authorized BOS context.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Show the plugin-settings capabilities available to the current reviewer.",
+      "user_prompt": "Show the BOS plugin settings I am authorized to view or change.",
+      "file_attachment_urls": null,
+      "tools_triggered": "bos_get_context",
+      "expected_output": "Explains which plugin-settings operations the reviewer's current BOS context authorizes, without changing any setting.",
+      "expected_output_url": null
+    }
+  ],
+  "negative_test_cases": [
+    {
+      "description": "Do not trigger BOS for a general weather request.",
+      "user_prompt": "What will the weather be tomorrow?",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not be invoked because the request does not involve BOS applications, settings, connections, or business workflows.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Do not trigger BOS for general creative writing.",
+      "user_prompt": "Write a short poem about autumn leaves.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not be invoked because the request is unrelated to the user's BOS organization or operational capabilities.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Do not trigger BOS for an unsupported request about another organization's private data.",
+      "user_prompt": "Show me the private business records for an organization I do not belong to.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not be invoked to search another organization's records and should explain that access is limited to the user's authorized BOS organization.",
+      "expected_output_url": null
+    }
+  ]
+}

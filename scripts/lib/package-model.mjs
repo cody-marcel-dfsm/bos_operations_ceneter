@@ -60,6 +60,7 @@ export function validateProduct(manifest, path = "product.json") {
     "brand_color",
     "composer_icon",
     "logo",
+    "openai_submission",
     "publisher",
     "category",
     "authentication",
@@ -130,6 +131,40 @@ export function validateProduct(manifest, path = "product.json") {
         !/\.(?:png|jpe?g|svg|webp)$/i.test(value))
     ) {
       failures.push(`${path}: ${field} must be a safe image path under assets/`);
+    }
+  }
+  const openaiSubmission = manifest.openai_submission;
+  if (manifest.name === "bos" && (
+    openaiSubmission === null ||
+    typeof openaiSubmission !== "object" ||
+    Array.isArray(openaiSubmission)
+  )) {
+    failures.push(`${path}: BOS requires permanent OpenAI submission source`);
+  } else if (openaiSubmission !== undefined) {
+    const expectedFields = new Set([
+      "import_file",
+      "directory_icon",
+      "composer_icon"
+    ]);
+    for (const field of Object.keys(openaiSubmission)) {
+      if (!expectedFields.has(field)) {
+        failures.push(`${path}: unknown openai_submission field ${field}`);
+      }
+    }
+    for (const field of expectedFields) {
+      const value = openaiSubmission[field];
+      const extension = field === "import_file" ? /\.json$/i : /\.png$/i;
+      if (
+        typeof value !== "string" ||
+        !value.startsWith("openai/") ||
+        value.includes("..") ||
+        value.includes("\\") ||
+        !extension.test(value)
+      ) {
+        failures.push(
+          `${path}: openai_submission.${field} must be a safe path under openai/`
+        );
+      }
     }
   }
   if (!["ON_INSTALL", "ON_USE"].includes(manifest.authentication)) {

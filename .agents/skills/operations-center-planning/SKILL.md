@@ -18,6 +18,9 @@ description: Plan BOS Operations Center changes using current Vault architecture
    `.app.json`, registered connector IDs, account registry lifecycles, and
    private connector API access.
 5. Define positive, negative, regression, and live-client acceptance evidence.
+   Scope server prompts using `AGENTS.md`; include client details only when
+   they establish a required server contract. Select acceptance checks for
+   the affected surface and keep client execution with its owner.
 6. Place durable plans and specifications under `Vault/`.
 7. Include issue-history maintenance and a final Oracle review of the actual
    implementation diff and validation evidence.

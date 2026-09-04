@@ -12,6 +12,9 @@ description: Implement BOS Operations Center repository changes using its archit
 3. Read `Vault/docs/issues/ISSUE_HISTORY.md` and relevant conclusion records.
 4. Inspect the current source, generated clients, tests, and dirty worktree.
 5. Preserve unrelated user changes and the repository execution boundary.
+   Apply the server-handoff scope in `AGENTS.md`: extract only requirements
+   needed by the server owner and select acceptance checks for the touched
+   contract. Client workflow instructions never expand server implementation.
 6. Add focused positive and negative regression coverage before changing
    behavior when practical.
 7. Implement in canonical sources and regenerate derived client packages through

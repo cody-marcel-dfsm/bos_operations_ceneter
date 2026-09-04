@@ -1624,6 +1624,11 @@ test("package schema reserves runtime ownership for BOS", () => {
       provider_account_selection_prompt: "select_account"
     },
     runtime_verification_tools: ["bos_get_context"],
+    openai_submission: {
+      import_file: "openai/chatgpt-app-submission.json",
+      directory_icon: "openai/directory-icon.png",
+      composer_icon: "openai/composer-icon.png"
+    },
     default_prompts: []
   };
   assert.deepEqual(validateProduct(base), []);
