@@ -4,6 +4,7 @@ description: Create daily plans and multi-area weekly director summaries from te
 ---
 
 
+
 ## Product initialization preflight
 
 Before performing this skill's workflow, preserve the pending request and
@@ -24,6 +25,29 @@ receipt. Invoke `bos-plugin-settings-initialization` when the receipt is missing
 stale, a required field is unset or invalid partial, or the server schema changed.
 Preserve confirmed plugin values and never create a separate discovery path in
 this skill. Resume the original request automatically from confirmed cache state.
+
+## Organization scope preflight
+
+Before the first private or organization-scoped operation, follow
+`bos-mcp-client` and call `bos_get_context`. Select exactly one authorized
+organization in this order: an organization explicitly named in the current request;
+the shared `default_organization_label` after exact normalized validation against
+the returned organization labels; or the sole authorized organization. Read and
+validate the saved label with
+`../bos-mcp-client/scripts/client-preferences.mjs`. For tools whose live schema
+requires a context selector, pass only the selected role's opaque `context_id`.
+Never add organization or context arguments to an operation whose schema derives
+scope from the authenticated server context.
+Use this same selection for BOS installed-app discovery. Pass only the opaque app
+context and API authority returned under that selection to a discovered app MCP
+or deterministic HTTPS API; never reconstruct or substitute raw authority IDs.
+
+When several organizations are available and the default is missing, stale, or
+ambiguous, return `configuration_required` and resolve one default before domain
+execution. An organization named for the current request overrides the selection
+and does not rewrite the saved default. Never fan out across organizations unless
+the user explicitly requests that bounded scope. The display-label preference selects among
+current server-returned contexts and never grants authority.
 
 # Education Center Director Plans and Summaries
 

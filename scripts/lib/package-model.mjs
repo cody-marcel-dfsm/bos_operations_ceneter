@@ -453,21 +453,55 @@ export function transformProductSkillGuidance(product, skillName, guidance) {
       ? injectSettingsPreflight(guidance, product.settings_initializer)
       : guidance;
   }
+  const organizationScoped = injectOrganizationScopePreflight(guidance);
   if (product.settings_initializer && product.plugin_settings_initializer) {
-    return injectProductInitializationPreflight(guidance, {
+    return injectProductInitializationPreflight(organizationScoped, {
       settingsInitializer: product.settings_initializer,
       pluginSettingsInitializer: product.plugin_settings_initializer
     });
   }
   if (product.settings_initializer) {
-    return injectSettingsPreflight(guidance, product.settings_initializer);
+    return injectSettingsPreflight(organizationScoped, product.settings_initializer);
   }
   if (product.plugin_settings_initializer) {
-    return injectProductInitializationPreflight(guidance, {
+    return injectProductInitializationPreflight(organizationScoped, {
       pluginSettingsInitializer: product.plugin_settings_initializer
     });
   }
-  return guidance;
+  return organizationScoped;
+}
+
+export function injectOrganizationScopePreflight(guidance) {
+  const frontmatter = guidance.match(/^---\s*\n[\s\S]*?^---\s*\n/m);
+  if (!frontmatter) {
+    throw new Error("Cannot inject organization scope preflight without frontmatter");
+  }
+  const preflight = [
+    "## Organization scope preflight",
+    "",
+    "Before the first private or organization-scoped operation, follow",
+    "`bos-mcp-client` and call `bos_get_context`. Select exactly one authorized",
+    "organization in this order: an organization explicitly named in the current request;",
+    "the shared `default_organization_label` after exact normalized validation against",
+    "the returned organization labels; or the sole authorized organization. Read and",
+    "validate the saved label with",
+    "`../bos-mcp-client/scripts/client-preferences.mjs`. For tools whose live schema",
+    "requires a context selector, pass only the selected role's opaque `context_id`.",
+    "Never add organization or context arguments to an operation whose schema derives",
+    "scope from the authenticated server context.",
+    "Use this same selection for BOS installed-app discovery. Pass only the opaque app",
+    "context and API authority returned under that selection to a discovered app MCP",
+    "or deterministic HTTPS API; never reconstruct or substitute raw authority IDs.",
+    "",
+    "When several organizations are available and the default is missing, stale, or",
+    "ambiguous, return `configuration_required` and resolve one default before domain",
+    "execution. An organization named for the current request overrides the selection",
+    "and does not rewrite the saved default. Never fan out across organizations unless",
+    "the user explicitly requests that bounded scope. The display-label preference selects among",
+    "current server-returned contexts and never grants authority.",
+    ""
+  ].join("\n");
+  return `${guidance.slice(0, frontmatter[0].length)}\n${preflight}\n${guidance.slice(frontmatter[0].length)}`;
 }
 
 export function injectSettingsPreflight(guidance, initializer) {

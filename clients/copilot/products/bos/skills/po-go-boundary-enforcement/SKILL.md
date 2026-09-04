@@ -3,6 +3,30 @@ name: po-go-boundary-enforcement
 description: Enforce BOS Router-to-PO-to-GO-to-database boundaries for runtime tools, reconciliation, metrics, transitions, plugins, migrations, and every data mutation path. Use when designing, implementing, or reviewing BOS operations that read or change tenant-scoped state.
 ---
 
+
+## Organization scope preflight
+
+Before the first private or organization-scoped operation, follow
+`bos-mcp-client` and call `bos_get_context`. Select exactly one authorized
+organization in this order: an organization explicitly named in the current request;
+the shared `default_organization_label` after exact normalized validation against
+the returned organization labels; or the sole authorized organization. Read and
+validate the saved label with
+`../bos-mcp-client/scripts/client-preferences.mjs`. For tools whose live schema
+requires a context selector, pass only the selected role's opaque `context_id`.
+Never add organization or context arguments to an operation whose schema derives
+scope from the authenticated server context.
+Use this same selection for BOS installed-app discovery. Pass only the opaque app
+context and API authority returned under that selection to a discovered app MCP
+or deterministic HTTPS API; never reconstruct or substitute raw authority IDs.
+
+When several organizations are available and the default is missing, stale, or
+ambiguous, return `configuration_required` and resolve one default before domain
+execution. An organization named for the current request overrides the selection
+and does not rewrite the saved default. Never fan out across organizations unless
+the user explicitly requests that bounded scope. The display-label preference selects among
+current server-returned contexts and never grants authority.
+
 # BOS PO/GO Boundary Enforcement
 
 ## Boundary

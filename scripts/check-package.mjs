@@ -65,6 +65,7 @@ const failures = [];
 const execFileAsync = promisify(execFile);
 const reusableRuntimePlatformSkills = new Set([
   "platform/bos-mcp-client",
+  "platform/bos-app-discovery",
   "platform/bos-plugin-settings",
   "platform/bos-plugin-settings-initialization",
   "platform/bos-federated-query",

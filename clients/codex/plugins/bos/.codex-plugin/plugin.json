@@ -1,6 +1,6 @@
 {
   "name": "bos",
-  "version": "0.4.81",
+  "version": "0.4.82",
   "description": "Agent-first Business Operating System foundations for governed agent workflows.",
   "author": {
     "name": "Infinite State Machines LLC"
@@ -9,7 +9,7 @@
   "interface": {
     "displayName": "BOS — Business Operating System",
     "shortDescription": "Agent-first Business Operating System foundations for governed agent workflows.",
-    "longDescription": "BOS is an agent-first Business Operating System for planning, implementing, reviewing, governing, and executing agent-ready business operations. BOS owns the authenticated MCP connection used by every installed BOS subservice. Education Center, CRM, Marketing Director, and other BOS-maintained plugins contribute dynamic domain-specific MCP services and tooling while BOS evaluates organization, installation, role, plugin, capability, provider, and tool authorization on every private operation.",
+    "longDescription": "BOS is an agent-first Business Operating System for planning, implementing, reviewing, governing, and executing agent-ready business operations. BOS owns the root authenticated MCP connection, resolves the selected organization, and discovers its authorized installed applications. GPT uses current server-returned app contacts and contracts for per-app routing while the existing BOS domain-tool gateway remains migration compatibility state.",
     "developerName": "Infinite State Machines LLC",
     "category": "Productivity",
     "capabilities": [

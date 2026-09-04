@@ -11,6 +11,7 @@ import {
   geminiExtensionManifest,
   geminiPluginManifest,
   geminiPluginMcpManifest,
+  injectOrganizationScopePreflight,
   injectProductInitializationPreflight,
   injectSettingsPreflight,
   materializeMcpUrl,
@@ -98,6 +99,45 @@ test("BOS packages ship MCP-optional visual guided support on every client", asy
     await access(`${skillRoot}/SKILL.md`);
     await access(`${skillRoot}/agents/openai.yaml`);
     await access(`${skillRoot}/assets/connection-journey.svg`);
+  }
+});
+
+test("BOS packages ship GPT-owned per-app discovery on every client", async () => {
+  const products = await listProducts();
+  const bos = products.find(({ manifest }) => manifest.name === "bos");
+  assert(bos, "bos product must exist");
+  assert(bos.manifest.includes.includes("platform/bos-app-discovery"));
+
+  const skills = await resolveProductSkills(bos.manifest);
+  const discovery = skills.find((skill) => skill.name === "bos-app-discovery");
+  assert(discovery, "bos must include app discovery");
+  const guidance = await readFile(discovery.skillFile, "utf8");
+  const contract = await readFile(
+    `${discovery.sourcePath}/references/discovery-contract.md`,
+    "utf8"
+  );
+
+  assert.match(guidance, /GPT owns request routing, planning, service selection/i);
+  assert.match(guidance, /BOS MCP[\s\S]*installed-app directory/i);
+  assert.match(guidance, /selected app MCP/i);
+  assert.match(guidance, /deterministic HTTPS API/i);
+  assert.match(guidance, /host_capability_unavailable/);
+  assert.match(guidance, /no browser[\s\S]*DOM[\s\S]*cached selector/i);
+  assert.match(contract, /`app\.describe`/);
+  assert.match(contract, /`graph\.describe`/);
+  assert.match(contract, /`services\.list`/);
+  assert.match(contract, /`api\.contract\.get`/);
+  assert.match(contract, /audience-bound/i);
+  assert.match(contract, /cross-context/i);
+  await access(`${discovery.sourcePath}/scripts/validate-discovery.mjs`);
+
+  for (const clientPath of [
+    `${root}/clients/codex/plugins/bos/skills/bos-app-discovery/SKILL.md`,
+    `${root}/clients/claude/plugins/bos/skills/bos-app-discovery/SKILL.md`,
+    `${root}/clients/copilot/products/bos/skills/bos-app-discovery/SKILL.md`,
+    `${root}/clients/gemini/extensions/bos/skills/bos-app-discovery/SKILL.md`
+  ]) {
+    assert.match(await readFile(clientPath, "utf8"), /## App discovery workflow/);
   }
 });
 
@@ -242,6 +282,76 @@ test("settings preflight injection preserves frontmatter and adds resumable init
   assert.match(output, /initializer is already active[\s\S]*without invoking it again/i);
   assert.match(output, /Preserve the user's original request/i);
   assert.match(output, /resume the original request automatically/i);
+});
+
+test("organization scope preflight applies the shared default to ordinary skills", () => {
+  const source = "---\nname: example\ndescription: Example.\n---\n\n# Example\n";
+  const output = injectOrganizationScopePreflight(source);
+  assert.match(output, /^---\nname: example\ndescription: Example\.\n---/);
+  assert.match(output, /## Organization scope preflight/);
+  assert.match(
+    output,
+    /explicitly named in the current request[\s\S]*`default_organization_label`[\s\S]*sole authorized organization/i
+  );
+  assert.match(output, /configuration_required/i);
+  assert.match(output, /does not rewrite the saved default/i);
+  assert.match(output, /never fan out across organizations/i);
+});
+
+test("every ordinary product skill receives one organization scope preflight", async () => {
+  for (const { manifest } of await listProducts()) {
+    for (const skill of await resolveProductSkills(manifest)) {
+      const guidance = await readFile(skill.skillFile, "utf8");
+      const transformed = transformProductSkillGuidance(
+        manifest,
+        skill.name,
+        guidance
+      );
+      const isInitializer = skill.name === manifest.settings_initializer ||
+        skill.name === manifest.plugin_settings_initializer;
+      if (productInitializationIndependentSkills.has(skill.name) || isInitializer) {
+        continue;
+      }
+      assert.match(
+        transformed,
+        /## Organization scope preflight/,
+        `${manifest.name}/${skill.name}`
+      );
+      assert.equal(
+        transformed.match(/## Organization scope preflight/g)?.length,
+        1,
+        `${manifest.name}/${skill.name}`
+      );
+    }
+  }
+});
+
+test("every active client package carries the organization preflight", async () => {
+  const clientRoots = {
+    codex: (name) => `${root}/clients/codex/plugins/${name}/skills`,
+    claude: (name) => `${root}/clients/claude/plugins/${name}/skills`,
+    copilot: (name) => `${root}/clients/copilot/products/${name}/skills`,
+    gemini: (name) => `${root}/clients/gemini/extensions/${name}/skills`
+  };
+  for (const { manifest } of await listProducts()) {
+    if (manifest.release_status !== "active") continue;
+    for (const skill of await resolveProductSkills(manifest)) {
+      const isInitializer = skill.name === manifest.settings_initializer ||
+        skill.name === manifest.plugin_settings_initializer;
+      if (productInitializationIndependentSkills.has(skill.name) || isInitializer) {
+        continue;
+      }
+      for (const client of manifest.clients) {
+        const path = `${clientRoots[client](manifest.name)}/${skill.name}/SKILL.md`;
+        const guidance = await readFile(path, "utf8");
+        assert.equal(
+          guidance.match(/## Organization scope preflight/g)?.length,
+          1,
+          path
+        );
+      }
+    }
+  }
 });
 
 test("product initialization preflight orders client settings before plugin settings", () => {
@@ -1255,10 +1365,11 @@ test("BOS marketplace metadata explains the platform and links to its website", 
   assert.equal(bos.display_name, "BOS — Business Operating System");
   assert.equal(bos.description.length, 79);
   assert.match(bos.description, /Agent-first Business Operating System/);
-  assert.match(bos.long_description, /owns the authenticated MCP connection/);
-  assert.match(bos.long_description, /dynamic domain-specific MCP services and tooling/);
+  assert.match(bos.long_description, /owns the root authenticated MCP connection/);
+  assert.match(bos.long_description, /discovers its authorized installed applications/);
+  assert.match(bos.long_description, /server-returned app contacts and contracts/);
   assert.doesNotMatch(bos.long_description, /static (?:registry|operation|tool|schema|catalog)/i);
-  assert.match(bos.long_description, /authorization on every private operation/);
+  assert.match(bos.long_description, /domain-tool gateway remains migration compatibility state/);
   assert.equal(bos.website_url, "https://dfsm.ai");
   assert.equal(bos.brand_color, "#061638");
   assert.equal(bos.composer_icon, "assets/bos-logo.png");
@@ -1905,6 +2016,7 @@ test("My CRM composes the approved reusable federated runtime skills", async () 
     myCrm.includes.filter((include) => include.startsWith("platform/")),
     [
       "platform/bos-mcp-client",
+      "platform/bos-app-discovery",
       "platform/bos-plugin-settings",
       "platform/bos-plugin-settings-initialization",
       "platform/bos-federated-query",
@@ -1916,6 +2028,36 @@ test("My CRM composes the approved reusable federated runtime skills", async () 
   const skills = await resolveProductSkills(myCrm);
   assert(skills.some((skill) => skill.name === "bos-federated-query"));
   assert(skills.some((skill) => skill.name === "bos-cache-maintenance"));
+  const journey = skills.find(
+    (skill) => skill.name === "my-crm-customer-journey"
+  );
+  assert(journey, "my-crm must include the customer journey skill");
+  const journeyGuidance = await readFile(journey.skillFile, "utf8");
+  const journeyContract = await readFile(
+    `${journey.sourcePath}/references/journey-graph-contract.md`,
+    "utf8"
+  );
+  assert.match(journeyGuidance, /BOS app directory/i);
+  assert.match(journeyGuidance, /Lead Director MCP/i);
+  assert.match(journeyGuidance, /lead-search[\s\S]*lead-journey[\s\S]*path-planning API/i);
+  assert.match(journeyGuidance, /discovered deterministic HTTPS APIs/i);
+  assert.match(journeyGuidance, /Graph facts[\s\S]*Lead facts[\s\S]*External evidence[\s\S]*GPT inference/i);
+  assert.match(journeyGuidance, /Mermaid `flowchart LR`/i);
+  assert.match(journeyGuidance, /plain-text path/i);
+  assert.match(journeyGuidance, /completed[\s\S]*current[\s\S]*next[\s\S]*blocked/i);
+  assert.match(
+    journeyGuidance,
+    /graph itself must identify the current position, next[\s\S]*blockers[\s\S]*desired goal/i
+  );
+  assert.match(journeyContract, /`current_node_id`/);
+  assert.match(journeyContract, /`desired_goal_node_id`/);
+  assert.match(journeyContract, /`recommended_next_actions\[\]`/);
+  assert.match(journeyContract, /application graph owns/i);
+  assert.match(journeyContract, /graph\.goals\.list/);
+  assert.match(journeyContract, /graph\.path\.plan/);
+  assert.match(journeyContract, /future event[\s\S]*pending/i);
+  assert.doesNotMatch(journeyGuidance, /crm_get_customer_journey/);
+  assert.doesNotMatch(journeyGuidance, /https:\/\/[^\s`]*lead-director/i);
 
   const policy = JSON.parse(await readFile(
     `${root}/source/capabilities/my-crm/references/client-policy.json`,

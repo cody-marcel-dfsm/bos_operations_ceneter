@@ -1,0 +1,4 @@
+interface:
+  display_name: "BOS App Discovery"
+  short_description: "Discover app MCPs and deterministic APIs"
+  default_prompt: "Use $bos-app-discovery to discover the authorized app and its current MCP and API contracts, then route this request from those contracts."
