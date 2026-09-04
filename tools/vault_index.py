@@ -9,7 +9,6 @@ import hashlib
 import json
 import os
 import signal
-import subprocess
 import sys
 import time
 from datetime import datetime, timezone
@@ -87,46 +86,14 @@ def utc_timestamp() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
 
 
-def git_visible_source_paths() -> set[str] | None:
-    """Return Git-visible Vault paths in the canonical checkout."""
-    if VAULT_ROOT.resolve() != (PROJECT_ROOT / "Vault").resolve():
-        return None
-    result = subprocess.run(
-        [
-            "git",
-            "ls-files",
-            "--cached",
-            "--others",
-            "--exclude-standard",
-            "-z",
-            "--",
-            "Vault",
-        ],
-        cwd=PROJECT_ROOT,
-        capture_output=True,
-        check=False,
-    )
-    if result.returncode:
-        return None
-    return {
-        os.fsdecode(raw_path)
-        for raw_path in result.stdout.split(b"\0")
-        if raw_path
-    }
-
-
 def iter_sources() -> Iterable[Path]:
-    visible_paths = git_visible_source_paths()
+    """Yield private local Vault sources without consulting Git visibility."""
     for path in sorted(VAULT_ROOT.rglob("*")):
         if not path.is_file() or path.suffix.lower() not in TEXT_SUFFIXES:
             continue
         relative = path.relative_to(VAULT_ROOT)
         if any(part in EXCLUDED_PARTS for part in relative.parts):
             continue
-        if visible_paths is not None:
-            project_relative = path.relative_to(PROJECT_ROOT).as_posix()
-            if project_relative not in visible_paths:
-                continue
         yield path
 
 

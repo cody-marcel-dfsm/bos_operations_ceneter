@@ -1,0 +1,28 @@
+name: Publication safety
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify-public-repository:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch GitHub pull-request refs for history audit
+        run: git fetch origin '+refs/pull/*/head:refs/remotes/publication-audit/pull/*'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run check:publication
+      - run: npm run release:check

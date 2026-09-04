@@ -11,6 +11,7 @@
     "build:packages": "node scripts/build-packages.mjs",
     "build": "npm run build:packages",
     "check": "node scripts/check-package.mjs",
+    "check:publication": "node scripts/check-publication-safety.mjs",
     "contract:check": "node scripts/verify-single-bos-contract.mjs --format json",
     "contract:oauth-discovery-live": "node scripts/verify-bos-auth-discovery-live.mjs",
     "contract:oauth-tool-auth-live": "node scripts/verify-bos-tool-auth-live.mjs",

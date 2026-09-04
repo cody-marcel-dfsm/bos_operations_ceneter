@@ -4,6 +4,7 @@ import test from "node:test";
 
 const root = new URL("../", import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), "utf8");
+const privateVaultAvailable = existsSync(new URL("Vault/docs/architecture.md", root));
 
 test("every repository implementation requires a fresh Oracle verdict", () => {
   const agents = read("AGENTS.md");
@@ -19,7 +20,9 @@ test("every repository implementation requires a fresh Oracle verdict", () => {
   assert.match(oracle, /`REJECTED` blocks completion/i);
 });
 
-test("Oracle owns indexed active and resolved issue history", () => {
+test("Oracle owns indexed active and resolved issue history", {
+  skip: !privateVaultAvailable,
+}, () => {
   const oracle = read(".agents/skills/oracle/SKILL.md");
   const tracker = read("Vault/docs/issues/ISSUE_HISTORY.md");
   const conclusion = read("Vault/docs/issues/conclusions/ISSUE_0001_CONCLUSION.md");

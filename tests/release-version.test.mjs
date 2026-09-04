@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { access, mkdtemp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -8,6 +8,15 @@ import { fileURLToPath } from "node:url";
 import { bumpReleaseVersion, nextVersion } from "../scripts/bump-release-version.mjs";
 
 const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+async function pathExists(path) {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 async function writeJson(path, value) {
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`);
@@ -47,16 +56,20 @@ test("real repository contains every release-required version and documentation 
     {
       path: join(repositoryRoot, "README.md"),
       marker: `Current desktop marketplace release: \`${current}\`. If \``
-    },
-    {
-      path: join(repositoryRoot, "Vault", "docs", "bos-product-licensing-user-experience.md"),
-      marker: `Current BOS Operations Center release: \`${current}\`.`
-    },
-    {
-      path: join(repositoryRoot, "Vault", "docs", "marketplace-submission-assets.md"),
-      marker: `Current BOS marketplace package release: \`${current}\`.`
     }
   ];
+  if (await pathExists(join(repositoryRoot, "Vault", "docs"))) {
+    requiredMarkers.push(
+      {
+        path: join(repositoryRoot, "Vault", "docs", "bos-product-licensing-user-experience.md"),
+        marker: `Current BOS Operations Center release: \`${current}\`.`
+      },
+      {
+        path: join(repositoryRoot, "Vault", "docs", "marketplace-submission-assets.md"),
+        marker: `Current BOS marketplace package release: \`${current}\`.`
+      }
+    );
+  }
 
   for (const { path, marker } of requiredMarkers) {
     const content = await readFile(path, "utf8");

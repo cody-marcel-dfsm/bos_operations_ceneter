@@ -26,6 +26,7 @@ import {
 } from "../scripts/lib/package-model.mjs";
 
 const execFileAsync = promisify(execFile);
+const privateVaultAvailable = await pathExists(`${root}/Vault/docs/architecture.md`);
 const canonicalBosProduct = JSON.parse(await readFile(
   `${root}/products/bos/product.json`,
   "utf8"
@@ -170,7 +171,9 @@ test("plugin settings initializer is included by subservices using the BOS conne
   assert.equal(education.codex_app_id, undefined);
 });
 
-test("authority-state mutations refresh dynamic domain service tooling", async () => {
+test("authority-state mutations refresh dynamic domain service tooling", {
+  skip: !privateVaultAvailable,
+}, async () => {
   const roleContract = await readFile(
     `${root}/Vault/specs/role-aware-mcp-client.md`,
     "utf8"
@@ -738,7 +741,9 @@ test("repository release skill cannot cross into the BOS server repository", asy
   assert.match(repositoryInstructions, /exactly one continuous\s+Markdown prompt/i);
 });
 
-test("canonical single-connection knowledge requires native auth and client-owned server AC", async () => {
+test("canonical single-connection knowledge requires native auth and client-owned server AC", {
+  skip: !privateVaultAvailable,
+}, async () => {
   const specification = await readFile(
     `${root}/Vault/specs/single-bos-mcp-connection.md`,
     "utf8"
@@ -2120,8 +2125,8 @@ test("release sources contain no archive builders or noninteractive OAuth gate",
   const currentReleaseSources = [
     `${root}/package.json`,
     `${root}/README.md`,
-    `${root}/Vault/docs/architecture.md`,
-    `${root}/.agents/skills/ship-it/SKILL.md`
+    `${root}/.agents/skills/ship-it/SKILL.md`,
+    ...(privateVaultAvailable ? [`${root}/Vault/docs/architecture.md`] : [])
   ];
   for (const path of currentReleaseSources) {
     const content = await readFile(path, "utf8");

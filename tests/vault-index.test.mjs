@@ -1,13 +1,16 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
 const root = new URL("../", import.meta.url).pathname;
+const privateVaultAvailable = existsSync(new URL("../Vault/docs/architecture.md", import.meta.url));
 
-test("Vault sync builds the Chroma collection and excludes generated state", () => {
+test("Vault sync builds the Chroma collection and excludes generated state", {
+  skip: !privateVaultAvailable,
+}, () => {
   const manifestRoot = mkdtempSync(join(tmpdir(), "bos-vault-manifest-"));
   const chromaRoot = mkdtempSync(join(tmpdir(), "bos-vault-chroma-"));
   try {
@@ -44,17 +47,25 @@ test("Vault sync builds the Chroma collection and excludes generated state", () 
   }
 });
 
-test("Vault tooling keeps Chroma local and provides staged manifest enforcement", () => {
+test("Vault tooling keeps all private knowledge outside Git", () => {
   const gitignore = readFileSync(new URL("../.gitignore", import.meta.url), "utf8");
   const hook = readFileSync(new URL("../.githooks/pre-commit", import.meta.url), "utf8");
 
-  assert.match(gitignore, /^Vault\/index\/chroma\/$/m);
-  assert.match(hook, /--force-manifest/);
-  assert.match(hook, /stage or revert all Vault source changes/i);
-  assert.match(hook, /latest\.json/);
+  assert.match(gitignore, /^\/Vault\/$/m);
+  assert.match(hook, /Vault\/ is private maintainer material/i);
+  assert.match(hook, /never enter Git history/i);
+  assert.doesNotMatch(hook, /git["', ]+add|--force-manifest|latest\.json/i);
+
+  const trackedVault = execFileSync("git", ["ls-files", "Vault"], {
+    cwd: root,
+    encoding: "utf8",
+  });
+  assert.equal(trackedVault, "");
 });
 
-test("Vault query returns semantic source, chunk, timestamp, and distance evidence", () => {
+test("Vault query returns semantic source, chunk, timestamp, and distance evidence", {
+  skip: !privateVaultAvailable,
+}, () => {
   const manifestRoot = mkdtempSync(join(tmpdir(), "bos-vault-manifest-"));
   const chromaRoot = mkdtempSync(join(tmpdir(), "bos-vault-chroma-"));
   try {
