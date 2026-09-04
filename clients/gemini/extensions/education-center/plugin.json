@@ -1,5 +1,5 @@
 {
   "$schema": "https://antigravity.google/schemas/v1/plugin.json",
   "name": "education-center",
-  "description": "Coordinate operations across email, calendars, billing, and enrollment. Version 0.4.83."
+  "description": "Coordinate operations across email, calendars, billing, and enrollment. Version 0.4.84."
 }

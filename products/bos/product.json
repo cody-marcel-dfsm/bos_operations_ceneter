@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.83",
+  "version": "0.4.84",
   "release_status": "active",
   "display_name": "BOS — Business Operating System",
   "description": "Agent-first Business Operating System foundations for governed agent workflows.",
@@ -10,6 +10,11 @@
   "brand_color": "#061638",
   "composer_icon": "assets/bos-logo.png",
   "logo": "assets/bos-logo.png",
+  "openai_submission": {
+    "import_file": "openai/chatgpt-app-submission.json",
+    "directory_icon": "openai/directory-icon.png",
+    "composer_icon": "openai/composer-icon.png"
+  },
   "publisher": "Infinite State Machines LLC",
   "category": "Productivity",
   "authentication": "ON_INSTALL",

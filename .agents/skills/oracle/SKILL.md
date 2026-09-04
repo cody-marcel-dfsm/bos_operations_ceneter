@@ -87,6 +87,9 @@ Review the completed diff and focused validation evidence. Verify:
 
 - explicit tenant, organization, app, installation, role, and plugin scope;
 - application-neutral platform behavior and correct specialization ownership;
+- server prompts contain only requirements relevant to the requested server
+  outcome; client workflow text does not expand authentication, authorization,
+  or provider recovery scope, and acceptance checks match the touched contract;
 - Router-to-PO-to-GO mutation boundaries where service behavior is described;
 - credential-free tracked sources, generated artifacts, and logs;
 - one host-managed BOS OAuth connection per user-facing client context;

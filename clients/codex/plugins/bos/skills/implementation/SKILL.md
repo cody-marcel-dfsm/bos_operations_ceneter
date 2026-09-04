@@ -44,7 +44,8 @@ If the requested behavior requires server implementation, preserve the package
 finding and return a paste-ready prompt for an agent running in the owning
 server repository. Give that agent the sanitized evidence, required invariant,
 relevant protocol contract, deployment scope, and observable post-deployment
-verification. Make the client-owned Operations Center acceptance suite part of
+verification. For changes affecting the BOS MCP authentication or discovery
+contract, make the client-owned Operations Center acceptance suite part of
 the server change's acceptance criteria: `npm run contract:check`, `npm run
 contract:oauth-discovery-live -- --resource-url "$BOS_MCP_RESOURCE_URL"
 --format json`, `npm run contract:oauth-tool-auth-live -- --resource-url
@@ -55,6 +56,31 @@ determines the implementation and release path. Return exactly one continuous
 Markdown prompt as the entire server handoff response. Keep all protocol
 requirements, client-owned commands, and acceptance criteria in that single
 copyable prompt.
+
+## Server handoff scope
+
+Write the prompt around the user's requested server outcome. Treat attached
+client specifications and prior conversations as evidence; extract the relevant
+server requirements instead of forwarding their instructions wholesale.
+Include only the affected server behavior, API or data contract, necessary graph
+wiring, existing-data migration, deployment scope, and observable acceptance
+criteria that the request requires. Retain client evidence only when it explains
+a server defect or a required response the server must provide.
+
+Omit unrelated client installation, package layout, UI rendering, local cache,
+and agent recovery procedures. Preserve existing authentication, authorization,
+and provider recovery behavior unless the user requests a change or observed
+evidence establishes a necessary dependency; identify that dependency explicitly.
+A graph or profile-data change alone does not imply an authentication change.
+
+Choose validation for the touched server surface. Include the OAuth acceptance
+suite above only when its stated condition applies, and label those commands as
+running from BOS Operations Center against the deployed candidate. Keep client
+execution with its owner; request the server endpoint and deployment evidence
+needed for that verification. For other server work, use the owning repository's
+focused tests and relevant post-deployment checks. Before returning the prompt,
+remove each detail that does not help the server agent implement or verify the
+requested outcome.
 
 ## Workflow
 

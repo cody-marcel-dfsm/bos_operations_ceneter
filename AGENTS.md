@@ -25,8 +25,14 @@ Private knowledge root: `Vault/` (never tracked or published)
 - When a client or package change depends on server behavior, stop at this
   repository boundary and return a paste-ready prompt for an agent operating in
   the owning server repository. Include the observed evidence, required
-  invariant, deployment scope, and post-deployment verification. Make the
-  client-owned acceptance suite mandatory in that prompt: `npm run
+  invariant, deployment scope, and post-deployment verification. Include only
+  details needed to implement or verify the requested server behavior. Omit
+  client installation, UI, rendering, cache, and recovery instructions unless
+  they establish a directly relevant server contract. Preserve existing
+  authentication and authorization behavior unless the user requests a change
+  or observed evidence establishes a necessary dependency.
+  For changes affecting the BOS MCP authentication or discovery contract, make
+  the client-owned acceptance suite mandatory in that prompt: `npm run
   contract:check`, `npm run contract:oauth-discovery-live -- --resource-url
   "$BOS_MCP_RESOURCE_URL" --format json`, `npm run
   contract:oauth-tool-auth-live -- --resource-url "$BOS_MCP_RESOURCE_URL"
@@ -34,7 +40,12 @@ Private knowledge root: `Vault/` (never tracked or published)
   --authorize-url "$BOS_OAUTH_AUTHORIZE_URL" --format json`. The server-side
   agent owns implementation and release choices. Return exactly one continuous
   Markdown prompt as the entire handoff response. Keep the contract, commands,
-  and acceptance criteria together in that single copyable prompt.
+  and acceptance criteria together in that single copyable prompt. Label the
+  client-owned commands as running from BOS Operations Center against the
+  deployed candidate; keep their execution with the client owner. For other
+  server changes, use focused server tests and relevant deployment checks.
+  Treat attached specifications as evidence and extract server requirements
+  from them; their client workflow instructions do not expand the request.
 
 ## Vault knowledge contract
 
