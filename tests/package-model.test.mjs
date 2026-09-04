@@ -366,6 +366,10 @@ test("product initialization preflight orders client settings before plugin sett
     /invoke `initialize-client-settings`[\s\S]*Invoke `initialize-plugin-settings`/i
   );
   assert.match(output, /preserve the pending request/i);
+  assert.match(output, /live[\s\S]*plugin-service inventory/i);
+  assert.match(output, /organization business profile/i);
+  assert.match(output, /service-routing mismatch/i);
+  assert.match(output, /enabled, selected services/i);
   assert.match(output, /resume the original request automatically/i);
 });
 
@@ -447,6 +451,10 @@ test("Education Center packages include governed single-lead Agent Call operatio
   assert.match(guidance, /education_center_search_leads/);
   assert.match(guidance, /education_center_initiate_agent_call/);
   assert.match(guidance, /attributes\.available_actions\[\][\s\S]*agent_call/i);
+  assert.match(
+    guidance,
+    /action is absent[\s\S]*stop before provider recovery or connection setup/i
+  );
   assert.match(guidance, /arguments\.lead_id[\s\S]*absent or ambiguous/i);
   assert.match(guidance, /Never pass[\s\S]*record_ref[\s\S]*as `lead_id`/i);
   assert.match(guidance, /education_center_get_agent_call_status/);
@@ -474,6 +482,15 @@ test("Education Center packages include governed single-lead Agent Call operatio
   assert.match(guidance, /never replace it with a generic phrase[\s\S]*indeterminate server\s+error/i);
   assert.match(guidance, /Do not infer a root cause/i);
   assert.match(guidance, /Keep[\s\S]*repair instructions out of the user-facing error/i);
+  assert.match(
+    guidance,
+    /authorization[\s\S]*no service row is actionable[\s\S]*service_routing_mismatch/i
+  );
+  assert.match(
+    guidance,
+    /invoke `bos-plugin-settings-initialization`[\s\S]*resume the same call request/i
+  );
+  assert.match(guidance, /never open the domain result's provider[\s\S]*directly/i);
   assert.match(contract, /UUID[\s\S]*available_actions\[\][\s\S]*arguments\.lead_id/i);
   assert.match(contract, /never use[\s\S]*record_ref/i);
   assert.match(contract, /public schema excludes[\s\S]*org_id[\s\S]*phone numbers/i);
@@ -483,7 +500,8 @@ test("Education Center packages include governed single-lead Agent Call operatio
   assert.match(contract, /It never dispatches or retries/i);
   assert.match(contract, /authenticated actor and server-selected[\s\S]*actor role/i);
   assert.match(contract, /run_as_role` applies only to autonomous/i);
-  assert.match(contract, /status discovery[\s\S]*Retell is disconnected/i);
+  assert.match(contract, /status discovery[\s\S]*selected voice service is disconnected/i);
+  assert.doesNotMatch(`${guidance}\n${contract}`, /\b(?:Twilio|Retell)\b/i);
 });
 
 test("Education Center packages include governed SendGrid campaign operations", async () => {
@@ -528,6 +546,33 @@ test("Education Center packages include governed SendGrid campaign operations", 
   assert.match(workflow, /returning\s+seasonal families[\s\S]*recent trials/i);
   assert.match(workflow, /display exactly[\s\S]*UTF-8 subject[\s\S]*physical address/i);
   await access(`${sendgrid.sourcePath}/scripts/validate_campaign_workflow_trace.py`);
+});
+
+test("configurable review outreach resolves delivery services from the organization profile", async () => {
+  const guidance = await readFile(
+    `${root}/source/capabilities/review-outreach/SKILL.md`,
+    "utf8"
+  );
+  const contract = await readFile(
+    `${root}/source/capabilities/review-outreach/references/capability-contract.md`,
+    "utf8"
+  );
+  const copyPolicy = await readFile(
+    `${root}/source/capabilities/review-outreach/references/outreach-copy.md`,
+    "utf8"
+  );
+  const templateWorkflow = await readFile(
+    `${root}/source/capabilities/review-outreach/references/drive-html-template-workflow.md`,
+    "utf8"
+  );
+  assert.match(guidance, /server-owned organization business profile/i);
+  assert.match(guidance, /never maps a channel to a provider/i);
+  assert.match(guidance, /Never substitute a delivery service or channel/i);
+  assert.match(contract, /client supplies no provider choice/i);
+  assert.doesNotMatch(
+    `${guidance}\n${contract}\n${copyPolicy}\n${templateWorkflow}`,
+    /\b(?:Twilio|SendGrid)\b/i
+  );
 });
 
 test("SendGrid client trace validates the governed 229-recipient acceptance path", async () => {
@@ -1139,6 +1184,10 @@ test("service routing composes package defaults with preserved customer settings
   assert.match(guidance, /terminology\.brand_display_name/);
   assert.match(guidance, /customer-facing[\s\S]*franchise or brand/i);
   assert.match(guidance, /inert display text/i);
+  assert.match(
+    guidance,
+    /server-owned[\s\S]*semantic service[\s\S]*routing[\s\S]*provider names/i
+  );
 });
 
 test("every Education Center skill applies tenant brand terminology only to display copy", async () => {
@@ -1396,21 +1445,23 @@ test("Education Operation Center marketplace metadata presents specific cross-sy
   assert.equal(education.display_name, "Education Operation Center");
   assert.ok(education.description.length <= 80);
   assert.match(education.description, /email, calendars, billing, and enrollment/);
-  assert.match(education.long_description, /Northstar Coding Academy/);
-  assert.match(education.long_description, /Bright Horizons invoices/);
+  assert.match(education.long_description, /Acme Learning Center/);
+  assert.match(education.long_description, /Acme\.com partnership invoices/);
+  assert.doesNotMatch(education.long_description, /Bright Horizons|Northstar Coding Academy/);
   assert.match(education.long_description, /payment records in its configured accounting system/);
   assert.match(education.long_description, /source-linked exception ledger/);
   assert.doesNotMatch(education.long_description, /My CRM/);
   assert.match(education.long_description, /deterministic workflow/);
   assert.match(education.long_description, /preserving human judgment, approvals/);
   assert.deepEqual(education.default_prompts, [
-    "For Northstar Coding Academy, reconcile Bright Horizons email invoices with accounting payments; cite every mismatch.",
-    "For Northstar Coding Academy, reconcile next week's registrations, partner child-days, staff, cancellations, and camp capacity.",
-    "For Northstar Coding Academy, reconcile paid leads across Gmail, Calendar, Lead Director, Calimatic, and Google Ads; flag gaps."
+    "For Acme Learning Center, reconcile Acme.com partnership email invoices with accounting payments; cite every mismatch.",
+    "For Acme Learning Center, reconcile next week's registrations, partner child-days, staff, cancellations, and camp capacity.",
+    "For Acme Learning Center, reconcile paid leads across Gmail, Calendar, Lead Director, Calimatic, and Google Ads; flag gaps."
   ]);
   assert.equal(new Set(education.default_prompts).size, 3);
   assert.ok(education.default_prompts.every((prompt) => prompt.length <= 128));
-  assert.ok(education.default_prompts.every((prompt) => prompt.includes("Northstar Coding Academy")));
+  assert.ok(education.default_prompts.every((prompt) => prompt.includes("Acme Learning Center")));
+  assert.ok(education.default_prompts.every((prompt) => !/Bright Horizons|Northstar Coding Academy/.test(prompt)));
   assert.ok(education.default_prompts.every((prompt) => /reconcil|exception/i.test(prompt)));
   assert.ok(education.default_prompts.every((prompt) => !/my education center|today's education center|my director/i.test(prompt)));
   assert.equal(education.website_url, "https://dfsm.ai");
@@ -2069,12 +2120,14 @@ test("My CRM composes the approved reusable federated runtime skills", async () 
     record_search: 300,
     activity_timeline: 600
   });
-  assert.equal(
-    policy.identity.automatic_merged_view_key,
-    "exact_normalized_email"
-  );
-  assert.equal(policy.mutation.verification_reads_per_uncertain_source, 1);
-  assert.equal(policy.mutation.safe_replays_per_uncertain_source, 1);
+  assert.deepEqual(policy.merged_view, {
+    resolution_owner: "server",
+    preserve_source_provenance: true,
+    preserve_match_confidence: true
+  });
+  assert.equal("identity" in policy, false);
+  assert.equal(policy.mutation.client_recovery_attempts, 0);
+  assert.equal(policy.mutation.follow_server_reconciliation_action, true);
 });
 
 test("every product and client ships tenant extension management metadata", async () => {

@@ -1,11 +1,11 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.82",
+  "version": "0.4.83",
   "release_status": "active",
   "display_name": "Education Operation Center",
   "description": "Coordinate operations across email, calendars, billing, and enrollment.",
-  "long_description": "Education Operation Center coordinates complex, evidence-backed work across an education company's authorized email, calendars, advertising, enrollment, staffing, and billing systems. For example, Northstar Coding Academy could ask it to find Bright Horizons invoices in its billing inbox, reconcile them against payment records in its configured accounting system, and produce a source-linked exception ledger. Other workflows connect outreach to trials and enrollments, balance camps against registrations and instructor availability, prepare parent communications, and trace advertising outcomes. Each focused skill follows its own deterministic workflow through the tenant-scoped BOS connection while preserving human judgment, approvals, organizational settings, roles, application scope, and provider boundaries.",
+  "long_description": "Education Operation Center coordinates complex, evidence-backed work across an education company's authorized email, calendars, advertising, enrollment, staffing, and billing systems. For example, Acme Learning Center could ask it to find Acme.com partnership invoices in its billing inbox, reconcile them against payment records in its configured accounting system, and produce a source-linked exception ledger. Other workflows connect outreach to trials and enrollments, balance camps against registrations and instructor availability, prepare parent communications, and trace advertising outcomes. Each focused skill follows its own deterministic workflow through the tenant-scoped BOS connection while preserving human judgment, approvals, organizational settings, roles, application scope, and provider boundaries.",
   "website_url": "https://dfsm.ai",
   "brand_color": "#061638",
   "composer_icon": "assets/education-center-logo.png",
@@ -23,7 +23,12 @@
     "gemini"
   ],
   "runtime_verification_tools": [
+    "bos_list_plugin_services",
+    "bos_begin_plugin_service_connection",
+    "bos_get_authorization_status",
     "bos_get_plugin_settings_initialization",
+    "bos_prepare_plugin_settings",
+    "bos_apply_plugin_settings",
     "education_center_get_camp_roster_report",
     "education_center_list_enrollments",
     "education_center_search_leads",
@@ -53,8 +58,8 @@
     "verticals/education-center/education-center-trial-reconciliation"
   ],
   "default_prompts": [
-    "For Northstar Coding Academy, reconcile Bright Horizons email invoices with accounting payments; cite every mismatch.",
-    "For Northstar Coding Academy, reconcile next week's registrations, partner child-days, staff, cancellations, and camp capacity.",
-    "For Northstar Coding Academy, reconcile paid leads across Gmail, Calendar, Lead Director, Calimatic, and Google Ads; flag gaps."
+    "For Acme Learning Center, reconcile Acme.com partnership email invoices with accounting payments; cite every mismatch.",
+    "For Acme Learning Center, reconcile next week's registrations, partner child-days, staff, cancellations, and camp capacity.",
+    "For Acme Learning Center, reconcile paid leads across Gmail, Calendar, Lead Director, Calimatic, and Google Ads; flag gaps."
   ]
 }

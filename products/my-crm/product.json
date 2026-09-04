@@ -5,7 +5,7 @@
   "release_status": "disabled",
   "display_name": "My CRM",
   "description": "Provider-neutral CRM operations across tenant-scoped BOS-connected customer data sources.",
-  "long_description": "My CRM gives authorized users one CRM operating vocabulary across connected customer and lead systems. GPT discovers Lead Director and its graph and API contracts through authenticated BOS app discovery for journey questions, preserves provenance and freshness, builds merged views, and uses the existing BOS domain-tool surface for compatibility workflows that have not migrated yet.",
+  "long_description": "My CRM gives authorized users one CRM operating vocabulary across connected customer and lead systems. GPT uses the shared BOS connection to discover Lead Director, selects its current provider-neutral CRM service and deterministic API contracts, invokes one generic operation, and presents the server-resolved source results with provenance and freshness.",
   "website_url": "https://dfsm.ai",
   "brand_color": "#061638",
   "composer_icon": "assets/lead-director-crm-logo.png",

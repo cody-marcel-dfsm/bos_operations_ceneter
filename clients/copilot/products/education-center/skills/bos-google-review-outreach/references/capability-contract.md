@@ -7,7 +7,7 @@ Discover the live schemas. Expected semantic tools:
 | `education_center_review_outreach_run` | BOS scope, dates, optional `class_type`, `client_run_key` | Query Calimatic, resolve/create/enroll leads, pin Drive manifest/templates, create/resume campaigns |
 | `education_center_review_campaigns_list` | BOS scope, optional states and limit | Return latest state per campaign |
 | `education_center_review_campaign_approve` | BOS scope and campaign ID | Release an awaiting-approval campaign to communication 1 |
-| `education_center_review_campaign_advance` | BOS scope and campaign ID | Execute exactly the next legal email and optional SMS step |
+| `education_center_review_campaign_advance` | Selected opaque context and campaign ID | Execute exactly the next legal server-selected communication step |
 | `reputation_search_profiles` | BOS scope and bounded query | Return verified profile and provider-issued write-review URL |
 | `reputation_search_reviews` | BOS scope and profile ID | Return recent public reviews and ratings |
 
@@ -37,5 +37,7 @@ closed_no_review`
 Human confirmation may transition any eligible outreach/wait/closed state to
 `complete`. `complete` permanently excludes the family from future runs.
 
+The organization business profile owns the eligible channel and service plan.
+The client supplies no provider choice and never maps a channel to a service.
 Provider effects use deterministic campaign/step/channel identities. Repeating
 an accepted effect never resends it.

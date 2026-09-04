@@ -10,4 +10,4 @@ Use three distinct neutral templates:
 Use `{{review_confirmation_url}}`, which opens the BOS confirmation page before
 redirecting to Google. Use verified personalization only. Omit incentives,
 requested star ratings, sentiment screening, and claims of delivery before a
-SendGrid delivery event.
+server-confirmed authenticated delivery event.

@@ -19,10 +19,14 @@ invoke `education-center-customer-initialization` immediately. When that initial
 active for the same request, support it without invoking it again. Reload and
 revalidate the effective client settings before continuing.
 
-After client settings are current, validate the server plugin-settings
-initialization epoch, required canonical field states, and local completion
+After client settings are current, validate the selected organization's live
+plugin-service inventory, organization business profile initialization epoch,
+required canonical field states, and local completion
 receipt. Invoke `bos-plugin-settings-initialization` when the receipt is missing or
-stale, a required field is unset or invalid partial, or the server schema changed.
+stale, a required field is unset or invalid partial, the server schema changed,
+or the active request exposes a service-routing mismatch. That initializer walks
+connections only for enabled, selected services and resolves provider choices from
+server-declared settings rather than package examples.
 Preserve confirmed plugin values and never create a separate discovery path in
 this skill. Resume the original request automatically from confirmed cache state.
 

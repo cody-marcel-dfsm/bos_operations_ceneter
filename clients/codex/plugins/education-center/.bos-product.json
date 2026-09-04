@@ -1,10 +1,15 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.82",
+  "version": "0.4.83",
   "client": "codex",
   "runtime_verification_tools": [
+    "bos_list_plugin_services",
+    "bos_begin_plugin_service_connection",
+    "bos_get_authorization_status",
     "bos_get_plugin_settings_initialization",
+    "bos_prepare_plugin_settings",
+    "bos_apply_plugin_settings",
     "education_center_get_camp_roster_report",
     "education_center_list_enrollments",
     "education_center_search_leads",

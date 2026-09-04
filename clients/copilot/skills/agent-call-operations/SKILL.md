@@ -19,10 +19,14 @@ invoke `education-center-customer-initialization` immediately. When that initial
 active for the same request, support it without invoking it again. Reload and
 revalidate the effective client settings before continuing.
 
-After client settings are current, validate the server plugin-settings
-initialization epoch, required canonical field states, and local completion
+After client settings are current, validate the selected organization's live
+plugin-service inventory, organization business profile initialization epoch,
+required canonical field states, and local completion
 receipt. Invoke `bos-plugin-settings-initialization` when the receipt is missing or
-stale, a required field is unset or invalid partial, or the server schema changed.
+stale, a required field is unset or invalid partial, the server schema changed,
+or the active request exposes a service-routing mismatch. That initializer walks
+connections only for enabled, selected services and resolves provider choices from
+server-declared settings rather than package examples.
 Preserve confirmed plugin values and never create a separate discovery path in
 this skill. Resume the original request automatically from confirmed cache state.
 
@@ -71,6 +75,9 @@ before invoking the call mutation.
 4. Confirm from live server state that the lead exposes the Agent Call action.
    Treat the user's explicit request to initiate the call as authorization for
    that single lead and single call. Never expand it into a campaign or queue.
+   When the action is absent, stop before provider recovery or connection setup;
+   a missing action grants no basis to infer which service would make the lead
+   eligible.
 5. Treat each explicit user request to initiate a call as a new dispatch
    request. Create a fresh idempotency key for that request, including when it
    targets the same lead in the same conversation, and call
@@ -85,9 +92,18 @@ before invoking the call mutation.
    and provider identifiers.
 6. Reuse that key only for a transport retry, provider-authorization recovery,
    or reconciliation of this exact dispatch request. If provider authorization
-   is required, preserve the same lead and idempotency key, complete the
-   BOS-hosted recovery flow, refresh context and operation status, and retry the
-   same `tools/call` once.
+   is required, invoke `bos-plugin-settings-initialization` to refresh the
+   selected organization's plugin-service inventory before opening any recovery
+   action from the domain result. That initializer may open only the enabled
+   service row that the current organization profile marks
+   `connection_required`; never open the domain result's provider link directly.
+   After initialization is current, resume the same call request: refresh context and operation status,
+   then retry the same `tools/call` once with the same lead and key. When
+   no service row is actionable and the retried operation still requests
+   authorization, return `service_routing_mismatch`, state that no call was
+   placed when the evidence proves it, and preserve the same call request for
+   server repair. Never connect or name an alternative provider based on
+   package text.
 7. If the result is uncertain after a disconnect, call
    `education_center_get_agent_call_status` with the same lead and the returned
    call-log or provider-call reference. This is the only operation used for

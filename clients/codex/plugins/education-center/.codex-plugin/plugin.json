@@ -1,6 +1,6 @@
 {
   "name": "education-center",
-  "version": "0.4.82",
+  "version": "0.4.83",
   "description": "Coordinate operations across email, calendars, billing, and enrollment.",
   "author": {
     "name": "Infinite State Machines LLC"
@@ -9,7 +9,7 @@
   "interface": {
     "displayName": "Education Operation Center",
     "shortDescription": "Coordinate operations across email, calendars, billing, and enrollment.",
-    "longDescription": "Education Operation Center coordinates complex, evidence-backed work across an education company's authorized email, calendars, advertising, enrollment, staffing, and billing systems. For example, Northstar Coding Academy could ask it to find Bright Horizons invoices in its billing inbox, reconcile them against payment records in its configured accounting system, and produce a source-linked exception ledger. Other workflows connect outreach to trials and enrollments, balance camps against registrations and instructor availability, prepare parent communications, and trace advertising outcomes. Each focused skill follows its own deterministic workflow through the tenant-scoped BOS connection while preserving human judgment, approvals, organizational settings, roles, application scope, and provider boundaries.",
+    "longDescription": "Education Operation Center coordinates complex, evidence-backed work across an education company's authorized email, calendars, advertising, enrollment, staffing, and billing systems. For example, Acme Learning Center could ask it to find Acme.com partnership invoices in its billing inbox, reconcile them against payment records in its configured accounting system, and produce a source-linked exception ledger. Other workflows connect outreach to trials and enrollments, balance camps against registrations and instructor availability, prepare parent communications, and trace advertising outcomes. Each focused skill follows its own deterministic workflow through the tenant-scoped BOS connection while preserving human judgment, approvals, organizational settings, roles, application scope, and provider boundaries.",
     "developerName": "Infinite State Machines LLC",
     "category": "Productivity",
     "capabilities": [
@@ -17,9 +17,9 @@
       "Write"
     ],
     "defaultPrompt": [
-      "For Northstar Coding Academy, reconcile Bright Horizons email invoices with accounting payments; cite every mismatch.",
-      "For Northstar Coding Academy, reconcile next week's registrations, partner child-days, staff, cancellations, and camp capacity.",
-      "For Northstar Coding Academy, reconcile paid leads across Gmail, Calendar, Lead Director, Calimatic, and Google Ads; flag gaps."
+      "For Acme Learning Center, reconcile Acme.com partnership email invoices with accounting payments; cite every mismatch.",
+      "For Acme Learning Center, reconcile next week's registrations, partner child-days, staff, cancellations, and camp capacity.",
+      "For Acme Learning Center, reconcile paid leads across Gmail, Calendar, Lead Director, Calimatic, and Google Ads; flag gaps."
     ],
     "websiteURL": "https://dfsm.ai",
     "brandColor": "#061638",

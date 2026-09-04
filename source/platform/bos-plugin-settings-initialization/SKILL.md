@@ -12,6 +12,15 @@ organization, and then initializes server-owned, organization-scoped plugin
 configuration. It preserves healthy connections and confirmed settings and
 never treats local client values as authority.
 
+Treat the combined connection inventory and required canonical settings as the
+selected organization's **organization business profile**. This profile holds
+the organization's display-safe operating preferences, semantic service
+routing, automation choices, communication preferences, and other
+server-declared plugin configuration. The BOS service owns the profile schema,
+values, revisions, and applicability. Packaged skills consume effective
+server-returned settings and semantic operations; they never embed a customer
+or provider choice.
+
 Read [references/initialization-contract.md](references/initialization-contract.md)
 before running discovery or persisting initialization drafts.
 
@@ -45,7 +54,8 @@ before running discovery or persisting initialization drafts.
 5. Call `bos_list_plugin_services` with that selected `context_id`. Inspect
    every server-returned plugin-service row before querying the plugin-settings
    inventory. Follow **Connection readiness** below until every actionable
-   `connection_required` row is resolved. An explicit deferral returns
+   `connection_required` row for an enabled, selected service is resolved. An
+   explicit deferral returns
    `connection_required` and stops before the receipt or settings inventory.
 6. Read the local initialization receipt with
    `../bos-mcp-client/scripts/plugin-settings-cache.mjs`.
@@ -63,6 +73,9 @@ server's labels, connection-state vocabulary, action availability, and order.
 
 - Preserve `connected` rows and never reconnect them.
 - Record `not_required` rows as ready without prompting.
+- Treat each row's server-owned enablement, selection, applicability, and
+  connection state as authoritative. Preserve disabled, unselected, and
+  inapplicable services without opening their connection actions.
 - For each enabled `connection_required` row with `can_connect: true`, present
   exactly one **Connect** action. After the user selects it, call
   `bos_begin_plugin_service_connection` with the latest opaque `context_id`,
@@ -94,6 +107,16 @@ chat, package files, settings caches, or receipts.
 
 Preserve every confirmed canonical value. Select only required `unset`, invalid
 `partial`, or schema-migrated fields.
+
+Treat every required server-declared routing, automation, and communication
+preference as part of the organization business profile. Resolve choices only
+from the live settings profile, its allowlisted recommendation plan, the
+selected organization's service inventory, and explicit user corrections. When
+the profile offers several eligible services for one semantic operation, show
+the server-returned labels and current selection in the consolidated review.
+Never infer a provider from a package example, provider reputation, connection
+presence alone, or provider-specific wording in another skill. Connect only an
+enabled, selected service whose live row requires a connection.
 
 Resolve each server-declared recommendation source role from the validated
 local client settings. Launch bounded parallel research workers for independent
@@ -134,7 +157,11 @@ incomplete plugin, apply bounded recovery, retain the sanitized continuation,
 and resume remaining work later without repeating confirmed values or approvals.
 
 Report initialized values and unresolved items, then resume the pending user
-request automatically from confirmed cache state.
+request automatically from confirmed cache state. Summarize the completed
+organization business profile with the confirmed customer-facing identity,
+ready enabled services, preserved disabled or unselected services, and the
+server-declared preferences that affect workflows. Skills subsequently resolve
+those preferences through their semantic operation and current BOS context.
 
 Never write customer discoveries into package templates, managed skills, or
 generated clients. Never cache recommendation drafts as confirmed settings.

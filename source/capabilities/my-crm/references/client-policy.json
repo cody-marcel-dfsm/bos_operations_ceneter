@@ -1,30 +1,24 @@
 {
   "schema_version": "1",
-  "manifest_max_age_seconds": 300,
+  "discovery_contract_max_age_seconds": 300,
   "freshness_defaults_seconds": {
     "exact_record": 60,
     "pipeline_state": 120,
     "record_search": 300,
     "activity_timeline": 600
   },
-  "identity": {
-    "automatic_merged_view_key": "exact_normalized_email",
-    "supporting_evidence": [
-      "exact_normalized_phone"
-    ],
-    "keep_separate_on": [
-      "duplicate_candidate_within_source",
-      "conflicting_email",
-      "transitive_match"
-    ]
+  "merged_view": {
+    "resolution_owner": "server",
+    "preserve_source_provenance": true,
+    "preserve_match_confidence": true
   },
   "mutation": {
     "require_explicit_authoritative_source": true,
     "require_explicit_fields": true,
     "require_exact_targets": true,
     "require_user_confirmation": true,
-    "verification_reads_per_uncertain_source": 1,
-    "safe_replays_per_uncertain_source": 1,
+    "client_recovery_attempts": 0,
+    "follow_server_reconciliation_action": true,
     "terminal_uncertain_state": "user_action_required"
   }
 }

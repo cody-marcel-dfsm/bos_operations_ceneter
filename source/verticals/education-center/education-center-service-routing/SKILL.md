@@ -80,8 +80,12 @@ the Calimatic credential form remains absent.
 - Use `source_routes.care_com` for Care.com notices. When it is
   `connected_gmail`, use the normal Gmail connector and the exact
   `mailboxes.care_com` selector. The package default is BOS.
-- Use the configured calls, SMS, reviews, or outreach capability for that
-  channel.
+- For calls, SMS, reviews, outreach, and other configurable channels, request
+  the semantic operation and apply server-owned semantic service routing from
+  the organization business profile returned for the current context. Treat
+  current service selection, enablement, and readiness as authoritative. Never
+  choose or substitute routing from provider names or examples embedded in
+  package instructions.
 - Use `email-account-routing` when the user explicitly names a mailbox or asks
   for cross-account email work.
 
