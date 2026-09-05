@@ -112,6 +112,15 @@ is required to inspect its advertised resources.
    digest/version, role, plugin, authorization, context-expiry, or app-contract
    changes. Re-resolve the operation from the refreshed contract before retrying.
 
+A named-person lookup such as “find this lead,” “look up this contact,” or a
+lookup by email, phone, or a current record selector is an individual detail
+request. Select and read `my-crm-customer-journey` before presenting its result,
+even when the lookup uses a search operation. Determine presentation from user
+intent, independently of the tool name or response being an array. A successful
+single-person lookup must continue into the graph workflow in the same turn.
+Broad filtered lists retain list scope even when they happen to return one row;
+ambiguous person matches require disambiguation before selecting a graph.
+
 ## Lead/contact details and journey-position requests
 
 For any lead or contact detail request, including a single field or profile,

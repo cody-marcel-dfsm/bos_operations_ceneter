@@ -90,6 +90,15 @@ Use concise prose for a single fact or record unrelated to lead/contact details,
 a short draft, an error, or a result whose visual would add decoration without
 information.
 
+A named-person lookup such as “find this lead,” “look up this contact,” or a
+lookup by email, phone, or a current record selector is an individual detail
+request. Select and read `my-crm-customer-journey` before presenting its result,
+even when the lookup uses a search operation. Determine presentation from user
+intent, independently of the tool name or response being an array. A successful
+single-person lookup must continue into the graph workflow in the same turn.
+Broad filtered lists retain list scope even when they happen to return one row;
+ambiguous person matches require disambiguation before selecting a graph.
+
 ## Preferred forms
 
 - Schedule, trials, camps, and staff coverage: chronological timeline or
