@@ -107,6 +107,11 @@ prior verdict and requires a fresh Oracle review of the complete updated diff.
 
 Review the completed diff and focused validation evidence. Verify:
 
+- fulfillment of the user's requested deliverable, correct maintainer skill
+  routing, and evidence for server attribution; require completed client-owned
+  implementation, applicable source validation, and Oracle review before a
+  request for server work. Require the explicit **Server handoff** label and
+  distinguish pending deployed acceptance from completed source validation;
 - explicit tenant, organization, app, installation, role, and plugin scope;
 - application-neutral platform behavior and correct specialization ownership;
 - server prompts contain only requirements relevant to the requested server

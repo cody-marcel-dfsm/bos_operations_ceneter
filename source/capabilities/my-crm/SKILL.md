@@ -26,6 +26,17 @@ preserve verified details when graph evidence is partial or unavailable.
 The user need not ask for a journey or specify a goal. Follow explicit user
 format instructions and keep the request read-only.
 
+## Lead Director access patterns
+
+Use `my-crm-record-operations` for exact lookup, search, filtered lists,
+pagination, batch reads, and contract-supported create, update, or delete.
+Follow its access-pattern guidance to preserve the user's operation and scope,
+reuse valid current-context evidence, and select the live native or
+provider-neutral contract. Use `my-crm-customer-journey` for individual detail
+views and their exact current-node-to-goal paths. Lists retain list scope;
+graph discovery never becomes an unrelated mutation prerequisite. Keep writes
+subject to their authorization, confirmation, version, and receipt contracts.
+
 ## Route the request
 
 1. Identify the CRM entity and intent: records, pipeline, customer journey,

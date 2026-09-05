@@ -42,11 +42,15 @@ access denial never permits switching routes to evade it. Missing or ambiguous
 context, revoked grants, and explicit access denials stop the affected operation.
 Every operation retains request-time server authorization.
 
-For journey/detail requests, obtain any available graph/history/path evidence
-from live-described read operations. If only current-state facts are returned,
-render the labeled partial journey with that verified state and any requested
-goal, then the requested record details. Preserve unavailable topology as a
-limitation; invent no transitions, reachable paths, actions, or completion.
+For journey/detail requests, continue from the record read into graph, goal,
+and path discovery through live-described read operations. A current-state-only
+record result does not complete this sequence. Use `my-crm-customer-journey` to
+resolve the explicit or application-owned goal and obtain the exact node path.
+Only after supported discovery and relevant reads are exhausted or a specific
+failure prevents them, render the labeled partial journey with verified state,
+known goals, and requested details. Identify the failed or unavailable operation
+and unattempted dependent reads. This is an incomplete path result, with no
+invented transitions, reachability, actions, or completion.
 This rule authorizes no mutations, browser fallback, token extraction, or
 hardcoded endpoint. A missing per-app host facility alone must not suppress an
 independent successful authorized read or its partial graph presentation.
@@ -60,11 +64,28 @@ reachable next states, gates or blockers, pending events, and available next
 actions with source freshness. Keep contact information outside graph nodes.
 Read-only detail requests never authorize executing those actions.
 
-When no goal is requested, show the verified current node and relevant adjacent
-states and app-returned goals; do not choose a desired goal for the user or ask
-for one merely to display the profile. Request path planning only with inputs
-supported by the discovered contract. When the user supplies a goal, emphasize
-its verified path or blocker in the same graph.
+When no goal is requested, resolve the lead's app-returned desired goal, then
+an app-declared default goal, then the sole applicable goal from canonical goal
+metadata. These are application-owned selections. If several goals remain,
+show their exact paths as labeled alternatives without selecting one for the
+user. Ask only when a required path input cannot be resolved from the contract.
+Never assume enrollment or a positive goal from sales conventions. When the
+user supplies a goal, resolve it against the installed Graph and emphasize its
+exact path or blocker. An ambiguous explicit goal requires disambiguation.
+
+For both ordinary details and explicit journey requests, show the ordered path
+from the current node through every intermediate node to the resolved goal.
+Obtain goal metadata before path planning and use only contract-supported inputs.
+A current node plus a goal placeholder does not satisfy the path requirement.
+
+Distinguish graph structure, current transition eligibility, and observed lead
+history. Missing history, an empty available-actions list, or unverified goal
+attainment does not invalidate a verified structural path. Draw known graph
+edges and label their gates as satisfied, blocked, or unknown from app evidence;
+keep future nodes pending. When only topology is available, a route traced along
+its exact directed edges must be labeled **Structural path — eligibility
+unverified**. Never infer an edge or choose a shortest or preferred route without
+app evidence. Retain relevant alternative paths and protect against graph cycles.
 
 Resolve a contact-to-lead or contact-to-graph relationship from current
 application evidence. Never assume every contact is a lead or combine ambiguous
@@ -73,6 +94,23 @@ it. If no graph membership or current node can be verified, show the requested
 verified details and the precise missing graph evidence. If current state is
 known but topology is partial, use the partial-evidence presentation below.
 An explicit user request for a different format takes precedence.
+
+## Adapt the access pattern
+
+Resolve the requested lead through the least expensive supported read: exact
+server-issued selector, name or contact-field search, scoped filter, or a
+record selected from a previous current-context result. Reuse verified identity
+and graph evidence when its context and version remain valid. Search is needed
+only when identity is unresolved; ambiguity stops the affected record.
+
+The sequence below describes evidence dependencies. A single discovered read
+may supply record, graph, goal, and path evidence together; do not repeat reads
+already satisfied by valid evidence. Use additional supported operations only
+for missing evidence. Keep a list/search response scoped to the requested list;
+expand individual goal paths when the user requests record details or journeys.
+For several requested detail records, use supported batch reads or bounded
+pagination and keep each lead's graph membership and path distinct. The diagram
+is presentation of read evidence and never authorizes a CRUD mutation.
 
 ## Discover and resolve
 
@@ -85,17 +123,17 @@ An explicit user request for a different format takes precedence.
    services, installed plugins, external-evidence ownership, and
    machine-readable API contracts. Use returned operation names and endpoints;
    never embed a Lead Director URL or assume literal MCP tool names.
-3. Call the discovered lead-search API to resolve exactly one lead. Ask for one
+3. Use the discovered lead-search API when the lead is unresolved, or a
+   supported exact read for a valid server-issued selector. Ask for one
    disambiguating value when several authorized records remain.
 4. Call the discovered lead-journey API for the current graph node, exact
    transition history, pending gates, available actions, observation time, and
    provenance.
-5. Call the discovered path-planning API with read-only `graph.path.plan`
-   semantics for
-   reachable goal nodes and exact paths from the observed current node. Obtain
-   canonical goal classes from the discovered operation with
-   `graph.goals.list` semantics. Keep path planning separate from transition
-   execution.
+5. Obtain canonical goal metadata with discovered `graph.goals.list` semantics
+   and apply the goal resolution above. Call the discovered path-planning API
+   with read-only `graph.path.plan` semantics for exact paths from the observed
+   current node to those goals, including conditional routes and blockers.
+   Keep path planning separate from transition execution.
 6. When external evidence is necessary, inspect the discovered service owner.
    Use a Lead Director plugin/service API when it is nested under Lead Director.
    Query another app MCP independently only when the BOS app directory identifies
@@ -136,8 +174,9 @@ order, prior screenshots, or sales conventions.
 
 ## Partial evidence presentation
 
-When authorized reads have already verified a record's current state but full
-graph topology or path results are unavailable, render a **Partial journey —
+After the discovery and read sequence has failed to obtain either a verified
+structural route or a path result, and authorized reads have verified the
+record's current state, render a **Partial journey —
 verified milestones only** diagram on the first response. This presentation
 uses evidence already obtained through an authorized workflow; it grants no
 alternate endpoint or authentication bypass. The Current-host read execution
@@ -147,8 +186,11 @@ missing. With no verified current state, report the failure without a fabricated
 journey.
 
 Show the verified current state. When the user requests a goal, show it as a
-distinct node; when no goal was requested, omit the requested-goal placeholder.
-Label the goal **Requested goal — attainment unverified** unless verified.
+distinct node. Include any verified application-owned goals even when none was
+requested; omit a goal placeholder only when no goal can be resolved.
+Label an explicit goal **Requested goal — attainment unverified** and an
+application-selected goal **Graph goal — attainment unverified** unless attainment
+is verified.
 Place confirmed dated milestones in their observed chronology; label timeline
 links **Recorded chronology**, never as completed graph transitions. Use a
 non-directional dotted connector labeled **Progression unverified** between
@@ -167,13 +209,32 @@ lead/path API results. Use no local HTML, browser renderer, attachment, or
 external visualization service. Keep node labels concise and exclude contact
 details, raw record identifiers, private notes, and authority values.
 
-Place the person's verified current node and the requested goal prominently
-in the same diagram. Emphasize the app-returned route between them and show
+Place the person's verified current node and the resolved goal prominently
+in the same diagram. Include every intermediate node on the verified route and show
 relevant branches and gates. Completed history requires observed transition
 evidence; future or eligible steps remain distinct from completed steps.
 If the goal is unreachable, show that goal and the app-returned blocker without
-drawing an invented connecting edge. If goal resolution is ambiguous, ask for
-the intended goal rather than choosing one silently.
+drawing an invented connecting edge. Disambiguate an explicit goal when needed;
+for multiple application goals, show the labeled alternatives described above.
+
+Compose a clear visual hierarchy: place verified completed history before the
+current node, the remaining exact path across the center, and the goal at the
+right. Each state is its own graph node. Keep the primary route visually
+prominent, arrange alternatives as secondary branches, and label transitions
+with concise app-owned action or gate text. Retain exact state labels; use short
+line breaks for status annotations. Keep dates, long evidence, and contact
+fields in the supporting details instead of crowding nodes. Use compact legends
+and enough whitespace for the route to read at a glance. For wide or branching
+graphs, split into labeled goal-path diagrams sharing the same current node;
+retain every intermediate state and relevant gate. Use plain Mermaid syntax
+supported by the host and an immediate readable text path.
+
+A known structural transition is drawn even when eligibility is unknown; label
+it accordingly. Use dashed edges for conditional or blocked transitions only
+when those edges exist in the Graph. An unknown connection remains the explicit
+partial-evidence connector. Visual styling must never imply that a pending
+transition has happened. Do not classify a known later node as completed from
+its position in the diagram.
 
 Apply direct text labels plus these high-contrast status styles:
 
