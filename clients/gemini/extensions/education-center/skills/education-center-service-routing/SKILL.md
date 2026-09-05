@@ -62,9 +62,9 @@ authorization, and exact tenant scope.
 For the first operational request, follow `bos-mcp-client` live tool discovery
 and call `bos_get_context` as soon as it is callable. Complete the required
 scope and initialization preflights, then resume the requested read without
-waiting for a second prompt. A request for one person's status in a journey or
-progress toward enrollment also requires `my-crm-customer-journey` from the BOS
-foundation. Include a native visual with current position and the requested
+waiting for a second prompt. Any lead or contact detail request, including a
+single field or profile, and any request for progress toward enrollment requires `my-crm-customer-journey` from the BOS
+foundation. Include a native visual with current position and any requested
 goal, using its partial-evidence presentation when topology is unavailable.
 
 Load `config/customer-settings.template.json` from the installed

@@ -18,6 +18,14 @@ their integrations, and returns source-attributed results. Treat every returned
 source through the same contract. Never select an underlying provider tool,
 construct a provider routing table, or fan out one client call per source.
 
+For any lead or contact detail request, invoke `my-crm-customer-journey` as
+part of the read and present its rich graph view by default, including for a
+single requested field. Return that field and relevant profile details below
+the graph. Resolve contact graph membership from application evidence and
+preserve verified details when graph evidence is partial or unavailable.
+The user need not ask for a journey or specify a goal. Follow explicit user
+format instructions and keep the request read-only.
+
 ## Route the request
 
 1. Identify the CRM entity and intent: records, pipeline, customer journey,

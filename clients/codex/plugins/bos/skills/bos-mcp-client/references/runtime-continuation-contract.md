@@ -12,6 +12,14 @@ and discovery retry after failure, preserve the exact failure evidence, and
 resume the original request automatically when tools become callable. Inspect
 package installation only after live discovery establishes a connection problem.
 
+For app discovery, continue after context with resource listing and reading on
+that same authenticated connection using `bos-app-discovery`. Tool discovery
+and resource discovery are distinct. Read the advertised manifest/directory
+before checking later app-query or API host requirements. Preserve successful
+resource reads when an optional resource-template method is unsupported.
+Classify failures at the operation actually reached and keep later unattempted
+operations distinct from observed failures.
+
 ## Refresh triggers
 
 Refresh the callable manifest immediately after:

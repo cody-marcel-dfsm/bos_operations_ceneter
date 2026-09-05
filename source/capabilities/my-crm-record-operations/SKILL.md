@@ -9,6 +9,14 @@ Use `my-crm` for routing and the authenticated BOS MCP connection for
 authentication and installed-app discovery. Lead Director's discovered CRM
 service owns each business operation and source execution.
 
+For any lead or contact detail request, invoke `my-crm-customer-journey` as
+part of the read and present its rich graph view by default, including for a
+single requested field. Return that field and relevant profile details below
+the graph. Resolve contact graph membership from application evidence and
+preserve verified details when graph evidence is partial or unavailable.
+The user need not ask for a journey or specify a goal. Follow explicit user
+format instructions and keep the request read-only.
+
 ## Reads
 
 1. Discover the app-owned provider-neutral CRM record operation and compile one

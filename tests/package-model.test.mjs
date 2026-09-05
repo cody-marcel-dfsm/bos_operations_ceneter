@@ -141,6 +141,33 @@ test("BOS packages ship GPT-owned per-app discovery on every client", async () =
   }
 });
 
+test("app discovery reads BOS resources before diagnosing host capability absence", async () => {
+  const paths = [
+    `${root}/source/platform/bos-app-discovery/SKILL.md`,
+    ...["codex/plugins", "claude/plugins", "copilot/products", "gemini/extensions"].map(
+      (client) => `${root}/clients/${client}/bos/skills/bos-app-discovery/SKILL.md`
+    )
+  ];
+  for (const path of paths) {
+    const guidance = await readFile(path, "utf8");
+    assert.match(guidance, /list_mcp_resources/);
+    assert.match(guidance, /read_mcp_resource/);
+    assert.match(guidance, /resources\/templates\/list[\s\S]*Method not found[\s\S]*continue/i);
+    assert.match(guidance, /directoryUri/);
+    assert.match(guidance, /pagination/i);
+    assert.match(guidance, /Do not gate BOS resource discovery on dynamic MCP attachment/i);
+    assert.match(guidance, /failed operation[\s\S]*observed result[\s\S]*unattempted/i);
+    assert.doesNotMatch(guidance, /Query the BOS MCP operation whose current descriptor/);
+  }
+  for (const path of [
+    "source/platform/bos-mcp-client/SKILL.md",
+    "source/capabilities/my-crm-customer-journey/SKILL.md"
+  ]) {
+    assert.match(await readFile(`${root}/${path}`, "utf8"), /resource discovery/);
+    assert.match(await readFile(`${root}/${path}`, "utf8"), /bos_get_context[\s\S]*alone/i);
+  }
+});
+
 test("Education Center packages include customer-neutral settings defaults", async () => {
   for (const path of [
     `${root}/clients/codex/plugins/education-center/config/customer-settings.template.json`,
@@ -2581,4 +2608,26 @@ test("active BOS distributes the customer journey graph workflow", async () => {
   }
   const myCrm = (await listProducts()).find(({ manifest }) => manifest.name === "my-crm").manifest;
   assert.equal(myCrm.release_status, "disabled");
+});
+
+
+test("lead and contact detail requests default to graph presentation", async () => {
+  for (const file of [
+    "source/capabilities/my-crm-customer-journey/SKILL.md",
+    "source/capabilities/my-crm/SKILL.md",
+    "source/capabilities/my-crm-record-operations/SKILL.md",
+    "source/platform/bos-app-discovery/SKILL.md",
+    "source/platform/bos-visual-output/SKILL.md",
+    "source/verticals/education-center/education-center-service-routing/SKILL.md"
+  ]) {
+    const text = await readFile(`${root}/${file}`, "utf8");
+    assert.match(text, /any lead or contact detail request/i, file);
+    assert.match(text, /my-crm-customer-journey/);
+  }
+  const journey = await readFile(`${root}/source/capabilities/my-crm-customer-journey/SKILL.md`, "utf8");
+  assert.match(journey, /When no goal is requested/);
+  assert.match(journey, /contact-to-lead[\s\S]*ambiguous/);
+  assert.match(journey, /requested fields[\s\S]*below the graph/);
+  const visual = await readFile(`${root}/source/platform/bos-visual-output/SKILL.md`, "utf8");
+  assert.doesNotMatch(visual, /one record outside journey-position work/);
 });

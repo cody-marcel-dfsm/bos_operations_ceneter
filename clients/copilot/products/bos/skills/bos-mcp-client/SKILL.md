@@ -23,6 +23,12 @@ package.
 
 ## Target per-app discovery migration
 
+For app-directory requests, `bos_get_context` alone completes only context
+selection. Continue with `bos-app-discovery` resource discovery on the existing
+authenticated BOS connection. Inspect the host's MCP resource listing and
+reading facilities even when no directory tool appears in the callable catalog.
+Read the advertised directory before evaluating downstream app transport needs.
+
 When the BOS MCP advertises an authenticated installed-app directory and
 per-app MCP contacts, invoke `bos-app-discovery` for domain requests. BOS remains
 the identity and app-discovery root. GPT selects the app, queries its returned
