@@ -5,6 +5,31 @@ description: Operate the shared BOS MCP connection, including server-evaluated s
 
 # BOS MCP Client
 
+## First action: resolve the callable BOS tool
+
+Before installation inspection, resource listing, or connection UI work, resolve
+and invoke `bos_get_context` through the host's tool facilities. In Codex, when
+`functions.exec` exposes `ALL_TOOLS`, search that inventory for the exact
+`bos_get_context` descriptor, read its declared schema, and invoke its exact
+advertised name through `tools` in that runtime. Use a dedicated tool-search
+facility instead when the host advertises one. An operation exposed inside an
+orchestration runtime is callable even when absent from the initial tool list.
+
+For the inventory lookup in a host that advertises this runtime:
+
+```javascript
+text(ALL_TOOLS.filter(entry => /(?:^|__)bos_get_context$/.test(entry.name)));
+```
+
+Then invoke the discovered callable with its declared arguments. Never invent a
+namespace or tool name. An empty MCP resource list is not a tool inventory and
+cannot establish that BOS tools are absent. A UI access denial does not establish
+a tool or authentication failure; never use computer UI to bypass host blocks.
+If the callable inventory is empty, use one advertised refresh/recovery facility
+and inspect it once more. Report the actual facilities inspected and results;
+keep missing discovery facilities distinct from missing BOS authentication.
+A successful context call immediately resumes the original operation.
+
 Use this skill for every client-side BOS operation. The root BOS plugin owns one
 remote MCP resource and one host-managed OAuth connection for the user-facing
 client context. A Claude account or organization Web connector declares that
@@ -21,7 +46,60 @@ provider, and tool scope from the validated grant and canonical server state on
 every private operation. Never route platform BOS work through a subservice
 package.
 
-## Target per-app discovery migration
+## Current-host read execution
+
+Use the current authenticated BOS capabilities for the requested operation.
+After selecting the organization and role through `bos_get_context`, resolve a
+live-discovered read operation whose descriptor covers the requested data.
+Invoke its exact schema with the selected opaque context and continue from the
+returned evidence. For an advertised app MCP or API, use its contract when the
+host can execute it with the required authentication. Select the supported
+operation from current evidence; do not impose a preferred future transport or
+require a second connection for an already callable authorized BOS operation.
+
+All supported operations belong to one current operating contract. Discover
+names and arguments from the live catalog; never invent endpoints or selectors.
+Directory or transport limitations remain scoped to that operation. An
+access denial never permits switching routes to evade it. Missing or ambiguous
+context, revoked grants, and explicit access denials stop the affected operation.
+Every operation retains request-time server authorization.
+
+For journey/detail requests, obtain any available graph/history/path evidence
+from live-described read operations. If only current-state facts are returned,
+render the labeled partial journey with that verified state and any requested
+goal, then the requested record details. Preserve unavailable topology as a
+limitation; invent no transitions, reachable paths, actions, or completion.
+This rule authorizes no mutations, browser fallback, token extraction, or
+hardcoded endpoint. A missing per-app host facility alone must not suppress an
+independent successful authorized read or its partial graph presentation.
+
+## Lead creation source and result contract
+
+For a requested lead creation, resolve the source pair from current
+server-returned source metadata in the selected context, matched to the user's
+requested application. Use a source inventory or a contract-declared source
+selector; source provenance from an authorized read identifies a source only,
+not write permission. The create operation must authorize that source again.
+Never manufacture `source_type` or `source_identity` from the person's email,
+phone, name, a role/context hint, or the word “manual.” If the live contract
+requires an undiscoverable source selector, report that exact contract gap.
+
+Check for duplicates with the supplied identity fields before creating. Reuse
+the original idempotency key while reconciling a failed or uncertain request;
+never replay an uncertain create under a fresh key. For a definitive rejected
+selector, correct it only from current server evidence within the same requested
+application and authority. A genuine access denial never authorizes another route.
+
+Inspect structured results before reporting success. `isError: false` or a
+message saying the operation completed is insufficient: require the requested
+create to be present in `succeeded` with no corresponding failure. A result with
+`complete: false`, an empty success list, or `source_mutation_failed` is a failed
+or partial operation. Preserve the exact per-source error, reconcile uncertain
+outcomes with a read, and never claim that the lead was created. After success,
+read the new record and present its verified details and graph position through
+`my-crm-customer-journey`.
+
+## Current application discovery
 
 For app-directory requests, `bos_get_context` alone completes only context
 selection. Continue with `bos-app-discovery` resource discovery on the existing
@@ -35,11 +113,10 @@ the identity and app-discovery root. GPT selects the app, queries its returned
 MCP contact, reads its graph and service contracts, invokes the discovered
 deterministic HTTPS API, and composes the answer.
 
-Treat the current BOS domain-tool surface as migration compatibility state.
-Never use a compatibility alias as the target implementation when the selected
-app contact and required host capabilities are available. Keep app endpoints,
-graph identities, service names, and API operation names out of static client
-configuration and resolve them from current authenticated discovery.
+Use current server-returned operations and app contracts through their supported
+transport. Keep app endpoints, graph identities, service names, and API operation
+names out of static configuration. Capability discovery supplies the current
+execution contract and never grants authority.
 
 Developer and operator work is outside this skill when the request explicitly
 targets BOS source code, deployment infrastructure, Cloud Run, GCP Secret
@@ -113,9 +190,11 @@ stateful mutation workflow.
   Preserve the original request and resume automatically after recovery; the
   user should not need to ask for rediscovery. Package-file inspection and
   desktop UI automation do not establish whether live tools are callable.
-- If BOS is absent from the callable tool manifest, inspect the active client's
-  BOS plugin and runtime binding immediately. Repair or reinstall BOS and
-  restore its declared authorization connection. For Codex, verify the root
+- Inspect the active client's BOS plugin and runtime binding only after the
+  first-action callable discovery procedure has run and its observed results
+  establish a binding problem. Repair a confirmed binding defect through the
+  host's supported controls. Do not reinstall or open connection UI solely from
+  an empty resource list or initial tool list. For Codex, verify the root
   BOS plugin declares `mcpServers: "./.mcp.json"`, the MCP file contains exactly
   one remote HTTP `platform` entry at the product-owned BOS resource, and no
   `.app.json` exists. For Claude,

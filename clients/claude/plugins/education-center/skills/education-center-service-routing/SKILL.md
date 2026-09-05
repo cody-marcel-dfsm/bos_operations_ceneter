@@ -76,6 +76,32 @@ configuration-required result when a required effective setting is absent,
 then invoke `education-center-customer-initialization` to derive safe client-visible values
 and ask the user for the unresolved remainder.
 
+## Lead creation source and result contract
+
+For a requested lead creation, resolve the source pair from current
+server-returned source metadata in the selected context, matched to the user's
+requested application. Use a source inventory or a contract-declared source
+selector; source provenance from an authorized read identifies a source only,
+not write permission. The create operation must authorize that source again.
+Never manufacture `source_type` or `source_identity` from the person's email,
+phone, name, a role/context hint, or the word “manual.” If the live contract
+requires an undiscoverable source selector, report that exact contract gap.
+
+Check for duplicates with the supplied identity fields before creating. Reuse
+the original idempotency key while reconciling a failed or uncertain request;
+never replay an uncertain create under a fresh key. For a definitive rejected
+selector, correct it only from current server evidence within the same requested
+application and authority. A genuine access denial never authorizes another route.
+
+Inspect structured results before reporting success. `isError: false` or a
+message saying the operation completed is insufficient: require the requested
+create to be present in `succeeded` with no corresponding failure. A result with
+`complete: false`, an empty success list, or `source_mutation_failed` is a failed
+or partial operation. Preserve the exact per-source error, reconcile uncertain
+outcomes with a read, and never claim that the lead was created. After success,
+read the new record and present its verified details and graph position through
+`my-crm-customer-journey`.
+
 ## Tenant terminology
 
 Resolve the customer-facing brand from `brand_display_name`. When the active

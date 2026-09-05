@@ -91,5 +91,7 @@ establish an absent facility from the current host inventory. Preserve actual
 server error types, completed reads, recovery evidence, and unattempted steps.
 When either capability is demonstrably unavailable, return `host_capability_unavailable`
 with the missing capability, selected app display identity, contract version,
-and a sanitized continuation reference. Keep the operation pending. A central
-BOS domain alias, browser, or copied endpoint does not satisfy this state.
+and a sanitized continuation reference for the per-app operation. Apply the
+Current-host read execution rule in `../SKILL.md` to independently authorized
+authenticated reads. Preserve a partial result when those reads succeed.
+Browser or copied-endpoint work never repairs this state.

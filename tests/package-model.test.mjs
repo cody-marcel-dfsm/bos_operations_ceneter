@@ -781,7 +781,7 @@ test("application runtime packages ship agent-owned MCP lifecycle recovery", asy
     assert.match(guidance, /sanitized continuation envelope/i);
     assert.match(guidance, /same-task session/i);
     assert.match(guidance, /reconcile by[\s\S]*idempotency identifier/i);
-    assert.match(guidance, /If BOS is absent from the callable tool manifest/i);
+    assert.match(guidance, /first-action callable discovery procedure has run[\s\S]*establish a binding problem/i);
     assert.match(guidance, /Do not stop at\s+diagnosing client registration/i);
     assert.match(guidance, /invalid_client/i);
     assert.match(guidance, /stale host-owned public-client registration/i);
@@ -1445,7 +1445,7 @@ test("BOS marketplace metadata explains the platform and links to its website", 
   assert.match(bos.long_description, /discovers its authorized installed applications/);
   assert.match(bos.long_description, /server-returned app contacts and contracts/);
   assert.doesNotMatch(bos.long_description, /static (?:registry|operation|tool|schema|catalog)/i);
-  assert.match(bos.long_description, /domain-tool gateway remains migration compatibility state/);
+  assert.match(bos.long_description, /current authenticated BOS capabilities/);
   assert.equal(bos.website_url, "https://dfsm.ai");
   assert.equal(bos.brand_color, "#061638");
   assert.equal(bos.composer_icon, "assets/bos-logo.png");
@@ -2317,8 +2317,9 @@ test("README routes customer, development, and credential-free release validatio
     installSection,
     /EDUCATION_CENTER_BOS_API_KEY|EDUCATION_CENTER_SMOKE_TIME_ZONE/
   );
-  assert.match(developmentSection, /codex plugin marketplace add \.\//);
-  assert.match(developmentSection, /claude plugin marketplace add \.\//);
+  assert.match(developmentSection, /codex plugin marketplace add https:\/\/github.com/);
+  assert.match(developmentSection, /published Git marketplace/);
+  assert.doesNotMatch(developmentSection, /plugin marketplace add \.\/|npm run dev:link:codex/);
   assert.match(releaseSection, /npm run release:check/);
   assert.match(releaseSection, /credential-free and local/i);
   assert.match(releaseSection, /creates no ZIPs, tarballs, customer archives/i);
@@ -2630,4 +2631,39 @@ test("lead and contact detail requests default to graph presentation", async () 
   assert.match(journey, /requested fields[\s\S]*below the graph/);
   const visual = await readFile(`${root}/source/platform/bos-visual-output/SKILL.md`, "utf8");
   assert.doesNotMatch(visual, /one record outside journey-position work/);
+});
+
+
+test("journey reads use the current authenticated operating contract", async () => {
+  for (const file of ["source/platform/bos-app-discovery/SKILL.md", "source/capabilities/my-crm-customer-journey/SKILL.md", "source/platform/bos-mcp-client/SKILL.md"]) {
+    const guidance = await readFile(`${root}/${file}`, "utf8");
+    assert.match(guidance, /## Current-host read execution/);
+    assert.match(guidance, /live-discovered[\s\S]*read/);
+    assert.match(guidance, /denial[\s\S]*never/);
+    assert.match(guidance, /partial/);
+  }
+  const journey = await readFile(`${root}/source/capabilities/my-crm-customer-journey/SKILL.md`, "utf8");
+  assert.doesNotMatch(journey, /Use discovered deterministic HTTPS APIs for every business read/);
+  assert.doesNotMatch(journey, /or central compatibility alias for this journey workflow/);
+});
+
+
+test("lead creation uses server source selectors and structured success", async () => {
+  const guidance = await readFile(`${root}/source/platform/bos-mcp-client/SKILL.md`, "utf8");
+  assert.match(guidance, /Never manufacture `source_type` or `source_identity`/);
+  assert.match(guidance, /idempotency key/);
+  assert.match(guidance, /`complete: false`[\s\S]*`source_mutation_failed`/);
+  assert.match(guidance, /current operating contract/);
+  assert.doesNotMatch(guidance, /host cutover|migration compatibility|compatibility read/);
+});
+
+
+test("BOS bootstraps callable tools before resource or UI diagnostics", async () => {
+  const s = await readFile(`${root}/source/platform/bos-mcp-client/SKILL.md`, "utf8");
+  assert.match(s, /## First action: resolve the callable BOS tool/);
+  assert(s.indexOf("## First action:") < s.indexOf("## Current-host"));
+  assert.match(s, /ALL_TOOLS/);
+  assert.match(s, /resource list is not a tool inventory/);
+  assert.doesNotMatch(s, /BOS plugin and runtime binding immediately/);
+  assert.match(s, /UI access denial does not establish/);
 });
