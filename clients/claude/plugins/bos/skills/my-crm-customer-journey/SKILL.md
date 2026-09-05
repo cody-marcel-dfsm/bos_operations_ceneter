@@ -1,6 +1,6 @@
 ---
 name: my-crm-customer-journey
-description: Discover and show an authorized Lead Director customer's exact installed sales graph, current lead node, transition history, reachable goals, paths, gates, blockers, and available next steps. Use for sales-flow, enrollment-progress, lifecycle, graph-position, and journey-path questions.
+description: Discover and show an authorized Lead Director customer's exact installed sales graph, current lead node, transition history, reachable goals, paths, gates, blockers, and available next steps. Use for any lead or contact detail request, including a single field, profile, status, sales-flow, enrollment-progress, lifecycle, graph-position, and journey-path question.
 ---
 
 
@@ -34,12 +34,42 @@ deterministic HTTPS invocation. Read [the Lead Director journey
 contract](references/journey-graph-contract.md) before discovery or rendering.
 
 This workflow ships with the active BOS foundation and is usable independently
-of the My CRM product. A request for one person's journey status or progress
-toward a goal selects this workflow even when the user does not say “graph.”
+of the My CRM product. Any lead or contact detail request selects this workflow, including a single
+field such as an email address, phone number, owner, appointment, or status.
+The user does not need to say “journey” or “graph.”
 
 Start with `bos-mcp-client` live discovery and `bos_get_context` on the original
 request. Resolve deferred tools through the host's discovery facility before
 reporting them missing. Resume this workflow automatically after recovery.
+`bos_get_context` alone does not perform app discovery. Execute the
+`bos-app-discovery` resource discovery procedure on the existing authenticated
+BOS connection and read the advertised directory in this same request. Continue
+from each successful read; evaluate app-query and API capabilities only when
+their steps are reached. An absent journey tool in the initial catalog supplies
+no evidence that BOS resource discovery is unavailable.
+
+## Rich record view by default
+
+For any lead or contact detail request, lead with the person's place in the
+application-owned graph, then provide the requested fields and relevant profile
+facts below the graph. Include verified current position, completed history,
+reachable next states, gates or blockers, pending events, and available next
+actions with source freshness. Keep contact information outside graph nodes.
+Read-only detail requests never authorize executing those actions.
+
+When no goal is requested, show the verified current node and relevant adjacent
+states and app-returned goals; do not choose a desired goal for the user or ask
+for one merely to display the profile. Request path planning only with inputs
+supported by the discovered contract. When the user supplies a goal, emphasize
+its verified path or blocker in the same graph.
+
+Resolve a contact-to-lead or contact-to-graph relationship from current
+application evidence. Never assume every contact is a lead or combine ambiguous
+matches. Ask for disambiguation only when identity or graph membership requires
+it. If no graph membership or current node can be verified, show the requested
+verified details and the precise missing graph evidence. If current state is
+known but topology is partial, use the partial-evidence presentation below.
+An explicit user request for a different format takes precedence.
 
 ## Discover and resolve
 
@@ -73,9 +103,11 @@ short-lived audience-bound authentication and opaque app context through the
 host credential boundary. Supply only contract-declared arguments and reject
 stale versions, cross-context state, malformed contracts, and typed denials.
 
-When the host cannot query the returned app MCP or invoke its authenticated
-HTTPS API, return `host_capability_unavailable`, name the missing host
-capability, and preserve the request. Use no browser automation, DOM inspection,
+Apply `bos-app-discovery` evidence-based failure classification at the actual
+failed step. Report completed reads, the observed failure or verified absent
+host facility, and later unattempted steps. Preserve server error types and the
+pending request; a context-only trace never establishes missing app discovery.
+Use no browser automation, DOM inspection,
 cached selector, raw authority identifier, hardcoded endpoint, BOS-side domain
 routing, or central compatibility alias for this journey workflow.
 
@@ -110,7 +142,8 @@ any typed discovery or provider failure and state which graph evidence is
 missing. With no verified current state, report the failure without a fabricated
 journey.
 
-Show the verified current state and the user's requested goal as distinct nodes.
+Show the verified current state. When the user requests a goal, show it as a
+distinct node; when no goal was requested, omit the requested-goal placeholder.
 Label the goal **Requested goal — attainment unverified** unless verified.
 Place confirmed dated milestones in their observed chronology; label timeline
 links **Recorded chronology**, never as completed graph transitions. Use a

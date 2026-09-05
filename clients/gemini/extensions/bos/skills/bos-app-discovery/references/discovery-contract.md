@@ -2,6 +2,14 @@
 
 ## BOS discovery root
 
+Discover and read advertised MCP resources on the existing authenticated BOS
+connection before evaluating downstream host capabilities. Use the current
+resource inventory, follow pagination, and read the returned discovery manifest
+and its advertised directory URI. A directory may be exposed as a resource or
+a live-described tool. Tool catalog absence is insufficient evidence of missing
+resource discovery. Optional resource-template method failure does not block
+listed resource reads. Follow the concrete host procedure in `../SKILL.md`.
+
 The BOS MCP returns the current authenticated organization context and an
 authorized installed-app directory. Each app contact contains:
 
@@ -77,7 +85,11 @@ The target workflow requires two host capabilities after BOS discovery:
 2. invoke a discovered HTTPS API with host-managed audience-bound
    authentication and the opaque app context.
 
-When either capability is unavailable, return `host_capability_unavailable`
+Evaluate each capability only when its step is reached after BOS directory
+discovery and contact validation. Attempt an available supported facility;
+establish an absent facility from the current host inventory. Preserve actual
+server error types, completed reads, recovery evidence, and unattempted steps.
+When either capability is demonstrably unavailable, return `host_capability_unavailable`
 with the missing capability, selected app display identity, contract version,
 and a sanitized continuation reference. Keep the operation pending. A central
 BOS domain alias, browser, or copied endpoint does not satisfy this state.

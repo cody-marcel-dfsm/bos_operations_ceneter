@@ -40,17 +40,22 @@ When one of these conditions is present, deliver an actual chart, timeline,
 Mermaid diagram, map, image, or inline visualization. A Markdown table with
 emoji or status icons does not satisfy this requirement by itself.
 
-For a person's journey position relative to a goal, invoke the installed
+For any lead or contact detail request, including a single requested field,
+profile, or status, invoke the installed
 `my-crm-customer-journey` skill and lead with its native graph, including for
 one record. A stage label, detail table, or history list alone is incomplete.
-Keep the current node, requested goal, verified connecting paths, and known
+Keep the current node, any requested goal, verified connecting paths, and known
 gates or blockers visible on the diagram. Obtain application-owned graph and
 path evidence before drawing transitions; explicitly report unavailable graph
 evidence without inventing a path. When independently verified current-state
 facts are available, use the journey skill's labeled partial-evidence diagram
 on the first response; keep unknown progression explicit.
 
-Use concise prose for a single fact, one record outside journey-position work,
+Return requested fields and relevant profile details below the graph. A goal
+is optional; show current position and verified adjacent states when none was
+requested. Honor an explicit user format preference.
+
+Use concise prose for a single fact or record unrelated to lead/contact details,
 a short draft, an error, or a result whose visual would add decoration without
 information.
 

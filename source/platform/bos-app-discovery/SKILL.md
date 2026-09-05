@@ -13,15 +13,47 @@ services, goals, and machine-readable API contracts.
 Read [the discovery contract](references/discovery-contract.md) before the first
 app-directory or per-app MCP query in a request.
 
+## Execute BOS resource discovery
+
+After `bos_get_context` selects the organization, perform resource discovery
+through the existing authenticated BOS connection in the same request. Context
+alone does not inspect the app directory. Do not gate BOS resource discovery on dynamic MCP attachment
+or authenticated API invocation capabilities needed at later steps.
+
+1. Use the host's MCP resource listing facility for the configured BOS server.
+   In Codex, use `list_mcp_resources` with that server's configured name, then
+   `read_mcp_resource` with the exact server and URI returned by the listing.
+   These host facilities are separate from the BOS callable-tool catalog;
+   an absent directory tool does not establish absent resource discovery.
+2. Follow resource-list pagination when needed to locate the advertised
+   discovery manifest or installed-app directory. Read that resource. If the
+   manifest advertises `directoryUri`, follow the exact returned URI through
+   a supported resource read; when the host requires a listed URI, locate it
+   in the resource inventory first. Never construct a directory or app URI.
+3. Use resource templates only when discovery requires them and the host
+   exposes that facility. A `resources/templates/list` response of
+   `Method not found` means that optional method is unsupported; continue
+   with listed resources and supported reads. It does not invalidate a
+   successful resource list or read.
+4. Resolve the directory's advertised scope and version, retain only contacts
+   for the selected organization, validate the selected contact, and continue
+   the app discovery workflow immediately. Treat directory metadata as
+   discovery evidence; it never authorizes cross-organization business reads.
+
+When discovery is advertised as a tool, use its live descriptor and schema.
+An empty tool search must still proceed to the available resource facilities.
+Keep resource reads on the existing BOS connection; no new connection or login
+is required to inspect its advertised resources.
+
 ## App discovery workflow
 
 1. Use `bos-mcp-client` to authenticate and select exactly one organization
    through the explicit request, validated default organization, or sole
    authorized organization. Preserve only the opaque server-issued context.
-2. Query the BOS MCP operation whose current descriptor advertises authenticated
-   installed-app-directory semantics. Validate every returned app contact before
-   using it. BOS identifies available apps; GPT shortlists apps from their
-   returned descriptions and the user's intent.
+2. Execute BOS resource discovery above, or the live advertised directory tool,
+   and read the authenticated installed-app directory. Validate every returned
+   app contact before using it. BOS identifies available apps; GPT shortlists
+   apps from their returned descriptions and the user's intent.
 3. Query each selected app MCP through the exact contact returned for this
    request. Discover its semantic equivalents of `app.describe`,
    `graph.describe`, `services.list`, `plugins.list`, `service.describe`, and
@@ -44,12 +76,13 @@ app-directory or per-app MCP query in a request.
    digest/version, role, plugin, authorization, context-expiry, or app-contract
    changes. Re-resolve the operation from the refreshed contract before retrying.
 
-## Journey-position requests
+## Lead/contact details and journey-position requests
 
-For a lead or customer's position in a journey, enrollment progress, or path to
-a goal, use the installed `my-crm-customer-journey` workflow after selecting
+For any lead or contact detail request, including a single field or profile,
+and for a customer's journey position or progress, use the installed
+`my-crm-customer-journey` workflow after selecting
 the owning app. Discover graph, journey, and read-only path evidence before
-rendering. Lead with a native graph marking the current node and requested
+rendering. Lead with a native graph marking the current node and any requested
 goal; keep record details below it. A single-record request still requires
 the journey visual. Retain typed failures when graph evidence is unavailable.
 
@@ -74,9 +107,22 @@ Return the most specific typed state available, including
 `provider_recovery_required`, or `partial_result`. Preserve completed independent
 reads when another app fails.
 
-When the host cannot attach or query the returned app MCP, or cannot make the
-contract-bound authenticated HTTPS call, return `host_capability_unavailable`
-with the missing capability and preserve the pending request. Use no browser,
+Diagnose failure at the step actually reached. Record the failed operation,
+observed result, supported recovery attempted, and which later steps remain
+unattempted. A successful context call alone or a missing domain tool name
+cannot justify `host_capability_unavailable` for app discovery. A malformed
+contact is `app_contact_invalid`; preserve a server-returned denial or error
+instead of relabeling it as a host limitation.
+
+After reading and validating the directory, query the returned app contact
+through the host's available supported facility and continue contract discovery
+and API reads. If the required facility is absent, establish that from the
+current host capability inventory; if it exists, attempt the operation and
+apply supported bounded recovery before diagnosing failure. Return
+`host_capability_unavailable` only for that evidenced missing host operation,
+identify the completed discovery steps, and preserve the pending request.
+Never describe a later unattempted API as a failed server capability or demand
+a server change from a host limitation. Use no browser,
 web interface, DOM inspection, cached selector, hardcoded app endpoint, BOS-side
 domain route, or central gateway alias as a substitute for this target workflow.
 
