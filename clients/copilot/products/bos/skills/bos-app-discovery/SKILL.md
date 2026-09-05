@@ -60,11 +60,15 @@ access denial never permits switching routes to evade it. Missing or ambiguous
 context, revoked grants, and explicit access denials stop the affected operation.
 Every operation retains request-time server authorization.
 
-For journey/detail requests, obtain any available graph/history/path evidence
-from live-described read operations. If only current-state facts are returned,
-render the labeled partial journey with that verified state and any requested
-goal, then the requested record details. Preserve unavailable topology as a
-limitation; invent no transitions, reachable paths, actions, or completion.
+For journey/detail requests, continue from the record read into graph, goal,
+and path discovery through live-described read operations. A current-state-only
+record result does not complete this sequence. Use `my-crm-customer-journey` to
+resolve the explicit or application-owned goal and obtain the exact node path.
+Only after supported discovery and relevant reads are exhausted or a specific
+failure prevents them, render the labeled partial journey with verified state,
+known goals, and requested details. Identify the failed or unavailable operation
+and unattempted dependent reads. This is an incomplete path result, with no
+invented transitions, reachability, actions, or completion.
 This rule authorizes no mutations, browser fallback, token extraction, or
 hardcoded endpoint. A missing per-app host facility alone must not suppress an
 independent successful authorized read or its partial graph presentation.

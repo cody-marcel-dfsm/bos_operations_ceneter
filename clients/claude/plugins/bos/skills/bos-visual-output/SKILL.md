@@ -68,16 +68,23 @@ For any lead or contact detail request, including a single requested field,
 profile, or status, invoke the installed
 `my-crm-customer-journey` skill and lead with its native graph, including for
 one record. A stage label, detail table, or history list alone is incomplete.
-Keep the current node, any requested goal, verified connecting paths, and known
-gates or blockers visible on the diagram. Obtain application-owned graph and
+Keep the current node, the explicit or application-owned goal, exact connecting
+node paths, and known
+gates or blockers visible on the diagram. Show each lead state as a distinct
+node, emphasize the current-to-goal route, and use concise transition labels
+and clearly differentiated completed, pending, and blocked states. Follow the
+journey skill's layout and accessible status styling. Obtain application-owned graph and
 path evidence before drawing transitions; explicitly report unavailable graph
 evidence without inventing a path. When independently verified current-state
-facts are available, use the journey skill's labeled partial-evidence diagram
-on the first response; keep unknown progression explicit.
+facts are available, use the journey skill's partial-evidence diagram only after
+its discovery and read sequence cannot supply a path. State that the path result
+is incomplete and identify the specific missing evidence.
 
-Return requested fields and relevant profile details below the graph. A goal
-is optional; show current position and verified adjacent states when none was
-requested. Honor an explicit user format preference.
+Return requested fields and relevant profile details below the graph. The user
+may omit a goal; apply the journey skill's application-owned goal resolution and
+show paths to the resolved goal or labeled alternatives. Missing completion
+history or available actions never suppresses verified structural paths. Honor
+an explicit user format preference.
 
 Use concise prose for a single fact or record unrelated to lead/contact details,
 a short draft, an error, or a result whose visual would add decoration without

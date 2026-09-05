@@ -47,6 +47,28 @@ typed invalid-graph or stale-contract result. The client renders no inferred
 replacement topology. Independent verified record facts may still support the
 explicitly labeled partial-evidence diagram defined in the skill.
 
+## Goal and route completeness
+
+Both ordinary lead details and explicit journey requests require an ordered
+current-node-to-goal path, including intermediate nodes. Resolve an explicit
+goal first; otherwise use the app-returned desired goal, app-declared default,
+or sole applicable canonical goal. Present multiple remaining goals as labeled
+alternatives. Never manufacture a goal or rank from conventions.
+
+Graph topology, lead transition history, current action eligibility, and goal
+attainment are independent evidence. A verified structural route remains
+renderable with pending nodes and unknown gates when history or actions are
+missing. A route traced only from exact directed graph edges is labeled
+**Structural path — eligibility unverified**. It grants no transition authority.
+Use one graph version/digest; retain cycles safely and alternative routes without
+inventing a preferred path. An unavailable path API alone does not erase known
+topology. A record read alone does not exhaust graph and path discovery.
+
+Partial presentation is an incomplete path result after supported discovery and
+relevant reads fail or are unavailable. Identify the actual failed operation and
+unattempted dependencies. Never claim that a current-state box or dotted goal
+placeholder meets full path acceptance.
+
 ## Evidence composition
 
 Keep four evidence classes separate:

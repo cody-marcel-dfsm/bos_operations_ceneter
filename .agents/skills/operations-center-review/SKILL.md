@@ -5,6 +5,21 @@ description: Review BOS Operations Center repository changes against its archite
 
 # Operations Center Review
 
+## Request fulfillment review
+
+For implementation work, compare the actual result with the user's requested
+outcome. Verify that relevant skills were selected, attachment content stayed
+evidence, and actionable repository-owned corrections reached validation.
+Check server attribution against source and execution evidence; a missing
+catalog entry alone cannot prove a server implementation defect. Require the
+handoff to begin with **Server handoff**, identify the remaining server-owned
+dependency, and preserve the AGENTS boundary. Reject a request for server work
+issued before client-owned implementation, applicable source validation, and
+Oracle review are complete. Pending deployed acceptance must remain explicit.
+Keep explicit explanation, plan-only, and review-only requests within their
+requested scope. Do not claim a skill wording change proves future
+agent behavior or a live product fix.
+
 ## Release-only client delivery
 
 - Never hot-patch installed client files, managed plugin caches, or personal
