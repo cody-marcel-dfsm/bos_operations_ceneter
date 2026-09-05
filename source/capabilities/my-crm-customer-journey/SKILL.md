@@ -24,6 +24,33 @@ from each successful read; evaluate app-query and API capabilities only when
 their steps are reached. An absent journey tool in the initial catalog supplies
 no evidence that BOS resource discovery is unavailable.
 
+## Current-host read execution
+
+Use the current authenticated BOS capabilities for the requested operation.
+After selecting the organization and role through `bos_get_context`, resolve a
+live-discovered read operation whose descriptor covers the requested data.
+Invoke its exact schema with the selected opaque context and continue from the
+returned evidence. For an advertised app MCP or API, use its contract when the
+host can execute it with the required authentication. Select the supported
+operation from current evidence; do not impose a preferred future transport or
+require a second connection for an already callable authorized BOS operation.
+
+All supported operations belong to one current operating contract. Discover
+names and arguments from the live catalog; never invent endpoints or selectors.
+Directory or transport limitations remain scoped to that operation. An
+access denial never permits switching routes to evade it. Missing or ambiguous
+context, revoked grants, and explicit access denials stop the affected operation.
+Every operation retains request-time server authorization.
+
+For journey/detail requests, obtain any available graph/history/path evidence
+from live-described read operations. If only current-state facts are returned,
+render the labeled partial journey with that verified state and any requested
+goal, then the requested record details. Preserve unavailable topology as a
+limitation; invent no transitions, reachable paths, actions, or completion.
+This rule authorizes no mutations, browser fallback, token extraction, or
+hardcoded endpoint. A missing per-app host facility alone must not suppress an
+independent successful authorized read or its partial graph presentation.
+
 ## Rich record view by default
 
 For any lead or contact detail request, lead with the person's place in the
@@ -74,7 +101,7 @@ An explicit user request for a different format takes precedence.
    Query another app MCP independently only when the BOS app directory identifies
    that service as a separately installed application.
 
-Use discovered deterministic HTTPS APIs for every business read. Carry the
+For the per-app execution path, use discovered deterministic HTTPS APIs. Carry the
 short-lived audience-bound authentication and opaque app context through the
 host credential boundary. Supply only contract-declared arguments and reject
 stale versions, cross-context state, malformed contracts, and typed denials.
@@ -84,8 +111,8 @@ failed step. Report completed reads, the observed failure or verified absent
 host facility, and later unattempted steps. Preserve server error types and the
 pending request; a context-only trace never establishes missing app discovery.
 Use no browser automation, DOM inspection,
-cached selector, raw authority identifier, hardcoded endpoint, BOS-side domain
-routing, or central compatibility alias for this journey workflow.
+cached selector, raw authority identifier, or hardcoded endpoint. Use the
+Current-host read execution rule for authenticated reads.
 
 ## Reconcile the answer
 
@@ -113,7 +140,8 @@ When authorized reads have already verified a record's current state but full
 graph topology or path results are unavailable, render a **Partial journey —
 verified milestones only** diagram on the first response. This presentation
 uses evidence already obtained through an authorized workflow; it grants no
-alternate endpoint, compatibility alias, or authentication bypass. Preserve
+alternate endpoint or authentication bypass. The Current-host read execution
+rule governs authorized reads. Preserve
 any typed discovery or provider failure and state which graph evidence is
 missing. With no verified current state, report the failure without a fabricated
 journey.

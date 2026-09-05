@@ -29,6 +29,11 @@ current server-returned contexts and never grants authority.
 
 # BOS App Discovery
 
+First execute the first-action tool lookup in `bos-mcp-client`. Resolve deferred
+`bos_get_context` through the advertised callable inventory (including Codex
+`functions.exec` / `ALL_TOOLS` when available) before resource listing or UI
+diagnostics. A resource list alone cannot establish missing BOS tools.
+
 GPT owns request routing, planning, service selection, API invocation, and
 cross-app evidence composition. BOS MCP supplies authenticated organization and
 the installed-app directory. Each selected app MCP supplies its own graph, plugins,
@@ -36,6 +41,33 @@ services, goals, and machine-readable API contracts.
 
 Read [the discovery contract](references/discovery-contract.md) before the first
 app-directory or per-app MCP query in a request.
+
+## Current-host read execution
+
+Use the current authenticated BOS capabilities for the requested operation.
+After selecting the organization and role through `bos_get_context`, resolve a
+live-discovered read operation whose descriptor covers the requested data.
+Invoke its exact schema with the selected opaque context and continue from the
+returned evidence. For an advertised app MCP or API, use its contract when the
+host can execute it with the required authentication. Select the supported
+operation from current evidence; do not impose a preferred future transport or
+require a second connection for an already callable authorized BOS operation.
+
+All supported operations belong to one current operating contract. Discover
+names and arguments from the live catalog; never invent endpoints or selectors.
+Directory or transport limitations remain scoped to that operation. An
+access denial never permits switching routes to evade it. Missing or ambiguous
+context, revoked grants, and explicit access denials stop the affected operation.
+Every operation retains request-time server authorization.
+
+For journey/detail requests, obtain any available graph/history/path evidence
+from live-described read operations. If only current-state facts are returned,
+render the labeled partial journey with that verified state and any requested
+goal, then the requested record details. Preserve unavailable topology as a
+limitation; invent no transitions, reachable paths, actions, or completion.
+This rule authorizes no mutations, browser fallback, token extraction, or
+hardcoded endpoint. A missing per-app host facility alone must not suppress an
+independent successful authorized read or its partial graph presentation.
 
 ## Execute BOS resource discovery
 
@@ -147,8 +179,9 @@ apply supported bounded recovery before diagnosing failure. Return
 identify the completed discovery steps, and preserve the pending request.
 Never describe a later unattempted API as a failed server capability or demand
 a server change from a host limitation. Use no browser,
-web interface, DOM inspection, cached selector, hardcoded app endpoint, BOS-side
-domain route, or central gateway alias as a substitute for this target workflow.
+web interface, DOM inspection, cached selector, or hardcoded app endpoint.
+Apply Current-host read execution to authorized reads; a per-app
+failure does not erase their independently verified evidence.
 
 BOS web and mobile remain generic render shells for server-provided UI and
 actions. Keep app selection, graph interpretation, endpoint selection, and

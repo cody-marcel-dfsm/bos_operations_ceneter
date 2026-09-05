@@ -5,6 +5,11 @@ authorization changes, tool-manifest refresh, or a host session replacement.
 
 ## First-request discovery
 
+Execute the first-action callable lookup in `../SKILL.md` before diagnosing
+connection absence. In Codex, inspect the advertised `ALL_TOOLS` inventory via
+`functions.exec` when available; resource listing is a separate capability.
+A UI access rejection never establishes a BOS authentication defect.
+
 Invoke an already callable `bos_get_context` immediately. Resolve deferred BOS
 tools through the host's available search/discovery or advertised orchestration
 inventory before concluding that tools are missing. Apply one supported refresh

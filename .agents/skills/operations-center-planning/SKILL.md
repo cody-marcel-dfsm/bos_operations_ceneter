@@ -5,6 +5,28 @@ description: Plan BOS Operations Center changes using current Vault architecture
 
 # Operations Center Planning
 
+## Release-only client delivery
+
+- Never hot-patch installed client files, managed plugin caches, or personal
+  skill directories. Never copy unpublished repository files into an installed
+  product, create a local override or symlink to bypass release delivery, or
+  change installed package contents while retaining a released version label.
+- This prohibition applies to debugging, prompt validation, emergency fixes,
+  and recovery. Backups and a request to fix or verify behavior grant no
+  exception.
+- Make changes in canonical repository sources and generate packages inside
+  the repository. Deliver through the Git release workflow: version bump,
+  validation, Oracle approval, release branch, pull request, required checks,
+  and merge. Install or upgrade the published release through the client's
+  supported release controls.
+- Validate ordinary prompts against that published, versioned installation.
+  Record the release version and commit with the result. Local source checks
+  establish source validation only.
+- If an installed package already contains unpublished edits, disclose the
+  state and restore it through supported installation of a published release.
+  Never repair an earlier hot-patch by directly rewriting client files again.
+
+
 1. Read `AGENTS.md`, `Vault/docs/architecture.md`,
    `Vault/docs/CONSTITUTION.md`, and the relevant product manifests.
 2. Run `python3 tools/vault_index.py sync --quiet` and query related designs,

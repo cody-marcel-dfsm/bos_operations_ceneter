@@ -5,6 +5,28 @@ description: Create the next repository release version, review and validate all
 
 # Ship It
 
+## Release-only client delivery
+
+- Never hot-patch installed client files, managed plugin caches, or personal
+  skill directories. Never copy unpublished repository files into an installed
+  product, create a local override or symlink to bypass release delivery, or
+  change installed package contents while retaining a released version label.
+- This prohibition applies to debugging, prompt validation, emergency fixes,
+  and recovery. Backups and a request to fix or verify behavior grant no
+  exception.
+- Make changes in canonical repository sources and generate packages inside
+  the repository. Deliver through the Git release workflow: version bump,
+  validation, Oracle approval, release branch, pull request, required checks,
+  and merge. Install or upgrade the published release through the client's
+  supported release controls.
+- Validate ordinary prompts against that published, versioned installation.
+  Record the release version and commit with the result. Local source checks
+  establish source validation only.
+- If an installed package already contains unpublished edits, disclose the
+  state and restore it through supported installation of a published release.
+  Never repair an earlier hot-patch by directly rewriting client files again.
+
+
 Complete the current repository's release loop. A successful invocation creates a new version even when the pending source change did not edit version metadata. A merged version-bump pull request is the publication event used by Claude organization marketplace GitHub sync when an owner has enabled **Sync automatically**. Independently added Claude marketplaces and official marketplace submissions have separate host-owned publication lifecycles.
 
 ## Invocation authorization: execute without questions

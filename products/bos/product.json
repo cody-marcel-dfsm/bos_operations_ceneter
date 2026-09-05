@@ -1,11 +1,11 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.86",
+  "version": "0.4.87",
   "release_status": "active",
   "display_name": "BOS — Business Operating System",
   "description": "Agent-first Business Operating System foundations for governed agent workflows.",
-  "long_description": "BOS is an agent-first Business Operating System for planning, implementing, reviewing, governing, and executing agent-ready business operations. BOS owns the root authenticated MCP connection, resolves the selected organization, and discovers its authorized installed applications. GPT uses current server-returned app contacts and contracts for per-app routing while the existing BOS domain-tool gateway remains migration compatibility state.",
+  "long_description": "BOS is an agent-first Business Operating System for planning, implementing, reviewing, governing, and executing agent-ready business operations. BOS owns the root authenticated MCP connection, resolves the selected organization, and discovers its authorized installed applications. GPT discovers and executes current authenticated BOS capabilities using server-returned app contacts and contracts through supported transports.",
   "website_url": "https://dfsm.ai",
   "brand_color": "#061638",
   "composer_icon": "assets/bos-logo.png",

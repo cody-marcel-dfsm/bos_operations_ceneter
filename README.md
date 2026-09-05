@@ -32,7 +32,7 @@ protected-resource challenge
 then identifies a signed-out runtime connection and activates OAuth. The
 user completes consent, and the agent refreshes tools and resumes the request.
 
-Current desktop marketplace release: `0.4.86`. If `0.4.85` is installed,
+Current desktop marketplace release: `0.4.87`. If `0.4.86` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -43,8 +43,8 @@ desktop Plugins Directory, connection prompt, and new-task activation flow.
 
 Open a new Codex task and paste:
 
-> Clone or update https://github.com/cody-marcel-dfsm/bos_operations_ceneter,
-> add its `clients/codex` directory as a Codex plugin marketplace, install and
+> Add https://github.com/cody-marcel-dfsm/bos_operations_ceneter
+> at its published `main` ref as a Codex plugin marketplace, install and
 > enable `bos` and `education-center`, connect
 > BOS once through the host's sign-in flow, start a new task if
 > required to load the plugin, and verify one authenticated Education Operation Center
@@ -337,65 +337,37 @@ fresh client load, run the screenshot-gated native login acceptance with
 `source/` and `products/` are canonical. `clients/` contains generated output.
 Change canonical sources, regenerate, and verify generated parity.
 
-### Test Codex locally
+### Validate published clients
 
-The BOS product contract is authored only in `products/bos/product.json`.
-The build derives the Codex `.mcp.json` and every other client transport from
-that product source.
+Implement and validate changes in this repository, then publish a versioned
+release through the reviewed Git pull-request workflow. Install from the merged
+Git release. Installed client files and managed caches must retain the published
+package bytes. Direct copies, development symlinks, and local overrides are
+prohibited, including during prompt validation.
 
-Add the repository checkout as a local marketplace:
-
-```bash
-codex plugin marketplace add ./clients/codex
-```
-
-Install **BOS** and **Education Operation Center** from the ChatGPT Desktop Plugins
-Directory. Confirm the BOS plugin loads its package-owned `.mcp.json` and the
-host displays its native **Login**, **Connect**, or **Authenticate** action when
-needed. For a signed-out BOS-dependent prompt, the packaged MCP resource makes
-the installed capability available, and the requested BOS tool's OAuth descriptor
-permits selection without business execution. Its signed-out
-`_meta["mcp/www_authenticate"]` result renders the simple inline action in the
-current chat before the host loads authority-scoped tools. The BOS resource
-remains protected. If the OAuth tool descriptor or challenge is absent, preserve
-the request and report the exact tool-auth-contract defect. If both exist and the
-host still omits the action, report a client authentication-activation defect. The
-agent does not invoke CLI login or launch authentication. Complete the
-browser consent yourself; the agent then refreshes tools and resumes. Test
-Education Operation Center
-in a new task. After source changes,
-rebuild the packages, update or reinstall the plugin, and use another new task
-so the managed cache cannot hide stale output. Run
-`npm run install:verify:codex-runtime` after reopening Codex. Use
-`npm run clean-install:codex -- --confirmation "DELETE ALL BOS CODEX PLUGIN STATE"`
-with Codex fully quit when verification identifies orphaned registry or catalog
-state.
-
-For direct canonical-skill development on an authorized machine, use:
+For Codex, configure the published Git marketplace:
 
 ```bash
-npm run dev:link:codex
+codex plugin marketplace add https://github.com/cody-marcel-dfsm/bos_operations_ceneter.git --ref main
+codex plugin marketplace upgrade bos-education-center
+codex plugin add bos@bos-education-center
+codex plugin add education-center@bos-education-center
 ```
 
-This links active cached skill directories to canonical `source/` directories.
-It is development infrastructure and is absent from installed customer
-packages.
+Use supported marketplace removal first if the same marketplace is registered
+against an unpublished working checkout. Start a new task after installation
+and run `npm run install:verify:codex-runtime`. Verify the ordinary customer
+prompt and record the installed release version, commit, and observed result.
+The host owns OAuth and presents its native sign-in action when required.
+The requested BOS tool's OAuth descriptor permits selection before consent;
+its signed-out `_meta["mcp/www_authenticate"]` result renders the inline action.
+If the descriptor or challenge is absent, report a tool-auth-contract defect.
+If both exist and the host omits the action, report a client
+authentication-activation defect.
 
-### Test Claude locally
-
-Validate and install the local marketplace:
-
-```bash
-claude plugin validate ./clients/claude
-claude plugin marketplace add ./clients/claude
-claude plugin install bos@bos-education-center
-claude plugin install education-center@bos-education-center
-```
-
-Under **Customize → Connectors**, add or select the account-level `BOS` Web
-connector, select **Connect**, complete BOS sign-in once, and test the installed
-subservices in a new Claude/Cowork task.
-After source changes, update the marketplace and plugin before retesting.
+For Claude, use the published Git marketplace and its supported marketplace
+update and plugin update controls. Test in a new Claude/Cowork task and record
+the same release evidence. Source tests and builds remain local validation.
 
 ### Local validation
 
