@@ -1,6 +1,6 @@
 ---
 name: my-crm-customer-journey
-description: Discover and show an authorized Lead Director customer's exact installed sales graph, current lead node, transition history, reachable goals, paths, gates, blockers, and available next steps. Use for any lead or contact detail request, including a single field, profile, status, sales-flow, enrollment-progress, lifecycle, graph-position, and journey-path question.
+description: Discover and show an authorized Lead Director customer's exact installed sales graph, current lead node, transition history, reachable goals, paths, gates, blockers, and available next steps. Use for any lead or contact detail request, including named-person find/look-up requests, email or phone lookups, a single field, profile, status, sales-flow, enrollment-progress, lifecycle, graph-position, and journey-path question.
 ---
 
 # My CRM Customer Journey
@@ -13,6 +13,15 @@ This workflow ships with the active BOS foundation and is usable independently
 of the My CRM product. Any lead or contact detail request selects this workflow, including a single
 field such as an email address, phone number, owner, appointment, or status.
 The user does not need to say “journey” or “graph.”
+
+A named-person lookup such as “find this lead,” “look up this contact,” or a
+lookup by email, phone, or a current record selector is an individual detail
+request. Continue this workflow before presenting its result,
+even when the lookup uses a search operation. Determine presentation from user
+intent, independently of the tool name or response being an array. A successful
+single-person lookup must continue into the graph workflow in the same turn.
+Broad filtered lists retain list scope even when they happen to return one row;
+ambiguous person matches require disambiguation before selecting a graph.
 
 Start with `bos-mcp-client` live discovery and `bos_get_context` on the original
 request. Resolve deferred tools through the host's discovery facility before
@@ -106,8 +115,9 @@ only when identity is unresolved; ambiguity stops the affected record.
 The sequence below describes evidence dependencies. A single discovered read
 may supply record, graph, goal, and path evidence together; do not repeat reads
 already satisfied by valid evidence. Use additional supported operations only
-for missing evidence. Keep a list/search response scoped to the requested list;
-expand individual goal paths when the user requests record details or journeys.
+for missing evidence. Keep broad list/search requests scoped to their requested
+list. A named-person find or lookup is an individual detail request and includes
+the goal path even when a search operation resolves the person.
 For several requested detail records, use supported batch reads or bounded
 pagination and keep each lead's graph membership and path distinct. The diagram
 is presentation of read evidence and never authorizes a CRUD mutation.
@@ -254,3 +264,15 @@ same exact route as a plain-text path for a host that does not render Mermaid.
 
 Below the graph, give concise source/version/freshness details and the four
 evidence sections. Never execute a transition from this read-only workflow.
+
+## Final response check
+
+Before sending an individual lead result, verify that the response itself
+contains the Mermaid graph followed by the requested details. Known topology
+requires the exact current-to-goal route. If a specific discovery/read failure
+prevents that route, include the partial-evidence graph of the verified current
+state and a precise limitation. A successful record read plus unavailable
+topology never justifies omitting the graph. With no verified current state,
+state the missing evidence without inventing a node. An explicit user format
+instruction retains precedence. A tool result, commentary promise, status bullet,
+or plain-text path alone does not satisfy the default graph presentation.
