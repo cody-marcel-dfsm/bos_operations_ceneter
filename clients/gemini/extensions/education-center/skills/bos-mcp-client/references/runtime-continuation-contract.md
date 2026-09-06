@@ -48,7 +48,11 @@ operations and schemas without granting authority. Permission, role, plugin
 enablement, capability, provider, installation, and domain-service changes
 require context or operation-status refresh plus live tool rediscovery. BOS
 re-evaluates those dimensions when `tools/call` executes. Never reuse a tool
-definition absent from the refreshed live manifest.
+definition absent from the refreshed live manifest. When the host cannot
+refresh an already callable descriptor, follow Resource-owned operation schemas
+in `../SKILL.md`: a fresh same-connection, scope-bound contract may constrain
+arguments within that callable envelope. It cannot introduce a callable or
+override host validation, explicit denial, or mutation reconciliation.
 
 ## Sanitized continuation envelope
 

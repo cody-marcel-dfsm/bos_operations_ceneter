@@ -113,7 +113,8 @@ operation from current evidence; do not impose a preferred future transport or
 require a second connection for an already callable authorized BOS operation.
 
 All supported operations belong to one current operating contract. Discover
-names and arguments from the live catalog; never invent endpoints or selectors.
+callable names from the host catalog and argument constraints from current
+validated operation contracts; never invent endpoints or selectors.
 Directory or transport limitations remain scoped to that operation. An
 access denial never permits switching routes to evade it. Missing or ambiguous
 context, revoked grants, and explicit access denials stop the affected operation.

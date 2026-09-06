@@ -82,6 +82,13 @@ a missing delete through another operation.
    `lead-director-crm-get/v1` for the same context, authority epoch, service,
    and requested record handle.
 
+For a generic or cached callable schema, use `bos-mcp-client` Resource-owned
+operation schemas. Read the advertised context-bound application operation
+resource, match the exact callable and use its current input schema within the
+host envelope. Derive writable name/contact fields and idempotency bounds from
+that schema; record display fields do not establish create inputs. Discovery
+success alone never proves that a create or update executed.
+
 ## Creates and updates
 
 1. Resolve the exact current source descriptor from the validated
