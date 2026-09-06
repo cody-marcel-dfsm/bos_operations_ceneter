@@ -46,7 +46,8 @@ async function temporaryContractRoot() {
       url: contract.resource_url,
       oauth_resource: contract.resource_url,
       required: true,
-      startup_timeout_sec: contract.codex_mcp_startup_timeout_sec
+      startup_timeout_sec: contract.codex_mcp_startup_timeout_sec,
+      tool_timeout_sec: contract.codex_mcp_tool_timeout_sec
     } } })
   );
   return fixture;
@@ -85,12 +86,24 @@ test("single BOS contract binds startup timeout to the BOS product source", asyn
     code === "owner_manifest_mismatch" && message.includes("codex_mcp_startup_timeout_sec")));
 });
 
+test("single BOS contract binds tool timeout to the BOS product source", async () => {
+  const fixture = await temporaryContractRoot();
+  const productPath = join(fixture, "products/bos/product.json");
+  const product = await readJson(productPath);
+  product.codex_mcp_tool_timeout_sec = 46;
+  await writeFile(productPath, JSON.stringify(product));
+  const result = await verifySingleBosContract({ root: fixture });
+  assert.ok(result.violations.some(({ code, message }) =>
+    code === "owner_manifest_mismatch" && message.includes("codex_mcp_tool_timeout_sec")));
+});
+
 test("single BOS contract rejects subservice startup policy", async () => {
   const fixture = await temporaryContractRoot();
   const productPath = join(fixture, "products/education-center/product.json");
   await writeFile(productPath, JSON.stringify({
     name: "education-center",
-    codex_mcp_startup_timeout_sec: 45
+    codex_mcp_startup_timeout_sec: 180,
+    codex_mcp_tool_timeout_sec: 180
   }));
   const result = await verifySingleBosContract({ root: fixture });
   assert.ok(result.violations.some(({ code, message }) =>

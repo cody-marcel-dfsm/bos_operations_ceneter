@@ -76,6 +76,9 @@ for (const { product, skills } of resolved) {
       codex_mcp_startup_timeout_sec: product.runtime
         ? product.codex_mcp_startup_timeout_sec
         : undefined,
+      codex_mcp_tool_timeout_sec: product.runtime
+        ? product.codex_mcp_tool_timeout_sec
+        : undefined,
       oauth: product.runtime ? oauthTargetContract(product) : undefined,
       runtime_verification_tools: product.runtime_verification_tools,
       connection_owner: "bos",

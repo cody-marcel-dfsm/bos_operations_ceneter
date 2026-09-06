@@ -61,20 +61,34 @@ or authenticated API invocation capabilities needed at later steps.
    `read_mcp_resource` with the exact server and URI returned by the listing.
    These host facilities are separate from the BOS callable-tool catalog;
    an absent directory tool does not establish absent resource discovery.
-2. Follow resource-list pagination when needed to locate the advertised
+2. Inspect returned resource descriptors for app-owned data that covers the
+   request, including a connected graph resource bound to the selected context.
+   Read a matching resource through its exact listed URI before expanding into
+   separate app discovery. A directory or manifest read is needed only for
+   unresolved app identity, scope, or missing evidence; its timeout must not
+   block an independently listed, authorized data resource.
+3. Follow resource-list pagination when needed to locate the advertised
    discovery manifest or installed-app directory. Read that resource. If the
    manifest advertises `directoryUri`, follow the exact returned URI through
    a supported resource read; when the host requires a listed URI, locate it
    in the resource inventory first. Never construct a directory or app URI.
-3. Use resource templates only when discovery requires them and the host
+4. Use resource templates only when discovery requires them and the host
    exposes that facility. A `resources/templates/list` response of
    `Method not found` means that optional method is unsupported; continue
    with listed resources and supported reads. It does not invalidate a
    successful resource list or read.
-4. Resolve the directory's advertised scope and version, retain only contacts
+5. Resolve the directory's advertised scope and version, retain only contacts
    for the selected organization, validate the selected contact, and continue
    the app discovery workflow immediately. Treat directory metadata as
    discovery evidence; it never authorizes cross-organization business reads.
+
+For a transient timeout or transport failure of a read-only resource list/read,
+wait briefly (about five seconds, respecting Retry-After) and retry that exact
+operation once on the same configured connection. This retry does not require a
+separate refresh API. Reinitialize only if the host reports a closed session and
+supports it. Do not retry an authorization denial as a timeout. If both attempts
+fail, preserve completed independent reads and identify the failed operation and
+both outcomes. This rule never replays mutations or guesses unlisted URIs.
 
 When discovery is advertised as a tool, use its live descriptor and schema.
 An empty tool search must still proceed to the available resource facilities.
@@ -86,12 +100,13 @@ is required to inspect its advertised resources.
 1. Use `bos-mcp-client` to authenticate and select exactly one organization
    through the explicit request, validated default organization, or sole
    authorized organization. Preserve only the opaque server-issued context.
-2. Execute BOS resource discovery above, or the live advertised directory tool,
-   and read the authenticated installed-app directory. Validate every returned
+2. Execute BOS resource discovery above. Use app-owned resources that already
+   provide the required evidence with valid scope; otherwise read the
+   authenticated installed-app directory or its live advertised tool. Validate every returned
    app contact before using it. BOS identifies available apps; GPT shortlists
    apps from their returned descriptions and the user's intent.
-3. Query each selected app MCP through the exact contact returned for this
-   request. Discover its semantic equivalents of `app.describe`,
+3. For evidence still missing, query each selected app MCP through the exact
+   contact returned for this request. Discover its semantic equivalents of `app.describe`,
    `graph.describe`, `services.list`, `plugins.list`, `service.describe`, and
    `api.contract.get`. These are semantic capabilities; use the versioned names
    and schemas returned by the app rather than assuming literal tool names.

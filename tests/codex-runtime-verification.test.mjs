@@ -23,7 +23,8 @@ test("Codex runtime verifier requires the package-owned MCP binding", async () =
       url: "https://dfsm.ai/mcp/apps/bos/platform",
       oauth_resource: "https://dfsm.ai/mcp/apps/bos/platform",
       required: true,
-      startup_timeout_sec: 45
+      startup_timeout_sec: 180,
+      tool_timeout_sec: 180
     } }
   }));
   const catalog = join(home, "catalog.json");
@@ -53,7 +54,7 @@ test("Codex runtime verifier requires the package-owned MCP binding", async () =
   assert.equal(report.mcp_binding.server.url, "https://dfsm.ai/mcp/apps/bos/platform");
   assert.equal(report.mcp_binding.server.oauth_resource, "https://dfsm.ai/mcp/apps/bos/platform");
   assert.equal(report.mcp_binding.server.required, true);
-  assert.equal(report.mcp_binding.server.startup_timeout_sec, 45);
+  assert.equal(report.mcp_binding.server.startup_timeout_sec, 180);
   assert.equal(report.live_tool_surface.semantics, "operation_schema_only");
   assert.equal(report.live_tool_surface.authorization_source, "tools_call_server_result");
 });

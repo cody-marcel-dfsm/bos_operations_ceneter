@@ -186,8 +186,9 @@ async function configureCodexBosMcp(_options, paths) {
       server?.type !== "http" || server?.url !== expectedUrl ||
       server?.oauth_resource !== expectedUrl || server?.required !== true ||
       server?.startup_timeout_sec !== metadata.codex_mcp_startup_timeout_sec ||
+      server?.tool_timeout_sec !== metadata.codex_mcp_tool_timeout_sec ||
       JSON.stringify(Object.keys(server ?? {}).sort()) !==
-        JSON.stringify(["oauth_resource", "required", "startup_timeout_sec", "type", "url"]) ||
+        JSON.stringify(["oauth_resource", "required", "startup_timeout_sec", "tool_timeout_sec", "type", "url"]) ||
       typeof expectedUrl !== "string" ||
       "credential_env_var" in metadata) {
     throw new Error("Packaged Codex MCP binding is invalid");
@@ -199,6 +200,7 @@ async function configureCodexBosMcp(_options, paths) {
     oauth_resource: expectedUrl,
     required: true,
     startup_timeout_sec: metadata.codex_mcp_startup_timeout_sec,
+    tool_timeout_sec: metadata.codex_mcp_tool_timeout_sec,
     authentication: "oauth_2_1",
     next_action: "connect"
   };

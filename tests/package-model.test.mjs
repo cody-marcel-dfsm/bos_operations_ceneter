@@ -1571,7 +1571,8 @@ test("BOS OAuth targets and generated product metadata derive from product.json"
         url: canonicalBosProduct.mcp_resource_url,
         oauth_resource: canonicalBosProduct.mcp_resource_url,
         required: true,
-        startup_timeout_sec: canonicalBosProduct.codex_mcp_startup_timeout_sec
+        startup_timeout_sec: canonicalBosProduct.codex_mcp_startup_timeout_sec,
+        tool_timeout_sec: canonicalBosProduct.codex_mcp_tool_timeout_sec
       }
     }
   });
@@ -1641,7 +1642,8 @@ test("package schema reserves runtime ownership for BOS", () => {
     application_name: "bos",
     mcp_group_name: "platform",
     mcp_resource_url: "https://example.com/mcp/apps/bos/platform",
-    codex_mcp_startup_timeout_sec: 45,
+    codex_mcp_startup_timeout_sec: 180,
+    codex_mcp_tool_timeout_sec: 180,
     oauth: {
       authorization_server_issuer: "https://example.com",
       authorization_endpoint: "https://example.com/api/v1/mcp/oauth/authorize",
@@ -1727,6 +1729,12 @@ test("package schema reserves runtime ownership for BOS", () => {
     validateProduct({ ...base, codex_mcp_startup_timeout_sec: 30 }).join("\n"),
     /codex_mcp_startup_timeout_sec greater than 30/
   );
+  for (const value of [undefined, 0, 30, 180.5, "180"]) {
+    assert.match(
+      validateProduct({ ...base, codex_mcp_tool_timeout_sec: value }).join("\n"),
+      /codex_mcp_tool_timeout_sec greater than 30/
+    );
+  }
   const subservice = {
     ...base,
     name: "education-center",
@@ -1736,6 +1744,7 @@ test("package schema reserves runtime ownership for BOS", () => {
     mcp_group_name: undefined,
     mcp_resource_url: undefined,
     codex_mcp_startup_timeout_sec: undefined,
+    codex_mcp_tool_timeout_sec: undefined,
     oauth: undefined,
     includes: ["platform/bos-mcp-client"]
   };
@@ -1799,7 +1808,8 @@ test("disabled products are absent while active runtime products remain scoped",
         url: canonicalBosProduct.mcp_resource_url,
         oauth_resource: canonicalBosProduct.mcp_resource_url,
         required: true,
-        startup_timeout_sec: canonicalBosProduct.codex_mcp_startup_timeout_sec
+        startup_timeout_sec: canonicalBosProduct.codex_mcp_startup_timeout_sec,
+        tool_timeout_sec: canonicalBosProduct.codex_mcp_tool_timeout_sec
       }
     }
   });
@@ -2198,7 +2208,8 @@ test("every product and client ships tenant extension management metadata", asyn
           resource_url: manifest.mcp_resource_url,
           oauth: manifest.oauth,
           ...(client === "codex" ? {
-            codex_mcp_startup_timeout_sec: manifest.codex_mcp_startup_timeout_sec
+            codex_mcp_startup_timeout_sec: manifest.codex_mcp_startup_timeout_sec,
+            codex_mcp_tool_timeout_sec: manifest.codex_mcp_tool_timeout_sec
           } : {}),
           ...(client === "claude" ? {
             connection_scope: "claude_account"

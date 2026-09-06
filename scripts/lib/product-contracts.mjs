@@ -19,6 +19,7 @@ export function singleBosConnectionContract(products) {
     codex_mcp_server_required: true,
     codex_oauth_resource_equals_resource_url: true,
     codex_mcp_startup_timeout_sec: owner.codex_mcp_startup_timeout_sec,
+    codex_mcp_tool_timeout_sec: owner.codex_mcp_tool_timeout_sec,
     provider_account_selection_policy: oauth.provider_account_selection_policy,
     identity_organization_resolution_policy: "SERVER_EVALUATED_PER_VERIFIED_IDENTITY",
     subservice_authentication_policy: "ON_USE",
@@ -70,7 +71,8 @@ export function codexLoginSurfaceContract(product) {
       resource_url_must_equal_product_source: true,
       oauth_resource_must_equal_resource_url: true,
       server_required: true,
-      startup_timeout_sec: product.codex_mcp_startup_timeout_sec
+      startup_timeout_sec: product.codex_mcp_startup_timeout_sec,
+      tool_timeout_sec: product.codex_mcp_tool_timeout_sec
     },
     action: {
       trigger: "MCP_OAUTH_CHALLENGE",
