@@ -3,7 +3,7 @@ import { access, mkdtemp, readFile, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { resolveProductSkills, root } from "../scripts/lib/package-model.mjs";
+import { resolveProductSkills, root, transformProductSkillGuidance } from "../scripts/lib/package-model.mjs";
 import {
   readClientPreferences,
   setDefaultOrganizationPreference
@@ -139,7 +139,8 @@ test("BOS distributes the in-memory Plugin Console to every supported client", a
   for (const skillRoot of generatedSkillRoots) {
     await access(`${skillRoot}/SKILL.md`);
     await access(`${skillRoot}/agents/openai.yaml`);
-    assert.equal(await readFile(`${skillRoot}/SKILL.md`, "utf8"), canonicalGuidance);
+    assert.equal(await readFile(`${skillRoot}/SKILL.md`, "utf8"),
+      transformProductSkillGuidance(manifest, "bos-plugin-console", canonicalGuidance));
     const files = await listRelativeFiles(skillRoot);
     assert.deepEqual(files, ["SKILL.md", "agents/openai.yaml"]);
   }

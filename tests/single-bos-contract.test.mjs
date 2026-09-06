@@ -13,7 +13,7 @@ import {
   inspectSubserviceAgentDescriptor,
   verifySingleBosContract
 } from "../scripts/lib/single-bos-contract.mjs";
-import { readJson, root } from "../scripts/lib/package-model.mjs";
+import { readJson, root, transformProductSkillGuidance } from "../scripts/lib/package-model.mjs";
 
 const execFileAsync = promisify(execFile);
 const bosProduct = await readJson(`${root}/products/bos/product.json`);
@@ -131,7 +131,8 @@ test("selected-tool authentication guidance preserves failure ownership", async 
     "clients/copilot/products/bos/skills/bos-mcp-client/SKILL.md",
     "clients/gemini/extensions/bos/skills/bos-mcp-client/SKILL.md"
   ]) {
-    assert.equal(await readFile(`${root}/${generated}`, "utf8"), canonical);
+    assert.equal(await readFile(`${root}/${generated}`, "utf8"),
+      transformProductSkillGuidance(bosProduct, "bos-mcp-client", canonical));
   }
 
   const readme = await readFile(`${root}/README.md`, "utf8");

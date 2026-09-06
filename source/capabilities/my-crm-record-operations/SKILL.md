@@ -53,12 +53,14 @@ unavailable operation from an authorization denial and a transient transport
 failure. Report the exact missing operation and observed contract; never claim
 complete CRUD support from create/read acceptance alone.
 
-Preserve mutation confirmation, version, idempotency, and authorization
-requirements. Explicit user instructions that already identify the exact target
-and requested change supply authorization unless the live contract requires an
-additional confirmation artifact. Reuse that authorization while resolving
-server-issued selectors; ask only for unresolved ambiguity or a required new
-approval binding. Never simulate a missing delete through another operation.
+Apply the BOS client mutation safety contract before every write: updates and
+deletes affect at most one record per logical task, including source records
+and cascades. Block bulk or unknown scope before the first write. Preserve
+version, idempotency, and server authorization requirements. For creates and
+single-record updates, exact user instructions supply authorization unless the
+live contract requires an additional confirmation artifact. Every delete needs
+confirmation after the concrete target and effect are presented. Never simulate
+a missing delete through another operation.
 
 ## Reads
 
@@ -114,10 +116,13 @@ approval binding. Never simulate a missing delete through another operation.
    only the requested supported operation; explain any required alternative
    without silently substituting it. A business graph read is required only
    when the delete contract requires it.
-3. Honor the live authorization and confirmation contract. A clear user request
-   to delete the uniquely resolved lead supplies user authorization; preserve it
-   across discovery and recovery. If a server preview/confirmation token is
-   required, prepare the concrete target and effect before requesting it.
+3. Establish that the complete effect touches one record, including cascades.
+   Show the organization, application/source, exact record, deletion semantics,
+   and consequences. Ask for confirmation of this prepared deletion and wait
+   for the user's affirmative response. The initial delete request and an
+   automation prompt never satisfy this step. Bind confirmation to the exact
+   target, scope, version, and effect; re-confirm material changes. Obtain any
+   server-required preview/confirmation artifact as well.
 4. Pass the exact declared delete arguments, concurrency version and stable
    idempotency key where supported. Execute once. After an uncertain result,
    reconcile using its operation identity or a supported exact read before any

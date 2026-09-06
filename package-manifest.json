@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "package": "bos-operations-center",
-  "version": "0.4.92",
+  "version": "0.4.93",
   "publisher": "Infinite State Machines LLC",
   "canonical_skills": [
     "./source/platform",
