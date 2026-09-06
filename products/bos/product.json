@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.91",
+  "version": "0.4.92",
   "release_status": "active",
   "display_name": "BOS — Business Operating System",
   "description": "Agent-first Business Operating System foundations for governed agent workflows.",
@@ -48,7 +48,8 @@
     "capabilities/meta-ads-conversion-optimization",
     "capabilities/sendgrid-campaigns",
     "capabilities/seo-improvement-loop",
-    "capabilities/my-crm-customer-journey"
+    "capabilities/my-crm-customer-journey",
+    "capabilities/my-crm-record-operations"
   ],
   "runtime": "bos",
   "application_name": "bos",

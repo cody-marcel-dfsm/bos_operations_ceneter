@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.91",
+  "version": "0.4.92",
   "client": "codex",
   "runtime_verification_tools": [
     "bos_list_plugin_services",

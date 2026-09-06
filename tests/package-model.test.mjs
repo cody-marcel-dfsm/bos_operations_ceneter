@@ -2678,3 +2678,26 @@ test("BOS bootstraps callable tools before resource or UI diagnostics", async ()
   assert.doesNotMatch(s, /BOS plugin and runtime binding immediately/);
   assert.match(s, /UI access denial does not establish/);
 });
+
+
+test("active BOS ships CRUD record operations independently of disabled My CRM", async () => {
+  const products = await listProducts();
+  const bos = products.find(({ manifest }) => manifest.name === "bos").manifest;
+  const skills = await resolveProductSkills(bos);
+  const records = skills.find(({ name }) => name === "my-crm-record-operations");
+  assert(records, "root BOS must ship CRUD guidance");
+  for (const dependency of ["bos-mcp-client", "bos-app-discovery", "my-crm-customer-journey"]) {
+    assert(skills.some(({ name }) => name === dependency), dependency);
+  }
+  for (const folder of [
+    "clients/codex/plugins/bos", "clients/claude/plugins/bos",
+    "clients/copilot/products/bos", "clients/gemini/extensions/bos"
+  ]) {
+    assert.equal(
+      await readFile(`${root}/${folder}/skills/${records.name}/SKILL.md`, "utf8"),
+      transformProductSkillGuidance(bos, records.name, await readFile(records.skillFile, "utf8")),
+      folder
+    );
+  }
+  assert.equal(products.find(({ manifest }) => manifest.name === "my-crm").manifest.release_status, "disabled");
+});
