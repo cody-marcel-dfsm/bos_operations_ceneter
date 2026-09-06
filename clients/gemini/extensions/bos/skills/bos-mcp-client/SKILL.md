@@ -25,9 +25,26 @@ Then invoke the discovered callable with its declared arguments. Never invent a
 namespace or tool name. An empty MCP resource list is not a tool inventory and
 cannot establish that BOS tools are absent. A UI access denial does not establish
 a tool or authentication failure; never use computer UI to bypass host blocks.
-If the callable inventory is empty, use one advertised refresh/recovery facility
-and inspect it once more. Report the actual facilities inspected and results;
-keep missing discovery facilities distinct from missing BOS authentication.
+If the BOS callable inventory is empty, account for startup before diagnosing
+absence. A newly started task can receive plugin skills before its MCP tools
+become ready. Use a host-reported startup status or readiness event when
+available. While startup is pending or its state is unknown, allow one bounded
+startup window using the package-declared startup timeout (45 seconds for the
+current BOS package). Measure elapsed time with the host clock; do not restart
+the window on each check. Use the host wait facility and inspect a fresh callable
+inventory at intervals of at least five seconds, stopping immediately when BOS
+appears or an explicit failure arrives. Keep each wait below the remaining
+budget. Perform this in separate host calls so readiness changes can be observed.
+
+If the host freezes the current turn's inventory, use one supported catalog
+refresh or same-task continuation after readiness; do not invent a refresh API,
+new connection, or new task. Preserve the pending request and mutation identity.
+Never replay a mutation whose outcome is uncertain. A ready connection with
+an inaccessible catalog is a host catalog problem, not proof of missing login.
+After the bounded window or an explicit failure, report the observed startup or
+catalog state and the unavailable recovery facility. Ask to enable or sign in
+only when host status or a BOS challenge establishes that requirement. Empty
+resources or tools alone never establish that the connection is disabled.
 A successful context call immediately resumes the original operation.
 
 Use this skill for every client-side BOS operation. The root BOS plugin owns one
