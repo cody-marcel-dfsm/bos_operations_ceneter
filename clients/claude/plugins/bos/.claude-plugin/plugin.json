@@ -1,7 +1,7 @@
 {
   "name": "bos",
   "displayName": "BOS — Business Operating System",
-  "version": "0.4.93",
+  "version": "0.4.94",
   "description": "Agent-first Business Operating System foundations for governed agent workflows.",
   "author": {
     "name": "Infinite State Machines LLC"
