@@ -577,6 +577,30 @@ test("Education Center packages include governed SendGrid campaign operations", 
   await access(`${sendgrid.sourcePath}/scripts/validate_campaign_workflow_trace.py`);
 });
 
+test("SendGrid campaign skills require permission-based audiences", async () => {
+  for (const relativePath of [
+    "source/capabilities/sendgrid-campaigns/SKILL.md",
+    "source/capabilities/sendgrid-campaign-operations/SKILL.md"
+  ]) {
+    const guidance = await readFile(`${root}/${relativePath}`, "utf8");
+    assert.match(
+      guidance,
+      /documented (?:marketing )?(?:permission|consent)/i,
+      relativePath
+    );
+    assert.match(
+      guidance,
+      /(?:purchased|rented)[\s\S]*scraped[\s\S]*harvested[\s\S]*inferred/i,
+      relativePath
+    );
+    assert.match(
+      guidance,
+      /never (?:bypass|evade)[\s\S]*(?:unsubscribe|suppression|complaint|bounce)/i,
+      relativePath
+    );
+  }
+});
+
 test("configurable review outreach resolves delivery services from the organization profile", async () => {
   const guidance = await readFile(
     `${root}/source/capabilities/review-outreach/SKILL.md`,

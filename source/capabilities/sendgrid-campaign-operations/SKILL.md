@@ -1,6 +1,6 @@
 ---
 name: sendgrid-campaign-operations
-description: Build, approve, test, send, recover, monitor, and report Education Center SendGrid campaigns through the tenant-scoped BOS MCP. Use for customer-family audiences from Calimatic, Lead Director, Gmail, Calendar, camp, enrollment, inquiry, lead, or trial evidence; prioritized overlapping cohorts; governed recipient additions; suppression reconciliation; exact UTF-8 content review; manifest refresh and same-task continuation; deterministic test/list sends; delivery-event statistics; or structured missing-capability issues.
+description: Build, approve, test, send, recover, monitor, and report permission-based Education Center SendGrid campaigns through the tenant-scoped BOS MCP. Use for customer-family audiences with documented marketing consent from Calimatic, Lead Director, Gmail, Calendar, camp, enrollment, inquiry, lead, or trial evidence; prioritized overlapping cohorts; governed recipient additions; suppression reconciliation; exact UTF-8 content review; manifest refresh and same-task continuation; deterministic test/list sends; delivery-event statistics; or structured missing-capability issues.
 ---
 
 # SendGrid Campaign Operations
@@ -50,6 +50,14 @@ against a sanitized trace when validating an end-to-end client execution.
 
 ## Safety
 
+- Use only organization-owned audiences where every external recipient has
+  documented marketing permission for the campaign's sender, purpose, and
+  content. Never use purchased, rented, scraped, harvested, or inferred
+  addresses. Source membership or prior correspondence alone does not establish
+  consent. Never bypass or evade unsubscribe, suppression, complaint, bounce,
+  do-not-email, frequency, or provider controls. Exclude any recipient whose
+  permission is missing, ambiguous, withdrawn, or incompatible with the
+  campaign.
 - Fail closed on missing or ambiguous context, source account, campaign,
   audience eligibility, sender configuration, approval, or authorization.
 - Never accept tokens, credentials, `org_id`, `app_code`, `installed_app_id`,
