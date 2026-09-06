@@ -124,7 +124,8 @@ operation from current evidence; do not impose a preferred future transport or
 require a second connection for an already callable authorized BOS operation.
 
 All supported operations belong to one current operating contract. Discover
-names and arguments from the live catalog; never invent endpoints or selectors.
+callable names from the host catalog and argument constraints from current
+validated operation contracts; never invent endpoints or selectors.
 Directory or transport limitations remain scoped to that operation. An
 access denial never permits switching routes to evade it. Missing or ambiguous
 context, revoked grants, and explicit access denials stop the affected operation.
@@ -151,6 +152,33 @@ intent, independently of the tool name or response being an array. A successful
 single-person lookup must continue into the graph workflow in the same turn.
 Broad filtered lists retain list scope even when they happen to return one row;
 ambiguous person matches require disambiguation before selecting a graph.
+
+## Resource-owned operation schemas
+
+When an already callable tool has a generic or cached schema, read an advertised
+operation-contract resource on the same authenticated connection. Validate its
+selected context, application/source binding, exact operation identity, current
+contract version and implementation version when supplied. Follow the exact
+listed URI through the host resource reader; never construct a URI from a pattern.
+A platform manifest or directory alone is insufficient when it points to a
+more specific operation schema: read that advertised contract before invocation.
+
+Use the fresh resource input schema to constrain the already callable tool's
+host argument envelope. For an open `changes` object, apply the declared field
+names, types, required fields, read-only exclusions and idempotency constraints;
+also honor output schemas and side-effect annotations. Do not guess writable
+fields from display labels or returned record properties. Retain the validated
+contract version and observation time with the operation evidence.
+
+Never add host-rejected top-level fields, invent an absent callable, widen the
+host schema, or use a resource to override an explicit denial. If the resource
+conflicts with the host envelope, stop that invocation and report the exact
+incompatibility. Missing or mismatched scope/version evidence requires fresh
+discovery. A contract read grants no authority and never permits mutation replay;
+reconcile any uncertain prior result before resuming with its original identity.
+A compatible fresh resource contract permits the authorized operation to continue
+without waiting for an unavailable tool-manifest refresh. Report completion only
+from the actual operation result, separately from successful schema discovery.
 
 ## Lead creation source and result contract
 
@@ -347,8 +375,9 @@ stateful mutation workflow.
   permission, role, plugin-enablement, capability, provider, installation, or
   domain-service change. BOS provides dynamic domain-specific MCP services and
   tooling for the authenticated scope. Refresh live tool discovery after
-  those changes, discard stale schemas, and validate the next call only against
-  the refreshed manifest.
+  those changes and discard stale schemas. If the host freezes its callable
+  manifest, apply Resource-owned operation schemas within the existing
+  callable envelope; retain server authorization and all mutation safeguards.
 - Preserve the user's original request across recovery and continue it
   automatically. Never ask the user to reconnect BOS, resend the request, or
   start a new task.

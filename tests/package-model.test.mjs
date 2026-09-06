@@ -2703,3 +2703,19 @@ test("active BOS ships CRUD record operations independently of disabled My CRM",
   }
   assert.equal(products.find(({ manifest }) => manifest.name === "my-crm").manifest.release_status, "disabled");
 });
+
+
+test("resource operation schemas supplement frozen callable envelopes without expanding authority", async () => {
+  for (const prefix of ["source/platform", ...["codex/plugins", "claude/plugins", "copilot/products", "gemini/extensions"].map(client => `clients/${client}/bos/skills`)]) {
+    const guidance = await readFile(`${root}/${prefix}/bos-mcp-client/SKILL.md`, "utf8");
+    const continuation = await readFile(`${root}/${prefix}/bos-mcp-client/references/runtime-continuation-contract.md`, "utf8");
+    assert.match(guidance, /## Resource-owned operation schemas/);
+    assert.match(guidance, /already callable[\s\S]*host.*argument envelope/i);
+    assert.match(guidance, /same authenticated connection[\s\S]*context[\s\S]*application[\s\S]*operation/i);
+    assert.match(guidance, /open.*changes[\s\S]*required fields[\s\S]*read-only[\s\S]*idempotency/i);
+    assert.match(guidance, /Never add host-rejected top-level fields/);
+    assert.match(guidance, /explicit denial[\s\S]*replay/i);
+    assert.doesNotMatch(guidance, /only against\s+the refreshed manifest/);
+    assert.match(continuation, /Resource-owned operation schemas/);
+  }
+});

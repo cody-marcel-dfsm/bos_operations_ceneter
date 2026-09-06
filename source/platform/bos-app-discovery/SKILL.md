@@ -37,7 +37,8 @@ operation from current evidence; do not impose a preferred future transport or
 require a second connection for an already callable authorized BOS operation.
 
 All supported operations belong to one current operating contract. Discover
-names and arguments from the live catalog; never invent endpoints or selectors.
+callable names from the host catalog and argument constraints from current
+validated operation contracts; never invent endpoints or selectors.
 Directory or transport limitations remain scoped to that operation. An
 access denial never permits switching routes to evade it. Missing or ambiguous
 context, revoked grants, and explicit access denials stop the affected operation.
@@ -68,8 +69,10 @@ or authenticated API invocation capabilities needed at later steps.
    `read_mcp_resource` with the exact server and URI returned by the listing.
    These host facilities are separate from the BOS callable-tool catalog;
    an absent directory tool does not establish absent resource discovery.
-2. Inspect returned resource descriptors for app-owned data that covers the
-   request, including a connected graph resource bound to the selected context.
+2. Inspect returned resource descriptors for app-owned data and operation
+   schemas that cover the request, including resources bound to the selected
+   context. For an operation schema supplementing an already callable tool,
+   apply Resource-owned operation schemas in `bos-mcp-client`.
    Read a matching resource through its exact listed URI before expanding into
    separate app discovery. A directory or manifest read is needed only for
    unresolved app identity, scope, or missing evidence; its timeout must not
