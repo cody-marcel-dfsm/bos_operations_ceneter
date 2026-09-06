@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.90",
+  "version": "0.4.91",
   "release_status": "active",
   "display_name": "BOS — Business Operating System",
   "description": "Agent-first Business Operating System foundations for governed agent workflows.",
@@ -54,7 +54,8 @@
   "application_name": "bos",
   "mcp_group_name": "platform",
   "mcp_resource_url": "https://dfsm.ai/mcp/apps/bos/platform",
-  "codex_mcp_startup_timeout_sec": 45,
+  "codex_mcp_startup_timeout_sec": 180,
+  "codex_mcp_tool_timeout_sec": 180,
   "oauth": {
     "authorization_server_issuer": "https://dfsm.ai",
     "authorization_endpoint": "https://dfsm.ai/api/v1/mcp/oauth/authorize",

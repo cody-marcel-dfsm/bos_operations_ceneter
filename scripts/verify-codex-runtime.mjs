@@ -99,8 +99,9 @@ async function inspectInstalledMcpBinding(home, marketplace, product, versions, 
     server?.oauth_resource === product.mcp_resource_url &&
     server?.required === true &&
     server?.startup_timeout_sec === product.codex_mcp_startup_timeout_sec &&
+    server?.tool_timeout_sec === product.codex_mcp_tool_timeout_sec &&
     JSON.stringify(Object.keys(server ?? {}).sort()) ===
-      JSON.stringify(["oauth_resource", "required", "startup_timeout_sec", "type", "url"]);
+      JSON.stringify(["oauth_resource", "required", "startup_timeout_sec", "tool_timeout_sec", "type", "url"]);
   return {
     state: current ? "current" : "invalid",
     path,

@@ -29,7 +29,7 @@ If the BOS callable inventory is empty, account for startup before diagnosing
 absence. A newly started task can receive plugin skills before its MCP tools
 become ready. Use a host-reported startup status or readiness event when
 available. While startup is pending or its state is unknown, allow one bounded
-startup window using the package-declared startup timeout (45 seconds for the
+startup window using the package-declared startup timeout (180 seconds for the
 current BOS package). Measure elapsed time with the host clock; do not restart
 the window on each check. Use the host wait facility and inspect a fresh callable
 inventory at intervals of at least five seconds, stopping immediately when BOS
@@ -62,6 +62,11 @@ organization, application, installation, subservice, plugin, role, capability,
 provider, and tool scope from the validated grant and canonical server state on
 every private operation. Never route platform BOS work through a subservice
 package.
+
+Codex packages also declare a 180-second tool-call timeout. These host budgets
+allow slow operations to finish; a server-returned timeout remains a distinct
+failure and follows the bounded read recovery below. Do not treat a timeout as
+an authentication or authorization failure.
 
 ## Current-host read execution
 
@@ -213,8 +218,11 @@ stateful mutation workflow.
   orchestration runtime, inspect its advertised tool inventory and invoke the
   discovered callable there. Absence from the initially visible tool list does
   not establish a missing connection.
-- If discovery fails, perform one supported refresh of the same connection and
-  retry discovery once. Report the exact observed failure and missing host
+- For transient read-only resource-list/read timeouts, follow the same-connection
+  retry in `bos-app-discovery`: wait briefly and retry once even when the host
+  offers no refresh API. Preserve completed independent reads.
+- For other discovery failures, perform one supported refresh of the same
+  connection and retry discovery once. Report the exact observed failure and missing host
   capability when recovery is unavailable. Never invent a tool call or claim
   discovery failed without attempting an available discovery facility.
   Preserve the original request and resume automatically after recovery; the

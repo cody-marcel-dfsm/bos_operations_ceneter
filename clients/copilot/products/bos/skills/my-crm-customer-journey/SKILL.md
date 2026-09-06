@@ -52,7 +52,10 @@ request. Resolve deferred tools through the host's discovery facility before
 reporting them missing. Resume this workflow automatically after recovery.
 `bos_get_context` alone does not perform app discovery. Execute the
 `bos-app-discovery` resource discovery procedure on the existing authenticated
-BOS connection and read the advertised directory in this same request. Continue
+BOS connection. Inspect listed connected graph resources for the selected
+context before requiring a separate app directory/contact. Follow
+[connected graph reads](references/connected-graph-read.md) when that contract
+is advertised. Read the directory for evidence still missing. Continue
 from each successful read; evaluate app-query and API capabilities only when
 their steps are reached. An absent journey tool in the initial catalog supplies
 no evidence that BOS resource discovery is unavailable.
@@ -148,11 +151,14 @@ is presentation of read evidence and never authorizes a CRUD mutation.
 
 ## Discover and resolve
 
-1. Use the selected default or explicit organization to query the authenticated
+1. Inspect current BOS resource descriptors using the selected organization
+   and role context. A matching connected graph resource can satisfy graph and
+   goal discovery directly. For unresolved evidence, query the authenticated
    BOS app directory. Select Lead Director only from a current returned app
    descriptor whose description or capabilities satisfy the request. Preserve
    its opaque context, contact, contract version, and discovery epoch.
-2. Query the exact returned Lead Director MCP contact. Discover the current app
+2. For evidence not already supplied by a validated connected resource, query
+   the exact returned Lead Director MCP contact. Discover the current app
    description, installed graph, canonical goal semantics, lead and journey
    services, installed plugins, external-evidence ownership, and
    machine-readable API contracts. Use returned operation names and endpoints;

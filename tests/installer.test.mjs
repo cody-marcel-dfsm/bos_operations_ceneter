@@ -111,7 +111,8 @@ test("Codex runtime installation binds the package-owned BOS MCP resource", asyn
     url: resourceGroupUrl,
     oauth_resource: resourceGroupUrl,
     required: true,
-    startup_timeout_sec: 45,
+    startup_timeout_sec: 180,
+    tool_timeout_sec: 180,
     authentication: "oauth_2_1",
     next_action: "connect"
   });
@@ -228,6 +229,20 @@ test("Codex OAuth installation rejects an insufficient startup timeout", async (
   const mcpPath = join(installedProduct(home, "bos"), ".mcp.json");
   const mcp = JSON.parse(await readFile(mcpPath, "utf8"));
   mcp.mcpServers.platform.startup_timeout_sec = 10;
+  await chmod(mcpPath, 0o644);
+  await writeFile(mcpPath, JSON.stringify(mcp));
+  await assert.rejects(
+    verifyInstallationRaw({ home, product: "bos" }),
+    /Packaged Codex MCP binding is invalid/
+  );
+});
+
+test("Codex OAuth installation rejects an insufficient tool timeout", async () => {
+  const home = await temporaryHome();
+  await applyInstallationRaw({ home, product: "bos" });
+  const mcpPath = join(installedProduct(home, "bos"), ".mcp.json");
+  const mcp = JSON.parse(await readFile(mcpPath, "utf8"));
+  mcp.mcpServers.platform.tool_timeout_sec = 10;
   await chmod(mcpPath, 0o644);
   await writeFile(mcpPath, JSON.stringify(mcp));
   await assert.rejects(

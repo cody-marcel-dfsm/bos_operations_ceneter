@@ -188,6 +188,14 @@ function validateContractShape(contract, contractPath) {
       "codex_mcp_startup_timeout_sec must be an integer greater than 30."
     ));
   }
+  if (!Number.isInteger(contract.codex_mcp_tool_timeout_sec) ||
+      contract.codex_mcp_tool_timeout_sec <= 30) {
+    findings.push(finding(
+      "contract_shape",
+      contractPath,
+      "codex_mcp_tool_timeout_sec must be an integer greater than 30."
+    ));
+  }
   if (!contract.oauth || typeof contract.oauth !== "object" ||
       contract.provider_account_selection_policy !==
         contract.oauth.provider_account_selection_policy) {
@@ -250,6 +258,7 @@ export async function verifySingleBosContract({
       ["mcp_group_name", contract.mcp_group_name],
       ["mcp_resource_url", contract.resource_url],
       ["codex_mcp_startup_timeout_sec", contract.codex_mcp_startup_timeout_sec],
+      ["codex_mcp_tool_timeout_sec", contract.codex_mcp_tool_timeout_sec],
       ["oauth", contract.oauth]
     ]) {
       const observed = owner[field];
@@ -269,6 +278,7 @@ export async function verifySingleBosContract({
     "mcp_group_name",
     "mcp_resource_url",
     "codex_mcp_startup_timeout_sec",
+    "codex_mcp_tool_timeout_sec",
     "oauth"
   ];
   for (const product of products.filter(({ name }) => name !== contract.owner_product)) {
@@ -325,8 +335,9 @@ export async function verifySingleBosContract({
         server?.oauth_resource !== contract.resource_url ||
         server?.required !== true ||
         server?.startup_timeout_sec !== contract.codex_mcp_startup_timeout_sec ||
+        server?.tool_timeout_sec !== contract.codex_mcp_tool_timeout_sec ||
         JSON.stringify(Object.keys(server ?? {}).sort()) !==
-          JSON.stringify(["oauth_resource", "required", "startup_timeout_sec", "type", "url"])
+          JSON.stringify(["oauth_resource", "required", "startup_timeout_sec", "tool_timeout_sec", "type", "url"])
       ) {
         violations.push(finding(
           "codex_mcp_binding",

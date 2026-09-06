@@ -33,8 +33,9 @@ export async function verifyCodexLoginEvidence(options = {}) {
     server?.oauth_resource === product.mcp_resource_url &&
     server?.required === true &&
     server?.startup_timeout_sec === product.codex_mcp_startup_timeout_sec &&
+    server?.tool_timeout_sec === product.codex_mcp_tool_timeout_sec &&
     JSON.stringify(Object.keys(server ?? {}).sort()) ===
-      JSON.stringify(["oauth_resource", "required", "startup_timeout_sec", "type", "url"]);
+      JSON.stringify(["oauth_resource", "required", "startup_timeout_sec", "tool_timeout_sec", "type", "url"]);
   const serialized = await readFile(join(pluginRoot, ".mcp.json"), "utf8");
   const forbiddenOpenAiTarget = /auth\.openai\.com|chatgpt\.com/i.test(serialized);
   const packageBindingReport = {
@@ -45,7 +46,8 @@ export async function verifyCodexLoginEvidence(options = {}) {
     resource_url: server?.url ?? null,
     oauth_resource: server?.oauth_resource ?? null,
     required: server?.required ?? null,
-    startup_timeout_sec: server?.startup_timeout_sec ?? null
+    startup_timeout_sec: server?.startup_timeout_sec ?? null,
+    tool_timeout_sec: server?.tool_timeout_sec ?? null
   };
   if (!packageBinding || forbiddenOpenAiTarget) return {
     schema_version: "1",

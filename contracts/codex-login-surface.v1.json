@@ -20,7 +20,8 @@
     "resource_url_must_equal_product_source": true,
     "oauth_resource_must_equal_resource_url": true,
     "server_required": true,
-    "startup_timeout_sec": 45
+    "startup_timeout_sec": 180,
+    "tool_timeout_sec": 180
   },
   "action": {
     "trigger": "MCP_OAUTH_CHALLENGE",
