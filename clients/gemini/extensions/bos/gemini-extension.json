@@ -1,6 +1,6 @@
 {
   "name": "bos",
-  "version": "0.4.92",
+  "version": "0.4.93",
   "description": "Agent-first Business Operating System foundations for governed agent workflows.",
   "mcpServers": {
     "platform": {

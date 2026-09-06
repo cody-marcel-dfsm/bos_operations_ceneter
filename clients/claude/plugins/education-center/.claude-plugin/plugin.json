@@ -1,7 +1,7 @@
 {
   "name": "education-center",
   "displayName": "Education Operation Center",
-  "version": "0.4.92",
+  "version": "0.4.93",
   "description": "Coordinate operations across email, calendars, billing, and enrollment.",
   "author": {
     "name": "Infinite State Machines LLC"

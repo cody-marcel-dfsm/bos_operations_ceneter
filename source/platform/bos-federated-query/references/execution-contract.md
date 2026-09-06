@@ -76,7 +76,12 @@ idempotencyKey}`. Handles and versions must come from current server results.
 Create and update require explicit confirmation and one provider-neutral
 app-service invocation. Their response reports the underlying source guarantee.
 
-Cross-source synchronization invokes `crm.sync.plan` once with an application
+The client mutation safety limit applies before synchronization planning or
+apply: more than one affected source record, or unknown mutation scope, blocks
+the request. A merged contact can represent several distinct source records.
+The server's larger target capacity never grants client permission to use it.
+
+The server contract for cross-source synchronization invokes `crm.sync.plan` once with an application
 identity and 1–50 exact targets. The client validates the returned opaque plan,
 target dispositions, expiry, and `non_atomic_per_source` guarantee. After
 confirmation it invokes `crm.sync.apply` once with only the application and

@@ -5,6 +5,11 @@ description: Operate the shared BOS MCP connection, including server-evaluated s
 
 # BOS MCP Client
 
+Before a business mutation, apply
+[client mutation safety](references/mutation-safety.md): one affected record
+per logical task for updates/deletes and confirmation of the prepared target
+before every delete. Apply it again before resuming a pending mutation.
+
 ## First action: resolve the callable BOS tool
 
 Before installation inspection, resource listing, or connection UI work, resolve

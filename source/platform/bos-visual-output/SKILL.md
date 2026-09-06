@@ -49,7 +49,9 @@ node paths, and known
 gates or blockers visible on the diagram. Show each lead state as a distinct
 node, emphasize the current-to-goal route, and use concise transition labels
 and clearly differentiated completed, pending, and blocked states. Follow the
-journey skill's layout and accessible status styling. Obtain application-owned graph and
+journey skill's layout and accessible status styling. Highlight its selected
+positive-goal route with thick green arrows and bold labels, using its app-ranking
+or explicitly labeled shortest-structural-path rules. Obtain application-owned graph and
 path evidence before drawing transitions; explicitly report unavailable graph
 evidence without inventing a path. When independently verified current-state
 facts are available, use the journey skill's partial-evidence diagram only after

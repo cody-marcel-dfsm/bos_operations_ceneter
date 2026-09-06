@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import {
   cp,
   mkdir,
@@ -10,6 +11,8 @@ import {
 import { basename, join, relative, resolve, sep } from "node:path";
 
 export const root = resolve(import.meta.dirname, "../..");
+const mutationSafety = readFileSync(join(root,
+  "source/platform/bos-mcp-client/references/mutation-safety.md"), "utf8").trim();
 export const supportedClients = new Set(["codex", "claude", "copilot", "gemini"]);
 export const productNamePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const publicToolNamePattern = /^[a-z][a-z0-9_]*$/;
@@ -488,6 +491,7 @@ export async function copyProductSkills(product, skills, target) {
 }
 
 export function transformProductSkillGuidance(product, skillName, guidance) {
+  guidance = injectMutationSafety(guidance);
   if (skillName === product.settings_initializer) return guidance;
   if (productInitializationIndependentSkills.has(skillName)) return guidance;
   if (skillName === product.plugin_settings_initializer) {
@@ -511,6 +515,12 @@ export function transformProductSkillGuidance(product, skillName, guidance) {
     });
   }
   return organizationScoped;
+}
+
+export function injectMutationSafety(guidance) {
+  const frontmatter = guidance.match(/^---\s*\n[\s\S]*?^---\s*\n/m);
+  if (!frontmatter) throw new Error("Cannot inject mutation safety without frontmatter");
+  return `${guidance.slice(0, frontmatter[0].length)}\n${mutationSafety}\n\n${guidance.slice(frontmatter[0].length)}`;
 }
 
 export function injectOrganizationScopePreflight(guidance) {

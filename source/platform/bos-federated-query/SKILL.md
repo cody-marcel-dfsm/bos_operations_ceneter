@@ -50,6 +50,11 @@ source-result, execution-event, and aggregate envelopes.
 
 ## Mutation boundary
 
+Apply BOS client mutation safety before planning or applying synchronization.
+Block updates/deletes to multiple source records or unknown scope, including
+multiple records presented as one merged contact. Server batch capacity and
+plan confirmation never override the client limit.
+
 Single-source mutations inherit the source's declared guarantee. Multi-source
 mutations use an explicitly confirmed server plan and one provider-neutral
 apply invocation. Synchronization planning and apply use the separately

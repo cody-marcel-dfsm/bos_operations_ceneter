@@ -406,7 +406,9 @@ test("runtime plugin settings routing is independent of product initialization",
     settings_initializer: "initialize-client-settings",
     plugin_settings_initializer: "initialize-plugin-settings"
   }, "bos-plugin-settings", source);
-  assert.equal(output, source);
+  assert(output.includes(source.slice(source.indexOf("# Settings"))));
+  assert.doesNotMatch(output, /## (?:Organization scope|Product initialization|Product first-run) preflight/);
+  assert.match(output, /## Client mutation safety/);
 });
 
 test("every generated Education Center domain skill enforces first-run initialization", async () => {

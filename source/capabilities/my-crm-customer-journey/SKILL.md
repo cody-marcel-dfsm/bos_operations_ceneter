@@ -96,8 +96,9 @@ attainment does not invalidate a verified structural path. Draw known graph
 edges and label their gates as satisfied, blocked, or unknown from app evidence;
 keep future nodes pending. When only topology is available, a route traced along
 its exact directed edges must be labeled **Structural path — eligibility
-unverified**. Never infer an edge or choose a shortest or preferred route without
-app evidence. Retain relevant alternative paths and protect against graph cycles.
+unverified**. Never infer an edge. Select the highlighted route using the
+verified app evidence and ranking rules below. Retain relevant alternative paths
+and protect against graph cycles.
 
 Resolve a contact-to-lead or contact-to-graph relationship from current
 application evidence. Never assume every contact is a lead or combine ambiguous
@@ -252,6 +253,43 @@ partial-evidence connector. Visual styling must never imply that a pending
 transition has happened. Do not classify a known later node as completed from
 its position in the diagram.
 
+### Highlight the route to the positive goal
+
+Make the preferred current-to-positive-goal route stand out with thick dark-green
+arrows (`#15803D`, `stroke-width:4px`) and bold route labels. Use the app's
+recommended/optimal path and its declared objective when supplied. Otherwise,
+compute the fewest-transition path over the verified directed topology to the
+resolved canonical positive goal and label it **Shortest structural path —
+eligibility unverified**. This is a presentation ranking, not permission to
+execute a transition or evidence that it is the fastest or highest-converting
+business route. Preserve known conditions and blockers; never highlight a known
+blocked path as actionable. If no feasible path can be verified, label the
+highlighted structural candidate's blocking/unknown gates explicitly.
+
+For tied shortest paths, highlight the tied routes and identify the tie; never
+invent a preference. With multiple unresolved positive goals, keep labeled goal
+alternatives and rank paths separately. An explicitly requested non-positive
+goal keeps the user's requested emphasis. If no positive goal/path exists, show
+the supported graph and explain the missing route without fabricating one.
+
+Style every edge of the selected route, every intermediate route node, and its
+positive goal consistently. Use pale-green fill `#DCFCE7`, dark text `#14532D`,
+green border and `font-weight:bold` for pending route nodes and the positive
+goal. Preserve the current node's navy fill/white text and add a thick green
+border plus bold text. Retain completed/blocked status styling and its explicit
+labels when it conflicts with route fill. Keep alternative edges thin gray and
+negative goals visually secondary. Include a compact legend for the green route;
+green indicates route emphasis, never completion or eligibility.
+
+For Mermaid, declare each edge separately and use zero-based `linkStyle` indices
+for exactly the highlighted edges in final declaration order, for example
+`linkStyle 0,2 stroke:#15803D,stroke-width:4px,color:#14532D,font-weight:bold`.
+Apply matching node `style`/`classDef` declarations; styling only the destination
+node or bolding the prose does not highlight a path. Preserve conditional dashed
+edges even when they belong to the highlighted route. Recompute link indices
+after any edge insertion/reordering and check that no unrelated edge is green.
+Bold the same preferred route in the immediate text-path fallback.
+
 Apply direct text labels plus these high-contrast status styles:
 
 - completed: teal fill `#007A5E`, white text, label `✓ Completed`;
@@ -259,7 +297,7 @@ Apply direct text labels plus these high-contrast status styles:
 - reachable next: dark gold fill `#9A6700`, white text, label `→ Next`;
 - blocked: vermillion fill `#C43B00`, white text, label `! Blocked`;
 - later or alternate: light-gray fill `#E5E7EB`, charcoal text, label `Later`;
-- goal: purple border `#6F42C1` plus its canonical positive, negative, neutral,
+- goal outside the highlighted route: purple border `#6F42C1` plus its canonical positive, negative, neutral,
   or non-terminal goal class.
 
 Annotate the current node, completed transition history, every reachable goal
