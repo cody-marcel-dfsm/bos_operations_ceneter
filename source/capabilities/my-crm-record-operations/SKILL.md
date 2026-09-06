@@ -36,13 +36,15 @@ different schema: follow its declared fields, authority, and side-effect class.
 Do not impose a federated source inventory on a native operation whose contract
 does not require it. Keep provider execution server-owned.
 
-Match output to intent. Lists preserve requested fields, filters, and pagination;
-individual detail views include the current-node-to-goal graph through
-`my-crm-customer-journey`. A create or update remains the requested write and
-returns a verified receipt; a requested resulting detail view uses fresh read
-evidence. Graph discovery must not become a prerequisite for unrelated fields
-or writes unless the operation contract requires graph evidence. Graph failure
-never erases an independently confirmed write or its receipt.
+Whenever a lead is displayed, invoke `my-crm-customer-journey` and apply its
+Every displayed lead uses the detailed format contract. This includes create
+and update receipts, duplicate/already-existing matches, previews, and every
+lead displayed in a list. Retain filters/order/pagination while rendering each
+lead separately. After a confirmed write, read the exact resulting lead if
+needed and display its current graph and profile without waiting for another
+user request. Graph discovery is a post-result read; it never replays a write
+or erases a verified receipt. If graph reads fail, retain the outcome and show
+the detailed partial-evidence view. Honor explicit user output formats.
 
 Discover each requested CRUD operation independently from the current callable
 catalog and advertised application contracts. Create or search support does not
@@ -131,9 +133,9 @@ a missing delete through another operation.
    through a fresh read/status when available. Report already-deleted, conflict,
    denied, failed, and unknown outcomes accurately. An empty search alone does
    not prove deletion; identify any postcondition that could not be checked.
-6. Show a compact deletion receipt with the affected identity and verified
-   result. If requested, show pre-deletion graph evidence as historical, with
-   its observation time; never depict a deleted record as currently active.
+6. Show the verified deletion receipt within the detailed lead view. Mark the
+   record Deleted and any retained pre-deletion graph as historical with its
+   observation time; never depict a deleted record as currently active.
 
 Use multi-source synchronization only through an explicitly discovered
 server-orchestrated operation. A record mutation never grants synchronization

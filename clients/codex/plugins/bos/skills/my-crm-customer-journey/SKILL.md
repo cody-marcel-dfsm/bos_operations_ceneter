@@ -1,6 +1,6 @@
 ---
 name: my-crm-customer-journey
-description: Discover and show an authorized Lead Director customer's exact installed sales graph, current lead node, transition history, reachable goals, paths, gates, blockers, and available next steps. Use for any lead or contact detail request, including named-person find/look-up requests, email or phone lookups, a single field, profile, status, sales-flow, enrollment-progress, lifecycle, graph-position, and journey-path question.
+description: Discover and show an authorized Lead Director customer's exact installed sales graph, current lead node, transition history, reachable goals, paths, gates, blockers, and available next steps. Use whenever a lead is displayed, including create/update results, duplicate matches, list entries, and any lead or contact detail request, including named-person find/look-up requests, email or phone lookups, a single field, profile, status, sales-flow, enrollment-progress, lifecycle, graph-position, and journey-path question.
 ---
 
 
@@ -83,8 +83,10 @@ request. Continue this workflow before presenting its result,
 even when the lookup uses a search operation. Determine presentation from user
 intent, independently of the tool name or response being an array. A successful
 single-person lookup must continue into the graph workflow in the same turn.
-Broad filtered lists retain list scope even when they happen to return one row;
-ambiguous person matches require disambiguation before selecting a graph.
+Broad filtered lists preserve their filters and pagination and display each
+returned lead in the detailed format below. Keep ambiguous matches separate;
+show only the graph membership verified for each candidate and disambiguate
+before any targeted action.
 
 Start with `bos-mcp-client` live discovery and `bos_get_context` on the original
 request. Resolve deferred tools through the host's discovery facility before
@@ -129,6 +131,49 @@ invented transitions, reachability, actions, or completion.
 This rule authorizes no mutations, browser fallback, token extraction, or
 hardcoded endpoint. A missing per-app host facility alone must not suppress an
 independent successful authorized read or its partial graph presentation.
+
+## Every displayed lead uses the detailed format
+
+Apply this format whenever a response displays a lead, regardless of which
+operation produced it: lookup, list/search page, create, update, duplicate or
+already-existing match, operation failure with a verified existing lead, or
+preview/receipt. The user does not need to request details. A success sentence,
+receipt, status badge, contact bullets, or table row alone is incomplete.
+
+For each displayed lead, include:
+
+1. Name, organization, verified current state and the operation outcome.
+2. Native node graph from current state through intermediate nodes to canonical
+   goals, with the preferred positive-goal route bold and green under the route
+   ranking rules below. Follow with the same readable text path and relevant
+   conditions/eligibility limits.
+3. Available verified profile fields: contact details, owner, recorded dates or
+   appointments, and relevant history/actions. Keep missing values explicit
+   when relevant and never invent details. Keep technical identifiers out of
+   the graph; show them in details only when requested or operationally useful.
+4. Source observation time and meaningful freshness/evidence limitations.
+
+After a confirmed create or update, use the result if it supplies complete,
+current record evidence; otherwise read the exact resulting lead, then obtain
+its graph. On a duplicate match, render the verified existing lead this way.
+Complete the authorized mutation first; graph retrieval is a post-result read,
+not a write prerequisite. A failed graph read preserves the verified mutation
+outcome and yields a labeled partial detailed view after bounded recovery.
+Never repeat a write to obtain display evidence.
+
+For lists, keep the requested filters/order and pagination; render one detailed
+view per displayed lead. Reuse graph topology only across records with matching
+validated context/graph binding, retaining each lead's own current state. Use
+bounded pages for large results and disclose coverage. Aggregate-only results
+that display no individual leads need no per-lead graph. An explicit user format
+request, such as an export or compact list, overrides this display default.
+
+For deletion previews, use current verified details before the required
+confirmation. After deletion, label the record Deleted and any retained graph
+as last-known/historical with its observation time; do not describe the former
+current state as active or invent a deleted graph node. A failed create with no
+verified persisted lead shows the failure and submitted fields without a
+fabricated lead state or graph. Display changes grant no mutation authority.
 
 ## Rich record view by default
 
@@ -374,8 +419,8 @@ evidence sections. Never execute a transition from this read-only workflow.
 
 ## Final response check
 
-Before sending an individual lead result, verify that the response itself
-contains the Mermaid graph followed by the requested details. Known topology
+Before sending any response that displays a lead, verify that each lead view
+contains the detailed format above, including the Mermaid graph and profile details. Known topology
 requires the exact current-to-goal route. If a specific discovery/read failure
 prevents that route, include the partial-evidence graph of the verified current
 state and a precise limitation. A successful record read plus unavailable

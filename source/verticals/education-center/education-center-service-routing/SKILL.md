@@ -32,8 +32,17 @@ request. Select and read `my-crm-customer-journey` before presenting its result,
 even when the lookup uses a search operation. Determine presentation from user
 intent, independently of the tool name or response being an array. A successful
 single-person lookup must continue into the graph workflow in the same turn.
-Broad filtered lists retain list scope even when they happen to return one row;
-ambiguous person matches require disambiguation before selecting a graph.
+Broad filtered lists preserve their filters and pagination and display each
+returned lead in the detailed format below. Keep ambiguous matches separate;
+show only the graph membership verified for each candidate and disambiguate
+before any targeted action.
+
+Whenever a lead is displayed, use `my-crm-customer-journey`'s detailed display
+contract: current-state-to-goal graph with bold green preferred positive route,
+profile details and freshness. Apply it to create/update results, duplicate
+matches, previews/receipts and each displayed list entry. Obtain missing display
+evidence after a confirmed write without replaying it. Preserve pagination,
+explicit user formats and historical labeling for deleted records.
 
 ## Lead creation source and result contract
 
