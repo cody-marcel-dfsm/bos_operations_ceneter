@@ -1,6 +1,6 @@
 ---
 name: sendgrid-campaigns
-description: Prepare, validate, send, and reconcile tenant-scoped SendGrid campaigns using deterministic tooling, suppression hygiene, tracking verification, and durable result artifacts.
+description: Prepare, validate, send, and reconcile permission-based, tenant-scoped SendGrid campaigns using deterministic tooling, suppression hygiene, tracking verification, and durable result artifacts.
 ---
 
 # SendGrid Campaigns
@@ -8,6 +8,14 @@ description: Prepare, validate, send, and reconcile tenant-scoped SendGrid campa
 Treat tenant, provider credential, sender, reply-to, physical address,
 suppression group, category, audience, template, CTA domain, and artifacts as
 one execution boundary.
+
+Use only organization-owned audiences where every external recipient has
+documented marketing permission for the campaign's sender, purpose, and
+content. Never use purchased, rented, scraped, harvested, or inferred addresses.
+Source membership or prior correspondence alone does not establish consent.
+Never bypass or evade unsubscribe, suppression, complaint, bounce,
+do-not-email, frequency, or provider controls. Exclude any recipient whose
+permission is missing, ambiguous, withdrawn, or incompatible with the campaign.
 
 ## Workflow
 
