@@ -10,4 +10,8 @@ Use three distinct neutral templates:
 Use `{{review_confirmation_url}}`, which opens the BOS confirmation page before
 redirecting to Google. Use verified personalization only. Omit incentives,
 requested star ratings, sentiment screening, and claims of delivery before a
-server-confirmed authenticated delivery event.
+server-confirmed authenticated delivery event. State that the request is
+optional and include the provider-required opt-out or unsubscribe mechanism for
+the selected channel. Never bypass or evade opt-out, unsubscribe, suppression,
+complaint, bounce, or do-not-contact controls. Stop immediately after any
+opt-out, unsubscribe, or do-not-contact request.

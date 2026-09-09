@@ -1,6 +1,6 @@
 ---
 name: bos-google-review-outreach
-description: Run and report Education Center Google Business Profile review outreach through tenant-scoped BOS MCP workflows. Use for Calimatic class/camp cohorts, recent review campaigns, approval, three-step multichannel outreach, Google review links, Drive templates, campaign advancement, completion tracking, reviewer/rating enrichment, and dependency diagnosis.
+description: Prepare, approve, send, and report Google Business Profile review requests to documented-consent families with an existing Education Center service relationship through tenant-scoped BOS MCP workflows. Use for eligible Calimatic class and camp families, Google review links, Drive templates, bounded follow-up, completion tracking, reviewer and rating enrichment, and dependency diagnosis.
 ---
 
 
@@ -106,6 +106,24 @@ operation, and provider scope. The Automated Outreach workflow owns no separate
 credential and bypasses no authentication. Each selected service resolves its
 own automated credential from the authorized installed-app scope.
 
+## Eligibility and permission boundary
+
+Use this workflow only for the authenticated tenant's existing families after a
+class, camp, or other Education Center service. Every recipient must have
+documented permission evidence compatible with the review request and selected
+communication channel, plus server-returned evidence of that service
+relationship. Enrollment, attendance, source membership, prior correspondence,
+possession of an email address or phone number, or a public record does not
+establish consent.
+
+Exclude recipients whose permission is missing, ambiguous, withdrawn, expired,
+or incompatible with the request. Never accept or import arbitrary recipient
+lists, or use purchased, rented, scraped, harvested, inferred, or public-data
+addresses or phone numbers. Never bypass or evade opt-out, unsubscribe,
+suppression, complaint, bounce, do-not-contact, wrong-recipient, frequency, or
+provider controls. The default result before the server confirms an eligible
+audience and the user gives any required approval is a preview with zero sends.
+
 Read [references/capability-contract.md](references/capability-contract.md) for
 tool semantics and [references/drive-html-template-workflow.md](references/drive-html-template-workflow.md)
 for Drive requirements.
@@ -122,17 +140,22 @@ Cloud project questions, or provider authorization recovery, read and follow
    onboarding reference.
 2. Resolve explicit inclusive dates for relative requests. An omitted
    `class_type` means every Calimatic class/camp type.
-3. Call `education_center_review_outreach_run` with dates, optional class type, and a
-   stable `client_run_key`. The server queries Calimatic, groups one responsible
-   parent/family, creates a missing Lead Director lead, moves it through the
-   governed enrollment path, pins the three-step Drive sequence, and creates or
-   resumes one active family campaign.
-4. Present campaign counts and states. When approval is enabled, never advance
-   `awaiting_approval` campaigns without user approval.
+3. Call `education_center_review_outreach_run` with dates, optional class type,
+   and a stable `client_run_key`. The server queries Calimatic, groups one
+   responsible parent per family, verifies service relationship and documented
+   channel permission, applies suppression controls, creates a missing Lead
+   Director lead, moves it through the governed enrollment path, pins the
+   three-step Drive sequence, and creates or resumes one active family campaign.
+   If the result does not establish eligibility and permission, stop with zero
+   sends.
+4. Present campaign counts, exclusions, and states. When approval is enabled,
+   never advance `awaiting_approval` campaigns without user approval.
 5. Call `education_center_review_campaign_approve` for an approved campaign.
-6. Call `education_center_review_campaign_advance` only when the client judges the next
-   communication due. Scheduling and timing intelligence remain client-side.
-   Each call executes exactly one legal server-selected communication step.
+6. Call `education_center_review_campaign_advance` only when the client judges
+   the next communication due and the server reconfirms permission and
+   suppression eligibility. Scheduling and timing intelligence remain
+   client-side. Each call executes exactly one legal server-selected
+   communication step.
 7. Call `education_center_review_campaigns_list` for reporting and future scheduling.
 
 ## Fixed campaign policy
@@ -148,9 +171,12 @@ Cloud project questions, or provider authorization recovery, read and follow
   plan and never maps a channel to a provider.
 - Sender, reply-to, categories, suppression behavior, tracking, templates, and
   credentials are server configuration. Never request or supply them.
-- Every enrolled family must have email or phone. Treat absence or ambiguous
-  lead identity as a data-integrity error.
+- Contact availability never establishes eligibility. An eligible family must
+  have at least one channel with documented compatible permission. Treat
+  absence or ambiguous lead identity as a data-integrity error.
 - Human approval is an Automated Outreach plugin setting and defaults on.
+- Stop immediately on opt-out, unsubscribe, do-not-contact request, complaint,
+  invalid address or number, wrong-recipient report, or completed review flow.
 
 ## Completion
 
@@ -173,6 +199,8 @@ BOS token or customer email. Never map every public review to a family.
 - Never accept recipient lists, target states, provider credentials, Drive
   folders, template filenames, or Google locations as authority from the
   client. The server validates configured values and chooses legal transitions.
+- Never override permission, suppression, opt-out, unsubscribe, complaint,
+  bounce, do-not-contact, wrong-recipient, frequency, or provider controls.
 - Treat provider acceptance as `accepted`; report `delivered` only from the
   authenticated delivery evidence returned by BOS.
 - Keep contact details out of summaries unless the user requests the recipient

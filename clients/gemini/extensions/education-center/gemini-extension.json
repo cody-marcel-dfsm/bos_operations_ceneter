@@ -1,6 +1,6 @@
 {
   "name": "education-center",
-  "version": "0.4.99",
+  "version": "0.4.100",
   "description": "Coordinate operations across email, calendars, billing, and enrollment.",
   "mcpServers": {
     "education-center": {
