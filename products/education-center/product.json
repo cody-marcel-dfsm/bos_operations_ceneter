@@ -1,11 +1,11 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.97",
+  "version": "0.4.98",
   "release_status": "active",
   "display_name": "Education Operation Center",
   "description": "Coordinate operations across email, calendars, billing, and enrollment.",
-  "long_description": "Education Operation Center coordinates complex, evidence-backed work across an education company's authorized email, calendars, advertising, enrollment, staffing, and billing systems. For example, Acme Learning Center could ask it to find Acme.com partnership invoices in its billing inbox, reconcile them against payment records in its configured accounting system, and produce a source-linked exception ledger. Other workflows connect outreach to trials and enrollments, balance camps against registrations and instructor availability, prepare parent communications, and trace advertising outcomes. Each focused skill follows its own deterministic workflow through the tenant-scoped BOS connection while preserving human judgment, approvals, organizational settings, roles, application scope, and provider boundaries.",
+  "long_description": "Education Operation Center coordinates complex, evidence-backed work across an education company's authorized email, calendars, advertising, enrollment, staffing, and billing systems. For example, Acme Learning Center could ask it to find Acme.com partnership invoices in its billing inbox, reconcile them against payment records in its configured accounting system, and produce a source-linked exception ledger. Other workflows connect outreach to trials and enrollments, balance camps against registrations and instructor availability, prepare parent communications, and trace advertising outcomes. The plugin requires BOS and each focused skill follows its deterministic workflow through the tenant-scoped Education Center MCP connection while preserving human judgment, approvals, organizational settings, roles, application scope, and provider boundaries.",
   "website_url": "https://dfsm.ai",
   "brand_color": "#061638",
   "composer_icon": "assets/education-center-logo.png",
@@ -13,6 +13,28 @@
   "publisher": "Infinite State Machines LLC",
   "category": "Productivity",
   "authentication": "ON_USE",
+  "dependencies": [
+    "bos"
+  ],
+  "runtime": "bos",
+  "application_name": "leaddirector",
+  "mcp_group_name": "education-center",
+  "mcp_resource_url": "https://dfsm.ai/mcp/apps/leaddirector/education-center",
+  "codex_mcp_startup_timeout_sec": 180,
+  "codex_mcp_tool_timeout_sec": 180,
+  "oauth": {
+    "authorization_server_issuer": "https://dfsm.ai",
+    "authorization_endpoint": "https://dfsm.ai/api/v1/mcp/oauth/authorize",
+    "identity_provider": "google",
+    "identity_provider_authorization_endpoint": "https://accounts.google.com/o/oauth2/v2/auth",
+    "provider_account_selection_policy": "ALWAYS_SELECT_ACCOUNT",
+    "provider_account_selection_prompt": "select_account"
+  },
+  "openai_submission": {
+    "import_file": "openai/chatgpt-app-submission.json",
+    "directory_icon": "openai/directory-icon.png",
+    "composer_icon": "openai/composer-icon.png"
+  },
   "settings_template": "config/education-center.settings.template.json",
   "settings_initializer": "education-center-customer-initialization",
   "plugin_settings_initializer": "bos-plugin-settings-initialization",

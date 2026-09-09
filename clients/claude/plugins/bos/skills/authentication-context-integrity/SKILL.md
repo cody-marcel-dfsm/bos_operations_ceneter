@@ -107,19 +107,20 @@ configuration as distinct validated dimensions.
 - Provider credentials remain scoped to their installed app and plugin.
 - Reconnect or reauthorization replaces the scoped grant and preserves
   application configuration.
-- The user authenticates to BOS once per user-facing client context. The root
-  BOS plugin owns that host-managed connection. Education Center, CRM,
-  Marketing Director, and other subservice plugins never create or request an
-  additional BOS login.
-- Every subservice request uses the authenticated BOS connection. The server
+- Each installed product owns a host-managed OAuth connection to its scoped MCP
+  resource. BOS owns the platform connection. Education Center, CRM, Lead
+  Director, Marketing Director, and other dependent products own their
+  application connections and require the BOS product.
+- Every product request uses its product-owned authenticated connection. The server
   derives and evaluates organization, application, installation, subservice,
   plugin, role, capability, provider, and tool scope for that request.
 - Never interpret per-organization `is_default` role markers as a global
   organization default. Select one organization first, then its unique default
   role. Never query every accessible organization unless the user explicitly
   requests cross-organization scope.
-- Platform BOS operations use the BOS connection directly. They never transit
-  an Education Center, CRM, Marketing Director, or other subservice connection.
+- Platform BOS operations use the BOS connection directly. Application
+  operations use the owning Education Center, CRM, Lead Director, Marketing
+  Director, or other application connection.
 - Background jobs carry the same validated scope as interactive operations.
 - The agent owns MCP transport and session recovery. On a closed stream or
   session, it reconnects the configured endpoint, rediscovers tools,
@@ -130,24 +131,23 @@ configuration as distinct validated dimensions.
   the immutable resource URL. Claude marketplace plugins contain skills and
   account-connector metadata with no `.mcp.json` or `mcpServers`; this preserves
   the persistent account-level **Connect** control. ChatGPT/Codex packages
-  declare one package-owned root BOS resource in `.mcp.json` and contain no
+  declare one package-owned product resource in `.mcp.json` and contain no
   `.app.json`. Every runtime host
   uses its OAuth 2.1 MCP
   authorization flow. The host discovers BOS
   authorization metadata, launches consent, stores and refreshes the grant,
   and attaches the resulting resource-scoped access token. The package never
-  asks for or stores a BOS API key. Subservice packages reference the existing
-  BOS connection and carry no separate BOS authentication binding. Every
+  asks for or stores a BOS API key. Dependent product packages declare their
+  BOS requirement and their own scoped MCP authentication binding. Every
   secured call fails closed when authorization is
   absent, invalid, expired, revoked, or scoped to another resource.
-- Register the root BOS package's immutable MCP endpoint and verify the
+- Register each product package's immutable MCP endpoint and verify the
   server-returned context. Never discover, prompt for, repair, or materialize
   the route from an `installed_app_id`, customer setting, or subservice
-  package. For Claude, declare the BOS resource
+  package. For Claude, declare the product resource
   in an account or organization Web connector and complete authorization from
   **Customize → Connectors**. For ChatGPT/Codex, package exactly one `.mcp.json`
-  declaration for the root BOS resource and no `.app.json`.
-  Subservice plugins ship skills and metadata without another BOS MCP binding.
+  declaration for the product resource and no `.app.json`.
   For every client, never add `bearer_token_env_var`, literal authorization
   headers, or a plugin key field. The server derives actor, tenant, organization, installation,
   role, plugin, and capability scope from the validated OAuth grant; client
@@ -175,8 +175,8 @@ configuration as distinct validated dimensions.
 - A successful authenticated BOS context or provider-connection call proves the
   BOS grant is valid for its recovery transaction. The API-key recovery page
   must render the provider credential collector without requiring a separate
-  BOS browser session. If it renders or redirects to root BOS sign-in, never
-  click, follow, launch, or restart BOS authentication. Poll the existing
+  product MCP browser session. If it renders or redirects to product MCP sign-in, never
+  click, follow, launch, or restart product authentication. Poll the existing
   transaction once, preserve it, and classify the result as
   `provider_recovery_identity_boundary` when the provider form remains absent.
 - Calimatic uses that API-key path. Its first blocked request or explicit

@@ -8,7 +8,7 @@
     {
       "name": "bos",
       "source": "./clients/claude/plugins/bos",
-      "description": "Agent-first Business Operating System foundations for governed agent workflows."
+      "description": "Run deterministic workflows across a federated agentic service mesh."
     },
     {
       "name": "education-center",

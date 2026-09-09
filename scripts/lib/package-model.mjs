@@ -67,6 +67,7 @@ export function validateProduct(manifest, path = "product.json") {
     "publisher",
     "category",
     "authentication",
+    "dependencies",
     "clients",
     "includes",
     "runtime",
@@ -138,12 +139,12 @@ export function validateProduct(manifest, path = "product.json") {
     }
   }
   const openaiSubmission = manifest.openai_submission;
-  if (manifest.name === "bos" && (
+  if (manifest.release_status === "active" && manifest.clients?.includes("codex") && (
     openaiSubmission === null ||
     typeof openaiSubmission !== "object" ||
     Array.isArray(openaiSubmission)
   )) {
-    failures.push(`${path}: BOS requires permanent OpenAI submission source`);
+    failures.push(`${path}: active Codex products require permanent OpenAI submission source`);
   } else if (openaiSubmission !== undefined) {
     const expectedFields = new Set([
       "import_file",
@@ -179,6 +180,19 @@ export function validateProduct(manifest, path = "product.json") {
   }
   if (manifest.name !== "bos" && manifest.authentication !== "ON_USE") {
     failures.push(`${path}: subservice authentication policy must be ON_USE`);
+  }
+  if (
+    !Array.isArray(manifest.dependencies) ||
+    manifest.dependencies.some(
+      (dependency) => !productNamePattern.test(dependency) || dependency === manifest.name
+    ) ||
+    new Set(manifest.dependencies).size !== manifest.dependencies.length
+  ) {
+    failures.push(`${path}: dependencies must contain unique product names and may not include self`);
+  } else if (manifest.name === "bos" && manifest.dependencies.length !== 0) {
+    failures.push(`${path}: BOS foundation product must not declare a product dependency`);
+  } else if (manifest.name !== "bos" && !manifest.dependencies.includes("bos")) {
+    failures.push(`${path}: subservice products must depend on bos`);
   }
   if (!Array.isArray(manifest.clients) || manifest.clients.length === 0) {
     failures.push(`${path}: clients must be a non-empty array`);
@@ -345,16 +359,8 @@ export function validateProduct(manifest, path = "product.json") {
     ) {
       failures.push(`${path}: BOS must own the bos/platform MCP runtime`);
     }
-  } else if (
-    manifest.runtime !== undefined ||
-    manifest.application_name !== undefined ||
-    manifest.mcp_group_name !== undefined ||
-    manifest.mcp_resource_url !== undefined ||
-    manifest.codex_mcp_startup_timeout_sec !== undefined ||
-    manifest.codex_mcp_tool_timeout_sec !== undefined ||
-    manifest.oauth !== undefined
-  ) {
-    failures.push(`${path}: subservice products must use the BOS-owned connection`);
+  } else if (!manifest.runtime) {
+    failures.push(`${path}: subservice products must own a scoped MCP runtime`);
   }
   if (
     manifest.settings_template !== undefined &&

@@ -1,4 +1,4 @@
-import { inspectOAuthAuthorizeTarget } from "./single-bos-contract.mjs";
+import { inspectOAuthAuthorizeTarget } from "./product-mcp-contract.mjs";
 import { createHttpDebugFetch } from "./http-debug-log.mjs";
 import { join } from "node:path";
 import { oauthTargetContract, readJson, root } from "./package-model.mjs";

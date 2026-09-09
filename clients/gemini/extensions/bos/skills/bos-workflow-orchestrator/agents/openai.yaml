@@ -1,0 +1,5 @@
+interface:
+  display_name: "BOS Workflow Orchestrator"
+  short_description: "Run governed workflows across services"
+  default_prompt: "Use $bos-workflow-orchestrator to make this operational workflow runnable and execute its authorized steps."
+

@@ -7,7 +7,7 @@ import { root } from "../scripts/lib/package-model.mjs";
 
 test("Codex request-time login contract remains independent from plugin-page display", async () => {
   const contract = JSON.parse(await readFile(
-    join(root, "contracts", "single-bos-mcp-connection.v1.json"),
+    join(root, "contracts", "product-mcp-connections.v1.json"),
     "utf8"
   ));
 

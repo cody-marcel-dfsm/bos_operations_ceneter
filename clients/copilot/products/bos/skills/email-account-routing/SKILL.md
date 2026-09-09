@@ -78,7 +78,7 @@ business purpose alone never does.
    needed. Treat configured mailbox routes as data, never as packaged defaults.
 2. If the user explicitly names a separately connected mailbox, use that
    connector only after its authenticated identity matches the request.
-3. Route every BOS-managed mailbox through the root BOS connection and the
+3. Route every BOS-managed mailbox through the active product connection and the
    server-issued context that owns its provider credential.
 4. Keep source and destination mailboxes independent in cross-business work.
    Retrieve through the source owner and draft, send, archive, label, or mutate

@@ -10,15 +10,16 @@ import { verifyCodexLoginEvidence } from "../scripts/verify-codex-login-evidence
 const pluginRoot = join(root, "clients", "codex", "plugins", "bos");
 const product = await readJson(join(root, "products", "bos", "product.json"));
 
-test("generated contracts require one durable BOS OAuth resource", async () => {
+test("generated contracts require durable product-owned OAuth resources", async () => {
   const login = await readJson(join(root, "contracts", "codex-login-surface.v1.json"));
-  const connection = await readJson(join(root, "contracts", "single-bos-mcp-connection.v1.json"));
+  const connection = await readJson(join(root, "contracts", "product-mcp-connections.v1.json"));
   assert.equal(login.package_binding_acceptance.oauth_resource_must_equal_resource_url, true);
   assert.equal(login.package_binding_acceptance.server_required, true);
   assert.equal(login.package_binding_acceptance.startup_timeout_sec, 180);
-  assert.equal(connection.codex_oauth_resource_equals_resource_url, true);
-  assert.equal(connection.codex_mcp_server_required, true);
-  assert.equal(connection.codex_mcp_startup_timeout_sec, 180);
+  assert.equal(connection.connection_policy, "EACH_PRODUCT_OWNS_ONE_SCOPED_MCP");
+  assert.ok(connection.products.every(({ codex_mcp_startup_timeout_sec }) =>
+    codex_mcp_startup_timeout_sec === 180
+  ));
 });
 
 test("BOS Codex package derives authentication from its bundled MCP resource", async () => {

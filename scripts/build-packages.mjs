@@ -21,7 +21,7 @@ import {
 } from "./lib/package-model.mjs";
 import {
   codexLoginSurfaceContract,
-  singleBosConnectionContract
+  productMcpConnectionsContract
 } from "./lib/product-contracts.mjs";
 
 const stage = join(root, "tmp", `build-${process.pid}`);
@@ -81,8 +81,9 @@ for (const { product, skills } of resolved) {
         : undefined,
       oauth: product.runtime ? oauthTargetContract(product) : undefined,
       runtime_verification_tools: product.runtime_verification_tools,
-      connection_owner: "bos",
-      authentication: product.runtime ? "oauth_2_1" : "bos_managed"
+      connection_owner: product.name,
+      dependency_products: product.dependencies,
+      authentication: product.runtime ? "oauth_2_1" : "none"
     });
     await writeJson(
       join(pluginRoot, ".codex-plugin", "plugin.json"),
@@ -120,8 +121,9 @@ for (const { product, skills } of resolved) {
         resource_url: claudeResourceUrl,
         oauth: oauthTargetContract(product)
       } : {}),
-      connection_owner: "bos",
-      authentication: product.runtime ? "oauth_2_1" : "bos_managed"
+      connection_owner: product.name,
+      dependency_products: product.dependencies,
+      authentication: product.runtime ? "oauth_2_1" : "none"
     });
     const claudePlugin = {
       name: product.name,
@@ -189,10 +191,9 @@ for (const { product, skills } of resolved) {
           "",
           "## BOS connection and security",
           "",
-          "Install and connect the BOS plugin once. Education Operation Center uses that",
-          "existing BOS connection and contains no connector, registered app, MCP server,",
-          "or separate BOS login. BOS dynamically resolves domain-specific MCP services",
-          "and tooling for the authenticated scope and evaluates",
+          "Install the BOS plugin first as this product's required platform dependency.",
+          "Education Operation Center owns its Education Center MCP connector and",
+          "domain-scoped OAuth resource. Its server evaluates",
           "organization, installation, role, plugin, capability, provider, and tool",
           "authorization on every private operation.",
           "The customer-facing franchise or brand name is supplied during tenant setup",
@@ -233,8 +234,9 @@ for (const { product, skills } of resolved) {
       mcp_group_name: product.mcp_group_name,
       resource_url: product.runtime ? materializeMcpUrl(product) : undefined,
       oauth: product.runtime ? oauthTargetContract(product) : undefined,
-      connection_owner: "bos",
-      authentication: product.runtime ? "oauth_2_1" : "bos_managed"
+      connection_owner: product.name,
+      dependency_products: product.dependencies,
+      authentication: product.runtime ? "oauth_2_1" : "none"
     });
     if (product.runtime) {
       await writeJson(
@@ -260,10 +262,12 @@ for (const { product, skills } of resolved) {
           "GitHub Copilot cloud agent and code review cannot use this remote OAuth",
           "connection until those hosts support OAuth-authenticated MCP servers.",
           "",
-          "This package owns the single BOS connection at `/mcp/apps/bos/platform`."
+          `This package owns its scoped MCP connection at \`${product.mcp_resource_url}\`.`,
+          ...(product.dependencies.length ? [
+            `Install required product dependencies first: ${product.dependencies.join(", ")}.`
+          ] : [])
         ] : [
-          "Install and authenticate the BOS package once. This subservice adds workflows",
-          "through the existing BOS connection and registers no additional MCP server."
+          "This product has no runtime connection."
         ]),
         "",
         `Verify this product in the target repository with \`npm run install:verify:copilot-runtime -- --target <repository> --product ${product.name}\`.`,
@@ -289,8 +293,9 @@ for (const { product, skills } of resolved) {
       mcp_group_name: product.mcp_group_name,
       resource_url: product.runtime ? materializeMcpUrl(product) : undefined,
       oauth: product.runtime ? oauthTargetContract(product) : undefined,
-      connection_owner: "bos",
-      authentication: product.runtime ? "oauth_2_1" : "bos_managed"
+      connection_owner: product.name,
+      dependency_products: product.dependencies,
+      authentication: product.runtime ? "oauth_2_1" : "none"
     });
     await writeJson(
       join(extensionRoot, "gemini-extension.json"),
@@ -325,10 +330,12 @@ for (const { product, skills } of resolved) {
           "Gemini CLI discovers BOS OAuth, stores and refreshes the resource-scoped grant,",
           "and connects to the fixed HTTPS MCP route declared by this extension.",
           "",
-          "This package owns the single BOS connection at `/mcp/apps/bos/platform`."
+          `This package owns its scoped MCP connection at \`${product.mcp_resource_url}\`.`,
+          ...(product.dependencies.length ? [
+            `Install required product dependencies first: ${product.dependencies.join(", ")}.`
+          ] : [])
         ] : [
-          "Install and authenticate the BOS extension once. This subservice adds workflows",
-          "through the existing BOS connection and registers no additional MCP server."
+          "This product has no runtime connection."
         ]),
         "",
         "For a bounded recovery, run `npm run clean-install:gemini -- --confirmation",
@@ -503,8 +510,8 @@ await writeJson(
 const activeProducts = resolved.map(({ product }) => product);
 const bosProduct = activeProducts.find(({ name }) => name === "bos");
 await writeJson(
-  join(root, "contracts", "single-bos-mcp-connection.v1.json"),
-  singleBosConnectionContract(activeProducts)
+  join(root, "contracts", "product-mcp-connections.v1.json"),
+  productMcpConnectionsContract(activeProducts)
 );
 await writeJson(
   join(root, "contracts", "codex-login-surface.v1.json"),

@@ -144,9 +144,9 @@ test("Claude local installer enables an installed disabled plugin", async () => 
   ));
 });
 
-test("Claude subservice installation uses the existing BOS connector", async () => {
+test("Claude dependent-product installation uses its own connector and declares BOS", async () => {
   const calls = [];
-  let pluginListCount = 0;
+  const active = new Set();
   const run = (command, args) => {
     calls.push([command, args]);
     if (args[0] === "--version") return "2.1.220\n";
@@ -155,18 +155,21 @@ test("Claude subservice installation uses the existing BOS connector", async () 
       return "[]";
     }
     if (args[0] === "plugin" && args[1] === "list") {
-      pluginListCount += 1;
-      return pluginListCount === 1
-        ? "[]"
-        : JSON.stringify([installed("education-center@bos-education-center")]);
+      return JSON.stringify([...active].map((id) => installed(id)));
+    }
+    if (args[0] === "plugin" && args[1] === "install") {
+      active.add(args[2]);
     }
     return "";
   };
 
   const result = await installClaudeLocal({ base: root, product: "education-center", run });
   assert.equal(result.selector, "education-center@bos-education-center");
-  assert.equal(result.connectionScope, "bos_managed");
-  assert.equal(result.resourceUrl, undefined);
+  assert.equal(result.connectionScope, "claude_account");
+  assert.equal(result.resourceUrl, "https://dfsm.ai/mcp/apps/leaddirector/education-center");
+  assert(calls.some(([, args]) =>
+    args.join(" ") === "plugin install bos@bos-education-center --scope user"
+  ));
   assert.doesNotMatch(JSON.stringify(calls), /api[_-]?key/i);
 });
 

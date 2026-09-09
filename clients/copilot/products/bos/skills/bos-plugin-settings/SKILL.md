@@ -44,11 +44,11 @@ remain required; the package does not intercept or enforce arbitrary API calls.
 
 # BOS Plugin Settings
 
-Use the single root BOS connection. This skill operates
+Use the active product's scoped MCP connection. This skill operates
 server-owned plugin configuration and the display-safe local replica. It never
 edits package files, customer extensions, or provider credentials. The server
 resolves the selected subservice and plugin from opaque selectors and canonical
-state; the client never authenticates again for that subservice.
+state; each installed product authenticates its own MCP resource.
 
 Read [references/settings-operation-contract.md](references/settings-operation-contract.md)
 before changing a setting or handling an update failure.
@@ -57,7 +57,7 @@ before changing a setting or handling an update failure.
 
 A broad request for BOS plugin settings, server settings, connection status,
 enablement, services, or display properties belongs to `bos-plugin-console`.
-Invoke that skill immediately through the root BOS connection. This routing
+Invoke that skill immediately through the active product connection. This routing
 happens before product customer initialization, plugin-settings initialization,
 filesystem access, or settings-cache access, so the response remains an
 in-memory status view in the active client.

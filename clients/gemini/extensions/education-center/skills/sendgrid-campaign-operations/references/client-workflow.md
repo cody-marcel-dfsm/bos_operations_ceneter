@@ -2,7 +2,7 @@
 
 ## 1. Start and preserve state
 
-Select only the installed BOS connection. Call
+Select only the installed Education Center MCP connection. Call
 `bos_get_context`, discover tools, and fingerprint names plus input schemas.
 Create a sanitized campaign continuation envelope containing a task-local
 request reference and request hash, manifest fingerprint, server-owned
@@ -21,7 +21,7 @@ context, and resume automatically.
 Resolve explicit dates and source routes. Query configured Calimatic, Lead
 Director, Gmail, Calendar, camp, enrollment, family, inquiry, lead, and trial
 capabilities through the Education Center MCP. Treat a configured native
-connector route as a missing BOS workflow capability and create the governed
+connector route as a missing Education Center workflow capability and create the governed
 issue; never switch to a native Gmail or Calendar connector. Support
 priority-ordered, overlapping cohorts such as returning
 seasonal families, camp customers, current customer families, recent leads,
@@ -75,7 +75,7 @@ database access, raw SendGrid request, browser session, or another MCP product.
 
 ## 5. Reconcile and report
 
-Retrieve authenticated provider events through BOS. Report test and live modes
+Retrieve authenticated provider events through the Education Center MCP. Report test and live modes
 separately with requested, suppressed, prepared, accepted, rejected, delivered,
 bounced, unique human opens/clicks, unsubscribes, complaints, conversions,
 category, reporting cutoff, and last reconciliation timestamp. Count delivery

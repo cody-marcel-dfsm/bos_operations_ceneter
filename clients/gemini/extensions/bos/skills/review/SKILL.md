@@ -91,13 +91,13 @@ remain required; the package does not intercept or enforce arbitrary API calls.
 - Clients render server-owned state without inventing app scope.
 - Provider credentials and resources belong to the resolved tenant.
 - BOS foundations contain no application-only repository assumptions.
-- One host-managed BOS OAuth connection serves the user's installed BOS
-  subservices. Reject additional BOS logins or registered BOS connections owned
-  by Education Center, CRM, Marketing Director, or another subservice plugin.
+- BOS owns the platform OAuth connection. Every dependent product declares BOS
+  as a requirement and owns its application-scoped OAuth MCP connection.
 - The server evaluates subservice, installation, plugin, role, capability,
-  provider, and tool scope for every private operation over the BOS connection;
+  provider, and tool scope for every private operation over the product-owned connection;
   the live dynamic tool surface itself grants no authority.
-- Platform BOS operations never transit a subservice connection.
+- Platform BOS operations use the BOS product connection; application
+  operations use the owning application product connection.
 - Current-product completeness is proven from current components. Future
   products and anticipated growth do not satisfy a present requirement.
 - Package builds and installs are deterministic and credential-free.

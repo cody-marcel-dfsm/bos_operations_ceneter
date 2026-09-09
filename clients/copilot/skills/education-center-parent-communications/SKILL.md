@@ -171,7 +171,7 @@ fallback for the other or as authority to send a message.
 - Use the configured reviews/reputation plugin and the Education Center composite
   review-outreach action when published. Keep all template reads, rendering,
   SendGrid delivery, provider-event reconciliation, and state tracking
-  server-side through BOS MCP. Never use Gmail to deliver review outreach.
+  server-side through the Education Center MCP. Never use Gmail to deliver review outreach.
 - Retrieve and summarize reviews through read tools. Prepare or publish a
   response only through the exact supported workflow and required approval.
 

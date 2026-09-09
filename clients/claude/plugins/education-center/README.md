@@ -21,10 +21,9 @@ students.
 
 ## BOS connection and security
 
-Install and connect the BOS plugin once. Education Operation Center uses that
-existing BOS connection and contains no connector, registered app, MCP server,
-or separate BOS login. BOS dynamically resolves domain-specific MCP services
-and tooling for the authenticated scope and evaluates
+Install the BOS plugin first as this product's required platform dependency.
+Education Operation Center owns its Education Center MCP connector and
+domain-scoped OAuth resource. Its server evaluates
 organization, installation, role, plugin, capability, provider, and tool
 authorization on every private operation.
 The customer-facing franchise or brand name is supplied during tenant setup

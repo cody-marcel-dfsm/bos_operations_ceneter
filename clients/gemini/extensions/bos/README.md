@@ -11,7 +11,7 @@ Run `/mcp auth platform` and complete BOS sign-in in the browser.
 Gemini CLI discovers BOS OAuth, stores and refreshes the resource-scoped grant,
 and connects to the fixed HTTPS MCP route declared by this extension.
 
-This package owns the single BOS connection at `/mcp/apps/bos/platform`.
+This package owns its scoped MCP connection at `https://dfsm.ai/mcp/apps/bos/platform`.
 
 For a bounded recovery, run `npm run clean-install:gemini -- --confirmation
 "DELETE ALL BOS GEMINI EXTENSION STATE"`. Restart Gemini CLI after installation

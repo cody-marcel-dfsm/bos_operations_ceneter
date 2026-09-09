@@ -163,16 +163,16 @@ async function configureCodexBosMcp(_options, paths) {
   const metadata = await readJson(join(paths.target, ".bos-product.json"));
   const appPath = join(paths.target, ".app.json");
   const runtimePath = join(paths.target, ".mcp.json");
-  if (metadata.authentication === "bos_managed") {
+  if (metadata.authentication === "none") {
     if (metadata.application_name !== undefined ||
         metadata.mcp_group_name !== undefined ||
         await pathExists(appPath) || await pathExists(runtimePath)) {
-      throw new Error("BOS subservice package contains an additional MCP binding");
+      throw new Error("Runtime-free package contains an MCP binding");
     }
-    if (metadata.connection_owner !== "bos") {
-      throw new Error("BOS subservice package does not declare BOS connection ownership");
+    if (metadata.connection_owner !== metadata.name) {
+      throw new Error("Package connection ownership does not match its product identity");
     }
-    return { state: "bos_managed", connection_owner: "bos" };
+    return { state: "none", connection_owner: metadata.name };
   }
   if (metadata.authentication !== "oauth_2_1" ||
       await pathExists(appPath) || !(await pathExists(runtimePath))) {
@@ -182,7 +182,8 @@ async function configureCodexBosMcp(_options, paths) {
   const entries = Object.entries(runtimeManifest.mcpServers ?? {});
   const [name, server] = entries[0] ?? [];
   const expectedUrl = metadata.resource_url;
-  if (entries.length !== 1 || name !== metadata.mcp_group_name ||
+  if (metadata.connection_owner !== metadata.name ||
+      entries.length !== 1 || name !== metadata.mcp_group_name ||
       server?.type !== "http" || server?.url !== expectedUrl ||
       server?.oauth_resource !== expectedUrl || server?.required !== true ||
       server?.startup_timeout_sec !== metadata.codex_mcp_startup_timeout_sec ||

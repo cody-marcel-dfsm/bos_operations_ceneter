@@ -105,7 +105,7 @@ secrets.
 ## User elicitation
 
 Complete authentication before asking any customer-settings question. Verify
-the installed Education Center BOS connection and finish its host-managed
+the installed Education Center MCP connection and finish its host-managed
 Connect/Sign in flow when required. After authentication, run context discovery
 and derivation, then present the recommendation. Never combine an
 authentication prompt with the settings questionnaire. If the host requires

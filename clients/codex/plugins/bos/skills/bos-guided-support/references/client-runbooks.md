@@ -12,11 +12,11 @@ directions when the local evidence conflicts.
   installed `.bos-product.json`
 - Generated runtime declarations: the installed product package
 
-The BOS resource is owned by the root BOS package. Education Center, CRM,
-Marketing Director, and other subservice plugins use that authenticated BOS
-connection and never add another BOS login. Use the exact generated BOS
+The BOS resource is owned by the BOS package. Education Center, CRM, Lead
+Director, Marketing Director, and other dependent plugins require BOS and own
+their application-scoped MCP resources. Use the exact generated product
 connector metadata when private installation requires Claude's custom connector
-flow. Never ask the user to reconstruct or modify the endpoint.
+flow. Never ask the user to reconstruct or modify an endpoint.
 
 ## Local client cache reset
 
@@ -50,11 +50,12 @@ registration. Restart BOS authorization once, refresh tools, verify
 `bos_get_context`, and resume the request. If the host exposes replacement only
 through its native **Connect**, **Sign in**, **Auth**, or **Authenticate**
 control, invoke that control and request user consent there. Preserve every
-installed subservice plugin and avoid creating another BOS connection.
+installed dependent plugin and reconnect only the affected product-owned
+resource.
 
 An OAuth token-endpoint `invalid_grant`, including `Refresh token replay
-detected`, means the existing BOS grant is unusable. Keep the root
-package-owned connection and immutable BOS resource unchanged, stop refresh retries, and use the
+detected`, means the existing product grant is unusable. Keep the product-owned
+connection and its immutable resource unchanged, stop refresh retries, and use the
 native **Connect**, **Sign in**, **Auth**, or **Authenticate** control for fresh
 consent. Refresh tools and context after consent, then resume the preserved
 request.
@@ -63,10 +64,9 @@ request.
 
 1. Confirm **BOS** and the requested subservice plugins are installed and
    enabled in the Plugins Directory.
-2. Confirm BOS's plugin manifest declares `mcpServers: "./.mcp.json"`, that MCP
-   file contains exactly one remote HTTP `platform` entry using the product's
-   BOS resource, and the package has no `.app.json`;
-   subservice plugins carry no additional BOS binding.
+2. Confirm each installed plugin manifest declares `mcpServers: "./.mcp.json"`,
+   that its MCP file contains exactly one remote HTTP entry using that product's
+   resource, and that the package has no `.app.json`.
 3. Start a new task after install or update when the existing task cannot see
    the plugin.
 4. Confirm the host shows the plugin-page **Login**, **Connect**, or
@@ -92,14 +92,15 @@ Official source:
 
 ## Claude Cowork/Desktop
 
-1. Open **Customize → Plugins** and confirm BOS plus the subservice plugins are
+1. Open **Customize → Plugins** and confirm BOS plus the dependent product plugins are
    installed and enabled from the configured marketplace.
-2. Open **Customize → Connectors** and confirm the BOS account or organization
-   Web connector is present. For a private installation, use the exact name and
-   URL from the generated BOS `CONNECTORS.md` to add the custom connector.
-3. Confirm BOS is classified as **Web** and provides **Connect**. Subservice
-   plugins expose no connector entry.
-4. Select **Connect**, complete BOS consent, and start a new Cowork task after
+2. Open **Customize → Connectors** and confirm each installed product's account
+   or organization Web connector is present. For a private installation, use
+   the exact name and URL from each generated product `CONNECTORS.md`.
+3. Confirm every product connector is classified as **Web** and provides
+   **Connect**.
+4. Select **Connect** for the product needed by the request, complete consent,
+   and start a new Cowork task after
    installation or update.
 5. Refresh discovery, resolve
    context, and run one bounded read.

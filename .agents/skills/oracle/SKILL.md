@@ -87,9 +87,10 @@ prior verdict and requires a fresh Oracle review of the complete updated diff.
   repository.
 - Evaluate products from their current contract. Future products or anticipated
   growth never satisfy missing present behavior.
-- Preserve one host-managed BOS authentication connection. Subservice plugins
-  contribute workflows through that connection and never own independent BOS
-  logins or platform traffic.
+- Preserve one host-managed OAuth connection for each installed product. BOS
+  owns the BOS platform MCP resource. Each dependent product owns its scoped
+  MCP resource and relevant skills, declares BOS as a product dependency, and
+  never routes its application-scoped traffic through the BOS platform MCP.
 - Evaluate Codex package MCP binding, OAuth activation, grant state, and
   callable-tool discovery as distinct readiness layers. Require the package MCP
   endpoint to drive BOS OAuth discovery.
@@ -119,7 +120,8 @@ Review the completed diff and focused validation evidence. Verify:
   or provider recovery scope, and acceptance checks match the touched contract;
 - Router-to-PO-to-GO mutation boundaries where service behavior is described;
 - credential-free tracked sources, generated artifacts, and logs;
-- one host-managed BOS OAuth connection per user-facing client context;
+- one host-managed OAuth connection per installed product in each user-facing
+  client context, with BOS and dependent-product resources kept distinct;
 - product-manifest completeness and canonical-source/client-package parity;
 - deterministic builds, version consistency, tests, and extension preservation;
 - updated Vault knowledge when a change establishes a durable rule; and

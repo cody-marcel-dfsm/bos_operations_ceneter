@@ -14,7 +14,7 @@ customer-facing output names the franchise or brand. Keep technical product,
 skill, route, server, environment-variable, tool, capability, authorization,
 and record identifiers unchanged.
 
-Use the authenticated BOS connection and follow `bos-mcp-client` for every
+Use the authenticated Education Center MCP connection and follow `bos-mcp-client` for every
 provider call. Treat the live BOS context and operation result as authoritative
 for access, and live discovery as the current domain-specific service and schema
 surface.
@@ -30,7 +30,7 @@ browser handoff, poll readiness, and resume the pending operation once.
 
 1. Resolve an explicit date range using `timezone` from the installed product's
    `config/customer-settings.json` and call
-   `bos_get_context` once through the BOS connection.
+   `bos_get_context` once through the Education Center MCP connection.
 2. Confirm the live capabilities needed for Gmail, Calendar, Lead Director,
    Calimatic, and Google Ads. Read
    [references/integration-contract.md](references/integration-contract.md).

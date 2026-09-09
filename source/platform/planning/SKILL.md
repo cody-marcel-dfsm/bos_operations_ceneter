@@ -25,15 +25,16 @@ description: Plan application-neutral Business Operating System changes, migrati
 - Resolve explicit tenant, organization, application, installation, role, and
   plugin scope before private execution.
 - Keep BOS platform behavior application-neutral.
-- Give the user one host-managed BOS authentication connection. Subservice
-  plugins contribute capabilities behind that connection and never require an
-  additional BOS login.
+- Give every plugin one host-managed OAuth connection to its product-scoped MCP.
+  Require BOS as the platform dependency for application products and preserve
+  each product's independent skills and runtime ownership.
 - Let the server evaluate installed services, plugin enablement, roles,
   capabilities, provider readiness, and tool authorization on every private
   operation. Treat the live dynamic tool surface as discovery and schemas,
   never authority.
-- Keep platform BOS traffic on the BOS connection. Never use Education Center,
-  CRM, Marketing Director, or another subservice as a platform transport.
+- Keep platform BOS traffic on the BOS connection. Keep Education Center, CRM,
+  Lead Director, Marketing Director, and other application traffic on the
+  owning product connection.
 - Let app graphs own business behavior after BOS establishes app context.
 - Keep web and mobile clients as render shells for server-owned state.
 - Route mutations through PO orchestration and GO persistence.

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "education-center": {
+      "type": "http",
+      "url": "https://dfsm.ai/mcp/apps/leaddirector/education-center",
+      "oauth_resource": "https://dfsm.ai/mcp/apps/leaddirector/education-center",
+      "required": true,
+      "startup_timeout_sec": 180,
+      "tool_timeout_sec": 180
+    }
+  }
+}

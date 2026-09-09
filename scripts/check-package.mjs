@@ -18,7 +18,7 @@ import {
 } from "./lib/package-model.mjs";
 import {
   codexLoginSurfaceContract,
-  singleBosConnectionContract
+  productMcpConnectionsContract
 } from "./lib/product-contracts.mjs";
 
 const forbiddenNames = new Set([
@@ -176,6 +176,7 @@ async function validateProducts() {
   }
   const products = await listProducts();
   const identities = new Set();
+  const runtimeRoutes = new Set();
   for (const { path, manifest } of products) {
     failures.push(...validateProduct(manifest, path));
     if (
@@ -194,6 +195,18 @@ async function validateProducts() {
       failures.push(`Duplicate product identity: ${manifest.name}`);
     }
     identities.add(manifest.name);
+    for (const dependency of manifest.dependencies ?? []) {
+      if (!products.some(({ manifest: candidate }) => candidate.name === dependency)) {
+        failures.push(`${path}: unknown product dependency ${dependency}`);
+      }
+    }
+    if (manifest.runtime) {
+      const route = `${manifest.application_name}/${manifest.mcp_group_name}`;
+      if (runtimeRoutes.has(route)) {
+        failures.push(`${path}: duplicate product MCP route ${route}`);
+      }
+      runtimeRoutes.add(route);
+    }
     let skills = [];
     try {
       skills = await resolveProductSkills(manifest);
@@ -225,11 +238,11 @@ async function validateProducts() {
         continue;
       }
       const metadata = await readJson(metadataPath);
-      const expectedAuthentication = manifest.runtime
-        ? "oauth_2_1"
-        : "bos_managed";
+      const expectedAuthentication = manifest.runtime ? "oauth_2_1" : "none";
       if (
-        metadata.connection_owner !== "bos" ||
+        metadata.connection_owner !== manifest.name ||
+        JSON.stringify(metadata.dependency_products) !==
+          JSON.stringify(manifest.dependencies) ||
         metadata.application_name !== manifest.application_name ||
         metadata.mcp_group_name !== manifest.mcp_group_name ||
         metadata.resource_url !== (manifest.runtime
@@ -566,8 +579,8 @@ async function validateGeneratedProductContracts() {
   const bos = products.find(({ name }) => name === "bos");
   for (const [path, expected] of [
     [
-      join(root, "contracts", "single-bos-mcp-connection.v1.json"),
-      singleBosConnectionContract(products)
+      join(root, "contracts", "product-mcp-connections.v1.json"),
+      productMcpConnectionsContract(products)
     ],
     [
       join(root, "contracts", "codex-login-surface.v1.json"),

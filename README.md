@@ -32,7 +32,7 @@ protected-resource challenge
 then identifies a signed-out runtime connection and activates OAuth. The
 user completes consent, and the agent refreshes tools and resumes the request.
 
-Current desktop marketplace release: `0.4.97`. If `0.4.96` is installed,
+Current desktop marketplace release: `0.4.98`. If `0.4.97` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -45,17 +45,17 @@ Open a new Codex task and paste:
 
 > Add https://github.com/cody-marcel-dfsm/bos_operations_ceneter
 > at its published `main` ref as a Codex plugin marketplace, install and
-> enable `bos` and `education-center`, connect
-> BOS once through the host's sign-in flow, start a new task if
+> enable `bos` and `education-center`, connect BOS to its platform MCP and
+> Education Operation Center to its scoped MCP through the host's sign-in flows, start a new task if
 > required to load the plugin, and verify one authenticated Education Operation Center
 > read. Do not request or configure a BOS API key, environment variable,
 > secret-manager name, or installed application ID. If authorization is
-> incomplete, verify the root package-owned `.mcp.json`, use the native BOS
+> incomplete, verify the affected product package-owned `.mcp.json`, use that product's native
 > **Login**, **Connect**, or **Authenticate** action, wait for the user to select
 > it and complete browser consent, refresh tools, and resume. The server's 401
 > challenge activates runtime OAuth discovery.
 > Treat `reauthenticationRequired` as sign-in recovery. If the plugin-page
-> action is absent after the packaged BOS MCP resource loads, preserve the request
+> action is absent after the packaged product MCP resource loads, preserve the request
 > and report an authentication-activation defect.
 > Do not launch authentication, generate an unavailable-data report, or use
 > generic app permissions for MCP OAuth.
@@ -66,10 +66,10 @@ the Git ref, and leave **Sparse paths** empty. The repository-root
 
 Codex reads the generated catalog at
 `clients/codex/.agents/plugins/marketplace.json`, installs the plugins into its managed
-cache, and loads the BOS resource from the plugin's `.mcp.json`.
-The framework derives OAuth activation from that resource and stores the
-host-managed grant. Education Operation
-Center uses that connection without another MCP binding or login. Start a new
+cache, and loads each product resource from that plugin's `.mcp.json`.
+The framework derives OAuth activation from each resource and stores its
+host-managed grant. Education Operation Center uses its own scoped MCP binding.
+Start a new
 task after installation or upgrade. A complete installation must pass
 `npm run install:verify:codex-runtime`; this checks the plugin registry,
 marketplace registration, installed package versions, required package MCP
@@ -97,12 +97,14 @@ marketplace afterward.
    `https://github.com/cody-marcel-dfsm/bos_operations_ceneter` as a
    marketplace.
 3. Install **BOS** and **Education Operation Center**.
-4. Open **Customize → Connectors**. Add the package-owned BOS Web connector when
+4. Open **Customize → Connectors**. Add each package-owned Web connector when
    it is not already present through your organization
    or Anthropic's Connector Directory:
    - Name: `BOS`
    - URL: `https://dfsm.ai/mcp/apps/bos/platform`
-5. Select **Connect** on that Web connector and complete BOS sign-in.
+   - Name: `Education Operation Center`
+   - URL: `https://dfsm.ai/mcp/apps/leaddirector/education-center`
+5. Select **Connect** on both Web connectors and complete each product's sign-in.
 6. Start a new Cowork task and request one authenticated Education Operation
    Center read to verify the connection.
 
@@ -142,11 +144,11 @@ touches Gemini or Copilot, or accesses repository files. The legacy
 `scripts/uninstall-bos-all-clients.sh` entrypoint delegates to this same bounded
 cache reset for safety.
 
-Claude reads `clients/claude/.claude-plugin/marketplace.json`. The BOS plugin owns the account
-connector metadata. Education Operation Center contributes skills and contains no
-connector or MCP declaration. The BOS account-level Web connector has the persistent
-**Connect** control, discovers OAuth from the immutable MCP resource, and stores and
-refreshes the resulting grant across tasks.
+Claude reads `clients/claude/.claude-plugin/marketplace.json`. Each plugin owns
+its account-connector metadata, relevant skills, and scoped MCP declaration.
+Each account-level Web connector has a persistent **Connect** control, discovers
+OAuth from its immutable product MCP resource, and stores and refreshes the
+resulting grant across tasks.
 
 ### Updates
 
@@ -178,7 +180,7 @@ refreshes the resulting grant across tasks.
   publish the new plugin version through the OpenAI Platform. The public
   directory uses submitted snapshots rather than the repository marketplace.
 - Start a new task so the host loads the updated package.
-- Reauthorize only when the host reports that the BOS grant is missing,
+- Reauthorize only when the host reports that the affected product grant is missing,
   expired, revoked, or incorrectly scoped.
 
 Server-only tool-catalog changes require reconnection and tool rediscovery.
@@ -271,7 +273,7 @@ connection contract directly:
 npm run contract:check
 ```
 
-The command reads `contracts/single-bos-mcp-connection.v1.json`, writes a
+The command reads `contracts/product-mcp-connections.v1.json`, writes a
 machine-readable JSON verdict to standard output, and exits nonzero for any
 additional connection artifact, subservice MCP declaration, retired
 subservice connection identifier, or root-resource mismatch.
@@ -414,9 +416,11 @@ retrieve a reusable BOS access token.
 
 ## Other clients
 
-Claude, ChatGPT/Codex, OAuth-capable Copilot hosts, Gemini CLI, and Antigravity Desktop use host-managed
-OAuth for the immutable BOS resource. Claude provisions it as one account-level
-Web connector owned by the BOS plugin. Subservice plugins use that connection.
+Claude, ChatGPT/Codex, OAuth-capable Copilot hosts, Gemini CLI, and Antigravity
+Desktop use host-managed OAuth for each product-owned MCP resource. BOS owns
+the BOS platform resource. Education Center, My CRM, Lead Director, and other
+dependent products own their application-scoped resources and declare BOS as a
+required product dependency.
 
 ### Gemini CLI and Antigravity 2.0 Desktop
 

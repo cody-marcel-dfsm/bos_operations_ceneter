@@ -866,31 +866,17 @@ test("unmanaged obsolete app package converges to package-owned MCP", async () =
   await assert.rejects(access(join(target, ".app.json")));
 });
 
-test("subservice package installation removes an additional direct MCP file", async () => {
+test("dependent-product installation preserves its product-owned MCP file", async () => {
   const home = await temporaryHome();
-  const desired = join(root, "clients", "codex", "plugins", "education-center");
   const target = installedProduct(home, "education-center");
-  await mkdir(join(codexMarketplaceRoot(home), "plugins"), { recursive: true });
-  await cp(desired, target, { recursive: true });
-  const manifestPath = join(target, ".codex-plugin", "plugin.json");
-  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-  manifest.mcpServers = "./.mcp.json";
-  await writeFile(manifestPath, JSON.stringify(manifest));
-  await writeFile(join(target, ".mcp.json"), JSON.stringify({
-    mcpServers: {
-      platform: {
-        type: "http",
-        url: resourceGroupUrl
-      }
-    }
-  }));
-
-  const report = await inspectInstallation({ home, product: "education-center" });
-  assert.equal(report.state, "partial");
-  assert(report.actions.remove.includes(".mcp.json"));
   const applied = await applyInstallationRaw({ home, product: "education-center" });
   assert.equal(applied.state, "managed-current");
-  await assert.rejects(access(join(target, ".mcp.json")));
+  const mcp = JSON.parse(await readFile(join(target, ".mcp.json"), "utf8"));
+  assert.deepEqual(Object.keys(mcp.mcpServers), ["education-center"]);
+  assert.equal(
+    mcp.mcpServers["education-center"].url,
+    "https://dfsm.ai/mcp/apps/leaddirector/education-center"
+  );
 });
 
 test("stale managed file updates when prior hash proves ownership", async () => {
