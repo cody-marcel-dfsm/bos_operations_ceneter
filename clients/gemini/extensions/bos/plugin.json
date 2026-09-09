@@ -1,5 +1,5 @@
 {
   "$schema": "https://antigravity.google/schemas/v1/plugin.json",
   "name": "bos",
-  "description": "Run deterministic workflows across a federated agentic service mesh. Version 0.4.98."
+  "description": "Run deterministic workflows across a federated agentic service mesh. Version 0.4.99."
 }

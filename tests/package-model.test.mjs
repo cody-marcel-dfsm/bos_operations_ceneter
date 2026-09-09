@@ -1689,7 +1689,8 @@ test("package schema requires product-owned runtime and BOS dependencies", () =>
     openai_submission: {
       import_file: "openai/chatgpt-app-submission.json",
       directory_icon: "openai/directory-icon.png",
-      composer_icon: "openai/composer-icon.png"
+      composer_icon: "openai/composer-icon.png",
+      skills_archive: "openai/bos-skills.zip"
     },
     default_prompts: []
   };
@@ -2369,8 +2370,9 @@ test("README routes customer, development, and credential-free release validatio
   assert.doesNotMatch(developmentSection, /plugin marketplace add \.\/|npm run dev:link:codex/);
   assert.match(releaseSection, /npm run release:check/);
   assert.match(releaseSection, /credential-free and local/i);
-  assert.match(releaseSection, /creates no ZIPs, tarballs, customer archives/i);
-  assert.match(releaseSection, /performs no live MCP call/i);
+  assert.match(releaseSection, /OpenAI skill-snapshot ZIP/i);
+  assert.match(releaseSection, /creates no ad-hoc\s+release ZIPs, tarballs, customer archives/i);
+  assert.match(releaseSection, /performs no\s+live MCP call/i);
   assert.doesNotMatch(releaseSection, /ACCESS_TOKEN|SMOKE_TIME_ZONE/);
   assert.equal(repositoryPackage.scripts.build, "npm run build:packages");
   assert.equal(

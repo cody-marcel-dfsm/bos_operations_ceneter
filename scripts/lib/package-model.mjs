@@ -149,7 +149,8 @@ export function validateProduct(manifest, path = "product.json") {
     const expectedFields = new Set([
       "import_file",
       "directory_icon",
-      "composer_icon"
+      "composer_icon",
+      "skills_archive"
     ]);
     for (const field of Object.keys(openaiSubmission)) {
       if (!expectedFields.has(field)) {
@@ -158,7 +159,11 @@ export function validateProduct(manifest, path = "product.json") {
     }
     for (const field of expectedFields) {
       const value = openaiSubmission[field];
-      const extension = field === "import_file" ? /\.json$/i : /\.png$/i;
+      const extension = field === "import_file"
+        ? /\.json$/i
+        : field === "skills_archive"
+          ? /\.zip$/i
+          : /\.png$/i;
       if (
         typeof value !== "string" ||
         !value.startsWith("openai/") ||
