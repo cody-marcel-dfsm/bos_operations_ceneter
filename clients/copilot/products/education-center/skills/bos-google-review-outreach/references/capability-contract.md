@@ -15,6 +15,17 @@ All calls require the validated resource-scoped OAuth grant and current plugin
 capability grant.
 The server derives `run_as_role` from installed-app FSM metadata.
 
+The eligible audience is limited to existing families with server-returned
+evidence of an Education Center class, camp, or service relationship and
+documented permission compatible with the review request and selected channel.
+Enrollment, attendance, source membership, prior correspondence, contact-data
+possession, or public availability alone does not establish consent. The server
+excludes missing, ambiguous, withdrawn, expired, or incompatible permission and
+applies opt-out, unsubscribe, suppression, complaint, bounce, do-not-contact,
+wrong-recipient, frequency, and provider controls before every communication.
+The client never bypasses or evades those controls. A list or recipient supplied
+by the client cannot become delivery authority.
+
 Google Business Profile customer onboarding uses the shared BOS Google Cloud
 project described in
 `../../bos-mcp-client/references/google-business-profile-onboarding.md`.
@@ -41,3 +52,6 @@ The organization business profile owns the eligible channel and service plan.
 The client supplies no provider choice and never maps a channel to a service.
 Provider effects use deterministic campaign/step/channel identities. Repeating
 an accepted effect never resends it.
+
+An opt-out, unsubscribe, do-not-contact request, complaint, invalid destination,
+wrong-recipient report, or completed review flow stops the campaign immediately.

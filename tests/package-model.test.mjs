@@ -633,6 +633,39 @@ test("configurable review outreach resolves delivery services from the organizat
   );
 });
 
+test("review outreach is limited to consented existing families", async () => {
+  const guidance = await readFile(
+    `${root}/source/capabilities/review-outreach/SKILL.md`,
+    "utf8"
+  );
+  const contract = await readFile(
+    `${root}/source/capabilities/review-outreach/references/capability-contract.md`,
+    "utf8"
+  );
+  const copyPolicy = await readFile(
+    `${root}/source/capabilities/review-outreach/references/outreach-copy.md`,
+    "utf8"
+  );
+  const policy = `${guidance}\n${contract}\n${copyPolicy}`;
+
+  assert.match(guidance, /documented (?:permission|consent)/i);
+  assert.match(guidance, /existing[\s\S]*(?:family|families)[\s\S]*(?:class|camp|service)/i);
+  assert.match(
+    guidance,
+    /(?:enrollment|attendance|source membership|prior correspondence)[\s\S]*does not\s+establish consent/i
+  );
+  assert.match(
+    guidance,
+    /(?:purchased|rented)[\s\S]*scraped[\s\S]*harvested[\s\S]*inferred/i
+  );
+  assert.match(
+    policy,
+    /never\s+(?:bypass|evade)[\s\S]*(?:opt-out|unsubscribe)[\s\S]*suppression[\s\S]*(?:complaint|bounce|do-not-contact)/i
+  );
+  assert.match(policy, /stop immediately[\s\S]*(?:opt-out|unsubscribe|do-not-contact)/i);
+  assert.match(guidance, /zero sends/i);
+});
+
 test("SendGrid client trace validates the governed 229-recipient acceptance path", async () => {
   const temporary = await mkdtemp(join(tmpdir(), "sendgrid-client-trace-"));
   try {

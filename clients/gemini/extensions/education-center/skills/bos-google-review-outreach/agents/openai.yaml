@@ -1,4 +1,4 @@
 interface:
   display_name: "Google Review Outreach"
-  short_description: "Run three-step review campaigns through BOS"
-  default_prompt: "Use $bos-google-review-outreach to run and report an approved Calimatic-based Google review campaign through BOS."
+  short_description: "Request reviews from consented families"
+  default_prompt: "Use $bos-google-review-outreach to prepare an approved Google review request for eligible Education Center families with documented channel permission."
