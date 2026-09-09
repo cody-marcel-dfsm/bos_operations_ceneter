@@ -9,7 +9,7 @@ import {
   validateProduct
 } from "../scripts/lib/package-model.mjs";
 
-test("BOS and its subservices compose plugin settings through one connection", async () => {
+test("BOS and dependent products compose plugin settings through their owning connections", async () => {
   const products = await listProducts();
   for (const { manifest } of products) {
     assert.deepEqual(validateProduct(manifest), []);

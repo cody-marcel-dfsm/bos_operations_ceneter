@@ -95,7 +95,7 @@ remain required; the package does not intercept or enforce arbitrary API calls.
 # BOS Google Review Outreach
 
 Use `bos-mcp-client` for context and live tool discovery. Use only authenticated
-BOS MCP operations. On the BOS connection, omit
+Education Center MCP operations. On the Education Center connection, omit
 `org_id`, `app_code`, `installed_app_id`, and `delegated_role_id`; BOS derives
 them from the authenticated installation.
 Use `bos-visual-output` for campaign, cohort, rating, and completion reporting.

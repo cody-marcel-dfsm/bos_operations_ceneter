@@ -1,8 +1,22 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.97",
+  "version": "0.4.98",
   "client": "gemini",
-  "connection_owner": "bos",
-  "authentication": "bos_managed"
+  "application_name": "leaddirector",
+  "mcp_group_name": "education-center",
+  "resource_url": "https://dfsm.ai/mcp/apps/leaddirector/education-center",
+  "oauth": {
+    "authorization_server_issuer": "https://dfsm.ai",
+    "authorization_endpoint": "https://dfsm.ai/api/v1/mcp/oauth/authorize",
+    "identity_provider": "google",
+    "identity_provider_authorization_endpoint": "https://accounts.google.com/o/oauth2/v2/auth",
+    "provider_account_selection_policy": "ALWAYS_SELECT_ACCOUNT",
+    "provider_account_selection_prompt": "select_account"
+  },
+  "connection_owner": "education-center",
+  "dependency_products": [
+    "bos"
+  ],
+  "authentication": "oauth_2_1"
 }

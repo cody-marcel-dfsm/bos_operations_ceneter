@@ -14,13 +14,13 @@ customer-facing output names the franchise or brand. Keep technical product,
 skill, route, server, environment-variable, tool, capability, authorization,
 and record identifiers unchanged.
 
-Use the authenticated BOS connection and follow the `bos-mcp-client` context workflow. Identify the
+Use the authenticated Education Center MCP connection and follow the `bos-mcp-client` context workflow. Identify the
 invoice system of record before using Gmail, Drive, or enrollment evidence.
 Use `bos-visual-output` for explicitly requested billing variances, child-day
 comparisons, exception counts, and multi-period invoice summaries. Never invoke
 it for a Bright Horizons reimbursement-report generation request; the Excel
 workbook is the requested visual artifact.
-Use only BOS MCP or published BOS backend APIs with the Education Center organization's
+Use only the Education Center MCP or published BOS backend APIs with the Education Center organization's
 plugin credentials. Browser sessions and native/local connectors provide no
 authorization, evidence, or fallback.
 When Gmail, Drive, Calimatic, or an invoice provider reports an authentication

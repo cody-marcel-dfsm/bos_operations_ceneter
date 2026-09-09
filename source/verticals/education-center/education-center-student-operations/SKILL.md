@@ -39,7 +39,7 @@ native account recovery for the exact configured mailbox.
 - Use Calimatic student and enrollment tools as the enrolled-student source.
 - Use Lead Director for prospect and lead state.
 - Use published `education_center_search_email_evidence` and `education_center_get_email_thread`
-  through the same BOS connection only as correspondence/source evidence.
+  through the same Education Center MCP connection only as correspondence/source evidence.
 - Resolve the packaged settings defaults plus the preserved customer overlay.
   Follow `source_routes.care_com`: use published Education Center email evidence tools for
   `bos`, or invoke `email-account-routing` and the normal Gmail connector for

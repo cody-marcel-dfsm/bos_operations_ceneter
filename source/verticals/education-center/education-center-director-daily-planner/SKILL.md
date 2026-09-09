@@ -48,7 +48,7 @@ Read and follow these installed skills before retrieving data:
 - `education-center-student-operations` for student, enrollment, and family identity handling.
 
 Use the single user and role resolved by `bos_get_context` from the authorized
-BOS connection. Claude and ChatGPT/Codex use the host-managed BOS OAuth
+Education Center MCP connection. Claude and ChatGPT/Codex use the host-managed product OAuth
 grant; another client uses only its generated product adapter. BOS derives
 organization, installation, plugin, and capability scope. Treat the live MCP
 manifest as authoritative. Never ask the user to choose a director, organization, source, key, or role for preparation.

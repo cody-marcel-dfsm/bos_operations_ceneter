@@ -115,13 +115,13 @@ first submission in a task.
 
 1. Call `bos_get_context` once.
 2. Select exactly one authorized scope relevant to the active package.
-3. Submit through the immutable root BOS connection. Use the active package or
-   subservice only as the feedback target; it never owns another BOS login.
+3. Submit through the active product's immutable MCP connection. Use the active
+   package or subservice as the feedback target and preserve its product scope.
 4. Do not send execution-scope fields. The authenticated server derives
    `org_id`, `app_code`, `installed_app_id`, and `delegated_role_id`.
 5. Fail closed and run the existing context/authentication recovery flow when
    execution scope is missing, invalid, unauthorized, or ambiguous. Never
-   retry feedback through a subservice or unnamed endpoint.
+   retry feedback through another product or unnamed endpoint.
 6. Follow `bos-mcp-client` for the local authentication flow. Never request or accept
    a BOS credential in chat.
 

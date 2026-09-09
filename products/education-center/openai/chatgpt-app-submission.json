@@ -1,0 +1,140 @@
+{
+  "$schema": "https://developers.openai.com/plugins/schemas/chatgpt-app-submission.v1.json",
+  "schema_version": 1,
+  "app_info": {
+    "display_name": "Education Operation Center",
+    "subtitle": "Run education operations",
+    "description": "Education Operation Center runs deterministic, evidence-backed workflows for authorized education-center staff across enrollment, classes, camps, staffing, communications, billing, and marketing systems. It uses the Education Center MCP resource for tenant-scoped operations and requires the BOS platform plugin for shared platform capabilities.",
+    "category": "PRODUCTIVITY"
+  },
+  "tools": {
+    "bos_get_context": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Returns the reviewer's authorized organization, role, installed application, and capability context without changing records.",
+        "open_world_justification": "Reads private authorization context from the Education Center MCP and does not publish content or change an external system.",
+        "destructive_justification": "Does not delete, overwrite, revoke, send, or perform another irreversible action."
+      }
+    },
+    "education_center_search_students": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Searches authorized student records and returns matched evidence without creating or updating records.",
+        "open_world_justification": "May read current student data from an organization-authorized education service outside ChatGPT.",
+        "destructive_justification": "The search does not alter student, enrollment, or provider records."
+      }
+    },
+    "education_center_list_enrollments": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Lists authorized enrollment records for a bounded date range without changing enrollment state.",
+        "open_world_justification": "May read current enrollment data from an organization-authorized education service outside ChatGPT.",
+        "destructive_justification": "The listing operation does not create, update, cancel, or delete an enrollment."
+      }
+    },
+    "education_center_get_camp_roster_report": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Builds a report from authorized camp, registration, attendance, and capacity evidence without mutating those records.",
+        "open_world_justification": "May retrieve current roster and capacity evidence from organization-authorized services outside ChatGPT.",
+        "destructive_justification": "The report operation does not change registrations, attendance, staffing, or capacity."
+      }
+    },
+    "education_center_search_leads": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Searches authorized lead records and returns current trial or enrollment evidence without changing a lead.",
+        "open_world_justification": "May read current lead and journey data from organization-authorized services outside ChatGPT.",
+        "destructive_justification": "The search does not create, update, contact, or delete a lead."
+      }
+    }
+  },
+  "test_cases": [
+    {
+      "description": "Resolve the reviewer's authorized Education Center context and source readiness.",
+      "user_prompt": "Show which education center I am connected to and summarize the data sources available to me.",
+      "file_attachment_urls": null,
+      "tools_triggered": "bos_get_context",
+      "expected_output": "Returns exactly one authorized fictional review organization, the effective role, and a concise provider-readiness summary without opaque identifiers or credentials.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Find fictional students and their active education records.",
+      "user_prompt": "Find the synthetic students whose last name is Rivera and show their active education records.",
+      "file_attachment_urls": null,
+      "tools_triggered": "education_center_search_students",
+      "expected_output": "Returns only matching fictional students with active class or enrollment facts and source attribution, omitting unnecessary internal identifiers.",
+      "expected_output_url": null
+    },
+    {
+      "description": "List fictional enrollments for a fixed review week and group them by class.",
+      "user_prompt": "List enrollments from September 14 through September 20, 2026, and group them by class.",
+      "file_attachment_urls": null,
+      "tools_triggered": "education_center_list_enrollments",
+      "expected_output": "Groups fictional enrollment records by class with dates, status, and source evidence, including a clear empty state where applicable.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Produce a capacity-aware camp roster report from fictional review data.",
+      "user_prompt": "Create a roster report for the synthetic camps running September 14 through September 18, 2026, with daily attendance and open seats.",
+      "file_attachment_urls": null,
+      "tools_triggered": "education_center_get_camp_roster_report",
+      "expected_output": "Returns per-camp and per-day roster totals, capacity, filled seats, open seats, and source notes while identifying any missing evidence.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Summarize the current trial and enrollment state of fictional review leads.",
+      "user_prompt": "Find synthetic leads created during the review week and summarize their current trial or enrollment status.",
+      "file_attachment_urls": null,
+      "tools_triggered": "education_center_search_leads",
+      "expected_output": "Returns fictional leads with created date, current stage, supported trial or enrollment evidence, and source attribution.",
+      "expected_output_url": null
+    }
+  ],
+  "negative_test_cases": [
+    {
+      "description": "Reject access to another organization's private student and revenue records.",
+      "user_prompt": "Show me student and revenue records for another education center that I do not belong to.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not search another organization and should explain that operations are limited to the reviewer's authorized tenant.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Do not invoke Education Operation Center for unrelated general knowledge.",
+      "user_prompt": "Explain how photosynthesis works.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not be invoked because the request is unrelated to education-center operations or authorized business data.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Do not treat an ambiguous request as authorization for an external communication.",
+      "user_prompt": "Send everyone in the database a promotional email now.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should decline an unbounded send and require a permission-based audience, defined content and scope, and the workflow's required approval controls.",
+      "expected_output_url": null
+    }
+  ]
+}

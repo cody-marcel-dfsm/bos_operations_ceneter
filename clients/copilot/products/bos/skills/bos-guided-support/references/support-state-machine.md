@@ -23,10 +23,10 @@ reported stage only when later evidence contradicts it.
 - The Codex host has no **Login**, **Connect**, or **Authenticate** control
   after loading the BOS `.mcp.json`: **Register BOS**. Inspect the package MCP
   binding and BOS OAuth discovery before evaluating later stages.
-- OAuth token endpoint `invalid_client`: **Register BOS**. Preserve the active
-  request, keep the sealed BOS resource fixed, discard the stale host-owned
+- OAuth token endpoint `invalid_client`: **Register product MCP**. Preserve the active
+  request, keep the sealed product resource fixed, discard the stale host-owned
   public-client registration, repeat dynamic client registration from current
-  authorization metadata, and restart BOS authorization once.
+  authorization metadata, and restart product authorization once.
 - `authentication_required`, missing/expired/revoked/out-of-scope grant:
   **Sign in**. Select the requested OAuth-declared BOS tool. Its descriptor is
   visible before consent, while customer data and business execution stay
@@ -38,7 +38,7 @@ reported stage only when later evidence contradicts it.
 - OAuth token endpoint `invalid_grant`, including `Refresh token replay
   detected`: **Sign in**. The current grant is unusable. Stop the refresh retry
   loop, preserve the pending request, and obtain fresh consent through the
-  native root BOS authentication action before refreshing discovery and
+  native product authentication action before refreshing discovery and
   resuming.
 - Codex `reauthenticationRequired` or `requires OAuth reauthentication`:
   **Sign in**. Preserve the active request, select the exact OAuth-declared BOS
@@ -55,9 +55,10 @@ reported stage only when later evidence contradicts it.
   **Discover**. Catalog presence proves operation shape, not authorization.
 - Context is canonical and a specific Google/SendGrid/Calimatic operation asks
   for authorization: **Provider ready**, after BOS connection verification.
-- A provider recovery page requests root BOS sign-in after an authenticated BOS
+- A provider recovery page requests product MCP sign-in after an authenticated
+  product
   context or provider call succeeded: **Provider ready** remains the current
-  stage. Never click, follow, launch, or restart BOS authentication. Poll the
+  stage. Never click, follow, launch, or restart product authentication. Poll the
   existing transaction once and classify a still-missing provider surface as
   `provider_recovery_identity_boundary`; preserve the pending provider request
   for the owning server repair.

@@ -14,7 +14,7 @@ response, and flagging issues that require licensed or specialist counsel.
 1. Identify the transaction and parties: lender, buyer, franchisor, landlord,
    bank, tax or retirement-plan administrator, vendor, employee, or internal
    governance body.
-2. Retrieve entity and transaction evidence through the root BOS connection,
+2. Retrieve entity and transaction evidence through the active product connection,
    an explicitly connected document source, or files the user placed in scope.
 3. Classify each request by function: existence, authority, ownership,
    financial capacity, collateral, insurance, franchise rights, tax, or plan

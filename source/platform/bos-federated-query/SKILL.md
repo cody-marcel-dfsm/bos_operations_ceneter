@@ -5,7 +5,7 @@ description: Plan, explain, execute, and aggregate authorized queries across mul
 
 # BOS Federated Query
 
-Use the single BOS MCP connection and follow `bos-mcp-client` for
+Use the owning product's MCP connection and follow `bos-mcp-client` for
 context validation, discovery refresh, and provider recovery. Domain skills
 define entities, filters, identity policy, field authority, and presentation.
 This skill owns portable client planning and result handling. The discovered

@@ -119,6 +119,29 @@ export async function installClaudeLocal({
     run("claude", ["plugin", "list", "--json"], { capture: true }),
     "plugin list"
   );
+  for (const dependency of productMetadata.dependency_products ?? []) {
+    const dependencySelector = `${dependency}@${marketplace.name}`;
+    const installedDependency = installedPlugins.find(
+      (entry) => entry.id === dependencySelector
+    );
+    if (!installedDependency) {
+      run("claude", [
+        "plugin",
+        "install",
+        dependencySelector,
+        "--scope",
+        "user"
+      ]);
+    } else if (!installedDependency.enabled) {
+      run("claude", [
+        "plugin",
+        "enable",
+        dependencySelector,
+        "--scope",
+        "user"
+      ]);
+    }
+  }
   const installed = marketplaceReplaced
     ? undefined
     : installedPlugins.find((entry) => entry.id === selector);
@@ -154,6 +177,15 @@ export async function installClaudeLocal({
   if (!verified.installPath) {
     throw new Error(`Claude did not report an active installPath for ${selector}`);
   }
+  for (const dependency of productMetadata.dependency_products ?? []) {
+    const dependencySelector = `${dependency}@${marketplace.name}`;
+    const verifiedDependency = verifiedPlugins.find(
+      (entry) => entry.id === dependencySelector
+    );
+    if (!verifiedDependency?.enabled) {
+      throw new Error(`Claude did not enable required product ${dependencySelector}`);
+    }
+  }
   const metadataFailures = await verifyMetadata(
     join(verified.installPath, ".bos-product.json"),
     { name: product, version: productMetadata.version, client: "claude" }
@@ -162,9 +194,12 @@ export async function installClaudeLocal({
     throw new Error(`Claude active package verification failed:\n${metadataFailures.join("\n")}`);
   }
 
+  const dependencyMessage = (productMetadata.dependency_products ?? []).length
+    ? ` Required products: ${productMetadata.dependency_products.join(", ")}.`
+    : "";
   const completionMessage = productMetadata.connection_scope === "claude_account"
-    ? "Connect the BOS account-level Web connector under Customize > Connectors, then complete BOS sign-in once."
-    : "This subservice uses the existing BOS connector and requires no additional BOS sign-in.";
+    ? `Connect the ${productMetadata.mcp_group_name} account-level Web connector under Customize > Connectors and complete OAuth.${dependencyMessage}`
+    : `This product has no runtime connector.${dependencyMessage}`;
   process.stdout.write(`Installed ${selector}. ${completionMessage}\n`);
   return {
     marketplace: marketplace.name,

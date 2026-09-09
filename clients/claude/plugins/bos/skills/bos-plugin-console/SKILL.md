@@ -107,7 +107,7 @@ repeat the prompt.
 5. Let the server evaluate every product and plugin row from canonical
    installation, enablement, role, capability, and provider state. Never send
    tenant, organization, installation, role, credential, or raw plugin
-   identifiers, and never call through a subservice connection.
+   identifiers, and call through the active product connection.
 6. Use the server-returned `structuredContent` to populate the visible console.
    A mounted MCP App or native interactive component is the preferred surface.
    A generic tool-result card labeled **Structured output** is unsupported
@@ -149,16 +149,15 @@ A row with a valid connection action displays **Connect**. Selecting it calls
 `bos_begin_plugin_service_connection` with the latest opaque `context_id`,
 `plugin_ref`, and `service_ref` from that same response.
 
-- For a missing BOS grant, activate the root BOS connection's host-native
-  **Connect**, **Sign in**, or **Authenticate** action. Subservice rows never
-  request another BOS login.
+- For a missing grant, activate the active product connection's host-native
+  **Connect**, **Sign in**, or **Authenticate** action.
 - For a provider grant, use the BOS-returned URL elicitation or resource link.
   The customer signs in or enters a credential only on the provider or
   BOS-hosted secure page. Validate that the opened surface matches the returned
   authorization kind. When the BOS connection is authenticated, an API-key
   recovery URL must show the provider credential collector. If it instead
-  renders, redirects to, or offers root BOS sign-in, never click or follow that
-  action and never launch or restart BOS authentication. Preserve the
+  renders, redirects to, or offers product MCP sign-in, never click or follow that
+  action and never launch or restart product authentication. Preserve the
   transaction, poll its status once, and return
   `provider_recovery_identity_boundary` if the correct provider surface remains
   absent.

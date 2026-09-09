@@ -73,13 +73,6 @@ Preserve exact values, tenant scope, source status, privacy, and operational
 meaning. Use the installed `visualize` skill for inline interactive visuals and
 follow its complete rendering, accessibility, and theme contract.
 
-Whenever a lead is displayed, use `my-crm-customer-journey`'s detailed display
-contract: current-state-to-goal graph with bold green preferred positive route,
-profile details and freshness. Apply it to create/update results, duplicate
-matches, previews/receipts and each displayed list entry. Obtain missing display
-evidence after a confirmed write without replaying it. Preserve pagination,
-explicit user formats and historical labeling for deleted records.
-
 ## Delivery floor
 
 Return every operational record and requested field directly in the
@@ -110,44 +103,9 @@ When one of these conditions is present, deliver an actual chart, timeline,
 Mermaid diagram, map, image, or inline visualization. A Markdown table with
 emoji or status icons does not satisfy this requirement by itself.
 
-For any lead or contact detail request, including a single requested field,
-profile, or status, invoke the installed
-`my-crm-customer-journey` skill and lead with its native graph, including for
-one record. A stage label, detail table, or history list alone is incomplete.
-Keep the current node, the explicit or application-owned goal, exact connecting
-node paths, and known
-gates or blockers visible on the diagram. Show each lead state as a distinct
-node, emphasize the current-to-goal route, and use concise transition labels
-and clearly differentiated completed, pending, and blocked states. Follow the
-journey skill's layout and accessible status styling. Highlight its selected
-positive-goal route with thick green arrows and bold labels, using its app-ranking
-or explicitly labeled shortest-structural-path rules. Obtain application-owned graph and
-path evidence before drawing transitions; explicitly report unavailable graph
-evidence without inventing a path. When independently verified current-state
-facts are available, use the journey skill's partial-evidence diagram only after
-its discovery and read sequence cannot supply a path. State that the path result
-is incomplete and identify the specific missing evidence.
-
-Return requested fields and relevant profile details below the graph. The user
-may omit a goal; apply the journey skill's application-owned goal resolution and
-show paths to the resolved goal or labeled alternatives. Missing completion
-history or available actions never suppresses verified structural paths. Honor
-an explicit user format preference.
-
-Use concise prose for a single fact or record unrelated to lead/contact details,
+Use concise prose for a single fact or record,
 a short draft, an error, or a result whose visual would add decoration without
 information.
-
-A named-person lookup such as “find this lead,” “look up this contact,” or a
-lookup by email, phone, or a current record selector is an individual detail
-request. Select and read `my-crm-customer-journey` before presenting its result,
-even when the lookup uses a search operation. Determine presentation from user
-intent, independently of the tool name or response being an array. A successful
-single-person lookup must continue into the graph workflow in the same turn.
-Broad filtered lists preserve their filters and pagination and display each
-returned lead in the detailed format below. Keep ambiguous matches separate;
-show only the graph membership verified for each candidate and disambiguate
-before any targeted action.
 
 ## Preferred forms
 

@@ -221,7 +221,7 @@ test("settings products declare an included initializer", async () => {
   );
 });
 
-test("plugin settings initializer is included by subservices using the BOS connection", async () => {
+test("plugin settings initializer is included by BOS-dependent product runtimes", async () => {
   const education = (await listProducts()).find(
     ({ manifest }) => manifest.name === "education-center"
   )?.manifest;
@@ -232,9 +232,11 @@ test("plugin settings initializer is included by subservices using the BOS conne
       .join("\n"),
     /plugin_settings_initializer must name an included skill/
   );
-  assert.equal(education.runtime, undefined);
-  assert.equal(education.application_name, undefined);
-  assert.equal(education.mcp_group_name, undefined);
+  assert.equal(education.runtime, "bos");
+  assert.deepEqual(education.dependencies, ["bos"]);
+  assert.equal(education.application_name, "leaddirector");
+  assert.equal(education.mcp_group_name, "education-center");
+  assert.equal(education.mcp_resource_url, "https://dfsm.ai/mcp/apps/leaddirector/education-center");
   assert.equal(education.codex_app_id, undefined);
 });
 
@@ -560,6 +562,9 @@ test("Education Center packages include governed SendGrid campaign operations", 
     `${sendgrid.sourcePath}/references/client-workflow.md`,
     "utf8"
   );
+  assert.match(guidance, /installed Education Center product OAuth connection/i);
+  assert.match(guidance, /through the Education Center MCP/i);
+  assert.doesNotMatch(guidance, /installed BOS OAuth connection/i);
   assert.match(guidance, /Calimatic[\s\S]*Lead Director[\s\S]*Gmail/i);
   assert.match(guidance, /explicit approval[\s\S]*list send/i);
   assert.match(`${guidance}\n${contract}`, /education_center_send_sendgrid_campaign/);
@@ -797,9 +802,9 @@ test("application runtime packages ship agent-owned MCP lifecycle recovery", asy
     const client = skills.find((skill) => skill.name === "bos-mcp-client");
     assert(client, `${name} must include bos-mcp-client`);
     const guidance = await readFile(client.skillFile, "utf8");
-    assert.match(guidance, /agent owns the BOS MCP client lifecycle/i);
+    assert.match(guidance, /agent owns the active product MCP client lifecycle/i);
     assert.match(guidance, /reconnect or reinitialize/i);
-    assert.match(guidance, /Never ask the user to reconnect BOS, resend the request/i);
+    assert.match(guidance, /Never ask the user to reconnect the product, resend the request/i);
     assert.match(guidance, /plugin\/package[\s\S]*transport\/session replacement/i);
     assert.match(guidance, /server-schema (?:updates|changes)/i);
     assert.match(guidance, /dynamic\s+domain-specific MCP services and tooling/i);
@@ -812,7 +817,7 @@ test("application runtime packages ship agent-owned MCP lifecycle recovery", asy
     assert.match(guidance, /invalid_client/i);
     assert.match(guidance, /stale host-owned public-client registration/i);
     assert.match(guidance, /dynamic\s+client registration/i);
-    assert.match(guidance, /same sealed BOS\s+resource/i);
+    assert.match(guidance, /same sealed\s+product resource/i);
     assert.match(guidance, /restart authorization once/i);
     assert.match(guidance, /authorization_required/i);
     assert.match(guidance, /authorization path immediately[\s\S]*active request/i);
@@ -852,7 +857,7 @@ test("Codex reauthentication exposes native user-controlled authentication", asy
 
   assert.match(client, /reauthenticationRequired/i);
   assert.match(client, /mcpServers: "\.\/\.mcp\.json"/i);
-  assert.match(client, /remote HTTP `platform` entry/i);
+  assert.match(client, /remote HTTP entry at the product-owned resource/i);
   assert.match(client, /no\s+`\.app\.json` exists/i);
   assert.match(client, /matching tool descriptor[\s\S]*securitySchemes[\s\S]*oauth2/i);
   assert.match(client, /Descriptor visibility[\s\S]*no customer data[\s\S]*no[\s\S]*business execution/i);
@@ -885,7 +890,7 @@ test("Codex reauthentication exposes native user-controlled authentication", asy
   );
   assert.match(
     runbook,
-    /mcpServers: "\.\/\.mcp\.json"[\s\S]*remote HTTP `platform` entry/i
+    /mcpServers: "\.\/\.mcp\.json"[\s\S]*remote HTTP entry using that product's/i
   );
 
   for (const path of [
@@ -949,17 +954,17 @@ test("repository release skill cannot cross into the BOS server repository", asy
   assert.match(repositoryInstructions, /exactly one continuous\s+Markdown prompt/i);
 });
 
-test("canonical single-connection knowledge requires native auth and client-owned server AC", {
+test("canonical product-MCP knowledge requires native auth and client-owned server acceptance", {
   skip: !privateVaultAvailable,
 }, async () => {
   const specification = await readFile(
-    `${root}/Vault/specs/single-bos-mcp-connection.md`,
+    `${root}/Vault/specs/product-mcp-connections.md`,
     "utf8"
   );
 
-  assert.match(specification, /Codex derives its connection[\s\S]*\.mcp\.json/i);
+  assert.match(specification, /each Codex plugin[\s\S]*\.mcp\.json/i);
   assert.match(specification, /https:\/\/dfsm\.ai\/mcp\/apps\/bos\/platform/i);
-  assert.match(specification, /contains no `\.app\.json` or registered connector/i);
+  assert.match(specification, /contains no[\s\S]*`\.app\.json` or registered connector/i);
   assert.match(specification, /https:\/\/dfsm\.ai\/api\/v1\/mcp\/oauth\/authorize/i);
   assert.match(specification, /Packages contain no BOS credentials[\s\S]*account-management logic/i);
   assert.doesNotMatch(specification, /codex mcp login/i);
@@ -970,7 +975,7 @@ test("guided support classifies OAuth invalid_client as registration recovery", 
     `${root}/source/platform/bos-guided-support/references/support-state-machine.md`,
     "utf8"
   );
-  assert.match(stateMachine, /invalid_client[\s\S]*Register BOS/i);
+  assert.match(stateMachine, /invalid_client[\s\S]*Register product MCP/i);
   assert.match(stateMachine, /discard[\s\S]*stale[\s\S]*registration/i);
   assert.doesNotMatch(stateMachine, /invalid_client[\s\S]{0,120}Provider ready/i);
 });
@@ -1197,15 +1202,15 @@ test("director skill handles weekly summaries without scope questions", async ()
   assert.match(weeklyContract, /confirmed but unassigned[\s\S]*Needs review/);
 });
 
-test("BOS starter prompts provide operating-system-style discovery", async () => {
+test("BOS starter prompts showcase deterministic federated operations", async () => {
   const product = (await listProducts()).find(
     ({ manifest }) => manifest.name === "bos"
   )?.manifest;
   assert(product);
   assert.deepEqual(product.default_prompts, [
-    "List the BOS apps and skills installed for my organization.",
-    "Show me the tools and workflows available in each BOS app.",
-    "Check which BOS apps are connected and ready to use."
+    "Audit my BOS service mesh and show which deterministic workflows are ready, blocked, or need authorization.",
+    "Make this operational workflow runnable by identifying and resolving its platform dependencies.",
+    "Trace a governed workflow across my installed services and show every approval, execution step, and result."
   ]);
 });
 
@@ -1465,13 +1470,14 @@ test("BOS marketplace metadata explains the platform and links to its website", 
   )?.manifest;
   assert(bos);
   assert.equal(bos.display_name, "BOS — Business Operating System");
-  assert.equal(bos.description.length, 79);
-  assert.match(bos.description, /Agent-first Business Operating System/);
-  assert.match(bos.long_description, /owns the root authenticated MCP connection/);
-  assert.match(bos.long_description, /discovers its authorized installed applications/);
-  assert.match(bos.long_description, /server-returned app contacts and contracts/);
+  assert.ok(bos.description.length <= 80);
+  assert.match(bos.description, /deterministic workflows.*federated agentic service mesh/i);
+  assert.match(bos.long_description, /owns the authenticated BOS platform MCP connection/);
+  assert.match(bos.long_description, /required foundation for dependent products/);
+  assert.match(bos.long_description, /agentic mesh of federated services/);
+  assert.match(bos.long_description, /governs plugin settings and enablement/);
   assert.doesNotMatch(bos.long_description, /static (?:registry|operation|tool|schema|catalog)/i);
-  assert.match(bos.long_description, /current authenticated BOS capabilities/);
+  assert.match(bos.long_description, /server-enforced scope, evidence, and approvals/);
   assert.equal(bos.website_url, "https://dfsm.ai");
   assert.equal(bos.brand_color, "#061638");
   assert.equal(bos.composer_icon, "assets/bos-logo.png");
@@ -1534,7 +1540,7 @@ test("Education Operation Center marketplace metadata presents specific cross-sy
   await access(`${root}/clients/codex/plugins/education-center/assets/education-center-logo.png`);
 });
 
-test("only BOS owns runtime application and MCP group names", async () => {
+test("each product owns a runtime application and MCP group", async () => {
   const products = await listProducts();
   assert.deepEqual(
     Object.fromEntries(
@@ -1545,9 +1551,9 @@ test("only BOS owns runtime application and MCP group names", async () => {
     ),
     {
       bos: ["bos", "platform"],
-      "education-center": [undefined, undefined],
-      "my-crm": [undefined, undefined],
-      "video-ads": [undefined, undefined]
+      "education-center": ["leaddirector", "education-center"],
+      "my-crm": ["leaddirector", "crm"],
+      "video-ads": ["leaddirector", "video-ads"]
     }
   );
   for (const { manifest } of products) {
@@ -1557,7 +1563,7 @@ test("only BOS owns runtime application and MCP group names", async () => {
   }
 });
 
-test("runtime package model materializes the single BOS route", async () => {
+test("runtime package model materializes each product-scoped route", async () => {
   for (const { manifest } of await listProducts()) {
     if (!manifest.runtime) continue;
     const expected = manifest.mcp_resource_url;
@@ -1625,7 +1631,7 @@ test("Copilot products bundle GitHub's repository MCP configuration", async () =
     if (!product.runtime) {
       await assert.rejects(access(`${productRoot}/.github/mcp.json`));
       const readme = await readFile(`${productRoot}/README.md`, "utf8");
-      assert.match(readme, /existing BOS connection/i);
+      assert.match(readme, /does not declare an MCP runtime/i);
       continue;
     }
     const config = JSON.parse(
@@ -1634,7 +1640,7 @@ test("Copilot products bundle GitHub's repository MCP configuration", async () =
     assert.deepEqual(Object.keys(config.mcpServers), [product.mcp_group_name]);
     assert.deepEqual(config.mcpServers[product.mcp_group_name], {
       type: "http",
-      url: "https://dfsm.ai/mcp/apps/bos/platform",
+      url: product.mcp_resource_url,
       tools: ["*"]
     });
     assert.doesNotMatch(
@@ -1646,12 +1652,12 @@ test("Copilot products bundle GitHub's repository MCP configuration", async () =
     assert.match(readme, /complete BOS sign-in/i);
     assert.match(
       readme,
-      /mcp\/apps\/bos\/platform/
+      new RegExp(product.mcp_resource_url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
     );
   }
 });
 
-test("package schema reserves runtime ownership for BOS", () => {
+test("package schema requires product-owned runtime and BOS dependencies", () => {
   const base = {
     schema_version: "1",
     name: "bos",
@@ -1661,6 +1667,7 @@ test("package schema reserves runtime ownership for BOS", () => {
     publisher: "Example Publisher",
     category: "Productivity",
     authentication: "ON_INSTALL",
+    dependencies: [],
     release_status: "active",
     clients: ["codex"],
     includes: ["platform/bos-mcp-client"],
@@ -1744,8 +1751,8 @@ test("package schema reserves runtime ownership for BOS", () => {
     /unknown field codex_connector/
   );
   assert.match(
-    validateProduct({ ...base, name: "education-center" }).join("\n"),
-    /subservice products must use the BOS-owned connection/
+    validateProduct({ ...base, name: "education-center", authentication: "ON_USE" }).join("\n"),
+    /subservice products must depend on bos/
   );
   assert.match(
     validateProduct({ ...base, authentication: "ON_USE" }).join("\n"),
@@ -1765,13 +1772,10 @@ test("package schema reserves runtime ownership for BOS", () => {
     ...base,
     name: "education-center",
     authentication: "ON_USE",
-    runtime: undefined,
-    application_name: undefined,
-    mcp_group_name: undefined,
-    mcp_resource_url: undefined,
-    codex_mcp_startup_timeout_sec: undefined,
-    codex_mcp_tool_timeout_sec: undefined,
-    oauth: undefined,
+    dependencies: ["bos"],
+    application_name: "leaddirector",
+    mcp_group_name: "education-center",
+    mcp_resource_url: "https://example.com/mcp/apps/leaddirector/education-center",
     includes: ["platform/bos-mcp-client"]
   };
   assert.deepEqual(validateProduct(subservice), []);
@@ -1781,7 +1785,7 @@ test("package schema reserves runtime ownership for BOS", () => {
   );
 });
 
-test("Video Ads composes workflows without another BOS endpoint", async () => {
+test("Video Ads composes workflows with its own disabled product endpoint", async () => {
   const products = await listProducts();
   const videoAds = products.find(
     ({ manifest }) => manifest.name === "video-ads"
@@ -1794,9 +1798,10 @@ test("Video Ads composes workflows without another BOS endpoint", async () => {
   assert.equal(manifest.interface.composerIcon, "./assets/marketing-director-logo.png");
   assert.equal(manifest.interface.logo, "./assets/marketing-director-logo.png");
   await access(`${root}/products/video-ads/assets/marketing-director-logo.png`);
-  assert.equal(videoAds.runtime, undefined);
-  assert.equal(videoAds.application_name, undefined);
-  assert.equal(videoAds.mcp_group_name, undefined);
+  assert.equal(videoAds.runtime, "bos");
+  assert.deepEqual(videoAds.dependencies, ["bos"]);
+  assert.equal(videoAds.application_name, "leaddirector");
+  assert.equal(videoAds.mcp_group_name, "video-ads");
   assert.equal(videoAds.release_status, "disabled");
   assert.equal("credential_env_var" in videoAds, false);
   const skills = await resolveProductSkills(videoAds);
@@ -1820,9 +1825,7 @@ test("disabled products are absent while active runtime products remain scoped",
   await assert.rejects(access(`${root}/clients/codex/plugins/video-ads`));
   await assert.rejects(access(`${root}/clients/claude/plugins/bos/.mcp.json`));
   await assert.rejects(access(`${root}/clients/claude/plugins/video-ads`));
-  await assert.rejects(
-    access(`${root}/clients/codex/plugins/education-center/.mcp.json`)
-  );
+  await access(`${root}/clients/codex/plugins/education-center/.mcp.json`);
   const codexMcp = JSON.parse(await readFile(
     `${root}/clients/codex/plugins/bos/.mcp.json`,
     "utf8"
@@ -1853,16 +1856,20 @@ test("disabled product inventory is generated for idempotent client pruning", as
     schema_version: "1",
     products: [
       {
-        name: "my-crm"
+        name: "my-crm",
+        application_name: "leaddirector",
+        mcp_group_name: "crm"
       },
       {
-        name: "video-ads"
+        name: "video-ads",
+        application_name: "leaddirector",
+        mcp_group_name: "video-ads"
       }
     ]
   });
 });
 
-test("BOS owns OAuth while Education Center adds no connection binding", async () => {
+test("BOS and Education Center each own an OAuth MCP binding", async () => {
   const codexRoot = `${root}/clients/codex/plugins/bos`;
   const metadata = JSON.parse(await readFile(`${codexRoot}/.bos-product.json`, "utf8"));
   const plugin = JSON.parse(await readFile(`${codexRoot}/.codex-plugin/plugin.json`, "utf8"));
@@ -1904,8 +1911,10 @@ test("BOS owns OAuth while Education Center adds no connection binding", async (
   const educationRoot = `${root}/clients/codex/plugins/education-center`;
   await assert.rejects(access(`${educationRoot}/.app.json`));
   const educationMetadata = JSON.parse(await readFile(`${educationRoot}/.bos-product.json`, "utf8"));
-  assert.equal(educationMetadata.connection_owner, "bos");
-  assert.equal(educationMetadata.authentication, "bos_managed");
+  assert.equal(educationMetadata.connection_owner, "education-center");
+  assert.deepEqual(educationMetadata.dependency_products, ["bos"]);
+  assert.equal(educationMetadata.authentication, "oauth_2_1");
+  assert.equal(educationMetadata.resource_url, "https://dfsm.ai/mcp/apps/leaddirector/education-center");
 });
 
 test("Claude distribution is a marketplace of self-contained plugins", async () => {
@@ -2010,7 +2019,7 @@ test("one Gemini extension bundles CLI and Antigravity Desktop with OAuth MCP", 
     if (!product.runtime) {
       assert.equal(manifest.mcpServers, undefined);
       await assert.rejects(access(`${extensionRoot}/mcp_config.json`));
-      assert.match(readme, /existing BOS connection/i);
+      assert.match(readme, /does not declare an MCP runtime/i);
       continue;
     }
     assert.match(readme, new RegExp(`/mcp auth ${product.mcp_group_name}`));
@@ -2018,13 +2027,13 @@ test("one Gemini extension bundles CLI and Antigravity Desktop with OAuth MCP", 
     assert.match(readme, /Authenticate/);
     assert.match(
       readme,
-      /mcp\/apps\/bos\/platform/
+      new RegExp(product.mcp_resource_url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
     );
     assert.deepEqual(Object.keys(manifest.mcpServers), [product.mcp_group_name]);
     const server = manifest.mcpServers[product.mcp_group_name];
     assert.equal(
       server.httpUrl,
-      "https://dfsm.ai/mcp/apps/bos/platform"
+      product.mcp_resource_url
     );
     assert.equal(server.url, undefined);
     assert.equal(server.command, undefined);
@@ -2037,7 +2046,7 @@ test("one Gemini extension bundles CLI and Antigravity Desktop with OAuth MCP", 
     assert.deepEqual(desktopMcp, await geminiPluginMcpManifest(product));
     assert.equal(
       desktopMcp.mcpServers[product.mcp_group_name].serverUrl,
-      "https://dfsm.ai/mcp/apps/bos/platform"
+      product.mcp_resource_url
     );
     assert.doesNotMatch(
       JSON.stringify(manifest),
@@ -2241,10 +2250,11 @@ test("every product and client ships tenant extension management metadata", asyn
             connection_scope: "claude_account"
           } : {})
         } : {}),
-        connection_owner: "bos",
+        connection_owner: manifest.name,
+        dependency_products: manifest.dependencies,
         authentication: manifest.runtime
           ? "oauth_2_1"
-          : "bos_managed"
+          : "none"
       });
       const manager = await readFile(
         `${productRoot}/skills/manage-customer-extension/SKILL.md`,
@@ -2628,23 +2638,17 @@ test("migrated BOS personal workflows are canonical and generated for every appl
   await access(`${root}/.agents/skills/codex-token-usage-analysis/SKILL.md`);
 });
 
-test("active BOS distributes the customer journey graph workflow", async () => {
-  const bos = (await listProducts()).find(({ manifest }) => manifest.name === "bos").manifest;
-  const skills = await resolveProductSkills(bos);
-  const journey = skills.find((skill) => skill.name === "my-crm-customer-journey");
-  assert(journey, "active BOS must ship journey rendering independently of My CRM activation");
-  assert(skills.some((skill) => skill.name === "bos-app-discovery"));
-  for (const folder of [
-    "clients/codex/plugins/bos", "clients/claude/plugins/bos",
-    "clients/copilot/products/bos", "clients/gemini/extensions/bos"
-  ]) {
-    const actual = await readFile(`${root}/${folder}/skills/${journey.name}/SKILL.md`, "utf8");
-    const expected = transformProductSkillGuidance(bos, journey.name, await readFile(journey.skillFile, "utf8"));
-    assert.equal(actual, expected, folder);
-    assert.equal(await readFile(`${root}/${folder}/skills/${journey.name}/references/journey-graph-contract.md`, "utf8"),
-      await readFile(`${journey.sourcePath}/references/journey-graph-contract.md`, "utf8"));
-  }
-  const myCrm = (await listProducts()).find(({ manifest }) => manifest.name === "my-crm").manifest;
+test("My CRM owns its journey workflow and BOS excludes it", async () => {
+  const products = await listProducts();
+  const bos = products.find(({ manifest }) => manifest.name === "bos").manifest;
+  const myCrm = products.find(({ manifest }) => manifest.name === "my-crm").manifest;
+  const bosSkills = await resolveProductSkills(bos);
+  const crmSkills = await resolveProductSkills(myCrm);
+  assert.equal(bosSkills.some(({ name }) => name === "my-crm-customer-journey"), false);
+  assert.equal(bosSkills.some(({ name }) => name === "my-crm-record-operations"), false);
+  assert(crmSkills.some(({ name }) => name === "my-crm-customer-journey"));
+  assert(crmSkills.some(({ name }) => name === "my-crm-record-operations"));
+  assert.deepEqual(myCrm.dependencies, ["bos"]);
   assert.equal(myCrm.release_status, "disabled");
 });
 
@@ -2653,10 +2657,7 @@ test("lead and contact detail requests default to graph presentation", async () 
   for (const file of [
     "source/capabilities/my-crm-customer-journey/SKILL.md",
     "source/capabilities/my-crm/SKILL.md",
-    "source/capabilities/my-crm-record-operations/SKILL.md",
-    "source/platform/bos-app-discovery/SKILL.md",
-    "source/platform/bos-visual-output/SKILL.md",
-    "source/verticals/education-center/education-center-service-routing/SKILL.md"
+    "source/capabilities/my-crm-record-operations/SKILL.md"
   ]) {
     const text = await readFile(`${root}/${file}`, "utf8");
     assert.match(text, /any lead or contact detail request/i, file);
@@ -2672,7 +2673,7 @@ test("lead and contact detail requests default to graph presentation", async () 
 
 
 test("journey reads use the current authenticated operating contract", async () => {
-  for (const file of ["source/platform/bos-app-discovery/SKILL.md", "source/capabilities/my-crm-customer-journey/SKILL.md", "source/platform/bos-mcp-client/SKILL.md"]) {
+  for (const file of ["source/capabilities/my-crm-customer-journey/SKILL.md"]) {
     const guidance = await readFile(`${root}/${file}`, "utf8");
     assert.match(guidance, /## Current-host read execution/);
     assert.match(guidance, /live-discovered[\s\S]*read/);
@@ -2686,7 +2687,7 @@ test("journey reads use the current authenticated operating contract", async () 
 
 
 test("lead creation uses server source selectors and structured success", async () => {
-  const guidance = await readFile(`${root}/source/platform/bos-mcp-client/SKILL.md`, "utf8");
+  const guidance = await readFile(`${root}/source/capabilities/my-crm-record-operations/SKILL.md`, "utf8");
   assert.match(guidance, /Never manufacture `source_type` or `source_identity`/);
   assert.match(guidance, /idempotency key/);
   assert.match(guidance, /`complete: false`[\s\S]*`source_mutation_failed`/);
@@ -2706,26 +2707,16 @@ test("BOS bootstraps callable tools before resource or UI diagnostics", async ()
 });
 
 
-test("active BOS ships CRUD record operations independently of disabled My CRM", async () => {
+test("disabled My CRM retains ownership of CRM record operations", async () => {
   const products = await listProducts();
   const bos = products.find(({ manifest }) => manifest.name === "bos").manifest;
-  const skills = await resolveProductSkills(bos);
-  const records = skills.find(({ name }) => name === "my-crm-record-operations");
-  assert(records, "root BOS must ship CRUD guidance");
-  for (const dependency of ["bos-mcp-client", "bos-app-discovery", "my-crm-customer-journey"]) {
-    assert(skills.some(({ name }) => name === dependency), dependency);
-  }
-  for (const folder of [
-    "clients/codex/plugins/bos", "clients/claude/plugins/bos",
-    "clients/copilot/products/bos", "clients/gemini/extensions/bos"
-  ]) {
-    assert.equal(
-      await readFile(`${root}/${folder}/skills/${records.name}/SKILL.md`, "utf8"),
-      transformProductSkillGuidance(bos, records.name, await readFile(records.skillFile, "utf8")),
-      folder
-    );
-  }
-  assert.equal(products.find(({ manifest }) => manifest.name === "my-crm").manifest.release_status, "disabled");
+  const myCrm = products.find(({ manifest }) => manifest.name === "my-crm").manifest;
+  const bosSkills = await resolveProductSkills(bos);
+  const crmSkills = await resolveProductSkills(myCrm);
+  assert.equal(bosSkills.some(({ name }) => name === "my-crm-record-operations"), false);
+  assert(crmSkills.some(({ name }) => name === "my-crm-record-operations"));
+  assert(crmSkills.some(({ name }) => name === "my-crm-customer-journey"));
+  assert.equal(myCrm.release_status, "disabled");
 });
 
 

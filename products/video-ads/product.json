@@ -11,6 +11,23 @@
   "publisher": "Infinite State Machines LLC",
   "category": "Marketing",
   "authentication": "ON_USE",
+  "dependencies": [
+    "bos"
+  ],
+  "runtime": "bos",
+  "application_name": "leaddirector",
+  "mcp_group_name": "video-ads",
+  "mcp_resource_url": "https://dfsm.ai/mcp/apps/leaddirector/video-ads",
+  "codex_mcp_startup_timeout_sec": 180,
+  "codex_mcp_tool_timeout_sec": 180,
+  "oauth": {
+    "authorization_server_issuer": "https://dfsm.ai",
+    "authorization_endpoint": "https://dfsm.ai/api/v1/mcp/oauth/authorize",
+    "identity_provider": "google",
+    "identity_provider_authorization_endpoint": "https://accounts.google.com/o/oauth2/v2/auth",
+    "provider_account_selection_policy": "ALWAYS_SELECT_ACCOUNT",
+    "provider_account_selection_prompt": "select_account"
+  },
   "plugin_settings_initializer": "bos-plugin-settings-initialization",
   "clients": [
     "codex",

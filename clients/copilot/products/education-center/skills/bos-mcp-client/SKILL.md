@@ -1,6 +1,6 @@
 ---
 name: bos-mcp-client
-description: Operate the shared BOS MCP connection, including server-evaluated subservice scope, live tool discovery, transport recovery, and provider authorization recovery.
+description: Operate a product-owned BOS MCP connection, including server-evaluated product scope, live tool discovery, transport recovery, and provider authorization recovery.
 ---
 
 
@@ -91,21 +91,22 @@ only when host status or a BOS challenge establishes that requirement. Empty
 resources or tools alone never establish that the connection is disabled.
 A successful context call immediately resumes the original operation.
 
-Use this skill for every client-side BOS operation. The root BOS plugin owns one
-remote MCP resource and one host-managed OAuth connection for the user-facing
-client context. A Claude account or organization Web connector declares that
+Use this skill for every client-side BOS-family operation. Each plugin owns one
+scoped remote MCP resource and one host-managed OAuth connection for that
+product. A Claude account or organization Web connector declares the product
 resource and exposes the persistent host-managed **Connect** action;
-ChatGPT/Codex loads the root package's `.mcp.json` and performs OAuth discovery
-from that resource. Other supported clients use the single BOS adapter
+ChatGPT/Codex loads the product package's `.mcp.json` and performs OAuth
+discovery from that resource. Other supported clients use the product adapter
 declared by their generated package.
 
-Education Center, CRM, Marketing Director, and other subservice plugins add
-skills and server capabilities without adding another BOS connection. Their
-skills call through the existing BOS connection. BOS derives and evaluates
+BOS is the required platform dependency for Education Center, My CRM, Lead
+Director, Marketing Director, and other application products. Each dependent
+plugin packages its relevant skills with its own application-scoped MCP.
+The server derives and evaluates
 organization, application, installation, subservice, plugin, role, capability,
 provider, and tool scope from the validated grant and canonical server state on
-every private operation. Never route platform BOS work through a subservice
-package.
+every private operation. Route platform BOS work through the BOS MCP and
+application work through the owning application's MCP.
 
 Codex packages also declare a 180-second tool-call timeout. These host budgets
 allow slow operations to finish; a server-returned timeout remains a distinct
@@ -130,28 +131,6 @@ Directory or transport limitations remain scoped to that operation. An
 access denial never permits switching routes to evade it. Missing or ambiguous
 context, revoked grants, and explicit access denials stop the affected operation.
 Every operation retains request-time server authorization.
-
-For journey/detail requests, continue from the record read into graph, goal,
-and path discovery through live-described read operations. A current-state-only
-record result does not complete this sequence. Use `my-crm-customer-journey` to
-resolve the explicit or application-owned goal and obtain the exact node path.
-Only after supported discovery and relevant reads are exhausted or a specific
-failure prevents them, render the labeled partial journey with verified state,
-known goals, and requested details. Identify the failed or unavailable operation
-and unattempted dependent reads. This is an incomplete path result, with no
-invented transitions, reachability, actions, or completion.
-This rule authorizes no mutations, browser fallback, token extraction, or
-hardcoded endpoint. A missing per-app host facility alone must not suppress an
-independent successful authorized read or its partial graph presentation.
-
-A named-person lookup such as “find this lead,” “look up this contact,” or a
-lookup by email, phone, or a current record selector is an individual detail
-request. Select and read `my-crm-customer-journey` before presenting its result,
-even when the lookup uses a search operation. Determine presentation from user
-intent, independently of the tool name or response being an array. A successful
-single-person lookup must continue into the graph workflow in the same turn.
-Broad filtered lists retain list scope even when they happen to return one row;
-ambiguous person matches require disambiguation before selecting a graph.
 
 ## Resource-owned operation schemas
 
@@ -179,32 +158,6 @@ reconcile any uncertain prior result before resuming with its original identity.
 A compatible fresh resource contract permits the authorized operation to continue
 without waiting for an unavailable tool-manifest refresh. Report completion only
 from the actual operation result, separately from successful schema discovery.
-
-## Lead creation source and result contract
-
-For a requested lead creation, resolve the source pair from current
-server-returned source metadata in the selected context, matched to the user's
-requested application. Use a source inventory or a contract-declared source
-selector; source provenance from an authorized read identifies a source only,
-not write permission. The create operation must authorize that source again.
-Never manufacture `source_type` or `source_identity` from the person's email,
-phone, name, a role/context hint, or the word “manual.” If the live contract
-requires an undiscoverable source selector, report that exact contract gap.
-
-Check for duplicates with the supplied identity fields before creating. Reuse
-the original idempotency key while reconciling a failed or uncertain request;
-never replay an uncertain create under a fresh key. For a definitive rejected
-selector, correct it only from current server evidence within the same requested
-application and authority. A genuine access denial never authorizes another route.
-
-Inspect structured results before reporting success. `isError: false` or a
-message saying the operation completed is insufficient: require the requested
-create to be present in `succeeded` with no corresponding failure. A result with
-`complete: false`, an empty success list, or `source_mutation_failed` is a failed
-or partial operation. Preserve the exact per-source error, reconcile uncertain
-outcomes with a read, and never claim that the lead was created. After success,
-read the new record and present its verified details and graph position through
-`my-crm-customer-journey`.
 
 ## Current application discovery
 
@@ -275,15 +228,16 @@ requested outcome.
 
 ## Connection ownership
 
-The agent owns the BOS MCP client lifecycle for the duration of the user's
-request.
+The agent owns the active product MCP client lifecycle for the duration of the
+user's request.
 
 Read [references/runtime-continuation-contract.md](references/runtime-continuation-contract.md)
 before recovering authorization, refreshing a tool manifest, or continuing a
 stateful mutation workflow.
 
-- On the first BOS-dependent request, discover and use the root BOS plugin's
-  configured MCP connection. If `bos_get_context` is callable, invoke it
+- On the first product request, discover and use that product plugin's
+  configured MCP connection. Confirm that BOS is installed when the product
+  declares it as a dependency. If `bos_get_context` is callable, invoke it
   immediately and continue the pending request from its result. When tools are
   deferred, use the host's available tool search or discovery facility to locate
   BOS and `bos_get_context` before declaring them unavailable. With a tool
@@ -304,34 +258,33 @@ stateful mutation workflow.
   first-action callable discovery procedure has run and its observed results
   establish a binding problem. Repair a confirmed binding defect through the
   host's supported controls. Do not reinstall or open connection UI solely from
-  an empty resource list or initial tool list. For Codex, verify the root
-  BOS plugin declares `mcpServers: "./.mcp.json"`, the MCP file contains exactly
-  one remote HTTP `platform` entry at the product-owned BOS resource, and no
+  an empty resource list or initial tool list. For Codex, verify the active
+  product plugin declares `mcpServers: "./.mcp.json"`, the MCP file contains
+  exactly one remote HTTP entry at the product-owned resource, and no
   `.app.json` exists. For Claude,
-  verify the BOS package's
+  verify the active product package's
   account-connector metadata and the matching Web connector under
   **Customize → Connectors**, then use its persistent **Connect** action. When a
   private installation lacks that connector, add it with the exact name and URL
-  from the generated BOS `CONNECTORS.md`; never reconstruct or modify the
-  package-owned resource. Preserve installed subservice plugins while repairing
-  only the BOS connection. Never create an Education Center, CRM, Marketing
-  Director, or other subservice connection as recovery.
+  from the generated product `CONNECTORS.md`; never reconstruct or modify the
+  package-owned resource. Preserve installed product plugins while repairing
+  only the active product connection.
   Never discover, prompt for, repair,
   or materialize a URL from `installed_app_id` or customer settings.
   Do not stop at diagnosing client registration.
 - If the transport, stream, or MCP session closes, reconnect or reinitialize
   that same configured connection, rediscover its live tools, call
   `bos_get_context` again, and retry the interrupted read-only operation once.
-- If the BOS OAuth token endpoint returns `invalid_client`, classify it as a
-  stale host-owned public-client registration and return to **Register BOS**.
-  Preserve the sanitized continuation envelope, keep the same sealed BOS
-  resource, have the host discard the stale client registration, repeat dynamic
+- If the product OAuth token endpoint returns `invalid_client`, classify it as a
+  stale host-owned public-client registration and return to the active
+  product's connection registration. Preserve the sanitized continuation envelope, keep the same sealed
+  product resource, have the host discard the stale client registration, repeat dynamic
   client registration from the resource's current authorization metadata, and
   restart authorization once. After authorization succeeds, rediscover live
   tools, call `bos_get_context`, and resume the interrupted request. Use the
   host's supported connection reset or **Connect/Sign in** surface when it does
-  not expose programmatic registration replacement. Keep the root BOS endpoint
-  and installed subservice plugins unchanged throughout recovery.
+  not expose programmatic registration replacement. Keep the product endpoint
+  and installed product plugins unchanged throughout recovery.
 - If Codex reports `reauthenticationRequired`, `requires OAuth
   reauthentication`, or an equivalent MCP-startup authentication failure,
   classify it as **Sign in** and preserve the active request. Use the requested
@@ -356,7 +309,7 @@ stateful mutation workflow.
   launch browser authentication on the user's behalf. Do not ask the user to
   reconnect BOS or resubmit the request. Do not use generic app-permission tools,
   unrelated app-dependency tools, the plugin console's business-data workflow,
-  an anonymous bootstrap business tool, or a subservice connection to repair
+  an anonymous bootstrap business tool, or another product connection to repair
   MCP OAuth. Never use `request_plugin_install`, a plugin recommendation, or an
   external install page as MCP OAuth recovery. After the
   user selects the native action and login
@@ -366,9 +319,9 @@ stateful mutation workflow.
 - If the token endpoint returns `invalid_grant`, including `Refresh token
   replay detected`, classify the existing BOS grant as unusable and remain at
   **Sign in**. Preserve the active request, stop the refresh retry loop, and use
-  the same native root BOS authentication action for fresh consent. Never
+  the same native product authentication action for fresh consent. Never
   classify this as missing skills, generic app permissions, or a new
-  subservice connection. After consent, refresh tools and context, run the
+  product connection. After consent, refresh tools and context, run the
   bounded authenticated read, and resume the preserved request.
 - Refresh the callable tool manifest after OAuth reconnection, plugin/package or
   server-schema updates, an explicit server refresh, transport/session replacement, or a
@@ -379,7 +332,7 @@ stateful mutation workflow.
   manifest, apply Resource-owned operation schemas within the existing
   callable envelope; retain server authorization and all mutation safeguards.
 - Preserve the user's original request across recovery and continue it
-  automatically. Never ask the user to reconnect BOS, resend the request, or
+  automatically. Never ask the user to reconnect the product, resend the request, or
   start a new task.
 - Preserve the sanitized continuation envelope across every refresh, including
   pending draft identities, approval state, operation identities, and
@@ -408,8 +361,8 @@ Apply provider recovery as one request interceptor around every BOS domain
 or bypass authentication recovery. Preserve the pending call before execution
 and inspect its sanitized result before producing a final answer.
 
-1. Use the immutable BOS connection recorded by the root package and declared
-   by the client's native host adapter. Treat the resource as sealed package
+1. Use the immutable product MCP connection recorded by the active product
+   package and declared by the client's native host adapter. Treat the resource as sealed package
    configuration, never as tenant authority or a user-selectable setting.
 2. Do not send `org_id`, `app_code`, `installed_app_id`,
    `delegated_role_id`, or a client-selected subservice authority. BOS derives
@@ -423,19 +376,19 @@ and inspect its sanitized result before producing a final answer.
 3. Fail closed when context is absent or ambiguous.
 4. Use the triggered subservice skill to choose the requested workflow and
    semantic operation from the current live-discovered dynamic domain service
-   and tool surface. Keep connection selection
-   fixed on BOS. Treat the descriptor only as an operation/schema declaration;
+   and tool surface. Keep connection selection fixed on the product that owns
+   the requested capability. Treat the descriptor only as an operation/schema declaration;
    call the operation with the selected opaque context and let BOS authorize
    the organization, installation, role, plugin, capability, tool, and provider
    at `tools/call` time.
-5. Authenticate the BOS Claude account-level Web connector through its
-   persistent **Connect** control, and the ChatGPT/Codex BOS connection
-    through the root package-owned MCP binding. Both use one host-managed
-   OAuth grant. Other clients use only the generated product
-   adapter declared for BOS. Keep access tokens, refresh tokens,
+5. Authenticate the active product's Claude account-level Web connector through
+   its persistent **Connect** control, and its ChatGPT/Codex connection through
+   the product package-owned MCP binding. Each product resource uses its own
+   host-managed OAuth grant. Other clients use only the generated adapter for
+   the active product. Keep access tokens, refresh tokens,
    authorization codes, bearer values, and grant metadata out of chat, tool
    arguments, package files, and logs. Never create or fall back to a
-   subservice-specific BOS authorization. If BOS rejects a desktop OAuth grant after
+   alternate product authorization. If the product resource rejects a desktop OAuth grant after
    reconnecting once, invoke the host's Connect/Sign in flow and resume once
    after it succeeds.
 6. When a domain call returns `authorization_required`, preserve its original
@@ -453,9 +406,10 @@ and inspect its sanitized result before producing a final answer.
      expected API-key recovery surface is a provider credential collector. A
      successful `bos_get_context` or authenticated provider-connection call
      proves that the BOS grant is already valid for this request. If the
-     recovery page renders, redirects to, or offers root BOS **Sign in**, never
-     click root BOS **Sign in**, launch BOS authentication, or treat a separate
-     BOS web cookie as required. Poll `bos_get_authorization_status` once with the
+     recovery page renders, redirects to, or offers product MCP **Sign in**, never
+     launch product authentication as a substitute for the provider recovery
+     transaction or treat a separate web cookie as required. Poll
+     `bos_get_authorization_status` once with the
      existing recovery token to allow a delayed transaction advance. If the
      provider form still does not appear, preserve the original operation and
      recovery transaction, classify
@@ -475,13 +429,12 @@ kind returned by BOS.
 Provider readiness and authorization are local to the server-resolved
 organization, installation, and plugin. A missing provider credential blocks
 only the affected provider operation and may change only that domain service's
-dynamic tool surface. It never creates another BOS login or changes the BOS
-connection state.
+dynamic tool surface. It does not change another product's connection state.
 A provider recovery browser page cannot override the authenticated MCP result
-or regress the client to root BOS sign-in.
+or regress the client to product MCP sign-in.
 
-Domain skills interpret their workflows and execute through the configured BOS
-MCP. BOS derives actor, tenant, organization, application, installation,
+Domain skills interpret their workflows and execute through the configured
+product MCP. BOS derives actor, tenant, organization, application, installation,
 subservice, role, plugin, capability, and provider scope from the validated
 OAuth grant, requested tool, and canonical server records.
 

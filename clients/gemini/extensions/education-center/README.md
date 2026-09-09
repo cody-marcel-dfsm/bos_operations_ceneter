@@ -7,8 +7,12 @@ Both surfaces load the same packaged skills and fixed BOS product identity.
 
 Install this extension from a terminal with `gemini extensions install clients/gemini/extensions/education-center`.
 Gemini CLI copies the extension into its managed extension directory.
-Install and authenticate the BOS extension once. This subservice adds workflows
-through the existing BOS connection and registers no additional MCP server.
+Run `/mcp auth education-center` and complete BOS sign-in in the browser.
+Gemini CLI discovers BOS OAuth, stores and refreshes the resource-scoped grant,
+and connects to the fixed HTTPS MCP route declared by this extension.
+
+This package owns its scoped MCP connection at `https://dfsm.ai/mcp/apps/leaddirector/education-center`.
+Install required product dependencies first: bos.
 
 For a bounded recovery, run `npm run clean-install:gemini -- --confirmation
 "DELETE ALL BOS GEMINI EXTENSION STATE"`. Restart Gemini CLI after installation
@@ -26,4 +30,6 @@ It resolves the repository from the installer's own location, independent of the
 current working directory. Before changing files, it displays the deletion warning and
 requires `DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS` as typed confirmation.
 After each Git pull, restart Antigravity and run `npm run install:verify:antigravity-runtime`.
-Confirm the BOS connection is authenticated, then enable this plugin and its skills.
+Open Settings > Customizations, find the `education-center` MCP server,
+select Authenticate, complete BOS sign-in in the browser, and return to Antigravity.
+The desktop host stores and refreshes the resource-scoped OAuth grant.

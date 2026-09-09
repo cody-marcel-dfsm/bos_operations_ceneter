@@ -1,6 +1,6 @@
 ---
 name: sendgrid-campaign-operations
-description: Build, approve, test, send, recover, monitor, and report permission-based Education Center SendGrid campaigns through the tenant-scoped BOS MCP. Use for customer-family audiences with documented marketing consent from Calimatic, Lead Director, Gmail, Calendar, camp, enrollment, inquiry, lead, or trial evidence; prioritized overlapping cohorts; governed recipient additions; suppression reconciliation; exact UTF-8 content review; manifest refresh and same-task continuation; deterministic test/list sends; delivery-event statistics; or structured missing-capability issues.
+description: Build, approve, test, send, recover, monitor, and report permission-based Education Center SendGrid campaigns through the tenant-scoped Education Center MCP. Use for customer-family audiences with documented marketing consent from Calimatic, Lead Director, Gmail, Calendar, camp, enrollment, inquiry, lead, or trial evidence; prioritized overlapping cohorts; governed recipient additions; suppression reconciliation; exact UTF-8 content review; manifest refresh and same-task continuation; deterministic test/list sends; delivery-event statistics; or structured missing-capability issues.
 ---
 
 # SendGrid Campaign Operations
@@ -8,8 +8,8 @@ description: Build, approve, test, send, recover, monitor, and report permission
 Use `bos-mcp-client` for authenticated context, live tool discovery, manifest
 refresh, same-task continuation, and provider authorization recovery. Use
 `education-center-service-routing` for every configured evidence source. Use
-only the installed BOS OAuth connection for runtime authority.
-BOS derives organization, application, installation, role, plugin, SendGrid
+only the installed Education Center product OAuth connection for runtime
+authority. The service derives organization, application, installation, role, plugin, SendGrid
 binding, sender configuration, and credentials from the validated grant.
 
 Read [references/client-workflow.md](references/client-workflow.md) for the
@@ -38,7 +38,7 @@ against a sanitized trace when validating an end-to-end client execution.
    configuration, and physical address returned by the server-owned draft.
 6. Require explicit approval bound to the exact content hash, audience version,
    and send action. Invalidate approval if any bound value changes.
-7. Execute exactly one deterministic test send through BOS. Reconcile its
+7. Execute exactly one deterministic test send through the Education Center MCP. Reconcile its
    result and require successful preparation/acceptance before the list send.
 8. Execute the approved list send once with its stable idempotency key.
    Reconcile uncertain outcomes before any retry.
@@ -64,7 +64,7 @@ against a sanitized trace when validating an end-to-end client execution.
   or `delegated_role_id` as client inputs. Never use legacy filesystem tokens,
   repository-specific sender scripts, direct database access, raw SendGrid
   calls, browser authority, native Gmail/Calendar connectors, or another
-  BOS connection for this workflow.
+  Education Center MCP connection for this workflow.
 - Keep recipient addresses out of logs, continuation envelopes, result
   displays, and local diagnostics unless explicitly requested. Use server-owned
   contact identities or salted/tenant-scoped hashes in diagnostic artifacts.

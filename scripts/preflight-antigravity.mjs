@@ -62,7 +62,8 @@ for (const entry of await readdir(productsRoot, { withFileTypes: true })) {
     ...(product.runtime
       ? { resource_url: product.mcp_resource_url, oauth: product.oauth }
       : {}),
-    connection_owner: "bos",
+    connection_owner: product.name,
+    dependency_products: product.dependencies,
     authentication: expectedAuthentication
   };
 
@@ -82,7 +83,7 @@ for (const entry of await readdir(productsRoot, { withFileTypes: true })) {
   } else {
     try {
       await access(join(extensionRoot, "mcp_config.json"));
-      throw new Error(`BOS subservice ${name} declares an additional MCP configuration`);
+      throw new Error(`Runtime-free product ${name} declares an MCP configuration`);
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
     }

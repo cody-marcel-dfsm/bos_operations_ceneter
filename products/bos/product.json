@@ -1,11 +1,11 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.97",
+  "version": "0.4.98",
   "release_status": "active",
   "display_name": "BOS — Business Operating System",
-  "description": "Agent-first Business Operating System foundations for governed agent workflows.",
-  "long_description": "BOS is an agent-first Business Operating System for planning, implementing, reviewing, governing, and executing agent-ready business operations. BOS owns the root authenticated MCP connection, resolves the selected organization, and discovers its authorized installed applications. GPT discovers and executes current authenticated BOS capabilities using server-returned app contacts and contracts through supported transports.",
+  "description": "Run deterministic workflows across a federated agentic service mesh.",
+  "long_description": "BOS is a platform for deterministic automated workflows across an agentic mesh of federated services. It is the required foundation for dependent products and owns the authenticated BOS platform MCP connection. BOS resolves the selected organization, inspects installed services and their readiness, governs plugin settings and enablement, and coordinates authorized platform operations with server-enforced scope, evidence, and approvals.",
   "website_url": "https://dfsm.ai",
   "brand_color": "#061638",
   "composer_icon": "assets/bos-logo.png",
@@ -18,6 +18,7 @@
   "publisher": "Infinite State Machines LLC",
   "category": "Productivity",
   "authentication": "ON_INSTALL",
+  "dependencies": [],
   "clients": [
     "codex",
     "claude",
@@ -25,6 +26,7 @@
     "gemini"
   ],
   "includes": [
+    "platform/bos-workflow-orchestrator",
     "platform/bos-mcp-client",
     "platform/bos-app-discovery",
     "platform/bos-guided-support",
@@ -47,9 +49,7 @@
     "capabilities/marketing-analysis",
     "capabilities/meta-ads-conversion-optimization",
     "capabilities/sendgrid-campaigns",
-    "capabilities/seo-improvement-loop",
-    "capabilities/my-crm-customer-journey",
-    "capabilities/my-crm-record-operations"
+    "capabilities/seo-improvement-loop"
   ],
   "runtime": "bos",
   "application_name": "bos",
@@ -78,8 +78,8 @@
     "bos_set_plugin_enabled"
   ],
   "default_prompts": [
-    "List the BOS apps and skills installed for my organization.",
-    "Show me the tools and workflows available in each BOS app.",
-    "Check which BOS apps are connected and ready to use."
+    "Audit my BOS service mesh and show which deterministic workflows are ready, blocked, or need authorization.",
+    "Make this operational workflow runnable by identifying and resolving its platform dependencies.",
+    "Trace a governed workflow across my installed services and show every approval, execution step, and result."
   ]
 }

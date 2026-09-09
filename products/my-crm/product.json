@@ -5,7 +5,7 @@
   "release_status": "disabled",
   "display_name": "My CRM",
   "description": "Provider-neutral CRM operations across tenant-scoped BOS-connected customer data sources.",
-  "long_description": "My CRM gives authorized users one CRM operating vocabulary across connected customer and lead systems. GPT uses the shared BOS connection to discover Lead Director, selects its current provider-neutral CRM service and deterministic API contracts, invokes one generic operation, and presents the server-resolved source results with provenance and freshness.",
+  "long_description": "My CRM gives authorized users one CRM operating vocabulary across connected customer and lead systems. The plugin requires BOS for platform identity and discovery, then uses its own scoped MCP connection to select the current provider-neutral CRM service and deterministic API contracts, invoke one generic operation, and present server-resolved source results with provenance and freshness.",
   "website_url": "https://dfsm.ai",
   "brand_color": "#061638",
   "composer_icon": "assets/lead-director-crm-logo.png",
@@ -13,6 +13,23 @@
   "publisher": "Infinite State Machines LLC",
   "category": "Productivity",
   "authentication": "ON_USE",
+  "dependencies": [
+    "bos"
+  ],
+  "runtime": "bos",
+  "application_name": "leaddirector",
+  "mcp_group_name": "crm",
+  "mcp_resource_url": "https://dfsm.ai/mcp/apps/leaddirector/crm",
+  "codex_mcp_startup_timeout_sec": 180,
+  "codex_mcp_tool_timeout_sec": 180,
+  "oauth": {
+    "authorization_server_issuer": "https://dfsm.ai",
+    "authorization_endpoint": "https://dfsm.ai/api/v1/mcp/oauth/authorize",
+    "identity_provider": "google",
+    "identity_provider_authorization_endpoint": "https://accounts.google.com/o/oauth2/v2/auth",
+    "provider_account_selection_policy": "ALWAYS_SELECT_ACCOUNT",
+    "provider_account_selection_prompt": "select_account"
+  },
   "plugin_settings_initializer": "bos-plugin-settings-initialization",
   "clients": [
     "codex",

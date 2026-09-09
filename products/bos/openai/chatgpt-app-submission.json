@@ -1,10 +1,10 @@
 {
-  "$schema": "https://developers.openai.com/apps-sdk/schemas/chatgpt-app-submission.v1.json",
+  "$schema": "https://developers.openai.com/plugins/schemas/chatgpt-app-submission.v1.json",
   "schema_version": 1,
   "app_info": {
     "display_name": "BOS Business Operating System",
-    "subtitle": "Run governed operations",
-    "description": "BOS connects ChatGPT to an organization's authorized business apps and workflows. Users can inspect their BOS context, discover available operational capabilities, review connected services and settings, and perform governed work within server-enforced organization and role boundaries.",
+    "subtitle": "Run deterministic workflows",
+    "description": "BOS provides deterministic automated workflows across an agentic mesh of federated services. It resolves authorized organization context, inspects installed services and readiness, governs plugin settings and enablement, and coordinates platform operations with server-enforced scope, evidence, and approvals.",
     "category": "PRODUCTIVITY"
   },
   "tools": {
@@ -19,47 +19,95 @@
         "open_world_justification": "Reads private BOS authorization context and does not publish content or change a third-party system.",
         "destructive_justification": "Does not delete, overwrite, revoke, send, or perform another irreversible action."
       }
+    },
+    "bos_list_plugin_services": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Lists the selected organization's installed BOS plugins, service connections, enablement, and readiness without changing them.",
+        "open_world_justification": "Reads private BOS platform state and does not publish content or communicate with an unrelated external destination.",
+        "destructive_justification": "Does not enable, disable, connect, delete, overwrite, or otherwise change a plugin or service."
+      }
+    },
+    "bos_get_plugin_settings": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Returns the current typed settings for one authorized BOS plugin without creating a draft or applying a change.",
+        "open_world_justification": "Reads private BOS configuration state and does not publish content or communicate with an unrelated external destination.",
+        "destructive_justification": "Does not create, update, delete, enable, disable, connect, or revoke any plugin setting or service."
+      }
+    },
+    "bos_set_plugin_enabled": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Changes the enabled state of one explicitly selected BOS plugin for the authorized organization and returns the committed result.",
+        "open_world_justification": "Mutates private BOS platform state and does not publish content or communicate with an unrelated external destination.",
+        "destructive_justification": "Disabling a plugin can make its workflows unavailable, so the tool requires an explicit target state, current revision, and user-authorized bounded action."
+      }
+    },
+    "bos_begin_plugin_service_connection": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Creates a bounded authorization transaction for one explicitly selected plugin service and can change its connection state after user consent.",
+        "open_world_justification": "May communicate with the selected organization-authorized provider to begin its OAuth or secure credential-collection flow.",
+        "destructive_justification": "The connection flow can establish or replace provider authorization, so it requires an explicit service target and direct user consent on the secure provider surface."
+      }
     }
   },
   "test_cases": [
     {
-      "description": "Resolve the reviewer's authorized BOS organization and installed capabilities.",
-      "user_prompt": "List the BOS apps and skills installed for my organization.",
+      "description": "Resolve the reviewer's authorized BOS context for governed workflow execution.",
+      "user_prompt": "For Acme Operations, show the organization, role, and BOS capabilities available for governed workflows.",
       "file_attachment_urls": null,
       "tools_triggered": "bos_get_context",
-      "expected_output": "Returns the authorized organization and a concise summary of the BOS capabilities available to the reviewer.",
+      "expected_output": "Returns the authorized Acme Operations context, effective role, and available BOS platform capabilities without exposing opaque authority identifiers or credentials.",
       "expected_output_url": null
     },
     {
-      "description": "Explain the reviewer's available BOS workflows from current server-issued context.",
-      "user_prompt": "Show me the tools and workflows available in each BOS app.",
+      "description": "Audit readiness across the fictional review organization's installed service mesh.",
+      "user_prompt": "For Acme Operations, audit the Workflow Sandbox service mesh and show what is ready, disabled, disconnected, or awaiting authorization.",
       "file_attachment_urls": null,
-      "tools_triggered": "bos_get_context",
-      "expected_output": "Summarizes available workflows for the authorized organization without exposing opaque identifiers or authorization metadata.",
+      "tools_triggered": "bos_list_plugin_services",
+      "expected_output": "Summarizes the fictional Workflow Sandbox plugin and service readiness, enablement, and allowed connection actions for Acme Operations.",
       "expected_output_url": null
     },
     {
-      "description": "List the BOS applications installed for the current reviewer.",
-      "user_prompt": "Which BOS applications are installed for my account?",
+      "description": "Inspect the typed platform configuration controlling a fictional workflow.",
+      "user_prompt": "For Acme Operations, show the settings controlling Workflow Sandbox and identify anything preventing execution.",
       "file_attachment_urls": null,
-      "tools_triggered": "bos_get_context",
-      "expected_output": "Lists the BOS applications present in the reviewer's current authorized context.",
+      "tools_triggered": "bos_get_plugin_settings",
+      "expected_output": "Returns the fictional plugin's readable typed settings, current revision, and execution impact without changing any value.",
       "expected_output_url": null
     },
     {
-      "description": "Identify the organization and execution role selected for the current reviewer.",
-      "user_prompt": "Which organization and role am I operating as in BOS?",
+      "description": "Apply one explicit governed plugin-enablement action in the fictional review organization.",
+      "user_prompt": "Enable Workflow Sandbox for Acme Operations.",
       "file_attachment_urls": null,
-      "tools_triggered": "bos_get_context",
-      "expected_output": "Returns the display-safe organization and effective role selected from the reviewer's current authorized BOS context.",
+      "tools_triggered": "bos_set_plugin_enabled",
+      "expected_output": "Enables only the fictional Workflow Sandbox plugin after resolving its current selector and revision, then returns an audited committed result and refreshed readiness.",
       "expected_output_url": null
     },
     {
-      "description": "Show the plugin-settings capabilities available to the current reviewer.",
-      "user_prompt": "Show the BOS plugin settings I am authorized to view or change.",
+      "description": "Start one explicit service-authorization flow needed by the fictional workflow.",
+      "user_prompt": "For Acme Operations, start the connection flow for the Synthetic Accounting service required by Workflow Sandbox.",
       "file_attachment_urls": null,
-      "tools_triggered": "bos_get_context",
-      "expected_output": "Explains which plugin-settings operations the reviewer's current BOS context authorizes, without changing any setting.",
+      "tools_triggered": "bos_begin_plugin_service_connection",
+      "expected_output": "Starts only the fictional Synthetic Accounting connection transaction, returns the secure user-consent action, and preserves the workflow for continuation after authorization.",
       "expected_output_url": null
     }
   ],
@@ -73,19 +121,19 @@
       "expected_output_url": null
     },
     {
-      "description": "Do not trigger BOS for general creative writing.",
-      "user_prompt": "Write a short poem about autumn leaves.",
+      "description": "Route an application-owned education workflow to its owning product boundary.",
+      "user_prompt": "Build next week's student camp roster for my education center.",
       "file_attachment_urls": null,
       "tools_triggered": null,
-      "expected_output": "The app should not be invoked because the request is unrelated to the user's BOS organization or operational capabilities.",
+      "expected_output": "The BOS platform MCP should not execute the education operation; the request belongs to the Education Operation Center plugin and its product-owned MCP.",
       "expected_output_url": null
     },
     {
-      "description": "Do not trigger BOS for an unsupported request about another organization's private data.",
-      "user_prompt": "Show me the private business records for an organization I do not belong to.",
+      "description": "Reject a cross-tenant platform mutation.",
+      "user_prompt": "Disable every plugin belonging to another organization.",
       "file_attachment_urls": null,
       "tools_triggered": null,
-      "expected_output": "The app should not be invoked to search another organization's records and should explain that access is limited to the user's authorized BOS organization.",
+      "expected_output": "The app should perform no mutation or disclosure and should explain that cross-tenant operations require authorized organization scope and an explicit bounded target.",
       "expected_output_url": null
     }
   ]

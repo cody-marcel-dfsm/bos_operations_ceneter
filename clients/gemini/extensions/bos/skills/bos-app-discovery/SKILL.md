@@ -81,13 +81,6 @@ services, goals, and machine-readable API contracts.
 Read [the discovery contract](references/discovery-contract.md) before the first
 app-directory or per-app MCP query in a request.
 
-Whenever a lead is displayed, use `my-crm-customer-journey`'s detailed display
-contract: current-state-to-goal graph with bold green preferred positive route,
-profile details and freshness. Apply it to create/update results, duplicate
-matches, previews/receipts and each displayed list entry. Obtain missing display
-evidence after a confirmed write without replaying it. Preserve pagination,
-explicit user formats and historical labeling for deleted records.
-
 ## Current-host read execution
 
 Use the current authenticated BOS capabilities for the requested operation.
@@ -106,19 +99,6 @@ Directory or transport limitations remain scoped to that operation. An
 access denial never permits switching routes to evade it. Missing or ambiguous
 context, revoked grants, and explicit access denials stop the affected operation.
 Every operation retains request-time server authorization.
-
-For journey/detail requests, continue from the record read into graph, goal,
-and path discovery through live-described read operations. A current-state-only
-record result does not complete this sequence. Use `my-crm-customer-journey` to
-resolve the explicit or application-owned goal and obtain the exact node path.
-Only after supported discovery and relevant reads are exhausted or a specific
-failure prevents them, render the labeled partial journey with verified state,
-known goals, and requested details. Identify the failed or unavailable operation
-and unattempted dependent reads. This is an incomplete path result, with no
-invented transitions, reachability, actions, or completion.
-This rule authorizes no mutations, browser fallback, token extraction, or
-hardcoded endpoint. A missing per-app host facility alone must not suppress an
-independent successful authorized read or its partial graph presentation.
 
 ## Execute BOS resource discovery
 
@@ -165,8 +145,8 @@ both outcomes. This rule never replays mutations or guesses unlisted URIs.
 
 When discovery is advertised as a tool, use its live descriptor and schema.
 An empty tool search must still proceed to the available resource facilities.
-Keep resource reads on the existing BOS connection; no new connection or login
-is required to inspect its advertised resources.
+Keep BOS directory resource reads on the BOS product connection. Follow a
+server-returned application contact through the owning product connection.
 
 ## App discovery workflow
 
@@ -199,27 +179,6 @@ is required to inspect its advertised resources.
 7. Refresh BOS and app discovery after organization, installation, graph
    digest/version, role, plugin, authorization, context-expiry, or app-contract
    changes. Re-resolve the operation from the refreshed contract before retrying.
-
-A named-person lookup such as “find this lead,” “look up this contact,” or a
-lookup by email, phone, or a current record selector is an individual detail
-request. Select and read `my-crm-customer-journey` before presenting its result,
-even when the lookup uses a search operation. Determine presentation from user
-intent, independently of the tool name or response being an array. A successful
-single-person lookup must continue into the graph workflow in the same turn.
-Broad filtered lists preserve their filters and pagination and display each
-returned lead in the detailed format below. Keep ambiguous matches separate;
-show only the graph membership verified for each candidate and disambiguate
-before any targeted action.
-
-## Lead/contact details and journey-position requests
-
-For any lead or contact detail request, including a single field or profile,
-and for a customer's journey position or progress, use the installed
-`my-crm-customer-journey` workflow after selecting
-the owning app. Discover graph, journey, and read-only path evidence before
-rendering. Lead with a native graph marking the current node and any requested
-goal; keep record details below it. A single-record request still requires
-the journey visual. Retain typed failures when graph evidence is unavailable.
 
 ## Validation and failure behavior
 

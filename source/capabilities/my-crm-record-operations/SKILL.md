@@ -5,9 +5,8 @@ description: Find, list, create, update, delete, or remove Lead Director leads a
 
 # My CRM Record Operations
 
-Use `bos-mcp-client` and `bos-app-discovery` on the authenticated BOS connection.
-This workflow is distributed by the root BOS package and operates independently
-of the optional My CRM product. The discovered application service owns each
+Use `bos-mcp-client` and `bos-app-discovery` on the authenticated My CRM
+connection. This workflow is distributed by the My CRM package. The discovered application service owns each
 business operation and source execution.
 
 For any lead or contact detail request, invoke `my-crm-customer-journey` as
@@ -91,6 +90,14 @@ success alone never proves that a create or update executed.
 
 ## Creates and updates
 
+For a requested lead creation, resolve the source pair from current
+server-returned source metadata in the selected context, matched to the user's
+requested application. Never manufacture `source_type` or `source_identity`
+from the person's email, phone, name, role, context hint, or the word “manual.”
+If the live contract requires an undiscoverable source selector, report that
+exact contract gap. Reuse the original idempotency key while reconciling a
+failed or uncertain request.
+
 1. Resolve the exact current source descriptor from the validated
    `lead-director-crm-sources/v1` inventory and verify that it is `ready`
    and advertises the requested provider-neutral capability. Select
@@ -113,6 +120,13 @@ success alone never proves that a create or update executed.
    service, source, and operation. Report the server receipt and
    `underlying_source_guarantee` without strengthening it.
 6. Invalidate or refresh affected query caches after a confirmed commit.
+
+Inspect the structured result before reporting success. `isError: false` or a
+completion message is insufficient. A result with `complete: false`, an empty
+success list, or `source_mutation_failed` is a failed or partial operation.
+Preserve the exact per-source error, reconcile uncertain outcomes with a read,
+and present the verified record and journey only after confirmed success. This
+is part of the current operating contract for My CRM.
 
 ## Deletes
 

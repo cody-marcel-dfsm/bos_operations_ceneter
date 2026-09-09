@@ -1,7 +1,7 @@
 {
   "name": "bos",
-  "version": "0.4.97",
-  "description": "Agent-first Business Operating System foundations for governed agent workflows.",
+  "version": "0.4.98",
+  "description": "Run deterministic workflows across a federated agentic service mesh.",
   "mcpServers": {
     "platform": {
       "httpUrl": "https://dfsm.ai/mcp/apps/bos/platform",

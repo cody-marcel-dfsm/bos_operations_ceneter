@@ -3,26 +3,25 @@ import {
   oauthTargetContract
 } from "./package-model.mjs";
 
-export function singleBosConnectionContract(products) {
-  const owner = products.find(({ name }) => name === "bos");
-  if (!owner) throw new Error("The BOS owner product is missing");
-  const oauth = oauthTargetContract(owner);
+export function productMcpConnectionsContract(products) {
+  const foundation = products.find(({ name }) => name === "bos");
+  if (!foundation) throw new Error("The BOS foundation product is missing");
+  const oauth = oauthTargetContract(foundation);
+  const runtimeProducts = products
+    .filter(({ runtime }) => runtime)
+    .sort((left, right) => left.name.localeCompare(right.name));
   return {
     schema_version: "1",
-    contract_id: "bos.single-mcp-connection",
-    owner_product: owner.name,
-    application_name: owner.application_name,
-    mcp_group_name: owner.mcp_group_name,
-    resource_url: materializeMcpUrl(owner),
-    oauth,
-    owner_authentication_policy: owner.authentication,
-    codex_mcp_server_required: true,
-    codex_oauth_resource_equals_resource_url: true,
-    codex_mcp_startup_timeout_sec: owner.codex_mcp_startup_timeout_sec,
-    codex_mcp_tool_timeout_sec: owner.codex_mcp_tool_timeout_sec,
+    contract_id: "bos.product-mcp-connections",
+    foundation_product: foundation.name,
+    dependency_policy: "DEPENDENT_PRODUCTS_REQUIRE_BOS",
+    connection_policy: "EACH_PRODUCT_OWNS_ONE_SCOPED_MCP",
+    authentication_policy: {
+      foundation: "ON_INSTALL",
+      dependent_product: "ON_USE"
+    },
     provider_account_selection_policy: oauth.provider_account_selection_policy,
     identity_organization_resolution_policy: "SERVER_EVALUATED_PER_VERIFIED_IDENTITY",
-    subservice_authentication_policy: "ON_USE",
     request_time_authentication: {
       activation_owner: "SELECTED_OAUTH_TOOL",
       preauthentication_tool_surface: "DESCRIPTORS_ONLY",
@@ -36,22 +35,23 @@ export function singleBosConnectionContract(products) {
       native_action_surface: "ACTIVE_CHAT",
       continuation_policy: "RESUME_ORIGINAL_REQUEST"
     },
-    subservice_products: products
-      .filter(({ release_status, runtime }) => release_status === "active" && !runtime)
-      .map(({ name }) => name)
-      .sort(),
-    connection_artifacts: [
-      "clients/claude/plugins/bos/CONNECTORS.md",
-      "clients/codex/plugins/bos/.mcp.json",
-      "clients/copilot/products/bos/.github/mcp.json",
-      "clients/gemini/extensions/bos/mcp_config.json"
-    ],
-    forbidden_subservice_connection_identifiers: [
-      "bos_education_center",
-      "mcp__bos_education_center__",
-      "connection must be education-center",
-      "trace.get(\"connection\") == \"education-center\""
-    ]
+    products: runtimeProducts.map((product) => ({
+      name: product.name,
+      dependencies: product.dependencies,
+      application_name: product.application_name,
+      mcp_group_name: product.mcp_group_name,
+      resource_url: materializeMcpUrl(product),
+      oauth: oauthTargetContract(product),
+      authentication: product.authentication,
+      codex_mcp_startup_timeout_sec: product.codex_mcp_startup_timeout_sec,
+      codex_mcp_tool_timeout_sec: product.codex_mcp_tool_timeout_sec,
+      connection_artifacts: [
+        `clients/claude/plugins/${product.name}/CONNECTORS.md`,
+        `clients/codex/plugins/${product.name}/.mcp.json`,
+        `clients/copilot/products/${product.name}/.github/mcp.json`,
+        `clients/gemini/extensions/${product.name}/mcp_config.json`
+      ]
+    }))
   };
 }
 

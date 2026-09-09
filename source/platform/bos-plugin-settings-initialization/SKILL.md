@@ -80,9 +80,8 @@ server's labels, connection-state vocabulary, action availability, and order.
   exactly one **Connect** action. After the user selects it, call
   `bos_begin_plugin_service_connection` with the latest opaque `context_id`,
   `plugin_ref`, and `service_ref` from that same response.
-- For `bos_sign_in_required`, activate the root BOS connection's host-native
-  **Connect**, **Sign in**, or **Authenticate** action. A subservice never owns
-  another BOS login.
+- For `bos_sign_in_required`, activate the current product connection's
+  host-native **Connect**, **Sign in**, or **Authenticate** action.
 - Show disabled and `unavailable` rows with their server-returned status and
   available action. Never silently enable a plugin. Enablement requires the
   user's explicit toggle or request through `bos-plugin-console`, followed by
@@ -142,7 +141,7 @@ before confirmation.
 
 After authorization, launch one settings mutation worker per independent
 plugin through `bos-plugin-settings`. Every worker uses the same authenticated
-BOS connection; the server evaluates the owning subservice, installation,
+product connection; the server evaluates the owning subservice, installation,
 plugin, role, and capability for its opaque selector and returns a sanitized
 terminal result.
 

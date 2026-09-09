@@ -1,15 +1,15 @@
 {
   "name": "bos",
-  "version": "0.4.97",
-  "description": "Agent-first Business Operating System foundations for governed agent workflows.",
+  "version": "0.4.98",
+  "description": "Run deterministic workflows across a federated agentic service mesh.",
   "author": {
     "name": "Infinite State Machines LLC"
   },
   "skills": "./skills/",
   "interface": {
     "displayName": "BOS — Business Operating System",
-    "shortDescription": "Agent-first Business Operating System foundations for governed agent workflows.",
-    "longDescription": "BOS is an agent-first Business Operating System for planning, implementing, reviewing, governing, and executing agent-ready business operations. BOS owns the root authenticated MCP connection, resolves the selected organization, and discovers its authorized installed applications. GPT discovers and executes current authenticated BOS capabilities using server-returned app contacts and contracts through supported transports.",
+    "shortDescription": "Run deterministic workflows across a federated agentic service mesh.",
+    "longDescription": "BOS is a platform for deterministic automated workflows across an agentic mesh of federated services. It is the required foundation for dependent products and owns the authenticated BOS platform MCP connection. BOS resolves the selected organization, inspects installed services and their readiness, governs plugin settings and enablement, and coordinates authorized platform operations with server-enforced scope, evidence, and approvals.",
     "developerName": "Infinite State Machines LLC",
     "category": "Productivity",
     "capabilities": [
@@ -17,9 +17,9 @@
       "Write"
     ],
     "defaultPrompt": [
-      "List the BOS apps and skills installed for my organization.",
-      "Show me the tools and workflows available in each BOS app.",
-      "Check which BOS apps are connected and ready to use."
+      "Audit my BOS service mesh and show which deterministic workflows are ready, blocked, or need authorization.",
+      "Make this operational workflow runnable by identifying and resolving its platform dependencies.",
+      "Trace a governed workflow across my installed services and show every approval, execution step, and result."
     ],
     "websiteURL": "https://dfsm.ai",
     "brandColor": "#061638",

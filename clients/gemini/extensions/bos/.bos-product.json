@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.97",
+  "version": "0.4.98",
   "client": "gemini",
   "application_name": "bos",
   "mcp_group_name": "platform",
@@ -15,5 +15,6 @@
     "provider_account_selection_prompt": "select_account"
   },
   "connection_owner": "bos",
+  "dependency_products": [],
   "authentication": "oauth_2_1"
 }
