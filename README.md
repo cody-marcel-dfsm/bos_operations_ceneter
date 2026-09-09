@@ -32,7 +32,7 @@ protected-resource challenge
 then identifies a signed-out runtime connection and activates OAuth. The
 user completes consent, and the agent refreshes tools and resumes the request.
 
-Current desktop marketplace release: `0.4.98`. If `0.4.97` is installed,
+Current desktop marketplace release: `0.4.99`. If `0.4.98` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -393,8 +393,10 @@ completion; every correction requires a fresh review until the verdict is
 
 Release validation is credential-free and local. It regenerates canonical
 client packages, checks generated parity and credential containment, and runs
-the complete test suite. It creates no ZIPs, tarballs, customer archives, or
-release manifests and performs no live MCP call.
+the complete test suite. It deterministically regenerates each active
+product's manifest-owned OpenAI skill-snapshot ZIP. It creates no ad-hoc
+release ZIPs, tarballs, customer archives, or release manifests and performs no
+live MCP call.
 
 Run:
 

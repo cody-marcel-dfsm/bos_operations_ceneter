@@ -19,6 +19,7 @@ import {
   validateProduct,
   writeJson
 } from "./lib/package-model.mjs";
+import { createDeterministicZipFromDirectory } from "./lib/deterministic-zip.mjs";
 import {
   codexLoginSurfaceContract,
   productMcpConnectionsContract
@@ -517,6 +518,20 @@ await writeJson(
   join(root, "contracts", "codex-login-surface.v1.json"),
   codexLoginSurfaceContract(bosProduct)
 );
+
+for (const { product } of resolved) {
+  const archivePath = product.openai_submission?.skills_archive;
+  if (!archivePath) continue;
+  const archive = await createDeterministicZipFromDirectory(join(
+    root,
+    "clients",
+    "codex",
+    "plugins",
+    product.name,
+    "skills"
+  ));
+  await writeFile(join(root, "products", product.name, archivePath), archive);
+}
 
 await rm(stage, { recursive: true, force: true });
 console.log(

@@ -1,11 +1,20 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import test from "node:test";
 
-import { listProducts, root, validateProduct } from "../scripts/lib/package-model.mjs";
+import {
+  listProducts,
+  resolveProductSkills,
+  root,
+  validateProduct
+} from "../scripts/lib/package-model.mjs";
+import {
+  createDeterministicZipFromDirectory,
+  readZipEntries
+} from "../scripts/lib/deterministic-zip.mjs";
 
 const portalSchema =
-  "https://developers.openai.com/plugins/schemas/chatgpt-app-submission.v1.json";
+  "https://developers.openai.com/apps-sdk/schemas/chatgpt-app-submission.v1.json";
 
 function pngDimensions(buffer) {
   assert.equal(buffer.subarray(1, 4).toString("ascii"), "PNG");
@@ -31,7 +40,8 @@ test("every active Codex product owns permanent OpenAI submission source", async
     assert.deepEqual(product.openai_submission, {
       import_file: "openai/chatgpt-app-submission.json",
       directory_icon: "openai/directory-icon.png",
-      composer_icon: "openai/composer-icon.png"
+      composer_icon: "openai/composer-icon.png",
+      skills_archive: `openai/${product.name}-skills.zip`
     });
     const submission = JSON.parse(await readFile(
       `${root}/products/${product.name}/${product.openai_submission.import_file}`,
@@ -44,6 +54,44 @@ test("every active Codex product owns permanent OpenAI submission source", async
     assert.equal(submission.app_info.category, "PRODUCTIVITY", product.name);
     assert.equal(submission.test_cases.length, 5, product.name);
     assert.equal(submission.negative_test_cases.length, 3, product.name);
+  }
+});
+
+test("OpenAI skill archives exactly reproduce each product's generated Codex skills", async () => {
+  for (const product of activeCodexProducts) {
+    const archivePath = `${root}/products/${product.name}/${product.openai_submission.skills_archive}`;
+    const generatedRoot = `${root}/clients/codex/plugins/${product.name}/skills`;
+    const archive = await readFile(archivePath);
+    const expectedArchive = await createDeterministicZipFromDirectory(generatedRoot);
+    assert.deepEqual(archive, expectedArchive, `${product.name} archive is reproducible`);
+
+    const entries = readZipEntries(archive);
+    const roots = [...new Set([...entries.keys()].map((path) => path.split("/")[0]))].sort();
+    const expectedRoots = (await resolveProductSkills(product))
+      .map(({ name }) => name)
+      .sort();
+    assert.deepEqual(roots, expectedRoots, `${product.name} owns only its declared skill roots`);
+    for (const rootName of roots) {
+      assert.ok(entries.has(`${rootName}/SKILL.md`), `${rootName} has SKILL.md`);
+    }
+    for (const path of entries.keys()) {
+      const entry = entries.get(path);
+      const generatedPath = `${generatedRoot}/${path}`;
+      const generatedMode = (await stat(generatedPath)).mode & 0o111 ? 0o755 : 0o644;
+      assert.ok(!path.startsWith("/"));
+      assert.ok(!path.includes("\\"));
+      assert.ok(!path.split("/").includes(".."));
+      assert.deepEqual(
+        entry.content,
+        await readFile(generatedPath),
+        `${product.name}/${path} matches the generated package`
+      );
+      assert.equal(
+        entry.mode,
+        generatedMode,
+        `${product.name}/${path} preserves normalized executable mode`
+      );
+    }
   }
 });
 

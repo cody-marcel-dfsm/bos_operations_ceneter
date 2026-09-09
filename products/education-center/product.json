@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.98",
+  "version": "0.4.99",
   "release_status": "active",
   "display_name": "Education Operation Center",
   "description": "Coordinate operations across email, calendars, billing, and enrollment.",
@@ -33,7 +33,8 @@
   "openai_submission": {
     "import_file": "openai/chatgpt-app-submission.json",
     "directory_icon": "openai/directory-icon.png",
-    "composer_icon": "openai/composer-icon.png"
+    "composer_icon": "openai/composer-icon.png",
+    "skills_archive": "openai/education-center-skills.zip"
   },
   "settings_template": "config/education-center.settings.template.json",
   "settings_initializer": "education-center-customer-initialization",

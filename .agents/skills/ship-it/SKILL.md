@@ -164,9 +164,10 @@ requested outcome.
 1. After preflight and initial change review, increment the repository release version before generating packages. Use the repository's native version command when it exists. In BOS Operations Center, run `npm run version:next` for the default patch release.
 2. Default to a patch increment. Use a minor, major, or exact version only when the user or repository release policy specifies it.
 3. Require the bump to update canonical package metadata, every active product manifest, and current-release documentation. Leave disabled products on their independent versions.
-4. Treat generated client manifests and marketplaces as outputs of the canonical
-   package build. Do not hand-edit generated copies. Do not create ZIP, tarball,
-   customer-archive, or release-manifest artifacts.
+4. Treat generated client manifests, marketplaces, and manifest-owned OpenAI
+   skill-snapshot ZIPs as outputs of the canonical package build. Do not
+   hand-edit generated copies. Do not create ad-hoc release ZIPs, tarballs,
+   customer archives, or release-manifest artifacts.
 5. If the worktree is clean, the new version itself is the release change. Do not skip the release or create an empty commit.
 
 ## Validate and build
