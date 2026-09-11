@@ -21,6 +21,8 @@ import {
   productMcpConnectionsContract
 } from "./lib/product-contracts.mjs";
 
+import { checkSkillDependencies } from "./lib/skill-dependencies.mjs";
+
 const forbiddenNames = new Set([
   ".env",
   "credentials.json",
@@ -175,6 +177,7 @@ async function validateProducts() {
     failures.push("Package manifest must declare all supported clients");
   }
   const products = await listProducts();
+  failures.push(...await checkSkillDependencies(products.map(({ manifest }) => manifest)));
   const identities = new Set();
   const runtimeRoutes = new Set();
   for (const { path, manifest } of products) {

@@ -2164,6 +2164,7 @@ test("Education Center composition contains only approved shared runtime foundat
   assert.deepEqual(shared, [
     "bos-mcp-client",
     "bos-plugin-settings",
+    "bos-plugin-settings-initialization",
     "submit-feedback",
     "manage-customer-extension"
   ]);
@@ -2687,6 +2688,30 @@ test("My CRM owns its journey workflow and BOS excludes it", async () => {
   assert.equal(myCrm.release_status, "disabled");
 });
 
+
+test("Education Center ships its referenced journey and graph contracts on every client", async () => {
+  const products = await listProducts();
+  const education = products.find(({ manifest }) => manifest.name === "education-center").manifest;
+  const skills = await resolveProductSkills(education);
+  const journey = skills.find(({ name }) => name === "my-crm-customer-journey");
+  assert(journey, "Education Center must ship the journey its lead routing requires");
+  assert(skills.some(({ name }) => name === "my-crm-record-operations"),
+    "Education Center must ship its lead record workflow");
+  assert.deepEqual(education.dependencies, ["bos"]);
+  for (const clientRoot of [
+    "clients/claude/plugins", "clients/codex/plugins",
+    "clients/copilot/products", "clients/gemini/extensions"
+  ]) {
+    const destination = `${root}/${clientRoot}/education-center/skills/${journey.name}`;
+    const generated = await readFile(`${destination}/SKILL.md`, "utf8");
+    const canonical = await readFile(journey.skillFile, "utf8");
+    assert.equal(generated, transformProductSkillGuidance(education, journey.name, canonical));
+    for (const reference of ["connected-graph-read.md", "journey-graph-contract.md"]) {
+      assert.equal(await readFile(`${destination}/references/${reference}`, "utf8"),
+        await readFile(`${journey.sourcePath}/references/${reference}`, "utf8"));
+    }
+  }
+});
 
 test("lead and contact detail requests default to graph presentation", async () => {
   for (const file of [

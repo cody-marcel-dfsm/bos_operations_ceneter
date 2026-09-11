@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.100",
+  "version": "0.4.101",
   "release_status": "active",
   "display_name": "Education Operation Center",
   "description": "Coordinate operations across email, calendars, billing, and enrollment.",
@@ -63,6 +63,8 @@
     "platform/bos-plugin-settings-initialization",
     "platform/submit-feedback",
     "platform/manage-customer-extension",
+    "capabilities/my-crm-customer-journey",
+    "capabilities/my-crm-record-operations",
     "capabilities/agent-call-operations",
     "capabilities/review-outreach",
     "capabilities/sendgrid-campaign-operations",

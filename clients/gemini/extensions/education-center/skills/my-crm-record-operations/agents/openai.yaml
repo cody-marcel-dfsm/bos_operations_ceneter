@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lead and CRM Records"
+  short_description: "Find, create, update, and delete leads through live contracts"
+  default_prompt: "Use $my-crm-record-operations to handle this Lead Director or CRM record request."

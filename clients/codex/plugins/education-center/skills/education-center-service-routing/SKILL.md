@@ -94,17 +94,18 @@ remain required; the package does not intercept or enforce arbitrary API calls.
 
 # Education Center Service Routing
 
-Choose capabilities for the active Education Center task inside the tenant-neutral BOS
-MCP. This skill defines provider preferences; `bos-mcp-client` owns authentication,
+Choose capabilities for the active task on the Education Center product MCP.
+This skill defines provider preferences; `bos-mcp-client` owns authentication,
 authorization, and exact tenant scope.
 
 For the first operational request, follow `bos-mcp-client` live tool discovery
 and call `bos_get_context` as soon as it is callable. Complete the required
 scope and initialization preflights, then resume the requested read without
 waiting for a second prompt. Any lead or contact detail request, including a
-single field or profile, and any request for progress toward enrollment requires `my-crm-customer-journey` from the BOS
-foundation. Include a native visual with current position and any requested
-goal, using its partial-evidence presentation when topology is unavailable.
+single field or profile, and any request for progress toward enrollment requires
+the packaged `my-crm-customer-journey` capability on the Education Center MCP
+connection. Include a native visual with current position and resolved canonical
+goals, using its partial-evidence presentation when topology is unavailable.
 
 Load `config/customer-settings.template.json` from the installed
 `education-center` product as package defaults, then recursively overlay
@@ -128,10 +129,18 @@ before any targeted action.
 
 Whenever a lead is displayed, use `my-crm-customer-journey`'s detailed display
 contract: current-state-to-goal graph with bold green preferred positive route,
-profile details and freshness. Apply it to create/update results, duplicate
+profile details and freshness. Read the advertised graph and canonical goals
+after a current-stage-only record result; an empty available-actions list does
+not establish missing topology. A creation/update activity timeline supplements
+the state graph. Apply it to create/update results, duplicate
 matches, previews/receipts and each displayed list entry. Obtain missing display
 evidence after a confirmed write without replaying it. Preserve pagination,
 explicit user formats and historical labeling for deleted records.
+
+For lead search, create, update, delete, or removal requests, load the packaged
+`my-crm-record-operations` workflow and execute through Education Center MCP.
+Apply its live operation contracts, exact targets, confirmation requirements,
+receipt verification, and post-result journey display.
 
 ## Lead creation source and result contract
 
@@ -175,11 +184,11 @@ persisted record identifiers. Return `configuration_required` and invoke
 
 ## Routing workflow
 
-1. Route every domain marked `bos` through the installed BOS MCP connection.
-   In Claude and ChatGPT/Codex, its host-managed OAuth grant identifies the
-   canonical BOS authorization; another client uses only its generated BOS
-   adapter. The server resolves the Education Center subservice and authorized
-   tool set for each request.
+1. Route every domain marked `bos` through the installed Education Center MCP
+   connection and its host-managed product OAuth grant. The source-route value
+   selects BOS-managed provider access within this product. Platform directory
+   discovery uses the separate BOS dependency connection. The server resolves
+   the Education Center subservice and authorized tool set for each request.
 2. Identify the requested operation and any provider preference stated by the
    user.
 3. Call `bos_get_context` once and accept the exact organization, application,
