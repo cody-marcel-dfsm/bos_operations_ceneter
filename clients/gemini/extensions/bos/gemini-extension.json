@@ -1,6 +1,6 @@
 {
   "name": "bos",
-  "version": "0.4.100",
+  "version": "0.4.101",
   "description": "Run deterministic workflows across a federated agentic service mesh.",
   "mcpServers": {
     "platform": {

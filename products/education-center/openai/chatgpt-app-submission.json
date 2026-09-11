@@ -103,11 +103,11 @@
       "expected_output_url": null
     },
     {
-      "description": "Summarize the current trial and enrollment state of fictional review leads.",
+      "description": "Display fictional review leads with verified state graphs and paths to canonical goals.",
       "user_prompt": "Find synthetic leads created during the review week and summarize their current trial or enrollment status.",
       "file_attachment_urls": null,
       "tools_triggered": "education_center_search_leads",
-      "expected_output": "Returns fictional leads with created date, current stage, supported trial or enrollment evidence, and source attribution.",
+      "expected_output": "Returns each fictional lead with created date, current state, profile and freshness, plus a native state graph and readable text paths from the current node through every intermediate node to application-owned goals. Highlights the preferred positive route in bold green, labels structural eligibility limits, and preserves filters and pagination. Reads graph evidence through Education Center MCP; a current-stage badge or activity timeline alone fails this test. If graph discovery fails, identifies the failed read and labels the partial graph as incomplete acceptance without inventing transitions.",
       "expected_output_url": null
     }
   ],

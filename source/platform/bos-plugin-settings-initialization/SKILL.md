@@ -6,8 +6,9 @@ description: Initialize or repair the default organization, plugin-service conne
 # BOS Plugin Settings Initialization
 
 Run this common product-client stage after host-managed BOS authentication and
-the product's customer/client-settings initializer. It establishes the shared
-client default organization, verifies every installed plugin service in that
+the product's customer/client-settings initializer when the product declares
+one. BOS can run this workflow directly after authentication. It establishes
+the shared client default organization, verifies every installed plugin service in that
 organization, and then initializes server-owned, organization-scoped plugin
 configuration. It preserves healthy connections and confirmed settings and
 never treats local client values as authority.
@@ -27,10 +28,13 @@ before running discovery or persisting initialization drafts.
 ## Preflight
 
 1. Preserve the request that triggered initialization.
-2. Validate the product's effective customer-owned client settings. Resolve
-   every source role required by the product's plugin recommendation profiles.
-   Invoke the product customer-settings initializer first when any required
-   client value is missing or invalid.
+2. When the product declares a customer-settings initializer, validate its
+   effective customer-owned client settings and invoke that initializer for
+   missing or invalid values. For a product without one, including BOS, use
+   current authorized context, confirmed server settings and explicit user
+   inputs for the source roles required by the live recommendation profile.
+   Ask only for unresolved inputs needed by that profile; do not require a
+   nonexistent local overlay, initializer, or another product installation.
 3. Call `bos_get_context` and deduplicate its returned `organization_label`
    values. Read the shared default with
    `../bos-mcp-client/scripts/client-preferences.mjs`. When it is current, use
@@ -39,7 +43,8 @@ before running discovery or persisting initialization drafts.
    available and the setting is missing or stale, resolve a candidate from an
    exact confirmed `organization_display_name` match or an explicit user
    instruction, then include **Default BOS organization** in the product
-   initializer's consolidated recommendation. Require confirmation before
+   initializer's consolidated recommendation, or this workflow's consolidated
+   review when the product has no initializer. Require confirmation before
    calling `set-default-organization`. If no exact candidate is available, ask
    for the default organization in that same consolidated review. Return
    `configuration_required` and make no organization-scoped settings call until
@@ -117,9 +122,9 @@ Never infer a provider from a package example, provider reputation, connection
 presence alone, or provider-specific wording in another skill. Connect only an
 enabled, selected service whose live row requires a connection.
 
-Resolve each server-declared recommendation source role from the validated
-local client settings. Launch bounded parallel research workers for independent
-plugins or sources when the harness supports them. Give each worker only the
+Resolve each server-declared recommendation source role from validated local
+client settings when declared, or the confirmed inputs established above. Launch
+bounded parallel research workers for independent plugins or sources when the harness supports them. Give each worker only the
 source values and strategy required for its field. Research workers return
 sourced candidates, freshness, confidence, and conflicts; they perform no
 setting mutation.

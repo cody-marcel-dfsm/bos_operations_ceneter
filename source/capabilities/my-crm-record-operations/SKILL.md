@@ -5,9 +5,11 @@ description: Find, list, create, update, delete, or remove Lead Director leads a
 
 # My CRM Record Operations
 
-Use `bos-mcp-client` and `bos-app-discovery` on the authenticated My CRM
-connection. This workflow is distributed by the My CRM package. The discovered application service owns each
-business operation and source execution.
+Use `bos-mcp-client` on the active product connection. This reusable workflow
+ships in Education Center and My CRM. Education Center record operations use
+Education Center MCP; My CRM operations use My CRM MCP. Use `bos-app-discovery`
+from the BOS dependency for unresolved platform directory discovery. The
+discovered application service owns each business operation and source execution.
 
 For any lead or contact detail request, invoke `my-crm-customer-journey` as
 part of the read and present its rich graph view by default, including for a

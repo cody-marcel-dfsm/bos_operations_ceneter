@@ -9,10 +9,14 @@ confirmed cache, or an explicit repair request.
 ## Ownership order
 
 1. The Agent Harness loads the product and completes BOS authentication.
-2. The product customer-settings initializer establishes local non-secret
+2. When declared, the product customer-settings initializer establishes local non-secret
    source roles such as organization website, display name, location, and
    timezone and includes **Default BOS organization** in its consolidated
-   recommendation when the shared preference is missing or stale.
+   recommendation when the shared preference is missing or stale. Products
+   without a customer-settings initializer use current authorized context,
+   confirmed server settings and explicit user inputs for the live profile;
+   unresolved required inputs join this workflow's consolidated review. No
+   local overlay or second product is required.
 3. The client validates and commits the default organization display label
    against the organizations returned by `bos_get_context`, then selects that
    organization's unique default role context. A sole available organization
@@ -29,8 +33,8 @@ confirmed cache, or an explicit repair request.
    with `connection_required` and preserves the pending request.
 5. BOS returns the canonical plugin settings inventory, field states, schemas, and
    allowlisted recommendation strategies.
-6. Client research workers resolve those strategies from validated client
-   settings and public evidence.
+6. Client research workers resolve those strategies from the confirmed inputs
+   established in step 2 and public evidence.
 7. BOS validates prepared drafts.
 8. The Agent Harness collects one consolidated user authorization.
 9. Delegated mutation workers persist each independent plugin through BOS.

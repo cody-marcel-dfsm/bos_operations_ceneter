@@ -9,9 +9,11 @@ Use `bos-app-discovery` for routing, app MCP discovery, contract validation, and
 deterministic HTTPS invocation. Read [the Lead Director journey
 contract](references/journey-graph-contract.md) before discovery or rendering.
 
-This workflow ships with the active BOS foundation and is usable independently
-of the My CRM product. Any lead or contact detail request selects this workflow, including a single
-field such as an email address, phone number, owner, appointment, or status.
+This reusable capability ships in Education Center and My CRM. Use the copy
+in the active product and its product-owned MCP connection. Education Center
+requires no My CRM installation for this workflow. Any lead or contact detail
+request selects this workflow, including a single field such as an email
+address, phone number, owner, appointment, or status.
 The user does not need to say “journey” or “graph.”
 
 A named-person lookup such as “find this lead,” “look up this contact,” or a
@@ -28,10 +30,13 @@ before any targeted action.
 Start with `bos-mcp-client` live discovery and `bos_get_context` on the original
 request. Resolve deferred tools through the host's discovery facility before
 reporting them missing. Resume this workflow automatically after recovery.
-`bos_get_context` alone does not perform app discovery. Execute the
-`bos-app-discovery` resource discovery procedure on the existing authenticated
-BOS connection. Inspect listed connected graph resources for the selected
-context before requiring a separate app directory/contact. Follow
+`bos_get_context` alone does not perform graph discovery. Inspect the active
+product connection for advertised graph resources or read tools in the selected
+context before requiring a separate app directory/contact. Keep Education Center
+record and graph reads on Education Center MCP, and My CRM reads on My CRM MCP.
+Use `bos-app-discovery` from the BOS dependency for unresolved app discovery;
+keep platform directory reads on BOS and application execution on the owning
+product connection. Follow
 [connected graph reads](references/connected-graph-read.md) when that contract
 is advertised. Read the directory for evidence still missing. Continue
 from each successful read; evaluate app-query and API capabilities only when
@@ -40,7 +45,7 @@ no evidence that BOS resource discovery is unavailable.
 
 ## Current-host read execution
 
-Use the current authenticated BOS capabilities for the requested operation.
+Use the current authenticated product MCP capabilities for the requested operation.
 After selecting the organization and role through `bos_get_context`, resolve a
 live-discovered read operation whose descriptor covers the requested data.
 Invoke its exact schema with the selected opaque context and continue from the
@@ -174,8 +179,8 @@ is presentation of read evidence and never authorizes a CRUD mutation.
 
 ## Discover and resolve
 
-1. Inspect current BOS resource descriptors using the selected organization
-   and role context. A matching connected graph resource can satisfy graph and
+1. Inspect the active product MCP resource descriptors using the selected
+   organization and role context. A matching connected graph resource can satisfy graph and
    goal discovery directly. For unresolved evidence, query the authenticated
    BOS app directory. Select Lead Director only from a current returned app
    descriptor whose description or capabilities satisfy the request. Preserve

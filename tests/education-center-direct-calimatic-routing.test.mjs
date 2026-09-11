@@ -24,7 +24,8 @@ test("Education Center class operations route requested Calimatic access through
 test("Education Center service routing preserves BOS scope while honoring evidence routes", () => {
   const skill = read("source/verticals/education-center/education-center-service-routing/SKILL.md");
 
-  assert.match(skill, /tenant-neutral BOS/i);
+  assert.match(skill, /Education Center product MCP/i);
+  assert.match(skill, /Platform directory\s+discovery uses the separate BOS dependency connection/i);
   assert.match(skill, /source_routes\.calimatic[\s\S]*package default is BOS/i);
   assert.match(skill, /source_routes\.care_com/i);
   assert.match(skill, /connected_gmail[\s\S]*normal Gmail connector/i);

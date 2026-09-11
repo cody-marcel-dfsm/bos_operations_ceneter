@@ -91,7 +91,7 @@
       "user_prompt": "For Acme Operations, show the settings controlling Workflow Sandbox and identify anything preventing execution.",
       "file_attachment_urls": null,
       "tools_triggered": "bos_get_plugin_settings",
-      "expected_output": "Returns the fictional plugin's readable typed settings, current revision, and execution impact without changing any value.",
+      "expected_output": "Returns the fictional plugin's readable typed settings, current revision, and execution impact. If a required field is unset, invokes the packaged settings initializer on BOS MCP, shows sourced recommendations and requests confirmation before persisting any value. Works with BOS alone, using current context and confirmed inputs without requiring Education Center, My CRM or a nonexistent customer-settings initializer.",
       "expected_output_url": null
     },
     {

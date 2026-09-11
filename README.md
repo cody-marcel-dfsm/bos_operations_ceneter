@@ -32,7 +32,7 @@ protected-resource challenge
 then identifies a signed-out runtime connection and activates OAuth. The
 user completes consent, and the agent refreshes tools and resumes the request.
 
-Current desktop marketplace release: `0.4.100`. If `0.4.99` is installed,
+Current desktop marketplace release: `0.4.101`. If `0.4.100` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -382,7 +382,10 @@ git diff --check
 
 The package checks enforce generated parity, credential containment, immutable
 MCP routes, marketplace structure, customer-neutral source, and disabled-product
-exclusion.
+exclusion. They also resolve repository-owned skill references in instructions
+and supporting documents through each active product and its declared product
+dependencies, rejecting unavailable skills, disabled dependencies, dependency
+cycles, and dependencies missing a supported client.
 
 Every repository mutation then receives a repository-local Oracle review of the
 complete actual diff and focused validation evidence. `REJECTED` blocks
