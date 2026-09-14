@@ -445,6 +445,54 @@ test("BOS OAuth live contract accepts a Google account-selector redirect", async
   assert.deepEqual(result.violations, []);
 });
 
+test("BOS OAuth live contract follows the secure login handoff to Google", async () => {
+  const google = new URL(CANONICAL_IDENTITY_PROVIDER_AUTHORIZATION_ENDPOINT);
+  google.searchParams.set(
+    "prompt",
+    CANONICAL_OAUTH_TARGET.provider_account_selection_prompt
+  );
+  const responses = [
+    new Response(
+      '<main id="mcp-oauth-login"><a id="mcp-oauth-login-link" href="/api/v1/mcp/oauth/handoff/login?agent_auth_transaction=opaque">Open BOS sign in</a></main>',
+      {
+        status: 200,
+        headers: {
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "no-store",
+          pragma: "no-cache",
+          "referrer-policy": "no-referrer"
+        }
+      }
+    ),
+    new Response(
+      '<form method="get" action="/api/v1/mcp/oauth/handoff/google/start"><input type="hidden" name="agent_auth_transaction" value="opaque"><button>Continue with Google</button></form>',
+      {
+        status: 200,
+        headers: { "content-type": "text/html; charset=utf-8" }
+      }
+    ),
+    new Response(null, {
+      status: 302,
+      headers: { location: google.href }
+    })
+  ];
+  const calls = [];
+  const result = await probeBosOAuthAuthorize({
+    authorizeUrl: authorizeUrl(),
+    fetchImpl: async (url, init) => {
+      calls.push({ url: String(url), init });
+      return responses.shift();
+    }
+  });
+
+  assert.equal(result.status, "passed");
+  assert.equal(result.http_status, 302);
+  assert.equal(calls.length, 3);
+  assert.match(calls[1].url, /\/api\/v1\/mcp\/oauth\/handoff\/login/);
+  assert.match(calls[2].url, /\/api\/v1\/mcp\/oauth\/handoff\/google\/start/);
+  assert.equal(calls[2].init.headers["sec-fetch-site"], "same-origin");
+});
+
 test("BOS OAuth live contract rejects an authorization server exception", async () => {
   const result = await probeBosOAuthAuthorize({
     authorizeUrl: authorizeUrl(),

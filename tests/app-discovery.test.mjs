@@ -12,32 +12,31 @@ const contact = {
   display_name: "Lead Director",
   description: "Lead and sales journey operations",
   mcp_resource: "https://apps.example.test/mcp/opaque-contact",
-  context_id: "ctx_opaque",
   contract_version: "2026-09-03",
   discovery_epoch: "epoch_42",
   capability_families: ["lead.search", "lead.journey", "graph.path.plan"],
   required_scopes: ["lead:read"]
 };
 
-test("app contact accepts current app-directory context and rejects cross-context reuse", () => {
-  assert.equal(validateAppContact(contact, "ctx_opaque"), contact);
+test("app contact accepts the grant-bound descriptor and rejects authority selectors", () => {
+  assert.equal(validateAppContact(contact), contact);
   assert.throws(
-    () => validateAppContact(contact, "ctx_other"),
-    /does not match the current BOS app-directory contact/
+    () => validateAppContact({ ...contact, context_id: "ctx_other" }),
+    /raw authority/
   );
 });
 
 test("app contact rejects raw authority identifiers and unsafe transport", () => {
   assert.throws(
-    () => validateAppContact({ ...contact, organization_id: "org_1" }, "ctx_opaque"),
+    () => validateAppContact({ ...contact, organization_id: "org_1" }),
     /raw authority/
   );
   assert.throws(
-    () => validateAppContact({ ...contact, plugin_id: "plugin_1" }, "ctx_opaque"),
+    () => validateAppContact({ ...contact, plugin_id: "plugin_1" }),
     /raw authority/
   );
   assert.throws(
-    () => validateAppContact({ ...contact, mcp_resource: "http://example.test/mcp" }, "ctx_opaque"),
+    () => validateAppContact({ ...contact, mcp_resource: "http://example.test/mcp" }),
     /credential-free HTTPS URL/
   );
 });

@@ -12,6 +12,7 @@ const forbiddenAuthorityKeys = new Set([
   "tenant_id",
   "database_id",
   "credential_id",
+  "context_id",
   "access_token",
   "refresh_token",
   "bearer_token"
@@ -65,18 +66,15 @@ function rejectRawAuthority(value, path = "descriptor") {
   }
 }
 
-export function validateAppContact(contact, expectedAppContextId) {
+export function validateAppContact(contact) {
   requireObject(contact, "app contact");
   rejectRawAuthority(contact, "app contact");
-  for (const field of ["app_code", "display_name", "description", "mcp_resource", "context_id", "contract_version", "discovery_epoch"]) {
+  for (const field of ["app_code", "display_name", "description", "mcp_resource", "contract_version", "discovery_epoch"]) {
     requireString(contact[field], `app contact.${field}`);
   }
   requireHttps(contact.mcp_resource, "app contact.mcp_resource");
   requireStringArray(contact.capability_families, "app contact.capability_families");
   requireStringArray(contact.required_scopes, "app contact.required_scopes");
-  if (expectedAppContextId !== undefined && contact.context_id !== expectedAppContextId) {
-    throw new Error("app context does not match the current BOS app-directory contact");
-  }
   return contact;
 }
 
@@ -159,10 +157,10 @@ async function main() {
     process.stdin.on("error", reject);
   });
   const parsed = JSON.parse(input);
-  if (mode === "contact") validateAppContact(parsed, process.argv[3]);
+  if (mode === "contact") validateAppContact(parsed);
   else if (mode === "service") validateServiceDescriptor(parsed);
   else if (mode === "graph") validateGraphDescription(parsed);
-  else throw new Error("usage: validate-discovery.mjs <contact|service|graph> [expected-app-context-id]");
+  else throw new Error("usage: validate-discovery.mjs <contact|service|graph>");
   process.stdout.write(JSON.stringify({ valid: true, kind: mode }) + "\n");
 }
 

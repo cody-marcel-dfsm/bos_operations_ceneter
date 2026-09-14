@@ -77,7 +77,6 @@ test("plugin settings cache resolves one product-independent root", () => {
     /absolute path/
   );
 });
-
 test("cache miss becomes current only after a canonical commit", async (context) => {
   const cacheRoot = await temporaryCache(context);
   const missing = await readPluginSettingsCache(identity, { cacheRoot });

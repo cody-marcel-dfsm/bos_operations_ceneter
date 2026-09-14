@@ -103,9 +103,10 @@ Gmail-to-Google-Ads workflow. The client instruction can be:
 
 > Sync Education Center offline ad conversions from 2026-07-01 through 2026-07-21.
 
-Use the canonical BOS Create envelope. Pass the exact BOS `org_id`, `app_code`,
-`installed_app_id`, and `delegated_role_id`; set `source_type` to `google_ads`,
-`source_identity` to `offline_conversions`, and provide a stable
+Use the canonical BOS Create envelope. BOS derives `org_id`, `app_code`,
+`installed_app_id`, and `delegated_role_id` from the exact authenticated grant;
+omit those authority fields from the operation. Set `source_type` to
+`google_ads`, `source_identity` to `offline_conversions`, and provide a stable
 `idempotency_key`. Put ISO `start_date`, ISO `end_date`, optional `dry_run`,
 and optional `max_results` inside `changes`. Never pass Gmail credentials,
 Google OAuth tokens, Google Ads customer IDs, developer tokens, or

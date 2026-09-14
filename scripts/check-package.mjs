@@ -18,7 +18,8 @@ import {
 } from "./lib/package-model.mjs";
 import {
   codexLoginSurfaceContract,
-  productMcpConnectionsContract
+  productMcpConnectionsContract,
+  productRuntimeOwnershipMetadata
 } from "./lib/product-contracts.mjs";
 
 import { checkSkillDependencies } from "./lib/skill-dependencies.mjs";
@@ -70,7 +71,6 @@ const reusableRuntimePlatformSkills = new Set([
   "platform/bos-app-discovery",
   "platform/bos-plugin-settings",
   "platform/bos-plugin-settings-initialization",
-  "platform/bos-federated-query",
   "platform/bos-cache-maintenance",
   "platform/submit-feedback",
   "platform/manage-customer-extension"
@@ -242,6 +242,7 @@ async function validateProducts() {
       }
       const metadata = await readJson(metadataPath);
       const expectedAuthentication = manifest.runtime ? "oauth_2_1" : "none";
+      const expectedOwnership = productRuntimeOwnershipMetadata(manifest);
       if (
         metadata.connection_owner !== manifest.name ||
         JSON.stringify(metadata.dependency_products) !==
@@ -252,6 +253,10 @@ async function validateProducts() {
           ? materializeMcpUrl(manifest)
           : undefined) ||
         metadata.authentication !== expectedAuthentication ||
+        metadata.authorization_scope_policy !==
+          expectedOwnership.authorization_scope_policy ||
+        JSON.stringify(metadata.authentication_handoff) !==
+          JSON.stringify(expectedOwnership.authentication_handoff) ||
         "credential_env_var" in metadata ||
         "mcp_application" in metadata ||
         "mcp_resource_group" in metadata ||

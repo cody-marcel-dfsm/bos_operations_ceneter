@@ -24,9 +24,7 @@ verification. For changes affecting the BOS MCP authentication or discovery
 contract, make the client-owned Operations Center acceptance suite part of
 the server change's acceptance criteria: `npm run contract:check`, `npm run
 contract:oauth-discovery-live -- --resource-url "$BOS_MCP_RESOURCE_URL"
---format json`, `npm run contract:oauth-tool-auth-live -- --resource-url
-"$BOS_MCP_RESOURCE_URL" --tool bos_get_context --format json`, and `npm run
-contract:oauth-live -- --authorize-url
+--format json`, and `npm run contract:oauth-live -- --authorize-url
 "$BOS_OAUTH_AUTHORIZE_URL" --format json`. The server-side agent independently
 determines the implementation and release path. Return exactly one continuous
 Markdown prompt as the entire server handoff response. Keep all protocol
@@ -86,9 +84,9 @@ requested outcome.
   only its relevant skills. The server evaluates product,
   installation, plugin, role, capability, and provider scope for every request.
 - Align transport ownership with product capability ownership. Route platform
-  BOS operations through BOS and route application operations through the
-  Education Center, CRM, Lead Director, Marketing Director, or other owning
-  product MCP.
+  BOS operations through BOS. Use the selected application MCP to discover the
+  current semantic operation and exact deterministic HTTPS contract, then route
+  application execution through that advertised API.
 - Derive authority from authenticated context and canonical installed-app
   records.
 - Treat request identifiers as selectors that require authorization.

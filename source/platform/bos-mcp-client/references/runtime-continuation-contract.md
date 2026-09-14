@@ -3,6 +3,21 @@
 Use this contract for an active request that must survive connection recovery,
 authorization changes, tool-manifest refresh, or a host session replacement.
 
+## External dependent products
+
+When the active request belongs to a separately installed product that depends
+on BOS, use
+[the BOS authentication handoff](external-product-authentication-handoff.md)
+with contract ID `bos.authentication-handoff/v1`. The caller delegates only the
+exact protected resource, structured condition, and optional host-native
+correlation. BOS coordinates the host authentication lifecycle and returns a
+typed readiness result. The caller's
+own MCP connection remains host-managed.
+
+The caller retains its operation and owns its connection refresh, live
+discovery, retry, reconciliation, continuation, and presentation. None of that
+state enters the BOS authentication handoff.
+
 ## First-request discovery
 
 Execute the first-action callable lookup in `../SKILL.md` before diagnosing
@@ -17,13 +32,12 @@ and discovery retry after failure, preserve the exact failure evidence, and
 resume the original request automatically when tools become callable. Inspect
 package installation only after live discovery establishes a connection problem.
 
-For app discovery, continue after context with resource listing and reading on
-that same authenticated connection using `bos-app-discovery`. Tool discovery
-and resource discovery are distinct. Read the advertised manifest/directory
-before checking later app-query or API host requirements. Preserve successful
-resource reads when an optional resource-template method is unsupported.
-Classify failures at the operation actually reached and keep later unattempted
-operations distinct from observed failures.
+For application discovery, continue after context with resource listing and
+reading on that application's authenticated product connection. Tool discovery
+and resource discovery are distinct. Preserve successful resource reads when
+an optional resource-template method is unsupported. Classify failures at the
+operation actually reached and keep later unattempted operations distinct from
+observed failures.
 
 ## Refresh triggers
 
@@ -41,8 +55,8 @@ Refresh the callable manifest immediately after:
 - a server response indicating a stale or unavailable tool schema.
 
 Fingerprint the refreshed tool names, versions when exposed, and input schemas.
-Call `bos_get_context` again and prove that the same BOS connection resolves an
-authorized context. The authenticated manifest is the current dynamic
+Call `bos_get_context` again and prove that the same BOS connection retains its
+scoped authorization. The authenticated manifest is the current dynamic
 domain-specific MCP service and tool surface: its entries declare exposed
 operations and schemas without granting authority. Permission, role, plugin
 enablement, capability, provider, installation, and domain-service changes
@@ -86,15 +100,12 @@ If any approved input changed during recovery, invalidate the affected
 approval and present the new exact preview. Reconcile every uncertain mutation
 by operation identity or idempotency key before retrying.
 
-On Codex, a signed-out BOS-dependent prompt selects the matching OAuth-declared
-BOS tool descriptor. The descriptor and its scopes are visible before consent;
-customer data and business execution remain protected. Its signed-out
-invocation returns `isError: true` with `_meta["mcp/www_authenticate"]`, which
-lets the host render the simple inline **Sign in** button in the current chat.
-Preserve the request while the user selects the native action and completes
-consent, then refresh live discovery of dynamic domain-specific MCP services and tooling, call `bos_get_context`, and
-resume automatically. If the descriptor, challenge, or inline action is absent,
-report the exact tool-auth or host-activation defect and keep the request
-pending. Never invoke a CLI login, launch browser authentication for the user,
-or substitute an anonymous bootstrap business tool. Generic app permissions do
-not represent or repair this OAuth state.
+On Codex, a signed-out BOS-dependent prompt reaches the registered protected MCP
+resource. Its HTTP 401 response carries the exact `WWW-Authenticate`
+resource-metadata challenge that activates the host's native **Sign in** action.
+Preserve the request while the user selects that action and completes consent,
+then refresh live discovery of dynamic domain-specific MCP services and tooling,
+call `bos_get_context`, and resume automatically. If the challenge is valid and
+the host omits its native action, report the host-activation defect and keep the
+request pending. Never invoke a CLI login or launch browser authentication for
+the user. Generic app permissions do not represent or repair this OAuth state.

@@ -162,6 +162,10 @@ test("Antigravity preflight preserves existing plugins when any active source is
     join(repositoryRoot, "scripts", "lib", "package-model.mjs"),
     join(scriptsRoot, "lib", "package-model.mjs")
   );
+  await copyFile(
+    join(repositoryRoot, "scripts", "lib", "product-contracts.mjs"),
+    join(scriptsRoot, "lib", "product-contracts.mjs")
+  );
   const runtimeRoot = join(fakeRepository, "source", "runtime", "bos");
   await mkdir(runtimeRoot, { recursive: true });
   await writeFile(
@@ -277,6 +281,10 @@ test("Antigravity preflight preserves existing plugins when disabled inventory i
   await copyFile(
     join(repositoryRoot, "scripts", "lib", "package-model.mjs"),
     join(scriptsRoot, "lib", "package-model.mjs")
+  );
+  await copyFile(
+    join(repositoryRoot, "scripts", "lib", "product-contracts.mjs"),
+    join(scriptsRoot, "lib", "product-contracts.mjs")
   );
   const runtimeRoot = join(fakeRepository, "source", "runtime", "bos");
   await mkdir(runtimeRoot, { recursive: true });

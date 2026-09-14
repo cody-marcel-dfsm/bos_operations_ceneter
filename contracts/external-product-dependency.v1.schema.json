@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "bos://contracts/external-product-dependency/v1",
+  "title": "BOS external product dependency metadata",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "name",
+    "version",
+    "client",
+    "application_name",
+    "mcp_group_name",
+    "resource_url",
+    "connection_owner",
+    "dependency_products",
+    "authentication",
+    "authorization_scope_policy",
+    "authentication_handoff"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "client": {
+      "enum": [
+        "codex",
+        "claude",
+        "copilot",
+        "gemini"
+      ]
+    },
+    "application_name": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "mcp_group_name": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "resource_url": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://[^?#]+$",
+      "not": {
+        "const": "https://dfsm.ai/mcp/apps/bos/platform"
+      }
+    },
+    "codex_mcp_startup_timeout_sec": {
+      "type": "integer",
+      "minimum": 180
+    },
+    "codex_mcp_tool_timeout_sec": {
+      "type": "integer",
+      "minimum": 180
+    },
+    "connection_owner": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "dependency_products": {
+      "type": "array",
+      "contains": {
+        "const": "bos"
+      },
+      "minContains": 1,
+      "uniqueItems": true
+    },
+    "authentication": {
+      "const": "oauth_2_1"
+    },
+    "authorization_scope_policy": {
+      "const": "ONE_ORGANIZATION_APPLICATION_INSTALLATION_ROLE_PER_GRANT"
+    },
+    "authentication_handoff": {
+      "type": "object",
+      "required": [
+        "contract_id",
+        "contract_version",
+        "authentication_manager",
+        "credential_lifecycle_owner",
+        "authorization_enforcement_owner",
+        "delegation_policy",
+        "recognized_condition_categories",
+        "readiness_result"
+      ],
+      "properties": {
+        "contract_id": {
+          "const": "bos.authentication-handoff"
+        },
+        "contract_version": {
+          "const": "1"
+        },
+        "authentication_manager": {
+          "const": "bos"
+        },
+        "credential_lifecycle_owner": {
+          "const": "host"
+        },
+        "authorization_enforcement_owner": {
+          "const": "bos-service"
+        },
+        "delegation_policy": {
+          "const": "AUTOMATIC"
+        },
+        "recognized_condition_categories": {
+          "type": "array",
+          "prefixItems": [
+            { "const": "MISSING_GRANT" },
+            { "const": "EXPIRED_TOKEN" },
+            { "const": "REVOKED_GRANT" },
+            { "const": "INVALID_CLIENT" },
+            { "const": "INVALID_GRANT" },
+            { "const": "RESOURCE_MISMATCH" },
+            { "const": "REAUTHENTICATION_REQUIRED" },
+            { "const": "AUTHORIZATION_REQUIRED" },
+            { "const": "MCP_SESSION_CLOSED" },
+            { "const": "PROVIDER_AUTHORIZATION_REQUIRED" }
+          ],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 11,
+          "uniqueItems": true
+        },
+        "readiness_result": {
+          "type": "object",
+          "required": [
+            "owner",
+            "statuses",
+            "representation",
+            "authority_data"
+          ],
+          "properties": {
+            "owner": {
+              "const": "bos"
+            },
+            "statuses": {
+              "const": ["READY", "HOST_ACTION_REQUIRED", "NOT_READY"]
+            },
+            "representation": {
+              "const": "AUTHENTICATION_READINESS_ONLY"
+            },
+            "authority_data": {
+              "const": "EXCLUDED"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "client": {
+            "const": "codex"
+          }
+        },
+        "required": ["client"]
+      },
+      "then": {
+        "required": [
+          "codex_mcp_startup_timeout_sec",
+          "codex_mcp_tool_timeout_sec"
+        ]
+      }
+    }
+  ],
+  "additionalProperties": true
+}

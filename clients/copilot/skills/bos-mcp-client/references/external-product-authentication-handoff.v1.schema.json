@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "bos://contracts/authentication-handoff/v1",
+  "title": "BOS generic protected-resource authentication delegation",
+  "oneOf": [
+    { "$ref": "#/$defs/request" },
+    { "$ref": "#/$defs/result" }
+  ],
+  "$defs": {
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "code", "source"],
+      "properties": {
+        "category": {
+          "enum": ["authentication", "mcp_session"]
+        },
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{1,127}$"
+        },
+        "source": {
+          "enum": ["protected_resource", "bos_platform", "client_host"]
+        }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "message_type", "protected_resource", "condition"],
+      "properties": {
+        "schema_version": { "const": "bos.authentication-handoff/v1" },
+        "message_type": { "const": "request" },
+        "protected_resource": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://[^?#]+$"
+        },
+        "condition": { "$ref": "#/$defs/condition" },
+        "host_correlation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "message_type", "protected_resource", "status"],
+      "properties": {
+        "schema_version": { "const": "bos.authentication-handoff/v1" },
+        "message_type": { "const": "result" },
+        "protected_resource": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://[^?#]+$"
+        },
+        "status": {
+          "enum": ["READY", "HOST_ACTION_REQUIRED", "NOT_READY"]
+        },
+        "condition": { "$ref": "#/$defs/condition" },
+        "host_correlation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      }
+    }
+  }
+}

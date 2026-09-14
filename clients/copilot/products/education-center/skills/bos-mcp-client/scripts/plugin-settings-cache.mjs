@@ -48,7 +48,6 @@ function requireObject(value, label) {
   }
   return value;
 }
-
 function requireString(value, label) {
   if (typeof value !== "string" || !value.trim()) {
     throw new Error(`${label} must be a non-empty string`);

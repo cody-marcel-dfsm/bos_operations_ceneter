@@ -1,13 +1,7 @@
 import assert from "node:assert/strict";
-import { access, mkdtemp, readFile, readdir } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { access, readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 import { resolveProductSkills, root, transformProductSkillGuidance } from "../scripts/lib/package-model.mjs";
-import {
-  readClientPreferences,
-  setDefaultOrganizationPreference
-} from "../source/platform/bos-mcp-client/scripts/client-preferences.mjs";
 
 const generatedSkillRoots = [
   `${root}/clients/codex/plugins/bos/skills/bos-plugin-console`,
@@ -46,83 +40,56 @@ test("BOS Plugin Console is an instructions-only in-memory client feature", asyn
   assert.match(guidance, /never create a report file/i);
   assert.match(guidance, /start a local renderer or service/i);
   assert.match(guidance, /never directly inspect the local filesystem/i);
-  assert.match(guidance, /sole local selection operation/i);
+  assert.match(guidance, /no client-side authority[\s\S]*selection/i);
   assert.match(
     guidance,
-    /select the matching OAuth-declared BOS tool[\s\S]*native login action[\s\S]*preserve the request[\s\S]*resume it afterward/i
+    /protected resource's OAuth challenge[\s\S]*native login action[\s\S]*preserve the request[\s\S]*resume it afterward/i
   );
   assert.match(
     guidance,
-    /requested capability[\s\S]*matching BOS tool descriptor[\s\S]*securitySchemes/i
+    /HTTP 401[\s\S]*WWW-Authenticate[\s\S]*resource-metadata[\s\S]*native[\s\S]*Sign in/i
   );
   assert.match(
     guidance,
-    /descriptor[\s\S]*visibility[\s\S]*do not authorize business execution[\s\S]*expose[\s\S]*customer data/i
-  );
-  assert.match(
-    guidance,
-    /Invoke the selected tool once[\s\S]*mcp\/www_authenticate[\s\S]*simple[\s\S]*Sign in/i
-  );
-  assert.match(
-    guidance,
-    /Never[\s\S]*plugin-install recommendation[\s\S]*external install page/i
+    /Never replace[\s\S]*plugin-install recommendation, external[\s\S]*install page/i
   );
   assert.doesNotMatch(guidance, /list_available_plugins_to_install/i);
   assert.doesNotMatch(guidance, /`request_plugin_install`/i);
   assert.match(
     guidance,
-    /Preserve\s+the\s+current request[\s\S]*signs\s+in[\s\S]*refresh live discovery of dynamic domain-specific MCP services and tooling[\s\S]*same\s+request/i
+    /Preserve the current\s+request while the customer signs in/i
+  );
+  assert.match(
+    guidance,
+    /refresh live discovery of dynamic\s+domain-specific MCP services and tooling[\s\S]*continue this same request/i
   );
   assert.match(
     guidance,
     /manual navigation[\s\S]*Never ask[\s\S]*repeat\s+the\s+prompt/i
   );
-  assert.match(guidance, /explicitly named[\s\S]*default_organization_label/i);
-  assert.match(guidance, /Never enumerate service data for every[\s\S]*organization by default/i);
-  assert.match(
-    guidance,
-    /client-preferences\.mjs read[\s\S]*all current returned organization labels[\s\S]*state: current/i
-  );
-  assert.match(
-    guidance,
-    /missing, stale,[\s\S]*ambiguous[\s\S]*configuration_required[\s\S]*stop/i
-  );
+  assert.match(guidance, /grant binds exactly[\s\S]*one organization[\s\S]*application[\s\S]*installation[\s\S]*role/i);
+  assert.match(guidance, /bos_list_plugin_services[\s\S]*without organization, role, or context/i);
+  assert.doesNotMatch(guidance, /client-preferences\.mjs|default_organization_label|context_id/i);
   assert.match(
     guidance,
     /Never[\s\S]*prior-task response[\s\S]*typed-settings cache[\s\S]*multi-organization summary/i
   );
 });
 
-test("unqualified Plugin Console requests use one validated default organization", async () => {
+test("Plugin Console uses only the server-scoped grant", async () => {
   const guidance = await readFile(
     `${root}/source/platform/bos-plugin-console/SKILL.md`,
     "utf8"
   );
-  const contextOrganizations = [
-    "Primary Center",
-    "Secondary Center",
-    "Acceptance Test Organization"
-  ];
-  const preferencesRoot = await mkdtemp(join(tmpdir(), "bos-console-preferences-"));
-  await setDefaultOrganizationPreference({
-    organization_label: "Primary Center",
-    available_organization_labels: contextOrganizations
-  }, { preferencesRoot, now: "2026-08-31T22:50:00.000Z" });
-
-  assert.deepEqual(
-    await readClientPreferences({
-      available_organization_labels: contextOrganizations
-    }, { preferencesRoot }),
-    { state: "current", default_organization_label: "Primary Center" }
+  assert.match(
+    guidance,
+    /OAuth grant binds exactly[\s\S]*one organization[\s\S]*application[\s\S]*installation[\s\S]*role/i
   );
   assert.match(
     guidance,
-    /Resolve exactly one organization[\s\S]*before any console[\s\S]*data call/i
+    /server derives the exact inventory from the validated grant/i
   );
-  assert.match(
-    guidance,
-    /Within the selected organization[\s\S]*bos_list_plugin_services/i
-  );
+  assert.doesNotMatch(guidance, /explicitly named organization|selected organization|default role|context_id/i);
 });
 
 test("BOS distributes the in-memory Plugin Console to every supported client", async () => {
@@ -146,21 +113,14 @@ test("BOS distributes the in-memory Plugin Console to every supported client", a
   }
 });
 
-test("generated Plugin Consoles preserve tool-triggered OAuth presentation", async () => {
+test("generated Plugin Consoles preserve resource-level OAuth presentation", async () => {
   for (const generatedSkillRoot of generatedSkillRoots) {
     const guidance = await readFile(`${generatedSkillRoot}/SKILL.md`, "utf8");
     assert.match(
       guidance,
-      /requested capability[\s\S]*matching BOS tool descriptor[\s\S]*securitySchemes/i,
-      `${generatedSkillRoot} must preserve tool-bound OAuth selection`
-    );
-    assert.match(
-      guidance,
-      /mcp\/www_authenticate[\s\S]*native[\s\S]*Sign in/i,
+      /HTTP 401[\s\S]*WWW-Authenticate[\s\S]*resource-metadata[\s\S]*native[\s\S]*Sign in/i,
       `${generatedSkillRoot} must preserve native authentication presentation`
     );
-    assert.match(guidance, /authorize business execution[\s\S]*customer data/i);
-    assert.match(guidance, /anonymous[\s\S]*bootstrap business tool/i);
     assert.doesNotMatch(guidance, /list_available_plugins_to_install/i);
     assert.doesNotMatch(guidance, /`request_plugin_install`/i);
   }

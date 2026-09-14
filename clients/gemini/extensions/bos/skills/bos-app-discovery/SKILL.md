@@ -5,28 +5,21 @@ description: Route a request through authenticated BOS installed-app discovery, 
 
 
 
-## Organization scope preflight
+## Scoped authorization preflight
 
 Before the first private or organization-scoped operation, follow
-`bos-mcp-client` and call `bos_get_context`. Select exactly one authorized
-organization in this order: an organization explicitly named in the current request;
-the shared `default_organization_label` after exact normalized validation against
-the returned organization labels; or the sole authorized organization. Read and
-validate the saved label with
-`../bos-mcp-client/scripts/client-preferences.mjs`. For tools whose live schema
-requires a context selector, pass only the selected role's opaque `context_id`.
-Never add organization or context arguments to an operation whose schema derives
-scope from the authenticated server context.
-Use this same selection for BOS installed-app discovery. Pass only the opaque app
-context and API authority returned under that selection to a discovered app MCP
-or deterministic HTTPS API; never reconstruct or substitute raw authority IDs.
+`bos-mcp-client` and call `bos_get_context` to validate the exact scoped OAuth
+connection. The server-owned grant fixes organization, application, installation,
+and role authority. Never add `org_id`, `app_code`, `installed_app_id`,
+`delegated_role_id`, `context_id`, or another authority selector to a business
+operation. Invoke only the operation's live-declared business arguments.
+Use the same scoped connection for BOS installed-app discovery. Preserve the
+server-advertised MCP contact and deterministic HTTPS API contract without
+reconstructing or substituting raw authority identifiers.
 
-When several organizations are available and the default is missing, stale, or
-ambiguous, return `configuration_required` and resolve one default before domain
-execution. An organization named for the current request overrides the selection
-and does not rewrite the saved default. Never fan out across organizations unless
-the user explicitly requests that bounded scope. The display-label preference selects among
-current server-returned contexts and never grants authority.
+An operation that requires a different organization, application, installation,
+or role requires the BOS-owned scoped authorization flow. The client never changes
+authority by adding request arguments.
 
 ## Client mutation safety
 
@@ -74,7 +67,7 @@ First execute the first-action tool lookup in `bos-mcp-client`. Resolve deferred
 diagnostics. A resource list alone cannot establish missing BOS tools.
 
 GPT owns request routing, planning, service selection, API invocation, and
-cross-app evidence composition. BOS MCP supplies authenticated organization and
+cross-app evidence composition. BOS MCP supplies the exact grant-bound scope and
 the installed-app directory. Each selected app MCP supplies its own graph, plugins,
 services, goals, and machine-readable API contracts.
 
@@ -84,9 +77,9 @@ app-directory or per-app MCP query in a request.
 ## Current-host read execution
 
 Use the current authenticated BOS capabilities for the requested operation.
-After selecting the organization and role through `bos_get_context`, resolve a
+After `bos_get_context` revalidates the connection's scoped grant, resolve a
 live-discovered read operation whose descriptor covers the requested data.
-Invoke its exact schema with the selected opaque context and continue from the
+Invoke its exact schema without client-supplied authority fields and continue from the
 returned evidence. For an advertised app MCP or API, use its contract when the
 host can execute it with the required authentication. Select the supported
 operation from current evidence; do not impose a preferred future transport or
@@ -102,7 +95,7 @@ Every operation retains request-time server authorization.
 
 ## Execute BOS resource discovery
 
-After `bos_get_context` selects the organization, perform resource discovery
+After `bos_get_context` revalidates the scoped grant, perform resource discovery
 through the existing authenticated BOS connection in the same request. Context
 alone does not inspect the app directory. Do not gate BOS resource discovery on dynamic MCP attachment
 or authenticated API invocation capabilities needed at later steps.
@@ -113,8 +106,8 @@ or authenticated API invocation capabilities needed at later steps.
    These host facilities are separate from the BOS callable-tool catalog;
    an absent directory tool does not establish absent resource discovery.
 2. Inspect returned resource descriptors for app-owned data and operation
-   schemas that cover the request, including resources bound to the selected
-   context. For an operation schema supplementing an already callable tool,
+   schemas that cover the request, including resources bound to the scoped
+   grant. For an operation schema supplementing an already callable tool,
    apply Resource-owned operation schemas in `bos-mcp-client`.
    Read a matching resource through its exact listed URI before expanding into
    separate app discovery. A directory or manifest read is needed only for
@@ -130,8 +123,8 @@ or authenticated API invocation capabilities needed at later steps.
    `Method not found` means that optional method is unsupported; continue
    with listed resources and supported reads. It does not invalidate a
    successful resource list or read.
-5. Resolve the directory's advertised scope and version, retain only contacts
-   for the selected organization, validate the selected contact, and continue
+5. Resolve the directory's advertised scope and version, validate that each
+   contact belongs to the already-bound grant, and continue
    the app discovery workflow immediately. Treat directory metadata as
    discovery evidence; it never authorizes cross-organization business reads.
 
@@ -150,9 +143,9 @@ server-returned application contact through the owning product connection.
 
 ## App discovery workflow
 
-1. Use `bos-mcp-client` to authenticate and select exactly one organization
-   through the explicit request, validated default organization, or sole
-   authorized organization. Preserve only the opaque server-issued context.
+1. Use `bos-mcp-client` to authenticate and revalidate the connection's exact
+   organization, application, installation, and role grant. Supply no client
+   organization, role, or context selector.
 2. Execute BOS resource discovery above. Use app-owned resources that already
    provide the required evidence with valid scope; otherwise read the
    authenticated installed-app directory or its live advertised tool. Validate every returned
@@ -168,7 +161,7 @@ server-returned application contact through the owning product connection.
    read, propose, or mutate before invocation.
 5. Call the discovered deterministic HTTPS API through a host-native
    authenticated HTTP capability. Use the returned HTTPS origin or opaque base
-   reference, operation identifier, audience requirement, and opaque context.
+   reference, operation identifier, and audience requirement.
    Supply only schema-declared arguments. Keep bearer material in the host's
    credential boundary and out of prompts, generated headers, chat, files, and
    logs.
@@ -176,16 +169,16 @@ server-returned application contact through the owning product connection.
    results in GPT and preserve each fact's application, service, observation
    time, freshness, contract version, and correlation evidence. Label GPT
    inference separately.
-7. Refresh BOS and app discovery after organization, installation, graph
-   digest/version, role, plugin, authorization, context-expiry, or app-contract
+7. Refresh BOS and app discovery after grant, graph digest/version, plugin,
+   authorization, session-expiry, or app-contract
    changes. Re-resolve the operation from the refreshed contract before retrying.
 
 ## Validation and failure behavior
 
 Accept an app contact only when it came from the current authenticated BOS
-context and contains a display identity, HTTPS MCP resource, opaque context,
+grant and contains a display identity, HTTPS MCP resource,
 contract version, discovery epoch, capability families, and required scopes.
-Reject cross-context reuse and any descriptor containing raw organization,
+Reject cross-grant reuse and any descriptor containing raw organization,
 membership, role, installation, credential, or persistence identifiers.
 
 Before an API call, validate HTTPS transport, operation availability, request

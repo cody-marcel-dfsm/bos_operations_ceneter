@@ -31,11 +31,11 @@ the initialization workflow.
 
 ## Read
 
-1. Call `bos_get_context`, resolve the explicit or validated default
-   organization, select its server-marked default interactive role, and verify
-   `bos.plugin_settings.read`.
+1. Call `bos_get_context` to revalidate the exact organization, application,
+   installation, and role bound to the active OAuth grant. Supply no authority
+   selector and verify `bos.plugin_settings.read` from the server result.
 2. When the request names a plugin without carrying a server-returned selector,
-   call `bos_list_plugin_services` with that context and match exactly one
+   call `bos_list_plugin_services` without authority arguments and match exactly one
    configurable plugin display label. Use its opaque `plugin_ref` in memory.
    Do not render the Plugin Console as an intermediate view. Zero or several
    matches require a concise clarification and no settings read.
@@ -45,8 +45,8 @@ the initialization workflow.
 4. On a current cache hit, answer from its confirmed snapshot and render the
    stored field definitions through the visible-value contract below.
 5. On a miss or stale entry, use cursor catch-up when the live tools support it;
-   otherwise call `bos_get_plugin_settings` with only `context_id` and the
-   server-returned plugin selector. Commit the complete validated snapshot with
+   otherwise call `bos_get_plugin_settings` with only the server-returned plugin
+   selector. Commit the complete validated snapshot with
    `canonical_source: bos_read`, then answer from the committed cache entry.
 6. If a required field is `unset` or invalid `partial`, preserve the user's
    request and invoke `bos-plugin-settings-initialization`. Resume the read from
@@ -102,9 +102,9 @@ An unambiguous prompt naming the property and exact value authorizes that exact
 change. A component edit requires its **Apply** action. A sourced or inferred
 recommendation requires the user to confirm the displayed draft.
 
-1. Refresh context and live field schema. Validate the candidate against the
+1. Revalidate the scoped grant and refresh the live field schema. Validate the candidate against the
    server-returned type and constraints.
-2. Call `bos_prepare_plugin_settings` with the latest context, plugin selector,
+2. Call `bos_prepare_plugin_settings` with the plugin selector,
    base revision, typed candidate, and sanitized evidence descriptors when
    applicable.
 3. Bind the authorization to the returned exact diff and draft hash. Ask for

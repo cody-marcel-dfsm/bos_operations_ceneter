@@ -22,7 +22,8 @@ import {
 import { createDeterministicZipFromDirectory } from "./lib/deterministic-zip.mjs";
 import {
   codexLoginSurfaceContract,
-  productMcpConnectionsContract
+  productMcpConnectionsContract,
+  productRuntimeOwnershipMetadata
 } from "./lib/product-contracts.mjs";
 
 const stage = join(root, "tmp", `build-${process.pid}`);
@@ -82,9 +83,7 @@ for (const { product, skills } of resolved) {
         : undefined,
       oauth: product.runtime ? oauthTargetContract(product) : undefined,
       runtime_verification_tools: product.runtime_verification_tools,
-      connection_owner: product.name,
-      dependency_products: product.dependencies,
-      authentication: product.runtime ? "oauth_2_1" : "none"
+      ...productRuntimeOwnershipMetadata(product)
     });
     await writeJson(
       join(pluginRoot, ".codex-plugin", "plugin.json"),
@@ -122,9 +121,7 @@ for (const { product, skills } of resolved) {
         resource_url: claudeResourceUrl,
         oauth: oauthTargetContract(product)
       } : {}),
-      connection_owner: product.name,
-      dependency_products: product.dependencies,
-      authentication: product.runtime ? "oauth_2_1" : "none"
+      ...productRuntimeOwnershipMetadata(product)
     });
     const claudePlugin = {
       name: product.name,
@@ -235,9 +232,7 @@ for (const { product, skills } of resolved) {
       mcp_group_name: product.mcp_group_name,
       resource_url: product.runtime ? materializeMcpUrl(product) : undefined,
       oauth: product.runtime ? oauthTargetContract(product) : undefined,
-      connection_owner: product.name,
-      dependency_products: product.dependencies,
-      authentication: product.runtime ? "oauth_2_1" : "none"
+      ...productRuntimeOwnershipMetadata(product)
     });
     if (product.runtime) {
       await writeJson(
@@ -294,9 +289,7 @@ for (const { product, skills } of resolved) {
       mcp_group_name: product.mcp_group_name,
       resource_url: product.runtime ? materializeMcpUrl(product) : undefined,
       oauth: product.runtime ? oauthTargetContract(product) : undefined,
-      connection_owner: product.name,
-      dependency_products: product.dependencies,
-      authentication: product.runtime ? "oauth_2_1" : "none"
+      ...productRuntimeOwnershipMetadata(product)
     });
     await writeJson(
       join(extensionRoot, "gemini-extension.json"),

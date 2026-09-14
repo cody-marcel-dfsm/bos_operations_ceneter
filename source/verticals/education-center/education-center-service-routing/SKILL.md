@@ -5,18 +5,20 @@ description: Route Education Center requests to the appropriate tenant-scoped BO
 
 # Education Center Service Routing
 
-Choose capabilities for the active task on the Education Center product MCP.
-This skill defines provider preferences; `bos-mcp-client` owns authentication,
-authorization, and exact tenant scope.
+Discover capabilities for the active task through the Education Center product
+MCP, then execute the selected application operation through its exact
+advertised deterministic HTTPS API. This skill defines provider preferences;
+`bos-mcp-client` owns authentication, authorization, and exact tenant scope.
 
 For the first operational request, follow `bos-mcp-client` live tool discovery
 and call `bos_get_context` as soon as it is callable. Complete the required
 scope and initialization preflights, then resume the requested read without
 waiting for a second prompt. Any lead or contact detail request, including a
 single field or profile, and any request for progress toward enrollment requires
-the packaged `my-crm-customer-journey` capability on the Education Center MCP
-connection. Include a native visual with current position and resolved canonical
-goals, using its partial-evidence presentation when topology is unavailable.
+the packaged `crm-customer-journey` capability discovered through the Education
+Center MCP connection. Invoke its advertised API contract and include a native
+visual with current position and resolved canonical goals, using its
+partial-evidence presentation when topology is unavailable.
 
 Load `config/customer-settings.template.json` from the installed
 `education-center` product as package defaults, then recursively overlay
@@ -29,7 +31,7 @@ and ask the user for the unresolved remainder.
 
 A named-person lookup such as “find this lead,” “look up this contact,” or a
 lookup by email, phone, or a current record selector is an individual detail
-request. Select and read `my-crm-customer-journey` before presenting its result,
+request. Select and read `crm-customer-journey` before presenting its result,
 even when the lookup uses a search operation. Determine presentation from user
 intent, independently of the tool name or response being an array. A successful
 single-person lookup must continue into the graph workflow in the same turn.
@@ -38,7 +40,7 @@ returned lead in the detailed format below. Keep ambiguous matches separate;
 show only the graph membership verified for each candidate and disambiguate
 before any targeted action.
 
-Whenever a lead is displayed, use `my-crm-customer-journey`'s detailed display
+Whenever a lead is displayed, use `crm-customer-journey`'s detailed display
 contract: current-state-to-goal graph with bold green preferred positive route,
 profile details and freshness. Read the advertised graph and canonical goals
 after a current-stage-only record result; an empty available-actions list does
@@ -49,9 +51,10 @@ evidence after a confirmed write without replaying it. Preserve pagination,
 explicit user formats and historical labeling for deleted records.
 
 For lead search, create, update, delete, or removal requests, load the packaged
-`my-crm-record-operations` workflow and execute through Education Center MCP.
-Apply its live operation contracts, exact targets, confirmation requirements,
-receipt verification, and post-result journey display.
+`crm-record-operations` workflow, discover its live contract through Education
+Center MCP, and execute through the exact advertised deterministic HTTPS API.
+Apply its exact targets, confirmation requirements, receipt verification, and
+post-result journey display.
 
 ## Lead creation source and result contract
 
@@ -77,7 +80,7 @@ create to be present in `succeeded` with no corresponding failure. A result with
 or partial operation. Preserve the exact per-source error, reconcile uncertain
 outcomes with a read, and never claim that the lead was created. After success,
 read the new record and present its verified details and graph position through
-`my-crm-customer-journey`.
+`crm-customer-journey`.
 
 ## Tenant terminology
 
@@ -95,11 +98,13 @@ persisted record identifiers. Return `configuration_required` and invoke
 
 ## Routing workflow
 
-1. Route every domain marked `bos` through the installed Education Center MCP
-   connection and its host-managed product OAuth grant. The source-route value
-   selects BOS-managed provider access within this product. Platform directory
-   discovery uses the separate BOS dependency connection. The server resolves
-   the Education Center subservice and authorized tool set for each request.
+1. Discover every domain marked `bos` through the installed Education Center MCP
+   connection and its host-managed product OAuth grant. Invoke the selected
+   application operation through the exact advertised deterministic HTTPS API.
+   The source-route value selects BOS-managed provider access within this
+   product. Platform directory discovery uses the separate BOS dependency
+   connection. The server resolves the Education Center subservice and
+   authorized operation set for each request.
 2. Identify the requested operation and any provider preference stated by the
    user.
 3. Call `bos_get_context` once and accept the exact organization, application,

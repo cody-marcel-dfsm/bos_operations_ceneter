@@ -55,9 +55,7 @@ Private knowledge root: `Vault/` (never tracked or published)
   For changes affecting the BOS MCP authentication or discovery contract, make
   the client-owned acceptance suite mandatory in that prompt: `npm run
   contract:check`, `npm run contract:oauth-discovery-live -- --resource-url
-  "$BOS_MCP_RESOURCE_URL" --format json`, `npm run
-  contract:oauth-tool-auth-live -- --resource-url "$BOS_MCP_RESOURCE_URL"
-  --tool bos_get_context --format json`, and `npm run contract:oauth-live --
+  "$BOS_MCP_RESOURCE_URL" --format json`, and `npm run contract:oauth-live --
   --authorize-url "$BOS_OAUTH_AUTHORIZE_URL" --format json`. The server-side
   agent owns implementation and release choices. Return exactly one continuous
   Markdown prompt as the entire handoff response. Keep the contract, commands,

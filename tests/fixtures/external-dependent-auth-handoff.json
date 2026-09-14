@@ -1,0 +1,11 @@
+{
+  "schema_version": "bos.authentication-handoff/v1",
+  "message_type": "request",
+  "protected_resource": "https://extensions.example.test/mcp/customer-operations",
+  "condition": {
+    "category": "authentication",
+    "code": "REAUTHENTICATION_REQUIRED",
+    "source": "protected_resource"
+  },
+  "host_correlation": "native-consent-42"
+}

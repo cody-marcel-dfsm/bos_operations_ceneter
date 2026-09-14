@@ -102,9 +102,8 @@ changes affecting the BOS MCP authentication or discovery contract, require
 the server release to pass the client-owned Operations Center acceptance suite:
 `npm run contract:check`, `npm run contract:oauth-discovery-live --
 --resource-url "$BOS_MCP_RESOURCE_URL" --format json`, `npm run
-contract:oauth-tool-auth-live -- --resource-url "$BOS_MCP_RESOURCE_URL" --tool
-bos_get_context --format json`, and `npm run contract:oauth-live --
---authorize-url "$BOS_OAUTH_AUTHORIZE_URL" --format json`. Leave implementation,
+contract:oauth-live -- --authorize-url "$BOS_OAUTH_AUTHORIZE_URL" --format
+json`. Leave implementation,
 review, merge, and deployment decisions to that
 server-side agent. Return exactly one continuous Markdown prompt as the entire
 server handoff response. Keep every contract requirement, command, and

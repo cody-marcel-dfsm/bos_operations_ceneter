@@ -5,7 +5,7 @@
 Give the worker the complete operational context required for one update:
 
 - exact prompt authorization or widget Apply event;
-- BOS connection and selected interactive role context;
+- BOS connection and server-validated scoped-grant status;
 - current confirmed snapshot, field schema, revision, and cursor;
 - exact prepared draft reference and hash;
 - stable client operation identity and idempotency key for the current draft;
@@ -32,12 +32,12 @@ recovery action, current revision, or schema fingerprint.
 | Transport closure, timeout, or temporary unavailability | Reconnect the same endpoint, refresh tools and context, reconcile, and retry. |
 | Rate limit | Honor the server retry time within the task deadline. |
 | Stale tool or field schema | Refresh live schemas, rebuild from original intent, and retry once when the semantic change is identical. |
-| Expired BOS context | Complete host-managed recovery for the BOS connection, then resume once. |
+| Expired or revoked BOS grant | Complete host-managed recovery for the same BOS connection, then resume once. |
 | Provider authorization required | Complete the BOS-hosted provider flow and resume once. |
 | Stale revision | Refresh. Rebase only when the target is unchanged and the authorized change set remains identical; otherwise return the conflict for user review. |
 | Correctable client request shape | Rebuild from the live field schema and retry once. |
 | Business validation | Stop and return field guidance. |
-| Capability denial | Refresh context once, then return the authoritative denial. |
+| Capability denial | Revalidate the scoped grant once, then return the authoritative denial. |
 | Server invariant, malformed result, or repeated shape failure | Stop and return a feedback-ready bug result. |
 
 Use at most five total apply attempts with full jitter over nominal delays of

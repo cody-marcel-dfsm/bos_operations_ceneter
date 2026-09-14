@@ -10,17 +10,17 @@ a live-described tool. Tool catalog absence is insufficient evidence of missing
 resource discovery. Optional resource-template method failure does not block
 listed resource reads. Follow the concrete host procedure in `../SKILL.md`.
 
-The BOS MCP returns the current authenticated organization context and an
+The BOS MCP returns the current authenticated scoped-grant description and an
 authorized installed-app directory. Each app contact contains:
 
 - descriptive `app_code`, `display_name`, and `description`;
 - an HTTPS `mcp_resource` or equivalent opaque contact;
-- an opaque server-issued `context_id`;
 - `contract_version` and `discovery_epoch`;
 - `capability_families`; and
 - descriptive `required_scopes`.
 
-The descriptor contains no raw organization, membership, role, installation,
+The descriptor contains no raw or opaque authority selector, organization,
+membership, role, installation,
 plugin, credential, or persistence identifier. GPT selects from these current
 descriptors. BOS does not choose an app or route a domain request.
 
@@ -54,25 +54,25 @@ installed applications.
 
 The client validates the machine-readable contract before each unfamiliar
 operation. APIs use bounded HTTPS JSON schemas, stable operation identifiers,
-opaque authenticated context, explicit side-effect classes, typed errors,
+the authenticated scoped grant, explicit side-effect classes, typed errors,
 pagination where needed, observation timestamps, freshness, provenance, and
 correlation references. Retryable mutations require a contract-declared
 idempotency key. Read-only planning stays separate from transition execution.
 
 Every call uses a short-lived audience-bound bearer through a host credential
-boundary and revalidates actor, organization membership, app installation,
+boundary and revalidates actor, organization, app installation,
 role, operation, plugin, and provider requirements. A context issued for another
-organization, installation, role, app, audience, or expired discovery epoch
-fails closed as cross-context reuse. Discovery never expands API authority.
+organization, installation, role, app, or audience fails closed at the grant
+boundary. Discovery never expands API authority.
 
 ## Client state
 
 Keep the current descriptor, contract digest/version, and sanitized operation
 plan only for the active request. Refresh after authority, installation, graph,
-plugin, provider, context-expiry, or contract changes. Reconcile uncertain
+plugin, provider, grant-expiry, or contract changes. Reconcile uncertain
 mutations by the discovered operation or idempotency identity before replay.
 
-The client never persists bearer tokens, raw authority identifiers, app
+The client never persists bearer tokens, raw or opaque authority selectors, app
 endpoints as configuration, or customer records in discovery state. It uses no
 browser automation, DOM inspection, UI-derived authority, cached selector, or
 hardcoded app registry.
@@ -83,7 +83,7 @@ The target workflow requires two host capabilities after BOS discovery:
 
 1. attach or query an MCP resource returned dynamically for the active request;
 2. invoke a discovered HTTPS API with host-managed audience-bound
-   authentication and the opaque app context.
+   authentication through the current grant-bound app contact.
 
 Evaluate each capability only when its step is reached after BOS directory
 discovery and contact validation. Attempt an available supported facility;

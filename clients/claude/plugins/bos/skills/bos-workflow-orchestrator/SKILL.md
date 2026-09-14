@@ -5,28 +5,21 @@ description: Turn an authorized operational objective into a governed determinis
 
 
 
-## Organization scope preflight
+## Scoped authorization preflight
 
 Before the first private or organization-scoped operation, follow
-`bos-mcp-client` and call `bos_get_context`. Select exactly one authorized
-organization in this order: an organization explicitly named in the current request;
-the shared `default_organization_label` after exact normalized validation against
-the returned organization labels; or the sole authorized organization. Read and
-validate the saved label with
-`../bos-mcp-client/scripts/client-preferences.mjs`. For tools whose live schema
-requires a context selector, pass only the selected role's opaque `context_id`.
-Never add organization or context arguments to an operation whose schema derives
-scope from the authenticated server context.
-Use this same selection for BOS installed-app discovery. Pass only the opaque app
-context and API authority returned under that selection to a discovered app MCP
-or deterministic HTTPS API; never reconstruct or substitute raw authority IDs.
+`bos-mcp-client` and call `bos_get_context` to validate the exact scoped OAuth
+connection. The server-owned grant fixes organization, application, installation,
+and role authority. Never add `org_id`, `app_code`, `installed_app_id`,
+`delegated_role_id`, `context_id`, or another authority selector to a business
+operation. Invoke only the operation's live-declared business arguments.
+Use the same scoped connection for BOS installed-app discovery. Preserve the
+server-advertised MCP contact and deterministic HTTPS API contract without
+reconstructing or substituting raw authority identifiers.
 
-When several organizations are available and the default is missing, stale, or
-ambiguous, return `configuration_required` and resolve one default before domain
-execution. An organization named for the current request overrides the selection
-and does not rewrite the saved default. Never fan out across organizations unless
-the user explicitly requests that bounded scope. The display-label preference selects among
-current server-returned contexts and never grants authority.
+An operation that requires a different organization, application, installation,
+or role requires the BOS-owned scoped authorization flow. The client never changes
+authority by adding request arguments.
 
 ## Client mutation safety
 
@@ -75,45 +68,40 @@ that actually completed.
 
 ## Product boundary
 
-BOS owns platform context, installed-product discovery, service readiness,
-plugin settings, enablement, connection initiation, continuation, and governance
-through the BOS platform MCP. A dependent product owns its domain skills and
-application operations through that owning product's MCP. Use the BOS MCP for
-platform operations and the owning product's MCP for application execution.
+BOS owns platform authentication, its scoped connection, continuation, and
+governance through the BOS platform MCP. A dependent product owns its domain skills and
+host-managed connection to an application-scoped discovery MCP. Use the BOS MCP
+for platform discovery and OS operations. Use the selected application MCP to
+discover its semantic operation and exact deterministic HTTPS API contract, then
+use that API for application execution.
 
 Keep all routing application-neutral. Select applications, plugins, services,
 and operations only from the current authenticated context and live discovery.
-Pass only opaque server-issued selectors. Every call remains subject to
-request-time server authorization.
+Pass only live-declared business arguments. Every call remains subject to
+request-time server authorization from the connection's scoped grant.
 
 ## Workflow
 
 1. Preserve the user's objective and requested outcome. Use `bos-mcp-client` to
-   resolve and call `bos_get_context`, then select exactly one authorized
-   organization and effective role.
-2. Use `bos_list_plugin_services` and `bos-app-discovery` to identify the
-   minimum installed products and services needed for the objective. Classify
+   resolve and call `bos_get_context`, then validate its exact scoped grant.
+2. Use current live tool and resource discovery on each installed product's
+   authenticated connection to identify the minimum services needed for the objective. Classify
    each dependency as ready, disabled, disconnected, awaiting authorization,
    unavailable, or outside the selected scope.
 3. Build a deterministic execution map containing the owning product, semantic
    operation, prerequisites, approval point, expected evidence, and recovery
    identity for every step. Preserve the Router-to-PO-to-GO boundary for every
    mutation.
-4. Resolve platform prerequisites through the narrowest supported BOS action:
-   - inspect typed configuration with `bos_get_plugin_settings`;
-   - prepare and apply an exact setting change through
-     `bos_prepare_plugin_settings` and `bos_apply_plugin_settings`;
-   - enable or disable one selected plugin through `bos_set_plugin_enabled`;
-   - start one server-returned service connection through
-     `bos_begin_plugin_service_connection`.
+4. Resolve platform prerequisites through current live-declared BOS operations.
 5. Obtain explicit user approval immediately before any setting, enablement, or
    connection mutation that was inferred or proposed. An unambiguous user
    instruction naming the exact target and value supplies approval for that
    bounded action. Apply the mutation-safety contract from `bos-mcp-client`.
-6. Refresh context and live discovery after a platform state change. Invoke
-   each domain step through its owning product MCP using the current advertised
-   schema and opaque context. Treat tool discovery as capability evidence and
-   the operation result as execution evidence.
+6. Refresh context and live discovery after a platform state change. Resolve
+   each domain step through its application MCP, then invoke the exact advertised
+   deterministic HTTPS method and path using the current schema and the
+   connection's host-managed authorization. Treat MCP discovery as capability evidence and the API result as
+   execution evidence.
 7. When authorization or configuration interrupts execution, preserve the
    server-issued continuation state. After the dependency becomes ready, call
    `bos_resume_operation` with the original operation identity and stable
@@ -133,4 +121,3 @@ route switching.
 
 Keep credentials, tokens, raw authority identifiers, provider payloads, and
 customer records out of plans, continuation envelopes, logs, and summaries.
-

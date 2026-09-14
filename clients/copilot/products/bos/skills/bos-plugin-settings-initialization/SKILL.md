@@ -1,32 +1,25 @@
 ---
 name: bos-plugin-settings-initialization
-description: Initialize or repair the default organization, plugin-service connections, and required BOS plugin settings after client settings and BOS authentication are ready, using guided secure connection actions, sourced recommendations, consolidated confirmation, delegated persistence, and authority-scoped cache receipts.
+description: Initialize or repair plugin-service connections and required BOS plugin settings after client settings and BOS authentication are ready, using guided secure connection actions, sourced recommendations, consolidated confirmation, delegated persistence, and authority-scoped cache receipts.
 ---
 
 
 
-## Organization scope preflight
+## Scoped authorization preflight
 
 Before the first private or organization-scoped operation, follow
-`bos-mcp-client` and call `bos_get_context`. Select exactly one authorized
-organization in this order: an organization explicitly named in the current request;
-the shared `default_organization_label` after exact normalized validation against
-the returned organization labels; or the sole authorized organization. Read and
-validate the saved label with
-`../bos-mcp-client/scripts/client-preferences.mjs`. For tools whose live schema
-requires a context selector, pass only the selected role's opaque `context_id`.
-Never add organization or context arguments to an operation whose schema derives
-scope from the authenticated server context.
-Use this same selection for BOS installed-app discovery. Pass only the opaque app
-context and API authority returned under that selection to a discovered app MCP
-or deterministic HTTPS API; never reconstruct or substitute raw authority IDs.
+`bos-mcp-client` and call `bos_get_context` to validate the exact scoped OAuth
+connection. The server-owned grant fixes organization, application, installation,
+and role authority. Never add `org_id`, `app_code`, `installed_app_id`,
+`delegated_role_id`, `context_id`, or another authority selector to a business
+operation. Invoke only the operation's live-declared business arguments.
+Use the same scoped connection for BOS installed-app discovery. Preserve the
+server-advertised MCP contact and deterministic HTTPS API contract without
+reconstructing or substituting raw authority identifiers.
 
-When several organizations are available and the default is missing, stale, or
-ambiguous, return `configuration_required` and resolve one default before domain
-execution. An organization named for the current request overrides the selection
-and does not rewrite the saved default. Never fan out across organizations unless
-the user explicitly requests that bounded scope. The display-label preference selects among
-current server-returned contexts and never grants authority.
+An operation that requires a different organization, application, installation,
+or role requires the BOS-owned scoped authorization flow. The client never changes
+authority by adding request arguments.
 
 ## Client mutation safety
 
@@ -70,14 +63,14 @@ remain required; the package does not intercept or enforce arbitrary API calls.
 
 Run this common product-client stage after host-managed BOS authentication and
 the product's customer/client-settings initializer when the product declares
-one. BOS can run this workflow directly after authentication. It establishes
-the shared client default organization, verifies every installed plugin service in that
-organization, and then initializes server-owned, organization-scoped plugin
+one. BOS can run this workflow directly after authentication. It verifies every
+installed plugin service in the grant-bound organization and then initializes
+server-owned, organization-scoped plugin
 configuration. It preserves healthy connections and confirmed settings and
 never treats local client values as authority.
 
 Treat the combined connection inventory and required canonical settings as the
-selected organization's **organization business profile**. This profile holds
+grant-bound organization's **organization business profile**. This profile holds
 the organization's display-safe operating preferences, semantic service
 routing, automation choices, communication preferences, and other
 server-declared plugin configuration. The BOS service owns the profile schema,
@@ -98,28 +91,14 @@ before running discovery or persisting initialization drafts.
    inputs for the source roles required by the live recommendation profile.
    Ask only for unresolved inputs needed by that profile; do not require a
    nonexistent local overlay, initializer, or another product installation.
-3. Call `bos_get_context` and deduplicate its returned `organization_label`
-   values. Read the shared default with
-   `../bos-mcp-client/scripts/client-preferences.mjs`. When it is current, use
-   that organization. When exactly one organization is available and the
-   setting is missing, commit that sole label as the default. When several are
-   available and the setting is missing or stale, resolve a candidate from an
-   exact confirmed `organization_display_name` match or an explicit user
-   instruction, then include **Default BOS organization** in the product
-   initializer's consolidated recommendation, or this workflow's consolidated
-   review when the product has no initializer. Require confirmation before
-   calling `set-default-organization`. If no exact candidate is available, ask
-   for the default organization in that same consolidated review. Return
-   `configuration_required` and make no organization-scoped settings call until
-   the helper returns `state: committed` or `current`.
-4. Within the selected organization and installed app, select the unique
-   server-marked default interactive role. Verify `bos.plugins.read`,
+3. Call `bos_get_context` to revalidate that the OAuth grant binds exactly one
+   organization, application, installation, and role. Supply no organization,
+   role, or context selector. Stop on missing or ambiguous scoped-grant evidence.
+4. Verify `bos.plugins.read`,
    `bos.plugin_settings.read`, and `bos.plugin_settings.recommend`. Require
    `bos.plugins.connect` only when a server-returned connection action is used,
-   and require `bos.plugin_settings.update` before settings persistence. Pass
-   only that role's opaque `context_id`; the saved display label grants no
-   authority.
-5. Call `bos_list_plugin_services` with that selected `context_id`. Inspect
+   and require `bos.plugin_settings.update` before settings persistence.
+5. Call `bos_list_plugin_services` without authority arguments. Inspect
    every server-returned plugin-service row before querying the plugin-settings
    inventory. Follow **Connection readiness** below until every actionable
    `connection_required` row for an enabled, selected service is resolved. An
@@ -127,16 +106,15 @@ before running discovery or persisting initialization drafts.
    `connection_required` and stops before the receipt or settings inventory.
 6. Read the local initialization receipt with
    `../bos-mcp-client/scripts/plugin-settings-cache.mjs`.
-7. Call `bos_get_plugin_settings_initialization` with only the selected
-   `context_id`. Skip the workflow when its initialization epoch, required
+7. Call `bos_get_plugin_settings_initialization` without authority arguments.
+   Skip the workflow when its initialization epoch, required
    canonical field states, and local receipt are current.
 
 ## Connection readiness
 
 Treat the ordered `bos_list_plugin_services` response as the canonical
-connection inventory for the selected organization. Never repeat the call for
-other organizations unless the user explicitly names one for the current
-request. Show a compact checklist grouped by plugin and service, preserving the
+connection inventory for the grant-bound organization. Never enumerate or
+probe another organization from this grant. Show a compact checklist grouped by plugin and service, preserving the
 server's labels, connection-state vocabulary, action availability, and order.
 
 - Preserve `connected` rows and never reconnect them.
@@ -146,8 +124,8 @@ server's labels, connection-state vocabulary, action availability, and order.
   inapplicable services without opening their connection actions.
 - For each enabled `connection_required` row with `can_connect: true`, present
   exactly one **Connect** action. After the user selects it, call
-  `bos_begin_plugin_service_connection` with the latest opaque `context_id`,
-  `plugin_ref`, and `service_ref` from that same response.
+  `bos_begin_plugin_service_connection` with the latest `plugin_ref` and
+  `service_ref` from that same response.
 - For `bos_sign_in_required`, activate the current product connection's
   host-native **Connect**, **Sign in**, or **Authenticate** action.
 - Show disabled and `unavailable` rows with their server-returned status and
@@ -178,7 +156,7 @@ Preserve every confirmed canonical value. Select only required `unset`, invalid
 Treat every required server-declared routing, automation, and communication
 preference as part of the organization business profile. Resolve choices only
 from the live settings profile, its allowlisted recommendation plan, the
-selected organization's service inventory, and explicit user corrections. When
+grant-bound organization's service inventory, and explicit user corrections. When
 the profile offers several eligible services for one semantic operation, show
 the server-returned labels and current selection in the consolidated review.
 Never infer a provider from a package example, provider reputation, connection

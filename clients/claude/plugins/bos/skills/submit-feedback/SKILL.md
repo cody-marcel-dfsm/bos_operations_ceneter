@@ -5,28 +5,21 @@ description: Submit or draft customer feedback about BOS package skills, MCP too
 
 
 
-## Organization scope preflight
+## Scoped authorization preflight
 
 Before the first private or organization-scoped operation, follow
-`bos-mcp-client` and call `bos_get_context`. Select exactly one authorized
-organization in this order: an organization explicitly named in the current request;
-the shared `default_organization_label` after exact normalized validation against
-the returned organization labels; or the sole authorized organization. Read and
-validate the saved label with
-`../bos-mcp-client/scripts/client-preferences.mjs`. For tools whose live schema
-requires a context selector, pass only the selected role's opaque `context_id`.
-Never add organization or context arguments to an operation whose schema derives
-scope from the authenticated server context.
-Use this same selection for BOS installed-app discovery. Pass only the opaque app
-context and API authority returned under that selection to a discovered app MCP
-or deterministic HTTPS API; never reconstruct or substitute raw authority IDs.
+`bos-mcp-client` and call `bos_get_context` to validate the exact scoped OAuth
+connection. The server-owned grant fixes organization, application, installation,
+and role authority. Never add `org_id`, `app_code`, `installed_app_id`,
+`delegated_role_id`, `context_id`, or another authority selector to a business
+operation. Invoke only the operation's live-declared business arguments.
+Use the same scoped connection for BOS installed-app discovery. Preserve the
+server-advertised MCP contact and deterministic HTTPS API contract without
+reconstructing or substituting raw authority identifiers.
 
-When several organizations are available and the default is missing, stale, or
-ambiguous, return `configuration_required` and resolve one default before domain
-execution. An organization named for the current request overrides the selection
-and does not rewrite the saved default. Never fan out across organizations unless
-the user explicitly requests that bounded scope. The display-label preference selects among
-current server-returned contexts and never grants authority.
+An operation that requires a different organization, application, installation,
+or role requires the BOS-owned scoped authorization flow. The client never changes
+authority by adding request arguments.
 
 ## Client mutation safety
 
@@ -88,7 +81,9 @@ first submission in a task.
 ## Resolve BOS scope
 
 1. Call `bos_get_context` once.
-2. Select exactly one authorized scope relevant to the active package.
+2. Validate and use the exact organization, application, installation, and role
+   already bound to the active product grant. Perform no client-side authority
+   selection.
 3. Submit through the active product's immutable MCP connection. Use the active
    package or subservice as the feedback target and preserve its product scope.
 4. Do not send execution-scope fields. The authenticated server derives

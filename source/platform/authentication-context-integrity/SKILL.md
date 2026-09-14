@@ -1,6 +1,6 @@
 ---
 name: authentication-context-integrity
-description: Preserve BOS authentication and execution context across login, app selection, organization selection, role selection, installed-app resolution, MCP calls, plugin configuration, provider authorization, sessions, and background work. Use for application-neutral auth, selector, OAuth, credential, or tenant-scope design and review.
+description: Preserve BOS authentication and execution context across login, app selection, organization selection, role selection, installed-app resolution, MCP calls, plugin configuration, provider authorization, sessions, and background work. Use for application-neutral auth, selector, OAuth, credential, tenant-scope design and review, and automatic authentication handoffs from dependent plugins.
 ---
 
 # BOS Authentication Context Integrity
@@ -17,47 +17,36 @@ configuration as distinct validated dimensions.
 2. Separate observed behavior from the intended platform contract.
 3. Trace every context field from authenticated input to side effect.
 4. Resolve installed-app and plugin scope from canonical records.
-5. For interactive OAuth requests, derive the effective execution role from
-   the authenticated user's current installed-app membership. Use a
-   server-issued role context for an explicit lower-role request. Keep
-   plugin-owned execution roles only for background or service-owned work.
+5. Derive plugin execution role from installed-app plugin metadata.
 6. Resolve credentials by organization, installation, plugin, and credential
    name.
 7. Fail closed when canonical scope or grant provenance is incomplete.
 8. Add negative tests for actor-supplied authority, cross-tenant access,
    fallback credentials, and ambiguous context.
-9. When several authorized organizations are returned, resolve one organization
-   before selecting its role. An explicit organization in the current request
-   overrides the validated local default for that request. Cross-organization
-   execution requires explicit user scope.
 
 ## Invariants
 
-- The authenticated user's current role governs interactive execution. A
-  plugin `run_as_role` value never elevates an OAuth user's authority.
-- Request values select scope and require server validation.
+- User role authorizes the actor; plugin `run_as_role` governs execution.
+- The scoped OAuth grant fixes organization, application, installation, and
+  role authority; business request values never select authority.
 - Customer configuration supplies context and never supplies authority.
-- A client default-organization preference stores only a display label and may
-  select only one exact organization already returned by the authenticated BOS
-  context. It never stores an organization ID or grants membership. Missing,
-  stale, or ambiguous preference state stops before a domain data call.
 - Provider credentials remain scoped to their installed app and plugin.
 - Reconnect or reauthorization replaces the scoped grant and preserves
   application configuration.
 - Each installed product owns a host-managed OAuth connection to its scoped MCP
-  resource. BOS owns the platform connection. Education Center, CRM, Lead
-  Director, Marketing Director, and other dependent products own their
-  application connections and require the BOS product.
-- Every product request uses its product-owned authenticated connection. The server
-  derives and evaluates organization, application, installation, subservice,
-  plugin, role, capability, provider, and tool scope for that request.
-- Never interpret per-organization `is_default` role markers as a global
-  organization default. Select one organization first, then its unique default
-  role. Never query every accessible organization unless the user explicitly
-  requests cross-organization scope.
-- Platform BOS operations use the BOS connection directly. Application
-  operations use the owning Education Center, CRM, Lead Director, Marketing
-  Director, or other application connection.
+  resource. BOS owns the platform connection. Separately installed dependent
+  products own their application connections and require the BOS product.
+- Every product discovery request uses its product-owned authenticated
+  connection. The server derives and evaluates organization, application,
+  installation, subservice, plugin, role, capability, provider, and tool scope
+  for that request and revalidates the same authority for every advertised API
+  execution.
+- Platform BOS operations use the BOS connection directly. The owning Education
+  Center, CRM, Lead Director, Marketing Director, or other application MCP
+  discovers current semantic operations and their deterministic HTTPS API
+  contracts. Application execution uses the exact advertised API method, path,
+  schema and audience. The client supplies no organization, installation,
+  application, role, or context selector.
 - Background jobs carry the same validated scope as interactive operations.
 - The agent owns MCP transport and session recovery. On a closed stream or
   session, it reconnects the configured endpoint, rediscovers tools,
@@ -89,13 +78,12 @@ configuration as distinct validated dimensions.
   headers, or a plugin key field. The server derives actor, tenant, organization, installation,
   role, plugin, and capability scope from the validated OAuth grant; client
   prompts and tool arguments never supply those authority dimensions.
-- Before consent, expose only the OAuth-declared descriptor surface required to
-  activate BOS authentication; it authorizes no business execution. After a
-  valid BOS token proves access, dynamically resolve the authenticated scope's
-  domain-specific MCP services and current tooling. A descriptor declares a
-  currently exposed operation and schema; it grants no tenant, role, plugin,
-  capability, tool, or provider authority. Re-evaluate those dimensions when
-  the selected `tools/call` executes, including for administrative operations.
+- Before consent, the protected MCP resource returns only its HTTP 401
+  `WWW-Authenticate` resource-metadata challenge. After a valid BOS token proves
+  access, dynamically resolve the authenticated scope's domain-specific MCP
+  services and current tooling. Re-evaluate tenant, role, plugin, capability,
+  tool, and provider authority when the selected `tools/call` executes,
+  including for administrative operations.
 - Keep provider authorization scoped to its organization, installation, and
   plugin. Missing provider readiness affects only server-evaluated operations
   that require that provider; it never creates another BOS authentication
@@ -120,3 +108,26 @@ configuration as distinct validated dimensions.
   connect request activates the BOS-hosted page for portal URL and API-key
   entry, polls the installation-scoped transaction, and resumes the pending
   operation once. Never direct the customer to a general settings dashboard.
+
+## External dependent-product authentication handoff
+
+Use the stable `bos.authentication-handoff/v1` contract in
+[external dependent-product authentication handoff](../bos-mcp-client/references/external-product-authentication-handoff.md)
+when a separately installed product that requires BOS encounters an
+authentication or MCP-session condition.
+
+The dependent product recognizes the condition and delegates automatically to
+the installed BOS plugin. BOS is the authentication orchestrator while the
+dependent product retains its own host-managed product-owned MCP connection.
+BOS receives only the exact protected resource, a structured authentication or
+MCP-session condition, and optional host-native correlation. It
+  coordinates authentication bootstrap or recovery for the dependent
+  product's scoped connection, then returns a typed readiness result. It never receives the
+caller's product identity, domain operation, continuation, retry, reconciliation,
+cache, or presentation state, and it never receives or transfers a token.
+
+The caller owns every action after the readiness result, including connection
+and discovery refresh, continuation, retry, and mutation reconciliation. A
+native consent surface may still require the user's direct interaction; BOS
+coordinates that host surface and reports its readiness state without accepting
+the caller's pending operation.

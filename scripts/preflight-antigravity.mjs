@@ -7,6 +7,7 @@ import {
   geminiPluginMcpManifest,
   validateProduct
 } from "./lib/package-model.mjs";
+import { productRuntimeOwnershipMetadata } from "./lib/product-contracts.mjs";
 
 const repositoryRoot = process.argv[2];
 
@@ -51,7 +52,6 @@ for (const entry of await readdir(productsRoot, { withFileTypes: true })) {
   const extensionRoot = join(extensionsRoot, name);
   const metadata = await readJson(join(extensionRoot, ".bos-product.json"));
   const plugin = await readJson(join(extensionRoot, "plugin.json"));
-  const expectedAuthentication = product.runtime ? "oauth_2_1" : "bos_managed";
   const expectedMetadata = {
     schema_version: "1",
     name,
@@ -62,9 +62,7 @@ for (const entry of await readdir(productsRoot, { withFileTypes: true })) {
     ...(product.runtime
       ? { resource_url: product.mcp_resource_url, oauth: product.oauth }
       : {}),
-    connection_owner: product.name,
-    dependency_products: product.dependencies,
-    authentication: expectedAuthentication
+    ...productRuntimeOwnershipMetadata(product)
   };
 
   if (

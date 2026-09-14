@@ -32,7 +32,7 @@ protected-resource challenge
 then identifies a signed-out runtime connection and activates OAuth. The
 user completes consent, and the agent refreshes tools and resumes the request.
 
-Current desktop marketplace release: `0.4.101`. If `0.4.100` is installed,
+Current desktop marketplace release: `0.4.102`. If `0.4.101` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -278,6 +278,22 @@ machine-readable JSON verdict to standard output, and exits nonzero for any
 additional connection artifact, subservice MCP declaration, retired
 subservice connection identifier, or root-resource mismatch.
 
+An independently published product can validate its package against the same
+public BOS dependency and authentication-handoff contract without copying its
+source into this repository:
+
+```bash
+node scripts/verify-product-mcp-contract.mjs \
+  --external-product-root /absolute/path/to/product-package \
+  --format json
+```
+
+The package keeps its own authenticated MCP connection, declares BOS as a
+required product dependency, and delegates authentication management and
+recovery to BOS automatically. See
+`contracts/external-product-dependency.v1.md` and
+`contracts/external-product-dependency.v1.schema.json`.
+
 Every server release affecting MCP authentication must also pass the client-owned
 signed-out discovery probe against the deployed candidate environment:
 
@@ -290,23 +306,8 @@ npm run contract:oauth-discovery-live -- \
 For staging, `BOS_MCP_RESOURCE_URL` is the deployed candidate's exact BOS
 platform resource. The probe requires the HTTP 401 canonical
 protected-resource challenge and structured `authentication_required` error.
-The installed package MCP resource supplies the OAuth discovery route. The
-pre-consent tool manifest exposes capability
-descriptors and per-tool OAuth scopes without customer data or business
-execution. Validate that selected-tool contract against the deployed candidate:
-
-```bash
-npm run contract:oauth-tool-auth-live -- \
-  --resource-url "$BOS_MCP_RESOURCE_URL" \
-  --tool bos_get_context \
-  --format json
-```
-
-The probe requires `bos_get_context` to declare an OAuth `securitySchemes`
-entry and its signed-out invocation to return `isError: true` with
-`_meta["mcp/www_authenticate"]`, including `resource_metadata`, `error`, and
-`error_description`, without structured business data. After the user
-authenticates, the host refreshes authority-scoped tool state, calls
+The installed package MCP resource supplies the OAuth discovery route. After
+the user authenticates, the host refreshes authority-scoped tool state, calls
 `bos_get_context`, and resumes the original request.
 
 The BOS server integration suite must also generate a valid, short-lived DCR
@@ -360,11 +361,9 @@ Use supported marketplace removal first if the same marketplace is registered
 against an unpublished working checkout. Start a new task after installation
 and run `npm run install:verify:codex-runtime`. Verify the ordinary customer
 prompt and record the installed release version, commit, and observed result.
-The host owns OAuth and presents its native sign-in action when required.
-The requested BOS tool's OAuth descriptor permits selection before consent;
-its signed-out `_meta["mcp/www_authenticate"]` result renders the inline action.
-If the descriptor or challenge is absent, report a tool-auth-contract defect.
-If both exist and the host omits the action, report a client
+The host owns OAuth and presents its native sign-in action when the protected
+resource returns the canonical HTTP 401 `WWW-Authenticate` challenge. If the
+valid challenge exists and the host omits the action, report a client
 authentication-activation defect.
 
 For Claude, use the published Git marketplace and its supported marketplace

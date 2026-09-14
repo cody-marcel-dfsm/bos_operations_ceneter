@@ -1,11 +1,11 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.101",
+  "version": "0.4.102",
   "release_status": "active",
   "display_name": "BOS — Business Operating System",
   "description": "Run deterministic workflows across a federated agentic service mesh.",
-  "long_description": "BOS is a platform for deterministic automated workflows across an agentic mesh of federated services. It is the required foundation for dependent products and owns the authenticated BOS platform MCP connection. BOS resolves the selected organization, inspects installed services and their readiness, governs plugin settings and enablement, and coordinates authorized platform operations with server-enforced scope, evidence, and approvals.",
+  "long_description": "BOS is a platform for deterministic automated workflows across an agentic mesh of federated services. It is the required foundation for dependent products and owns the authenticated BOS platform MCP connection. Each OAuth connection carries one server-scoped organization, application, installation, and role grant. BOS coordinates authorized platform operations with server-enforced scope, evidence, and approvals.",
   "website_url": "https://dfsm.ai",
   "brand_color": "#061638",
   "composer_icon": "assets/bos-logo.png",
@@ -77,7 +77,8 @@
     "bos_list_plugin_services",
     "bos_prepare_plugin_settings",
     "bos_resume_operation",
-    "bos_set_plugin_enabled"
+    "bos_set_plugin_enabled",
+    "bos_set_provider_credential"
   ],
   "default_prompts": [
     "Audit my BOS service mesh and show which deterministic workflows are ready, blocked, or need authorization.",
