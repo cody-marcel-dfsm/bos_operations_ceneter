@@ -5,28 +5,21 @@ description: Implement application-neutral Business Operating System platform ch
 
 
 
-## Organization scope preflight
+## Scoped authorization preflight
 
 Before the first private or organization-scoped operation, follow
-`bos-mcp-client` and call `bos_get_context`. Select exactly one authorized
-organization in this order: an organization explicitly named in the current request;
-the shared `default_organization_label` after exact normalized validation against
-the returned organization labels; or the sole authorized organization. Read and
-validate the saved label with
-`../bos-mcp-client/scripts/client-preferences.mjs`. For tools whose live schema
-requires a context selector, pass only the selected role's opaque `context_id`.
-Never add organization or context arguments to an operation whose schema derives
-scope from the authenticated server context.
-Use this same selection for BOS installed-app discovery. Pass only the opaque app
-context and API authority returned under that selection to a discovered app MCP
-or deterministic HTTPS API; never reconstruct or substitute raw authority IDs.
+`bos-mcp-client` and call `bos_get_context` to validate the exact scoped OAuth
+connection. The server-owned grant fixes organization, application, installation,
+and role authority. Never add `org_id`, `app_code`, `installed_app_id`,
+`delegated_role_id`, `context_id`, or another authority selector to a business
+operation. Invoke only the operation's live-declared business arguments.
+Use the same scoped connection for BOS installed-app discovery. Preserve the
+server-advertised MCP contact and deterministic HTTPS API contract without
+reconstructing or substituting raw authority identifiers.
 
-When several organizations are available and the default is missing, stale, or
-ambiguous, return `configuration_required` and resolve one default before domain
-execution. An organization named for the current request overrides the selection
-and does not rewrite the saved default. Never fan out across organizations unless
-the user explicitly requests that bounded scope. The display-label preference selects among
-current server-returned contexts and never grants authority.
+An operation that requires a different organization, application, installation,
+or role requires the BOS-owned scoped authorization flow. The client never changes
+authority by adding request arguments.
 
 ## Client mutation safety
 
@@ -87,9 +80,7 @@ verification. For changes affecting the BOS MCP authentication or discovery
 contract, make the client-owned Operations Center acceptance suite part of
 the server change's acceptance criteria: `npm run contract:check`, `npm run
 contract:oauth-discovery-live -- --resource-url "$BOS_MCP_RESOURCE_URL"
---format json`, `npm run contract:oauth-tool-auth-live -- --resource-url
-"$BOS_MCP_RESOURCE_URL" --tool bos_get_context --format json`, and `npm run
-contract:oauth-live -- --authorize-url
+--format json`, and `npm run contract:oauth-live -- --authorize-url
 "$BOS_OAUTH_AUTHORIZE_URL" --format json`. The server-side agent independently
 determines the implementation and release path. Return exactly one continuous
 Markdown prompt as the entire server handoff response. Keep all protocol
@@ -149,9 +140,9 @@ requested outcome.
   only its relevant skills. The server evaluates product,
   installation, plugin, role, capability, and provider scope for every request.
 - Align transport ownership with product capability ownership. Route platform
-  BOS operations through BOS and route application operations through the
-  Education Center, CRM, Lead Director, Marketing Director, or other owning
-  product MCP.
+  BOS operations through BOS. Use the selected application MCP to discover the
+  current semantic operation and exact deterministic HTTPS contract, then route
+  application execution through that advertised API.
 - Derive authority from authenticated context and canonical installed-app
   records.
 - Treat request identifiers as selectors that require authorization.

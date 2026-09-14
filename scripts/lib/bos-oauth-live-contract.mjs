@@ -304,16 +304,140 @@ export async function probeBosOAuthAuthorize({
     )]);
   }
 
-  if (![302, 303, 307].includes(response.status)) {
+  if ([302, 303, 307].includes(response.status)) {
+    const location = response.headers.get("location");
+    const redirectViolations = inspectGoogleAccountSelectorRedirect(location, oauthTarget);
+    return result(redirectViolations, response.status);
+  }
+
+  if (response.status !== 200) {
     return result([finding(
       "oauth_authorize_status",
-      `BOS authorization must return a provider redirect; found HTTP ${response.status}.`
+      `BOS authorization must return its secure login handoff; found HTTP ${response.status}.`
     )], response.status);
   }
 
-  const location = response.headers.get("location");
-  const redirectViolations = inspectGoogleAccountSelectorRedirect(location, oauthTarget);
-  return result(redirectViolations, response.status);
+  const contentType = response.headers.get("content-type") ?? "";
+  const cacheControl = response.headers.get("cache-control") ?? "";
+  const pragma = response.headers.get("pragma") ?? "";
+  const referrerPolicy = response.headers.get("referrer-policy") ?? "";
+  if (!contentType.toLowerCase().includes("text/html") ||
+      !cacheControl.toLowerCase().includes("no-store") ||
+      pragma.toLowerCase() !== "no-cache" ||
+      referrerPolicy.toLowerCase() !== "no-referrer") {
+    return result([finding(
+      "oauth_authorize_handoff_headers",
+      "BOS authorization login handoff must be no-store HTML with no-referrer protection."
+    )], response.status);
+  }
+
+  const html = await response.text();
+  const loginLink = /id=["']mcp-oauth-login-link["'][^>]*href=["']([^"']+)["']/i.exec(
+    html
+  )?.[1];
+  if (!/id=["']mcp-oauth-login["']/i.test(html) || !loginLink) {
+    return result([finding(
+      "oauth_authorize_handoff",
+      "BOS authorization did not return the canonical login handoff surface."
+    )], response.status);
+  }
+
+  let loginUrl;
+  try {
+    loginUrl = new URL(loginLink.replaceAll("&amp;", "&"), oauthTarget.authorization_endpoint);
+  } catch {
+    return result([finding(
+      "oauth_authorize_handoff",
+      "BOS authorization returned an invalid login handoff target."
+    )], response.status);
+  }
+  const authorizationOrigin = new URL(oauthTarget.authorization_endpoint).origin;
+  if (loginUrl.origin !== authorizationOrigin ||
+      loginUrl.pathname !== "/api/v1/mcp/oauth/handoff/login" ||
+      loginUrl.searchParams.getAll("agent_auth_transaction").length !== 1) {
+    return result([finding(
+      "oauth_authorize_handoff",
+      "BOS authorization returned an off-contract login handoff target."
+    )], response.status);
+  }
+
+  let loginResponse;
+  try {
+    loginResponse = await request(loginUrl.href, {
+      redirect: "manual",
+      headers: { accept: "text/html" }
+    });
+  } catch (error) {
+    return result([finding(
+      "oauth_login_handoff_request",
+      `BOS login handoff failed: ${error.message}`
+    )], response.status);
+  }
+  if (loginResponse.status !== 200) {
+    return result([finding(
+      "oauth_login_handoff_status",
+      `BOS login handoff must return its Google continuation page; found HTTP ${loginResponse.status}.`
+    )], loginResponse.status);
+  }
+  const loginHtml = await loginResponse.text();
+  const googleAction = /<form[^>]*action=["']([^"']+)["'][^>]*>/i.exec(
+    loginHtml
+  )?.[1];
+  const handoffValue = /<input[^>]*name=["']agent_auth_transaction["'][^>]*value=["']([^"']+)["'][^>]*>/i.exec(
+    loginHtml
+  )?.[1];
+  const expectedHandoffValue = loginUrl.searchParams.get("agent_auth_transaction");
+  if (!googleAction || !handoffValue || handoffValue !== expectedHandoffValue) {
+    return result([finding(
+      "oauth_login_handoff",
+      "BOS login handoff did not preserve its opaque authorization transaction."
+    )], loginResponse.status);
+  }
+  let providerStartUrl;
+  try {
+    providerStartUrl = new URL(googleAction, authorizationOrigin);
+    providerStartUrl.searchParams.set("agent_auth_transaction", handoffValue);
+  } catch {
+    return result([finding(
+      "oauth_login_handoff",
+      "BOS login handoff returned an invalid Google continuation target."
+    )], loginResponse.status);
+  }
+  if (providerStartUrl.origin !== authorizationOrigin ||
+      providerStartUrl.pathname !== "/api/v1/mcp/oauth/handoff/google/start") {
+    return result([finding(
+      "oauth_login_handoff",
+      "BOS login handoff returned an off-contract Google continuation target."
+    )], loginResponse.status);
+  }
+
+  let providerResponse;
+  try {
+    providerResponse = await request(providerStartUrl.href, {
+      redirect: "manual",
+      headers: {
+        accept: "text/html",
+        "sec-fetch-site": "same-origin",
+        "sec-fetch-mode": "navigate"
+      }
+    });
+  } catch (error) {
+    return result([finding(
+      "oauth_provider_request",
+      `BOS provider handoff failed: ${error.message}`
+    )], response.status);
+  }
+  if (![302, 303, 307].includes(providerResponse.status)) {
+    return result([finding(
+      "oauth_provider_status",
+      `BOS provider handoff must redirect to Google; found HTTP ${providerResponse.status}.`
+    )], providerResponse.status);
+  }
+  const redirectViolations = inspectGoogleAccountSelectorRedirect(
+    providerResponse.headers.get("location"),
+    oauthTarget
+  );
+  return result(redirectViolations, providerResponse.status);
 }
 
 function result(violations, httpStatus = null) {

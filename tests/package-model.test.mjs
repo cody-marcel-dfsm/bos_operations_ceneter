@@ -25,6 +25,9 @@ import {
   walkFiles,
   validateProduct
 } from "../scripts/lib/package-model.mjs";
+import {
+  productRuntimeOwnershipMetadata
+} from "../scripts/lib/product-contracts.mjs";
 
 const execFileAsync = promisify(execFile);
 const privateVaultAvailable = await pathExists(`${root}/Vault/docs/architecture.md`);
@@ -50,6 +53,42 @@ test("canonical distributable skills contain no customer-specific settings", asy
     const content = await readFile(path, "utf8");
     if (forbidden.some((pattern) => pattern.test(content))) failures.push(path);
   }
+  assert.deepEqual(failures, []);
+});
+
+test("packaged guidance never instructs clients to send raw authority selectors", async () => {
+  const files = [
+    ...(await walkFiles(`${root}/source`)),
+    ...(await walkFiles(`${root}/clients`))
+  ].filter((path) => /\.(?:md|json|ya?ml)$/i.test(path));
+  const authorityFields = [
+    "org_id",
+    "app_code",
+    "installed_app_id",
+    "delegated_role_id"
+  ];
+  const failures = [];
+
+  for (const path of files) {
+    const content = await readFile(path, "utf8");
+    const paragraphs = content.split(/\n\s*\n/);
+    for (const paragraph of paragraphs) {
+      const hasEveryAuthorityField = authorityFields.every((field) =>
+        paragraph.includes(field)
+      );
+      const directsTransmission = /\b(?:pass|send|include|provide|supply)\b/i.test(
+        paragraph
+      );
+      const rejectsTransmission = /\b(?:never|do not|omit|exclude|without|reject)\b/i.test(
+        paragraph
+      );
+      if (hasEveryAuthorityField && directsTransmission && !rejectsTransmission) {
+        failures.push(path);
+        break;
+      }
+    }
+  }
+
   assert.deepEqual(failures, []);
 });
 
@@ -102,7 +141,7 @@ test("BOS packages ship MCP-optional visual guided support on every client", asy
   }
 });
 
-test("BOS packages ship GPT-owned per-app discovery on every client", async () => {
+test("BOS packages ship scoped-grant per-app discovery on every client", async () => {
   const products = await listProducts();
   const bos = products.find(({ manifest }) => manifest.name === "bos");
   assert(bos, "bos product must exist");
@@ -116,19 +155,20 @@ test("BOS packages ship GPT-owned per-app discovery on every client", async () =
     `${discovery.sourcePath}/references/discovery-contract.md`,
     "utf8"
   );
-
   assert.match(guidance, /GPT owns request routing, planning, service selection/i);
   assert.match(guidance, /BOS MCP[\s\S]*installed-app directory/i);
   assert.match(guidance, /selected app MCP/i);
   assert.match(guidance, /deterministic HTTPS API/i);
   assert.match(guidance, /host_capability_unavailable/);
   assert.match(guidance, /no browser[\s\S]*DOM[\s\S]*cached selector/i);
+  assert.match(guidance, /connection's exact[\s\S]*organization[\s\S]*application[\s\S]*installation[\s\S]*role grant/i);
+  assert.doesNotMatch(guidance, /default_organization_label|client-preferences\.mjs|context_id/i);
   assert.match(contract, /`app\.describe`/);
   assert.match(contract, /`graph\.describe`/);
   assert.match(contract, /`services\.list`/);
   assert.match(contract, /`api\.contract\.get`/);
   assert.match(contract, /audience-bound/i);
-  assert.match(contract, /cross-context/i);
+  assert.match(contract, /another[\s\S]*fails closed at the grant[\s\S]*boundary/i);
   await access(`${discovery.sourcePath}/scripts/validate-discovery.mjs`);
 
   for (const clientPath of [
@@ -138,33 +178,6 @@ test("BOS packages ship GPT-owned per-app discovery on every client", async () =
     `${root}/clients/gemini/extensions/bos/skills/bos-app-discovery/SKILL.md`
   ]) {
     assert.match(await readFile(clientPath, "utf8"), /## App discovery workflow/);
-  }
-});
-
-test("app discovery reads BOS resources before diagnosing host capability absence", async () => {
-  const paths = [
-    `${root}/source/platform/bos-app-discovery/SKILL.md`,
-    ...["codex/plugins", "claude/plugins", "copilot/products", "gemini/extensions"].map(
-      (client) => `${root}/clients/${client}/bos/skills/bos-app-discovery/SKILL.md`
-    )
-  ];
-  for (const path of paths) {
-    const guidance = await readFile(path, "utf8");
-    assert.match(guidance, /list_mcp_resources/);
-    assert.match(guidance, /read_mcp_resource/);
-    assert.match(guidance, /resources\/templates\/list[\s\S]*Method not found[\s\S]*continue/i);
-    assert.match(guidance, /directoryUri/);
-    assert.match(guidance, /pagination/i);
-    assert.match(guidance, /Do not gate BOS resource discovery on dynamic MCP attachment/i);
-    assert.match(guidance, /failed operation[\s\S]*observed result[\s\S]*unattempted/i);
-    assert.doesNotMatch(guidance, /Query the BOS MCP operation whose current descriptor/);
-  }
-  for (const path of [
-    "source/platform/bos-mcp-client/SKILL.md",
-    "source/capabilities/my-crm-customer-journey/SKILL.md"
-  ]) {
-    assert.match(await readFile(`${root}/${path}`, "utf8"), /resource discovery/);
-    assert.match(await readFile(`${root}/${path}`, "utf8"), /bos_get_context[\s\S]*alone/i);
   }
 });
 
@@ -221,7 +234,7 @@ test("settings products declare an included initializer", async () => {
   );
 });
 
-test("plugin settings initializer is included by BOS-dependent product runtimes", async () => {
+test("BOS-dependent product runtimes keep their product-scoped MCP connection", async () => {
   const education = (await listProducts()).find(
     ({ manifest }) => manifest.name === "education-center"
   )?.manifest;
@@ -240,68 +253,6 @@ test("plugin settings initializer is included by BOS-dependent product runtimes"
   assert.equal(education.codex_app_id, undefined);
 });
 
-test("authority-state mutations refresh dynamic domain service tooling", {
-  skip: !privateVaultAvailable,
-}, async () => {
-  const roleContract = await readFile(
-    `${root}/Vault/specs/role-aware-mcp-client.md`,
-    "utf8"
-  );
-  assert.match(roleContract, /dynamic\s+domain-specific MCP service\s+and\s+tool\s+surface/i);
-  assert.match(roleContract, /After an audited server success, clients refresh[\s\S]*context[\s\S]*live tool discovery/i);
-
-  const consoleContract = await readFile(
-    `${root}/Vault/specs/plugin-service-console.md`,
-    "utf8"
-  );
-  assert.match(consoleContract, /Success invalidates[\s\S]*context and operation status/i);
-  assert.match(consoleContract, /refreshes live tool discovery[\s\S]*domain-specific MCP service/i);
-  assert.match(consoleContract, /server denies their domain operations[\s\S]*dynamic tool surface/i);
-
-  for (const relativePath of [
-    "source/platform/bos-plugin-settings-initialization/SKILL.md",
-    "source/platform/bos-plugin-settings-initialization/references/initialization-contract.md",
-    "source/capabilities/sendgrid-campaign-operations/SKILL.md",
-    "source/capabilities/sendgrid-campaign-operations/references/client-workflow.md",
-    "source/capabilities/agent-call-operations/SKILL.md",
-    "source/verticals/education-center/education-center-paid-attribution-operations/references/integration-contract.md"
-  ]) {
-    const initialization = await readFile(`${root}/${relativePath}`, "utf8");
-    assert.match(initialization, /(?:refresh(?:es)?|recheck)[\s\S]{0,80}context\s+(?:and|or)\s+operation status/i, relativePath);
-    assert.doesNotMatch(initialization, /complete static|static (?:tool|operation|schema) catalog/i, relativePath);
-  }
-
-  for (const relativePath of [
-    "Vault/docs/architecture.md",
-    "Vault/docs/marketplace-agent-harness-plan.md",
-    "Vault/docs/bos-product-licensing-user-experience.md"
-  ]) {
-    const contract = await readFile(`${root}/${relativePath}`, "utf8");
-    assert.match(contract, /dynamic(?:ally resolves the)?\s+domain-specific MCP services and tooling/i, relativePath);
-    assert.doesNotMatch(contract, /complete static|static (?:tool|operation|schema) catalog/i, relativePath);
-  }
-
-  const activeRoots = [
-    "products",
-    "source",
-    "clients",
-    "scripts",
-    "contracts",
-    "Vault/docs",
-    "Vault/specs"
-  ];
-  const obsoleteContract = /\b(?:complete\s+)?static(?:\s+[\w-]+){0,4}\s+(?:catalog|registry)\b|COMPLETE_STATIC_BOS_CATALOG|post_authentication_tool_catalog|catalog_authorization_semantics/i;
-  const stalePaths = [];
-  for (const relativeRoot of activeRoots) {
-    for (const path of await walkFiles(`${root}/${relativeRoot}`)) {
-      if (path.includes("/Vault/docs/issues/")) continue;
-      const content = await readFile(path, "utf8");
-      if (obsoleteContract.test(content)) stalePaths.push(path.slice(root.length + 1));
-    }
-  }
-  assert.deepEqual(stalePaths, []);
-});
-
 test("settings preflight injection preserves frontmatter and adds resumable initialization", () => {
   const source = "---\nname: example\ndescription: Example.\n---\n\n# Example\n";
   const output = injectSettingsPreflight(source, "initialize-example");
@@ -313,21 +264,16 @@ test("settings preflight injection preserves frontmatter and adds resumable init
   assert.match(output, /resume the original request automatically/i);
 });
 
-test("organization scope preflight applies the shared default to ordinary skills", () => {
+test("scoped authorization preflight forbids client-selected authority", () => {
   const source = "---\nname: example\ndescription: Example.\n---\n\n# Example\n";
   const output = injectOrganizationScopePreflight(source);
   assert.match(output, /^---\nname: example\ndescription: Example\.\n---/);
-  assert.match(output, /## Organization scope preflight/);
-  assert.match(
-    output,
-    /explicitly named in the current request[\s\S]*`default_organization_label`[\s\S]*sole authorized organization/i
-  );
-  assert.match(output, /configuration_required/i);
-  assert.match(output, /does not rewrite the saved default/i);
-  assert.match(output, /never fan out across organizations/i);
+  assert.match(output, /## Scoped authorization preflight/);
+  assert.match(output, /server-owned grant fixes organization[\s\S]*application[\s\S]*installation[\s\S]*role/i);
+  assert.match(output, /Never add[\s\S]*`context_id`[\s\S]*authority selector/i);
 });
 
-test("every ordinary product skill receives one organization scope preflight", async () => {
+test("every ordinary product skill receives one scoped authorization preflight", async () => {
   for (const { manifest } of await listProducts()) {
     for (const skill of await resolveProductSkills(manifest)) {
       const guidance = await readFile(skill.skillFile, "utf8");
@@ -343,11 +289,11 @@ test("every ordinary product skill receives one organization scope preflight", a
       }
       assert.match(
         transformed,
-        /## Organization scope preflight/,
+        /## Scoped authorization preflight/,
         `${manifest.name}/${skill.name}`
       );
       assert.equal(
-        transformed.match(/## Organization scope preflight/g)?.length,
+        transformed.match(/## Scoped authorization preflight/g)?.length,
         1,
         `${manifest.name}/${skill.name}`
       );
@@ -355,7 +301,7 @@ test("every ordinary product skill receives one organization scope preflight", a
   }
 });
 
-test("every active client package carries the organization preflight", async () => {
+test("every active client package carries the scoped authorization preflight", async () => {
   const clientRoots = {
     codex: (name) => `${root}/clients/codex/plugins/${name}/skills`,
     claude: (name) => `${root}/clients/claude/plugins/${name}/skills`,
@@ -374,7 +320,7 @@ test("every active client package carries the organization preflight", async () 
         const path = `${clientRoots[client](manifest.name)}/${skill.name}/SKILL.md`;
         const guidance = await readFile(path, "utf8");
         assert.equal(
-          guidance.match(/## Organization scope preflight/g)?.length,
+          guidance.match(/## Scoped authorization preflight/g)?.length,
           1,
           path
         );
@@ -400,17 +346,6 @@ test("product initialization preflight orders client settings before plugin sett
   assert.match(output, /service-routing mismatch/i);
   assert.match(output, /enabled, selected services/i);
   assert.match(output, /resume the original request automatically/i);
-});
-
-test("runtime plugin settings routing is independent of product initialization", () => {
-  const source = "---\nname: bos-plugin-settings\ndescription: Settings.\n---\n\n# Settings\n";
-  const output = transformProductSkillGuidance({
-    settings_initializer: "initialize-client-settings",
-    plugin_settings_initializer: "initialize-plugin-settings"
-  }, "bos-plugin-settings", source);
-  assert(output.includes(source.slice(source.indexOf("# Settings"))));
-  assert.doesNotMatch(output, /## (?:Organization scope|Product initialization|Product first-run) preflight/);
-  assert.match(output, /## Client mutation safety/);
 });
 
 test("every generated Education Center domain skill enforces first-run initialization", async () => {
@@ -513,15 +448,8 @@ test("Education Center packages include governed single-lead Agent Call operatio
   assert.match(guidance, /never replace it with a generic phrase[\s\S]*indeterminate server\s+error/i);
   assert.match(guidance, /Do not infer a root cause/i);
   assert.match(guidance, /Keep[\s\S]*repair instructions out of the user-facing error/i);
-  assert.match(
-    guidance,
-    /authorization[\s\S]*no service row is actionable[\s\S]*service_routing_mismatch/i
-  );
-  assert.match(
-    guidance,
-    /invoke `bos-plugin-settings-initialization`[\s\S]*resume the same call request/i
-  );
-  assert.match(guidance, /never open the domain result's provider[\s\S]*directly/i);
+  assert.match(guidance, /authorization[\s\S]*exact secure[\s\S]*recovery action[\s\S]*BOS Service/i);
+  assert.match(guidance, /After recovery is current[\s\S]*resume the same call request/i);
   assert.match(contract, /UUID[\s\S]*available_actions\[\][\s\S]*arguments\.lead_id/i);
   assert.match(contract, /never use[\s\S]*record_ref/i);
   assert.match(contract, /public schema excludes[\s\S]*org_id[\s\S]*phone numbers/i);
@@ -860,15 +788,11 @@ test("application runtime packages ship agent-owned MCP lifecycle recovery", asy
     assert.match(guidance, /poll[\s\S]*bos_resume_operation[\s\S]*without asking the user to resubmit/i);
     assert.doesNotMatch(guidance, /unnamed endpoint as.*runtime connection/is);
     assert.match(guidance, /shared local document cache/i);
-    assert.match(guidance, /select exactly one authorized organization/i);
-    assert.match(guidance, /default_organization_label/i);
-    assert.match(guidance, /never stores an organization ID, context ID/i);
-    assert.match(guidance, /explicit organization[\s\S]*does not rewrite the saved defaults/i);
-    assert.match(guidance, /unless the user explicitly asks for that cross-organization/i);
+    assert.match(guidance, /connection's one scoped OAuth\s+grant/i);
+    assert.match(guidance, /never select another[\s\S]*organization[\s\S]*role/i);
     assert.match(guidance, /request exactly those intervals plus\s+changes after its cursor/i);
     assert.match(guidance, /sync_completed_at/);
     await access(`${client.sourcePath}/scripts/document-cache.mjs`);
-    await access(`${client.sourcePath}/scripts/client-preferences.mjs`);
     await access(`${client.sourcePath}/references/document-cache-protocol.md`);
     await access(`${client.sourcePath}/references/runtime-continuation-contract.md`);
   }
@@ -892,13 +816,9 @@ test("Codex reauthentication exposes native user-controlled authentication", asy
   assert.match(client, /mcpServers: "\.\/\.mcp\.json"/i);
   assert.match(client, /remote HTTP entry at the product-owned resource/i);
   assert.match(client, /no\s+`\.app\.json` exists/i);
-  assert.match(client, /matching tool descriptor[\s\S]*securitySchemes[\s\S]*oauth2/i);
-  assert.match(client, /Descriptor visibility[\s\S]*no customer data[\s\S]*no[\s\S]*business execution/i);
-  assert.match(client, /mcp\/www_authenticate[\s\S]*native[\s\S]*Sign in/i);
-  assert.match(client, /resource_metadata[\s\S]*error[\s\S]*error_description/i);
+  assert.match(client, /HTTP 401[\s\S]*WWW-Authenticate[\s\S]*resource-metadata/i);
   assert.match(client, /After consent[\s\S]*dynamic\s+domain-specific MCP services and tooling/i);
-  assert.match(client, /Tool\s+presence[\s\S]*never proves[\s\S]*authorized/i);
-  assert.match(client, /server result[\s\S]*authoritative[\s\S]*role[\s\S]*provider access/i);
+  assert.match(client, /connection's one scoped OAuth\s+grant/i);
   assert.match(client, /call[\s\S]*`bos_get_context`[\s\S]*resume the original request/i);
   assert.match(client, /invalid_grant[\s\S]*Refresh token[\s\S]*replay detected/i);
   assert.match(client, /stop the refresh retry loop[\s\S]*fresh consent/i);
@@ -933,11 +853,9 @@ test("Codex reauthentication exposes native user-controlled authentication", asy
     const generated = await readFile(path, "utf8");
     assert.match(generated, /reauthenticationRequired/i, path);
     assert.match(generated, /mcpServers: "\.\/\.mcp\.json"/i, path);
-    assert.match(generated, /matching tool descriptor[\s\S]*securitySchemes[\s\S]*oauth2/i, path);
-    assert.match(generated, /mcp\/www_authenticate[\s\S]*native[\s\S]*Sign in/i, path);
+    assert.match(generated, /HTTP 401[\s\S]*WWW-Authenticate[\s\S]*resource-metadata/i, path);
     assert.match(generated, /After consent[\s\S]*dynamic\s+domain-specific MCP services and tooling/i, path);
-    assert.match(generated, /Tool\s+presence[\s\S]*never proves[\s\S]*authorized/i, path);
-    assert.match(generated, /server result[\s\S]*authoritative[\s\S]*role[\s\S]*provider access/i, path);
+    assert.match(generated, /connection's one scoped OAuth\s+grant/i, path);
     assert.doesNotMatch(generated, /codex mcp login/i, path);
     assert.match(generated, /Do not use\s+generic app-permission tools/i, path);
   }
@@ -958,7 +876,6 @@ test("implementation skill hands server work to the owning repository", async ()
   assert.match(implementation, /server-side agent\s+independently\s+determines/i);
   assert.match(implementation, /npm run contract:check/i);
   assert.match(implementation, /npm run\s+contract:oauth-discovery-live/i);
-  assert.match(implementation, /npm run\s+contract:oauth-tool-auth-live/i);
   assert.match(implementation, /npm run\s+contract:oauth-live/i);
   assert.match(
     implementation,
@@ -980,10 +897,8 @@ test("repository release skill cannot cross into the BOS server repository", asy
   assert.match(repositoryInstructions, /paste-ready prompt for an agent operating in\s+the owning server repository/i);
   assert.match(shipIt, /client-owned Operations Center acceptance suite/i);
   assert.match(shipIt, /contract:oauth-discovery-live/i);
-  assert.match(shipIt, /contract:oauth-tool-auth-live/i);
   assert.match(shipIt, /exactly one continuous Markdown prompt/i);
   assert.match(repositoryInstructions, /contract:oauth-discovery-live/i);
-  assert.match(repositoryInstructions, /contract:oauth-tool-auth-live/i);
   assert.match(repositoryInstructions, /exactly one continuous\s+Markdown prompt/i);
 });
 
@@ -1042,24 +957,6 @@ test("generated runtime clients ship the canonical shared document cache helper"
     `${root}/clients/copilot/products/education-center/skills/bos-mcp-client/scripts/document-cache.mjs`,
     `${root}/clients/copilot/skills/bos-mcp-client/scripts/document-cache.mjs`,
     `${root}/clients/gemini/extensions/education-center/skills/bos-mcp-client/scripts/document-cache.mjs`
-  ]) {
-    assert.deepEqual(await readFile(path), canonical, path);
-  }
-});
-
-test("generated BOS-family clients ship the canonical organization preference helper", async () => {
-  const canonical = await readFile(
-    `${root}/source/platform/bos-mcp-client/scripts/client-preferences.mjs`
-  );
-  for (const path of [
-    `${root}/clients/codex/plugins/bos/skills/bos-mcp-client/scripts/client-preferences.mjs`,
-    `${root}/clients/codex/plugins/education-center/skills/bos-mcp-client/scripts/client-preferences.mjs`,
-    `${root}/clients/claude/plugins/bos/skills/bos-mcp-client/scripts/client-preferences.mjs`,
-    `${root}/clients/claude/plugins/education-center/skills/bos-mcp-client/scripts/client-preferences.mjs`,
-    `${root}/clients/copilot/products/bos/skills/bos-mcp-client/scripts/client-preferences.mjs`,
-    `${root}/clients/copilot/products/education-center/skills/bos-mcp-client/scripts/client-preferences.mjs`,
-    `${root}/clients/gemini/extensions/bos/skills/bos-mcp-client/scripts/client-preferences.mjs`,
-    `${root}/clients/gemini/extensions/education-center/skills/bos-mcp-client/scripts/client-preferences.mjs`
   ]) {
     assert.deepEqual(await readFile(path), canonical, path);
   }
@@ -1306,7 +1203,7 @@ test("Education Center initialization proposes sourced defaults with one-step ac
   );
   assert.match(
     guidance,
-    /Recommended defaults[\s\S]*brand display name[\s\S]*organization\s+display name[\s\S]*Default BOS organization[\s\S]*location\s+display name[\s\S]*IANA timezone/i
+    /Recommended defaults[\s\S]*brand display name[\s\S]*organization\s+display name[\s\S]*location\s+display name[\s\S]*IANA timezone/i
   );
   assert.match(guidance, /Reply \*\*Use these defaults\*\*[\s\S]*accept all values/i);
   assert.match(guidance, /status and source/i);
@@ -1316,10 +1213,8 @@ test("Education Center initialization proposes sourced defaults with one-step ac
   assert.match(guidance, /Claude[\s\S]*persistent \*\*Connect\*\* action[\s\S]*Customize\s*→\s*Connectors/i);
   assert.match(guidance, /authentication_required[\s\S]*preserve the initialization draft[\s\S]*ask[\s\S]*no settings questions/i);
   assert.match(guidance, /store it as `brand_display_name`/i);
-  assert.match(guidance, /set-default-organization[\s\S]*state: committed/i);
-  assert.match(guidance, /never inside\s+`customer-settings\.json`/i);
-  assert.match(guidance, /inspect every plugin-service connection[\s\S]*selected organization/i);
-  assert.match(guidance, /connection actions one at a time/i);
+  assert.match(guidance, /organization label from the connection's exact scoped[\s\S]*grant/i);
+  assert.doesNotMatch(guidance, /set-default-organization|client-preferences\.mjs|plugin-settings-initialization/i);
 });
 
 test("Bright Horizons report prompts deterministically generate the reimbursement workbook", async () => {
@@ -1489,7 +1384,7 @@ test("canonical and generated skills contain no removed use-bos references", asy
 
 test("all product manifests validate and resolve unique skills", async () => {
   const products = await listProducts();
-  assert.equal(products.length, 4);
+  assert.equal(products.length, 3);
   for (const { path, manifest } of products) {
     assert.deepEqual(validateProduct(manifest, path), []);
     const skills = await resolveProductSkills(manifest);
@@ -1508,7 +1403,7 @@ test("BOS marketplace metadata explains the platform and links to its website", 
   assert.match(bos.long_description, /owns the authenticated BOS platform MCP connection/);
   assert.match(bos.long_description, /required foundation for dependent products/);
   assert.match(bos.long_description, /agentic mesh of federated services/);
-  assert.match(bos.long_description, /governs plugin settings and enablement/);
+  assert.match(bos.long_description, /server-scoped organization, application, installation, and role grant/);
   assert.doesNotMatch(bos.long_description, /static (?:registry|operation|tool|schema|catalog)/i);
   assert.match(bos.long_description, /server-enforced scope, evidence, and approvals/);
   assert.equal(bos.website_url, "https://dfsm.ai");
@@ -1585,7 +1480,6 @@ test("each product owns a runtime application and MCP group", async () => {
     {
       bos: ["bos", "platform"],
       "education-center": ["leaddirector", "education-center"],
-      "my-crm": ["leaddirector", "crm"],
       "video-ads": ["leaddirector", "video-ads"]
     }
   );
@@ -1890,11 +1784,6 @@ test("disabled product inventory is generated for idempotent client pruning", as
     schema_version: "1",
     products: [
       {
-        name: "my-crm",
-        application_name: "leaddirector",
-        mcp_group_name: "crm"
-      },
-      {
         name: "video-ads",
         application_name: "leaddirector",
         mcp_group_name: "video-ads"
@@ -2138,6 +2027,9 @@ test("feedback contract uses the BOS app and stable retry identity", async () =>
     "utf8"
   );
   assert.match(skill, /Do not send execution-scope fields/);
+  assert.match(skill, /exact organization[\s\S]*already bound to the active product grant/i);
+  assert.match(skill, /Perform no client-side authority\s+selection/i);
+  assert.doesNotMatch(skill, /Select exactly one authorized scope/i);
   assert.match(skill, /retry once with the same submission ID/);
   assert.match(skill, /Do not claim triage, assignment, prioritization/);
   assert.match(contract, /missing_or_ambiguous_scope/);
@@ -2168,78 +2060,6 @@ test("Education Center composition contains only approved shared runtime foundat
     "submit-feedback",
     "manage-customer-extension"
   ]);
-});
-
-test("My CRM composes the approved reusable federated runtime skills", async () => {
-  const products = await listProducts();
-  const myCrm = products.find(({ manifest }) => manifest.name === "my-crm")?.manifest;
-  assert(myCrm);
-  assert.equal(myCrm.release_status, "disabled");
-  assert.deepEqual(
-    myCrm.includes.filter((include) => include.startsWith("platform/")),
-    [
-      "platform/bos-mcp-client",
-      "platform/bos-app-discovery",
-      "platform/bos-plugin-settings",
-      "platform/bos-plugin-settings-initialization",
-      "platform/bos-federated-query",
-      "platform/bos-cache-maintenance",
-      "platform/submit-feedback",
-      "platform/manage-customer-extension"
-    ]
-  );
-  const skills = await resolveProductSkills(myCrm);
-  assert(skills.some((skill) => skill.name === "bos-federated-query"));
-  assert(skills.some((skill) => skill.name === "bos-cache-maintenance"));
-  const journey = skills.find(
-    (skill) => skill.name === "my-crm-customer-journey"
-  );
-  assert(journey, "my-crm must include the customer journey skill");
-  const journeyGuidance = await readFile(journey.skillFile, "utf8");
-  const journeyContract = await readFile(
-    `${journey.sourcePath}/references/journey-graph-contract.md`,
-    "utf8"
-  );
-  assert.match(journeyGuidance, /BOS app directory/i);
-  assert.match(journeyGuidance, /Lead Director MCP/i);
-  assert.match(journeyGuidance, /lead-search[\s\S]*lead-journey[\s\S]*path-planning API/i);
-  assert.match(journeyGuidance, /discovered deterministic HTTPS APIs/i);
-  assert.match(journeyGuidance, /Graph facts[\s\S]*Lead facts[\s\S]*External evidence[\s\S]*GPT inference/i);
-  assert.match(journeyGuidance, /Mermaid `flowchart LR`/i);
-  assert.match(journeyGuidance, /plain-text path/i);
-  assert.match(journeyGuidance, /completed[\s\S]*current[\s\S]*next[\s\S]*blocked/i);
-  assert.match(
-    journeyGuidance,
-    /graph itself must identify the current position, next[\s\S]*blockers[\s\S]*desired goal/i
-  );
-  assert.match(journeyContract, /`current_node_id`/);
-  assert.match(journeyContract, /`desired_goal_node_id`/);
-  assert.match(journeyContract, /`recommended_next_actions\[\]`/);
-  assert.match(journeyContract, /application graph owns/i);
-  assert.match(journeyContract, /graph\.goals\.list/);
-  assert.match(journeyContract, /graph\.path\.plan/);
-  assert.match(journeyContract, /future event[\s\S]*pending/i);
-  assert.doesNotMatch(journeyGuidance, /crm_get_customer_journey/);
-  assert.doesNotMatch(journeyGuidance, /https:\/\/[^\s`]*lead-director/i);
-
-  const policy = JSON.parse(await readFile(
-    `${root}/source/capabilities/my-crm/references/client-policy.json`,
-    "utf8"
-  ));
-  assert.deepEqual(policy.freshness_defaults_seconds, {
-    exact_record: 60,
-    pipeline_state: 120,
-    record_search: 300,
-    activity_timeline: 600
-  });
-  assert.deepEqual(policy.merged_view, {
-    resolution_owner: "server",
-    preserve_source_provenance: true,
-    preserve_match_confidence: true
-  });
-  assert.equal("identity" in policy, false);
-  assert.equal(policy.mutation.client_recovery_attempts, 0);
-  assert.equal(policy.mutation.follow_server_reconciliation_action, true);
 });
 
 test("every product and client ships tenant extension management metadata", async () => {
@@ -2285,11 +2105,7 @@ test("every product and client ships tenant extension management metadata", asyn
             connection_scope: "claude_account"
           } : {})
         } : {}),
-        connection_owner: manifest.name,
-        dependency_products: manifest.dependencies,
-        authentication: manifest.runtime
-          ? "oauth_2_1"
-          : "none"
+        ...productRuntimeOwnershipMetadata(manifest)
       });
       const manager = await readFile(
         `${productRoot}/skills/manage-customer-extension/SKILL.md`,
@@ -2674,18 +2490,22 @@ test("migrated BOS personal workflows are canonical and generated for every appl
   await access(`${root}/.agents/skills/codex-token-usage-analysis/SKILL.md`);
 });
 
-test("My CRM owns its journey workflow and BOS excludes it", async () => {
+test("My CRM remains external while BOS supplies its installable platform dependency", async () => {
   const products = await listProducts();
   const bos = products.find(({ manifest }) => manifest.name === "bos").manifest;
-  const myCrm = products.find(({ manifest }) => manifest.name === "my-crm").manifest;
   const bosSkills = await resolveProductSkills(bos);
-  const crmSkills = await resolveProductSkills(myCrm);
-  assert.equal(bosSkills.some(({ name }) => name === "my-crm-customer-journey"), false);
-  assert.equal(bosSkills.some(({ name }) => name === "my-crm-record-operations"), false);
-  assert(crmSkills.some(({ name }) => name === "my-crm-customer-journey"));
-  assert(crmSkills.some(({ name }) => name === "my-crm-record-operations"));
-  assert.deepEqual(myCrm.dependencies, ["bos"]);
-  assert.equal(myCrm.release_status, "disabled");
+  const sourceFiles = await walkFiles(`${root}/source/capabilities`);
+  assert.equal(products.some(({ manifest }) => manifest.name === "my-crm"), false);
+  assert.equal(await pathExists(`${root}/products/my-crm`), false);
+  assert.deepEqual(
+    sourceFiles.filter((path) => path.split("/").some((part) => part.startsWith("my-crm"))),
+    []
+  );
+  assert(bosSkills.some(({ name }) => name === "authentication-context-integrity"));
+  assert(bosSkills.some(({ name }) => name === "bos-mcp-client"));
+  assert.equal(bosSkills.some(({ name }) => name === "bos-app-discovery"), true);
+  assert.equal(bosSkills.some(({ name }) => name.startsWith("my-crm")), false);
+  assert.deepEqual(bos.dependencies, []);
 });
 
 
@@ -2693,9 +2513,9 @@ test("Education Center ships its referenced journey and graph contracts on every
   const products = await listProducts();
   const education = products.find(({ manifest }) => manifest.name === "education-center").manifest;
   const skills = await resolveProductSkills(education);
-  const journey = skills.find(({ name }) => name === "my-crm-customer-journey");
+  const journey = skills.find(({ name }) => name === "crm-customer-journey");
   assert(journey, "Education Center must ship the journey its lead routing requires");
-  assert(skills.some(({ name }) => name === "my-crm-record-operations"),
+  assert(skills.some(({ name }) => name === "crm-record-operations"),
     "Education Center must ship its lead record workflow");
   assert.deepEqual(education.dependencies, ["bos"]);
   for (const clientRoot of [
@@ -2715,15 +2535,14 @@ test("Education Center ships its referenced journey and graph contracts on every
 
 test("lead and contact detail requests default to graph presentation", async () => {
   for (const file of [
-    "source/capabilities/my-crm-customer-journey/SKILL.md",
-    "source/capabilities/my-crm/SKILL.md",
-    "source/capabilities/my-crm-record-operations/SKILL.md"
+    "source/capabilities/crm-customer-journey/SKILL.md",
+    "source/capabilities/crm-record-operations/SKILL.md"
   ]) {
     const text = await readFile(`${root}/${file}`, "utf8");
     assert.match(text, /any lead or contact detail request/i, file);
-    assert.match(text, /my-crm-customer-journey/);
+    assert.match(text, /crm-customer-journey/);
   }
-  const journey = await readFile(`${root}/source/capabilities/my-crm-customer-journey/SKILL.md`, "utf8");
+  const journey = await readFile(`${root}/source/capabilities/crm-customer-journey/SKILL.md`, "utf8");
   assert.match(journey, /When no goal is requested/);
   assert.match(journey, /contact-to-lead[\s\S]*ambiguous/);
   assert.match(journey, /requested fields[\s\S]*below the graph/);
@@ -2733,21 +2552,26 @@ test("lead and contact detail requests default to graph presentation", async () 
 
 
 test("journey reads use the current authenticated operating contract", async () => {
-  for (const file of ["source/capabilities/my-crm-customer-journey/SKILL.md"]) {
+  for (const file of ["source/capabilities/crm-customer-journey/SKILL.md"]) {
     const guidance = await readFile(`${root}/${file}`, "utf8");
     assert.match(guidance, /## Current-host read execution/);
     assert.match(guidance, /live-discovered[\s\S]*read/);
     assert.match(guidance, /denial[\s\S]*never/);
     assert.match(guidance, /partial/);
   }
-  const journey = await readFile(`${root}/source/capabilities/my-crm-customer-journey/SKILL.md`, "utf8");
-  assert.doesNotMatch(journey, /Use discovered deterministic HTTPS APIs for every business read/);
+  const journey = await readFile(`${root}/source/capabilities/crm-customer-journey/SKILL.md`, "utf8");
+  assert.match(journey, /Education Center MCP[\s\S]*discovery[\s\S]*exact advertised deterministic HTTPS APIs/i);
+  assert.match(journey, /current Education Center MCP connection[\s\S]*Discover the current app/i);
+  assert.doesNotMatch(journey, /record and graph reads on Education Center MCP/i);
+  assert.match(journey, /without client-supplied authority fields/i);
   assert.doesNotMatch(journey, /or central compatibility alias for this journey workflow/);
 });
 
 
 test("lead creation uses server source selectors and structured success", async () => {
-  const guidance = await readFile(`${root}/source/capabilities/my-crm-record-operations/SKILL.md`, "utf8");
+  const guidance = await readFile(`${root}/source/capabilities/crm-record-operations/SKILL.md`, "utf8");
+  assert.match(guidance, /Education Center MCP for authenticated[\s\S]*application discovery/i);
+  assert.match(guidance, /business operation through[\s\S]*deterministic HTTPS API/i);
   assert.match(guidance, /Never manufacture `source_type` or `source_identity`/);
   assert.match(guidance, /idempotency key/);
   assert.match(guidance, /`complete: false`[\s\S]*`source_mutation_failed`/);
@@ -2764,19 +2588,6 @@ test("BOS bootstraps callable tools before resource or UI diagnostics", async ()
   assert.match(s, /resource list is not a tool inventory/);
   assert.doesNotMatch(s, /BOS plugin and runtime binding immediately/);
   assert.match(s, /UI access denial does not establish/);
-});
-
-
-test("disabled My CRM retains ownership of CRM record operations", async () => {
-  const products = await listProducts();
-  const bos = products.find(({ manifest }) => manifest.name === "bos").manifest;
-  const myCrm = products.find(({ manifest }) => manifest.name === "my-crm").manifest;
-  const bosSkills = await resolveProductSkills(bos);
-  const crmSkills = await resolveProductSkills(myCrm);
-  assert.equal(bosSkills.some(({ name }) => name === "my-crm-record-operations"), false);
-  assert(crmSkills.some(({ name }) => name === "my-crm-record-operations"));
-  assert(crmSkills.some(({ name }) => name === "my-crm-customer-journey"));
-  assert.equal(myCrm.release_status, "disabled");
 });
 
 

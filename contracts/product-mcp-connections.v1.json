@@ -4,21 +4,39 @@
   "foundation_product": "bos",
   "dependency_policy": "DEPENDENT_PRODUCTS_REQUIRE_BOS",
   "connection_policy": "EACH_PRODUCT_OWNS_ONE_SCOPED_MCP",
+  "external_product_contract": {
+    "contract_id": "bos.external-product-dependency",
+    "contract_version": "1",
+    "metadata_file": ".bos-product.json",
+    "metadata_schema": "bos://contracts/external-product-dependency/v1",
+    "foundation_dependency": "bos",
+    "product_source_location": "EXTERNAL_ALLOWED",
+    "connection_owner": "DEPENDENT_PRODUCT",
+    "authentication_manager": "bos",
+    "credential_lifecycle_owner": "host",
+    "authorization_enforcement_owner": "bos-service",
+    "authorization_scope_policy": "ONE_ORGANIZATION_APPLICATION_INSTALLATION_ROLE_PER_GRANT",
+    "authentication_handoff_contract": "bos.authentication-handoff/v1",
+    "compatibility": {
+      "additive_fields": "ACCEPT",
+      "unknown_authentication_condition": "DELEGATE_TO_BOS",
+      "breaking_change": "NEW_CONTRACT_MAJOR"
+    }
+  },
   "authentication_policy": {
     "foundation": "ON_INSTALL",
     "dependent_product": "ON_USE"
   },
   "provider_account_selection_policy": "ALWAYS_SELECT_ACCOUNT",
-  "identity_organization_resolution_policy": "SERVER_EVALUATED_PER_VERIFIED_IDENTITY",
+  "authorization_scope_policy": "ONE_ORGANIZATION_APPLICATION_INSTALLATION_ROLE_PER_GRANT",
   "request_time_authentication": {
-    "activation_owner": "SELECTED_OAUTH_TOOL",
-    "preauthentication_tool_surface": "DESCRIPTORS_ONLY",
-    "tool_security_scheme": "OAUTH2_PER_TOOL",
-    "unauthenticated_tool_result": "MCP_WWW_AUTHENTICATE",
+    "activation_owner": "REGISTERED_PROTECTED_RESOURCE",
+    "preauthentication_surface": "OAUTH_PROTECTED_RESOURCE_METADATA",
+    "unauthenticated_transport_result": "HTTP_401_WWW_AUTHENTICATE",
     "unauthenticated_business_execution": "DENIED",
     "post_authentication_tool_surface": "DYNAMIC_DOMAIN_SPECIFIC_MCP_SERVICES_AND_TOOLING",
     "authenticated_tools_list_gate": "VALID_TOKEN_AND_AUTHORIZED_ORGANIZATION",
-    "tool_surface_authorization_semantics": "DESCRIPTORS_DO_NOT_GRANT_AUTHORITY",
+    "tool_surface_authorization_semantics": "AUTHENTICATED_DESCRIPTORS_DO_NOT_GRANT_AUTHORITY",
     "operation_authorization": "SERVER_EVALUATED_ON_TOOLS_CALL",
     "native_action_surface": "ACTIVE_CHAT",
     "continuation_policy": "RESUME_ORIGINAL_REQUEST"
@@ -39,6 +57,36 @@
         "provider_account_selection_prompt": "select_account"
       },
       "authentication": "ON_INSTALL",
+      "authentication_handoff": {
+        "contract_id": "bos.authentication-handoff",
+        "contract_version": "1",
+        "authentication_manager": "bos",
+        "credential_lifecycle_owner": "host",
+        "authorization_enforcement_owner": "bos-service",
+        "delegation_policy": "AUTOMATIC",
+        "recognized_condition_categories": [
+          "MISSING_GRANT",
+          "EXPIRED_TOKEN",
+          "REVOKED_GRANT",
+          "INVALID_CLIENT",
+          "INVALID_GRANT",
+          "RESOURCE_MISMATCH",
+          "REAUTHENTICATION_REQUIRED",
+          "AUTHORIZATION_REQUIRED",
+          "MCP_SESSION_CLOSED",
+          "PROVIDER_AUTHORIZATION_REQUIRED"
+        ],
+        "readiness_result": {
+          "owner": "bos",
+          "statuses": [
+            "READY",
+            "HOST_ACTION_REQUIRED",
+            "NOT_READY"
+          ],
+          "representation": "AUTHENTICATION_READINESS_ONLY",
+          "authority_data": "EXCLUDED"
+        }
+      },
       "codex_mcp_startup_timeout_sec": 180,
       "codex_mcp_tool_timeout_sec": 180,
       "connection_artifacts": [
@@ -65,6 +113,36 @@
         "provider_account_selection_prompt": "select_account"
       },
       "authentication": "ON_USE",
+      "authentication_handoff": {
+        "contract_id": "bos.authentication-handoff",
+        "contract_version": "1",
+        "authentication_manager": "bos",
+        "credential_lifecycle_owner": "host",
+        "authorization_enforcement_owner": "bos-service",
+        "delegation_policy": "AUTOMATIC",
+        "recognized_condition_categories": [
+          "MISSING_GRANT",
+          "EXPIRED_TOKEN",
+          "REVOKED_GRANT",
+          "INVALID_CLIENT",
+          "INVALID_GRANT",
+          "RESOURCE_MISMATCH",
+          "REAUTHENTICATION_REQUIRED",
+          "AUTHORIZATION_REQUIRED",
+          "MCP_SESSION_CLOSED",
+          "PROVIDER_AUTHORIZATION_REQUIRED"
+        ],
+        "readiness_result": {
+          "owner": "bos",
+          "statuses": [
+            "READY",
+            "HOST_ACTION_REQUIRED",
+            "NOT_READY"
+          ],
+          "representation": "AUTHENTICATION_READINESS_ONLY",
+          "authority_data": "EXCLUDED"
+        }
+      },
       "codex_mcp_startup_timeout_sec": 180,
       "codex_mcp_tool_timeout_sec": 180,
       "connection_artifacts": [

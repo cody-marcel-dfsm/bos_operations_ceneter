@@ -25,7 +25,9 @@ first submission in a task.
 ## Resolve BOS scope
 
 1. Call `bos_get_context` once.
-2. Select exactly one authorized scope relevant to the active package.
+2. Validate and use the exact organization, application, installation, and role
+   already bound to the active product grant. Perform no client-side authority
+   selection.
 3. Submit through the active product's immutable MCP connection. Use the active
    package or subservice as the feedback target and preserve its product scope.
 4. Do not send execution-scope fields. The authenticated server derives

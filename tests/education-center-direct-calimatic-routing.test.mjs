@@ -24,8 +24,11 @@ test("Education Center class operations route requested Calimatic access through
 test("Education Center service routing preserves BOS scope while honoring evidence routes", () => {
   const skill = read("source/verticals/education-center/education-center-service-routing/SKILL.md");
 
-  assert.match(skill, /Education Center product MCP/i);
-  assert.match(skill, /Platform directory\s+discovery uses the separate BOS dependency connection/i);
+  assert.match(skill, /Education Center product\s+MCP/i);
+  assert.match(skill, /execute the selected application operation through its exact[\s\S]*deterministic HTTPS API/i);
+  assert.match(skill, /discover its live contract through Education[\s\S]*Center MCP[\s\S]*execute through the exact advertised deterministic HTTPS API/i);
+  assert.doesNotMatch(skill, /execute through Education Center MCP/i);
+  assert.match(skill, /Platform directory\s+discovery uses the separate BOS dependency\s+connection/i);
   assert.match(skill, /source_routes\.calimatic[\s\S]*package default is BOS/i);
   assert.match(skill, /source_routes\.care_com/i);
   assert.match(skill, /connected_gmail[\s\S]*normal Gmail connector/i);
@@ -54,11 +57,10 @@ test("BOS request interception distinguishes Gmail OAuth from Calimatic API-key 
 
 test("provider recovery cannot regress an authenticated client to product sign-in", () => {
   const integrity = read("source/platform/authentication-context-integrity/SKILL.md");
-  const consoleSkill = read("source/platform/bos-plugin-console/SKILL.md");
   const routing = read("source/verticals/education-center/education-center-service-routing/SKILL.md");
   const support = read("source/platform/bos-guided-support/references/support-state-machine.md");
 
-  for (const contract of [integrity, consoleSkill, routing, support]) {
+  for (const contract of [integrity, routing, support]) {
     assert.match(contract, /provider_recovery_identity_boundary/i);
     assert.match(contract, /BOS (grant|connection|context)[\s\S]*(valid|authenticated)/i);
     assert.match(contract, /(do not|never)[\s\S]*(click|follow|launch|restart)[\s\S]*(product|Education Center)[\s\S]*(sign-in|sign in|authentication)/i);

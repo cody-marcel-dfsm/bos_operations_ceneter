@@ -1,6 +1,6 @@
 {
   "name": "bos",
-  "version": "0.4.101",
+  "version": "0.4.102",
   "description": "Run deterministic workflows across a federated agentic service mesh.",
   "author": {
     "name": "Infinite State Machines LLC"
@@ -9,7 +9,7 @@
   "interface": {
     "displayName": "BOS — Business Operating System",
     "shortDescription": "Run deterministic workflows across a federated agentic service mesh.",
-    "longDescription": "BOS is a platform for deterministic automated workflows across an agentic mesh of federated services. It is the required foundation for dependent products and owns the authenticated BOS platform MCP connection. BOS resolves the selected organization, inspects installed services and their readiness, governs plugin settings and enablement, and coordinates authorized platform operations with server-enforced scope, evidence, and approvals.",
+    "longDescription": "BOS is a platform for deterministic automated workflows across an agentic mesh of federated services. It is the required foundation for dependent products and owns the authenticated BOS platform MCP connection. Each OAuth connection carries one server-scoped organization, application, installation, and role grant. BOS coordinates authorized platform operations with server-enforced scope, evidence, and approvals.",
     "developerName": "Infinite State Machines LLC",
     "category": "Productivity",
     "capabilities": [

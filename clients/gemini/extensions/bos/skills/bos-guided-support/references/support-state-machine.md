@@ -28,11 +28,9 @@ reported stage only when later evidence contradicts it.
   public-client registration, repeat dynamic client registration from current
   authorization metadata, and restart product authorization once.
 - `authentication_required`, missing/expired/revoked/out-of-scope grant:
-  **Sign in**. Select the requested OAuth-declared BOS tool. Its descriptor is
-  visible before consent, while customer data and business execution stay
-  protected. Its unauthenticated result returns
-  `_meta["mcp/www_authenticate"]`, which renders the simple inline action in the
-  current chat. Preserve the request through consent, then refresh live
+  **Sign in**. Use the protected MCP resource's HTTP 401 `WWW-Authenticate`
+  resource-metadata challenge and the host's native authentication action.
+  Preserve the request through consent, then refresh live
   discovery of dynamic domain-specific MCP services and tooling, call
   `bos_get_context`, and resume.
 - OAuth token endpoint `invalid_grant`, including `Refresh token replay
@@ -41,12 +39,10 @@ reported stage only when later evidence contradicts it.
   native product authentication action before refreshing discovery and
   resuming.
 - Codex `reauthenticationRequired` or `requires OAuth reauthentication`:
-  **Sign in**. Preserve the active request, select the exact OAuth-declared BOS
-  tool required by the prompt, and invoke it once. Its signed-out
-  `_meta["mcp/www_authenticate"]` result activates the native inline
-  authentication control. When the descriptor or challenge is missing, report
-  a tool-auth-contract defect. When the host receives the challenge but omits
-  the action, report an authentication-activation defect. Preserve the pending
+  **Sign in**. Preserve the active request and use the exact protected-resource
+  challenge for the registered product connection. When the host receives the
+  challenge but omits its native action, report an authentication-activation
+  defect. Preserve the pending
   request; never
   invoke CLI login or launch authentication for the user. Never translate this
   state into unavailable tools, missing business data, or a generic

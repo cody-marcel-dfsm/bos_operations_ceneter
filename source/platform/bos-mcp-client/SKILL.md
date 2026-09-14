@@ -1,6 +1,6 @@
 ---
 name: bos-mcp-client
-description: Operate a product-owned BOS MCP connection, including server-evaluated product scope, live tool discovery, transport recovery, and provider authorization recovery.
+description: Operate a product-owned BOS MCP connection, including server-evaluated product scope, live tool discovery, transport recovery, provider authorization recovery, and automatic BOS authentication handoff for dependent plugins.
 ---
 
 # BOS MCP Client
@@ -60,14 +60,40 @@ ChatGPT/Codex loads the product package's `.mcp.json` and performs OAuth
 discovery from that resource. Other supported clients use the product adapter
 declared by their generated package.
 
-BOS is the required platform dependency for Education Center, My CRM, Lead
-Director, Marketing Director, and other application products. Each dependent
-plugin packages its relevant skills with its own application-scoped MCP.
-The server derives and evaluates
+BOS is the required platform dependency for separately installed application
+products. Each dependent
+plugin packages its relevant skills with its own host-managed connection to an
+application-scoped MCP. That MCP is the authenticated discovery surface for the
+application's current semantic operations and deterministic HTTPS API
+contracts. The server derives and evaluates
 organization, application, installation, subservice, plugin, role, capability,
 provider, and tool scope from the validated grant and canonical server state on
-every private operation. Route platform BOS work through the BOS MCP and
-application work through the owning application's MCP.
+every private discovery and API request. Route platform BOS work through the BOS
+MCP. Use the owning application's MCP to discover the exact current API method,
+path, schema, and audience; execute application work through that advertised
+deterministic HTTPS API.
+
+## External dependent-product authentication handoff
+
+Read and apply
+[the external product authentication handoff](references/external-product-authentication-handoff.md)
+whenever a separately installed product that depends on BOS encounters an
+authentication or MCP-session condition. The stable contract is
+`bos.authentication-handoff/v1`. Its request contains only the exact protected
+resource, a structured authentication or MCP-session condition, and optional
+host-native correlation. Its response reports typed authentication readiness.
+
+The caller keeps its own host-managed MCP connection and delegates the minimal
+handoff automatically to the installed BOS plugin. BOS coordinates the host
+authentication lifecycle; the host retains and attaches the dependent
+product's resource-scoped grant.
+Never copy credentials between the BOS and dependent-product connections, and
+never route dependent-product business execution through the BOS platform MCP.
+
+BOS receives no caller product identity, domain operation, continuation,
+idempotency, approval, retry, reconciliation, cache, or presentation state. It
+returns `READY`, `HOST_ACTION_REQUIRED`, or `NOT_READY`. The caller owns every
+post-result action.
 
 Codex packages also declare a 180-second tool-call timeout. These host budgets
 allow slow operations to finish; a server-returned timeout remains a distinct
@@ -77,9 +103,9 @@ an authentication or authorization failure.
 ## Current-host read execution
 
 Use the current authenticated BOS capabilities for the requested operation.
-After selecting the organization and role through `bos_get_context`, resolve a
-live-discovered read operation whose descriptor covers the requested data.
-Invoke its exact schema with the selected opaque context and continue from the
+After `bos_get_context` validates the connection's server-scoped grant, resolve
+a live-discovered read operation whose descriptor covers the requested data.
+Invoke its exact schema without client-supplied authority fields and continue from the
 returned evidence. For an advertised app MCP or API, use its contract when the
 host can execute it with the required authentication. Select the supported
 operation from current evidence; do not impose a preferred future transport or
@@ -90,14 +116,14 @@ callable names from the host catalog and argument constraints from current
 validated operation contracts; never invent endpoints or selectors.
 Directory or transport limitations remain scoped to that operation. An
 access denial never permits switching routes to evade it. Missing or ambiguous
-context, revoked grants, and explicit access denials stop the affected operation.
+scoped-grant evidence, revoked grants, and explicit access denials stop the affected operation.
 Every operation retains request-time server authorization.
 
 ## Resource-owned operation schemas
 
 When an already callable tool has a generic or cached schema, read an advertised
 operation-contract resource on the same authenticated connection. Validate its
-selected context, application/source binding, exact operation identity, current
+scoped-grant and application/source binding, exact operation identity, current
 contract version and implementation version when supplied. Follow the exact
 listed URI through the host resource reader; never construct a URI from a pattern.
 A platform manifest or directory alone is insufficient when it points to a
@@ -122,17 +148,10 @@ from the actual operation result, separately from successful schema discovery.
 
 ## Current application discovery
 
-For app-directory requests, `bos_get_context` alone completes only context
-selection. Continue with `bos-app-discovery` resource discovery on the existing
-authenticated BOS connection. Inspect the host's MCP resource listing and
-reading facilities even when no directory tool appears in the callable catalog.
-Read the advertised directory before evaluating downstream app transport needs.
-
-When the BOS MCP advertises an authenticated installed-app directory and
-per-app MCP contacts, invoke `bos-app-discovery` for domain requests. BOS remains
-the identity and app-discovery root. GPT selects the app, queries its returned
-MCP contact, reads its graph and service contracts, invokes the discovered
-deterministic HTTPS API, and composes the answer.
+For application requests, use the application product's own authenticated MCP
+connection. Inspect its live tool and resource discovery surfaces after
+`bos_get_context` validates that connection's exact scoped grant. Read any
+advertised operation contract before invoking its deterministic HTTPS API.
 
 Use current server-returned operations and app contracts through their supported
 transport. Keep app endpoints, graph identities, service names, and API operation
@@ -151,9 +170,7 @@ deployment scope, and post-deployment verification. For changes affecting the
 BOS MCP authentication or discovery contract, the handoff makes the
 client-owned Operations Center acceptance suite mandatory: `npm run
 contract:check`, `npm run contract:oauth-discovery-live -- --resource-url
-"$BOS_MCP_RESOURCE_URL" --format json`, `npm run
-contract:oauth-tool-auth-live -- --resource-url "$BOS_MCP_RESOURCE_URL" --tool
-bos_get_context --format json`, and `npm run contract:oauth-live --
+"$BOS_MCP_RESOURCE_URL" --format json`, and `npm run contract:oauth-live --
 --authorize-url "$BOS_OAUTH_AUTHORIZE_URL" --format json`. The server-side
 agent performs the work through the owning repository workflow and the
 developer's existing infrastructure identity. A credential being created for a
@@ -190,11 +207,15 @@ requested outcome.
 ## Connection ownership
 
 The agent owns the active product MCP client lifecycle for the duration of the
-user's request.
+user's request. For a dependent product, the installed BOS plugin executes the
+authentication handoff while the dependent product retains its own connection
+and resumes its own operation.
 
-Read [references/runtime-continuation-contract.md](references/runtime-continuation-contract.md)
+For BOS-owned operations, read
+[references/runtime-continuation-contract.md](references/runtime-continuation-contract.md)
 before recovering authorization, refreshing a tool manifest, or continuing a
-stateful mutation workflow.
+stateful mutation workflow. For an external caller's authentication request,
+apply only the generic handoff contract above and receive no operation state.
 
 - On the first product request, discover and use that product plugin's
   configured MCP connection. Confirm that BOS is installed when the product
@@ -205,9 +226,9 @@ stateful mutation workflow.
   orchestration runtime, inspect its advertised tool inventory and invoke the
   discovered callable there. Absence from the initially visible tool list does
   not establish a missing connection.
-- For transient read-only resource-list/read timeouts, follow the same-connection
-  retry in `bos-app-discovery`: wait briefly and retry once even when the host
-  offers no refresh API. Preserve completed independent reads.
+- For transient read-only resource-list/read timeouts, wait briefly and retry
+  once on the same configured connection even when the host offers no refresh
+  API. Preserve completed independent reads.
 - For other discovery failures, perform one supported refresh of the same
   connection and retry discovery once. Report the exact observed failure and missing host
   capability when recovery is unavailable. Never invent a tool call or claim
@@ -248,24 +269,14 @@ stateful mutation workflow.
   and installed product plugins unchanged throughout recovery.
 - If Codex reports `reauthenticationRequired`, `requires OAuth
   reauthentication`, or an equivalent MCP-startup authentication failure,
-  classify it as **Sign in** and preserve the active request. Use the requested
-  BOS capability to select the matching tool descriptor. Each authenticated BOS
-  tool declares `securitySchemes: [{ type: "oauth2", scopes: [...] }]` before
-  consent so the host knows that the selected capability requires BOS OAuth.
-  Descriptor visibility and selection expose no customer data and authorize no
-  business execution. Invoke the selected tool once; when the signed-out result
-  contains `isError: true` and `_meta["mcp/www_authenticate"]`, the host renders
-  the native **Connect**, **Sign in**, or **Authenticate** action in the active
-  chat. That challenge must include `resource_metadata`, `error`, and
-  `error_description`. After consent, refresh live discovery of dynamic
-  domain-specific MCP services and tooling, call `bos_get_context`, and resume
-  the original request. Tool presence identifies a currently exposed operation
-  and its schema; it never proves that the
-  selected context or provider is authorized for that operation.
-  When the OAuth tool descriptor is absent or its signed-out invocation omits
-  the challenge, report a tool-auth-contract defect and keep the request
-  pending. When the descriptor and challenge exist but the host omits the
-  native action, report a client authentication-activation defect. Do not
+  classify it as **Sign in** and preserve the active request. The protected MCP
+  resource returns HTTP 401 with its exact `WWW-Authenticate` resource-metadata
+  challenge. Use the host's native **Connect**, **Sign in**, or **Authenticate**
+  action for that registered product connection. After consent, refresh live
+  discovery of dynamic domain-specific MCP services and tooling, call
+  `bos_get_context`, and resume the original request. When the challenge exists
+  and the host omits its native action, report a client
+  authentication-activation defect. Do not
   invoke a CLI login or
   launch browser authentication on the user's behalf. Do not ask the user to
   reconnect BOS or resubmit the request. Do not use generic app-permission tools,
@@ -329,17 +340,15 @@ and inspect its sanitized result before producing a final answer.
    `delegated_role_id`, or a client-selected subservice authority. BOS derives
    execution scope from the authenticated principal, installed services,
    plugin enablement, role, capability, provider readiness, and requested tool.
-   Call `bos_get_context`, select exactly one authorized organization using the
-   organization-aware workflow below, then use that organization's
-   server-marked default role context and pass only its opaque `context_id` to
-   domain tools. An explicit organization or role in the user's request applies
-   to that request and does not rewrite the saved defaults.
+   Call `bos_get_context` to validate that the connection's one scoped OAuth
+   grant still resolves. Domain tool arguments never select another
+   organization, installation, application, or role.
 3. Fail closed when context is absent or ambiguous.
 4. Use the triggered subservice skill to choose the requested workflow and
    semantic operation from the current live-discovered dynamic domain service
    and tool surface. Keep connection selection fixed on the product that owns
    the requested capability. Treat the descriptor only as an operation/schema declaration;
-   call the operation with the selected opaque context and let BOS authorize
+   call the operation with its declared business arguments and let BOS authorize
    the organization, installation, role, plugin, capability, tool, and provider
    at `tools/call` time.
 5. Authenticate the active product's Claude account-level Web connector through
@@ -398,106 +407,6 @@ Domain skills interpret their workflows and execute through the configured
 product MCP. BOS derives actor, tenant, organization, application, installation,
 subservice, role, plugin, capability, and provider scope from the validated
 OAuth grant, requested tool, and canonical server records.
-
-## Organization-aware execution
-
-`bos_get_context` may return several organizations and may mark one default
-role inside each organization. Treat the result as selection metadata. Never
-render the complete context inventory or query domain data across every
-organization unless the user explicitly asks for that cross-organization
-scope.
-
-Use the packaged `scripts/client-preferences.mjs` helper for the shared,
-OS-user BOS setting `default_organization_label`. The helper stores only the
-display label, validates it against organization labels in the current
-authenticated context, and never stores an organization ID, context ID, token,
-credential, role, capability, or grant metadata. Pass JSON through standard
-input so customer labels do not appear in command arguments.
-
-For each request:
-
-1. Call `bos_get_context` once and deduplicate its `organization_label` values.
-2. When the user explicitly names an organization, match that label to exactly
-   one returned organization and use it for the current request. This explicit
-   selection takes precedence over the saved default.
-3. Otherwise call the helper's `read` operation with the current returned
-   organization labels. When it returns `current`, use its canonical
-   `default_organization_label`.
-4. When no setting exists and exactly one organization is available, use that
-   organization. When several are available without a current default, return
-   `configuration_required` and ask for one default organization. Do not issue
-   a domain data call until one organization is selected.
-5. Treat a stale or unmatched saved label as `configuration_required`. Never
-   substitute another organization or fan out to make the operation succeed.
-6. Within the selected organization and installed app, choose the unique entry
-   marked `is_default: true`, unless the user explicitly requested another
-   available role. Preserve that one context for related calls in the request.
-7. Execute against multiple organizations only when the user explicitly asks
-   for a cross-organization result. Bound the requested organization set,
-   select one opaque context per organization, preserve organization-level
-   provenance, and report partial failures separately.
-
-An unambiguous request such as “default to Primary Center” authorizes changing
-this client preference. Refresh `bos_get_context`, then invoke
-`set-default-organization` with the requested label and all current returned
-organization labels on standard input. Report success only after the helper
-returns `state: committed`. The preference is a selector among currently
-authorized server contexts; it never grants membership or authority.
-
-## Role-aware execution
-
-Treat role names and capabilities returned by BOS as descriptions of
-server-owned authority. Client prompts and arguments never create authority.
-
-1. Call `bos_get_context` before the first domain operation and after an
-   authorization, membership, or role-capability change.
-2. First select one organization through the organization-aware workflow.
-   Group that organization's role entries by installed app and use the unique
-   entry marked `is_default: true` unless the user explicitly requests another
-   available role.
-3. Select a role using only its opaque `context_id`. Never send a role name or
-   delegated-role value as authority.
-4. Confirm the requested operation exists in current live tool discovery and that
-   its arguments match the current schema. Do not infer authorization from
-   catalog presence or absence. Invoke it with the selected opaque context and
-   treat the server result as authoritative for role, capability, plugin, tool,
-   and provider access.
-5. Preserve the selected context for related calls in the request. An explicit
-   lower-role request changes the context for that request only.
-
-The server re-resolves membership and capabilities on every `tools/call`.
-Refresh context once after a denial or missing context, then retry only when the
-    fresh context makes the original call valid. Treat the repeated server result
-    as authoritative; live `tools/list` discovers the current domain-specific
-    service surface and never substitutes for request-time authorization.
-
-For role administration, call `bos_list_role_capabilities` only when the
-selected role carries `bos.roles.read`; it returns role intent, authority rank,
-capabilities, editability, and revision. Call `bos_update_role_capabilities`
-only when the user explicitly requests a change, using the exact context,
-target role, complete replacement capability list, and revision from that read.
-The selected role must also carry `bos.roles.update`. Treat success as a
-server-audited mutation recording the authenticated actor, acting role, target
-role, and before/after capabilities; never claim success when the server does
-not return the completed update. After success, refresh `bos_get_context`. On a
-revision conflict, read the current configuration and have the user resolve any
-material difference before retrying.
-
-## Plugin settings cache
-
-Use the packaged `scripts/plugin-settings-cache.mjs` helper for confirmed,
-display-safe plugin configuration snapshots and plugin-settings initialization
-receipts. Read
-[references/plugin-settings-cache-protocol.md](references/plugin-settings-cache-protocol.md)
-before a settings read, commit, invalidation, or receipt operation.
-
-Validate live BOS context first and use only the server-returned opaque
-`cache_scope`, current `settings_epoch`, and canonical snapshot. Commit from a
-completed BOS read, completed apply response, or reconciled committed result.
-Never commit recommendations, drafts, secrets, raw authority identifiers, or
-unknown mutation outcomes. A required unset or invalid partial field resumes
-the packaged plugin-settings initializer; domain skills never create a separate
-discovery path.
 
 ## Shared local document cache
 

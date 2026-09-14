@@ -11,7 +11,7 @@ then place authorized partner child-days without exceeding daily capacity.
 
 ## Evidence and authority
 
-1. Call `bos_get_context` and use only its server-issued context.
+1. Call `bos_get_context` and verify the active connection's scoped grant.
 2. Read customer settings for timezone, source roles, provider routes, report
    labels, and capacity defaults. Package no mailbox, location, tenant, or
    timezone default.

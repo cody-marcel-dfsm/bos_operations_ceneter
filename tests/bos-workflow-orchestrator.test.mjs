@@ -29,12 +29,13 @@ test("BOS exposes one application-neutral deterministic workflow entrypoint", as
   assert.match(guidance, /deterministic workflow/i);
   assert.match(guidance, /federated (?:agentic )?service mesh/i);
   assert.match(guidance, /bos_get_context/);
-  assert.match(guidance, /bos_list_plugin_services/);
-  assert.match(guidance, /bos_get_plugin_settings/);
-  assert.match(guidance, /bos_set_plugin_enabled/);
-  assert.match(guidance, /bos_begin_plugin_service_connection/);
   assert.match(guidance, /bos_resume_operation/);
-  assert.match(guidance, /owning product(?:'s)? MCP/i);
+  assert.match(guidance, /live-declared business arguments/i);
+  assert.doesNotMatch(guidance, /context_id/);
+  assert.match(guidance, /application MCP/i);
+  assert.match(guidance, /deterministic HTTPS/i);
+  assert.match(guidance, /API result as\s+execution evidence/i);
+  assert.doesNotMatch(guidance, /application operations through (?:the )?owning product(?:'s)? MCP/i);
   assert.match(guidance, /explicit user approval/i);
   assert.match(guidance, /evidence/i);
   assert.doesNotMatch(guidance, /Bright Horizons|Northstar Coding Academy/);
@@ -48,4 +49,3 @@ test("BOS exposes one application-neutral deterministic workflow entrypoint", as
     );
   }
 });
-

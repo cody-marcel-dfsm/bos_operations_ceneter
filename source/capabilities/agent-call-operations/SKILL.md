@@ -42,15 +42,12 @@ before invoking the call mutation.
    and provider identifiers.
 6. Reuse that key only for a transport retry, provider-authorization recovery,
    or reconciliation of this exact dispatch request. If provider authorization
-   is required, invoke `bos-plugin-settings-initialization` to refresh the
-   selected organization's plugin-service inventory before opening any recovery
-   action from the domain result. That initializer may open only the enabled
-   service row that the current organization profile marks
-   `connection_required`; never open the domain result's provider link directly.
-   After initialization is current, resume the same call request: refresh context and operation status,
+   is required, preserve and follow the exact secure recovery action returned
+   by the BOS Service for this scoped operation. After recovery is current,
+   resume the same call request: refresh context and operation status,
    then retry the same `tools/call` once with the same lead and key. When
-   no service row is actionable and the retried operation still requests
-   authorization, return `service_routing_mismatch`, state that no call was
+   the retried operation still requests authorization, return the exact
+   authorization failure, state that no call was
    placed when the evidence proves it, and preserve the same call request for
    server repair. Never connect or name an alternative provider based on
    package text.

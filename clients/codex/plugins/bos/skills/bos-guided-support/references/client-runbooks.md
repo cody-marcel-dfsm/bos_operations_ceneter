@@ -70,16 +70,12 @@ request.
 3. Start a new task after install or update when the existing task cannot see
    the plugin.
 4. Confirm the host shows the plugin-page **Login**, **Connect**, or
-   **Authenticate** action from the required app declaration. For request-time
-   chat authentication, select the requested OAuth-declared BOS tool and invoke
-   it once without business execution.
-5. The signed-out selected tool returns `isError: true` and
-   `_meta["mcp/www_authenticate"]` with `resource_metadata`, `error`, and
-   `error_description`; that tool result owns activation of the inline chat
-   action. The transport HTTP 401 challenge owns protected-resource discovery,
-   and the packaged MCP resource owns the connection. If the
-   selected-tool challenge does not render the inline action, preserve the
-   request and report an authentication-activation defect. The agent never
+   **Authenticate** action for the registered product connection.
+5. The signed-out protected MCP resource returns HTTP 401 with a
+   `WWW-Authenticate` resource-metadata challenge. That challenge owns OAuth
+   discovery and activation of the host's native authentication action. If the
+   valid challenge does not render the action, preserve the request and report
+   an authentication-activation defect. The agent never
    invokes CLI login or launches authentication for the customer.
 6. After browser consent succeeds, refresh the MCP session and live discovery
    of dynamic domain-specific MCP services and tooling, resolve BOS context,

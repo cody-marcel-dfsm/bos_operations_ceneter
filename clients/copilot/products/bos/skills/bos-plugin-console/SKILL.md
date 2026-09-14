@@ -1,6 +1,6 @@
 ---
 name: bos-plugin-console
-description: Show and manage BOS plugin, connection, enablement, server-settings summary, and display-property status. When a signed-out request needs BOS data, select the matching OAuth-declared BOS tool so its authentication challenge presents the active client's native login action, preserve the request through consent, and resume it afterward. Never substitute manual sign-in guidance or local inventory.
+description: Show and manage BOS plugin, connection, enablement, server-settings summary, and display-property status. When a signed-out request needs BOS data, use the protected resource's OAuth challenge to present the active client's native login action, preserve the request through consent, and resume it afterward. Never substitute manual sign-in guidance or local inventory.
 ---
 
 
@@ -47,10 +47,9 @@ remain required; the package does not intercept or enforce arbitrary API calls.
 Render the BOS Plugin Console directly in the active client's content window.
 The interaction is memory-only: never create a report file, execute a packaged
 renderer, start a local renderer or service, or persist the returned snapshot.
-The organization-selection preflight below may execute only the packaged
-`bos-mcp-client/scripts/client-preferences.mjs` helper's read operation. That
-read validates an existing display-label preference and creates no console
-state.
+The console uses only the organization, application, installation, and role
+already bound to the active product grant. It performs no client-side authority
+selection and creates no console state.
 
 Treat broad requests such as “show the server settings for the BOS plugins,”
 “show plugin settings,” or “which BOS services are connected?” as console
@@ -64,45 +63,29 @@ inventory and opens the settings surface directly. It does not render the
 console as an intermediate step.
 
 When BOS business data is unavailable because the customer is signed out, use
-the requested capability to select the matching BOS tool descriptor. That
-descriptor must declare its OAuth scopes through `securitySchemes`; descriptor
-visibility and tool selection do not authorize business execution or expose
-customer data. Invoke the selected tool once. When its unauthenticated result
-returns `_meta["mcp/www_authenticate"]`, let the active client render a simple
-native **Sign in**, **Connect**, or **Authenticate** button in this chat. Never
-replace that tool-bound OAuth challenge with a plugin-install recommendation,
-external install page, manual navigation, local inspection, or anonymous
-bootstrap business tool. Preserve the current request while the customer signs
-in, refresh live discovery of dynamic domain-specific MCP services and tooling
-after consent, call
+the protected MCP resource's HTTP 401 `WWW-Authenticate` resource-metadata
+challenge. Let the active client render its native **Sign in**, **Connect**, or
+**Authenticate** action for that registered connection. Never replace that
+resource-level OAuth challenge with a plugin-install recommendation, external
+install page, manual navigation, or local inspection. Preserve the current
+request while the customer signs in, refresh live discovery of dynamic
+domain-specific MCP services and tooling after consent, call
 `bos_get_context`, and continue this same request. Never ask the customer to
 repeat the prompt.
 
 ## Display
 
-1. Use the single installed BOS connection already present in the client's MCP
-   context. Never directly inspect the local filesystem or invoke client
-   command-line plugin inventory for this view. The governed preference-helper
-   read described below is the sole local selection operation.
-2. Call `bos_get_context` once through BOS and deduplicate its returned
-   organization labels. Resolve exactly one organization before any console
-   data call:
-   - an organization explicitly named in the current request takes precedence
-     after it matches exactly one returned label;
-   - otherwise run the packaged `client-preferences.mjs read` operation with
-     all current returned organization labels on standard input and use its
-     exact `default_organization_label` when it returns `state: current`;
-   - otherwise use the sole returned organization;
-   - when several organizations remain and the preference is missing, stale,
-     malformed, or ambiguous, return `configuration_required` and stop.
-3. Within the selected organization, use its unique server-marked default role
-   context and call `bos_list_plugin_services` with only that opaque
-   `context_id`. Never enumerate service data for every accessible
-   organization by default.
+1. Use the active product MCP connection already present in the client. Never directly inspect the local filesystem
+   or invoke command-line plugin inventory.
+2. Call `bos_get_context` once to revalidate that the OAuth grant binds exactly
+   one organization, application, installation, and role. Supply no authority
+   selector and stop on any missing or ambiguous scope.
+3. Call `bos_list_plugin_services` without organization, role, or context
+   arguments. The server derives the exact inventory from the validated grant.
 4. Treat inability to load the live console as a live-console failure. Never
    substitute a prior-task response, typed-settings cache, last-confirmed
    settings table, local plugin inventory, or multi-organization summary. A
-   tool refresh or reconnect repeats this same organization selection before
+   tool refresh or reconnect repeats scoped-grant validation before
    the console call.
 5. Let the server evaluate every product and plugin row from canonical
    installation, enablement, role, capability, and provider state. Never send
@@ -146,8 +129,8 @@ ends when the client has rendered the current in-memory response.
 ## Connect
 
 A row with a valid connection action displays **Connect**. Selecting it calls
-`bos_begin_plugin_service_connection` with the latest opaque `context_id`,
-`plugin_ref`, and `service_ref` from that same response.
+`bos_begin_plugin_service_connection` with the latest `plugin_ref` and
+`service_ref` from that same response.
 
 - For a missing grant, activate the active product connection's host-native
   **Connect**, **Sign in**, or **Authenticate** action.
@@ -172,7 +155,7 @@ provider payloads in chat, client files, or local storage.
 
 The **Enabled** toggle and an equivalent user request call
 `bos_set_plugin_enabled` through the BOS connection. Send
-the latest opaque `context_id`, `plugin_ref`, complete target boolean, server
+the latest `plugin_ref`, complete target boolean, server
 revision, and stable idempotency key.
 
 Require the user's explicit toggle or request. The server revalidates
@@ -187,8 +170,8 @@ starts, stops, or edits a plugin package on the user's machine.
 ## Settings
 
 A row whose server response exposes a valid settings action displays
-**Settings**. Selecting it invokes `bos-plugin-settings` with the latest opaque
-context and plugin selector from that same product response. The settings skill
+**Settings**. Selecting it invokes `bos-plugin-settings` with the latest plugin
+selector from that same product response. The settings skill
 uses the server field schema, native controls, authority-scoped cache, and
 audited mutation workflow. The console remains memory-only; the packaged cache
 helper belongs to the settings workflow and is never executed by a console

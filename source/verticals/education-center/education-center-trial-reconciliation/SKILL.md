@@ -40,7 +40,7 @@ count as the visual.
    “next seven days” as now through the same local time seven days later; for
    date-based primitives, search from today's local date through the local date
    containing that endpoint.
-2. Call `bos_get_context` once. Use the selected Education Center organization Lead Director scope and
+2. Call `bos_get_context` once. Use the Education Center connection's grant-bound Lead Director scope and
    verify Lead Director, Gmail, and Google Calendar read capabilities are healthy.
 3. Search Calendar across the full window without a text filter. Use
    `start_date`, `end_date`, and `time_zone`.
