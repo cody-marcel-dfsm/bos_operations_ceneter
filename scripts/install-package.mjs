@@ -185,7 +185,7 @@ async function configureCodexBosMcp(_options, paths) {
   if (metadata.connection_owner !== metadata.name ||
       entries.length !== 1 || name !== metadata.mcp_group_name ||
       server?.type !== "http" || server?.url !== expectedUrl ||
-      server?.oauth_resource !== expectedUrl || server?.required !== true ||
+      server?.oauth_resource !== expectedUrl || server?.required !== false ||
       server?.startup_timeout_sec !== metadata.codex_mcp_startup_timeout_sec ||
       server?.tool_timeout_sec !== metadata.codex_mcp_tool_timeout_sec ||
       JSON.stringify(Object.keys(server ?? {}).sort()) !==
@@ -199,7 +199,7 @@ async function configureCodexBosMcp(_options, paths) {
     name: metadata.mcp_group_name,
     url: expectedUrl,
     oauth_resource: expectedUrl,
-    required: true,
+    required: false,
     startup_timeout_sec: metadata.codex_mcp_startup_timeout_sec,
     tool_timeout_sec: metadata.codex_mcp_tool_timeout_sec,
     authentication: "oauth_2_1",

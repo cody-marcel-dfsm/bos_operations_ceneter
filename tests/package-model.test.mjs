@@ -1529,7 +1529,7 @@ test("BOS OAuth targets and generated product metadata derive from product.json"
         type: "http",
         url: canonicalBosProduct.mcp_resource_url,
         oauth_resource: canonicalBosProduct.mcp_resource_url,
-        required: true,
+        required: false,
         startup_timeout_sec: canonicalBosProduct.codex_mcp_startup_timeout_sec,
         tool_timeout_sec: canonicalBosProduct.codex_mcp_tool_timeout_sec
       }
@@ -1764,7 +1764,7 @@ test("disabled products are absent while active runtime products remain scoped",
         type: "http",
         url: canonicalBosProduct.mcp_resource_url,
         oauth_resource: canonicalBosProduct.mcp_resource_url,
-        required: true,
+        required: false,
         startup_timeout_sec: canonicalBosProduct.codex_mcp_startup_timeout_sec,
         tool_timeout_sec: canonicalBosProduct.codex_mcp_tool_timeout_sec
       }
@@ -1801,7 +1801,7 @@ test("BOS and Education Center each own an OAuth MCP binding", async () => {
   assert.equal(metadata.mcp_group_name, "platform");
   assert.equal(metadata.resource_url, codexMcp.mcpServers.platform.url);
   assert.equal(metadata.resource_url, codexMcp.mcpServers.platform.oauth_resource);
-  assert.equal(codexMcp.mcpServers.platform.required, true);
+  assert.equal(codexMcp.mcpServers.platform.required, false);
   assert.equal(
     codexMcp.mcpServers.platform.startup_timeout_sec,
     canonicalBosProduct.codex_mcp_startup_timeout_sec

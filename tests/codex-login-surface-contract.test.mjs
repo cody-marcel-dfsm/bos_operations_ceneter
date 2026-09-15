@@ -14,7 +14,9 @@ test("generated contracts require durable product-owned OAuth resources", async 
   const login = await readJson(join(root, "contracts", "codex-login-surface.v1.json"));
   const connection = await readJson(join(root, "contracts", "product-mcp-connections.v1.json"));
   assert.equal(login.package_binding_acceptance.oauth_resource_must_equal_resource_url, true);
-  assert.equal(login.package_binding_acceptance.server_required, true);
+  assert.equal(login.package_binding_acceptance.server_required, false);
+  assert.equal(login.package_binding_acceptance.authenticated_business_execution_required, true);
+  assert.equal(login.package_binding_acceptance.rejected_refresh_token_behavior, "HOST_REAUTHENTICATION_ACTION");
   assert.equal(login.package_binding_acceptance.startup_timeout_sec, 180);
   assert.equal(connection.connection_policy, "EACH_PRODUCT_OWNS_ONE_SCOPED_MCP");
   assert.ok(connection.products.every(({ codex_mcp_startup_timeout_sec }) =>
@@ -33,7 +35,7 @@ test("BOS Codex package derives authentication from its bundled MCP resource", a
         type: "http",
         url: "https://dfsm.ai/mcp/apps/bos/platform",
         oauth_resource: "https://dfsm.ai/mcp/apps/bos/platform",
-        required: true,
+        required: false,
         startup_timeout_sec: 180,
         tool_timeout_sec: 180
       }

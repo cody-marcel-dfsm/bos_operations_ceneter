@@ -97,7 +97,7 @@ async function inspectInstalledMcpBinding(home, marketplace, product, versions, 
     server?.type === "http" &&
     server?.url === product.mcp_resource_url &&
     server?.oauth_resource === product.mcp_resource_url &&
-    server?.required === true &&
+    server?.required === false &&
     server?.startup_timeout_sec === product.codex_mcp_startup_timeout_sec &&
     server?.tool_timeout_sec === product.codex_mcp_tool_timeout_sec &&
     JSON.stringify(Object.keys(server ?? {}).sort()) ===

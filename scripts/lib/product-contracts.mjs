@@ -106,6 +106,8 @@ export function productMcpConnectionsContract(products) {
       tool_surface_authorization_semantics: "AUTHENTICATED_DESCRIPTORS_DO_NOT_GRANT_AUTHORITY",
       operation_authorization: "SERVER_EVALUATED_ON_TOOLS_CALL",
       native_action_surface: "ACTIVE_CHAT",
+      rejected_refresh_token_behavior: "HOST_REAUTHENTICATION_ACTION",
+      session_start_blocking: false,
       continuation_policy: "RESUME_ORIGINAL_REQUEST"
     },
     products: runtimeProducts.map((product) => ({
@@ -144,7 +146,9 @@ export function codexLoginSurfaceContract(product) {
       server_type: "http",
       resource_url_must_equal_product_source: true,
       oauth_resource_must_equal_resource_url: true,
-      server_required: true,
+      server_required: false,
+      authenticated_business_execution_required: true,
+      rejected_refresh_token_behavior: "HOST_REAUTHENTICATION_ACTION",
       startup_timeout_sec: product.codex_mcp_startup_timeout_sec,
       tool_timeout_sec: product.codex_mcp_tool_timeout_sec
     },
