@@ -248,16 +248,6 @@ async function postAuthorizedMcp(
   });
 }
 
-function expectedBosToolChallenge(resourceUrl) {
-  const metadata = new URL(
-    `/.well-known/oauth-protected-resource${new URL(resourceUrl).pathname}`,
-    resourceUrl
-  ).href;
-  return `Bearer resource_metadata="${metadata}", ` +
-    'scope="mcp:tools", error="invalid_token", ' +
-    'error_description="Authentication required"';
-}
-
 function validIssuerEndpoint(value, issuer) {
   try {
     const endpoint = new URL(value);
@@ -280,6 +270,36 @@ async function parseJsonResponse(response) {
   } catch {
     return null;
   }
+}
+
+const PREAUTHENTICATION_SURFACE_KEYS = new Set([
+  "result", "tools", "inputSchema", "outputSchema", "resources", "prompts",
+  "structuredContent"
+]);
+
+function exposesPreauthenticationSurface(value) {
+  if (!value || typeof value !== "object") return false;
+  for (const [key, nested] of Object.entries(value)) {
+    if (PREAUTHENTICATION_SURFACE_KEYS.has(key)) return true;
+    if (exposesPreauthenticationSurface(nested)) return true;
+  }
+  return false;
+}
+
+async function inspectMcpAuthenticationChallenge(response, resourceUrl) {
+  const violations = [];
+  if (response.status !== 401) {
+    violations.push(`expected HTTP 401; found HTTP ${response.status}`);
+  }
+  if (response.headers.get("www-authenticate") !==
+      expectedBosResourceChallenge(resourceUrl)) {
+    violations.push("the WWW-Authenticate header is not the exact canonical protected-resource challenge");
+  }
+  const payload = await parseJsonResponse(response);
+  if (exposesPreauthenticationSurface(payload)) {
+    violations.push("the response exposed a pre-authentication tool, schema, resource, prompt, or result surface");
+  }
+  return violations;
 }
 
 export async function probeBosCodexStaleRefreshRecovery({
@@ -312,7 +332,6 @@ export async function probeBosCodexStaleRefreshRecovery({
     tools_list_status: null,
     tools_call_status: null,
     business_call_status: null,
-    authentication_tool: null,
     non_codex_registration_status: null,
     non_codex_refresh_status: null,
     non_codex_error: null,
@@ -524,99 +543,57 @@ export async function probeBosCodexStaleRefreshRecovery({
     }, accessToken);
     result.initialize_status = initializeResponse.status;
   } catch (error) {
-    fail("oauth_stale_refresh_initialize_request", `Recovered MCP initialization failed: ${error.message}`, "initialize");
+    fail("oauth_stale_refresh_initialize_request", `Bridge-bearer MCP initialization failed: ${error.message}`, "initialize");
     return result;
   }
-  if (initializeResponse.status !== 200) {
+  const initializeViolations = await inspectMcpAuthenticationChallenge(
+    initializeResponse, resourceUrl
+  );
+  if (initializeViolations.length) {
     fail(
-      "oauth_stale_refresh_initialize_status",
-      `Recovered MCP initialization must return HTTP 200; found HTTP ${initializeResponse.status}.`,
+      "oauth_stale_refresh_initialize_challenge",
+      `The bridge bearer must receive the canonical authentication challenge during initialization: ${initializeViolations.join("; ")}.`,
       "initialize"
     );
   }
 
   let toolsResponse;
-  let toolsPayload;
   try {
     toolsResponse = await postAuthorizedMcp(request, resourceUrl, 102, "tools/list", {}, accessToken);
     result.tools_list_status = toolsResponse.status;
-    toolsPayload = await parseJsonResponse(toolsResponse);
   } catch (error) {
-    fail("oauth_stale_refresh_tools_list_request", `Recovered tool discovery failed: ${error.message}`, "tools/list");
+    fail("oauth_stale_refresh_tools_list_request", `Bridge-bearer tool discovery failed: ${error.message}`, "tools/list");
     return result;
   }
-  const tools = toolsPayload?.result?.tools;
-  const authenticationTool = Array.isArray(tools)
-    ? tools.find((tool) => tool?.name === "bos_get_context")
-    : null;
-  if (toolsResponse.status !== 200 || !Array.isArray(tools) || tools.length !== 1 ||
-      !authenticationTool) {
+  const toolsViolations = await inspectMcpAuthenticationChallenge(
+    toolsResponse, resourceUrl
+  );
+  if (toolsViolations.length) {
     fail(
       "oauth_stale_refresh_tool_surface",
-      "The recovery bearer must expose only bos_get_context and no business tools or schemas.",
+      `The bridge bearer must receive the canonical authentication challenge and no tool or schema surface: ${toolsViolations.join("; ")}.`,
       "tools/list"
     );
-  } else {
-    result.authentication_tool = authenticationTool.name;
-    const inputSchema = authenticationTool.inputSchema;
-    const securitySchemes = authenticationTool.securitySchemes;
-    const inputSchemaKeys = inputSchema && typeof inputSchema === "object"
-      ? Object.keys(inputSchema).sort()
-      : [];
-    if (inputSchema?.type !== "object" ||
-        JSON.stringify(inputSchema?.properties) !== "{}" ||
-        inputSchema?.additionalProperties !== false ||
-        JSON.stringify(inputSchemaKeys) !==
-          JSON.stringify(["additionalProperties", "properties", "type"]) ||
-        !Array.isArray(securitySchemes) || securitySchemes.length !== 1 ||
-        securitySchemes[0]?.type !== "oauth2" ||
-        JSON.stringify(securitySchemes[0]?.scopes) !== JSON.stringify(["mcp:tools"]) ||
-        JSON.stringify(Object.keys(securitySchemes[0] ?? {}).sort()) !==
-          JSON.stringify(["scopes", "type"])) {
-      fail(
-        "oauth_stale_refresh_authentication_tool_contract",
-        "bos_get_context must expose an empty authority-free input and the exact mcp:tools OAuth security scheme.",
-        "tools/list"
-      );
-    }
   }
 
   let contextResponse;
-  let contextPayload;
   try {
     contextResponse = await postAuthorizedMcp(request, resourceUrl, 103, "tools/call", {
       name: "bos_get_context",
       arguments: {}
     }, accessToken);
     result.tools_call_status = contextResponse.status;
-    contextPayload = await parseJsonResponse(contextResponse);
   } catch (error) {
-    fail("oauth_stale_refresh_context_request", `Recovered context call failed: ${error.message}`, "tools/call");
+    fail("oauth_stale_refresh_context_request", `Bridge-bearer context call failed: ${error.message}`, "tools/call");
     return result;
   }
-  const contextResult = contextPayload?.result;
-  const contextChallenges = contextResult?._meta?.["mcp/www_authenticate"];
-  const contextResultKeys = contextResult && typeof contextResult === "object"
-    ? Object.keys(contextResult).sort()
-    : [];
-  const contextMetaKeys = contextResult?._meta &&
-      typeof contextResult._meta === "object"
-    ? Object.keys(contextResult._meta).sort()
-    : [];
-  if (contextResponse.status !== 200 || contextResult?.isError !== true ||
-      JSON.stringify(contextResultKeys) !==
-        JSON.stringify(["_meta", "content", "isError"]) ||
-      JSON.stringify(contextMetaKeys) !==
-        JSON.stringify(["mcp/www_authenticate"]) ||
-      JSON.stringify(contextResult?.content) !== JSON.stringify([
-        { type: "text", text: "Authentication required." }
-      ]) ||
-      Object.hasOwn(contextResult ?? {}, "structuredContent") ||
-      JSON.stringify(contextChallenges) !==
-        JSON.stringify([expectedBosToolChallenge(resourceUrl)])) {
+  const contextViolations = await inspectMcpAuthenticationChallenge(
+    contextResponse, resourceUrl
+  );
+  if (contextViolations.length) {
     fail(
       "oauth_stale_refresh_context_challenge",
-      "Recovered bos_get_context must return the exact canonical MCP authentication challenge.",
+      `The bridge bearer must not expose bos_get_context and must receive the canonical authentication challenge: ${contextViolations.join("; ")}.`,
       "tools/call"
     );
   }
@@ -702,15 +679,16 @@ export async function probeBosCodexStaleRefreshRecovery({
     }, accessToken);
     result.business_call_status = businessResponse.status;
   } catch (error) {
-    fail("oauth_stale_refresh_business_request", `Recovered business-tool probe failed: ${error.message}`, "business-tools/call");
+    fail("oauth_stale_refresh_business_request", `Bridge-bearer business-tool probe failed: ${error.message}`, "business-tools/call");
     return result;
   }
-  if (businessResponse.status !== 401 ||
-      businessResponse.headers.get("www-authenticate") !==
-        expectedBosResourceChallenge(resourceUrl)) {
+  const businessViolations = await inspectMcpAuthenticationChallenge(
+    businessResponse, resourceUrl
+  );
+  if (businessViolations.length) {
     fail(
       "oauth_stale_refresh_business_denial",
-      "The recovery bearer must not authorize business access and must receive HTTP 401 with the exact protected-resource challenge.",
+      `The bridge bearer must not authorize business access and must receive the canonical authentication challenge: ${businessViolations.join("; ")}.`,
       "business-tools/call"
     );
   }
@@ -785,141 +763,48 @@ export async function probeBosNativeLoginTrigger({
     tools_list_status: null,
     tools_call_status: null,
     business_call_status: null,
-    authentication_tool: null,
     violations
   };
 
-  let initializeResponse;
-  try {
-    initializeResponse = await postMcp(request, resourceUrl, 1, "initialize", {
+  const probes = [
+    ["initialize_status", "initialize", 1, "initialize", {
       protocolVersion: "2025-06-18",
       capabilities: {},
       clientInfo: { name: "bos-login-contract", version: "1" }
-    });
-    result.initialize_status = initializeResponse.status;
-  } catch (error) {
-    violations.push(loginTriggerFinding(
-      "oauth_login_initialize_request",
-      `Signed-out MCP initialization failed: ${error.message}`,
-      "initialize"
-    ));
-    return result;
-  }
-  if (initializeResponse.status !== 200) {
-    violations.push(loginTriggerFinding(
-      "oauth_login_initialize_status",
-      `Signed-out MCP initialization must return HTTP 200; found HTTP ${initializeResponse.status}.`,
-      "initialize"
-    ));
-  }
-
-  let toolsResponse;
-  let toolsPayload;
-  try {
-    toolsResponse = await postMcp(request, resourceUrl, 2, "tools/list", {});
-    result.tools_list_status = toolsResponse.status;
-    toolsPayload = await toolsResponse.json();
-  } catch (error) {
-    violations.push(loginTriggerFinding(
-      "oauth_login_tools_list_request",
-      `Signed-out MCP tool discovery failed: ${error.message}`,
-      "tools/list"
-    ));
-    return result;
-  }
-  if (toolsResponse.status !== 200) {
-    violations.push(loginTriggerFinding(
-      "oauth_login_tools_list_status",
-      `Signed-out MCP tool discovery must return HTTP 200; found HTTP ${toolsResponse.status}.`,
-      "tools/list"
-    ));
-  }
-  const tools = toolsPayload?.result?.tools;
-  const authenticationTool = Array.isArray(tools)
-    ? tools.find((tool) => tool?.name === "bos_get_context")
-    : null;
-  if (!Array.isArray(tools) || tools.length !== 1) {
-    violations.push(loginTriggerFinding(
-      "oauth_login_tool_surface",
-      "Signed-out tool discovery must expose exactly one authentication trigger and no business tools or schemas.",
-      "tools/list"
-    ));
-  }
-  const schemes = authenticationTool?.securitySchemes;
-  if (!authenticationTool || !Array.isArray(schemes) ||
-      !schemes.some((scheme) =>
-        scheme?.type === "oauth2" &&
-        Array.isArray(scheme.scopes) &&
-        scheme.scopes.includes("mcp:tools")
-      )) {
-    violations.push(loginTriggerFinding(
-      "oauth_login_tool_security",
-      "Signed-out tool discovery must advertise bos_get_context with its OAuth2 mcp:tools security scheme.",
-      "tools/list"
-    ));
-  } else {
-    result.authentication_tool = authenticationTool.name;
-  }
-
-  let callResponse;
-  let callPayload;
-  try {
-    callResponse = await postMcp(request, resourceUrl, 3, "tools/call", {
+    }],
+    ["tools_list_status", "tools/list", 2, "tools/list", {}],
+    ["tools_call_status", "tools/call", 3, "tools/call", {
       name: "bos_get_context",
       arguments: {}
-    });
-    result.tools_call_status = callResponse.status;
-    callPayload = await callResponse.json();
-  } catch (error) {
-    violations.push(loginTriggerFinding(
-      "oauth_login_tools_call_request",
-      `Signed-out authentication tool call failed: ${error.message}`,
-      "tools/call"
-    ));
-    return result;
-  }
-  if (callResponse.status !== 200) {
-    violations.push(loginTriggerFinding(
-      "oauth_login_tools_call_status",
-      `Signed-out authentication tool call must return HTTP 200; found HTTP ${callResponse.status}.`,
-      "tools/call"
-    ));
-  }
-  const toolResult = callPayload?.result;
-  const challenges = toolResult?._meta?.["mcp/www_authenticate"];
-  const expectedToolChallenge = expectedBosToolChallenge(resourceUrl);
-  if (toolResult?.isError !== true ||
-      JSON.stringify(challenges) !== JSON.stringify([expectedToolChallenge])) {
-    violations.push(loginTriggerFinding(
-      "oauth_login_tool_challenge",
-      "Signed-out bos_get_context must return the exact canonical MCP authentication challenge that causes the host to render its native login action.",
-      "tools/call"
-    ));
-  }
-
-  let businessResponse;
-  try {
-    businessResponse = await postMcp(request, resourceUrl, 4, "tools/call", {
+    }],
+    ["business_call_status", "business-tools/call", 4, "tools/call", {
       name: "bos_login_contract_business_probe",
       arguments: {}
-    });
-    result.business_call_status = businessResponse.status;
-  } catch (error) {
-    violations.push(loginTriggerFinding(
-      "oauth_login_business_call_request",
-      `Signed-out business-tool denial probe failed: ${error.message}`,
-      "business-tools/call"
-    ));
-    return result;
-  }
-  const businessChallenge = businessResponse.headers.get("www-authenticate");
-  const expectedBusinessChallenge = expectedBosResourceChallenge(resourceUrl);
-  if (businessResponse.status !== 401 || businessChallenge !== expectedBusinessChallenge) {
-    violations.push(loginTriggerFinding(
-      "oauth_login_business_call_denial",
-      "Signed-out business tools must remain denied with HTTP 401 and the exact protected-resource challenge.",
-      "business-tools/call"
-    ));
+    }]
+  ];
+  for (const [statusField, path, id, method, params] of probes) {
+    let response;
+    try {
+      response = await postMcp(request, resourceUrl, id, method, params);
+      result[statusField] = response.status;
+    } catch (error) {
+      violations.push(loginTriggerFinding(
+        `oauth_login_${path.replaceAll("/", "_")}_request`,
+        `Signed-out MCP ${path} probe failed: ${error.message}`,
+        path
+      ));
+      return result;
+    }
+    const responseViolations = await inspectMcpAuthenticationChallenge(
+      response, resourceUrl
+    );
+    if (responseViolations.length) {
+      violations.push(loginTriggerFinding(
+        `oauth_login_${path.replaceAll("/", "_")}_challenge`,
+        `Signed-out MCP ${path} must return the canonical protected-resource challenge without exposing tools or schemas: ${responseViolations.join("; ")}.`,
+        path
+      ));
+    }
   }
 
   result.status = violations.length ? "failed" : "passed";
