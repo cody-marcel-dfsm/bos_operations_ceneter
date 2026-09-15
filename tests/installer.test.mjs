@@ -110,7 +110,7 @@ test("Codex runtime installation binds the package-owned BOS MCP resource", asyn
     name: "platform",
     url: resourceGroupUrl,
     oauth_resource: resourceGroupUrl,
-    required: true,
+    required: false,
     startup_timeout_sec: 180,
     tool_timeout_sec: 180,
     authentication: "oauth_2_1",
@@ -195,12 +195,12 @@ test("Codex OAuth installation rejects a malformed MCP transport", async () => {
   );
 });
 
-test("Codex OAuth installation rejects an optional MCP server", async () => {
+test("Codex OAuth installation rejects a session-blocking MCP server", async () => {
   const home = await temporaryHome();
   await applyInstallationRaw({ home, product: "bos" });
   const mcpPath = join(installedProduct(home, "bos"), ".mcp.json");
   const mcp = JSON.parse(await readFile(mcpPath, "utf8"));
-  mcp.mcpServers.platform.required = false;
+  mcp.mcpServers.platform.required = true;
   await chmod(mcpPath, 0o644);
   await writeFile(mcpPath, JSON.stringify(mcp));
   await assert.rejects(

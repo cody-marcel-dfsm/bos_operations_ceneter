@@ -19,7 +19,9 @@
     "server_type": "http",
     "resource_url_must_equal_product_source": true,
     "oauth_resource_must_equal_resource_url": true,
-    "server_required": true,
+    "server_required": false,
+    "authenticated_business_execution_required": true,
+    "rejected_refresh_token_behavior": "HOST_REAUTHENTICATION_ACTION",
     "startup_timeout_sec": 180,
     "tool_timeout_sec": 180
   },

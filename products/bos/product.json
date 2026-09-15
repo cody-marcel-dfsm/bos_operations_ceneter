@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.102",
+  "version": "0.4.103",
   "release_status": "active",
   "display_name": "BOS — Business Operating System",
   "description": "Run deterministic workflows across a federated agentic service mesh.",

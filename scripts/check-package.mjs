@@ -303,7 +303,7 @@ async function validateProducts() {
             server?.type !== "http" ||
             server?.url !== materializeMcpUrl(manifest) ||
             server?.oauth_resource !== materializeMcpUrl(manifest) ||
-            server?.required !== true ||
+            server?.required !== false ||
             server?.startup_timeout_sec !== manifest.codex_mcp_startup_timeout_sec ||
             server?.tool_timeout_sec !== manifest.codex_mcp_tool_timeout_sec ||
             JSON.stringify(Object.keys(server ?? {}).sort()) !==

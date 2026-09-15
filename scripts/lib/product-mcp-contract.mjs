@@ -302,7 +302,7 @@ async function inspectExternalConnectionArtifact(packageRoot, metadata) {
   let valid = entries.length === 1 && name === metadata.mcp_group_name;
   if (client === "codex") {
     valid = valid && server?.type === "http" && server?.url === metadata.resource_url &&
-      server?.oauth_resource === metadata.resource_url && server?.required === true;
+      server?.oauth_resource === metadata.resource_url && server?.required === false;
     if (!Number.isInteger(server?.startup_timeout_sec) ||
         server.startup_timeout_sec < 180 ||
         !Number.isInteger(server?.tool_timeout_sec) ||
@@ -538,7 +538,7 @@ export async function verifyProductMcpContract({
         const [name, server] = entries[0] ?? [];
         if (entries.length !== 1 || name !== product.mcp_group_name ||
             server?.type !== "http" || server?.url !== product.mcp_resource_url ||
-            server?.oauth_resource !== product.mcp_resource_url || server?.required !== true ||
+            server?.oauth_resource !== product.mcp_resource_url || server?.required !== false ||
             server?.startup_timeout_sec !== product.codex_mcp_startup_timeout_sec ||
             server?.tool_timeout_sec !== product.codex_mcp_tool_timeout_sec) {
           violations.push(finding("codex_mcp_binding", artifact, "Codex MCP binding differs from the product manifest."));

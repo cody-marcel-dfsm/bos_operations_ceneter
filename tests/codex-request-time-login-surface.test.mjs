@@ -21,6 +21,8 @@ test("Codex request-time login contract uses protected-resource OAuth discovery"
     tool_surface_authorization_semantics: "AUTHENTICATED_DESCRIPTORS_DO_NOT_GRANT_AUTHORITY",
     operation_authorization: "SERVER_EVALUATED_ON_TOOLS_CALL",
     native_action_surface: "ACTIVE_CHAT",
+    rejected_refresh_token_behavior: "HOST_REAUTHENTICATION_ACTION",
+    session_start_blocking: false,
     continuation_policy: "RESUME_ORIGINAL_REQUEST"
   });
 });

@@ -703,7 +703,7 @@ export function codexPluginMcpManifest(product) {
         type: "http",
         url: materializeMcpUrl(product),
         oauth_resource: materializeMcpUrl(product),
-        required: true,
+        required: false,
         startup_timeout_sec: product.codex_mcp_startup_timeout_sec,
         tool_timeout_sec: product.codex_mcp_tool_timeout_sec
       }

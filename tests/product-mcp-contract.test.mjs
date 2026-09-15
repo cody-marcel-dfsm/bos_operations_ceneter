@@ -73,7 +73,7 @@ async function createExternalCodexProduct(overrides = {}, serverOverrides = {}) 
         type: "http",
         url: metadata.resource_url,
         oauth_resource: metadata.resource_url,
-        required: true,
+        required: false,
         startup_timeout_sec: 180,
         tool_timeout_sec: 180,
         ...serverOverrides
@@ -243,6 +243,19 @@ test("external product package validates without repository product source", asy
       authorization_scope_policy: authorizationScopePolicy,
       resource_url: "https://example.test/mcp/apps/sample-crm/crm"
     });
+  } finally {
+    await rm(packageRoot, { recursive: true, force: true });
+  }
+});
+
+test("external Codex products reject session-blocking MCP startup", async () => {
+  const packageRoot = await createExternalCodexProduct({}, { required: true });
+  try {
+    const result = await verifyExternalProductPackage({ root, packageRoot });
+    assert.equal(result.status, "failed");
+    assert.deepEqual(result.violations.map(({ code }) => code), [
+      "external_mcp_binding"
+    ]);
   } finally {
     await rm(packageRoot, { recursive: true, force: true });
   }
