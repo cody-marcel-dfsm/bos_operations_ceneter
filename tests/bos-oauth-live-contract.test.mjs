@@ -8,7 +8,9 @@ import {
   CANONICAL_RESOURCE_CHALLENGE,
   expectedBosResourceChallenge,
   inspectGoogleAccountSelectorRedirect,
+  probeBosCodexStaleRefreshRecovery,
   probeBosOAuthDiscovery,
+  probeBosNativeLoginTrigger,
   probeBosOAuthAuthorize
 } from "../scripts/lib/bos-oauth-live-contract.mjs";
 import {
@@ -345,6 +347,442 @@ test("BOS OAuth discovery accepts the canonical signed-out challenge", async () 
     bosProduct.oauth.authorization_endpoint
   );
   assert.deepEqual(result.violations, []);
+});
+
+test("BOS native login trigger exposes OAuth metadata and a tool challenge", async () => {
+  const calls = [];
+  const result = await probeBosNativeLoginTrigger({
+    fetchImpl: async (_url, init) => {
+      const request = JSON.parse(init.body);
+      calls.push(request.method);
+      if (request.method === "initialize") {
+        return new Response(JSON.stringify({
+          jsonrpc: "2.0",
+          id: request.id,
+          result: {
+            protocolVersion: "2025-06-18",
+            capabilities: { tools: { listChanged: false } },
+            serverInfo: { name: "bos", version: "1" }
+          }
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (request.method === "tools/list") {
+        return new Response(JSON.stringify({
+          jsonrpc: "2.0",
+          id: request.id,
+          result: {
+            tools: [{
+              name: "bos_get_context",
+              inputSchema: {
+                type: "object",
+                properties: {},
+                additionalProperties: false
+              },
+              securitySchemes: [{ type: "oauth2", scopes: ["mcp:tools"] }]
+            }]
+          }
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (request.params?.name === "bos_get_context") return new Response(JSON.stringify({
+        jsonrpc: "2.0",
+        id: request.id,
+        result: {
+          content: [{ type: "text", text: "Authentication required." }],
+          isError: true,
+          _meta: {
+            "mcp/www_authenticate": [
+              'Bearer resource_metadata="https://dfsm.ai/.well-known/oauth-protected-resource/mcp/apps/bos/platform", scope="mcp:tools", error="invalid_token", error_description="Authentication required"'
+            ]
+          }
+        }
+      }), { status: 200, headers: { "content-type": "application/json" } });
+      return new Response(
+        JSON.stringify({ detail: { error: "authentication_required" } }),
+        {
+          status: 401,
+          headers: {
+            "content-type": "application/json",
+            "www-authenticate": CANONICAL_RESOURCE_CHALLENGE
+          }
+        }
+      );
+    }
+  });
+
+  assert.equal(result.status, "passed");
+  assert.equal(result.authentication_tool, "bos_get_context");
+  assert.equal(result.business_call_status, 401);
+  assert.deepEqual(calls, ["initialize", "tools/list", "tools/call", "tools/call"]);
+});
+
+test("BOS native login trigger rejects a transport-only 401 response", async () => {
+  const result = await probeBosNativeLoginTrigger({
+    fetchImpl: async () => new Response(
+      JSON.stringify({ detail: { error: "authentication_required" } }),
+      {
+        status: 401,
+        headers: {
+          "content-type": "application/json",
+          "www-authenticate": CANONICAL_RESOURCE_CHALLENGE
+        }
+      }
+    )
+  });
+
+  assert.equal(result.status, "failed");
+  assert.ok(result.violations.some(({ code }) => code === "oauth_login_initialize_status"));
+  assert.ok(result.violations.some(({ code }) => code === "oauth_login_tool_security"));
+  assert.ok(result.violations.some(({ code }) => code === "oauth_login_tools_call_status"));
+});
+
+test("BOS native login trigger rejects a noncanonical tool challenge or open business call", async () => {
+  const result = await probeBosNativeLoginTrigger({
+    fetchImpl: async (_url, init) => {
+      const request = JSON.parse(init.body);
+      if (request.method === "initialize") {
+        return new Response(JSON.stringify({
+          jsonrpc: "2.0",
+          id: request.id,
+          result: { protocolVersion: "2025-06-18", capabilities: { tools: {} } }
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (request.method === "tools/list") {
+        return new Response(JSON.stringify({
+          jsonrpc: "2.0",
+          id: request.id,
+          result: {
+            tools: [{
+              name: "bos_get_context",
+              securitySchemes: [{ type: "oauth2", scopes: ["mcp:tools"] }]
+            }]
+          }
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (request.params?.name === "bos_get_context") {
+        return new Response(JSON.stringify({
+          jsonrpc: "2.0",
+          id: request.id,
+          result: {
+            isError: true,
+            _meta: {
+              "mcp/www_authenticate": [
+                'Bearer resource_metadata="https://dfsm.ai/.well-known/oauth-protected-resource/mcp/apps/bos/platform", scope="extra", error="invalid_token", error_description="Authentication required"'
+              ]
+            }
+          }
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ jsonrpc: "2.0", id: request.id, result: {} }), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      });
+    }
+  });
+
+  assert.equal(result.status, "failed");
+  assert.ok(result.violations.some(({ code }) => code === "oauth_login_tool_challenge"));
+  assert.ok(result.violations.some(({ code }) => code === "oauth_login_business_call_denial"));
+});
+
+function staleRefreshRecoveryFetch(resourceUrl, {
+  includeRefreshToken = false,
+  nonCodexGetsHandoff = false,
+  contextResultExtras = {},
+  contextMetaExtras = {},
+  tokenPayloadOverrides = {}
+} = {}) {
+  const issuer = new URL(resourceUrl).origin;
+  const protectedMetadataUrl = new URL(
+    `/.well-known/oauth-protected-resource${new URL(resourceUrl).pathname}`,
+    issuer
+  ).href;
+  const authorizationMetadataUrl = new URL(
+    "/.well-known/oauth-authorization-server",
+    issuer
+  ).href;
+  const registrationEndpoint = new URL("/api/v1/mcp/oauth/register", issuer).href;
+  const tokenEndpoint = new URL("/api/v1/mcp/oauth/token", issuer).href;
+  const clients = new Map();
+  const requests = [];
+  let clientSequence = 0;
+  const fetchImpl = async (url, init = {}) => {
+    requests.push({ url, init });
+    if (url === protectedMetadataUrl) {
+      return Response.json({
+        resource: resourceUrl,
+        authorization_servers: [issuer]
+      });
+    }
+    if (url === authorizationMetadataUrl) {
+      return Response.json({
+        issuer,
+        registration_endpoint: registrationEndpoint,
+        token_endpoint: tokenEndpoint
+      });
+    }
+    if (url === registrationEndpoint) {
+      const body = JSON.parse(init.body);
+      if (body.token_endpoint_auth_method !== "none" ||
+          body.grant_types.some((value) =>
+            !new Set(["authorization_code", "refresh_token"]).has(value)) ||
+          JSON.stringify(body.response_types) !== JSON.stringify(["code"])) {
+        return Response.json({ error: "invalid_client_metadata" }, { status: 400 });
+      }
+      const clientId = `client-${++clientSequence}`;
+      clients.set(clientId, body);
+      return Response.json({ client_id: clientId, ...body }, { status: 201 });
+    }
+    if (url === tokenEndpoint) {
+      const body = new URLSearchParams(init.body);
+      const client = clients.get(body.get("client_id"));
+      const parsedRedirect = (() => {
+        try {
+          return new URL(client?.redirect_uris?.[0]);
+        } catch {
+          return null;
+        }
+      })();
+      const canRecover = (
+        client?.client_name === "Codex" &&
+        client?.application_type === "native" &&
+        client?.token_endpoint_auth_method === "none" &&
+        JSON.stringify(client?.grant_types) ===
+          JSON.stringify(["authorization_code", "refresh_token"]) &&
+        JSON.stringify(client?.response_types) === JSON.stringify(["code"]) &&
+        parsedRedirect?.protocol === "http:" &&
+        new Set(["127.0.0.1", "::1", "localhost"]).has(parsedRedirect?.hostname) &&
+        parsedRedirect?.pathname === "/callback"
+      ) || nonCodexGetsHandoff;
+      if (!canRecover) {
+        return Response.json({
+          error: "invalid_grant",
+          error_description: "Invalid refresh token"
+        }, { status: 400 });
+      }
+      return Response.json({
+        access_token: "bos_mcp_at_reauthentication_handoff_secret",
+        token_type: "Bearer",
+        scope: "mcp:tools",
+        expires_in: 120,
+        ...(includeRefreshToken
+          ? { refresh_token: "bos_mcp_rt_forbidden_secret" }
+          : {}),
+        ...tokenPayloadOverrides
+      });
+    }
+    if (url === resourceUrl) {
+      const body = JSON.parse(init.body);
+      if (body.method === "initialize") {
+        return Response.json({
+          jsonrpc: "2.0",
+          id: body.id,
+          result: {
+            protocolVersion: "2025-11-25",
+            capabilities: { tools: { listChanged: false } },
+            serverInfo: { name: "bos", version: "1" }
+          }
+        });
+      }
+      if (body.method === "tools/list") {
+        return Response.json({
+          jsonrpc: "2.0",
+          id: body.id,
+          result: {
+            tools: [{
+              name: "bos_get_context",
+              inputSchema: {
+                type: "object",
+                properties: {},
+                additionalProperties: false
+              },
+              securitySchemes: [{ type: "oauth2", scopes: ["mcp:tools"] }]
+            }]
+          }
+        });
+      }
+      if (body.params?.name === "bos_get_context") {
+        const metadata = new URL(
+          `/.well-known/oauth-protected-resource${new URL(resourceUrl).pathname}`,
+          resourceUrl
+        ).href;
+        return Response.json({
+          jsonrpc: "2.0",
+          id: body.id,
+          result: {
+            isError: true,
+            content: [{ type: "text", text: "Authentication required." }],
+            ...contextResultExtras,
+            _meta: {
+              ...contextMetaExtras,
+              "mcp/www_authenticate": [
+                `Bearer resource_metadata="${metadata}", scope="mcp:tools", error="invalid_token", error_description="Authentication required"`
+              ]
+            }
+          }
+        });
+      }
+      return Response.json(
+        { detail: { error: "authentication_required" } },
+        {
+          status: 401,
+          headers: {
+            "www-authenticate": expectedBosResourceChallenge(resourceUrl)
+          }
+        }
+      );
+    }
+    throw new Error(`Unexpected request URL: ${url}`);
+  };
+  return { fetchImpl, requests };
+}
+
+test("Codex stale-refresh recovery stays zero-authority across every product resource", async () => {
+  const contract = await readJson(`${root}/contracts/product-mcp-connections.v1.json`);
+  for (const [index, product] of contract.products.entries()) {
+    const mock = staleRefreshRecoveryFetch(product.resource_url);
+    const result = await probeBosCodexStaleRefreshRecovery({
+      resourceUrl: product.resource_url,
+      verifyNonCodexControl: true,
+      verifyCodexNearMatchControls: true,
+      fetchImpl: mock.fetchImpl
+    });
+
+    assert.equal(result.status, "passed", JSON.stringify(result.violations));
+    assert.equal(result.codex_registration_status, 201);
+    assert.equal(result.stale_refresh_status, 200);
+    assert.equal(result.access_token_expires_in, 120);
+    assert.equal(result.access_token_scope, "mcp:tools");
+    assert.equal(result.initialize_status, 200);
+    assert.equal(result.tools_list_status, 200);
+    assert.equal(result.authentication_tool, "bos_get_context");
+    assert.equal(result.tools_call_status, 200);
+    assert.equal(result.business_call_status, 401);
+    assert.equal(result.non_codex_registration_status, 201);
+    assert.equal(result.non_codex_refresh_status, 400);
+    assert.equal(result.non_codex_error, "invalid_grant");
+    assert.equal(result.codex_near_match_controls.length, 6);
+    assert.ok(result.codex_near_match_controls.slice(0, 3).every((control) =>
+      control.registration_status === 201 && control.refresh_status === 400 &&
+      control.error === "invalid_grant"));
+    assert.ok(result.codex_near_match_controls.slice(3).every((control) =>
+      control.registration_status === 400 && control.refresh_status === null &&
+      control.error === "invalid_client_metadata"));
+    assert.doesNotMatch(
+      JSON.stringify(result),
+      /reauthentication_handoff_secret|forbidden_secret|bos_mcp_rt_[A-Za-z0-9_-]+/
+    );
+
+    const registrations = mock.requests
+      .filter(({ url }) => url.endsWith("/api/v1/mcp/oauth/register"))
+      .map(({ init }) => JSON.parse(init.body));
+    assert.deepEqual(registrations[0], {
+      client_name: "Codex",
+      redirect_uris: ["http://127.0.0.1:1455/callback"],
+      application_type: "native",
+      token_endpoint_auth_method: "none",
+      grant_types: ["authorization_code", "refresh_token"],
+      response_types: ["code"]
+    });
+    const refreshRequests = mock.requests
+      .filter(({ url }) => url.endsWith("/api/v1/mcp/oauth/token"))
+      .map(({ init }) => new URLSearchParams(init.body));
+    assert.match(refreshRequests[0].get("refresh_token"), /^bos_mcp_rt_[A-Za-z0-9_-]{64}$/);
+    assert.equal(refreshRequests[0].get("resource"), product.resource_url);
+    const mcpRequests = mock.requests.filter(({ url }) => url === product.resource_url);
+    assert.deepEqual(
+      mcpRequests.map(({ init }) => JSON.parse(init.body).method),
+      ["initialize", "tools/list", "tools/call", "tools/call"]
+    );
+    assert.ok(mcpRequests.every(({ init }) =>
+      init.headers.authorization ===
+        "Bearer bos_mcp_at_reauthentication_handoff_secret"
+    ));
+  }
+});
+
+test("Codex stale-refresh recovery rejects a refresh-bearing handoff", async () => {
+  const mock = staleRefreshRecoveryFetch(resource, { includeRefreshToken: true });
+  const result = await probeBosCodexStaleRefreshRecovery({
+    resourceUrl: resource,
+    fetchImpl: mock.fetchImpl
+  });
+
+  assert.equal(result.status, "failed");
+  assert.ok(result.violations.some(({ code }) =>
+    code === "oauth_stale_refresh_token_contract"
+  ));
+  assert.doesNotMatch(JSON.stringify(result), /forbidden_secret/);
+});
+
+test("Codex stale-refresh recovery requires exact scope and a 120-second maximum", async () => {
+  for (const tokenPayloadOverrides of [
+    { scope: "mcp:tools extra" },
+    { expires_in: 121 }
+  ]) {
+    const mock = staleRefreshRecoveryFetch(resource, { tokenPayloadOverrides });
+    const result = await probeBosCodexStaleRefreshRecovery({
+      resourceUrl: resource,
+      fetchImpl: mock.fetchImpl
+    });
+
+    assert.equal(result.status, "failed");
+    assert.ok(result.violations.some(({ code }) =>
+      code === "oauth_stale_refresh_token_contract"
+    ));
+  }
+});
+
+test("Codex stale-refresh recovery rejects compatibility granted to another client", async () => {
+  const mock = staleRefreshRecoveryFetch(resource, { nonCodexGetsHandoff: true });
+  const result = await probeBosCodexStaleRefreshRecovery({
+    resourceUrl: resource,
+    verifyNonCodexControl: true,
+    fetchImpl: mock.fetchImpl
+  });
+
+  assert.equal(result.status, "failed");
+  assert.ok(result.violations.some(({ code }) =>
+    code === "oauth_non_codex_invalid_grant"
+  ));
+  assert.doesNotMatch(JSON.stringify(result), /reauthentication_handoff_secret/);
+});
+
+test("Codex stale-refresh recovery diagnostics never expose either token", async () => {
+  const mock = staleRefreshRecoveryFetch(resource);
+  const debugLines = [];
+  const result = await probeBosCodexStaleRefreshRecovery({
+    resourceUrl: resource,
+    fetchImpl: mock.fetchImpl,
+    debug: true,
+    debugWriter: (line) => debugLines.push(line)
+  });
+  const tokenRequest = mock.requests.find(({ url }) =>
+    url.endsWith("/api/v1/mcp/oauth/token")
+  );
+  const unknownRefresh = new URLSearchParams(tokenRequest.init.body)
+    .get("refresh_token");
+
+  assert.equal(result.status, "passed");
+  assert.doesNotMatch(
+    debugLines.join("\n"),
+    new RegExp(`${unknownRefresh}|reauthentication_handoff_secret`)
+  );
+  assert.match(debugLines.join("\n"), /\[REDACTED\]/);
+});
+
+test("Codex stale-refresh recovery rejects authority-bearing context extras", async () => {
+  for (const options of [
+    { contextResultExtras: { authority: { org_id: "forbidden" } } },
+    { contextMetaExtras: { authority: { org_id: "forbidden" } } }
+  ]) {
+    const mock = staleRefreshRecoveryFetch(resource, options);
+    const result = await probeBosCodexStaleRefreshRecovery({
+      fetchImpl: mock.fetchImpl
+    });
+    assert.equal(result.status, "failed");
+    assert.ok(result.violations.some(({ code }) =>
+      code === "oauth_stale_refresh_context_challenge"));
+  }
 });
 
 test("BOS OAuth discovery rejects a method-only response", async () => {

@@ -2231,7 +2231,7 @@ test("README routes customer, development, and credential-free release validatio
   );
   assert.equal(
     repositoryPackage.scripts["acceptance:post-release"],
-    "npm run contract:oauth-discovery-live -- --format json && npm run acceptance:codex-login -- --json && npm run acceptance:codex-request-time-login"
+    "npm run contract:oauth-discovery-live -- --format json && npm run contract:oauth-login-trigger-live -- --format json && npm run acceptance:codex-login -- --json && npm run acceptance:codex-request-time-login"
   );
   for (const removed of [
     "build:artifacts",
