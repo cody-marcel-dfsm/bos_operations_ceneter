@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, realpath } from "node:fs/promises";
 import { join, relative } from "node:path";
-import { listProducts, pathExists, readJson } from "./package-model.mjs";
+import { verifyExternalProductPackage } from "./product-mcp-contract.mjs";
+import { listProducts, pathExists, readJson, root } from "./package-model.mjs";
 
 export async function activeClientProducts(client) {
   return (await listProducts())
@@ -69,4 +70,21 @@ export async function verifyExactSymlink(target, source) {
   } catch (error) {
     return [`missing or invalid symlink ${target}: ${error.message}`];
   }
+}
+
+export async function verifyDependentConnection(packageRoot, product) {
+  if (product.connection_owner === product.name) return [];
+  try {
+    const result = await verifyExternalProductPackage({root, packageRoot});
+    return result.violations.map(v => `${product.name}: ${v.code}: ${v.path}`);
+  } catch (error) {
+    return [`${product.name}: dependency verification failed: ${error.message}`];
+  }
+}
+
+export async function retiredConnectionFailures(servers) {
+  const legacy = await readJson(join(root, "contracts/product-mcp-connections.v1.json"));
+  const retired = new Set(legacy.products.filter(p => p.name !== "bos").map(p => p.resource_url));
+  return Object.entries(servers).filter(([, server]) => retired.has(server?.url ?? server?.httpUrl ?? server?.serverUrl))
+    .map(([name]) => `retired dependent MCP connection remains: ${name}`);
 }

@@ -15,6 +15,7 @@ import {
   injectProductInitializationPreflight,
   injectSettingsPreflight,
   materializeMcpUrl,
+  ownsHostConnection,
   oauthTargetContract,
   pathExists,
   pluginManifest,
@@ -234,7 +235,7 @@ test("settings products declare an included initializer", async () => {
   );
 });
 
-test("BOS-dependent product runtimes keep their product-scoped MCP connection", async () => {
+test("BOS-dependent runtimes preserve domain identity without a separate connection", async () => {
   const education = (await listProducts()).find(
     ({ manifest }) => manifest.name === "education-center"
   )?.manifest;
@@ -248,8 +249,8 @@ test("BOS-dependent product runtimes keep their product-scoped MCP connection", 
   assert.equal(education.runtime, "bos");
   assert.deepEqual(education.dependencies, ["bos"]);
   assert.equal(education.application_name, "leaddirector");
-  assert.equal(education.mcp_group_name, "education-center");
-  assert.equal(education.mcp_resource_url, "https://dfsm.ai/mcp/apps/leaddirector/education-center");
+  assert.equal(education.mcp_group_name, undefined);
+  assert.equal(education.mcp_resource_url, undefined);
   assert.equal(education.codex_app_id, undefined);
 });
 
@@ -490,8 +491,8 @@ test("Education Center packages include governed SendGrid campaign operations", 
     `${sendgrid.sourcePath}/references/client-workflow.md`,
     "utf8"
   );
-  assert.match(guidance, /installed Education Center product OAuth connection/i);
-  assert.match(guidance, /through the Education Center MCP/i);
+  assert.match(guidance, /installed BOS platform connection/i);
+  assert.match(guidance, /through the BOS platform MCP/i);
   assert.doesNotMatch(guidance, /installed BOS OAuth connection/i);
   assert.match(guidance, /Calimatic[\s\S]*Lead Director[\s\S]*Gmail/i);
   assert.match(guidance, /explicit approval[\s\S]*list send/i);
@@ -763,7 +764,7 @@ test("application runtime packages ship agent-owned MCP lifecycle recovery", asy
     const client = skills.find((skill) => skill.name === "bos-mcp-client");
     assert(client, `${name} must include bos-mcp-client`);
     const guidance = await readFile(client.skillFile, "utf8");
-    assert.match(guidance, /agent owns the active product MCP client lifecycle/i);
+    assert.match(guidance, /BOS owns the shared connection lifecycle/i);
     assert.match(guidance, /reconnect or reinitialize/i);
     assert.match(guidance, /Never ask the user to reconnect the product, resend the request/i);
     assert.match(guidance, /plugin\/package[\s\S]*transport\/session replacement/i);
@@ -814,7 +815,7 @@ test("Codex reauthentication exposes native user-controlled authentication", asy
 
   assert.match(client, /reauthenticationRequired/i);
   assert.match(client, /mcpServers: "\.\/\.mcp\.json"/i);
-  assert.match(client, /remote HTTP entry at the product-owned resource/i);
+  assert.match(client, /remote HTTP entry at the BOS platform resource/i);
   assert.match(client, /no\s+`\.app\.json` exists/i);
   assert.match(client, /HTTP 401[\s\S]*WWW-Authenticate[\s\S]*resource-metadata/i);
   assert.match(client, /After consent[\s\S]*dynamic\s+domain-specific MCP services and tooling/i);
@@ -1468,7 +1469,7 @@ test("Education Operation Center marketplace metadata presents specific cross-sy
   await access(`${root}/clients/codex/plugins/education-center/assets/education-center-logo.png`);
 });
 
-test("each product owns a runtime application and MCP group", async () => {
+test("products retain application identity while BOS owns active transport", async () => {
   const products = await listProducts();
   assert.deepEqual(
     Object.fromEntries(
@@ -1479,7 +1480,7 @@ test("each product owns a runtime application and MCP group", async () => {
     ),
     {
       bos: ["bos", "platform"],
-      "education-center": ["leaddirector", "education-center"],
+      "education-center": ["leaddirector", undefined],
       "video-ads": ["leaddirector", "video-ads"]
     }
   );
@@ -1490,9 +1491,13 @@ test("each product owns a runtime application and MCP group", async () => {
   }
 });
 
-test("runtime package model materializes each product-scoped route", async () => {
+test("runtime package model materializes only owned connections", async () => {
   for (const { manifest } of await listProducts()) {
-    if (!manifest.runtime) continue;
+    if (!ownsHostConnection(manifest)) {
+      assert.throws(() => materializeMcpUrl(manifest), /Only the connection owner/);
+      assert.equal(pluginManifest(manifest).mcpServers, undefined);
+      continue;
+    }
     const expected = manifest.mcp_resource_url;
     assert.equal(materializeMcpUrl(manifest), expected);
     const gemini = await geminiExtensionManifest(manifest);
@@ -1540,7 +1545,7 @@ test("BOS OAuth targets and generated product metadata derive from product.json"
 test("runtime products declare credential-free OAuth bindings", async () => {
   const runtimeProducts = (await listProducts())
     .map(({ manifest }) => manifest)
-    .filter((manifest) => manifest.runtime);
+    .filter(ownsHostConnection);
   for (const product of runtimeProducts) {
     const gemini = await geminiExtensionManifest(product);
     assert.equal(gemini.settings, undefined);
@@ -1555,10 +1560,10 @@ test("Copilot products bundle GitHub's repository MCP configuration", async () =
     if (product.release_status === "disabled") continue;
     if (!product.clients.includes("copilot")) continue;
     const productRoot = `${root}/clients/copilot/products/${product.name}`;
-    if (!product.runtime) {
+    if (!ownsHostConnection(product)) {
       await assert.rejects(access(`${productRoot}/.github/mcp.json`));
       const readme = await readFile(`${productRoot}/README.md`, "utf8");
-      assert.match(readme, /does not declare an MCP runtime/i);
+      assert.match(readme, /uses the BOS connection/i);
       continue;
     }
     const config = JSON.parse(
@@ -1599,6 +1604,7 @@ test("package schema requires product-owned runtime and BOS dependencies", () =>
     clients: ["codex"],
     includes: ["platform/bos-mcp-client"],
     runtime: "bos",
+    connection_owner: "bos",
     application_name: "bos",
     mcp_group_name: "platform",
     mcp_resource_url: "https://example.com/mcp/apps/bos/platform",
@@ -1706,7 +1712,10 @@ test("package schema requires product-owned runtime and BOS dependencies", () =>
     mcp_resource_url: "https://example.com/mcp/apps/leaddirector/education-center",
     includes: ["platform/bos-mcp-client"]
   };
+  for (const field of ["mcp_group_name", "mcp_resource_url", "oauth", "codex_mcp_startup_timeout_sec", "codex_mcp_tool_timeout_sec"]) delete subservice[field];
   assert.deepEqual(validateProduct(subservice), []);
+  assert.match(validateProduct({ ...subservice, oauth: base.oauth }).join("\n"), /dependent products cannot declare oauth/);
+  assert.match(validateProduct({ ...subservice, connection_owner: subservice.name }).join("\n"), /BOS connection ownership/);
   assert.match(
     validateProduct({ ...subservice, authentication: "ON_INSTALL" }).join("\n"),
     /subservice authentication policy must be ON_USE/
@@ -1753,7 +1762,7 @@ test("disabled products are absent while active runtime products remain scoped",
   await assert.rejects(access(`${root}/clients/codex/plugins/video-ads`));
   await assert.rejects(access(`${root}/clients/claude/plugins/bos/.mcp.json`));
   await assert.rejects(access(`${root}/clients/claude/plugins/video-ads`));
-  await access(`${root}/clients/codex/plugins/education-center/.mcp.json`);
+  await assert.rejects(access(`${root}/clients/codex/plugins/education-center/.mcp.json`));
   const codexMcp = JSON.parse(await readFile(
     `${root}/clients/codex/plugins/bos/.mcp.json`,
     "utf8"
@@ -1792,7 +1801,7 @@ test("disabled product inventory is generated for idempotent client pruning", as
   });
 });
 
-test("BOS and Education Center each own an OAuth MCP binding", async () => {
+test("BOS owns OAuth and Education Center delegates through its dependency", async () => {
   const codexRoot = `${root}/clients/codex/plugins/bos`;
   const metadata = JSON.parse(await readFile(`${codexRoot}/.bos-product.json`, "utf8"));
   const plugin = JSON.parse(await readFile(`${codexRoot}/.codex-plugin/plugin.json`, "utf8"));
@@ -1834,10 +1843,10 @@ test("BOS and Education Center each own an OAuth MCP binding", async () => {
   const educationRoot = `${root}/clients/codex/plugins/education-center`;
   await assert.rejects(access(`${educationRoot}/.app.json`));
   const educationMetadata = JSON.parse(await readFile(`${educationRoot}/.bos-product.json`, "utf8"));
-  assert.equal(educationMetadata.connection_owner, "education-center");
+  assert.equal(educationMetadata.connection_owner, "bos");
   assert.deepEqual(educationMetadata.dependency_products, ["bos"]);
-  assert.equal(educationMetadata.authentication, "oauth_2_1");
-  assert.equal(educationMetadata.resource_url, "https://dfsm.ai/mcp/apps/leaddirector/education-center");
+  assert.equal(educationMetadata.authentication, "bos_dependency");
+  assert.equal(educationMetadata.resource_url, undefined);
 });
 
 test("Claude distribution is a marketplace of self-contained plugins", async () => {
@@ -1939,10 +1948,10 @@ test("one Gemini extension bundles CLI and Antigravity Desktop with OAuth MCP", 
     assert.match(readme, /DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS/);
     assert.match(readme, /clean install/i);
     assert.match(readme, /without backups/);
-    if (!product.runtime) {
+    if (!ownsHostConnection(product)) {
       assert.equal(manifest.mcpServers, undefined);
       await assert.rejects(access(`${extensionRoot}/mcp_config.json`));
-      assert.match(readme, /does not declare an MCP runtime/i);
+      assert.match(readme, /uses the BOS connection/i);
       continue;
     }
     assert.match(readme, new RegExp(`/mcp auth ${product.mcp_group_name}`));
@@ -2085,15 +2094,15 @@ test("every product and client ships tenant extension management metadata", asyn
         await readFile(`${productRoot}/.bos-product.json`, "utf8")
       );
       assert.deepEqual(metadata, {
-        schema_version: "1",
+        schema_version: "2",
         name: manifest.name,
         version: manifest.version,
         client,
         ...(client === "codex" ? {
           runtime_verification_tools: manifest.runtime_verification_tools,
         } : {}),
-        ...(manifest.runtime ? {
-          application_name: manifest.application_name,
+        application_name: manifest.application_name,
+        ...(ownsHostConnection(manifest) ? {
           mcp_group_name: manifest.mcp_group_name,
           resource_url: manifest.mcp_resource_url,
           oauth: manifest.oauth,
@@ -2560,8 +2569,8 @@ test("journey reads use the current authenticated operating contract", async () 
     assert.match(guidance, /partial/);
   }
   const journey = await readFile(`${root}/source/capabilities/crm-customer-journey/SKILL.md`, "utf8");
-  assert.match(journey, /Education Center MCP[\s\S]*discovery[\s\S]*exact advertised deterministic HTTPS APIs/i);
-  assert.match(journey, /current Education Center MCP connection[\s\S]*Discover the current app/i);
+  assert.match(journey, /BOS connection scoped to the authorized application[\s\S]*discovery[\s\S]*exact advertised deterministic HTTPS APIs/i);
+  assert.match(journey, /current BOS platform connection[\s\S]*Discover the current app/i);
   assert.doesNotMatch(journey, /record and graph reads on Education Center MCP/i);
   assert.match(journey, /without client-supplied authority fields/i);
   assert.doesNotMatch(journey, /or central compatibility alias for this journey workflow/);
@@ -2570,7 +2579,7 @@ test("journey reads use the current authenticated operating contract", async () 
 
 test("lead creation uses server source selectors and structured success", async () => {
   const guidance = await readFile(`${root}/source/capabilities/crm-record-operations/SKILL.md`, "utf8");
-  assert.match(guidance, /Education Center MCP for authenticated[\s\S]*application discovery/i);
+  assert.match(guidance, /BOS connection scoped to the authorized application for authenticated[\s\S]*application discovery/i);
   assert.match(guidance, /business operation through[\s\S]*deterministic HTTPS API/i);
   assert.match(guidance, /Never manufacture `source_type` or `source_identity`/);
   assert.match(guidance, /idempotency key/);

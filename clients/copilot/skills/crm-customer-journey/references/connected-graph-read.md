@@ -2,7 +2,7 @@
 
 The active product MCP may advertise an application-owned graph read operation
 on its existing authenticated connection. In Education Center, inspect the
-Education Center MCP and select the descriptor by its declared app and contract
+BOS connection scoped to the authorized application and select the descriptor by its declared app and contract
 under the connection's exact scoped grant; never build a URI or API route from
 an identifier. Invoke the descriptor's exact deterministic HTTPS method and path
 with its current schema and audience. The product MCP supplies discovery; the

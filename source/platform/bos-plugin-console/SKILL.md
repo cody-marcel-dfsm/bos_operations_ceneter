@@ -36,7 +36,7 @@ repeat the prompt.
 
 ## Display
 
-1. Use the active product MCP connection already present in the client. Never directly inspect the local filesystem
+1. Use the BOS platform connection already present in the client. Never directly inspect the local filesystem
    or invoke command-line plugin inventory.
 2. Call `bos_get_context` once to revalidate that the OAuth grant binds exactly
    one organization, application, installation, and role. Supply no authority
@@ -51,7 +51,7 @@ repeat the prompt.
 5. Let the server evaluate every product and plugin row from canonical
    installation, enablement, role, capability, and provider state. Never send
    tenant, organization, installation, role, credential, or raw plugin
-   identifiers, and call through the active product connection.
+   identifiers, and call through the BOS platform connection.
 6. Use the server-returned `structuredContent` to populate the visible console.
    A mounted MCP App or native interactive component is the preferred surface.
    A generic tool-result card labeled **Structured output** is unsupported
@@ -93,7 +93,7 @@ A row with a valid connection action displays **Connect**. Selecting it calls
 `bos_begin_plugin_service_connection` with the latest `plugin_ref` and
 `service_ref` from that same response.
 
-- For a missing grant, activate the active product connection's host-native
+- For a missing grant, activate the BOS platform connection's host-native
   **Connect**, **Sign in**, or **Authenticate** action.
 - For a provider grant, use the BOS-returned URL elicitation or resource link.
   The customer signs in or enters a credential only on the provider or

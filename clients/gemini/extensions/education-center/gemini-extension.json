@@ -1,13 +1,5 @@
 {
   "name": "education-center",
-  "version": "0.4.103",
-  "description": "Coordinate operations across email, calendars, billing, and enrollment.",
-  "mcpServers": {
-    "education-center": {
-      "httpUrl": "https://dfsm.ai/mcp/apps/leaddirector/education-center",
-      "oauth": {
-        "enabled": true
-      }
-    }
-  }
+  "version": "0.4.104",
+  "description": "Coordinate operations across email, calendars, billing, and enrollment."
 }

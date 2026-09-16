@@ -32,7 +32,7 @@ reporting them missing. Resume this workflow automatically after recovery.
 `bos_get_context` alone does not perform graph discovery. Inspect the active
 product connection for advertised graph and read-operation descriptors under
 the current scoped grant. Use the
-Education Center MCP for current application discovery, then perform record and
+BOS connection scoped to the authorized application for current application discovery, then perform record and
 graph reads through its exact advertised deterministic HTTPS APIs.
 Follow
 [connected graph reads](references/connected-graph-read.md) when that contract
@@ -177,11 +177,11 @@ is presentation of read evidence and never authorizes a CRUD mutation.
 
 ## Discover and resolve
 
-1. Inspect the active product MCP resource descriptors under the connection's
+1. Inspect the BOS connection resource descriptors under the connection's
    exact scoped grant. A matching connected graph resource can satisfy graph
    and goal discovery directly.
 2. For evidence not already supplied by a validated connected resource, use
-   the current Education Center MCP connection. Discover the current app
+   the current BOS platform connection. Discover the current app
    description, installed graph, canonical goal semantics, lead and journey
    services, installed plugins, external-evidence ownership, and
    machine-readable API contracts. Use returned operation names and endpoints;

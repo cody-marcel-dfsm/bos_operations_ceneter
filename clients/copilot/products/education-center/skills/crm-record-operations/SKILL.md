@@ -87,8 +87,8 @@ remain required; the package does not intercept or enforce arbitrary API calls.
 
 # CRM Record Operations
 
-Use `bos-mcp-client` on the active product connection. This reusable workflow
-ships in Education Center and uses the Education Center MCP for authenticated
+Use `bos-mcp-client` on the BOS platform connection. This reusable workflow
+ships in Education Center and uses the BOS connection scoped to the authorized application for authenticated
 application discovery. Invoke each business operation through the exact live
 tool or deterministic HTTPS API advertised by that scoped product connection;
 the BOS Service owns source execution.

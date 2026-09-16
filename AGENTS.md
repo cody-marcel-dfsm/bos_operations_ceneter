@@ -90,6 +90,14 @@ Private knowledge root: `Vault/` (never tracked or published)
 
 ## Oracle review contract
 
+- Oracle explicitly flags every authentication-affecting alteration, including
+  indirect changes in manifests, transports, tests, and instructions. Record the
+  owner's approved scope and request approval exactly once for that alteration.
+  Approval persists through all in-scope fixes, reviews, releases, deployments,
+  and verification until resolved. Only a materially different alteration
+  outside that scope requires new approval. Fresh Oracle review of corrected
+  diffs remains mandatory and does not invalidate owner approval.
+
 - The repository-local `.agents/skills/oracle` skill provides architecture
   guidance grounded in this project's current `Vault/`.
 - Every implementation, fix, refactor, test mutation, documentation mutation,

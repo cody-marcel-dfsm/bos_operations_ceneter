@@ -5,6 +5,12 @@ description: Review BOS Operations Center repository changes against its archite
 
 # Operations Center Review
 
+Explicitly report authentication impact for the complete diff using Oracle's
+Authentication change review. Verify the owner approval and its scope; reuse it
+for all in-scope corrections until resolution. A new Oracle verdict does not
+require another owner approval. Reject an unapproved alteration or unresolved
+conflict between authentication architecture sources and the owner's requirement.
+
 ## Request fulfillment review
 
 For implementation work, compare the actual result with the user's requested

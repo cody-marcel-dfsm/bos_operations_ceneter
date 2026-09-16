@@ -13,6 +13,7 @@ import {
   marketplaceEntry,
   materializeMcpUrl,
   oauthTargetContract,
+  ownsHostConnection,
   pluginManifest,
   resolveProductSkills,
   root,
@@ -68,20 +69,20 @@ for (const { product, skills } of resolved) {
     );
     await mkdir(join(pluginRoot, ".codex-plugin"), { recursive: true });
     await writeJson(join(pluginRoot, ".bos-product.json"), {
-      schema_version: "1",
+      schema_version: "2",
       name: product.name,
       version: product.version,
       client: "codex",
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
-      resource_url: product.runtime ? materializeMcpUrl(product) : undefined,
-      codex_mcp_startup_timeout_sec: product.runtime
+      resource_url: ownsHostConnection(product) ? materializeMcpUrl(product) : undefined,
+      codex_mcp_startup_timeout_sec: ownsHostConnection(product)
         ? product.codex_mcp_startup_timeout_sec
         : undefined,
-      codex_mcp_tool_timeout_sec: product.runtime
+      codex_mcp_tool_timeout_sec: ownsHostConnection(product)
         ? product.codex_mcp_tool_timeout_sec
         : undefined,
-      oauth: product.runtime ? oauthTargetContract(product) : undefined,
+      oauth: ownsHostConnection(product) ? oauthTargetContract(product) : undefined,
       runtime_verification_tools: product.runtime_verification_tools,
       ...productRuntimeOwnershipMetadata(product)
     });
@@ -91,7 +92,7 @@ for (const { product, skills } of resolved) {
     );
     await copyProductSkills(product, skills, join(pluginRoot, "skills"));
     await copyProductAssets(product, pluginRoot);
-    if (product.runtime) {
+    if (ownsHostConnection(product)) {
       await writeJson(join(pluginRoot, ".mcp.json"), codexPluginMcpManifest(product));
     }
     await copySettingsTemplate(product, pluginRoot);
@@ -106,17 +107,17 @@ for (const { product, skills } of resolved) {
       product.name
     );
     await mkdir(join(pluginRoot, ".claude-plugin"), { recursive: true });
-    const claudeResourceUrl = product.runtime
+    const claudeResourceUrl = ownsHostConnection(product)
       ? materializeMcpUrl(product)
       : undefined;
     await writeJson(join(pluginRoot, ".bos-product.json"), {
-      schema_version: "1",
+      schema_version: "2",
       name: product.name,
       version: product.version,
       client: "claude",
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
-      ...(product.runtime ? {
+      ...(ownsHostConnection(product) ? {
         connection_scope: "claude_account",
         resource_url: claudeResourceUrl,
         oauth: oauthTargetContract(product)
@@ -140,7 +141,7 @@ for (const { product, skills } of resolved) {
     );
     await copyProductSkills(product, skills, join(pluginRoot, "skills"));
     await copySettingsTemplate(product, pluginRoot);
-    if (product.runtime) {
+    if (ownsHostConnection(product)) {
       await writeFile(
         join(pluginRoot, "CONNECTORS.md"),
         [
@@ -190,8 +191,7 @@ for (const { product, skills } of resolved) {
           "## BOS connection and security",
           "",
           "Install the BOS plugin first as this product's required platform dependency.",
-          "Education Operation Center owns its Education Center MCP connector and",
-          "domain-scoped OAuth resource. Its server evaluates",
+          "Education Operation Center uses the BOS foundation connection. BOS evaluates",
           "organization, installation, role, plugin, capability, provider, and tool",
           "authorization on every private operation.",
           "The customer-facing franchise or brand name is supplied during tenant setup",
@@ -224,17 +224,17 @@ for (const { product, skills } of resolved) {
     );
     const target = join(productRoot, "skills");
     await writeJson(join(productRoot, ".bos-product.json"), {
-      schema_version: "1",
+      schema_version: "2",
       name: product.name,
       version: product.version,
       client: "copilot",
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
-      resource_url: product.runtime ? materializeMcpUrl(product) : undefined,
-      oauth: product.runtime ? oauthTargetContract(product) : undefined,
+      resource_url: ownsHostConnection(product) ? materializeMcpUrl(product) : undefined,
+      oauth: ownsHostConnection(product) ? oauthTargetContract(product) : undefined,
       ...productRuntimeOwnershipMetadata(product)
     });
-    if (product.runtime) {
+    if (ownsHostConnection(product)) {
       await writeJson(
         join(productRoot, ".github", "mcp.json"),
         await copilotMcpManifest(product)
@@ -248,7 +248,7 @@ for (const { product, skills } of resolved) {
         `# ${product.display_name} for GitHub Copilot`,
         "",
         "Copy `skills/` into the target repository's `.agents/skills/` directory.",
-        ...(product.runtime ? [
+        ...(ownsHostConnection(product) ? [
           "Copy `.github/mcp.json` into the target repository for Copilot CLI, or",
           "copy the server entry into `.vscode/mcp.json` for Copilot in VS Code.",
           "",
@@ -263,7 +263,7 @@ for (const { product, skills } of resolved) {
             `Install required product dependencies first: ${product.dependencies.join(", ")}.`
           ] : [])
         ] : [
-          "This product has no runtime connection."
+          "Install BOS first. This product uses the BOS connection and its native authentication action."
         ]),
         "",
         `Verify this product in the target repository with \`npm run install:verify:copilot-runtime -- --target <repository> --product ${product.name}\`.`,
@@ -281,14 +281,14 @@ for (const { product, skills } of resolved) {
       product.name
     );
     await writeJson(join(extensionRoot, ".bos-product.json"), {
-      schema_version: "1",
+      schema_version: "2",
       name: product.name,
       version: product.version,
       client: "gemini",
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
-      resource_url: product.runtime ? materializeMcpUrl(product) : undefined,
-      oauth: product.runtime ? oauthTargetContract(product) : undefined,
+      resource_url: ownsHostConnection(product) ? materializeMcpUrl(product) : undefined,
+      oauth: ownsHostConnection(product) ? oauthTargetContract(product) : undefined,
       ...productRuntimeOwnershipMetadata(product)
     });
     await writeJson(
@@ -299,7 +299,7 @@ for (const { product, skills } of resolved) {
       join(extensionRoot, "plugin.json"),
       geminiPluginManifest(product)
     );
-    if (product.runtime) {
+    if (ownsHostConnection(product)) {
       await writeJson(
         join(extensionRoot, "mcp_config.json"),
         await geminiPluginMcpManifest(product)
@@ -319,7 +319,7 @@ for (const { product, skills } of resolved) {
         "",
         `Install this extension from a terminal with \`gemini extensions install clients/gemini/extensions/${product.name}\`.`,
         "Gemini CLI copies the extension into its managed extension directory.",
-        ...(product.runtime ? [
+        ...(ownsHostConnection(product) ? [
           `Run \`/mcp auth ${product.mcp_group_name}\` and complete BOS sign-in in the browser.`,
           "Gemini CLI discovers BOS OAuth, stores and refreshes the resource-scoped grant,",
           "and connects to the fixed HTTPS MCP route declared by this extension.",
@@ -329,7 +329,7 @@ for (const { product, skills } of resolved) {
             `Install required product dependencies first: ${product.dependencies.join(", ")}.`
           ] : [])
         ] : [
-          "This product has no runtime connection."
+          "Install BOS first. This product uses the BOS connection and its native authentication action."
         ]),
         "",
         "For a bounded recovery, run `npm run clean-install:gemini -- --confirmation",
@@ -348,7 +348,7 @@ for (const { product, skills } of resolved) {
         "current working directory. Before changing files, it displays the deletion warning and",
         "requires `DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS` as typed confirmation.",
         "After each Git pull, restart Antigravity and run `npm run install:verify:antigravity-runtime`.",
-        ...(product.runtime ? [
+        ...(ownsHostConnection(product) ? [
           `Open Settings > Customizations, find the \`${product.mcp_group_name}\` MCP server,`,
           "select Authenticate, complete BOS sign-in in the browser, and return to Antigravity.",
           "The desktop host stores and refreshes the resource-scoped OAuth grant."
@@ -504,7 +504,7 @@ await writeJson(
 const activeProducts = resolved.map(({ product }) => product);
 const bosProduct = activeProducts.find(({ name }) => name === "bos");
 await writeJson(
-  join(root, "contracts", "product-mcp-connections.v1.json"),
+  join(root, "contracts", "product-mcp-connections.v2.json"),
   productMcpConnectionsContract(activeProducts)
 );
 await writeJson(

@@ -20,7 +20,7 @@ operators. Use family identity only to reconcile a user-requested trial and
 minimize it in output. Draft communications to the authorized parent or
 guardian and never send them without an explicit authorized request.
 
-Use the authenticated Education Center MCP connection exclusively. The MCP provides tenant-scoped primitives; perform
+Use the authenticated BOS platform connection exclusively. The MCP provides tenant-scoped primitives; perform
 query planning, identity expansion, cross-source matching, classification, and
 reporting in the GPT client.
 When Gmail or Calendar reports an authentication error, follow
@@ -40,7 +40,7 @@ count as the visual.
    “next seven days” as now through the same local time seven days later; for
    date-based primitives, search from today's local date through the local date
    containing that endpoint.
-2. Call `bos_get_context` once. Use the Education Center connection's grant-bound Lead Director scope and
+2. Call `bos_get_context` once. Use the BOS connection's grant-bound Lead Director scope and
    verify Lead Director, Gmail, and Google Calendar read capabilities are healthy.
 3. Search Calendar across the full window without a text filter. Use
    `start_date`, `end_date`, and `time_zone`.

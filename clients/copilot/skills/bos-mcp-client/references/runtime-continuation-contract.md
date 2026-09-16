@@ -11,10 +11,9 @@ on BOS, use
 with contract ID `bos.authentication-handoff/v1`. The caller delegates only the
 exact protected resource, structured condition, and optional host-native
 correlation. BOS coordinates the host authentication lifecycle and returns a
-typed readiness result. The caller's
-own MCP connection remains host-managed.
+typed readiness result. The BOS connection remains host-managed.
 
-The caller retains its operation and owns its connection refresh, live
+The caller retains its operation and owns its live
 discovery, retry, reconciliation, continuation, and presentation. None of that
 state enters the BOS authentication handoff.
 
@@ -33,7 +32,7 @@ resume the original request automatically when tools become callable. Inspect
 package installation only after live discovery establishes a connection problem.
 
 For application discovery, continue after context with resource listing and
-reading on that application's authenticated product connection. Tool discovery
+reading on that BOS connection with the authorized application scope. Tool discovery
 and resource discovery are distinct. Preserve successful resource reads when
 an optional resource-template method is unsupported. Classify failures at the
 operation actually reached and keep later unattempted operations distinct from

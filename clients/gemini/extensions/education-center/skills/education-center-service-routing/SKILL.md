@@ -180,12 +180,11 @@ persisted record identifiers. Return `configuration_required` and invoke
 
 ## Routing workflow
 
-1. Discover every domain marked `bos` through the installed Education Center MCP
-   connection and its host-managed product OAuth grant. Invoke the selected
+1. Discover every domain marked `bos` through the installed BOS platform MCP
+   connection and its host-managed BOS OAuth grant. Invoke the selected
    application operation through the exact advertised deterministic HTTPS API.
    The source-route value selects BOS-managed provider access within this
-   product. Platform directory discovery uses the separate BOS dependency
-   connection. The server resolves the Education Center subservice and
+   product. Platform and application discovery use the same BOS connection. The server resolves the Education Center subservice and
    authorized operation set for each request.
 2. Identify the requested operation and any provider preference stated by the
    user.
@@ -209,7 +208,7 @@ Calimatic opens the short-lived BOS credential page that asks for the portal
 URL and API key. Never replace either path with dashboard navigation, written
 setup steps, or a request for the customer to return and confirm completion.
 When the BOS context is already authenticated, a Calimatic recovery page that
-asks for Education Center MCP sign-in is `provider_recovery_identity_boundary`.
+asks for BOS platform MCP sign-in is `provider_recovery_identity_boundary`.
 Never click, follow, launch, or restart product authentication from that page. Preserve and poll
 the existing provider transaction once, then report the server-owned defect if
 the Calimatic credential form remains absent.

@@ -28,13 +28,9 @@ test("Codex runtime verifier requires the package-owned MCP binding", async () =
     } }
   }));
   const catalog = join(home, "catalog.json");
-  await writeFile(catalog, JSON.stringify({ tools: [
-    "bos_get_authorization_status", "bos_apply_plugin_settings",
-    "bos_begin_plugin_service_connection", "bos_get_context",
-    "bos_get_plugin_setting_changes", "bos_get_plugin_settings",
-    "bos_list_plugin_services", "bos_prepare_plugin_settings",
-    "bos_resume_operation", "bos_set_plugin_enabled"
-  ].map((name) => ({ name })) }));
+  const runtimeProducts = await Promise.all(["bos", "education-center"].map(name => readJson(join(root, "products", name, "product.json"))));
+  await writeFile(catalog, JSON.stringify({tools: [...new Set(runtimeProducts.flatMap(p => p.runtime_verification_tools))].map(name => ({name}))}));
+
   const runCommand = async (_command, args) => {
     if (args[1] === "list" && args[0] === "plugin") return { stdout: JSON.stringify({
       installed: [
@@ -46,10 +42,9 @@ test("Codex runtime verifier requires the package-owned MCP binding", async () =
   };
   const education = join(home, "source", "education-center");
   await mkdir(education, { recursive: true });
-  await writeFile(join(education, ".bos-product.json"), JSON.stringify({
-    name: "education-center", client: "codex", version: currentVersion
-  }));
+  await writeFile(join(education, ".bos-product.json"), JSON.stringify(await readJson(join(root, "clients/codex/plugins/education-center/.bos-product.json"))));
   const report = await inspectCodexRuntime({ home, runCommand, catalogPath: catalog });
+  assert.equal(report.ok, true, JSON.stringify(report.failures));
   assert.equal(report.mcp_binding.state, "current");
   assert.equal(report.mcp_binding.server.url, "https://dfsm.ai/mcp/apps/bos/platform");
   assert.equal(report.mcp_binding.server.oauth_resource, "https://dfsm.ai/mcp/apps/bos/platform");
@@ -57,4 +52,8 @@ test("Codex runtime verifier requires the package-owned MCP binding", async () =
   assert.equal(report.mcp_binding.server.startup_timeout_sec, 180);
   assert.equal(report.live_tool_surface.semantics, "operation_schema_only");
   assert.equal(report.live_tool_surface.authorization_source, "tools_call_server_result");
+  await writeFile(join(education, ".mcp.json"), JSON.stringify({mcpServers:{"education-center":{type:"http",url:"https://dfsm.ai/mcp/apps/leaddirector/education-center"}}}));
+  const stale = await inspectCodexRuntime({home, runCommand, catalogPath: catalog});
+  assert.equal(stale.ok, false);
+  assert.ok(stale.failures.includes("education-center: dependent_transport"));
 });

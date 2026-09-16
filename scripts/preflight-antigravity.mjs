@@ -5,6 +5,7 @@ import { join } from "node:path";
 import {
   geminiPluginManifest,
   geminiPluginMcpManifest,
+  ownsHostConnection,
   validateProduct
 } from "./lib/package-model.mjs";
 import { productRuntimeOwnershipMetadata } from "./lib/product-contracts.mjs";
@@ -53,13 +54,13 @@ for (const entry of await readdir(productsRoot, { withFileTypes: true })) {
   const metadata = await readJson(join(extensionRoot, ".bos-product.json"));
   const plugin = await readJson(join(extensionRoot, "plugin.json"));
   const expectedMetadata = {
-    schema_version: "1",
+    schema_version: "2",
     name,
     version: product.version,
     client: "gemini",
     ...(product.application_name ? { application_name: product.application_name } : {}),
     ...(product.mcp_group_name ? { mcp_group_name: product.mcp_group_name } : {}),
-    ...(product.runtime
+    ...(ownsHostConnection(product)
       ? { resource_url: product.mcp_resource_url, oauth: product.oauth }
       : {}),
     ...productRuntimeOwnershipMetadata(product)
@@ -72,7 +73,7 @@ for (const entry of await readdir(productsRoot, { withFileTypes: true })) {
     throw new Error(`generated Antigravity manifest parity mismatch for ${name}`);
   }
 
-  if (product.runtime) {
+  if (ownsHostConnection(product)) {
     const mcp = await readJson(join(extensionRoot, "mcp_config.json"));
     const expectedMcp = await geminiPluginMcpManifest(product, repositoryRoot);
     if (JSON.stringify(mcp) !== JSON.stringify(expectedMcp)) {

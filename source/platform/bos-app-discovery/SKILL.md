@@ -82,8 +82,8 @@ both outcomes. This rule never replays mutations or guesses unlisted URIs.
 
 When discovery is advertised as a tool, use its live descriptor and schema.
 An empty tool search must still proceed to the available resource facilities.
-Keep BOS directory resource reads on the BOS product connection. Follow a
-server-returned application contact through the owning product connection.
+Keep BOS directory resource reads on the BOS product connection. Use server-returned application contracts through the same BOS connection
+when supported. A contact alone never creates another login or grants authority.
 
 ## App discovery workflow
 

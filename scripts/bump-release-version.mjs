@@ -116,10 +116,22 @@ export async function bumpReleaseVersion({ root = scriptRoot, requested = "patch
     marketplacePath
   );
 
+  const lockPath = join(root, "package-lock.json");
+  let lock;
+  try { lock = await readJson(lockPath); }
+  catch (error) { if (error.code !== "ENOENT") throw error; }
+  if (lock) {
+    if (lock.version !== current || lock.packages?.[""]?.version !== current) {
+      throw new Error("package-lock.json version does not match the current release");
+    }
+    lock.version = next;
+    lock.packages[""].version = next;
+  }
   repositoryPackage.version = next;
   packageManifest.version = next;
   await Promise.all([
     writeJson(packagePath, repositoryPackage),
+    ...(lock ? [writeJson(lockPath, lock)] : []),
     writeJson(packageManifestPath, packageManifest),
     ...activeProducts.map(({ path, product }) => {
       product.version = next;

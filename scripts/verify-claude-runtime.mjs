@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { activeClientProducts, verifyInstalledMetadata } from "./lib/client-runtime-verification.mjs";
+import { verifyDependentConnection, activeClientProducts, verifyInstalledMetadata } from "./lib/client-runtime-verification.mjs";
 import { pathExists, stableJson } from "./lib/package-model.mjs";
 
 const execFileAsync = promisify(execFile);
@@ -48,6 +48,7 @@ export async function inspectClaudeRuntime({
         { name: product.name, version: product.version, client: "claude" }
       ));
     }
+    if (entry?.installPath) entryFailures.push(...await verifyDependentConnection(entry.installPath, product));
     states[product.name] = {
       id,
       state: entryFailures.length === 0 ? "current" : "incomplete",

@@ -85,6 +85,7 @@ test("release bump updates canonical active versions and current-release documen
   await mkdir(join(root, "products", "video-ads"), { recursive: true });
   await mkdir(join(root, "Vault", "docs"), { recursive: true });
   await writeJson(join(root, "package.json"), { name: "bos", version: "0.4.27" });
+  await writeJson(join(root, "package-lock.json"), { version: "0.4.27", packages: { "": { version: "0.4.27" }, "node_modules/example": { version: "1.0.0" } } });
   await writeJson(join(root, "package-manifest.json"), { version: "0.4.27" });
   await writeJson(join(root, "products", "bos", "product.json"), {
     name: "bos", version: "0.4.27", release_status: "active"
@@ -116,6 +117,10 @@ test("release bump updates canonical active versions and current-release documen
     activeProducts: ["bos", "education-center"]
   });
   assert.equal(JSON.parse(await readFile(join(root, "package.json"))).version, "0.4.28");
+  const lock = JSON.parse(await readFile(join(root, "package-lock.json")));
+  assert.equal(lock.version, "0.4.28");
+  assert.equal(lock.packages[""].version, "0.4.28");
+  assert.equal(lock.packages["node_modules/example"].version, "1.0.0");
   assert.equal(
     JSON.parse(await readFile(join(root, "products", "education-center", "product.json"))).version,
     "0.4.28"

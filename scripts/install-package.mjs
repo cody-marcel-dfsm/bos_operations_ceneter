@@ -159,10 +159,37 @@ function parseArgs(argv) {
   return options;
 }
 
+async function isRetiredDependentTransport(path, productName) {
+  try {
+    const legacy = await readJson(join(root, "contracts/product-mcp-connections.v1.json"));
+    const product = legacy.products.find(p => p.name === productName && p.name !== "bos");
+    if (!product) return false;
+    const manifest = await readJson(path);
+    const entries = Object.entries(manifest.mcpServers ?? {});
+    const [name, server] = entries[0] ?? [];
+    return Object.keys(manifest).length === 1 && entries.length === 1 &&
+      name === product.mcp_group_name && server?.type === "http" &&
+      server.url === product.resource_url && server.oauth_resource === product.resource_url &&
+      server.required === false &&
+      server.startup_timeout_sec === product.codex_mcp_startup_timeout_sec &&
+      server.tool_timeout_sec === product.codex_mcp_tool_timeout_sec &&
+      Object.keys(server).every(key => ["type", "url", "oauth_resource", "required", "startup_timeout_sec", "tool_timeout_sec"].includes(key));
+  } catch { return false; }
+}
+
 async function configureCodexBosMcp(_options, paths) {
   const metadata = await readJson(join(paths.target, ".bos-product.json"));
   const appPath = join(paths.target, ".app.json");
   const runtimePath = join(paths.target, ".mcp.json");
+  if (metadata.authentication === "bos_dependency") {
+    const plugin = await readJson(join(paths.target, ".codex-plugin", "plugin.json"));
+    if (metadata.schema_version !== "2" || metadata.connection_owner !== "bos" ||
+        !metadata.dependency_products?.includes("bos") || metadata.resource_url || metadata.oauth ||
+        plugin.mcpServers || plugin.apps || await pathExists(appPath) || await pathExists(runtimePath)) {
+      throw new Error("Dependent product must use only the BOS connection");
+    }
+    return { state: "bos_dependency", connection_owner: "bos" };
+  }
   if (metadata.authentication === "none") {
     if (metadata.application_name !== undefined ||
         metadata.mcp_group_name !== undefined ||
@@ -758,10 +785,10 @@ async function inspectTarget(paths, desired) {
     }
   }
   if (
-    !previousState &&
-    desiredMetadata.authentication === "bos_managed" &&
+    desiredMetadata.authentication === "bos_dependency" &&
     ".mcp.json" in currentFiles &&
-    !(".mcp.json" in desired.hashes)
+    !(".mcp.json" in desired.hashes) &&
+    await isRetiredDependentTransport(join(paths.target, ".mcp.json"), desiredMetadata.name)
   ) {
     remove.push(".mcp.json");
     preserve = preserve.filter((path) => path !== ".mcp.json");

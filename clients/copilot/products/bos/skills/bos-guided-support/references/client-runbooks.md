@@ -50,11 +50,10 @@ registration. Restart BOS authorization once, refresh tools, verify
 `bos_get_context`, and resume the request. If the host exposes replacement only
 through its native **Connect**, **Sign in**, **Auth**, or **Authenticate**
 control, invoke that control and request user consent there. Preserve every
-installed dependent plugin and reconnect only the affected product-owned
-resource.
+installed dependent plugin and recover the BOS platform connection.
 
 An OAuth token-endpoint `invalid_grant`, including `Refresh token replay
-detected`, means the existing product grant is unusable. Keep the product-owned
+detected`, means the existing product grant is unusable. Keep the BOS-owned
 connection and its immutable resource unchanged, stop refresh retries, and use the
 native **Connect**, **Sign in**, **Auth**, or **Authenticate** control for fresh
 consent. Refresh tools and context after consent, then resume the preserved

@@ -102,7 +102,7 @@ operators. Access and display only the minimum student or family information
 needed for the requested roster, capacity, attendance, or placement task. Do
 not publish, export, or distribute it without a separate authorized request.
 
-Use the authenticated Education Center MCP connection and follow the
+Use the authenticated BOS platform connection and follow the
 `bos-mcp-client` context workflow. The server resolves the authorized Education
 Center scope for each tool.
 Use Calimatic for class/enrollment state and Calendar only as schedule evidence.
@@ -111,7 +111,7 @@ template and recursively overlaying the preserved customer settings file. For
 Care.com Backup Care evidence, follow `source_routes.care_com`:
 
 - `bos`: use published `education_center_search_email_evidence` and
-  `education_center_get_email_thread` through the Education Center MCP connection.
+  `education_center_get_email_thread` through the BOS platform connection.
 - `connected_gmail`: invoke `email-account-routing`, select the exact
   `mailboxes.care_com` account, and use the normal Gmail connector's bounded
   search and full-thread retrieval tools.
@@ -124,7 +124,7 @@ camp-assignment results.
 For a standalone class roster or family contact list, return the requested
 records directly in the conversation. For a camp-enrollment report, return the
 five-day roster image and separate family contact list defined below.
-When the user requests Calimatic, use the Education Center MCP connection and omit `org_id`,
+When the user requests Calimatic, use the BOS platform connection and omit `org_id`,
 `app_code`, `installed_app_id`, and `delegated_role_id`; BOS
 derives them from the authenticated installation. Never use a direct provider
 client or browser session as a fallback for a BOS-routed domain. When BOS

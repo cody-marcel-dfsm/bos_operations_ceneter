@@ -32,7 +32,7 @@ protected-resource challenge
 then identifies a signed-out runtime connection and activates OAuth. The
 user completes consent, and the agent refreshes tools and resumes the request.
 
-Current desktop marketplace release: `0.4.103`. If `0.4.102` is installed,
+Current desktop marketplace release: `0.4.104`. If `0.4.103` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -66,9 +66,9 @@ the Git ref, and leave **Sparse paths** empty. The repository-root
 
 Codex reads the generated catalog at
 `clients/codex/.agents/plugins/marketplace.json`, installs the plugins into its managed
-cache, and loads each product resource from that plugin's `.mcp.json`.
-The framework derives OAuth activation from each resource and stores its
-host-managed grant. Education Operation Center uses its own scoped MCP binding.
+cache, and loads the BOS platform resource from the BOS plugin's `.mcp.json`.
+The framework manages BOS authentication and refresh. Education Operation Center
+uses that connection while the server enforces its application permissions.
 Start a new
 task after installation or upgrade. A complete installation must pass
 `npm run install:verify:codex-runtime`; this checks the plugin registry,
@@ -97,14 +97,11 @@ marketplace afterward.
    `https://github.com/cody-marcel-dfsm/bos_operations_ceneter` as a
    marketplace.
 3. Install **BOS** and **Education Operation Center**.
-4. Open **Customize → Connectors**. Add each package-owned Web connector when
-   it is not already present through your organization
-   or Anthropic's Connector Directory:
+4. Open **Customize → Connectors**. Add the BOS Web connector when it is
+   absent from your organization or Anthropic's Connector Directory:
    - Name: `BOS`
    - URL: `https://dfsm.ai/mcp/apps/bos/platform`
-   - Name: `Education Operation Center`
-   - URL: `https://dfsm.ai/mcp/apps/leaddirector/education-center`
-5. Select **Connect** on both Web connectors and complete each product's sign-in.
+5. Select **Connect** on BOS and complete its native sign-in.
 6. Start a new Cowork task and request one authenticated Education Operation
    Center read to verify the connection.
 
@@ -288,11 +285,12 @@ node scripts/verify-product-mcp-contract.mjs \
   --format json
 ```
 
-The package keeps its own authenticated MCP connection, declares BOS as a
-required product dependency, and delegates authentication management and
-recovery to BOS automatically. See
-`contracts/external-product-dependency.v1.md` and
-`contracts/external-product-dependency.v1.schema.json`.
+The package declares BOS as its connection owner and required dependency.
+It retains its application skills and uses BOS authentication and recovery.
+See `contracts/external-product-dependency.v2.md` and
+`contracts/external-product-dependency.v2.schema.json`. Legacy v1 packages can
+be checked explicitly with `--external-contract-version 1`; passing that legacy
+check does not establish migration to the BOS-owned connection.
 
 Every server release affecting MCP authentication must also pass the client-owned
 signed-out discovery probe against the deployed candidate environment:
@@ -421,10 +419,10 @@ retrieve a reusable BOS access token.
 ## Other clients
 
 Claude, ChatGPT/Codex, OAuth-capable Copilot hosts, Gemini CLI, and Antigravity
-Desktop use host-managed OAuth for each product-owned MCP resource. BOS owns
-the BOS platform resource. Education Center, My CRM, Lead Director, and other
-dependent products own their application-scoped resources and declare BOS as a
-required product dependency.
+Desktop use the BOS foundation’s host-managed OAuth connection. Dependent
+products declare BOS as their required connection owner and retain their
+application skills. The server validates exact organization, application,
+installation, role, capability, and provider scope on every operation.
 
 ### Gemini CLI and Antigravity 2.0 Desktop
 

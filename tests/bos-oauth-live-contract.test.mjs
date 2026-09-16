@@ -831,6 +831,39 @@ test("BOS OAuth live contract follows the secure login handoff to Google", async
   assert.equal(calls[2].init.headers["sec-fetch-site"], "same-origin");
 });
 
+for (const [label, target, expected] of [
+  ["canonical link", "/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=opaque", "passed"],
+  ["different transaction", "/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=other", "failed"],
+  ["duplicate transaction", "/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=opaque&amp;agent_auth_transaction=other", "failed"],
+  ["missing transaction", "/api/v1/mcp/oauth/handoff/google/start", "failed"],
+  ["foreign origin", "https://wrong.example/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=opaque", "failed"],
+  ["wrong path", "/other?agent_auth_transaction=opaque", "failed"],
+  ["fragment", "/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=opaque#fragment", "failed"],
+  ["embedded credentials", "https://user@dfsm.ai/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=opaque", "failed"]
+]) {
+  test(`BOS OAuth live Google link: ${label}`, async () => {
+    const google = new URL(CANONICAL_IDENTITY_PROVIDER_AUTHORIZATION_ENDPOINT);
+    google.searchParams.set("prompt", "select_account");
+    const responses = [
+      new Response('<main id="mcp-oauth-login"><a id="mcp-oauth-login-link" href="/api/v1/mcp/oauth/handoff/login?agent_auth_transaction=opaque">Sign in</a></main>', {
+        headers: { "content-type": "text/html", "cache-control": "no-store", pragma: "no-cache", "referrer-policy": "no-referrer" }
+      }),
+      new Response(`<a href="${target}" id="mcp-oauth-google-login-link">Continue with Google</a>`),
+      new Response(null, { status: 302, headers: { location: google.href } })
+    ];
+    const calls = [];
+    const result = await probeBosOAuthAuthorize({
+      authorizeUrl: authorizeUrl(),
+      fetchImpl: async (url) => { calls.push(String(url)); return responses.shift(); }
+    });
+    assert.equal(result.status, expected);
+    assert.equal(calls.length, expected === "passed" ? 3 : 2);
+    if (expected === "passed") {
+      assert.equal(new URL(calls[2]).searchParams.get("agent_auth_transaction"), "opaque");
+    }
+  });
+}
+
 test("BOS OAuth live contract rejects an authorization server exception", async () => {
   const result = await probeBosOAuthAuthorize({
     authorizeUrl: authorizeUrl(),

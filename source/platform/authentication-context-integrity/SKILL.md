@@ -33,20 +33,15 @@ configuration as distinct validated dimensions.
 - Provider credentials remain scoped to their installed app and plugin.
 - Reconnect or reauthorization replaces the scoped grant and preserves
   application configuration.
-- Each installed product owns a host-managed OAuth connection to its scoped MCP
-  resource. BOS owns the platform connection. Separately installed dependent
-  products own their application connections and require the BOS product.
-- Every product discovery request uses its product-owned authenticated
-  connection. The server derives and evaluates organization, application,
-  installation, subservice, plugin, role, capability, provider, and tool scope
-  for that request and revalidates the same authority for every advertised API
-  execution.
-- Platform BOS operations use the BOS connection directly. The owning Education
-  Center, CRM, Lead Director, Marketing Director, or other application MCP
-  discovers current semantic operations and their deterministic HTTPS API
-  contracts. Application execution uses the exact advertised API method, path,
-  schema and audience. The client supplies no organization, installation,
-  application, role, or context selector.
+- BOS owns the host-managed platform connection and native authentication.
+  Dependent products declare BOS as a dependency and supply application skills.
+  Every discovery and execution request revalidates the exact grant-bound
+  organization, application, installation, role, capability, and provider scope.
+  Platform transport ownership grants no cross-application authority.
+- Use live-discovered operations and exact schemas on the BOS connection.
+  The client supplies no organization, installation, application, role, or
+  context selector. A different authority context requires BOS-owned server
+  authorization; existing grants remain unchanged.
 - Background jobs carry the same validated scope as interactive operations.
 - The agent owns MCP transport and session recovery. On a closed stream or
   session, it reconnects the configured endpoint, rediscovers tools,
@@ -57,20 +52,20 @@ configuration as distinct validated dimensions.
   the immutable resource URL. Claude marketplace plugins contain skills and
   account-connector metadata with no `.mcp.json` or `mcpServers`; this preserves
   the persistent account-level **Connect** control. ChatGPT/Codex packages
-  declare one package-owned product resource in `.mcp.json` and contain no
+  declare the BOS platform resource in `.mcp.json` and contain no
   `.app.json`. Every runtime host
   uses its OAuth 2.1 MCP
   authorization flow. The host discovers BOS
   authorization metadata, launches consent, stores and refreshes the grant,
   and attaches the resulting resource-scoped access token. The package never
   asks for or stores a BOS API key. Dependent product packages declare their
-  BOS requirement and their own scoped MCP authentication binding. Every
+  BOS requirement without another MCP authentication binding. Every
   secured call fails closed when authorization is
   absent, invalid, expired, revoked, or scoped to another resource.
-- Register each product package's immutable MCP endpoint and verify the
+- Register the BOS package's immutable platform MCP endpoint and verify the
   server-returned context. Never discover, prompt for, repair, or materialize
   the route from an `installed_app_id`, customer setting, or subservice
-  package. For Claude, declare the product resource
+  package. For Claude, declare the BOS resource
   in an account or organization Web connector and complete authorization from
   **Customize → Connectors**. For ChatGPT/Codex, package exactly one `.mcp.json`
   declaration for the product resource and no `.app.json`.
@@ -117,12 +112,11 @@ when a separately installed product that requires BOS encounters an
 authentication or MCP-session condition.
 
 The dependent product recognizes the condition and delegates automatically to
-the installed BOS plugin. BOS is the authentication orchestrator while the
-dependent product retains its own host-managed product-owned MCP connection.
+the installed BOS plugin. BOS owns the shared host-managed connection.
 BOS receives only the exact protected resource, a structured authentication or
 MCP-session condition, and optional host-native correlation. It
   coordinates authentication bootstrap or recovery for the dependent
-  product's scoped connection, then returns a typed readiness result. It never receives the
+  BOS connection, then returns a typed readiness result. It never receives the
 caller's product identity, domain operation, continuation, retry, reconciliation,
 cache, or presentation state, and it never receives or transfers a token.
 

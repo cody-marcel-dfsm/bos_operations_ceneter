@@ -30,8 +30,8 @@ if (!new Set(["json", "text"]).has(format)) {
 
 const resourceUrls = resourceUrl
   ? [resourceUrl]
-  : (await readJson(join(root, "contracts", "product-mcp-connections.v1.json")))
-    .products.map((product) => product.resource_url);
+  : (await readJson(join(root, "contracts", "product-mcp-connections.v2.json")))
+    .connections.map((connection) => connection.resource_url);
 if (resourceUrls.some((value) => !value)) {
   throw new Error("--resource-url must not be empty");
 }

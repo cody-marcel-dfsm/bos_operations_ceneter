@@ -6,7 +6,7 @@ description: Prepare, approve, send, and report Google Business Profile review r
 # BOS Google Review Outreach
 
 Use `bos-mcp-client` for context and live tool discovery. Use only authenticated
-Education Center MCP operations. On the Education Center connection, omit
+BOS platform MCP operations. On the BOS connection, omit
 `org_id`, `app_code`, `installed_app_id`, and `delegated_role_id`; BOS derives
 them from the authenticated installation.
 Use `bos-visual-output` for campaign, cohort, rating, and completion reporting.

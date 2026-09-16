@@ -8,6 +8,7 @@ import {
   hashTree,
   listProducts,
   materializeMcpUrl,
+  ownsHostConnection,
   pathExists,
   readJson,
   resolveProductSkills,
@@ -203,7 +204,7 @@ async function validateProducts() {
         failures.push(`${path}: unknown product dependency ${dependency}`);
       }
     }
-    if (manifest.runtime) {
+    if (ownsHostConnection(manifest)) {
       const route = `${manifest.application_name}/${manifest.mcp_group_name}`;
       if (runtimeRoutes.has(route)) {
         failures.push(`${path}: duplicate product MCP route ${route}`);
@@ -241,15 +242,15 @@ async function validateProducts() {
         continue;
       }
       const metadata = await readJson(metadataPath);
-      const expectedAuthentication = manifest.runtime ? "oauth_2_1" : "none";
+      const expectedAuthentication = productRuntimeOwnershipMetadata(manifest).authentication;
       const expectedOwnership = productRuntimeOwnershipMetadata(manifest);
       if (
-        metadata.connection_owner !== manifest.name ||
+        metadata.connection_owner !== manifest.connection_owner ||
         JSON.stringify(metadata.dependency_products) !==
           JSON.stringify(manifest.dependencies) ||
         metadata.application_name !== manifest.application_name ||
         metadata.mcp_group_name !== manifest.mcp_group_name ||
-        metadata.resource_url !== (manifest.runtime
+        metadata.resource_url !== (ownsHostConnection(manifest)
           ? materializeMcpUrl(manifest)
           : undefined) ||
         metadata.authentication !== expectedAuthentication ||
@@ -278,7 +279,7 @@ async function validateProducts() {
         ) {
           failures.push(`Generated Codex identity drift: ${pluginPath}`);
         }
-        if (manifest.runtime) {
+        if (ownsHostConnection(manifest)) {
           if (generated.mcpServers !== "./.mcp.json" || "apps" in generated) {
             failures.push(`Generated Codex MCP binding drift: ${pluginPath}`);
           }
@@ -287,7 +288,7 @@ async function validateProducts() {
         }
       }
       const runtimePath = join(pluginRoot, ".mcp.json");
-      if (manifest.runtime) {
+      if (ownsHostConnection(manifest)) {
         if (
           await pathExists(join(pluginRoot, ".app.json")) ||
           !(await pathExists(runtimePath))
@@ -355,7 +356,7 @@ async function validateProducts() {
         }
       }
       const runtimePath = join(pluginRoot, ".mcp.json");
-      if (manifest.runtime) {
+      if (ownsHostConnection(manifest)) {
         if (await pathExists(runtimePath)) {
           failures.push(`Generated Claude plugin contains session-scoped MCP: ${runtimePath}`);
         }
@@ -390,11 +391,11 @@ async function validateProducts() {
     if (manifest.clients.includes("copilot")) {
       const productRoot = generatedRoots.copilot;
       const runtimePath = join(productRoot, ".github", "mcp.json");
-      if (!manifest.runtime && await pathExists(runtimePath)) {
+      if (!ownsHostConnection(manifest) && await pathExists(runtimePath)) {
         failures.push(`Skills-only product contains Copilot MCP configuration: ${runtimePath}`);
-      } else if (manifest.runtime && !(await pathExists(runtimePath))) {
+      } else if (ownsHostConnection(manifest) && !(await pathExists(runtimePath))) {
         failures.push(`Missing generated Copilot MCP configuration: ${runtimePath}`);
-      } else if (manifest.runtime) {
+      } else if (ownsHostConnection(manifest)) {
         const runtime = await readJson(runtimePath);
         const server = runtime.mcpServers?.[manifest.mcp_group_name];
         const expectedUrl = materializeMcpUrl(manifest);
@@ -443,7 +444,7 @@ async function validateProducts() {
             failures.push(`Gemini MCP transport must use httpUrl: ${extensionPath}`);
           }
         }
-        if (!manifest.runtime) {
+        if (!ownsHostConnection(manifest)) {
           if (generated.mcpServers !== undefined || generated.settings !== undefined) {
             failures.push(`Skills-only Gemini product contains MCP configuration: ${extensionPath}`);
           }
@@ -472,7 +473,7 @@ async function validateProducts() {
           failures.push(`Generated Antigravity plugin identity drift: ${pluginPath}`);
         }
       }
-      if (!manifest.runtime) {
+      if (!ownsHostConnection(manifest)) {
         if (await pathExists(pluginMcpPath)) {
           failures.push(`Skills-only Gemini product contains desktop MCP configuration: ${pluginMcpPath}`);
         }
@@ -509,7 +510,7 @@ async function validateProducts() {
           !readme.includes("clean install") ||
           !readme.includes("without backups") ||
           !readme.includes("After each Git pull, restart Antigravity") ||
-          (manifest.runtime &&
+          (ownsHostConnection(manifest) &&
             (!readme.includes(`/mcp auth ${manifest.mcp_group_name}`) ||
               !readme.includes("Settings > Customizations") ||
               !readme.includes("Authenticate") ||
@@ -587,7 +588,7 @@ async function validateGeneratedProductContracts() {
   const bos = products.find(({ name }) => name === "bos");
   for (const [path, expected] of [
     [
-      join(root, "contracts", "product-mcp-connections.v1.json"),
+      join(root, "contracts", "product-mcp-connections.v2.json"),
       productMcpConnectionsContract(products)
     ],
     [

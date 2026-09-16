@@ -71,6 +71,7 @@ export function validateProduct(manifest, path = "product.json") {
     "clients",
     "includes",
     "runtime",
+    "connection_owner",
     "application_name",
     "mcp_group_name",
     "mcp_resource_url",
@@ -269,23 +270,34 @@ export function validateProduct(manifest, path = "product.json") {
       !manifest.runtime) {
     failures.push(`${path}: application and MCP group names require runtime`);
   }
-  if (manifest.runtime && (!manifest.application_name || !manifest.mcp_group_name ||
+  const ownsConnection = ownsHostConnection(manifest);
+  if (manifest.runtime && !manifest.application_name) failures.push(`${path}: runtime requires application_name`);
+  if (manifest.release_status === "active" && manifest.connection_owner !== "bos") {
+    failures.push(`${path}: active products require BOS connection ownership`);
+  }
+  if (manifest.runtime && !ownsConnection) {
+    for (const field of ["mcp_group_name", "mcp_resource_url", "oauth", "codex_mcp_startup_timeout_sec", "codex_mcp_tool_timeout_sec"]) {
+      if (manifest[field] !== undefined) failures.push(`${path}: dependent products cannot declare ${field}; BOS owns the connection`);
+    }
+    if (!manifest.dependencies?.includes("bos")) failures.push(`${path}: dependent runtime requires BOS dependency`);
+  }
+  if (ownsConnection && (!manifest.application_name || !manifest.mcp_group_name ||
       typeof manifest.mcp_resource_url !== "string" ||
       !/^https:\/\/[^\s]+$/.test(manifest.mcp_resource_url))) {
     failures.push(`${path}: runtime requires application_name, mcp_group_name, and an HTTPS mcp_resource_url`);
   }
-  if (manifest.runtime &&
+  if (ownsConnection &&
       (!Number.isInteger(manifest.codex_mcp_startup_timeout_sec) ||
         manifest.codex_mcp_startup_timeout_sec <= 30)) {
     failures.push(`${path}: runtime requires codex_mcp_startup_timeout_sec greater than 30`);
   }
-  if (manifest.runtime &&
+  if (ownsConnection &&
       (!Number.isInteger(manifest.codex_mcp_tool_timeout_sec) ||
         manifest.codex_mcp_tool_timeout_sec <= 30)) {
     failures.push(`${path}: runtime requires codex_mcp_tool_timeout_sec greater than 30`);
   }
   const oauth = manifest.oauth;
-  if (manifest.runtime && (!oauth || typeof oauth !== "object" || Array.isArray(oauth))) {
+  if (ownsConnection && (!oauth || typeof oauth !== "object" || Array.isArray(oauth))) {
     failures.push(`${path}: runtime requires a complete OAuth target contract`);
   } else if (!manifest.runtime && oauth !== undefined) {
     failures.push(`${path}: OAuth target contract is only valid for a runtime product`);
@@ -365,7 +377,7 @@ export function validateProduct(manifest, path = "product.json") {
       failures.push(`${path}: BOS must own the bos/platform MCP runtime`);
     }
   } else if (!manifest.runtime) {
-    failures.push(`${path}: subservice products must own a scoped MCP runtime`);
+    failures.push(`${path}: subservice products must declare their BOS runtime dependency`);
   }
   if (
     manifest.settings_template !== undefined &&
@@ -641,7 +653,12 @@ function publicPackagePath(path) {
   return !parts.includes("__pycache__") && !name.endsWith(".pyc");
 }
 
+export function ownsHostConnection(product) {
+  return Boolean(product?.runtime && (product.connection_owner === product.name || (product.release_status === "disabled" && product.connection_owner === undefined)));
+}
+
 export function materializeMcpUrl(product) {
+  if (!ownsHostConnection(product)) throw new Error("Only the connection owner declares the MCP resource");
   const resourceUrl = product?.mcp_resource_url;
   if (typeof resourceUrl !== "string" || !/^https:\/\/[^\s]+$/.test(resourceUrl)) {
     throw new Error(`Runtime ${product?.runtime ?? "unknown"} has no valid MCP resource URL`);
@@ -691,12 +708,12 @@ export function pluginManifest(product) {
     manifest.interface.composerIcon = `./${product.composer_icon}`;
   }
   if (product.logo) manifest.interface.logo = `./${product.logo}`;
-  if (product.runtime) manifest.mcpServers = "./.mcp.json";
+  if (ownsHostConnection(product)) manifest.mcpServers = "./.mcp.json";
   return manifest;
 }
 
 export function codexPluginMcpManifest(product) {
-  if (!product.runtime) return { mcpServers: {} };
+  if (!ownsHostConnection(product)) return { mcpServers: {} };
   return {
     mcpServers: {
       [product.mcp_group_name]: {
@@ -712,7 +729,7 @@ export function codexPluginMcpManifest(product) {
 }
 
 export function claudePluginMcpManifest(product) {
-  if (!product.runtime) return { mcpServers: {} };
+  if (!ownsHostConnection(product)) return { mcpServers: {} };
   return {
     mcpServers: {
       [product.mcp_group_name]: {
@@ -729,7 +746,7 @@ export async function geminiExtensionManifest(product) {
     version: product.version,
     description: product.description
   };
-  if (!product.runtime) return manifest;
+  if (!ownsHostConnection(product)) return manifest;
 
   const httpUrl = materializeMcpUrl(product);
   const serverName = product.mcp_group_name;
@@ -751,7 +768,7 @@ export function geminiPluginManifest(product) {
 }
 
 export async function geminiPluginMcpManifest(product) {
-  if (!product.runtime) return { mcpServers: {} };
+  if (!ownsHostConnection(product)) return { mcpServers: {} };
   return {
     mcpServers: {
       [product.mcp_group_name]: {
@@ -762,7 +779,7 @@ export async function geminiPluginMcpManifest(product) {
 }
 
 export async function copilotMcpManifest(product) {
-  if (!product.runtime) return { mcpServers: {} };
+  if (!ownsHostConnection(product)) return { mcpServers: {} };
   return {
     mcpServers: {
       [product.mcp_group_name]: {

@@ -8,6 +8,10 @@ import {
 } from "../scripts/check-publication-safety.mjs";
 
 test("publication safety rejects Vault and unclassified top-level paths", () => {
+  assert.deepEqual(validatePublicationPaths(["package-lock.json"]), []);
+  assert.deepEqual(validatePublicationPaths(["package-lock.json.backup"]), [
+    "Path is outside the public allowlist: package-lock.json.backup",
+  ]);
   assert.deepEqual(validatePublicationPaths(["Vault/docs/private.md"]), [
     "Private Vault path is public: Vault/docs/private.md",
   ]);

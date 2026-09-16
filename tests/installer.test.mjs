@@ -866,17 +866,30 @@ test("unmanaged obsolete app package converges to package-owned MCP", async () =
   await assert.rejects(access(join(target, ".app.json")));
 });
 
-test("dependent-product installation preserves its product-owned MCP file", async () => {
+test("dependent-product installation retains skills without a second MCP file", async () => {
   const home = await temporaryHome();
   const target = installedProduct(home, "education-center");
   const applied = await applyInstallationRaw({ home, product: "education-center" });
   assert.equal(applied.state, "managed-current");
-  const mcp = JSON.parse(await readFile(join(target, ".mcp.json"), "utf8"));
-  assert.deepEqual(Object.keys(mcp.mcpServers), ["education-center"]);
-  assert.equal(
-    mcp.mcpServers["education-center"].url,
-    "https://dfsm.ai/mcp/apps/leaddirector/education-center"
-  );
+  await assert.rejects(readFile(join(target, ".mcp.json"), "utf8"), {code:"ENOENT"});
+  const metadata = JSON.parse(await readFile(join(target, ".bos-product.json"), "utf8"));
+  assert.equal(metadata.connection_owner, "bos");
+  assert.equal(metadata.application_name, "leaddirector");
+});
+
+test("upgrade removes an exact retired dependent binding and preserves unrelated files", async () => {
+  const home = await temporaryHome();
+  const target = installedProduct(home, "education-center");
+  await applyInstallationRaw({home, product:"education-center"});
+  await writeFile(join(target, ".mcp.json"), JSON.stringify({mcpServers:{"education-center":{
+    type:"http", url:"https://dfsm.ai/mcp/apps/leaddirector/education-center",
+    oauth_resource:"https://dfsm.ai/mcp/apps/leaddirector/education-center", required:false,
+    startup_timeout_sec:180, tool_timeout_sec:180
+  }}}));
+  await writeFile(join(target, "customer-note.txt"), "preserve me");
+  await applyInstallationRaw({home, product:"education-center"});
+  await assert.rejects(readFile(join(target, ".mcp.json")), {code:"ENOENT"});
+  assert.equal(await readFile(join(target, "customer-note.txt"), "utf8"), "preserve me");
 });
 
 test("stale managed file updates when prior hash proves ownership", async () => {
