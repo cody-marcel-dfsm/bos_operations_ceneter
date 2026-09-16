@@ -4,6 +4,7 @@ import { extname, join } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import {
+  mcpServerName,
   geminiPluginManifest,
   hashTree,
   listProducts,
@@ -250,6 +251,7 @@ async function validateProducts() {
           JSON.stringify(manifest.dependencies) ||
         metadata.application_name !== manifest.application_name ||
         metadata.mcp_group_name !== manifest.mcp_group_name ||
+        metadata.mcp_server_name !== (ownsHostConnection(manifest) ? mcpServerName(manifest) : undefined) ||
         metadata.resource_url !== (ownsHostConnection(manifest)
           ? materializeMcpUrl(manifest)
           : undefined) ||
@@ -300,7 +302,7 @@ async function validateProducts() {
           const [name, server] = entries[0] ?? [];
           if (
             entries.length !== 1 ||
-            name !== manifest.mcp_group_name ||
+            name !== mcpServerName(manifest) ||
             server?.type !== "http" ||
             server?.url !== materializeMcpUrl(manifest) ||
             server?.oauth_resource !== materializeMcpUrl(manifest) ||
@@ -397,7 +399,7 @@ async function validateProducts() {
         failures.push(`Missing generated Copilot MCP configuration: ${runtimePath}`);
       } else if (ownsHostConnection(manifest)) {
         const runtime = await readJson(runtimePath);
-        const server = runtime.mcpServers?.[manifest.mcp_group_name];
+        const server = runtime.mcpServers?.[mcpServerName(manifest)];
         const expectedUrl = materializeMcpUrl(manifest);
         if (
           server?.type !== "http" ||
@@ -451,15 +453,15 @@ async function validateProducts() {
         } else {
           const expectedUrl = materializeMcpUrl(manifest);
           if (
-            generated.mcpServers?.[manifest.mcp_group_name]?.httpUrl !== expectedUrl ||
-            generated.mcpServers?.[manifest.mcp_group_name]?.oauth?.enabled !== true ||
+            generated.mcpServers?.[mcpServerName(manifest)]?.httpUrl !== expectedUrl ||
+            generated.mcpServers?.[mcpServerName(manifest)]?.oauth?.enabled !== true ||
             /BOS_INSTALLED_APP_ID|installed_app_id|Authorization|clientSecret/.test(
               JSON.stringify(generated)
             )
           ) {
             failures.push(`Generated Gemini named MCP route drift: ${extensionPath}`);
           }
-          if (generated.settings !== undefined || generated.mcpServers?.[manifest.mcp_group_name]?.headers) {
+          if (generated.settings !== undefined || generated.mcpServers?.[mcpServerName(manifest)]?.headers) {
             failures.push(`Generated Gemini authentication configuration drift: ${extensionPath}`);
           }
         }
@@ -482,7 +484,7 @@ async function validateProducts() {
       } else {
         const desktopMcp = await readJson(pluginMcpPath);
         const expectedUrl = materializeMcpUrl(manifest);
-        const server = desktopMcp.mcpServers?.[manifest.mcp_group_name];
+        const server = desktopMcp.mcpServers?.[mcpServerName(manifest)];
         if (
           Object.keys(desktopMcp.mcpServers ?? {}).length !== 1 ||
           server?.serverUrl !== expectedUrl ||
@@ -511,7 +513,7 @@ async function validateProducts() {
           !readme.includes("without backups") ||
           !readme.includes("After each Git pull, restart Antigravity") ||
           (ownsHostConnection(manifest) &&
-            (!readme.includes(`/mcp auth ${manifest.mcp_group_name}`) ||
+            (!readme.includes(`/mcp auth ${mcpServerName(manifest)}`) ||
               !readme.includes("Settings > Customizations") ||
               !readme.includes("Authenticate") ||
               !readme.includes(`/mcp/apps/${manifest.application_name}/${manifest.mcp_group_name}`)))

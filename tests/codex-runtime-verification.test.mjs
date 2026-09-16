@@ -18,7 +18,7 @@ test("Codex runtime verifier requires the package-owned MCP binding", async () =
     name: "bos", version: currentVersion, mcpServers: "./.mcp.json"
   }));
   await writeFile(join(source, ".mcp.json"), JSON.stringify({
-    mcpServers: { platform: {
+    mcpServers: { "BOS-Platform": {
       type: "http",
       url: "https://dfsm.ai/mcp/apps/bos/platform",
       oauth_resource: "https://dfsm.ai/mcp/apps/bos/platform",
@@ -31,7 +31,9 @@ test("Codex runtime verifier requires the package-owned MCP binding", async () =
   const runtimeProducts = await Promise.all(["bos", "education-center"].map(name => readJson(join(root, "products", name, "product.json"))));
   await writeFile(catalog, JSON.stringify({tools: [...new Set(runtimeProducts.flatMap(p => p.runtime_verification_tools))].map(name => ({name}))}));
 
+  let nativeServers = [{name:"BOS-Platform",enabled:true,transport:{url:"https://dfsm.ai/mcp/apps/bos/platform"}}];
   const runCommand = async (_command, args) => {
+    if (args[0] === "mcp") return {stdout: JSON.stringify(nativeServers)};
     if (args[1] === "list" && args[0] === "plugin") return { stdout: JSON.stringify({
       installed: [
         { pluginId: "bos@bos-education-center", installed: true, enabled: true, version: currentVersion, source: { path: source } },
@@ -52,6 +54,11 @@ test("Codex runtime verifier requires the package-owned MCP binding", async () =
   assert.equal(report.mcp_binding.server.startup_timeout_sec, 180);
   assert.equal(report.live_tool_surface.semantics, "operation_schema_only");
   assert.equal(report.live_tool_surface.authorization_source, "tools_call_server_result");
+  nativeServers.push({...nativeServers[0], name:"platform"});
+  const duplicate = await inspectCodexRuntime({home, runCommand, catalogPath: catalog});
+  assert.equal(duplicate.ok, false);
+  assert.ok(duplicate.failures.some(message => message.includes("exactly one current host binding")));
+  nativeServers = nativeServers.slice(0, 1);
   await writeFile(join(education, ".mcp.json"), JSON.stringify({mcpServers:{"education-center":{type:"http",url:"https://dfsm.ai/mcp/apps/leaddirector/education-center"}}}));
   const stale = await inspectCodexRuntime({home, runCommand, catalogPath: catalog});
   assert.equal(stale.ok, false);

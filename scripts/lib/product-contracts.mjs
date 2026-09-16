@@ -1,4 +1,5 @@
 import {
+  mcpServerName,
   materializeMcpUrl,
   oauthTargetContract,
   ownsHostConnection
@@ -149,6 +150,7 @@ export function productMcpConnectionsContract(products) {
       dependencies: product.dependencies,
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
+      mcp_server_name: mcpServerName(product),
       resource_url: materializeMcpUrl(product),
       oauth: oauthTargetContract(product),
       authentication: product.authentication,
@@ -176,7 +178,7 @@ export function codexLoginSurfaceContract(product) {
       required: true,
       manifest_field: "mcpServers",
       manifest_path: "./.mcp.json",
-      server_name: product.mcp_group_name,
+      server_name: mcpServerName(product),
       server_type: "http",
       resource_url_must_equal_product_source: true,
       oauth_resource_must_equal_resource_url: true,

@@ -1,3 +1,4 @@
+import { mcpServerName } from "./lib/package-model.mjs";
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -198,7 +199,7 @@ export async function installClaudeLocal({
     ? ` Required products: ${productMetadata.dependency_products.join(", ")}.`
     : "";
   const completionMessage = productMetadata.connection_scope === "claude_account"
-    ? `Connect the ${productMetadata.mcp_group_name} account-level Web connector under Customize > Connectors and complete OAuth.${dependencyMessage}`
+    ? `Connect the ${mcpServerName(productMetadata)} account-level Web connector under Customize > Connectors and complete OAuth.${dependencyMessage}`
     : `Use the required BOS foundation connector and native authentication action.${dependencyMessage}`;
   process.stdout.write(`Installed ${selector}. ${completionMessage}\n`);
   return {

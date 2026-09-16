@@ -61,7 +61,7 @@ for (const entry of await readdir(productsRoot, { withFileTypes: true })) {
     ...(product.application_name ? { application_name: product.application_name } : {}),
     ...(product.mcp_group_name ? { mcp_group_name: product.mcp_group_name } : {}),
     ...(ownsHostConnection(product)
-      ? { resource_url: product.mcp_resource_url, oauth: product.oauth }
+      ? { mcp_server_name: product.mcp_server_name ?? product.mcp_group_name, resource_url: product.mcp_resource_url, oauth: product.oauth }
       : {}),
     ...productRuntimeOwnershipMetadata(product)
   };

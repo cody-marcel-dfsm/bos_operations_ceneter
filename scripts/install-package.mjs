@@ -26,6 +26,7 @@ import {
   marketplaceRootFromManifest
 } from "./lib/codex-layout.mjs";
 import {
+  mcpServerName,
   hashFile,
   hashTree,
   marketplaceEntry,
@@ -210,7 +211,7 @@ async function configureCodexBosMcp(_options, paths) {
   const [name, server] = entries[0] ?? [];
   const expectedUrl = metadata.resource_url;
   if (metadata.connection_owner !== metadata.name ||
-      entries.length !== 1 || name !== metadata.mcp_group_name ||
+      entries.length !== 1 || name !== mcpServerName(metadata) ||
       server?.type !== "http" || server?.url !== expectedUrl ||
       server?.oauth_resource !== expectedUrl || server?.required !== false ||
       server?.startup_timeout_sec !== metadata.codex_mcp_startup_timeout_sec ||
@@ -223,7 +224,7 @@ async function configureCodexBosMcp(_options, paths) {
   }
   return {
     state: "host_managed",
-    name: metadata.mcp_group_name,
+    name: mcpServerName(metadata),
     url: expectedUrl,
     oauth_resource: expectedUrl,
     required: false,

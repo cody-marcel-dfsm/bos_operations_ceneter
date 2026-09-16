@@ -110,6 +110,12 @@ test("Copilot verifier checks product files directly and declares no package cac
   mcp.mcpServers.unrelated = {type:"http",url:"https://example.test/other"};
   await writeFile(mcpPath, JSON.stringify(mcp));
   assert.equal((await inspectCopilotRuntime({target})).ok, true);
+  mcp.mcpServers.platform = {...mcp.mcpServers["BOS-Platform"]};
+  await writeFile(mcpPath, JSON.stringify(mcp));
+  const alias = await inspectCopilotRuntime({target});
+  assert.equal(alias.ok, false);
+  assert.match(alias.failures.join("\n"), /superseded BOS host binding remains: platform/);
+  delete mcp.mcpServers.platform;
   mcp.mcpServers["education-center"] = {type:"http",url:"https://dfsm.ai/mcp/apps/leaddirector/education-center"};
   await writeFile(mcpPath, JSON.stringify(mcp));
   const duplicate = await inspectCopilotRuntime({target});

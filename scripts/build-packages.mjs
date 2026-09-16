@@ -1,6 +1,7 @@
 import { cp, mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
+  mcpServerName,
   codexPluginMcpManifest,
   copyProductAssets,
   copyProductSkills,
@@ -75,6 +76,7 @@ for (const { product, skills } of resolved) {
       client: "codex",
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
+      mcp_server_name: ownsHostConnection(product) ? mcpServerName(product) : undefined,
       resource_url: ownsHostConnection(product) ? materializeMcpUrl(product) : undefined,
       codex_mcp_startup_timeout_sec: ownsHostConnection(product)
         ? product.codex_mcp_startup_timeout_sec
@@ -117,6 +119,7 @@ for (const { product, skills } of resolved) {
       client: "claude",
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
+      mcp_server_name: ownsHostConnection(product) ? mcpServerName(product) : undefined,
       ...(ownsHostConnection(product) ? {
         connection_scope: "claude_account",
         resource_url: claudeResourceUrl,
@@ -147,7 +150,7 @@ for (const { product, skills } of resolved) {
         [
           "# Claude account connector",
           "",
-          `This plugin uses the account-level Web connector named \`${product.mcp_group_name}\`.`,
+          `This plugin uses the account-level Web connector named \`${mcpServerName(product)}\`.`,
           "It must appear under **Customize → Connectors** with its own **Connect** control.",
           "The plugin contains account-connector metadata and no plugin-level MCP declaration.",
           "",
@@ -230,6 +233,7 @@ for (const { product, skills } of resolved) {
       client: "copilot",
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
+      mcp_server_name: ownsHostConnection(product) ? mcpServerName(product) : undefined,
       resource_url: ownsHostConnection(product) ? materializeMcpUrl(product) : undefined,
       oauth: ownsHostConnection(product) ? oauthTargetContract(product) : undefined,
       ...productRuntimeOwnershipMetadata(product)
@@ -252,7 +256,7 @@ for (const { product, skills } of resolved) {
           "Copy `.github/mcp.json` into the target repository for Copilot CLI, or",
           "copy the server entry into `.vscode/mcp.json` for Copilot in VS Code.",
           "",
-          `Run \`/mcp auth ${product.mcp_group_name}\` in Copilot CLI, or select \`Auth\``,
+          `Run \`/mcp auth ${mcpServerName(product)}\` in Copilot CLI, or select \`Auth\``,
           "above the server entry in VS Code, then complete BOS sign-in. The host",
           "discovers BOS OAuth and stores and refreshes the resource-scoped grant.",
           "GitHub Copilot cloud agent and code review cannot use this remote OAuth",
@@ -287,6 +291,7 @@ for (const { product, skills } of resolved) {
       client: "gemini",
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
+      mcp_server_name: ownsHostConnection(product) ? mcpServerName(product) : undefined,
       resource_url: ownsHostConnection(product) ? materializeMcpUrl(product) : undefined,
       oauth: ownsHostConnection(product) ? oauthTargetContract(product) : undefined,
       ...productRuntimeOwnershipMetadata(product)
@@ -320,7 +325,7 @@ for (const { product, skills } of resolved) {
         `Install this extension from a terminal with \`gemini extensions install clients/gemini/extensions/${product.name}\`.`,
         "Gemini CLI copies the extension into its managed extension directory.",
         ...(ownsHostConnection(product) ? [
-          `Run \`/mcp auth ${product.mcp_group_name}\` and complete BOS sign-in in the browser.`,
+          `Run \`/mcp auth ${mcpServerName(product)}\` and complete BOS sign-in in the browser.`,
           "Gemini CLI discovers BOS OAuth, stores and refreshes the resource-scoped grant,",
           "and connects to the fixed HTTPS MCP route declared by this extension.",
           "",
@@ -349,7 +354,7 @@ for (const { product, skills } of resolved) {
         "requires `DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS` as typed confirmation.",
         "After each Git pull, restart Antigravity and run `npm run install:verify:antigravity-runtime`.",
         ...(ownsHostConnection(product) ? [
-          `Open Settings > Customizations, find the \`${product.mcp_group_name}\` MCP server,`,
+          `Open Settings > Customizations, find the \`${mcpServerName(product)}\` MCP server,`,
           "select Authenticate, complete BOS sign-in in the browser, and return to Antigravity.",
           "The desktop host stores and refreshes the resource-scoped OAuth grant."
         ] : [
@@ -433,7 +438,7 @@ await writeFile(
     "`gemini extensions install clients/gemini/extensions/bos` and",
     "`gemini extensions install clients/gemini/extensions/education-center`.",
     "",
-    "Restart Gemini CLI. Run `/mcp auth platform`, complete BOS sign-in once, then",
+    `Restart Gemini CLI. Run \`/mcp auth ${mcpServerName(resolved.find(({ product }) => product.name === "bos").product)}\`, complete BOS sign-in once, then`,
     "run `npm run install:verify:gemini-runtime`, `/extensions list`, and `/skills list`",
     "to verify the native installation and bundled skills.",
     "",

@@ -4,7 +4,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { root, readJson, pathExists } from '../scripts/lib/package-model.mjs';
+import { root, readJson, pathExists, validateProduct } from '../scripts/lib/package-model.mjs';
 import { verifyExternalProductPackage, verifyProductMcpContract } from '../scripts/lib/product-mcp-contract.mjs';
 
 const dependentRoots = ['clients/codex/plugins', 'clients/claude/plugins', 'clients/copilot/products', 'clients/gemini/extensions'];
@@ -35,6 +35,7 @@ for (const [field, value, code] of [
   ['dependency_products', ['bos', 3], 'missing_foundation_dependency'],
   ['resource_url', 'https://dfsm.ai/mcp/apps/leaddirector/education-center', 'dependent_transport'],
   ['oauth', {}, 'dependent_transport'],
+  ['mcp_server_name', 'Another-Connection', 'dependent_transport'],
   ['schema_version', '1', 'external_schema_version'],
   ['authorization_scope_policy', 'ALL_APPLICATIONS', 'authorization_scope_policy']
 ]) {
@@ -71,6 +72,22 @@ test('published v2 JSON Schema validates all generated dependent metadata', asyn
       assert.equal(validate({...metadata, dependency_products: dependencies}), false);
     }
     assert.equal(validate({...metadata, oauth: {}}), false);
+    assert.equal(validate({...metadata, mcp_server_name: 'Another-Connection'}), false);
     assert.equal(validate({...metadata, schema_version: '1'}), false);
+  }
+});
+
+test('BOS host name stays separate from the immutable OAuth audience and route', async () => {
+  const bos = await readJson(join(root, 'products/bos/product.json'));
+  assert.equal(bos.display_name, 'BOS Platform');
+  assert.equal(bos.mcp_server_name, 'BOS-Platform');
+  assert.equal(bos.mcp_group_name, 'platform');
+  assert.equal(bos.mcp_resource_url, 'https://dfsm.ai/mcp/apps/bos/platform');
+  assert.ok(validateProduct({...bos, mcp_server_name:'BOS Platform'}).some(message => message.includes('invalid mcp_server_name')));
+  for (const path of ['clients/codex/plugins/bos/.mcp.json', 'clients/copilot/products/bos/.github/mcp.json', 'clients/gemini/extensions/bos/mcp_config.json']) {
+    const config = await readJson(join(root, path));
+    assert.deepEqual(Object.keys(config.mcpServers), ['BOS-Platform']);
+    const server = config.mcpServers['BOS-Platform'];
+    assert.equal(server.url ?? server.serverUrl, bos.mcp_resource_url);
   }
 });

@@ -31,7 +31,7 @@ test("BOS Codex package derives authentication from its bundled MCP resource", a
   assert.equal("apps" in plugin, false);
   assert.deepEqual(mcp, {
     mcpServers: {
-      platform: {
+      "BOS-Platform": {
         type: "http",
         url: "https://dfsm.ai/mcp/apps/bos/platform",
         oauth_resource: "https://dfsm.ai/mcp/apps/bos/platform",

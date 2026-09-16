@@ -1398,7 +1398,7 @@ test("BOS marketplace metadata explains the platform and links to its website", 
     ({ manifest }) => manifest.name === "bos"
   )?.manifest;
   assert(bos);
-  assert.equal(bos.display_name, "BOS — Business Operating System");
+  assert.equal(bos.display_name, "BOS Platform");
   assert.ok(bos.description.length <= 80);
   assert.match(bos.description, /deterministic workflows.*federated agentic service mesh/i);
   assert.match(bos.long_description, /owns the authenticated BOS platform MCP connection/);
@@ -1501,14 +1501,14 @@ test("runtime package model materializes only owned connections", async () => {
     const expected = manifest.mcp_resource_url;
     assert.equal(materializeMcpUrl(manifest), expected);
     const gemini = await geminiExtensionManifest(manifest);
-    assert.equal(gemini.mcpServers[manifest.mcp_group_name].httpUrl, expected);
-    assert.deepEqual(gemini.mcpServers[manifest.mcp_group_name].oauth, { enabled: true });
+    assert.equal(gemini.mcpServers[manifest.mcp_server_name ?? manifest.mcp_group_name].httpUrl, expected);
+    assert.deepEqual(gemini.mcpServers[manifest.mcp_server_name ?? manifest.mcp_group_name].oauth, { enabled: true });
     assert.doesNotMatch(JSON.stringify(gemini), /BOS_INSTALLED_APP_ID|installed_app_id/);
     const geminiDesktop = await geminiPluginMcpManifest(manifest);
-    assert.equal(geminiDesktop.mcpServers[manifest.mcp_group_name].serverUrl, expected);
+    assert.equal(geminiDesktop.mcpServers[manifest.mcp_server_name ?? manifest.mcp_group_name].serverUrl, expected);
     const copilot = await copilotMcpManifest(manifest);
-    assert.equal(copilot.mcpServers[manifest.mcp_group_name].url, expected);
-    assert.equal(copilot.mcpServers[manifest.mcp_group_name].headers, undefined);
+    assert.equal(copilot.mcpServers[manifest.mcp_server_name ?? manifest.mcp_group_name].url, expected);
+    assert.equal(copilot.mcpServers[manifest.mcp_server_name ?? manifest.mcp_group_name].headers, undefined);
   }
 });
 
@@ -1530,7 +1530,7 @@ test("BOS OAuth targets and generated product metadata derive from product.json"
   ));
   assert.deepEqual(codexMcp, {
     mcpServers: {
-      platform: {
+      "BOS-Platform": {
         type: "http",
         url: canonicalBosProduct.mcp_resource_url,
         oauth_resource: canonicalBosProduct.mcp_resource_url,
@@ -1549,9 +1549,9 @@ test("runtime products declare credential-free OAuth bindings", async () => {
   for (const product of runtimeProducts) {
     const gemini = await geminiExtensionManifest(product);
     assert.equal(gemini.settings, undefined);
-    assert.equal(gemini.mcpServers[product.mcp_group_name].headers, undefined);
+    assert.equal(gemini.mcpServers[product.mcp_server_name ?? product.mcp_group_name].headers, undefined);
     const copilot = await copilotMcpManifest(product);
-    assert.equal(copilot.mcpServers[product.mcp_group_name].headers, undefined);
+    assert.equal(copilot.mcpServers[product.mcp_server_name ?? product.mcp_group_name].headers, undefined);
   }
 });
 
@@ -1569,8 +1569,8 @@ test("Copilot products bundle GitHub's repository MCP configuration", async () =
     const config = JSON.parse(
       await readFile(`${productRoot}/.github/mcp.json`, "utf8")
     );
-    assert.deepEqual(Object.keys(config.mcpServers), [product.mcp_group_name]);
-    assert.deepEqual(config.mcpServers[product.mcp_group_name], {
+    assert.deepEqual(Object.keys(config.mcpServers), [product.mcp_server_name ?? product.mcp_group_name]);
+    assert.deepEqual(config.mcpServers[product.mcp_server_name ?? product.mcp_group_name], {
       type: "http",
       url: product.mcp_resource_url,
       tools: ["*"]
@@ -1580,7 +1580,7 @@ test("Copilot products bundle GitHub's repository MCP configuration", async () =
       /BOS_INSTALLED_APP_ID|installed_app_id/
     );
     const readme = await readFile(`${productRoot}/README.md`, "utf8");
-    assert.equal(config.mcpServers[product.mcp_group_name].headers, undefined);
+    assert.equal(config.mcpServers[product.mcp_server_name ?? product.mcp_group_name].headers, undefined);
     assert.match(readme, /complete BOS sign-in/i);
     assert.match(
       readme,
@@ -1769,7 +1769,7 @@ test("disabled products are absent while active runtime products remain scoped",
   ));
   assert.deepEqual(codexMcp, {
     mcpServers: {
-      platform: {
+      "BOS-Platform": {
         type: "http",
         url: canonicalBosProduct.mcp_resource_url,
         oauth_resource: canonicalBosProduct.mcp_resource_url,
@@ -1808,11 +1808,11 @@ test("BOS owns OAuth and Education Center delegates through its dependency", asy
   const codexMcp = JSON.parse(await readFile(`${codexRoot}/.mcp.json`, "utf8"));
   assert.equal(metadata.application_name, "bos");
   assert.equal(metadata.mcp_group_name, "platform");
-  assert.equal(metadata.resource_url, codexMcp.mcpServers.platform.url);
-  assert.equal(metadata.resource_url, codexMcp.mcpServers.platform.oauth_resource);
-  assert.equal(codexMcp.mcpServers.platform.required, false);
+  assert.equal(metadata.resource_url, codexMcp.mcpServers["BOS-Platform"].url);
+  assert.equal(metadata.resource_url, codexMcp.mcpServers["BOS-Platform"].oauth_resource);
+  assert.equal(codexMcp.mcpServers["BOS-Platform"].required, false);
   assert.equal(
-    codexMcp.mcpServers.platform.startup_timeout_sec,
+    codexMcp.mcpServers["BOS-Platform"].startup_timeout_sec,
     canonicalBosProduct.codex_mcp_startup_timeout_sec
   );
   assert.equal(plugin.mcpServers, "./.mcp.json");
@@ -1954,15 +1954,15 @@ test("one Gemini extension bundles CLI and Antigravity Desktop with OAuth MCP", 
       assert.match(readme, /uses the BOS connection/i);
       continue;
     }
-    assert.match(readme, new RegExp(`/mcp auth ${product.mcp_group_name}`));
+    assert.match(readme, new RegExp(`/mcp auth ${product.mcp_server_name ?? product.mcp_group_name}`));
     assert.match(readme, /Settings > Customizations/);
     assert.match(readme, /Authenticate/);
     assert.match(
       readme,
       new RegExp(product.mcp_resource_url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
     );
-    assert.deepEqual(Object.keys(manifest.mcpServers), [product.mcp_group_name]);
-    const server = manifest.mcpServers[product.mcp_group_name];
+    assert.deepEqual(Object.keys(manifest.mcpServers), [product.mcp_server_name ?? product.mcp_group_name]);
+    const server = manifest.mcpServers[product.mcp_server_name ?? product.mcp_group_name];
     assert.equal(
       server.httpUrl,
       product.mcp_resource_url
@@ -1977,7 +1977,7 @@ test("one Gemini extension bundles CLI and Antigravity Desktop with OAuth MCP", 
     );
     assert.deepEqual(desktopMcp, await geminiPluginMcpManifest(product));
     assert.equal(
-      desktopMcp.mcpServers[product.mcp_group_name].serverUrl,
+      desktopMcp.mcpServers[product.mcp_server_name ?? product.mcp_group_name].serverUrl,
       product.mcp_resource_url
     );
     assert.doesNotMatch(
@@ -2006,7 +2006,7 @@ test("Gemini client package provides one CLI and desktop extension umbrella", as
   assert.match(readme, /clean installer/);
   assert.match(readme, /without backups/);
   assert.match(readme, /After each Git pull, restart Antigravity/);
-  assert.match(readme, /\/mcp auth platform/);
+  assert.match(readme, /\/mcp auth BOS-Platform/);
   assert.match(readme, /Settings > Customizations/);
   assert.doesNotMatch(readme, /API key|sensitive BOS setting/i);
   assert.match(readme, /\/extensions list/);
@@ -2024,7 +2024,7 @@ test("feedback contract uses the BOS app and stable retry identity", async () =>
   ));
   const url = canonicalBosProduct.mcp_resource_url;
   assert.equal(metadata.resource_url, url);
-  assert.equal(metadata.resource_url, codexMcp.mcpServers.platform.url);
+  assert.equal(metadata.resource_url, codexMcp.mcpServers["BOS-Platform"].url);
   assert.doesNotMatch(JSON.stringify({ metadata, codexMcp }), /BOS_INSTALLED_APP_ID/);
 
   const skill = await readFile(
@@ -2104,6 +2104,7 @@ test("every product and client ships tenant extension management metadata", asyn
         application_name: manifest.application_name,
         ...(ownsHostConnection(manifest) ? {
           mcp_group_name: manifest.mcp_group_name,
+          mcp_server_name: manifest.mcp_server_name ?? manifest.mcp_group_name,
           resource_url: manifest.mcp_resource_url,
           oauth: manifest.oauth,
           ...(client === "codex" ? {

@@ -32,7 +32,13 @@ protected-resource challenge
 then identifies a signed-out runtime connection and activates OAuth. The
 user completes consent, and the agent refreshes tools and resumes the request.
 
-Current desktop marketplace release: `0.4.104`. If `0.4.103` is installed,
+The BOS product displays as **BOS Platform**. MCP hosts use **BOS-Platform**
+as the connection identifier; the platform resource URL remains unchanged.
+Upgrading replaces the former `platform` identifier. Hosts may require native
+sign-in again when a connection identifier changes; valid-session continuity
+has not been verified for this migration.
+
+Current desktop marketplace release: `0.4.105`. If `0.4.104` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -45,12 +51,12 @@ Open a new Codex task and paste:
 
 > Add https://github.com/cody-marcel-dfsm/bos_operations_ceneter
 > at its published `main` ref as a Codex plugin marketplace, install and
-> enable `bos` and `education-center`, connect BOS to its platform MCP and
-> Education Operation Center to its scoped MCP through the host's sign-in flows, start a new task if
+> enable `bos` and `education-center`, connect **BOS Platform** through the
+> host's sign-in flow using the native **BOS-Platform** action, start a new task if
 > required to load the plugin, and verify one authenticated Education Operation Center
 > read. Do not request or configure a BOS API key, environment variable,
 > secret-manager name, or installed application ID. If authorization is
-> incomplete, verify the affected product package-owned `.mcp.json`, use that product's native
+> incomplete, verify the BOS package-owned `.mcp.json`, use BOS Platform's native
 > **Login**, **Connect**, or **Authenticate** action, wait for the user to select
 > it and complete browser consent, refresh tools, and resume. The server's 401
 > challenge activates runtime OAuth discovery.
@@ -438,7 +444,7 @@ Give Hardik this instruction:
 > Use the single Gemini client in `clients/gemini`. For Gemini CLI, install
 > both products with `npm run clean-install:gemini -- --confirmation
 > "DELETE ALL BOS GEMINI EXTENSION STATE"`, restart Gemini CLI, run
-> `/mcp auth platform`, and complete BOS sign-in once. For Antigravity 2.0
+> `/mcp auth BOS-Platform`, and complete BOS sign-in once. For Antigravity 2.0
 > Desktop, run `./scripts/clean-install-antigravity.sh` once from the synced repository.
 > This is an intentionally destructive clean install: it deletes prior BOS product
 > folders and symlinks from `~/.gemini/config/plugins/`, including local
@@ -472,7 +478,7 @@ OAuth discovery and the host-managed resource-scoped grant.
    supported agent-skills directory.
 2. Install the BOS product's generated `.github/mcp.json` for Copilot CLI,
    or copy its server entry into `.vscode/mcp.json` for Copilot in VS Code.
-3. Run `/mcp auth platform` in Copilot CLI or select `Auth` above the VS Code
+3. Run `/mcp auth BOS-Platform` in Copilot CLI or select `Auth` above the VS Code
    server entry, then complete BOS sign-in.
 4. Run `npm run install:verify:copilot-runtime -- --target <repository>
    --product education-center`. The verifier compares the target repository's
