@@ -1,6 +1,6 @@
 # Claude account connector
 
-This plugin uses the account-level Web connector named `platform`.
+This plugin uses the account-level Web connector named `BOS-Platform`.
 It must appear under **Customize → Connectors** with its own **Connect** control.
 The plugin contains account-connector metadata and no plugin-level MCP declaration.
 

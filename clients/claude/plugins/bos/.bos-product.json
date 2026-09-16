@@ -1,10 +1,11 @@
 {
   "schema_version": "2",
   "name": "bos",
-  "version": "0.4.104",
+  "version": "0.4.105",
   "client": "claude",
   "application_name": "bos",
   "mcp_group_name": "platform",
+  "mcp_server_name": "BOS-Platform",
   "connection_scope": "claude_account",
   "resource_url": "https://dfsm.ai/mcp/apps/bos/platform",
   "oauth": {

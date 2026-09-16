@@ -2,6 +2,7 @@ import { basename, join, relative, resolve } from "node:path";
 import { readFile } from "node:fs/promises";
 
 import {
+  mcpServerName,
   listProducts,
   materializeMcpUrl,
   oauthTargetContract,
@@ -550,7 +551,7 @@ export async function verifyProductMcpContract({
         const mcp = JSON.parse(content);
         const entries = Object.entries(mcp.mcpServers ?? {});
         const [name, server] = entries[0] ?? [];
-        if (entries.length !== 1 || name !== product.mcp_group_name ||
+        if (entries.length !== 1 || name !== mcpServerName(product) ||
             server?.type !== "http" || server?.url !== product.mcp_resource_url ||
             server?.oauth_resource !== product.mcp_resource_url || server?.required !== false ||
             server?.startup_timeout_sec !== product.codex_mcp_startup_timeout_sec ||
@@ -572,6 +573,7 @@ export async function verifyProductMcpContract({
           metadata.resource_url !== product.mcp_resource_url ||
           metadata.application_name !== product.application_name ||
           metadata.mcp_group_name !== product.mcp_group_name ||
+          metadata.mcp_server_name !== mcpServerName(product) ||
           metadata.authentication !== "oauth_2_1" ||
           metadata.authorization_scope_policy !== authorizationScopePolicy ||
           JSON.stringify(metadata.authentication_handoff) !== JSON.stringify(
@@ -599,7 +601,7 @@ async function verifyExternalFoundationPackage(packageRoot, metadata, requiremen
   }
   if (metadata.authentication !== "bos_dependency") add("authentication_protocol", "Authentication delegates to the BOS connection.");
   if (metadata.authorization_scope_policy !== authorizationScopePolicy) add("authorization_scope_policy", "Exact server-owned grant scope is required.");
-  for (const field of ["resource_url", "mcp_group_name", "oauth", "codex_mcp_startup_timeout_sec", "codex_mcp_tool_timeout_sec"]) {
+  for (const field of ["resource_url", "mcp_group_name", "mcp_server_name", "oauth", "codex_mcp_startup_timeout_sec", "codex_mcp_tool_timeout_sec"]) {
     if (field in metadata) add("dependent_transport", `Dependent product cannot declare ${field}.`);
   }
   violations.push(...validateExternalHandoff(metadata, requirements, requirements.metadata_file));

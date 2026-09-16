@@ -5,7 +5,8 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { verifyExternalProductPackage } from "./lib/product-mcp-contract.mjs";
-import { listProducts, pathExists, readJson, root, stableJson } from "./lib/package-model.mjs";
+import {
+  mcpServerName, listProducts, pathExists, readJson, root, stableJson } from "./lib/package-model.mjs";
 
 const execFileAsync = promisify(execFile);
 const defaultMarketplace = "bos-education-center";
@@ -91,7 +92,7 @@ async function inspectInstalledMcpBinding(home, marketplace, product, versions, 
   const plugin = await readJson(pluginPath);
   const entries = Object.entries(manifest.mcpServers ?? {});
   const [name, server] = entries[0] ?? [];
-  const current = entries.length === 1 && name === product.mcp_group_name &&
+  const current = entries.length === 1 && name === mcpServerName(product) &&
     plugin.mcpServers === "./.mcp.json" &&
     !("apps" in plugin) &&
     !(await pathExists(appPath)) &&
@@ -132,6 +133,16 @@ export async function inspectCodexRuntime(rawOptions = {}) {
     .filter((manifest) => manifest.release_status === "active" && manifest.clients.includes("codex"));
   const bos = activeProducts.find((product) => product.name === "bos");
   if (!bos?.runtime) throw new Error("Active BOS product has no runtime declaration");
+  const nativeServers = parseCommandJson(
+    await options.runCommand("codex", ["mcp", "list", "--json"]),
+    "codex mcp list"
+  );
+  const bosBindings = Array.isArray(nativeServers)
+    ? nativeServers.filter(entry => entry.enabled !== false && entry.transport?.url === bos.mcp_resource_url)
+    : [];
+  const nativeBindingFailures = bosBindings.length === 1 && bosBindings[0].name === mcpServerName(bos)
+    ? []
+    : ["native BOS registry must contain exactly one current host binding; remove superseded or duplicate bindings through supported host controls"];
 
   const pluginListing = parseCommandJson(
     await options.runCommand("codex", ["plugin", "list", "--json"]),
@@ -207,6 +218,7 @@ export async function inspectCodexRuntime(rawOptions = {}) {
     for (const violation of check.violations) dependentBindingFailures.push(`${product.name}: ${violation.code}`);
   }
   const failures = [
+    ...nativeBindingFailures,
     ...dependentBindingFailures,
     ...registryFailures,
     ...(marketplaceCurrent ? [] : [`${options.marketplace} marketplace is not registered`]),
@@ -228,6 +240,7 @@ export async function inspectCodexRuntime(rawOptions = {}) {
     cache_versions: cacheVersions,
     package_roots: packageRoots,
     mcp_binding: mcpBinding,
+    native_bindings: bosBindings.map(entry => ({name: entry.name, auth_status: entry.auth_status})),
     live_tool_surface: {
       path: catalogPath,
       semantics: "operation_schema_only",

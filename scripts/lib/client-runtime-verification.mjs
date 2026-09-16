@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, realpath } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { verifyExternalProductPackage } from "./product-mcp-contract.mjs";
-import { listProducts, pathExists, readJson, root } from "./package-model.mjs";
+import { listProducts, mcpServerName, pathExists, readJson, root } from "./package-model.mjs";
 
 export async function activeClientProducts(client) {
   return (await listProducts())
@@ -85,6 +85,11 @@ export async function verifyDependentConnection(packageRoot, product) {
 export async function retiredConnectionFailures(servers) {
   const legacy = await readJson(join(root, "contracts/product-mcp-connections.v1.json"));
   const retired = new Set(legacy.products.filter(p => p.name !== "bos").map(p => p.resource_url));
-  return Object.entries(servers).filter(([, server]) => retired.has(server?.url ?? server?.httpUrl ?? server?.serverUrl))
-    .map(([name]) => `retired dependent MCP connection remains: ${name}`);
+  const bos = await readJson(join(root, "products/bos/product.json"));
+  return Object.entries(servers).flatMap(([name, server]) => {
+    const url = server?.url ?? server?.httpUrl ?? server?.serverUrl;
+    if (retired.has(url)) return [`retired dependent MCP connection remains: ${name}`];
+    if (url === bos.mcp_resource_url && name !== mcpServerName(bos)) return [`superseded BOS host binding remains: ${name}`];
+    return [];
+  });
 }

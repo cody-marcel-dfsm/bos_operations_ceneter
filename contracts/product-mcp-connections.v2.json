@@ -122,6 +122,7 @@
       "dependencies": [],
       "application_name": "bos",
       "mcp_group_name": "platform",
+      "mcp_server_name": "BOS-Platform",
       "resource_url": "https://dfsm.ai/mcp/apps/bos/platform",
       "oauth": {
         "authorization_server_issuer": "https://dfsm.ai",

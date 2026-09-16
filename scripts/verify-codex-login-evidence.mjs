@@ -4,7 +4,8 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readJson, root, stableJson } from "./lib/package-model.mjs";
+import {
+  mcpServerName, readJson, root, stableJson } from "./lib/package-model.mjs";
 
 function parseArgs(argv) {
   const options = { json: false };
@@ -27,7 +28,7 @@ export async function verifyCodexLoginEvidence(options = {}) {
   const packageBinding = entries.length === 1 &&
     plugin.mcpServers === "./.mcp.json" &&
     !("apps" in plugin) &&
-    name === product.mcp_group_name &&
+    name === mcpServerName(product) &&
     server?.type === "http" &&
     server?.url === product.mcp_resource_url &&
     server?.oauth_resource === product.mcp_resource_url &&

@@ -40,6 +40,7 @@
       "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
     },
     "mcp_group_name": false,
+    "mcp_server_name": false,
     "resource_url": false,
     "codex_mcp_startup_timeout_sec": false,
     "codex_mcp_tool_timeout_sec": false,

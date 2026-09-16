@@ -16,7 +16,7 @@ The equivalent native first-install commands are
 `gemini extensions install clients/gemini/extensions/bos` and
 `gemini extensions install clients/gemini/extensions/education-center`.
 
-Restart Gemini CLI. Run `/mcp auth platform`, complete BOS sign-in once, then
+Restart Gemini CLI. Run `/mcp auth BOS-Platform`, complete BOS sign-in once, then
 run `npm run install:verify:gemini-runtime`, `/extensions list`, and `/skills list`
 to verify the native installation and bundled skills.
 

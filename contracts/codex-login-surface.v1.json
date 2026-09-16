@@ -15,7 +15,7 @@
     "required": true,
     "manifest_field": "mcpServers",
     "manifest_path": "./.mcp.json",
-    "server_name": "platform",
+    "server_name": "BOS-Platform",
     "server_type": "http",
     "resource_url_must_equal_product_source": true,
     "oauth_resource_must_equal_resource_url": true,
