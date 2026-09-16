@@ -199,7 +199,7 @@ export async function installClaudeLocal({
     : "";
   const completionMessage = productMetadata.connection_scope === "claude_account"
     ? `Connect the ${productMetadata.mcp_group_name} account-level Web connector under Customize > Connectors and complete OAuth.${dependencyMessage}`
-    : `This product has no runtime connector.${dependencyMessage}`;
+    : `Use the required BOS foundation connector and native authentication action.${dependencyMessage}`;
   process.stdout.write(`Installed ${selector}. ${completionMessage}\n`);
   return {
     marketplace: marketplace.name,

@@ -135,14 +135,13 @@ requested outcome.
 - Implement every current product from its present contract and observable
   user journey. Never defer a required connection, capability, or workflow to
   an assumed future product, future package composition, or anticipated growth.
-- BOS owns its platform MCP connection. Each dependent product owns one scoped
-  MCP connection, declares BOS as a required product dependency, and packages
-  only its relevant skills. The server evaluates product,
-  installation, plugin, role, capability, and provider scope for every request.
-- Align transport ownership with product capability ownership. Route platform
-  BOS operations through BOS. Use the selected application MCP to discover the
-  current semantic operation and exact deterministic HTTPS contract, then route
-  application execution through that advertised API.
+- BOS owns the platform connection and authentication. Dependent products
+  declare BOS as a dependency, retain their domain skills and requirements,
+  and contain no second host transport or login. The server evaluates exact
+  organization, application, installation, role, capability and provider scope
+  for every request. Transport ownership never widens a grant.
+- Discover and execute authorized application operations through the BOS
+  connection using live server contracts and preserved scope.
 - Derive authority from authenticated context and canonical installed-app
   records.
 - Treat request identifiers as selectors that require authorization.
@@ -153,7 +152,7 @@ requested outcome.
   application specialization skills.
 
 Treat a passing implementation with an undeclared product dependency or a
-missing product-owned MCP as incomplete. Record the missing current capability
+missing authorized BOS runtime capability as incomplete. Record the missing current capability
 explicitly and block release until its present owner implements it.
 
 Report changed files, validation results, migration effects, and remaining

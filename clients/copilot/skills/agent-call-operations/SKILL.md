@@ -225,7 +225,7 @@ developer repair instructions out of the user-facing error.
 - When the live context advertises Agent Call but the current callable manifest
   omits `education_center_initiate_agent_call`, preserve the matched lead and
   stable idempotency key and invoke the host's same-task continuation controls.
-  Refresh the Education Center MCP server schema, rediscover tools, call
+  Refresh the BOS platform MCP server schema, rediscover tools, call
   `bos_get_context`, and resume the pending mutation once. Do not end the task
   by asking the user to reconnect, retry, resend, or start another task.
 - Report `server_capability_unavailable` only after the refreshed same-task

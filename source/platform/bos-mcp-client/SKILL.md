@@ -1,6 +1,6 @@
 ---
 name: bos-mcp-client
-description: Operate a product-owned BOS MCP connection, including server-evaluated product scope, live tool discovery, transport recovery, provider authorization recovery, and automatic BOS authentication handoff for dependent plugins.
+description: Operate the BOS platform MCP connection, including server-evaluated product scope, live tool discovery, transport recovery, provider authorization recovery, and automatic BOS authentication handoff for dependent plugins.
 ---
 
 # BOS MCP Client
@@ -52,26 +52,20 @@ only when host status or a BOS challenge establishes that requirement. Empty
 resources or tools alone never establish that the connection is disabled.
 A successful context call immediately resumes the original operation.
 
-Use this skill for every client-side BOS-family operation. Each plugin owns one
-scoped remote MCP resource and one host-managed OAuth connection for that
-product. A Claude account or organization Web connector declares the product
-resource and exposes the persistent host-managed **Connect** action;
-ChatGPT/Codex loads the product package's `.mcp.json` and performs OAuth
-discovery from that resource. Other supported clients use the product adapter
-declared by their generated package.
+Use this skill for every client-side BOS-family operation. BOS owns one
+host-managed OAuth connection to its platform resource. Install BOS before
+using dependent products. Claude exposes the BOS account connector's native
+**Connect** action; Codex loads the BOS package's `.mcp.json`. Copilot and Gemini
+use the BOS package's generated adapter. Dependent packages supply domain
+skills and requirements without declaring another transport or login.
 
-BOS is the required platform dependency for separately installed application
-products. Each dependent
-plugin packages its relevant skills with its own host-managed connection to an
-application-scoped MCP. That MCP is the authenticated discovery surface for the
-application's current semantic operations and deterministic HTTPS API
-contracts. The server derives and evaluates
-organization, application, installation, subservice, plugin, role, capability,
-provider, and tool scope from the validated grant and canonical server state on
-every private discovery and API request. Route platform BOS work through the BOS
-MCP. Use the owning application's MCP to discover the exact current API method,
-path, schema, and audience; execute application work through that advertised
-deterministic HTTPS API.
+The service derives organization, application, installation, role, capability,
+provider, and operation authority from the validated grant and current server
+state on every private request. The platform audience never grants access to
+all applications. Use only live-discovered operations authorized for the exact
+context returned by `bos_get_context`. Another context requires BOS-owned
+server authorization; package identities and natural-language requests never
+select or expand authority. Existing grants retain their original scope.
 
 ## External dependent-product authentication handoff
 
@@ -83,12 +77,10 @@ authentication or MCP-session condition. The stable contract is
 resource, a structured authentication or MCP-session condition, and optional
 host-native correlation. Its response reports typed authentication readiness.
 
-The caller keeps its own host-managed MCP connection and delegates the minimal
-handoff automatically to the installed BOS plugin. BOS coordinates the host
-authentication lifecycle; the host retains and attaches the dependent
-product's resource-scoped grant.
-Never copy credentials between the BOS and dependent-product connections, and
-never route dependent-product business execution through the BOS platform MCP.
+The caller delegates readiness automatically to installed BOS and retains its
+pending operation. The host stores and attaches the BOS platform grant. Use
+that same connection for authorized discovery and execution. Never copy tokens
+or accept a dependent-resource token as a platform token.
 
 BOS receives no caller product identity, domain operation, continuation,
 idempotency, approval, retry, reconciliation, cache, or presentation state. It
@@ -148,8 +140,8 @@ from the actual operation result, separately from successful schema discovery.
 
 ## Current application discovery
 
-For application requests, use the application product's own authenticated MCP
-connection. Inspect its live tool and resource discovery surfaces after
+For application requests, use the BOS platform connection with the application scope
+already bound by server authorization. Inspect its live tool and resource discovery surfaces after
 `bos_get_context` validates that connection's exact scoped grant. Read any
 advertised operation contract before invoking its deterministic HTTPS API.
 
@@ -206,10 +198,8 @@ requested outcome.
 
 ## Connection ownership
 
-The agent owns the active product MCP client lifecycle for the duration of the
-user's request. For a dependent product, the installed BOS plugin executes the
-authentication handoff while the dependent product retains its own connection
-and resumes its own operation.
+BOS owns the shared connection lifecycle. The dependent product retains and
+resumes its pending operation after BOS reports authentication readiness.
 
 For BOS-owned operations, read
 [references/runtime-continuation-contract.md](references/runtime-continuation-contract.md)
@@ -217,8 +207,8 @@ before recovering authorization, refreshing a tool manifest, or continuing a
 stateful mutation workflow. For an external caller's authentication request,
 apply only the generic handoff contract above and receive no operation state.
 
-- On the first product request, discover and use that product plugin's
-  configured MCP connection. Confirm that BOS is installed when the product
+- On the first product request, discover and use the installed BOS plugin's
+  configured platform connection. Confirm that BOS is installed when the product
   declares it as a dependency. If `bos_get_context` is callable, invoke it
   immediately and continue the pending request from its result. When tools are
   deferred, use the host's available tool search or discovery facility to locate
@@ -240,17 +230,17 @@ apply only the generic handoff contract above and receive no operation state.
   first-action callable discovery procedure has run and its observed results
   establish a binding problem. Repair a confirmed binding defect through the
   host's supported controls. Do not reinstall or open connection UI solely from
-  an empty resource list or initial tool list. For Codex, verify the active
-  product plugin declares `mcpServers: "./.mcp.json"`, the MCP file contains
-  exactly one remote HTTP entry at the product-owned resource, and no
+  an empty resource list or initial tool list. For Codex, verify the BOS
+  plugin declares `mcpServers: "./.mcp.json"`, the MCP file contains
+  exactly one remote HTTP entry at the BOS platform resource, and no
   `.app.json` exists. For Claude,
-  verify the active product package's
+  verify the BOS package's
   account-connector metadata and the matching Web connector under
   **Customize → Connectors**, then use its persistent **Connect** action. When a
   private installation lacks that connector, add it with the exact name and URL
-  from the generated product `CONNECTORS.md`; never reconstruct or modify the
+  from the generated BOS `CONNECTORS.md`; never reconstruct or modify the
   package-owned resource. Preserve installed product plugins while repairing
-  only the active product connection.
+  the BOS connection.
   Never discover, prompt for, repair,
   or materialize a URL from `installed_app_id` or customer settings.
   Do not stop at diagnosing client registration.
@@ -333,7 +323,7 @@ Apply provider recovery as one request interceptor around every BOS domain
 or bypass authentication recovery. Preserve the pending call before execution
 and inspect its sanitized result before producing a final answer.
 
-1. Use the immutable product MCP connection recorded by the active product
+1. Use the immutable platform MCP connection recorded by the BOS foundation
    package and declared by the client's native host adapter. Treat the resource as sealed package
    configuration, never as tenant authority or a user-selectable setting.
 2. Do not send `org_id`, `app_code`, `installed_app_id`,
@@ -346,21 +336,18 @@ and inspect its sanitized result before producing a final answer.
 3. Fail closed when context is absent or ambiguous.
 4. Use the triggered subservice skill to choose the requested workflow and
    semantic operation from the current live-discovered dynamic domain service
-   and tool surface. Keep connection selection fixed on the product that owns
-   the requested capability. Treat the descriptor only as an operation/schema declaration;
+   and tool surface. Keep connection selection fixed on BOS and preserve the grant-bound
+   application authority. Treat the descriptor only as an operation/schema declaration;
    call the operation with its declared business arguments and let BOS authorize
    the organization, installation, role, plugin, capability, tool, and provider
    at `tools/call` time.
-5. Authenticate the active product's Claude account-level Web connector through
-   its persistent **Connect** control, and its ChatGPT/Codex connection through
-   the product package-owned MCP binding. Each product resource uses its own
-   host-managed OAuth grant. Other clients use only the generated adapter for
-   the active product. Keep access tokens, refresh tokens,
-   authorization codes, bearer values, and grant metadata out of chat, tool
-   arguments, package files, and logs. Never create or fall back to a
-   alternate product authorization. If the product resource rejects a desktop OAuth grant after
-   reconnecting once, invoke the host's Connect/Sign in flow and resume once
-   after it succeeds.
+5. Use the native BOS connection authentication action. The host manages OAuth
+   and normal refresh automatically. A revoked grant requires fresh native
+   consent; never restore it administratively or reuse another audience's token.
+   Dependent products use the installed BOS connection and never add a login.
+   Keep tokens, authorization codes, bearer values, and grant metadata out of
+   chat, tool arguments, package files, and logs. Resume the original request
+   after native authentication succeeds and live discovery is refreshed.
 6. When a domain call returns `authorization_required`, preserve its original
    operation ID and activate the returned secure authorization path immediately
    in the active request. Use the host's native URL-mode elicitation when it is

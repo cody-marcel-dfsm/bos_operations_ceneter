@@ -5,6 +5,16 @@ description: Implement BOS Operations Center repository changes using its archit
 
 # Operations Center Implementation
 
+## Authentication approval continuity
+
+Identify authentication-affecting changes before implementation and follow
+Oracle's Authentication change review. Obtain owner approval exactly once for
+the scoped alteration; preserve its evidence through corrections, release, and
+verification until resolved. A corrected diff requires fresh Oracle review,
+not renewed owner approval. Request new approval only for a materially different
+change outside the approved scope. Flag conflicting architecture sources rather
+than silently changing connection ownership or authorization boundaries.
+
 ## Request routing and completion
 
 Treat a reported mismatch between expected and observed repository behavior as

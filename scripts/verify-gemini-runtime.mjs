@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { activeClientProducts, compareTrees, verifyInstalledMetadata } from "./lib/client-runtime-verification.mjs";
+import { verifyDependentConnection, activeClientProducts, compareTrees, verifyInstalledMetadata } from "./lib/client-runtime-verification.mjs";
 import { root, stableJson } from "./lib/package-model.mjs";
 
 export async function inspectGeminiRuntime({ home = homedir(), base = root } = {}) {
@@ -12,6 +12,7 @@ export async function inspectGeminiRuntime({ home = homedir(), base = root } = {
     const source = join(base, "clients", "gemini", "extensions", product.name);
     const installed = join(home, ".gemini", "extensions", product.name);
     const productFailures = [
+      ...await verifyDependentConnection(installed, product),
       ...await verifyInstalledMetadata(
         join(installed, ".bos-product.json"),
         { name: product.name, version: product.version, client: "gemini" }

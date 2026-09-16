@@ -1,0 +1,175 @@
+{
+  "schema_version": "2",
+  "contract_id": "bos.product-mcp-connections",
+  "foundation_product": "bos",
+  "dependency_policy": "DEPENDENT_PRODUCTS_REQUIRE_BOS",
+  "connection_policy": "BOS_FOUNDATION_OWNS_HOST_CONNECTION",
+  "external_product_contract": {
+    "contract_id": "bos.external-product-dependency",
+    "contract_version": "2",
+    "metadata_file": ".bos-product.json",
+    "metadata_schema": "bos://contracts/external-product-dependency/v2",
+    "foundation_dependency": "bos",
+    "product_source_location": "EXTERNAL_ALLOWED",
+    "connection_owner": "BOS_FOUNDATION",
+    "authentication_manager": "bos",
+    "credential_lifecycle_owner": "host",
+    "authorization_enforcement_owner": "bos-service",
+    "authorization_scope_policy": "ONE_ORGANIZATION_APPLICATION_INSTALLATION_ROLE_PER_GRANT",
+    "authentication_handoff_contract": "bos.authentication-handoff/v1",
+    "compatibility": {
+      "additive_fields": "ACCEPT",
+      "unknown_authentication_condition": "DELEGATE_TO_BOS",
+      "breaking_change": "NEW_CONTRACT_MAJOR"
+    }
+  },
+  "authentication_policy": {
+    "foundation": "ON_INSTALL",
+    "dependent_product": "ON_USE"
+  },
+  "provider_account_selection_policy": "ALWAYS_SELECT_ACCOUNT",
+  "authorization_scope_policy": "ONE_ORGANIZATION_APPLICATION_INSTALLATION_ROLE_PER_GRANT",
+  "request_time_authentication": {
+    "activation_owner": "REGISTERED_PROTECTED_RESOURCE",
+    "preauthentication_surface": "OAUTH_PROTECTED_RESOURCE_METADATA",
+    "unauthenticated_transport_result": "HTTP_401_WWW_AUTHENTICATE",
+    "unauthenticated_transport_result_scope": "ALL_NAMED_MCP_METHODS",
+    "signed_out_protocol_bootstrap": "HTTP_401_WWW_AUTHENTICATE",
+    "signed_out_tool_surface": "NONE",
+    "signed_out_authentication_result": "HTTP_401_WWW_AUTHENTICATE",
+    "unauthenticated_business_execution": "DENIED",
+    "post_authentication_tool_surface": "DYNAMIC_DOMAIN_SPECIFIC_MCP_SERVICES_AND_TOOLING",
+    "authenticated_tools_list_gate": "VALID_TOKEN_AND_AUTHORIZED_ORGANIZATION",
+    "tool_surface_authorization_semantics": "AUTHENTICATED_DESCRIPTORS_DO_NOT_GRANT_AUTHORITY",
+    "operation_authorization": "SERVER_EVALUATED_ON_TOOLS_CALL",
+    "native_action_surface": "ACTIVE_CHAT",
+    "rejected_refresh_token_behavior": "CODEX_ZERO_AUTHORITY_HANDOFF_THEN_HOST_REAUTHENTICATION_ACTION",
+    "codex_stale_refresh_compatibility": {
+      "eligible_dcr_client": {
+        "client_name": "Codex",
+        "application_type": "native",
+        "token_endpoint_auth_method": "none",
+        "grant_types": [
+          "authorization_code",
+          "refresh_token"
+        ],
+        "response_types": [
+          "code"
+        ],
+        "redirect_uri_policy": "HTTP_LOOPBACK_CALLBACK_ONLY"
+      },
+      "access_token_scope": "mcp:tools",
+      "maximum_lifetime_seconds": 120,
+      "authority": "NONE",
+      "mcp_transport_result": "HTTP_401_WWW_AUTHENTICATE",
+      "tool_surface": "NONE",
+      "refresh_token_returned": false,
+      "registered_nonmatching_client_result": "invalid_grant",
+      "unsupported_registration_metadata_result": "invalid_client_metadata"
+    },
+    "session_start_blocking": false,
+    "continuation_policy": "RESUME_ORIGINAL_REQUEST"
+  },
+  "products": [
+    {
+      "name": "bos",
+      "dependencies": [],
+      "application_name": "bos",
+      "connection_owner": "bos",
+      "authentication": "ON_INSTALL",
+      "authorization_scope_policy": "ONE_ORGANIZATION_APPLICATION_INSTALLATION_ROLE_PER_GRANT",
+      "runtime_verification_tools": [
+        "bos_get_authorization_status",
+        "bos_apply_plugin_settings",
+        "bos_begin_plugin_service_connection",
+        "bos_get_context",
+        "bos_get_plugin_setting_changes",
+        "bos_get_plugin_settings",
+        "bos_list_plugin_services",
+        "bos_prepare_plugin_settings",
+        "bos_resume_operation",
+        "bos_set_plugin_enabled",
+        "bos_set_provider_credential"
+      ]
+    },
+    {
+      "name": "education-center",
+      "dependencies": [
+        "bos"
+      ],
+      "application_name": "leaddirector",
+      "connection_owner": "bos",
+      "authentication": "ON_USE",
+      "authorization_scope_policy": "ONE_ORGANIZATION_APPLICATION_INSTALLATION_ROLE_PER_GRANT",
+      "runtime_verification_tools": [
+        "bos_list_plugin_services",
+        "bos_begin_plugin_service_connection",
+        "bos_get_authorization_status",
+        "bos_get_plugin_settings_initialization",
+        "bos_prepare_plugin_settings",
+        "bos_apply_plugin_settings",
+        "education_center_get_camp_roster_report",
+        "education_center_list_enrollments",
+        "education_center_search_leads",
+        "education_center_search_students",
+        "education_center_get_customer_journey"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "name": "bos",
+      "dependencies": [],
+      "application_name": "bos",
+      "mcp_group_name": "platform",
+      "resource_url": "https://dfsm.ai/mcp/apps/bos/platform",
+      "oauth": {
+        "authorization_server_issuer": "https://dfsm.ai",
+        "authorization_endpoint": "https://dfsm.ai/api/v1/mcp/oauth/authorize",
+        "identity_provider": "google",
+        "identity_provider_authorization_endpoint": "https://accounts.google.com/o/oauth2/v2/auth",
+        "provider_account_selection_policy": "ALWAYS_SELECT_ACCOUNT",
+        "provider_account_selection_prompt": "select_account"
+      },
+      "authentication": "ON_INSTALL",
+      "authentication_handoff": {
+        "contract_id": "bos.authentication-handoff",
+        "contract_version": "1",
+        "authentication_manager": "bos",
+        "credential_lifecycle_owner": "host",
+        "authorization_enforcement_owner": "bos-service",
+        "delegation_policy": "AUTOMATIC",
+        "recognized_condition_categories": [
+          "MISSING_GRANT",
+          "EXPIRED_TOKEN",
+          "REVOKED_GRANT",
+          "INVALID_CLIENT",
+          "INVALID_GRANT",
+          "RESOURCE_MISMATCH",
+          "REAUTHENTICATION_REQUIRED",
+          "AUTHORIZATION_REQUIRED",
+          "MCP_SESSION_CLOSED",
+          "PROVIDER_AUTHORIZATION_REQUIRED"
+        ],
+        "readiness_result": {
+          "owner": "bos",
+          "statuses": [
+            "READY",
+            "HOST_ACTION_REQUIRED",
+            "NOT_READY"
+          ],
+          "representation": "AUTHENTICATION_READINESS_ONLY",
+          "authority_data": "EXCLUDED"
+        }
+      },
+      "codex_mcp_startup_timeout_sec": 180,
+      "codex_mcp_tool_timeout_sec": 180,
+      "connection_artifacts": [
+        "clients/claude/plugins/bos/CONNECTORS.md",
+        "clients/codex/plugins/bos/.mcp.json",
+        "clients/copilot/products/bos/.github/mcp.json",
+        "clients/gemini/extensions/bos/mcp_config.json"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "bos://contracts/external-product-dependency/v2",
+  "title": "BOS-owned connection dependency metadata",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "name",
+    "version",
+    "client",
+    "application_name",
+    "connection_owner",
+    "dependency_products",
+    "authentication",
+    "authorization_scope_policy",
+    "authentication_handoff"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "2"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "client": {
+      "enum": [
+        "codex",
+        "claude",
+        "copilot",
+        "gemini"
+      ]
+    },
+    "application_name": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "mcp_group_name": false,
+    "resource_url": false,
+    "codex_mcp_startup_timeout_sec": false,
+    "codex_mcp_tool_timeout_sec": false,
+    "connection_owner": {
+      "const": "bos"
+    },
+    "dependency_products": {
+      "type": "array",
+      "contains": {
+        "const": "bos"
+      },
+      "minContains": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+      }
+    },
+    "authentication": {
+      "const": "bos_dependency"
+    },
+    "authorization_scope_policy": {
+      "const": "ONE_ORGANIZATION_APPLICATION_INSTALLATION_ROLE_PER_GRANT"
+    },
+    "authentication_handoff": {
+      "type": "object",
+      "required": [
+        "contract_id",
+        "contract_version",
+        "authentication_manager",
+        "credential_lifecycle_owner",
+        "authorization_enforcement_owner",
+        "delegation_policy",
+        "recognized_condition_categories",
+        "readiness_result"
+      ],
+      "properties": {
+        "contract_id": {
+          "const": "bos.authentication-handoff"
+        },
+        "contract_version": {
+          "const": "1"
+        },
+        "authentication_manager": {
+          "const": "bos"
+        },
+        "credential_lifecycle_owner": {
+          "const": "host"
+        },
+        "authorization_enforcement_owner": {
+          "const": "bos-service"
+        },
+        "delegation_policy": {
+          "const": "AUTOMATIC"
+        },
+        "recognized_condition_categories": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "const": "MISSING_GRANT"
+            },
+            {
+              "const": "EXPIRED_TOKEN"
+            },
+            {
+              "const": "REVOKED_GRANT"
+            },
+            {
+              "const": "INVALID_CLIENT"
+            },
+            {
+              "const": "INVALID_GRANT"
+            },
+            {
+              "const": "RESOURCE_MISMATCH"
+            },
+            {
+              "const": "REAUTHENTICATION_REQUIRED"
+            },
+            {
+              "const": "AUTHORIZATION_REQUIRED"
+            },
+            {
+              "const": "MCP_SESSION_CLOSED"
+            },
+            {
+              "const": "PROVIDER_AUTHORIZATION_REQUIRED"
+            }
+          ],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 10,
+          "uniqueItems": true
+        },
+        "readiness_result": {
+          "type": "object",
+          "required": [
+            "owner",
+            "statuses",
+            "representation",
+            "authority_data"
+          ],
+          "properties": {
+            "owner": {
+              "const": "bos"
+            },
+            "statuses": {
+              "const": [
+                "READY",
+                "HOST_ACTION_REQUIRED",
+                "NOT_READY"
+              ]
+            },
+            "representation": {
+              "const": "AUTHENTICATION_READINESS_ONLY"
+            },
+            "authority_data": {
+              "const": "EXCLUDED"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "oauth": false
+  },
+  "additionalProperties": true
+}

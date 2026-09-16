@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { verifyExternalProductPackage } from "./lib/product-mcp-contract.mjs";
 import { listProducts, pathExists, readJson, root, stableJson } from "./lib/package-model.mjs";
 
 const execFileAsync = promisify(execFile);
@@ -195,7 +196,18 @@ export async function inspectCodexRuntime(rawOptions = {}) {
   const registryFailures = Object.values(installedProducts)
     .filter((entry) => entry.state !== "current")
     .map((entry) => `${entry.plugin_id} is not installed and enabled`);
+  const dependentBindingFailures = [];
+  for (const product of activeProducts.filter(p => p.connection_owner !== p.name)) {
+    const installedRoot = packageRoots[product.name] ?? join(options.home, ".codex", "plugins", "cache", options.marketplace, product.name, product.version);
+    if (!await pathExists(join(installedRoot, ".bos-product.json"))) {
+      dependentBindingFailures.push(`${product.name}: current dependency metadata missing`);
+      continue;
+    }
+    const check = await verifyExternalProductPackage({ root, packageRoot: installedRoot });
+    for (const violation of check.violations) dependentBindingFailures.push(`${product.name}: ${violation.code}`);
+  }
   const failures = [
+    ...dependentBindingFailures,
     ...registryFailures,
     ...(marketplaceCurrent ? [] : [`${options.marketplace} marketplace is not registered`]),
     ...packageFailures,

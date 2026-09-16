@@ -5,6 +5,7 @@ import {
   listProducts,
   materializeMcpUrl,
   oauthTargetContract,
+  ownsHostConnection,
   pathExists,
   productNamePattern,
   readJson
@@ -12,7 +13,8 @@ import {
 import {
   authorizationScopePolicy,
   authenticationHandoffContract,
-  externalProductDependencyContract
+  externalProductDependencyContract,
+  productMcpConnectionsContract
 } from "./product-contracts.mjs";
 
 function finding(code, path, message) {
@@ -331,13 +333,14 @@ async function inspectExternalConnectionArtifact(packageRoot, metadata) {
 export async function verifyExternalProductPackage({
   root,
   packageRoot,
-  contractPath = join(root, "contracts", "product-mcp-connections.v1.json")
+  contractPath = join(root, "contracts", "product-mcp-connections.v2.json")
 }) {
   const contract = await readJson(contractPath);
   const requirements = contract.external_product_contract;
   const violations = [];
-  if (JSON.stringify(requirements) !== JSON.stringify(
-    externalProductDependencyContract(contract.foundation_product)
+  if (!["1", "2"].includes(requirements?.contract_version) ||
+      JSON.stringify(requirements) !== JSON.stringify(
+    externalProductDependencyContract(contract.foundation_product, requirements?.contract_version)
   )) {
     violations.push(finding(
       "external_contract_shape",
@@ -367,6 +370,10 @@ export async function verifyExternalProductPackage({
       "External product dependency metadata must be valid JSON."
     ));
     return externalContractResult(requirements, undefined, violations);
+  }
+
+  if (requirements.contract_version === "2") {
+    return verifyExternalFoundationPackage(resolvedPackageRoot, metadata, requirements);
   }
 
   if (metadata.schema_version !== "1") {
@@ -446,22 +453,23 @@ export async function verifyExternalProductPackage({
 
 export async function verifyProductMcpContract({
   root,
-  contractPath = join(root, "contracts", "product-mcp-connections.v1.json"),
+  contractPath = join(root, "contracts", "product-mcp-connections.v2.json"),
   oauthAuthorizeUrl,
   productName = "bos"
 }) {
   const contract = await readJson(contractPath);
   const violations = [];
-  if (contract.schema_version !== "1" ||
+  if (contract.schema_version !== "2" ||
       contract.contract_id !== "bos.product-mcp-connections" ||
       contract.foundation_product !== "bos" ||
       contract.dependency_policy !== "DEPENDENT_PRODUCTS_REQUIRE_BOS" ||
-      contract.connection_policy !== "EACH_PRODUCT_OWNS_ONE_SCOPED_MCP" ||
+      contract.connection_policy !== "BOS_FOUNDATION_OWNS_HOST_CONNECTION" ||
       contract.authorization_scope_policy !== authorizationScopePolicy ||
       JSON.stringify(contract.external_product_contract) !== JSON.stringify(
         externalProductDependencyContract(contract.foundation_product)
       ) ||
-      !Array.isArray(contract.products) || contract.products.length === 0) {
+      !Array.isArray(contract.products) || contract.products.length === 0 ||
+      !Array.isArray(contract.connections) || contract.connections.length !== 1) {
     violations.push(finding("contract_shape", relative(root, contractPath), "Product MCP contract shape is invalid."));
     return contractResult(contract, violations);
   }
@@ -475,7 +483,8 @@ export async function verifyProductMcpContract({
     violations.push(finding("product_inventory", relative(root, contractPath), "Contract runtime-product inventory differs from active product manifests."));
   }
 
-  const selected = contract.products.find(({ name }) => name === productName);
+  const selectedProduct = contract.products.find(({ name }) => name === productName);
+  const selected = contract.connections.find(({ name }) => name === selectedProduct?.connection_owner);
   if (oauthAuthorizeUrl && !selected) {
     violations.push(finding("unknown_product", "oauth-authorize-url", `Unknown contract product ${productName}.`));
   } else if (oauthAuthorizeUrl) {
@@ -490,30 +499,35 @@ export async function verifyProductMcpContract({
   const resources = new Set();
   for (const product of expectedProducts) {
     const entry = contract.products.find(({ name }) => name === product.name);
-    const expectedEntry = {
-      name: product.name,
-      dependencies: product.dependencies,
-      application_name: product.application_name,
-      mcp_group_name: product.mcp_group_name,
-      resource_url: materializeMcpUrl(product),
-      oauth: oauthTargetContract(product),
-      authentication: product.authentication,
-      authentication_handoff: authenticationHandoffContract(contract.foundation_product),
-      codex_mcp_startup_timeout_sec: product.codex_mcp_startup_timeout_sec,
-      codex_mcp_tool_timeout_sec: product.codex_mcp_tool_timeout_sec,
-      connection_artifacts: [
-        `clients/claude/plugins/${product.name}/CONNECTORS.md`,
-        `clients/codex/plugins/${product.name}/.mcp.json`,
-        `clients/copilot/products/${product.name}/.github/mcp.json`,
-        `clients/gemini/extensions/${product.name}/mcp_config.json`
-      ]
-    };
+    const expectedContract = productMcpConnectionsContract(expectedProducts);
+    const expectedEntry = expectedContract.products.find(({ name }) => name === product.name);
     if (JSON.stringify(entry) !== JSON.stringify(expectedEntry)) {
       violations.push(finding("product_contract_drift", `products/${product.name}/product.json`, "Generated product MCP contract differs from its manifest."));
       continue;
     }
     if (product.name !== contract.foundation_product && !product.dependencies.includes(contract.foundation_product)) {
       violations.push(finding("missing_foundation_dependency", `products/${product.name}/product.json`, "Dependent product must require BOS."));
+    }
+    if (!ownsHostConnection(product)) {
+      for (const client of product.clients) {
+        const packageRoot = join(root, client === "copilot"
+          ? `clients/copilot/products/${product.name}`
+          : client === "gemini" ? `clients/gemini/extensions/${product.name}`
+          : `clients/${client}/plugins/${product.name}`);
+        const metadata = await readJson(join(packageRoot, ".bos-product.json"));
+        const result = await verifyExternalFoundationPackage(packageRoot, metadata, contract.external_product_contract);
+        violations.push(...result.violations);
+        if (metadata.application_name !== product.application_name || metadata.name !== product.name) {
+          violations.push(finding("product_metadata_drift", packageRoot, "Dependent application identity differs from its manifest."));
+        }
+      }
+      continue;
+    }
+    const connection = contract.connections.find(({ name }) => name === product.name);
+    const expectedConnection = expectedContract.connections.find(({ name }) => name === product.name);
+    if (JSON.stringify(connection) !== JSON.stringify(expectedConnection)) {
+      violations.push(finding("connection_contract_drift", contractPath, "BOS connection differs from its manifest."));
+      continue;
     }
     const route = `${product.application_name}/${product.mcp_group_name}`;
     if (routes.has(route) || resources.has(product.mcp_resource_url)) {
@@ -522,7 +536,7 @@ export async function verifyProductMcpContract({
     routes.add(route);
     resources.add(product.mcp_resource_url);
 
-    for (const artifact of entry.connection_artifacts) {
+    for (const artifact of connection.connection_artifacts) {
       const path = join(root, artifact);
       if (!await pathExists(path)) {
         violations.push(finding("missing_connection_artifact", artifact, "Product-owned MCP artifact is missing."));
@@ -568,4 +582,36 @@ export async function verifyProductMcpContract({
     }
   }
   return contractResult(contract, violations);
+}
+
+async function verifyExternalFoundationPackage(packageRoot, metadata, requirements) {
+  const violations = [];
+  const add = (code, message) => violations.push(finding(code, requirements.metadata_file, message));
+  if (metadata.schema_version !== "2") add("external_schema_version", "BOS-owned connection metadata requires schema 2; legacy v1 ownership is not reinterpreted.");
+  if (!productNamePattern.test(metadata.name ?? "") || metadata.name === "bos") add("external_product_name", "Invalid dependent product name.");
+  if (typeof metadata.version !== "string" || !metadata.version) add("external_product_version", "Product version is required.");
+  if (!productNamePattern.test(metadata.application_name ?? "")) add("external_mcp_identity", "Application identity is required.");
+  if (metadata.connection_owner !== requirements.foundation_dependency) add("connection_owner", "BOS owns the connection.");
+  const dependencies = metadata.dependency_products;
+  if (!Array.isArray(dependencies) || dependencies.some(name => typeof name !== "string" || !productNamePattern.test(name)) ||
+      new Set(dependencies).size !== dependencies.length || !dependencies.includes(requirements.foundation_dependency)) {
+    add("missing_foundation_dependency", "Unique valid dependency names including BOS are required.");
+  }
+  if (metadata.authentication !== "bos_dependency") add("authentication_protocol", "Authentication delegates to the BOS connection.");
+  if (metadata.authorization_scope_policy !== authorizationScopePolicy) add("authorization_scope_policy", "Exact server-owned grant scope is required.");
+  for (const field of ["resource_url", "mcp_group_name", "oauth", "codex_mcp_startup_timeout_sec", "codex_mcp_tool_timeout_sec"]) {
+    if (field in metadata) add("dependent_transport", `Dependent product cannot declare ${field}.`);
+  }
+  violations.push(...validateExternalHandoff(metadata, requirements, requirements.metadata_file));
+  for (const field of findCredentialFields(metadata)) add("credential_material", `Metadata contains credential field ${field}.`);
+  for (const file of [".mcp.json", ".app.json", ".github/mcp.json", ".vscode/mcp.json", "mcp_config.json", "CONNECTORS.md"]) {
+    if (await pathExists(join(packageRoot, file))) violations.push(finding("dependent_transport", file, "Dependent product declares its own connection artifact."));
+  }
+  for (const file of [".codex-plugin/plugin.json", ".claude-plugin/plugin.json", "gemini-extension.json"]) {
+    if (!await pathExists(join(packageRoot, file))) continue;
+    const manifest = await readJson(join(packageRoot, file));
+    if ("mcpServers" in manifest || "apps" in manifest) violations.push(finding("dependent_transport", file, "Dependent product declares a host binding."));
+  }
+  if (!["codex", "claude", "copilot", "gemini"].includes(metadata.client)) add("external_client", "Unsupported client.");
+  return externalContractResult(requirements, metadata, violations);
 }

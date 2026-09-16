@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.103",
+  "version": "0.4.104",
   "release_status": "active",
   "display_name": "BOS — Business Operating System",
   "description": "Run deterministic workflows across a federated agentic service mesh.",
@@ -84,5 +84,6 @@
     "Audit my BOS service mesh and show which deterministic workflows are ready, blocked, or need authorization.",
     "Make this operational workflow runnable by identifying and resolving its platform dependencies.",
     "Trace a governed workflow across my installed services and show every approval, execution step, and result."
-  ]
+  ],
+  "connection_owner": "bos"
 }

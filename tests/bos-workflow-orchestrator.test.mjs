@@ -32,7 +32,7 @@ test("BOS exposes one application-neutral deterministic workflow entrypoint", as
   assert.match(guidance, /bos_resume_operation/);
   assert.match(guidance, /live-declared business arguments/i);
   assert.doesNotMatch(guidance, /context_id/);
-  assert.match(guidance, /application MCP/i);
+  assert.match(guidance, /BOS\s+connection/i);
   assert.match(guidance, /deterministic HTTPS/i);
   assert.match(guidance, /API result as\s+execution evidence/i);
   assert.doesNotMatch(guidance, /application operations through (?:the )?owning product(?:'s)? MCP/i);

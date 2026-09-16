@@ -12,7 +12,7 @@ function read(relativePath) {
 test("Education Center class operations route requested Calimatic access through BOS", () => {
   const skill = read("source/verticals/education-center/education-center-class-operations/SKILL.md");
 
-  assert.match(skill, /use the Education Center MCP connection/i);
+  assert.match(skill, /use the BOS platform connection/i);
   assert.match(skill, /omit `org_id`,\s*`app_code`, `installed_app_id`, and `delegated_role_id`/i);
   assert.match(skill, /BOS\s+derives them from the authenticated installation/i);
   assert.match(skill, /Never use a direct provider\s+client/i);
@@ -28,7 +28,7 @@ test("Education Center service routing preserves BOS scope while honoring eviden
   assert.match(skill, /execute the selected application operation through its exact[\s\S]*deterministic HTTPS API/i);
   assert.match(skill, /discover its live contract through Education[\s\S]*Center MCP[\s\S]*execute through the exact advertised deterministic HTTPS API/i);
   assert.doesNotMatch(skill, /execute through Education Center MCP/i);
-  assert.match(skill, /Platform directory\s+discovery uses the separate BOS dependency\s+connection/i);
+  assert.match(skill, /Platform and application discovery use the same BOS connection/i);
   assert.match(skill, /source_routes\.calimatic[\s\S]*package default is BOS/i);
   assert.match(skill, /source_routes\.care_com/i);
   assert.match(skill, /connected_gmail[\s\S]*normal Gmail connector/i);

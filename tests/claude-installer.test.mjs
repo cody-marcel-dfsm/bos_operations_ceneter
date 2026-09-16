@@ -144,7 +144,7 @@ test("Claude local installer enables an installed disabled plugin", async () => 
   ));
 });
 
-test("Claude dependent-product installation uses its own connector and declares BOS", async () => {
+test("Claude dependent-product installation uses the BOS foundation connector", async () => {
   const calls = [];
   const active = new Set();
   const run = (command, args) => {
@@ -165,8 +165,8 @@ test("Claude dependent-product installation uses its own connector and declares 
 
   const result = await installClaudeLocal({ base: root, product: "education-center", run });
   assert.equal(result.selector, "education-center@bos-education-center");
-  assert.equal(result.connectionScope, "claude_account");
-  assert.equal(result.resourceUrl, "https://dfsm.ai/mcp/apps/leaddirector/education-center");
+  assert.equal(result.connectionScope, "bos_managed");
+  assert.equal(result.resourceUrl, undefined);
   assert(calls.some(([, args]) =>
     args.join(" ") === "plugin install bos@bos-education-center --scope user"
   ));

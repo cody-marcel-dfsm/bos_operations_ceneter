@@ -29,12 +29,12 @@ description: Review Business Operating System platform changes for architecture,
 - Provider credentials and resources belong to the resolved tenant.
 - BOS foundations contain no application-only repository assumptions.
 - BOS owns the platform OAuth connection. Every dependent product declares BOS
-  as a requirement and owns its application-scoped OAuth MCP connection.
+  as a requirement and uses that connection without another login.
 - The server evaluates subservice, installation, plugin, role, capability,
-  provider, and tool scope for every private operation over the product-owned connection;
+  provider, and tool scope for every private operation over the BOS-owned connection;
   the live dynamic tool surface itself grants no authority.
 - Platform BOS operations use the BOS product connection; application
-  operations use the owning application product connection.
+  operations use that connection with exact server-enforced application scope.
 - Current-product completeness is proven from current components. Future
   products and anticipated growth do not satisfy a present requirement.
 - Package builds and installs are deterministic and credential-free.

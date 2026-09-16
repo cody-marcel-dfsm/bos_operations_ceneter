@@ -973,34 +973,44 @@ export async function probeBosOAuthAuthorize({
     )], loginResponse.status);
   }
   const loginHtml = await loginResponse.text();
-  const googleAction = /<form[^>]*action=["']([^"']+)["'][^>]*>/i.exec(
-    loginHtml
-  )?.[1];
-  const handoffValue = /<input[^>]*name=["']agent_auth_transaction["'][^>]*value=["']([^"']+)["'][^>]*>/i.exec(
-    loginHtml
-  )?.[1];
+  // The server supports a native link and the original GET form. Both must
+  // preserve the same opaque transaction and stay on the BOS handoff endpoint.
+  const googleLinks = [...loginHtml.matchAll(/<a\b[^>]*>/gi)]
+    .filter(([tag]) => /\bid=["']mcp-oauth-google-login-link["']/i.test(tag));
+  const googleAction = /<form[^>]*action=["']([^"']+)["'][^>]*>/i.exec(loginHtml)?.[1];
+  const handoffValues = [...loginHtml.matchAll(
+    /<input[^>]*name=["']agent_auth_transaction["'][^>]*value=["']([^"']+)["'][^>]*>/gi
+  )];
   const expectedHandoffValue = loginUrl.searchParams.get("agent_auth_transaction");
-  if (!googleAction || !handoffValue || handoffValue !== expectedHandoffValue) {
-    return result([finding(
-      "oauth_login_handoff",
-      "BOS login handoff did not preserve its opaque authorization transaction."
-    )], loginResponse.status);
-  }
   let providerStartUrl;
   try {
-    providerStartUrl = new URL(googleAction, authorizationOrigin);
-    providerStartUrl.searchParams.set("agent_auth_transaction", handoffValue);
+    if (googleLinks.length) {
+      if (googleLinks.length !== 1) throw new Error("Ambiguous continuation");
+      const href = /\bhref=["']([^"']+)["']/i.exec(googleLinks[0][0])?.[1];
+      if (!href) throw new Error("Missing continuation");
+      providerStartUrl = new URL(href.replaceAll("&amp;", "&"), authorizationOrigin);
+    } else {
+      if (!googleAction || handoffValues.length !== 1) throw new Error("Missing continuation");
+      providerStartUrl = new URL(googleAction.replaceAll("&amp;", "&"), authorizationOrigin);
+      // A pre-existing transaction would produce ambiguous GET form semantics.
+      if (providerStartUrl.searchParams.has("agent_auth_transaction")) throw new Error("Ambiguous transaction");
+      providerStartUrl.searchParams.set("agent_auth_transaction", handoffValues[0][1]);
+    }
   } catch {
     return result([finding(
       "oauth_login_handoff",
       "BOS login handoff returned an invalid Google continuation target."
     )], loginResponse.status);
   }
-  if (providerStartUrl.origin !== authorizationOrigin ||
+  if (!expectedHandoffValue ||
+      providerStartUrl.searchParams.getAll("agent_auth_transaction").length !== 1 ||
+      providerStartUrl.searchParams.get("agent_auth_transaction") !== expectedHandoffValue ||
+      providerStartUrl.username || providerStartUrl.password || providerStartUrl.hash ||
+      providerStartUrl.origin !== authorizationOrigin ||
       providerStartUrl.pathname !== "/api/v1/mcp/oauth/handoff/google/start") {
     return result([finding(
       "oauth_login_handoff",
-      "BOS login handoff returned an off-contract Google continuation target."
+      "BOS login handoff returned an off-contract Google continuation target or transaction."
     )], loginResponse.status);
   }
 

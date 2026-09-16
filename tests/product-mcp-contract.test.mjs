@@ -8,10 +8,14 @@ import test from "node:test";
 
 import {
   inspectOAuthAuthorizeTarget,
-  verifyExternalProductPackage,
+  verifyExternalProductPackage as verifyExternalProductPackageCurrent,
   verifyProductMcpContract
 } from "../scripts/lib/product-mcp-contract.mjs";
 import { readJson, root } from "../scripts/lib/package-model.mjs";
+
+const verifyExternalProductPackage = (options) => verifyExternalProductPackageCurrent({
+  contractPath: join(root, "contracts", "product-mcp-connections.v1.json"), ...options
+});
 
 const execFileAsync = promisify(execFile);
 const authorizationScopePolicy =
@@ -112,7 +116,7 @@ async function createExternalClaudeProduct(connectorLines = []) {
   return packageRoot;
 }
 
-test("product MCP contract preserves BOS foundation and product-scoped routes", async () => {
+test("product MCP contract preserves BOS ownership and exact scope", async () => {
   const result = await verifyProductMcpContract({ root });
   assert.equal(result.status, "passed");
   assert.deepEqual(result.violations, []);
@@ -120,12 +124,12 @@ test("product MCP contract preserves BOS foundation and product-scoped routes", 
   assert.equal(result.authorization_scope_policy, authorizationScopePolicy);
   assert.deepEqual(result.external_product_contract, {
     contract_id: "bos.external-product-dependency",
-    contract_version: "1",
+    contract_version: "2",
     metadata_file: ".bos-product.json",
-    metadata_schema: "bos://contracts/external-product-dependency/v1",
+    metadata_schema: "bos://contracts/external-product-dependency/v2",
     foundation_dependency: "bos",
     product_source_location: "EXTERNAL_ALLOWED",
-    connection_owner: "DEPENDENT_PRODUCT",
+    connection_owner: "BOS_FOUNDATION",
     authentication_manager: "bos",
     credential_lifecycle_owner: "host",
     authorization_enforcement_owner: "bos-service",
@@ -137,21 +141,9 @@ test("product MCP contract preserves BOS foundation and product-scoped routes", 
       breaking_change: "NEW_CONTRACT_MAJOR"
     }
   });
-  assert.deepEqual(result.products.map(({ name, dependencies, resource_url }) => ({
-    name,
-    dependencies,
-    resource_url
-  })), [
-    {
-      name: "bos",
-      dependencies: [],
-      resource_url: "https://dfsm.ai/mcp/apps/bos/platform"
-    },
-    {
-      name: "education-center",
-      dependencies: ["bos"],
-      resource_url: "https://dfsm.ai/mcp/apps/leaddirector/education-center"
-    }
+  assert.deepEqual(result.products.map(({ name, dependencies, connection_owner }) => ({name, dependencies, connection_owner})), [
+    { name: "bos", dependencies: [], connection_owner: "bos" },
+    { name: "education-center", dependencies: ["bos"], connection_owner: "bos" }
   ]);
 });
 
@@ -516,7 +508,7 @@ test("external package validation CLI accepts a package root", async () => {
       [
         `${root}/scripts/verify-product-mcp-contract.mjs`,
         "--format", "json",
-        "--external-product-root", packageRoot
+        "--external-product-root", packageRoot, "--external-contract-version", "1"
       ],
       { cwd: root }
     );
@@ -572,7 +564,7 @@ test("product MCP contract CLI returns machine-readable evidence", async () => {
 test("product-specific OAuth CLI rejects another product resource", async () => {
   const bos = await readJson(`${root}/products/bos/product.json`);
   const authorize = new URL(bos.oauth.authorization_endpoint);
-  authorize.searchParams.set("resource", bos.mcp_resource_url);
+  authorize.searchParams.set("resource", "https://dfsm.ai/mcp/apps/leaddirector/education-center");
   await assert.rejects(
     execFileAsync(
       process.execPath,

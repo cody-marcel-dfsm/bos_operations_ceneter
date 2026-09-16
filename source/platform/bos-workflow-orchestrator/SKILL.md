@@ -12,12 +12,11 @@ that actually completed.
 
 ## Product boundary
 
-BOS owns platform authentication, its scoped connection, continuation, and
-governance through the BOS platform MCP. A dependent product owns its domain skills and
-host-managed connection to an application-scoped discovery MCP. Use the BOS MCP
-for platform discovery and OS operations. Use the selected application MCP to
-discover its semantic operation and exact deterministic HTTPS API contract, then
-use that API for application execution.
+BOS owns platform authentication and the shared host-managed connection.
+Dependent products own their domain skills and requirements. Use the BOS
+connection to discover and execute server-authorized operations with their
+exact schemas and advertised API contracts. Preserve the grant-bound
+application, organization, installation and role for every step.
 
 Keep all routing application-neutral. Select applications, plugins, services,
 and operations only from the current authenticated context and live discovery.
@@ -28,8 +27,8 @@ request-time server authorization from the connection's scoped grant.
 
 1. Preserve the user's objective and requested outcome. Use `bos-mcp-client` to
    resolve and call `bos_get_context`, then validate its exact scoped grant.
-2. Use current live tool and resource discovery on each installed product's
-   authenticated connection to identify the minimum services needed for the objective. Classify
+2. Use current live tool and resource discovery on the BOS
+   connection to identify the minimum services needed for the objective. Classify
    each dependency as ready, disabled, disconnected, awaiting authorization,
    unavailable, or outside the selected scope.
 3. Build a deterministic execution map containing the owning product, semantic
@@ -42,7 +41,7 @@ request-time server authorization from the connection's scoped grant.
    instruction naming the exact target and value supplies approval for that
    bounded action. Apply the mutation-safety contract from `bos-mcp-client`.
 6. Refresh context and live discovery after a platform state change. Resolve
-   each domain step through its application MCP, then invoke the exact advertised
+   each domain step through live BOS discovery, then invoke the exact advertised
    deterministic HTTPS method and path using the current schema and the
    connection's host-managed authorization. Treat MCP discovery as capability evidence and the API result as
    execution evidence.

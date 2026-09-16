@@ -31,6 +31,32 @@ Use current evidence from this repository and its local `Vault/`. Never answer
 Operations Center architecture questions from a packaged BOS plugin or from
 memory alone.
 
+## Authentication change review
+
+Every review must explicitly classify authentication impact, including changes
+to code, routing, manifests, generated transports, tests, settings, and instructions
+that affect login, OAuth audiences, grants, tokens, refresh/replay, consent,
+connection ownership, or authorization enforcement. A filename or passing test
+suite alone cannot establish that authentication is unchanged.
+
+For affected behavior, report an **Authentication changes** finding with exact
+files and lines, before/after behavior, cross-stack risks, and the owner's
+approved scope. Request owner approval exactly once for that scoped alteration.
+Record the approval evidence and retain it through implementation, corrections,
+review, release, deployment, and end-to-end verification until resolved. A new
+diff, failed test, review correction, commit, or release does not consume or
+invalidate owner approval. Ask again only for a materially different change
+outside the approved scope, identifying the new behavior explicitly.
+
+Reject an unapproved authentication alteration. Oracle's verdict cannot replace
+owner approval. A fresh Oracle review remains required for every corrected diff;
+that review must reuse the existing in-scope owner approval. Conflicting current
+architecture sources must be flagged and reconciled with the owner's stated
+requirement before approval; do not select whichever document permits the diff.
+Separate source/release approval from native authentication and operation
+acceptance. Never declare the repair complete while the native login, authorized
+operation, or requested output remains unverified.
+
 ## Mandatory reviewer role
 
 Oracle is the final reviewer for every repository mutation. Skill invocation
@@ -87,10 +113,13 @@ prior verdict and requires a fresh Oracle review of the complete updated diff.
   repository.
 - Evaluate products from their current contract. Future products or anticipated
   growth never satisfy missing present behavior.
-- Preserve one host-managed OAuth connection for each installed product. BOS
-  owns the BOS platform MCP resource. Each dependent product owns its scoped
-  MCP resource and relevant skills, declares BOS as a product dependency, and
-  never routes its application-scoped traffic through the BOS platform MCP.
+- Apply the owner's approved BOS-platform authentication requirement: BOS
+  owns the login and connection; dependent products retain their application
+  permissions and skills. The inherited per-product OAuth ownership rules in
+  Vault describe the current implementation and require reconciliation during
+  this repair. Flag that discrepancy explicitly; it cannot authorize retaining
+  the rejected ownership or silently widening grants. Require deployed evidence
+  before declaring the migration complete.
 - Evaluate Codex package MCP binding, OAuth activation, grant state, and
   callable-tool discovery as distinct readiness layers. Require the package MCP
   endpoint to drive BOS OAuth discovery.
@@ -120,8 +149,9 @@ Review the completed diff and focused validation evidence. Verify:
   or provider recovery scope, and acceptance checks match the touched contract;
 - Router-to-PO-to-GO mutation boundaries where service behavior is described;
 - credential-free tracked sources, generated artifacts, and logs;
-- one host-managed OAuth connection per installed product in each user-facing
-  client context, with BOS and dependent-product resources kept distinct;
+- BOS-owned authentication and connection, with server-enforced application,
+  organization, installation, and role boundaries preserved; identify any
+  remaining per-product login declarations as migration gaps;
 - product-manifest completeness and canonical-source/client-package parity;
 - deterministic builds, version consistency, tests, and extension preservation;
 - updated Vault knowledge when a change establishes a durable rule; and

@@ -81,16 +81,16 @@ remain required; the package does not intercept or enforce arbitrary API calls.
 - Resolve explicit tenant, organization, application, installation, role, and
   plugin scope before private execution.
 - Keep BOS platform behavior application-neutral.
-- Give every plugin one host-managed OAuth connection to its product-scoped MCP.
-  Require BOS as the platform dependency for application products and preserve
-  each product's independent skills and runtime ownership.
+- Give BOS the host-managed platform connection and authentication.
+  Dependent products require BOS and preserve their skills and application
+  requirements without a separate host connection.
 - Let the server evaluate installed services, plugin enablement, roles,
   capabilities, provider readiness, and tool authorization on every private
   operation. Treat the live dynamic tool surface as discovery and schemas,
   never authority.
-- Keep platform BOS traffic on the BOS connection. Keep Education Center, CRM,
-  Lead Director, Marketing Director, and other application traffic on the
-  owning product connection.
+- Use the BOS connection for authorized application discovery and execution.
+  Preserve the exact actor, organization, application, installation, and role
+  bound by server authorization. Never widen an existing grant.
 - Let app graphs own business behavior after BOS establishes app context.
 - Keep web and mobile clients as render shells for server-owned state.
 - Route mutations through PO orchestration and GO persistence.

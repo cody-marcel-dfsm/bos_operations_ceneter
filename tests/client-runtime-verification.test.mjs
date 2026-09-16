@@ -39,6 +39,12 @@ test("Claude verifier follows active installPath and reports retained versions s
   assert.equal(report.ok, true);
   assert.deepEqual(report.retained_cache_versions.bos, ["0.1.0"]);
 
+  const legacyConnector = join(entries[1].installPath, "CONNECTORS.md");
+  await writeFile(legacyConnector, "retired Education Center connector");
+  const duplicate = await inspectClaudeRuntime({home, runCommand});
+  assert.equal(duplicate.ok, false);
+  assert.match(duplicate.failures.join("\n"), /dependent_transport/);
+  await rm(legacyConnector);
   entries[0].version = "0.4.50";
   const stale = await inspectClaudeRuntime({ home, runCommand });
   assert.equal(stale.ok, false);
@@ -54,6 +60,12 @@ test("Gemini verifier detects byte-for-byte drift in copied extensions", async (
     await writeFile(join(installed, ".gemini-extension-install.json"), JSON.stringify({ type: "link" }));
   }
   assert.equal((await inspectGeminiRuntime({ home })).ok, true);
+  const staleBinding = join(home, ".gemini/extensions/education-center/mcp_config.json");
+  await writeFile(staleBinding, JSON.stringify({mcpServers:{"education-center":{serverUrl:"https://dfsm.ai/mcp/apps/leaddirector/education-center"}}}));
+  const duplicate = await inspectGeminiRuntime({home});
+  assert.equal(duplicate.ok, false);
+  assert.match(duplicate.failures.join("\n"), /dependent_transport/);
+  await rm(staleBinding);
   await writeFile(
     join(home, ".gemini", "extensions", "education-center", "README.md"),
     "stale\n"
@@ -93,6 +105,28 @@ test("Copilot verifier checks product files directly and declares no package cac
   const current = await inspectCopilotRuntime({ target });
   assert.equal(current.ok, true);
   assert.equal(current.configuration_model, "repository-files-no-package-cache");
+  const mcpPath = join(target, ".github/mcp.json");
+  const mcp = await readJson(mcpPath);
+  mcp.mcpServers.unrelated = {type:"http",url:"https://example.test/other"};
+  await writeFile(mcpPath, JSON.stringify(mcp));
+  assert.equal((await inspectCopilotRuntime({target})).ok, true);
+  mcp.mcpServers["education-center"] = {type:"http",url:"https://dfsm.ai/mcp/apps/leaddirector/education-center"};
+  await writeFile(mcpPath, JSON.stringify(mcp));
+  const duplicate = await inspectCopilotRuntime({target});
+  assert.equal(duplicate.ok, false);
+  assert.match(duplicate.failures.join("\n"), /retired dependent MCP connection/);
+  delete mcp.mcpServers["education-center"];
+  await writeFile(mcpPath, JSON.stringify(mcp));
+  const vscodePath = join(target, ".vscode/mcp.json");
+  await mkdir(join(target, ".vscode"));
+  await writeFile(vscodePath, JSON.stringify({servers:{...mcp.mcpServers,
+    "education-center":{type:"http",url:"https://dfsm.ai/mcp/apps/leaddirector/education-center"}
+  }}));
+  const dual = await inspectCopilotRuntime({target});
+  assert.equal(dual.ok, false);
+  assert.match(dual.failures.join("\n"), /\.vscode.*retired dependent MCP connection/);
+  await writeFile(vscodePath, JSON.stringify({servers:mcp.mcpServers}));
+  assert.equal((await inspectCopilotRuntime({target})).ok, true);
   const skill = join(target, ".github", "skills", "education-center-student-operations", "SKILL.md");
   await writeFile(skill, `${await readFile(skill, "utf8")}\nstale\n`);
   assert.equal((await inspectCopilotRuntime({ target })).ok, false);

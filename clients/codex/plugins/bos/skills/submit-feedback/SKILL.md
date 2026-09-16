@@ -84,7 +84,7 @@ first submission in a task.
 2. Validate and use the exact organization, application, installation, and role
    already bound to the active product grant. Perform no client-side authority
    selection.
-3. Submit through the active product's immutable MCP connection. Use the active
+3. Submit through the BOS platform connection. Use the active
    package or subservice as the feedback target and preserve its product scope.
 4. Do not send execution-scope fields. The authenticated server derives
    `org_id`, `app_code`, `installed_app_id`, and `delegated_role_id`.

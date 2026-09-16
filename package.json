@@ -1,6 +1,6 @@
 {
   "name": "bos-operations-center",
-  "version": "0.4.103",
+  "version": "0.4.104",
   "private": false,
   "description": "Cross-client source repository for Education Center Agent Skills.",
   "author": "Infinite State Machines LLC",
@@ -44,5 +44,8 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0"
   }
 }

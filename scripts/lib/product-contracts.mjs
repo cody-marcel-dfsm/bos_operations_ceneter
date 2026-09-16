@@ -1,6 +1,7 @@
 import {
   materializeMcpUrl,
-  oauthTargetContract
+  oauthTargetContract,
+  ownsHostConnection
 } from "./package-model.mjs";
 
 export const authorizationScopePolicy =
@@ -38,16 +39,17 @@ export function authenticationHandoffContract(foundationProduct = "bos") {
 }
 
 export function externalProductDependencyContract(
-  foundationProduct = "bos"
+  foundationProduct = "bos",
+  version = "2"
 ) {
   return {
     contract_id: "bos.external-product-dependency",
-    contract_version: "1",
+    contract_version: version,
     metadata_file: ".bos-product.json",
-    metadata_schema: "bos://contracts/external-product-dependency/v1",
+    metadata_schema: `bos://contracts/external-product-dependency/v${version}`,
     foundation_dependency: foundationProduct,
     product_source_location: "EXTERNAL_ALLOWED",
-    connection_owner: "DEPENDENT_PRODUCT",
+    connection_owner: version === "1" ? "DEPENDENT_PRODUCT" : "BOS_FOUNDATION",
     authentication_manager: foundationProduct,
     credential_lifecycle_owner: "host",
     authorization_enforcement_owner: "bos-service",
@@ -66,9 +68,9 @@ export function productRuntimeOwnershipMetadata(
   foundationProduct = "bos"
 ) {
   return {
-    connection_owner: product.name,
+    connection_owner: product.connection_owner,
     dependency_products: product.dependencies,
-    authentication: product.runtime ? "oauth_2_1" : "none",
+    authentication: product.runtime ? (ownsHostConnection(product) ? "oauth_2_1" : "bos_dependency") : "none",
     ...(product.runtime ? {
       authorization_scope_policy: authorizationScopePolicy,
       authentication_handoff: authenticationHandoffContract(foundationProduct)
@@ -84,11 +86,11 @@ export function productMcpConnectionsContract(products) {
     .filter(({ runtime }) => runtime)
     .sort((left, right) => left.name.localeCompare(right.name));
   return {
-    schema_version: "1",
+    schema_version: "2",
     contract_id: "bos.product-mcp-connections",
     foundation_product: foundation.name,
     dependency_policy: "DEPENDENT_PRODUCTS_REQUIRE_BOS",
-    connection_policy: "EACH_PRODUCT_OWNS_ONE_SCOPED_MCP",
+    connection_policy: "BOS_FOUNDATION_OWNS_HOST_CONNECTION",
     external_product_contract: externalProductDependencyContract(foundation.name),
     authentication_policy: {
       foundation: "ON_INSTALL",
@@ -134,6 +136,15 @@ export function productMcpConnectionsContract(products) {
       continuation_policy: "RESUME_ORIGINAL_REQUEST"
     },
     products: runtimeProducts.map((product) => ({
+      name: product.name,
+      dependencies: product.dependencies,
+      application_name: product.application_name,
+      connection_owner: product.connection_owner,
+      authentication: product.authentication,
+      authorization_scope_policy: authorizationScopePolicy,
+      runtime_verification_tools: product.runtime_verification_tools
+    })),
+    connections: runtimeProducts.filter(ownsHostConnection).map((product) => ({
       name: product.name,
       dependencies: product.dependencies,
       application_name: product.application_name,

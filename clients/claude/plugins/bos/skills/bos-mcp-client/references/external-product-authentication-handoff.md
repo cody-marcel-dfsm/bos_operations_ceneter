@@ -11,11 +11,11 @@ REST endpoint, MCP operation, server registration, or product-specific service.
 
 ## Ownership
 
-- The caller owns its package, domain skills, MCP binding, pending operation,
-  connection and discovery lifecycle, retry, reconciliation, cache, continuation,
+- The caller owns its package, domain skills, pending operation,
+  discovery, retry, reconciliation, cache, continuation,
   and presentation.
-- BOS receives a minimal authentication delegation request and coordinates the
-  applicable host-native OAuth flow.
+- BOS owns the platform connection, receives a minimal authentication delegation
+  request, and coordinates its host-native OAuth flow.
 - The client host owns OAuth metadata discovery, dynamic registration when
   required, PKCE, credential storage, refresh, bearer attachment, and its native
   consent surface.
@@ -33,7 +33,7 @@ The caller supplies only:
 - `schema_version`: exactly `bos.authentication-handoff/v1`;
 - `message_type`: exactly `request`;
 - `protected_resource`: the exact OAuth resource already configured on the
-  caller's host-managed connection;
+  installed BOS host-managed connection;
 - `condition`: a structured authentication or MCP-session
   condition and its observed source; and
 - `host_correlation` only when the host requires a non-secret value to correlate
@@ -76,7 +76,7 @@ structured condition.
 The result contains no credential, authorization header, internal organization,
 application, installation, role, provider, database identifier, or authority
 selector. The caller owns every action after this result, including refreshing
-its connection and discovery, reconciling uncertain work, and deciding whether
+BOS discovery, reconciling uncertain work, and deciding whether
 or how to continue.
 
 ## Required execution

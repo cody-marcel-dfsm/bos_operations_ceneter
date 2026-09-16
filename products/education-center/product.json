@@ -1,11 +1,11 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.103",
+  "version": "0.4.104",
   "release_status": "active",
   "display_name": "Education Operation Center",
   "description": "Coordinate operations across email, calendars, billing, and enrollment.",
-  "long_description": "Education Operation Center coordinates complex, evidence-backed work across an education company's authorized email, calendars, advertising, enrollment, staffing, and billing systems. For example, Acme Learning Center could ask it to find Acme.com partnership invoices in its billing inbox, reconcile them against payment records in its configured accounting system, and produce a source-linked exception ledger. Other workflows connect outreach to trials and enrollments, balance camps against registrations and instructor availability, prepare parent communications, and trace advertising outcomes. The plugin requires BOS and each focused skill follows its deterministic workflow through the tenant-scoped Education Center MCP connection while preserving human judgment, approvals, organizational settings, roles, application scope, and provider boundaries.",
+  "long_description": "Education Operation Center coordinates complex, evidence-backed work across an education company's authorized email, calendars, advertising, enrollment, staffing, and billing systems. For example, Acme Learning Center could ask it to find Acme.com partnership invoices in its billing inbox, reconcile them against payment records in its configured accounting system, and produce a source-linked exception ledger. Other workflows connect outreach to trials and enrollments, balance camps against registrations and instructor availability, prepare parent communications, and trace advertising outcomes. The plugin requires BOS and each focused skill follows its deterministic workflow through the BOS platform connection with server-enforced application scope while preserving human judgment, approvals, organizational settings, roles, application scope, and provider boundaries.",
   "website_url": "https://dfsm.ai",
   "brand_color": "#061638",
   "composer_icon": "assets/education-center-logo.png",
@@ -18,18 +18,6 @@
   ],
   "runtime": "bos",
   "application_name": "leaddirector",
-  "mcp_group_name": "education-center",
-  "mcp_resource_url": "https://dfsm.ai/mcp/apps/leaddirector/education-center",
-  "codex_mcp_startup_timeout_sec": 180,
-  "codex_mcp_tool_timeout_sec": 180,
-  "oauth": {
-    "authorization_server_issuer": "https://dfsm.ai",
-    "authorization_endpoint": "https://dfsm.ai/api/v1/mcp/oauth/authorize",
-    "identity_provider": "google",
-    "identity_provider_authorization_endpoint": "https://accounts.google.com/o/oauth2/v2/auth",
-    "provider_account_selection_policy": "ALWAYS_SELECT_ACCOUNT",
-    "provider_account_selection_prompt": "select_account"
-  },
   "openai_submission": {
     "import_file": "openai/chatgpt-app-submission.json",
     "directory_icon": "openai/directory-icon.png",
@@ -55,7 +43,8 @@
     "education_center_get_camp_roster_report",
     "education_center_list_enrollments",
     "education_center_search_leads",
-    "education_center_search_students"
+    "education_center_search_students",
+    "education_center_get_customer_journey"
   ],
   "includes": [
     "platform/bos-mcp-client",
@@ -86,5 +75,6 @@
     "For Acme Learning Center, reconcile Acme.com partnership email invoices with accounting payments; cite every mismatch.",
     "For Acme Learning Center, reconcile next week's registrations, partner child-days, staff, cancellations, and camp capacity.",
     "For Acme Learning Center, reconcile paid leads across Gmail, Calendar, Lead Director, Calimatic, and Google Ads; flag gaps."
-  ]
+  ],
+  "connection_owner": "bos"
 }

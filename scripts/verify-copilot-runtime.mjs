@@ -1,7 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { activeClientProducts, compareTrees } from "./lib/client-runtime-verification.mjs";
+import { retiredConnectionFailures, activeClientProducts, compareTrees } from "./lib/client-runtime-verification.mjs";
 import { pathExists, readJson, root, stableJson } from "./lib/package-model.mjs";
 
 export async function inspectCopilotRuntime({ target, product = "education-center", base = root } = {}) {
@@ -18,18 +18,23 @@ export async function inspectCopilotRuntime({ target, product = "education-cente
   const expectedMcp = await readJson(
     join(base, "clients", "copilot", "products", "bos", ".github", "mcp.json")
   );
-  if (!(await pathExists(mcpPath))) failures.push(`missing Copilot MCP configuration: ${mcpPath}`);
-  else {
+  const mcpPaths = [];
+  for (const candidate of [githubMcpPath, vscodeMcpPath]) {
+    if (await pathExists(candidate)) mcpPaths.push(candidate);
+  }
+  if (!mcpPaths.length) failures.push(`missing Copilot MCP configuration: ${mcpPath}`);
+  for (const candidate of mcpPaths) {
     try {
-      const actualMcp = JSON.parse(await readFile(mcpPath, "utf8"));
+      const actualMcp = JSON.parse(await readFile(candidate, "utf8"));
+      const servers = actualMcp.servers ?? actualMcp.mcpServers ?? {};
+      failures.push(...(await retiredConnectionFailures(servers)).map(message => `${candidate}: ${message}`));
       for (const [name, expected] of Object.entries(expectedMcp.servers ?? expectedMcp.mcpServers ?? {})) {
-        const actual = (actualMcp.servers ?? actualMcp.mcpServers ?? {})[name];
-        if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-          failures.push(`Copilot MCP server ${name} differs from the generated BOS configuration`);
+        if (JSON.stringify(servers[name]) !== JSON.stringify(expected)) {
+          failures.push(`Copilot MCP server ${name} differs from the generated BOS configuration: ${candidate}`);
         }
       }
     } catch (error) {
-      failures.push(`invalid Copilot MCP configuration ${mcpPath}: ${error.message}`);
+      failures.push(`invalid Copilot MCP configuration ${candidate}: ${error.message}`);
     }
   }
 
@@ -54,6 +59,7 @@ export async function inspectCopilotRuntime({ target, product = "education-cente
     product: selected.name,
     configuration_model: "repository-files-no-package-cache",
     mcp_path: mcpPath,
+    mcp_paths: mcpPaths,
     skills_root: skillsRoot,
     skills: skillStates,
     failures

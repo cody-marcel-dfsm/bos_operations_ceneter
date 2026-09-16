@@ -14,11 +14,11 @@ customer-facing output names the franchise or brand. Keep technical product,
 skill, route, server, environment-variable, tool, capability, authorization,
 and record identifiers unchanged.
 
-Use the authenticated Education Center MCP connection and follow the `bos-mcp-client` context workflow. Keep hiring,
+Use the authenticated BOS platform connection and follow the `bos-mcp-client` context workflow. Keep hiring,
 onboarding, teaching, and offboarding as distinct lifecycle use cases.
 Use `bos-visual-output` for candidate pipelines, onboarding progress, teaching
 coverage, and lifecycle timelines.
-Use only the Education Center MCP or published BOS backend APIs with the Education Center organization's
+Use only the BOS platform MCP or published BOS backend APIs with the Education Center organization's
 plugin credentials. Browser sessions and native/local connectors provide no
 authorization, evidence, or fallback.
 When Gmail, Calendar, Drive, or Calimatic reports an authentication error,
