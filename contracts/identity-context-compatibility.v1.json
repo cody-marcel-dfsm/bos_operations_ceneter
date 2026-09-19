@@ -1,0 +1,13 @@
+{
+  "contract_version": "bos.identity-context-compatibility/v1",
+  "activation": {
+    "discovery_contract": "bos-identity-mcp/v2",
+    "required_tools": ["bos_get_context", "bos_list_context_tools", "bos_execute"]
+  },
+  "authorization_scope_policy": "SERVER_AUTHORIZED_CONTEXT_PER_OPERATION",
+  "context_selector": "FRESH_SERVER_RETURNED_CONTEXT_HANDLE",
+  "preferences": "INERT_INTENT_MATCHED_AGAINST_LIVE_AUTHORIZED_CONTEXTS",
+  "legacy_fallback": "RETAIN_EXACT_SINGLE_CONTEXT_GRANT",
+  "connection_owner": "bos",
+  "changes_existing_grants": false
+}

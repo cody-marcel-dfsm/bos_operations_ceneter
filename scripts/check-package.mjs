@@ -258,6 +258,8 @@ async function validateProducts() {
         metadata.authentication !== expectedAuthentication ||
         metadata.authorization_scope_policy !==
           expectedOwnership.authorization_scope_policy ||
+        metadata.execution_context_compatibility !==
+          expectedOwnership.execution_context_compatibility ||
         JSON.stringify(metadata.authentication_handoff) !==
           JSON.stringify(expectedOwnership.authentication_handoff) ||
         "credential_env_var" in metadata ||

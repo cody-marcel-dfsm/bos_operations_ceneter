@@ -1214,7 +1214,7 @@ test("Education Center initialization proposes sourced defaults with one-step ac
   assert.match(guidance, /Claude[\s\S]*persistent \*\*Connect\*\* action[\s\S]*Customize\s*→\s*Connectors/i);
   assert.match(guidance, /authentication_required[\s\S]*preserve the initialization draft[\s\S]*ask[\s\S]*no settings questions/i);
   assert.match(guidance, /store it as `brand_display_name`/i);
-  assert.match(guidance, /organization label from the connection's exact scoped[\s\S]*grant/i);
+  assert.match(guidance, /selected authorized context's organization label/i);
   assert.doesNotMatch(guidance, /set-default-organization|client-preferences\.mjs|plugin-settings-initialization/i);
 });
 
@@ -1404,7 +1404,7 @@ test("BOS marketplace metadata explains the platform and links to its website", 
   assert.match(bos.long_description, /owns the authenticated BOS platform MCP connection/);
   assert.match(bos.long_description, /required foundation for dependent products/);
   assert.match(bos.long_description, /agentic mesh of federated services/);
-  assert.match(bos.long_description, /server-scoped organization, application, installation, and role grant/);
+  assert.match(bos.long_description, /server-authorized organization, application, installation, and role selection per operation/);
   assert.doesNotMatch(bos.long_description, /static (?:registry|operation|tool|schema|catalog)/i);
   assert.match(bos.long_description, /server-enforced scope, evidence, and approvals/);
   assert.equal(bos.website_url, "https://dfsm.ai");

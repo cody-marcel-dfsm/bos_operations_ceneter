@@ -4,6 +4,36 @@ Private local architecture: `Vault/docs/architecture.md`
 Private local constitution: `Vault/docs/CONSTITUTION.md`
 Private knowledge root: `Vault/` (never tracked or published)
 
+## BOS Product Family coordination
+
+- This repository participates in the BOS Product Family as the **BOS client
+  product**. It owns operating-system client skills, prompt interpretation,
+  discovery use, explain planning, BOSL authoring, client-owned journey work,
+  recovery, caching, presentation, packaging, and release.
+- Read the canonical family relationship at
+  `/Users/cody/Development/Projects/Vault/docs/architecture/bos-product-family.md`
+  for family membership, cross-project ownership, and shared public-contract
+  obligations.
+- Use the Projects-level Oracle at
+  `/Users/cody/Development/Projects/.agents/skills/oracle/SKILL.md` for family
+  membership, ownership boundaries, and shared public-contract alignment. Use
+  this repository's `Vault/` and `.agents/skills/oracle/SKILL.md` for every
+  BOS Operations Center design, implementation, package, test, and release
+  assertion.
+- A change to a cross-project public contract requires Projects-level Oracle
+  review and every affected project's local Oracle review. Each approval stays
+  within its own authority.
+- Family documents provide architecture navigation and public contracts.
+  Sibling repositories remain independent source, build, runtime, database,
+  and release units.
+- Report a conflict between the family architecture and local authority to both
+  Oracle scopes and preserve the existing contract until the conflict is
+  explicitly resolved. The owner-approved authentication topology is one
+  BOS-managed connection for every accessible MCP; dependent products such as
+  My CRM delegate authentication to BOS and declare no second login or
+  credential lifecycle. Future authentication and authorization changes
+  continue to require the owner approval process defined below.
+
 ## Customer installation routing
 
 - This repository owns customer installation instructions for BOS Operations

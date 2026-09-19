@@ -42,3 +42,14 @@ audience validation and fail-closed request-time authorization. Verify native BO
 login, live application discovery, the requested operation and its rendered
 result against the published release. Source checks alone establish no live
 acceptance.
+
+## Versioned identity-context compatibility
+
+Generated first-party runtime metadata may additionally declare
+`execution_context_compatibility: bos.identity-context-compatibility/v1`.
+The separate `identity-context-compatibility.v1.json` defines its activation:
+only a live `bos-identity-mcp/v2` response and callable context discovery/execution
+tools enable per-operation contexts. The legacy `authorization_scope_policy`
+field retains its meaning for legacy discovery and external v2 consumers.
+This opt-in contract does not widen an existing grant. New consumers must apply
+the versioned branch before legacy instructions; unsupported versions fail closed.

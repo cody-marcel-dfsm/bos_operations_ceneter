@@ -5,12 +5,14 @@ description: Initialize or repair plugin-service connections and required BOS pl
 
 
 
+
 ## Product first-run preflight
 
 Before performing this skill's workflow, resolve the installed product root and
 validate its customer-owned `config/customer-settings.json` against
 `config/customer-settings.template.json`. Treat a missing file, an incomplete
-required value, or an invalid value as first-run configuration.
+required value, or an invalid value as first-run configuration. A missing
+`default_context` requires the default-organization setup migration.
 
 When first-run configuration is detected, invoke `education-center-customer-initialization`
 immediately. When that initializer is already active for the same request, support
@@ -62,6 +64,9 @@ destructive hint cannot establish safety.
 This is an agent instruction safeguard. Server authorization and validation
 remain required; the package does not intercept or enforce arbitrary API calls.
 
+For live `bos-identity-mcp/v2`, first apply [identity-context compatibility](../bos-mcp-client/references/identity-context.md).
+Its fresh authorized-context selection and saved-default rules govern this
+workflow; single-context grant wording below applies to legacy discovery.
 # BOS Plugin Settings Initialization
 
 Run this common product-client stage after host-managed BOS authentication and
@@ -83,6 +88,13 @@ or provider choice.
 
 Read [references/initialization-contract.md](references/initialization-contract.md)
 before running discovery or persisting initialization drafts.
+
+For live `bos-identity-mcp/v2`, discover this context's setup operations before
+calling them. When optional profile setup tooling is unavailable, report that
+setup as incomplete and return to the pending workflow. An independently
+advertised ready operation may continue when its live contract declares no
+dependency on that setup. Preserve required operation readiness and explicit
+denials; never invent missing setup tools or recurse into this initializer.
 
 ## Preflight
 

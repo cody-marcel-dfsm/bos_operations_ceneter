@@ -23,6 +23,7 @@
   ],
   "authentication": "bos_dependency",
   "authorization_scope_policy": "ONE_ORGANIZATION_APPLICATION_INSTALLATION_ROLE_PER_GRANT",
+  "execution_context_compatibility": "bos.identity-context-compatibility/v1",
   "authentication_handoff": {
     "contract_id": "bos.authentication-handoff",
     "contract_version": "1",

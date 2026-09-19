@@ -47,6 +47,14 @@ user request. Graph discovery is a post-result read; it never replays a write
 or erases a verified receipt. If graph reads fail, retain the outcome and show
 the detailed partial-evidence view. Honor explicit user output formats.
 
+For `bos-identity-mcp/v2`, discover operations with `bos_list_context_tools`
+for the already selected context and invoke them through `bos_execute`. Inspect
+the selected context's capability report when its catalog omits a requested
+operation. A top-level claim of delete support does not establish a callable
+delete contract for this installation. Preserve evidence of that mismatch and
+report the missing capability without probing a guessed delete name or changing
+roles.
+
 Discover each requested CRUD operation independently from the current callable
 catalog and advertised application contracts. Create or search support does not
 establish update or delete support. An absent tool name requires supported

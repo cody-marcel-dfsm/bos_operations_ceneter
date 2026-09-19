@@ -7,6 +7,14 @@ description: Review Business Operating System platform changes for architecture,
 
 ## Scoped authorization preflight
 
+First apply the versioned identity-context workflow in `bos-mcp-client`.
+For live `bos-identity-mcp/v2`, resolve explicit request scope or the saved
+customer default against fresh authorized contexts, discover tools for the
+selected handle, and execute with that same handle. This branch governs
+context selection throughout this skill, including older scoped-grant wording.
+A missing operation never permits changing organization or role to find it.
+The following single-context rules apply only to legacy scoped-grant discovery.
+
 Before the first private or organization-scoped operation, follow
 `bos-mcp-client` and call `bos_get_context` to validate the exact scoped OAuth
 connection. The server-owned grant fixes organization, application, installation,

@@ -4,6 +4,7 @@ description: Read and change typed BOS plugin settings through native client con
 ---
 
 
+
 ## Client mutation safety
 
 Apply this fail-safe before every BOS business update or delete, including
@@ -42,6 +43,9 @@ destructive hint cannot establish safety.
 This is an agent instruction safeguard. Server authorization and validation
 remain required; the package does not intercept or enforce arbitrary API calls.
 
+For live `bos-identity-mcp/v2`, first apply [identity-context compatibility](../bos-mcp-client/references/identity-context.md).
+Its fresh authorized-context selection and saved-default rules govern this
+workflow; single-context grant wording below applies to legacy discovery.
 # BOS Plugin Settings
 
 Use the BOS connection with its server-validated application scope. This skill operates

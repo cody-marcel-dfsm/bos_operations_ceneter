@@ -31,6 +31,37 @@ Use current evidence from this repository and its local `Vault/`. Never answer
 Operations Center architecture questions from a packaged BOS plugin or from
 memory alone.
 
+## Projects-level BOS Product Family relationship
+
+BOS Operations Center is the **BOS client product** member of the BOS Product
+Family. For any question or review concerning family membership,
+cross-project ownership, or a shared public contract, read completely:
+
+- `/Users/cody/Development/Projects/Vault/docs/architecture/bos-product-family.md`;
+  and
+- `/Users/cody/Development/Projects/.agents/skills/oracle/SKILL.md`.
+
+The Projects Oracle governs only the inter-project relationship. This local
+Oracle governs BOS Operations Center architecture, client skills,
+implementation, generated packages, tests, and release changes. A material
+shared-contract change requires both Projects-level review and every affected
+project's local review. Each verdict applies only within its own authority.
+
+Treat the family paths as architecture navigation. Preserve independent source,
+build, filesystem, runtime, database, and release boundaries for every sibling
+project.
+When the family architecture conflicts with this repository's controlling
+authority, report the exact conflict to both Oracle scopes and withhold approval
+until an explicit decision reconciles it. Apply the authentication-change
+review below to every conflict or proposal that affects authentication or
+authorization.
+
+The owner-approved family authentication topology uses one BOS-managed
+connection for every accessible MCP. Dependent products such as My CRM delegate
+authentication to the BOS plugin and declare no second login, OAuth binding,
+token, or credential lifecycle. Treat any proposed deviation as a new protected
+authentication change.
+
 ## Authentication change review
 
 Every review must explicitly classify authentication impact, including changes

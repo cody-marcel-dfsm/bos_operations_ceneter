@@ -50,6 +50,31 @@ This workflow configures non-secret operating context. It grants no authority
 and never collects credentials, API keys, tokens, passwords, or provider
 secrets.
 
+## Default operating context
+
+Setup also establishes the default organization used when a request omits one.
+Use the shared `bos-mcp-client` identity-context workflow and customer preference
+store described in `references/identity-context.md` in that skill. A missing
+`default_context` is a setup migration even when the five display fields are valid.
+If the shared store is missing and the overlay has a valid confirmed default,
+restore the shared store from that mirror after fresh authorized matching; no
+new confirmation is needed. If the shared store already has a confirmed default,
+use it to repair a missing or stale overlay mirror.
+Keep display identity and execution preference separate. Propose the existing
+organization display name only when it matches current authorized discovery;
+confirm it in the same consolidated setup recommendation. With several authorized
+organizations, ask for the default once during setup. Include installation and
+role only when needed to select one exact eligible context. Never choose a role
+by privilege rank. An explicit organization choice for a single task does not
+establish a persistent default.
+
+After confirmation, persist `default_context` with `organization_name`, optional
+`installation_name`, and optional `role_code` in the customer overlay and shared
+BOS customer preference store. Values are inert matching preferences; store no
+context handle, authority ID, or token. Re-read both and validate against fresh
+context discovery before reporting setup complete. Upgrades preserve these
+customer-owned values. A failed shared-store write leaves setup incomplete.
+
 ## Derivation order
 
 1. Load `config/customer-settings.template.json` as package defaults, then
@@ -70,8 +95,9 @@ secrets.
 4. Derive the IANA timezone from the active client's local system context.
 5. After BOS authentication, call `bos_get_context`. If that alias is absent,
    follow `bos-mcp-client` connection recovery and live-tool discovery once,
-   then retry. Use the organization label from the connection's exact scoped
-   grant as canonical non-secret organization metadata. Request selectors
+   then retry. Use the selected authorized context's organization label as canonical
+   non-secret organization metadata. For a legacy scoped grant, use its one
+   organization; never reinterpret it as a multi-context grant. Request selectors
    remain untrusted and never become authority.
 6. Preserve an existing confirmed `organization_website_url`. Otherwise derive
    it only from explicit non-secret customer configuration or exact canonical
@@ -110,7 +136,8 @@ no settings questions.
 Ask one concise consolidated question in the agent conversation. Always show a
 `Recommended defaults` block containing brand display name, organization
 display name, organization website URL, location
-display name, and IANA timezone. Include each value's
+display name, IANA timezone, and default operating organization (plus any
+necessary installation and role preference). Include each value's
 status and source. Fill every field with the best customer-specific candidate
 available; use the generic product display name only as a clearly labeled
 low-confidence last-resort suggestion. End with: “Reply **Use these defaults**

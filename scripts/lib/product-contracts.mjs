@@ -74,6 +74,7 @@ export function productRuntimeOwnershipMetadata(
     authentication: product.runtime ? (ownsHostConnection(product) ? "oauth_2_1" : "bos_dependency") : "none",
     ...(product.runtime ? {
       authorization_scope_policy: authorizationScopePolicy,
+      execution_context_compatibility: "bos.identity-context-compatibility/v1",
       authentication_handoff: authenticationHandoffContract(foundationProduct)
     } : {})
   };

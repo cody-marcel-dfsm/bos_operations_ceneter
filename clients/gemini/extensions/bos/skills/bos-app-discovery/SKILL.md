@@ -5,7 +5,16 @@ description: Route a request through authenticated BOS installed-app discovery, 
 
 
 
+
 ## Scoped authorization preflight
+
+First apply the versioned identity-context workflow in `bos-mcp-client`.
+For live `bos-identity-mcp/v2`, resolve explicit request scope or the saved
+customer default against fresh authorized contexts, discover tools for the
+selected handle, and execute with that same handle. This branch governs
+context selection throughout this skill, including older scoped-grant wording.
+A missing operation never permits changing organization or role to find it.
+The following single-context rules apply only to legacy scoped-grant discovery.
 
 Before the first private or organization-scoped operation, follow
 `bos-mcp-client` and call `bos_get_context` to validate the exact scoped OAuth
@@ -59,6 +68,9 @@ destructive hint cannot establish safety.
 This is an agent instruction safeguard. Server authorization and validation
 remain required; the package does not intercept or enforce arbitrary API calls.
 
+For live `bos-identity-mcp/v2`, first apply [identity-context compatibility](../bos-mcp-client/references/identity-context.md).
+Its fresh authorized-context selection and saved-default rules govern this
+workflow; single-context grant wording below applies to legacy discovery.
 # BOS App Discovery
 
 First execute the first-action tool lookup in `bos-mcp-client`. Resolve deferred

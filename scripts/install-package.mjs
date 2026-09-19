@@ -333,10 +333,27 @@ export function validateCustomerSettings(settings) {
   const allowedTopLevel = new Set([
     "schema_version", "brand_display_name", "organization_display_name",
     "organization_website_url", "location_display_name", "timezone", "mailboxes",
-    "source_routes", "billing"
+    "source_routes", "billing", "default_context"
   ]);
   for (const field of Object.keys(settings)) {
     if (!allowedTopLevel.has(field)) failures.push(`unknown settings field: ${field}`);
+  }
+  if (settings.default_context !== undefined) {
+    const preference = settings.default_context;
+    const fields = new Set(["organization_name", "installation_name", "role_code"]);
+    if (!preference || typeof preference !== "object" || Array.isArray(preference)) {
+      failures.push("default_context must be an object");
+    } else {
+      if (typeof preference.organization_name !== "string" || !preference.organization_name.trim()) {
+        failures.push("default_context.organization_name must be a non-empty string");
+      }
+      for (const [key, value] of Object.entries(preference)) {
+        if (!fields.has(key) || typeof value !== "string" || value.length > 200 ||
+            /[\r\n\u0000-\u001f\u007f]/.test(value)) {
+          failures.push(`invalid default_context field: ${key}`);
+        }
+      }
+    }
   }
   for (const field of [
     "brand_display_name", "organization_display_name", "organization_website_url",

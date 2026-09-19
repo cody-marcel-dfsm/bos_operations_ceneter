@@ -3,6 +3,10 @@ name: bos-plugin-console
 description: Show and manage BOS plugin, connection, enablement, server-settings summary, and display-property status. When a signed-out request needs BOS data, use the protected resource's OAuth challenge to present the active client's native login action, preserve the request through consent, and resume it afterward. Never substitute manual sign-in guidance or local inventory.
 ---
 
+
+For live `bos-identity-mcp/v2`, first apply [identity-context compatibility](../bos-mcp-client/references/identity-context.md).
+Its fresh authorized-context selection and saved-default rules govern this
+workflow; single-context grant wording below applies to legacy discovery.
 # BOS Plugin Console
 
 Render the BOS Plugin Console directly in the active client's content window.

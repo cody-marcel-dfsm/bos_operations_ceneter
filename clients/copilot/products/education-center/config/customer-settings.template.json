@@ -23,5 +23,10 @@
     "phone_number": "",
     "invoice_reference_prefix": "",
     "bright_horizons_rate_per_child_day": null
+  },
+  "default_context": {
+    "organization_name": "",
+    "installation_name": "",
+    "role_code": ""
   }
 }

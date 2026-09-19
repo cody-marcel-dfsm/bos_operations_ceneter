@@ -15,12 +15,20 @@ after every required stage is current.
 
 First validate the customer-owned `config/customer-settings.json` against
 `config/customer-settings.template.json`. Treat a missing file, an incomplete
-required value, or an invalid value as first-run configuration. When detected,
+required value, or an invalid value as first-run configuration. Also migrate a
+missing/invalid `default_context` or missing/invalid shared BOS customer
+preference store. Restore a confirmed valid mirror without asking again;
+confirm a new default once through the consolidated setup. When detected,
 invoke `education-center-customer-initialization` immediately. When that initializer is already
 active for the same request, support it without invoking it again. Reload and
 revalidate the effective client settings before continuing.
 
-After client settings are current, validate the scoped grant's live
+For live `bos-identity-mcp/v2`, discover the requested operation first. Missing
+optional plugin-profile setup tools do not block an independently advertised
+ready operation with no declared dependency on that setup. Keep that profile
+setup incomplete, preserve operation-specific readiness requirements and
+denials, and continue the requested operation without initializer recursion.
+Otherwise, after client settings are current, validate the scoped grant's live
 plugin-service inventory, organization business profile initialization epoch,
 required canonical field states, and local completion
 receipt. Invoke `bos-plugin-settings-initialization` when the receipt is missing or
@@ -32,6 +40,14 @@ Preserve confirmed plugin values and never create a separate discovery path in
 this skill. Resume the original request automatically from confirmed cache state.
 
 ## Scoped authorization preflight
+
+First apply the versioned identity-context workflow in `bos-mcp-client`.
+For live `bos-identity-mcp/v2`, resolve explicit request scope or the saved
+customer default against fresh authorized contexts, discover tools for the
+selected handle, and execute with that same handle. This branch governs
+context selection throughout this skill, including older scoped-grant wording.
+A missing operation never permits changing organization or role to find it.
+The following single-context rules apply only to legacy scoped-grant discovery.
 
 Before the first private or organization-scoped operation, follow
 `bos-mcp-client` and call `bos_get_context` to validate the exact scoped OAuth
@@ -128,6 +144,14 @@ needed and display its current graph and profile without waiting for another
 user request. Graph discovery is a post-result read; it never replays a write
 or erases a verified receipt. If graph reads fail, retain the outcome and show
 the detailed partial-evidence view. Honor explicit user output formats.
+
+For `bos-identity-mcp/v2`, discover operations with `bos_list_context_tools`
+for the already selected context and invoke them through `bos_execute`. Inspect
+the selected context's capability report when its catalog omits a requested
+operation. A top-level claim of delete support does not establish a callable
+delete contract for this installation. Preserve evidence of that mismatch and
+report the missing capability without probing a guessed delete name or changing
+roles.
 
 Discover each requested CRUD operation independently from the current callable
 catalog and advertised application contracts. Create or search support does not

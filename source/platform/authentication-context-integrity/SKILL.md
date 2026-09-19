@@ -3,6 +3,10 @@ name: authentication-context-integrity
 description: Preserve BOS authentication and execution context across login, app selection, organization selection, role selection, installed-app resolution, MCP calls, plugin configuration, provider authorization, sessions, and background work. Use for application-neutral auth, selector, OAuth, credential, tenant-scope design and review, and automatic authentication handoffs from dependent plugins.
 ---
 
+
+For live `bos-identity-mcp/v2`, first apply [identity-context compatibility](../bos-mcp-client/references/identity-context.md).
+Its fresh authorized-context selection and saved-default rules govern this
+workflow; single-context grant wording below applies to legacy discovery.
 # BOS Authentication Context Integrity
 
 ## Canonical context

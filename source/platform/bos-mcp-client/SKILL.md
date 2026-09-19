@@ -3,6 +3,10 @@ name: bos-mcp-client
 description: Operate the BOS platform MCP connection, including server-evaluated product scope, live tool discovery, transport recovery, provider authorization recovery, and automatic BOS authentication handoff for dependent plugins.
 ---
 
+
+For live `bos-identity-mcp/v2`, first apply [identity-context compatibility](references/identity-context.md).
+Its fresh authorized-context selection and saved-default rules govern this
+workflow; single-context grant wording below applies to legacy discovery.
 # BOS MCP Client
 
 Before a business mutation, apply

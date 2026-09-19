@@ -3,6 +3,10 @@ name: bos-plugin-settings
 description: Read and change typed BOS plugin settings through native client controls or conversation, using authority-scoped cache, confirmed server mutations, bounded recovery, and feedback-ready failures.
 ---
 
+
+For live `bos-identity-mcp/v2`, first apply [identity-context compatibility](../bos-mcp-client/references/identity-context.md).
+Its fresh authorized-context selection and saved-default rules govern this
+workflow; single-context grant wording below applies to legacy discovery.
 # BOS Plugin Settings
 
 Use the BOS connection with its server-validated application scope. This skill operates
