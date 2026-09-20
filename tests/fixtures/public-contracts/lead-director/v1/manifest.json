@@ -9,9 +9,35 @@
   "canonical_runtime": {
     "models": "backend/models/lead_director_describe.py",
     "public_projection": "backend/platform_orchestration/lead_director_describe_service.py",
-    "mcp_projection": "backend/platform_orchestration/lead_director_describe_mcp.py"
+    "mcp_projection": "backend/platform_orchestration/lead_director_describe_mcp.py",
+    "api_contract_models": "backend/models/lead_director_plugin_discovery.py",
+    "operation_metadata_seed": "backend/database/seeds/lead_director_cloning_org_graph_data.json"
   },
   "files": [
+    {
+      "path": "api.contract.request.example.json",
+      "media_type": "application/json",
+      "sha256": "90b27c5d7faebb88b6be48680b1051e242e20b3a3fce02567b3df9db77f2862a",
+      "source": "backend/models/lead_director_plugin_discovery.py"
+    },
+    {
+      "path": "api.contract.request.schema.json",
+      "media_type": "application/schema+json",
+      "sha256": "163e46bceb4b4eb7c678fe5eb20b53e2aa8017c312751288ff4ecb53628e9a55",
+      "source": "backend/models/lead_director_plugin_discovery.py"
+    },
+    {
+      "path": "api.contract.response.example.json",
+      "media_type": "application/json",
+      "sha256": "d51b9727f5145f62ccdb30221117d892cd9834998107b6d37477c00c45ca2a7d",
+      "source": "backend/platform_orchestration/lead_director_describe_service.py"
+    },
+    {
+      "path": "api.contract.response.schema.json",
+      "media_type": "application/schema+json",
+      "sha256": "228f4ffc9441ada35b7aa8e22d8ed397aa1a630d674a0678bc57cc48c790c332",
+      "source": "backend/models/lead_director_plugin_discovery.py"
+    },
     {
       "path": "app.describe.example.json",
       "media_type": "application/json",
@@ -49,5 +75,5 @@
       "source": "backend/tests/fixtures/agent_mcp/v1/lead_director_operation_examples.json"
     }
   ],
-  "bundle_sha256": "fd73779783242b4420dc72d7d8ade232f5adbc318ae69261b584b2b5dcfd5367"
+  "bundle_sha256": "96b222b222aa2e71e359f9e0427cfbb5567be77152afdfc82d131277c75c45de"
 }

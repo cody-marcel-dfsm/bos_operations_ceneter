@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 
+import { realpathSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import validateDraft202012Schema from "./validate-json-schema-2020-12.mjs";
+
 const forbiddenAuthorityKeys = new Set([
   "organization_id",
   "org_id",
@@ -15,14 +21,25 @@ const forbiddenAuthorityKeys = new Set([
   "context_id",
   "actor_role_id",
   "actor_user_id",
+  "api_key",
+  "app_id",
+  "application_id",
   "authority_context",
+  "client_idempotency_key",
+  "connection_id",
+  "context_handle",
   "execution_id",
   "grant_id",
   "idempotency_key",
   "internal_id",
+  "oauth_token",
   "principal_context",
+  "provider_error",
   "provider_id",
+  "retry_state",
+  "secret",
   "session_id",
+  "token",
   "user_id",
   "access_token",
   "refresh_token",
@@ -77,6 +94,8 @@ const leadDirectorAppDescribe = Object.freeze({
   maxOperations: 5
 });
 const operationIdPattern = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u;
+const semanticOperationPattern = /^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$/u;
+const semanticVersionPattern = /^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/u;
 const leadDirectorBoslUriPattern = /^bos:\/\/apps\/lead-director\/bosl\/([a-f0-9]{32})\/(schema|reference|examples)$/u;
 const sha256Pattern = /^[a-f0-9]{64}$/u;
 
@@ -143,7 +162,7 @@ function normalizedSecurityKey(value) {
     .toLowerCase();
 }
 
-function rejectRawAuthority(value, path = "descriptor") {
+function rejectRawAuthority(value, path = "descriptor", insideProvider = false) {
   if (typeof value === "string") {
     if (privateDiscoveryText.test(value)) {
       throw new Error(`${path} exposes private discovery text`);
@@ -155,17 +174,19 @@ function rejectRawAuthority(value, path = "descriptor") {
     const normalized = normalizedSecurityKey(key);
     const tokens = new Set(normalized.split("_").filter(Boolean));
     const explicitlyPublic = key === "$id" || publicSecurityKeys.has(normalized);
+    const providerDiagnostic =
+      (insideProvider || tokens.has("provider")) &&
+      ["error", "errors", "exception", "message", "response", "text"]
+        .some((token) => tokens.has(token));
     if (!explicitlyPublic && (
       forbiddenAuthorityKeys.has(normalized) ||
       [...secretTokens].some((token) => tokens.has(token)) ||
       [...authorityTokens].some((token) => tokens.has(token)) ||
-      (tokens.has("provider") &&
-        ["error", "errors", "exception", "message", "response", "text"]
-          .some((token) => tokens.has(token)))
+      providerDiagnostic
     )) {
       throw new Error(`${path}.${key} exposes a raw authority or credential identifier`);
     }
-    rejectRawAuthority(child, `${path}.${key}`);
+    rejectRawAuthority(child, `${path}.${key}`, insideProvider || tokens.has("provider"));
   }
 }
 
@@ -622,6 +643,226 @@ function validateExecutionContract(execution, label) {
   }
 }
 
+function validateEmbeddedSchema(schema, label) {
+  requireObject(schema, label);
+  if (Object.hasOwn(schema, "$schema") &&
+      schema.$schema !== "https://json-schema.org/draft/2020-12/schema") {
+    throw new Error(`${label} must use JSON Schema draft 2020-12 when $schema is declared`);
+  }
+  if (!validateDraft202012Schema(schema)) {
+    const detail = (validateDraft202012Schema.errors ?? [])
+      .map((error) => `${error.instancePath || "/"} ${error.message}`)
+      .join("; ");
+    throw new Error(`${label} must be a valid Draft 2020-12 JSON Schema: ${detail}`);
+  }
+}
+
+function validateContractObjectSchema(schema, label) {
+  validateEmbeddedSchema(schema, label);
+  if (schema.type !== "object") {
+    throw new Error(`${label} must describe a JSON object`);
+  }
+}
+
+function validatePublicOperationError(error, label) {
+  requireObject(error, label);
+  requireExactKeys(
+    error,
+    new Set(["code", "message", "retryable", "http_status", "details_schema"]),
+    label
+  );
+  requireString(error.code, `${label}.code`);
+  if (!/^[A-Z][A-Z0-9_]*$/u.test(error.code)) {
+    throw new Error(`${label}.code must be a public error code`);
+  }
+  requireString(error.message, `${label}.message`);
+  if (typeof error.retryable !== "boolean") {
+    throw new Error(`${label}.retryable must be boolean`);
+  }
+  if (!Number.isInteger(error.http_status) ||
+      error.http_status < 400 || error.http_status > 599) {
+    throw new Error(`${label}.http_status must be an integer from 400 through 599`);
+  }
+  if (Object.hasOwn(error, "details_schema")) {
+    validateEmbeddedSchema(error.details_schema, `${label}.details_schema`);
+  }
+}
+
+function validateOperationRecovery(recovery, label) {
+  requireObject(recovery, label);
+  requireExactKeys(
+    recovery,
+    new Set([
+      "goal",
+      "instruction",
+      "operation",
+      "requires_user_approval",
+      "approval_scope"
+    ]),
+    label
+  );
+  requireString(recovery.goal, `${label}.goal`);
+  requireString(recovery.instruction, `${label}.instruction`);
+  if (recovery.operation !== null && recovery.operation !== undefined &&
+      (!semanticOperationPattern.test(recovery.operation))) {
+    throw new Error(`${label}.operation must be null or a semantic operation`);
+  }
+  if (typeof recovery.requires_user_approval !== "boolean") {
+    throw new Error(`${label}.requires_user_approval must be boolean`);
+  }
+  if (!Array.isArray(recovery.approval_scope) ||
+      recovery.approval_scope.some((item) => typeof item !== "string" || item.trim() === "")) {
+    throw new Error(`${label}.approval_scope must be an array of non-empty strings`);
+  }
+}
+
+export function validateApiContractResponse(response, expected = {}) {
+  const label = "api.contract.get response";
+  requireObject(response, label);
+  rejectRawAuthority(response, label);
+  requireExactKeys(
+    response,
+    new Set([
+      "operation",
+      "contract_version",
+      "source",
+      "bosl_server_node",
+      "node_type",
+      "title",
+      "description",
+      "permission",
+      "input_schema",
+      "output_schema",
+      "allowed_references",
+      "effect",
+      "approval",
+      "limits",
+      "guarantees",
+      "execution",
+      "retry_policy",
+      "receipt_schema",
+      "public_errors",
+      "recovery",
+      "provenance",
+      "readiness",
+      "ttlMs",
+      "cacheScope"
+    ]),
+    label
+  );
+  for (const field of [
+    "operation",
+    "contract_version",
+    "source",
+    "bosl_server_node",
+    "title",
+    "description",
+    "permission",
+    "input_schema",
+    "output_schema",
+    "allowed_references",
+    "effect",
+    "approval",
+    "limits",
+    "guarantees",
+    "execution",
+    "retry_policy",
+    "receipt_schema",
+    "public_errors",
+    "provenance",
+    "readiness",
+    "ttlMs",
+    "cacheScope"
+  ]) {
+    if (!Object.hasOwn(response, field)) {
+      throw new Error(`${label}.${field} is required`);
+    }
+  }
+
+  requireString(response.operation, `${label}.operation`);
+  if (!semanticOperationPattern.test(response.operation)) {
+    throw new Error(`${label}.operation must be a dotted semantic operation`);
+  }
+  if (expected.operation !== undefined && response.operation !== expected.operation) {
+    throw new Error(`${label}.operation must match the requested contract link`);
+  }
+  requireString(response.contract_version, `${label}.contract_version`);
+  if (!semanticVersionPattern.test(response.contract_version)) {
+    throw new Error(`${label}.contract_version must be semantic version text`);
+  }
+  validateServiceReference(response.source, `${label}.source`);
+  if (response.source.application !== "lead-director") {
+    throw new Error(`${label}.source.application must be lead-director`);
+  }
+  if (expected.source !== undefined && !sameJson(response.source, expected.source)) {
+    throw new Error(`${label}.source must match the selected plugin`);
+  }
+  if (typeof response.bosl_server_node !== "boolean") {
+    throw new Error(`${label}.bosl_server_node must be boolean`);
+  }
+  if (response.bosl_server_node) {
+    if (response.node_type !== "server") {
+      throw new Error(`${label}.node_type must be server for a BOSL server node`);
+    }
+  } else if (Object.hasOwn(response, "node_type")) {
+    throw new Error(`${label}.node_type must be absent for a non-BOSL operation`);
+  }
+  for (const field of ["title", "description", "permission", "effect"]) {
+    requireString(response[field], `${label}.${field}`);
+  }
+  validateContractObjectSchema(response.input_schema, `${label}.input_schema`);
+  validateContractObjectSchema(response.output_schema, `${label}.output_schema`);
+  validateContractObjectSchema(response.receipt_schema, `${label}.receipt_schema`);
+
+  requireObject(response.allowed_references, `${label}.allowed_references`);
+  const inputProperties = response.input_schema.properties ?? {};
+  requireObject(inputProperties, `${label}.input_schema.properties`);
+  if (!sameJson(Object.keys(response.allowed_references).sort(), Object.keys(inputProperties).sort())) {
+    throw new Error(`${label}.allowed_references must cover every input property exactly`);
+  }
+  for (const [field, references] of Object.entries(response.allowed_references)) {
+    if (!Array.isArray(references) ||
+        references.some((item) => typeof item !== "string" || item.trim() === "") ||
+        references.length !== new Set(references).size) {
+      throw new Error(`${label}.allowed_references.${field} must contain unique reference names`);
+    }
+  }
+
+  requireObject(response.approval, `${label}.approval`);
+  if (typeof response.approval.required !== "boolean") {
+    throw new Error(`${label}.approval.required must be boolean`);
+  }
+  validateOperationLimits(response.limits, `${label}.limits`, { complete: true });
+  validateOperationGuarantees(response.guarantees, `${label}.guarantees`);
+  validateExecutionContract(response.execution, `${label}.execution`);
+  requireObject(response.retry_policy, `${label}.retry_policy`);
+  if (!Number.isInteger(response.retry_policy.maximum_attempts) ||
+      response.retry_policy.maximum_attempts < 1) {
+    throw new Error(`${label}.retry_policy.maximum_attempts must be a positive integer`);
+  }
+  if (!Array.isArray(response.public_errors)) {
+    throw new Error(`${label}.public_errors must be an array`);
+  }
+  const publicCodes = new Set();
+  response.public_errors.forEach((error, index) => {
+    validatePublicOperationError(error, `${label}.public_errors[${index}]`);
+    if (publicCodes.has(error.code)) {
+      throw new Error(`${label}.public_errors contains duplicate code ${error.code}`);
+    }
+    publicCodes.add(error.code);
+  });
+  if (response.recovery !== null && response.recovery !== undefined) {
+    validateOperationRecovery(response.recovery, `${label}.recovery`);
+  }
+  requireObject(response.provenance, `${label}.provenance`);
+  requireString(response.provenance.kind, `${label}.provenance.kind`);
+  validateReadiness(response.readiness, `${label}.readiness`);
+  if (response.ttlMs !== 0 || response.cacheScope !== "private") {
+    throw new Error(`${label} must be fresh private MCP data`);
+  }
+  return response;
+}
+
 export function validateOperationDescription(response) {
   requireObject(response, "operation Describe response");
   rejectRawAuthority(response, "operation Describe response");
@@ -904,15 +1145,23 @@ async function main() {
     validateServiceJourneyDescription(parsed.description, parsed.compact_plugin);
   } else if (mode === "operation-describe") {
     validateOperationDescription(parsed);
+  } else if (mode === "api-contract") {
+    requireObject(parsed, "api-contract validation input");
+    validateApiContractResponse(parsed.response, {
+      operation: parsed.operation,
+      source: parsed.source
+    });
   } else {
     throw new Error(
-      "usage: validate-discovery.mjs <contact|service|graph|app-describe|plugins|discovery-refresh|service-journey|operation-describe>"
+      "usage: validate-discovery.mjs <contact|service|graph|app-describe|plugins|discovery-refresh|service-journey|operation-describe|api-contract>"
     );
   }
   process.stdout.write(JSON.stringify({ valid: true, kind: mode }) + "\n");
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+const invokedPath = process.argv[1];
+if (invokedPath &&
+    realpathSync(fileURLToPath(import.meta.url)) === realpathSync(resolve(invokedPath))) {
   main().catch((error) => {
     process.stderr.write(`${error.message}\n`);
     process.exitCode = 1;

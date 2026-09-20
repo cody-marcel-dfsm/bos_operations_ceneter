@@ -1,0 +1,344 @@
+{
+  "allowed_references": {
+    "ended_after": [
+      "journey_input",
+      "literal"
+    ],
+    "ended_at_or_before": [
+      "journey_input",
+      "literal"
+    ],
+    "limit": [
+      "journey_input",
+      "literal"
+    ],
+    "source": [
+      "journey_input",
+      "literal"
+    ]
+  },
+  "approval": {
+    "required": false
+  },
+  "bosl_server_node": false,
+  "cacheScope": "private",
+  "contract_version": "1.0.0",
+  "description": "Search a bounded ended-at window and return safe event summaries with opaque read actions.",
+  "effect": "read",
+  "execution": {
+    "method": "POST",
+    "uri": "/bos/apps/lead-director/api/v1/organizations/{organization}/calendar/events/search"
+  },
+  "guarantees": {
+    "convergence": "not_applicable",
+    "cross_source_atomicity": "not_applicable",
+    "idempotency": "service_owned",
+    "per_source_atomicity": "source_published",
+    "read_consistency": "point_in_time"
+  },
+  "input_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "ended_after": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "ended_at_or_before": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "limit": {
+        "maximum": 5,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "source": {
+        "additionalProperties": false,
+        "properties": {
+          "application": {
+            "const": "lead-director"
+          },
+          "platform": {
+            "const": "bos"
+          },
+          "plugin": {
+            "const": "google-calendar"
+          }
+        },
+        "required": [
+          "platform",
+          "application",
+          "plugin"
+        ],
+        "type": "object"
+      }
+    },
+    "required": [
+      "ended_after",
+      "ended_at_or_before"
+    ],
+    "type": "object",
+    "x-bos-fields": [
+      {
+        "constraints": {},
+        "data_type": "timestamptz",
+        "default": null,
+        "nullable": false,
+        "ordinal_position": 1,
+        "path": "ended_after"
+      },
+      {
+        "constraints": {},
+        "data_type": "timestamptz",
+        "default": null,
+        "nullable": false,
+        "ordinal_position": 2,
+        "path": "ended_at_or_before"
+      },
+      {
+        "constraints": {},
+        "data_type": "json",
+        "default": null,
+        "nullable": true,
+        "ordinal_position": 3,
+        "path": "source"
+      },
+      {
+        "constraints": {
+          "maximum": 5,
+          "minimum": 1
+        },
+        "data_type": "integer",
+        "default": null,
+        "nullable": true,
+        "ordinal_position": 4,
+        "path": "limit"
+      }
+    ]
+  },
+  "limits": {
+    "bulk_supported": false,
+    "max_results_per_source": 5,
+    "max_targets": 1,
+    "maximum_duration_seconds": 30,
+    "maximum_fan_out": 1,
+    "pagination_supported": false,
+    "streaming_supported": false
+  },
+  "operation": "calendar.events.search",
+  "output_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "events": {
+        "items": {
+          "additionalProperties": false,
+          "properties": {
+            "actions": {
+              "additionalProperties": false,
+              "properties": {
+                "read": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "href": {
+                      "pattern": "^/bos/apps/lead-director/api/v1/organizations/[A-Za-z0-9][A-Za-z0-9._~-]{0,127}/calendar/events/read\\?selection=evsel_[A-Za-z0-9_-]{8,122}$",
+                      "type": "string"
+                    },
+                    "method": {
+                      "const": "POST"
+                    },
+                    "operation": {
+                      "const": "calendar_read_event"
+                    },
+                    "payload_schema": {
+                      "const": {
+                        "additionalProperties": false,
+                        "properties": {},
+                        "type": "object"
+                      }
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "method",
+                    "href",
+                    "payload_schema"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "read"
+              ],
+              "type": "object"
+            },
+            "ends_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "source": {
+              "additionalProperties": false,
+              "properties": {
+                "application": {
+                  "const": "lead-director"
+                },
+                "platform": {
+                  "const": "bos"
+                },
+                "plugin": {
+                  "const": "google-calendar"
+                }
+              },
+              "required": [
+                "platform",
+                "application",
+                "plugin"
+              ],
+              "type": "object"
+            },
+            "starts_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "source",
+            "title",
+            "starts_at",
+            "ends_at",
+            "actions"
+          ],
+          "type": "object"
+        },
+        "maxItems": 5,
+        "type": "array"
+      },
+      "observed_at": {
+        "format": "date-time",
+        "type": "string"
+      }
+    },
+    "required": [
+      "observed_at",
+      "events"
+    ],
+    "type": "object",
+    "x-bos-fields": [
+      {
+        "constraints": {},
+        "data_type": "timestamptz",
+        "default": null,
+        "nullable": false,
+        "ordinal_position": 1,
+        "path": "observed_at"
+      },
+      {
+        "constraints": {
+          "max_items": 5
+        },
+        "data_type": "array",
+        "default": null,
+        "nullable": false,
+        "ordinal_position": 2,
+        "path": "events[]"
+      }
+    ]
+  },
+  "permission": "google-calendar.events.read",
+  "provenance": {
+    "kind": "installed_plugin"
+  },
+  "public_errors": [
+    {
+      "code": "INVALID_TIME_WINDOW",
+      "details_schema": {
+        "items": {
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "http_status": 422,
+      "message": "The calendar request is invalid.",
+      "retryable": false
+    },
+    {
+      "code": "SOURCE_NOT_AVAILABLE",
+      "details_schema": {
+        "items": {
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "http_status": 503,
+      "message": "The configured Calendar source is unavailable.",
+      "retryable": false
+    },
+    {
+      "code": "SOURCE_AUTHORIZATION_REQUIRED",
+      "details_schema": {
+        "items": {
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "http_status": 403,
+      "message": "The configured Calendar source requires authorization.",
+      "retryable": false
+    },
+    {
+      "code": "SOURCE_TEMPORARILY_UNAVAILABLE",
+      "details_schema": {
+        "items": {
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "http_status": 503,
+      "message": "The configured Calendar source is temporarily unavailable.",
+      "retryable": true
+    }
+  ],
+  "readiness": {
+    "requirements": [],
+    "status": "ready"
+  },
+  "receipt_schema": {
+    "additionalProperties": false,
+    "properties": {
+      "count": {
+        "maximum": 5,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "outcome": {
+        "const": "observed"
+      }
+    },
+    "required": [
+      "outcome",
+      "count"
+    ],
+    "type": "object"
+  },
+  "recovery": {
+    "approval_scope": [],
+    "goal": "reconnect_calendar",
+    "instruction": "Reconnect the Calendar source through authenticated plugin settings and retry.",
+    "operation": null,
+    "requires_user_approval": false
+  },
+  "retry_policy": {
+    "maximum_attempts": 2
+  },
+  "source": {
+    "application": "lead-director",
+    "platform": "bos",
+    "plugin": "google-calendar"
+  },
+  "title": "Search recent Calendar events",
+  "ttlMs": 0
+}

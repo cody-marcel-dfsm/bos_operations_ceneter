@@ -35,7 +35,7 @@ semantic equivalents of:
 - `services.list` and `plugins.list` for app-owned and nested provider services;
 - `service.describe` for operations, side effects, authority, provenance, and
   failures;
-- `api.contract.get` for OpenAPI or an equivalent machine-readable contract;
+- `api.contract.get` for the current machine-readable operation contract;
   and
 - `discovery.refresh` for current discovery after relevant state changes.
 
@@ -58,6 +58,19 @@ values make the service description invalid; the client never supplies defaults.
 The corresponding deterministic operation Describe response repeats those
 exact fields for every ready operation. Validate it with
 `validate-discovery.mjs operation-describe` before planning or invocation.
+
+Follow every `api.contract.get` link with its exact returned input. Validate the
+response with `validate-discovery.mjs api-contract`, passing the requested
+operation and, for a plugin-owned link, the selected complete structured source.
+The response binds the operation and source to its current schemas, reference
+classes, effect, permission, approval, limits, guarantees, execution URI,
+retry policy, receipt, public errors, recovery, provenance, and readiness. It
+is fresh private MCP data with `ttlMs: 0` and `cacheScope: private`.
+`bosl_server_node: true` requires `node_type: server`. When
+`bosl_server_node` is false, `node_type` is absent; that operation remains a
+discoverable deterministic API and cannot be compiled as a journey server
+node. A client copies this classification and never derives it from provider,
+operation name, or route.
 
 Every service descriptor supplies stable `service_id`, agent-readable `summary`,
 `entity_types`, `owner_kind`, `operations`, `api_base_url` containing an HTTPS

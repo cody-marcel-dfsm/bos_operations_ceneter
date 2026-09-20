@@ -11,6 +11,11 @@ purpose and compact steps, while treating readiness as a separate status. Copy
 the selected plugin's complete structured `service.describe` input verbatim.
 Use detailed service steps and semantic-operation contracts only when they
 agree with the compact journey and the current BOSL vocabulary.
+Follow each selected step's exact `api.contract.get` link and validate the
+returned current operation contract. Author a `server` node only when that
+response declares both `bosl_server_node: true` and `node_type: server`.
+Deterministic operations that declare `bosl_server_node: false` remain callable
+outside the journey and cannot be inserted into the BOSL graph.
 Require each selected operation contract to publish integer
 `maximum_duration_seconds` from 1 through 900 and integer `maximum_fan_out`
 from 1 through 100. Treat missing or out-of-range limits as stale or invalid

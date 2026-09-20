@@ -1,11 +1,16 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import Ajv2020 from "ajv/dist/2020.js";
 
 import {
+  validateApiContractResponse,
   validateAppDescribe,
   validateDiscoveryRefresh,
   validateOperationDescription,
@@ -37,6 +42,10 @@ function compilePublicSchema(schema) {
 
 const appDescribe = await readPublicContractJson("app.describe.example.json");
 const appDescribeSchema = await readPublicContractJson("app.describe.schema.json");
+const apiContractRequest = await readPublicContractJson("api.contract.request.example.json");
+const apiContractRequestSchema = await readPublicContractJson("api.contract.request.schema.json");
+const apiContractResponse = await readPublicContractJson("api.contract.response.example.json");
+const apiContractResponseSchema = await readPublicContractJson("api.contract.response.schema.json");
 const describeRequest = await readPublicContractJson("describe.request.example.json");
 const describeResponse = await readPublicContractJson("describe.response.example.json");
 const describeResponseSchema = await readPublicContractJson("describe.response.schema.json");
@@ -259,8 +268,23 @@ test("app.describe accepts authenticated BOSL resource links without authority d
 });
 
 test("archived BOS public release is byte-intact and every advertised operation conforms", async () => {
-  assert.equal(publicContractManifest.bundle_sha256, "fd73779783242b4420dc72d7d8ade232f5adbc318ae69261b584b2b5dcfd5367");
+  assert.equal(publicContractManifest.bundle_sha256, "96b222b222aa2e71e359f9e0427cfbb5567be77152afdfc82d131277c75c45de");
   assert.equal(publicContractManifest.auth_impact, "none");
+  assert.deepEqual(
+    publicContractManifest.files.map(({ path }) => path),
+    [
+      "api.contract.request.example.json",
+      "api.contract.request.schema.json",
+      "api.contract.response.example.json",
+      "api.contract.response.schema.json",
+      "app.describe.example.json",
+      "app.describe.schema.json",
+      "describe.request.example.json",
+      "describe.response.example.json",
+      "describe.response.schema.json",
+      "operation.examples.json"
+    ]
+  );
 
   const bundleParts = [];
   for (const entry of publicContractManifest.files) {
@@ -306,6 +330,252 @@ test("archived BOS public release is byte-intact and every advertised operation 
     const validateOutput = compilePublicSchema(operation.output_schema);
     assert.equal(validateInput(example.request), true, JSON.stringify(validateInput.errors));
     assert.equal(validateOutput(example.response), true, JSON.stringify(validateOutput.errors));
+  }
+
+  const validateApiContractRequest = compilePublicSchema(apiContractRequestSchema);
+  const validateApiContractResponseSchema = compilePublicSchema(apiContractResponseSchema);
+  assert.equal(
+    validateApiContractRequest(apiContractRequest),
+    true,
+    JSON.stringify(validateApiContractRequest.errors)
+  );
+  assert.equal(
+    validateApiContractResponseSchema(apiContractResponse),
+    true,
+    JSON.stringify(validateApiContractResponseSchema.errors)
+  );
+  assert.equal(
+    validateApiContractResponse(apiContractResponse, {
+      operation: apiContractRequest.operation,
+      source: apiContractResponse.source
+    }),
+    apiContractResponse
+  );
+});
+
+test("api.contract.get response preserves current contract and BOSL classification", () => {
+  const serverContract = {
+    ...apiContractResponse,
+    operation: "message-service.campaign.prepare",
+    source: plugin.reference,
+    bosl_server_node: true,
+    node_type: "server"
+  };
+  assert.equal(
+    validateApiContractResponse(serverContract, {
+      operation: "message-service.campaign.prepare",
+      source: plugin.reference
+    }),
+    serverContract
+  );
+
+  const contractLinks = [
+    ...serviceDescription.journey.steps
+      .filter(({ contract }) => contract)
+      .map(({ contract }) => contract),
+    ...serviceDescription.queries.map(({ contract }) => contract)
+  ];
+  const validateApiContractRequest = compilePublicSchema(apiContractRequestSchema);
+  for (const link of contractLinks) {
+    assert.equal(validateApiContractRequest(link.input), true);
+    const response = {
+      ...serverContract,
+      operation: link.input.operation
+    };
+    assert.equal(
+      validateApiContractResponse(response, {
+        operation: link.input.operation,
+        source: plugin.reference
+      }),
+      response
+    );
+  }
+
+  const unready = {
+    ...serverContract,
+    readiness: {
+      status: "configuration_required",
+      requirements: [{
+        operation: serverContract.operation,
+        status: "configuration_required",
+        requirements: { category: "required" },
+        recovery: {
+          goal: "configure_campaign",
+          instruction: "Configure the campaign and request the contract again.",
+          operation: null,
+          requires_user_approval: false,
+          approval_scope: []
+        }
+      }]
+    }
+  };
+  assert.equal(
+    validateApiContractResponse(unready, {
+      operation: unready.operation,
+      source: plugin.reference
+    }),
+    unready
+  );
+});
+
+test("api.contract.get rejects drift, private data, and contradictory node classification", () => {
+  const validateApiContractResponseSchema = compilePublicSchema(apiContractResponseSchema);
+  const withNodeType = { ...apiContractResponse, node_type: "server" };
+  assert.equal(validateApiContractResponseSchema(withNodeType), false);
+  assert.throws(
+    () => validateApiContractResponse(withNodeType, {
+      operation: apiContractResponse.operation
+    }),
+    /node_type must be absent/
+  );
+
+  const missingNodeType = {
+    ...apiContractResponse,
+    bosl_server_node: true
+  };
+  assert.equal(validateApiContractResponseSchema(missingNodeType), false);
+  assert.throws(
+    () => validateApiContractResponse(missingNodeType, {
+      operation: apiContractResponse.operation
+    }),
+    /node_type must be server/
+  );
+  assert.throws(
+    () => validateApiContractResponse(apiContractResponse, {
+      operation: "calendar.events.read"
+    }),
+    /must match the requested contract link/
+  );
+  assert.throws(
+    () => validateApiContractResponse({
+      ...apiContractResponse,
+      provenance: {
+        ...apiContractResponse.provenance,
+        installed_app_id: "private-installation"
+      }
+    }),
+    /raw authority|credential identifier/
+  );
+  assert.throws(
+    () => validateApiContractResponse({
+      ...apiContractResponse,
+      allowed_references: {
+        ...apiContractResponse.allowed_references,
+        extra: ["literal"]
+      }
+    }),
+    /cover every input property exactly/
+  );
+  assert.throws(
+    () => validateApiContractResponse({
+      ...apiContractResponse,
+      ttlMs: 1000
+    }),
+    /fresh private MCP data/
+  );
+  for (const invalidInputSchema of [
+    {
+      ...apiContractResponse.input_schema,
+      required: "not-an-array"
+    },
+    {
+      ...apiContractResponse.input_schema,
+      properties: {
+        ...apiContractResponse.input_schema.properties,
+        limit: { type: 7 }
+      }
+    }
+  ]) {
+    assert.throws(
+      () => validateApiContractResponse({
+        ...apiContractResponse,
+        input_schema: invalidInputSchema
+      }),
+      /valid Draft 2020-12 JSON Schema/
+    );
+  }
+  assert.throws(
+    () => validateApiContractResponse({
+      ...apiContractResponse,
+      public_errors: [{
+        ...apiContractResponse.public_errors[0],
+        details_schema: {
+          type: "array",
+          items: { type: 7 }
+        }
+      }]
+    }),
+    /valid Draft 2020-12 JSON Schema/
+  );
+  for (const unsafeProvenance of [
+    { provider: { error: "raw upstream diagnostic" } },
+    { provider: { nested: { message: "raw upstream message" } } },
+    { providerError: "raw upstream diagnostic" },
+    { provider_error: "raw upstream diagnostic" },
+    { "provider-error": "raw upstream diagnostic" },
+    { "provider.error": "raw upstream diagnostic" }
+  ]) {
+    assert.throws(
+      () => validateApiContractResponse({
+        ...apiContractResponse,
+        provenance: {
+          ...apiContractResponse.provenance,
+          ...unsafeProvenance
+        }
+      }),
+      /raw authority|credential identifier/
+    );
+  }
+});
+
+test("published BOS ZIP runs api.contract.get validation without repository dependencies", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "bos-api-contract-package-"));
+  try {
+    const archive = fileURLToPath(
+      new URL("../products/bos/openai/bos-skills.zip", import.meta.url)
+    );
+    const extracted = spawnSync("unzip", ["-q", archive, "-d", directory], {
+      encoding: "utf8"
+    });
+    assert.equal(extracted.status, 0, extracted.stderr);
+
+    const validator = join(
+      directory,
+      "bos-app-discovery/scripts/validate-discovery.mjs"
+    );
+    const invoke = (response) => spawnSync(
+      process.execPath,
+      [validator, "api-contract"],
+      {
+        cwd: directory,
+        encoding: "utf8",
+        input: JSON.stringify({
+          response,
+          operation: response.operation,
+          source: response.source
+        })
+      }
+    );
+
+    const accepted = invoke(apiContractResponse);
+    assert.equal(accepted.status, 0, accepted.stderr);
+    assert.deepEqual(JSON.parse(accepted.stdout), {
+      valid: true,
+      kind: "api-contract"
+    });
+
+    const rejected = invoke({
+      ...apiContractResponse,
+      input_schema: {
+        ...apiContractResponse.input_schema,
+        required: "not-an-array"
+      }
+    });
+    assert.notEqual(rejected.status, 0);
+    assert.match(rejected.stderr, /valid Draft 2020-12 JSON Schema/);
+    assert.doesNotMatch(rejected.stderr, /ERR_MODULE_NOT_FOUND|Cannot find package/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
   }
 });
 

@@ -1,0 +1,409 @@
+{
+  "$defs": {
+    "LeadDirectorExecutionContract": {
+      "additionalProperties": false,
+      "properties": {
+        "method": {
+          "enum": [
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE"
+          ],
+          "title": "Method",
+          "type": "string"
+        },
+        "uri": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "title": "Uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "method",
+        "uri"
+      ],
+      "title": "LeadDirectorExecutionContract",
+      "type": "object"
+    },
+    "LeadDirectorPluginReadiness": {
+      "additionalProperties": false,
+      "properties": {
+        "requirements": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/LeadDirectorPluginReadinessRequirement"
+          },
+          "title": "Requirements",
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "ready",
+            "authorization_required",
+            "configuration_required",
+            "temporarily_unavailable"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "LeadDirectorPluginReadiness",
+      "type": "object"
+    },
+    "LeadDirectorPluginReadinessRequirement": {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z][a-z0-9_-]*)+$",
+          "title": "Operation",
+          "type": "string"
+        },
+        "recovery": {
+          "$ref": "#/$defs/LeadDirectorPluginRecovery"
+        },
+        "requirements": {
+          "additionalProperties": true,
+          "title": "Requirements",
+          "type": "object"
+        },
+        "status": {
+          "enum": [
+            "authorization_required",
+            "configuration_required",
+            "temporarily_unavailable"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "operation",
+        "status",
+        "requirements",
+        "recovery"
+      ],
+      "title": "LeadDirectorPluginReadinessRequirement",
+      "type": "object"
+    },
+    "LeadDirectorPluginRecovery": {
+      "additionalProperties": false,
+      "properties": {
+        "approval_scope": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Approval Scope",
+          "type": "array"
+        },
+        "goal": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Goal",
+          "type": "string"
+        },
+        "instruction": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Instruction",
+          "type": "string"
+        },
+        "operation": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z][a-z0-9_-]*)+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Operation"
+        },
+        "requires_user_approval": {
+          "title": "Requires User Approval",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "goal",
+        "instruction",
+        "requires_user_approval"
+      ],
+      "title": "LeadDirectorPluginRecovery",
+      "type": "object"
+    },
+    "OperationalPublicError": {
+      "additionalProperties": false,
+      "description": "One sanitized error declared by an operation contract.",
+      "properties": {
+        "code": {
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "title": "Code",
+          "type": "string"
+        },
+        "details_schema": {
+          "additionalProperties": true,
+          "title": "Details Schema",
+          "type": "object"
+        },
+        "http_status": {
+          "maximum": 599,
+          "minimum": 400,
+          "title": "Http Status",
+          "type": "integer"
+        },
+        "message": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "retryable": {
+          "title": "Retryable",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable",
+        "http_status"
+      ],
+      "title": "OperationalPublicError",
+      "type": "object"
+    },
+    "PublicSourceReference": {
+      "additionalProperties": false,
+      "description": "Provider-neutral public source reference copied from Describe.",
+      "properties": {
+        "application": {
+          "title": "Application",
+          "type": "string"
+        },
+        "platform": {
+          "title": "Platform",
+          "type": "string"
+        },
+        "plugin": {
+          "title": "Plugin",
+          "type": "string"
+        }
+      },
+      "required": [
+        "platform",
+        "application",
+        "plugin"
+      ],
+      "title": "PublicSourceReference",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "else": {
+        "not": {
+          "required": [
+            "node_type"
+          ]
+        }
+      },
+      "if": {
+        "properties": {
+          "bosl_server_node": {
+            "const": true
+          }
+        },
+        "required": [
+          "bosl_server_node"
+        ]
+      },
+      "then": {
+        "properties": {
+          "node_type": {
+            "const": "server"
+          }
+        },
+        "required": [
+          "node_type"
+        ]
+      }
+    }
+  ],
+  "description": "Fresh private MCP result for ``api.contract.get``.",
+  "properties": {
+    "allowed_references": {
+      "additionalProperties": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "title": "Allowed References",
+      "type": "object"
+    },
+    "approval": {
+      "additionalProperties": true,
+      "title": "Approval",
+      "type": "object"
+    },
+    "bosl_server_node": {
+      "title": "Bosl Server Node",
+      "type": "boolean"
+    },
+    "cacheScope": {
+      "const": "private",
+      "title": "Cachescope",
+      "type": "string"
+    },
+    "contract_version": {
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "description": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Description",
+      "type": "string"
+    },
+    "effect": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Effect",
+      "type": "string"
+    },
+    "execution": {
+      "$ref": "#/$defs/LeadDirectorExecutionContract"
+    },
+    "guarantees": {
+      "additionalProperties": true,
+      "title": "Guarantees",
+      "type": "object"
+    },
+    "input_schema": {
+      "additionalProperties": true,
+      "title": "Input Schema",
+      "type": "object"
+    },
+    "limits": {
+      "additionalProperties": true,
+      "title": "Limits",
+      "type": "object"
+    },
+    "node_type": {
+      "anyOf": [
+        {
+          "const": "server",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Node Type"
+    },
+    "operation": {
+      "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z][a-z0-9_-]*)+$",
+      "title": "Operation",
+      "type": "string"
+    },
+    "output_schema": {
+      "additionalProperties": true,
+      "title": "Output Schema",
+      "type": "object"
+    },
+    "permission": {
+      "maxLength": 255,
+      "minLength": 1,
+      "title": "Permission",
+      "type": "string"
+    },
+    "provenance": {
+      "additionalProperties": true,
+      "title": "Provenance",
+      "type": "object"
+    },
+    "public_errors": {
+      "items": {
+        "$ref": "#/$defs/OperationalPublicError"
+      },
+      "title": "Public Errors",
+      "type": "array"
+    },
+    "readiness": {
+      "$ref": "#/$defs/LeadDirectorPluginReadiness"
+    },
+    "receipt_schema": {
+      "additionalProperties": true,
+      "title": "Receipt Schema",
+      "type": "object"
+    },
+    "recovery": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LeadDirectorPluginRecovery"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "retry_policy": {
+      "additionalProperties": true,
+      "title": "Retry Policy",
+      "type": "object"
+    },
+    "source": {
+      "$ref": "#/$defs/PublicSourceReference"
+    },
+    "title": {
+      "maxLength": 255,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "ttlMs": {
+      "const": 0,
+      "title": "Ttlms",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "operation",
+    "contract_version",
+    "source",
+    "bosl_server_node",
+    "title",
+    "description",
+    "permission",
+    "input_schema",
+    "output_schema",
+    "allowed_references",
+    "effect",
+    "approval",
+    "limits",
+    "guarantees",
+    "execution",
+    "retry_policy",
+    "receipt_schema",
+    "public_errors",
+    "provenance",
+    "readiness",
+    "ttlMs",
+    "cacheScope"
+  ],
+  "title": "LeadDirectorApiContractMcpResponse",
+  "type": "object"
+}

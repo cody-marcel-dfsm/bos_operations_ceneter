@@ -8,9 +8,11 @@
   "type": "module",
   "scripts": {
     "version:next": "node scripts/bump-release-version.mjs",
-    "build:packages": "node scripts/build-packages.mjs",
+    "build:schema-validator": "node scripts/build-json-schema-meta-validator.mjs",
+    "check:schema-validator": "node scripts/build-json-schema-meta-validator.mjs --check",
+    "build:packages": "npm run build:schema-validator && node scripts/build-packages.mjs",
     "build": "npm run build:packages",
-    "check": "node scripts/check-package.mjs",
+    "check": "npm run check:schema-validator && node scripts/check-package.mjs",
     "check:publication": "node scripts/check-publication-safety.mjs",
     "contract:check": "node scripts/verify-product-mcp-contract.mjs --format json",
     "contract:oauth-discovery-live": "node scripts/verify-bos-auth-discovery-live.mjs",

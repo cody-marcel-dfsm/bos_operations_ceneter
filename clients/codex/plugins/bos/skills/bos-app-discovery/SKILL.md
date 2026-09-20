@@ -92,9 +92,15 @@ Read each exact schema, reference, and examples URI through the same authenticat
 BOS connection. Then call `plugins.list` with `{}`, preserve readiness separately
 from accessibility, copy the selected plugin's complete `service.describe` input
 verbatim, and validate compact/detailed journey agreement. Follow each returned
-operation-contract link through current discovery and validate the described
-operation, deterministic execution URI, schemas, source readiness, and exact
-duration/fan-out limits; missing limits are unavailable, never defaulted. Cache only linked
+operation-contract link through current discovery with the link's exact input.
+Validate the returned envelope with `scripts/validate-discovery.mjs api-contract`,
+including the requested semantic operation, selected structured source when the
+link belongs to a plugin, deterministic execution URI, schemas, source
+readiness, exact duration/fan-out limits, and private non-cacheable metadata.
+`bosl_server_node: true` requires `node_type: server`; a deterministic API with
+`bosl_server_node: false` omits `node_type` and remains callable outside a
+journey but cannot be authored as a BOSL server node. Never infer either
+classification. Missing limits are unavailable, never defaulted. Cache only linked
 resources and individual plugin descriptions under `bos-mcp-client`'s journey
 contract cache; `app.describe` itself remains fresh and non-cacheable.
 
