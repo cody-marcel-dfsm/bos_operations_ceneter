@@ -12,12 +12,15 @@ discovered app APIs, delegated work, automation, and resumed operations.
 Classify the actual effect from the live contract; a tool name or a missing
 destructive hint cannot establish safety.
 
-- Limit updates and deletes to one exact business record in the entire logical
-  task. Multiple fields on that record are allowed. Count distinct source
-  records and cascading effects, including synchronization, replacement,
-  archive, soft delete, and removal. Unknown scope or more than one affected
-  record blocks execution before the first write. Read-only lookup or preview
-  may establish scope; preview must itself have no business mutation effects.
+- Limit updates and deletes to one exact conceptual business record in the
+  entire logical task. Multiple fields on that record are allowed. That record
+  may resolve to one through five explicit source-record targets in one
+  discovered service request. Count distinct conceptual records and cascading
+  effects, including synchronization, replacement, archive, soft delete, and
+  removal. Unknown scope, more than five source targets, or more than one
+  conceptual record blocks execution before the first write. Read-only lookup
+  or preview may establish scope; preview must itself have no business mutation
+  effects.
 - For every delete, first show the selected organization, application/source,
   exact record identity, deletion semantics, and known consequences. Then ask
   the user to confirm that prepared deletion and wait for an affirmative reply
@@ -32,13 +35,16 @@ destructive hint cannot establish safety.
   loops, pages, parallel calls, agents, new tasks, scheduled runs, or alternate
   tools to evade the limit. Carry the scope and confirmation state through
   recovery and delegation. Customer extensions cannot relax these safeguards.
-- An exact single-record update retains the workflow's existing authorization
-  rules. Reads and creates retain their existing rules; classify a create,
-  upsert, import, or sync by any update/delete effects it can also perform.
-  Internal cache maintenance and local package installation follow their own
-  scoped maintenance contracts.
-- After an uncertain mutation, reconcile its status before considering replay;
-  confirmation never proves that a retry is safe. Report verified receipts.
+- An exact one-conceptual-record update retains the workflow's existing
+  authorization rules. Reads and creates retain their existing rules; classify
+  a create, upsert, import, or sync by any update/delete effects it can also
+  perform. Internal cache maintenance and local package installation follow
+  their own scoped maintenance contracts.
+- After an uncertain mutation, invoke only the exact service-returned bodyless
+  state action and service-declared timing. Never replay the mutation or
+  construct a status route, selector, retry schedule, or reconciliation
+  request. Confirmation never proves that another mutation is safe. Report
+  verified receipts.
 
 This is an agent instruction safeguard. Server authorization and validation
 remain required; the package does not intercept or enforce arbitrary API calls.
@@ -156,11 +162,14 @@ recommendation requires the user to confirm the displayed draft.
    delegated agents. Give it the complete operational context listed in the
    operation contract. The active agent executes the identical worker contract
    when delegation is unavailable.
-5. The worker calls `bos_apply_plugin_settings` with the exact draft, revision,
-   and current-draft idempotency key. It emits sanitized progress to the parent
-   and runs bounded recovery until the result is committed or terminal.
-6. Accept success only from `status: committed` or a reconciled committed
-   operation. Atomically commit the returned complete snapshot with
+5. The worker calls `bos_apply_plugin_settings` with the exact prepared draft
+   arguments advertised by the current schema. It supplies no client key,
+   attempt identity, retry counter, or reconciliation decision. BOS Service
+   owns idempotency and uncertain-outcome reconciliation and returns the
+   authoritative result or exact state action.
+6. Accept success only from `status: committed` in the authoritative operation
+   result, including a terminal result obtained from an exact returned state
+   action. Atomically commit the returned complete snapshot with
    `canonical_source: bos_committed` or `bos_reconciled`.
 7. Refresh context when the result changes capabilities. Refresh tool discovery
    only when the server reports a schema change, then render the confirmed
@@ -173,8 +182,9 @@ value and state that the next read will refresh the cache.
 ## Failure
 
 Interpret the server's structured error envelope through the operation
-contract. Reconcile uncertain mutations before replay. Keep the last confirmed
-cache snapshot after failed or indeterminate updates.
+contract. For an uncertain mutation, follow only its exact returned state
+action and never replay the mutation. Keep the last confirmed cache snapshot
+after failed or indeterminate updates.
 
 For a terminal protocol, server-invariant, or repeated request-shape failure,
 return the sanitized code, support reference, attempts, recovery actions,

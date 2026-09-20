@@ -13,9 +13,11 @@ exact protected resource, structured condition, and optional host-native
 correlation. BOS coordinates the host authentication lifecycle and returns a
 typed readiness result. The BOS connection remains host-managed.
 
-The caller retains its operation and owns its live
-discovery, retry, reconciliation, continuation, and presentation. None of that
-state enters the BOS authentication handoff.
+The caller retains its semantic request and owns live discovery, approval,
+cache, semantic continuation, and presentation. None of that state enters the
+BOS authentication handoff. BOS Service owns API idempotency, bounded execution
+retry, and uncertain-outcome reconciliation; the caller follows only exact
+service-returned actions and supplies no execution state.
 
 ## First-request discovery
 
@@ -26,10 +28,11 @@ A UI access rejection never establishes a BOS authentication defect.
 
 Invoke an already callable `bos_get_context` immediately. Resolve deferred BOS
 tools through the host's available search/discovery or advertised orchestration
-inventory before concluding that tools are missing. Apply one supported refresh
-and discovery retry after failure, preserve the exact failure evidence, and
-resume the original request automatically when tools become callable. Inspect
-package installation only after live discovery establishes a connection problem.
+inventory before concluding that tools are missing. Use only a supported host
+refresh or exact returned recovery action after failure, preserve the exact
+failure evidence, and continue the original request only through that action
+when tools become callable. Inspect package installation only after live
+discovery establishes a connection problem.
 
 For application discovery, continue after context with resource listing and
 reading on that BOS connection with the authorized application scope. Tool discovery
@@ -76,8 +79,9 @@ Retain only the minimum state required to resume:
 - BOS connection identity and non-secret manifest fingerprint;
 - server-owned draft, audience, campaign, operation, and issue identities;
 - approval state and the exact approved content/audience hashes or versions;
-- stable idempotency keys and the last reconciled operation result;
-- completed steps, pending step, recovery attempts, and sanitized blockers; and
+- the exact service-returned pending action or state action and its last
+  authoritative result;
+- completed client work, pending client work, and sanitized blockers; and
 - reporting cutoff or source refresh bounds.
 
 Exclude OAuth tokens, authorization headers, provider credentials, raw
@@ -96,8 +100,9 @@ user to reconstruct the request or repeat an approval already bound to the
 same content hash, audience version, and send action.
 
 If any approved input changed during recovery, invalidate the affected
-approval and present the new exact preview. Reconcile every uncertain mutation
-by operation identity or idempotency key before retrying.
+approval and present the new exact preview. Resolve every uncertain mutation
+only through its exact service-returned state action. Never replay the mutation
+or create client retry, attempt, idempotency, or reconciliation state.
 
 On Codex, a signed-out BOS-dependent prompt reaches the registered protected MCP
 resource. Its HTTP 401 response carries the exact `WWW-Authenticate`

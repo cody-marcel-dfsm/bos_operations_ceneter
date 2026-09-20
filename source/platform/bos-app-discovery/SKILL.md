@@ -95,12 +95,11 @@ or authenticated API invocation capabilities needed at later steps.
    discovery evidence; it never authorizes cross-organization business reads.
 
 For a transient timeout or transport failure of a read-only resource list/read,
-wait briefly (about five seconds, respecting Retry-After) and retry that exact
-operation once on the same configured connection. This retry does not require a
-separate refresh API. Reinitialize only if the host reports a closed session and
-supports it. Do not retry an authorization denial as a timeout. If both attempts
-fail, preserve completed independent reads and identify the failed operation and
-both outcomes. This rule never replays mutations or guesses unlisted URIs.
+follow only the host- or service-published recovery action and declared timing.
+Reinitialize only if the host reports a closed session and supports it. Never
+treat an authorization denial as a timeout. When no recovery action exists,
+preserve completed independent reads and identify the failed operation and
+observed outcome. Never replay a request or guess an unlisted URI.
 
 When discovery is advertised as a tool, use its live descriptor and schema.
 An empty tool search must still proceed to the available resource facilities.
@@ -137,7 +136,8 @@ when supported. A contact alone never creates another login or grants authority.
    inference separately.
 7. Refresh BOS and app discovery after grant, graph digest/version, plugin,
    authorization, session-expiry, or app-contract
-   changes. Re-resolve the operation from the refreshed contract before retrying.
+   changes. Re-resolve the operation from the refreshed contract for the next
+   semantic request; never automatically replay the failed operation.
 
 For journey registration, descriptor changes cause a fresh authoring read. They
 never create a registration precondition or automatic refresh-and-retry branch.

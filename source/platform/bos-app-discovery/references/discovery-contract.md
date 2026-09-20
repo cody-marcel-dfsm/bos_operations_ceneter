@@ -86,8 +86,10 @@ The client validates the machine-readable contract before each unfamiliar
 operation. APIs use bounded HTTPS JSON schemas, stable operation identifiers,
 the authenticated scoped grant, explicit side-effect classes, typed errors,
 pagination where needed, observation timestamps, freshness, provenance, and
-correlation references. Retryable mutations require a contract-declared
-idempotency key. Read-only planning stays separate from transition execution.
+correlation references. Every mutation is service-idempotent; the client
+supplies no idempotency key, attempt identity, retry counter, reconciliation
+decision, or execution state. Read-only planning stays separate from
+transition execution.
 
 Every call uses a short-lived audience-bound bearer through a host credential
 boundary and revalidates actor, organization, app installation,
@@ -99,8 +101,9 @@ boundary. Discovery never expands API authority.
 
 Keep the current descriptor, contract digest/version, and sanitized operation
 plan only for the active request. Refresh after authority, installation, graph,
-plugin, provider, grant-expiry, or contract changes. Reconcile uncertain
-mutations by the discovered operation or idempotency identity before replay.
+plugin, provider, grant-expiry, or contract changes. Resolve an uncertain
+mutation only through the exact service-returned state action; never replay the
+mutation or create client retry, attempt, idempotency, or reconciliation state.
 
 The client never persists bearer tokens, raw or opaque authority selectors, app
 endpoints as configuration, or customer records in discovery state. It uses no

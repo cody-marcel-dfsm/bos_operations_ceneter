@@ -24,7 +24,6 @@ PRESERVED_FIELDS = {
     "campaign_draft",
     "audience_identity",
     "approval_state",
-    "idempotency_keys",
 }
 PREVIEW_FIELDS = {
     "subject_utf8",
@@ -66,6 +65,12 @@ FORBIDDEN_AUTHORITY_KEYS = {
     "installed_app_id",
     "installation_id",
     "delegated_role_id",
+    "idempotency_key",
+    "idempotency_keys",
+    "attempt_id",
+    "retry_count",
+    "retry_state",
+    "reconciliation_decision",
 }
 EMAIL_PATTERN = re.compile(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", re.I)
 
@@ -123,10 +128,6 @@ def validate(trace: dict[str, Any]) -> list[str]:
     session = as_dict(trace.get("session"))
     for field in ("request_hash", "draft_id", "audience_id", "campaign_id"):
         require(bool(session.get(field)), f"session missing {field}")
-    keys = as_dict(session.get("idempotency_keys"))
-    require(bool(keys.get("test_send")), "missing test_send idempotency key")
-    require(bool(keys.get("list_send")), "missing list_send idempotency key")
-    require(keys.get("test_send") != keys.get("list_send"), "test and list idempotency keys must differ")
 
     audience = as_dict(trace.get("audience"))
     for field in ("matched", "unique", "eligible", "excluded", "suppressed"):
@@ -173,14 +174,18 @@ def validate(trace: dict[str, Any]) -> list[str]:
     require(len(live) == 1, "workflow must contain exactly one live send")
     if len(tests) == 1 and len(live) == 1:
         require(tests[0].get("sequence", 0) < live[0].get("sequence", 0), "test send must precede live send")
-        require(tests[0].get("idempotency_key") == keys.get("test_send"), "test idempotency key changed")
-        require(live[0].get("idempotency_key") == keys.get("list_send"), "live idempotency key changed")
-        require(tests[0].get("reconciled") is True, "test send was not reconciled")
-        require(live[0].get("reconciled") is True, "live send was not reconciled")
         require(live[0].get("audience_count") == audience.get("eligible"), "live send audience count changed")
         for label, operation in (("test", tests[0]), ("live", live[0])):
-            if operation.get("http_status") == 202:
-                require(operation.get("outcome") == "accepted", f"{label} HTTP 202 must be accepted")
+            service_result = as_dict(operation.get("service_result"))
+            replay_result = as_dict(operation.get("semantic_replay_result"))
+            require(bool(service_result), f"{label} send lacks a service-owned result")
+            require(bool(replay_result), f"{label} send lacks a semantic replay result")
+            require(
+                replay_result == service_result,
+                f"{label} semantic replay did not return the same service-owned result",
+            )
+            if service_result.get("http_status") == 202:
+                require(service_result.get("outcome") == "accepted", f"{label} HTTP 202 must be accepted")
 
     statistics = as_dict(trace.get("statistics"))
     for mode in ("test", "live"):

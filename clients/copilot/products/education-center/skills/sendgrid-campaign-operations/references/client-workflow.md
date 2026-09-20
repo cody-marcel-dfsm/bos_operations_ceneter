@@ -4,10 +4,9 @@
 
 Select only the installed BOS platform connection. Call
 `bos_get_context`, discover tools, and fingerprint names plus input schemas.
-Create a sanitized campaign continuation envelope containing a task-local
-request reference and request hash, manifest fingerprint, server-owned
-draft/audience/campaign/operation identities,
-approval bindings, idempotency keys, completed/pending steps, and reporting
+Create a sanitized campaign continuation envelope containing the active user
+request, manifest fingerprint, server-returned public campaign references,
+approval bindings, completed/pending steps, and reporting
 cutoff. Apply `bos-mcp-client/references/runtime-continuation-contract.md` after
 every refresh trigger.
 
@@ -59,16 +58,18 @@ affected approval and requires the exact preview again.
 
 ## 4. Test and list send
 
-Create distinct stable idempotency keys for test and live modes. Use the same
-server campaign path and content/audience bindings for both.
+Use the discovered test and live semantic operations with the same server
+campaign path and content/audience bindings. Supply no client-generated key,
+attempt identity, retry counter, or reconciliation state.
 
 1. Execute one test send to a governed test recipient.
 2. Record requested, suppressed, prepared, accepted/rejected, category, and
    cutoff. Treat HTTP 202 as accepted.
-3. Reconcile an uncertain test outcome before retry. Continue only after a
-   canonical successful test result.
-4. Execute the approved list send exactly once under the live idempotency key.
-5. Reconcile an uncertain live outcome before retry or further transition.
+3. For an uncertain test outcome, follow only the returned state action.
+   Continue only after a canonical successful test result.
+4. Execute the approved list send through its discovered operation.
+5. For an uncertain live outcome, follow only the returned state action and do
+   not replay the send.
 
 Never fall back to a filesystem token, repository sender script, direct
 database access, raw SendGrid request, browser session, or another MCP product.
@@ -91,7 +92,9 @@ cross-tenant stable identifier.
 On a missing required operation, refresh the dynamic domain-specific MCP service
 and tool surface once. Treat a still-missing operation as a package, service
 resolution, or server schema-publication defect. For authorization failures,
-refresh context or operation status and retry the same `tools/call` once.
-Preserve all completed work and approval/idempotency state. If the operation remains absent,
+follow the exact service-returned authorization recovery action, refresh context
+or operation status, and invoke only the exact returned continuation or state
+action. Never replay the same `tools/call` as recovery. Preserve all completed
+work and approval state. If the operation remains absent,
 upsert the structured issue defined in `capability-contract.md` and return its
 durable ID with the blocked step and exact acceptance criteria.

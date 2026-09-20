@@ -70,12 +70,15 @@ discovered app APIs, delegated work, automation, and resumed operations.
 Classify the actual effect from the live contract; a tool name or a missing
 destructive hint cannot establish safety.
 
-- Limit updates and deletes to one exact business record in the entire logical
-  task. Multiple fields on that record are allowed. Count distinct source
-  records and cascading effects, including synchronization, replacement,
-  archive, soft delete, and removal. Unknown scope or more than one affected
-  record blocks execution before the first write. Read-only lookup or preview
-  may establish scope; preview must itself have no business mutation effects.
+- Limit updates and deletes to one exact conceptual business record in the
+  entire logical task. Multiple fields on that record are allowed. That record
+  may resolve to one through five explicit source-record targets in one
+  discovered service request. Count distinct conceptual records and cascading
+  effects, including synchronization, replacement, archive, soft delete, and
+  removal. Unknown scope, more than five source targets, or more than one
+  conceptual record blocks execution before the first write. Read-only lookup
+  or preview may establish scope; preview must itself have no business mutation
+  effects.
 - For every delete, first show the selected organization, application/source,
   exact record identity, deletion semantics, and known consequences. Then ask
   the user to confirm that prepared deletion and wait for an affirmative reply
@@ -90,13 +93,16 @@ destructive hint cannot establish safety.
   loops, pages, parallel calls, agents, new tasks, scheduled runs, or alternate
   tools to evade the limit. Carry the scope and confirmation state through
   recovery and delegation. Customer extensions cannot relax these safeguards.
-- An exact single-record update retains the workflow's existing authorization
-  rules. Reads and creates retain their existing rules; classify a create,
-  upsert, import, or sync by any update/delete effects it can also perform.
-  Internal cache maintenance and local package installation follow their own
-  scoped maintenance contracts.
-- After an uncertain mutation, reconcile its status before considering replay;
-  confirmation never proves that a retry is safe. Report verified receipts.
+- An exact one-conceptual-record update retains the workflow's existing
+  authorization rules. Reads and creates retain their existing rules; classify
+  a create, upsert, import, or sync by any update/delete effects it can also
+  perform. Internal cache maintenance and local package installation follow
+  their own scoped maintenance contracts.
+- After an uncertain mutation, invoke only the exact service-returned bodyless
+  state action and service-declared timing. Never replay the mutation or
+  construct a status route, selector, retry schedule, or reconciliation
+  request. Confirmation never proves that another mutation is safe. Report
+  verified receipts.
 
 This is an agent instruction safeguard. Server authorization and validation
 remain required; the package does not intercept or enforce arbitrary API calls.
@@ -206,10 +212,13 @@ feedback meaningless.
 
 ## Submit and report
 
-1. Create one UUID `client_submission_id` and retain it for the attempt.
-2. Call `bos_submit_feedback` through the BOS connection with
+1. Call `bos_submit_feedback` through the BOS connection with
    only the allowlisted feedback fields. The server derives execution scope.
-3. On a transport or server failure, retry once with the same submission ID.
+2. Supply no client submission identity, idempotency key, attempt identity,
+   retry counter, or reconciliation state. BOS Service derives request identity
+   and owns idempotency and uncertain-outcome reconciliation.
+3. On an uncertain result, follow only the exact service-returned state action.
+   Never replay the submission.
 4. On success, report the feedback ID, canonical target, `received` status, and
    server timestamp. Do not claim triage, assignment, prioritization, or a
    product change.

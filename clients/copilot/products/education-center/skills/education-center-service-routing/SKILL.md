@@ -70,12 +70,15 @@ discovered app APIs, delegated work, automation, and resumed operations.
 Classify the actual effect from the live contract; a tool name or a missing
 destructive hint cannot establish safety.
 
-- Limit updates and deletes to one exact business record in the entire logical
-  task. Multiple fields on that record are allowed. Count distinct source
-  records and cascading effects, including synchronization, replacement,
-  archive, soft delete, and removal. Unknown scope or more than one affected
-  record blocks execution before the first write. Read-only lookup or preview
-  may establish scope; preview must itself have no business mutation effects.
+- Limit updates and deletes to one exact conceptual business record in the
+  entire logical task. Multiple fields on that record are allowed. That record
+  may resolve to one through five explicit source-record targets in one
+  discovered service request. Count distinct conceptual records and cascading
+  effects, including synchronization, replacement, archive, soft delete, and
+  removal. Unknown scope, more than five source targets, or more than one
+  conceptual record blocks execution before the first write. Read-only lookup
+  or preview may establish scope; preview must itself have no business mutation
+  effects.
 - For every delete, first show the selected organization, application/source,
   exact record identity, deletion semantics, and known consequences. Then ask
   the user to confirm that prepared deletion and wait for an affirmative reply
@@ -90,13 +93,16 @@ destructive hint cannot establish safety.
   loops, pages, parallel calls, agents, new tasks, scheduled runs, or alternate
   tools to evade the limit. Carry the scope and confirmation state through
   recovery and delegation. Customer extensions cannot relax these safeguards.
-- An exact single-record update retains the workflow's existing authorization
-  rules. Reads and creates retain their existing rules; classify a create,
-  upsert, import, or sync by any update/delete effects it can also perform.
-  Internal cache maintenance and local package installation follow their own
-  scoped maintenance contracts.
-- After an uncertain mutation, reconcile its status before considering replay;
-  confirmation never proves that a retry is safe. Report verified receipts.
+- An exact one-conceptual-record update retains the workflow's existing
+  authorization rules. Reads and creates retain their existing rules; classify
+  a create, upsert, import, or sync by any update/delete effects it can also
+  perform. Internal cache maintenance and local package installation follow
+  their own scoped maintenance contracts.
+- After an uncertain mutation, invoke only the exact service-returned bodyless
+  state action and service-declared timing. Never replay the mutation or
+  construct a status route, selector, retry schedule, or reconciliation
+  request. Confirmation never proves that another mutation is safe. Report
+  verified receipts.
 
 This is an agent instruction safeguard. Server authorization and validation
 remain required; the package does not intercept or enforce arbitrary API calls.
@@ -165,18 +171,20 @@ Never manufacture `source_type` or `source_identity` from the person's email,
 phone, name, a role/context hint, or the word “manual.” If the live contract
 requires an undiscoverable source selector, report that exact contract gap.
 
-Check for duplicates with the supplied identity fields before creating. Reuse
-the original idempotency key while reconciling a failed or uncertain request;
-never replay an uncertain create under a fresh key. For a definitive rejected
-selector, correct it only from current server evidence within the same requested
+Submit the exact identity fields required by the discovered create contract.
+Supply no client duplicate pre-check, request identity, idempotency key, attempt
+identity, retry counter, or reconciliation state. BOS Service resolves
+uniqueness, owns idempotency, and returns the authoritative typed outcome. For
+a definitive rejected selector, correct it only from current server evidence within the same requested
 application and authority. A genuine access denial never authorizes another route.
 
 Inspect structured results before reporting success. `isError: false` or a
 message saying the operation completed is insufficient: require the requested
 create to be present in `succeeded` with no corresponding failure. A result with
 `complete: false`, an empty success list, or `source_mutation_failed` is a failed
-or partial operation. Preserve the exact per-source error, reconcile uncertain
-outcomes with a read, and never claim that the lead was created. After success,
+or partial operation. Preserve the exact per-source error and follow only an
+exact returned state action for an uncertain outcome; never replay the create.
+After success,
 read the new record and present its verified details and graph position through
 `crm-customer-journey`.
 

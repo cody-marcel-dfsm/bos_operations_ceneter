@@ -37,12 +37,15 @@ discovered app APIs, delegated work, automation, and resumed operations.
 Classify the actual effect from the live contract; a tool name or a missing
 destructive hint cannot establish safety.
 
-- Limit updates and deletes to one exact business record in the entire logical
-  task. Multiple fields on that record are allowed. Count distinct source
-  records and cascading effects, including synchronization, replacement,
-  archive, soft delete, and removal. Unknown scope or more than one affected
-  record blocks execution before the first write. Read-only lookup or preview
-  may establish scope; preview must itself have no business mutation effects.
+- Limit updates and deletes to one exact conceptual business record in the
+  entire logical task. Multiple fields on that record are allowed. That record
+  may resolve to one through five explicit source-record targets in one
+  discovered service request. Count distinct conceptual records and cascading
+  effects, including synchronization, replacement, archive, soft delete, and
+  removal. Unknown scope, more than five source targets, or more than one
+  conceptual record blocks execution before the first write. Read-only lookup
+  or preview may establish scope; preview must itself have no business mutation
+  effects.
 - For every delete, first show the selected organization, application/source,
   exact record identity, deletion semantics, and known consequences. Then ask
   the user to confirm that prepared deletion and wait for an affirmative reply
@@ -57,13 +60,16 @@ destructive hint cannot establish safety.
   loops, pages, parallel calls, agents, new tasks, scheduled runs, or alternate
   tools to evade the limit. Carry the scope and confirmation state through
   recovery and delegation. Customer extensions cannot relax these safeguards.
-- An exact single-record update retains the workflow's existing authorization
-  rules. Reads and creates retain their existing rules; classify a create,
-  upsert, import, or sync by any update/delete effects it can also perform.
-  Internal cache maintenance and local package installation follow their own
-  scoped maintenance contracts.
-- After an uncertain mutation, reconcile its status before considering replay;
-  confirmation never proves that a retry is safe. Report verified receipts.
+- An exact one-conceptual-record update retains the workflow's existing
+  authorization rules. Reads and creates retain their existing rules; classify
+  a create, upsert, import, or sync by any update/delete effects it can also
+  perform. Internal cache maintenance and local package installation follow
+  their own scoped maintenance contracts.
+- After an uncertain mutation, invoke only the exact service-returned bodyless
+  state action and service-declared timing. Never replay the mutation or
+  construct a status route, selector, retry schedule, or reconciliation
+  request. Confirmation never proves that another mutation is safe. Report
+  verified receipts.
 
 This is an agent instruction safeguard. Server authorization and validation
 remain required; the package does not intercept or enforce arbitrary API calls.
@@ -159,12 +165,11 @@ or authenticated API invocation capabilities needed at later steps.
    discovery evidence; it never authorizes cross-organization business reads.
 
 For a transient timeout or transport failure of a read-only resource list/read,
-wait briefly (about five seconds, respecting Retry-After) and retry that exact
-operation once on the same configured connection. This retry does not require a
-separate refresh API. Reinitialize only if the host reports a closed session and
-supports it. Do not retry an authorization denial as a timeout. If both attempts
-fail, preserve completed independent reads and identify the failed operation and
-both outcomes. This rule never replays mutations or guesses unlisted URIs.
+follow only the host- or service-published recovery action and declared timing.
+Reinitialize only if the host reports a closed session and supports it. Never
+treat an authorization denial as a timeout. When no recovery action exists,
+preserve completed independent reads and identify the failed operation and
+observed outcome. Never replay a request or guess an unlisted URI.
 
 When discovery is advertised as a tool, use its live descriptor and schema.
 An empty tool search must still proceed to the available resource facilities.
@@ -201,7 +206,8 @@ when supported. A contact alone never creates another login or grants authority.
    inference separately.
 7. Refresh BOS and app discovery after grant, graph digest/version, plugin,
    authorization, session-expiry, or app-contract
-   changes. Re-resolve the operation from the refreshed contract before retrying.
+   changes. Re-resolve the operation from the refreshed contract for the next
+   semantic request; never automatically replay the failed operation.
 
 For journey registration, descriptor changes cause a fresh authoring read. They
 never create a registration precondition or automatic refresh-and-retry branch.

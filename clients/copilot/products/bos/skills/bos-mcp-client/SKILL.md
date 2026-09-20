@@ -12,12 +12,15 @@ discovered app APIs, delegated work, automation, and resumed operations.
 Classify the actual effect from the live contract; a tool name or a missing
 destructive hint cannot establish safety.
 
-- Limit updates and deletes to one exact business record in the entire logical
-  task. Multiple fields on that record are allowed. Count distinct source
-  records and cascading effects, including synchronization, replacement,
-  archive, soft delete, and removal. Unknown scope or more than one affected
-  record blocks execution before the first write. Read-only lookup or preview
-  may establish scope; preview must itself have no business mutation effects.
+- Limit updates and deletes to one exact conceptual business record in the
+  entire logical task. Multiple fields on that record are allowed. That record
+  may resolve to one through five explicit source-record targets in one
+  discovered service request. Count distinct conceptual records and cascading
+  effects, including synchronization, replacement, archive, soft delete, and
+  removal. Unknown scope, more than five source targets, or more than one
+  conceptual record blocks execution before the first write. Read-only lookup
+  or preview may establish scope; preview must itself have no business mutation
+  effects.
 - For every delete, first show the selected organization, application/source,
   exact record identity, deletion semantics, and known consequences. Then ask
   the user to confirm that prepared deletion and wait for an affirmative reply
@@ -32,13 +35,16 @@ destructive hint cannot establish safety.
   loops, pages, parallel calls, agents, new tasks, scheduled runs, or alternate
   tools to evade the limit. Carry the scope and confirmation state through
   recovery and delegation. Customer extensions cannot relax these safeguards.
-- An exact single-record update retains the workflow's existing authorization
-  rules. Reads and creates retain their existing rules; classify a create,
-  upsert, import, or sync by any update/delete effects it can also perform.
-  Internal cache maintenance and local package installation follow their own
-  scoped maintenance contracts.
-- After an uncertain mutation, reconcile its status before considering replay;
-  confirmation never proves that a retry is safe. Report verified receipts.
+- An exact one-conceptual-record update retains the workflow's existing
+  authorization rules. Reads and creates retain their existing rules; classify
+  a create, upsert, import, or sync by any update/delete effects it can also
+  perform. Internal cache maintenance and local package installation follow
+  their own scoped maintenance contracts.
+- After an uncertain mutation, invoke only the exact service-returned bodyless
+  state action and service-declared timing. Never replay the mutation or
+  construct a status route, selector, retry schedule, or reconciliation
+  request. Confirmation never proves that another mutation is safe. Report
+  verified receipts.
 
 This is an agent instruction safeguard. Server authorization and validation
 remain required; the package does not intercept or enforce arbitrary API calls.
@@ -50,8 +56,9 @@ workflow; single-context grant wording below applies to legacy discovery.
 
 Before a business mutation, apply
 [client mutation safety](references/mutation-safety.md): one affected record
-per logical task for updates/deletes and confirmation of the prepared target
-before every delete. Apply it again before resuming a pending mutation.
+per logical task for updates/deletes, including its explicitly resolved source
+records, and confirmation of the prepared targets before every delete. Apply it
+again before following a returned mutation action.
 
 ## First action: resolve the callable BOS tool
 
@@ -127,8 +134,10 @@ or accept a dependent-resource token as a platform token.
 
 BOS receives no caller product identity, domain operation, continuation,
 idempotency, approval, retry, reconciliation, cache, or presentation state. It
-returns `READY`, `HOST_ACTION_REQUIRED`, or `NOT_READY`. The caller owns every
-post-result action.
+returns `READY`, `HOST_ACTION_REQUIRED`, or `NOT_READY`. The caller owns
+discovery refresh, approval, cache, semantic continuation, and presentation.
+BOS Service owns API idempotency, bounded execution retry, and uncertain-outcome
+reconciliation; the caller follows only exact service-returned actions.
 
 Codex packages also declare a 180-second tool-call timeout. These host budgets
 allow slow operations to finish; a server-returned timeout remains a distinct
@@ -259,16 +268,18 @@ apply only the generic handoff contract above and receive no operation state.
   orchestration runtime, inspect its advertised tool inventory and invoke the
   discovered callable there. Absence from the initially visible tool list does
   not establish a missing connection.
-- For transient read-only resource-list/read timeouts, wait briefly and retry
-  once on the same configured connection even when the host offers no refresh
-  API. Preserve completed independent reads.
-- For other discovery failures, perform one supported refresh of the same
-  connection and retry discovery once. Report the exact observed failure and missing host
-  capability when recovery is unavailable. Never invent a tool call or claim
-  discovery failed without attempting an available discovery facility.
-  Preserve the original request and resume automatically after recovery; the
-  user should not need to ask for rediscovery. Package-file inspection and
-  desktop UI automation do not establish whether live tools are callable.
+- For transient read-only resource-list/read timeouts, follow only the exact
+  host- or service-published recovery action and declared timing. Preserve
+  completed independent reads and never replay the failed read without that
+  action.
+- For other discovery failures, use a supported host refresh or returned
+  recovery action on the same connection. Report the exact observed failure and
+  missing host capability when recovery is unavailable. Never invent a tool
+  call or claim discovery failed without attempting an available discovery
+  facility. Preserve the original request and continue only through the exact
+  returned action; the user should not need to ask for rediscovery. Package-file
+  inspection and desktop UI automation do not establish whether live tools are
+  callable.
 - Inspect the active client's BOS plugin and runtime binding only after the
   first-action callable discovery procedure has run and its observed results
   establish a binding problem. Repair a confirmed binding defect through the
@@ -289,7 +300,9 @@ apply only the generic handoff contract above and receive no operation state.
   Do not stop at diagnosing client registration.
 - If the transport, stream, or MCP session closes, reconnect or reinitialize
   that same configured connection, rediscover its live tools, call
-  `bos_get_context` again, and retry the interrupted read-only operation once.
+  `bos_get_context` again, and follow only the exact returned continuation or
+  state action. When none exists, preserve the interrupted request and report
+  the exact failed operation without replaying it.
 - If the product OAuth token endpoint returns `invalid_client`, classify it as a
   stale host-owned public-client registration and return to the active
   product's connection registration. Preserve the sanitized continuation envelope, keep the same sealed
@@ -340,12 +353,12 @@ apply only the generic handoff contract above and receive no operation state.
   automatically. Never ask the user to reconnect the product, resend the request, or
   start a new task.
 - Preserve the sanitized continuation envelope across every refresh, including
-  pending draft identities, approval state, operation identities, and
-  idempotency keys. Never place tokens, credentials, raw authority IDs, raw
+  pending server-owned draft identities, approval state, operation references,
+  and exact returned actions. Never place tokens, credentials, raw authority IDs, raw
   provider payloads, or customer records in that envelope.
 - For a mutation whose completion is unknown after a disconnect, reconcile by
-  its operation or idempotency identifier before deciding whether to resume.
-  Never replay an uncertain mutation blindly.
+  following its exact service-returned state action. Never replay an uncertain
+  mutation or create client retry, attempt, idempotency, or reconciliation state.
 - Ask for user action only when the host presents BOS Connect/Sign in or a
   secure provider sign-in or credential-entry surface that inherently requires
   the user's direct interaction. Never ask the user to paste a BOS key.
@@ -415,9 +428,11 @@ and inspect its sanitized result before producing a final answer.
      recovery transaction, classify
      `provider_recovery_identity_boundary`, and report the server-owned
      recovery defect with sanitized evidence.
-7. Poll and verify recovered authorization, then call `bos_resume_operation`
-   once without asking the user to resubmit the request. Stop
-   if authorization or that single retry fails.
+7. Poll and verify recovered authorization, then follow the exact
+   service-returned operation action without asking the user to resubmit the
+   request. Supply no client retry, attempt, idempotency, or reconciliation
+   state. Stop when the service reports a terminal authorization or operation
+   failure.
 
 For an explicit request to connect or authenticate a provider, call
 `bos_get_context` and invoke the exact server-returned recovery `next_action`

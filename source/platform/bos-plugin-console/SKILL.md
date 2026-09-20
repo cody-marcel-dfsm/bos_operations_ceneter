@@ -120,8 +120,9 @@ provider payloads in chat, client files, or local storage.
 
 The **Enabled** toggle and an equivalent user request call
 `bos_set_plugin_enabled` through the BOS connection. Send
-the latest `plugin_ref`, complete target boolean, server
-revision, and stable idempotency key.
+the latest `plugin_ref` and complete target boolean plus only any additional
+semantic fields required by the current discovered schema. Supply no client
+idempotency key, revision, retry state, or reconciliation decision.
 
 Require the user's explicit toggle or request. The server revalidates
 `bos.plugins.update`, scope, revision, and transition, then performs the audited

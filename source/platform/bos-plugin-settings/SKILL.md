@@ -117,11 +117,14 @@ recommendation requires the user to confirm the displayed draft.
    delegated agents. Give it the complete operational context listed in the
    operation contract. The active agent executes the identical worker contract
    when delegation is unavailable.
-5. The worker calls `bos_apply_plugin_settings` with the exact draft, revision,
-   and current-draft idempotency key. It emits sanitized progress to the parent
-   and runs bounded recovery until the result is committed or terminal.
-6. Accept success only from `status: committed` or a reconciled committed
-   operation. Atomically commit the returned complete snapshot with
+5. The worker calls `bos_apply_plugin_settings` with the exact prepared draft
+   arguments advertised by the current schema. It supplies no client key,
+   attempt identity, retry counter, or reconciliation decision. BOS Service
+   owns idempotency and uncertain-outcome reconciliation and returns the
+   authoritative result or exact state action.
+6. Accept success only from `status: committed` in the authoritative operation
+   result, including a terminal result obtained from an exact returned state
+   action. Atomically commit the returned complete snapshot with
    `canonical_source: bos_committed` or `bos_reconciled`.
 7. Refresh context when the result changes capabilities. Refresh tool discovery
    only when the server reports a schema change, then render the confirmed
@@ -134,8 +137,9 @@ value and state that the next read will refresh the cache.
 ## Failure
 
 Interpret the server's structured error envelope through the operation
-contract. Reconcile uncertain mutations before replay. Keep the last confirmed
-cache snapshot after failed or indeterminate updates.
+contract. For an uncertain mutation, follow only its exact returned state
+action and never replay the mutation. Keep the last confirmed cache snapshot
+after failed or indeterminate updates.
 
 For a terminal protocol, server-invariant, or repeated request-shape failure,
 return the sanitized code, support reference, attempts, recovery actions,

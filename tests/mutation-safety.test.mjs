@@ -8,6 +8,10 @@ import {
 
 test("mutation safety survives every product routing branch and client composition", async () => {
   const policy = (await readFile(`${root}/source/platform/bos-mcp-client/references/mutation-safety.md`, "utf8")).trim();
+  assert.match(policy, /one exact conceptual business record/i);
+  assert.match(policy, /one through five explicit source-record targets/i);
+  assert.match(policy, /exact service-returned bodyless[\s\S]*Never replay the mutation/i);
+  assert.doesNotMatch(policy, /considering replay/i);
   const clientRoots = {
     codex: "clients/codex/plugins",
     claude: "clients/claude/plugins",

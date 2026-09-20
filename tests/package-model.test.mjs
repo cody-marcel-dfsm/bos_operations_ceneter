@@ -57,6 +57,20 @@ test("canonical distributable skills contain no customer-specific settings", asy
   assert.deepEqual(failures, []);
 });
 
+test("canonical and generated customer packages contain no personal absolute paths", async () => {
+  const files = [
+    ...(await walkFiles(`${root}/source`)),
+    ...(await walkFiles(`${root}/clients`))
+  ].filter((path) => /\.(?:md|json|mjs|js|ts|toml|ya?ml|py)$/i.test(path));
+  const failures = [];
+  for (const path of files) {
+    if (/\/Users\/[A-Za-z0-9._-]+\//.test(await readFile(path, "utf8"))) {
+      failures.push(path);
+    }
+  }
+  assert.deepEqual(failures, []);
+});
+
 test("packaged guidance never instructs clients to send raw authority selectors", async () => {
   const files = [
     ...(await walkFiles(`${root}/source`)),
@@ -90,6 +104,55 @@ test("packaged guidance never instructs clients to send raw authority selectors"
     }
   }
 
+  assert.deepEqual(failures, []);
+});
+
+test("canonical and generated guidance never creates client mutation identity or retry state", async () => {
+  const files = [
+    ...(await walkFiles(`${root}/source`)),
+    ...(await walkFiles(`${root}/clients`))
+  ].filter((path) => /\.(?:md|json|ya?ml)$/i.test(path));
+  const clientState = /\b(?:client_submission_id|client_idempotency_key|idempotency_key|attempt_id|retry_count|reconciliation_state|execution_state)\b/i;
+  const directsState = /\b(?:create|generate|provide|send|supply|reuse|retain|preserve|put|include|set)\b/i;
+  const rejectsState = /\b(?:never|do not|does not|no client|omit|exclude|forbid|forbidden|reject|without)\b/i;
+  const failures = [];
+
+  for (const path of files) {
+    const content = await readFile(path, "utf8");
+    for (const paragraph of content.split(/\n\s*\n/)) {
+      if (
+        clientState.test(paragraph) &&
+        directsState.test(paragraph) &&
+        !rejectsState.test(paragraph)
+      ) {
+        failures.push(path);
+        break;
+      }
+    }
+  }
+
+  assert.deepEqual(failures, []);
+});
+
+test("canonical and generated guidance never schedules client API retries", async () => {
+  const files = [
+    ...(await walkFiles(`${root}/source`)),
+    ...(await walkFiles(`${root}/clients`))
+  ].filter((path) => /\.(?:md|json|ya?ml)$/i.test(path));
+  const directives = [
+    /wait briefly[^.]*retry/i,
+    /retry that exact operation/i,
+    /bounded read-only timeout retry/i,
+    /retry the interrupted read-only operation/i,
+    /refresh[^.]*retry discovery once/i,
+    /resume[^.]*with bounded retry/i,
+    /before retrying once/i
+  ];
+  const failures = [];
+  for (const path of files) {
+    const content = await readFile(path, "utf8");
+    if (directives.some((pattern) => pattern.test(content))) failures.push(path);
+  }
   assert.deepEqual(failures, []);
 });
 
@@ -429,15 +492,15 @@ test("Education Center packages include governed single-lead Agent Call operatio
   assert.match(guidance, /Do not end the task/);
   assert.doesNotMatch(guidance, /Refresh or reconnect.*then retry/i);
   assert.match(guidance, /exactly one lead/i);
-  assert.match(guidance, /each explicit user request[\s\S]*fresh idempotency key/i);
-  assert.match(guidance, /same lead in the same conversation/i);
-  assert.match(guidance, /Reuse that key only for a transport retry/i);
-  assert.match(guidance, /call-log or provider-call reference/i);
+  assert.match(guidance, /Supply no client idempotency key[\s\S]*BOS Service derives the request identity/i);
+  assert.match(guidance, /exact service-returned continuation or state action/i);
+  assert.match(guidance, /Never\s+resubmit the semantic dispatch request as recovery/i);
   assert.match(guidance, /follow-up questions[\s\S]*read-only/i);
   assert.match(guidance, /never invoke the call mutation/i);
-  assert.match(guidance, /only operation used for[\s\S]*outcome reconciliation/i);
-  assert.match(guidance, /bounded status follow-up/i);
-  assert.match(guidance, /up to 60\s+seconds/i);
+  assert.match(guidance, /exact[\s\S]*service-returned bodyless state action/i);
+  assert.match(guidance, /Never construct a status request[\s\S]*or replay the mutation/i);
+  assert.match(guidance, /Wait exactly the[\s\S]*service-declared interval/i);
+  assert.match(guidance, /Never choose a polling cadence/i);
   assert.match(guidance, /Call requested; completion not confirmed/i);
   assert.match(guidance, /Never say `dispatched`\s*from `accepted`/i);
   assert.match(guidance, /Omit internal[\s\S]*CRM status/i);
@@ -450,7 +513,7 @@ test("Education Center packages include governed single-lead Agent Call operatio
   assert.match(guidance, /Do not infer a root cause/i);
   assert.match(guidance, /Keep[\s\S]*repair instructions out of the user-facing error/i);
   assert.match(guidance, /authorization[\s\S]*exact secure[\s\S]*recovery action[\s\S]*BOS Service/i);
-  assert.match(guidance, /After recovery is current[\s\S]*resume the same call request/i);
+  assert.match(guidance, /After recovery is current[\s\S]*exact service-returned continuation or state action/i);
   assert.match(contract, /UUID[\s\S]*available_actions\[\][\s\S]*arguments\.lead_id/i);
   assert.match(contract, /never use[\s\S]*record_ref/i);
   assert.match(contract, /public schema excludes[\s\S]*org_id[\s\S]*phone numbers/i);
@@ -498,7 +561,7 @@ test("Education Center packages include governed SendGrid campaign operations", 
   assert.match(guidance, /explicit approval[\s\S]*list send/i);
   assert.match(`${guidance}\n${contract}`, /education_center_send_sendgrid_campaign/);
   assert.match(guidance, /HTTP 202[\s\S]*accepted[\s\S]*delivered[\s\S]*authenticated/i);
-  assert.match(guidance, /Reconcile uncertain outcomes before any retry/i);
+  assert.match(guidance, /Supply no client idempotency key[\s\S]*returned state action/i);
   assert.match(contract, /pause, resume, cancel, or reschedule/i);
   assert.match(contract, /unique human opens[\s\S]*unique human clicks/i);
   assert.match(contract, /Source membership or prior correspondence alone does not establish consent/i);
@@ -637,19 +700,14 @@ test("SendGrid client trace validates the governed 229-recipient acceptance path
           "active_user_request",
           "campaign_draft",
           "audience_identity",
-          "approval_state",
-          "idempotency_keys"
+          "approval_state"
         ]
       }],
       session: {
         request_hash: "sha256:request",
         draft_id: "draft-1",
         audience_id: "audience-1",
-        campaign_id: "campaign-1",
-        idempotency_keys: {
-          test_send: "campaign-1:test:v1",
-          list_send: "campaign-1:live:v1"
-        }
+        campaign_id: "campaign-1"
       },
       expected_eligible: 229,
       expected_named_recipients: ["Max", "Jeremy"],
@@ -698,19 +756,31 @@ test("SendGrid client trace validates the governed 229-recipient acceptance path
         {
           sequence: 1,
           mode: "test",
-          idempotency_key: "campaign-1:test:v1",
-          http_status: 202,
-          outcome: "accepted",
-          reconciled: true,
+          service_result: {
+            operation_ref: "bos-operation:test-send",
+            http_status: 202,
+            outcome: "accepted"
+          },
+          semantic_replay_result: {
+            operation_ref: "bos-operation:test-send",
+            http_status: 202,
+            outcome: "accepted"
+          },
           audience_count: 1
         },
         {
           sequence: 2,
           mode: "live",
-          idempotency_key: "campaign-1:live:v1",
-          http_status: 202,
-          outcome: "accepted",
-          reconciled: true,
+          service_result: {
+            operation_ref: "bos-operation:live-send",
+            http_status: 202,
+            outcome: "accepted"
+          },
+          semantic_replay_result: {
+            operation_ref: "bos-operation:live-send",
+            http_status: 202,
+            outcome: "accepted"
+          },
           audience_count: 229
         }
       ],
@@ -751,6 +821,22 @@ test("SendGrid client trace validates the governed 229-recipient acceptance path
         return true;
       }
     );
+
+    const divergentReplay = structuredClone(trace);
+    divergentReplay.operations[1].semantic_replay_result.operation_ref =
+      "bos-operation:divergent-send";
+    await writeFile(tracePath, JSON.stringify(divergentReplay));
+    await assert.rejects(
+      execFileAsync("python3", [validator, tracePath]),
+      (error) => {
+        const result = JSON.parse(error.stdout);
+        assert.match(
+          result.errors.join("\n"),
+          /live semantic replay did not return the same service-owned result/i
+        );
+        return true;
+      }
+    );
   } finally {
     await rm(temporary, { recursive: true, force: true });
   }
@@ -773,7 +859,7 @@ test("application runtime packages ship agent-owned MCP lifecycle recovery", asy
     assert.match(guidance, /permission[\s\S]*role[\s\S]*plugin-enable(?:ment)?[\s\S]*capability[\s\S]*provider[\s\S]*refresh live tool discovery/i);
     assert.match(guidance, /sanitized continuation envelope/i);
     assert.match(guidance, /same-task session/i);
-    assert.match(guidance, /reconcile by[\s\S]*idempotency identifier/i);
+    assert.match(guidance, /exact service-returned state action/i);
     assert.match(guidance, /first-action callable discovery procedure has run[\s\S]*establish a binding problem/i);
     assert.match(guidance, /Do not stop at\s+diagnosing client registration/i);
     assert.match(guidance, /invalid_client/i);
@@ -786,7 +872,8 @@ test("application runtime packages ship agent-owned MCP lifecycle recovery", asy
     assert.match(guidance, /request interceptor around every BOS domain[\s\S]*tools\/call/i);
     assert.match(guidance, /Calimatic[\s\S]*portal URL and API\s+key/i);
     assert.match(guidance, /model and MCP client[\s\S]*never receive either value/i);
-    assert.match(guidance, /poll[\s\S]*bos_resume_operation[\s\S]*without asking the user to resubmit/i);
+    assert.match(guidance, /follow the exact[\s\S]*service-returned operation action[\s\S]*without asking the user to resubmit/i);
+    assert.doesNotMatch(guidance, /call `bos_resume_operation`/i);
     assert.doesNotMatch(guidance, /unnamed endpoint as.*runtime connection/is);
     assert.match(guidance, /shared local document cache/i);
     assert.match(guidance, /connection's one scoped OAuth\s+grant/i);
@@ -2013,7 +2100,7 @@ test("Gemini client package provides one CLI and desktop extension umbrella", as
   assert.match(readme, /\/skills list/);
 });
 
-test("feedback contract uses the BOS app and stable retry identity", async () => {
+test("feedback contract uses the BOS app with service-owned request identity", async () => {
   const metadata = JSON.parse(await readFile(
     `${root}/clients/codex/plugins/bos/.bos-product.json`,
     "utf8"
@@ -2039,7 +2126,8 @@ test("feedback contract uses the BOS app and stable retry identity", async () =>
   assert.match(skill, /exact organization[\s\S]*already bound to the active product grant/i);
   assert.match(skill, /Perform no client-side authority\s+selection/i);
   assert.doesNotMatch(skill, /Select exactly one authorized scope/i);
-  assert.match(skill, /retry once with the same submission ID/);
+  assert.match(skill, /Supply no client submission identity[\s\S]*BOS Service derives request identity/i);
+  assert.match(skill, /follow only the exact service-returned state action/i);
   assert.match(skill, /Do not claim triage, assignment, prioritization/);
   assert.match(contract, /missing_or_ambiguous_scope/);
   assert.match(contract, /feedback_create_not_allowed/);
@@ -2527,6 +2615,7 @@ test("Education Center ships its referenced journey and graph contracts on every
   assert(journey, "Education Center must ship the journey its lead routing requires");
   assert(skills.some(({ name }) => name === "crm-record-operations"),
     "Education Center must ship its lead record workflow");
+  const records = skills.find(({ name }) => name === "crm-record-operations");
   assert.deepEqual(education.dependencies, ["bos"]);
   for (const clientRoot of [
     "clients/claude/plugins", "clients/codex/plugins",
@@ -2540,6 +2629,28 @@ test("Education Center ships its referenced journey and graph contracts on every
       assert.equal(await readFile(`${destination}/references/${reference}`, "utf8"),
         await readFile(`${journey.sourcePath}/references/${reference}`, "utf8"));
     }
+    const recordGuidance = await readFile(
+      `${root}/${clientRoot}/education-center/skills/${records.name}/SKILL.md`,
+      "utf8"
+    );
+    assert.match(
+      recordGuidance,
+      /one exact conceptual business record[\s\S]*one through five explicit source-record targets/i
+    );
+    assert.match(
+      recordGuidance,
+      /one conceptual record represented by one to five[\s\S]*explicit source records/i
+    );
+    assert.match(
+      recordGuidance,
+      /uncertain mutation[\s\S]*exact service-returned bodyless[\s\S]*Never replay the mutation/i
+    );
+    assert.match(
+      recordGuidance,
+      /per-source error[\s\S]*exact service-returned[\s\S]*Never construct a reconciliation read/i
+    );
+    assert.doesNotMatch(recordGuidance, /more than one affected\s+record blocks/i);
+    assert.doesNotMatch(recordGuidance, /reconcile uncertain outcomes with a read/i);
   }
 });
 
@@ -2583,7 +2694,7 @@ test("lead creation uses server source selectors and structured success", async 
   assert.match(guidance, /BOS connection scoped to the authorized application for authenticated[\s\S]*application discovery/i);
   assert.match(guidance, /business operation through[\s\S]*deterministic HTTPS API/i);
   assert.match(guidance, /Never manufacture `source_type` or `source_identity`/);
-  assert.match(guidance, /idempotency key/);
+  assert.match(guidance, /Supply no client duplicate pre-check, version, idempotency key/i);
   assert.match(guidance, /`complete: false`[\s\S]*`source_mutation_failed`/);
   assert.match(guidance, /current operating contract/);
   assert.doesNotMatch(guidance, /host cutover|migration compatibility|compatibility read/);

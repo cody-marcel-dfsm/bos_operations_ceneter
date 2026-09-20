@@ -1,6 +1,6 @@
 import { readFile, readdir } from "node:fs/promises";
 import { createHash } from "node:crypto";
-import { extname, join } from "node:path";
+import { extname, join, sep } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import {
@@ -33,6 +33,7 @@ const forbiddenNames = new Set([
   "id_rsa",
   "id_ed25519"
 ]);
+const personalAbsolutePathPattern = /\/Users\/[A-Za-z0-9._-]+\//;
 const secretPatterns = [
   /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,
   /\bbos_agent_[A-Za-z0-9_-]{16,}\b/,
@@ -42,7 +43,7 @@ const secretPatterns = [
   /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/,
   /\bAKIA[0-9A-Z]{16}\b/,
   /"(?:access_token|refresh_token|client_secret|private_key)"\s*:\s*"(?!REDACTED|EXAMPLE|<)[^"]+"/i,
-  /\/Users\/[A-Za-z0-9._-]+\//
+  personalAbsolutePathPattern
 ];
 const retiredProductIdentityPatterns = [
   new RegExp(`\\b${["i", "code"].join("")}\\b`, "i"),
@@ -122,7 +123,13 @@ async function scan(directory) {
     if (content.includes(`[${"TODO"}:`)) {
       failures.push(`TODO placeholder: ${path}`);
     }
+    const repositoryOnlyInstruction =
+      path === join(root, "AGENTS.md") ||
+      path.startsWith(`${join(root, ".agents")}${sep}`);
     for (const pattern of secretPatterns) {
+      if (pattern === personalAbsolutePathPattern && repositoryOnlyInstruction) {
+        continue;
+      }
       if (pattern.test(content)) failures.push(`Credential pattern in ${path}`);
     }
     for (const pattern of retiredProductIdentityPatterns) {

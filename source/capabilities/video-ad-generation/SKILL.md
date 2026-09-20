@@ -21,13 +21,15 @@ BOS resolves the Video Ads subservice and authorized tool set per request.
    connection. Stop when Arcads, Drive delivery, or policy readiness is unavailable.
 3. Call `video_ads_list_options` and select only server-returned generation
    families, actors, situations, models, and output constraints.
-4. Create a unique idempotency key and call `video_ads_start_generation` with
-   the approved brief revision, selected option identifiers, bounded settings,
-   and explicit cost approval when the returned policy requires it.
+4. Call `video_ads_start_generation` with the approved brief revision, selected
+   option identifiers, bounded settings, and explicit cost approval when the
+   returned policy requires it. Supply no client request identity, idempotency
+   key, attempt identity, retry counter, or reconciliation state; BOS Service
+   derives request identity and owns idempotency.
 5. Preserve the server-issued operation and generation identifiers. Treat
    generation as asynchronous unless the capability reports a terminal result.
-6. Poll with `video_ads_get_generation` at the server-returned cadence. Stop at
-   a terminal success, failure, cancellation, expiry, or server deadline.
+6. Follow the exact returned state action at the service-returned cadence. Stop
+   at a terminal success, failure, cancellation, expiry, or server deadline.
 7. Return the result reference, preview or retrieval reference, provider
    provenance, brief revision, generation settings, and any warnings.
 

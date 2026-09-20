@@ -46,7 +46,8 @@ test("BOS request interception distinguishes Gmail OAuth from Calimatic API-key 
   assert.match(client, /OAuth:[\s\S]*provider URL/i);
   assert.match(client, /API key:[\s\S]*Calimatic[\s\S]*portal URL and API\s+key/i);
   assert.match(client, /model and MCP client[\s\S]*never receive either value/i);
-  assert.match(client, /poll[\s\S]*bos_resume_operation/i);
+  assert.match(client, /follow the exact[\s\S]*service-returned operation action/i);
+  assert.doesNotMatch(client, /call `bos_resume_operation`/i);
   assert.match(client, /explicit request to connect or authenticate[\s\S]*server-returned recovery `next_action`/i);
   assert.match(client, /API-key recovery surface[\s\S]*provider credential collector/i);
   assert.match(client, /never[\s\S]*launch product authentication[\s\S]*provider recovery/i);

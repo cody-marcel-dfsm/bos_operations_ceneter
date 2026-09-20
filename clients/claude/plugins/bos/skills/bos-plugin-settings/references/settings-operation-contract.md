@@ -8,9 +8,10 @@ Give the worker the complete operational context required for one update:
 - BOS connection and server-validated scoped-grant status;
 - current confirmed snapshot, field schema, revision, and cursor;
 - exact prepared draft reference and hash;
-- stable client operation identity and idempotency key for the current draft;
-- retry deadline and recovery policy; and
-- required sanitized progress and terminal-result schemas.
+- the exact prepared draft reference and public approval evidence required by
+  the current schema;
+- the exact current request schema; and
+- required sanitized result schema.
 
 Exclude credentials, tokens, raw authority IDs, raw provider payloads,
 unrelated customer records, and hidden reasoning. Delegation carries the same
@@ -29,27 +30,28 @@ recovery action, current revision, or schema fingerprint.
 
 | Failure | Action |
 | --- | --- |
-| Transport closure, timeout, or temporary unavailability | Reconnect the same endpoint, refresh tools and context, reconcile, and retry. |
-| Rate limit | Honor the server retry time within the task deadline. |
-| Stale tool or field schema | Refresh live schemas, rebuild from original intent, and retry once when the semantic change is identical. |
-| Expired or revoked BOS grant | Complete host-managed recovery for the same BOS connection, then resume once. |
-| Provider authorization required | Complete the BOS-hosted provider flow and resume once. |
+| Transport closure, timeout, or temporary unavailability | Refresh the same connection and follow the exact returned state action when present; otherwise report the uncertain result without replaying the mutation. |
+| Rate limit | Report the service-returned eligible time; do not schedule or replay the mutation. |
+| Stale tool or field schema | Refresh live schemas and rebuild the draft from original intent. A materially changed draft requires current approval. |
+| Expired or revoked BOS grant | Complete host-managed recovery for the same BOS connection, then follow the exact returned continuation action. |
+| Provider authorization required | Complete the BOS-hosted provider flow, then follow the exact returned continuation action. |
 | Stale revision | Refresh. Rebase only when the target is unchanged and the authorized change set remains identical; otherwise return the conflict for user review. |
-| Correctable client request shape | Rebuild from the live field schema and retry once. |
+| Correctable client request shape | Rebuild from the live field schema as a corrected semantic request. |
 | Business validation | Stop and return field guidance. |
-| Capability denial | Revalidate the scoped grant once, then return the authoritative denial. |
-| Server invariant, malformed result, or repeated shape failure | Stop and return a feedback-ready bug result. |
+| Capability denial | Revalidate the scoped grant and return the authoritative denial. |
+| Server invariant or malformed result | Stop and return a feedback-ready bug result. |
 
-Use at most five total apply attempts with full jitter over nominal delays of
-1, 2, 4, and 8 seconds. A server retry time takes precedence within the task
-deadline. Replay an exact draft with its original idempotency key. A refreshed
-draft uses a linked new key only after the prior attempt is reconciled. Always
-reconcile an uncertain mutation before replay.
+Use only service-returned retry timing and actions. On an unknown mutation
+outcome, invoke the returned bodyless state action until BOS returns a terminal
+result. Never replay the setting mutation or send a client idempotency key,
+attempt identity, retry counter, or reconciliation state. A changed draft is a
+new semantic request and requires its current approval contract.
 
-## Progress and terminal result
+## Authoritative result
 
-Progress contains phase, attempt number, sanitized error class, recovery
-action, and next retry time. The terminal result is one of:
+The service result may contain phase, sanitized error class, a continuation or
+state action, and an eligible observation time. The authoritative result is one
+of:
 
 - `committed`: canonical commit and local cache commit completed;
 - `committed_with_cache_warning`: canonical commit completed and bounded local
@@ -58,5 +60,6 @@ action, and next retry time. The terminal result is one of:
 - `indeterminate`: reconciliation could not establish the canonical result.
 
 For failure, include the requested change, last confirmed values, sanitized
-error and support references, attempts, recoveries, reconciliation result,
-cache state, and privacy-minimized feedback draft.
+error and support references, authoritative service result, cache state, and a
+privacy-minimized feedback draft. The client does not create or manage an
+attempt counter, retry schedule, reconciliation decision, or execution state.

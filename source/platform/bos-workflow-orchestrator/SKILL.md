@@ -75,9 +75,10 @@ and resume from its authoritative response.
    connection's host-managed authorization. Treat MCP discovery as capability evidence and the API result as
    execution evidence.
 7. For an ordinary non-journey operation, when authorization or configuration interrupts execution, preserve the
-   server-issued continuation state. After the dependency becomes ready, call
-   `bos_resume_operation` with the original operation identity and stable
-   idempotency key. Reconcile an uncertain mutation before any retry.
+   server-issued continuation action. After the dependency becomes ready,
+   refresh discovery and follow the exact returned action for the original
+   semantic request. Supply no client operation identity, idempotency key,
+   retry counter, or reconciliation decision.
 8. Return an evidence-backed result that separates completed steps, pending
    steps, approvals, source observations, failures, and next actions. Claim
    completion only from structured operation success.

@@ -71,8 +71,8 @@ legacy values require repair and never trigger silent fallback.
    raw org/app/install/role IDs out of business arguments. Verify the returned
    context matches the selected context before using the result. The server
    reauthorizes every operation; discovery and preferences confer no authority.
-6. Preserve the selected scope with approvals, versions, idempotency, caches and
-   recovery. Refresh handles after context changes; never persist handles as
+6. Preserve the selected scope with approvals, versions, caches, server-owned
+   operation references, and exact returned recovery actions. Refresh handles after context changes; never persist handles as
    defaults. Keep concurrent requests independent. A denial or missing operation
    never permits another role or organization as a workaround.
 

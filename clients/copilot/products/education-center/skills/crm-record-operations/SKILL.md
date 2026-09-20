@@ -1,6 +1,6 @@
 ---
 name: crm-record-operations
-description: Find, list, create, update, delete, or remove Lead Director leads and CRM contacts through live discovered operations. Use for natural-language CRUD requests, including LD shorthand, while preserving exact targets, source identity, versions, duplicate checks, and mutation receipts.
+description: Find, list, create, update, delete, or remove organization-described Lead Director records through live discovered operations. Use for natural-language CRUD requests while preserving exact source targets, point-in-time evidence, guarantees, and mutation receipts.
 ---
 
 
@@ -70,12 +70,15 @@ discovered app APIs, delegated work, automation, and resumed operations.
 Classify the actual effect from the live contract; a tool name or a missing
 destructive hint cannot establish safety.
 
-- Limit updates and deletes to one exact business record in the entire logical
-  task. Multiple fields on that record are allowed. Count distinct source
-  records and cascading effects, including synchronization, replacement,
-  archive, soft delete, and removal. Unknown scope or more than one affected
-  record blocks execution before the first write. Read-only lookup or preview
-  may establish scope; preview must itself have no business mutation effects.
+- Limit updates and deletes to one exact conceptual business record in the
+  entire logical task. Multiple fields on that record are allowed. That record
+  may resolve to one through five explicit source-record targets in one
+  discovered service request. Count distinct conceptual records and cascading
+  effects, including synchronization, replacement, archive, soft delete, and
+  removal. Unknown scope, more than five source targets, or more than one
+  conceptual record blocks execution before the first write. Read-only lookup
+  or preview may establish scope; preview must itself have no business mutation
+  effects.
 - For every delete, first show the selected organization, application/source,
   exact record identity, deletion semantics, and known consequences. Then ask
   the user to confirm that prepared deletion and wait for an affirmative reply
@@ -90,13 +93,16 @@ destructive hint cannot establish safety.
   loops, pages, parallel calls, agents, new tasks, scheduled runs, or alternate
   tools to evade the limit. Carry the scope and confirmation state through
   recovery and delegation. Customer extensions cannot relax these safeguards.
-- An exact single-record update retains the workflow's existing authorization
-  rules. Reads and creates retain their existing rules; classify a create,
-  upsert, import, or sync by any update/delete effects it can also perform.
-  Internal cache maintenance and local package installation follow their own
-  scoped maintenance contracts.
-- After an uncertain mutation, reconcile its status before considering replay;
-  confirmation never proves that a retry is safe. Report verified receipts.
+- An exact one-conceptual-record update retains the workflow's existing
+  authorization rules. Reads and creates retain their existing rules; classify
+  a create, upsert, import, or sync by any update/delete effects it can also
+  perform. Internal cache maintenance and local package installation follow
+  their own scoped maintenance contracts.
+- After an uncertain mutation, invoke only the exact service-returned bodyless
+  state action and service-declared timing. Never replay the mutation or
+  construct a status route, selector, retry schedule, or reconciliation
+  request. Confirmation never proves that another mutation is safe. Report
+  verified receipts.
 
 This is an agent instruction safeguard. Server authorization and validation
 remain required; the package does not intercept or enforce arbitrary API calls.
@@ -162,32 +168,32 @@ unavailable operation from an authorization denial and a transient transport
 failure. Report the exact missing operation and observed contract; never claim
 complete CRUD support from create/read acceptance alone.
 
-Apply the BOS client mutation safety contract before every write: updates and
-deletes affect at most one record per logical task, including source records
-and cascades. Block bulk or unknown scope before the first write. Preserve
-version, idempotency, and server authorization requirements. For creates and
-single-record updates, exact user instructions supply authorization unless the
-live contract requires an additional confirmation artifact. Every delete needs
-confirmation after the concrete target and effect are presented. Never simulate
-a missing delete through another operation.
+Apply the BOS client mutation safety contract before every write. One logical
+task may update or delete one conceptual record represented by one to five
+explicit source records in one discovered request. Block multiple conceptual
+records, bulk scope, or unknown scope before the first write. Preserve every
+source target, service guarantee, approval instruction, and receipt. Supply no
+client idempotency, retry, reconciliation, MVCC, or execution state. BOS Service
+owns those behaviors. Every delete follows the service-returned review and
+approval action. Never simulate a missing delete through another operation.
 
 ## Reads
 
-1. Discover the app-owned provider-neutral CRM record operation and compile one
-   normalized record query from its current schema. For explicit source scope,
-   validate the exact `lead-director-crm-sources/v1` inventory returned by the
-   discovered `crm.sources.list` operation first.
-2. Omit source selection for all enabled and authorized sources, or pass one or
-   more exact opaque handles returned by current service discovery. Invoke the
-   operation once and preserve its server-returned source results and errors.
-3. For `merged_view`, present the service's returned federated records. Keep
-   its match confidence, field-level provenance, and conflicts unchanged.
+1. Request Describe for the minimum operation set required by the task and
+   compile one normalized record query from its current schema.
+2. Omit `source` for a general search. When the user explicitly names a source,
+   copy its complete current `{platform, application, plugin}` reference from
+   Describe. Invoke the operation once and preserve its source-native records,
+   opaque selectors, source results, and errors.
+3. Keep source records distinct. CRM client reasoning may group records as one
+   conceptual customer only after the response and must preserve evidence,
+   confidence, provenance, conflicts, uncertainty, and freshness.
 4. Render origin, last update in local time, age, maximum age, and coverage.
-5. For one exact record, select `crm.records.get` only from the discovered
-   service. Send `{recordHandle}` using the opaque handle returned by the
-   current search or get response. Accept only
-   `lead-director-crm-get/v1` for the same scoped grant, authority epoch, service,
-   and requested record handle.
+5. For one exact record, use a separate read operation only when current
+   Describe advertises one. Otherwise use the described exact-search semantics.
+   Copy the opaque public selector from current evidence and never substitute a
+   provider identifier, internal node identifier, database key, or inferred
+   record identity.
 
 For a generic or cached callable schema, use `bos-mcp-client` Resource-owned
 operation schemas. Read the advertised scoped application operation
@@ -203,39 +209,39 @@ server-returned source metadata in the current scoped connection, matched to the
 requested application. Never manufacture `source_type` or `source_identity`
 from the person's email, phone, name, role, context hint, or the word “manual.”
 If the live contract requires an undiscoverable source selector, report that
-exact contract gap. Reuse the original idempotency key while reconciling a
-failed or uncertain request.
+exact contract gap. Follow only the service's authoritative result, returned
+state action, or recovery instruction for a failed or uncertain request.
 
-1. Resolve the exact current source descriptor from the validated
-   `lead-director-crm-sources/v1` inventory and verify that it is `ready`
-   and advertises the requested provider-neutral capability. Select
-   `crm.records.create` or `crm.records.update` only from the discovered
-   service. Require the discovered operation to advertise its exact HTTP
-   method, `sideEffect: write`, and `idempotent: true`.
-2. Request the service's duplicate check before create when a stable identity
-   value exists and the live contract advertises one.
-3. For create, send exactly `{sourceHandle, changes, idempotencyKey}`. For
-   update, send exactly `{recordHandle, expectedVersion, changes,
-   idempotencyKey}`. Use the current server-returned version and accept only
-   provider-neutral change fields declared by the live schema.
+1. Resolve one complete create-capable source reference from current Describe
+   for create. For update, preserve the one-to-five explicit targets selected
+   for one conceptual customer. Require the discovered operation to advertise
+   its exact HTTP method, write effect, limits, guarantees, and schemas.
+2. Send create as the described `source` plus dynamic `changes`. Send update as
+   one request whose `targets` each contain the complete source reference,
+   opaque record selector, and source-specific `changes`. Validate every field
+   against current Describe and reject duplicate `(source, selector)` pairs.
+3. Supply no client duplicate pre-check, version, idempotency key, attempt
+   identity, retry counter, or reconciliation decision. Consume the service's
+   typed uniqueness/conflict result and service-owned idempotency behavior.
 4. Satisfy the discovered service's confirmation contract using the exact
    target and changes authorized by the user. If it requires a deterministic
    confirmation identity, bind approval to that identity. Obtain new approval
    only when required by the contract or a material target/change difference;
    never treat an unrelated prior approval as authorization.
 5. Invoke the discovered service operation once through its exact advertised
-   HTTPS method and path. Accept only
-   `lead-director-crm-mutation/v1` for the same context, authority epoch,
-   service, source, and operation. Report the server receipt and
-   `underlying_source_guarantee` without strengthening it.
+   HTTPS method and complete URI. Preserve one ordered outcome per target and
+   report the advertised per-source and cross-source guarantees without
+   strengthening them.
 6. Invalidate or refresh affected query caches after a confirmed commit.
 
 Inspect the structured result before reporting success. `isError: false` or a
 completion message is insufficient. A result with `complete: false`, an empty
 success list, or `source_mutation_failed` is a failed or partial operation.
-Preserve the exact per-source error, reconcile uncertain outcomes with a read,
-and present the verified record and journey only after confirmed success. This
-is part of the current operating contract for this capability.
+Preserve the exact per-source error and follow only the exact service-returned
+state action for an uncertain outcome. Never construct a reconciliation read or
+replay the mutation. Present the verified record and journey only after
+confirmed success. This is part of the current operating contract for this
+capability.
 
 ## Deletes
 
@@ -255,15 +261,18 @@ is part of the current operating contract for this capability.
    automation prompt never satisfy this step. Bind confirmation to the exact
    target, scope, version, and effect; re-confirm material changes. Obtain any
    server-required preview/confirmation artifact as well.
-4. Pass the exact declared delete arguments, concurrency version and stable
-   idempotency key where supported. Execute once. After an uncertain result,
-   reconcile using its operation identity or a supported exact read before any
-   retry. Never blindly repeat a destructive operation or invent a tool.
-5. Verify the structured deletion receipt and the contract-defined postcondition
+4. Send one delete request with the one-to-five exact targets. If the service
+   returns `428 APPROVAL_REQUIRED`, present its exact target summaries and
+   consequences, obtain explicit approval, and invoke its returned action
+   verbatim. A changed target requires a fresh instruction and approval.
+5. When the service returns `202 in_progress`, wait for its declared interval
+   and invoke only its returned bodyless state action. Never replay the delete
+   or send client retry, reconciliation, version, or idempotency state.
+6. Verify the structured deletion receipt and the contract-defined postcondition
    through a fresh read/status when available. Report already-deleted, conflict,
    denied, failed, and unknown outcomes accurately. An empty search alone does
    not prove deletion; identify any postcondition that could not be checked.
-6. Show the verified deletion receipt within the detailed lead view. Mark the
+7. Show the verified deletion receipt within the detailed record view. Mark the
    record Deleted and any retained pre-deletion graph as historical with its
    observation time; never depict a deleted record as currently active.
 

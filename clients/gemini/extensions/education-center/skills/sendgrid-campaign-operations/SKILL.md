@@ -70,12 +70,15 @@ discovered app APIs, delegated work, automation, and resumed operations.
 Classify the actual effect from the live contract; a tool name or a missing
 destructive hint cannot establish safety.
 
-- Limit updates and deletes to one exact business record in the entire logical
-  task. Multiple fields on that record are allowed. Count distinct source
-  records and cascading effects, including synchronization, replacement,
-  archive, soft delete, and removal. Unknown scope or more than one affected
-  record blocks execution before the first write. Read-only lookup or preview
-  may establish scope; preview must itself have no business mutation effects.
+- Limit updates and deletes to one exact conceptual business record in the
+  entire logical task. Multiple fields on that record are allowed. That record
+  may resolve to one through five explicit source-record targets in one
+  discovered service request. Count distinct conceptual records and cascading
+  effects, including synchronization, replacement, archive, soft delete, and
+  removal. Unknown scope, more than five source targets, or more than one
+  conceptual record blocks execution before the first write. Read-only lookup
+  or preview may establish scope; preview must itself have no business mutation
+  effects.
 - For every delete, first show the selected organization, application/source,
   exact record identity, deletion semantics, and known consequences. Then ask
   the user to confirm that prepared deletion and wait for an affirmative reply
@@ -90,13 +93,16 @@ destructive hint cannot establish safety.
   loops, pages, parallel calls, agents, new tasks, scheduled runs, or alternate
   tools to evade the limit. Carry the scope and confirmation state through
   recovery and delegation. Customer extensions cannot relax these safeguards.
-- An exact single-record update retains the workflow's existing authorization
-  rules. Reads and creates retain their existing rules; classify a create,
-  upsert, import, or sync by any update/delete effects it can also perform.
-  Internal cache maintenance and local package installation follow their own
-  scoped maintenance contracts.
-- After an uncertain mutation, reconcile its status before considering replay;
-  confirmation never proves that a retry is safe. Report verified receipts.
+- An exact one-conceptual-record update retains the workflow's existing
+  authorization rules. Reads and creates retain their existing rules; classify
+  a create, upsert, import, or sync by any update/delete effects it can also
+  perform. Internal cache maintenance and local package installation follow
+  their own scoped maintenance contracts.
+- After an uncertain mutation, invoke only the exact service-returned bodyless
+  state action and service-declared timing. Never replay the mutation or
+  construct a status route, selector, retry schedule, or reconciliation
+  request. Confirmation never proves that another mutation is safe. Report
+  verified receipts.
 
 This is an agent instruction safeguard. Server authorization and validation
 remain required; the package does not intercept or enforce arbitrary API calls.
@@ -106,8 +112,8 @@ remain required; the package does not intercept or enforce arbitrary API calls.
 Use `bos-mcp-client` for authenticated context, live tool discovery, manifest
 refresh, same-task continuation, and provider authorization recovery. Use
 `education-center-service-routing` for every configured evidence source. Use
-only the installed BOS platform connection for runtime
-authority. The service derives organization, application, installation, role, plugin, SendGrid
+only the installed BOS platform connection for runtime authority, and execute
+every discovered semantic operation through the BOS platform MCP. The service derives organization, application, installation, role, plugin, SendGrid
 binding, sender configuration, and credentials from the validated grant.
 
 Read [references/client-workflow.md](references/client-workflow.md) for the
@@ -136,10 +142,12 @@ against a sanitized trace when validating an end-to-end client execution.
    configuration, and physical address returned by the server-owned draft.
 6. Require explicit approval bound to the exact content hash, audience version,
    and send action. Invalidate approval if any bound value changes.
-7. Execute exactly one deterministic test send through the BOS platform MCP. Reconcile its
-   result and require successful preparation/acceptance before the list send.
-8. Execute the approved list send once with its stable idempotency key.
-   Reconcile uncertain outcomes before any retry.
+7. Execute exactly one deterministic test send through the discovered BOS
+   operation. Require the authoritative result to establish successful
+   preparation/acceptance before the list send.
+8. Execute the approved list send through its discovered semantic operation.
+   Supply no client idempotency key, retry state, or reconciliation decision;
+   follow only the service's authoritative result or returned state action.
 9. Report test and live results separately with category and reporting cutoff.
    Label HTTP 202 as `accepted`; count `delivered` only from authenticated
    delivery-event evidence.

@@ -29,7 +29,8 @@ test("BOS exposes one application-neutral deterministic workflow entrypoint", as
   assert.match(guidance, /deterministic workflow/i);
   assert.match(guidance, /federated (?:agentic )?service mesh/i);
   assert.match(guidance, /bos_get_context/);
-  assert.match(guidance, /bos_resume_operation/);
+  assert.match(guidance, /never uses `bos_resume_operation`/i);
+  assert.match(guidance, /exact returned action/i);
   assert.match(guidance, /live-declared business arguments/i);
   assert.doesNotMatch(guidance, /context_id/);
   assert.match(guidance, /BOS\s+connection/i);

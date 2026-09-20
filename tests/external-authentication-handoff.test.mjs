@@ -77,7 +77,8 @@ test("generic authentication delegation contains only resource, condition, and h
     result.properties.status.enum
   );
   assert.match(contract, /defines no\s+REST endpoint, MCP operation, server registration, or product-specific service/i);
-  assert.match(contract, /caller\s+owns every action after this result/i);
+  assert.match(contract, /caller refreshes BOS discovery and continues[\s\S]*preserved semantic request/i);
+  assert.match(contract, /BOS Service retains ownership of business-API[\s\S]*execution retry[\s\S]*uncertain-outcome\s+reconciliation/i);
 });
 
 test("generic authentication delegation rejects caller identity, business state, credentials, and raw authority", async () => {
@@ -147,9 +148,13 @@ test("BOS source skills limit external delegation to generic authentication read
     assert.match(content, /no caller product identity|never receives the\s+caller's product identity/i);
     assert.doesNotMatch(content, /bos\.discovery\.refresh|bos\.request\.continue/);
     assert.doesNotMatch(content, /BOS[^.]*resume[^.]*caller|BOS[^.]*reconcile[^.]*caller/i);
+    assert.match(content, /BOS Service owns API\s+idempotency[\s\S]*bounded execution retry[\s\S]*uncertain-outcome\s+reconciliation/i);
+    assert.doesNotMatch(content, /caller owns[^.]*retry|caller owns[^.]*reconciliation/i);
   }
-  assert.match(continuation, /caller retains its operation/i);
+  assert.match(continuation, /caller retains its semantic request/i);
   assert.match(continuation, /BOS coordinates the host authentication lifecycle/i);
+  assert.match(continuation, /BOS Service owns API\s+idempotency[\s\S]*bounded execution[\s\S]*uncertain-outcome\s+reconciliation/i);
+  assert.doesNotMatch(continuation, /caller[^.]*owns[^.]*retry|caller[^.]*owns[^.]*reconciliation/i);
 });
 
 test("generated packages preserve the corrected generic handoff exactly", async () => {
@@ -174,7 +179,38 @@ test("generated packages preserve the corrected generic handoff exactly", async 
       read(`${generatedRoot}/references/external-product-authentication-handoff.v1.schema.json`)
     ]);
     assert.match(generatedClient, /bos\.authentication-handoff\/v1/, productRoot);
+    assert.match(generatedClient, /BOS Service owns API\s+idempotency[\s\S]*bounded execution retry[\s\S]*uncertain-outcome\s+reconciliation/i, productRoot);
+    assert.doesNotMatch(generatedClient, /caller owns every post-result action/i, productRoot);
+    assert.doesNotMatch(generatedClient, /caller owns[^.]*retry|caller owns[^.]*reconciliation/i, productRoot);
     assert.equal(generatedContract, contract, productRoot);
     assert.equal(generatedSchema, schemaText, productRoot);
+  }
+});
+
+test("canonical and generated auth handoff keeps business retry and reconciliation service-owned", async () => {
+  const files = [
+    "source/platform/authentication-context-integrity/SKILL.md",
+    "source/platform/bos-mcp-client/SKILL.md",
+    "source/platform/bos-mcp-client/references/runtime-continuation-contract.md",
+    "source/platform/bos-mcp-client/references/external-product-authentication-handoff.md"
+  ];
+  const clientRoots = [
+    "clients/codex/plugins",
+    "clients/claude/plugins",
+    "clients/copilot/products",
+    "clients/gemini/extensions"
+  ];
+  for (const clientRoot of clientRoots) {
+    files.push(`${clientRoot}/bos/skills/authentication-context-integrity/SKILL.md`);
+    for (const product of ["bos", "education-center"]) {
+      files.push(`${clientRoot}/${product}/skills/bos-mcp-client/SKILL.md`);
+      files.push(`${clientRoot}/${product}/skills/bos-mcp-client/references/runtime-continuation-contract.md`);
+      files.push(`${clientRoot}/${product}/skills/bos-mcp-client/references/external-product-authentication-handoff.md`);
+    }
+  }
+  for (const file of files) {
+    const content = await read(file);
+    assert.doesNotMatch(content, /caller (?:owns|retains)[^.]*\b(?:retry|reconciliation)\b/i, file);
+    assert.doesNotMatch(content, /caller owns every (?:action after|post-result action)/i, file);
   }
 });

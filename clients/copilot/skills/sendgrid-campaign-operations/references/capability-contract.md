@@ -10,18 +10,18 @@ provider readiness. Never infer one operation from another tool's presence.
 |---|---|---|
 | Resolve context | None on the packaged route | Derive one actor, organization, application, installation, role, plugin, and capability scope |
 | Query audience sources | Bounded criteria, source roles, and cutoff | Read configured Calimatic, Lead Director, Gmail, Calendar, camp, enrollment, inquiry, lead, and trial evidence with provenance |
-| Build/preview audience | Cohort definitions, priorities, combination rule, and idempotency key | Normalize guardian identities, retain overlapping cohort tags, deduplicate, evaluate eligibility/suppressions, and persist an audience version |
-| Update audience | Audience identity/version, governed recipient selectors, reason, and idempotency key | Authorize named/manual recipients, reapply policy, create a new version, and invalidate stale approval |
+| Build/preview audience | Cohort definitions, priorities, and combination rule | Normalize guardian identities, retain overlapping cohort tags, deduplicate, evaluate eligibility/suppressions, and persist an audience version |
+| Update audience | Audience identity/version, governed recipient selectors, and reason | Authorize named/manual recipients, reapply policy, create a new version, and invalidate stale approval |
 | Read suppressions | Audience identity/version and cutoff | Return unsubscribe, global suppression, bounce, complaint, invalid, do-not-email, and review-required state with provenance |
-| Create/update draft | Audience identity/version, content/template selector, campaign dates, and idempotency key | Render exact UTF-8 HTML/plain text and validate server-owned sender, reply-to, address, category, tracking, and unsubscribe configuration |
-| Approve campaign | Draft identity/hash, audience version, action, and idempotency key | Persist approval bound to the exact immutable inputs and reject stale approval |
-| Test send | Approved campaign identity and stable test idempotency key | Prepare and execute exactly one governed test effect and return deterministic requested/prepared/accepted/rejected state |
-| List send/schedule | Approved campaign identity and stable live idempotency key | Revalidate approval and execute exactly one legal provider effect under a lock |
-| Pause, resume, cancel, or reschedule | Campaign identity, intended transition, and idempotency key | Validate current server-owned state and execute exactly one legal transition |
-| Reconcile operation | Campaign/operation identity or idempotency key | Determine a prior mutation's canonical outcome before replay |
+| Create/update draft | Audience identity/version, content/template selector, and campaign dates | Render exact UTF-8 HTML/plain text and validate server-owned sender, reply-to, address, category, tracking, and unsubscribe configuration |
+| Approve campaign | Draft identity/hash, audience version, and action | Persist approval bound to the exact immutable inputs and reject stale approval |
+| Test send | Approved campaign identity | Prepare and execute exactly one governed test effect and return deterministic requested/prepared/accepted/rejected state |
+| List send/schedule | Approved campaign identity | Revalidate approval and execute exactly one legal provider effect under a lock |
+| Pause, resume, cancel, or reschedule | Campaign identity and intended transition | Validate current server-owned state and execute exactly one legal transition |
+| Read operation state | Exact server-returned state action | Return the canonical outcome without replaying a provider effect |
 | Reconcile events | Campaign identity and bounded cutoff/cursor | Authenticate provider events, deduplicate them, and advance the cursor atomically |
 | Report statistics | Campaign identity, mode, dimensions, and cutoff | Return separate test/live aggregates and freshness for every required metric |
-| Upsert capability issue | Missing operation, sanitized context, attempts, completed work, impact, acceptance criteria, and stable key | Create/update one tenant-scoped issue through PO/GO orchestration and return a durable ID |
+| Upsert capability issue | Missing operation, sanitized context, attempts, completed work, impact, and acceptance criteria | Create/update one tenant-scoped issue idempotently through PO/GO orchestration and return a durable ID |
 
 The baseline `education_center_send_sendgrid_campaign` supports only the
 semantics declared by its live schema. Its presence does not prove audience,
@@ -35,9 +35,11 @@ lock when needed, invoke tenant-scoped GO repositories, emit events/metrics,
 write an audit, and return a deterministic result. The client supplies no raw
 database changes, provider payload, provider account selector, or authority ID.
 
-Provider effects use stable campaign/mode identities and idempotency keys. A
-repeated accepted test or list operation returns the canonical prior result.
-Unknown outcomes require reconciliation before retry.
+Provider effects use service-owned semantic request identity, locking, and
+idempotency. The client supplies no idempotency key, attempt identity, retry
+counter, or reconciliation decision. A repeated semantic request returns the
+canonical prior result. Unknown outcomes return an exact state action; the
+client observes that action and never replays the effect.
 
 ## Audience rules
 
@@ -58,9 +60,8 @@ Unknown outcomes require reconciliation before retry.
 ## Issue record
 
 After manifest refresh and bounded recovery, upsert one structured record for a
-still-missing required operation. Use a stable key derived from product,
-missing semantic operation, manifest fingerprint, and active workflow—not from
-raw tenant identifiers. Include:
+still-missing required operation. The service resolves and reuses its semantic
+issue identity; the client supplies no key. Include:
 
 - missing semantic operation and observed tool/schema state;
 - sanitized server-returned context summary and manifest fingerprint;

@@ -106,12 +106,17 @@ Gmail-to-Google-Ads workflow. The client instruction can be:
 Use the canonical BOS Create envelope. BOS derives `org_id`, `app_code`,
 `installed_app_id`, and `delegated_role_id` from the exact authenticated grant;
 omit those authority fields from the operation. Set `source_type` to
-`google_ads`, `source_identity` to `offline_conversions`, and provide a stable
-`idempotency_key`. Put ISO `start_date`, ISO `end_date`, optional `dry_run`,
+`google_ads` and `source_identity` to `offline_conversions`. Put ISO
+`start_date`, ISO `end_date`, optional `dry_run`,
 and optional `max_results` inside `changes`. Never pass Gmail credentials,
 Google OAuth tokens, Google Ads customer IDs, developer tokens, or
 conversion-action resources; the server resolves those from the installed
 `gmail` and `google-ads` dependencies.
+
+Supply no client request identity, idempotency key, attempt identity, retry
+counter, reconciliation state, or provider version field. BOS Service derives
+request identity and owns idempotency, bounded retries, and uncertain-outcome
+reconciliation.
 
 Use `dry_run: true` for a preview. A call with `dry_run: false` is an external
 Google Ads mutation and requires the user's request or approval for that exact

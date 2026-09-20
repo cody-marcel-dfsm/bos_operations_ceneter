@@ -108,10 +108,13 @@ feedback meaningless.
 
 ## Submit and report
 
-1. Create one UUID `client_submission_id` and retain it for the attempt.
-2. Call `bos_submit_feedback` through the BOS connection with
+1. Call `bos_submit_feedback` through the BOS connection with
    only the allowlisted feedback fields. The server derives execution scope.
-3. On a transport or server failure, retry once with the same submission ID.
+2. Supply no client submission identity, idempotency key, attempt identity,
+   retry counter, or reconciliation state. BOS Service derives request identity
+   and owns idempotency and uncertain-outcome reconciliation.
+3. On an uncertain result, follow only the exact service-returned state action.
+   Never replay the submission.
 4. On success, report the feedback ID, canonical target, `received` status, and
    server timestamp. Do not claim triage, assignment, prioritization, or a
    product change.

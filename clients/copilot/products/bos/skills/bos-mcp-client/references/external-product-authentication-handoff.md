@@ -11,16 +11,16 @@ REST endpoint, MCP operation, server registration, or product-specific service.
 
 ## Ownership
 
-- The caller owns its package, domain skills, pending operation,
-  discovery, retry, reconciliation, cache, continuation,
-  and presentation.
+- The caller owns its package, domain skills, pending semantic request,
+  discovery, approval, cache, semantic continuation, and presentation.
 - BOS owns the platform connection, receives a minimal authentication delegation
   request, and coordinates its host-native OAuth flow.
 - The client host owns OAuth metadata discovery, dynamic registration when
   required, PKCE, credential storage, refresh, bearer attachment, and its native
   consent surface.
 - The BOS service issues and validates resource-scoped grants and canonical
-  execution authority.
+  execution authority. It owns API idempotency, bounded execution retry, and
+  uncertain-outcome reconciliation for the resumed business operation.
 
 Neither caller nor BOS skill receives, copies, persists, or transfers an access
 token, refresh token, authorization code, provider credential, or reusable
@@ -75,9 +75,10 @@ structured condition.
 
 The result contains no credential, authorization header, internal organization,
 application, installation, role, provider, database identifier, or authority
-selector. The caller owns every action after this result, including refreshing
-BOS discovery, reconciling uncertain work, and deciding whether
-or how to continue.
+selector. After this result, the caller refreshes BOS discovery and continues
+its preserved semantic request through the current service contract. It follows
+only the service's authoritative result or exact public recovery action and
+supplies no retry or reconciliation state.
 
 ## Required execution
 
@@ -86,5 +87,7 @@ or how to continue.
    and the host's native authentication lifecycle.
 3. Coordinate authentication bootstrap or recovery without accepting the
    caller's operation state or selecting authorization scope.
-4. Return the typed readiness result. Do not refresh the caller's MCP, replay its
-   operation, reconcile its mutation, or control its continuation.
+4. Return the typed readiness result. The authentication handoff does not
+   refresh the caller's MCP, accept its operation state, or control its semantic
+   continuation. After readiness, BOS Service retains ownership of business-API
+   idempotency, execution retry, and uncertain-outcome reconciliation.

@@ -8,8 +8,8 @@ description: Build, approve, test, send, recover, monitor, and report permission
 Use `bos-mcp-client` for authenticated context, live tool discovery, manifest
 refresh, same-task continuation, and provider authorization recovery. Use
 `education-center-service-routing` for every configured evidence source. Use
-only the installed BOS platform connection for runtime
-authority. The service derives organization, application, installation, role, plugin, SendGrid
+only the installed BOS platform connection for runtime authority, and execute
+every discovered semantic operation through the BOS platform MCP. The service derives organization, application, installation, role, plugin, SendGrid
 binding, sender configuration, and credentials from the validated grant.
 
 Read [references/client-workflow.md](references/client-workflow.md) for the
@@ -38,10 +38,12 @@ against a sanitized trace when validating an end-to-end client execution.
    configuration, and physical address returned by the server-owned draft.
 6. Require explicit approval bound to the exact content hash, audience version,
    and send action. Invalidate approval if any bound value changes.
-7. Execute exactly one deterministic test send through the BOS platform MCP. Reconcile its
-   result and require successful preparation/acceptance before the list send.
-8. Execute the approved list send once with its stable idempotency key.
-   Reconcile uncertain outcomes before any retry.
+7. Execute exactly one deterministic test send through the discovered BOS
+   operation. Require the authoritative result to establish successful
+   preparation/acceptance before the list send.
+8. Execute the approved list send through its discovered semantic operation.
+   Supply no client idempotency key, retry state, or reconciliation decision;
+   follow only the service's authoritative result or returned state action.
 9. Report test and live results separately with category and reporting cutoff.
    Label HTTP 202 as `accepted`; count `delivered` only from authenticated
    delivery-event evidence.

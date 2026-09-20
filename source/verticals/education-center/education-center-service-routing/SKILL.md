@@ -67,18 +67,20 @@ Never manufacture `source_type` or `source_identity` from the person's email,
 phone, name, a role/context hint, or the word “manual.” If the live contract
 requires an undiscoverable source selector, report that exact contract gap.
 
-Check for duplicates with the supplied identity fields before creating. Reuse
-the original idempotency key while reconciling a failed or uncertain request;
-never replay an uncertain create under a fresh key. For a definitive rejected
-selector, correct it only from current server evidence within the same requested
+Submit the exact identity fields required by the discovered create contract.
+Supply no client duplicate pre-check, request identity, idempotency key, attempt
+identity, retry counter, or reconciliation state. BOS Service resolves
+uniqueness, owns idempotency, and returns the authoritative typed outcome. For
+a definitive rejected selector, correct it only from current server evidence within the same requested
 application and authority. A genuine access denial never authorizes another route.
 
 Inspect structured results before reporting success. `isError: false` or a
 message saying the operation completed is insufficient: require the requested
 create to be present in `succeeded` with no corresponding failure. A result with
 `complete: false`, an empty success list, or `source_mutation_failed` is a failed
-or partial operation. Preserve the exact per-source error, reconcile uncertain
-outcomes with a read, and never claim that the lead was created. After success,
+or partial operation. Preserve the exact per-source error and follow only an
+exact returned state action for an uncertain outcome; never replay the create.
+After success,
 read the new record and present its verified details and graph position through
 `crm-customer-journey`.
 

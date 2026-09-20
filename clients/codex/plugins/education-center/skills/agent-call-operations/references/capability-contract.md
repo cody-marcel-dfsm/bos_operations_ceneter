@@ -10,7 +10,11 @@ read-only `education_center_get_agent_call_status`. They are owned by the
 | Field | Requirement |
 | --- | --- |
 | `lead_id` | Required UUID copied exactly from the matched search record's `attributes.available_actions[].arguments.lead_id` for the `agent_call` action; never use the top-level federated `record_ref` |
-| `idempotency_key` | Required stable key for this user request, lead, and intended call |
+
+The client supplies no idempotency key, attempt identity, retry counter, or
+reconciliation state. BOS Service derives the semantic request identity within
+the authenticated scope and owns duplicate suppression, retry, and uncertain-
+outcome reconciliation.
 
 The status operation requires `lead_id` and accepts either `call_log_id` or
 `call_id` to select an exact call. When both call selectors are omitted it
@@ -32,12 +36,12 @@ The authenticated router dispatches to a dedicated PO operation. The PO must:
 3. verify the lead's current FSM state exposes the `agent_call` action;
 4. validate scoped `education-center-automated-outreach` and voice-provider
    readiness for dispatch;
-5. acquire an operation lock and enforce the supplied idempotency key;
+5. derive the service-owned semantic request identity and acquire its operation lock;
 6. invoke the existing bound Agent Call service without generic plugin
    passthrough;
 7. persist audit, operation, and provider-dispatch state through PO/GO paths;
 8. return a deterministic operation identity and canonical state; and
-9. reconcile a repeated key without dispatching a second provider call.
+9. reconcile a repeated semantic request without dispatching a second provider call.
 
 The read operation uses the same authenticated tenant, installation, role, and
 lead scope. It returns persisted BOS evidence including call-log and provider

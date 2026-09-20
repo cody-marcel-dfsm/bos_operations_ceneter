@@ -81,9 +81,8 @@ test("plugin settings skills encode cache-first reads and delegated resilient mu
     operation,
     /no HTML[\s\S]*report\s+file[\s\S]*renderer[\s\S]*UI\s+service/i
   );
-  assert.match(operationContract, /five total apply attempts/i);
-  assert.match(operationContract, /1, 2, 4, and 8 seconds/i);
-  assert.match(operationContract, /reconcile an uncertain mutation before replay/i);
+  assert.match(operationContract, /exact returned state action[\s\S]*without replaying the mutation/i);
+  assert.match(operationContract, /client does not create or manage an[\s\S]*attempt counter[\s\S]*retry schedule[\s\S]*reconciliation decision[\s\S]*execution state/i);
   assert.match(initialization, /after host-managed BOS authentication/i);
   assert.match(initialization, /customer\/client-settings initializer/i);
   assert.match(initialization, /OAuth grant binds exactly one[\s\S]*organization[\s\S]*application[\s\S]*installation[\s\S]*role/i);

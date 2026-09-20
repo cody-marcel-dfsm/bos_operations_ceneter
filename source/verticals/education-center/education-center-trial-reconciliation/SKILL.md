@@ -25,7 +25,9 @@ query planning, identity expansion, cross-source matching, classification, and
 reporting in the GPT client.
 When Gmail or Calendar reports an authentication error, follow
 `bos-mcp-client` authentication recovery and prompt the user to complete Google
-authorization through the secure BOS setup page before retrying once.
+authorization through the secure BOS setup page. After readiness, follow only
+the exact service-returned continuation action; never replay the failed business
+request on the client's own schedule.
 Use `bos-visual-output` for the final result. Prefer a chronological trial
 timeline with direct status labels, then a compact family action table and
 draft list.

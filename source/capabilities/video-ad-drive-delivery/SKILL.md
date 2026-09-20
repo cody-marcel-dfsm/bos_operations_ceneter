@@ -23,14 +23,16 @@ BOS resolves the Video Ads subservice for each tool.
    checksum, and creation timestamp. Never request or expose the configured
    folder identity.
 4. When the generation is complete and its Drive transfer alone has failed,
-   call `video_ads_retry_transfer` once with the generation ID and a unique
-   idempotency key. This operation cannot regenerate media or change the
+   call the discovered transfer operation with the generation ID and no client
+   request identity, idempotency key, attempt identity, retry counter, or
+   reconciliation state. This operation cannot regenerate media or change the
    destination.
-5. Poll `video_ads_get_generation` at the server-returned cadence and return the
-   terminal Drive artifact or sanitized failure.
+5. Follow the exact returned state action at the server-returned cadence and
+   return the terminal Drive artifact or sanitized failure.
 
 The BOS service owns the server-to-Drive transfer, destination folder,
-dependency credential, and idempotency contract. Never call a generic Drive
+dependency credential, request identity, idempotency, bounded retries, and
+uncertain-outcome reconciliation. Never call a generic Drive
 write operation from this workflow. Fail closed when the two exact Video Ads
 operations are unavailable.
 

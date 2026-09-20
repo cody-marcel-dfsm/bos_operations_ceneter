@@ -49,8 +49,11 @@ configuration as distinct validated dimensions.
 - Background jobs carry the same validated scope as interactive operations.
 - The agent owns MCP transport and session recovery. On a closed stream or
   session, it reconnects the configured endpoint, rediscovers tools,
-  revalidates context, and resumes the interrupted request with bounded retry.
-  It never delegates reconnection or request resubmission to the user.
+  and revalidates context. It then follows only an exact host- or
+  service-returned continuation action and its declared timing. When none is
+  available, it preserves the interrupted request and reports the exact failed
+  operation without resubmitting it. It never delegates reconnection to the
+  user.
 - Expose BOS as a remote HTTPS Streamable HTTP MCP server. Claude account or
   organization Web connectors, OAuth-capable GitHub Copilot, and Gemini declare
   the immutable resource URL. Claude marketplace plugins contain skills and
@@ -124,8 +127,10 @@ MCP-session condition, and optional host-native correlation. It
 caller's product identity, domain operation, continuation, retry, reconciliation,
 cache, or presentation state, and it never receives or transfers a token.
 
-The caller owns every action after the readiness result, including connection
-and discovery refresh, continuation, retry, and mutation reconciliation. A
-native consent surface may still require the user's direct interaction; BOS
-coordinates that host surface and reports its readiness state without accepting
-the caller's pending operation.
+After the readiness result, the caller owns connection and discovery refresh,
+approval, cache, semantic continuation, and presentation. BOS Service owns API
+idempotency, bounded execution retry, and uncertain-outcome reconciliation; the
+caller follows only exact service-returned actions and supplies no execution
+state. A native consent surface may still require the user's direct interaction;
+BOS coordinates that host surface and reports its readiness state without
+accepting the caller's pending operation.

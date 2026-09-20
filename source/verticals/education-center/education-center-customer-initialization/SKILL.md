@@ -55,8 +55,9 @@ customer-owned values. A failed shared-store write leaves setup incomplete.
    suggestion that requires confirmation, never as established identity.
 4. Derive the IANA timezone from the active client's local system context.
 5. After BOS authentication, call `bos_get_context`. If that alias is absent,
-   follow `bos-mcp-client` connection recovery and live-tool discovery once,
-   then retry. Use the selected authorized context's organization label as canonical
+   follow `bos-mcp-client` connection recovery and live-tool discovery. When the
+   alias becomes callable, perform the original context read once. Use the
+   selected authorized context's organization label as canonical
    non-secret organization metadata. For a legacy scoped grant, use its one
    organization; never reinterpret it as a multi-context grant. Request selectors
    remain untrusted and never become authority.

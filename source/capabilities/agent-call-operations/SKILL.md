@@ -28,9 +28,8 @@ before invoking the call mutation.
    When the action is absent, stop before provider recovery or connection setup;
    a missing action grants no basis to infer which service would make the lead
    eligible.
-5. Treat each explicit user request to initiate a call as a new dispatch
-   request. Create a fresh idempotency key for that request, including when it
-   targets the same lead in the same conversation, and call
+5. Treat each explicit user request to initiate a call as one semantic dispatch
+   request and call
    `education_center_initiate_agent_call` with the exact `lead_id` from the
    matched record's `attributes.available_actions[]` entry whose `action_id`
    is `agent_call` and whose `tool` is
@@ -40,27 +39,29 @@ before invoking the call mutation.
    a mutation.
    Omit organization, application, installation, role, plugin, action, phone,
    and provider identifiers.
-6. Reuse that key only for a transport retry, provider-authorization recovery,
-   or reconciliation of this exact dispatch request. If provider authorization
+6. Supply no client idempotency key, retry counter, attempt identity, or
+   reconciliation state. BOS Service derives the request identity, owns
+   idempotency and uncertain-outcome reconciliation, and returns the
+   authoritative result or exact recovery action. If provider authorization
    is required, preserve and follow the exact secure recovery action returned
    by the BOS Service for this scoped operation. After recovery is current,
-   resume the same call request: refresh context and operation status,
-   then retry the same `tools/call` once with the same lead and key. When
-   the retried operation still requests authorization, return the exact
-   authorization failure, state that no call was
-   placed when the evidence proves it, and preserve the same call request for
+   invoke only the exact service-returned continuation or state action. Never
+   resubmit the semantic dispatch request as recovery. When no usable action is
+   returned, report the exact authorization failure, state that no call was
+   placed only when the evidence proves it, and preserve the call intent for
    server repair. Never connect or name an alternative provider based on
    package text.
-7. If the result is uncertain after a disconnect, call
-   `education_center_get_agent_call_status` with the same lead and the returned
-   call-log or provider-call reference. This is the only operation used for
-   call outcome reconciliation; never replay the mutation to read status.
-8. When the first result is `accepted`, `queued`, or `in_progress`, keep the
-   task active for a bounded status follow-up. Call
-   `education_center_get_agent_call_status` at short intervals for up to 60
-   seconds, stopping when it becomes terminal or a blocker requires user
-   action. Reuse the original lead and call reference throughout; never create
-   a second call.
+7. If the result is uncertain after a disconnect, invoke only the exact
+   service-returned bodyless state action. Never construct a status request,
+   select a status operation, or replay the mutation. When no usable state
+   action exists, report the outcome as unverified and preserve the returned
+   support reference.
+8. When the result is `accepted`, `queued`, or `in_progress`, keep the task
+   active while the service returns another state action. Wait exactly the
+   service-declared interval, invoke that action verbatim, and use each newly
+   returned action for the next observation. Stop at a terminal result or a
+   blocker requiring user action. Never choose a polling cadence or create a
+   second call.
 9. Treat follow-up questions about status, statistics, outcome, duration,
    summary, transcript availability, or the call log as read-only. Answer them
    with `education_center_get_agent_call_status`; never invoke the call mutation
@@ -142,9 +143,10 @@ developer repair instructions out of the user-facing error.
   incomplete.
 - When the live context advertises Agent Call but the current callable manifest
   omits `education_center_initiate_agent_call`, preserve the matched lead and
-  stable idempotency key and invoke the host's same-task continuation controls.
+  semantic call intent and invoke the host's same-task continuation controls.
   Refresh the BOS platform MCP server schema, rediscover tools, call
-  `bos_get_context`, and resume the pending mutation once. Do not end the task
+  `bos_get_context`, and, when the tool becomes available, perform the original
+  dispatch once. Do not end the task
   by asking the user to reconnect, retry, resend, or start another task.
 - Report `server_capability_unavailable` only after the refreshed same-task
   continuation also omits `education_center_initiate_agent_call`. State that no

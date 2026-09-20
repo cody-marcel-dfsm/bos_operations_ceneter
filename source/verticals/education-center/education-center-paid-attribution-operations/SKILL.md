@@ -55,8 +55,10 @@ browser handoff, poll readiness, and resume the pending operation once.
 9. Execute an offline conversion or Google Ads campaign update only when live
    domain-specific tool discovery contains the exact mutation schema and the user has
    requested or approved the exact target and payload. Re-read the target before
-   mutation, use the provider's idempotency/version fields, and verify afterward.
-   Treat the call result as authoritative for capability and provider access.
+   mutation, send only its semantic business inputs, and verify afterward.
+   Supply no client request identity, idempotency key, attempt identity, retry
+   counter, reconciliation state, or provider version field. Treat the call
+   result as authoritative for capability and provider access.
 10. When the operation returns an authorization or capability denial, report
     `BLOCKED: BOS Google Ads capability unavailable`, preserve the upload-ready
     preview, and identify the server-returned missing capability or provider

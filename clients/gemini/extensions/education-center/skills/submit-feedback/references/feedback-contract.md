@@ -10,7 +10,6 @@ BOS derives the authorized tenant and installation from the validated grant.
 
 ## Required fields
 
-- `client_submission_id`: UUID used unchanged for one safe retry
 - `category`: `bug`, `enhancement`, `usability`, `documentation`,
   `incorrect-result`, `missing-capability`, or `other`
 - `severity`: `low`, `medium`, `high`, or `blocking`
@@ -51,7 +50,6 @@ identifiers, or legacy instruction bodies.
 
 ```json
 {
-  "client_submission_id": "00000000-0000-4000-8000-000000000003",
   "category": "enhancement",
   "severity": "medium",
   "target": {
@@ -79,8 +77,8 @@ identifiers, or legacy instruction bodies.
 
 ## Success
 
-Expect `status: received`, a durable `feedback_id`, `feedback_uuid`, the same
-`client_submission_id`, `received_at`, a canonical `target`, and a sanitized
+Expect `status: received`, a durable `feedback_id`, `feedback_uuid`,
+`received_at`, a canonical `target`, and a sanitized
 `correlation_id`. The service does not echo the feedback body.
 
 ## Errors
@@ -91,5 +89,11 @@ Expect `status: received`, a durable `feedback_id`, `feedback_uuid`, the same
 - `invalid_request / invalid_feedback_payload`: correct named fields only.
 - `invalid_target / feedback_target_not_resolved`: correct the selector.
 - `rate_limited / feedback_rate_limit_exceeded`: report retry time.
-- `unavailable / feedback_storage_unavailable`: retry once with the same ID.
-- `409 / idempotency_conflict`: stop; never create a replacement submission.
+- `unavailable / feedback_storage_unavailable`: follow an exact returned state
+  action when supplied; otherwise report the temporary service failure.
+- `409 / idempotency_conflict`: stop and report the service-owned conflict.
+
+The client supplies no request identity, idempotency key, attempt identity,
+retry counter, reconciliation state, or execution state. BOS Service derives
+request identity and owns idempotency, bounded retries, and uncertain-outcome
+reconciliation.

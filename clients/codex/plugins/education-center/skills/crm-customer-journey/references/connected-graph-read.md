@@ -6,8 +6,10 @@ BOS connection scoped to the authorized application and select the descriptor by
 under the connection's exact scoped grant; never build a URI or API route from
 an identifier. Invoke the descriptor's exact deterministic HTTPS method and path
 with its current schema and audience. The product MCP supplies discovery; the
-API response supplies graph evidence. Apply one bounded read-only timeout retry
-before falling back to a partial journey.
+API response supplies graph evidence. For a timeout, follow only the exact
+service-returned recovery action and declared timing. When none exists, preserve
+verified record evidence and fall back to a partial journey without replaying
+the graph request.
 
 ## lead-director-connected-graph/v1
 
