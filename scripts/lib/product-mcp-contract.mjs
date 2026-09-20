@@ -1,5 +1,6 @@
 import { basename, join, relative, resolve } from "node:path";
 import { readFile } from "node:fs/promises";
+import Ajv2020 from "ajv/dist/2020.js";
 
 import {
   mcpServerName,
@@ -123,13 +124,23 @@ function validateExternalHandoff(metadata, requirements, metadataPath) {
     }
   }
   const categories = handoff.recognized_condition_categories;
-  if (!Array.isArray(categories) || expected.recognized_condition_categories.some(
-    (category) => !categories.includes(category)
-  )) {
+  const expectedCategories = requirements.contract_version === "1"
+    ? expected.recognized_condition_categories.filter(
+      (category) => category !== "MCP_WWW_AUTHENTICATE"
+    )
+    : expected.recognized_condition_categories;
+  const validCategories = requirements.contract_version === "1"
+    ? Array.isArray(categories) && expectedCategories.every(
+      (category) => categories.includes(category)
+    )
+    : JSON.stringify(categories) === JSON.stringify(expectedCategories);
+  if (!validCategories) {
     violations.push(finding(
       "authentication_condition_categories",
       metadataPath,
-      "Authentication handoff must recognize every BOS v1 authentication and recovery condition category."
+      requirements.contract_version === "1"
+        ? "Authentication handoff must recognize every legacy BOS authentication and recovery condition category."
+        : "Authentication handoff must declare the exact ordered BOS v1 authentication and recovery condition category list."
     ));
   }
   for (const [field, expectedValue] of Object.entries(expected.readiness_result)) {
@@ -374,7 +385,7 @@ export async function verifyExternalProductPackage({
   }
 
   if (requirements.contract_version === "2") {
-    return verifyExternalFoundationPackage(resolvedPackageRoot, metadata, requirements);
+    return verifyExternalFoundationPackage(root, resolvedPackageRoot, metadata, requirements);
   }
 
   if (metadata.schema_version !== "1") {
@@ -516,7 +527,12 @@ export async function verifyProductMcpContract({
           : client === "gemini" ? `clients/gemini/extensions/${product.name}`
           : `clients/${client}/plugins/${product.name}`);
         const metadata = await readJson(join(packageRoot, ".bos-product.json"));
-        const result = await verifyExternalFoundationPackage(packageRoot, metadata, contract.external_product_contract);
+        const result = await verifyExternalFoundationPackage(
+          root,
+          packageRoot,
+          metadata,
+          contract.external_product_contract
+        );
         violations.push(...result.violations);
         if (metadata.application_name !== product.application_name || metadata.name !== product.name) {
           violations.push(finding("product_metadata_drift", packageRoot, "Dependent application identity differs from its manifest."));
@@ -586,9 +602,22 @@ export async function verifyProductMcpContract({
   return contractResult(contract, violations);
 }
 
-async function verifyExternalFoundationPackage(packageRoot, metadata, requirements) {
+async function verifyExternalFoundationPackage(repositoryRoot, packageRoot, metadata, requirements) {
   const violations = [];
   const add = (code, message) => violations.push(finding(code, requirements.metadata_file, message));
+  const publishedSchema = await readJson(join(
+    repositoryRoot,
+    "contracts",
+    "external-product-dependency.v2.schema.json"
+  ));
+  const validatePublishedSchema = new Ajv2020({ strict: false, allErrors: true })
+    .compile(publishedSchema);
+  if (!validatePublishedSchema(metadata)) {
+    add(
+      "external_schema_contract",
+      "Dependent product metadata must satisfy the complete published external-product-dependency/v2 schema."
+    );
+  }
   if (metadata.schema_version !== "2") add("external_schema_version", "BOS-owned connection metadata requires schema 2; legacy v1 ownership is not reinterpreted.");
   if (!productNamePattern.test(metadata.name ?? "") || metadata.name === "bos") add("external_product_name", "Invalid dependent product name.");
   if (typeof metadata.version !== "string" || !metadata.version) add("external_product_version", "Product version is required.");

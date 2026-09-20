@@ -50,7 +50,7 @@ Condition categories are `authentication` and `mcp_session`. Current codes
 include `MISSING_GRANT`, `EXPIRED_TOKEN`,
 `REVOKED_GRANT`, `INVALID_CLIENT`, `INVALID_GRANT`, `RESOURCE_MISMATCH`,
 `REAUTHENTICATION_REQUIRED`, `AUTHORIZATION_REQUIRED`,
-`MCP_SESSION_CLOSED`,
+`MCP_WWW_AUTHENTICATE`, `MCP_SESSION_CLOSED`,
 `PROVIDER_AUTHORIZATION_REQUIRED`. A future structured code in one of these
 categories follows
 the same generic delegation path. A timeout, provider denial, or business
@@ -91,3 +91,9 @@ supplies no retry or reconciliation state.
    refresh the caller's MCP, accept its operation state, or control its semantic
    continuation. After readiness, BOS Service retains ownership of business-API
    idempotency, execution retry, and uncertain-outcome reconciliation.
+
+The installed BOS product implements this wire contract through the packaged
+`bos-external-dependency-adapter`. External products call its public
+`recoverAuthentication` and `waitForAuthentication` methods with the observed
+resource and condition. They never construct a host OAuth flow or receive BOS
+tokens, grants, context handles, or authority selectors.

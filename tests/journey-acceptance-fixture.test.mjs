@@ -7,7 +7,7 @@ import {
   validatePluginsList
 } from "../source/platform/bos-app-discovery/scripts/validate-discovery.mjs";
 import {
-  buildActionRequest,
+  buildIdentityV2JourneyActionRequest,
   interpretJourneyResponse,
   validateRegistrationResponse
 } from "../source/platform/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs";
@@ -23,25 +23,33 @@ const publicAppDescribe = JSON.parse(await readFile(
   ),
   "utf8"
 ));
+const contextHandle = `bos_ctx_v2_${"d".repeat(64)}`;
 
 test("approved journey transcript validates and follows only returned actions", () => {
   assert.deepEqual(fixture.app_describe, publicAppDescribe);
   validateAppDescribe(fixture.app_describe);
   validatePluginsList(fixture.plugins_list);
   const registration = validateRegistrationResponse(fixture.registration);
-  assert.equal(buildActionRequest(registration.action).href, registration.action.href);
+  assert.equal(
+    buildIdentityV2JourneyActionRequest(registration.action, contextHandle).href,
+    registration.action.href
+  );
 
   const start = interpretJourneyResponse(fixture.start);
   assert.equal(start.next, "client_instruction");
   const completeAction = start.instruction.after_success;
-  assert.deepEqual(JSON.parse(buildActionRequest(
+  assert.deepEqual(JSON.parse(buildIdentityV2JourneyActionRequest(
     completeAction,
+    contextHandle,
     { approval: { confirmed: true } }
   ).body), { approval: { confirmed: true } });
 
   const completedStep = interpretJourneyResponse(fixture.complete);
   assert.equal(completedStep.next, "invoke_action");
-  assert.equal(buildActionRequest(completedStep.action).href, completedStep.action.href);
+  assert.equal(
+    buildIdentityV2JourneyActionRequest(completedStep.action, contextHandle).href,
+    completedStep.action.href
+  );
 
   const progress = interpretJourneyResponse(fixture.in_progress);
   assert.equal(progress.next, "poll_state");
@@ -50,7 +58,9 @@ test("approved journey transcript validates and follows only returned actions", 
     fixture.in_progress.body.current_node.operation,
     "sendgrid-email.campaign.send"
   );
-  assert.equal(buildActionRequest(progress.action).method, "GET");
+  const stateRequest = buildIdentityV2JourneyActionRequest(progress.action, contextHandle);
+  assert.equal(stateRequest.method, "GET");
+  assert.equal(stateRequest.headers["X-BOS-Context-Handle"], contextHandle);
 
   const terminal = interpretJourneyResponse(fixture.completed);
   assert.equal(terminal.next, "terminal");

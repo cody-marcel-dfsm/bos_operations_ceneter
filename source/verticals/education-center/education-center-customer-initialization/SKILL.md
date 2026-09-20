@@ -30,9 +30,9 @@ by privilege rank. An explicit organization choice for a single task does not
 establish a persistent default.
 
 After confirmation, persist `default_context` with `organization_name`, optional
-`installation_name`, and optional `role_code` in the customer overlay and shared
+`installation_name`, and optional `role_label` in the customer overlay and shared
 BOS customer preference store. Values are inert matching preferences; store no
-context handle, authority ID, or token. Re-read both and validate against fresh
+context handle, authority ID, rank, capability, or token. Re-read both and validate against fresh
 context discovery before reporting setup complete. Upgrades preserve these
 customer-owned values. A failed shared-store write leaves setup incomplete.
 

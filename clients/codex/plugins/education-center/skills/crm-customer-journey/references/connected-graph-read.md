@@ -1,11 +1,13 @@
 # Connected graph reads
 
-The active product MCP may advertise an application-owned graph read operation
-on its existing authenticated connection. In Education Center, inspect the
-BOS connection scoped to the authorized application and select the descriptor by its declared app and contract
-under the connection's exact scoped grant; never build a URI or API route from
-an identifier. Invoke the descriptor's exact deterministic HTTPS method and path
-with its current schema and audience. The product MCP supplies discovery; the
+The single BOS platform connection may advertise an application-owned graph
+read operation under its server-authorized application context. In Education
+Center, select the descriptor by its declared app and contract under that
+current context; never build a URI or API route from an identifier. Invoke the
+descriptor's exact deterministic HTTPS method and path through the BOS
+dependency adapter with its current schema and audience. The adapter owns
+identity-v2 transport context; this capability never receives or forwards it.
+BOS discovery supplies the contract; the
 API response supplies graph evidence. For a timeout, follow only the exact
 service-returned recovery action and declared timing. When none exists, preserve
 verified record evidence and fall back to a partial journey without replaying
@@ -23,9 +25,9 @@ Require the live resource contract before interpreting these fields:
 - graphIdentity, graphDigest, discoveryEpoch and provenance identify the
   complete graph observation; evidenceSemantics states its limits.
 
-For v1, accept only a resolved lead with exactly one source whose source_type
+For v1, accept only a resolved record with exactly one source whose source_type
 and source_identity match sourceBinding. Match attributes.node_type_code to
-exactly one nodes[].code. Preserve lead source version/time and graph digest/time
+exactly one nodes[].code. Preserve record source version/time and graph digest/time
 as separate observations. Binding identifiers establish evidence association;
 they are neither authorization inputs nor display labels. Reject missing or
 ambiguous binding, duplicate node codes, dangling edges, conflicting canonical

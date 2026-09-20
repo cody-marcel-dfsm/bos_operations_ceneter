@@ -41,7 +41,10 @@ reference, and examples resource URIs. Use `plugins.list` and copy each required
 `service.describe` input exactly. Keep accessibility and readiness separate.
 Build a concise explain plan from the discovered contracts, author raw BOSL,
 run the packaged local structural checks, and submit that same JSON document to
-the discovered registration operation. The explain plan remains client-side.
+the discovered registration operation. For identity-v2 deterministic HTTP,
+the BOS adapter attaches the current fresh opaque handle under the discovered
+`X-BOS-Context-Handle` header without changing the raw document. The explain
+plan remains client-side.
 
 After registration, follow only complete actions returned by BOS. The
 customer-defined text `identity` is the sole public locator. The service owns
@@ -49,8 +52,12 @@ graph state, transition choice, server nodes, retries, receipts, reconciliation,
 expiry, and idempotency. This branch never uses `bos_resume_operation`, creates
 an idempotency or retry key, carries business data through `complete`, executes
 an underlying server operation while `in_progress`, or constructs a lifecycle
-route. For reconnection recovery, invoke the sole exact returned `state` action
-and resume from its authoritative response.
+route. Invoke every identity-v2 `start`, `complete`, `step`, `failed`, and
+`state` action through the packaged context-binding adapter with the current
+fresh opaque handle; keep the handle out of action payloads and dependent
+products. Legacy/v1 returned actions stay header-free. For reconnection
+recovery, invoke the sole exact returned `state` action and resume from its
+authoritative response.
 
 ## Workflow
 
@@ -72,7 +79,9 @@ and resume from its authoritative response.
 6. Refresh context and live discovery after a platform state change. Resolve
    each domain step through live BOS discovery, then invoke the exact advertised
    deterministic HTTPS method and path using the current schema and the
-   connection's host-managed authorization. Treat MCP discovery as capability evidence and the API result as
+   connection's host-managed authorization. For identity-v2 HTTP execution,
+   copy the advertised `X-BOS-Context-Handle` header name and attach the current
+   opaque selected handle; add no client execution state. Treat MCP discovery as capability evidence and the API result as
    execution evidence.
 7. For an ordinary non-journey operation, when authorization or configuration interrupts execution, preserve the
    server-issued continuation action. After the dependency becomes ready,

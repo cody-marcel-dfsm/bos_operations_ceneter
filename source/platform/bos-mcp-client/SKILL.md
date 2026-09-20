@@ -72,6 +72,13 @@ context returned by `bos_get_context`. Another context requires BOS-owned
 server authorization; package identities and natural-language requests never
 select or expand authority. Existing grants retain their original scope.
 
+For `bos-identity-mcp/v2`, accept only context choices containing the opaque
+`context_handle`, safe organization/application/installation/role labels, and
+`is_default`. Reject raw IDs, ranks, capabilities, or additional authority
+fields. Use the sole server-returned default for otherwise ambiguous roles in
+one selected organization/application/installation; an explicit lower-role
+choice remains task-local. Never persist the handle.
+
 ## External dependent-product authentication handoff
 
 Read and apply
@@ -81,6 +88,10 @@ authentication or MCP-session condition. The stable contract is
 `bos.authentication-handoff/v1`. Its request contains only the exact protected
 resource, a structured authentication or MCP-session condition, and optional
 host-native correlation. Its response reports typed authentication readiness.
+The installed BOS product's `bos-external-dependency-adapter` validates and
+executes this handoff through the existing host connection. Dependent products
+call that seam; they never implement a second transport or receive private BOS
+context.
 
 The caller delegates readiness automatically to installed BOS and retains its
 pending operation. The host stores and attaches the BOS platform grant. Use
@@ -151,6 +162,17 @@ For application requests, use the BOS platform connection with the application s
 already bound by server authorization. Inspect its live tool and resource discovery surfaces after
 `bos_get_context` validates that connection's exact scoped grant. Read any
 advertised operation contract before invoking its deterministic HTTPS API.
+When that contract declares
+`execution.context_header: "X-BOS-Context-Handle"`, copy the static header name
+and attach the current selected opaque handle. Keep the handle out of the
+business payload and add no client authority, OAuth/token, retry, idempotency,
+execution, or journey state.
+
+The same identity-v2 binding applies to raw BOSL registration and every
+server-returned journey `start`, `complete`, `step`, `failed`, and `state`
+HTTP action. Use the packaged journey transport adapter so dependent products
+never receive the handle and action payloads remain unchanged. Legacy/v1
+actions remain header-free.
 
 Use current server-returned operations and app contracts through their supported
 transport. Keep app endpoints, graph identities, service names, and API operation

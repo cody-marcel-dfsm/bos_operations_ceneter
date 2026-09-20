@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.105",
+  "version": "0.4.106",
   "release_status": "active",
   "display_name": "BOS Platform",
   "description": "Run deterministic workflows across a federated agentic service mesh.",
@@ -28,6 +28,7 @@
   ],
   "includes": [
     "platform/bos-workflow-orchestrator",
+    "platform/bos-external-dependency-adapter",
     "platform/bos-mcp-client",
     "platform/bos-app-discovery",
     "platform/bos-cache-maintenance",

@@ -65,16 +65,50 @@ test('foundation contract rejects a second host connection', async () => {
 test('published v2 JSON Schema validates all generated dependent metadata', async () => {
   const schema = await readJson(join(root, 'contracts/external-product-dependency.v2.schema.json'));
   const validate = new Ajv2020({strict: false, allErrors: true}).compile(schema);
+  const expectedConditions = [
+    'MISSING_GRANT', 'EXPIRED_TOKEN', 'REVOKED_GRANT', 'INVALID_CLIENT',
+    'INVALID_GRANT', 'RESOURCE_MISMATCH', 'REAUTHENTICATION_REQUIRED',
+    'AUTHORIZATION_REQUIRED', 'MCP_WWW_AUTHENTICATE', 'MCP_SESSION_CLOSED',
+    'PROVIDER_AUTHORIZATION_REQUIRED'
+  ];
+  assert.deepEqual(
+    schema.properties.authentication_handoff.properties.recognized_condition_categories.const,
+    expectedConditions
+  );
   for (const base of dependentRoots) {
     const metadata = await readJson(join(root, base, 'education-center/.bos-product.json'));
     assert.equal(validate(metadata), true, JSON.stringify(validate.errors));
+    assert.deepEqual(metadata.authentication_handoff.recognized_condition_categories, expectedConditions);
     for (const dependencies of ['not-bos', ['bos', 'bos'], ['bos', 3], []]) {
       assert.equal(validate({...metadata, dependency_products: dependencies}), false);
+    }
+    for (const conditions of [expectedConditions.slice(0, -1), [...expectedConditions, 'EXTRA'], [...expectedConditions].reverse()]) {
+      const changed = structuredClone(metadata);
+      changed.authentication_handoff.recognized_condition_categories = conditions;
+      assert.equal(validate(changed), false);
+      const directory = await mkdtemp(join(tmpdir(), 'bos-condition-negative-'));
+      try {
+        await writeFile(join(directory, '.bos-product.json'), JSON.stringify(changed));
+        const result = await verifyExternalProductPackage({root, packageRoot: directory});
+        assert(result.violations.some(({code}) => code === 'authentication_condition_categories'));
+      } finally { await rm(directory, {recursive: true, force: true}); }
     }
     assert.equal(validate({...metadata, oauth: {}}), false);
     assert.equal(validate({...metadata, mcp_server_name: 'Another-Connection'}), false);
     assert.equal(validate({...metadata, schema_version: '1'}), false);
   }
+});
+
+test('v2 verifier enforces the complete closed authentication handoff schema', async () => {
+  const metadata = await readJson(join(root, 'clients/codex/plugins/education-center/.bos-product.json'));
+  const directory = await mkdtemp(join(tmpdir(), 'bos-full-schema-negative-'));
+  try {
+    metadata.authentication_handoff.unpublished_field = true;
+    await writeFile(join(directory, '.bos-product.json'), JSON.stringify(metadata));
+    const result = await verifyExternalProductPackage({root, packageRoot: directory});
+    assert.equal(result.status, 'failed');
+    assert(result.violations.some(({code}) => code === 'external_schema_contract'));
+  } finally { await rm(directory, {recursive: true, force: true}); }
 });
 
 test('BOS host name stays separate from the immutable OAuth audience and route', async () => {

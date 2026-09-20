@@ -1,7 +1,7 @@
 {
   "schema_version": "2",
   "name": "bos",
-  "version": "0.4.105",
+  "version": "0.4.106",
   "client": "copilot",
   "application_name": "bos",
   "mcp_group_name": "platform",
@@ -36,6 +36,7 @@
       "RESOURCE_MISMATCH",
       "REAUTHENTICATION_REQUIRED",
       "AUTHORIZATION_REQUIRED",
+      "MCP_WWW_AUTHENTICATE",
       "MCP_SESSION_CLOSED",
       "PROVIDER_AUTHORIZATION_REQUIRED"
     ],

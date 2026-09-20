@@ -340,7 +340,12 @@ export function validateCustomerSettings(settings) {
   }
   if (settings.default_context !== undefined) {
     const preference = settings.default_context;
-    const fields = new Set(["organization_name", "installation_name", "role_code"]);
+    const fields = new Set([
+      "organization_name",
+      "installation_name",
+      "role_label",
+      "role_code"
+    ]);
     if (!preference || typeof preference !== "object" || Array.isArray(preference)) {
       failures.push("default_context must be an object");
     } else {
@@ -352,6 +357,9 @@ export function validateCustomerSettings(settings) {
             /[\r\n\u0000-\u001f\u007f]/.test(value)) {
           failures.push(`invalid default_context field: ${key}`);
         }
+      }
+      if (Object.hasOwn(preference, "role_label") && Object.hasOwn(preference, "role_code")) {
+        failures.push("default_context cannot contain both role_label and legacy role_code");
       }
     }
   }

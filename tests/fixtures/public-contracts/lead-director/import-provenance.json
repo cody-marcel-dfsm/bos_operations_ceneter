@@ -1,0 +1,9 @@
+{
+  "schema": "bos-operations-center.public-contract-import/v1",
+  "source_revision": "c3f38b07bbaed9070b4fe7a72bee389af1e18687",
+  "archive_sha256": "69e66fa4f091f094fcda696f2575a0f43359ee7a8c6d7b6756f4c0dcbc078c3d",
+  "manifest_sha256": "28cdaf4594a5ca1a5d936b7019a42945a1608c91714671e3ae0f42c222ab5849",
+  "bundle_sha256": "d025bcba9329ee7551a67316cdb4803afcafbc912529e6e03ebd025bb46df381",
+  "auth_impact": "owner-approved-auth-adjacent-context-selection",
+  "preserved_auth_contract": "oauth-login-token-grant-callback-session-unchanged"
+}

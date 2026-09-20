@@ -6,6 +6,21 @@
   },
   "authorization_scope_policy": "SERVER_AUTHORIZED_CONTEXT_PER_OPERATION",
   "context_selector": "FRESH_SERVER_RETURNED_CONTEXT_HANDLE",
+  "public_context_fields": [
+    "context_handle",
+    "organization_name",
+    "application_name",
+    "installation_name",
+    "role_label",
+    "is_default"
+  ],
+  "deterministic_http_context_header": "X-BOS-Context-Handle",
+  "deterministic_http_context_binding_scope": [
+    "described_operations",
+    "journey_registration",
+    "returned_journey_lifecycle_and_state_actions"
+  ],
+  "legacy_http_context_header": null,
   "preferences": "INERT_INTENT_MATCHED_AGAINST_LIVE_AUTHORIZED_CONTEXTS",
   "legacy_fallback": "RETAIN_EXACT_SINGLE_CONTEXT_GRANT",
   "connection_owner": "bos",

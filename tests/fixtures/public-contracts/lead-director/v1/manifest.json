@@ -3,7 +3,8 @@
   "contract_id": "lead-director-describe",
   "contract_version": "lead-director-describe/v1",
   "owner": "bos",
-  "auth_impact": "none",
+  "auth_impact": "owner-approved-auth-adjacent-context-selection",
+  "preserved_auth_contract": "oauth-login-token-grant-callback-session-unchanged",
   "compatibility": "exact-current-public-contract",
   "generator": "tools/build_lead_director_public_contract.py",
   "canonical_runtime": {
@@ -29,13 +30,13 @@
     {
       "path": "api.contract.response.example.json",
       "media_type": "application/json",
-      "sha256": "d51b9727f5145f62ccdb30221117d892cd9834998107b6d37477c00c45ca2a7d",
+      "sha256": "8cb08ed53cb8db0130f3aa51ff6f70f772a204e70b159b27b8449cf2b98d3b9c",
       "source": "backend/platform_orchestration/lead_director_describe_service.py"
     },
     {
       "path": "api.contract.response.schema.json",
       "media_type": "application/schema+json",
-      "sha256": "228f4ffc9441ada35b7aa8e22d8ed397aa1a630d674a0678bc57cc48c790c332",
+      "sha256": "1f32e2098c743dc77867a461add6d0029df5ab43b972af8901814a4fe50106a6",
       "source": "backend/models/lead_director_plugin_discovery.py"
     },
     {
@@ -59,13 +60,13 @@
     {
       "path": "describe.response.example.json",
       "media_type": "application/json",
-      "sha256": "5d7b364a4662424ae860bb92a2cfa215f0dd00717c8d6d893bae570bfd1804dc",
+      "sha256": "8d0d40da0effa8708cb6d7865830af140f1e74cfab4feaa3e01181223011fe21",
       "source": "backend/tests/fixtures/agent_mcp/v1/lead_director_describe_response.json"
     },
     {
       "path": "describe.response.schema.json",
       "media_type": "application/schema+json",
-      "sha256": "4b2b4ba07328fb061b6850f796dd007280b82e8ff7ff0476a1b72b3f069b0feb",
+      "sha256": "1bde5bd2ee98a9194b3eefc223172f63f3d587120021dd9b748c8499a43ce289",
       "source": "backend/tests/fixtures/agent_mcp/v1/lead_director_describe.schema.json"
     },
     {
@@ -75,5 +76,5 @@
       "source": "backend/tests/fixtures/agent_mcp/v1/lead_director_operation_examples.json"
     }
   ],
-  "bundle_sha256": "96b222b222aa2e71e359f9e0427cfbb5567be77152afdfc82d131277c75c45de"
+  "bundle_sha256": "d025bcba9329ee7551a67316cdb4803afcafbc912529e6e03ebd025bb46df381"
 }

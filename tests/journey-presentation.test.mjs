@@ -11,11 +11,15 @@ import {
   presentClientResolution
 } from "../source/platform/bos-workflow-orchestrator/scripts/journey-presentation.mjs";
 
+const contextHandle = `bos_ctx_v2_${"b".repeat(64)}`;
+
 const statusContract = {
   operation: "sendgrid-email.campaign.status",
   status: "described",
   execution: {
+    context_header: "X-BOS-Context-Handle",
     method: "POST",
+    transport: null,
     uri: "/bos/apps/lead-director/api/v1/organizations/{organization}/campaign/status"
   },
   input_schema: {
@@ -30,7 +34,9 @@ const metricsContract = {
   operation: "sendgrid-email.campaign.metrics",
   status: "described",
   execution: {
+    context_header: "X-BOS-Context-Handle",
     method: "POST",
+    transport: null,
     uri: "/bos/apps/lead-director/api/v1/organizations/{organization}/campaign/metrics"
   },
   input_schema: {
@@ -53,15 +59,25 @@ const metricsContract = {
 };
 
 test("campaign requests use only the discovered contract and category", () => {
-  const status = buildCampaignStatusRequest(statusContract, "fall-follow-up");
+  const status = buildCampaignStatusRequest(
+    statusContract,
+    "fall-follow-up",
+    contextHandle
+  );
   assert.deepEqual(JSON.parse(status.body), { category: "fall-follow-up" });
   assert.equal(status.href, statusContract.execution.uri);
+  assert.equal(status.headers["X-BOS-Context-Handle"], contextHandle);
 
-  const general = buildCampaignMetricsRequest(metricsContract, "fall-follow-up");
+  const general = buildCampaignMetricsRequest(
+    metricsContract,
+    "fall-follow-up",
+    contextHandle
+  );
   assert.deepEqual(JSON.parse(general.body), { category: "fall-follow-up" });
   const explicit = buildCampaignMetricsRequest(
     metricsContract,
     "fall-follow-up",
+    contextHandle,
     {
       from: "2026-09-16T14:45:00-06:00",
       through: "2026-09-18T12:00:00-06:00"
@@ -78,14 +94,14 @@ test("campaign requests use only the discovered contract and category", () => {
     () => buildCampaignStatusRequest({
       ...statusContract,
       operation: "calendar.events.read"
-    }, "fall-follow-up"),
+    }, "fall-follow-up", contextHandle),
     /exact discovered sendgrid-email\.campaign\.status contract/
   );
   assert.throws(
     () => buildCampaignMetricsRequest({
       ...metricsContract,
       execution: { ...metricsContract.execution, uri: "https://provider.example/metrics" }
-    }, "fall-follow-up"),
+    }, "fall-follow-up", contextHandle),
     /origin-relative URI/
   );
 });

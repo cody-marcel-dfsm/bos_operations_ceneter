@@ -2654,18 +2654,19 @@ test("Education Center ships its referenced journey and graph contracts on every
   }
 });
 
-test("lead and contact detail requests default to graph presentation", async () => {
+test("organization-described Lead Director records default to graph presentation", async () => {
   for (const file of [
     "source/capabilities/crm-customer-journey/SKILL.md",
     "source/capabilities/crm-record-operations/SKILL.md"
   ]) {
     const text = await readFile(`${root}/${file}`, "utf8");
-    assert.match(text, /any lead or contact detail request/i, file);
+    assert.match(text, /organization-described|organization Describe/i, file);
     assert.match(text, /crm-customer-journey/);
   }
   const journey = await readFile(`${root}/source/capabilities/crm-customer-journey/SKILL.md`, "utf8");
   assert.match(journey, /When no goal is requested/);
-  assert.match(journey, /contact-to-lead[\s\S]*ambiguous/);
+  assert.match(journey, /record-to-graph[\s\S]*ambiguous/);
+  assert.match(journey, /Never substitute[\s\S]*`lead`, `contact`, `customer`/i);
   assert.match(journey, /requested fields[\s\S]*below the graph/);
   const visual = await readFile(`${root}/source/platform/bos-visual-output/SKILL.md`, "utf8");
   assert.doesNotMatch(visual, /one record outside journey-position work/);
@@ -2689,7 +2690,7 @@ test("journey reads use the current authenticated operating contract", async () 
 });
 
 
-test("lead creation uses server source selectors and structured success", async () => {
+test("record creation uses server source selectors and structured success", async () => {
   const guidance = await readFile(`${root}/source/capabilities/crm-record-operations/SKILL.md`, "utf8");
   assert.match(guidance, /BOS connection scoped to the authorized application for authenticated[\s\S]*application discovery/i);
   assert.match(guidance, /business operation through[\s\S]*deterministic HTTPS API/i);

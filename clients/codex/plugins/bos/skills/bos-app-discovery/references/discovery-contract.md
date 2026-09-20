@@ -118,6 +118,18 @@ The target workflow requires two host capabilities after BOS discovery:
 2. invoke a discovered HTTPS API with host-managed audience-bound
    authentication through the current grant-bound app contact.
 
+Identity-v2 HTTP execution contracts publish the static
+`execution.context_header` value `X-BOS-Context-Handle`. Copy that name and
+supply the current opaque selected handle in the header on the exact advertised
+request. The handle never enters the business schema, cache key, OAuth
+material, retry identity, idempotency identity, execution state, or journey
+state. For journey registration, the discovered contract supplies this binding;
+every returned lifecycle/state HTTP action receives the same fresh handle from
+the BOS transport adapter even though the action envelope carries no context
+field. Dependent products never receive the handle. Legacy/v1 HTTP remains
+header-free. `execution.transport: "journey_runtime"` selects the journey
+runtime instead and has no context header.
+
 Evaluate each capability only when its step is reached after BOS directory
 discovery and contact validation. Attempt an available supported facility;
 establish an absent facility from the current host inventory. Preserve actual

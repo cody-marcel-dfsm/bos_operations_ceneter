@@ -128,7 +128,7 @@
             "type": "string",
             "minLength": 1
           },
-          "minItems": 11,
+          "minItems": 10,
           "uniqueItems": true
         },
         "readiness_result": {

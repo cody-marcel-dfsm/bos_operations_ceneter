@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import Ajv from "ajv";
+import Ajv2020 from "./vendor/ajv2020.bundle.mjs";
 
 const predicateOperators = new Set([
   "eq",
@@ -66,7 +66,7 @@ function validateWithPublishedSchema(document, publishedSchema, findings) {
     return;
   }
   try {
-    const ajv = new Ajv({ allErrors: true, strict: false });
+    const ajv = new Ajv2020({ allErrors: true, strict: false });
     const validate = ajv.compile(publishedSchema);
     if (!validate(document)) {
       for (const error of validate.errors ?? []) {
@@ -367,7 +367,13 @@ export function validateBoslDocument(document, {
         ));
         continue;
       }
-      if (validOperationLimits(operation)) {
+      if (operation.bosl_server_node !== true || operation.node_type !== "server") {
+        findings.push(finding(
+          "BOSL_OPERATION_NOT_SERVER_EXECUTABLE",
+          `$.operations.${operationId}`,
+          `Discovered operation ${operationId} is not a sanctioned BOSL server-node operation.`
+        ));
+      } else if (validOperationLimits(operation)) {
         operations.set(operationId, operation);
       } else {
         findings.push(finding(
@@ -531,8 +537,13 @@ export function buildExplainPlan({ objective, document, operationContracts = [] 
   const operations = new Map();
   for (const operation of operationContracts) {
     const operationId = operationIdentifier(operation);
-    if (!operationId || !validOperationLimits(operation)) {
-      throw new Error("explain plan operations require the published duration and fan-out limits");
+    if (!operationId ||
+        operation.bosl_server_node !== true ||
+        operation.node_type !== "server" ||
+        !validOperationLimits(operation)) {
+      throw new Error(
+        "explain plan operations require sanctioned BOSL server-node classification and published duration and fan-out limits"
+      );
     }
     if (operations.has(operationId)) {
       throw new Error(`explain plan operation ${operationId} is duplicated`);

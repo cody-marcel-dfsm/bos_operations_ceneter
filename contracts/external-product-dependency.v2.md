@@ -21,6 +21,14 @@ configuration. Domain skills discover authorized operations through BOS and
 preserve the pending request across automatic authentication recovery. Native
 consent may require direct user interaction; a revoked grant stays revoked.
 
+The installed BOS package publishes `bos-external-dependency-adapter` as the
+executable dependency seam. Its public methods are `recoverAuthentication`,
+`waitForAuthentication`, `invokeReturnedAction`, and `invokeStateAction`.
+External products supply only the exact resource/condition or server-returned
+action/payload. BOS injects the existing host transport and fresh context
+provider, keeps tokens and identity-v2 handles private, and preserves
+header-free legacy/v1 invocation.
+
 Validate against `external-product-dependency.v2.schema.json` and run:
 
 ```bash

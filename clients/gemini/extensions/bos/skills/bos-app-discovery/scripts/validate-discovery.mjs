@@ -66,6 +66,7 @@ const secretTokens = new Set([
 const publicSecurityKeys = new Set([
   "application",
   "correlation_id",
+  "context_header",
   "operation",
   "platform",
   "plugin",
@@ -98,6 +99,7 @@ const semanticOperationPattern = /^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$/u;
 const semanticVersionPattern = /^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/u;
 const leadDirectorBoslUriPattern = /^bos:\/\/apps\/lead-director\/bosl\/([a-f0-9]{32})\/(schema|reference|examples)$/u;
 const sha256Pattern = /^[a-f0-9]{64}$/u;
+const bosContextHeader = "X-BOS-Context-Handle";
 
 function requireObject(value, label) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -572,6 +574,45 @@ function validateOperationLimits(limits, label, { complete = false } = {}) {
   }
 }
 
+function validateSourceOperationLimits(limits, label) {
+  requireObject(limits, label);
+  requireExactKeys(
+    limits,
+    new Set([
+      "max_targets",
+      "max_results_per_source",
+      "pagination_supported",
+      "bulk_supported",
+      "streaming_supported",
+      "maximum_duration_seconds",
+      "maximum_fan_out"
+    ]),
+    label
+  );
+  for (const field of ["pagination_supported", "bulk_supported", "streaming_supported"]) {
+    if (!Object.hasOwn(limits, field)) throw new Error(`${label}.${field} is required`);
+    if (limits[field] !== null && typeof limits[field] !== "boolean") {
+      throw new Error(`${label}.${field} must be null or boolean`);
+    }
+  }
+  for (const field of ["max_targets", "max_results_per_source"]) {
+    if (Object.hasOwn(limits, field) && limits[field] !== null &&
+        (!Number.isInteger(limits[field]) || limits[field] < 1)) {
+      throw new Error(`${label}.${field} must be null or a positive integer`);
+    }
+  }
+  if (Object.hasOwn(limits, "maximum_duration_seconds") &&
+      (!Number.isInteger(limits.maximum_duration_seconds) ||
+       limits.maximum_duration_seconds < 1 || limits.maximum_duration_seconds > 900)) {
+    throw new Error(`${label}.maximum_duration_seconds must be an integer from 1 through 900`);
+  }
+  if (Object.hasOwn(limits, "maximum_fan_out") &&
+      (!Number.isInteger(limits.maximum_fan_out) ||
+       limits.maximum_fan_out < 1 || limits.maximum_fan_out > 100)) {
+    throw new Error(`${label}.maximum_fan_out must be an integer from 1 through 100`);
+  }
+}
+
 function validateOperationGuarantees(guarantees, label) {
   requireObject(guarantees, label);
   requireExactKeys(
@@ -632,7 +673,30 @@ function validateContractLink(contract, operation, label) {
 
 function validateExecutionContract(execution, label) {
   requireObject(execution, label);
-  requireExactKeys(execution, new Set(["method", "uri"]), label);
+  requireExactKeys(
+    execution,
+    new Set(["method", "uri", "context_header", "transport"]),
+    label
+  );
+
+  const hasHttpExecution = execution.method !== null && execution.method !== undefined;
+  const hasJourneyRuntime = execution.transport !== null && execution.transport !== undefined;
+  if (hasHttpExecution === hasJourneyRuntime) {
+    throw new Error(`${label} must select exactly one HTTP or journey_runtime transport`);
+  }
+
+  if (hasJourneyRuntime) {
+    if (execution.transport !== "journey_runtime") {
+      throw new Error(`${label}.transport must be journey_runtime`);
+    }
+    for (const field of ["method", "uri", "context_header"]) {
+      if (execution[field] !== null && execution[field] !== undefined) {
+        throw new Error(`${label}.${field} must be null for journey_runtime`);
+      }
+    }
+    return;
+  }
+
   if (!new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]).has(execution.method)) {
     throw new Error(`${label}.method is invalid`);
   }
@@ -640,6 +704,19 @@ function validateExecutionContract(execution, label) {
   if (!execution.uri.startsWith("/") || execution.uri.startsWith("//") ||
       /[\s\\#]/u.test(execution.uri)) {
     throw new Error(`${label}.uri must be a safe returned origin-relative URI`);
+  }
+
+  // The original archived V1 fixtures predate identity-v2 context binding.
+  // Keep validating that exact legacy shape until the immutable archive is
+  // refreshed, while requiring the owner-approved header on every newly
+  // described HTTP execution that declares the expanded execution contract.
+  const expandedExecution = Object.hasOwn(execution, "context_header") ||
+    Object.hasOwn(execution, "transport");
+  if (expandedExecution && execution.context_header !== bosContextHeader) {
+    throw new Error(`${label}.context_header must be ${bosContextHeader}`);
+  }
+  if (execution.transport !== null && execution.transport !== undefined) {
+    throw new Error(`${label}.transport must be null for HTTP execution`);
   }
 }
 
@@ -955,7 +1032,19 @@ export function validateOperationDescription(response) {
     operation.sources.forEach((source, sourceIndex) => {
       const sourceLabel = `${label}.sources[${sourceIndex}]`;
       requireObject(source, sourceLabel);
-      requireExactKeys(source, new Set(["source", "availability"]), sourceLabel);
+      const detailFields = [
+        "input_schema",
+        "output_schema",
+        "receipt_schema",
+        "limits",
+        "guarantees",
+        "error_contract"
+      ];
+      requireExactKeys(
+        source,
+        new Set(["source", "availability", ...detailFields]),
+        sourceLabel
+      );
       validateServiceReference(source.source, `${sourceLabel}.source`);
       if (!new Set([
         "ready",
@@ -964,6 +1053,18 @@ export function validateOperationDescription(response) {
         "temporarily_unavailable"
       ]).has(source.availability)) {
         throw new Error(`${sourceLabel}.availability is invalid`);
+      }
+      const presentDetails = detailFields.filter((field) => Object.hasOwn(source, field));
+      if (presentDetails.length !== 0 && presentDetails.length !== detailFields.length) {
+        throw new Error(`${sourceLabel} must include all source-specific contract fields together`);
+      }
+      if (presentDetails.length === detailFields.length) {
+        validateOperationSchema(source.input_schema, `${sourceLabel}.input_schema`);
+        validateOperationSchema(source.output_schema, `${sourceLabel}.output_schema`);
+        validateOperationSchema(source.receipt_schema, `${sourceLabel}.receipt_schema`);
+        validateSourceOperationLimits(source.limits, `${sourceLabel}.limits`);
+        validateOperationGuarantees(source.guarantees, `${sourceLabel}.guarantees`);
+        validateErrorContract(source.error_contract, `${sourceLabel}.error_contract`);
       }
     });
   });

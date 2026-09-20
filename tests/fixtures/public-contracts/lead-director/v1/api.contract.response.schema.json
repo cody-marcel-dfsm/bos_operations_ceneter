@@ -2,29 +2,109 @@
   "$defs": {
     "LeadDirectorExecutionContract": {
       "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "context_header": {
+              "const": "X-BOS-Context-Handle"
+            },
+            "method": {
+              "type": "string"
+            },
+            "transport": {
+              "type": "null"
+            },
+            "uri": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "method",
+            "uri",
+            "context_header"
+          ]
+        },
+        {
+          "properties": {
+            "context_header": {
+              "type": "null"
+            },
+            "method": {
+              "type": "null"
+            },
+            "transport": {
+              "const": "journey_runtime"
+            },
+            "uri": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "transport"
+          ]
+        }
+      ],
       "properties": {
-        "method": {
-          "enum": [
-            "GET",
-            "POST",
-            "PUT",
-            "PATCH",
-            "DELETE"
+        "context_header": {
+          "anyOf": [
+            {
+              "const": "X-BOS-Context-Handle",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ],
-          "title": "Method",
-          "type": "string"
+          "default": null,
+          "title": "Context Header"
+        },
+        "method": {
+          "anyOf": [
+            {
+              "enum": [
+                "GET",
+                "POST",
+                "PUT",
+                "PATCH",
+                "DELETE"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Method"
+        },
+        "transport": {
+          "anyOf": [
+            {
+              "const": "journey_runtime",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Transport"
         },
         "uri": {
-          "maxLength": 2048,
-          "minLength": 1,
-          "title": "Uri",
-          "type": "string"
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Uri"
         }
       },
-      "required": [
-        "method",
-        "uri"
-      ],
       "title": "LeadDirectorExecutionContract",
       "type": "object"
     },

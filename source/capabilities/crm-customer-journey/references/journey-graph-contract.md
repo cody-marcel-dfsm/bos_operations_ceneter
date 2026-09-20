@@ -1,12 +1,12 @@
-# Lead Director customer-journey client contract
+# Lead Director organization-described record journey contract
 
 ## Ownership and discovery
 
 The Lead Director application graph owns graph identity, nodes, labels,
-transitions, gates, goal semantics, path reachability, lead position, and
-available actions. BOS supplies the authenticated organization and installed-app
-directory. GPT selects Lead Director, queries its returned app MCP contact,
-invokes discovered deterministic HTTPS APIs, reconciles evidence, and renders
+transitions, gates, goal semantics, path reachability, record position, and
+available actions. BOS supplies authenticated discovery for the current
+server-authorized application context. GPT selects Lead Director through that
+single BOS connection, invokes discovered deterministic HTTPS APIs, reconciles evidence, and renders
 the answer.
 
 The Lead Director MCP exposes semantic equivalents of app and graph description,
@@ -31,8 +31,8 @@ graph-configuration error until the app normalizes them.
 
 The client resolves current contracts for three independent read operations:
 
-1. lead search returns one authorized lead selector and provenance;
-2. lead journey returns `current_node_id`, optional `desired_goal_node_id`,
+1. the discovered record search returns one authorized record selector and provenance;
+2. the discovered record journey returns its current node, optional desired goal,
    transition history, pending gates,
    available actions or `recommended_next_actions[]`, observation time,
    freshness, and source service; and
@@ -49,13 +49,13 @@ explicitly labeled partial-evidence diagram defined in the skill.
 
 ## Goal and route completeness
 
-Both ordinary lead details and explicit journey requests require an ordered
+Both ordinary record details and explicit journey requests require an ordered
 current-node-to-goal path, including intermediate nodes. Resolve an explicit
 goal first; otherwise use the app-returned desired goal, app-declared default,
 or sole applicable canonical goal. Present multiple remaining goals as labeled
 alternatives. Never manufacture a goal or rank from conventions.
 
-Graph topology, lead transition history, current action eligibility, and goal
+Graph topology, record transition history, current action eligibility, and goal
 attainment are independent evidence. A verified structural route remains
 renderable with pending nodes and unknown gates when history or actions are
 missing. A route traced only from exact directed graph edges is labeled
@@ -74,7 +74,8 @@ placeholder meets full path acceptance.
 Keep four evidence classes separate:
 
 - graph facts from Lead Director graph discovery;
-- lead facts from Lead Director lead and journey APIs;
+- record facts, organization-described entity shape, custom values, node type,
+  actions, and UI instructions from current Lead Director Describe and journey evidence;
 - external evidence from its independently identified owning app or nested
   Lead Director service; and
 - GPT inference derived from cited observed facts.
@@ -97,7 +98,7 @@ record IDs, private notes, and raw authority values.
 
 ## Failure behavior
 
-- Ambiguous lead resolution stops before journey and path calls.
+- Ambiguous record resolution stops before journey and path calls.
 - Missing app contact, stale discovery, invalid API contract, audience mismatch,
   cross-context reuse, authorization denial, provider recovery, and unavailable
   host capabilities retain their typed failures.

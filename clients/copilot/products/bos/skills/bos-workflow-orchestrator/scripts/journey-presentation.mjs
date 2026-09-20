@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import {
-  buildActionRequest,
+  buildDiscoveredOperationRequest,
   validateClientInstruction,
   validateClientResolution
 } from "./journey-runtime-client.mjs";
@@ -50,38 +50,30 @@ function requireString(value, label) {
   return value;
 }
 
-function discoveredAction(contract, expectedOperation) {
+function validateDiscoveredContract(contract, expectedOperation) {
   requireObject(contract, "operation contract");
   requireString(contract.operation, "operation contract.operation");
   if (contract.operation !== expectedOperation || contract.status !== "described") {
     throw new Error(`operation contract must be the exact discovered ${expectedOperation} contract`);
   }
-  requireObject(contract.execution, "operation contract.execution");
-  requireString(contract.execution.method, "operation contract.execution.method");
-  requireString(contract.execution.uri, "operation contract.execution.uri");
-  if (!contract.execution.uri.startsWith("/") ||
-      contract.execution.uri.startsWith("//") ||
-      /[\s\\#]/u.test(contract.execution.uri)) {
-    throw new Error("operation contract.execution.uri must be a safe origin-relative URI");
-  }
-  requireObject(contract.input_schema, "operation contract.input_schema");
-  return {
-    verb: "query",
-    method: contract.execution.method,
-    href: contract.execution.uri,
-    payload_schema: contract.input_schema
-  };
+  return contract;
 }
 
-export function buildCampaignStatusRequest(contract, category) {
+export function buildCampaignStatusRequest(contract, category, contextHandle) {
   requireString(category, "category");
-  return buildActionRequest(
-    discoveredAction(contract, "sendgrid-email.campaign.status"),
+  return buildDiscoveredOperationRequest(
+    validateDiscoveredContract(contract, "sendgrid-email.campaign.status"),
+    contextHandle,
     { category }
   );
 }
 
-export function buildCampaignMetricsRequest(contract, category, observationWindow) {
+export function buildCampaignMetricsRequest(
+  contract,
+  category,
+  contextHandle,
+  observationWindow
+) {
   requireString(category, "category");
   const payload = { category };
   if (observationWindow !== undefined) {
@@ -93,8 +85,9 @@ export function buildCampaignMetricsRequest(contract, category, observationWindo
       through: observationWindow.through
     };
   }
-  return buildActionRequest(
-    discoveredAction(contract, "sendgrid-email.campaign.metrics"),
+  return buildDiscoveredOperationRequest(
+    validateDiscoveredContract(contract, "sendgrid-email.campaign.metrics"),
+    contextHandle,
     payload
   );
 }

@@ -6,6 +6,15 @@ Treat its href as an opaque server-bound capability. Invoke the complete value
 verbatim; never parse capability material, substitute route scope, or persist
 it as an identifier.
 
+For an identity-v2 BOS context, invoke every returned `start`, `complete`,
+`step`, `failed`, and `state` action through
+`buildIdentityV2JourneyActionRequest`. Supply the current fresh opaque
+`context_handle` to that transport adapter at invocation time. The adapter adds
+only `X-BOS-Context-Handle`; the action envelope, payload, cache, dependent
+product, and presentation never receive or store the handle. Registration uses
+the same current handle through its discovered deterministic HTTPS contract.
+Legacy/v1 actions remain header-free through `buildActionRequest`.
+
 For `payload_schema: null`, send no body and omit `Content-Type`. JSON `null`
 and `{}` are bodies and are invalid. A non-lifecycle operation whose schema is
 a closed empty object receives exactly `{}`. For a declared lifecycle payload,

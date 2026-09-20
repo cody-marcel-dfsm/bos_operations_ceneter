@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import Ajv from "ajv";
+import Ajv2020 from "./vendor/ajv2020.bundle.mjs";
 
 const lifecycleVerbs = new Set(["start", "complete", "step", "failed", "state"]);
 const journeyStatuses = new Set([
@@ -65,6 +65,8 @@ const forbiddenPublicKeys = new Set([
   "user_id"
 ]);
 const actionFields = new Set(["verb", "method", "href", "payload_schema"]);
+const bosContextHandlePattern = /^bos_ctx_v2_[a-f0-9]{64}$/u;
+const bosContextHeader = "X-BOS-Context-Handle";
 
 function requireObject(value, label) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -162,7 +164,7 @@ export function validateActionEnvelope(action, { lifecycleOnly = false } = {}) {
 }
 
 function validatePayload(payload, schema) {
-  const ajv = new Ajv({ allErrors: true, strict: false });
+  const ajv = new Ajv2020({ allErrors: true, strict: false });
   ajv.addFormat("date-time", {
     type: "string",
     validate: (value) =>
@@ -198,6 +200,79 @@ export function buildActionRequest(action, payload) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload)
   };
+}
+
+function bindIdentityV2Context(request, contextHandle, headerName = bosContextHeader) {
+  if (headerName !== bosContextHeader) {
+    throw new Error(`context header must be ${bosContextHeader}`);
+  }
+  requireString(contextHandle, "context_handle");
+  if (!bosContextHandlePattern.test(contextHandle)) {
+    throw new Error("context_handle must be the current opaque identity-v2 handle");
+  }
+  return {
+    ...request,
+    headers: {
+      ...request.headers,
+      [headerName]: contextHandle
+    }
+  };
+}
+
+export function buildIdentityV2JourneyActionRequest(action, contextHandle, payload) {
+  validateActionEnvelope(action, { lifecycleOnly: true });
+  const request = arguments.length >= 3
+    ? buildActionRequest(action, payload)
+    : buildActionRequest(action);
+  return bindIdentityV2Context(request, contextHandle);
+}
+
+export function buildDiscoveredOperationRequest(contract, contextHandle, payload) {
+  requireObject(contract, "operation contract");
+  requireString(contract.operation, "operation contract.operation");
+  if (contract.status !== "described") {
+    throw new Error("operation contract must be described");
+  }
+  requireObject(contract.execution, "operation contract.execution");
+  requireExactKeys(
+    contract.execution,
+    new Set(["method", "uri", "context_header", "transport"]),
+    "operation contract.execution"
+  );
+  if (contract.execution.transport !== null && contract.execution.transport !== undefined) {
+    throw new Error("journey_runtime operations are not direct HTTPS operations");
+  }
+  requireString(contract.execution.uri, "operation contract.execution.uri");
+  if (!contract.execution.uri.startsWith("/") ||
+      contract.execution.uri.startsWith("//") ||
+      /[\s\\#]/u.test(contract.execution.uri)) {
+    throw new Error(
+      "operation contract.execution.uri must be a safe origin-relative URI"
+    );
+  }
+  requireObject(contract.input_schema, "operation contract.input_schema");
+
+  const action = {
+    verb: "query",
+    method: contract.execution.method,
+    href: contract.execution.uri,
+    payload_schema: contract.input_schema
+  };
+  const expandedExecution = Object.hasOwn(contract.execution, "context_header") ||
+    Object.hasOwn(contract.execution, "transport");
+  if (!expandedExecution) {
+    return arguments.length >= 2
+      ? buildActionRequest(action, contextHandle)
+      : buildActionRequest(action);
+  }
+  const request = arguments.length >= 3
+    ? buildActionRequest(action, payload)
+    : buildActionRequest(action);
+  return bindIdentityV2Context(
+    request,
+    contextHandle,
+    contract.execution.context_header
+  );
 }
 
 function validatePublicError(error, label = "error") {
@@ -519,7 +594,10 @@ export function interpretJourneyResponse(response) {
   }
 }
 
-export async function runJourneyRecovery(initialResponse, { wait, invoke }) {
+export async function runJourneyRecovery(
+  initialResponse,
+  { wait, invoke, contextHandle } = {}
+) {
   if (typeof wait !== "function" || typeof invoke !== "function") {
     throw new Error("runJourneyRecovery requires wait and invoke functions");
   }
@@ -528,7 +606,9 @@ export async function runJourneyRecovery(initialResponse, { wait, invoke }) {
     const decision = interpretJourneyResponse(response);
     if (decision.next !== "poll_state") return response;
     await wait(decision.retry_after_seconds);
-    const request = buildActionRequest(decision.action);
+    const request = contextHandle === undefined
+      ? buildActionRequest(decision.action)
+      : buildIdentityV2JourneyActionRequest(decision.action, contextHandle);
     response = await invoke(request);
   }
 }

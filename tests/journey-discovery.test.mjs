@@ -268,8 +268,15 @@ test("app.describe accepts authenticated BOSL resource links without authority d
 });
 
 test("archived BOS public release is byte-intact and every advertised operation conforms", async () => {
-  assert.equal(publicContractManifest.bundle_sha256, "96b222b222aa2e71e359f9e0427cfbb5567be77152afdfc82d131277c75c45de");
-  assert.equal(publicContractManifest.auth_impact, "none");
+  assert.equal(publicContractManifest.bundle_sha256, "d025bcba9329ee7551a67316cdb4803afcafbc912529e6e03ebd025bb46df381");
+  assert.equal(
+    publicContractManifest.auth_impact,
+    "owner-approved-auth-adjacent-context-selection"
+  );
+  assert.equal(
+    publicContractManifest.preserved_auth_contract,
+    "oauth-login-token-grant-callback-session-unchanged"
+  );
   assert.deepEqual(
     publicContractManifest.files.map(({ path }) => path),
     [
@@ -415,6 +422,41 @@ test("api.contract.get response preserves current contract and BOSL classificati
       source: plugin.reference
     }),
     unready
+  );
+});
+
+test("identity-v2 HTTP execution requires the discovered static context header", () => {
+  const expanded = {
+    ...apiContractResponse,
+    execution: {
+      ...apiContractResponse.execution,
+      context_header: "X-BOS-Context-Handle",
+      transport: null
+    }
+  };
+  assert.doesNotThrow(() => validateApiContractResponse(expanded, {
+    operation: expanded.operation,
+    source: expanded.source
+  }));
+  assert.throws(
+    () => validateApiContractResponse({
+      ...expanded,
+      execution: { ...expanded.execution, context_header: "X-Authority" }
+    }, {
+      operation: expanded.operation,
+      source: expanded.source
+    }),
+    /context_header must be X-BOS-Context-Handle/
+  );
+  assert.throws(
+    () => validateApiContractResponse({
+      ...expanded,
+      execution: { ...expanded.execution, transport: "journey_runtime" }
+    }, {
+      operation: expanded.operation,
+      source: expanded.source
+    }),
+    /exactly one HTTP or journey_runtime transport/
   );
 });
 
@@ -794,5 +836,35 @@ test("operation Describe validates exact execution contracts and bounded runtime
       }]
     }),
     /availability/
+  );
+  assert.throws(
+    () => validateOperationDescription({
+      ...operationDescription,
+      operations: [{
+        ...operationDescription.operations[0],
+        sources: [{
+          source: operationDescription.operations[0].sources[0].source,
+          availability: "ready",
+          input_schema: operationDescription.operations[0].sources[0].input_schema
+        }]
+      }]
+    }),
+    /all source-specific contract fields together/
+  );
+  assert.throws(
+    () => validateOperationDescription({
+      ...operationDescription,
+      operations: [{
+        ...operationDescription.operations[0],
+        sources: [{
+          ...describeResponse.operations[0].sources[0],
+          limits: {
+            ...describeResponse.operations[0].sources[0].limits,
+            maximum_fan_out: 0
+          }
+        }]
+      }]
+    }),
+    /maximum_fan_out/
   );
 });

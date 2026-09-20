@@ -126,7 +126,17 @@ when supported. A contact alone never creates another login or grants authority.
    read, propose, or mutate before invocation.
 5. Call the discovered deterministic HTTPS API through a host-native
    authenticated HTTP capability. Use the returned HTTPS origin or opaque base
-   reference, operation identifier, and audience requirement.
+   reference, operation identifier, and audience requirement. For an
+   identity-v2 HTTP execution, require the contract's static
+   `execution.context_header` to equal `X-BOS-Context-Handle` and attach only
+   the current opaque handle selected from fresh `bos_get_context`. Keep the
+   handle out of the business body and add no client authority, OAuth/token,
+   retry, idempotency, execution, or journey state. Invoke a
+   `journey_runtime` execution through its journey contract instead of direct
+   HTTPS.
+   Registration and every returned journey lifecycle/state HTTP request use
+   that same identity-v2 transport binding. The BOS adapter receives the fresh
+   handle directly; dependent products and action payloads do not.
    Supply only schema-declared arguments. Keep bearer material in the host's
    credential boundary and out of prompts, generated headers, chat, files, and
    logs.

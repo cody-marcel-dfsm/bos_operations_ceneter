@@ -1,17 +1,25 @@
 ---
 name: crm-customer-journey
-description: Discover and show an authorized Lead Director customer's exact installed sales graph, current lead node, transition history, reachable goals, paths, gates, blockers, and available next steps. Use whenever a lead is displayed, including create/update results, duplicate matches, list entries, and any lead or contact detail request, including named-person find/look-up requests, email or phone lookups, a single field, profile, status, sales-flow, enrollment-progress, lifecycle, graph-position, and journey-path question.
+description: Discover and show an authorized Lead Director record's organization-described graph, current node, transition history, reachable goals, paths, gates, blockers, and available next steps. Use for individual record details, create/update results, duplicate matches, list entries, named-person lookups, email or phone lookups, profiles, status, lifecycle, graph-position, and journey-path questions, including when the user calls the record a lead, contact, customer, student, family, opportunity, or another organization-defined term.
 ---
 
 # CRM Customer Journey
 
-Use the active product MCP for routing, application discovery, contract
-validation, and deterministic HTTPS invocation. Read [the Lead Director journey
+Use `bos-mcp-client` on the single BOS platform connection for routing,
+application discovery, contract validation, and deterministic HTTPS invocation.
+Read [the Lead Director journey
 contract](references/journey-graph-contract.md) before discovery or rendering.
 
-This reusable capability ships in Education Center and uses that product's
-scoped MCP connection. Any lead or contact detail
-request selects this workflow, including a single field such as an email
+This reusable capability ships in Education Center and uses the BOS connection's
+server-authorized application context. Lead Director does not impose a client
+entity type. For every request, derive the entity's singular and plural display
+terms, declared fields, organization-specific custom values, current node type,
+available actions, transitions, and complete UI/rendering instructions from the
+current organization Describe and record/graph evidence. Never substitute
+`lead`, `contact`, `customer`, a fixed field list, a generic stage model, or a
+locally invented renderer when current evidence supplies a different model.
+
+Any individual record detail request selects this workflow, including a single field such as an email
 address, phone number, owner, appointment, or status.
 The user does not need to say “journey” or “graph.”
 
@@ -22,16 +30,16 @@ even when the lookup uses a search operation. Determine presentation from user
 intent, independently of the tool name or response being an array. A successful
 single-person lookup must continue into the graph workflow in the same turn.
 Broad filtered lists preserve their filters and pagination and display each
-returned lead in the detailed format below. Keep ambiguous matches separate;
+returned record in the organization-described detailed format below. Keep ambiguous matches separate;
 show only the graph membership verified for each candidate and disambiguate
 before any targeted action.
 
 Start with `bos-mcp-client` live discovery and `bos_get_context` on the original
 request. Resolve deferred tools through the host's discovery facility before
 reporting them missing. Resume this workflow automatically after recovery.
-`bos_get_context` alone does not perform graph discovery. Inspect the active
-product connection for advertised graph and read-operation descriptors under
-the current scoped grant. Use the
+`bos_get_context` alone does not perform graph discovery. Inspect live BOS
+discovery for advertised graph and read-operation descriptors under the current
+server-authorized context. Use the
 BOS connection scoped to the authorized application for current application discovery, then perform record and
 graph reads through its exact advertised deterministic HTTPS APIs.
 Follow
@@ -43,11 +51,14 @@ no evidence that BOS resource discovery is unavailable.
 
 ## Current-host read execution
 
-Use the current authenticated product MCP to discover capabilities for the
-requested operation. After `bos_get_context` validates the connection's exact
-scoped grant, resolve a live-discovered read operation whose descriptor
+Use the current authenticated BOS MCP to discover capabilities for the
+requested operation. After `bos_get_context` validates the connection and its
+current server-authorized context, resolve a live-discovered read operation whose descriptor
 covers the requested data, then invoke its exact advertised HTTPS method, path,
-schema, and audience without client-supplied authority fields. Continue from the API evidence. Select the
+schema, and audience through the BOS dependency adapter without client-supplied authority fields.
+The adapter owns identity-v2 transport context; this domain
+skill never receives or forwards it.
+Continue from the API evidence. Select the
 supported operation from current discovery; do not construct a route or require
 a second connection for the selected application.
 
@@ -73,59 +84,62 @@ This rule authorizes no mutations, browser fallback, token extraction, or
 hardcoded endpoint. A missing per-app host facility alone must not suppress an
 independent successful authorized read or its partial graph presentation.
 
-## Every displayed lead uses the detailed format
+## Every displayed record uses the organization-described format
 
-Apply this format whenever a response displays a lead, regardless of which
+Apply this format whenever a response displays a Lead Director record, regardless of which
 operation produced it: lookup, list/search page, create, update, duplicate or
-already-existing match, operation failure with a verified existing lead, or
+already-existing match, operation failure with a verified existing record, or
 preview/receipt. The user does not need to request details. A success sentence,
 receipt, status badge, contact bullets, or table row alone is incomplete.
 
-For each displayed lead, include:
+For each displayed record, include:
 
-1. Name, organization, verified current state and the operation outcome.
+1. The exact organization-described entity label, display/title fields,
+   organization, verified current state, and operation outcome.
 2. Native node graph from current state through intermediate nodes to canonical
    goals, with the preferred positive-goal route bold and green under the route
    ranking rules below. Follow with the same readable text path and relevant
    conditions/eligibility limits.
-3. Available verified profile fields: contact details, owner, recorded dates or
-   appointments, and relevant history/actions. Keep missing values explicit
-   when relevant and never invent details. Keep technical identifiers out of
-   the graph; show them in details only when requested or operationally useful.
+3. The fields, custom values, history, and actions that current Describe and
+   node UI instructions declare for this organization. Apply returned labels,
+   ordering, grouping, visibility, and formatting. Keep missing declared values
+   explicit when relevant and never invent details. Keep technical identifiers
+   out of both the graph and default details.
 4. Source observation time and meaningful freshness/evidence limitations.
 
 After a confirmed create or update, use the result if it supplies complete,
-current record evidence; otherwise read the exact resulting lead, then obtain
-its graph. On a duplicate match, render the verified existing lead this way.
+current record evidence; otherwise read the exact resulting record, then obtain
+its graph. On a duplicate match, render the verified existing record this way.
 Complete the authorized mutation first; graph retrieval is a post-result read,
 not a write prerequisite. A failed graph read preserves the verified mutation
 outcome and yields a labeled partial detailed view after bounded recovery.
 Never repeat a write to obtain display evidence.
 
 For lists, keep the requested filters/order and pagination; render one detailed
-view per displayed lead. Reuse graph topology only across records with matching
-validated context/graph binding, retaining each lead's own current state. Use
+view per displayed record. Reuse graph topology only across records with matching
+validated context/graph binding, retaining each record's own current state. Use
 bounded pages for large results and disclose coverage. Aggregate-only results
-that display no individual leads need no per-lead graph. An explicit user format
+that display no individual records need no per-record graph. An explicit user format
 request, such as an export or compact list, overrides this display default.
 
 For deletion previews, use current verified details before the required
 confirmation. After deletion, label the record Deleted and any retained graph
 as last-known/historical with its observation time; do not describe the former
 current state as active or invent a deleted graph node. A failed create with no
-verified persisted lead shows the failure and submitted fields without a
-fabricated lead state or graph. Display changes grant no mutation authority.
+verified persisted record shows the failure and submitted fields without a
+fabricated record state or graph. Display changes grant no mutation authority.
 
 ## Rich record view by default
 
-For any lead or contact detail request, lead with the person's place in the
-application-owned graph, then provide the requested fields and relevant profile
+For any individual record detail request, lead with the record's place in the
+application-owned graph, then provide the requested fields and organization-described profile
 facts below the graph. Include verified current position, completed history,
 reachable next states, gates or blockers, pending events, and available next
-actions with source freshness. Keep contact information outside graph nodes.
+actions with source freshness. Apply the node's current UI instructions and
+keep record fields outside graph nodes.
 Read-only detail requests never authorize executing those actions.
 
-When no goal is requested, resolve the lead's app-returned desired goal, then
+When no goal is requested, resolve the record's app-returned desired goal, then
 an app-declared default goal, then the sole applicable goal from canonical goal
 metadata. These are application-owned selections. If several goals remain,
 show their exact paths as labeled alternatives without selecting one for the
@@ -139,7 +153,7 @@ from the current node through every intermediate node to the resolved goal.
 Obtain goal metadata before path planning and use only contract-supported inputs.
 A current node plus a goal placeholder does not satisfy the path requirement.
 
-Distinguish graph structure, current transition eligibility, and observed lead
+Distinguish graph structure, current transition eligibility, and observed record
 history. Missing history, an empty available-actions list, or unverified goal
 attainment does not invalidate a verified structural path. Draw known graph
 edges and label their gates as satisfied, blocked, or unknown from app evidence;
@@ -149,9 +163,8 @@ unverified**. Never infer an edge. Select the highlighted route using the
 verified app evidence and ranking rules below. Retain relevant alternative paths
 and protect against graph cycles.
 
-Resolve a contact-to-lead or contact-to-graph relationship from current
-application evidence. Never assume every contact is a lead or combine ambiguous
-matches. Ask for disambiguation only when identity or graph membership requires
+Resolve record-to-graph membership from current application evidence. Never
+infer an entity type or combine ambiguous matches. Ask for disambiguation only when identity or graph membership requires
 it. If no graph membership or current node can be verified, show the requested
 verified details and the precise missing graph evidence. If current state is
 known but topology is partial, use the partial-evidence presentation below.
@@ -159,7 +172,7 @@ An explicit user request for a different format takes precedence.
 
 ## Adapt the access pattern
 
-Resolve the requested lead through the least expensive supported read: exact
+Resolve the requested record through the least expensive supported read: exact
 server-issued selector, name or contact-field search, scoped filter, or a
 record selected from a previous current-context result. Reuse verified identity
 and graph evidence when its context and version remain valid. Search is needed
@@ -172,7 +185,7 @@ for missing evidence. Keep broad list/search requests scoped to their requested
 list. A named-person find or lookup is an individual detail request and includes
 the goal path even when a search operation resolves the person.
 For several requested detail records, use supported batch reads or bounded
-pagination and keep each lead's graph membership and path distinct. The diagram
+pagination and keep each record's graph membership and path distinct. The diagram
 is presentation of read evidence and never authorizes a CRUD mutation.
 
 ## Discover and resolve
@@ -182,14 +195,14 @@ is presentation of read evidence and never authorizes a CRUD mutation.
    and goal discovery directly.
 2. For evidence not already supplied by a validated connected resource, use
    the current BOS platform connection. Discover the current app
-   description, installed graph, canonical goal semantics, lead and journey
+   description, organization entity shape, installed graph, canonical goal semantics, record and journey
    services, installed plugins, external-evidence ownership, and
    machine-readable API contracts. Use returned operation names and endpoints;
    never embed a Lead Director URL or assume literal MCP tool names.
-3. Use the discovered lead-search API when the lead is unresolved, or a
+3. Use the discovered record-search operation when the record is unresolved, or a
    supported exact read for a valid server-issued selector. Ask for one
    disambiguating value when several authorized records remain.
-4. Call the discovered lead-journey API for the current graph node, exact
+4. Call the discovered record-journey operation for the current graph node, exact
    transition history, pending gates, available actions, observation time, and
    provenance.
 5. Obtain canonical goal metadata with discovered `graph.goals.list` semantics
@@ -199,8 +212,8 @@ is presentation of read evidence and never authorizes a CRUD mutation.
    Keep path planning separate from transition execution.
 6. When external evidence is necessary, inspect the discovered service owner.
    Use a Lead Director plugin/service API when it is nested under Lead Director.
-   Query another product connection only when that product is independently
-   installed and its own authenticated discovery identifies the service.
+   Resolve independently installed product services through live BOS discovery;
+   never create or select a second product connection.
 
 For the per-app execution path, use discovered deterministic HTTPS APIs. Carry
 short-lived audience-bound authentication through the host credential boundary.
@@ -221,8 +234,10 @@ Separate and source-attribute these sections:
 
 1. **Graph facts** — exact installed graph identity/version, nodes, transitions,
    gates, goals, entry/exit state, and graph observation epoch.
-2. **Lead facts** — resolved lead, current node, transition history, scheduled
-   events, available actions, source service, observation time, and freshness.
+2. **Record facts** — organization-described entity label, resolved record,
+   declared fields and custom values, current node type and UI instructions,
+   transition history, scheduled events, available actions, source service,
+   observation time, and freshness.
 3. **External evidence** — independently observed enrollment, roster, billing,
    calendar, or provider facts with owning app/service, observation time, and
    freshness.
@@ -268,7 +283,7 @@ verified record evidence.
 ## Render the native graph
 
 Lead with a Mermaid `flowchart LR` built only from the discovered graph and
-lead/path API results. Use no local HTML, browser renderer, attachment, or
+record/path API results. Use no local HTML, browser renderer, attachment, or
 external visualization service. Keep node labels concise and exclude contact
 details, raw record identifiers, private notes, and authority values.
 
@@ -357,7 +372,7 @@ evidence sections. Never execute a transition from this read-only workflow.
 
 ## Final response check
 
-Before sending any response that displays a lead, verify that each lead view
+Before sending any response that displays a Lead Director record, verify that each record view
 contains the detailed format above, including the Mermaid graph and profile details. Known topology
 requires the exact current-to-goal route. If a specific discovery/read failure
 prevents that route, include the partial-evidence graph of the verified current

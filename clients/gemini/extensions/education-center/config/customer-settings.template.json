@@ -27,6 +27,6 @@
   "default_context": {
     "organization_name": "",
     "installation_name": "",
-    "role_code": ""
+    "role_label": ""
   }
 }

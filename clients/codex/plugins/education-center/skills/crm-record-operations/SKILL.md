@@ -112,13 +112,17 @@ remain required; the package does not intercept or enforce arbitrary API calls.
 Use `bos-mcp-client` on the BOS platform connection. This reusable workflow
 ships in Education Center and uses the BOS connection scoped to the authorized application for authenticated
 application discovery. Invoke each business operation through the exact live
-tool or deterministic HTTPS API advertised by that scoped product connection;
+tool or deterministic HTTPS API advertised for that server-authorized application context;
 the BOS Service owns source execution.
 
-For any lead or contact detail request, invoke `crm-customer-journey` as
+For any individual Lead Director record-detail request, invoke `crm-customer-journey` as
 part of the read and present its rich graph view by default, including for a
 single requested field. Return that field and relevant profile details below
-the graph. Resolve contact graph membership from application evidence and
+the graph. Derive the entity label, fields, organization-specific custom values,
+node type, actions, transitions, and UI/rendering instructions from current
+organization Describe and record/graph evidence. Treat lead, contact, customer,
+student, family, opportunity, and similar user terms as request vocabulary,
+never as a fixed Lead Director entity model. Resolve graph membership from application evidence and
 preserve verified details when graph evidence is partial or unavailable.
 The user need not ask for a journey or specify a goal. Follow explicit user
 format instructions and keep the request read-only.
@@ -126,9 +130,9 @@ format instructions and keep the request read-only.
 ## Lead Director access patterns
 
 Route by the user's operation and requested scope: search or list by supported
-filters, inspect one or several selected leads, create a lead, update declared
+filters, inspect one or several selected records, create a record, update declared
 fields, or delete when the current server contract supports it. Accept natural
-language, contact fields, and current server-issued selectors as lookup inputs
+language, organization-described fields, and current server-issued selectors as lookup inputs
 only where the discovered schema supports them. Resolve ambiguous matches before
 a targeted read or write. Never fabricate source or record selectors.
 
@@ -141,11 +145,11 @@ different schema: follow its declared fields, authority, and side-effect class.
 Do not impose a federated source inventory on a native operation whose contract
 does not require it. Keep provider execution server-owned.
 
-Whenever a lead is displayed, invoke `crm-customer-journey` and apply its
-Every displayed lead uses the detailed format contract. This includes create
+Whenever a record is displayed, invoke `crm-customer-journey` and apply its
+Every displayed record uses the organization-described format contract. This includes create
 and update receipts, duplicate/already-existing matches, previews, and every
-lead displayed in a list. Retain filters/order/pagination while rendering each
-lead separately. After a confirmed write, read the exact resulting lead if
+record displayed in a list. Retain filters/order/pagination while rendering each
+record separately. After a confirmed write, read the exact resulting record if
 needed and display its current graph and profile without waiting for another
 user request. Graph discovery is a post-result read; it never replays a write
 or erases a verified receipt. If graph reads fail, retain the outcome and show
@@ -198,14 +202,14 @@ approval action. Never simulate a missing delete through another operation.
 For a generic or cached callable schema, use `bos-mcp-client` Resource-owned
 operation schemas. Read the advertised scoped application operation
 resource, match the exact callable and use its current input schema within the
-host envelope. Derive writable name/contact fields and idempotency bounds from
-that schema; record display fields do not establish create inputs. Discovery
+host envelope. Derive writable fields and idempotency bounds from
+that schema; organization-described display fields do not establish create inputs. Discovery
 success alone never proves that a create or update executed.
 
 ## Creates and updates
 
-For a requested lead creation, resolve the source pair from current
-server-returned source metadata in the current scoped connection, matched to the user's
+For a requested record creation, resolve the source pair from current
+server-returned source metadata in the current BOS connection context, matched to the user's
 requested application. Never manufacture `source_type` or `source_identity`
 from the person's email, phone, name, role, context hint, or the word “manual.”
 If the live contract requires an undiscoverable source selector, report that
@@ -245,7 +249,7 @@ capability.
 
 ## Deletes
 
-1. Resolve the exact lead from current-context search, exact lookup, or a valid
+1. Resolve the exact record from current-context search, exact lookup, or a valid
    prior result. Match the user's identifying details; disambiguate multiple
    matches before deletion. Use only the returned record/source selectors and
    current version required by the operation schema.

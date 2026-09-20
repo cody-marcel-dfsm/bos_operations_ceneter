@@ -69,13 +69,9 @@
     "limits": {
       "type": "object",
       "required": [
-        "max_targets",
-        "max_results_per_source",
         "pagination_supported",
         "bulk_supported",
-        "streaming_supported",
-        "maximum_duration_seconds",
-        "maximum_fan_out"
+        "streaming_supported"
       ],
       "properties": {
         "max_targets": {
@@ -157,26 +153,98 @@
     },
     "execution": {
       "type": "object",
-      "required": [
-        "method",
-        "uri"
-      ],
       "properties": {
         "method": {
-          "type": "string",
-          "enum": [
-            "GET",
-            "POST",
-            "PUT",
-            "PATCH",
-            "DELETE"
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "GET",
+                "POST",
+                "PUT",
+                "PATCH",
+                "DELETE"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "context_header": {
+          "anyOf": [
+            {
+              "const": "X-BOS-Context-Handle"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "uri": {
-          "type": "string",
-          "pattern": "^/bos/apps/lead-director/api/v1/organizations/\\{organization\\}/[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*(?:/[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*)*$"
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^/bos/apps/lead-director/api/v1/organizations/\\{organization\\}/[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*(?:/[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*)*$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "transport": {
+          "anyOf": [
+            {
+              "const": "journey_runtime"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
+      "oneOf": [
+        {
+          "required": [
+            "method",
+            "uri",
+            "context_header"
+          ],
+          "properties": {
+            "context_header": {
+              "const": "X-BOS-Context-Handle"
+            },
+            "method": {
+              "type": "string"
+            },
+            "uri": {
+              "type": "string"
+            },
+            "transport": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "required": [
+            "transport"
+          ],
+          "properties": {
+            "context_header": {
+              "type": "null"
+            },
+            "method": {
+              "type": "null"
+            },
+            "uri": {
+              "type": "null"
+            },
+            "transport": {
+              "const": "journey_runtime"
+            }
+          }
+        }
+      ],
       "additionalProperties": false
     },
     "error_contract": {
@@ -218,8 +286,50 @@
             "configuration_required",
             "temporarily_unavailable"
           ]
+        },
+        "input_schema": {
+          "$ref": "#/$defs/operation_schema"
+        },
+        "output_schema": {
+          "$ref": "#/$defs/operation_schema"
+        },
+        "receipt_schema": {
+          "$ref": "#/$defs/operation_schema"
+        },
+        "limits": {
+          "$ref": "#/$defs/limits"
+        },
+        "guarantees": {
+          "$ref": "#/$defs/guarantees"
+        },
+        "error_contract": {
+          "$ref": "#/$defs/error_contract"
         }
       },
+      "oneOf": [
+        {
+          "not": {
+            "anyOf": [
+              {"required": ["input_schema"]},
+              {"required": ["output_schema"]},
+              {"required": ["receipt_schema"]},
+              {"required": ["limits"]},
+              {"required": ["guarantees"]},
+              {"required": ["error_contract"]}
+            ]
+          }
+        },
+        {
+          "required": [
+            "input_schema",
+            "output_schema",
+            "receipt_schema",
+            "limits",
+            "guarantees",
+            "error_contract"
+          ]
+        }
+      ],
       "additionalProperties": false
     },
     "sql_field": {

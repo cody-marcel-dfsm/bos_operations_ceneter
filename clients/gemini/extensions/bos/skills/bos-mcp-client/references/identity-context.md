@@ -13,15 +13,21 @@ managed by `scripts/customer-preferences.mjs`: macOS Application Support/BOS,
 Windows AppData/BOS, or Linux XDG config/BOS. This file lives outside managed
 plugin caches. Read it with the helper's `read` command. It contains only
 `bos.customer-preferences/v1` and `default_context` matching preferences:
-`organization_name`, optional `installation_name`, optional `role_code`.
-`role_code` matches a currently returned `actor_role_id` as intent only.
+`organization_name`, optional `installation_name`, and optional `role_label`.
+Each value matches the corresponding safe label in fresh discovery as intent
+only. The reader converts an existing inert `role_code` preference to
+`role_label` in memory for upgrade compatibility, leaves the existing file
+untouched, and still requires an exact fresh label match before use.
 No setting grants access, and account changes require fresh authorized matching.
 
 During product setup, propose the default from current authorized discovery and
 confirmed customer information. Include it in the consolidated recommendation.
 Ask once when no confirmed default exists; preserve existing confirmed values.
 Confirm installation or role only when needed to resolve multiple contexts.
-Never infer the most privileged role. After confirmation, use the helper's
+Use the sole server-returned `is_default` choice when several eligible roles
+share the selected organization, application, and installation. A lower-role
+selection remains explicit and task-local. Never inspect or infer a privilege
+rank. After confirmation, use the helper's
 `save` command with the preference JSON on standard input and re-read it. Product
 upgrades preserve this external file. Product-specific customer overlays may
 mirror the preference for setup; the shared store is authoritative for runtime.
@@ -50,16 +56,22 @@ legacy values require repair and never trigger silent fallback.
 ## Resolve and execute
 
 1. Call live `bos_get_context` and retain its authorized contexts in memory.
-2. Match requested application and explicit organization/installation/role first.
+2. Match the required safe `application_name` and any explicit
+   organization/installation/role label first.
    An explicit context request replaces all saved context fields for that task.
    Otherwise match the shared confirmed default. With no default, use an exact
    previously established scope for the pending request or the sole authorized
    context; establish the persistent default separately during setup.
 3. Use `scripts/context-selection.mjs`'s `resolveContext` when executable, or
-   apply its exact matching rules. Organization/installation labels allow trim
-   and case normalization. Require one exact context; clarify duplicate labels,
-   multiple installations or roles. Never choose by list order, privilege rank,
-   a person's name, or probing business records across organizations. A removed
+   apply its exact matching rules. Fresh choices contain only an opaque
+   `context_handle`, safe organization/application/installation/role labels,
+   and `is_default`. Reject raw IDs, ranks, capabilities, or additional fields.
+   Labels allow trim and case normalization. Require one exact context; when
+   several roles remain for one organization/application/installation, use the
+   sole returned `is_default` choice unless the user explicitly selected a
+   lower role. Clarify duplicate labels, multiple installations, or multiple
+   defaults. Never choose by list order, privilege rank, a person's name, or
+   probing business records across organizations. A removed
    or unauthorized default produces `default_context_unavailable`; ask for an
    authorized replacement, without silent fallback or changing grants.
 4. Pass only the fresh returned `context_handle` to `bos_list_context_tools`.
@@ -71,7 +83,17 @@ legacy values require repair and never trigger silent fallback.
    raw org/app/install/role IDs out of business arguments. Verify the returned
    context matches the selected context before using the result. The server
    reauthorizes every operation; discovery and preferences confer no authority.
-6. Preserve the selected scope with approvals, versions, caches, server-owned
+   For a discovered deterministic HTTPS operation, copy its published static
+   `execution.context_header` and put the same selected opaque handle in that
+   header. The required value is `X-BOS-Context-Handle`; never construct another
+   header, put the handle in the business body, or add OAuth, token, retry,
+   idempotency, execution, or journey state.
+6. Apply step 5's deterministic HTTP binding to raw BOSL registration and to
+   every returned journey `start`, `complete`, `step`, `failed`, and `state`
+   action. Returned actions carry no context field; the BOS transport adapter
+   binds the fresh handle only while invoking them. Preserve header-free
+   behavior for legacy/v1 actions.
+7. Preserve the selected scope with approvals, versions, caches, server-owned
    operation references, and exact returned recovery actions. Refresh handles after context changes; never persist handles as
    defaults. Keep concurrent requests independent. A denial or missing operation
    never permits another role or organization as a workaround.

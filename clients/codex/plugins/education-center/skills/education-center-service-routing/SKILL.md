@@ -206,7 +206,9 @@ persisted record identifiers. Return `configuration_required` and invoke
 
 1. Discover every domain marked `bos` through the installed BOS platform MCP
    connection and its host-managed BOS OAuth grant. Invoke the selected
-   application operation through the exact advertised deterministic HTTPS API.
+   application operation through the exact advertised deterministic HTTPS API
+   and the BOS dependency adapter. The adapter owns identity-v2 transport
+   context; Education Center never receives or forwards it.
    The source-route value selects BOS-managed provider access within this
    product. Platform and application discovery use the same BOS connection. The server resolves the Education Center subservice and
    authorized operation set for each request.

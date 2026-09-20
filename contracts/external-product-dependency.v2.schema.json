@@ -97,45 +97,19 @@
           "const": "AUTOMATIC"
         },
         "recognized_condition_categories": {
-          "type": "array",
-          "prefixItems": [
-            {
-              "const": "MISSING_GRANT"
-            },
-            {
-              "const": "EXPIRED_TOKEN"
-            },
-            {
-              "const": "REVOKED_GRANT"
-            },
-            {
-              "const": "INVALID_CLIENT"
-            },
-            {
-              "const": "INVALID_GRANT"
-            },
-            {
-              "const": "RESOURCE_MISMATCH"
-            },
-            {
-              "const": "REAUTHENTICATION_REQUIRED"
-            },
-            {
-              "const": "AUTHORIZATION_REQUIRED"
-            },
-            {
-              "const": "MCP_SESSION_CLOSED"
-            },
-            {
-              "const": "PROVIDER_AUTHORIZATION_REQUIRED"
-            }
-          ],
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
-          "minItems": 10,
-          "uniqueItems": true
+          "const": [
+            "MISSING_GRANT",
+            "EXPIRED_TOKEN",
+            "REVOKED_GRANT",
+            "INVALID_CLIENT",
+            "INVALID_GRANT",
+            "RESOURCE_MISMATCH",
+            "REAUTHENTICATION_REQUIRED",
+            "AUTHORIZATION_REQUIRED",
+            "MCP_WWW_AUTHENTICATE",
+            "MCP_SESSION_CLOSED",
+            "PROVIDER_AUTHORIZATION_REQUIRED"
+          ]
         },
         "readiness_result": {
           "type": "object",

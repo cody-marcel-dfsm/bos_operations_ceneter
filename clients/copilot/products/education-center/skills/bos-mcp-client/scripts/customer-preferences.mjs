@@ -20,17 +20,34 @@ export function legacyPreferencesPath() {
       : join(process.env.XDG_CONFIG_HOME || join(homedir(), '.config'), 'ai.dfsm.bos', 'client-preferences', 'v1'));
   return join(root, 'preferences.json');
 }
+function normalizeDefault(value, { allowLegacyRoleCode = false } = {}) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      typeof value.organization_name !== 'string' || !value.organization_name.trim()) return null;
+  const allowed = new Set(['organization_name', 'installation_name', 'role_label']);
+  if (allowLegacyRoleCode) allowed.add('role_code');
+  if (Object.entries(value).some(([key, entry]) => !allowed.has(key) ||
+      typeof entry !== 'string' || entry.length > 200 ||
+      /[\r\n\u0000-\u001f\u007f]/.test(entry))) return null;
+  if (Object.hasOwn(value, 'role_code') && Object.hasOwn(value, 'role_label')) return null;
+  const normalized = { ...value };
+  if (Object.hasOwn(normalized, 'role_code')) {
+    normalized.role_label = normalized.role_code;
+    delete normalized.role_code;
+  }
+  return normalized;
+}
 export function validDefault(value) {
-  return value && typeof value === 'object' && !Array.isArray(value) &&
-    typeof value.organization_name === 'string' && value.organization_name.trim() &&
-    Object.entries(value).every(([key, entry]) => ['organization_name', 'installation_name', 'role_code'].includes(key) &&
-      typeof entry === 'string' && entry.length <= 200 && !/[\r\n\u0000-\u001f\u007f]/.test(entry));
+  return normalizeDefault(value) !== null;
 }
 export async function readPreferences(path = preferencesPath(), legacyPath = path === preferencesPath() ? legacyPreferencesPath() : null) {
   try {
     const value = JSON.parse(await readFile(path, 'utf8'));
-    if (value.schema_version !== 'bos.customer-preferences/v1' || !validDefault(value.default_context)) throw new Error('Invalid customer preferences');
-    return value;
+    const default_context = normalizeDefault(value.default_context, { allowLegacyRoleCode: true });
+    if (value.schema_version !== 'bos.customer-preferences/v1' || !default_context ||
+        Object.keys(value).some(key => !['schema_version', 'default_context'].includes(key))) {
+      throw new Error('Invalid customer preferences');
+    }
+    return { schema_version: value.schema_version, default_context };
   } catch (error) {
     if (error.code === 'ENOENT') {
       if (!legacyPath) return null;
@@ -49,8 +66,9 @@ export async function readPreferences(path = preferencesPath(), legacyPath = pat
   }
 }
 export async function savePreferences(default_context, path = preferencesPath()) {
-  if (!validDefault(default_context)) throw new Error('Invalid default context preference');
-  const value = { schema_version: 'bos.customer-preferences/v1', default_context };
+  const normalized = normalizeDefault(default_context);
+  if (!normalized) throw new Error('Invalid default context preference');
+  const value = { schema_version: 'bos.customer-preferences/v1', default_context: normalized };
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
   const temporary = `${path}.${randomUUID()}.tmp`;
   await writeFile(temporary, JSON.stringify(value, null, 2) + '\n', { mode: 0o600, flag: 'wx' });

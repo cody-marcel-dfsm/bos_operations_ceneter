@@ -8,6 +8,7 @@ import {
 } from "../source/platform/bos-workflow-orchestrator/scripts/bosl-authoring.mjs";
 
 const publishedSchema = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
   type: "object",
   required: ["identity", "name", "inputs", "entry", "nodes"],
   properties: {
@@ -23,6 +24,8 @@ const publishedSchema = {
 const operationContracts = [
   {
     operation: "audience.materialize",
+    bosl_server_node: true,
+    node_type: "server",
     input_schema: { type: "object" },
     output_schema: { type: "object" },
     effect: "prepare",
@@ -31,6 +34,8 @@ const operationContracts = [
   },
   {
     operation: "campaign.send",
+    bosl_server_node: true,
+    node_type: "server",
     input_schema: { type: "object" },
     output_schema: { type: "object" },
     effect: "send_message",
@@ -281,6 +286,36 @@ test("operation contracts require the published duration and fan-out limits", ()
     }),
     /published duration and fan-out limits/
   );
+});
+
+test("only explicitly sanctioned BOSL server-node operations may back server nodes", () => {
+  for (const classification of [
+    { bosl_server_node: false },
+    { bosl_server_node: true },
+    { bosl_server_node: true, node_type: "client" }
+  ]) {
+    const contracts = structuredClone(operationContracts);
+    delete contracts[0].bosl_server_node;
+    delete contracts[0].node_type;
+    Object.assign(contracts[0], classification);
+    const result = validateBoslDocument(graph, {
+      publishedSchema,
+      operationContracts: contracts
+    });
+    assert.equal(result.valid, false);
+    assert.match(
+      result.findings.map(({ code }) => code).join("\n"),
+      /BOSL_OPERATION_NOT_SERVER_EXECUTABLE/
+    );
+    assert.throws(
+      () => buildExplainPlan({
+        objective: "Prepare and send a follow-up.",
+        document: graph,
+        operationContracts: contracts
+      }),
+      /sanctioned BOSL server-node classification/
+    );
+  }
 });
 
 test("explain plan reports ownership, effects, approvals, and recovery without chain of thought", () => {

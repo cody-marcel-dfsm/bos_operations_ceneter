@@ -1,34 +1,113 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { resolveContext } from '../source/platform/bos-mcp-client/scripts/context-selection.mjs';
 import { validateCustomerSettings } from '../scripts/install-package.mjs';
-const context = (org, role = 'staff', install = 'Main') => ({ organization_name: org, org_id: org, app_code: 'crm', installation_name: install, installed_app_id: org + install, actor_role_id: role, context_handle: org + install + role });
-const discovery = { contract_version: 'bos-identity-mcp/v2', contexts: [context('North'), context('South'), context('North', 'director')] };
+const context = (org, role = 'Staff', install = 'Main', isDefault = role === 'Staff') => ({
+  context_handle: `bos_ctx_v2_${createHash('sha256').update(`${org}:${role}:${install}`).digest('hex')}`,
+  organization_name: org,
+  application_name: 'Lead Director',
+  installation_name: install,
+  role_label: role,
+  is_default: isDefault
+});
+const discovery = {
+  contract_version: 'bos-identity-mcp/v2',
+  contexts: [context('North'), context('South'), context('North', 'Director', 'Main', false)]
+};
+
+test('identity compatibility publishes only the approved v2 context shape and header', async () => {
+  const contract = JSON.parse(await readFile(
+    new URL('../contracts/identity-context-compatibility.v1.json', import.meta.url),
+    'utf8'
+  ));
+  assert.deepEqual(contract.public_context_fields, [
+    'context_handle',
+    'organization_name',
+    'application_name',
+    'installation_name',
+    'role_label',
+    'is_default'
+  ]);
+  assert.equal(contract.deterministic_http_context_header, 'X-BOS-Context-Handle');
+  assert.deepEqual(contract.deterministic_http_context_binding_scope, [
+    'described_operations',
+    'journey_registration',
+    'returned_journey_lifecycle_and_state_actions'
+  ]);
+  assert.equal(contract.legacy_http_context_header, null);
+  const serialized = JSON.stringify(contract.public_context_fields);
+  for (const forbidden of [
+    'org_id', 'app_code', 'installed_app_id', 'role_id', 'rank', 'capabilities'
+  ]) {
+    assert.equal(serialized.includes(forbidden), false, forbidden);
+  }
+});
 test('saved defaults resolve a fresh authorized context without repeated organization questions', () => {
-  assert.equal(resolveContext(discovery, { defaults: { organization_name: 'North', role_code: 'staff' } }).context.context_handle, 'NorthMainstaff');
+  assert.equal(
+    resolveContext(discovery, {
+      defaults: { organization_name: 'North' },
+      applicationName: 'Lead Director'
+    }).context.role_label,
+    'Staff'
+  );
+  assert.equal(
+    resolveContext(discovery, {
+      request: { organization_name: 'North', role_label: 'Director' },
+      applicationName: 'Lead Director'
+    }).context.role_label,
+    'Director'
+  );
 });
 test('explicit organization replaces all defaults and never changes them', () => {
-  const defaults = { organization_name: 'North', installation_name: 'Old', role_code: 'director' };
-  assert.equal(resolveContext(discovery, { request: { organization_name: 'South' }, defaults }).context.org_id, 'South');
+  const defaults = { organization_name: 'North', installation_name: 'Old', role_label: 'Director' };
+  assert.equal(resolveContext(discovery, {
+    request: { organization_name: 'South' }, defaults, applicationName: 'Lead Director'
+  }).context.organization_name, 'South');
   assert.equal(defaults.organization_name, 'North');
 });
 test('missing default never scans or falls back to another organization', () => {
   assert.equal(resolveContext(discovery, { defaults: { organization_name: 'Removed' } }).status, 'default_context_unavailable');
 });
 test('multiple roles or installations require disambiguation without privilege ranking', () => {
-  assert.equal(resolveContext(discovery, { defaults: { organization_name: 'North' } }).status, 'context_ambiguous');
-  const multi = { ...discovery, contexts: [context('South'), context('South', 'staff', 'Other')] };
+  const tied = {
+    ...discovery,
+    contexts: [context('North', 'Staff', 'Main', true), context('North', 'Director', 'Main', true)]
+  };
+  assert.equal(resolveContext(tied, { defaults: { organization_name: 'North' } }).status, 'context_ambiguous');
+  const multi = {
+    ...discovery,
+    contexts: [context('South'), context('South', 'Staff', 'Other')]
+  };
   assert.equal(resolveContext(multi, { defaults: { organization_name: 'South' } }).status, 'context_ambiguous');
 });
 test('wrong app, malformed discovery and fabricated handle preferences fail closed', () => {
-  assert.equal(resolveContext(discovery, { appCode: 'other' }).status, 'default_context_unavailable');
+  assert.equal(resolveContext(discovery, { applicationName: 'Other' }).status, 'default_context_unavailable');
   assert.equal(resolveContext({ ...discovery, contexts: [{}] }).status, 'invalid_discovery');
+  assert.equal(resolveContext({
+    ...discovery,
+    contexts: [{ ...context('North'), org_id: 'private' }]
+  }).status, 'invalid_discovery');
+  assert.equal(resolveContext({
+    ...discovery,
+    contexts: [{ ...context('North'), authority_rank: 100 }]
+  }).status, 'invalid_discovery');
+  assert.equal(resolveContext({
+    ...discovery,
+    contexts: [{ ...context('North'), capabilities: ['admin'] }]
+  }).status, 'invalid_discovery');
   assert.equal(resolveContext(discovery, { defaults: { context_handle: 'invented' } }).status, 'invalid_preference');
   assert.equal(resolveContext({ ...discovery, contract_version: 'legacy' }).status, 'unsupported_contract');
 });
 test('customer settings accepts bounded labels and rejects authority and executable selectors', () => {
   const base = { schema_version: '1', brand_display_name: 'Example', organization_display_name: 'Example', organization_website_url: 'https://example.com', location_display_name: 'Example', timezone: 'UTC' };
-  assert.deepEqual(validateCustomerSettings({ ...base, default_context: { organization_name: 'North', installation_name: '', role_code: '' } }), []);
+  assert.deepEqual(validateCustomerSettings({ ...base, default_context: { organization_name: 'North', installation_name: '', role_label: '' } }), []);
+  assert.deepEqual(validateCustomerSettings({ ...base, default_context: { organization_name: 'North', role_code: 'Staff' } }), []);
+  assert(validateCustomerSettings({
+    ...base,
+    default_context: { organization_name: 'North', role_label: 'Staff', role_code: 'staff' }
+  }).some(message => message.includes('both role_label and legacy role_code')));
   for (const default_context of [{ org_id: 'raw' }, { organization_name: '' }, { organization_name: 'North\nSouth' }, [], null]) {
     assert(validateCustomerSettings({ ...base, default_context }).some(message => message.includes('default_context')));
   }
@@ -44,11 +123,12 @@ test('shared preferences persist outside product roots and survive independent r
   try {
     const path = join(root, 'BOS', 'customer-preferences.json');
     assert.equal(await readPreferences(path), null);
-    await savePreferences({ organization_name: 'North', role_code: 'staff' }, path);
+    await savePreferences({ organization_name: 'North', role_label: 'Staff' }, path);
     assert.equal((await readPreferences(path)).default_context.organization_name, 'North');
     assert.equal((await stat(path)).mode & 0o777, 0o600);
     await assert.rejects(savePreferences({ organization_name: 'North', context_handle: 'stale' }, path));
-    assert.equal((await readPreferences(path)).default_context.role_code, 'staff');
+    assert.equal((await readPreferences(path)).default_context.role_label, 'Staff');
+    await assert.rejects(savePreferences({ organization_name: 'North', role_code: 'staff' }, path));
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
@@ -88,5 +168,27 @@ test('legacy confirmed organization survives upgrade without rewriting its file'
     await rm(current);
     await writeFile(legacy, original.replace('bos-client-preferences/v1', 'unknown'));
     await assert.rejects(readPreferences(current, legacy));
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('legacy current role code is converted only in memory and rematched as a safe label', async () => {
+  const { mkdtemp, writeFile, readFile, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { readPreferences } = await import('../source/platform/bos-mcp-client/scripts/customer-preferences.mjs');
+  const root = await mkdtemp(join(tmpdir(), 'bos-current-default-'));
+  try {
+    const path = join(root, 'customer-preferences.json');
+    const original = JSON.stringify({
+      schema_version: 'bos.customer-preferences/v1',
+      default_context: { organization_name: 'North', role_code: 'Staff' }
+    });
+    await writeFile(path, original);
+    const migrated = await readPreferences(path, null);
+    assert.deepEqual(migrated.default_context, {
+      organization_name: 'North',
+      role_label: 'Staff'
+    });
+    assert.equal(await readFile(path, 'utf8'), original);
   } finally { await rm(root, { recursive: true, force: true }); }
 });

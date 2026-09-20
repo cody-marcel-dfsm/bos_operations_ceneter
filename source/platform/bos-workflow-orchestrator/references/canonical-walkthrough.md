@@ -2,7 +2,13 @@
 
 This is a fixture path, not a provider-routing rule. Resolve every current
 operation, structured source, method, URI, schema, limit, and action through
-authenticated discovery.
+authenticated discovery. For each deterministic HTTPS operation, also copy the
+declared `X-BOS-Context-Handle` header name and attach the current opaque
+selected handle. This includes registration plus every returned `start`,
+`complete`, `step`, `failed`, and `state` request. The BOS transport adapter
+adds the header only at invocation time; the walkthrough payloads and dependent
+products never contain it. Legacy/v1 requests remain header-free. Add no other
+client authority or execution state.
 
 1. Describe the Calendar search and read operations required by the prompt.
 2. Search the bounded recently-ended window using the exact returned source and

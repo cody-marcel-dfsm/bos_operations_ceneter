@@ -24,6 +24,7 @@
         "idempotency": "service_owned"
       },
       "execution": {
+        "context_header": "X-BOS-Context-Handle",
         "method": "POST",
         "uri": "/bos/apps/lead-director/api/v1/organizations/{organization}/search"
       },
@@ -53,36 +54,15 @@
             ],
             "title": "PublicSourceReference",
             "type": "object"
-          },
-          "SourceInput": {
-            "type": "object",
-            "required": [
-              "text"
-            ],
-            "properties": {
-              "text": {
-                "type": "string",
-                "minLength": 1
-              }
-            },
-            "additionalProperties": false,
-            "$id": "urn:bos:lead-director:source-input"
           }
         },
         "additionalProperties": false,
         "properties": {
           "text": {
-            "allOf": [
-              {
-                "maxLength": 2000,
-                "minLength": 1,
-                "title": "Text",
-                "type": "string"
-              },
-              {
-                "$ref": "#/$defs/SourceInput/properties/text"
-              }
-            ]
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
           },
           "source": {
             "anyOf": [
@@ -208,7 +188,13 @@
                 "type": "string"
               },
               "records": {
-                "$ref": "#/$defs/SourceOutput/properties/records"
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "maxItems": 5,
+                "title": "Records",
+                "type": "array"
               },
               "error": {
                 "anyOf": [
@@ -255,57 +241,6 @@
             ],
             "title": "PublicSourceReference",
             "type": "object"
-          },
-          "SourceOutput": {
-            "type": "object",
-            "required": [
-              "records"
-            ],
-            "properties": {
-              "records": {
-                "type": "array",
-                "maxItems": 5,
-                "items": {
-                  "type": "object",
-                  "required": [
-                    "display_name",
-                    "public_selector"
-                  ],
-                  "properties": {
-                    "display_name": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "public_selector": {
-                      "type": "string",
-                      "minLength": 1
-                    }
-                  },
-                  "additionalProperties": false
-                }
-              }
-            },
-            "additionalProperties": false,
-            "$id": "urn:bos:lead-director:source-output"
-          },
-          "SourceReceipt": {
-            "type": "object",
-            "required": [
-              "correlation_id",
-              "service_id"
-            ],
-            "properties": {
-              "correlation_id": {
-                "type": "string",
-                "minLength": 1
-              },
-              "service_id": {
-                "type": "string",
-                "minLength": 1
-              }
-            },
-            "additionalProperties": false,
-            "$id": "urn:bos:lead-director:source-receipt"
           }
         },
         "additionalProperties": false,
@@ -431,17 +366,9 @@
             "constraints": {}
           },
           {
-            "path": "source_results[].records[].display_name",
-            "data_type": "varchar",
+            "path": "source_results[].records[]",
+            "data_type": "array",
             "ordinal_position": 11,
-            "nullable": false,
-            "default": null,
-            "constraints": {}
-          },
-          {
-            "path": "source_results[].records[].public_selector",
-            "data_type": "varchar",
-            "ordinal_position": 12,
             "nullable": false,
             "default": null,
             "constraints": {}
@@ -449,7 +376,7 @@
           {
             "path": "source_results[].error",
             "data_type": "json",
-            "ordinal_position": 13,
+            "ordinal_position": 12,
             "nullable": true,
             "default": null,
             "constraints": {}
@@ -470,7 +397,140 @@
             "application": "lead-director",
             "plugin": "crm-primary"
           },
-          "availability": "ready"
+          "availability": "ready",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "required": [
+              "text"
+            ],
+            "properties": {
+              "text": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "x-bos-fields": [
+              {
+                "path": "text",
+                "data_type": "varchar",
+                "ordinal_position": 1,
+                "nullable": false,
+                "default": null,
+                "constraints": {}
+              }
+            ]
+          },
+          "output_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "required": [
+              "records"
+            ],
+            "properties": {
+              "records": {
+                "type": "array",
+                "maxItems": 5,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "display_name",
+                    "public_selector"
+                  ],
+                  "properties": {
+                    "display_name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "public_selector": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false,
+            "x-bos-fields": [
+              {
+                "path": "records[].display_name",
+                "data_type": "varchar",
+                "ordinal_position": 1,
+                "nullable": false,
+                "default": null,
+                "constraints": {}
+              },
+              {
+                "path": "records[].public_selector",
+                "data_type": "varchar",
+                "ordinal_position": 2,
+                "nullable": false,
+                "default": null,
+                "constraints": {}
+              }
+            ]
+          },
+          "receipt_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "required": [
+              "correlation_id",
+              "service_id"
+            ],
+            "properties": {
+              "correlation_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "service_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "x-bos-fields": [
+              {
+                "path": "correlation_id",
+                "data_type": "varchar",
+                "ordinal_position": 1,
+                "nullable": false,
+                "default": null,
+                "constraints": {}
+              },
+              {
+                "path": "service_id",
+                "data_type": "varchar",
+                "ordinal_position": 2,
+                "nullable": false,
+                "default": null,
+                "constraints": {}
+              }
+            ]
+          },
+          "limits": {
+            "max_results_per_source": 5,
+            "pagination_supported": false,
+            "bulk_supported": false,
+            "streaming_supported": false,
+            "maximum_duration_seconds": 30,
+            "maximum_fan_out": 5
+          },
+          "guarantees": {
+            "read_consistency": "point_in_time",
+            "per_source_atomicity": "source_published",
+            "cross_source_atomicity": "not_applicable",
+            "convergence": "not_applicable",
+            "idempotency": "service_owned"
+          },
+          "error_contract": {
+            "schema": "lead-director-public-error/v1",
+            "codes": [
+              "INVALID_REQUEST",
+              "SOURCE_TEMPORARILY_UNAVAILABLE"
+            ]
+          }
         }
       ]
     },
@@ -495,6 +555,7 @@
         "idempotency": "service_owned"
       },
       "execution": {
+        "context_header": "X-BOS-Context-Handle",
         "method": "POST",
         "uri": "/bos/apps/lead-director/api/v1/organizations/{organization}/create"
       },
@@ -524,20 +585,6 @@
             ],
             "title": "PublicSourceReference",
             "type": "object"
-          },
-          "SourceInput": {
-            "type": "object",
-            "required": [
-              "display_name"
-            ],
-            "properties": {
-              "display_name": {
-                "type": "string",
-                "minLength": 1
-              }
-            },
-            "additionalProperties": false,
-            "$id": "urn:bos:lead-director:source-input"
           }
         },
         "additionalProperties": false,
@@ -546,7 +593,9 @@
             "$ref": "#/$defs/PublicSourceReference"
           },
           "changes": {
-            "$ref": "#/$defs/SourceInput"
+            "additionalProperties": true,
+            "title": "Changes",
+            "type": "object"
           }
         },
         "required": [
@@ -582,8 +631,8 @@
             "constraints": {}
           },
           {
-            "path": "changes.display_name",
-            "data_type": "varchar",
+            "path": "changes",
+            "data_type": "json",
             "ordinal_position": 4,
             "nullable": false,
             "default": null,
@@ -694,44 +743,6 @@
             ],
             "title": "PublicSourceReference",
             "type": "object"
-          },
-          "SourceOutput": {
-            "type": "object",
-            "required": [
-              "display_name",
-              "public_selector"
-            ],
-            "properties": {
-              "display_name": {
-                "type": "string",
-                "minLength": 1
-              },
-              "public_selector": {
-                "type": "string",
-                "minLength": 1
-              }
-            },
-            "additionalProperties": false,
-            "$id": "urn:bos:lead-director:source-output"
-          },
-          "SourceReceipt": {
-            "type": "object",
-            "required": [
-              "correlation_id",
-              "service_id"
-            ],
-            "properties": {
-              "correlation_id": {
-                "type": "string",
-                "minLength": 1
-              },
-              "service_id": {
-                "type": "string",
-                "minLength": 1
-              }
-            },
-            "additionalProperties": false,
-            "$id": "urn:bos:lead-director:source-receipt"
           }
         },
         "additionalProperties": false,
@@ -772,22 +783,26 @@
           "record": {
             "anyOf": [
               {
-                "$ref": "#/$defs/SourceOutput"
+                "additionalProperties": true,
+                "type": "object"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "Record"
           },
           "receipt": {
             "anyOf": [
               {
-                "$ref": "#/$defs/SourceReceipt"
+                "additionalProperties": true,
+                "type": "object"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "Receipt"
           },
           "error": {
             "anyOf": [
@@ -904,25 +919,17 @@
             "constraints": {}
           },
           {
-            "path": "record.display_name",
-            "data_type": "varchar",
+            "path": "record",
+            "data_type": "json",
             "ordinal_position": 9,
-            "nullable": false,
-            "default": null,
-            "constraints": {}
-          },
-          {
-            "path": "record.public_selector",
-            "data_type": "varchar",
-            "ordinal_position": 10,
-            "nullable": false,
+            "nullable": true,
             "default": null,
             "constraints": {}
           },
           {
             "path": "receipt",
             "data_type": "json",
-            "ordinal_position": 11,
+            "ordinal_position": 10,
             "nullable": true,
             "default": null,
             "constraints": {}
@@ -930,7 +937,7 @@
           {
             "path": "error",
             "data_type": "json",
-            "ordinal_position": 12,
+            "ordinal_position": 11,
             "nullable": true,
             "default": null,
             "constraints": {}
@@ -938,7 +945,7 @@
           {
             "path": "retry_after_seconds",
             "data_type": "integer",
-            "ordinal_position": 13,
+            "ordinal_position": 12,
             "nullable": true,
             "default": null,
             "constraints": {}
@@ -946,7 +953,7 @@
           {
             "path": "action",
             "data_type": "json",
-            "ordinal_position": 14,
+            "ordinal_position": 13,
             "nullable": true,
             "default": null,
             "constraints": {}
@@ -967,7 +974,127 @@
             "application": "lead-director",
             "plugin": "crm-primary"
           },
-          "availability": "ready"
+          "availability": "ready",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "required": [
+              "display_name"
+            ],
+            "properties": {
+              "display_name": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "x-bos-fields": [
+              {
+                "path": "display_name",
+                "data_type": "varchar",
+                "ordinal_position": 1,
+                "nullable": false,
+                "default": null,
+                "constraints": {}
+              }
+            ]
+          },
+          "output_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "required": [
+              "display_name",
+              "public_selector"
+            ],
+            "properties": {
+              "display_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "public_selector": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "x-bos-fields": [
+              {
+                "path": "display_name",
+                "data_type": "varchar",
+                "ordinal_position": 1,
+                "nullable": false,
+                "default": null,
+                "constraints": {}
+              },
+              {
+                "path": "public_selector",
+                "data_type": "varchar",
+                "ordinal_position": 2,
+                "nullable": false,
+                "default": null,
+                "constraints": {}
+              }
+            ]
+          },
+          "receipt_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "required": [
+              "correlation_id",
+              "service_id"
+            ],
+            "properties": {
+              "correlation_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "service_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "x-bos-fields": [
+              {
+                "path": "correlation_id",
+                "data_type": "varchar",
+                "ordinal_position": 1,
+                "nullable": false,
+                "default": null,
+                "constraints": {}
+              },
+              {
+                "path": "service_id",
+                "data_type": "varchar",
+                "ordinal_position": 2,
+                "nullable": false,
+                "default": null,
+                "constraints": {}
+              }
+            ]
+          },
+          "limits": {
+            "max_targets": 1,
+            "pagination_supported": false,
+            "bulk_supported": false,
+            "streaming_supported": false,
+            "maximum_duration_seconds": 30,
+            "maximum_fan_out": 1
+          },
+          "guarantees": {
+            "read_consistency": "not_applicable",
+            "per_source_atomicity": "source_published",
+            "cross_source_atomicity": "not_applicable",
+            "convergence": "eventually_consistent",
+            "idempotency": "service_owned"
+          },
+          "error_contract": {
+            "schema": "lead-director-public-error/v1",
+            "codes": [
+              "INVALID_REQUEST",
+              "SOURCE_TEMPORARILY_UNAVAILABLE"
+            ]
+          }
         }
       ]
     },
@@ -992,6 +1119,7 @@
         "idempotency": "service_owned"
       },
       "execution": {
+        "context_header": "X-BOS-Context-Handle",
         "method": "POST",
         "uri": "/bos/apps/lead-director/api/v1/organizations/{organization}/update"
       },
@@ -1023,7 +1151,9 @@
                 "$ref": "#/$defs/LeadDirectorRecordSelector"
               },
               "changes": {
-                "$ref": "#/$defs/SourceInput"
+                "additionalProperties": true,
+                "title": "Changes",
+                "type": "object"
               }
             },
             "required": [
@@ -1058,20 +1188,6 @@
             ],
             "title": "PublicSourceReference",
             "type": "object"
-          },
-          "SourceInput": {
-            "type": "object",
-            "required": [
-              "display_name"
-            ],
-            "properties": {
-              "display_name": {
-                "type": "string",
-                "minLength": 1
-              }
-            },
-            "additionalProperties": false,
-            "$id": "urn:bos:lead-director:source-input"
           }
         },
         "additionalProperties": false,
@@ -1134,8 +1250,8 @@
             "constraints": {}
           },
           {
-            "path": "targets[].changes.display_name",
-            "data_type": "varchar",
+            "path": "targets[].changes",
+            "data_type": "json",
             "ordinal_position": 6,
             "nullable": false,
             "default": null,
@@ -1265,22 +1381,27 @@
               "readback": {
                 "anyOf": [
                   {
-                    "$ref": "#/$defs/SourceOutput"
+                    "additionalProperties": true,
+                    "type": "object"
                   },
                   {
                     "type": "null"
                   }
-                ]
+                ],
+                "default": null,
+                "title": "Readback"
               },
               "receipt": {
                 "anyOf": [
                   {
-                    "$ref": "#/$defs/SourceReceipt"
+                    "additionalProperties": true,
+                    "type": "object"
                   },
                   {
                     "type": "null"
                   }
-                ]
+                ],
+                "title": "Receipt"
               },
               "error": {
                 "anyOf": [
@@ -1328,44 +1449,6 @@
             ],
             "title": "PublicSourceReference",
             "type": "object"
-          },
-          "SourceOutput": {
-            "type": "object",
-            "required": [
-              "display_name",
-              "public_selector"
-            ],
-            "properties": {
-              "display_name": {
-                "type": "string",
-                "minLength": 1
-              },
-              "public_selector": {
-                "type": "string",
-                "minLength": 1
-              }
-            },
-            "additionalProperties": false,
-            "$id": "urn:bos:lead-director:source-output"
-          },
-          "SourceReceipt": {
-            "type": "object",
-            "required": [
-              "correlation_id",
-              "service_id"
-            ],
-            "properties": {
-              "correlation_id": {
-                "type": "string",
-                "minLength": 1
-              },
-              "service_id": {
-                "type": "string",
-                "minLength": 1
-              }
-            },
-            "additionalProperties": false,
-            "$id": "urn:bos:lead-director:source-receipt"
           }
         },
         "additionalProperties": false,
@@ -1510,25 +1593,17 @@
             "constraints": {}
           },
           {
-            "path": "outcomes[].readback.display_name",
-            "data_type": "varchar",
+            "path": "outcomes[].readback",
+            "data_type": "json",
             "ordinal_position": 11,
-            "nullable": false,
-            "default": null,
-            "constraints": {}
-          },
-          {
-            "path": "outcomes[].readback.public_selector",
-            "data_type": "varchar",
-            "ordinal_position": 12,
-            "nullable": false,
+            "nullable": true,
             "default": null,
             "constraints": {}
           },
           {
             "path": "outcomes[].receipt",
             "data_type": "json",
-            "ordinal_position": 13,
+            "ordinal_position": 12,
             "nullable": true,
             "default": null,
             "constraints": {}
@@ -1536,7 +1611,7 @@
           {
             "path": "outcomes[].error",
             "data_type": "json",
-            "ordinal_position": 14,
+            "ordinal_position": 13,
             "nullable": true,
             "default": null,
             "constraints": {}
@@ -1544,7 +1619,7 @@
           {
             "path": "retry_after_seconds",
             "data_type": "integer",
-            "ordinal_position": 15,
+            "ordinal_position": 14,
             "nullable": true,
             "default": null,
             "constraints": {}
@@ -1552,7 +1627,7 @@
           {
             "path": "action",
             "data_type": "json",
-            "ordinal_position": 16,
+            "ordinal_position": 15,
             "nullable": true,
             "default": null,
             "constraints": {}
@@ -1573,7 +1648,127 @@
             "application": "lead-director",
             "plugin": "crm-primary"
           },
-          "availability": "ready"
+          "availability": "ready",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "required": [
+              "display_name"
+            ],
+            "properties": {
+              "display_name": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "x-bos-fields": [
+              {
+                "path": "display_name",
+                "data_type": "varchar",
+                "ordinal_position": 1,
+                "nullable": false,
+                "default": null,
+                "constraints": {}
+              }
+            ]
+          },
+          "output_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "required": [
+              "display_name",
+              "public_selector"
+            ],
+            "properties": {
+              "display_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "public_selector": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "x-bos-fields": [
+              {
+                "path": "display_name",
+                "data_type": "varchar",
+                "ordinal_position": 1,
+                "nullable": false,
+                "default": null,
+                "constraints": {}
+              },
+              {
+                "path": "public_selector",
+                "data_type": "varchar",
+                "ordinal_position": 2,
+                "nullable": false,
+                "default": null,
+                "constraints": {}
+              }
+            ]
+          },
+          "receipt_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "required": [
+              "correlation_id",
+              "service_id"
+            ],
+            "properties": {
+              "correlation_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "service_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "x-bos-fields": [
+              {
+                "path": "correlation_id",
+                "data_type": "varchar",
+                "ordinal_position": 1,
+                "nullable": false,
+                "default": null,
+                "constraints": {}
+              },
+              {
+                "path": "service_id",
+                "data_type": "varchar",
+                "ordinal_position": 2,
+                "nullable": false,
+                "default": null,
+                "constraints": {}
+              }
+            ]
+          },
+          "limits": {
+            "max_targets": 5,
+            "pagination_supported": false,
+            "bulk_supported": false,
+            "streaming_supported": false,
+            "maximum_duration_seconds": 30,
+            "maximum_fan_out": 5
+          },
+          "guarantees": {
+            "read_consistency": "not_applicable",
+            "per_source_atomicity": "source_published",
+            "cross_source_atomicity": "non_atomic_eventually_consistent",
+            "convergence": "eventually_consistent",
+            "idempotency": "service_owned"
+          },
+          "error_contract": {
+            "schema": "lead-director-public-error/v1",
+            "codes": [
+              "INVALID_REQUEST",
+              "SOURCE_TEMPORARILY_UNAVAILABLE"
+            ]
+          }
         }
       ]
     },
@@ -1598,6 +1793,7 @@
         "idempotency": "service_owned"
       },
       "execution": {
+        "context_header": "X-BOS-Context-Handle",
         "method": "POST",
         "uri": "/bos/apps/lead-director/api/v1/organizations/{organization}/delete"
       },
@@ -1675,20 +1871,6 @@
             ],
             "title": "PublicSourceReference",
             "type": "object"
-          },
-          "SourceInput": {
-            "type": "object",
-            "required": [
-              "display_name"
-            ],
-            "properties": {
-              "display_name": {
-                "type": "string",
-                "minLength": 1
-              }
-            },
-            "additionalProperties": false,
-            "$id": "urn:bos:lead-director:source-input"
           }
         },
         "additionalProperties": false,
@@ -1800,12 +1982,14 @@
               "receipt": {
                 "anyOf": [
                   {
-                    "$ref": "#/$defs/SourceReceipt"
+                    "additionalProperties": true,
+                    "type": "object"
                   },
                   {
                     "type": "null"
                   }
-                ]
+                ],
+                "title": "Receipt"
               },
               "error": {
                 "anyOf": [
@@ -1946,44 +2130,6 @@
             ],
             "title": "PublicSourceReference",
             "type": "object"
-          },
-          "SourceOutput": {
-            "type": "object",
-            "required": [
-              "display_name",
-              "public_selector"
-            ],
-            "properties": {
-              "display_name": {
-                "type": "string",
-                "minLength": 1
-              },
-              "public_selector": {
-                "type": "string",
-                "minLength": 1
-              }
-            },
-            "additionalProperties": false,
-            "$id": "urn:bos:lead-director:source-output"
-          },
-          "SourceReceipt": {
-            "type": "object",
-            "required": [
-              "correlation_id",
-              "service_id"
-            ],
-            "properties": {
-              "correlation_id": {
-                "type": "string",
-                "minLength": 1
-              },
-              "service_id": {
-                "type": "string",
-                "minLength": 1
-              }
-            },
-            "additionalProperties": false,
-            "$id": "urn:bos:lead-director:source-receipt"
           }
         },
         "additionalProperties": false,
@@ -2175,7 +2321,127 @@
             "application": "lead-director",
             "plugin": "crm-primary"
           },
-          "availability": "ready"
+          "availability": "ready",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "required": [
+              "display_name"
+            ],
+            "properties": {
+              "display_name": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "x-bos-fields": [
+              {
+                "path": "display_name",
+                "data_type": "varchar",
+                "ordinal_position": 1,
+                "nullable": false,
+                "default": null,
+                "constraints": {}
+              }
+            ]
+          },
+          "output_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "required": [
+              "display_name",
+              "public_selector"
+            ],
+            "properties": {
+              "display_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "public_selector": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "x-bos-fields": [
+              {
+                "path": "display_name",
+                "data_type": "varchar",
+                "ordinal_position": 1,
+                "nullable": false,
+                "default": null,
+                "constraints": {}
+              },
+              {
+                "path": "public_selector",
+                "data_type": "varchar",
+                "ordinal_position": 2,
+                "nullable": false,
+                "default": null,
+                "constraints": {}
+              }
+            ]
+          },
+          "receipt_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "required": [
+              "correlation_id",
+              "service_id"
+            ],
+            "properties": {
+              "correlation_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "service_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "x-bos-fields": [
+              {
+                "path": "correlation_id",
+                "data_type": "varchar",
+                "ordinal_position": 1,
+                "nullable": false,
+                "default": null,
+                "constraints": {}
+              },
+              {
+                "path": "service_id",
+                "data_type": "varchar",
+                "ordinal_position": 2,
+                "nullable": false,
+                "default": null,
+                "constraints": {}
+              }
+            ]
+          },
+          "limits": {
+            "max_targets": 5,
+            "pagination_supported": false,
+            "bulk_supported": false,
+            "streaming_supported": false,
+            "maximum_duration_seconds": 30,
+            "maximum_fan_out": 5
+          },
+          "guarantees": {
+            "read_consistency": "not_applicable",
+            "per_source_atomicity": "source_published",
+            "cross_source_atomicity": "non_atomic_eventually_consistent",
+            "convergence": "eventually_consistent",
+            "idempotency": "service_owned"
+          },
+          "error_contract": {
+            "schema": "lead-director-public-error/v1",
+            "codes": [
+              "INVALID_REQUEST",
+              "SOURCE_TEMPORARILY_UNAVAILABLE"
+            ]
+          }
         }
       ]
     },

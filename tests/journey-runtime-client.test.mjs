@@ -3,6 +3,8 @@ import test from "node:test";
 
 import {
   buildActionRequest,
+  buildDiscoveredOperationRequest,
+  buildIdentityV2JourneyActionRequest,
   interpretJourneyResponse,
   runJourneyRecovery,
   validateClientInstruction,
@@ -10,6 +12,8 @@ import {
   validateJourneyEnvelope,
   validateRegistrationResponse
 } from "../source/platform/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs";
+
+const contextHandle = `bos_ctx_v2_${"a".repeat(64)}`;
 
 const identity = "meeting-follow-up:approved-fixture";
 const start = {
@@ -36,12 +40,65 @@ test("bodyless actions omit both body and Content-Type", () => {
   assert.throws(() => buildActionRequest(start, null), /must not include a body/);
 });
 
+test("identity-v2 binds every journey lifecycle action without changing its payload", () => {
+  for (const action of [
+    start,
+    { ...start, verb: "step", href: "/step?capability=opaque" },
+    state
+  ]) {
+    assert.deepEqual(buildIdentityV2JourneyActionRequest(action, contextHandle), {
+      method: action.method,
+      href: action.href,
+      headers: { "X-BOS-Context-Handle": contextHandle },
+      body: undefined
+    });
+  }
+
+  const failurePayload = { code: "CLIENT_STEP_FAILED", message: "Unable to finish." };
+  const payloadSchema = {
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    type: "object",
+    required: ["code", "message"],
+    properties: {
+      code: { type: "string" },
+      message: { type: "string" }
+    },
+    additionalProperties: false
+  };
+  for (const verb of ["complete", "failed"]) {
+    const action = {
+      verb,
+      method: "POST",
+      href: `/${verb}?capability=opaque`,
+      payload_schema: payloadSchema
+    };
+    assert.deepEqual(
+      buildIdentityV2JourneyActionRequest(action, contextHandle, failurePayload),
+      {
+        method: "POST",
+        href: action.href,
+        headers: {
+          "content-type": "application/json",
+          "X-BOS-Context-Handle": contextHandle
+        },
+        body: JSON.stringify(failurePayload)
+      }
+    );
+  }
+
+  assert.throws(
+    () => buildIdentityV2JourneyActionRequest(start, "client-invented"),
+    /current opaque identity-v2 handle/
+  );
+});
+
 test("closed empty-object business actions send exactly an empty JSON object", () => {
   const action = {
     verb: "read",
     method: "POST",
     href: "https://api.example.test/read?selection=opaque",
     payload_schema: {
+      $schema: "https://json-schema.org/draft/2020-12/schema",
       type: "object",
       properties: {},
       additionalProperties: false
@@ -78,6 +135,106 @@ test("returned actions are closed, method-bound, and safe to invoke verbatim", (
     () => buildActionRequest({ ...start, href: "/start\n?capability=opaque" }),
     /complete returned HTTPS or origin-relative URI/
   );
+});
+
+test("discovered HTTP operations bind only the selected opaque context handle", () => {
+  const contract = {
+    operation: "calendar.events.search",
+    status: "described",
+    execution: {
+      context_header: "X-BOS-Context-Handle",
+      method: "POST",
+      transport: null,
+      uri: "/bos/apps/lead-director/api/v1/organizations/example/calendar/events/search"
+    },
+    input_schema: {
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      type: "object",
+      required: ["query"],
+      properties: { query: { type: "string", minLength: 1 } },
+      additionalProperties: false
+    }
+  };
+  const request = buildDiscoveredOperationRequest(
+    contract,
+    contextHandle,
+    { query: "recent meeting" }
+  );
+  assert.deepEqual(request, {
+    method: "POST",
+    href: contract.execution.uri,
+    headers: {
+      "content-type": "application/json",
+      "X-BOS-Context-Handle": contextHandle
+    },
+    body: JSON.stringify({ query: "recent meeting" })
+  });
+  assert.equal(JSON.stringify(request).includes("authorization"), false);
+  assert.equal(JSON.stringify(request).includes("idempotency"), false);
+  assert.equal(JSON.stringify(request).includes("execution_id"), false);
+
+  assert.throws(
+    () => buildDiscoveredOperationRequest({
+      ...contract,
+      execution: { ...contract.execution, context_header: "X-Authority" }
+    }, contextHandle, { query: "recent meeting" }),
+    /X-BOS-Context-Handle/
+  );
+  assert.throws(
+    () => buildDiscoveredOperationRequest(contract, "client-invented", {
+      query: "recent meeting"
+    }),
+    /current opaque identity-v2 handle/
+  );
+  assert.throws(
+    () => buildDiscoveredOperationRequest({
+      ...contract,
+      execution: {
+        context_header: null,
+        method: null,
+        transport: "journey_runtime",
+        uri: null
+      }
+    }, contextHandle, { query: "recent meeting" }),
+    /not direct HTTPS operations/
+  );
+});
+
+test("identity-v2 registration binds the handle while legacy Describe stays header-free", () => {
+  const document = {
+    identity: "meeting-follow-up",
+    name: "Meeting follow-up",
+    inputs: {},
+    entry: "done",
+    nodes: [{ code: "done", type: "server", terminal: true, inputs: {}, outputs: {} }]
+  };
+  const input_schema = {
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    type: "object",
+    required: ["identity", "name", "inputs", "entry", "nodes"]
+  };
+  const execution = {
+    context_header: "X-BOS-Context-Handle",
+    method: "POST",
+    transport: null,
+    uri: "/bos/apps/lead-director/api/v1/organizations/current/journeys"
+  };
+  const contract = {
+    operation: "lead-director.journeys.register",
+    status: "described",
+    execution,
+    input_schema
+  };
+  const request = buildDiscoveredOperationRequest(contract, contextHandle, document);
+  assert.equal(request.headers["X-BOS-Context-Handle"], contextHandle);
+  assert.deepEqual(JSON.parse(request.body), document);
+
+  const legacy = buildDiscoveredOperationRequest({
+    ...contract,
+    execution: { method: execution.method, uri: execution.uri }
+  }, document);
+  assert.deepEqual(legacy.headers, { "content-type": "application/json" });
+  assert.deepEqual(JSON.parse(legacy.body), document);
 });
 
 test("public journey envelopes reject internal locator and retry state", () => {
@@ -195,6 +352,7 @@ test("in-progress recovery waits exactly and invokes only returned state actions
     }
   ];
   const result = await runJourneyRecovery(responses.shift(), {
+    contextHandle,
     wait: async (seconds) => waits.push(seconds),
     invoke: async (request) => {
       calls.push(request);
@@ -205,7 +363,7 @@ test("in-progress recovery waits exactly and invokes only returned state actions
   assert.deepEqual(calls, [{
     method: "GET",
     href: state.href,
-    headers: {},
+    headers: { "X-BOS-Context-Handle": contextHandle },
     body: undefined
   }]);
   assert.equal(result.body.status, "awaiting_client");
