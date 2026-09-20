@@ -37,7 +37,7 @@ function candidateAcceptance(tuple = releaseTuple()) {
     source_revision: tuple.sourceRevision,
     server_revision: tuple.serverRevision,
     image_digest: tuple.imageDigest,
-    candidate_base_url: "https://agent-journey-acceptance---lead-director-backend-staging-abc-uc.a.run.app",
+    candidate_base_url: "https://journey-accept---lead-director-backend-staging-abc-uc.a.run.app",
     provider_mode: "fake",
     live_send: false,
     checks: {
@@ -96,6 +96,13 @@ test("release evidence requires one immutable candidate tuple", () => {
   assert.equal(validateCandidateAcceptance(candidateAcceptance(tuple), tuple).provider_mode, "fake");
   assert.throws(
     () => validateCandidateAcceptance({ ...candidateAcceptance(tuple), candidate_base_url: "https://dfsm.ai" }, tuple),
+    /isolated Agent Journey candidate/u
+  );
+  assert.throws(
+    () => validateCandidateAcceptance({
+      ...candidateAcceptance(tuple),
+      candidate_base_url: "https://agent-journey-acceptance---lead-director-backend-staging-abc-uc.a.run.app"
+    }, tuple),
     /isolated Agent Journey candidate/u
   );
   assert.throws(
