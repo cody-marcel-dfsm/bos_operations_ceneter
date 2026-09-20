@@ -1,0 +1,240 @@
+{
+  "identity": "meeting-follow-up:gcal-event-fall-enrollment-planning",
+  "name": "Follow up with recent meeting attendees",
+  "inputs": {
+    "meeting": {
+      "source": {
+        "platform": "bos",
+        "application": "lead-director",
+        "plugin": "google-calendar"
+      },
+      "title": "Fall Enrollment Campaign Planning",
+      "starts_at": "2026-09-16T14:00:00-06:00",
+      "ends_at": "2026-09-16T14:45:00-06:00"
+    },
+    "campaign_category": "fall_enrollment_campaign_planning_follow_up_2026_09_16",
+    "attendees": [
+      {
+        "email": "cody.marcel@dfsm.ai",
+        "display_name": "Cody Marcel",
+        "response_status": "accepted"
+      }
+    ]
+  },
+  "entry": "materialize_email_list",
+  "nodes": [
+    {
+      "code": "materialize_email_list",
+      "type": "server",
+      "operation": "email_list.materialize",
+      "max_visits": 2,
+      "inputs": {
+        "attendees": {"from": "$journey.inputs.attendees"},
+        "prior_public_failures": {
+          "from": "$nodes.send_campaign.outputs.public_failures",
+          "optional": true
+        },
+        "prior_receipts": {
+          "from": "$nodes.send_campaign.outputs.receipts",
+          "optional": true
+        },
+        "prior_error": {
+          "from": "$nodes.send_campaign.error",
+          "optional": true
+        }
+      },
+      "outputs": {"email_list": {"type": "reference"}},
+      "next": "resolve_template"
+    },
+    {
+      "code": "resolve_template",
+      "type": "server",
+      "operation": "\u0069code-automated-outreach.templates.resolve",
+      "inputs": {
+        "meeting": {"from": "$journey.inputs.meeting"},
+        "purpose": {"value": "meeting_follow_up"},
+        "channel": {"value": "email"}
+      },
+      "outputs": {"template": {"type": "reference"}},
+      "next": "prepare_campaign"
+    },
+    {
+      "code": "prepare_campaign",
+      "type": "server",
+      "operation": "sendgrid-email.campaign.prepare",
+      "max_visits": 2,
+      "inputs": {
+        "email_list": {"from": "$nodes.materialize_email_list.outputs.email_list"},
+        "template": {"from": "$nodes.resolve_template.outputs.template"},
+        "category": {"from": "$journey.inputs.campaign_category"}
+      },
+      "outputs": {
+        "campaign": {"type": "reference"},
+        "campaign_review": {
+          "type": "object",
+          "required": ["category", "subject", "text", "recipient_count"],
+          "properties": {
+            "category": {"type": "string", "minLength": 1, "maxLength": 255},
+            "subject": {"type": "string"},
+            "text": {"type": "string"},
+            "recipient_count": {"type": "integer", "minimum": 1}
+          },
+          "additionalProperties": false
+        }
+      },
+      "next": "review_campaign"
+    },
+    {
+      "code": "review_campaign",
+      "type": "client",
+      "max_visits": 2,
+      "instruction": {
+        "goal": "review_and_approve_campaign",
+        "message": "Present the prepared follow-up campaign to the user and obtain explicit approval to send it."
+      },
+      "inputs": {
+        "campaign_review": {"from": "$nodes.prepare_campaign.outputs.campaign_review"}
+      },
+      "outputs": {
+        "approval": {
+          "type": "object",
+          "required": ["confirmed"],
+          "properties": {"confirmed": {"const": true}},
+          "additionalProperties": false
+        }
+      },
+      "next": "send_campaign"
+    },
+    {
+      "code": "send_campaign",
+      "type": "server",
+      "operation": "sendgrid-email.campaign.send",
+      "max_visits": 2,
+      "inputs": {
+        "campaign": {"from": "$nodes.prepare_campaign.outputs.campaign"},
+        "approval": {"from": "$nodes.review_campaign.outputs.approval"}
+      },
+      "outputs": {
+        "attempted": {"type": "integer", "minimum": 0},
+        "successful_sends": {"type": "integer", "minimum": 0},
+        "failed_sends": {"type": "integer", "minimum": 0},
+        "suppressed_or_skipped": {"type": "integer", "minimum": 0},
+        "public_failures": {"type": "array"},
+        "receipts": {"type": "array"}
+      },
+      "transitions": {
+        "cases": [
+          {
+            "when": {
+              "left": {"from": "$outputs.successful_sends"},
+              "op": "gt",
+              "right": {"value": 0}
+            },
+            "next": "show_send_result"
+          }
+        ],
+        "default": "no_successful_sends"
+      },
+      "catch": {
+        "cases": [
+          {
+            "when": {
+              "left": {"from": "$error.code"},
+              "op": "eq",
+              "right": {"value": "CAMPAIGN_RECIPIENTS_INVALID"}
+            },
+            "next": "repair_audience"
+          }
+        ],
+        "default": "send_failed"
+      }
+    },
+    {
+      "code": "show_send_result",
+      "type": "client",
+      "instruction": {
+        "goal": "show_campaign_result",
+        "message": "Display the successful and failed send counts and sanitized failures. Use authorized skills to recommend concrete recovery actions from those failures."
+      },
+      "inputs": {
+        "attempted": {"from": "$nodes.send_campaign.outputs.attempted"},
+        "successful_sends": {"from": "$nodes.send_campaign.outputs.successful_sends"},
+        "failed_sends": {"from": "$nodes.send_campaign.outputs.failed_sends"},
+        "suppressed_or_skipped": {"from": "$nodes.send_campaign.outputs.suppressed_or_skipped"},
+        "public_failures": {"from": "$nodes.send_campaign.outputs.public_failures"},
+        "receipts": {"from": "$nodes.send_campaign.outputs.receipts"}
+      },
+      "outputs": {},
+      "next": "completed"
+    },
+    {
+      "code": "completed",
+      "type": "server",
+      "terminal": true,
+      "inputs": {
+        "category": {"from": "$journey.inputs.campaign_category"},
+        "attempted": {"from": "$nodes.send_campaign.outputs.attempted"},
+        "successful_sends": {"from": "$nodes.send_campaign.outputs.successful_sends"},
+        "failed_sends": {"from": "$nodes.send_campaign.outputs.failed_sends"},
+        "suppressed_or_skipped": {"from": "$nodes.send_campaign.outputs.suppressed_or_skipped"},
+        "receipts": {"from": "$nodes.send_campaign.outputs.receipts"}
+      },
+      "outputs": {
+        "campaign_outcome": {
+          "type": "object",
+          "required": [
+            "category",
+            "attempted",
+            "successful_sends",
+            "failed_sends",
+            "suppressed_or_skipped",
+            "receipts"
+          ],
+          "properties": {
+            "category": {"type": "string", "minLength": 1, "maxLength": 255},
+            "attempted": {"type": "integer", "minimum": 0},
+            "successful_sends": {"type": "integer", "minimum": 0},
+            "failed_sends": {"type": "integer", "minimum": 0},
+            "suppressed_or_skipped": {"type": "integer", "minimum": 0},
+            "receipts": {"type": "array"}
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "code": "no_successful_sends",
+      "type": "client",
+      "instruction": {
+        "goal": "resolve_zero_successful_sends",
+        "message": "Review the sanitized send diagnostics, use authorized tools to correct the campaign audience, and complete this step when the campaign is ready for another send attempt."
+      },
+      "inputs": {
+        "attempted": {"from": "$nodes.send_campaign.outputs.attempted"},
+        "failed_sends": {"from": "$nodes.send_campaign.outputs.failed_sends"},
+        "suppressed_or_skipped": {"from": "$nodes.send_campaign.outputs.suppressed_or_skipped"},
+        "public_failures": {"from": "$nodes.send_campaign.outputs.public_failures"}
+      },
+      "outputs": {},
+      "next": "materialize_email_list"
+    },
+    {
+      "code": "repair_audience",
+      "type": "client",
+      "instruction": {
+        "goal": "repair_campaign_audience",
+        "message": "Resolve the invalid campaign recipients using authorized tools, then complete this step."
+      },
+      "inputs": {"send_error": {"from": "$nodes.send_campaign.error"}},
+      "outputs": {},
+      "next": "materialize_email_list"
+    },
+    {
+      "code": "send_failed",
+      "type": "server",
+      "terminal": true,
+      "inputs": {},
+      "outputs": {}
+    }
+  ]
+}

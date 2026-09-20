@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dfsm.ai/contracts/bos-operations-center/v1/agent-driven-journey-native-result.schema.json",
+  "title": "BOS Operations Center deployed Agent-Driven Custom Journey acceptance result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "status",
+    "connection",
+    "release_matched",
+    "provider_mode",
+    "live_send",
+    "controlled_attendee_count",
+    "checks",
+    "message"
+  ],
+  "properties": {
+    "contract": {
+      "type": "string",
+      "enum": ["boc-agent-driven-journey-native-result/v1"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["APPROVED", "HOST_ACTION_REQUIRED", "REJECTED"]
+    },
+    "connection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "host_managed",
+        "protocol_initialized",
+        "bos_connection_reused",
+        "second_connection_created",
+        "manual_auth_instruction",
+        "localhost_callback"
+      ],
+      "properties": {
+        "host_managed": { "type": "boolean" },
+        "protocol_initialized": { "type": "boolean" },
+        "bos_connection_reused": { "type": "boolean" },
+        "second_connection_created": { "type": "boolean" },
+        "manual_auth_instruction": { "type": "boolean" },
+        "localhost_callback": { "type": "boolean" }
+      }
+    },
+    "release_matched": { "type": "boolean" },
+    "provider_mode": { "type": "string", "enum": ["fake"] },
+    "live_send": { "type": "boolean" },
+    "controlled_attendee_count": { "type": "integer", "minimum": 0, "maximum": 1 },
+    "checks": {
+      "type": "array",
+      "minItems": 32,
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status", "observations"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "AC-01", "AC-02", "AC-03", "AC-04", "AC-05", "AC-06", "AC-07", "AC-07a",
+              "AC-08", "AC-08a", "AC-09", "AC-10", "AC-11", "AC-12", "AC-13", "AC-14",
+              "AC-15", "AC-16", "AC-17", "AC-18", "AC-19", "AC-20", "AC-21", "AC-22",
+              "AC-23", "AC-24", "AC-25", "AC-26", "AC-27", "AC-28", "AC-29", "AC-31"
+            ]
+          },
+          "status": { "type": "string", "enum": ["passed", "failed"] },
+          "observations": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["case", "request", "response", "assertions"],
+              "properties": {
+                "case": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_]{0,63}$"
+                },
+                "request": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["source", "method", "body_shape"],
+                  "properties": {
+                    "source": {
+                      "type": "string",
+                      "enum": ["native_host", "generated_package", "discovered_contract", "returned_action"]
+                    },
+                    "method": { "type": "string", "enum": ["HOST", "PACKAGE", "GET", "POST"] },
+                    "body_shape": {
+                      "type": "string",
+                      "enum": ["none", "closed_empty_object", "json_null", "semantic_input", "raw_bosl", "returned_schema"]
+                    }
+                  }
+                },
+                "response": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["http_status", "schema_validated", "summary"],
+                  "properties": {
+                    "http_status": { "type": "integer", "minimum": 0, "maximum": 599 },
+                    "schema_validated": { "type": "boolean" },
+                    "summary": { "type": "string", "minLength": 1, "maxLength": 512 }
+                  }
+                },
+                "assertions": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 12,
+                  "items": { "type": "string", "minLength": 1, "maxLength": 96 }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "message": { "type": "string", "minLength": 1, "maxLength": 512 }
+  }
+}
