@@ -1,0 +1,2187 @@
+{
+  "contract_version": "lead-director-describe/v1",
+  "metadata_version": "ld-meta-fixture-v1",
+  "observed_at": "2026-09-19T18:00:00Z",
+  "operations": [
+    {
+      "operation": "search",
+      "status": "described",
+      "effect": "read",
+      "limits": {
+        "max_targets": null,
+        "max_results_per_source": 5,
+        "pagination_supported": false,
+        "bulk_supported": false,
+        "streaming_supported": false,
+        "maximum_duration_seconds": 30,
+        "maximum_fan_out": 5
+      },
+      "guarantees": {
+        "read_consistency": "point_in_time",
+        "per_source_atomicity": "source_published",
+        "cross_source_atomicity": "not_applicable",
+        "convergence": "not_applicable",
+        "idempotency": "service_owned"
+      },
+      "execution": {
+        "method": "POST",
+        "uri": "/bos/apps/lead-director/api/v1/organizations/{organization}/search"
+      },
+      "input_schema": {
+        "$defs": {
+          "PublicSourceReference": {
+            "additionalProperties": false,
+            "description": "Provider-neutral public source reference copied from Describe.",
+            "properties": {
+              "platform": {
+                "title": "Platform",
+                "type": "string"
+              },
+              "application": {
+                "title": "Application",
+                "type": "string"
+              },
+              "plugin": {
+                "title": "Plugin",
+                "type": "string"
+              }
+            },
+            "required": [
+              "platform",
+              "application",
+              "plugin"
+            ],
+            "title": "PublicSourceReference",
+            "type": "object"
+          },
+          "SourceInput": {
+            "type": "object",
+            "required": [
+              "text"
+            ],
+            "properties": {
+              "text": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "$id": "urn:bos:lead-director:source-input"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "allOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "title": "Text",
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/SourceInput/properties/text"
+              }
+            ]
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/PublicSourceReference"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "LeadDirectorSearchRequest",
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "x-bos-fields": [
+          {
+            "path": "text",
+            "data_type": "varchar",
+            "ordinal_position": 1,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "source.platform",
+            "data_type": "varchar",
+            "ordinal_position": 2,
+            "nullable": true,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "source.application",
+            "data_type": "varchar",
+            "ordinal_position": 3,
+            "nullable": true,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "source.plugin",
+            "data_type": "varchar",
+            "ordinal_position": 4,
+            "nullable": true,
+            "default": null,
+            "constraints": {}
+          }
+        ]
+      },
+      "output_schema": {
+        "$defs": {
+          "LeadDirectorPublicError": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Z][A-Z0-9_]*$",
+                "title": "Code",
+                "type": "string"
+              },
+              "message": {
+                "maxLength": 2048,
+                "minLength": 1,
+                "title": "Message",
+                "type": "string"
+              },
+              "retryable": {
+                "title": "Retryable",
+                "type": "boolean"
+              },
+              "correlation_id": {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+                "title": "Correlation Id",
+                "type": "string"
+              },
+              "details": {
+                "default": [],
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "title": "Details",
+                "type": "array"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "correlation_id"
+            ],
+            "title": "LeadDirectorPublicError",
+            "type": "object"
+          },
+          "LeadDirectorSearchSourceResult": {
+            "additionalProperties": false,
+            "properties": {
+              "source": {
+                "$ref": "#/$defs/PublicSourceReference"
+              },
+              "status": {
+                "enum": [
+                  "succeeded",
+                  "authorization_required",
+                  "configuration_required",
+                  "temporarily_unavailable",
+                  "failed"
+                ],
+                "title": "Status",
+                "type": "string"
+              },
+              "observed_at": {
+                "format": "date-time",
+                "title": "Observed At",
+                "type": "string"
+              },
+              "records": {
+                "$ref": "#/$defs/SourceOutput/properties/records"
+              },
+              "error": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/LeadDirectorPublicError"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "source",
+              "status",
+              "observed_at",
+              "records",
+              "error"
+            ],
+            "title": "LeadDirectorSearchSourceResult",
+            "type": "object"
+          },
+          "PublicSourceReference": {
+            "additionalProperties": false,
+            "description": "Provider-neutral public source reference copied from Describe.",
+            "properties": {
+              "platform": {
+                "title": "Platform",
+                "type": "string"
+              },
+              "application": {
+                "title": "Application",
+                "type": "string"
+              },
+              "plugin": {
+                "title": "Plugin",
+                "type": "string"
+              }
+            },
+            "required": [
+              "platform",
+              "application",
+              "plugin"
+            ],
+            "title": "PublicSourceReference",
+            "type": "object"
+          },
+          "SourceOutput": {
+            "type": "object",
+            "required": [
+              "records"
+            ],
+            "properties": {
+              "records": {
+                "type": "array",
+                "maxItems": 5,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "display_name",
+                    "public_selector"
+                  ],
+                  "properties": {
+                    "display_name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "public_selector": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false,
+            "$id": "urn:bos:lead-director:source-output"
+          },
+          "SourceReceipt": {
+            "type": "object",
+            "required": [
+              "correlation_id",
+              "service_id"
+            ],
+            "properties": {
+              "correlation_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "service_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "$id": "urn:bos:lead-director:source-receipt"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "contract_version": {
+            "const": "lead-director-search/v1",
+            "default": "lead-director-search/v1",
+            "title": "Contract Version",
+            "type": "string"
+          },
+          "correlation_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+            "title": "Correlation Id",
+            "type": "string"
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "source_results": {
+            "items": {
+              "$ref": "#/$defs/LeadDirectorSearchSourceResult"
+            },
+            "minItems": 1,
+            "title": "Source Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "contract_version",
+          "correlation_id",
+          "complete",
+          "observed_at",
+          "source_results"
+        ],
+        "title": "LeadDirectorSearchResponse",
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "x-bos-fields": [
+          {
+            "path": "contract_version",
+            "data_type": "varchar",
+            "ordinal_position": 1,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "correlation_id",
+            "data_type": "varchar",
+            "ordinal_position": 2,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "complete",
+            "data_type": "boolean",
+            "ordinal_position": 3,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "observed_at",
+            "data_type": "timestamp",
+            "ordinal_position": 4,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "source_results[]",
+            "data_type": "array",
+            "ordinal_position": 5,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "source_results[].source.platform",
+            "data_type": "varchar",
+            "ordinal_position": 6,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "source_results[].source.application",
+            "data_type": "varchar",
+            "ordinal_position": 7,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "source_results[].source.plugin",
+            "data_type": "varchar",
+            "ordinal_position": 8,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "source_results[].status",
+            "data_type": "varchar",
+            "ordinal_position": 9,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "source_results[].observed_at",
+            "data_type": "timestamp",
+            "ordinal_position": 10,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "source_results[].records[].display_name",
+            "data_type": "varchar",
+            "ordinal_position": 11,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "source_results[].records[].public_selector",
+            "data_type": "varchar",
+            "ordinal_position": 12,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "source_results[].error",
+            "data_type": "json",
+            "ordinal_position": 13,
+            "nullable": true,
+            "default": null,
+            "constraints": {}
+          }
+        ]
+      },
+      "error_contract": {
+        "schema": "lead-director-public-error/v1",
+        "codes": [
+          "INVALID_REQUEST",
+          "SOURCE_TEMPORARILY_UNAVAILABLE"
+        ]
+      },
+      "sources": [
+        {
+          "source": {
+            "platform": "bos",
+            "application": "lead-director",
+            "plugin": "crm-primary"
+          },
+          "availability": "ready"
+        }
+      ]
+    },
+    {
+      "operation": "create",
+      "status": "described",
+      "effect": "create",
+      "limits": {
+        "max_targets": 1,
+        "max_results_per_source": null,
+        "pagination_supported": false,
+        "bulk_supported": false,
+        "streaming_supported": false,
+        "maximum_duration_seconds": 30,
+        "maximum_fan_out": 1
+      },
+      "guarantees": {
+        "read_consistency": "not_applicable",
+        "per_source_atomicity": "source_published",
+        "cross_source_atomicity": "not_applicable",
+        "convergence": "eventually_consistent",
+        "idempotency": "service_owned"
+      },
+      "execution": {
+        "method": "POST",
+        "uri": "/bos/apps/lead-director/api/v1/organizations/{organization}/create"
+      },
+      "input_schema": {
+        "$defs": {
+          "PublicSourceReference": {
+            "additionalProperties": false,
+            "description": "Provider-neutral public source reference copied from Describe.",
+            "properties": {
+              "platform": {
+                "title": "Platform",
+                "type": "string"
+              },
+              "application": {
+                "title": "Application",
+                "type": "string"
+              },
+              "plugin": {
+                "title": "Plugin",
+                "type": "string"
+              }
+            },
+            "required": [
+              "platform",
+              "application",
+              "plugin"
+            ],
+            "title": "PublicSourceReference",
+            "type": "object"
+          },
+          "SourceInput": {
+            "type": "object",
+            "required": [
+              "display_name"
+            ],
+            "properties": {
+              "display_name": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "$id": "urn:bos:lead-director:source-input"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "source": {
+            "$ref": "#/$defs/PublicSourceReference"
+          },
+          "changes": {
+            "$ref": "#/$defs/SourceInput"
+          }
+        },
+        "required": [
+          "source",
+          "changes"
+        ],
+        "title": "LeadDirectorCreateRequest",
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "x-bos-fields": [
+          {
+            "path": "source.platform",
+            "data_type": "varchar",
+            "ordinal_position": 1,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "source.application",
+            "data_type": "varchar",
+            "ordinal_position": 2,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "source.plugin",
+            "data_type": "varchar",
+            "ordinal_position": 3,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "changes.display_name",
+            "data_type": "varchar",
+            "ordinal_position": 4,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          }
+        ]
+      },
+      "output_schema": {
+        "$defs": {
+          "LeadDirectorPublicError": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Z][A-Z0-9_]*$",
+                "title": "Code",
+                "type": "string"
+              },
+              "message": {
+                "maxLength": 2048,
+                "minLength": 1,
+                "title": "Message",
+                "type": "string"
+              },
+              "retryable": {
+                "title": "Retryable",
+                "type": "boolean"
+              },
+              "correlation_id": {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+                "title": "Correlation Id",
+                "type": "string"
+              },
+              "details": {
+                "default": [],
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "title": "Details",
+                "type": "array"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "correlation_id"
+            ],
+            "title": "LeadDirectorPublicError",
+            "type": "object"
+          },
+          "LeadDirectorStateAction": {
+            "additionalProperties": false,
+            "properties": {
+              "verb": {
+                "const": "state",
+                "default": "state",
+                "title": "Verb",
+                "type": "string"
+              },
+              "method": {
+                "const": "GET",
+                "default": "GET",
+                "title": "Method",
+                "type": "string"
+              },
+              "uri": {
+                "title": "Uri",
+                "type": "string"
+              },
+              "body": {
+                "default": null,
+                "title": "Body",
+                "type": "null"
+              }
+            },
+            "required": [
+              "uri"
+            ],
+            "title": "LeadDirectorStateAction",
+            "type": "object"
+          },
+          "PublicSourceReference": {
+            "additionalProperties": false,
+            "description": "Provider-neutral public source reference copied from Describe.",
+            "properties": {
+              "platform": {
+                "title": "Platform",
+                "type": "string"
+              },
+              "application": {
+                "title": "Application",
+                "type": "string"
+              },
+              "plugin": {
+                "title": "Plugin",
+                "type": "string"
+              }
+            },
+            "required": [
+              "platform",
+              "application",
+              "plugin"
+            ],
+            "title": "PublicSourceReference",
+            "type": "object"
+          },
+          "SourceOutput": {
+            "type": "object",
+            "required": [
+              "display_name",
+              "public_selector"
+            ],
+            "properties": {
+              "display_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "public_selector": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "$id": "urn:bos:lead-director:source-output"
+          },
+          "SourceReceipt": {
+            "type": "object",
+            "required": [
+              "correlation_id",
+              "service_id"
+            ],
+            "properties": {
+              "correlation_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "service_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "$id": "urn:bos:lead-director:source-receipt"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "contract_version": {
+            "const": "lead-director-create/v1",
+            "default": "lead-director-create/v1",
+            "title": "Contract Version",
+            "type": "string"
+          },
+          "correlation_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+            "title": "Correlation Id",
+            "type": "string"
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "created",
+              "replayed",
+              "failed",
+              "in_progress"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/$defs/PublicSourceReference"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "record": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/SourceOutput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "receipt": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/SourceReceipt"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/LeadDirectorPublicError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "retry_after_seconds": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Retry After Seconds"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/LeadDirectorStateAction"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "contract_version",
+          "correlation_id",
+          "complete",
+          "status",
+          "source",
+          "observed_at",
+          "record",
+          "receipt",
+          "error"
+        ],
+        "title": "LeadDirectorCreateResponse",
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "x-bos-fields": [
+          {
+            "path": "contract_version",
+            "data_type": "varchar",
+            "ordinal_position": 1,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "correlation_id",
+            "data_type": "varchar",
+            "ordinal_position": 2,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "complete",
+            "data_type": "boolean",
+            "ordinal_position": 3,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "status",
+            "data_type": "varchar",
+            "ordinal_position": 4,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "source.platform",
+            "data_type": "varchar",
+            "ordinal_position": 5,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "source.application",
+            "data_type": "varchar",
+            "ordinal_position": 6,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "source.plugin",
+            "data_type": "varchar",
+            "ordinal_position": 7,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "observed_at",
+            "data_type": "timestamp",
+            "ordinal_position": 8,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "record.display_name",
+            "data_type": "varchar",
+            "ordinal_position": 9,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "record.public_selector",
+            "data_type": "varchar",
+            "ordinal_position": 10,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "receipt",
+            "data_type": "json",
+            "ordinal_position": 11,
+            "nullable": true,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "error",
+            "data_type": "json",
+            "ordinal_position": 12,
+            "nullable": true,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "retry_after_seconds",
+            "data_type": "integer",
+            "ordinal_position": 13,
+            "nullable": true,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "action",
+            "data_type": "json",
+            "ordinal_position": 14,
+            "nullable": true,
+            "default": null,
+            "constraints": {}
+          }
+        ]
+      },
+      "error_contract": {
+        "schema": "lead-director-public-error/v1",
+        "codes": [
+          "INVALID_REQUEST",
+          "SOURCE_TEMPORARILY_UNAVAILABLE"
+        ]
+      },
+      "sources": [
+        {
+          "source": {
+            "platform": "bos",
+            "application": "lead-director",
+            "plugin": "crm-primary"
+          },
+          "availability": "ready"
+        }
+      ]
+    },
+    {
+      "operation": "update",
+      "status": "described",
+      "effect": "update",
+      "limits": {
+        "max_targets": 5,
+        "max_results_per_source": null,
+        "pagination_supported": false,
+        "bulk_supported": false,
+        "streaming_supported": false,
+        "maximum_duration_seconds": 30,
+        "maximum_fan_out": 5
+      },
+      "guarantees": {
+        "read_consistency": "not_applicable",
+        "per_source_atomicity": "source_published",
+        "cross_source_atomicity": "non_atomic_eventually_consistent",
+        "convergence": "eventually_consistent",
+        "idempotency": "service_owned"
+      },
+      "execution": {
+        "method": "POST",
+        "uri": "/bos/apps/lead-director/api/v1/organizations/{organization}/update"
+      },
+      "input_schema": {
+        "$defs": {
+          "LeadDirectorRecordSelector": {
+            "additionalProperties": false,
+            "properties": {
+              "selector": {
+                "maxLength": 512,
+                "minLength": 1,
+                "title": "Selector",
+                "type": "string"
+              }
+            },
+            "required": [
+              "selector"
+            ],
+            "title": "LeadDirectorRecordSelector",
+            "type": "object"
+          },
+          "LeadDirectorUpdateTarget": {
+            "additionalProperties": false,
+            "properties": {
+              "source": {
+                "$ref": "#/$defs/PublicSourceReference"
+              },
+              "record": {
+                "$ref": "#/$defs/LeadDirectorRecordSelector"
+              },
+              "changes": {
+                "$ref": "#/$defs/SourceInput"
+              }
+            },
+            "required": [
+              "source",
+              "record",
+              "changes"
+            ],
+            "title": "LeadDirectorUpdateTarget",
+            "type": "object"
+          },
+          "PublicSourceReference": {
+            "additionalProperties": false,
+            "description": "Provider-neutral public source reference copied from Describe.",
+            "properties": {
+              "platform": {
+                "title": "Platform",
+                "type": "string"
+              },
+              "application": {
+                "title": "Application",
+                "type": "string"
+              },
+              "plugin": {
+                "title": "Plugin",
+                "type": "string"
+              }
+            },
+            "required": [
+              "platform",
+              "application",
+              "plugin"
+            ],
+            "title": "PublicSourceReference",
+            "type": "object"
+          },
+          "SourceInput": {
+            "type": "object",
+            "required": [
+              "display_name"
+            ],
+            "properties": {
+              "display_name": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "$id": "urn:bos:lead-director:source-input"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "targets": {
+            "items": {
+              "$ref": "#/$defs/LeadDirectorUpdateTarget"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Targets",
+            "type": "array"
+          }
+        },
+        "required": [
+          "targets"
+        ],
+        "title": "LeadDirectorUpdateRequest",
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "x-bos-fields": [
+          {
+            "path": "targets[]",
+            "data_type": "array",
+            "ordinal_position": 1,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "targets[].source.platform",
+            "data_type": "varchar",
+            "ordinal_position": 2,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "targets[].source.application",
+            "data_type": "varchar",
+            "ordinal_position": 3,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "targets[].source.plugin",
+            "data_type": "varchar",
+            "ordinal_position": 4,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "targets[].record.selector",
+            "data_type": "varchar",
+            "ordinal_position": 5,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "targets[].changes.display_name",
+            "data_type": "varchar",
+            "ordinal_position": 6,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          }
+        ]
+      },
+      "output_schema": {
+        "$defs": {
+          "LeadDirectorPublicError": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Z][A-Z0-9_]*$",
+                "title": "Code",
+                "type": "string"
+              },
+              "message": {
+                "maxLength": 2048,
+                "minLength": 1,
+                "title": "Message",
+                "type": "string"
+              },
+              "retryable": {
+                "title": "Retryable",
+                "type": "boolean"
+              },
+              "correlation_id": {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+                "title": "Correlation Id",
+                "type": "string"
+              },
+              "details": {
+                "default": [],
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "title": "Details",
+                "type": "array"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "correlation_id"
+            ],
+            "title": "LeadDirectorPublicError",
+            "type": "object"
+          },
+          "LeadDirectorRecordSelector": {
+            "additionalProperties": false,
+            "properties": {
+              "selector": {
+                "maxLength": 512,
+                "minLength": 1,
+                "title": "Selector",
+                "type": "string"
+              }
+            },
+            "required": [
+              "selector"
+            ],
+            "title": "LeadDirectorRecordSelector",
+            "type": "object"
+          },
+          "LeadDirectorStateAction": {
+            "additionalProperties": false,
+            "properties": {
+              "verb": {
+                "const": "state",
+                "default": "state",
+                "title": "Verb",
+                "type": "string"
+              },
+              "method": {
+                "const": "GET",
+                "default": "GET",
+                "title": "Method",
+                "type": "string"
+              },
+              "uri": {
+                "title": "Uri",
+                "type": "string"
+              },
+              "body": {
+                "default": null,
+                "title": "Body",
+                "type": "null"
+              }
+            },
+            "required": [
+              "uri"
+            ],
+            "title": "LeadDirectorStateAction",
+            "type": "object"
+          },
+          "LeadDirectorUpdateOutcome": {
+            "additionalProperties": false,
+            "properties": {
+              "source": {
+                "$ref": "#/$defs/PublicSourceReference"
+              },
+              "record": {
+                "$ref": "#/$defs/LeadDirectorRecordSelector"
+              },
+              "status": {
+                "enum": [
+                  "updated",
+                  "replayed",
+                  "failed",
+                  "in_progress"
+                ],
+                "title": "Status",
+                "type": "string"
+              },
+              "observed_at": {
+                "format": "date-time",
+                "title": "Observed At",
+                "type": "string"
+              },
+              "readback": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/SourceOutput"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "receipt": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/SourceReceipt"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "error": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/LeadDirectorPublicError"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "source",
+              "record",
+              "status",
+              "observed_at",
+              "receipt",
+              "error"
+            ],
+            "title": "LeadDirectorUpdateOutcome",
+            "type": "object"
+          },
+          "PublicSourceReference": {
+            "additionalProperties": false,
+            "description": "Provider-neutral public source reference copied from Describe.",
+            "properties": {
+              "platform": {
+                "title": "Platform",
+                "type": "string"
+              },
+              "application": {
+                "title": "Application",
+                "type": "string"
+              },
+              "plugin": {
+                "title": "Plugin",
+                "type": "string"
+              }
+            },
+            "required": [
+              "platform",
+              "application",
+              "plugin"
+            ],
+            "title": "PublicSourceReference",
+            "type": "object"
+          },
+          "SourceOutput": {
+            "type": "object",
+            "required": [
+              "display_name",
+              "public_selector"
+            ],
+            "properties": {
+              "display_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "public_selector": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "$id": "urn:bos:lead-director:source-output"
+          },
+          "SourceReceipt": {
+            "type": "object",
+            "required": [
+              "correlation_id",
+              "service_id"
+            ],
+            "properties": {
+              "correlation_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "service_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "$id": "urn:bos:lead-director:source-receipt"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "contract_version": {
+            "const": "lead-director-update/v1",
+            "default": "lead-director-update/v1",
+            "title": "Contract Version",
+            "type": "string"
+          },
+          "correlation_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+            "title": "Correlation Id",
+            "type": "string"
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "outcomes": {
+            "items": {
+              "$ref": "#/$defs/LeadDirectorUpdateOutcome"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Outcomes",
+            "type": "array"
+          },
+          "retry_after_seconds": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Retry After Seconds"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/LeadDirectorStateAction"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "contract_version",
+          "correlation_id",
+          "complete",
+          "outcomes"
+        ],
+        "title": "LeadDirectorUpdateResponse",
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "x-bos-fields": [
+          {
+            "path": "contract_version",
+            "data_type": "varchar",
+            "ordinal_position": 1,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "correlation_id",
+            "data_type": "varchar",
+            "ordinal_position": 2,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "complete",
+            "data_type": "boolean",
+            "ordinal_position": 3,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "outcomes[]",
+            "data_type": "array",
+            "ordinal_position": 4,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "outcomes[].source.platform",
+            "data_type": "varchar",
+            "ordinal_position": 5,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "outcomes[].source.application",
+            "data_type": "varchar",
+            "ordinal_position": 6,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "outcomes[].source.plugin",
+            "data_type": "varchar",
+            "ordinal_position": 7,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "outcomes[].record.selector",
+            "data_type": "varchar",
+            "ordinal_position": 8,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "outcomes[].status",
+            "data_type": "varchar",
+            "ordinal_position": 9,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "outcomes[].observed_at",
+            "data_type": "timestamp",
+            "ordinal_position": 10,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "outcomes[].readback.display_name",
+            "data_type": "varchar",
+            "ordinal_position": 11,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "outcomes[].readback.public_selector",
+            "data_type": "varchar",
+            "ordinal_position": 12,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "outcomes[].receipt",
+            "data_type": "json",
+            "ordinal_position": 13,
+            "nullable": true,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "outcomes[].error",
+            "data_type": "json",
+            "ordinal_position": 14,
+            "nullable": true,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "retry_after_seconds",
+            "data_type": "integer",
+            "ordinal_position": 15,
+            "nullable": true,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "action",
+            "data_type": "json",
+            "ordinal_position": 16,
+            "nullable": true,
+            "default": null,
+            "constraints": {}
+          }
+        ]
+      },
+      "error_contract": {
+        "schema": "lead-director-public-error/v1",
+        "codes": [
+          "INVALID_REQUEST",
+          "SOURCE_TEMPORARILY_UNAVAILABLE"
+        ]
+      },
+      "sources": [
+        {
+          "source": {
+            "platform": "bos",
+            "application": "lead-director",
+            "plugin": "crm-primary"
+          },
+          "availability": "ready"
+        }
+      ]
+    },
+    {
+      "operation": "delete",
+      "status": "described",
+      "effect": "delete",
+      "limits": {
+        "max_targets": 5,
+        "max_results_per_source": null,
+        "pagination_supported": false,
+        "bulk_supported": false,
+        "streaming_supported": false,
+        "maximum_duration_seconds": 30,
+        "maximum_fan_out": 5
+      },
+      "guarantees": {
+        "read_consistency": "not_applicable",
+        "per_source_atomicity": "source_published",
+        "cross_source_atomicity": "non_atomic_eventually_consistent",
+        "convergence": "eventually_consistent",
+        "idempotency": "service_owned"
+      },
+      "execution": {
+        "method": "POST",
+        "uri": "/bos/apps/lead-director/api/v1/organizations/{organization}/delete"
+      },
+      "input_schema": {
+        "$defs": {
+          "LeadDirectorApprovalAttestation": {
+            "additionalProperties": false,
+            "properties": {
+              "confirmed": {
+                "const": true,
+                "title": "Confirmed",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "confirmed"
+            ],
+            "title": "LeadDirectorApprovalAttestation",
+            "type": "object"
+          },
+          "LeadDirectorDeleteTarget": {
+            "additionalProperties": false,
+            "properties": {
+              "source": {
+                "$ref": "#/$defs/PublicSourceReference"
+              },
+              "record": {
+                "$ref": "#/$defs/LeadDirectorRecordSelector"
+              }
+            },
+            "required": [
+              "source",
+              "record"
+            ],
+            "title": "LeadDirectorDeleteTarget",
+            "type": "object"
+          },
+          "LeadDirectorRecordSelector": {
+            "additionalProperties": false,
+            "properties": {
+              "selector": {
+                "maxLength": 512,
+                "minLength": 1,
+                "title": "Selector",
+                "type": "string"
+              }
+            },
+            "required": [
+              "selector"
+            ],
+            "title": "LeadDirectorRecordSelector",
+            "type": "object"
+          },
+          "PublicSourceReference": {
+            "additionalProperties": false,
+            "description": "Provider-neutral public source reference copied from Describe.",
+            "properties": {
+              "platform": {
+                "title": "Platform",
+                "type": "string"
+              },
+              "application": {
+                "title": "Application",
+                "type": "string"
+              },
+              "plugin": {
+                "title": "Plugin",
+                "type": "string"
+              }
+            },
+            "required": [
+              "platform",
+              "application",
+              "plugin"
+            ],
+            "title": "PublicSourceReference",
+            "type": "object"
+          },
+          "SourceInput": {
+            "type": "object",
+            "required": [
+              "display_name"
+            ],
+            "properties": {
+              "display_name": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "$id": "urn:bos:lead-director:source-input"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "targets": {
+            "items": {
+              "$ref": "#/$defs/LeadDirectorDeleteTarget"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Targets",
+            "type": "array"
+          },
+          "approval": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/LeadDirectorApprovalAttestation"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "targets"
+        ],
+        "title": "LeadDirectorDeleteRequest",
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "x-bos-fields": [
+          {
+            "path": "targets[]",
+            "data_type": "array",
+            "ordinal_position": 1,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "targets[].source.platform",
+            "data_type": "varchar",
+            "ordinal_position": 2,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "targets[].source.application",
+            "data_type": "varchar",
+            "ordinal_position": 3,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "targets[].source.plugin",
+            "data_type": "varchar",
+            "ordinal_position": 4,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "targets[].record.selector",
+            "data_type": "varchar",
+            "ordinal_position": 5,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "approval.confirmed",
+            "data_type": "boolean",
+            "ordinal_position": 6,
+            "nullable": true,
+            "default": null,
+            "constraints": {}
+          }
+        ]
+      },
+      "output_schema": {
+        "$defs": {
+          "LeadDirectorDeleteOutcome": {
+            "additionalProperties": false,
+            "properties": {
+              "source": {
+                "$ref": "#/$defs/PublicSourceReference"
+              },
+              "record": {
+                "$ref": "#/$defs/LeadDirectorRecordSelector"
+              },
+              "status": {
+                "enum": [
+                  "deleted",
+                  "replayed",
+                  "failed",
+                  "in_progress"
+                ],
+                "title": "Status",
+                "type": "string"
+              },
+              "observed_at": {
+                "format": "date-time",
+                "title": "Observed At",
+                "type": "string"
+              },
+              "receipt": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/SourceReceipt"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "error": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/LeadDirectorPublicError"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "source",
+              "record",
+              "status",
+              "observed_at",
+              "receipt",
+              "error"
+            ],
+            "title": "LeadDirectorDeleteOutcome",
+            "type": "object"
+          },
+          "LeadDirectorPublicError": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Z][A-Z0-9_]*$",
+                "title": "Code",
+                "type": "string"
+              },
+              "message": {
+                "maxLength": 2048,
+                "minLength": 1,
+                "title": "Message",
+                "type": "string"
+              },
+              "retryable": {
+                "title": "Retryable",
+                "type": "boolean"
+              },
+              "correlation_id": {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+                "title": "Correlation Id",
+                "type": "string"
+              },
+              "details": {
+                "default": [],
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "title": "Details",
+                "type": "array"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "correlation_id"
+            ],
+            "title": "LeadDirectorPublicError",
+            "type": "object"
+          },
+          "LeadDirectorRecordSelector": {
+            "additionalProperties": false,
+            "properties": {
+              "selector": {
+                "maxLength": 512,
+                "minLength": 1,
+                "title": "Selector",
+                "type": "string"
+              }
+            },
+            "required": [
+              "selector"
+            ],
+            "title": "LeadDirectorRecordSelector",
+            "type": "object"
+          },
+          "LeadDirectorStateAction": {
+            "additionalProperties": false,
+            "properties": {
+              "verb": {
+                "const": "state",
+                "default": "state",
+                "title": "Verb",
+                "type": "string"
+              },
+              "method": {
+                "const": "GET",
+                "default": "GET",
+                "title": "Method",
+                "type": "string"
+              },
+              "uri": {
+                "title": "Uri",
+                "type": "string"
+              },
+              "body": {
+                "default": null,
+                "title": "Body",
+                "type": "null"
+              }
+            },
+            "required": [
+              "uri"
+            ],
+            "title": "LeadDirectorStateAction",
+            "type": "object"
+          },
+          "PublicSourceReference": {
+            "additionalProperties": false,
+            "description": "Provider-neutral public source reference copied from Describe.",
+            "properties": {
+              "platform": {
+                "title": "Platform",
+                "type": "string"
+              },
+              "application": {
+                "title": "Application",
+                "type": "string"
+              },
+              "plugin": {
+                "title": "Plugin",
+                "type": "string"
+              }
+            },
+            "required": [
+              "platform",
+              "application",
+              "plugin"
+            ],
+            "title": "PublicSourceReference",
+            "type": "object"
+          },
+          "SourceOutput": {
+            "type": "object",
+            "required": [
+              "display_name",
+              "public_selector"
+            ],
+            "properties": {
+              "display_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "public_selector": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "$id": "urn:bos:lead-director:source-output"
+          },
+          "SourceReceipt": {
+            "type": "object",
+            "required": [
+              "correlation_id",
+              "service_id"
+            ],
+            "properties": {
+              "correlation_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "service_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "$id": "urn:bos:lead-director:source-receipt"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "contract_version": {
+            "const": "lead-director-delete/v1",
+            "default": "lead-director-delete/v1",
+            "title": "Contract Version",
+            "type": "string"
+          },
+          "correlation_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+            "title": "Correlation Id",
+            "type": "string"
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "outcomes": {
+            "items": {
+              "$ref": "#/$defs/LeadDirectorDeleteOutcome"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Outcomes",
+            "type": "array"
+          },
+          "retry_after_seconds": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Retry After Seconds"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/LeadDirectorStateAction"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "contract_version",
+          "correlation_id",
+          "complete",
+          "outcomes"
+        ],
+        "title": "LeadDirectorDeleteResponse",
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "x-bos-fields": [
+          {
+            "path": "contract_version",
+            "data_type": "varchar",
+            "ordinal_position": 1,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "correlation_id",
+            "data_type": "varchar",
+            "ordinal_position": 2,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "complete",
+            "data_type": "boolean",
+            "ordinal_position": 3,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "outcomes[]",
+            "data_type": "array",
+            "ordinal_position": 4,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "outcomes[].source.platform",
+            "data_type": "varchar",
+            "ordinal_position": 5,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "outcomes[].source.application",
+            "data_type": "varchar",
+            "ordinal_position": 6,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "outcomes[].source.plugin",
+            "data_type": "varchar",
+            "ordinal_position": 7,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "outcomes[].record.selector",
+            "data_type": "varchar",
+            "ordinal_position": 8,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "outcomes[].status",
+            "data_type": "varchar",
+            "ordinal_position": 9,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "outcomes[].observed_at",
+            "data_type": "timestamp",
+            "ordinal_position": 10,
+            "nullable": false,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "outcomes[].receipt",
+            "data_type": "json",
+            "ordinal_position": 11,
+            "nullable": true,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "outcomes[].error",
+            "data_type": "json",
+            "ordinal_position": 12,
+            "nullable": true,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "retry_after_seconds",
+            "data_type": "integer",
+            "ordinal_position": 13,
+            "nullable": true,
+            "default": null,
+            "constraints": {}
+          },
+          {
+            "path": "action",
+            "data_type": "json",
+            "ordinal_position": 14,
+            "nullable": true,
+            "default": null,
+            "constraints": {}
+          }
+        ]
+      },
+      "error_contract": {
+        "schema": "lead-director-public-error/v1",
+        "codes": [
+          "INVALID_REQUEST",
+          "SOURCE_TEMPORARILY_UNAVAILABLE"
+        ]
+      },
+      "sources": [
+        {
+          "source": {
+            "platform": "bos",
+            "application": "lead-director",
+            "plugin": "crm-primary"
+          },
+          "availability": "ready"
+        }
+      ]
+    },
+    {
+      "operation": "calendar_read_event",
+      "status": "not_available"
+    }
+  ]
+}

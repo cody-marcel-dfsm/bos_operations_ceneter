@@ -22,6 +22,18 @@ services, goals, and machine-readable API contracts.
 Read [the discovery contract](references/discovery-contract.md) before the first
 app-directory or per-app MCP query in a request.
 
+For Agent-Driven Custom Journey authoring, call fresh `app.describe` with `{}`
+and validate its BOSL resource links with `scripts/validate-discovery.mjs`.
+Read each exact schema, reference, and examples URI through the same authenticated
+BOS connection. Then call `plugins.list` with `{}`, preserve readiness separately
+from accessibility, copy the selected plugin's complete `service.describe` input
+verbatim, and validate compact/detailed journey agreement. Follow each returned
+operation-contract link through current discovery and validate the described
+operation, deterministic execution URI, schemas, source readiness, and exact
+duration/fan-out limits; missing limits are unavailable, never defaulted. Cache only linked
+resources and individual plugin descriptions under `bos-mcp-client`'s journey
+contract cache; `app.describe` itself remains fresh and non-cacheable.
+
 ## Current-host read execution
 
 Use the current authenticated BOS capabilities for the requested operation.
@@ -120,6 +132,11 @@ when supported. A contact alone never creates another login or grants authority.
 7. Refresh BOS and app discovery after grant, graph digest/version, plugin,
    authorization, session-expiry, or app-contract
    changes. Re-resolve the operation from the refreshed contract before retrying.
+
+For journey registration, descriptor changes cause a fresh authoring read. They
+never create a registration precondition or automatic refresh-and-retry branch.
+Registration always submits the complete raw BOSL document to its currently
+discovered operation.
 
 ## Validation and failure behavior
 

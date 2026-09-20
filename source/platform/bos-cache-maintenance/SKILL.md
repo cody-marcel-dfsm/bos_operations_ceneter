@@ -32,3 +32,10 @@ all indexes owned by that revoked authority through the managed host lifecycle.
 
 Cache maintenance changes data reuse only. It grants no server authority and
 never supplies data to a context that fails current authorization.
+
+For Agent-Driven Custom Journey authoring contracts, use
+`bos-mcp-client/scripts/journey-contract-cache.mjs`. Keep `app.describe` live.
+Allow exact linked-resource, selected structured plugin/service, current
+application, and complete current-authority invalidation only. A reconnect,
+authority-partition change, selected context change, descriptor-token change,
+freshness expiry, or explicit maintenance request prevents reuse.

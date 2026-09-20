@@ -42,6 +42,23 @@ semantic equivalents of:
 Semantic capability names guide discovery. Literal resource, tool, URI, and API
 operation names come from the current versioned response.
 
+For Agent-Driven Custom Journeys, fresh `app.describe` also publishes one scoped
+application reference and exact authenticated BOSL schema, language-reference,
+and conformance-example resource URIs plus an opaque descriptor token.
+`plugins.list` publishes accessible plugin journeys as structured
+`{platform, application, plugin}` references, compact client/server steps,
+purpose, separate readiness, a descriptor token, and the complete input for
+independent `service.describe`. Detailed Describe must agree with the compact
+steps and declare every server step's semantic operation, schemas, effect,
+approval, limits, public failures, receipts, and recovery. Accessible unready
+journeys remain visible with sanitized recovery guidance.
+Every operation limit includes integer `maximum_duration_seconds` from 1 through
+900 and integer `maximum_fan_out` from 1 through 100. Missing or out-of-range
+values make the service description invalid; the client never supplies defaults.
+The corresponding deterministic operation Describe response repeats those
+exact fields for every ready operation. Validate it with
+`validate-discovery.mjs operation-describe` before planning or invocation.
+
 Every service descriptor supplies stable `service_id`, agent-readable `summary`,
 `entity_types`, `owner_kind`, `operations`, `api_base_url` containing an HTTPS
 origin or opaque base reference, `contract_uri`, `auth_scheme`,

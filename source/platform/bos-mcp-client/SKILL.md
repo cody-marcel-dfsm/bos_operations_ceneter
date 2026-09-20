@@ -466,3 +466,12 @@ The cache supplies read evidence. Execute mutations through the canonical BOS
 or provider path, then let a subsequent incremental catch-up reconcile the
 local read state. Apply the full cache contract in
 `Vault/specs/shared-local-document-cache.md` when working in this repository.
+
+## Journey contract cache
+
+For BOSL resources and individual plugin journey descriptions, read
+[the journey contract cache protocol](references/journey-contract-cache-protocol.md)
+and use `scripts/journey-contract-cache.mjs`. Derive its scope only after fresh
+server context validation. `app.describe` always remains a live discovery read.
+This private cache stores no token and exposes only digested keys, origin,
+freshness, and timestamps in diagnostics.

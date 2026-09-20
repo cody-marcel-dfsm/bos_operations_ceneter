@@ -1,0 +1,232 @@
+{
+  "app_describe": {
+    "application": {
+      "platform": "bos",
+      "application": "lead-director"
+    },
+    "describe": {
+      "contract_version": "lead-director-describe/v1",
+      "method": "POST",
+      "uri": "/bos/apps/lead-director/api/v1/organizations/{organization}/describe",
+      "max_operations": 5,
+      "operations": [
+        "search",
+        "create",
+        "update",
+        "delete",
+        "calendar_read_event"
+      ]
+    },
+    "bosl": {
+      "schema_uri": "bos://apps/lead-director/bosl/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/schema",
+      "reference_uri": "bos://apps/lead-director/bosl/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/reference",
+      "examples_uri": "bos://apps/lead-director/bosl/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/examples",
+      "descriptor_etag": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  },
+  "plugins_list": {
+    "application": {
+      "platform": "bos",
+      "application": "lead-director"
+    },
+    "plugins": [
+      {
+        "reference": {
+          "platform": "bos",
+          "application": "lead-director",
+          "plugin": "sendgrid-email"
+        },
+        "name": "SendGrid Email",
+        "purpose": "Prepare, review, send, and report an email campaign.",
+        "journey": {
+          "title": "Send an approved email campaign",
+          "inputs": [
+            "email_list",
+            "template",
+            "category"
+          ],
+          "steps": [
+            {
+              "code": "prepare_campaign",
+              "type": "server",
+              "description": "Prepare the campaign"
+            },
+            {
+              "code": "review_campaign",
+              "type": "client",
+              "description": "Review and approve the campaign"
+            },
+            {
+              "code": "send_campaign",
+              "type": "server",
+              "description": "Send the approved campaign"
+            },
+            {
+              "code": "show_send_result",
+              "type": "client",
+              "description": "Show the campaign result"
+            }
+          ],
+          "success": "At least one email was sent."
+        },
+        "describe": {
+          "capability": "service.describe",
+          "input": {
+            "service": {
+              "platform": "bos",
+              "application": "lead-director",
+              "plugin": "sendgrid-email"
+            }
+          }
+        },
+        "descriptor_etag": "opaque-current-descriptor-token",
+        "readiness": {
+          "status": "ready",
+          "requirements": []
+        }
+      }
+    ]
+  },
+  "registration": {
+    "compiled": true,
+    "identity": "meeting-follow-up:gcal-event-fall-enrollment-planning",
+    "action": {
+      "verb": "start",
+      "method": "POST",
+      "href": "/bos/apps/lead-director/api/v1/organizations/example/journeys/meeting-follow-up:gcal-event-fall-enrollment-planning/start?capability=opaque-start",
+      "payload_schema": null
+    }
+  },
+  "start": {
+    "http_status": 200,
+    "headers": {},
+    "body": {
+      "identity": "meeting-follow-up:gcal-event-fall-enrollment-planning",
+      "status": "awaiting_client",
+      "current_step": {
+        "code": "review_campaign",
+        "type": "client"
+      },
+      "instruction": {
+        "goal": "review_and_approve_campaign",
+        "message": "Review this campaign and approve sending it.",
+        "campaign_review": {
+          "category": "fall_enrollment_campaign_planning_follow_up_2026_09_16",
+          "recipient_count": 1,
+          "subject": "Follow-up: Fall Enrollment Campaign Planning",
+          "text": "Thank you for attending the Fall Enrollment Campaign Planning meeting. We appreciate your time and participation. Please reply with any questions or follow-up items."
+        },
+        "after_success": {
+          "verb": "complete",
+          "method": "POST",
+          "href": "/bos/apps/lead-director/api/v1/organizations/example/journeys/meeting-follow-up:gcal-event-fall-enrollment-planning/complete?capability=opaque-review-complete",
+          "payload_schema": {
+            "type": "object",
+            "required": [
+              "approval"
+            ],
+            "properties": {
+              "approval": {
+                "type": "object",
+                "required": [
+                  "confirmed"
+                ],
+                "properties": {
+                  "confirmed": {
+                    "const": true
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "on_failure": {
+          "verb": "failed",
+          "method": "POST",
+          "href": "/bos/apps/lead-director/api/v1/organizations/example/journeys/meeting-follow-up:gcal-event-fall-enrollment-planning/failed?capability=opaque-review-failed",
+          "payload_schema": {
+            "type": "object",
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "enum": [
+                  "USER_STOPPED",
+                  "CLIENT_STEP_FAILED"
+                ]
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    }
+  },
+  "complete": {
+    "http_status": 200,
+    "headers": {},
+    "body": {
+      "identity": "meeting-follow-up:gcal-event-fall-enrollment-planning",
+      "status": "step_completed",
+      "action": {
+        "verb": "step",
+        "method": "POST",
+        "href": "/bos/apps/lead-director/api/v1/organizations/example/journeys/meeting-follow-up:gcal-event-fall-enrollment-planning/step?capability=opaque-step",
+        "payload_schema": null
+      }
+    }
+  },
+  "in_progress": {
+    "http_status": 202,
+    "headers": {},
+    "body": {
+      "identity": "meeting-follow-up:gcal-event-fall-enrollment-planning",
+      "status": "in_progress",
+      "current_node": {
+        "code": "send_campaign",
+        "type": "server",
+        "operation": "sendgrid-email.campaign.send"
+      },
+      "retry_after_seconds": 5,
+      "action": {
+        "verb": "state",
+        "method": "GET",
+        "href": "/bos/apps/lead-director/api/v1/organizations/example/journeys/meeting-follow-up:gcal-event-fall-enrollment-planning?capability=opaque-state",
+        "payload_schema": null
+      }
+    }
+  },
+  "completed": {
+    "http_status": 200,
+    "headers": {},
+    "body": {
+      "identity": "meeting-follow-up:gcal-event-fall-enrollment-planning",
+      "status": "completed",
+      "outcome": {
+        "campaign_outcome": {
+          "category": "fall_enrollment_campaign_planning_follow_up_2026_09_16",
+          "attempted": 1,
+          "successful_sends": 1,
+          "failed_sends": 0,
+          "suppressed_or_skipped": 0,
+          "receipts": [
+            {
+              "recipient_hash": "22513a1ac472424f9b26cfa77cd5d10392f3329fe7a1a07fbd955710464b734f",
+              "state": "accepted",
+              "replayed": false
+            }
+          ]
+        }
+      }
+    }
+  },
+  "controlled_attendee": "cody.marcel@dfsm.ai"
+}

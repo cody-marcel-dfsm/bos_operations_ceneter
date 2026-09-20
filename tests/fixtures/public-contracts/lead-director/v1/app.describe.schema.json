@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dfsm.ai/contracts/lead-director-app-describe-v1.schema.json",
+  "title": "Lead Director MCP app.describe",
+  "type": "object",
+  "required": [
+    "application",
+    "describe",
+    "bosl"
+  ],
+  "properties": {
+    "application": {
+      "type": "object",
+      "required": [
+        "platform",
+        "application"
+      ],
+      "properties": {
+        "platform": {
+          "const": "bos"
+        },
+        "application": {
+          "const": "lead-director"
+        }
+      },
+      "additionalProperties": false
+    },
+    "describe": {
+      "type": "object",
+      "required": [
+        "contract_version",
+        "method",
+        "uri",
+        "max_operations",
+        "operations"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "lead-director-describe/v1"
+        },
+        "method": {
+          "const": "POST"
+        },
+        "uri": {
+          "const": "/bos/apps/lead-director/api/v1/organizations/{organization}/describe"
+        },
+        "max_operations": {
+          "const": 5
+        },
+        "operations": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "bosl": {
+      "type": "object",
+      "required": [
+        "schema_uri",
+        "reference_uri",
+        "examples_uri",
+        "descriptor_etag"
+      ],
+      "properties": {
+        "schema_uri": {
+          "type": "string",
+          "pattern": "^bos://apps/lead-director/bosl/[a-f0-9]{32}/schema$"
+        },
+        "reference_uri": {
+          "type": "string",
+          "pattern": "^bos://apps/lead-director/bosl/[a-f0-9]{32}/reference$"
+        },
+        "examples_uri": {
+          "type": "string",
+          "pattern": "^bos://apps/lead-director/bosl/[a-f0-9]{32}/examples$"
+        },
+        "descriptor_etag": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

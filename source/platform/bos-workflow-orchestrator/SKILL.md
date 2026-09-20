@@ -23,6 +23,35 @@ and operations only from the current authenticated context and live discovery.
 Pass only live-declared business arguments. Every call remains subject to
 request-time server authorization from the connection's scoped grant.
 
+## Agent-Driven Custom Journeys
+
+When the user asks to create, run, resume, stop, explain, or inspect a custom
+multi-step journey, use the dedicated Agent-Driven Custom Journey branch. Read:
+
+- [BOSL authoring](references/bosl-authoring.md) before planning or registering;
+- [journey lifecycle](references/journey-lifecycle.md) before invoking any
+  returned journey action;
+- [structured client instructions](references/client-instructions.md) when BOS
+  returns `awaiting_client` or `client_action_required`; and
+- [the canonical walkthrough](references/canonical-walkthrough.md) only when
+  the recent-meeting campaign sequence or its acceptance fixture is relevant.
+
+Start with fresh `app.describe`, then read its exact BOSL schema, language
+reference, and examples resource URIs. Use `plugins.list` and copy each required
+`service.describe` input exactly. Keep accessibility and readiness separate.
+Build a concise explain plan from the discovered contracts, author raw BOSL,
+run the packaged local structural checks, and submit that same JSON document to
+the discovered registration operation. The explain plan remains client-side.
+
+After registration, follow only complete actions returned by BOS. The
+customer-defined text `identity` is the sole public locator. The service owns
+graph state, transition choice, server nodes, retries, receipts, reconciliation,
+expiry, and idempotency. This branch never uses `bos_resume_operation`, creates
+an idempotency or retry key, carries business data through `complete`, executes
+an underlying server operation while `in_progress`, or constructs a lifecycle
+route. For reconnection recovery, invoke the sole exact returned `state` action
+and resume from its authoritative response.
+
 ## Workflow
 
 1. Preserve the user's objective and requested outcome. Use `bos-mcp-client` to
@@ -31,7 +60,7 @@ request-time server authorization from the connection's scoped grant.
    connection to identify the minimum services needed for the objective. Classify
    each dependency as ready, disabled, disconnected, awaiting authorization,
    unavailable, or outside the selected scope.
-3. Build a deterministic execution map containing the owning product, semantic
+3. For an ordinary non-journey workflow, build a deterministic execution map containing the owning product, semantic
    operation, prerequisites, approval point, expected evidence, and recovery
    identity for every step. Preserve the Router-to-PO-to-GO boundary for every
    mutation.
@@ -45,7 +74,7 @@ request-time server authorization from the connection's scoped grant.
    deterministic HTTPS method and path using the current schema and the
    connection's host-managed authorization. Treat MCP discovery as capability evidence and the API result as
    execution evidence.
-7. When authorization or configuration interrupts execution, preserve the
+7. For an ordinary non-journey operation, when authorization or configuration interrupts execution, preserve the
    server-issued continuation state. After the dependency becomes ready, call
    `bos_resume_operation` with the original operation identity and stable
    idempotency key. Reconcile an uncertain mutation before any retry.

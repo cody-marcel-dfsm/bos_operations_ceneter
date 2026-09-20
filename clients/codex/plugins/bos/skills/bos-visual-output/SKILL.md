@@ -115,6 +115,11 @@ information.
 - Capacity and attendance: stacked bars, occupancy bars, or day-by-day heatmap.
 - Individual journey or progress toward a goal: application-owned journey
   graph with current position and target goal emphasized.
+- Agent-Driven Custom Journey: compiler-normalized graph with client and server
+  ownership, current/completed labels, approvals, waits, bounded recovery and
+  terminal outcomes. Use graph-authored labels only; omit seed data, attendee
+  addresses, temporary artifacts, receipts containing private references,
+  provider payloads, capability URIs, and internal identifiers.
 - Lead pipeline and conversion: ordered funnel or stage bars with counts and
   rates.
 - Reconciliation: source-to-record flow, compact match matrix, or status bars.

@@ -1,0 +1,9 @@
+{
+  "operations": [
+    "search",
+    "create",
+    "update",
+    "delete",
+    "calendar_read_event"
+  ]
+}

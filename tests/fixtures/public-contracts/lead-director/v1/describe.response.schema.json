@@ -1,0 +1,351 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dfsm.ai/contracts/lead-director-describe-v1.schema.json",
+  "title": "Lead Director Describe response",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "metadata_version",
+    "observed_at",
+    "operations"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "lead-director-describe/v1"
+    },
+    "metadata_version": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/described_operation"
+          },
+          {
+            "$ref": "#/$defs/unavailable_operation"
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "operation_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$"
+    },
+    "source_reference": {
+      "type": "object",
+      "required": [
+        "platform",
+        "application",
+        "plugin"
+      ],
+      "properties": {
+        "platform": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]*$"
+        },
+        "application": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]*$"
+        },
+        "plugin": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "limits": {
+      "type": "object",
+      "required": [
+        "max_targets",
+        "max_results_per_source",
+        "pagination_supported",
+        "bulk_supported",
+        "streaming_supported",
+        "maximum_duration_seconds",
+        "maximum_fan_out"
+      ],
+      "properties": {
+        "max_targets": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "max_results_per_source": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "pagination_supported": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "bulk_supported": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "streaming_supported": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "maximum_duration_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 900
+        },
+        "maximum_fan_out": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      },
+      "additionalProperties": false
+    },
+    "guarantees": {
+      "type": "object",
+      "required": [
+        "read_consistency",
+        "per_source_atomicity",
+        "cross_source_atomicity",
+        "convergence",
+        "idempotency"
+      ],
+      "properties": {
+        "read_consistency": {
+          "type": "string",
+          "minLength": 1
+        },
+        "per_source_atomicity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cross_source_atomicity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "convergence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "idempotency": {
+          "const": "service_owned"
+        }
+      },
+      "additionalProperties": false
+    },
+    "execution": {
+      "type": "object",
+      "required": [
+        "method",
+        "uri"
+      ],
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": [
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE"
+          ]
+        },
+        "uri": {
+          "type": "string",
+          "pattern": "^/bos/apps/lead-director/api/v1/organizations/\\{organization\\}/[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*(?:/[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*)*$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "error_contract": {
+      "type": "object",
+      "required": [
+        "schema",
+        "codes"
+      ],
+      "properties": {
+        "schema": {
+          "const": "lead-director-public-error/v1"
+        },
+        "codes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "source",
+        "availability"
+      ],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/source_reference"
+        },
+        "availability": {
+          "enum": [
+            "ready",
+            "authorization_required",
+            "configuration_required",
+            "temporarily_unavailable"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "sql_field": {
+      "type": "object",
+      "required": [
+        "path",
+        "data_type",
+        "ordinal_position",
+        "nullable",
+        "default",
+        "constraints"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "data_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ordinal_position": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "nullable": {
+          "type": "boolean"
+        },
+        "default": true,
+        "constraints": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "operation_schema": {
+      "type": "object",
+      "required": [
+        "$schema",
+        "type",
+        "x-bos-fields"
+      ],
+      "properties": {
+        "$schema": {
+          "const": "https://json-schema.org/draft/2020-12/schema"
+        },
+        "type": {
+          "const": "object"
+        },
+        "x-bos-fields": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/sql_field"
+          }
+        }
+      }
+    },
+    "described_operation": {
+      "type": "object",
+      "required": [
+        "operation",
+        "status",
+        "effect",
+        "limits",
+        "guarantees",
+        "execution",
+        "input_schema",
+        "output_schema",
+        "error_contract",
+        "sources"
+      ],
+      "properties": {
+        "operation": {
+          "$ref": "#/$defs/operation_id"
+        },
+        "status": {
+          "const": "described"
+        },
+        "effect": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limits": {
+          "$ref": "#/$defs/limits"
+        },
+        "guarantees": {
+          "$ref": "#/$defs/guarantees"
+        },
+        "execution": {
+          "$ref": "#/$defs/execution"
+        },
+        "input_schema": {
+          "$ref": "#/$defs/operation_schema"
+        },
+        "output_schema": {
+          "$ref": "#/$defs/operation_schema"
+        },
+        "error_contract": {
+          "$ref": "#/$defs/error_contract"
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/source"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "unavailable_operation": {
+      "type": "object",
+      "required": [
+        "operation",
+        "status"
+      ],
+      "properties": {
+        "operation": {
+          "$ref": "#/$defs/operation_id"
+        },
+        "status": {
+          "const": "not_available"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "contract": "bos-public-contract-release/v1",
+  "contract_id": "lead-director-describe",
+  "contract_version": "lead-director-describe/v1",
+  "owner": "bos",
+  "auth_impact": "none",
+  "compatibility": "exact-current-public-contract",
+  "generator": "tools/build_lead_director_public_contract.py",
+  "canonical_runtime": {
+    "models": "backend/models/lead_director_describe.py",
+    "public_projection": "backend/platform_orchestration/lead_director_describe_service.py",
+    "mcp_projection": "backend/platform_orchestration/lead_director_describe_mcp.py"
+  },
+  "files": [
+    {
+      "path": "app.describe.example.json",
+      "media_type": "application/json",
+      "sha256": "488af15db615e87b36e1a8c53fcd79d6a4d53470cb9f1b744da2621b820564b2",
+      "source": "backend/tests/fixtures/agent_mcp/v1/lead_director_app_describe.json"
+    },
+    {
+      "path": "app.describe.schema.json",
+      "media_type": "application/schema+json",
+      "sha256": "dd82fbedc513a8491ec2da5d82a87f5d9b060cb09550f94036e9c5310827f795",
+      "source": "backend/tests/fixtures/agent_mcp/v1/lead_director_app_describe.schema.json"
+    },
+    {
+      "path": "describe.request.example.json",
+      "media_type": "application/json",
+      "sha256": "0c50502b8d205ffe9f338d3cabac8ceacac0f0dc3b587f6faa323e590be3850a",
+      "source": "backend/tests/fixtures/agent_mcp/v1/lead_director_describe_request.json"
+    },
+    {
+      "path": "describe.response.example.json",
+      "media_type": "application/json",
+      "sha256": "5d7b364a4662424ae860bb92a2cfa215f0dd00717c8d6d893bae570bfd1804dc",
+      "source": "backend/tests/fixtures/agent_mcp/v1/lead_director_describe_response.json"
+    },
+    {
+      "path": "describe.response.schema.json",
+      "media_type": "application/schema+json",
+      "sha256": "4b2b4ba07328fb061b6850f796dd007280b82e8ff7ff0476a1b72b3f069b0feb",
+      "source": "backend/tests/fixtures/agent_mcp/v1/lead_director_describe.schema.json"
+    },
+    {
+      "path": "operation.examples.json",
+      "media_type": "application/json",
+      "sha256": "126b28e4edf75d06b38a11aa4ac1dbb04867f6315d048551eb43819ca77d8d9e",
+      "source": "backend/tests/fixtures/agent_mcp/v1/lead_director_operation_examples.json"
+    }
+  ],
+  "bundle_sha256": "fd73779783242b4420dc72d7d8ade232f5adbc318ae69261b584b2b5dcfd5367"
+}

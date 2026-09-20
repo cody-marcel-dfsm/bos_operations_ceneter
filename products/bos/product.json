@@ -30,6 +30,7 @@
     "platform/bos-workflow-orchestrator",
     "platform/bos-mcp-client",
     "platform/bos-app-discovery",
+    "platform/bos-cache-maintenance",
     "platform/bos-guided-support",
     "platform/bos-visual-output",
     "platform/bos-plugin-console",
