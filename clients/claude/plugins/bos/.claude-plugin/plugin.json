@@ -1,7 +1,7 @@
 {
   "name": "bos",
   "displayName": "BOS Platform",
-  "version": "0.4.106",
+  "version": "0.4.107",
   "description": "Run deterministic workflows across a federated agentic service mesh.",
   "author": {
     "name": "Infinite State Machines LLC"
