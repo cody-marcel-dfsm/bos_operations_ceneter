@@ -127,6 +127,19 @@ preserve verified details when graph evidence is partial or unavailable.
 The user need not ask for a journey or specify a goal. Follow explicit user
 format instructions and keep the request read-only.
 
+Completion requires rendering the journey evidence, not merely invoking its
+read operation. For every individual record-detail response, the response is incomplete
+until it shows the verified current node, the application-resolved goal, every intermediate node
+on the exact ordered path, and the path's returned gates or blockers. Include
+the native graph view and the same readable text path before profile fields.
+Never replace this path with a list of available actions, reachable states,
+generic workflow options, or a current-status summary. If the first journey
+result supplies only current state or actions, continue goal and path discovery
+through the live operations required by `crm-customer-journey`. When an exact
+path still cannot be obtained after those reads, label the result as a partial
+journey and identify the precise missing goal or path evidence; never describe
+that response as live and complete.
+
 ## Lead Director access patterns
 
 Route by the user's operation and requested scope: search or list by supported
@@ -146,7 +159,7 @@ Do not impose a federated source inventory on a native operation whose contract
 does not require it. Keep provider execution server-owned.
 
 Whenever a record is displayed, invoke `crm-customer-journey` and apply its
-Every displayed record uses the organization-described format contract. This includes create
+organization-described format contract. This includes create
 and update receipts, duplicate/already-existing matches, previews, and every
 record displayed in a list. Retain filters/order/pagination while rendering each
 record separately. After a confirmed write, read the exact resulting record if
