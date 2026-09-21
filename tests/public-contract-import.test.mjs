@@ -9,6 +9,7 @@ import { promisify } from "node:util";
 
 import {
   importLeadDirectorPublicContract,
+  parseArchiveEntrySize,
   OWNER_APPROVED_AUTH_IMPACT,
   PRESERVED_AUTH_CONTRACT,
   PUBLIC_CONTRACT_FILES
@@ -18,6 +19,21 @@ import { root } from "../scripts/lib/package-model.mjs";
 const run = promisify(execFile);
 const fixture = join(root, "tests", "fixtures", "public-contracts", "lead-director", "v1");
 const sourceRevision = "0123456789abcdef0123456789abcdef01234567";
+
+test("archive size parsing supports GNU and BSD tar while rejecting malformed sizes", () => {
+  for (const listing of [
+    "-rw-r--r-- runner/docker 1234 2026-09-21 12:00 bundle/manifest.json",
+    "-rw-r--r-- 1001/1001 1234 2026-09-21 12:00 bundle/manifest.json",
+    "-rw-r--r--  0 cody staff 1234 Sep 21 12:00 bundle/manifest.json"
+  ]) assert.equal(parseArchiveEntrySize(listing), 1234);
+  assert.equal(parseArchiveEntrySize("drwxr-xr-x runner/docker 0 2026-09-21 12:00 bundle/"), 0);
+  for (const size of ["-1", "1.5", "NaN", "9007199254740992"]) {
+    for (const prefix of ["-rw-r--r-- runner/docker", "-rw-r--r-- 0 cody staff"]) {
+      assert.throws(() => parseArchiveEntrySize(`${prefix} ${size} Sep 21 12:00 file`), /size metadata is invalid/);
+    }
+  }
+  assert.throws(() => parseArchiveEntrySize("malformed listing"), /size metadata is invalid/);
+});
 
 async function prepareOwnerApprovedSource(source) {
   await cp(fixture, source, { recursive: true });

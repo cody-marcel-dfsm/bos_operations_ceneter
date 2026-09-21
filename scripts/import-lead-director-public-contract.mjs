@@ -91,6 +91,17 @@ function expectedArchiveFiles() {
   return [...PUBLIC_CONTRACT_FILES, "manifest.json"].sort();
 }
 
+export function parseArchiveEntrySize(detail) {
+  // GNU tar combines owner/group; BSD tar lists a link count, owner, and group.
+  const sizeText = detail.match(/^\S+\s+\S+\/\S+\s+(\d+)\s/)?.[1]
+    ?? detail.match(/^\S+\s+\d+\s+\S+\s+\S+\s+(\d+)\s/)?.[1];
+  const size = Number(sizeText);
+  if (sizeText === undefined || !Number.isSafeInteger(size)) {
+    throw new Error("Contract archive size metadata is invalid");
+  }
+  return size;
+}
+
 async function inspectArchive(archive) {
   const [{ stdout: namesOutput }, { stdout: detailsOutput }] = await Promise.all([
     run("tar", ["-tzf", archive], { maxBuffer: 1024 * 1024 }),
@@ -106,9 +117,7 @@ async function inspectArchive(archive) {
     if (!new Set(["-", "d"]).has(kind)) {
       throw new Error("Contract archive may contain only regular files and directories");
     }
-    const size = details[index].match(/^\S+\s+\d+\s+\S+\s+\S+\s+(\d+)\s/)?.[1];
-    if (size === undefined) throw new Error("Contract archive size metadata is invalid");
-    extractedBytes += Number(size);
+    extractedBytes += parseArchiveEntrySize(details[index]);
     const trimmed = rawName.replace(/\/$/, "");
     if ((trimmed === "" || trimmed === ".") && kind === "d") return null;
     return { kind, path: safeRelativePath(trimmed, "archive entry") };
