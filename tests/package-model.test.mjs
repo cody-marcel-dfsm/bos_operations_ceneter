@@ -2664,10 +2664,17 @@ test("organization-described Lead Director records default to graph presentation
     assert.match(text, /crm-customer-journey/);
   }
   const journey = await readFile(`${root}/source/capabilities/crm-customer-journey/SKILL.md`, "utf8");
+  const records = await readFile(`${root}/source/capabilities/crm-record-operations/SKILL.md`, "utf8");
   assert.match(journey, /When no goal is requested/);
   assert.match(journey, /record-to-graph[\s\S]*ambiguous/);
   assert.match(journey, /Never substitute[\s\S]*`lead`, `contact`, `customer`/i);
   assert.match(journey, /requested fields[\s\S]*below the graph/);
+  assert.match(
+    records,
+    /response is incomplete[\s\S]*current node[\s\S]*resolved goal[\s\S]*every intermediate node[\s\S]*gates or blockers/i
+  );
+  assert.match(records, /Never replace this path with a list of available actions/i);
+  assert.match(records, /continue goal and path discovery/i);
   const visual = await readFile(`${root}/source/platform/bos-visual-output/SKILL.md`, "utf8");
   assert.doesNotMatch(visual, /one record outside journey-position work/);
 });
