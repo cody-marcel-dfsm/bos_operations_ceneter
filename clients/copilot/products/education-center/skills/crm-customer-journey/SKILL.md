@@ -123,6 +123,33 @@ current organization Describe and record/graph evidence. Never substitute
 `lead`, `contact`, `customer`, a fixed field list, a generic stage model, or a
 locally invented renderer when current evidence supplies a different model.
 
+## Organization automation explanations
+
+An organization-specific request to explain its “automation plugin,” “lead
+automation,” “customer journey,” or “how leads move through the system” is a
+journey explanation when the current authorized application is Lead Director.
+Route it here before plugin-console status, outreach-campaign, or generic
+capability-summary skills. A request for one named campaign, outreach
+configuration, connection health, or plugin settings retains its narrower
+workflow.
+
+Discover the current organization graph and render a customer-facing journey
+as the primary result. Group verified graph transitions around human interfaces
+and outcomes: inbound lead capture, staff email or phone follow-up, calendar
+scheduling, required approvals, nurture, enrollment, and closed outcomes. Use
+only labels, actions, and connected-service requirements returned by the
+organization's graph and discovery; omit an interface that has no evidence.
+Explain the journey in plain language beside the diagram.
+
+Keep detailed graph nodes, retries, provisioning, internal implementation
+actions, graph codes, and record-specific current position in supporting detail.
+The customer-facing diagram is an evidence-preserving grouping of the returned
+graph, never an invented pipeline. Label it with the organization, application,
+graph identity/digest, observation time, provenance, and eligibility limits.
+If a complete graph read requires an exemplar record, obtain one only through a
+live-discovered read operation and do not expose that record's personal fields
+in the organization-level explanation.
+
 Any individual record detail request selects this workflow, including a single field such as an email
 address, phone number, owner, appointment, or status.
 The user does not need to say “journey” or “graph.”
