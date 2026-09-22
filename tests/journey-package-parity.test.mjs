@@ -157,6 +157,28 @@ test("Lead Director capabilities use one BOS connection in canonical and generat
   }
 });
 
+test("organization automation explanations route to the customer-facing journey", async () => {
+  const canonical = await readFile(
+    `${root}/source/capabilities/crm-customer-journey/SKILL.md`,
+    "utf8"
+  );
+  assert.match(canonical, /Organization automation explanations/);
+  assert.match(canonical, /Route it here before plugin-console status, outreach-campaign, or generic\s+capability-summary skills/);
+  assert.match(canonical, /customer-facing journey/);
+  assert.match(canonical, /inbound lead capture, staff email or phone follow-up, calendar\s+scheduling/);
+
+  const product = JSON.parse(
+    await readFile(`${root}/products/education-center/product.json`, "utf8")
+  );
+  for (const generatedRoot of educationCenterRoots) {
+    assert.equal(
+      await readFile(`${generatedRoot}/crm-customer-journey/SKILL.md`, "utf8"),
+      transformProductSkillGuidance(product, "crm-customer-journey", canonical),
+      `${generatedRoot}/crm-customer-journey includes organization automation routing`
+    );
+  }
+});
+
 test("dependent product skills leave identity-v2 transport binding inside BOS", async () => {
   const product = JSON.parse(
     await readFile(`${root}/products/education-center/product.json`, "utf8")
