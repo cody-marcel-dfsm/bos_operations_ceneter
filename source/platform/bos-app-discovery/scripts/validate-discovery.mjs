@@ -1179,6 +1179,96 @@ function validateDetailedJourney(journey, compactJourney) {
   }
 }
 
+function validateDetailedBehavior(behavior, compactJourney) {
+  requireObject(behavior, "service.describe response.behavior");
+  requireExactKeys(
+    behavior,
+    new Set(["title", "entry", "steps", "outcomes"]),
+    "service.describe response.behavior"
+  );
+  requireString(behavior.title, "service.describe response.behavior.title");
+  requireString(behavior.entry, "service.describe response.behavior.entry");
+  requireObject(behavior.outcomes, "service.describe response.behavior.outcomes");
+  if (!Array.isArray(behavior.steps) || behavior.steps.length === 0) {
+    throw new Error("service.describe response.behavior.steps must be a non-empty array");
+  }
+  if (behavior.title !== compactJourney.title || compactJourney.inputs.length !== 0) {
+    throw new Error("service.describe response compact behavior does not agree");
+  }
+  if (compactJourney.steps.some(({ type }) => type !== "server")) {
+    throw new Error("service.describe response compact behavior steps must be server-owned");
+  }
+  const compactSteps = compactJourney.steps.map(({ code, description }) => ({ code, description }));
+  const behaviorSteps = behavior.steps.map(({ code, description }) => ({ code, description }));
+  if (!sameJson(compactSteps, behaviorSteps)) {
+    throw new Error("service.describe response compact behavior steps do not agree");
+  }
+  const codes = behavior.steps.map(({ code }) => code);
+  const known = new Set(codes);
+  if (codes.length !== known.size || !known.has(behavior.entry)) {
+    throw new Error("service.describe response.behavior requires unique steps and a valid entry");
+  }
+  const terminalTitles = behavior.steps
+    .filter(({ terminal }) => terminal === true)
+    .map(({ title }) => title);
+  if (terminalTitles.length === 0 || compactJourney.success !== terminalTitles.join("; ")) {
+    throw new Error("service.describe response compact behavior outcomes do not agree");
+  }
+  if (Object.keys(behavior.outcomes).length === 0 ||
+      Object.values(behavior.outcomes).some((value) => typeof value !== "string" || value.trim() === "")) {
+    throw new Error("service.describe response.behavior.outcomes must be named non-empty strings");
+  }
+  for (const [index, step] of behavior.steps.entries()) {
+    const label = `service.describe response.behavior.steps[${index}]`;
+    requireObject(step, label);
+    requireExactKeys(
+      step,
+      new Set(["code", "title", "kind", "description", "interfaces", "next", "terminal"]),
+      label
+    );
+    requireString(step.code, `${label}.code`);
+    requireString(step.title, `${label}.title`);
+    requireString(step.kind, `${label}.kind`);
+    requireString(step.description, `${label}.description`);
+    if (!new Set(["trigger", "automation", "outreach", "outcome"]).has(step.kind)) {
+      throw new Error(`${label}.kind is invalid`);
+    }
+    if (!Array.isArray(step.interfaces) || !Array.isArray(step.next)) {
+      throw new Error(`${label}.interfaces and next must be arrays`);
+    }
+    step.interfaces.forEach((value, itemIndex) => {
+      requireString(value, `${label}.interfaces[${itemIndex}]`);
+    });
+    step.next.forEach((successor, itemIndex) => {
+      requireString(successor, `${label}.next[${itemIndex}]`);
+      if (!known.has(successor)) {
+        throw new Error(`${label}.next[${itemIndex}] selects an unknown successor`);
+      }
+    });
+    if (typeof step.terminal !== "boolean") {
+      throw new Error(`${label}.terminal must be a boolean`);
+    }
+    if ((step.terminal && step.next.length > 0) || (!step.terminal && step.next.length === 0)) {
+      throw new Error(`${label} terminal and successor shape is invalid`);
+    }
+  }
+  const byCode = new Map(behavior.steps.map((step) => [step.code, step]));
+  const reachable = new Set([behavior.entry]);
+  const pending = [behavior.entry];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    for (const successor of byCode.get(current).next) {
+      if (!reachable.has(successor)) {
+        reachable.add(successor);
+        pending.push(successor);
+      }
+    }
+  }
+  if (reachable.size !== behavior.steps.length) {
+    throw new Error("service.describe response.behavior contains unreachable steps");
+  }
+}
+
 export function validateServiceJourneyDescription(description, compactPlugin) {
   requireObject(description, "service.describe response");
   rejectRawAuthority(description, "service.describe response");
@@ -1190,6 +1280,7 @@ export function validateServiceJourneyDescription(description, compactPlugin) {
       "purpose",
       "descriptor_etag",
       "journey",
+      "behavior",
       "queries",
       "readiness",
       "ttlMs",
@@ -1210,7 +1301,16 @@ export function validateServiceJourneyDescription(description, compactPlugin) {
     throw new Error("service.describe response must match the selected plugins.list descriptor");
   }
   validateMcpPrivateMetadata(description, "service.describe response");
-  validateDetailedJourney(description.journey, compactPlugin.journey);
+  const hasBehavior = description.behavior !== undefined;
+  const hasJourney = description.journey !== undefined;
+  if (hasBehavior === hasJourney) {
+    throw new Error("service.describe response requires exactly one journey or behavior");
+  }
+  if (hasBehavior) {
+    validateDetailedBehavior(description.behavior, compactPlugin.journey);
+  } else {
+    validateDetailedJourney(description.journey, compactPlugin.journey);
+  }
   if (!Array.isArray(description.queries)) {
     throw new Error("service.describe response.queries must be an array");
   }

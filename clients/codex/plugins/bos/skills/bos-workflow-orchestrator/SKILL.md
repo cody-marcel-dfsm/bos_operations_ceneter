@@ -99,16 +99,24 @@ When the user asks to explain an organization's automation plugin, explain the
 workflow advertised by that installed plugin. Start with fresh `app.describe`,
 then call `plugins.list` and copy the selected plugin's exact
 `service.describe` input. Select the plugin from its current name, purpose, and
-compact journey. Treat provider readiness as separate from the workflow's
-described behavior.
+compact journey. For an automation-plugin explanation, select the top-level
+plugin whose descriptor identifies the requested automation behavior. A
+provider dependency, campaign operation, record-lifecycle graph, or similarly
+named nested capability is never a substitute. If the requested plugin is
+absent, report that exact discovery defect and stop the explanation path.
+Treat provider readiness as separate from the workflow's described behavior.
 
-Build the explain plan from the detailed Describe response. Cover the plugin's
-purpose and entry trigger, the customer's progression through the automation,
-human touchpoints, automated steps, connected services, typed inputs and
-outputs, node ownership, effects, approvals, success outcomes, final failure
-outcomes, and bounded recovery. Domain skills may contribute terminology,
-goals, constraints, and presentation; BOS Operations Center owns the complete
-plan and composition.
+Build the explain plan from the detailed Describe response. When Describe
+returns `behavior`, treat its `entry`, ordered states, branch successors,
+interfaces, and terminal outcomes as the primary automation workflow. This is
+the authoritative explanation graph for event-driven plugins. A returned
+`journey` is the composable executable plan for callable operations. Cover the
+plugin's purpose and entry trigger, the customer's progression through the
+automation, human touchpoints, automated steps, connected services, typed
+inputs and outputs when present, node ownership, effects, approvals, success
+outcomes, final failure outcomes, and bounded recovery. Domain skills may
+contribute terminology, goals, constraints, and presentation; BOS Operations
+Center owns the complete plan and composition.
 
 Lead with an actual Mermaid flowchart of the automation workflow from the
 plugin's perspective. Group technical steps into the meaningful interfaces a
@@ -118,6 +126,14 @@ Describe evidence names those interfaces or services. Preserve exact described
 steps and ownership in concise labels or supporting detail. Follow the visual
 with the explain plan in plain language.
 
+For an event-driven automation behavior, begin the diagram at the described
+trigger and end each branch at its described customer-facing outreach or
+outcome. Render parallel automated call, text, and email branches when those
+branches appear in `behavior`; do not replace them with the implementation
+details of one delivery provider. Use current configuration or status only to
+annotate a branch as enabled, disabled, or needing setup. Configuration never
+changes the described topology.
+
 An application record lifecycle graph is separate evidence. Do not substitute
 the Lead Director state graph, shortest path, current record position, plugin
 health summary, or campaign-status report for the described automation
@@ -125,9 +141,10 @@ workflow. Include record-state effects only as supporting steps when the
 selected plugin's Describe contract declares them.
 
 An explanation is read-only. Do not author, register, start, or advance BOSL
-when the user only asks to explain the installed workflow. If the required
-plugin Describe contract is unavailable, identify that exact missing discovery
-dependency and do not invent a workflow from generic CRM behavior.
+when the user only asks to explain the installed workflow. If the selected
+plugin lacks both a behavior graph and a journey, identify that exact missing
+Describe dependency. Do not select a different plugin to produce a plausible
+graph and do not invent a workflow from generic CRM behavior.
 
 ## Agent-Driven Custom Journeys
 
