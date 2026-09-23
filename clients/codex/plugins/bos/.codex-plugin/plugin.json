@@ -17,9 +17,9 @@
       "Write"
     ],
     "defaultPrompt": [
-      "Audit my BOS service mesh and show which deterministic workflows are ready, blocked, or need authorization.",
-      "Make this operational workflow runnable by identifying and resolving its platform dependencies.",
-      "Trace a governed workflow across my installed services and show every approval, execution step, and result."
+      "List the BOS apps and skills installed for my organization.",
+      "Show me the tools and workflows available in each BOS app.",
+      "Check which BOS apps are connected and ready to use."
     ],
     "websiteURL": "https://dfsm.ai",
     "brandColor": "#061638",
