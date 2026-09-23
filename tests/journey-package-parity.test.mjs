@@ -157,32 +157,30 @@ test("Lead Director capabilities use one BOS connection in canonical and generat
   }
 });
 
-test("organization automation explanations route to the customer-facing journey", async () => {
-  const canonical = await readFile(
+test("organization automation explanations use plugin Describe and the explain plan", async () => {
+  const orchestrator = await readFile(
+    `${root}/source/platform/bos-workflow-orchestrator/SKILL.md`,
+    "utf8"
+  );
+  const orchestratorFrontmatter = orchestrator.match(/^---\n([\s\S]*?)\n---/);
+  assert(orchestratorFrontmatter, "workflow orchestrator has frontmatter");
+  assert.match(orchestratorFrontmatter[1], /explain an organization's automation plugin/i);
+  assert.match(orchestrator, /fresh `app\.describe`/);
+  assert.match(orchestrator, /`plugins\.list`/);
+  assert.match(orchestrator, /exact\s+`service\.describe` input/);
+  assert.match(orchestrator, /explain plan from the detailed Describe response/i);
+  assert.match(orchestrator, /Mermaid flowchart of the automation workflow from the\s+plugin's perspective/i);
+  assert.match(orchestrator, /Do not substitute\s+the Lead Director state graph/i);
+  assert.match(orchestrator, /Do not author, register, start, or advance BOSL/i);
+
+  const recordJourney = await readFile(
     `${root}/source/capabilities/crm-customer-journey/SKILL.md`,
     "utf8"
   );
-  const frontmatter = canonical.match(/^---\n([\s\S]*?)\n---/);
-  assert(frontmatter, "journey skill has frontmatter");
-  assert.match(frontmatter[1], /organization's automation plugin/i);
-  assert.match(frontmatter[1], /human-facing journey diagram/i);
-  assert.match(canonical, /Organization automation explanations/);
-  assert.match(canonical, /Route it here before plugin-console status, outreach-campaign, or generic\s+capability-summary skills/);
-  assert.match(canonical, /customer-facing journey/);
-  assert.match(canonical, /inbound lead capture, staff email or phone follow-up, calendar\s+scheduling/);
-  assert.match(canonical, /actual Mermaid flowchart/i);
-  assert.match(canonical, /prose-only response, bullets, or a status summary does\s+not satisfy/i);
-
-  const product = JSON.parse(
-    await readFile(`${root}/products/education-center/product.json`, "utf8")
-  );
-  for (const generatedRoot of educationCenterRoots) {
-    assert.equal(
-      await readFile(`${generatedRoot}/crm-customer-journey/SKILL.md`, "utf8"),
-      transformProductSkillGuidance(product, "crm-customer-journey", canonical),
-      `${generatedRoot}/crm-customer-journey includes organization automation routing`
-    );
-  }
+  const recordJourneyFrontmatter = recordJourney.match(/^---\n([\s\S]*?)\n---/);
+  assert(recordJourneyFrontmatter, "record journey skill has frontmatter");
+  assert.doesNotMatch(recordJourneyFrontmatter[1], /automation plugin/i);
+  assert.doesNotMatch(recordJourney, /Organization automation explanations/);
 });
 
 test("dependent product skills leave identity-v2 transport binding inside BOS", async () => {
