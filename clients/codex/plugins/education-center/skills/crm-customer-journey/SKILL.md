@@ -1,6 +1,6 @@
 ---
 name: crm-customer-journey
-description: Discover and show an authorized Lead Director record's organization-described graph, current node, transition history, reachable goals, paths, gates, blockers, and available next steps. Use for individual record details, create/update results, duplicate matches, list entries, named-person lookups, email or phone lookups, profiles, status, lifecycle, graph-position, and journey-path questions, including when the user calls the record a lead, contact, customer, student, family, opportunity, or another organization-defined term.
+description: Render an authorized Lead Director customer-journey graph for an organization's lead automation or an individual record. Use for requests to explain an organization's automation plugin, lead automation, customer journey, or how leads move through the system, and for individual record details, lifecycle, graph position, paths, and next steps. Organization-wide explanations lead with the human-facing journey diagram; campaign, review-outreach, connection-health, and settings requests retain their specialized workflows.
 ---
 
 
@@ -139,7 +139,9 @@ and outcomes: inbound lead capture, staff email or phone follow-up, calendar
 scheduling, required approvals, nurture, enrollment, and closed outcomes. Use
 only labels, actions, and connected-service requirements returned by the
 organization's graph and discovery; omit an interface that has no evidence.
-Explain the journey in plain language beside the diagram.
+Render the grouped result as an actual Mermaid flowchart before the plain-
+language explanation. A prose-only response, bullets, or a status summary does
+not satisfy this organization-level request.
 
 Keep detailed graph nodes, retries, provisioning, internal implementation
 actions, graph codes, and record-specific current position in supporting detail.
