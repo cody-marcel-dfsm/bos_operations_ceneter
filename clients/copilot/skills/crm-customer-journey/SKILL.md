@@ -1,6 +1,6 @@
 ---
 name: crm-customer-journey
-description: Render an authorized Lead Director customer-journey graph for an organization's lead automation or an individual record. Use for requests to explain an organization's automation plugin, lead automation, customer journey, or how leads move through the system, and for individual record details, lifecycle, graph position, paths, and next steps. Organization-wide explanations lead with the human-facing journey diagram; campaign, review-outreach, connection-health, and settings requests retain their specialized workflows.
+description: Discover and show an authorized Lead Director record's organization-described graph, current node, transition history, reachable goals, paths, gates, blockers, and available next steps. Use for individual record details, create/update results, duplicate matches, list entries, named-person lookups, email or phone lookups, profiles, status, lifecycle, graph-position, and journey-path questions, including when the user calls the record a lead, contact, customer, student, family, opportunity, or another organization-defined term.
 ---
 
 
@@ -122,35 +122,6 @@ available actions, transitions, and complete UI/rendering instructions from the
 current organization Describe and record/graph evidence. Never substitute
 `lead`, `contact`, `customer`, a fixed field list, a generic stage model, or a
 locally invented renderer when current evidence supplies a different model.
-
-## Organization automation explanations
-
-An organization-specific request to explain its “automation plugin,” “lead
-automation,” “customer journey,” or “how leads move through the system” is a
-journey explanation when the current authorized application is Lead Director.
-Route it here before plugin-console status, outreach-campaign, or generic
-capability-summary skills. A request for one named campaign, outreach
-configuration, connection health, or plugin settings retains its narrower
-workflow.
-
-Discover the current organization graph and render a customer-facing journey
-as the primary result. Group verified graph transitions around human interfaces
-and outcomes: inbound lead capture, staff email or phone follow-up, calendar
-scheduling, required approvals, nurture, enrollment, and closed outcomes. Use
-only labels, actions, and connected-service requirements returned by the
-organization's graph and discovery; omit an interface that has no evidence.
-Render the grouped result as an actual Mermaid flowchart before the plain-
-language explanation. A prose-only response, bullets, or a status summary does
-not satisfy this organization-level request.
-
-Keep detailed graph nodes, retries, provisioning, internal implementation
-actions, graph codes, and record-specific current position in supporting detail.
-The customer-facing diagram is an evidence-preserving grouping of the returned
-graph, never an invented pipeline. Label it with the organization, application,
-graph identity/digest, observation time, provenance, and eligibility limits.
-If a complete graph read requires an exemplar record, obtain one only through a
-live-discovered read operation and do not expose that record's personal fields
-in the organization-level explanation.
 
 Any individual record detail request selects this workflow, including a single field such as an email
 address, phone number, owner, appointment, or status.
