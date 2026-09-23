@@ -140,11 +140,17 @@ Claude clients, inspect the exact plan and then apply it:
 ```
 
 The command deletes only validated BOS package caches under
-`~/.codex/plugins/cache` and `~/.claude/plugins/cache`. It never unregisters plugins,
-changes account state, edits client configuration, removes personal skills,
-touches Gemini or Copilot, or accesses repository files. The legacy
-`scripts/uninstall-bos-all-clients.sh` entrypoint delegates to this same bounded
-cache reset for safety.
+`~/.codex/plugins/cache` and `~/.claude/plugins/cache`, and removes a stray
+`bos-education-center` entry from `~/.claude/plugins/known_marketplaces.json`
+and `~/.claude/settings.json`'s `extraKnownMarketplaces` when present — a
+local-directory marketplace registration from `claude plugin marketplace add
+<local-path>` or an equivalent `extraKnownMarketplaces` entry, left over from
+local plugin development, that collides with the git-based marketplace
+customers add through the host's own UI. It touches no other key in either
+file, never unregisters an unrelated plugin, changes account state, removes
+personal skills, touches Gemini or Copilot, or accesses repository files. The
+legacy `scripts/uninstall-bos-all-clients.sh` entrypoint delegates to this same
+bounded cache reset for safety.
 
 Claude reads `clients/claude/.claude-plugin/marketplace.json`. The BOS plugin
 owns its package-owned `.mcp.json` declaration; dependent plugins own only
