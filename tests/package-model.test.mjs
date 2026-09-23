@@ -903,7 +903,7 @@ test("Codex reauthentication exposes native user-controlled authentication", asy
   assert.match(client, /reauthenticationRequired/i);
   assert.match(client, /mcpServers: "\.\/\.mcp\.json"/i);
   assert.match(client, /remote HTTP entry at the BOS platform resource/i);
-  assert.match(client, /no\s+`\.app\.json` exists/i);
+  assert.match(client, /no\s+`\.app\.json`\s+for Codex/i);
   assert.match(client, /HTTP 401[\s\S]*WWW-Authenticate[\s\S]*resource-metadata/i);
   assert.match(client, /After consent[\s\S]*dynamic\s+domain-specific MCP services and tooling/i);
   assert.match(client, /connection's one scoped OAuth\s+grant/i);
@@ -1298,7 +1298,7 @@ test("Education Center initialization proposes sourced defaults with one-step ac
   assert.match(guidance, /bos-mcp-client[\s\S]*live-tool discovery/i);
   assert.match(guidance, /Complete authentication before asking any customer-settings question/i);
   assert.match(guidance, /Connect\/Sign in[\s\S]*context discovery[\s\S]*present the recommendation/i);
-  assert.match(guidance, /Claude[\s\S]*persistent \*\*Connect\*\* action[\s\S]*Customize\s*→\s*Connectors/i);
+  assert.match(guidance, /Claude and ChatGPT\/Codex alike[\s\S]*BOS plugin's own package-owned `\.mcp\.json` binding/i);
   assert.match(guidance, /authentication_required[\s\S]*preserve the initialization draft[\s\S]*ask[\s\S]*no settings questions/i);
   assert.match(guidance, /store it as `brand_display_name`/i);
   assert.match(guidance, /selected authorized context's organization label/i);
@@ -1844,7 +1844,7 @@ test("Video Ads composes workflows with its own disabled product endpoint", asyn
 test("disabled products are absent while active runtime products remain scoped", async () => {
   await access(`${root}/clients/codex/plugins/bos/.mcp.json`);
   await assert.rejects(access(`${root}/clients/codex/plugins/video-ads`));
-  await assert.rejects(access(`${root}/clients/claude/plugins/bos/.mcp.json`));
+  await access(`${root}/clients/claude/plugins/bos/.mcp.json`);
   await assert.rejects(access(`${root}/clients/claude/plugins/video-ads`));
   await assert.rejects(access(`${root}/clients/codex/plugins/education-center/.mcp.json`));
   const codexMcp = JSON.parse(await readFile(
@@ -1912,18 +1912,23 @@ test("BOS owns OAuth and Education Center delegates through its dependency", asy
     `${claudeRoot}/.claude-plugin/plugin.json`,
     "utf8"
   ));
-  assert.equal(claudeMetadata.connection_scope, "claude_account");
+  assert.equal("connection_scope" in claudeMetadata, false);
   assert.equal(
     claudeMetadata.resource_url,
     canonicalBosProduct.mcp_resource_url
   );
-  assert.equal(claudePlugin.mcpServers, undefined);
+  assert.equal(claudePlugin.mcpServers, "./.mcp.json");
   assert.equal("userConfig" in claudePlugin, false);
-  await assert.rejects(access(`${claudeRoot}/.mcp.json`));
-  const connectorGuide = await readFile(`${claudeRoot}/CONNECTORS.md`, "utf8");
-  assert.match(connectorGuide, /account-level Web connector/);
-  assert.match(connectorGuide, /Connect/);
-  assert.match(connectorGuide, /https:\/\/dfsm\.ai\/mcp\/apps\/bos\/platform/);
+  const claudeMcp = JSON.parse(await readFile(`${claudeRoot}/.mcp.json`, "utf8"));
+  assert.deepEqual(claudeMcp, {
+    mcpServers: {
+      "BOS-Platform": {
+        type: "http",
+        url: canonicalBosProduct.mcp_resource_url
+      }
+    }
+  });
+  await assert.rejects(access(`${claudeRoot}/CONNECTORS.md`));
   const educationRoot = `${root}/clients/codex/plugins/education-center`;
   await assert.rejects(access(`${educationRoot}/.app.json`));
   const educationMetadata = JSON.parse(await readFile(`${educationRoot}/.bos-product.json`, "utf8"));
@@ -2195,9 +2200,6 @@ test("every product and client ships tenant extension management metadata", asyn
           ...(client === "codex" ? {
             codex_mcp_startup_timeout_sec: manifest.codex_mcp_startup_timeout_sec,
             codex_mcp_tool_timeout_sec: manifest.codex_mcp_tool_timeout_sec
-          } : {}),
-          ...(client === "claude" ? {
-            connection_scope: "claude_account"
           } : {})
         } : {}),
         ...productRuntimeOwnershipMetadata(manifest)
