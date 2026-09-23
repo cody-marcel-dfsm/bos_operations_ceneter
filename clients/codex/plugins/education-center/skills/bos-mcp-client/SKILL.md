@@ -104,10 +104,11 @@ A successful context call immediately resumes the original operation.
 
 Use this skill for every client-side BOS-family operation. BOS owns one
 host-managed OAuth connection to its platform resource. Install BOS before
-using dependent products. Claude exposes the BOS account connector's native
-**Connect** action; Codex loads the BOS package's `.mcp.json`. Copilot and Gemini
-use the BOS package's generated adapter. Dependent packages supply domain
-skills and requirements without declaring another transport or login.
+using dependent products. Claude and Codex both load the BOS package's own
+`mcpServers`-declared `.mcp.json` and use the host's native authentication
+action on that binding directly. Copilot and Gemini use the BOS package's
+generated adapter. Dependent packages supply domain skills and requirements
+without declaring another transport or login.
 
 The service derives organization, application, installation, role, capability,
 provider, and operation authority from the validated grant and current server
@@ -306,17 +307,14 @@ apply only the generic handoff contract above and receive no operation state.
   first-action callable discovery procedure has run and its observed results
   establish a binding problem. Repair a confirmed binding defect through the
   host's supported controls. Do not reinstall or open connection UI solely from
-  an empty resource list or initial tool list. For Codex, verify the BOS
-  plugin declares `mcpServers: "./.mcp.json"`, the MCP file contains
-  exactly one remote HTTP entry at the BOS platform resource, and no
-  `.app.json` exists. For Claude,
-  verify the BOS package's
-  account-connector metadata and the matching Web connector under
-  **Customize → Connectors**, then use its persistent **Connect** action. When a
-  private installation lacks that connector, add it with the exact name and URL
-  from the generated BOS `CONNECTORS.md`; never reconstruct or modify the
-  package-owned resource. Preserve installed product plugins while repairing
-  the BOS connection.
+  an empty resource list or initial tool list. For Codex and Claude alike,
+  verify the BOS plugin declares `mcpServers: "./.mcp.json"` and the MCP
+  file contains exactly one remote HTTP entry at the BOS platform resource
+  (no `.app.json` for Codex, no `CONNECTORS.md`/account-connector metadata
+  for Claude). Use the host's native authentication action on that
+  package-owned binding directly; never send the user to manually add a
+  Custom Connector or reconstruct the resource by hand. Preserve installed
+  product plugins while repairing the BOS connection.
   Never discover, prompt for, repair,
   or materialize a URL from `installed_app_id` or customer settings.
   Do not stop at diagnosing client registration.

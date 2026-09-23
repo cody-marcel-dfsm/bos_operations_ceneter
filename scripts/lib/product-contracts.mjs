@@ -160,7 +160,7 @@ export function productMcpConnectionsContract(products) {
       codex_mcp_startup_timeout_sec: product.codex_mcp_startup_timeout_sec,
       codex_mcp_tool_timeout_sec: product.codex_mcp_tool_timeout_sec,
       connection_artifacts: [
-        `clients/claude/plugins/${product.name}/CONNECTORS.md`,
+        `clients/claude/plugins/${product.name}/.mcp.json`,
         `clients/codex/plugins/${product.name}/.mcp.json`,
         `clients/copilot/products/${product.name}/.github/mcp.json`,
         `clients/gemini/extensions/${product.name}/mcp_config.json`

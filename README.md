@@ -38,7 +38,7 @@ Upgrading replaces the former `platform` identifier. Hosts may require native
 sign-in again when a connection identifier changes; valid-session continuity
 has not been verified for this migration.
 
-Current desktop marketplace release: `0.4.113`. If `0.4.112` is installed,
+Current desktop marketplace release: `0.4.114`. If `0.4.113` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -102,13 +102,12 @@ marketplace afterward.
 2. Add
    `https://github.com/cody-marcel-dfsm/bos_operations_ceneter` as a
    marketplace.
-3. Install **BOS** and **Education Operation Center**.
-4. Open **Customize → Connectors**. Add the BOS Web connector when it is
-   absent from your organization or Anthropic's Connector Directory:
-   - Name: `BOS`
-   - URL: `https://dfsm.ai/mcp/apps/bos/platform`
-5. Select **Connect** on BOS and complete its native sign-in.
-6. Start a new Cowork task and request one authenticated Education Operation
+3. Install **BOS** and **Education Operation Center**. The BOS plugin ships
+   its own package-owned MCP connection (`mcpServers: "./.mcp.json"`), so no
+   separate connector setup is required.
+4. Select **Authenticate**/**Connect** on the BOS plugin and complete its
+   native sign-in.
+5. Start a new Cowork task and request one authenticated Education Operation
    Center read to verify the connection.
 
 Run `npm run install:verify:claude-runtime` after installation and each update.
@@ -147,9 +146,10 @@ touches Gemini or Copilot, or accesses repository files. The legacy
 `scripts/uninstall-bos-all-clients.sh` entrypoint delegates to this same bounded
 cache reset for safety.
 
-Claude reads `clients/claude/.claude-plugin/marketplace.json`. Each plugin owns
-its account-connector metadata, relevant skills, and scoped MCP declaration.
-Each account-level Web connector has a persistent **Connect** control, discovers
+Claude reads `clients/claude/.claude-plugin/marketplace.json`. The BOS plugin
+owns its package-owned `.mcp.json` declaration; dependent plugins own only
+their relevant skills and declare no separate MCP binding. The BOS plugin's
+native **Authenticate**/**Connect** control discovers
 OAuth from its immutable product MCP resource, and stores and refreshes the
 resulting grant across tasks.
 

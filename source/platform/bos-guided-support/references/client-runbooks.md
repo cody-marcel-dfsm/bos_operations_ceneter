@@ -89,15 +89,13 @@ Official source:
 
 1. Open **Customize → Plugins** and confirm BOS plus the dependent product plugins are
    installed and enabled from the configured marketplace.
-2. Open **Customize → Connectors** and confirm each installed product's account
-   or organization Web connector is present. For a private installation, use
-   the exact name and URL from each generated product `CONNECTORS.md`.
-3. Confirm every product connector is classified as **Web** and provides
-   **Connect**.
-4. Select **Connect** for the product needed by the request, complete consent,
-   and start a new Cowork task after
-   installation or update.
-5. Refresh discovery, resolve
+2. Confirm the BOS plugin's own package-owned MCP connection (declared by its
+   `mcpServers: "./.mcp.json"` binding, the same pattern Codex uses) shows an
+   **Authenticate**/**Connect** action on the plugin itself. Dependent
+   products declare no separate binding and reuse this one connection.
+3. Select the native authentication action for BOS, complete consent, and
+   start a new Cowork task after installation or update.
+4. Refresh discovery, resolve
    context, and run one bounded read.
 
 Official sources:

@@ -54,13 +54,13 @@ configuration as distinct validated dimensions.
   available, it preserves the interrupted request and reports the exact failed
   operation without resubmitting it. It never delegates reconnection to the
   user.
-- Expose BOS as a remote HTTPS Streamable HTTP MCP server. Claude account or
-  organization Web connectors, OAuth-capable GitHub Copilot, and Gemini declare
-  the immutable resource URL. Claude marketplace plugins contain skills and
-  account-connector metadata with no `.mcp.json` or `mcpServers`; this preserves
-  the persistent account-level **Connect** control. ChatGPT/Codex packages
-  declare the BOS platform resource in `.mcp.json` and contain no
-  `.app.json`. Every runtime host
+- Expose BOS as a remote HTTPS Streamable HTTP MCP server. Claude and
+  ChatGPT/Codex marketplace plugins both declare `mcpServers: "./.mcp.json"`
+  and ship the immutable resource URL in their own package-owned `.mcp.json`,
+  preserving a persistent native **Authenticate**/**Connect** control on the
+  plugin itself and containing no `.app.json`. OAuth-capable GitHub Copilot
+  and Gemini declare the same immutable resource URL through their own
+  generated adapters. Every runtime host
   uses its OAuth 2.1 MCP
   authorization flow. The host discovers BOS
   authorization metadata, launches consent, stores and refreshes the grant,
@@ -72,10 +72,9 @@ configuration as distinct validated dimensions.
 - Register the BOS package's immutable platform MCP endpoint and verify the
   server-returned context. Never discover, prompt for, repair, or materialize
   the route from an `installed_app_id`, customer setting, or subservice
-  package. For Claude, declare the BOS resource
-  in an account or organization Web connector and complete authorization from
-  **Customize → Connectors**. For ChatGPT/Codex, package exactly one `.mcp.json`
-  declaration for the product resource and no `.app.json`.
+  package. For Claude and ChatGPT/Codex alike, package exactly one `.mcp.json`
+  declaration for the product resource and no `.app.json`, and complete
+  authorization through the plugin's own native action.
   For every client, never add `bearer_token_env_var`, literal authorization
   headers, or a plugin key field. The server derives actor, tenant, organization, installation,
   role, plugin, and capability scope from the validated OAuth grant; client

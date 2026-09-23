@@ -2,6 +2,7 @@ import { cp, mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   mcpServerName,
+  claudePluginMcpManifest,
   codexPluginMcpManifest,
   copyProductAssets,
   copyProductSkills,
@@ -121,7 +122,6 @@ for (const { product, skills } of resolved) {
       mcp_group_name: product.mcp_group_name,
       mcp_server_name: ownsHostConnection(product) ? mcpServerName(product) : undefined,
       ...(ownsHostConnection(product) ? {
-        connection_scope: "claude_account",
         resource_url: claudeResourceUrl,
         oauth: oauthTargetContract(product)
       } : {}),
@@ -136,7 +136,8 @@ for (const { product, skills } of resolved) {
       homepage: product.website_url ?? "https://dfsm.ai",
       repository: "https://github.com/cody-marcel-dfsm/bos_operations_ceneter",
       license: "Apache-2.0",
-      keywords: ["bos", "operations", product.name]
+      keywords: ["bos", "operations", product.name],
+      ...(ownsHostConnection(product) ? { mcpServers: "./.mcp.json" } : {})
     };
     await writeJson(
       join(pluginRoot, ".claude-plugin", "plugin.json"),
@@ -145,25 +146,9 @@ for (const { product, skills } of resolved) {
     await copyProductSkills(product, skills, join(pluginRoot, "skills"));
     await copySettingsTemplate(product, pluginRoot);
     if (ownsHostConnection(product)) {
-      await writeFile(
-        join(pluginRoot, "CONNECTORS.md"),
-        [
-          "# Claude account connector",
-          "",
-          `This plugin uses the account-level Web connector named \`${mcpServerName(product)}\`.`,
-          "It must appear under **Customize → Connectors** with its own **Connect** control.",
-          "The plugin contains account-connector metadata and no plugin-level MCP declaration.",
-          "",
-          "For a private or development installation, an account owner adds a custom",
-          `connector with the package-owned resource URL \`${claudeResourceUrl}\`, then`,
-          "each authorized user completes BOS OAuth from **Customize → Connectors**.",
-          "For customer distribution, publish the same resource in Anthropic's Connector",
-          "Directory or provision it as an organization connector.",
-          "",
-          "The Claude account stores and refreshes the resource-scoped grant. The plugin",
-          "never requests, stores, or transports a BOS key or OAuth token.",
-          ""
-        ].join("\n")
+      await writeJson(
+        join(pluginRoot, ".mcp.json"),
+        claudePluginMcpManifest(product)
       );
     }
     if (product.name === "education-center") {
