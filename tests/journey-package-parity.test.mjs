@@ -162,10 +162,16 @@ test("organization automation explanations route to the customer-facing journey"
     `${root}/source/capabilities/crm-customer-journey/SKILL.md`,
     "utf8"
   );
+  const frontmatter = canonical.match(/^---\n([\s\S]*?)\n---/);
+  assert(frontmatter, "journey skill has frontmatter");
+  assert.match(frontmatter[1], /organization's automation plugin/i);
+  assert.match(frontmatter[1], /human-facing journey diagram/i);
   assert.match(canonical, /Organization automation explanations/);
   assert.match(canonical, /Route it here before plugin-console status, outreach-campaign, or generic\s+capability-summary skills/);
   assert.match(canonical, /customer-facing journey/);
   assert.match(canonical, /inbound lead capture, staff email or phone follow-up, calendar\s+scheduling/);
+  assert.match(canonical, /actual Mermaid flowchart/i);
+  assert.match(canonical, /prose-only response, bullets, or a status summary does\s+not satisfy/i);
 
   const product = JSON.parse(
     await readFile(`${root}/products/education-center/product.json`, "utf8")

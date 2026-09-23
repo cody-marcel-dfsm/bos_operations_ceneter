@@ -1,7 +1,7 @@
 {
   "schema_version": "2",
   "name": "bos",
-  "version": "0.4.109",
+  "version": "0.4.110",
   "client": "copilot",
   "application_name": "bos",
   "mcp_group_name": "platform",
