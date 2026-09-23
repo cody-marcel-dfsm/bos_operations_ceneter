@@ -11,6 +11,19 @@ description: Ground BOS Operations Center architecture guidance and repository r
   skill directories. Never copy unpublished repository files into an installed
   product, create a local override or symlink to bypass release delivery, or
   change installed package contents while retaining a released version label.
+- Scope: this governs artifacts this repository itself generates and ships —
+  a generated client package (Claude/Codex/Copilot/Gemini plugin bundle), the
+  LeadDirector mobile/web build, or any other released product this
+  repository owns. It does not cover a third-party host application's own
+  internal state that this repository does not generate, own, or release —
+  for example a host's local session cache, its device-account-scoped
+  marketplace registry, or other host-internal metadata used only to
+  diagnose why a published release isn't reaching that host. Reading or
+  editing host-owned state to diagnose or work around a host-side sync
+  defect is not the hot-patch this rule prohibits; it becomes a hot-patch
+  only if used to make a materialized copy of *this repository's own
+  package* diverge from its released, Oracle-reviewed content while keeping
+  that copy's version label.
 - This prohibition applies to debugging, prompt validation, emergency fixes,
   and recovery. Backups and a request to fix or verify behavior grant no
   exception.
