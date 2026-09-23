@@ -563,7 +563,7 @@ export async function verifyProductMcpContract({
       if (!content.includes(product.mcp_resource_url)) {
         violations.push(finding("resource_url_drift", artifact, "Product MCP artifact does not contain its product resource URL."));
       }
-      if (basename(path) === ".mcp.json") {
+      if (basename(path) === ".mcp.json" && artifact.startsWith("clients/codex/")) {
         const mcp = JSON.parse(content);
         const entries = Object.entries(mcp.mcpServers ?? {});
         const [name, server] = entries[0] ?? [];
@@ -573,6 +573,15 @@ export async function verifyProductMcpContract({
             server?.startup_timeout_sec !== product.codex_mcp_startup_timeout_sec ||
             server?.tool_timeout_sec !== product.codex_mcp_tool_timeout_sec) {
           violations.push(finding("codex_mcp_binding", artifact, "Codex MCP binding differs from the product manifest."));
+        }
+      }
+      if (basename(path) === ".mcp.json" && artifact.startsWith("clients/claude/")) {
+        const mcp = JSON.parse(content);
+        const entries = Object.entries(mcp.mcpServers ?? {});
+        const [name, server] = entries[0] ?? [];
+        if (entries.length !== 1 || name !== mcpServerName(product) ||
+            server?.type !== "http" || server?.url !== product.mcp_resource_url) {
+          violations.push(finding("claude_mcp_binding", artifact, "Claude MCP binding differs from the product manifest."));
         }
       }
     }

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "BOS-Platform": {
+      "type": "http",
+      "url": "https://dfsm.ai/mcp/apps/bos/platform"
+    }
+  }
+}

@@ -358,25 +358,37 @@ async function validateProducts() {
         ) {
           failures.push(`Generated Claude identity drift: ${pluginPath}`);
         }
-        if (manifest.runtime &&
-            ("mcpServers" in generated || "userConfig" in generated)) {
-          failures.push(`Generated Claude plugin owns a session-scoped connection: ${pluginPath}`);
-        }
-        if (!manifest.runtime && "mcpServers" in generated) {
-          failures.push(`Skills-only Claude plugin contains runtime binding: ${pluginPath}`);
+        if (ownsHostConnection(manifest)) {
+          if (generated.mcpServers !== "./.mcp.json" || "userConfig" in generated) {
+            failures.push(`Generated Claude MCP binding drift: ${pluginPath}`);
+          }
+        } else if ("mcpServers" in generated || "userConfig" in generated) {
+          failures.push(`Dependent Claude plugin owns its own connection: ${pluginPath}`);
         }
       }
       const runtimePath = join(pluginRoot, ".mcp.json");
       if (ownsHostConnection(manifest)) {
-        if (await pathExists(runtimePath)) {
-          failures.push(`Generated Claude plugin contains session-scoped MCP: ${runtimePath}`);
+        if (!(await pathExists(runtimePath)) ||
+            await pathExists(join(pluginRoot, "CONNECTORS.md"))) {
+          failures.push(`Generated Claude MCP file drift: ${runtimePath}`);
+        } else {
+          const runtimeManifest = await readJson(runtimePath);
+          const entries = Object.entries(runtimeManifest.mcpServers ?? {});
+          const [name, server] = entries[0] ?? [];
+          if (
+            entries.length !== 1 ||
+            name !== mcpServerName(manifest) ||
+            server?.type !== "http" ||
+            server?.url !== materializeMcpUrl(manifest) ||
+            JSON.stringify(Object.keys(server ?? {}).sort()) !== JSON.stringify(["type", "url"])
+          ) {
+            failures.push(`Generated Claude MCP declaration drift: ${runtimePath}`);
+          }
         }
         const metadata = await readJson(join(pluginRoot, ".bos-product.json"));
-        const expectedUrl = materializeMcpUrl(manifest);
-        if (metadata.connection_scope !== "claude_account" ||
-            metadata.resource_url !== expectedUrl ||
-            !(await pathExists(join(pluginRoot, "CONNECTORS.md")))) {
-          failures.push(`Generated Claude account connector metadata drift: ${pluginRoot}`);
+        if ("connection_scope" in metadata ||
+            metadata.resource_url !== materializeMcpUrl(manifest)) {
+          failures.push(`Generated Claude connection metadata drift: ${pluginRoot}`);
         }
       } else if (await pathExists(runtimePath)) {
         failures.push(`Skills-only Claude plugin contains runtime file: ${runtimePath}`);

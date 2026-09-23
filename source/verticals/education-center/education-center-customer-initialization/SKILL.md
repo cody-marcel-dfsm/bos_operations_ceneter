@@ -125,10 +125,9 @@ nothing from a new or repaired initialization until the recommendation is
 confirmed. Existing valid user-confirmed settings require no reconfirmation.
 
 Customer settings initialization never opens a provider authorization page or
-collects a credential. In Claude, use the account or organization Web
-connector's persistent **Connect** action under **Customize → Connectors**. In
-ChatGPT/Codex, complete BOS OAuth
-through the BOS connection's host-managed Connect/Sign in flow before eliciting
+collects a credential. In Claude and ChatGPT/Codex alike, complete BOS OAuth
+through the BOS plugin's own package-owned `.mcp.json` binding and its
+host-managed Connect/Sign in flow before eliciting
 settings. Another client completes its generated product adapter
 first. BOS-routed provider
 authorization remains the BOS-owned recovery flow; a separately connected

@@ -167,7 +167,7 @@
       "codex_mcp_startup_timeout_sec": 180,
       "codex_mcp_tool_timeout_sec": 180,
       "connection_artifacts": [
-        "clients/claude/plugins/bos/CONNECTORS.md",
+        "clients/claude/plugins/bos/.mcp.json",
         "clients/codex/plugins/bos/.mcp.json",
         "clients/copilot/products/bos/.github/mcp.json",
         "clients/gemini/extensions/bos/mcp_config.json"

@@ -198,8 +198,8 @@ export async function installClaudeLocal({
   const dependencyMessage = (productMetadata.dependency_products ?? []).length
     ? ` Required products: ${productMetadata.dependency_products.join(", ")}.`
     : "";
-  const completionMessage = productMetadata.connection_scope === "claude_account"
-    ? `Connect the ${mcpServerName(productMetadata)} account-level Web connector under Customize > Connectors and complete OAuth.${dependencyMessage}`
+  const completionMessage = productMetadata.mcp_server_name
+    ? `Complete the ${mcpServerName(productMetadata)} plugin's native BOS authentication action.${dependencyMessage}`
     : `Use the required BOS foundation connector and native authentication action.${dependencyMessage}`;
   process.stdout.write(`Installed ${selector}. ${completionMessage}\n`);
   return {
@@ -207,7 +207,7 @@ export async function installClaudeLocal({
     marketplaceRoot,
     product,
     selector,
-    connectionScope: productMetadata.connection_scope ?? "bos_managed",
+    connectionScope: "bos_managed",
     resourceUrl: productMetadata.resource_url,
     installed: true
   };
