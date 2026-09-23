@@ -8,6 +8,7 @@ export const CACHE_RESET_CONFIRMATION = "DELETE BOS CHATGPT AND CLAUDE CACHES";
 
 const marketplace = "bos-education-center";
 const products = ["bos", "education-center"];
+const pluginRepository = "https://github.com/cody-marcel-dfsm/bos_operations_ceneter";
 
 async function pathPresent(path) {
   try {
@@ -67,10 +68,49 @@ async function validateProductCache(cacheRoot, expectedClient) {
   }
 }
 
+// Claude Desktop's independently-added Git marketplace is fetched and cached
+// account-side (server-side), not in a stable local package-cache directory
+// like the CLI's `~/.claude/plugins/cache`. The one locally reachable
+// artifact is a per-session materialized snapshot of each installed plugin's
+// files, regenerated fresh at the start of every new session. Clearing it
+// cannot force the account-side marketplace to refetch a newer version — a
+// new session simply regenerates the same snapshot from that same source —
+// but it is a real BOS-owned artifact on disk and safe to include once each
+// candidate is validated against this exact plugin's own metadata.
+async function findDesktopSessionPluginSnapshots(sessionsRoot) {
+  const targets = [];
+  if (!(await pathPresent(sessionsRoot))) return targets;
+  const sessionRootStat = await lstat(sessionsRoot);
+  if (sessionRootStat.isSymbolicLink() || !sessionRootStat.isDirectory()) return targets;
+  for (const account of await readdir(sessionsRoot, { withFileTypes: true })) {
+    if (!account.isDirectory()) continue;
+    const accountRoot = join(sessionsRoot, account.name);
+    for (const session of await readdir(accountRoot, { withFileTypes: true })) {
+      if (!session.isDirectory()) continue;
+      const rpmRoot = join(accountRoot, session.name, "rpm");
+      if (!(await pathPresent(rpmRoot))) continue;
+      for (const entry of await readdir(rpmRoot, { withFileTypes: true })) {
+        if (!entry.isDirectory() || !entry.name.startsWith("plugin_")) continue;
+        const pluginDir = join(rpmRoot, entry.name);
+        const metadataPath = join(pluginDir, ".claude-plugin", "plugin.json");
+        if (!(await pathPresent(metadataPath))) continue;
+        const metadata = await readJson(metadataPath);
+        if (products.includes(metadata.name) && metadata.repository === pluginRepository) {
+          targets.push(assertContained(pluginDir, sessionsRoot));
+        }
+      }
+    }
+  }
+  return targets;
+}
+
 export async function planBosClientCacheReset({ home = homedir() } = {}) {
   const safeHome = assertSafeHome(home);
   const codexPluginCacheRoot = join(safeHome, ".codex", "plugins", "cache");
   const claudePluginCacheRoot = join(safeHome, ".claude", "plugins", "cache");
+  const claudeDesktopSessionsRoot = join(
+    safeHome, "Library", "Application Support", "Claude", "local-agent-mode-sessions"
+  );
   const codexPackageCache = assertContained(
     join(codexPluginCacheRoot, marketplace), codexPluginCacheRoot
   );
@@ -84,12 +124,14 @@ export async function planBosClientCacheReset({ home = homedir() } = {}) {
   for (const path of [codexPackageCache, claudePackageCache]) {
     if (await pathPresent(path)) targets.push(path);
   }
+  targets.push(...await findDesktopSessionPluginSnapshots(claudeDesktopSessionsRoot));
   return {
     schema_version: "1",
     home: safeHome,
     allowed_roots: [
       codexPluginCacheRoot,
-      claudePluginCacheRoot
+      claudePluginCacheRoot,
+      claudeDesktopSessionsRoot
     ],
     targets: [...new Set(targets)].sort()
   };
@@ -118,7 +160,7 @@ export async function resetBosClientCaches({
     schema_version: "1",
     ok: failures.length === 0,
     dry_run: dryRun,
-    scope: "local_chatgpt_codex_and_claude_caches_only",
+    scope: "local_chatgpt_codex_claude_and_claude_desktop_session_caches_only",
     allowed_roots: plan.allowed_roots,
     actions,
     failures
