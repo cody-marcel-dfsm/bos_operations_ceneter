@@ -1,6 +1,6 @@
 {
   "name": "education-center",
-  "version": "0.4.112",
+  "version": "0.4.113",
   "description": "Coordinate operations across email, calendars, billing, and enrollment.",
   "author": {
     "name": "Infinite State Machines LLC"
@@ -17,9 +17,9 @@
       "Write"
     ],
     "defaultPrompt": [
-      "For Acme Learning Center, reconcile Acme.com partnership email invoices with accounting payments; cite every mismatch.",
-      "For Acme Learning Center, reconcile next week's registrations, partner child-days, staff, cancellations, and camp capacity.",
-      "For Acme Learning Center, reconcile paid leads across Gmail, Calendar, Lead Director, Calimatic, and Google Ads; flag gaps."
+      "Initialize my education center, including its customer-facing brand name.",
+      "Create today's education center operations plan.",
+      "Give me a weekly summary for my director."
     ],
     "websiteURL": "https://dfsm.ai",
     "brandColor": "#061638",

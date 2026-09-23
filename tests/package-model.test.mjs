@@ -1220,15 +1220,15 @@ test("director skill handles weekly summaries without scope questions", async ()
   assert.match(weeklyContract, /confirmed but unassigned[\s\S]*Needs review/);
 });
 
-test("BOS starter prompts showcase deterministic federated operations", async () => {
+test("BOS starter prompts use concrete customer language", async () => {
   const product = (await listProducts()).find(
     ({ manifest }) => manifest.name === "bos"
   )?.manifest;
   assert(product);
   assert.deepEqual(product.default_prompts, [
-    "Audit my BOS service mesh and show which deterministic workflows are ready, blocked, or need authorization.",
-    "Make this operational workflow runnable by identifying and resolving its platform dependencies.",
-    "Trace a governed workflow across my installed services and show every approval, execution step, and result."
+    "List the BOS apps and skills installed for my organization.",
+    "Show me the tools and workflows available in each BOS app.",
+    "Check which BOS apps are connected and ready to use."
   ]);
 });
 
@@ -1529,16 +1529,13 @@ test("Education Operation Center marketplace metadata presents specific cross-sy
   assert.match(education.long_description, /deterministic workflow/);
   assert.match(education.long_description, /preserving human judgment, approvals/);
   assert.deepEqual(education.default_prompts, [
-    "For Acme Learning Center, reconcile Acme.com partnership email invoices with accounting payments; cite every mismatch.",
-    "For Acme Learning Center, reconcile next week's registrations, partner child-days, staff, cancellations, and camp capacity.",
-    "For Acme Learning Center, reconcile paid leads across Gmail, Calendar, Lead Director, Calimatic, and Google Ads; flag gaps."
+    "Initialize my education center, including its customer-facing brand name.",
+    "Create today's education center operations plan.",
+    "Give me a weekly summary for my director."
   ]);
   assert.equal(new Set(education.default_prompts).size, 3);
   assert.ok(education.default_prompts.every((prompt) => prompt.length <= 128));
-  assert.ok(education.default_prompts.every((prompt) => prompt.includes("Acme Learning Center")));
   assert.ok(education.default_prompts.every((prompt) => !/Bright Horizons|Northstar Coding Academy/.test(prompt)));
-  assert.ok(education.default_prompts.every((prompt) => /reconcil|exception/i.test(prompt)));
-  assert.ok(education.default_prompts.every((prompt) => !/my education center|today's education center|my director/i.test(prompt)));
   assert.equal(education.website_url, "https://dfsm.ai");
   assert.equal(education.brand_color, "#061638");
   assert.equal(education.composer_icon, "assets/education-center-logo.png");

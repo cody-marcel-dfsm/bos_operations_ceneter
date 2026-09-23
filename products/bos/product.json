@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.112",
+  "version": "0.4.113",
   "release_status": "active",
   "display_name": "BOS Platform",
   "description": "Run deterministic workflows across a federated agentic service mesh.",
@@ -84,9 +84,9 @@
     "bos_set_provider_credential"
   ],
   "default_prompts": [
-    "Audit my BOS service mesh and show which deterministic workflows are ready, blocked, or need authorization.",
-    "Make this operational workflow runnable by identifying and resolving its platform dependencies.",
-    "Trace a governed workflow across my installed services and show every approval, execution step, and result."
+    "List the BOS apps and skills installed for my organization.",
+    "Show me the tools and workflows available in each BOS app.",
+    "Check which BOS apps are connected and ready to use."
   ],
   "connection_owner": "bos"
 }
