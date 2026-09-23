@@ -757,6 +757,92 @@ test("service.describe agrees with the compact journey and declares each server 
   );
 });
 
+test("service.describe accepts an event-driven automation behavior graph", () => {
+  const behaviorPlugin = {
+    ...plugin,
+    reference: {
+      ...plugin.reference,
+      plugin: ["i", "code", "automated", "outreach"].join("-")
+    },
+    name: "Automated Outreach",
+    purpose: "Respond to customer inquiry emails through automated outreach.",
+    journey: {
+      title: "Customer email to automated outreach",
+      inputs: [],
+      steps: [
+        { code: "customer_email", type: "server", description: "A customer email arrives." },
+        { code: "agent_call", type: "server", description: "The automated agent calls." },
+        { code: "text_outreach", type: "server", description: "The customer receives a text." },
+        { code: "email_outreach", type: "server", description: "The customer receives an email." }
+      ],
+      success: "Automated agent call; Automated text outreach; Automated email outreach"
+    }
+  };
+  behaviorPlugin.describe = {
+    capability: "service.describe",
+    input: { service: behaviorPlugin.reference }
+  };
+  const behaviorDescription = {
+    reference: behaviorPlugin.reference,
+    name: behaviorPlugin.name,
+    purpose: behaviorPlugin.purpose,
+    descriptor_etag: behaviorPlugin.descriptor_etag,
+    behavior: {
+      title: behaviorPlugin.journey.title,
+      entry: "customer_email",
+      steps: [
+        { code: "customer_email", title: "Customer email received", kind: "trigger", description: "A customer email arrives.", interfaces: ["Gmail"], next: ["agent_call", "text_outreach", "email_outreach"], terminal: false },
+        { code: "agent_call", title: "Automated agent call", kind: "outreach", description: "The automated agent calls.", interfaces: ["Retell"], next: [], terminal: true },
+        { code: "text_outreach", title: "Automated text outreach", kind: "outreach", description: "The customer receives a text.", interfaces: ["Twilio"], next: [], terminal: true },
+        { code: "email_outreach", title: "Automated email outreach", kind: "outreach", description: "The customer receives an email.", interfaces: ["SendGrid"], next: [], terminal: true }
+      ],
+      outcomes: { completed: "Enabled channels contact the customer." }
+    },
+    queries: [],
+    readiness: behaviorPlugin.readiness,
+    ttlMs: 0,
+    cacheScope: "private"
+  };
+
+  assert.equal(
+    validateServiceJourneyDescription(behaviorDescription, behaviorPlugin),
+    behaviorDescription
+  );
+  assert.throws(
+    () => validateServiceJourneyDescription({
+      ...behaviorDescription,
+      journey: serviceDescription.journey
+    }, behaviorPlugin),
+    /exactly one journey or behavior/
+  );
+  assert.throws(
+    () => validateServiceJourneyDescription(behaviorDescription, {
+      ...behaviorPlugin,
+      journey: {
+        ...behaviorPlugin.journey,
+        steps: behaviorPlugin.journey.steps.map((step, index) => (
+          index === 0 ? { ...step, type: "client" } : step
+        ))
+      }
+    }),
+    /compact behavior steps must be server-owned/
+  );
+  assert.throws(
+    () => validateServiceJourneyDescription({
+      ...behaviorDescription,
+      behavior: {
+        ...behaviorDescription.behavior,
+        steps: behaviorDescription.behavior.steps.map((step) => (
+          step.code === "customer_email"
+            ? { ...step, next: ["unknown_outcome"] }
+            : step
+        ))
+      }
+    }, behaviorPlugin),
+    /unknown successor/
+  );
+});
+
 test("operation Describe validates exact execution contracts and bounded runtime limits", () => {
   assert.equal(validateOperationDescription(operationDescription), operationDescription);
   assert.throws(

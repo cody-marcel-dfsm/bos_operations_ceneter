@@ -169,6 +169,9 @@ test("organization automation explanations use plugin Describe and the explain p
   assert.match(orchestrator, /`plugins\.list`/);
   assert.match(orchestrator, /exact\s+`service\.describe` input/);
   assert.match(orchestrator, /explain plan from the detailed Describe response/i);
+  assert.match(orchestrator, /When Describe\s+returns `behavior`/i);
+  assert.match(orchestrator, /top-level\s+plugin whose descriptor identifies the requested automation behavior/i);
+  assert.match(orchestrator, /do not replace them with the implementation\s+details of one delivery provider/i);
   assert.match(orchestrator, /Mermaid flowchart of the automation workflow from the\s+plugin's perspective/i);
   assert.match(orchestrator, /Do not substitute\s+the Lead Director state graph/i);
   assert.match(orchestrator, /Do not author, register, start, or advance BOSL/i);
