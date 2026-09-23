@@ -164,6 +164,71 @@ prior verdict and requires a fresh Oracle review of the complete updated diff.
 - Flag conflicts between source and Vault. The constitution and accepted Vault
   decisions control until an explicit decision updates them.
 
+## Claude Desktop plugin-bundled MCP authentication (2026-09-23 findings)
+
+Confirmed against Anthropic's own documentation and live troubleshooting on an
+installed BOS Claude plugin, during the Issue #0020 investigation:
+
+- **Connectors is the intended, unified auth surface for a plugin-bundled MCP
+  server, not a competing or legacy mechanism.** Per
+  `https://claude.com/docs/third-party/claude-desktop/extensions`: "A server
+  with no usable token appears under Customize → Connectors with a Connect
+  button." A plugin declaring `mcpServers` in its `.mcp.json` is *expected* to
+  surface there. Seeing a plugin's connection as a Connectors row with
+  Connect/Reconnect is correct behavior, not evidence of a stuck legacy
+  design. "Reconnect" (vs "Connect") indicates a previously valid token went
+  stale, not a broken registration.
+- **The documented minimal schema is exactly `{"type": "http", "url":
+  "https://..."}`** in `.mcp.json`, keyed by server name. An entry with no
+  `oauth`, `headersHelper`, or `Authorization` header is automatically treated
+  as OAuth-required when the server challenges with 401 (Desktop 1.24012.0+).
+  Do not add Codex-only fields (`oauth_resource`, `required`,
+  `startup_timeout_sec`, `tool_timeout_sec`) to a Claude entry; they aren't
+  part of the documented Claude schema and only apply to Codex.
+- **Claude Code CLI documentation (`code.claude.com/docs`,
+  `github.com/anthropics/claude-code`) is not automatically authoritative for
+  Claude Desktop's consumer Cowork/Plugins panel.** They are different
+  products sharing a plugin *format*, not necessarily identical runtime
+  behavior. The CLI's marketplace model (local git clone under
+  `~/.claude/plugins/marketplaces/`, once-per-session background sync,
+  `/plugin marketplace update`) does **not** describe what was observed for a
+  Desktop-installed Custom/user-added marketplace: no local clone exists
+  anywhere on disk for it; instead the app repeatedly logs `[CustomPlugins]
+  Fetched N remote plugins (M org, K account)`, indicating an account-scoped
+  server-side fetch model for that plugin category. When researching a
+  Desktop-app-specific question, prefer `claude.com/docs/third-party/...` and
+  Desktop-scoped Help Center articles over `code.claude.com/docs`; verify
+  which product a source actually documents before treating it as an answer,
+  and say so explicitly if uncertain rather than presenting a CLI-sourced
+  claim as settled for Desktop.
+- **Known, currently-unresolved Anthropic platform limitation: there is no UI
+  path to remove/delete a stuck or duplicate custom MCP connector**, in either
+  Claude Desktop or claude.ai — only Disconnect/Reconnect. Tracked in multiple
+  open `anthropics/claude-ai-mcp` GitHub issues (e.g. #150, closed "not
+  planned" by maintainers; #73, #509, #231, #1049). Restarting the app, fully
+  clearing the local IndexedDB cache
+  (`~/Library/Application Support/Claude/IndexedDB/https_claude.ai_0.*`), and
+  removing/re-adding the plugin all leave an orphaned account-scoped connector
+  registration unchanged, because that state lives server-side, not in any
+  local file, cache, or Keychain item reachable from this machine. If a user
+  hits a stuck "already added" duplicate-connector error, do not keep
+  hunting for a local fix — say so plainly and point them at Anthropic
+  support; this is not a bos_operations_center defect.
+- **A dependent product plugin (no `mcpServers` of its own) has no documented
+  mechanism to acquire its own Connectors row just from sharing a marketplace
+  repository with a plugin that does declare one.** If a dependent plugin
+  (e.g. Education Operation Center) is observed with its own Connector entry,
+  treat it as a stray manually-created connector, not a packaging defect,
+  unless further evidence implicates the generator.
+- **Native client verification is a distinct, separately-gated step from
+  merging a fix.** A merged, Oracle-approved source change does not, by
+  itself, establish that the live installed client shows the expected
+  behavior — plugin/marketplace sync timing, account-scoped connector state,
+  and Desktop-app bugs can all prevent a correct source change from being
+  observable immediately. Report source-level completion and native
+  verification as separate open items; do not imply the second follows
+  automatically from the first.
+
 ## Repository review
 
 Review the completed diff and focused validation evidence. Verify:
