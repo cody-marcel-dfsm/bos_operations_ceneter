@@ -49,9 +49,14 @@ and conformance-example resource URIs plus an opaque descriptor token.
 `{platform, application, plugin}` references, compact client/server steps,
 purpose, separate readiness, a descriptor token, and the complete input for
 independent `service.describe`. Detailed Describe must agree with the compact
-steps and declare every server step's semantic operation, schemas, effect,
-approval, limits, public failures, receipts, and recovery. Accessible unready
-journeys remain visible with sanitized recovery guidance.
+steps and publishes exactly one of `journey` or `behavior`. An executable
+`journey` declares every server step's semantic operation,
+schemas, effect, approval, limits, public failures, receipts, and recovery. An
+event-driven plugin may instead publish `behavior`: its trigger, ordered
+automation states, named human interfaces, branch successors, and terminal
+customer-facing outcomes. Behavior states describe server-owned automation and
+never become client-invokable operations. Accessible unready plugins remain
+visible with sanitized recovery guidance.
 Every operation limit includes integer `maximum_duration_seconds` from 1 through
 900 and integer `maximum_fan_out` from 1 through 100. Missing or out-of-range
 values make the service description invalid; the client never supplies defaults.
