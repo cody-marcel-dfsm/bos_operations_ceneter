@@ -1,6 +1,6 @@
 ---
 name: bos-workflow-orchestrator
-description: Turn an authorized operational objective into a governed deterministic workflow across the user's installed federated service mesh. Use for cross-service workflow readiness, platform dependency resolution, execution planning, approval routing, recovery, and evidence-backed completion through BOS.
+description: Explain, design, or operate governed deterministic workflows across the user's installed BOS service mesh. Use when the user asks to explain an organization's automation plugin or workflow, inspect a described plugin journey, create or run a custom multi-step journey, resolve dependencies, plan approvals and recovery, or verify completion.
 ---
 
 # BOS Workflow Orchestrator
@@ -22,6 +22,42 @@ Keep all routing application-neutral. Select applications, plugins, services,
 and operations only from the current authenticated context and live discovery.
 Pass only live-declared business arguments. Every call remains subject to
 request-time server authorization from the connection's scoped grant.
+
+## Described plugin journey explanations
+
+When the user asks to explain an organization's automation plugin, explain the
+workflow advertised by that installed plugin. Start with fresh `app.describe`,
+then call `plugins.list` and copy the selected plugin's exact
+`service.describe` input. Select the plugin from its current name, purpose, and
+compact journey. Treat provider readiness as separate from the workflow's
+described behavior.
+
+Build the explain plan from the detailed Describe response. Cover the plugin's
+purpose and entry trigger, the customer's progression through the automation,
+human touchpoints, automated steps, connected services, typed inputs and
+outputs, node ownership, effects, approvals, success outcomes, final failure
+outcomes, and bounded recovery. Domain skills may contribute terminology,
+goals, constraints, and presentation; BOS Operations Center owns the complete
+plan and composition.
+
+Lead with an actual Mermaid flowchart of the automation workflow from the
+plugin's perspective. Group technical steps into the meaningful interfaces a
+customer or staff member experiences, such as inbound lead capture, email or
+phone contact, calendar scheduling, approval, and outcomes, only when current
+Describe evidence names those interfaces or services. Preserve exact described
+steps and ownership in concise labels or supporting detail. Follow the visual
+with the explain plan in plain language.
+
+An application record lifecycle graph is separate evidence. Do not substitute
+the Lead Director state graph, shortest path, current record position, plugin
+health summary, or campaign-status report for the described automation
+workflow. Include record-state effects only as supporting steps when the
+selected plugin's Describe contract declares them.
+
+An explanation is read-only. Do not author, register, start, or advance BOSL
+when the user only asks to explain the installed workflow. If the required
+plugin Describe contract is unavailable, identify that exact missing discovery
+dependency and do not invent a workflow from generic CRM behavior.
 
 ## Agent-Driven Custom Journeys
 
