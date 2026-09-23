@@ -287,6 +287,18 @@ record/path API results. Use no local HTML, browser renderer, attachment, or
 external visualization service. Keep node labels concise and exclude contact
 details, raw record identifiers, private notes, and authority values.
 
+Emit the diagram as its own fenced code block using the exact ` ```mermaid `
+opening fence and a closing ` ``` `, with no other content inside that fence.
+This exact fence is what the host chat surface recognizes to render the block
+as a diagram instead of showing it as literal code text; a bare fence, a
+different language tag, or diagram text placed outside a dedicated fenced
+block fails to render even when the Mermaid syntax is valid. Send the diagram
+as part of the normal conversational turn, never inside a saved document,
+Documents-panel view, or other artifact surface that only displays fenced
+code verbatim. Node label line breaks use `<br/>`, not a literal `\n`, since
+`\n` inside a plain double-quoted Mermaid label renders as literal backslash-n
+text rather than a line break.
+
 Place the person's verified current node and the resolved goal prominently
 in the same diagram. Include every intermediate node on the verified route and show
 relevant branches and gates. Completed history requires observed transition
