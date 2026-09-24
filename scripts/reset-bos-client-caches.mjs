@@ -1,4 +1,4 @@
-import { lstat, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { lstat, readdir, rm } from "node:fs/promises";
 import { homedir } from "node:os";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -104,64 +104,6 @@ async function findDesktopSessionPluginSnapshots(sessionsRoot) {
   return targets;
 }
 
-// A CLI-registered local-directory marketplace (`claude plugin marketplace
-// add <path>` against this checkout, or the equivalent `extraKnownMarketplaces`
-// entry in user settings) is a local development artifact, not the customer
-// install path documented in README.md — customers add this marketplace from
-// its Git URL through Claude Desktop's own "Add marketplace" UI, which is
-// account-scoped and never touches these files. When a local-directory
-// registration lingers under this exact marketplace name, it collides with a
-// correctly git-sourced one and Claude Desktop keeps re-deriving it from
-// `~/.claude/settings.json` on every launch, which no amount of editing
-// `known_marketplaces.json` alone can fix. Clear the registration from both
-// files; only ever remove the entry keyed exactly to this marketplace name,
-// and only when present.
-async function readJsonIfPresent(path) {
-  if (!(await pathPresent(path))) return null;
-  const stat = await lstat(path);
-  if (stat.isSymbolicLink() || !stat.isFile()) {
-    throw new Error(`Refusing non-file registration target: ${path}`);
-  }
-  return JSON.parse(await readFile(path, "utf8"));
-}
-
-async function planKnownMarketplacesReset(path) {
-  const document = await readJsonIfPresent(path);
-  if (!document || !(marketplace in document)) return null;
-  return { kind: "known_marketplaces", path, marketplace };
-}
-
-async function planExtraKnownMarketplacesReset(path) {
-  const document = await readJsonIfPresent(path);
-  if (!document?.extraKnownMarketplaces || !(marketplace in document.extraKnownMarketplaces)) {
-    return null;
-  }
-  return { kind: "extra_known_marketplaces", path, marketplace };
-}
-
-async function applyRegistrationReset(registration) {
-  const document = await readJsonIfPresent(registration.path);
-  if (!document) return false;
-  if (registration.kind === "known_marketplaces") {
-    if (!(registration.marketplace in document)) return false;
-    delete document[registration.marketplace];
-  } else {
-    if (!document.extraKnownMarketplaces || !(registration.marketplace in document.extraKnownMarketplaces)) {
-      return false;
-    }
-    delete document.extraKnownMarketplaces[registration.marketplace];
-  }
-  await writeFile(registration.path, `${JSON.stringify(document, null, 2)}\n`);
-  return true;
-}
-
-async function registrationStillPresent(registration) {
-  const document = await readJsonIfPresent(registration.path);
-  if (!document) return false;
-  if (registration.kind === "known_marketplaces") return registration.marketplace in document;
-  return Boolean(document.extraKnownMarketplaces?.[registration.marketplace]);
-}
-
 export async function planBosClientCacheReset({ home = homedir() } = {}) {
   const safeHome = assertSafeHome(home);
   const codexPluginCacheRoot = join(safeHome, ".codex", "plugins", "cache");
@@ -183,26 +125,15 @@ export async function planBosClientCacheReset({ home = homedir() } = {}) {
     if (await pathPresent(path)) targets.push(path);
   }
   targets.push(...await findDesktopSessionPluginSnapshots(claudeDesktopSessionsRoot));
-
-  const knownMarketplacesPath = join(safeHome, ".claude", "plugins", "known_marketplaces.json");
-  const claudeSettingsPath = join(safeHome, ".claude", "settings.json");
-  const registrations = (await Promise.all([
-    planKnownMarketplacesReset(knownMarketplacesPath),
-    planExtraKnownMarketplacesReset(claudeSettingsPath)
-  ])).filter(Boolean);
-
   return {
     schema_version: "1",
     home: safeHome,
     allowed_roots: [
       codexPluginCacheRoot,
       claudePluginCacheRoot,
-      claudeDesktopSessionsRoot,
-      knownMarketplacesPath,
-      claudeSettingsPath
+      claudeDesktopSessionsRoot
     ],
-    targets: [...new Set(targets)].sort(),
-    registrations
+    targets: [...new Set(targets)].sort()
   };
 }
 
@@ -215,23 +146,14 @@ export async function resetBosClientCaches({
     throw new Error(`Confirmation must equal: ${CACHE_RESET_CONFIRMATION}`);
   }
   const plan = await planBosClientCacheReset({ home });
-  const actions = [
-    ...plan.targets.map((path) => `remove_cache:${path}`),
-    ...plan.registrations.map((r) => `remove_local_marketplace_registration:${r.path}`)
-  ];
+  const actions = plan.targets.map((path) => `remove_cache:${path}`);
   if (!dryRun) {
     for (const path of plan.targets) await rm(path, { recursive: true, force: true });
-    for (const registration of plan.registrations) await applyRegistrationReset(registration);
   }
   const failures = [];
   if (!dryRun) {
     for (const path of plan.targets) {
       if (await pathPresent(path)) failures.push(`Cache artifact remains: ${path}`);
-    }
-    for (const registration of plan.registrations) {
-      if (await registrationStillPresent(registration)) {
-        failures.push(`Local marketplace registration remains: ${registration.path}`);
-      }
     }
   }
   return {
