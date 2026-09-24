@@ -177,70 +177,93 @@ prior verdict and requires a fresh Oracle review of the complete updated diff.
 - Flag conflicts between source and Vault. The constitution and accepted Vault
   decisions control until an explicit decision updates them.
 
-## Claude Desktop plugin-bundled MCP authentication (2026-09-23 findings)
+## Claude plugin-bundled MCP and local marketplace registration (2026-09-23, confirmed)
 
-Confirmed against Anthropic's own documentation and live troubleshooting on an
-installed BOS Claude plugin, during the Issue #0020 investigation:
+Everything below was reproduced and confirmed end-to-end during the Issue
+#0020 investigation: a fix was applied, disproven, corrected, and the final
+state was independently verified across two app restarts. Superseded
+intermediate theories from this same investigation are omitted; only the
+confirmed mechanism is recorded.
 
-- **Connectors is the intended, unified auth surface for a plugin-bundled MCP
-  server, not a competing or legacy mechanism.** Per
-  `https://claude.com/docs/third-party/claude-desktop/extensions`: "A server
-  with no usable token appears under Customize → Connectors with a Connect
-  button." A plugin declaring `mcpServers` in its `.mcp.json` is *expected* to
-  surface there. Seeing a plugin's connection as a Connectors row with
-  Connect/Reconnect is correct behavior, not evidence of a stuck legacy
-  design. "Reconnect" (vs "Connect") indicates a previously valid token went
-  stale, not a broken registration.
-- **The documented minimal schema is exactly `{"type": "http", "url":
-  "https://..."}`** in `.mcp.json`, keyed by server name. An entry with no
-  `oauth`, `headersHelper`, or `Authorization` header is automatically treated
-  as OAuth-required when the server challenges with 401 (Desktop 1.24012.0+).
-  Do not add Codex-only fields (`oauth_resource`, `required`,
-  `startup_timeout_sec`, `tool_timeout_sec`) to a Claude entry; they aren't
-  part of the documented Claude schema and only apply to Codex.
-- **Claude Code CLI documentation (`code.claude.com/docs`,
-  `github.com/anthropics/claude-code`) is not automatically authoritative for
-  Claude Desktop's consumer Cowork/Plugins panel.** They are different
-  products sharing a plugin *format*, not necessarily identical runtime
-  behavior. The CLI's marketplace model (local git clone under
-  `~/.claude/plugins/marketplaces/`, once-per-session background sync,
-  `/plugin marketplace update`) does **not** describe what was observed for a
-  Desktop-installed Custom/user-added marketplace: no local clone exists
-  anywhere on disk for it; instead the app repeatedly logs `[CustomPlugins]
-  Fetched N remote plugins (M org, K account)`, indicating an account-scoped
-  server-side fetch model for that plugin category. When researching a
-  Desktop-app-specific question, prefer `claude.com/docs/third-party/...` and
-  Desktop-scoped Help Center articles over `code.claude.com/docs`; verify
-  which product a source actually documents before treating it as an answer,
-  and say so explicitly if uncertain rather than presenting a CLI-sourced
-  claim as settled for Desktop.
-- **Known, currently-unresolved Anthropic platform limitation: there is no UI
-  path to remove/delete a stuck or duplicate custom MCP connector**, in either
-  Claude Desktop or claude.ai — only Disconnect/Reconnect. Tracked in multiple
-  open `anthropics/claude-ai-mcp` GitHub issues (e.g. #150, closed "not
-  planned" by maintainers; #73, #509, #231, #1049). Restarting the app, fully
-  clearing the local IndexedDB cache
-  (`~/Library/Application Support/Claude/IndexedDB/https_claude.ai_0.*`), and
-  removing/re-adding the plugin all leave an orphaned account-scoped connector
-  registration unchanged, because that state lives server-side, not in any
-  local file, cache, or Keychain item reachable from this machine. If a user
-  hits a stuck "already added" duplicate-connector error, do not keep
-  hunting for a local fix — say so plainly and point them at Anthropic
-  support; this is not a bos_operations_center defect.
-- **A dependent product plugin (no `mcpServers` of its own) has no documented
-  mechanism to acquire its own Connectors row just from sharing a marketplace
-  repository with a plugin that does declare one.** If a dependent plugin
-  (e.g. Education Operation Center) is observed with its own Connector entry,
-  treat it as a stray manually-created connector, not a packaging defect,
-  unless further evidence implicates the generator.
+### Plugin-bundled MCP schema and OAuth surface
+
+- A plugin's `.mcp.json` for Claude needs only `{"type": "http", "url":
+  "https://..."}`, keyed by server name. Do not add Codex-only fields
+  (`oauth_resource`, `required`, `startup_timeout_sec`, `tool_timeout_sec`) —
+  they aren't part of the Claude schema.
+- Per `https://claude.com/docs/third-party/claude-desktop/extensions`: "A
+  server with no usable token appears under Customize → Connectors with a
+  Connect button." A plugin-bundled server showing there with
+  Connect/Reconnect is the intended, correct surface — not a legacy or
+  competing mechanism, and not evidence the fix didn't take. "Reconnect"
+  specifically indicates a previously valid token went stale.
+- A dependent product plugin (no `mcpServers` of its own, e.g. Education
+  Operation Center) has no documented mechanism to acquire its own Connectors
+  row from sharing a marketplace repository with a plugin that does declare
+  one. A Connectors row for a dependent plugin is a stray manual artifact, not
+  a packaging defect.
+
+### Local marketplace registration: the actual persistent source
+
+A `bos-education-center` marketplace pointing at a local filesystem path
+(instead of the git URL) is a local-plugin-development artifact — from
+`claude plugin marketplace add <local-path>`, or an equivalent
+`extraKnownMarketplaces` entry — colliding with the git-based marketplace
+customers add through the host's own UI.
+
+**The persistent source is `~/.claude/settings.json`'s
+`extraKnownMarketplaces` key, not `~/.claude/plugins/known_marketplaces.json`.**
+Per `https://code.claude.com/docs/en/plugin-marketplaces`, `extraKnownMarketplaces`
+in user settings is reloaded every startup and re-registers whatever it
+declares; `known_marketplaces.json` is derived from it. Editing
+`known_marketplaces.json` alone — even confirming it clean immediately before
+a restart — does not stick, because the next startup regenerates it from
+`extraKnownMarketplaces` again. Reproduced twice in this investigation before
+the actual source was found.
+
+**Confirmed fix:** edit the `bos-education-center` entry inside
+`~/.claude/settings.json`'s `extraKnownMarketplaces` to
+`{"source": {"source": "git", "url":
+"https://github.com/cody-marcel-dfsm/bos_operations_ceneter.git"}}` (the same
+shape already used for the working `mycrm` entry in that same file). Confirmed
+stable across a subsequent restart: `known_marketplaces.json` then shows the
+git source with a real clone at `~/.claude/plugins/marketplaces/bos-education-center`
+(verified `.git`, `.claude-plugin`, `AGENTS.md` present), not a reference into
+the local checkout.
+
+**Do not automate unconditional removal of this entry.** A maintenance script
+that deletes `bos-education-center` from either file whenever the key is
+present cannot distinguish a broken local-directory registration from a
+correctly-configured git one — it will destroy a working configuration just
+as readily as a broken one. This was implemented once (`reset-bos-client-caches.mjs`,
+PR #79), shipped, and reverted (PR #80) after it did exactly that. Treat this
+as manual remediation, not something to script into repository tooling.
+
+### Other confirmed findings from this investigation
+
+- **There is no UI path to remove/delete a stuck or duplicate custom MCP
+  connector** (Customize → Connectors — a different concern from marketplace
+  registration above), in either Claude Desktop or claude.ai — only
+  Disconnect/Reconnect. Tracked in multiple open `anthropics/claude-ai-mcp`
+  GitHub issues (#150, closed "not planned"; #73, #509, #231, #1049). That
+  state is server-side/account-scoped; no local file, cache, or Keychain edit
+  reaches it. If a user hits a stuck connector, say so plainly and point them
+  at Anthropic support rather than continuing to hunt for a local fix.
+- **Claude Code CLI documentation (`code.claude.com/docs`) is not
+  automatically authoritative for Claude Desktop's consumer Cowork/Plugins
+  panel** — related products sharing a plugin format, not guaranteed identical
+  runtime behavior. In this investigation the CLI docs turned out to be
+  exactly right (`extraKnownMarketplaces`, `known_marketplaces.json`, the
+  actual mechanism), but that was confirmed by direct file inspection, not
+  assumed from the docs alone. Verify a claim against the actual file/behavior
+  on the machine in question before presenting it as settled.
 - **Native client verification is a distinct, separately-gated step from
-  merging a fix.** A merged, Oracle-approved source change does not, by
+  merging a source fix.** A merged, Oracle-approved change does not, by
   itself, establish that the live installed client shows the expected
-  behavior — plugin/marketplace sync timing, account-scoped connector state,
-  and Desktop-app bugs can all prevent a correct source change from being
-  observable immediately. Report source-level completion and native
-  verification as separate open items; do not imply the second follows
-  automatically from the first.
+  behavior — local marketplace/registration state, host app bugs, and
+  restart timing can all delay it. Report source-level completion and native
+  verification as separate items until independently confirmed, as was
+  eventually done here.
 
 ## Repository review
 
