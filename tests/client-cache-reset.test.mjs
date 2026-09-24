@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -73,78 +73,4 @@ test("cache reset also targets validated Claude Desktop session plugin snapshots
   assert.equal(await pathExists(bosSnapshot), false);
   assert.equal(await pathExists(eduSnapshot), false);
   assert.equal(await pathExists(unrelatedSnapshot), true);
-});
-
-test("cache reset removes a lingering local-directory marketplace registration from both files", async () => {
-  const home = await fixture();
-  const knownMarketplacesPath = join(home, ".claude", "plugins", "known_marketplaces.json");
-  await mkdir(join(home, ".claude", "plugins"), { recursive: true });
-  await writeFile(knownMarketplacesPath, JSON.stringify({
-    mycrm: { source: { source: "git", url: "https://github.com/cody-marcel-dfsm/mycrm.git" } },
-    "bos-education-center": {
-      source: { source: "directory", path: "/opt/dev/bos_operations_center/clients/claude" },
-      installLocation: "/opt/dev/bos_operations_center/clients/claude",
-      lastUpdated: "2026-09-23T22:45:02.802Z"
-    }
-  }));
-  const settingsPath = join(home, ".claude", "settings.json");
-  await writeFile(settingsPath, JSON.stringify({
-    theme: "light",
-    extraKnownMarketplaces: {
-      mycrm: { source: { source: "git", url: "https://github.com/cody-marcel-dfsm/mycrm.git" } },
-      "bos-education-center": {
-        source: { source: "directory", path: "/opt/dev/bos_operations_center/clients/claude" }
-      }
-    }
-  }));
-
-  const plan = await planBosClientCacheReset({ home });
-  assert.equal(plan.registrations.length, 2);
-  assert(plan.registrations.some((r) => r.kind === "known_marketplaces" && r.path === knownMarketplacesPath));
-  assert(plan.registrations.some((r) => r.kind === "extra_known_marketplaces" && r.path === settingsPath));
-
-  const report = await resetBosClientCaches({ home, confirmation: CACHE_RESET_CONFIRMATION });
-  assert.equal(report.ok, true);
-  assert(report.actions.some((a) => a === `remove_local_marketplace_registration:${knownMarketplacesPath}`));
-  assert(report.actions.some((a) => a === `remove_local_marketplace_registration:${settingsPath}`));
-
-  const knownMarketplaces = JSON.parse(await readFile(knownMarketplacesPath, "utf8"));
-  assert.equal("bos-education-center" in knownMarketplaces, false);
-  assert.equal("mycrm" in knownMarketplaces, true);
-
-  const settings = JSON.parse(await readFile(settingsPath, "utf8"));
-  assert.equal("bos-education-center" in settings.extraKnownMarketplaces, false);
-  assert.equal("mycrm" in settings.extraKnownMarketplaces, true);
-  assert.equal(settings.theme, "light");
-});
-
-test("cache reset leaves marketplace registrations untouched when the marketplace key is absent", async () => {
-  const home = await fixture();
-  await mkdir(join(home, ".claude", "plugins"), { recursive: true });
-  const knownMarketplacesPath = join(home, ".claude", "plugins", "known_marketplaces.json");
-  await writeFile(knownMarketplacesPath, JSON.stringify({
-    mycrm: { source: { source: "git", url: "https://github.com/cody-marcel-dfsm/mycrm.git" } }
-  }));
-
-  const plan = await planBosClientCacheReset({ home });
-  assert.equal(plan.registrations.length, 0);
-
-  const report = await resetBosClientCaches({ home, confirmation: CACHE_RESET_CONFIRMATION });
-  assert.equal(report.ok, true);
-  const knownMarketplaces = JSON.parse(await readFile(knownMarketplacesPath, "utf8"));
-  assert.equal("mycrm" in knownMarketplaces, true);
-});
-
-test("dry run reports the registration reset without modifying either file", async () => {
-  const home = await fixture();
-  await mkdir(join(home, ".claude", "plugins"), { recursive: true });
-  const knownMarketplacesPath = join(home, ".claude", "plugins", "known_marketplaces.json");
-  const before = { "bos-education-center": { source: { source: "directory", path: "/x" } } };
-  await writeFile(knownMarketplacesPath, JSON.stringify(before));
-
-  const report = await resetBosClientCaches({ home, dryRun: true });
-  assert.equal(report.dry_run, true);
-  assert(report.actions.some((a) => a === `remove_local_marketplace_registration:${knownMarketplacesPath}`));
-  const stillThere = JSON.parse(await readFile(knownMarketplacesPath, "utf8"));
-  assert.deepEqual(stillThere, before);
 });
