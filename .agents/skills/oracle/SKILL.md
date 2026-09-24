@@ -239,6 +239,71 @@ as readily as a broken one. This was implemented once (`reset-bos-client-caches.
 PR #79), shipped, and reverted (PR #80) after it did exactly that. Treat this
 as manual remediation, not something to script into repository tooling.
 
+### Plugin install is a separate, scoped step after marketplace registration
+
+A marketplace being correctly registered (previous section) does not mean any
+of its plugins are installed. Removing a marketplace uninstalls its plugins
+(per the app's own "Manage Marketplaces" dialog text); re-adding the
+marketplace registration does not reinstall them — that is a distinct manual
+action. Confirmed by direct observation: after the `extraKnownMarketplaces`
+fix above held across a restart, Plugins → Yours still showed "No plugins
+installed for this project yet." / "In this project: 0" for all three family
+members, even though BOS's underlying MCP connector/tools were independently
+confirmed working elsewhere (a live BOS Connectors-panel session is
+account-scoped and can outlive a Desktop-app plugin install-list reset).
+
+**Install, and its scope, is chosen at install time, per plugin, from
+Discover.** Plugins → Discover lists each registered marketplace as its own
+browsable section (not found via the free-text search box, which only queries
+the public catalog). Clicking **Add** on a plugin there opens a scope picker:
+
+- **Install for me** — installs to `~/.claude/`, available in all projects.
+- **Install for project (shared)** — installs to `.claude/` in the current
+  project, shared with the team via version control.
+- **Install for project (personal)** — installs to `.claude.local/` in the
+  current project, personal and gitignored.
+
+This mirrors Claude Code CLI's own project/user/local plugin-scope split —
+the same three-tier scope model, exposed as an explicit picker in the Desktop
+app's install flow rather than a CLI flag/config location. When a plugin
+appears registered but unusable in a given project, check which scope (if
+any) it was actually installed at, not just whether its marketplace is known.
+
+### Install for a git-sourced marketplace is a local CLI action, broadcast only to sessions open at that moment
+
+Confirmed directly from `~/Library/Logs/Claude/main.log` (not inferred), for
+an install of `bos@bos-education-center` at 2026-09-23 18:58:30–18:58:32:
+
+```
+[CustomPlugins] installPlugin: skipping remote API path for plugin bos@bos-education-center (reason=local-sourced)
+[CustomPlugins] installPlugin: attempting CLI install for plugin bos@bos-education-center (scope=default)
+[CCDMarketplacePluginManagerCLI] Installing plugin: bos@bos-education-center
+[CCDMarketplacePluginManagerCLI] Plugin installed: bos@bos-education-center
+[CCD] reload_plugins broadcast (install_plugin): 3 of 3 live local session(s) — 2 paced (hidden), 0 coalesced (recently reloaded), 0 read the registry unsettled
+[CCD] reload_plugins applied for local_65077d4d-...: 4 plugin(s), 97 command(s), 0 plugin error(s)
+[CCD] reload_plugins applied for local_f801a500-...: 4 plugin(s), 147 command(s), 0 plugin error(s)
+```
+
+Two mechanisms this establishes, logged verbatim, not theorized:
+
+- **`reason=local-sourced` is a real, distinct install code path.** A plugin
+  from a git-sourced marketplace (`bos-education-center`, `mycrm` — added via
+  `extraKnownMarketplaces`, not the official remote plugin catalog) installs
+  through a local `CCDMarketplacePluginManagerCLI` subprocess, not the
+  account-level remote-plugin API that catalog plugins use. Do not assume a
+  git-sourced-marketplace plugin install is account-wide state; it is a
+  local-machine, CLI-driven install.
+- **The resulting `reload_plugins` broadcast reaches only sessions that were
+  open (`live`) at install time.** A session/project window that existed
+  before the install, or any context that doesn't independently re-query
+  plugin state afterward, will not show the newly-installed plugin until it
+  does its own fresh read — this is not evidence of a broken or reverted
+  install, and is unrelated to BOS's separate, correctly account-wide OAuth
+  connector grant (previous sections). Do not conflate "session shows plugin
+  not installed" with "BOS authentication failed" — they are two independent
+  systems with different scopes (local/session-broadcast install state vs.
+  account-wide OAuth token).
+
 ### Other confirmed findings from this investigation
 
 - **There is no UI path to remove/delete a stuck or duplicate custom MCP

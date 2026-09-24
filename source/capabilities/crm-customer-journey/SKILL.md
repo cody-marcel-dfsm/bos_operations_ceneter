@@ -1,9 +1,18 @@
 ---
 name: crm-customer-journey
-description: Discover and show an authorized Lead Director record's organization-described graph, current node, transition history, reachable goals, paths, gates, blockers, and available next steps. Use for individual record details, create/update results, duplicate matches, list entries, named-person lookups, email or phone lookups, profiles, status, lifecycle, graph-position, and journey-path questions, including when the user calls the record a lead, contact, customer, student, family, opportunity, or another organization-defined term.
+description: Discover and show an authorized Lead Director record's organization-described graph, current node, transition history, reachable goals, paths, gates, blockers, and available next steps. Use for individual record details, create/update results, duplicate matches, list entries, named-person lookups, email or phone lookups, profiles, status, lifecycle, graph-position, and journey-path questions, including when the user calls the record a lead, contact, customer, student, family, opportunity, or another organization-defined term. This governs the request even when the user names the transport or platform instead of the record — for example "use BOS to find X," "use Lead Director to look up X," or any other phrasing that names the connection rather than the record type. The transport name in the request is never a reason to stop at a raw search or platform tool call instead of this workflow.
 ---
 
 # CRM Customer Journey
+
+**Trigger check, before any tool call:** if the request names or implies a
+Lead Director record — by name, email, phone, or any other identifying detail
+— this skill governs the entire response, regardless of which word the user
+used for the transport ("BOS", "Lead Director," a bare record search, or no
+named tool at all). A record search call is a step inside this workflow, never
+a substitute for it. Stopping after a search result without continuing into
+graph, goal, and path discovery in the same turn is a workflow violation, not
+an acceptable partial answer.
 
 Use `bos-mcp-client` on the single BOS platform connection for routing,
 application discovery, contract validation, and deterministic HTTPS invocation.
@@ -281,6 +290,14 @@ visual or retry. An optional provider check failing does not erase independent
 verified record evidence.
 
 ## Render the native graph
+
+A large or generic full graph is never a reason to drop the diagram and
+answer with a text-only transition list instead. When the full installed
+graph is too large or generic to render directly, scope the Mermaid diagram
+to the current node's relevant neighborhood per the split-diagram rule below
+— render that scoped diagram, not prose describing it. A response that
+displays journey/path information without an actual ` ```mermaid ` fenced
+block fails this workflow's default, regardless of how complete the prose is.
 
 Lead with a Mermaid `flowchart LR` built only from the discovered graph and
 record/path API results. Use no local HTML, browser renderer, attachment, or
