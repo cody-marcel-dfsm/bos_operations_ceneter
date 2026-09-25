@@ -1,0 +1,78 @@
+{
+  "contract": "bos-client-dependency-release/v1",
+  "contract_id": "bos-client-dependency",
+  "contract_version": "bos-client-dependency/v1",
+  "owner": "bos-operations-center",
+  "authentication_impact": "preserves-single-bos-connection",
+  "compatibility": "package-versioned-public-seam",
+  "executable_files": [
+    {
+      "id": "external_dependency_adapter",
+      "path": "skills/bos-external-dependency-adapter/scripts/external-dependency-adapter.mjs",
+      "sha256": "f6cd4d9c66cee7dcc1c5882389cf395324625e1c43044572ef5715a58aaa8c41"
+    },
+    {
+      "id": "external_dependency_schema_runtime",
+      "path": "skills/bos-external-dependency-adapter/scripts/vendor/ajv2020.bundle.mjs",
+      "sha256": "1221f147593ebdf6130fc9b1b2a8a1fe81abf2b97757503fa7ad3f7af53dd340"
+    },
+    {
+      "id": "external_dependency_discovered_operation_schema",
+      "path": "skills/bos-external-dependency-adapter/scripts/discovered-operation-request.schema.mjs",
+      "sha256": "6b336e2d767fcd0271a5d9f3b48feb83baaf6da6dd785251b21d97c5d7d0ee88"
+    },
+    {
+      "id": "shared_cache_consumer",
+      "path": "skills/bos-mcp-client/scripts/shared-cache-consumer.mjs",
+      "sha256": "77f1a25fd3fce7cc06f2107d2d2369c4309b501de75701095061b84898d59b37"
+    }
+  ],
+  "files": [
+    {
+      "path": "README.md",
+      "media_type": "text/markdown",
+      "sha256": "b692bb86463621dbf4aae5605340e1d610ac152ae063ca61ac0c8fea510e6729"
+    },
+    {
+      "path": "discovered-operation.request.example.json",
+      "media_type": "application/json",
+      "sha256": "5ae3c26ffaf4bbc85980d030fb70ca27d2a1f7f3c896f7d57632f3edaa49b72d"
+    },
+    {
+      "path": "discovered-operation.request.schema.json",
+      "media_type": "application/schema+json",
+      "sha256": "4b4909d2c8004d38751ac68a18f1335c2221cfce7330f78017350f1b7111c2fe"
+    },
+    {
+      "path": "discovered-operation.response.example.json",
+      "media_type": "application/json",
+      "sha256": "9dfcdb7865d5eaefed78bca1ad3fb5e3d1b0241ac4f2bc0d53ef434a148611b2"
+    },
+    {
+      "path": "discovered-operation.response.schema.json",
+      "media_type": "application/schema+json",
+      "sha256": "6f2a457c2e4b7a65fb05b914016bd224c644a7c5196136a21cb3e164383f9183"
+    },
+    {
+      "path": "shared-cache.request.example.json",
+      "media_type": "application/json",
+      "sha256": "5ca3c01419a96595060870440d1babcd0ff060a0fbde417a0903132fde56d3c3"
+    },
+    {
+      "path": "shared-cache.request.schema.json",
+      "media_type": "application/schema+json",
+      "sha256": "5850fca5efbc5bd5fc7f8a41b3f77defc9fd1d9d64cf6896883e5c92f58e0c82"
+    },
+    {
+      "path": "shared-cache.results.example.json",
+      "media_type": "application/json",
+      "sha256": "d92cca04179b594b2cd34ce78b2b17d6b01e00bd098261d85c3ac4d83770d826"
+    },
+    {
+      "path": "shared-cache.results.schema.json",
+      "media_type": "application/schema+json",
+      "sha256": "046c4dd184af18af526ed64bd37a75dd316397b3d1437886eb7f57deb5e99d2d"
+    }
+  ],
+  "bundle_sha256": "68bcd6f543cdd2fb54c774b8943582bb8192a39e2b983d8fa3ebd8f101361592"
+}

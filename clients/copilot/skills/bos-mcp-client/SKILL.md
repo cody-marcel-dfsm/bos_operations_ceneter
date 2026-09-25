@@ -475,29 +475,27 @@ OAuth grant, requested tool, and canonical server records.
 
 ## Shared local document cache
 
-Use the packaged `scripts/document-cache.mjs` helper for every reusable
-document or document-like read, including files, messages, full threads,
-events, enrollments, leads, and provider evidence. The helper resolves one
-OS-user cache root shared by all BOS-family products and clients. Keep its
-authority indexes separate while allowing identical immutable document
-versions to share the content-addressed object store. Read
-[references/document-cache-protocol.md](references/document-cache-protocol.md)
-before invoking the helper.
-
-After `bos_get_context` validates the live request authority, include its
-server-derived organization, installation, delegated role, application, and
-this product's skill-group name in the cache authority. Include the exact
-authenticated account identity for a separately connected read-only source.
-Use digested cache keys in diagnostics.
+Use the ready shared-cache consumer injected by the installed BOS host for
+every reusable document or document-like read, including files, messages, full
+threads, events, enrollments, records, and provider evidence. The host owns one
+OS-user cache root shared by all BOS-family products and clients. Its native
+composition boundary validates current BOS context and privately binds
+organization, application, installation, authenticated user, role,
+skill-group, and provider account. Skills never construct that boundary or
+supply authority, provider-account, partition, or cache-root values. Read
+[references/shared-cache-consumer.md](references/shared-cache-consumer.md)
+before using the injected consumer.
 
 For each logical source query:
 
-1. Choose a stable source, resource kind, account, and selector. Keep the time
-   window outside the selector so overlapping date windows share coverage.
-2. Capture one fixed refresh upper bound and call the helper's `begin` operation
-   through JSON on standard input. Pass document bodies through standard input
-   only; keep them out of command arguments, temporary repository files, and
-   diagnostics.
+1. Copy the complete structured source reference from current Describe and
+   choose a stable resource kind and selector. Keep the time window outside the
+   selector so overlapping date windows share coverage. The host privately
+   resolves the provider account.
+2. Capture one fixed refresh upper bound and call the injected consumer's
+   `begin` method with the public structured source reference and semantic query.
+   Keep document bodies out of command arguments, temporary repository files,
+   and diagnostics.
 3. When the plan is `current`, generate from the cache without a source content
    query. When a configured maximum age produces `refresh_required`, perform a
    conditional or incremental refresh and exclude the stale source after a
@@ -543,9 +541,23 @@ local read state. Apply the full cache contract in
 
 ## Journey contract cache
 
-For BOSL resources and individual plugin journey descriptions, read
-[the journey contract cache protocol](references/journey-contract-cache-protocol.md)
-and use `scripts/journey-contract-cache.mjs`. Derive its scope only after fresh
-server context validation. `app.describe` always remains a live discovery read.
-This private cache stores no token and exposes only digested keys, origin,
-freshness, and timestamps in diagnostics.
+For BOSL resources and individual plugin journey descriptions, use the
+host-injected contract-cache capability after fresh server context validation.
+`app.describe` always remains a live discovery read. The host-owned cache stores
+no token and exposes only digested keys, origin, freshness, and timestamps in
+diagnostics. No packaged skill receives its low-level authority or filesystem
+composition.
+
+## External shared-cache consumers
+
+For a separately installed BOS-family product, use
+[the shared cache consumer contract](references/shared-cache-consumer.md) and
+`scripts/shared-cache-consumer.mjs`. The public consumer supplies the complete
+structured source reference returned by Describe plus semantic query,
+freshness, and maintenance intent. The installed BOS host injects the ready
+consumer object; the public helper only validates and narrows that object and
+has no constructor, binding-provider, authority, provider-account, partition,
+or cache-root input. The BOS-owned native composition boundary privately
+derives current authority and provider-account partitions. Dependent products
+never receive or provide those private cache inputs and never create a second
+cache root.

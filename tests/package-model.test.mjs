@@ -880,7 +880,11 @@ test("application runtime packages ship agent-owned MCP lifecycle recovery", asy
     assert.match(guidance, /never select another[\s\S]*organization[\s\S]*role/i);
     assert.match(guidance, /request exactly those intervals plus\s+changes after its cursor/i);
     assert.match(guidance, /sync_completed_at/);
-    await access(`${client.sourcePath}/scripts/document-cache.mjs`);
+    await access(`${client.sourcePath}/scripts/shared-cache-consumer.mjs`);
+    await assert.rejects(
+      access(`${client.sourcePath}/scripts/document-cache.mjs`),
+      (error) => error?.code === "ENOENT"
+    );
     await access(`${client.sourcePath}/references/document-cache-protocol.md`);
     await access(`${client.sourcePath}/references/runtime-continuation-contract.md`);
   }
@@ -1035,18 +1039,25 @@ test("generated clients ship stale OAuth registration recovery", async () => {
   }
 });
 
-test("generated runtime clients ship the canonical shared document cache helper", async () => {
+test("generated runtime clients expose only the injected shared-cache consumer", async () => {
   const canonical = await readFile(
-    `${root}/source/platform/bos-mcp-client/scripts/document-cache.mjs`
+    `${root}/source/platform/bos-mcp-client/scripts/shared-cache-consumer.mjs`
   );
   for (const path of [
-    `${root}/clients/codex/plugins/education-center/skills/bos-mcp-client/scripts/document-cache.mjs`,
-    `${root}/clients/claude/plugins/education-center/skills/bos-mcp-client/scripts/document-cache.mjs`,
-    `${root}/clients/copilot/products/education-center/skills/bos-mcp-client/scripts/document-cache.mjs`,
-    `${root}/clients/copilot/skills/bos-mcp-client/scripts/document-cache.mjs`,
-    `${root}/clients/gemini/extensions/education-center/skills/bos-mcp-client/scripts/document-cache.mjs`
+    `${root}/clients/codex/plugins/education-center/skills/bos-mcp-client/scripts`,
+    `${root}/clients/claude/plugins/education-center/skills/bos-mcp-client/scripts`,
+    `${root}/clients/copilot/products/education-center/skills/bos-mcp-client/scripts`,
+    `${root}/clients/copilot/skills/bos-mcp-client/scripts`,
+    `${root}/clients/gemini/extensions/education-center/skills/bos-mcp-client/scripts`
   ]) {
-    assert.deepEqual(await readFile(path), canonical, path);
+    assert.deepEqual(await readFile(`${path}/shared-cache-consumer.mjs`), canonical, path);
+    for (const privateScript of ["document-cache.mjs", "journey-contract-cache.mjs"]) {
+      await assert.rejects(
+        readFile(`${path}/${privateScript}`),
+        (error) => error?.code === "ENOENT",
+        `${path}/${privateScript}`
+      );
+    }
   }
 });
 

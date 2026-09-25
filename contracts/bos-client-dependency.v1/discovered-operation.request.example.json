@@ -1,0 +1,58 @@
+{
+  "contact": {
+    "operation": "search",
+    "status": "described",
+    "effect": "read",
+    "limits": {
+      "max_targets": null,
+      "max_results_per_source": 5,
+      "pagination_supported": false,
+      "bulk_supported": false,
+      "streaming_supported": false,
+      "maximum_duration_seconds": 30,
+      "maximum_fan_out": 5
+    },
+    "guarantees": {
+      "read_consistency": "point_in_time",
+      "per_source_atomicity": "source_published",
+      "cross_source_atomicity": "not_applicable",
+      "convergence": "not_applicable",
+      "idempotency": "service_owned"
+    },
+    "execution": {
+      "context_header": "X-BOS-Context-Handle",
+      "method": "POST",
+      "uri": "/bos/apps/lead-director/api/v1/organizations/{organization}/search"
+    },
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": {"type": "string", "minLength": 1}
+      },
+      "x-bos-fields": []
+    },
+    "output_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "x-bos-fields": []
+    },
+    "error_contract": {
+      "schema": "lead-director-public-error/v1",
+      "codes": ["INVALID_SEARCH_REQUEST"]
+    },
+    "sources": [
+      {
+        "source": {
+          "platform": "bos",
+          "application": "lead-director",
+          "plugin": "lead-director"
+        },
+        "availability": "ready"
+      }
+    ]
+  },
+  "payload": {"text": "David Ransom"}
+}

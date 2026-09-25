@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "bos://contracts/client-dependency/v1/discovered-operation-response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "body"],
+  "properties": {
+    "status": {"type": "integer", "minimum": 100, "maximum": 599},
+    "body": true,
+    "headers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "content-type": {"type": "string"},
+        "retry-after": {"type": "string"},
+        "x-correlation-id": {"type": "string"}
+      }
+    }
+  }
+}

@@ -6,18 +6,21 @@ import {
   mkdir,
   open,
   readFile,
+  readdir,
   rename,
   rm,
   writeFile
 } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 
 const schemaVersion = "bos-document-cache/v1";
 const requiredAuthorityFields = [
   "organization_id",
   "installation_id",
+  "actor_user_id",
   "delegated_role_id",
   "application",
   "skill_group"
@@ -155,6 +158,7 @@ function normalizeRequest(input) {
     refresh_through: refreshThrough,
     freshness_policy: freshnessPolicy,
     authority_key: digest({ ...authority, source_account: source.account }),
+    provider_key: digest(source),
     source_key: digest(sourceIdentity),
     query_key: digest({ source: sourceIdentity, selector: query.selector })
   };
@@ -174,6 +178,7 @@ function locations(root, request) {
     queryDirectory,
     manifest: `${stem}.json`,
     lease: `${stem}.lease.json`,
+    mutationLock: join(root, "locks", `${request.authority_key}.mutation.lock.json`),
     objects: join(root, "objects")
   };
 }
@@ -207,6 +212,7 @@ function emptyManifest(request) {
   return {
     schema_version: schemaVersion,
     authority_key: request.authority_key,
+    provider_key: request.provider_key,
     source_key: request.source_key,
     query_key: request.query_key,
     coverage: [],
@@ -220,6 +226,7 @@ function validateManifest(manifest, request) {
   if (manifest.schema_version !== schemaVersion ||
       manifest.authority_key !== request.authority_key ||
       manifest.source_key !== request.source_key ||
+      (manifest.provider_key !== undefined && manifest.provider_key !== request.provider_key) ||
       manifest.query_key !== request.query_key ||
       !Array.isArray(manifest.coverage) ||
       !manifest.resources || typeof manifest.resources !== "object") {
@@ -339,6 +346,10 @@ async function acquireLease(path, request, leaseMs, now) {
   const lease = {
     schema_version: schemaVersion,
     token: randomUUID(),
+    authority_key: request.authority_key,
+    provider_key: request.provider_key,
+    source_key: request.source_key,
+    query_key: request.query_key,
     request_key: digest({
       authority_key: request.authority_key,
       query_key: request.query_key,
@@ -369,6 +380,132 @@ async function acquireLease(path, request, leaseMs, now) {
   return { acquired: false, retry_after_ms: leaseMs };
 }
 
+function processIsAlive(pid) {
+  if (!Number.isInteger(pid) || pid < 1) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code === "EPERM";
+  }
+}
+
+async function reclaimExpiredAuthorityMutationLock(
+  path,
+  observed,
+  { now, isProcessAlive }
+) {
+  if (!observed?.token || Date.parse(observed.expires_at) > now.valueOf() ||
+      isProcessAlive(observed.pid)) return false;
+  const reclaimPath = `${path}.reclaim.${digest(observed.token)}`;
+  let handle;
+  try {
+    handle = await open(reclaimPath, "wx", 0o600);
+    await handle.writeFile(`${JSON.stringify({ token: observed.token, pid: process.pid })}\n`);
+    await handle.close();
+    handle = null;
+    await chmod(reclaimPath, 0o600);
+  } catch (error) {
+    if (handle) await handle.close();
+    if (error.code === "EEXIST") return false;
+    throw error;
+  }
+  try {
+    const current = await readJson(path, null);
+    if (current?.token !== observed.token ||
+        Date.parse(current.expires_at) > now.valueOf() ||
+        isProcessAlive(current.pid)) return false;
+    await rm(path, { force: true });
+    return true;
+  } finally {
+    await rm(reclaimPath, { force: true });
+  }
+}
+
+async function acquireAuthorityMutationLock(path, options = {}) {
+  await ensurePrivateDirectory(dirname(path));
+  const token = randomUUID();
+  const leaseMs = options.mutationLockLeaseMs ?? 600_000;
+  const isProcessAlive = options.processAlive ?? processIsAlive;
+  if (!Number.isInteger(leaseMs) || leaseMs < 20 || leaseMs > 600_000) {
+    throw new Error("mutationLockLeaseMs must be an integer from 20 through 600000");
+  }
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const now = new Date();
+    const expiresAt = new Date(now.valueOf() + leaseMs).toISOString();
+    try {
+      const handle = await open(path, "wx", 0o600);
+      await handle.writeFile(`${JSON.stringify({ token, pid: process.pid, expires_at: expiresAt })}\n`);
+      await handle.close();
+      await chmod(path, 0o600);
+      return { token, pid: process.pid, expires_at: expiresAt, leaseMs };
+    } catch (error) {
+      if (error.code !== "EEXIST") throw error;
+      const current = await readJson(path, null);
+      if (!current) continue;
+      if (await reclaimExpiredAuthorityMutationLock(path, current, {
+        now,
+        isProcessAlive
+      })) {
+        continue;
+      }
+      await delay(10);
+    }
+  }
+  throw new Error("cache authority mutation is busy");
+}
+
+async function releaseAuthorityMutationLock(path, token) {
+  const current = await readJson(path, null);
+  if (current?.token === token) await rm(path, { force: true });
+}
+
+async function renewAuthorityMutationLock(path, lock) {
+  const current = await readJson(path, null);
+  if (current?.token !== lock.token || current.pid !== lock.pid) {
+    throw new Error("cache authority mutation lock ownership was lost");
+  }
+  const expiresAt = new Date(Date.now() + lock.leaseMs).toISOString();
+  await atomicWriteJson(path, { ...current, expires_at: expiresAt });
+  lock.expires_at = expiresAt;
+}
+
+async function withAuthorityMutationLock(path, operation, options = {}) {
+  const lock = await acquireAuthorityMutationLock(path, options);
+  const heartbeatMs = options.mutationLockHeartbeatMs ??
+    Math.max(10, Math.floor(lock.leaseMs / 3));
+  if (!Number.isInteger(heartbeatMs) || heartbeatMs < 5 || heartbeatMs >= lock.leaseMs) {
+    await releaseAuthorityMutationLock(path, lock.token);
+    throw new Error("mutationLockHeartbeatMs must be an integer below the lock lease");
+  }
+  let timer;
+  let renewal = Promise.resolve();
+  let renewalError;
+  let stopped = false;
+  const scheduleRenewal = () => {
+    if (stopped) return;
+    timer = setTimeout(() => {
+      renewal = renewAuthorityMutationLock(path, lock)
+        .then(scheduleRenewal)
+        .catch((error) => { renewalError = error; });
+    }, heartbeatMs);
+  };
+  scheduleRenewal();
+  try {
+    const result = await operation();
+    await renewal;
+    if (renewalError) throw renewalError;
+    await renewAuthorityMutationLock(path, lock);
+    return result;
+  } finally {
+    stopped = true;
+    clearTimeout(timer);
+    await renewal.catch(() => {});
+    clearTimeout(timer);
+    await releaseAuthorityMutationLock(path, lock.token);
+  }
+}
+
 export async function beginDocumentSync(input, options = {}) {
   const request = normalizeRequest(input);
   const root = cacheRootFromInput(input, options);
@@ -380,22 +517,31 @@ export async function beginDocumentSync(input, options = {}) {
   if (!Number.isInteger(leaseMs) || leaseMs < 1_000 || leaseMs > 600_000) {
     throw new Error("lease_ms must be an integer from 1000 through 600000");
   }
-  const acquired = await acquireLease(path.lease, request, leaseMs, now);
-  if (!acquired.acquired) {
+  return withAuthorityMutationLock(path.mutationLock, async () => {
+    const acquired = await acquireLease(path.lease, request, leaseMs, now);
+    if (!acquired.acquired) {
+      return {
+        state: "busy",
+        authority_key: request.authority_key,
+        query_key: request.query_key,
+        retry_after_ms: acquired.retry_after_ms
+      };
+    }
+    if (typeof options.afterLeaseAcquired === "function") {
+      await options.afterLeaseAcquired();
+    }
+    const manifest = await loadManifest(path.manifest, request);
+    const plan = syncPlan(request, manifest, now);
+    if (plan.state === "current") {
+      await rm(path.lease, { force: true });
+      return plan;
+    }
     return {
-      state: "busy",
-      authority_key: request.authority_key,
-      query_key: request.query_key,
-      retry_after_ms: acquired.retry_after_ms
+      ...plan,
+      lease_token: acquired.lease.token,
+      lease_expires_at: acquired.lease.expires_at
     };
-  }
-  const manifest = await loadManifest(path.manifest, request);
-  const plan = syncPlan(request, manifest, now);
-  if (plan.state === "current") {
-    await rm(path.lease, { force: true });
-    return plan;
-  }
-  return { ...plan, lease_token: acquired.lease.token };
+  }, options);
 }
 
 async function requireLease(path, token) {
@@ -408,7 +554,19 @@ async function requireLease(path, token) {
 
 function normalizeDocument(document, index) {
   requireObject(document, `documents[${index}]`);
+  if (Object.hasOwn(document, "deleted") && typeof document.deleted !== "boolean") {
+    throw new Error(`documents[${index}].deleted must be a boolean`);
+  }
   const deleted = document.deleted === true;
+  const allowed = new Set([
+    "resource_id", "version", "modified_at", "deleted",
+    ...(deleted ? [] : ["payload"])
+  ]);
+  for (const key of Object.keys(document)) {
+    if (!allowed.has(key)) {
+      throw new Error(`documents[${index}] contains unsupported field ${key}`);
+    }
+  }
   const normalized = {
     resource_id: requireString(document.resource_id, `documents[${index}].resource_id`),
     version: requireString(document.version, `documents[${index}].version`),
@@ -446,53 +604,60 @@ export async function commitDocumentSync(input, options = {}) {
   const token = requireString(input.lease_token, "lease_token");
   const root = cacheRootFromInput(input, options);
   const path = locations(root, request);
-  await requireLease(path.lease, token);
-  const manifest = await loadManifest(path.manifest, request);
-  const documents = (input.documents ?? []).map(normalizeDocument);
-  const resources = { ...manifest.resources };
-  for (const document of documents) {
-    const resourceKey = digest({
-      source_key: request.source_key,
-      resource_id: document.resource_id
-    });
-    const objectHash = document.deleted ? null :
-      await storeDocumentObject(path, request, document);
-    resources[resourceKey] = {
-      object_hash: objectHash,
-      version: document.version,
-      modified_at: document.modified_at,
-      deleted: document.deleted
+  return withAuthorityMutationLock(path.mutationLock, async () => {
+    await requireLease(path.lease, token);
+    const manifest = await loadManifest(path.manifest, request);
+    const documents = (input.documents ?? []).map(normalizeDocument);
+    const resources = { ...manifest.resources };
+    for (const document of documents) {
+      const resourceKey = digest({
+        source_key: request.source_key,
+        resource_id: document.resource_id
+      });
+      const objectHash = document.deleted ? null :
+        await storeDocumentObject(path, request, document);
+      resources[resourceKey] = {
+        object_hash: objectHash,
+        version: document.version,
+        modified_at: document.modified_at,
+        deleted: document.deleted
+      };
+    }
+    const suppliedCoverage = input.covered_intervals ?? [request.window];
+    if (!Array.isArray(suppliedCoverage)) {
+      throw new Error("covered_intervals must be an array");
+    }
+    const completedAt = options.now ? new Date(options.now) : new Date();
+    const nextCursor = Object.hasOwn(input, "next_cursor") ? input.next_cursor :
+      manifest.watermark?.cursor ?? null;
+    if (nextCursor !== null && typeof nextCursor !== "string") {
+      throw new Error("next_cursor must be a string or null");
+    }
+    const next = {
+      ...manifest,
+      provider_key: request.provider_key,
+      coverage: mergeIntervals([...manifest.coverage, ...suppliedCoverage]),
+      watermark: { through: request.refresh_through, cursor: nextCursor },
+      sync_completed_at: completedAt.toISOString(),
+      resources
     };
-  }
-  const suppliedCoverage = input.covered_intervals ?? [request.window];
-  if (!Array.isArray(suppliedCoverage)) {
-    throw new Error("covered_intervals must be an array");
-  }
-  const completedAt = options.now ? new Date(options.now) : new Date();
-  const nextCursor = Object.hasOwn(input, "next_cursor") ? input.next_cursor :
-    manifest.watermark?.cursor ?? null;
-  if (nextCursor !== null && typeof nextCursor !== "string") {
-    throw new Error("next_cursor must be a string or null");
-  }
-  const next = {
-    ...manifest,
-    coverage: mergeIntervals([...manifest.coverage, ...suppliedCoverage]),
-    watermark: { through: request.refresh_through, cursor: nextCursor },
-    sync_completed_at: completedAt.toISOString(),
-    resources
-  };
-  await atomicWriteJson(path.manifest, next);
-  await rm(path.lease, { force: true });
-  return {
-    state: "committed",
-    authority_key: request.authority_key,
-    query_key: request.query_key,
-    document_count: documents.filter((document) => !document.deleted).length,
-    tombstone_count: documents.filter((document) => document.deleted).length,
-    cached_resource_count: Object.values(resources)
-      .filter((resource) => !resource.deleted).length,
-    sync_completed_at: next.sync_completed_at
-  };
+    if (typeof options.beforeManifestPublish === "function") {
+      await options.beforeManifestPublish();
+    }
+    await requireLease(path.lease, token);
+    await atomicWriteJson(path.manifest, next);
+    await rm(path.lease, { force: true });
+    return {
+      state: "committed",
+      authority_key: request.authority_key,
+      query_key: request.query_key,
+      document_count: documents.filter((document) => !document.deleted).length,
+      tombstone_count: documents.filter((document) => document.deleted).length,
+      cached_resource_count: Object.values(resources)
+        .filter((resource) => !resource.deleted).length,
+      sync_completed_at: next.sync_completed_at
+    };
+  }, options);
 }
 
 export async function abortDocumentSync(input, options = {}) {
@@ -500,13 +665,15 @@ export async function abortDocumentSync(input, options = {}) {
   const token = requireString(input.lease_token, "lease_token");
   const root = cacheRootFromInput(input, options);
   const path = locations(root, request);
-  await requireLease(path.lease, token);
-  await rm(path.lease, { force: true });
-  return {
-    state: "aborted",
-    authority_key: request.authority_key,
-    query_key: request.query_key
-  };
+  return withAuthorityMutationLock(path.mutationLock, async () => {
+    await requireLease(path.lease, token);
+    await rm(path.lease, { force: true });
+    return {
+      state: "aborted",
+      authority_key: request.authority_key,
+      query_key: request.query_key
+    };
+  }, options);
 }
 
 export async function readDocumentCache(input, options = {}) {
@@ -555,14 +722,103 @@ export async function invalidateDocumentCache(input, options = {}) {
   const request = normalizeRequest(input);
   const root = cacheRootFromInput(input, options);
   const path = locations(root, request);
-  await rm(path.manifest, { force: true });
-  await rm(path.lease, { force: true });
-  return {
-    state: "invalidated",
-    authority_key: request.authority_key,
-    source_key: request.source_key,
-    query_key: request.query_key
-  };
+  return withAuthorityMutationLock(path.mutationLock, async () => {
+    await rm(path.manifest, { force: true });
+    await rm(path.lease, { force: true });
+    return {
+      state: "invalidated",
+      authority_key: request.authority_key,
+      source_key: request.source_key,
+      query_key: request.query_key
+    };
+  }, options);
+}
+
+async function invalidateMatchingQueries(root, request, predicate) {
+  const path = locations(root, request);
+  let entries = [];
+  try {
+    entries = await readdir(path.queryDirectory, { withFileTypes: true });
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  const invalidated = new Set();
+  for (const entry of entries) {
+    if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
+    const candidatePath = join(path.queryDirectory, entry.name);
+    const candidate = await readJson(candidatePath, null);
+    if (!candidate || (candidate.authority_key !== undefined &&
+        candidate.authority_key !== request.authority_key)) continue;
+    if (!predicate(candidate)) continue;
+    const stem = candidatePath.slice(
+      0,
+      entry.name.endsWith(".lease.json") ? -11 : -5
+    );
+    await rm(`${stem}.json`, { force: true });
+    await rm(`${stem}.lease.json`, { force: true });
+    invalidated.add(candidate.query_key ?? stem);
+  }
+  return invalidated.size;
+}
+
+export async function invalidateDocumentCacheDataset(input, options = {}) {
+  const request = normalizeRequest(input);
+  const root = cacheRootFromInput(input, options);
+  const path = locations(root, request);
+  return withAuthorityMutationLock(path.mutationLock, async () => {
+    const invalidated = await invalidateMatchingQueries(
+      root,
+      request,
+      // A lease created by an older v1 client may not include its source key.
+      // Remove it conservatively inside this authority scope.
+      (manifest) => manifest.source_key === undefined ||
+        manifest.source_key === request.source_key
+    );
+    return {
+      state: "invalidated",
+      scope: "dataset",
+      authority_key: request.authority_key,
+      source_key: request.source_key,
+      invalidated_query_count: invalidated
+    };
+  }, options);
+}
+
+export async function invalidateDocumentCacheSource(input, options = {}) {
+  const request = normalizeRequest(input);
+  const root = cacheRootFromInput(input, options);
+  const path = locations(root, request);
+  return withAuthorityMutationLock(path.mutationLock, async () => {
+    const invalidated = await invalidateMatchingQueries(
+      root,
+      request,
+      // A v1 manifest created before provider_key existed cannot be safely
+      // attributed to one source. Remove it conservatively during source-level
+      // maintenance rather than risk retaining stale data.
+      (manifest) => manifest.provider_key === undefined ||
+        manifest.provider_key === request.provider_key
+    );
+    return {
+      state: "invalidated",
+      scope: "source",
+      authority_key: request.authority_key,
+      invalidated_query_count: invalidated
+    };
+  }, options);
+}
+
+export async function invalidateDocumentCacheAuthority(input, options = {}) {
+  const request = normalizeRequest(input);
+  const root = cacheRootFromInput(input, options);
+  const path = locations(root, request);
+  return withAuthorityMutationLock(path.mutationLock, async () => {
+    await rm(resolve(path.queryDirectory, ".."), { recursive: true, force: true });
+    return {
+      state: "invalidated",
+      scope: "current_authority",
+      authority_key: request.authority_key
+    };
+  });
 }
 
 async function runCli() {
@@ -585,9 +841,15 @@ async function runCli() {
     result = await inspectDocumentCache(input);
   } else if (operation === "invalidate") {
     result = await invalidateDocumentCache(input);
+  } else if (operation === "invalidate_dataset") {
+    result = await invalidateDocumentCacheDataset(input);
+  } else if (operation === "invalidate_source") {
+    result = await invalidateDocumentCacheSource(input);
+  } else if (operation === "invalidate_current_authority") {
+    result = await invalidateDocumentCacheAuthority(input);
   } else {
     throw new Error(
-      "operation must be root, begin, commit, abort, read, inspect, or invalidate"
+      "operation must be root, begin, commit, abort, read, inspect, invalidate, invalidate_dataset, invalidate_source, or invalidate_current_authority"
     );
   }
   process.stdout.write(`${JSON.stringify(result)}\n`);

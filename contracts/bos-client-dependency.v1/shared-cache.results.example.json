@@ -1,0 +1,21 @@
+{
+  "begin": {
+    "state": "cold",
+    "authority_key": "sanitized-digest",
+    "source_key": "sanitized-digest",
+    "query_key": "sanitized-digest",
+    "coverage_gaps": [{"from": "2026-09-24T00:00:00.000Z", "through": "2026-09-25T00:00:00.000Z"}],
+    "change_gap": {"after": null, "through": "2026-09-24T18:00:00.000Z"},
+    "cursor": null,
+    "cached_resource_count": 0,
+    "sync_completed_at": null,
+    "origin": null,
+    "freshness_status": "missing",
+    "age_seconds": null,
+    "max_age_seconds": 86400,
+    "allow_stale_on_error": false,
+    "stale": false,
+    "lease_token": "private-cache-lease",
+    "lease_expires_at": "2026-09-24T18:00:30.000Z"
+  }
+}

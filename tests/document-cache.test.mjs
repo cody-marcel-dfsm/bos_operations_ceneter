@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -11,14 +11,18 @@ import {
   digest,
   inspectDocumentCache,
   invalidateDocumentCache,
+  invalidateDocumentCacheAuthority,
+  invalidateDocumentCacheDataset,
+  invalidateDocumentCacheSource,
   readDocumentCache,
   resolveDocumentCacheRoot
-} from "../source/platform/bos-mcp-client/scripts/document-cache.mjs";
+} from "../source/host-runtime/bos-shared-cache/document-cache.mjs";
 
 const baseRequest = {
   authority: {
     organization_id: "org-example",
     installation_id: "installation-example",
+    actor_user_id: "user-example",
     delegated_role_id: "role-example",
     application: "lead-director",
     skill_group: "education-center"
@@ -221,6 +225,216 @@ test("cache inspection and invalidation preserve authority-scoped behavior", asy
   assert.deepEqual(after.documents, []);
 });
 
+test("all invalidation scopes serialize with in-flight commits and cannot resurrect data", async (context) => {
+  const invalidators = [
+    ["exact", invalidateDocumentCache],
+    ["dataset", invalidateDocumentCacheDataset],
+    ["source", invalidateDocumentCacheSource],
+    ["authority", invalidateDocumentCacheAuthority]
+  ];
+
+  for (const [scope, invalidate] of invalidators) {
+    const cacheRoot = await temporaryCache(context);
+    const plan = await beginDocumentSync(baseRequest, { cacheRoot });
+    let publishReached;
+    const atPublish = new Promise((resolve) => { publishReached = resolve; });
+    let releasePublish;
+    const publishGate = new Promise((resolve) => { releasePublish = resolve; });
+    const commit = commitDocumentSync({
+      ...baseRequest,
+      lease_token: plan.lease_token,
+      documents: [{
+        resource_id: `race-${scope}`,
+        version: "v1",
+        modified_at: "2026-08-10T12:00:00.000Z",
+        payload: { scope }
+      }]
+    }, {
+      cacheRoot,
+      beforeManifestPublish: async () => {
+        publishReached();
+        await publishGate;
+      }
+    });
+    await atPublish;
+
+    let invalidationFinished = false;
+    const invalidation = invalidate(baseRequest, { cacheRoot }).then((result) => {
+      invalidationFinished = true;
+      return result;
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(
+      invalidationFinished,
+      false,
+      `${scope} invalidation must wait for the in-flight manifest publication`
+    );
+
+    releasePublish();
+    assert.equal((await commit).state, "committed");
+    assert.equal((await invalidation).state, "invalidated");
+    const after = await readDocumentCache(baseRequest, { cacheRoot });
+    assert.equal(after.state, "cold", `${scope} invalidation must win after serialization`);
+    assert.deepEqual(after.documents, []);
+  }
+});
+
+test("all invalidation scopes revoke refreshes that began before invalidation", async (context) => {
+  const invalidators = [
+    ["exact", invalidateDocumentCache],
+    ["dataset", invalidateDocumentCacheDataset],
+    ["source", invalidateDocumentCacheSource],
+    ["authority", invalidateDocumentCacheAuthority]
+  ];
+
+  for (const [scope, invalidate] of invalidators) {
+    const cacheRoot = await temporaryCache(context);
+    let leaseReached;
+    const atLease = new Promise((resolve) => { leaseReached = resolve; });
+    let releaseBegin;
+    const beginGate = new Promise((resolve) => { releaseBegin = resolve; });
+    const begin = beginDocumentSync(baseRequest, {
+      cacheRoot,
+      afterLeaseAcquired: async () => {
+        leaseReached();
+        await beginGate;
+      }
+    });
+    await atLease;
+
+    let invalidationFinished = false;
+    const invalidation = invalidate(baseRequest, { cacheRoot }).then((result) => {
+      invalidationFinished = true;
+      return result;
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(
+      invalidationFinished,
+      false,
+      `${scope} invalidation must wait for lease publication`
+    );
+
+    releaseBegin();
+    const plan = await begin;
+    assert.ok(plan.lease_token);
+    assert.equal((await invalidation).state, "invalidated");
+    await assert.rejects(
+      commitDocumentSync({
+        ...baseRequest,
+        lease_token: plan.lease_token,
+        documents: [{
+          resource_id: `pre-invalidation-${scope}`,
+          version: "v1",
+          modified_at: "2026-08-10T12:00:00.000Z",
+          payload: { scope }
+        }]
+      }, { cacheRoot }),
+      /cache lease is missing/
+    );
+    const after = await readDocumentCache(baseRequest, { cacheRoot });
+    assert.equal(after.state, "cold");
+    assert.deepEqual(after.documents, []);
+  }
+});
+
+test("authority mutation ownership survives lease expiry and stale takeover is single-owner", async (context) => {
+  const cacheRoot = await temporaryCache(context);
+  let leaseReached;
+  const atLease = new Promise((resolve) => { leaseReached = resolve; });
+  let releaseBegin;
+  const beginGate = new Promise((resolve) => { releaseBegin = resolve; });
+  const begin = beginDocumentSync(baseRequest, {
+    cacheRoot,
+    mutationLockLeaseMs: 30,
+    mutationLockHeartbeatMs: 5,
+    afterLeaseAcquired: async () => {
+      leaseReached();
+      await beginGate;
+    }
+  });
+  await atLease;
+  await new Promise((resolve) => setTimeout(resolve, 65));
+
+  let invalidationFinished = false;
+  const invalidation = invalidateDocumentCache(baseRequest, {
+    cacheRoot,
+    mutationLockLeaseMs: 30,
+    mutationLockHeartbeatMs: 5
+  }).then((result) => {
+    invalidationFinished = true;
+    return result;
+  });
+  await new Promise((resolve) => setTimeout(resolve, 15));
+  assert.equal(invalidationFinished, false, "a live renewed owner must remain exclusive");
+  releaseBegin();
+  const plan = await begin;
+  assert.ok(plan.lease_token);
+  assert.equal((await invalidation).state, "invalidated");
+
+  const probe = await beginDocumentSync(baseRequest, { cacheRoot });
+  await abortDocumentSync({ ...baseRequest, lease_token: probe.lease_token }, { cacheRoot });
+  const lockDirectory = join(cacheRoot, "locks");
+  const lockPath = join(lockDirectory, `${probe.authority_key}.mutation.lock.json`);
+  await mkdir(lockDirectory, { recursive: true });
+  await writeFile(lockPath, `${JSON.stringify({
+    token: "abandoned-lock",
+    pid: 999_999_999,
+    expires_at: "2000-01-01T00:00:00.000Z"
+  })}\n`);
+
+  const contenderOptions = {
+    cacheRoot,
+    mutationLockLeaseMs: 1_000,
+    mutationLockHeartbeatMs: 100,
+    processAlive: () => false
+  };
+  const contenders = await Promise.all([
+    beginDocumentSync(baseRequest, contenderOptions),
+    beginDocumentSync(baseRequest, contenderOptions)
+  ]);
+  assert.deepEqual(
+    contenders.map((result) => result.state).sort(),
+    ["busy", "cold"],
+    "two stale-lock contenders must still produce one refresh owner"
+  );
+  const owner = contenders.find((result) => result.lease_token);
+  await abortDocumentSync(
+    { ...baseRequest, lease_token: owner.lease_token },
+    contenderOptions
+  );
+});
+
+test("broad invalidation removes legacy lease-only refreshes", async (context) => {
+  const invalidators = [
+    ["dataset", invalidateDocumentCacheDataset],
+    ["source", invalidateDocumentCacheSource],
+    ["authority", invalidateDocumentCacheAuthority]
+  ];
+  for (const [scope, invalidate] of invalidators) {
+    const cacheRoot = await temporaryCache(context);
+    const plan = await beginDocumentSync(baseRequest, { cacheRoot });
+    await abortDocumentSync(
+      { ...baseRequest, lease_token: plan.lease_token },
+      { cacheRoot }
+    );
+    const leasePath = join(
+      cacheRoot,
+      "scopes",
+      plan.authority_key,
+      "queries",
+      `${plan.query_key}.lease.json`
+    );
+    await writeFile(leasePath, `${JSON.stringify({
+      schema_version: "bos-document-cache/v1",
+      token: `legacy-${scope}`,
+      request_key: "legacy-request",
+      expires_at: "2099-01-01T00:00:00.000Z"
+    })}\n`);
+    assert.equal((await invalidate(baseRequest, { cacheRoot })).state, "invalidated");
+    await assert.rejects(access(leasePath), { code: "ENOENT" });
+  }
+});
+
 test("freshness policy rejects invalid values", async (context) => {
   const cacheRoot = await temporaryCache(context);
   await assert.rejects(
@@ -239,6 +453,49 @@ test("freshness policy rejects invalid values", async (context) => {
       }
     }, { cacheRoot }),
     /allow_stale_on_error/
+  );
+});
+
+test("commit documents reject payload-bearing tombstones and undeclared fields", async (context) => {
+  const cacheRoot = await temporaryCache(context);
+  const first = await beginDocumentSync(baseRequest, { cacheRoot });
+  await assert.rejects(
+    commitDocumentSync({
+      ...baseRequest,
+      lease_token: first.lease_token,
+      documents: [{
+        resource_id: "deleted-record",
+        version: "v2",
+        modified_at: "2026-08-10T12:00:00.000Z",
+        deleted: true,
+        payload: { must_not_survive: true }
+      }]
+    }, { cacheRoot }),
+    /unsupported field payload/
+  );
+  await abortDocumentSync(
+    { ...baseRequest, lease_token: first.lease_token },
+    { cacheRoot }
+  );
+
+  const second = await beginDocumentSync(baseRequest, { cacheRoot });
+  await assert.rejects(
+    commitDocumentSync({
+      ...baseRequest,
+      lease_token: second.lease_token,
+      documents: [{
+        resource_id: "live-record",
+        version: "v1",
+        modified_at: "2026-08-10T12:00:00.000Z",
+        payload: { display_name: "Live" },
+        private_note: "not in the public contract"
+      }]
+    }, { cacheRoot }),
+    /unsupported field private_note/
+  );
+  await abortDocumentSync(
+    { ...baseRequest, lease_token: second.lease_token },
+    { cacheRoot }
   );
 });
 

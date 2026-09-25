@@ -23,11 +23,22 @@ consent may require direct user interaction; a revoked grant stays revoked.
 
 The installed BOS package publishes `bos-external-dependency-adapter` as the
 executable dependency seam. Its public methods are `recoverAuthentication`,
-`waitForAuthentication`, `invokeReturnedAction`, and `invokeStateAction`.
+`waitForAuthentication`, `invokeDiscoveredOperation`, `invokeReturnedAction`,
+and `invokeStateAction`.
 External products supply only the exact resource/condition or server-returned
-action/payload. BOS injects the existing host transport and fresh context
+Describe contact/action and payload. BOS injects the existing host transport and fresh context
 provider, keeps tokens and identity-v2 handles private, and preserves
 header-free legacy/v1 invocation.
+
+The packaged `bos-mcp-client` also publishes
+`bos.shared-cache-consumer/v1`. External products supply a complete structured
+source reference copied from Describe plus semantic query, freshness, and
+maintenance intent through a BOS-injected ready consumer object. They do not
+construct that consumer or configure a binding provider. The public helper
+only validates and narrows the injected object; it exposes no host or consumer
+constructor. BOS privately derives authority and provider-account cache
+partitions and owns the one OS-user cache root. The immutable executable and
+wire contract is published under `contracts/bos-client-dependency.v1/`.
 
 Validate against `external-product-dependency.v2.schema.json` and run:
 
