@@ -8,12 +8,12 @@
     {
       "name": "bos",
       "source": "./plugins/bos",
-      "description": "Run deterministic workflows across a federated agentic service mesh."
+      "description": "BOS is a platform for deterministic automated workflows across an agentic mesh of federated services. It is the required foundation for dependent products and owns the authenticated BOS platform MCP connection. Live identity-context discovery supports server-authorized organization, application, installation, and role selection per operation; legacy scoped grants retain their exact boundaries. BOS coordinates authorized platform operations with server-enforced scope, evidence, and approvals."
     },
     {
       "name": "education-center",
       "source": "./plugins/education-center",
-      "description": "Coordinate operations across email, calendars, billing, and enrollment."
+      "description": "Education Operation Center coordinates complex, evidence-backed work across an education company's authorized email, calendars, advertising, enrollment, staffing, and billing systems. For example, Acme Learning Center could ask it to find Acme.com partnership invoices in its billing inbox, reconcile them against payment records in its configured accounting system, and produce a source-linked exception ledger. Other workflows connect outreach to trials and enrollments, balance camps against registrations and instructor availability, prepare parent communications, and trace advertising outcomes. The plugin requires BOS and each focused skill follows its deterministic workflow through the BOS platform connection with server-enforced application scope while preserving human judgment, approvals, organizational settings, roles, application scope, and provider boundaries."
     }
   ]
 }

@@ -19,6 +19,7 @@ import {
   oauthTargetContract,
   pathExists,
   pluginManifest,
+  productLongDescription,
   productInitializationIndependentSkills,
   transformProductSkillGuidance,
   resolveProductSkills,
@@ -1310,7 +1311,52 @@ test("Education Center initialization proposes sourced defaults with one-step ac
   assert.match(guidance, /authentication_required[\s\S]*preserve the initialization draft[\s\S]*ask[\s\S]*no settings questions/i);
   assert.match(guidance, /store it as `brand_display_name`/i);
   assert.match(guidance, /selected authorized context's organization label/i);
+  assert.match(
+    guidance,
+    /official page for the selected[\s\S]*organization \*\*and location\*\*/i
+  );
+  assert.match(
+    guidance,
+    /confirmed brand[\s\S]*canonical organization label[\s\S]*location label[\s\S]*research the public web/i
+  );
+  assert.match(
+    guidance,
+    /official first-party[\s\S]*location landing page[\s\S]*generic brand homepage/i
+  );
+  assert.match(
+    guidance,
+    /matching organization\/location[\s\S]*(?:locality|address)/i
+  );
+  assert.match(
+    guidance,
+    /generic brand homepage as unresolved[\s\S]*known franchise location/i
+  );
+  assert.match(
+    guidance,
+    /public website research may resolve the official URL[\s\S]*never establishes or[\s\S]*changes customer identity/i
+  );
   assert.doesNotMatch(guidance, /set-default-organization|client-preferences\.mjs|plugin-settings-initialization/i);
+});
+
+test("plugin settings research requires the confirmed franchise location website", async () => {
+  const [guidance, contract] = await Promise.all([
+    readFile(
+      `${root}/source/platform/bos-plugin-settings-initialization/SKILL.md`,
+      "utf8"
+    ),
+    readFile(
+      `${root}/source/platform/bos-plugin-settings-initialization/references/initialization-contract.md`,
+      "utf8"
+    )
+  ]);
+  assert.match(
+    guidance,
+    /confirmed location-specific client website[\s\S]*generic brand homepage[\s\S]*unresolved[\s\S]*customer-settings initialization/i
+  );
+  assert.match(
+    contract,
+    /official[\s\S]*location-specific website[\s\S]*location-match evidence/i
+  );
 });
 
 test("Bright Horizons report prompts deterministically generate the reimbursement workbook", async () => {
@@ -1509,7 +1555,7 @@ test("BOS marketplace metadata explains the platform and links to its website", 
   assert.equal(bos.logo, "assets/bos-logo.png");
 
   const codex = pluginManifest(bos);
-  assert.equal(codex.description, bos.description);
+  assert.equal(codex.description, bos.long_description);
   assert.equal(codex.homepage, bos.website_url);
   assert.equal(codex.interface.shortDescription, bos.description);
   assert.equal(codex.interface.longDescription, bos.long_description);
@@ -1551,6 +1597,7 @@ test("Education Operation Center marketplace metadata presents specific cross-sy
   assert.equal(education.logo, "assets/education-center-logo.png");
 
   const codex = pluginManifest(education);
+  assert.equal(codex.description, education.long_description);
   assert.equal(codex.interface.displayName, education.display_name);
   assert.equal(codex.interface.shortDescription, education.description);
   assert.equal(codex.interface.longDescription, education.long_description);
@@ -1560,6 +1607,67 @@ test("Education Operation Center marketplace metadata presents specific cross-sy
   assert.equal(codex.interface.logo, "./assets/education-center-logo.png");
   await access(`${root}/products/education-center/assets/education-center-logo.png`);
   await access(`${root}/clients/codex/plugins/education-center/assets/education-center-logo.png`);
+});
+
+test("GPT and every generated client publish one canonical product description", async () => {
+  for (const { manifest: product } of await listProducts()) {
+    if (product.release_status !== "active") continue;
+    const description = productLongDescription(product);
+    const submission = JSON.parse(await readFile(
+      `${root}/products/${product.name}/${product.openai_submission.import_file}`,
+      "utf8"
+    ));
+    const codex = JSON.parse(await readFile(
+      `${root}/clients/codex/plugins/${product.name}/.codex-plugin/plugin.json`,
+      "utf8"
+    ));
+    const claude = JSON.parse(await readFile(
+      `${root}/clients/claude/plugins/${product.name}/.claude-plugin/plugin.json`,
+      "utf8"
+    ));
+    const claudeMarketplace = JSON.parse(await readFile(
+      `${root}/clients/claude/.claude-plugin/marketplace.json`,
+      "utf8"
+    ));
+    const rootClaudeMarketplace = JSON.parse(await readFile(
+      `${root}/.claude-plugin/marketplace.json`,
+      "utf8"
+    ));
+    const gemini = JSON.parse(await readFile(
+      `${root}/clients/gemini/extensions/${product.name}/gemini-extension.json`,
+      "utf8"
+    ));
+    const antigravity = JSON.parse(await readFile(
+      `${root}/clients/gemini/extensions/${product.name}/plugin.json`,
+      "utf8"
+    ));
+    const copilotReadme = await readFile(
+      `${root}/clients/copilot/products/${product.name}/README.md`,
+      "utf8"
+    );
+
+    assert.equal(submission.app_info.description, description, `${product.name} GPT`);
+    assert.equal(codex.description, description, `${product.name} Codex`);
+    assert.equal(codex.interface.longDescription, description, `${product.name} Codex interface`);
+    assert.equal(claude.description, description, `${product.name} Claude`);
+    assert.equal(
+      claudeMarketplace.plugins.find(({ name }) => name === product.name)?.description,
+      description,
+      `${product.name} Claude marketplace`
+    );
+    assert.equal(
+      rootClaudeMarketplace.plugins.find(({ name }) => name === product.name)?.description,
+      description,
+      `${product.name} root Claude marketplace`
+    );
+    assert.equal(gemini.description, description, `${product.name} Gemini`);
+    assert.equal(
+      antigravity.description,
+      `${description} Version ${product.version}.`,
+      `${product.name} Antigravity`
+    );
+    assert.match(copilotReadme, new RegExp(description.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
 });
 
 test("products retain application identity while BOS owns active transport", async () => {

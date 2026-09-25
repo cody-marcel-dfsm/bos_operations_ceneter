@@ -17,6 +17,7 @@ import {
   oauthTargetContract,
   ownsHostConnection,
   pluginManifest,
+  productLongDescription,
   resolveProductSkills,
   root,
   validateProduct,
@@ -131,7 +132,7 @@ for (const { product, skills } of resolved) {
       name: product.name,
       displayName: product.display_name,
       version: product.version,
-      description: product.description,
+      description: productLongDescription(product),
       author: { name: product.publisher },
       homepage: product.website_url ?? "https://dfsm.ai",
       repository: "https://github.com/cody-marcel-dfsm/bos_operations_ceneter",
@@ -199,7 +200,7 @@ for (const { product, skills } of resolved) {
     claudeMarketplace.plugins.push({
       name: product.name,
       source: `./plugins/${product.name}`,
-      description: product.description
+      description: productLongDescription(product)
     });
   }
 
@@ -235,6 +236,8 @@ for (const { product, skills } of resolved) {
       join(productRoot, "README.md"),
       [
         `# ${product.display_name} for GitHub Copilot`,
+        "",
+        productLongDescription(product),
         "",
         "Copy `skills/` into the target repository's `.agents/skills/` directory.",
         ...(ownsHostConnection(product) ? [
