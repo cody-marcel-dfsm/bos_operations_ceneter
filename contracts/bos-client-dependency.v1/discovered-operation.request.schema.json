@@ -1,0 +1,540 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "bos://contracts/client-dependency/v1/discovered-operation-request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contact"
+  ],
+  "properties": {
+    "contact": {
+      "$ref": "#/$defs/described_operation"
+    },
+    "payload": true
+  },
+  "allOf": [
+    {
+      "properties": {
+        "contact": {
+          "properties": {
+            "execution": {
+              "properties": {
+                "method": {
+                  "enum": [
+                    "GET",
+                    "POST",
+                    "PUT",
+                    "PATCH",
+                    "DELETE"
+                  ]
+                },
+                "uri": {
+                  "type": "string"
+                },
+                "context_header": {
+                  "const": "X-BOS-Context-Handle"
+                },
+                "transport": {
+                  "type": "null"
+                }
+              },
+              "required": [
+                "method",
+                "uri",
+                "context_header"
+              ]
+            }
+          },
+          "required": [
+            "execution"
+          ]
+        }
+      },
+      "required": [
+        "contact"
+      ]
+    },
+    {
+      "if": {
+        "properties": {
+          "contact": {
+            "properties": {
+              "execution": {
+                "properties": {
+                  "method": {
+                    "const": "GET"
+                  }
+                },
+                "required": [
+                  "method"
+                ]
+              }
+            },
+            "required": [
+              "execution"
+            ]
+          }
+        },
+        "required": [
+          "contact"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "payload"
+          ]
+        }
+      },
+      "else": {
+        "required": [
+          "payload"
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "operation_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$"
+    },
+    "source_reference": {
+      "type": "object",
+      "required": [
+        "platform",
+        "application",
+        "plugin"
+      ],
+      "properties": {
+        "platform": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]*$"
+        },
+        "application": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]*$"
+        },
+        "plugin": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "limits": {
+      "type": "object",
+      "required": [
+        "pagination_supported",
+        "bulk_supported",
+        "streaming_supported"
+      ],
+      "properties": {
+        "max_targets": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "max_results_per_source": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "pagination_supported": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "bulk_supported": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "streaming_supported": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "maximum_duration_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 900
+        },
+        "maximum_fan_out": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      },
+      "additionalProperties": false
+    },
+    "guarantees": {
+      "type": "object",
+      "required": [
+        "read_consistency",
+        "per_source_atomicity",
+        "cross_source_atomicity",
+        "convergence",
+        "idempotency"
+      ],
+      "properties": {
+        "read_consistency": {
+          "type": "string",
+          "minLength": 1
+        },
+        "per_source_atomicity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cross_source_atomicity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "convergence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "idempotency": {
+          "const": "service_owned"
+        }
+      },
+      "additionalProperties": false
+    },
+    "execution": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "GET",
+                "POST",
+                "PUT",
+                "PATCH",
+                "DELETE"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "context_header": {
+          "anyOf": [
+            {
+              "const": "X-BOS-Context-Handle"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "uri": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^/bos/apps/lead-director/api/v1/organizations/\\{organization\\}/[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*(?:/[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*)*$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "transport": {
+          "anyOf": [
+            {
+              "const": "journey_runtime"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "method",
+            "uri",
+            "context_header"
+          ],
+          "properties": {
+            "context_header": {
+              "const": "X-BOS-Context-Handle"
+            },
+            "method": {
+              "type": "string"
+            },
+            "uri": {
+              "type": "string"
+            },
+            "transport": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "required": [
+            "transport"
+          ],
+          "properties": {
+            "context_header": {
+              "type": "null"
+            },
+            "method": {
+              "type": "null"
+            },
+            "uri": {
+              "type": "null"
+            },
+            "transport": {
+              "const": "journey_runtime"
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "error_contract": {
+      "type": "object",
+      "required": [
+        "schema",
+        "codes"
+      ],
+      "properties": {
+        "schema": {
+          "const": "lead-director-public-error/v1"
+        },
+        "codes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "source",
+        "availability"
+      ],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/source_reference"
+        },
+        "availability": {
+          "enum": [
+            "ready",
+            "authorization_required",
+            "configuration_required",
+            "temporarily_unavailable"
+          ]
+        },
+        "input_schema": {
+          "$ref": "#/$defs/operation_schema"
+        },
+        "output_schema": {
+          "$ref": "#/$defs/operation_schema"
+        },
+        "receipt_schema": {
+          "$ref": "#/$defs/operation_schema"
+        },
+        "limits": {
+          "$ref": "#/$defs/limits"
+        },
+        "guarantees": {
+          "$ref": "#/$defs/guarantees"
+        },
+        "error_contract": {
+          "$ref": "#/$defs/error_contract"
+        }
+      },
+      "oneOf": [
+        {
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "input_schema"
+                ]
+              },
+              {
+                "required": [
+                  "output_schema"
+                ]
+              },
+              {
+                "required": [
+                  "receipt_schema"
+                ]
+              },
+              {
+                "required": [
+                  "limits"
+                ]
+              },
+              {
+                "required": [
+                  "guarantees"
+                ]
+              },
+              {
+                "required": [
+                  "error_contract"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "required": [
+            "input_schema",
+            "output_schema",
+            "receipt_schema",
+            "limits",
+            "guarantees",
+            "error_contract"
+          ]
+        }
+      ],
+      "additionalProperties": false
+    },
+    "sql_field": {
+      "type": "object",
+      "required": [
+        "path",
+        "data_type",
+        "ordinal_position",
+        "nullable",
+        "default",
+        "constraints"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "data_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ordinal_position": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "nullable": {
+          "type": "boolean"
+        },
+        "default": true,
+        "constraints": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "operation_schema": {
+      "type": "object",
+      "required": [
+        "$schema",
+        "type",
+        "x-bos-fields"
+      ],
+      "properties": {
+        "$schema": {
+          "const": "https://json-schema.org/draft/2020-12/schema"
+        },
+        "type": {
+          "const": "object"
+        },
+        "x-bos-fields": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/sql_field"
+          }
+        }
+      }
+    },
+    "described_operation": {
+      "type": "object",
+      "required": [
+        "operation",
+        "status",
+        "effect",
+        "limits",
+        "guarantees",
+        "execution",
+        "input_schema",
+        "output_schema",
+        "error_contract",
+        "sources"
+      ],
+      "properties": {
+        "operation": {
+          "$ref": "#/$defs/operation_id"
+        },
+        "status": {
+          "const": "described"
+        },
+        "effect": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limits": {
+          "$ref": "#/$defs/limits"
+        },
+        "guarantees": {
+          "$ref": "#/$defs/guarantees"
+        },
+        "execution": {
+          "$ref": "#/$defs/execution"
+        },
+        "input_schema": {
+          "$ref": "#/$defs/operation_schema"
+        },
+        "output_schema": {
+          "$ref": "#/$defs/operation_schema"
+        },
+        "error_contract": {
+          "$ref": "#/$defs/error_contract"
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/source"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "unavailable_operation": {
+      "type": "object",
+      "required": [
+        "operation",
+        "status"
+      ],
+      "properties": {
+        "operation": {
+          "$ref": "#/$defs/operation_id"
+        },
+        "status": {
+          "const": "not_available"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

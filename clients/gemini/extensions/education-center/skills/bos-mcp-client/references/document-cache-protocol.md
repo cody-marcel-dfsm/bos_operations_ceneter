@@ -1,9 +1,10 @@
-# Document cache helper protocol
+# Host-owned document cache protocol
 
-Invoke `node scripts/document-cache.mjs` from the installed `bos-mcp-client`
-skill directory. Send one JSON object on standard input. The helper writes one
-sanitized JSON response on standard output. Keep document data in standard
-input and out of command arguments.
+This is the private native-host protocol behind the ready shared-cache consumer.
+It is implementation evidence for the BOS host and is not packaged as an
+installed skill script or callable by a dependent product. Public clients use
+`shared-cache-consumer.md`; the native host alone supplies the authority and
+storage fields below.
 
 ## Shared request fields
 
@@ -15,8 +16,10 @@ request identity:
   "authority": {
     "organization_id": "server-derived organization",
     "installation_id": "server-derived installation",
+    "actor_user_id": "server-derived authenticated user",
     "delegated_role_id": "server-derived role",
-    "subservice": "server-resolved subservice code"
+    "application": "server-derived application",
+    "skill_group": "server-derived skill group"
   },
   "source": {
     "provider": "stable provider name",
@@ -134,8 +137,8 @@ Use `inspect` with the exact shared request to return cache metadata and
 request to remove its authority-scoped query manifest and lease. The next read
 is cold. Both operations return only digested cache keys.
 
-## Managed root override
+## Host-managed root override
 
-Managed environments and tests may set `BOS_DOCUMENT_CACHE_DIR` to one absolute
-path. Every BOS-family product in that host environment uses the same value.
-Normal installations use the platform default from the shared cache contract.
+Only the native host and host-runtime tests may set `BOS_DOCUMENT_CACHE_DIR` to
+one absolute path. Packaged skills and dependent products cannot provide or
+observe this value. Normal installations use the host platform default.

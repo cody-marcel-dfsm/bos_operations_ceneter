@@ -1,0 +1,225 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "bos://contracts/client-dependency/v1/shared-cache-results",
+  "$defs": {
+    "digest": {"type": "string", "minLength": 1},
+    "instant": {"type": "string", "format": "date-time"},
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "through"],
+      "properties": {
+        "from": {"$ref": "#/$defs/instant"},
+        "through": {"$ref": "#/$defs/instant"}
+      }
+    },
+    "changeGap": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["after", "through"],
+          "properties": {
+            "after": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/instant"}]},
+            "through": {"$ref": "#/$defs/instant"}
+          }
+        }
+      ]
+    },
+    "document": {
+      "description": "A live cached document. Tombstones are reflected in commit.tombstone_count and omitted from read documents and inspect counts.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resource_id", "version", "modified_at", "payload"],
+      "properties": {
+        "resource_id": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "minLength": 1},
+        "modified_at": {"$ref": "#/$defs/instant"},
+        "payload": {}
+      }
+    },
+    "refreshPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "authority_key", "source_key", "query_key", "coverage_gaps", "change_gap", "cursor", "cached_resource_count", "sync_completed_at", "origin", "freshness_status", "age_seconds", "max_age_seconds", "allow_stale_on_error", "stale", "lease_token", "lease_expires_at"],
+      "properties": {
+        "state": {"enum": ["cold", "catch_up", "refresh_required"]},
+        "authority_key": {"$ref": "#/$defs/digest"},
+        "source_key": {"$ref": "#/$defs/digest"},
+        "query_key": {"$ref": "#/$defs/digest"},
+        "coverage_gaps": {"type": "array", "items": {"$ref": "#/$defs/window"}},
+        "change_gap": {"$ref": "#/$defs/changeGap"},
+        "cursor": {"type": ["string", "null"]},
+        "cached_resource_count": {"type": "integer", "minimum": 0},
+        "sync_completed_at": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/instant"}]},
+        "origin": {"enum": ["cache", null]},
+        "freshness_status": {"enum": ["missing", "fresh", "stale"]},
+        "age_seconds": {"type": ["integer", "null"], "minimum": 0},
+        "max_age_seconds": {"type": ["integer", "null"], "minimum": 0},
+        "allow_stale_on_error": {"type": "boolean"},
+        "stale": {"type": "boolean"},
+        "lease_token": {"type": "string", "minLength": 1},
+        "lease_expires_at": {"$ref": "#/$defs/instant"}
+      }
+    },
+    "currentPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "authority_key", "source_key", "query_key", "coverage_gaps", "change_gap", "cursor", "cached_resource_count", "sync_completed_at", "origin", "freshness_status", "age_seconds", "max_age_seconds", "allow_stale_on_error", "stale"],
+      "properties": {
+        "state": {"const": "current"},
+        "authority_key": {"$ref": "#/$defs/digest"},
+        "source_key": {"$ref": "#/$defs/digest"},
+        "query_key": {"$ref": "#/$defs/digest"},
+        "coverage_gaps": {"type": "array", "maxItems": 0},
+        "change_gap": {"type": "null"},
+        "cursor": {"type": ["string", "null"]},
+        "cached_resource_count": {"type": "integer", "minimum": 0},
+        "sync_completed_at": {"$ref": "#/$defs/instant"},
+        "origin": {"const": "cache"},
+        "freshness_status": {"const": "fresh"},
+        "age_seconds": {"type": "integer", "minimum": 0},
+        "max_age_seconds": {"type": ["integer", "null"], "minimum": 0},
+        "allow_stale_on_error": {"type": "boolean"},
+        "stale": {"const": false}
+      }
+    },
+    "busy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "authority_key", "query_key", "retry_after_ms"],
+      "properties": {
+        "state": {"const": "busy"},
+        "authority_key": {"$ref": "#/$defs/digest"},
+        "query_key": {"$ref": "#/$defs/digest"},
+        "retry_after_ms": {"type": "integer", "minimum": 0}
+      }
+    },
+    "read": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "authority_key", "source_key", "query_key", "coverage_gaps", "change_gap", "cursor", "cached_resource_count", "sync_completed_at", "origin", "freshness_status", "age_seconds", "max_age_seconds", "allow_stale_on_error", "stale", "documents"],
+      "properties": {
+        "state": {"enum": ["cold", "catch_up", "refresh_required", "current"]},
+        "authority_key": {"$ref": "#/$defs/digest"},
+        "source_key": {"$ref": "#/$defs/digest"},
+        "query_key": {"$ref": "#/$defs/digest"},
+        "coverage_gaps": {"type": "array", "items": {"$ref": "#/$defs/window"}},
+        "change_gap": {"$ref": "#/$defs/changeGap"},
+        "cursor": {"type": ["string", "null"]},
+        "cached_resource_count": {"type": "integer", "minimum": 0},
+        "sync_completed_at": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/instant"}]},
+        "origin": {"enum": ["cache", null]},
+        "freshness_status": {"enum": ["missing", "fresh", "stale"]},
+        "age_seconds": {"type": ["integer", "null"], "minimum": 0},
+        "max_age_seconds": {"type": ["integer", "null"], "minimum": 0},
+        "allow_stale_on_error": {"type": "boolean"},
+        "stale": {"type": "boolean"},
+        "documents": {"type": "array", "items": {"$ref": "#/$defs/document"}}
+      }
+    },
+    "inspect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "authority_key", "source_key", "query_key", "coverage_gaps", "change_gap", "cursor", "cached_resource_count", "sync_completed_at", "origin", "freshness_status", "age_seconds", "max_age_seconds", "allow_stale_on_error", "stale", "document_count"],
+      "properties": {
+        "state": {"enum": ["cold", "catch_up", "refresh_required", "current"]},
+        "authority_key": {"$ref": "#/$defs/digest"},
+        "source_key": {"$ref": "#/$defs/digest"},
+        "query_key": {"$ref": "#/$defs/digest"},
+        "coverage_gaps": {"type": "array", "items": {"$ref": "#/$defs/window"}},
+        "change_gap": {"$ref": "#/$defs/changeGap"},
+        "cursor": {"type": ["string", "null"]},
+        "cached_resource_count": {"type": "integer", "minimum": 0},
+        "sync_completed_at": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/instant"}]},
+        "origin": {"enum": ["cache", null]},
+        "freshness_status": {"enum": ["missing", "fresh", "stale"]},
+        "age_seconds": {"type": ["integer", "null"], "minimum": 0},
+        "max_age_seconds": {"type": ["integer", "null"], "minimum": 0},
+        "allow_stale_on_error": {"type": "boolean"},
+        "stale": {"type": "boolean"},
+        "document_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "commit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "authority_key", "query_key", "document_count", "tombstone_count", "cached_resource_count", "sync_completed_at"],
+      "properties": {
+        "state": {"const": "committed"},
+        "authority_key": {"$ref": "#/$defs/digest"},
+        "query_key": {"$ref": "#/$defs/digest"},
+        "document_count": {"type": "integer", "minimum": 0},
+        "tombstone_count": {"type": "integer", "minimum": 0},
+        "cached_resource_count": {"type": "integer", "minimum": 0},
+        "sync_completed_at": {"$ref": "#/$defs/instant"}
+      }
+    },
+    "abort": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "authority_key", "query_key"],
+      "properties": {
+        "state": {"const": "aborted"},
+        "authority_key": {"$ref": "#/$defs/digest"},
+        "query_key": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "invalidateExact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "authority_key", "source_key", "query_key"],
+      "properties": {
+        "state": {"const": "invalidated"},
+        "authority_key": {"$ref": "#/$defs/digest"},
+        "source_key": {"$ref": "#/$defs/digest"},
+        "query_key": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "invalidateDataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "scope", "authority_key", "source_key", "invalidated_query_count"],
+      "properties": {
+        "state": {"const": "invalidated"},
+        "scope": {"const": "dataset"},
+        "authority_key": {"$ref": "#/$defs/digest"},
+        "source_key": {"$ref": "#/$defs/digest"},
+        "invalidated_query_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "invalidateSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "scope", "authority_key", "invalidated_query_count"],
+      "properties": {
+        "state": {"const": "invalidated"},
+        "scope": {"const": "source"},
+        "authority_key": {"$ref": "#/$defs/digest"},
+        "invalidated_query_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "invalidateAuthority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "scope", "authority_key"],
+      "properties": {
+        "state": {"const": "invalidated"},
+        "scope": {"const": "current_authority"},
+        "authority_key": {"$ref": "#/$defs/digest"}
+      }
+    }
+  },
+  "oneOf": [
+    {"type": "object", "additionalProperties": false, "required": ["begin"], "properties": {"begin": {"oneOf": [{"$ref": "#/$defs/refreshPlan"}, {"$ref": "#/$defs/currentPlan"}, {"$ref": "#/$defs/busy"}]}}},
+    {"type": "object", "additionalProperties": false, "required": ["commit"], "properties": {"commit": {"$ref": "#/$defs/commit"}}},
+    {"type": "object", "additionalProperties": false, "required": ["abort"], "properties": {"abort": {"$ref": "#/$defs/abort"}}},
+    {"type": "object", "additionalProperties": false, "required": ["read"], "properties": {"read": {"$ref": "#/$defs/read"}}},
+    {"type": "object", "additionalProperties": false, "required": ["inspect"], "properties": {"inspect": {"$ref": "#/$defs/inspect"}}},
+    {"type": "object", "additionalProperties": false, "required": ["invalidate_exact"], "properties": {"invalidate_exact": {"$ref": "#/$defs/invalidateExact"}}},
+    {"type": "object", "additionalProperties": false, "required": ["invalidate_dataset"], "properties": {"invalidate_dataset": {"$ref": "#/$defs/invalidateDataset"}}},
+    {"type": "object", "additionalProperties": false, "required": ["invalidate_source"], "properties": {"invalidate_source": {"$ref": "#/$defs/invalidateSource"}}},
+    {"type": "object", "additionalProperties": false, "required": ["invalidate_current_authority"], "properties": {"invalidate_current_authority": {"$ref": "#/$defs/invalidateAuthority"}}}
+  ]
+}

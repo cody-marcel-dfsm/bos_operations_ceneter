@@ -15,7 +15,7 @@ import {
   invalidateJourneyContractCache,
   readJourneyContractCache,
   writeJourneyContractCache
-} from "../source/platform/bos-mcp-client/scripts/journey-contract-cache.mjs";
+} from "../source/host-runtime/bos-shared-cache/journey-contract-cache.mjs";
 
 const authority = {
   organization: "server-org",

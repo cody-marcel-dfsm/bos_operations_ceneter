@@ -1,4 +1,5 @@
 import Ajv2020 from "./vendor/ajv2020.bundle.mjs";
+import discoveredOperationRequestSchema from "./discovered-operation-request.schema.mjs";
 
 export const authenticationConditionCodes = Object.freeze([
   "MISSING_GRANT",
@@ -36,6 +37,8 @@ const sensitiveKeys = new Set([
   "context_handle", "opaque_context", "authority_context", "grant_id", "organization_id",
   "application_id", "installation_id", "installed_app_id", "role_id", "resource_group_id"
 ]);
+const discoveredOperationValidator = new Ajv2020({allErrors: true, strict: false})
+  .compile(discoveredOperationRequestSchema);
 
 function requireObject(value, label) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -95,6 +98,14 @@ function rejectPrivateTransportData(value, path = "value") {
       throw new TypeError(`${path}.${key} exposes private BOS transport data`);
     }
     rejectPrivateTransportData(nested, `${path}.${key}`);
+  }
+}
+
+function structuredSnapshot(value, label) {
+  try {
+    return structuredClone(value);
+  } catch {
+    throw new TypeError(`${label} must be structured-cloneable`);
   }
 }
 
@@ -191,10 +202,24 @@ function validateAction(value, { state = false } = {}) {
 }
 
 function validatePayload(payload, schema) {
+  const snapshot = structuredSnapshot(payload, "returned action payload");
   const ajv = new Ajv2020({ allErrors: true, strict: false });
   const validate = ajv.compile(schema);
-  if (!validate(payload)) throw new TypeError("returned action payload does not match payload_schema");
-  rejectPrivateTransportData(payload, "returned action payload");
+  if (!validate(snapshot)) throw new TypeError("returned action payload does not match payload_schema");
+  rejectPrivateTransportData(snapshot, "returned action payload");
+  return snapshot;
+}
+
+function validateDiscoveredOperation(value, payloadSupplied, payload) {
+  const request = structuredSnapshot(
+    {contact: value, ...(payloadSupplied ? {payload} : {})},
+    "discovered operation request"
+  );
+  if (!discoveredOperationValidator(request)) {
+    throw new TypeError("discovered operation request does not match the immutable public schema");
+  }
+  rejectPrivateTransportData(request.contact.execution, "discovered operation.execution");
+  return request;
 }
 
 function validateFreshContext(value) {
@@ -313,7 +338,9 @@ export function createBosExternalDependencyAdapter({
     const current = validateAction(action, { state });
     if (current.payload_schema === null && payloadSupplied) throw new TypeError("bodyless returned action cannot receive a payload");
     if (current.payload_schema !== null && !payloadSupplied) throw new TypeError("returned action payload is required");
-    if (current.payload_schema !== null) validatePayload(payload, current.payload_schema);
+    const currentPayload = current.payload_schema === null
+      ? undefined
+      : validatePayload(payload, current.payload_schema);
     let contextHandle;
     let contextHeader;
     try {
@@ -331,7 +358,35 @@ export function createBosExternalDependencyAdapter({
         ...(current.payload_schema === null ? {} : { "content-type": "application/json" }),
         ...(contextHandle === null ? {} : { [contextHeader]: contextHandle })
       },
-      body: current.payload_schema === null ? undefined : JSON.stringify(payload)
+      body: current.payload_schema === null ? undefined : JSON.stringify(currentPayload)
+    };
+  };
+
+  const buildDiscoveredRequest = async (contact, payloadSupplied, payload) => {
+    const snapshot = validateDiscoveredOperation(contact, payloadSupplied, payload);
+    const current = snapshot.contact;
+    const bodyless = current.execution.method === "GET";
+    const currentPayload = bodyless
+      ? undefined
+      : validatePayload(snapshot.payload, current.input_schema);
+    let contextHandle;
+    let contextHeader;
+    try {
+      contextHandle = validateFreshContext(await contextProvider.getCurrentContext());
+      contextHeader = contextHandle === null
+        ? null
+        : validateExecutionContextHeader(await contextProvider.getExecutionContextHeader());
+    } catch {
+      throw new BosDependencyAdapterError("The current BOS execution context is unavailable", "CONTEXT_UNAVAILABLE");
+    }
+    return {
+      method: current.execution.method,
+      href: current.execution.uri,
+      headers: {
+        ...(bodyless ? {} : { "content-type": "application/json" }),
+        ...(contextHandle === null ? {} : { [contextHeader]: contextHandle })
+      },
+      body: bodyless ? undefined : JSON.stringify(currentPayload)
     };
   };
 
@@ -351,7 +406,11 @@ export function createBosExternalDependencyAdapter({
   };
 
   const invoke = async (action, payloadSupplied, payload, state) => {
-    let response = await requestOnce(action, payloadSupplied, payload, state);
+    const pinnedAction = structuredSnapshot(action, "returned action");
+    const pinnedPayload = payloadSupplied
+      ? structuredSnapshot(payload, "returned action payload")
+      : payload;
+    let response = await requestOnce(pinnedAction, payloadSupplied, pinnedPayload, state);
     let condition = response?.authenticationError ? response.condition : authenticationCondition(response);
     if (!condition) return publicResponse(response);
 
@@ -368,7 +427,44 @@ export function createBosExternalDependencyAdapter({
       throw new BosDependencyAdapterError("BOS authentication recovery remains active", "AUTHENTICATION_RECOVERY_PENDING");
     }
 
-    response = await requestOnce(action, payloadSupplied, payload, state);
+    response = await requestOnce(pinnedAction, payloadSupplied, pinnedPayload, state);
+    condition = response?.authenticationError ? response.condition : authenticationCondition(response);
+    if (condition) {
+      throw new BosDependencyAdapterError("BOS authentication recovery did not restore the operation", "AUTHENTICATION_RECOVERY_FAILED");
+    }
+    return publicResponse(response);
+  };
+
+  const invokeDiscovered = async (contact, payloadSupplied, payload) => {
+    const pinnedContact = structuredSnapshot(contact, "discovered operation contact");
+    const pinnedPayload = payloadSupplied
+      ? structuredSnapshot(payload, "discovered operation payload")
+      : payload;
+    const requestOnceDiscovered = async () => {
+      const request = await buildDiscoveredRequest(pinnedContact, payloadSupplied, pinnedPayload);
+      try {
+        return await hostTransport.request(request);
+      } catch (error) {
+        const condition = authenticationCondition(error);
+        if (condition) return { authenticationError: true, condition, resource: error?.resource };
+        throw new BosDependencyAdapterError("The BOS dependency transport failed", "TRANSPORT_FAILURE");
+      }
+    };
+    let response = await requestOnceDiscovered();
+    let condition = response?.authenticationError ? response.condition : authenticationCondition(response);
+    if (!condition) return publicResponse(response);
+    let readiness = await recoverAuthentication({ resource: response?.resource, condition });
+    if (readiness.status !== "READY") {
+      readiness = await waitForAuthentication({
+        resource: readiness.protected_resource,
+        condition: readiness.condition ?? condition,
+        host_correlation: readiness.host_correlation
+      });
+    }
+    if (readiness.status !== "READY") {
+      throw new BosDependencyAdapterError("BOS authentication recovery remains active", "AUTHENTICATION_RECOVERY_PENDING");
+    }
+    response = await requestOnceDiscovered();
     condition = response?.authenticationError ? response.condition : authenticationCondition(response);
     if (condition) {
       throw new BosDependencyAdapterError("BOS authentication recovery did not restore the operation", "AUTHENTICATION_RECOVERY_FAILED");
@@ -379,6 +475,9 @@ export function createBosExternalDependencyAdapter({
   return Object.freeze({
     recoverAuthentication,
     waitForAuthentication,
+    invokeDiscoveredOperation(contact, payload) {
+      return invokeDiscovered(contact, arguments.length >= 2, payload);
+    },
     invokeReturnedAction(action, payload) {
       return invoke(action, arguments.length >= 2, payload, false);
     },

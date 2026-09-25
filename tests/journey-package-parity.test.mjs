@@ -49,19 +49,18 @@ test("BOS composes journey orchestration, discovery, cache maintenance, and visu
   assert(mcpClient);
 
   const canonicalOrchestrator = await readFile(`${orchestrator.sourcePath}/SKILL.md`, "utf8");
-  const canonicalCache = await readFile(
-    `${mcpClient.sourcePath}/scripts/journey-contract-cache.mjs`,
-    "utf8"
-  );
   for (const generatedRoot of generatedRoots) {
     assert.equal(
       await readFile(`${generatedRoot}/bos-workflow-orchestrator/SKILL.md`, "utf8"),
       transformProductSkillGuidance(product, "bos-workflow-orchestrator", canonicalOrchestrator)
     );
-    assert.equal(
-      await readFile(`${generatedRoot}/bos-mcp-client/scripts/journey-contract-cache.mjs`, "utf8"),
-      canonicalCache
-    );
+    for (const privateScript of ["document-cache.mjs", "journey-contract-cache.mjs"]) {
+      await assert.rejects(
+        readFile(`${generatedRoot}/bos-mcp-client/scripts/${privateScript}`, "utf8"),
+        (error) => error?.code === "ENOENT",
+        `${generatedRoot}/${privateScript}`
+      );
+    }
     for (const script of [
       "bosl-authoring.mjs",
       "journey-presentation.mjs",
@@ -93,6 +92,10 @@ test("BOS alone packages the external dependency adapter seam", async () => {
     `${canonicalRoot}/scripts/external-dependency-adapter.mjs`,
     "utf8"
   );
+  const canonicalDiscoveredOperationSchema = await readFile(
+    `${canonicalRoot}/scripts/discovered-operation-request.schema.mjs`,
+    "utf8"
+  );
   for (const generatedRoot of generatedRoots) {
     assert.equal(
       await readFile(`${generatedRoot}/bos-external-dependency-adapter/SKILL.md`, "utf8"),
@@ -108,6 +111,13 @@ test("BOS alone packages the external dependency adapter seam", async () => {
         "utf8"
       ),
       canonicalScript
+    );
+    assert.equal(
+      await readFile(
+        `${generatedRoot}/bos-external-dependency-adapter/scripts/discovered-operation-request.schema.mjs`,
+        "utf8"
+      ),
+      canonicalDiscoveredOperationSchema
     );
   }
   for (const generatedRoot of educationCenterRoots) {
@@ -299,6 +309,13 @@ test("extracted BOS archive executes Draft 2020-12 journey helpers without repos
     "-d",
     extracted
   ]);
+  for (const privateScript of ["document-cache.mjs", "journey-contract-cache.mjs"]) {
+    await assert.rejects(
+      readFile(join(extracted, "bos-mcp-client", "scripts", privateScript)),
+      (error) => error?.code === "ENOENT",
+      `${privateScript} must remain host-owned and absent from the public archive`
+    );
+  }
   const scripts = join(extracted, "bos-workflow-orchestrator", "scripts");
   const ajvLicense = await readFile(join(scripts, "vendor", "AJV-LICENSE.txt"), "utf8");
   assert.match(ajvLicense, /Copyright \(c\) 2015-2021 Evgeny Poberezkin/);
@@ -348,30 +365,21 @@ test("extracted BOS archive executes Draft 2020-12 journey helpers without repos
     body: "{}"
   });
   const contextHandle = `bos_ctx_v2_${"c".repeat(64)}`;
-  assert.deepEqual(runtime.buildDiscoveredOperationRequest({
-    operation: "calendar.events.search",
-    status: "described",
-    execution: {
-      context_header: "X-BOS-Context-Handle",
-      method: "POST",
-      transport: null,
-      uri: "/bos/apps/lead-director/api/v1/organizations/example/calendar/events/search"
-    },
-    input_schema: {
-      $schema: "https://json-schema.org/draft/2020-12/schema",
-      type: "object",
-      required: ["query"],
-      properties: { query: { type: "string" } },
-      additionalProperties: false
-    }
-  }, contextHandle, { query: "recent meeting" }), {
+  const authoritativeDescribe = JSON.parse(await readFile(
+    `${root}/tests/fixtures/public-contracts/lead-director/v1/describe.response.example.json`,
+    "utf8"
+  ));
+  const describedOperation = authoritativeDescribe.operations.find(
+    ({operation, status}) => operation === "search" && status === "described"
+  );
+  assert.deepEqual(runtime.buildDiscoveredOperationRequest(describedOperation, contextHandle, { text: "David Ransom" }), {
     method: "POST",
-    href: "/bos/apps/lead-director/api/v1/organizations/example/calendar/events/search",
+    href: describedOperation.execution.uri,
     headers: {
       "content-type": "application/json",
       "X-BOS-Context-Handle": contextHandle
     },
-    body: JSON.stringify({ query: "recent meeting" })
+    body: JSON.stringify({ text: "David Ransom" })
   });
   const lifecycleAction = {
     verb: "state",
@@ -424,6 +432,12 @@ test("extracted BOS archive executes Draft 2020-12 journey helpers without repos
       })
     }
   });
+  assert.equal((await adapter.invokeDiscoveredOperation(
+    describedOperation,
+    { text: "David Ransom" }
+  )).status, 200);
   assert.equal((await adapter.invokeStateAction(lifecycleAction)).status, 200);
   assert.equal(adapterRequests[0].headers["X-BOS-Context-Handle"], contextHandle);
+  assert.equal(adapterRequests[0].href, describedOperation.execution.uri);
+  assert.equal(adapterRequests[1].headers["X-BOS-Context-Handle"], contextHandle);
 });

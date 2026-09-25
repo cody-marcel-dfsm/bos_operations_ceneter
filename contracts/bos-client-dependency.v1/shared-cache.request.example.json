@@ -1,0 +1,23 @@
+{
+  "schema_version": "bos.shared-cache-consumer/v1",
+  "source": {
+    "platform": "bos",
+    "application": "lead-director",
+    "plugin": "calendar-service"
+  },
+  "query": {
+    "operation": "calendar.events.search",
+    "resource_kind": "calendar-event",
+    "selector": {"calendar": "primary"},
+    "descriptor_token": "current-descriptor-token"
+  },
+  "window": {
+    "from": "2026-09-24T00:00:00.000Z",
+    "through": "2026-09-25T00:00:00.000Z"
+  },
+  "refresh_through": "2026-09-24T18:00:00.000Z",
+  "freshness_policy": {
+    "max_age_seconds": 86400,
+    "allow_stale_on_error": false
+  }
+}

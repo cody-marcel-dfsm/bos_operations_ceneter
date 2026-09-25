@@ -1,11 +1,12 @@
 # Journey contract cache protocol
 
-The packaged `scripts/journey-contract-cache.mjs` helper uses the shared BOS
-document-cache root and a private journey-contract partition. Call it only after
-fresh BOS context validation. Supply server-derived organization, application,
+The native BOS host uses its shared document-cache root and a private
+journey-contract partition. This low-level capability is not packaged as an
+installed skill script. The host calls it only after fresh BOS context
+validation and privately supplies server-derived organization, application,
 installation, role, authenticated user, opaque authority partition, and current
-connection generation. These values are private cache input and never appear in
-diagnostics or user output.
+connection generation. These values never appear in public client input,
+diagnostics, or user output.
 
 Cache only authenticated BOSL schema/reference/examples resources and complete
 individual `service.describe` responses. Key every entry by the full authority,

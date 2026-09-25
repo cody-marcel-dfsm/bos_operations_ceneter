@@ -5,8 +5,8 @@ description: Inspect, refresh, invalidate, and maintain authority-scoped BOS que
 
 # BOS Cache Maintenance
 
-Use `bos-mcp-client/scripts/document-cache.mjs` after validating the live opaque
-BOS context. Read
+Use the ready shared-cache consumer injected by the installed BOS host after
+validating the live opaque BOS context. Read
 [references/maintenance-contract.md](references/maintenance-contract.md) before
 an explicit cache inspection, invalidation, or stale-refresh operation.
 
@@ -33,8 +33,8 @@ all indexes owned by that revoked authority through the managed host lifecycle.
 Cache maintenance changes data reuse only. It grants no server authority and
 never supplies data to a context that fails current authorization.
 
-For Agent-Driven Custom Journey authoring contracts, use
-`bos-mcp-client/scripts/journey-contract-cache.mjs`. Keep `app.describe` live.
+For Agent-Driven Custom Journey authoring contracts, use the host-injected
+contract-cache capability. Keep `app.describe` live.
 Allow exact linked-resource, selected structured plugin/service, current
 application, and complete current-authority invalidation only. A reconnect,
 authority-partition change, selected context change, descriptor-token change,

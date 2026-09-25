@@ -46,6 +46,26 @@ The recognized packaged trigger list is exact and ordered:
 `PROVIDER_AUTHORIZATION_REQUIRED`. A future structured condition can still be
 delegated when it supplies a valid category, code, and source.
 
+## Discovered operation invocation
+
+Call `invokeDiscoveredOperation(contact, payload?)` with the complete current
+operation descriptor returned by authenticated Describe. The adapter accepts
+the complete closed envelope—operation, status, effect, limits, guarantees,
+execution, input and output schemas, error contract, and sources—without a
+client-authored projection. It accepts only a `described` deterministic HTTPS
+operation with the published
+`X-BOS-Context-Handle` binding and validates the payload against its
+`input_schema`. `GET` is bodyless; every other advertised HTTPS method requires
+that payload. It obtains a fresh identity-v2 context internally, invokes the
+advertised method and origin-relative URI through the existing host transport,
+and returns a sanitized response. Legacy identity-v1 execution remains
+header-free. Authentication recovery uses the same single bounded BOS-owned
+cycle as returned actions.
+
+The external caller supplies no route, context handle, authority selector,
+token, retry identity, or provider mapping. Journey-runtime operations use the
+returned-action methods.
+
 ## Journey action invocation
 
 The dependency-facing product supplies the exact origin-relative returned

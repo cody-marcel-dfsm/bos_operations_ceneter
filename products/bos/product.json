@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.117",
+  "version": "0.4.118",
   "release_status": "active",
   "display_name": "BOS Platform",
   "description": "Run deterministic workflows across a federated agentic service mesh.",
