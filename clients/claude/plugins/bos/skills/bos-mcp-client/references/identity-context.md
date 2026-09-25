@@ -8,17 +8,22 @@ retains its exact grant boundary and never gains multi-context authority.
 
 ## Setup and customer defaults
 
-One OS user's BOS-family clients share the customer-owned preference file
-managed by `scripts/customer-preferences.mjs`: macOS Application Support/BOS,
-Windows AppData/BOS, or Linux XDG config/BOS. This file lives outside managed
-plugin caches. Read it with the helper's `read` command. It contains only
-`bos.customer-preferences/v1` and `default_context` matching preferences:
+Each installed plugin has its own customer-owned preference file managed by
+`scripts/customer-preferences.mjs` below macOS Application Support/BOS/plugins,
+Windows AppData/BOS/plugins, or Linux XDG config/BOS/plugins. These files live
+outside managed plugin caches. Read the calling plugin's file with `read
+<plugin-name>` and write it with `save <plugin-name>`. Each contains only
+`bos.plugin-customer-preferences/v1`, its matching `plugin_name`, and
+`default_context` matching preferences:
 `organization_name`, optional `installation_name`, and optional `role_label`.
 Each value matches the corresponding safe label in fresh discovery as intent
 only. The reader converts an existing inert `role_code` preference to
 `role_label` in memory for upgrade compatibility, leaves the existing file
 untouched, and still requires an exact fresh label match before use.
 No setting grants access, and account changes require fresh authorized matching.
+Never read another plugin's default, fall back to it, or copy it as a substitute.
+An explicit task-scoped selection replaces the calling plugin's saved fields for
+that request and leaves every saved plugin preference unchanged.
 
 During product setup, propose the default from current authorized discovery and
 confirmed customer information. Include it in the consolidated recommendation.
@@ -28,12 +33,12 @@ Use the sole server-returned `is_default` choice when several eligible roles
 share the selected organization, application, and installation. A lower-role
 selection remains explicit and task-local. Never inspect or infer a privilege
 rank. After confirmation, use the helper's
-`save` command with the preference JSON on standard input and re-read it. Product
-upgrades preserve this external file. Product-specific customer overlays may
-mirror the preference for setup; the shared store is authoritative for runtime.
-Repair conflicting mirrors from the shared confirmed value. If only a confirmed
-valid overlay mirror exists, restore the shared store after fresh authorized
-matching without asking again. Never silently
+`save <plugin-name>` command with the preference JSON on standard input and
+re-read it. Product upgrades preserve this external file. A product-specific
+customer overlay may mirror only that same plugin's preference for setup.
+Repair conflicting mirrors from that plugin's confirmed value. If only a
+confirmed valid overlay mirror exists, restore that plugin's external file after
+fresh authorized matching without asking again. Never silently
 promote organization display text or a one-request selection to a saved default.
 
 For BOS without a product initializer, establish this preference through
@@ -43,15 +48,17 @@ Control-plane status may use an explicit request without initializing unrelated
 product fields. If persistence is unavailable, retain the explicit scope for the
 current request and report that saving the default remains incomplete.
 
-The reader also accepts the previously confirmed `bos-client-preferences/v1`
-file when the new file is absent. It reads the historical platform-native
+For the `bos` plugin only, the reader also accepts the previously confirmed
+shared `bos.customer-preferences/v1` file and `bos-client-preferences/v1` file
+when the new BOS plugin file is absent. It reads the historical platform-native
 `ai.dfsm.bos/client-preferences/v1/preferences.json` path (Windows:
 `DFSM/BOS/client-preferences/v1/preferences.json`) or its absolute
 `BOS_CLIENT_PREFERENCES_DIR` override. It converts only the confirmed organization
 label in memory, leaves the legacy file untouched, and still requires fresh
 live authorized matching. Reuse that organization without asking again; resolve
 any remaining installation/role ambiguity separately. Invalid or unauthorized
-legacy values require repair and never trigger silent fallback.
+legacy values require repair and never trigger silent fallback. A dependent
+plugin never inherits either historical BOS default.
 
 ## Resolve and execute
 
@@ -59,7 +66,7 @@ legacy values require repair and never trigger silent fallback.
 2. Match the required safe `application_name` and any explicit
    organization/installation/role label first.
    An explicit context request replaces all saved context fields for that task.
-   Otherwise match the shared confirmed default. With no default, use an exact
+   Otherwise match the calling plugin's confirmed default. With no default, use an exact
    previously established scope for the pending request or the sole authorized
    context; establish the persistent default separately during setup.
 3. Use `scripts/context-selection.mjs`'s `resolveContext` when executable, or

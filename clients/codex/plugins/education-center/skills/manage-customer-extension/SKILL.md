@@ -16,8 +16,8 @@ after every required stage is current.
 First validate the customer-owned `config/customer-settings.json` against
 `config/customer-settings.template.json`. Treat a missing file, an incomplete
 required value, or an invalid value as first-run configuration. Also migrate a
-missing/invalid `default_context` or missing/invalid shared BOS customer
-preference store. Restore a confirmed valid mirror without asking again;
+missing/invalid `default_context` or missing/invalid product-specific BOS
+customer preference store. Restore a confirmed valid mirror for this plugin without asking again;
 confirm a new default once through the consolidated setup. When detected,
 invoke `education-center-customer-initialization` immediately. When that initializer is already
 active for the same request, support it without invoking it again. Reload and

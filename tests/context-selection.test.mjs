@@ -114,21 +114,26 @@ test('customer settings accepts bounded labels and rejects authority and executa
   assert.deepEqual(validateCustomerSettings(base), []); // Legacy overlays remain readable for setup migration.
 });
 
-test('shared preferences persist outside product roots and survive independent readers', async () => {
+test('plugin preferences persist outside product roots and remain isolated', async () => {
   const { mkdtemp, rm, stat } = await import('node:fs/promises');
   const { tmpdir } = await import('node:os');
   const { join } = await import('node:path');
-  const { savePreferences, readPreferences } = await import('../source/platform/bos-mcp-client/scripts/customer-preferences.mjs');
+  const { savePluginPreferences, readPluginPreferences } = await import('../source/platform/bos-mcp-client/scripts/customer-preferences.mjs');
   const root = await mkdtemp(join(tmpdir(), 'bos-default-test-'));
   try {
-    const path = join(root, 'BOS', 'customer-preferences.json');
-    assert.equal(await readPreferences(path), null);
-    await savePreferences({ organization_name: 'North', role_label: 'Staff' }, path);
-    assert.equal((await readPreferences(path)).default_context.organization_name, 'North');
-    assert.equal((await stat(path)).mode & 0o777, 0o600);
-    await assert.rejects(savePreferences({ organization_name: 'North', context_handle: 'stale' }, path));
-    assert.equal((await readPreferences(path)).default_context.role_label, 'Staff');
-    await assert.rejects(savePreferences({ organization_name: 'North', role_code: 'staff' }, path));
+    const bosPath = join(root, 'BOS', 'plugins', 'bos', 'customer-preferences.json');
+    const crmPath = join(root, 'BOS', 'plugins', 'my-crm', 'customer-preferences.json');
+    assert.equal(await readPluginPreferences('bos', bosPath, []), null);
+    assert.equal(await readPluginPreferences('my-crm', crmPath, []), null);
+    await savePluginPreferences('bos', { organization_name: 'North', role_label: 'Staff' }, bosPath);
+    await savePluginPreferences('my-crm', { organization_name: 'South' }, crmPath);
+    assert.equal((await readPluginPreferences('bos', bosPath, [])).default_context.organization_name, 'North');
+    assert.equal((await readPluginPreferences('my-crm', crmPath, [])).default_context.organization_name, 'South');
+    await assert.rejects(readPluginPreferences('bos', crmPath, []), /Invalid customer preferences/);
+    assert.equal((await stat(bosPath)).mode & 0o777, 0o600);
+    assert.equal((await stat(crmPath)).mode & 0o777, 0o600);
+    await assert.rejects(savePluginPreferences('my-crm', { organization_name: 'South', context_handle: 'stale' }, crmPath));
+    await assert.rejects(savePluginPreferences('../escape', { organization_name: 'South' }, crmPath));
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
@@ -141,8 +146,8 @@ test('active Education Center composition detects default migration on every cli
   ]) {
     const guidance = await readFile(`${path}/skills/crm-record-operations/SKILL.md`, 'utf8');
     assert.match(guidance, /missing\/invalid `default_context`/);
-    assert.match(guidance, /missing\/invalid shared BOS customer/);
-    assert.match(guidance, /confirmed valid mirror without asking again/);
+    assert.match(guidance, /missing\/invalid product-specific BOS/);
+    assert.match(guidance, /confirmed valid mirror for this plugin without asking again/);
     assert.match(guidance, /optional plugin-profile setup tools do not block an independently advertised/);
     assert.match(guidance, /preserve operation-specific readiness requirements/);
     const metadata = JSON.parse(await readFile(`${path}/.bos-product.json`, 'utf8'));
@@ -168,6 +173,25 @@ test('legacy confirmed organization survives upgrade without rewriting its file'
     await rm(current);
     await writeFile(legacy, original.replace('bos-client-preferences/v1', 'unknown'));
     await assert.rejects(readPreferences(current, legacy));
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('legacy shared preference migrates only to the BOS plugin namespace', async () => {
+  const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { readPluginPreferences } = await import('../source/platform/bos-mcp-client/scripts/customer-preferences.mjs');
+  const root = await mkdtemp(join(tmpdir(), 'bos-shared-default-'));
+  try {
+    const missingBos = join(root, 'plugins', 'bos', 'customer-preferences.json');
+    const missingCrm = join(root, 'plugins', 'my-crm', 'customer-preferences.json');
+    const shared = join(root, 'customer-preferences.json');
+    await writeFile(shared, JSON.stringify({
+      schema_version: 'bos.customer-preferences/v1',
+      default_context: { organization_name: 'North' }
+    }));
+    assert.equal((await readPluginPreferences('bos', missingBos, [shared])).default_context.organization_name, 'North');
+    assert.equal(await readPluginPreferences('my-crm', missingCrm, []), null);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
