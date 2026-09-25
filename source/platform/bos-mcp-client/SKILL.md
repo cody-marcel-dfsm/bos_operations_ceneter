@@ -7,6 +7,10 @@ description: Operate the BOS platform MCP connection, including server-evaluated
 For live `bos-identity-mcp/v2`, first apply [identity-context compatibility](references/identity-context.md).
 Its fresh authorized-context selection and saved-default rules govern this
 workflow; single-context grant wording below applies to legacy discovery.
+Resolve unscoped work with the calling plugin's customer preference namespace:
+`bos` for BOS requests and the dependent plugin's package name for delegated
+requests. An explicit organization selection for the task takes precedence.
+Never substitute a default saved by another plugin.
 # BOS MCP Client
 
 Before a business mutation, apply

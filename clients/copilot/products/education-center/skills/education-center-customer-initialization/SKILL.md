@@ -59,12 +59,13 @@ secrets.
 ## Default operating context
 
 Setup also establishes the default organization used when a request omits one.
-Use the shared `bos-mcp-client` identity-context workflow and customer preference
-store described in `references/identity-context.md` in that skill. A missing
+Use the `bos-mcp-client` identity-context workflow and the `education-center`
+plugin customer preference namespace described in `references/identity-context.md`
+in that skill. A missing
 `default_context` is a setup migration even when the five display fields are valid.
-If the shared store is missing and the overlay has a valid confirmed default,
-restore the shared store from that mirror after fresh authorized matching; no
-new confirmation is needed. If the shared store already has a confirmed default,
+If the plugin store is missing and the overlay has a valid confirmed default,
+restore the plugin store from that mirror after fresh authorized matching; no
+new confirmation is needed. If the plugin store already has a confirmed default,
 use it to repair a missing or stale overlay mirror.
 Keep display identity and execution preference separate. Propose the existing
 organization display name only when it matches current authorized discovery;
@@ -75,11 +76,11 @@ by privilege rank. An explicit organization choice for a single task does not
 establish a persistent default.
 
 After confirmation, persist `default_context` with `organization_name`, optional
-`installation_name`, and optional `role_label` in the customer overlay and shared
-BOS customer preference store. Values are inert matching preferences; store no
+`installation_name`, and optional `role_label` in the customer overlay and the
+`education-center` BOS customer preference store. Values are inert matching preferences; store no
 context handle, authority ID, rank, capability, or token. Re-read both and validate against fresh
 context discovery before reporting setup complete. Upgrades preserve these
-customer-owned values. A failed shared-store write leaves setup incomplete.
+customer-owned values. A failed plugin-store write leaves setup incomplete.
 
 ## Derivation order
 
