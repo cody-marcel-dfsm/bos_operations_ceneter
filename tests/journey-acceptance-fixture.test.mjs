@@ -11,6 +11,9 @@ import {
   interpretJourneyResponse,
   validateRegistrationResponse
 } from "../source/platform/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs";
+import {syntheticIdentity} from "../scripts/lib/synthetic-fixtures.mjs";
+
+const syntheticAttendee = syntheticIdentity("journey-acceptance");
 
 const fixture = JSON.parse(await readFile(
   new URL("./fixtures/agent-driven-custom-journey.json", import.meta.url),
@@ -70,7 +73,7 @@ test("approved journey transcript validates and follows only returned actions", 
 test("approved executable fixture contains only the controlled attendee", () => {
   const serialized = JSON.stringify(fixture);
   const addresses = serialized.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) ?? [];
-  assert.deepEqual([...new Set(addresses)], ["cody.marcel@dfsm.ai"]);
+  assert.deepEqual([...new Set(addresses)], [syntheticAttendee.email]);
 });
 
 test("fixture has no client-generated or server-internal journey fields", () => {

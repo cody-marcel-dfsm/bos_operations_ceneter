@@ -1,6 +1,6 @@
 {
   "name": "bos-operations-center",
-  "version": "0.4.118",
+  "version": "0.4.119",
   "private": false,
   "description": "Cross-client source repository for Education Center Agent Skills.",
   "author": "Infinite State Machines LLC",
@@ -11,13 +11,15 @@
     "build:schema-validator": "node scripts/build-json-schema-meta-validator.mjs",
     "build:journey-runtime": "node scripts/build-journey-runtime-dependencies.mjs",
     "build:client-dependency-contract": "node scripts/build-bos-client-dependency-contract.mjs",
+    "build:synthetic-fixtures": "node scripts/generate-synthetic-fixtures.mjs",
     "check:schema-validator": "node scripts/build-json-schema-meta-validator.mjs --check",
     "check:journey-runtime": "node scripts/build-journey-runtime-dependencies.mjs --check",
     "check:client-dependency-contract": "node scripts/build-bos-client-dependency-contract.mjs --check",
-    "build:packages": "npm run build:schema-validator && npm run build:journey-runtime && npm run build:client-dependency-contract && node scripts/build-packages.mjs",
+    "build:packages": "npm run build:synthetic-fixtures && npm run build:schema-validator && npm run build:journey-runtime && npm run build:client-dependency-contract && node scripts/build-packages.mjs",
     "build": "npm run build:packages",
     "check": "npm run check:schema-validator && npm run check:journey-runtime && npm run check:client-dependency-contract && node scripts/check-package.mjs",
     "check:publication": "node scripts/check-publication-safety.mjs",
+    "check:privacy": "node scripts/check-customer-data.mjs",
     "contract:check": "node scripts/verify-product-mcp-contract.mjs --format json",
     "contract:lead-director:import": "node scripts/import-lead-director-public-contract.mjs",
     "contract:oauth-discovery-live": "node scripts/verify-bos-auth-discovery-live.mjs",
@@ -48,7 +50,7 @@
     "release": "npm run release:check",
     "test": "node --test tests/*.test.mjs",
     "test:authentication": "node --test tests/bos-oauth-live-contract.test.mjs tests/codex-login-surface-contract.test.mjs tests/codex-request-time-login-surface.test.mjs tests/external-authentication-handoff.test.mjs tests/external-dependency-adapter.test.mjs tests/product-mcp-contract.test.mjs tests/codex-runtime-verification.test.mjs tests/installer.test.mjs",
-    "release:check": "npm run build && npm run check && npm run contract:check && npm test"
+    "release:check": "npm run build && npm run check && npm run check:privacy && npm run contract:check && npm test"
   },
   "engines": {
     "node": ">=20"

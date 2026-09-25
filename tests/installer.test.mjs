@@ -60,7 +60,7 @@ const customerSettings = {
     center_name: "Example Center",
     address: "100 Example Avenue",
     billing_contact_name: "Accounts Receivable",
-    phone_number: "5550100200",
+    phone_number: "2025550142",
     invoice_reference_prefix: "EXAMPLE_",
     bright_horizons_rate_per_child_day: 100
   }
@@ -740,7 +740,7 @@ test("customer extension composes a base skill and survives package apply", asyn
     home,
     product: "bos",
     baseSkill: "planning",
-    site: "cherry-creek"
+    site: "synthetic-tenant-7f3a91"
   });
   const extensionSkill = join(created.path, "SKILL.md");
   const before = await readFile(extensionSkill, "utf8");
@@ -749,12 +749,12 @@ test("customer extension composes a base skill and survives package apply", asyn
   const inspected = await inspectInstallation({ home, product: "bos" });
   assert.deepEqual(inspected.extensions, [
     {
-      name: "planning-cherry-creek",
+      name: "planning-synthetic-tenant-7f3a91",
       product: "bos",
       skill: "planning",
       tested_version: created.tested_version,
       schema_version: "2",
-      tenant: "cherry-creek"
+      tenant: "synthetic-tenant-7f3a91"
     }
   ]);
   assert.deepEqual(inspected.warnings, []);
@@ -770,7 +770,7 @@ test("customer extension reports base version compatibility warnings", async () 
     home,
     product: "bos",
     baseSkill: "planning",
-    site: "cherry-creek"
+    site: "synthetic-tenant-7f3a91"
   });
   const manifestPath = join(created.path, ".bos-extension.json");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
@@ -779,7 +779,7 @@ test("customer extension reports base version compatibility warnings", async () 
 
   const report = await inspectInstallation({ home, product: "bos" });
   assert.deepEqual(report.warnings, [
-    `planning-cherry-creek: tested with 0.1.0; installing ${created.tested_version}`
+    `planning-synthetic-tenant-7f3a91: tested with 0.1.0; installing ${created.tested_version}`
   ]);
 });
 

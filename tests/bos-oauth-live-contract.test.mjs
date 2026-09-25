@@ -831,6 +831,12 @@ test("BOS OAuth live contract follows the secure login handoff to Google", async
   assert.equal(calls[2].init.headers["sec-fetch-site"], "same-origin");
 });
 
+const embeddedCredentialsTarget = new URL(
+  "/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=opaque",
+  CANONICAL_AUTHORIZATION_ENDPOINT
+);
+embeddedCredentialsTarget.username = "synthetic-user";
+
 for (const [label, target, expected] of [
   ["canonical link", "/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=opaque", "passed"],
   ["different transaction", "/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=other", "failed"],
@@ -839,7 +845,7 @@ for (const [label, target, expected] of [
   ["foreign origin", "https://wrong.example/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=opaque", "failed"],
   ["wrong path", "/other?agent_auth_transaction=opaque", "failed"],
   ["fragment", "/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=opaque#fragment", "failed"],
-  ["embedded credentials", "https://user@dfsm.ai/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=opaque", "failed"]
+  ["embedded credentials", embeddedCredentialsTarget.href, "failed"]
 ]) {
   test(`BOS OAuth live Google link: ${label}`, async () => {
     const google = new URL(CANONICAL_IDENTITY_PROVIDER_AUTHORIZATION_ENDPOINT);

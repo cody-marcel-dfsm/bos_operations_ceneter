@@ -12,10 +12,11 @@ import Ajv2020 from "ajv/dist/2020.js";
 
 import { inspectCodexRuntime } from "./verify-codex-runtime.mjs";
 import { root, stableJson } from "./lib/package-model.mjs";
+import { syntheticIdentity } from "./lib/synthetic-fixtures.mjs";
 
 const execFileAsync = promisify(execFile);
 
-export const CONTROLLED_ATTENDEE = "cody.marcel@dfsm.ai";
+export const CONTROLLED_ATTENDEE = syntheticIdentity("journey-acceptance").email;
 export const LIVE_EVIDENCE_CONTRACT = "boc-agent-driven-journey-live-evidence/v1";
 export const NATIVE_RESULT_CONTRACT = "boc-agent-driven-journey-native-result/v1";
 

@@ -6,6 +6,9 @@ import {
   createRegistrationDocument,
   validateBoslDocument
 } from "../source/platform/bos-workflow-orchestrator/scripts/bosl-authoring.mjs";
+import {syntheticIdentity} from "../scripts/lib/synthetic-fixtures.mjs";
+
+const syntheticAttendee = syntheticIdentity("journey-acceptance");
 
 const publishedSchema = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -48,7 +51,7 @@ const graph = {
   identity: "approved-fixture",
   name: "Approved fixture",
   inputs: {
-    recipients: [{ email: "cody.marcel@dfsm.ai" }]
+    recipients: [{ email: syntheticAttendee.email }]
   },
   entry: "materialize",
   nodes: [

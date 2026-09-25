@@ -29,6 +29,7 @@ import {
 import {
   productRuntimeOwnershipMetadata
 } from "../scripts/lib/product-contracts.mjs";
+import {customerDataFindings} from "../scripts/check-customer-data.mjs";
 
 const execFileAsync = promisify(execFile);
 const privateVaultAvailable = await pathExists(`${root}/Vault/docs/architecture.md`);
@@ -41,18 +42,14 @@ test("canonical distributable skills contain no customer-specific settings", asy
   const files = (await walkFiles(`${root}/source`)).filter((path) =>
     /\/(platform|capabilities|verticals)\//.test(path)
   );
-  const forbidden = [
-    /cody(?:\.|'s|\b)/i,
-    /cherry\s*creek/i,
-    /cody\.marcel@/i,
-    /760\s+s\s+colorado/i,
-    /7206042442/,
-    /America\/Denver/
-  ];
+  const blockedDigests = new Set((await readFile(
+    `${root}/privacy/customer-identifiers.sha256`,
+    "utf8"
+  )).split(/\s+/u).filter(Boolean));
   const failures = [];
   for (const path of files) {
     const content = await readFile(path, "utf8");
-    if (forbidden.some((pattern) => pattern.test(content))) failures.push(path);
+    if (customerDataFindings(content, path, blockedDigests).length) failures.push(path);
   }
   assert.deepEqual(failures, []);
 });
@@ -1347,8 +1344,9 @@ test("Bright Horizons report prompts deterministically generate the reimbursemen
   assert.match(contract, /Calimatic-only[\s\S]*provider-confirmed[\s\S]*unresolved/i);
   assert.match(contract, /row\.rate_per_day[\s\S]*50%/i);
   assert.match(contract, /attached final[\s\S]*`\.xlsx` workbook/i);
-  assert.match(operatingRules, /brighthorizonsenrollments@calimatic\.com/i);
-  assert.match(operatingRules, /providerbilling@brighthorizons\.com/i);
+  assert.match(operatingRules, /tenant-configured provider route/i);
+  assert.match(operatingRules, /configured provider billing\s+route/i);
+  assert.doesNotMatch(operatingRules, /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
   assert.match(operatingRules, /two business days[\s\S]*5:00\s+p\.m\./i);
   assert.match(operatingRules, /mark[\s\S]*paid only after[\s\S]*funds/i);
   assert.match(operatingRules, /each business day[\s\S]*dated export|normalized\s+snapshot/i);
@@ -2335,7 +2333,7 @@ test("README routes customer, development, and credential-free release validatio
   assert.equal(repositoryPackage.scripts.build, "npm run build:packages");
   assert.equal(
     repositoryPackage.scripts["release:check"],
-    "npm run build && npm run check && npm run contract:check && npm test"
+    "npm run build && npm run check && npm run check:privacy && npm run contract:check && npm test"
   );
   assert.equal(
     repositoryPackage.scripts["acceptance:post-release"],
@@ -2552,12 +2550,7 @@ test("Oracle is repository-local and excluded from customer packages", async () 
 });
 
 test("migrated BOS personal workflows are canonical and generated for every applicable client", async () => {
-  const customerMarkers = new RegExp([
-    "/Users/" + "cody",
-    "cody" + "\\.marcel",
-    "i" + "Code Cherry Creek",
-    "M" + "Asset Holdings"
-  ].join("|"));
+  const customerMarkers = /(?:\/Users\/[A-Za-z0-9._-]+|@[A-Za-z0-9.-]+\.(?!example\b|invalid\b|test\b)[A-Za-z]{2,})/iu;
   const bosSkills = [
     "bos-visual-output",
     "campaign-offer-marketing-sales",

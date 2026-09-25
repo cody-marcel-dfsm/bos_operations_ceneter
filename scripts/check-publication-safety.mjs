@@ -26,6 +26,7 @@ export const allowedTopLevelPaths = new Set([
   "package-lock.json",
   "package.json",
   "products",
+  "privacy",
   "scripts",
   "source",
   "tests",

@@ -224,7 +224,7 @@ test("discovered operation invocation validates and binds current context privat
   });
   const response = await current.invokeDiscoveredOperation(
     discoveredOperation,
-    { text: "David Ransom" }
+    { text: "Synthetic Contact 7F3A91" }
   );
   assert.deepEqual(requests, [{
     method: "POST",
@@ -233,7 +233,7 @@ test("discovered operation invocation validates and binds current context privat
       "content-type": "application/json",
       "X-BOS-Context-Handle": handle("a")
     },
-    body: JSON.stringify({ text: "David Ransom" })
+    body: JSON.stringify({ text: "Synthetic Contact 7F3A91" })
   }]);
   assert.deepEqual(response, { status: 200, body: { records: [] } });
   assert.equal(JSON.stringify(response).includes("context_handle"), false);
@@ -244,18 +244,18 @@ test("discovered operation invocation requires the complete authoritative Descri
   const {effect, limits, guarantees, output_schema, error_contract, sources, ...reduced} =
     discoveredOperation;
   await assert.rejects(
-    current.invokeDiscoveredOperation(reduced, {text: "David Ransom"}),
+    current.invokeDiscoveredOperation(reduced, {text: "Synthetic Contact 7F3A91"}),
     /immutable public schema/
   );
   assert.deepEqual(
-    await current.invokeDiscoveredOperation(discoveredOperation, {text: "David Ransom"}),
+    await current.invokeDiscoveredOperation(discoveredOperation, {text: "Synthetic Contact 7F3A91"}),
     {status: 200, body: {status: "step_completed"}}
   );
   const authoritativeSearch = authoritativeDescribe.operations.find(
     ({operation, status}) => operation === "search" && status === "described"
   );
   assert.deepEqual(
-    await current.invokeDiscoveredOperation(authoritativeSearch, {text: "David Ransom"}),
+    await current.invokeDiscoveredOperation(authoritativeSearch, {text: "Synthetic Contact 7F3A91"}),
     {status: 200, body: {status: "step_completed"}}
   );
 });
@@ -269,14 +269,14 @@ test("discovered operation invocation rejects routes, schemas, and private calle
   await assert.rejects(
     current.invokeDiscoveredOperation(
       { ...discoveredOperation, execution: { ...discoveredOperation.execution, uri: "https://evil.example/search" } },
-      { text: "David" }
+      { text: "Synthetic Contact" }
     ),
     /immutable public schema/
   );
   await assert.rejects(
     current.invokeDiscoveredOperation(
       { ...discoveredOperation, execution: { ...discoveredOperation.execution, context_header: "X-Authority" } },
-      { text: "David" }
+      { text: "Synthetic Contact" }
     ),
     /immutable public schema/
   );
@@ -288,14 +288,14 @@ test("discovered operation invocation rejects routes, schemas, and private calle
     current.invokeDiscoveredOperation({
       ...discoveredOperation,
       execution: { ...discoveredOperation.execution, context_handle: handle("b") }
-    }, { text: "David" }),
+    }, { text: "Synthetic Contact" }),
     /immutable public schema/
   );
   await assert.rejects(
     current.invokeDiscoveredOperation({
       ...discoveredOperation,
       execution: { ...discoveredOperation.execution, transport: "mcp" }
-    }, { text: "David" }),
+    }, { text: "Synthetic Contact" }),
     /immutable public schema/
   );
   for (const malformed of [
@@ -310,7 +310,7 @@ test("discovered operation invocation rejects routes, schemas, and private calle
     }
   ]) {
     await assert.rejects(
-      current.invokeDiscoveredOperation(malformed, {text: "David"}),
+      current.invokeDiscoveredOperation(malformed, {text: "Synthetic Contact"}),
       /immutable public schema/
     );
   }
@@ -332,7 +332,7 @@ test("discovered operation snapshots validated contact and payload before contex
     }
   });
   const contact = structuredClone(discoveredOperation);
-  const payload = {text: "David Ransom"};
+  const payload = {text: "Synthetic Contact 7F3A91"};
   const pending = current.invokeDiscoveredOperation(contact, payload);
   contact.execution.uri = "/bos/apps/lead-director/api/v1/organizations/{organization}/delete";
   payload.text = "";
@@ -346,7 +346,7 @@ test("discovered operation snapshots validated contact and payload before contex
       "content-type": "application/json",
       "X-BOS-Context-Handle": handle("a")
     },
-    body: JSON.stringify({text: "David Ransom"})
+    body: JSON.stringify({text: "Synthetic Contact 7F3A91"})
   }]);
 });
 
@@ -397,7 +397,7 @@ test("discovered operation authentication recovery is bounded and rebinds fresh 
     getCurrentContext: async () => contextDescriptor(selected++ === 0 ? "a" : "b")
   });
   const contact = structuredClone(discoveredOperation);
-  const payload = {text: "David"};
+  const payload = {text: "Synthetic Contact"};
   const pending = current.invokeDiscoveredOperation(contact, payload);
   await firstRequest;
   contact.execution.uri = "/bos/apps/lead-director/api/v1/organizations/{organization}/delete";
@@ -409,7 +409,7 @@ test("discovered operation authentication recovery is bounded and rebinds fresh 
   assert.equal(requests[0].headers["X-BOS-Context-Handle"], handle("a"));
   assert.equal(requests[1].headers["X-BOS-Context-Handle"], handle("b"));
   assert.equal(requests[1].href, discoveredOperation.execution.uri);
-  assert.equal(requests[1].body, JSON.stringify({text: "David"}));
+  assert.equal(requests[1].body, JSON.stringify({text: "Synthetic Contact"}));
 });
 
 test("legacy discovered operation invocation remains header-free", async () => {
@@ -421,7 +421,7 @@ test("legacy discovered operation invocation remains header-free", async () => {
     },
     getCurrentContext: async () => ({ contract_version: "bos-identity-mcp/v1" })
   });
-  await current.invokeDiscoveredOperation(discoveredOperation, { text: "David" });
+  await current.invokeDiscoveredOperation(discoveredOperation, { text: "Synthetic Contact" });
   assert.deepEqual(requests[0].headers, { "content-type": "application/json" });
 });
 
@@ -580,7 +580,7 @@ test("adapter rejects malformed actions, unsafe origins, private payloads, and c
     current.invokeDiscoveredOperation({
       ...discoveredOperation,
       context_handle: handle("d")
-    }, { text: "David" }),
+    }, { text: "Synthetic Contact" }),
     /immutable public schema/
   );
   await assert.rejects(current.invokeReturnedAction({ ...completeAction, extra: true }, { acknowledged: true }), /unsupported field/);

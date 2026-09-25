@@ -120,6 +120,40 @@ generated-package mutation, or release change:
 `REJECTED` blocks completion. Any corrective repository mutation invalidates a
 prior verdict and requires a fresh Oracle review of the complete updated diff.
 
+### Customer-knowledge firewall
+
+Reject any BOS or dependent-client design, task, implementation, test, fixture,
+example, prompt, log, Vault record, evidence, acceptance target, generated
+package, ZIP, repository/build/install cache, or release artifact that names or
+embeds a real customer, organization, tenant, user, email address, identifier,
+customer-specific operation, or customer data. Client conformance uses
+generated synthetic identities in reserved namespaces and server-advertised
+ephemeral test contexts only. This prohibition does not apply to the canonical
+authority-scoped runtime document cache, which may retain the currently
+authorized user's data only under the existing canonical shared-local-cache
+security and lifecycle contract. Runtime cache contents never become fixtures,
+prompts, Vault records, test evidence, build inputs, package contents, or
+release artifacts.
+
+Treat conversation context and agent handoffs as project-scoped. Customer facts
+learned while coordinating BOS Service or another project cannot be copied into
+BOS Operations Center, Education Center, generated clients, or acceptance work.
+An authorization to use customer data inside its owning service is not an
+authorization to persist it in this repository. Public-contract examples and
+generated packages must remain tenant-neutral, and an imported artifact with
+customer-specific knowledge is rejected at the boundary and returned to its
+owner for republication.
+
+Apply this review before approving designs or implementation tasks as well as
+after code changes. Trace each identity, organization, route example, and live
+acceptance target to a synthetic generator or tenant-neutral public contract.
+Scan tracked, untracked non-ignored, Vault, generated-client, ZIP,
+repository/build/install cache, and installed-package surfaces. Inspect the
+runtime document cache only for partitioning, lifecycle, and non-export
+compliance; do not reject authorized cached business data merely because it is
+customer data. Runtime processing or caching of the currently authorized
+user's data does not permit retaining that data as test or release evidence.
+
 ## Evidence workflow
 
 1. Run `python3 tools/vault_index.py sync --quiet` from this repository root.

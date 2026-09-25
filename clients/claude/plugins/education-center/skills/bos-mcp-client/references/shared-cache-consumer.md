@@ -41,7 +41,7 @@ Every request uses this public identity:
   "query": {
     "operation": "record.search",
     "resource_kind": "organization-described-record",
-    "selector": {"text": "David Ransom"},
+    "selector": {"text": "Synthetic Contact 7F3A91"},
     "descriptor_token": "current Describe token"
   },
   "window": {

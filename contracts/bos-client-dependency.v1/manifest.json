@@ -36,7 +36,7 @@
     {
       "path": "discovered-operation.request.example.json",
       "media_type": "application/json",
-      "sha256": "5ae3c26ffaf4bbc85980d030fb70ca27d2a1f7f3c896f7d57632f3edaa49b72d"
+      "sha256": "8caa38fbe7a1b6b535952459d504fe3dd8b38e41e75a22f12c9c47e3b174a5b8"
     },
     {
       "path": "discovered-operation.request.schema.json",
@@ -74,5 +74,5 @@
       "sha256": "046c4dd184af18af526ed64bd37a75dd316397b3d1437886eb7f57deb5e99d2d"
     }
   ],
-  "bundle_sha256": "68bcd6f543cdd2fb54c774b8943582bb8192a39e2b983d8fa3ebd8f101361592"
+  "bundle_sha256": "591749079a54656c5c8b6ef9c96ce4aa9968cda8ec41b45a17155729eba68fb0"
 }
