@@ -372,14 +372,14 @@ test("extracted BOS archive executes Draft 2020-12 journey helpers without repos
   const describedOperation = authoritativeDescribe.operations.find(
     ({operation, status}) => operation === "search" && status === "described"
   );
-  assert.deepEqual(runtime.buildDiscoveredOperationRequest(describedOperation, contextHandle, { text: "David Ransom" }), {
+  assert.deepEqual(runtime.buildDiscoveredOperationRequest(describedOperation, contextHandle, { text: "Synthetic Contact 7F3A91" }), {
     method: "POST",
     href: describedOperation.execution.uri,
     headers: {
       "content-type": "application/json",
       "X-BOS-Context-Handle": contextHandle
     },
-    body: JSON.stringify({ text: "David Ransom" })
+    body: JSON.stringify({ text: "Synthetic Contact 7F3A91" })
   });
   const lifecycleAction = {
     verb: "state",
@@ -434,7 +434,7 @@ test("extracted BOS archive executes Draft 2020-12 journey helpers without repos
   });
   assert.equal((await adapter.invokeDiscoveredOperation(
     describedOperation,
-    { text: "David Ransom" }
+    { text: "Synthetic Contact 7F3A91" }
   )).status, 200);
   assert.equal((await adapter.invokeStateAction(lifecycleAction)).status, 200);
   assert.equal(adapterRequests[0].headers["X-BOS-Context-Handle"], contextHandle);

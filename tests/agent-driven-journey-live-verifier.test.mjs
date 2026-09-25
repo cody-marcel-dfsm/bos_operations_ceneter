@@ -17,6 +17,9 @@ import {
   validateReleaseTuple
 } from "../scripts/verify-agent-driven-journey-live.mjs";
 import { root } from "../scripts/lib/package-model.mjs";
+import {syntheticIdentity} from "../scripts/lib/synthetic-fixtures.mjs";
+
+const syntheticAttendee = syntheticIdentity("journey-acceptance");
 
 const script = join(root, "scripts", "verify-agent-driven-journey-live.mjs");
 const fixture = join(root, "acceptance", "fixtures", "recent-meeting-follow-up.bosl.json");
@@ -233,7 +236,7 @@ test("native acceptance uses only the installed host-managed BOS connection", as
   assert.equal(evidence.passed, true);
   assert.equal(evidence.native_result.checks.length, 32);
   assert.equal(evidence.observed_at, "2026-09-20T20:00:00.000Z");
-  assert.doesNotMatch(JSON.stringify(evidence), /cody\.marcel@dfsm\.ai|must-never-cross/u);
+  assert.doesNotMatch(JSON.stringify(evidence), /real-customer@production-domain\.invalidated|must-never-cross/u);
 });
 
 test("credential-shaped environment values are never delegated to the verifier task", () => {
@@ -272,7 +275,7 @@ test("canonical fixture has the controlled seed and only sanctioned server opera
   const document = JSON.parse(await readFile(fixture, "utf8"));
   assert.deepEqual(document.inputs.attendees, [{
     email: CONTROLLED_ATTENDEE,
-    display_name: "Cody Marcel",
+    display_name: syntheticAttendee.display_name,
     response_status: "accepted"
   }]);
   const operations = new Set(
@@ -280,7 +283,7 @@ test("canonical fixture has the controlled seed and only sanctioned server opera
   );
   assert.deepEqual(operations, new Set([
     "email_list.materialize",
-    ["i", "code-automated-outreach.templates.resolve"].join(""),
+    "automation.templates.resolve",
     "sendgrid-email.campaign.prepare",
     "sendgrid-email.campaign.send"
   ]));
@@ -329,7 +332,7 @@ test("arguments and release integration are closed; real-send mode fails before 
   ], { cwd: root, encoding: "utf8" });
   assert.equal(result.status, 1);
   assert.match(result.stderr, /automated acceptance requires --provider-mode fake/u);
-  assert.doesNotMatch(result.stderr, /cody\.marcel@dfsm\.ai/u);
+  assert.doesNotMatch(result.stderr, /real-customer@production-domain\.invalidated/u);
 });
 
 test("verifier source contains no direct HTTP or bearer authentication implementation", async () => {

@@ -12,7 +12,9 @@
 
 ## Care.com Job Model
 
-Group messages from `backupcare@marketingsolutions.care.com` by numeric job ID.
+Group messages from the tenant-configured backup-care mailbox route by numeric
+job ID. Resolve the mailbox from current BOS plugin settings; never embed a
+provider or customer address in a skill or package.
 
 - `New Backup Care Job Request ID: <job_id>` plus status `New`: pending; count
   zero child-days.
@@ -57,8 +59,9 @@ Match first on normalized child name plus service date. Use normalized contact e
 
 Report raw source counts separately from reconciled child-days. Multiple Gmail notices for one child/date remain one attendance decision.
 
-Forward confirmations and cancellations to
-`brighthorizonsenrollments@calimatic.com`, then verify the Calimatic result.
+Forward confirmations and cancellations through the tenant-configured provider
+route, then verify the Calimatic result. Resolve the destination from current
+BOS plugin settings; never embed it in a skill or package.
 The Bright Horizons provider message timestamp controls cancellation timing;
 the location's forwarding timestamp is transport evidence only. Missing or
 partial provider cancellation notices remain unresolved until authoritative

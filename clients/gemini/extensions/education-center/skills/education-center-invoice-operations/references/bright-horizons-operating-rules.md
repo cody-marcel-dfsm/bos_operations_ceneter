@@ -42,11 +42,11 @@ identity.
 
 ## Confirmation and cancellation intake
 
-- Forward every Bright Horizons confirmation and cancellation message
-  immediately to `brighthorizonsenrollments@calimatic.com`.
-- This is the shared Calimatic parser address. It is not a location-specific
-  mailbox. Location and care-request identity come from the forwarded provider
-  message and server-side configuration.
+- Forward every Bright Horizons confirmation and cancellation message through
+  the tenant-configured provider route.
+- Resolve that route from current BOS plugin settings. Location and care-request
+  identity come from the forwarded provider message and server-side
+  configuration; no skill or package embeds a mailbox address.
 - A processed confirmation creates or updates the Bright Horizons class,
   family, student, enrollment, and dashboard record. A processed cancellation
   marks the matching record cancelled.
@@ -101,9 +101,9 @@ guessing.
 - Submit each billable child-day within 45 calendar days of the date of care.
   Flag any unsubmitted child-day at 35 days and block a report that would omit
   an older unresolved child-day merely to meet the deadline.
-- Send a completed invoice to `providerbilling@brighthorizons.com` only when
-  the user explicitly requests delivery and the workbook passed every quality
-  check.
+- Send a completed invoice through the currently configured provider billing
+  route only when the user explicitly requests delivery and the workbook
+  passed every quality check.
 - Keep the invoice-generation operation separate from sending, marking paid,
   and repairing Calimatic.
 - Mark Bright Horizons records paid only after ACH, check, or other funds have
