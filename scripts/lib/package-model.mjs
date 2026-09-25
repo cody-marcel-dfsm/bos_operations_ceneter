@@ -679,6 +679,10 @@ export function ownsHostConnection(product) {
   return Boolean(product?.runtime && (product.connection_owner === product.name || (product.release_status === "disabled" && product.connection_owner === undefined)));
 }
 
+export function productLongDescription(product) {
+  return product.long_description ?? product.description;
+}
+
 export function materializeMcpUrl(product) {
   if (!ownsHostConnection(product)) throw new Error("Only the connection owner declares the MCP resource");
   const resourceUrl = product?.mcp_resource_url;
@@ -708,13 +712,13 @@ export function pluginManifest(product) {
   const manifest = {
     name: product.name,
     version: product.version,
-    description: product.description,
+    description: productLongDescription(product),
     author: { name: product.publisher },
     skills: "./skills/",
     interface: {
       displayName: product.display_name,
       shortDescription: product.description.slice(0, 80),
-      longDescription: product.long_description ?? product.description,
+      longDescription: productLongDescription(product),
       developerName: product.publisher,
       category: product.category,
       capabilities: ["Read", "Write"],
@@ -770,7 +774,7 @@ export async function geminiExtensionManifest(product) {
   const manifest = {
     name: product.name,
     version: product.version,
-    description: product.description
+    description: productLongDescription(product)
   };
   if (!ownsHostConnection(product)) return manifest;
 
@@ -789,7 +793,7 @@ export function geminiPluginManifest(product) {
   return {
     $schema: "https://antigravity.google/schemas/v1/plugin.json",
     name: product.name,
-    description: `${product.description} Version ${product.version}.`
+    description: `${productLongDescription(product)} Version ${product.version}.`
   };
 }
 

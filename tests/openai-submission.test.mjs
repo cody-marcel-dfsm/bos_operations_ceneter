@@ -51,6 +51,7 @@ test("every active Codex product owns permanent OpenAI submission source", async
     assert.equal(submission.schema_version, 1, product.name);
     assert.ok(submission.app_info.display_name.length <= 30, product.name);
     assert.ok(submission.app_info.subtitle.length <= 30, product.name);
+    assert.equal(submission.app_info.description, product.long_description, product.name);
     assert.equal(submission.app_info.category, "PRODUCTIVITY", product.name);
     assert.equal(submission.test_cases.length, 5, product.name);
     assert.equal(submission.negative_test_cases.length, 3, product.name);

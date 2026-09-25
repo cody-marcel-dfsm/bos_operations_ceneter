@@ -1,7 +1,7 @@
 {
   "name": "bos",
-  "version": "0.4.119",
-  "description": "Run deterministic workflows across a federated agentic service mesh.",
+  "version": "0.4.120",
+  "description": "BOS is a platform for deterministic automated workflows across an agentic mesh of federated services. It is the required foundation for dependent products and owns the authenticated BOS platform MCP connection. Live identity-context discovery supports server-authorized organization, application, installation, and role selection per operation; legacy scoped grants retain their exact boundaries. BOS coordinates authorized platform operations with server-enforced scope, evidence, and approvals.",
   "mcpServers": {
     "BOS-Platform": {
       "httpUrl": "https://dfsm.ai/mcp/apps/bos/platform",

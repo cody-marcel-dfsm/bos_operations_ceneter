@@ -69,10 +69,12 @@ skill language.
 
 The Business Hours profile declares a weekly schedule type and source roles for
 the client website, organization display name, location display name, and IANA
-timezone. The client website is established during client-settings
-initialization. The research worker extracts structured data, an authoritative
-hours page, a location page, and visible site content in that order. Public
-search is a profile-controlled fallback.
+timezone. Client-settings initialization establishes the official
+location-specific website and records its location-match evidence. A generic
+brand homepage is unresolved when the organization represents a known franchise
+location. The research worker extracts structured data, an authoritative hours
+page, a location page, and visible site content in that order. Public search is
+a profile-controlled fallback.
 
 The review states that BOS has no confirmed value, shows all seven days,
 timezone, sources, freshness, confidence, conflicts, and the exact proposed
