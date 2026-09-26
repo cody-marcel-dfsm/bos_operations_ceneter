@@ -243,6 +243,11 @@ Run the repository-local Oracle remediation loop before committing:
 7. Treat official Anthropic marketplace publication as a separate reviewed submission. A Git commit or pull request does not publish a new official-marketplace version.
 8. Treat OpenAI publication as a separate host lifecycle. The merged commit makes the release available to the tracked Git ref, while private Codex marketplaces still require `codex plugin marketplace upgrade` and public ChatGPT/Codex directory releases still require submission and publication through the OpenAI Platform.
 
+The repository shipment remains incomplete while any release commit exists
+only locally. After merge and cleanup, require local `main` and `origin/main` to
+resolve to the same commit and verify that the complete release branch is
+reachable from remote `main`.
+
 Push existing unpushed commits with the release commit only when they are part of the reviewed release branch and the pull-request target is unambiguous.
 
 ## Restore the default-branch workspace

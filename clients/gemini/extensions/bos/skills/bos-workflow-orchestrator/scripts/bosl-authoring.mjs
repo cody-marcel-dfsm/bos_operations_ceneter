@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 
+import { constants as fsConstants } from "node:fs";
+import { access, lstat, mkdir, open, readFile, rename, rm } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+
 import Ajv2020 from "./vendor/ajv2020.bundle.mjs";
 
 const predicateOperators = new Set([
@@ -46,6 +50,64 @@ const authorityQualifiers = new Set([
 
 function isObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+export function parseBoslDocument(source, { sourceName = "BOSL input" } = {}) {
+  const text = typeof source === "string" ? source : Buffer.from(source).toString("utf8");
+  let document;
+  try {
+    document = JSON.parse(text);
+  } catch (error) {
+    throw new Error(`${sourceName} is not valid JSON: ${error.message}`);
+  }
+  if (!isObject(document)) {
+    throw new Error(`${sourceName} must contain one BOSL object`);
+  }
+  return document;
+}
+
+export function serializeBoslDocument(document) {
+  if (!isObject(document)) throw new Error("BOSL document must be an object");
+  return `${JSON.stringify(document, null, 2)}\n`;
+}
+
+export async function readBoslDocument(path) {
+  const absolute = resolve(path);
+  const status = await lstat(absolute);
+  if (status.isSymbolicLink() || !status.isFile()) {
+    throw new Error("BOSL source must be an ordinary file");
+  }
+  return parseBoslDocument(await readFile(absolute), { sourceName: absolute });
+}
+
+export async function writeBoslDocument(path, document, options = {}) {
+  const absolute = resolve(path);
+  const validated = createRegistrationDocument(document, options);
+  const payload = serializeBoslDocument(validated);
+  await mkdir(dirname(absolute), { recursive: true });
+  try {
+    const status = await lstat(absolute);
+    if (status.isSymbolicLink() || !status.isFile()) {
+      throw new Error("BOSL destination must be an ordinary file");
+    }
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+  const temporary = `${absolute}.tmp-${process.pid}-${Date.now()}`;
+  let handle;
+  try {
+    handle = await open(temporary, fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_WRONLY, 0o600);
+    await handle.writeFile(payload, "utf8");
+    await handle.sync();
+    await handle.close();
+    handle = undefined;
+    await rename(temporary, absolute);
+  } finally {
+    if (handle) await handle.close();
+    await rm(temporary, { force: true });
+  }
+  await access(absolute, fsConstants.R_OK);
+  return { status: "written", path: absolute, document: validated };
 }
 
 function finding(code, path, message) {
