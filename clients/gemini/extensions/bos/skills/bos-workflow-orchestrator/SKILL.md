@@ -1,6 +1,6 @@
 ---
 name: bos-workflow-orchestrator
-description: Explain, design, or operate governed deterministic workflows across the user's installed BOS service mesh. Use when the user asks to explain an organization's automation plugin or workflow, inspect a described plugin journey, create or run a custom multi-step journey, resolve dependencies, plan approvals and recovery, or verify completion.
+description: Explain, compose, or operate governed deterministic workflows across the user's installed BOS service mesh, including ad hoc dynamic workflows created for the current objective. Use for multi-step or cross-service outcomes, custom journeys, requests to explain an organization's automation plugin, dependency resolution, approvals, recovery, and completion verification.
 ---
 
 
@@ -148,7 +148,19 @@ graph and do not invent a workflow from generic CRM behavior.
 
 ## Agent-Driven Custom Journeys
 
-When the user asks to create, run, resume, stop, explain, or inspect a custom
+First select a complete applicable focused workflow when one covers the
+objective. Select ad hoc composition only when no complete fixed workflow
+covers the objective or the user explicitly requests custom composition. In
+that branch, treat an objective as an ad hoc dynamic workflow candidate when
+it requires multiple dependent steps, spans skills or services, or needs
+durable handoffs or recovery. The user does not need to say "BOSL", "custom
+journey", or "workflow". Domain skills contribute goals,
+constraints, evidence requirements, presentation, and client-owned work. Live
+`service.describe.journey` and `api.contract.get` results contribute eligible
+server-executable nodes. BOS Operations Center owns composition; BOS Service
+owns the finite-state machine after registration.
+
+When the user asks to create, run, resume, stop, explain, or inspect such a
 multi-step journey, use the dedicated Agent-Driven Custom Journey branch. Read:
 
 - [BOSL authoring](references/bosl-authoring.md) before planning or registering;

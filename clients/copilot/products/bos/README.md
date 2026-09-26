@@ -1,6 +1,6 @@
 # BOS Platform for GitHub Copilot
 
-BOS is a platform for deterministic automated workflows across an agentic mesh of federated services. It is the required foundation for dependent products and owns the authenticated BOS platform MCP connection. Live identity-context discovery supports server-authorized organization, application, installation, and role selection per operation; legacy scoped grants retain their exact boundaries. BOS coordinates authorized platform operations with server-enforced scope, evidence, and approvals.
+BOS is a platform for deterministic automated workflows across an agentic mesh of federated services. Its installed skills recognize multi-step objectives that may need an ad hoc dynamic workflow and use live application descriptions and discovered operations to assess composition. When the required authoring and runtime contracts are available, BOS Operations Center composes the workflow and BOS runs it under BOS-owned state, transitions, recovery, and evidence. It is the required foundation for dependent products and owns the authenticated BOS platform MCP connection. Live identity-context discovery supports server-authorized organization, application, installation, and role selection per operation; legacy scoped grants retain their exact boundaries. BOS coordinates authorized platform operations with server-enforced scope, evidence, and approvals.
 
 Copy `skills/` into the target repository's `.agents/skills/` directory.
 Copy `.github/mcp.json` into the target repository for Copilot CLI, or

@@ -38,7 +38,7 @@ Upgrading replaces the former `platform` identifier. Hosts may require native
 sign-in again when a connection identifier changes; valid-session continuity
 has not been verified for this migration.
 
-Current desktop marketplace release: `0.4.122`. If `0.4.121` is installed,
+Current desktop marketplace release: `0.4.123`. If `0.4.122` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop

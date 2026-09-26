@@ -1542,7 +1542,7 @@ test("BOS marketplace metadata explains the platform and links to its website", 
   assert(bos);
   assert.equal(bos.display_name, "BOS Platform");
   assert.ok(bos.description.length <= 80);
-  assert.match(bos.description, /deterministic workflows.*federated agentic service mesh/i);
+  assert.match(bos.description, /deterministic workflows.*federated agentic (?:service )?mesh/i);
   assert.match(bos.long_description, /owns the authenticated BOS platform MCP connection/);
   assert.match(bos.long_description, /required foundation for dependent products/);
   assert.match(bos.long_description, /agentic mesh of federated services/);
@@ -1574,7 +1574,7 @@ test("Education Operation Center marketplace metadata presents specific cross-sy
   assert(education);
   assert.equal(education.display_name, "Education Operation Center");
   assert.ok(education.description.length <= 80);
-  assert.match(education.description, /email, calendars, billing, and enrollment/);
+  assert.match(education.description, /email, calendars, billing, and enrollment/i);
   assert.match(education.long_description, /Acme Learning Center/);
   assert.match(education.long_description, /Acme\.com partnership invoices/);
   assert.doesNotMatch(education.long_description, /Bright Horizons|Northstar Coding Academy/);

@@ -1,6 +1,6 @@
 ---
 name: bos-app-discovery
-description: Route a request through authenticated BOS installed-app discovery, inspect selected per-app MCP contracts, invoke discovered deterministic HTTPS APIs, and compose source-attributed evidence. Use when app scope, service ownership, graph shape, or API operations must be discovered at runtime.
+description: Route requests through authenticated BOS app discovery, including finding skills and operations that can contribute to an ad hoc dynamic BOSL workflow. Use when app scope, service ownership, workflow composition, graph shape, or API contracts must be discovered at runtime.
 ---
 
 
@@ -109,6 +109,13 @@ journey but cannot be authored as a BOSL server node. Never infer either
 classification. Missing limits are unavailable, never defaulted. Cache only linked
 resources and individual plugin descriptions under `bos-mcp-client`'s journey
 contract cache; `app.describe` itself remains fresh and non-cacheable.
+
+Treat a detailed `service.describe.journey` as a composition source for an ad
+hoc workflow. A `service.describe.behavior` is explanatory topology and never
+becomes an executable node. A domain skill may contribute client-node goals,
+constraints, evidence requirements, and presentation without creating a server
+operation. The workflow orchestrator selects the smallest useful set of those
+contributions for the current objective.
 
 ## Current-host read execution
 
