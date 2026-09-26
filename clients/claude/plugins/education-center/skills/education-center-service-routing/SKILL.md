@@ -1,6 +1,6 @@
 ---
 name: education-center-service-routing
-description: Route Education Center requests to the appropriate tenant-scoped BOS capability according to the installed customer's provider settings. Use whenever an Education Center workflow needs Gmail, Calendar, Drive, Calimatic, Lead Director, calls, SMS, reviews, outreach, student data, camp data, enrollment data, or another connected business service.
+description: Route Education Center requests to tenant-scoped BOS capabilities and contribute education-domain steps to ad hoc dynamic workflows. Use for multi-step or cross-service objectives and whenever work needs Gmail, Calendar, Drive, Calimatic, Lead Director, calls, SMS, reviews, outreach, students, camps, enrollment, or another connected service.
 ---
 
 
@@ -113,6 +113,16 @@ Discover capabilities for the active task through the Education Center product
 MCP, then execute the selected application operation through its exact
 advertised deterministic HTTPS API. This skill defines provider preferences;
 `bos-mcp-client` owns authentication, authorization, and exact tenant scope.
+
+First use a complete applicable focused Education Center workflow when one
+covers the objective. Select ad hoc composition only when no complete fixed
+workflow covers the objective or the user explicitly requests custom
+composition. For that branch, when the objective requires multiple dependent
+domain steps, cross-service handoffs, or durable recovery, contribute the Education Center goals,
+constraints, evidence requirements, source rules, and client-owned work to the
+installed BOS `bos-workflow-orchestrator`. BOS owns the complete ad hoc BOSL
+composition and runtime lifecycle. This skill never authors a competing graph
+or treats explanatory plugin behavior as an executable operation.
 
 For the first operational request, follow `bos-mcp-client` live tool discovery
 and call `bos_get_context` as soon as it is callable. Complete the required
