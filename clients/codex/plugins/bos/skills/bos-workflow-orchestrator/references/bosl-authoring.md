@@ -26,6 +26,15 @@ typed inputs and outputs, effects, approval points, success routes, final
 failure routes, and bounded recovery. Do not expose hidden reasoning. Domain
 skills may contribute goals and parameters; BOS owns authoring and discovery.
 
+Use the packaged `bosl-authoring.mjs` reader and writer for local BOSL files.
+`readBoslDocument(path)` parses one complete document,
+`validateBoslDocument(document, contract)` validates it against the freshly
+discovered schema and operation contracts, and
+`writeBoslDocument(path, document, contract)` validates and atomically writes
+the complete document. `parseBoslDocument` and `serializeBoslDocument` provide
+the same contract for in-memory content. Never hand-edit fragments or bypass
+validation; registration still performs the authoritative server compile.
+
 Author the complete organization-seed JSON document with its actual seed
 values. Use only published `client` and `server` node shapes, reference classes,
 condition predicates, `catch`, `transitions`, required defaults, and

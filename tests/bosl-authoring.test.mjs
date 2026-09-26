@@ -4,9 +4,16 @@ import test from "node:test";
 import {
   buildExplainPlan,
   createRegistrationDocument,
+  parseBoslDocument,
+  readBoslDocument,
+  serializeBoslDocument,
+  writeBoslDocument,
   validateBoslDocument
 } from "../source/platform/bos-workflow-orchestrator/scripts/bosl-authoring.mjs";
 import {syntheticIdentity} from "../scripts/lib/synthetic-fixtures.mjs";
+import { mkdtemp, readFile, symlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const syntheticAttendee = syntheticIdentity("journey-acceptance");
 
@@ -134,6 +141,45 @@ const graph = {
     }
   ]
 };
+
+test("BOSL reader and serializer round-trip one complete document", () => {
+  const serialized = serializeBoslDocument(graph);
+  assert.equal(serialized.endsWith("\n"), true);
+  assert.deepEqual(parseBoslDocument(serialized), graph);
+});
+
+test("BOSL writer validates and atomically writes a complete document", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "bosl-authoring-"));
+  const output = join(directory, "journey.json");
+  const result = await writeBoslDocument(output, graph, {
+    publishedSchema,
+    operationContracts
+  });
+
+  assert.equal(result.status, "written");
+  assert.deepEqual(await readBoslDocument(output), graph);
+  assert.deepEqual(JSON.parse(await readFile(output, "utf8")), graph);
+});
+
+test("BOSL writer rejects invalid documents and symbolic-link destinations", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "bosl-authoring-"));
+  const target = join(directory, "target.json");
+  const link = join(directory, "journey.json");
+  await writeBoslDocument(target, graph, { publishedSchema, operationContracts });
+  await symlink(target, link);
+
+  await assert.rejects(
+    writeBoslDocument(link, graph, { publishedSchema, operationContracts }),
+    /ordinary file/
+  );
+  await assert.rejects(
+    writeBoslDocument(join(directory, "invalid.json"), { identity: "missing" }, {
+      publishedSchema,
+      operationContracts
+    }),
+    /structural validation/
+  );
+});
 
 test("published schema plus local graph checks accept bounded discovered BOSL", () => {
   const result = validateBoslDocument(graph, { publishedSchema, operationContracts });
