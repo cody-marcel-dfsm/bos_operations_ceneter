@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
-import {readFileSync} from "node:fs";
-import test from "node:test";
+import test, {after} from "node:test";
 
 import {
   authenticationConditionCodes,
@@ -9,6 +8,10 @@ import {
   createBosExternalDependencyAdapter,
   validateAuthenticationHandoffMessage
 } from "../source/platform/bos-external-dependency-adapter/scripts/external-dependency-adapter.mjs";
+import {
+  fetchSyntheticDiscovery,
+  startSyntheticBosDiscoveryService
+} from "./helpers/synthetic-bos-discovery-service.mjs";
 
 const resource = "https://dfsm.ai/mcp/apps/bos/platform";
 const handle = (character) => `bos_ctx_v2_${character.repeat(64)}`;
@@ -31,10 +34,19 @@ const result = (status, condition) => ({
   status,
   ...(condition ? { condition } : {})
 });
+const publicError = (code = "AUTHORIZATION_REQUIRED") => ({
+  code,
+  message: "Authentication is required.",
+  retryable: true,
+  correlation_id: "corr-auth-1",
+  details: []
+});
+const canonicalSensitiveWordMessage =
+  "Bearer authentication is required.\nThe token and stack words are public text. 😀\t\u0003";
 const completeAction = {
   verb: "complete",
   method: "POST",
-  href: "/api/v1/journeys/follow-up/complete",
+  href: "/bos/api/v1/journeys/follow-up/complete",
   payload_schema: {
     $schema: "https://json-schema.org/draft/2020-12/schema",
     type: "object",
@@ -46,8 +58,20 @@ const completeAction = {
 const stateAction = {
   verb: "state",
   method: "GET",
-  href: "/api/v1/journeys/follow-up",
+  href: "/bos/api/v1/journeys/follow-up",
   payload_schema: null
+};
+const canonicalEncodedStateAction = {
+  ...stateAction,
+  href: "/bos/apps/lead-director/api/v1/organizations/example/journeys/meeting-follow-up%3Acaf%C3%A9?capability=opaque-state"
+};
+const canonicalPercentStateAction = {
+  ...stateAction,
+  href: "/bos/apps/lead-director/api/v1/organizations/example/journeys/follow-up%3A100%25?capability=opaque-state"
+};
+const canonicalPercentOctetTextStateAction = {
+  ...stateAction,
+  href: "/bos/apps/lead-director/api/v1/organizations/example/journeys/follow-up%3A%2520?capability=opaque-state"
 };
 const discoveredOperation = {
   operation: "search",
@@ -89,17 +113,74 @@ const discoveredOperation = {
   },
   error_contract: {
     schema: "lead-director-public-error/v1",
-    codes: ["INVALID_SEARCH_REQUEST"]
+    codes: ["invalid_search_request", "authentication_required"]
   },
   sources: [{
     source: {platform: "bos", application: "lead-director", plugin: "lead-director"},
     availability: "ready"
   }]
 };
-const authoritativeDescribe = JSON.parse(readFileSync(new URL(
-  "fixtures/public-contracts/lead-director/v1/describe.response.example.json",
-  import.meta.url
-)));
+const syntheticBos = await startSyntheticBosDiscoveryService();
+after(() => syntheticBos.close());
+const authoritativeDescribe = await fetchSyntheticDiscovery(
+  syntheticBos.baseUrl,
+  "/discovery/operations"
+);
+
+const invocationPaths = [
+  {
+    name: "returned action",
+    invoke: (current) => current.invokeReturnedAction(completeAction, {acknowledged: true})
+  },
+  {
+    name: "state action",
+    invoke: (current) => current.invokeStateAction(stateAction)
+  },
+  {
+    name: "discovered operation",
+    invoke: (current) => current.invokeDiscoveredOperation(
+      discoveredOperation,
+      {text: "Synthetic Contact"}
+    )
+  }
+];
+const privatePublicErrorDetailKeys = [
+  "journey_id", "execution_id", "graph_id", "snapshot_id", "compiled_snapshot",
+  "compiled_fingerprint", "digest", "revision", "state_version", "node_occurrence",
+  "occurrence", "idempotency_key", "client_idempotency_key", "retry_count", "retry_state",
+  "action_id", "artifact_ref", "object_name", "provider", "provider_id",
+  "provider_account_id", "provider_error", "provider_message", "provider_payload",
+  "provider_response", "database_id", "sql", "stack_trace", "attendee", "attendees",
+  "email", "emails", "email_address", "email_addresses", "recipient", "recipients",
+  "access_token", "refresh_token", "bearer_token", "authorization", "authorization_header",
+  "oauth_token", "api_key", "credential_id", "secret", "token", "context_handle",
+  "context_id", "opaque_context", "principal_context", "authority_context", "grant_id",
+  "session_id", "connection_id", "internal_id", "organization_id", "org_id", "tenant_id",
+  "membership_id", "application_id", "app_id", "app_code", "installation_id",
+  "installed_app_id", "plugin_id", "role_id", "actor_role_id", "user_id", "actor_user_id",
+  "resource_group_id", "actor_id", "delegated_role_id", "client_secret", "private_key",
+  "cookie", "credential", "credentials", "password", "passwords", "passphrase",
+  "passphrases", "secret", "secrets", "token", "tokens", "handler", "handlers",
+  "service_account", "service_account_key", "approval_id", "client_id",
+  "request_fingerprint", "retry_id", "source_id", "authority", "context", "grant",
+  "oauth", "principal", "tenant", "providerMessage", "graphId", "emailAddress",
+  "customer_email", "requestFingerprint", "sourceId"
+];
+const nestedBusinessErrorBodies = [
+  ["source result", (error) => ({source_results: [{source: "crm", error}]})],
+  ["outcome", (error) => ({outcomes: [{source: "calendar", error}]})],
+  ["record", (error) => ({records: [{error}]})],
+  ["record readback", (error) => ({records: [{readback: {error}}]})],
+  ["record receipt", (error) => ({records: [{receipt: {error}}]})],
+  ["source record", (error) => ({source_results: [{records: [{error}]}]})],
+  ["source record readback", (error) => ({source_results: [{records: [{readback: {error}}]}]})],
+  ["source record receipt", (error) => ({source_results: [{records: [{receipt: {error}}]}]})],
+  ["outcome readback", (error) => ({outcomes: [{readback: {error}}]})],
+  ["outcome receipt", (error) => ({outcomes: [{receipt: {error}}]})],
+  ["outcome record", (error) => ({outcomes: [{records: [{error}]}]})],
+  ["outcome record readback", (error) => ({outcomes: [{records: [{readback: {error}}]}]})],
+  ["outcome record receipt", (error) => ({outcomes: [{records: [{receipt: {error}}]}]})]
+];
 
 function adapter({
   request = async () => ({ status: 200, body: { status: "step_completed" } }),
@@ -131,7 +212,7 @@ test("authentication handoff builder emits the exact closed wire contract", () =
   ]);
   assert.deepEqual(buildAuthenticationHandoffRequest({
     resource,
-    condition: "MCP_WWW_AUTHENTICATE",
+    condition: "AUTHORIZATION_REQUIRED",
     host_correlation: "native-1"
   }), {
     schema_version: "bos.authentication-handoff/v1",
@@ -139,11 +220,15 @@ test("authentication handoff builder emits the exact closed wire contract", () =
     protected_resource: resource,
     condition: {
       category: "authentication",
-      code: "MCP_WWW_AUTHENTICATE",
+      code: "AUTHORIZATION_REQUIRED",
       source: "protected_resource"
     },
     host_correlation: "native-1"
   });
+  assert.throws(
+    () => buildAuthenticationHandoffRequest({resource, condition: "authentication_required"}),
+    /unknown authentication condition/
+  );
   assert.deepEqual(buildAuthenticationHandoffRequest({
     resource,
     condition: { category: "mcp_session", code: "FUTURE_SESSION_CONDITION", source: "client_host" }
@@ -155,7 +240,7 @@ test("authentication handoff builder emits the exact closed wire contract", () =
 });
 
 test("authentication handoff validation rejects widened or private messages", () => {
-  const request = buildAuthenticationHandoffRequest({ resource, condition: "MISSING_GRANT" });
+  const request = buildAuthenticationHandoffRequest({ resource, condition: "AUTHORIZATION_REQUIRED" });
   for (const invalid of [
     { ...request, protected_resource: `${resource}?tenant=private` },
     { ...request, access_token: "secret" },
@@ -173,14 +258,18 @@ test("public recovery methods validate exact host wire results", async () => {
     recoverAuthentication: async (message) => { messages.push(message); return result("HOST_ACTION_REQUIRED"); },
     waitForAuthentication: async (message) => { messages.push(message); return result("READY"); }
   });
-  assert.equal((await current.recoverAuthentication({ resource, condition: "MISSING_GRANT" })).status, "HOST_ACTION_REQUIRED");
-  assert.equal((await current.waitForAuthentication({ resource, condition: "MISSING_GRANT" })).status, "READY");
+  assert.equal((await current.recoverAuthentication({ resource, condition: "AUTHORIZATION_REQUIRED" })).status, "HOST_ACTION_REQUIRED");
+  assert.equal((await current.waitForAuthentication({ resource, condition: "AUTHORIZATION_REQUIRED" })).status, "READY");
   assert.equal(messages.length, 2);
   assert(messages.every((message) => message.schema_version === "bos.authentication-handoff/v1"));
   await assert.rejects(
     adapter({ recoverAuthentication: async () => ({ ...result("READY"), protected_resource: "https://wrong.example/mcp" }) })
-      .recoverAuthentication({ resource, condition: "MISSING_GRANT" }),
-    (error) => error instanceof BosDependencyAdapterError && error.code === "INVALID_AUTHENTICATION_RESULT"
+      .recoverAuthentication({ resource, condition: "AUTHORIZATION_REQUIRED" }),
+    (error) => error instanceof BosDependencyAdapterError && !("code" in error)
+  );
+  await assert.rejects(
+    adapter({waitForAuthentication: undefined}).waitForAuthentication({resource, condition: "AUTHORIZATION_REQUIRED"}),
+    (error) => error instanceof BosDependencyAdapterError && !("code" in error) && /remains active/.test(error.message)
   );
 });
 
@@ -212,6 +301,24 @@ test("identity-v2 returned and state actions attach only a fresh private context
   ]);
   assert.equal(JSON.stringify([complete, state]).includes("bos_ctx_v2_"), false);
   assert.equal(JSON.stringify([complete, state]).includes("context_handle"), false);
+});
+
+test("canonical percent-encoded journey identity reaches authenticated transport unchanged", async () => {
+  const requests = [];
+  const current = adapter({
+    request: async (request) => {
+      requests.push(structuredClone(request));
+      return {status: 200, body: {status: "in_progress"}};
+    }
+  });
+  assert.equal((await current.invokeStateAction(canonicalEncodedStateAction)).status, 200);
+  assert.equal((await current.invokeStateAction(canonicalPercentStateAction)).status, 200);
+  assert.equal((await current.invokeStateAction(canonicalPercentOctetTextStateAction)).status, 200);
+  assert.deepEqual(requests.map(({href}) => href), [
+    canonicalEncodedStateAction.href,
+    canonicalPercentStateAction.href,
+    canonicalPercentOctetTextStateAction.href
+  ]);
 });
 
 test("discovered operation invocation validates and binds current context privately", async () => {
@@ -307,13 +414,87 @@ test("discovered operation invocation rejects routes, schemas, and private calle
     {
       ...discoveredOperation,
       execution: {...discoveredOperation.execution, uri: "/unadvertised"}
-    }
+    },
+    ...[
+      "/bos/../../unrelated",
+      "/bos/apps/%2e%2e/unrelated",
+      "/bos/apps/%2E%2E/unrelated",
+      "/bos/..?/unrelated",
+      "/bos/apps/meeting-follow-up%3aexample-event",
+      "/bos/apps/%2Fprivate",
+      "/bos/apps/route%0D%0AInjected",
+      "/bos/apps/caf%c3%a9",
+      "/bos/apps/caf%C3",
+      "/bos/apps/%C0%AFprivate",
+      "/bos/apps/%ED%A0%80",
+      "/bos/apps/cafe%CC%81",
+      "/bos/apps/%41dmin",
+      "/bos/apps/%5Cprivate",
+      "/bos//evil.example/unrelated",
+      "//evil.example/bos/unrelated",
+      "https://evil.example/bos/unrelated",
+      "/bos/apps/route#fragment",
+      "/bos/apps/route\r\nInjected: yes",
+      "/bos/apps/route\u0000suffix"
+    ].map((uri) => ({
+      ...discoveredOperation,
+      execution: {...discoveredOperation.execution, uri}
+    }))
   ]) {
     await assert.rejects(
       current.invokeDiscoveredOperation(malformed, {text: "Synthetic Contact"}),
-      /immutable public schema/
+      /immutable public schema|canonical safe origin-relative \/bos\/ URI/
     );
   }
+  assert.equal(transportCalls, 0);
+});
+
+test("returned and state actions reject unsafe execution routes before context or transport", async () => {
+  let contextCalls = 0;
+  let transportCalls = 0;
+  const current = adapter({
+    getCurrentContext: async () => {
+      contextCalls += 1;
+      return contextDescriptor();
+    },
+    request: async () => {
+      transportCalls += 1;
+      return {status: 200, body: {status: "step_completed"}};
+    }
+  });
+  const unsafeUris = [
+    "/bos/../../private",
+    "/bos/%2e%2e/private",
+    "/bos/%2E%2e/private",
+    "/bos/..?/private",
+    "/bos/apps/meeting-follow-up%3aexample-event",
+    "/bos/apps/%2Fprivate",
+    "/bos/apps/route%0D%0AInjected",
+    "/bos/apps/caf%c3%a9",
+    "/bos/apps/caf%C3",
+    "/bos/apps/%C0%AFprivate",
+    "/bos/apps/%ED%A0%80",
+    "/bos/apps/cafe%CC%81",
+    "/bos/apps/%41dmin",
+    "/bos/apps/%5Cprivate",
+    "/bos//private",
+    "//evil.example/bos/private",
+    "https://evil.example/bos/private",
+    "/bos/apps/route#fragment",
+    "/bos/apps/route\r\nInjected: yes",
+    "/bos/apps/route\u0000suffix"
+  ];
+  for (const href of unsafeUris) {
+    await assert.rejects(
+      current.invokeReturnedAction({...completeAction, href}, {acknowledged: true}),
+      /returned action href/
+    );
+    await assert.rejects(
+      current.invokeStateAction({...stateAction, href}),
+      /returned action href/
+    );
+  }
+  assert.equal(contextCalls, 0);
   assert.equal(transportCalls, 0);
 });
 
@@ -387,7 +568,7 @@ test("discovered operation authentication recovery is bounded and rebinds fresh 
       call += 1;
       if (call === 1) firstRequestSeen();
       return call === 1
-        ? { status: 401, body: { error: { code: "AUTHORIZATION_REQUIRED" } } }
+        ? { status: 401, body: { error: publicError() } }
         : { status: 200, body: { records: [] } };
     },
     recoverAuthentication: async () => {
@@ -412,6 +593,505 @@ test("discovered operation authentication recovery is bounded and rebinds fresh 
   assert.equal(requests[1].body, JSON.stringify({text: "Synthetic Contact"}));
 });
 
+test("discovered operation recovery follows service authentication conditions independently of business error metadata", async () => {
+  for (const transportMode of ["response", "throw"]) {
+    const handoffs = [];
+    let requests = 0;
+    const current = adapter({
+      request: async () => {
+        requests += 1;
+        if (requests > 1) return {status: 200, body: {records: []}};
+        const failure = {status: 401, body: {error: publicError()}, resource};
+        if (transportMode === "throw") throw failure;
+        return failure;
+      },
+      recoverAuthentication: async (message) => {
+        handoffs.push(message);
+        return result("READY");
+      }
+    });
+
+    const response = await current.invokeDiscoveredOperation(
+      discoveredOperation,
+      {text: "Synthetic Contact"}
+    );
+    assert.equal(response.status, 200);
+    assert.equal(requests, 2);
+    assert.equal(handoffs.length, 1);
+    assert.equal(handoffs[0].condition.code, "AUTHORIZATION_REQUIRED");
+  }
+});
+
+test("four-field returned and state actions recover from implemented service conditions", async (t) => {
+  const paths = [
+    {
+      name: "returned action",
+      action: completeAction,
+      invoke: (current, action) =>
+        current.invokeReturnedAction(action, {acknowledged: true})
+    },
+    {
+      name: "state action",
+      action: stateAction,
+      invoke: (current, action) => current.invokeStateAction(action)
+    }
+  ];
+
+  for (const {name, action, invoke} of paths) {
+    for (const transportMode of ["response", "throw"]) {
+      await t.test(`${name}: ${transportMode}`, async () => {
+        let requests = 0;
+        let recoveries = 0;
+        const current = adapter({
+          request: async () => {
+            requests += 1;
+            if (requests > 1) return {status: 200, body: {status: "step_completed"}};
+            const failure = {status: 401, resource, body: {error: publicError()}};
+            if (transportMode === "throw") throw failure;
+            return failure;
+          },
+          recoverAuthentication: async () => {
+            recoveries += 1;
+            return result("READY");
+          }
+        });
+        assert.equal((await invoke(current, structuredClone(action))).status, 200);
+        assert.equal(requests, 2);
+        assert.equal(recoveries, 1);
+      });
+    }
+  }
+
+  await assert.rejects(
+    adapter().invokeStateAction({...stateAction, error_contract: {schema: "bos-public-error/v1", codes: []}}),
+    /unsupported field error_contract/
+  );
+});
+
+test("every invocation path preserves an initial multiline canonical error for returned and thrown transport failures", async (t) => {
+  const denied = {
+    code: "authorization_denied",
+    message: canonicalSensitiveWordMessage,
+    retryable: false,
+    correlation_id: "corr-authorization-denied",
+    details: [{field: "operation", issue: "denied"}]
+  };
+  const expected = {status: 403, body: {error: denied}};
+
+  for (const {name, invoke} of invocationPaths) {
+    for (const transportMode of ["response", "throw"]) {
+      await t.test(`${name}: ${transportMode}`, async () => {
+        const handoffs = [];
+        let requests = 0;
+        const current = adapter({
+          request: async () => {
+            requests += 1;
+            const failure = {...structuredClone(expected), resource};
+            if (transportMode === "throw") throw failure;
+            return failure;
+          },
+          recoverAuthentication: async (message) => {
+            handoffs.push(message);
+            return result("READY");
+          }
+        });
+
+        assert.deepEqual(await invoke(current), expected);
+        assert.equal(requests, 1);
+        assert.deepEqual(handoffs, []);
+      });
+    }
+  }
+});
+
+test("every invocation path preserves a multiline canonical error returned or thrown after bounded recovery", async (t) => {
+  const denied = {
+    code: "authorization_denied",
+    message: canonicalSensitiveWordMessage,
+    retryable: false,
+    correlation_id: "corr-post-recovery-denied",
+    details: [{field: "operation", issue: "denied_after_recovery"}]
+  };
+  const expected = {status: 403, body: {error: denied}};
+
+  for (const {name, invoke} of invocationPaths) {
+    for (const initialMode of ["response", "throw"]) {
+      for (const finalMode of ["response", "throw"]) {
+        await t.test(`${name}: ${initialMode} auth then ${finalMode} denial`, async () => {
+          const handoffs = [];
+          let requests = 0;
+          const current = adapter({
+            request: async () => {
+              requests += 1;
+              const failure = requests === 1
+                ? {status: 401, resource, body: {error: publicError()}}
+                : {...structuredClone(expected), resource};
+              const mode = requests === 1 ? initialMode : finalMode;
+              if (mode === "throw") throw failure;
+              return failure;
+            },
+            recoverAuthentication: async (message) => {
+              handoffs.push(message);
+              return result("READY");
+            }
+          });
+
+          assert.deepEqual(await invoke(current), expected);
+          assert.equal(requests, 2);
+          assert.equal(handoffs.length, 1);
+          assert.equal(handoffs[0].condition.code, "AUTHORIZATION_REQUIRED");
+        });
+      }
+    }
+  }
+});
+
+test("every invocation path keeps authentication recovery pending when recovery cannot complete", async (t) => {
+  const authError = {
+    code: "AUTHORIZATION_REQUIRED",
+    message: canonicalSensitiveWordMessage,
+    retryable: true,
+    correlation_id: "corr-recovery-incomplete",
+    details: [{action: "authenticate"}]
+  };
+  const expected = {
+    status: 401,
+    body: {error: authError},
+    headers: {
+      "content-type": "application/json",
+      "x-correlation-id": "corr-recovery-incomplete"
+    }
+  };
+  const scenarios = [
+    {
+      name: "recovery throws",
+      recoverAuthentication: async () => { throw new Error("native recovery unavailable"); },
+      waitForAuthentication: async () => { throw new Error("wait must not run"); },
+      expectedRecoveryCalls: 1,
+      expectedWaitCalls: 0,
+      expectedError: /native recovery unavailable/
+    },
+    {
+      name: "wait throws",
+      recoverAuthentication: async () => result("HOST_ACTION_REQUIRED"),
+      waitForAuthentication: async () => { throw new Error("native wait unavailable"); },
+      expectedRecoveryCalls: 1,
+      expectedWaitCalls: 1,
+      expectedError: /native wait unavailable/
+    },
+    {
+      name: "wait remains non-ready",
+      recoverAuthentication: async () => result("HOST_ACTION_REQUIRED"),
+      waitForAuthentication: async () => result("NOT_READY"),
+      expectedRecoveryCalls: 1,
+      expectedWaitCalls: 1,
+      expectedError: /recovery remains active/
+    }
+  ];
+
+  for (const {name: pathName, invoke} of invocationPaths) {
+    for (const transportMode of ["response", "throw"]) {
+      for (const scenario of scenarios) {
+        await t.test(`${pathName}: ${transportMode}, ${scenario.name}`, async () => {
+          let requests = 0;
+          let recoveryCalls = 0;
+          let waitCalls = 0;
+          const current = adapter({
+            request: async () => {
+              requests += 1;
+              const failure = {
+                ...structuredClone(expected),
+                resource
+              };
+              if (transportMode === "throw") throw failure;
+              return failure;
+            },
+            recoverAuthentication: async (...args) => {
+              recoveryCalls += 1;
+              return scenario.recoverAuthentication(...args);
+            },
+            waitForAuthentication: async (...args) => {
+              waitCalls += 1;
+              return scenario.waitForAuthentication(...args);
+            }
+          });
+
+          await assert.rejects(invoke(current), scenario.expectedError);
+          assert.equal(requests, 1);
+          assert.equal(recoveryCalls, scenario.expectedRecoveryCalls);
+          assert.equal(waitCalls, scenario.expectedWaitCalls);
+        });
+      }
+    }
+  }
+});
+
+test("public error messages use the exact service length contract without content rewriting", async () => {
+  const maximumMessage = `${"😀".repeat(2044)}\n\r\t\u0000`;
+  const accepted = {
+    status: 400,
+    body: {
+      error: {
+        ...publicError("invalid_request"),
+        message: maximumMessage
+      }
+    }
+  };
+  assert.deepEqual(await adapter({request: async () => accepted})
+    .invokeStateAction(stateAction), accepted);
+  await assert.rejects(
+    adapter({
+      request: async () => ({
+        ...accepted,
+        body: {error: {...accepted.body.error, message: `${maximumMessage}x`}}
+      })
+    }).invokeStateAction(stateAction),
+    /at most 2048 characters/
+  );
+});
+
+test("nested composed source and outcome errors preserve exact canonical messages", async (t) => {
+  const sourceError = {
+    code: "source_unavailable",
+    message: canonicalSensitiveWordMessage,
+    retryable: true,
+    correlation_id: "corr-source-nested",
+    details: [{source: "crm", issue: "temporarily_unavailable"}]
+  };
+  const outcomeError = {
+    code: "authorization_denied",
+    message: handle("e"),
+    retryable: false,
+    correlation_id: "corr-outcome-nested",
+    details: [{source: "calendar", issue: "denied"}]
+  };
+  const expected = {
+    status: 207,
+    body: {
+      status: "partial_success",
+      source_results: [{source: "crm", error: sourceError}],
+      outcomes: [{source: "calendar", readback: {error: outcomeError}}]
+    }
+  };
+
+  for (const {name, invoke} of invocationPaths) {
+    for (const transportMode of ["response", "throw"]) {
+      await t.test(`${name}: ${transportMode}`, async () => {
+        const current = adapter({
+          request: async () => {
+            const transport = structuredClone(expected);
+            if (transportMode === "throw") throw transport;
+            return transport;
+          }
+        });
+        assert.deepEqual(await invoke(current), expected);
+      });
+    }
+  }
+});
+
+test("every invocation path preserves legitimate null business errors", async (t) => {
+  const expected = {
+    status: 201,
+    body: {
+      id: "contact-synthetic-1",
+      created: true,
+      error: null,
+      source_results: [{source: "crm", record_id: "contact-synthetic-1", error: null}],
+      outcomes: [{source: "crm", status: "created", error: null}]
+    }
+  };
+  for (const {name, invoke} of invocationPaths) {
+    for (const transportMode of ["response", "throw"]) {
+      await t.test(`${name}: ${transportMode}`, async () => {
+        const current = adapter({
+          request: async () => {
+            const transport = structuredClone(expected);
+            if (transportMode === "throw") throw transport;
+            return transport;
+          }
+        });
+        assert.deepEqual(await invoke(current), expected);
+      });
+    }
+  }
+});
+
+test("arbitrary business errors and ordinary four-field objects are preserved outside sanctioned error locations", async (t) => {
+  const expected = {
+    status: 200,
+    body: {
+      business: {
+        error: {status: "declined", reason: "A customer-defined validation failed."},
+        diagnostic: {
+          code: "customer_state",
+          message: "This is business data, not a BOS public error.",
+          retryable: "customer_decides",
+          correlation_id: "customer-visible-value"
+        }
+      },
+      source_results: [{
+        source: "crm",
+        business: {error: {code: "source-specific", message: "Provider-owned business data."}}
+      }]
+    }
+  };
+  for (const {name, invoke} of invocationPaths) {
+    for (const transportMode of ["response", "throw"]) {
+      await t.test(`${name}: ${transportMode}`, async () => {
+        const current = adapter({
+          request: async () => {
+            const transport = structuredClone(expected);
+            if (transportMode === "throw") throw transport;
+            return transport;
+          }
+        });
+        assert.deepEqual(await invoke(current), expected);
+      });
+    }
+  }
+});
+
+test("public error details have no BOC-owned count, key-count, or nesting-depth limits", async () => {
+  let nested = {public_note: "deep service-owned detail"};
+  for (let depth = 0; depth < 128; depth += 1) nested = {child: nested};
+  const details = Array.from({length: 256}, (_, index) => ({
+    [`public_field_${index}`]: index,
+    ...(index === 255 ? {nested} : {})
+  }));
+  const expected = {
+    status: 400,
+    body: {error: {...publicError("invalid_request"), details}}
+  };
+  assert.deepEqual(await adapter({request: async () => expected})
+    .invokeStateAction(stateAction), expected);
+});
+
+test("minimal incomplete errors under composed source and outcome results fail closed", async (t) => {
+  for (const container of ["source_results", "outcomes"]) {
+    for (const transportMode of ["response", "throw"]) {
+      await t.test(`${container}: ${transportMode}`, async () => {
+        const current = adapter({
+          request: async () => {
+            const transport = {
+              status: 207,
+              body: {
+                [container]: [{
+                  error: {code: "invalid_request", message: "incomplete"}
+                }]
+              }
+            };
+            if (transportMode === "throw") throw transport;
+            return transport;
+          }
+        });
+        await assert.rejects(
+          current.invokeStateAction(stateAction),
+          /BOS public error|dependency transport failed/
+        );
+      });
+    }
+  }
+});
+
+test("malformed errors fail closed anywhere in composed and child business results", async (t) => {
+  const canonical = {
+    code: "source_unavailable",
+    message: "Public source failure.",
+    retryable: true,
+    correlation_id: "corr-source-malformed",
+    details: []
+  };
+  const cases = [
+    {
+      name: "missing field",
+      error: {code: canonical.code, message: canonical.message, retryable: true, details: []}
+    },
+    {name: "extra field", error: {...canonical, explanation: "widened"}},
+    {name: "invalid code", error: {...canonical, code: "SOURCE_UNAVAILABLE"}},
+    {name: "invalid retryable", error: {...canonical, retryable: "true"}},
+    {
+      name: "private details",
+      error: {...canonical, details: [{access_token: "private"}]}
+    }
+  ];
+
+  for (const {name: pathName, invoke} of invocationPaths) {
+    for (const [location, bodyForError] of nestedBusinessErrorBodies) {
+      for (const {name, error} of cases) {
+        for (const transportMode of ["response", "throw"]) {
+          await t.test(`${pathName}: ${location}, ${name}, ${transportMode}`, async () => {
+            const current = adapter({
+              request: async () => {
+                const transport = {
+                  status: 207,
+                  body: bodyForError(structuredClone(error))
+                };
+                if (transportMode === "throw") throw transport;
+                return transport;
+              }
+            });
+            await assert.rejects(
+              invoke(current),
+              /malformed BOS public error|BOS public error|private BOS transport data|dependency transport failed/
+            );
+          });
+        }
+      }
+    }
+  }
+});
+
+test("public error details recursively reject the complete private-key vocabulary on every invocation path", async (t) => {
+  for (const {name: pathName, invoke} of invocationPaths) {
+    for (const [index, privateKey] of privatePublicErrorDetailKeys.entries()) {
+      const [location, bodyForError] = nestedBusinessErrorBodies[index % nestedBusinessErrorBodies.length];
+      await t.test(`${pathName}: ${location}, ${privateKey}`, async () => {
+        const error = {
+          code: "source_unavailable",
+          message: "The source is temporarily unavailable.",
+          retryable: true,
+          correlation_id: `corr-private-${index}`,
+          details: [{[privateKey]: "private"}]
+        };
+        const current = adapter({
+          request: async () => ({status: 207, body: bodyForError(error)})
+        });
+        await assert.rejects(invoke(current), /private BOS transport data/);
+      });
+    }
+  }
+});
+
+test("discovered operation restores the implemented generic 401 recovery signal", async () => {
+  const handoffs = [];
+  let requests = 0;
+  const current = adapter({
+    request: async () => {
+      requests += 1;
+      if (requests > 1) return {status: 200, body: {records: []}};
+      return {
+        status: 401,
+        authenticationError: true,
+        condition: "AUTHORIZATION_REQUIRED",
+        body: {error: {message: "Authentication is required."}}
+      };
+    },
+    recoverAuthentication: async (message) => {
+      handoffs.push(message);
+      return result("READY");
+    }
+  });
+
+  assert.equal((await current.invokeDiscoveredOperation(
+    discoveredOperation,
+    {text: "Synthetic Contact"}
+  )).status, 200);
+  assert.equal(requests, 2);
+  assert.equal(handoffs.length, 1);
+  assert.equal(handoffs[0].condition.code, "AUTHORIZATION_REQUIRED");
+});
+
 test("legacy discovered operation invocation remains header-free", async () => {
   const requests = [];
   const current = adapter({
@@ -429,7 +1109,7 @@ test("identity-v2 consumes and validates the static header name published by Des
   const current = adapter({ getExecutionContextHeader: async () => "X-Authority" });
   await assert.rejects(
     current.invokeStateAction(stateAction),
-    (error) => error instanceof BosDependencyAdapterError && error.code === "CONTEXT_UNAVAILABLE"
+    (error) => error instanceof BosDependencyAdapterError && !("code" in error)
   );
 });
 
@@ -442,10 +1122,10 @@ test("returned action seam covers start, complete, step, and failed while state 
     }
   });
   for (const action of [
-    { verb: "start", method: "POST", href: "/journeys/example/start", payload_schema: null },
+    { verb: "start", method: "POST", href: "/bos/journeys/example/start", payload_schema: null },
     completeAction,
-    { verb: "step", method: "POST", href: "/journeys/example/step", payload_schema: null },
-    { ...completeAction, verb: "failed", href: "/journeys/example/failed" }
+    { verb: "step", method: "POST", href: "/bos/journeys/example/step", payload_schema: null },
+    { ...completeAction, verb: "failed", href: "/bos/journeys/example/failed" }
   ]) {
     await current.invokeReturnedAction(
       action,
@@ -482,7 +1162,7 @@ test("authentication recovery is bounded and resumes once with a newly fetched c
       requestCount += 1;
       if (requestCount === 1) {
         firstRequestSeen();
-        return { status: 401, headers: { "WWW-Authenticate": "Bearer resource_metadata=redacted" }, body: { error: { code: "UNAUTHENTICATED" } } };
+        return { status: 401, headers: { "WWW-Authenticate": "Bearer resource_metadata=redacted" }, body: { error: publicError() } };
       }
       return { status: 200, body: { status: "step_completed" } };
     },
@@ -512,11 +1192,125 @@ test("authentication recovery is bounded and resumes once with a newly fetched c
   assert.equal(requests[1].href, completeAction.href);
   assert.equal(requests[1].body, JSON.stringify({acknowledged: true}));
   assert.equal(handoffs.length, 2);
-  assert.equal(handoffs[0].condition.code, "MCP_WWW_AUTHENTICATE");
+  assert.equal(handoffs[0].condition.code, "AUTHORIZATION_REQUIRED");
   assert.equal(handoffs[0].host_correlation, undefined);
   assert.equal(handoffs[1].host_correlation, "native-auth-1");
   assert.equal(handoffs[1].protected_resource, resource);
   assert.equal(JSON.stringify(handoffs).includes("bos_ctx_v2_"), false);
+});
+
+test("a 401 challenge enters the implemented authentication recovery path", async () => {
+  const handoffs = [];
+  let requests = 0;
+  const current = adapter({
+    request: async () => {
+      requests += 1;
+      return requests === 1
+        ? {
+            status: 401,
+            headers: {"WWW-Authenticate": "Bearer resource_metadata=redacted"},
+            body: {error: {message: "Authentication is required."}}
+          }
+        : {status: 200, body: {status: "step_completed"}};
+    },
+    recoverAuthentication: async (message) => { handoffs.push(message); return result("READY"); },
+    getCurrentContext: async () => contextDescriptor("a")
+  });
+  assert.equal((await current.invokeReturnedAction(
+    completeAction,
+    {acknowledged: true}
+  )).status, 200);
+  assert.equal(requests, 2);
+  assert.equal(handoffs[0].condition.code, "MCP_WWW_AUTHENTICATE");
+});
+
+test("transport failures preserve every previously supported service authentication signal", async () => {
+  for (const [transportError, expectedCode] of [
+    [{code: "expired_token", resource}, "EXPIRED_TOKEN"],
+    [{body: {error: publicError("REAUTHENTICATION_REQUIRED")}, resource}, "REAUTHENTICATION_REQUIRED"],
+    [{body: {error: {...publicError(), code: {toString: () => "mcp_session_closed"}}}, resource}, "MCP_SESSION_CLOSED"]
+  ]) {
+    const handoffs = [];
+    let requests = 0;
+    const current = adapter({
+      request: async () => {
+        requests += 1;
+        if (requests === 1) throw transportError;
+        return {status: 200, body: {status: "step_completed"}};
+      },
+      recoverAuthentication: async (message) => {
+        handoffs.push(message);
+        return result("READY");
+      }
+    });
+    assert.equal((await current.invokeReturnedAction(
+      completeAction,
+      {acknowledged: true}
+    )).status, 200);
+    assert.equal(requests, 2);
+    assert.equal(handoffs[0].condition.code, expectedCode);
+  }
+
+  const handoffs = [];
+  let requests = 0;
+  const current = adapter({
+    request: async () => {
+      requests += 1;
+      if (requests === 1) {
+        throw {
+          status: 401,
+          body: {error: publicError()},
+          resource
+        };
+      }
+      return {status: 200, body: {status: "step_completed"}};
+    },
+    recoverAuthentication: async (message) => {
+      handoffs.push(message);
+      return result("READY");
+    }
+  });
+  assert.equal((await current.invokeReturnedAction(
+    completeAction,
+    {acknowledged: true}
+  )).status, 200);
+  assert.equal(requests, 2);
+  assert.equal(handoffs.length, 1);
+  assert.equal(handoffs[0].condition.code, "AUTHORIZATION_REQUIRED");
+});
+
+test("non-authentication public errors still reject incomplete, null-detail, and widened shapes", async () => {
+  const malformedErrors = [
+    {code: "invalid_request"},
+    {...publicError("invalid_request"), details: null},
+    {...publicError("invalid_request"), provider_error: "private"}
+  ];
+  for (const invoke of [
+    (current) => current.invokeReturnedAction(completeAction, {acknowledged: true}),
+    (current) => current.invokeDiscoveredOperation(discoveredOperation, {text: "Synthetic Contact"})
+  ]) {
+    for (const transportMode of ["response", "throw"]) {
+      for (const error of malformedErrors) {
+        const handoffs = [];
+        let requests = 0;
+        const current = adapter({
+          request: async () => {
+            requests += 1;
+            const failure = {status: 400, resource, body: {error}};
+            if (transportMode === "throw") throw failure;
+            return failure;
+          },
+          recoverAuthentication: async (message) => {
+            handoffs.push(message);
+            return result("READY");
+          }
+        });
+        await assert.rejects(invoke(current), /BOS public error|dependency transport failed/);
+        assert.equal(requests, 1);
+        assert.deepEqual(handoffs, []);
+      }
+    }
+  }
 });
 
 test("host correlation and exact recovery resource are carried into the wait", async () => {
@@ -527,7 +1321,7 @@ test("host correlation and exact recovery resource are carried into the wait", a
     request: async () => {
       requests += 1;
       return requests === 1
-        ? { status: 401, resource: discovered, body: { error: { code: "AUTHORIZATION_REQUIRED" } } }
+        ? { status: 401, resource: discovered, body: { error: publicError() } }
         : { status: 200, body: { status: "in_progress" } };
     },
     getProtectedResource: async () => { throw new Error("fallback must not run"); },
@@ -558,18 +1352,62 @@ test("host correlation and exact recovery resource are carried into the wait", a
   ]);
 });
 
-test("adapter fails closed on a second auth response and private server output", async () => {
-  let requests = 0;
-  await assert.rejects(
-    adapter({
-      request: async () => { requests += 1; return { status: 401, body: { error: { code: "AUTHORIZATION_REQUIRED" } } }; }
-    }).invokeStateAction(stateAction),
-    (error) => error instanceof BosDependencyAdapterError && error.code === "AUTHENTICATION_RECOVERY_FAILED"
-  );
-  assert.equal(requests, 2);
+test("a final BOS authentication condition fails after one bounded recovery", async () => {
+  const finalError = {
+    ...publicError("AUTHORIZATION_REQUIRED"),
+    message: "Authentication is still required.",
+    retryable: false,
+    correlation_id: "corr-final-auth",
+    details: [{source: "calendar"}]
+  };
+  for (const invoke of [
+    (current) => current.invokeReturnedAction(completeAction, {acknowledged: true}),
+    (current) => current.invokeDiscoveredOperation(discoveredOperation, {text: "Synthetic Contact"})
+  ]) {
+    for (const transportMode of ["response", "throw"]) {
+      let requests = 0;
+      const current = adapter({
+        request: async () => {
+          requests += 1;
+          const failure = {
+            status: 401,
+            resource,
+            body: {error: requests === 1 ? publicError() : structuredClone(finalError)}
+          };
+          if (transportMode === "throw") throw failure;
+          return failure;
+        }
+      });
+      await assert.rejects(invoke(current), /recovery did not restore the operation/);
+      assert.equal(requests, 2);
+    }
+  }
+});
+
+test("adapter rejects private server output", async () => {
   await assert.rejects(
     adapter({ request: async () => ({ status: 200, body: { context_handle: handle("c") } }) })
       .invokeStateAction(stateAction),
+    /private BOS transport data/
+  );
+  await assert.rejects(
+    adapter({request: async () => ({status: 200, body: {message: "Bearer private"}})})
+      .invokeStateAction(stateAction),
+    /private BOS transport data/
+  );
+  await assert.rejects(
+    adapter({
+      request: async () => ({
+        status: 400,
+        body: {
+          error: {
+            ...publicError("invalid_request"),
+            message: canonicalSensitiveWordMessage,
+            details: [{access_token: "private"}]
+          }
+        }
+      })
+    }).invokeStateAction(stateAction),
     /private BOS transport data/
   );
 });
@@ -616,7 +1454,7 @@ test("authentication handoff preserves an exact discovered resource", async () =
       return { ...result("READY"), protected_resource: discovered };
     }
   });
-  assert.equal((await current.recoverAuthentication({ condition: "MISSING_GRANT" })).protected_resource, discovered);
+  assert.equal((await current.recoverAuthentication({ condition: "AUTHORIZATION_REQUIRED" })).protected_resource, discovered);
   assert.equal(messages[0].protected_resource, discovered);
 });
 
@@ -629,7 +1467,7 @@ test("automatic recovery preserves the protected resource carried by the failed 
     request: async () => {
       calls += 1;
       return calls === 1
-        ? { status: 401, resource: discovered, body: { error: { code: "AUTHORIZATION_REQUIRED" } } }
+        ? { status: 401, resource: discovered, body: { error: publicError() } }
         : { status: 200, body: { status: "in_progress" } };
     },
     recoverAuthentication: async (message) => {

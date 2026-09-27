@@ -121,7 +121,7 @@ function asPath(instancePath) {
 function validateWithPublishedSchema(document, publishedSchema, findings) {
   if (!isObject(publishedSchema)) {
     findings.push(finding(
-      "BOSL_SCHEMA_MISSING",
+      "bosl_schema_missing",
       "$",
       "The authenticated BOSL schema is required before local validation."
     ));
@@ -133,7 +133,7 @@ function validateWithPublishedSchema(document, publishedSchema, findings) {
     if (!validate(document)) {
       for (const error of validate.errors ?? []) {
         findings.push(finding(
-          "BOSL_SCHEMA_INVALID",
+          "bosl_schema_invalid",
           asPath(error.instancePath),
           `Published BOSL schema: ${error.message}.`
         ));
@@ -141,7 +141,7 @@ function validateWithPublishedSchema(document, publishedSchema, findings) {
     }
   } catch (error) {
     findings.push(finding(
-      "BOSL_SCHEMA_INVALID",
+      "bosl_schema_invalid",
       "$",
       `The authenticated BOSL schema could not be evaluated: ${error.message}`
     ));
@@ -182,7 +182,7 @@ function validateSecurity(value, findings, path = "$") {
       [...tokens].some((token) => authorityQualifiers.has(token));
     if (authorityContainers.has(key) || authoritySelector) {
       findings.push(finding(
-        "BOSL_AUTHORITY_FIELD_FORBIDDEN",
+        "bosl_authority_field_forbidden",
         `${path}.${rawKey}`,
         "BOSL cannot carry caller-selected authority or execution context."
       ));
@@ -193,14 +193,14 @@ function validateSecurity(value, findings, path = "$") {
 
 function validatePredicate(predicate, path, allowedPrefix, findings, depth = 0) {
   if (!isObject(predicate)) {
-    findings.push(finding("BOSL_PREDICATE_INVALID", path, "Predicate must be an object."));
+    findings.push(finding("bosl_predicate_invalid", path, "Predicate must be an object."));
     return;
   }
   const groups = ["all", "any"].filter((key) => Object.hasOwn(predicate, key));
   if (groups.length) {
     if (depth > 0 || groups.length !== 1 || Object.keys(predicate).length !== 1) {
       findings.push(finding(
-        "BOSL_PREDICATE_NESTED",
+        "bosl_predicate_nested",
         path,
         "Predicates permit one non-nested all or any group."
       ));
@@ -209,7 +209,7 @@ function validatePredicate(predicate, path, allowedPrefix, findings, depth = 0) 
     const children = predicate[groups[0]];
     if (!Array.isArray(children) || children.length === 0) {
       findings.push(finding(
-        "BOSL_PREDICATE_INVALID",
+        "bosl_predicate_invalid",
         `${path}.${groups[0]}`,
         "Predicate group must contain at least one simple predicate."
       ));
@@ -226,7 +226,7 @@ function validatePredicate(predicate, path, allowedPrefix, findings, depth = 0) 
   }
   if (!predicateOperators.has(predicate.op)) {
     findings.push(finding(
-      "BOSL_PREDICATE_OPERATOR_INVALID",
+      "bosl_predicate_operator_invalid",
       `${path}.op`,
       "Predicate operator is outside the published bounded set."
     ));
@@ -235,7 +235,7 @@ function validatePredicate(predicate, path, allowedPrefix, findings, depth = 0) 
       typeof predicate.left.from !== "string" ||
       !predicate.left.from.startsWith(allowedPrefix)) {
     findings.push(finding(
-      "BOSL_PREDICATE_REFERENCE_INVALID",
+      "bosl_predicate_reference_invalid",
       `${path}.left`,
       `Predicate left reference must begin with ${allowedPrefix}.`
     ));
@@ -243,14 +243,14 @@ function validatePredicate(predicate, path, allowedPrefix, findings, depth = 0) 
   const unary = ["exists", "not_exists"].includes(predicate.op);
   if (unary && Object.hasOwn(predicate, "right")) {
     findings.push(finding(
-      "BOSL_PREDICATE_RIGHT_INVALID",
+      "bosl_predicate_right_invalid",
       `${path}.right`,
       `${predicate.op} must omit right.`
     ));
   }
   if (!unary && !isObject(predicate.right)) {
     findings.push(finding(
-      "BOSL_PREDICATE_RIGHT_REQUIRED",
+      "bosl_predicate_right_required",
       `${path}.right`,
       `${predicate.op ?? "This operator"} requires right.`
     ));
@@ -259,22 +259,22 @@ function validatePredicate(predicate, path, allowedPrefix, findings, depth = 0) 
 
 function validateBranch(branch, path, allowedPrefix, nodeCodes, findings) {
   if (!isObject(branch)) {
-    findings.push(finding("BOSL_BRANCH_INVALID", path, "Branch must be an object."));
+    findings.push(finding("bosl_branch_invalid", path, "Branch must be an object."));
     return;
   }
   if (!Array.isArray(branch.cases)) {
-    findings.push(finding("BOSL_BRANCH_CASES_REQUIRED", `${path}.cases`, "cases must be an array."));
+    findings.push(finding("bosl_branch_cases_required", `${path}.cases`, "cases must be an array."));
   } else {
     branch.cases.forEach((item, index) => {
       const casePath = `${path}.cases[${index}]`;
       if (!isObject(item)) {
-        findings.push(finding("BOSL_BRANCH_CASE_INVALID", casePath, "Case must be an object."));
+        findings.push(finding("bosl_branch_case_invalid", casePath, "Case must be an object."));
         return;
       }
       validatePredicate(item.when, `${casePath}.when`, allowedPrefix, findings);
       if (typeof item.next !== "string" || !nodeCodes.has(item.next)) {
         findings.push(finding(
-          "BOSL_TARGET_UNKNOWN",
+          "bosl_target_unknown",
           `${casePath}.next`,
           "Case next must reference a declared node."
         ));
@@ -283,7 +283,7 @@ function validateBranch(branch, path, allowedPrefix, nodeCodes, findings) {
   }
   if (typeof branch.default !== "string" || !nodeCodes.has(branch.default)) {
     findings.push(finding(
-      "BOSL_BRANCH_DEFAULT_REQUIRED",
+      "bosl_branch_default_required",
       `${path}.default`,
       "A branch default referencing a declared node is required."
     ));
@@ -292,32 +292,32 @@ function validateBranch(branch, path, allowedPrefix, nodeCodes, findings) {
 
 function validateInputReference(value, path, document, nodesByCode, findings) {
   if (!isObject(value)) {
-    findings.push(finding("BOSL_INPUT_INVALID", path, "Input binding must be an object."));
+    findings.push(finding("bosl_input_invalid", path, "Input binding must be an object."));
     return;
   }
   const hasFrom = Object.hasOwn(value, "from");
   const hasValue = Object.hasOwn(value, "value");
   if (hasFrom === hasValue) {
     findings.push(finding(
-      "BOSL_INPUT_SOURCE_INVALID",
+      "bosl_input_source_invalid",
       path,
       "Input binding must declare exactly one of from or value."
     ));
     return;
   }
   if (Object.hasOwn(value, "optional") && typeof value.optional !== "boolean") {
-    findings.push(finding("BOSL_OPTIONAL_INVALID", `${path}.optional`, "optional must be boolean."));
+    findings.push(finding("bosl_optional_invalid", `${path}.optional`, "optional must be boolean."));
   }
   if (!hasFrom) return;
   if (typeof value.from !== "string") {
-    findings.push(finding("BOSL_REFERENCE_INVALID", `${path}.from`, "Reference must be a string."));
+    findings.push(finding("bosl_reference_invalid", `${path}.from`, "Reference must be a string."));
     return;
   }
   const journey = value.from.match(/^\$journey\.inputs\.([A-Za-z0-9_-]+)$/);
   if (journey) {
     if (!Object.hasOwn(document.inputs ?? {}, journey[1])) {
       findings.push(finding(
-        "BOSL_REFERENCE_UNKNOWN",
+        "bosl_reference_unknown",
         `${path}.from`,
         `Journey input ${journey[1]} is not declared.`
       ));
@@ -329,7 +329,7 @@ function validateInputReference(value, path, document, nodesByCode, findings) {
     const producer = nodesByCode.get(output[1]);
     if (!producer || !Object.hasOwn(producer.outputs ?? {}, output[2])) {
       findings.push(finding(
-        "BOSL_REFERENCE_UNKNOWN",
+        "bosl_reference_unknown",
         `${path}.from`,
         `Node output ${output[1]}.${output[2]} is not declared.`
       ));
@@ -340,7 +340,7 @@ function validateInputReference(value, path, document, nodesByCode, findings) {
   if (error) {
     if (!nodesByCode.has(error[1])) {
       findings.push(finding(
-        "BOSL_REFERENCE_UNKNOWN",
+        "bosl_reference_unknown",
         `${path}.from`,
         `Node ${error[1]} is not declared.`
       ));
@@ -348,7 +348,7 @@ function validateInputReference(value, path, document, nodesByCode, findings) {
     return;
   }
   findings.push(finding(
-    "BOSL_REFERENCE_INVALID",
+    "bosl_reference_invalid",
     `${path}.from`,
     "Reference is outside the published journey input, node output, and node error forms."
   ));
@@ -377,7 +377,7 @@ function validateBoundedCycles(nodesByCode, findings) {
   for (const code of unbounded) {
     if (visit(code)) {
       findings.push(finding(
-        "BOSL_CYCLE_UNBOUNDED",
+        "bosl_cycle_unbounded",
         "$.nodes",
         "Every graph cycle must pass through a node with max_visits."
       ));
@@ -423,7 +423,7 @@ export function validateBoslDocument(document, {
     if (operationId) {
       if (operations.has(operationId)) {
         findings.push(finding(
-          "BOSL_OPERATION_DUPLICATE",
+          "bosl_operation_duplicate",
           `$.operations.${operationId}`,
           `Discovered operation ${operationId} is duplicated.`
         ));
@@ -431,7 +431,7 @@ export function validateBoslDocument(document, {
       }
       if (operation.bosl_server_node !== true || operation.node_type !== "server") {
         findings.push(finding(
-          "BOSL_OPERATION_NOT_SERVER_EXECUTABLE",
+          "bosl_operation_not_server_executable",
           `$.operations.${operationId}`,
           `Discovered operation ${operationId} is not a sanctioned BOSL server-node operation.`
         ));
@@ -439,7 +439,7 @@ export function validateBoslDocument(document, {
         operations.set(operationId, operation);
       } else {
         findings.push(finding(
-          "BOSL_OPERATION_LIMITS_INVALID",
+          "bosl_operation_limits_invalid",
           `$.operations.${operationId}.limits`,
           "Discovered operation limits require maximum_duration_seconds 1..900 and maximum_fan_out 1..100."
         ));
@@ -450,36 +450,36 @@ export function validateBoslDocument(document, {
   document.nodes.forEach((node, index) => {
     const path = `$.nodes[${index}]`;
     if (!isObject(node) || typeof node.code !== "string" || !node.code) {
-      findings.push(finding("BOSL_NODE_CODE_INVALID", `${path}.code`, "Node code is required."));
+      findings.push(finding("bosl_node_code_invalid", `${path}.code`, "Node code is required."));
       return;
     }
     if (nodesByCode.has(node.code)) {
-      findings.push(finding("BOSL_NODE_DUPLICATE", `${path}.code`, `Node ${node.code} is duplicated.`));
+      findings.push(finding("bosl_node_duplicate", `${path}.code`, `Node ${node.code} is duplicated.`));
       return;
     }
     nodesByCode.set(node.code, node);
   });
   if (typeof document.entry !== "string" || !nodesByCode.has(document.entry)) {
-    findings.push(finding("BOSL_ENTRY_UNKNOWN", "$.entry", "entry must reference a declared node."));
+    findings.push(finding("bosl_entry_unknown", "$.entry", "entry must reference a declared node."));
   }
   const nodeCodes = new Set(nodesByCode.keys());
   document.nodes.forEach((node, index) => {
     if (!isObject(node) || typeof node.code !== "string") return;
     const path = `$.nodes[${index}]`;
     if (!["client", "server"].includes(node.type)) {
-      findings.push(finding("BOSL_NODE_TYPE_INVALID", `${path}.type`, "Node type must be client or server."));
+      findings.push(finding("bosl_node_type_invalid", `${path}.type`, "Node type must be client or server."));
     }
     if (node.type === "client") {
       if (Object.hasOwn(node, "operation")) {
         findings.push(finding(
-          "BOSL_NODE_OWNERSHIP_MIXED",
+          "bosl_node_ownership_mixed",
           `${path}.operation`,
           "Client nodes cannot declare a server operation."
         ));
       }
       if (!isObject(node.instruction)) {
         findings.push(finding(
-          "BOSL_CLIENT_INSTRUCTION_REQUIRED",
+          "bosl_client_instruction_required",
           `${path}.instruction`,
           "Client nodes require a structured instruction."
         ));
@@ -488,7 +488,7 @@ export function validateBoslDocument(document, {
     if (node.type === "server") {
       if (Object.hasOwn(node, "instruction")) {
         findings.push(finding(
-          "BOSL_NODE_OWNERSHIP_MIXED",
+          "bosl_node_ownership_mixed",
           `${path}.instruction`,
           "Server nodes cannot declare a client instruction."
         ));
@@ -496,13 +496,13 @@ export function validateBoslDocument(document, {
       if (node.terminal !== true) {
         if (typeof node.operation !== "string" || !node.operation) {
           findings.push(finding(
-            "BOSL_SERVER_OPERATION_REQUIRED",
+            "bosl_server_operation_required",
             `${path}.operation`,
             "Nonterminal server nodes require a semantic operation."
           ));
         } else if (!operations.has(node.operation)) {
           findings.push(finding(
-            "BOSL_OPERATION_UNDISCOVERED",
+            "bosl_operation_undiscovered",
             `${path}.operation`,
             `Operation ${node.operation} is not present in current discovery.`
           ));
@@ -512,41 +512,41 @@ export function validateBoslDocument(document, {
     if (node.max_visits !== undefined &&
         (!Number.isInteger(node.max_visits) || node.max_visits < 1)) {
       findings.push(finding(
-        "BOSL_MAX_VISITS_INVALID",
+        "bosl_max_visits_invalid",
         `${path}.max_visits`,
         "max_visits must be a positive integer."
       ));
     }
     if (!isObject(node.inputs)) {
-      findings.push(finding("BOSL_INPUTS_INVALID", `${path}.inputs`, "inputs must be an object."));
+      findings.push(finding("bosl_inputs_invalid", `${path}.inputs`, "inputs must be an object."));
     } else {
       for (const [name, value] of Object.entries(node.inputs)) {
         validateInputReference(value, `${path}.inputs.${name}`, document, nodesByCode, findings);
       }
     }
     if (!isObject(node.outputs)) {
-      findings.push(finding("BOSL_OUTPUTS_INVALID", `${path}.outputs`, "outputs must be an object."));
+      findings.push(finding("bosl_outputs_invalid", `${path}.outputs`, "outputs must be an object."));
     }
     const hasNext = Object.hasOwn(node, "next");
     const hasTransitions = Object.hasOwn(node, "transitions");
     if (node.terminal === true) {
       if (hasNext || hasTransitions) {
         findings.push(finding(
-          "BOSL_TERMINAL_ROUTE_INVALID",
+          "bosl_terminal_route_invalid",
           path,
           "Terminal nodes cannot declare next or transitions."
         ));
       }
     } else if (hasNext === hasTransitions) {
       findings.push(finding(
-        "BOSL_SUCCESS_ROUTE_INVALID",
+        "bosl_success_route_invalid",
         path,
         "Each nonterminal node must declare exactly one of next or transitions."
       ));
     }
     if (hasNext && (typeof node.next !== "string" || !nodeCodes.has(node.next))) {
       findings.push(finding(
-        "BOSL_TARGET_UNKNOWN",
+        "bosl_target_unknown",
         `${path}.next`,
         "next must reference a declared node."
       ));
@@ -571,7 +571,7 @@ export function validateBoslDocument(document, {
     for (const code of nodeCodes) {
       if (!reachable.has(code)) {
         findings.push(finding(
-          "BOSL_NODE_UNREACHABLE",
+          "bosl_node_unreachable",
           `$.nodes.${code}`,
           `Node ${code} is unreachable from entry.`
         ));

@@ -279,7 +279,7 @@ capability.
    target, scope, version, and effect; re-confirm material changes. Obtain any
    server-required preview/confirmation artifact as well.
 4. Send one delete request with the one-to-five exact targets. If the service
-   returns `428 APPROVAL_REQUIRED`, present its exact target summaries and
+   returns `428 approval_required`, present its exact target summaries and
    consequences, obtain explicit approval, and invoke its returned action
    verbatim. A changed target requires a fresh instruction and approval.
 5. When the service returns `202 in_progress`, wait for its declared interval

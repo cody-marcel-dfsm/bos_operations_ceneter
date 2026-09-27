@@ -41,13 +41,13 @@ repeat that exact unresolved action. Once a successor exists, use only it. A
 state read observes; it never advances the graph. Never replay `start`, `step`,
 or an underlying server operation while BOS reports `in_progress`.
 
-Use `USER_STOPPED` only through the current advertised `failed` action when the
+Use `user_stopped` only through the current advertised `failed` action when the
 user chooses to end the journey. It bypasses catch. Expiry is terminal and has
 no resume action. A later scoped not-found result supplies no deletion inference.
 
 For active capacity, present only returned current-user stoppable choices,
 obtain the user's selection, read its exact state action, use the returned
-`failed` action with `USER_STOPPED`, then repeat the original bodyless `start`.
+`failed` action with `user_stopped`, then repeat the original bodyless `start`.
 Never stop work automatically. For creation rate limiting, verify HTTP
 `Retry-After` equals `retry_after_seconds`, show the local eligible time, and
 end the attempt. Only a later explicit user request can refresh discovery and

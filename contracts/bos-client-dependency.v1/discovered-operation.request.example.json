@@ -41,7 +41,7 @@
     },
     "error_contract": {
       "schema": "lead-director-public-error/v1",
-      "codes": ["INVALID_SEARCH_REQUEST"]
+      "codes": ["invalid_search_request"]
     },
     "sources": [
       {

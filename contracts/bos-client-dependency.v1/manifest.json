@@ -9,7 +9,7 @@
     {
       "id": "external_dependency_adapter",
       "path": "skills/bos-external-dependency-adapter/scripts/external-dependency-adapter.mjs",
-      "sha256": "f6cd4d9c66cee7dcc1c5882389cf395324625e1c43044572ef5715a58aaa8c41"
+      "sha256": "956a379074c05248711e5c45f2e1cdb750bcc990982e31b37a2b8b3b6117cac1"
     },
     {
       "id": "external_dependency_schema_runtime",
@@ -19,7 +19,12 @@
     {
       "id": "external_dependency_discovered_operation_schema",
       "path": "skills/bos-external-dependency-adapter/scripts/discovered-operation-request.schema.mjs",
-      "sha256": "6b336e2d767fcd0271a5d9f3b48feb83baaf6da6dd785251b21d97c5d7d0ee88"
+      "sha256": "4d9296dfb3e46ca9cdae3af1a9af91a80f33c4075d38ceff379da1666c2e467e"
+    },
+    {
+      "id": "external_dependency_safe_execution_uri",
+      "path": "skills/bos-external-dependency-adapter/scripts/safe-execution-uri.mjs",
+      "sha256": "22898160f65ed1b534fb7e69cc81b7a95f914a53d004a308c51ea287bac28675"
     },
     {
       "id": "shared_cache_consumer",
@@ -31,17 +36,17 @@
     {
       "path": "README.md",
       "media_type": "text/markdown",
-      "sha256": "b692bb86463621dbf4aae5605340e1d610ac152ae063ca61ac0c8fea510e6729"
+      "sha256": "3670e53df2a91246d0d8f20e727c1a21736e14b828b96c86f1e585ed3f51798e"
     },
     {
       "path": "discovered-operation.request.example.json",
       "media_type": "application/json",
-      "sha256": "8caa38fbe7a1b6b535952459d504fe3dd8b38e41e75a22f12c9c47e3b174a5b8"
+      "sha256": "df07e55b5ca87b1fd6d330d423b13e098b94d2708d31addcd48db41c1a2d1e54"
     },
     {
       "path": "discovered-operation.request.schema.json",
       "media_type": "application/schema+json",
-      "sha256": "4b4909d2c8004d38751ac68a18f1335c2221cfce7330f78017350f1b7111c2fe"
+      "sha256": "62475aa9d2e2beca275bff529f1b0d98badd2771eb0f58226f09820e95fb2b40"
     },
     {
       "path": "discovered-operation.response.example.json",
@@ -74,5 +79,5 @@
       "sha256": "046c4dd184af18af526ed64bd37a75dd316397b3d1437886eb7f57deb5e99d2d"
     }
   ],
-  "bundle_sha256": "591749079a54656c5c8b6ef9c96ce4aa9968cda8ec41b45a17155729eba68fb0"
+  "bundle_sha256": "e8acf76b181383bd980d5157befc0952e2a4b3b91232586091743655a4e2642b"
 }

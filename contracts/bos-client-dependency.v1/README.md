@@ -72,9 +72,10 @@ applicable, and `invalidated_query_count` for dataset/source maintenance.
 The JSON Schemas and examples in this directory define the complete public
 inputs and result envelopes. `manifest.json` binds every contract file and
 every transitive executable file by SHA-256, then binds those rows into the
-complete bundle digest. Consumers import the complete directory, verify the
-manifest and installed public helper bytes, and depend on the installed BOS
-paths named there. The shared-cache runtime and native authority composition
-remain private to BOS and are deliberately absent from the external executable
-inventory. Consumers never copy executable implementations or access this
-repository at runtime.
+complete bundle digest. Packaged consumers verify the manifest and installed
+BOS-owned public helper bytes and depend on the installed BOS paths named
+there. Discovery-only external consumers use their installed BOS connection
+and live advertised contracts; they do not import or freeze this directory.
+The shared-cache runtime and native authority composition remain private to BOS
+and are deliberately absent from the external executable inventory. Consumers
+never copy executable implementations or access this repository at runtime.

@@ -5,15 +5,37 @@ description: Implement BOS Operations Center repository changes using its archit
 
 # Operations Center Implementation
 
+## Automated proposal gate
+
+Before the first repository mutation, investigate current behavior and write
+the proposed correction under **Problem**, **Cause**, and **Recommended
+change**, with no more than three concise sentences under each heading. Submit
+that proposal through `npm run oracle:proposal -- "<proposal>"`; continue the
+authorized task automatically only after the independent Oracle returns
+`APPROVED`. A material change to the proposed cause, ownership boundary, public
+contract, or correction requires a fresh proposal review.
+
+The proposal Oracle classifies architecture, public API-contract,
+authentication, and authorization impact before implementation. When it flags
+a genuinely new protected change without exact owner approval, present its
+three-part finding to the user and stop; after approval, resubmit the proposal
+with the approval evidence and continue automatically. A bounded restoration
+of already-approved behavior reuses the existing scoped approval and creates
+no additional user checkpoint. Repair client behavior against the implemented
+service contract unless an approved proposal changes that contract.
+
+For a Projects-level relationship or shared public-contract question, obtain
+Projects Oracle proposal approval first and repository-local proposal approval
+second. Neither scope substitutes for the other.
+
 ## Authentication approval continuity
 
-Identify authentication-affecting changes before implementation and follow
-Oracle's Authentication change review. Obtain owner approval exactly once for
-the scoped alteration; preserve its evidence through corrections, release, and
-verification until resolved. A corrected diff requires fresh Oracle review,
-not renewed owner approval. Request new approval only for a materially different
-change outside the approved scope. Flag conflicting architecture sources rather
-than silently changing connection ownership or authorization boundaries.
+Submit the complete candidate through `npm run oracle:review`; the utility
+binds the latest durable proposal-review record into its evidence, and Oracle alone
+classifies authentication impact and emits any owner-approval warning. Supply
+existing owner-approval evidence to the utility when it applies. Preserve that
+evidence through corrections, release, and verification until resolved. A
+corrected diff requires a fresh utility review, not renewed owner approval.
 
 ## Request routing and completion
 
@@ -102,9 +124,12 @@ claiming its hypothesis is proven.
 10. Update issue history with root cause, resolution, evidence, and prevention
     guidance when the work fixes or materially reclassifies an issue.
 11. Synchronize the Vault index after every Vault mutation.
-12. Submit the complete actual diff and validation evidence to the
-    repository-local `oracle` skill. Resolve every rejection and request a fresh
-    review after each correction until Oracle returns `APPROVED`.
+12. Stage the complete candidate, then call `npm run oracle:review --
+    --evidence "<command and result>"` with each focused validation result.
+    Never load the Oracle skill directly. Resolve every rejection, restage the
+    complete candidate, and call the utility again until it returns `APPROVED`.
+    The `prepare-commit-msg` hook writes the exact utility-issued trailers.
+    Never transcribe, edit, or construct Oracle trailers yourself.
 
 Report changed files, generated outputs, validation, issue-history updates,
 Oracle verdict, and remaining risks.

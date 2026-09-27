@@ -66,7 +66,7 @@ export const CHECK_REQUIREMENTS = Object.freeze({
   "AC-24": ["current_user_choices_only", "no_automatic_stop", "exact_state_action_followed", "failed_code_user_stopped", "original_start_repeated", "retry_after_exact", "no_registration_retry_scheduled"],
   "AC-25": ["expired_410_during_retention", "no_resume_action", "aged_off_404", "no_client_retry"],
   "AC-26": ["host_reconnected", "same_instruction_recovered", "no_route_reconstruction", "no_user_state_management"],
-  "AC-27": ["category_only_query", "public_status_complete", "unknown_category_404", "provider_unavailable_503", "duplicate_category_blocks_readiness", "no_internal_ids"],
+  "AC-27": ["category_only_query", "public_status_complete", "unknown_category_404", "source_temporarily_unavailable_503", "duplicate_category_blocks_readiness", "no_internal_ids"],
   "AC-28": ["category_only_default_window", "explicit_window_exact", "metrics_observed_at", "invalid_window_400", "expired_window_410"],
   "AC-29": ["exact_prompt_executed", "graph_visualized", "dry_path_completed", "package_and_service_revision_recorded"],
   "AC-31": ["two_organization_shapes", "described_labels_and_fields", "described_ui_and_transitions", "no_fixed_entity_assumption"]
@@ -242,7 +242,7 @@ export const OBSERVATION_REQUIREMENTS = Object.freeze({
   "AC-27": [
     observation("campaign_status", "discovered_contract", "POST", "semantic_input", 200, true, ["category_only_query", "public_status_complete", "no_internal_ids"]),
     observation("campaign_unknown", "discovered_contract", "POST", "semantic_input", 404, true, ["unknown_category_404"]),
-    observation("campaign_provider_unavailable", "discovered_contract", "POST", "semantic_input", 503, true, ["provider_unavailable_503"]),
+    observation("source_temporarily_unavailable", "discovered_contract", "POST", "semantic_input", 503, true, ["source_temporarily_unavailable_503"]),
     observation("duplicate_category_readiness", "discovered_contract", "POST", "semantic_input", 200, true, ["duplicate_category_blocks_readiness"])
   ],
   "AC-28": [

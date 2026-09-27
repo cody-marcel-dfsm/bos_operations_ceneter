@@ -17,6 +17,21 @@ making a server handoff the proposed resolution. Sequence client implementation,
 validation, and Oracle approval before requesting server work. Label the eventual
 request **Server handoff**; a plan alone does not establish client completion.
 
+## Automated proposal review
+
+Ground each material proposal in current evidence and format it as **Problem**,
+**Cause**, and **Recommended change**, with no more than three concise sentences
+under each heading. Submit it through `npm run oracle:proposal -- "<proposal>"`
+before persistence or implementation. Continue automatically after `APPROVED`;
+when Oracle classifies a genuinely new authentication design, public API
+contract, or architecture without exact owner approval, present that exact
+finding to the user and stop until approval is supplied and the proposal is
+resubmitted.
+
+Proposal approval is scope approval, not a completed-tree receipt. Material
+proposal changes require another proposal review, and every resulting mutation
+still requires completed-diff Oracle review.
+
 ## Release-only client delivery
 
 - Never hot-patch installed client files, managed plugin caches, or personal

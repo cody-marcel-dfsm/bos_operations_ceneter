@@ -198,16 +198,29 @@ dimensions, or a PNG signature never complete client verification.
 Run the repository-local Oracle remediation loop before committing:
 
 1. Use `operations-center-review` on the complete release diff and validation
-   evidence.
-2. Submit that same complete diff and evidence to the repository-local `oracle`
-   skill.
-3. Require findings with exact file-and-line evidence and exactly one verdict:
-   `APPROVED` or `REJECTED`.
+   evidence and require `READINESS_PASS`.
+2. Run `npm run release:check` and preserve exact machine-readable evidence with
+   the command, exit code, and Node test totals (`tests`, `pass`, `fail`,
+   `skipped`, and `duration_ms`) under private `Vault/tmp/oracle-review/`.
+   Stage the complete release candidate, then call `npm run oracle:review --
+   --evidence "<path-to-validation-evidence>"` for that exact evidence file and
+   each other relevant validation evidence file. The
+   utility alone loads the approver-only Oracle skill.
+   The utility prepares and hash-binds the required synchronized Vault query
+   evidence before launching the isolated read-only approver.
+3. Require the utility's literal verdict `APPROVED`. The
+   `prepare-commit-msg` hook derives the three exact commit trailers from the
+   verified local receipt; the shipping agent never writes Oracle trailers or
+   loads the Oracle skill. No Git-note publication step exists.
 4. Resolve every rejection with `operations-center-implementation`, rerun all
-   affected validation, refresh the Vault index, and request a fresh complete
-   Oracle review.
+   affected validation, refresh the Vault index, restage the complete candidate,
+   and call the utility for a fresh complete Oracle review.
 5. Continue until the literal verdict is `APPROVED`. Any mutation after approval
    invalidates that verdict and returns the release to this review loop.
+6. A GitHub merge commit is valid only when its resulting tree is byte-for-byte
+   the Oracle-approved pull-request tree. If the target branch changes the
+   merge result, update the release branch, rerun validation, and obtain a fresh
+   Oracle receipt before merging.
 
 - Fix failures caused by the pending changes when the correction is clearly within their scope, then rerun affected checks.
 - Stop without committing or pushing when a required check still fails, a required external gate is unavailable, or a safe correction would materially change intent.
@@ -215,10 +228,18 @@ Run the repository-local Oracle remediation loop before committing:
 
 ## Commit everything
 
-1. Run `git add -A` only after review and required validation pass. This intentionally includes every modification, deletion, rename, and untracked file in the current repository.
-2. Verify that the staged diff represents the reviewed change set and that no unstaged or untracked files remain. If new files appeared after review, inspect them and rerun relevant checks before staging them.
-3. Infer a concise commit message from the complete diff and the repository's recent commit style. Do not amend, squash, rebase, skip hooks, or create an empty commit.
-4. Create one commit containing the complete staged change set. If a commit hook changes files, inspect those changes, rerun relevant validation, stage the complete result, and create a new commit only when the original commit did not succeed.
+1. The complete candidate was staged before Oracle review. Verify that the
+   index still represents that exact candidate and that no unstaged or untracked
+   non-Vault files remain. Never stage private `Vault/` material.
+2. Infer a concise commit message from the complete diff and the repository's
+   recent commit style. Do not include or edit `Oracle-Verdict`,
+   `Oracle-Reviewed-Tree`, or `Oracle-Receipt-SHA256`; the
+   `prepare-commit-msg` hook owns them. Do not amend, squash, rebase, skip
+   hooks, or create an empty commit.
+3. Create one commit containing the complete staged change set. Hooks must
+   verify the local receipt and trailers. If any hook changes files, the Oracle
+   receipt is invalid: inspect, validate, restage, and rerun the utility before
+   retrying the commit.
 
 ## Publish through a pull request
 

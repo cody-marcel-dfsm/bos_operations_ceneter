@@ -3,7 +3,7 @@ import { execFile } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test from "node:test";
+import test, {after} from "node:test";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
@@ -12,8 +12,14 @@ import {
   root,
   transformProductSkillGuidance
 } from "../scripts/lib/package-model.mjs";
+import {
+  fetchSyntheticDiscovery,
+  startSyntheticBosDiscoveryService
+} from "./helpers/synthetic-bos-discovery-service.mjs";
 
 const run = promisify(execFile);
+const syntheticBos = await startSyntheticBosDiscoveryService();
+after(() => syntheticBos.close());
 
 const generatedRoots = [
   `${root}/clients/codex/plugins/bos/skills`,
@@ -124,6 +130,60 @@ test("BOS alone packages the external dependency adapter seam", async () => {
     await assert.rejects(
       readFile(`${generatedRoot}/bos-external-dependency-adapter/SKILL.md`, "utf8"),
       (error) => error?.code === "ENOENT",
+      generatedRoot
+    );
+  }
+});
+
+test("every generated dependency adapter preserves null errors and rejects incomplete composed errors", async () => {
+  const stateAction = {
+    verb: "state",
+    method: "GET",
+    href: "/bos/api/v1/journeys/generated-parity",
+    payload_schema: null
+  };
+  const successful = {
+    status: 201,
+    body: {
+      id: "contact-synthetic-1",
+      created: true,
+      error: null,
+      source_results: [{source: "crm", error: null}]
+    }
+  };
+
+  for (const generatedRoot of generatedRoots) {
+    const moduleUrl = pathToFileURL(
+      `${generatedRoot}/bos-external-dependency-adapter/scripts/external-dependency-adapter.mjs`
+    );
+    const {createBosExternalDependencyAdapter} = await import(moduleUrl);
+    const createAdapter = (request) => createBosExternalDependencyAdapter({
+      hostTransport: {
+        request,
+        recoverAuthentication: async () => {
+          throw new Error("recovery must not run");
+        },
+        getProtectedResource: async () => "https://dfsm.ai/mcp/apps/bos/platform"
+      },
+      contextProvider: {
+        getCurrentContext: async () => ({contract_version: "bos-identity-mcp/v1"}),
+        getExecutionContextHeader: async () => "X-BOS-Context-Handle"
+      }
+    });
+    assert.deepEqual(
+      await createAdapter(async () => structuredClone(successful))
+        .invokeStateAction(stateAction),
+      successful,
+      generatedRoot
+    );
+    await assert.rejects(
+      createAdapter(async () => ({
+        status: 207,
+        body: {
+          outcomes: [{error: {code: "invalid_request", message: "incomplete"}}]
+        }
+      })).invokeStateAction(stateAction),
+      /BOS public error/,
       generatedRoot
     );
   }
@@ -351,7 +411,7 @@ test("extracted BOS archive executes Draft 2020-12 journey helpers without repos
   assert.deepEqual(runtime.buildActionRequest({
     verb: "read",
     method: "POST",
-    href: "/read?selection=opaque",
+    href: "/bos/read?selection=opaque",
     payload_schema: {
       $schema: "https://json-schema.org/draft/2020-12/schema",
       type: "object",
@@ -360,15 +420,15 @@ test("extracted BOS archive executes Draft 2020-12 journey helpers without repos
     }
   }, {}), {
     method: "POST",
-    href: "/read?selection=opaque",
+    href: "/bos/read?selection=opaque",
     headers: { "content-type": "application/json" },
     body: "{}"
   });
   const contextHandle = `bos_ctx_v2_${"c".repeat(64)}`;
-  const authoritativeDescribe = JSON.parse(await readFile(
-    `${root}/tests/fixtures/public-contracts/lead-director/v1/describe.response.example.json`,
-    "utf8"
-  ));
+  const authoritativeDescribe = await fetchSyntheticDiscovery(
+    syntheticBos.baseUrl,
+    "/discovery/operations"
+  );
   const describedOperation = authoritativeDescribe.operations.find(
     ({operation, status}) => operation === "search" && status === "described"
   );

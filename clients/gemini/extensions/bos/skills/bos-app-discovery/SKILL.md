@@ -246,7 +246,7 @@ capability and never grants execution authority; the app API revalidates current
 canonical scope.
 
 Return the most specific typed state available, including
-`configuration_required`, `app_not_installed`, `app_discovery_stale`,
+`source_not_available`, `app_not_installed`, `app_discovery_stale`,
 `app_contact_invalid`, `host_capability_unavailable`, `app_mcp_unavailable`,
 `api_contract_invalid`, `context_mismatch`, `authorization_denied`,
 `provider_recovery_required`, or `partial_result`. Preserve completed independent

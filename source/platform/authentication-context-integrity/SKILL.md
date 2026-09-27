@@ -89,7 +89,7 @@ configuration as distinct validated dimensions.
   plugin. Missing provider readiness affects only server-evaluated operations
   that require that provider; it never creates another BOS authentication
   boundary or removes unrelated subservice capabilities.
-- When a domain call returns `authorization_required`, automatically complete
+- When a domain call returns `provider_authorization_required`, automatically complete
   the provider-specific recovery flow in the active request, verify it, and
   resume the original operation at most once. Never send the user to settings
   to discover or manually register a provider connection.

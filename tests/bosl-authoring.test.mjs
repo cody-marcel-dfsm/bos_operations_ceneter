@@ -109,7 +109,7 @@ const graph = {
           when: {
             left: { from: "$error.code" },
             op: "eq",
-            right: { value: "CAMPAIGN_RECIPIENTS_INVALID" }
+            right: { value: "campaign_recipients_invalid" }
           },
           next: "repair"
         }],
@@ -290,7 +290,7 @@ test("normalized caller authority selectors fail local validation", () => {
         publishedSchema,
         operationContracts
       }).findings.map(({ code }) => code).join("\n"),
-      /BOSL_AUTHORITY_FIELD_FORBIDDEN/
+      /bosl_authority_field_forbidden/
     );
   }
 });
@@ -310,7 +310,7 @@ test("operation contracts require the published duration and fan-out limits", ()
         publishedSchema,
         operationContracts: contracts
       }).findings.map(({ code }) => code).join("\n"),
-      /BOSL_OPERATION_LIMITS_INVALID/
+      /bosl_operation_limits_invalid/
     );
   }
   const duplicates = [
@@ -322,7 +322,7 @@ test("operation contracts require the published duration and fan-out limits", ()
       publishedSchema,
       operationContracts: duplicates
     }).findings.map(({ code }) => code).join("\n"),
-    /BOSL_OPERATION_DUPLICATE/
+    /bosl_operation_duplicate/
   );
   assert.throws(
     () => buildExplainPlan({
@@ -354,7 +354,7 @@ test("only explicitly sanctioned BOSL server-node operations may back server nod
     assert.equal(result.valid, false);
     assert.match(
       result.findings.map(({ code }) => code).join("\n"),
-      /BOSL_OPERATION_NOT_SERVER_EXECUTABLE/
+      /bosl_operation_not_server_executable/
     );
     assert.throws(
       () => buildExplainPlan({
