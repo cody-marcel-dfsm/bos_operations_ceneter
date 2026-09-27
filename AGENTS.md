@@ -14,12 +14,13 @@ Private knowledge root: `Vault/` (never tracked or published)
   `/Users/cody/Development/Projects/Vault/docs/architecture/bos-product-family.md`
   for family membership, cross-project ownership, and shared public-contract
   obligations.
-- Use the Projects-level Oracle at
-  `/Users/cody/Development/Projects/.agents/skills/oracle/SKILL.md` for family
-  membership, ownership boundaries, and shared public-contract alignment. Use
-  this repository's `Vault/` and `.agents/skills/oracle/SKILL.md` for every
-  BOS Operations Center design, implementation, package, test, and release
-  assertion.
+- Request Projects-level Oracle review through `python3
+  /Users/cody/Development/Projects/tools/projects_oracle.py --review "<request>"` for family
+  membership, ownership boundaries, and shared
+  public-contract alignment. Request repository review through `npm run
+  oracle:review`. Ordinary agents never load or act as either Oracle; each
+  utility starts the independent approver process with its own skills and
+  authority.
 - A change to a cross-project public contract requires Projects-level Oracle
   review and every affected project's local Oracle review. Each approval stays
   within its own authority.
@@ -86,6 +87,10 @@ Private knowledge root: `Vault/` (never tracked or published)
 - Never edit, commit, push, merge, or deploy BOS server code or infrastructure
   from work performed in this checkout. Do not create or use a sibling server
   worktree as part of an Operations Center task.
+- Client tests and builds discover BOS contracts from the configured BOS URL
+  or a tenant-neutral synthetic HTTP service owned by this repository. Never
+  copy, import, package, or read BOS Service schemas, examples, manifests,
+  archives, or sibling source. Consumer schemas remain BOC-owned.
 - When a client or package change depends on server behavior, stop at this
   repository boundary and return a paste-ready prompt for an agent operating in
   the owning server repository. Include the observed evidence, required
@@ -131,35 +136,66 @@ Private knowledge root: `Vault/` (never tracked or published)
   cache. Canonical Vault sources and timestamped manifests remain private local
   evidence.
 
-## Oracle review contract
+## Oracle approval-process contract
 
-- Oracle explicitly flags every authentication-affecting alteration, including
-  indirect changes in manifests, transports, tests, and instructions. Record the
-  owner's approved scope and request approval exactly once for that alteration.
+- Before any repository mutation, the ordinary workflow submits a concise
+  **Problem**, **Cause**, and **Recommended change** proposal through `npm run
+  oracle:proposal -- "<proposal>"`; each section contains no more than three
+  sentences. The isolated Oracle verifies the cause and ownership boundary,
+  classifies authentication, public API-contract, and architecture impact, and
+  either approves automatic continuation or flags the exact protected change
+  requiring owner approval. Restoration of already-approved behavior reuses
+  its scoped approval; a material proposal change requires fresh proposal
+  review. Proposal review writes a separate durable proposal record, never a
+  commit-acceptance receipt, and completed-tree Oracle review remains mandatory.
+
+- The Oracle process explicitly flags every authentication-affecting
+  alteration, including indirect changes in manifests, transports, tests, and
+  instructions. The implementation agent supplies existing approval evidence;
+  Oracle alone classifies the change and requests owner approval when required.
+  Record the owner's approved scope and request approval exactly once for that
+  alteration.
   Approval persists through all in-scope fixes, reviews, releases, deployments,
   and verification until resolved. Only a materially different alteration
   outside that scope requires new approval. Fresh Oracle review of corrected
   diffs remains mandatory and does not invalidate owner approval.
 
-- The repository-local `.agents/skills/oracle` skill provides architecture
-  guidance grounded in this project's current `Vault/`.
+- `.agents/skills/oracle` is approver-only instruction material loaded by
+  `tools/oracle_approval.py`. An implementation, planning, review, or release
+  agent must not load, invoke, quote, or impersonate that skill.
 - Every implementation, fix, refactor, test mutation, documentation mutation,
   generated-package mutation, and release change must use the repository-local
   `operations-center-implementation` workflow and submit the completed actual
-  diff plus focused validation evidence to the repository-local Oracle.
+  diff plus focused validation evidence through `npm run oracle:review`.
 - A repository mutation is incomplete until Oracle returns the literal verdict
   `APPROVED`. `REJECTED` blocks completion. Every correction invalidates the
   prior verdict and requires a fresh review of the complete updated diff.
-- Oracle maintains durable issue history under `Vault/docs/issues/`, reads that
-  history before implementation guidance or review, and records new causal and
-  prevention knowledge when a change resolves or materially reclassifies an
-  issue.
+- Oracle reads durable issue history under `Vault/docs/issues/`. The
+  implementation agent applies Oracle-required issue-history corrections and
+  resubmits the complete candidate.
 - Oracle is a repository-maintainer workflow. Customer BOS plugins and generated
   client packages never distribute it.
-- Repository-change approval requires review of the actual diff and validation
-  evidence. Loading the skill alone grants no approval.
+- Repository-change approval requires review of the complete staged tree and
+  validation evidence by the utility. Before starting its isolated read-only
+  approver, the utility synchronizes the private Vault index, runs the required
+  semantic query, and binds that query result and index snapshot into the
+  receipt evidence. Loading the skill never grants approval.
+- An approved utility run writes `.git/oracle/approval.json` and emits
+  `Oracle-Verdict`, `Oracle-Reviewed-Tree`, and `Oracle-Receipt-SHA256` commit
+  trailers. Local hooks verify the exact receipt, tree, base commit,
+  authorities, and approval status; CI verifies the committed accepted-state
+  trailers and tree. No Git-note publication protocol is required. The security boundary is process
+  separation: ordinary agents are trusted to invoke the utility and never load
+  or impersonate the Oracle skill; the isolated Oracle subprocess alone issues
+  approval for the exact staged tree. Any candidate
+  mutation invalidates the receipt and requires a fresh utility review.
+- A GitHub merge commit is accepted only when it has exactly two parents, its
+  pull-request parent carries valid Oracle accepted-state trailers, and the
+  merge commit tree exactly equals that Oracle-approved pull-request tree.
+  Update and reapprove the branch when the target branch would change the
+  resulting tree; octopus merges and conflict-resolution rewrites are rejected.
 - Oracle findings identify exact files and lines and end with `APPROVED` or
   `REJECTED`.
-- Application repositories own their own local Oracle skills, architecture, and
-  external approval services. Those services remain owned by the application
-  repository.
+- Application repositories own their own local Oracle utilities, approver-only
+  skills, architecture, and approval services. Those services remain owned by
+  the application repository.

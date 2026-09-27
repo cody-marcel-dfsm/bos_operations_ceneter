@@ -54,6 +54,7 @@ test("immutable BOS client dependency manifest binds contract and executable byt
   assert.deepEqual(manifest.executable_files.map(({ id }) => id).sort(), [
     "external_dependency_adapter",
     "external_dependency_discovered_operation_schema",
+    "external_dependency_safe_execution_uri",
     "external_dependency_schema_runtime",
     "shared_cache_consumer"
   ]);

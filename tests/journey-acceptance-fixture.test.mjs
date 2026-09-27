@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import test from "node:test";
+import test, {after} from "node:test";
 
 import {
   validateAppDescribe,
@@ -12,6 +12,10 @@ import {
   validateRegistrationResponse
 } from "../source/platform/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs";
 import {syntheticIdentity} from "../scripts/lib/synthetic-fixtures.mjs";
+import {
+  fetchSyntheticDiscovery,
+  startSyntheticBosDiscoveryService
+} from "./helpers/synthetic-bos-discovery-service.mjs";
 
 const syntheticAttendee = syntheticIdentity("journey-acceptance");
 
@@ -19,13 +23,12 @@ const fixture = JSON.parse(await readFile(
   new URL("./fixtures/agent-driven-custom-journey.json", import.meta.url),
   "utf8"
 ));
-const publicAppDescribe = JSON.parse(await readFile(
-  new URL(
-    "./fixtures/public-contracts/lead-director/v1/app.describe.example.json",
-    import.meta.url
-  ),
-  "utf8"
-));
+const syntheticBos = await startSyntheticBosDiscoveryService();
+after(() => syntheticBos.close());
+const publicAppDescribe = await fetchSyntheticDiscovery(
+  syntheticBos.baseUrl,
+  "/discovery/app"
+);
 const contextHandle = `bos_ctx_v2_${"d".repeat(64)}`;
 
 test("approved journey transcript validates and follows only returned actions", () => {

@@ -17,6 +17,14 @@
         "calendar_read_event"
       ]
     },
+    "journey_registration": {
+      "contract": {
+        "capability": "api.contract.get",
+        "input": {
+          "operation": "lead-director.journeys.register"
+        }
+      }
+    },
     "bosl": {
       "schema_uri": "bos://apps/lead-director/bosl/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/schema",
       "reference_uri": "bos://apps/lead-director/bosl/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/reference",
@@ -93,7 +101,7 @@
     "action": {
       "verb": "start",
       "method": "POST",
-      "href": "/bos/apps/lead-director/api/v1/organizations/example/journeys/meeting-follow-up:gcal-event-fall-enrollment-planning/start?capability=opaque-start",
+      "href": "/bos/apps/lead-director/api/v1/organizations/example/journeys/meeting-follow-up%3Agcal-event-fall-enrollment-planning/start?capability=opaque-start",
       "payload_schema": null
     }
   },
@@ -119,7 +127,7 @@
         "after_success": {
           "verb": "complete",
           "method": "POST",
-          "href": "/bos/apps/lead-director/api/v1/organizations/example/journeys/meeting-follow-up:gcal-event-fall-enrollment-planning/complete?capability=opaque-review-complete",
+          "href": "/bos/apps/lead-director/api/v1/organizations/example/journeys/meeting-follow-up%3Agcal-event-fall-enrollment-planning/complete?capability=opaque-review-complete",
           "payload_schema": {
             "type": "object",
             "required": [
@@ -145,7 +153,7 @@
         "on_failure": {
           "verb": "failed",
           "method": "POST",
-          "href": "/bos/apps/lead-director/api/v1/organizations/example/journeys/meeting-follow-up:gcal-event-fall-enrollment-planning/failed?capability=opaque-review-failed",
+          "href": "/bos/apps/lead-director/api/v1/organizations/example/journeys/meeting-follow-up%3Agcal-event-fall-enrollment-planning/failed?capability=opaque-review-failed",
           "payload_schema": {
             "type": "object",
             "required": [
@@ -155,8 +163,8 @@
             "properties": {
               "code": {
                 "enum": [
-                  "USER_STOPPED",
-                  "CLIENT_STEP_FAILED"
+                  "user_stopped",
+                  "client_step_failed"
                 ]
               },
               "message": {
@@ -179,7 +187,7 @@
       "action": {
         "verb": "step",
         "method": "POST",
-        "href": "/bos/apps/lead-director/api/v1/organizations/example/journeys/meeting-follow-up:gcal-event-fall-enrollment-planning/step?capability=opaque-step",
+        "href": "/bos/apps/lead-director/api/v1/organizations/example/journeys/meeting-follow-up%3Agcal-event-fall-enrollment-planning/step?capability=opaque-step",
         "payload_schema": null
       }
     }
@@ -199,7 +207,7 @@
       "action": {
         "verb": "state",
         "method": "GET",
-        "href": "/bos/apps/lead-director/api/v1/organizations/example/journeys/meeting-follow-up:gcal-event-fall-enrollment-planning?capability=opaque-state",
+        "href": "/bos/apps/lead-director/api/v1/organizations/example/journeys/meeting-follow-up%3Agcal-event-fall-enrollment-planning?capability=opaque-state",
         "payload_schema": null
       }
     }

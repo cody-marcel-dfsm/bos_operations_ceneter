@@ -83,15 +83,19 @@ Expect `status: received`, a durable `feedback_id`, `feedback_uuid`,
 
 ## Errors
 
-- `authentication_required / missing_bos_authentication`: run local BOS auth.
-- `context_required / missing_or_ambiguous_scope`: resolve exact context.
-- `forbidden / feedback_create_not_allowed`: report missing permission.
-- `invalid_request / invalid_feedback_payload`: correct named fields only.
-- `invalid_target / feedback_target_not_resolved`: correct the selector.
-- `rate_limited / feedback_rate_limit_exceeded`: report retry time.
-- `unavailable / feedback_storage_unavailable`: follow an exact returned state
+- `authentication_required`: run local BOS auth.
+- `context_required`: resolve exact context.
+- `authorization_denied`: report missing permission.
+- `invalid_request`: correct named fields only.
+- `invalid_target`: correct the selector.
+- `rate_limited`: report retry time.
+- `service_unavailable`: follow an exact returned state
   action when supplied; otherwise report the temporary service failure.
-- `409 / idempotency_conflict`: stop and report the service-owned conflict.
+- `conflict`: stop and report the service-owned conflict.
+
+Consume only the exact string in the BOS response's `error.code`. Do not infer
+a classification from HTTP status, inspect a secondary reason as an alias, or
+translate a code into a client-owned vocabulary.
 
 The client supplies no request identity, idempotency key, attempt identity,
 retry counter, reconciliation state, or execution state. BOS Service derives

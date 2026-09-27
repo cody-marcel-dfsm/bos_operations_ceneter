@@ -278,7 +278,7 @@ export function validateAppDescribe(description) {
   rejectRawAuthority(description, "app.describe response");
   requireExactKeys(
     description,
-    new Set(["application", "describe", "bosl"]),
+    new Set(["application", "describe", "bosl", "journey_registration"]),
     "app.describe response"
   );
   requireObject(description.application, "app.describe response.application");
@@ -322,6 +322,32 @@ export function validateAppDescribe(description) {
   }
   if (description.describe.operations.some((operation) => !operationIdPattern.test(operation))) {
     throw new Error("app.describe response.describe.operations contains an invalid operation identifier");
+  }
+  if (Object.hasOwn(description, "journey_registration")) {
+    requireObject(description.journey_registration, "app.describe response.journey_registration");
+    requireExactKeys(
+      description.journey_registration,
+      new Set(["contract"]),
+      "app.describe response.journey_registration"
+    );
+    requireObject(description.journey_registration.contract, "app.describe response.journey_registration.contract");
+    requireExactKeys(
+      description.journey_registration.contract,
+      new Set(["capability", "input"]),
+      "app.describe response.journey_registration.contract"
+    );
+    if (description.journey_registration.contract.capability !== "api.contract.get") {
+      throw new Error("app.describe response.journey_registration.contract.capability must be api.contract.get");
+    }
+    requireObject(description.journey_registration.contract.input, "app.describe response.journey_registration.contract.input");
+    requireExactKeys(
+      description.journey_registration.contract.input,
+      new Set(["operation"]),
+      "app.describe response.journey_registration.contract.input"
+    );
+    if (description.journey_registration.contract.input.operation !== "lead-director.journeys.register") {
+      throw new Error("app.describe response.journey_registration.contract.input.operation must be lead-director.journeys.register");
+    }
   }
   validateBoslDescriptor(description.bosl, "app.describe response.bosl");
   return description;
@@ -462,9 +488,9 @@ function validateReadiness(readiness, label) {
   requireExactKeys(readiness, new Set(["status", "requirements"]), label);
   if (!new Set([
     "ready",
-    "authorization_required",
-    "configuration_required",
-    "temporarily_unavailable"
+    "provider_authorization_required",
+    "source_not_available",
+    "source_temporarily_unavailable"
   ]).has(readiness.status)) {
     throw new Error(`${label}.status is invalid`);
   }
@@ -653,6 +679,9 @@ function validateErrorContract(contract, label) {
   requireExactKeys(contract, new Set(["schema", "codes"]), label);
   requireString(contract.schema, `${label}.schema`);
   requireStringArray(contract.codes, `${label}.codes`);
+  if (contract.codes.some((code) => !/^[a-z][a-z0-9_]{0,127}$/u.test(code))) {
+    throw new Error(`${label}.codes must contain exact canonical public error codes`);
+  }
   if (new Set(contract.codes).size !== contract.codes.length) {
     throw new Error(`${label}.codes must be unique`);
   }
@@ -749,7 +778,7 @@ function validatePublicOperationError(error, label) {
     label
   );
   requireString(error.code, `${label}.code`);
-  if (!/^[A-Z][A-Z0-9_]*$/u.test(error.code)) {
+  if (!/^[a-z][a-z0-9_]{0,127}$/u.test(error.code)) {
     throw new Error(`${label}.code must be a public error code`);
   }
   requireString(error.message, `${label}.message`);
@@ -1048,9 +1077,9 @@ export function validateOperationDescription(response) {
       validateServiceReference(source.source, `${sourceLabel}.source`);
       if (!new Set([
         "ready",
-        "authorization_required",
-        "configuration_required",
-        "temporarily_unavailable"
+        "provider_authorization_required",
+        "source_not_available",
+        "source_temporarily_unavailable"
       ]).has(source.availability)) {
         throw new Error(`${sourceLabel}.availability is invalid`);
       }

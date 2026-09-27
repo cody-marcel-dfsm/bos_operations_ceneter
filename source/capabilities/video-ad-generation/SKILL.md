@@ -43,7 +43,7 @@ configuration.
 repair plugin `run_as_role`; BOS resolves it exclusively from installed-app FSM
 metadata.
 
-When a Video Ads operation returns `authorization_required`, preserve the
+When a Video Ads operation returns `provider_authorization_required`, preserve the
 original operation identifier and follow the exact provider recovery flow
 returned by the scoped service in the agent interface. This recovers the
 underlying plugin grant through BOS; it never creates another client login or

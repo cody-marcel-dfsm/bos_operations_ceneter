@@ -1,13 +1,10 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test from "node:test";
+import test, {after} from "node:test";
 import { fileURLToPath } from "node:url";
-
-import Ajv2020 from "ajv/dist/2020.js";
 
 import {
   validateApiContractResponse,
@@ -17,40 +14,19 @@ import {
   validatePluginsList,
   validateServiceJourneyDescription
 } from "../source/platform/bos-app-discovery/scripts/validate-discovery.mjs";
+import {
+  fetchSyntheticDiscovery,
+  startSyntheticBosDiscoveryService
+} from "./helpers/synthetic-bos-discovery-service.mjs";
 
-const publicContractRoot = new URL(
-  "./fixtures/public-contracts/lead-director/v1/",
-  import.meta.url
+const syntheticBos = await startSyntheticBosDiscoveryService();
+after(() => syntheticBos.close());
+const appDescribe = await fetchSyntheticDiscovery(syntheticBos.baseUrl, "/discovery/app");
+const describeResponse = await fetchSyntheticDiscovery(syntheticBos.baseUrl, "/discovery/operations");
+const apiContractResponse = await fetchSyntheticDiscovery(
+  syntheticBos.baseUrl,
+  "/discovery/contracts/calendar.events.search"
 );
-
-async function readPublicContractFile(name, encoding = "utf8") {
-  return readFile(new URL(name, publicContractRoot), encoding);
-}
-
-async function readPublicContractJson(name) {
-  return JSON.parse(await readPublicContractFile(name));
-}
-
-function compilePublicSchema(schema) {
-  const ajv = new Ajv2020({ allErrors: true, strict: false });
-  ajv.addFormat("date-time", {
-    type: "string",
-    validate: (value) => !Number.isNaN(Date.parse(value))
-  });
-  return ajv.compile(schema);
-}
-
-const appDescribe = await readPublicContractJson("app.describe.example.json");
-const appDescribeSchema = await readPublicContractJson("app.describe.schema.json");
-const apiContractRequest = await readPublicContractJson("api.contract.request.example.json");
-const apiContractRequestSchema = await readPublicContractJson("api.contract.request.schema.json");
-const apiContractResponse = await readPublicContractJson("api.contract.response.example.json");
-const apiContractResponseSchema = await readPublicContractJson("api.contract.response.schema.json");
-const describeRequest = await readPublicContractJson("describe.request.example.json");
-const describeResponse = await readPublicContractJson("describe.response.example.json");
-const describeResponseSchema = await readPublicContractJson("describe.response.schema.json");
-const operationExamples = await readPublicContractJson("operation.examples.json");
-const publicContractManifest = await readPublicContractJson("manifest.json");
 
 const plugin = {
   reference: {
@@ -225,7 +201,7 @@ const operationDescription = {
     },
     error_contract: {
       schema: "lead-director-public-error/v1",
-      codes: ["INVALID_REQUEST"]
+      codes: ["invalid_request"]
     },
     sources: [{ source: plugin.reference, availability: "ready" }]
   }]
@@ -233,6 +209,24 @@ const operationDescription = {
 
 test("app.describe accepts authenticated BOSL resource links without authority data", () => {
   assert.equal(validateAppDescribe(appDescribe), appDescribe);
+  const {journey_registration: _journeyRegistration, ...ordinaryDescribe} = appDescribe;
+  assert.equal(validateAppDescribe(ordinaryDescribe), ordinaryDescribe);
+  assert.deepEqual(appDescribe.journey_registration, {
+    contract: {
+      capability: "api.contract.get",
+      input: {operation: "lead-director.journeys.register"}
+    }
+  });
+  for (const journey_registration of [
+    {contract: {capability: "other", input: {operation: "lead-director.journeys.register"}}},
+    {contract: {capability: "api.contract.get", input: {operation: "other"}}},
+    {contract: {capability: "api.contract.get", input: {operation: "lead-director.journeys.register", extra: true}}}
+  ]) {
+    assert.throws(
+      () => validateAppDescribe({...appDescribe, journey_registration}),
+      /journey_registration/
+    );
+  }
   assert.throws(
     () => validateAppDescribe({
       ...appDescribe,
@@ -267,49 +261,9 @@ test("app.describe accepts authenticated BOSL resource links without authority d
   );
 });
 
-test("archived BOS public release is byte-intact and every advertised operation conforms", async () => {
-  assert.equal(publicContractManifest.bundle_sha256, "d025bcba9329ee7551a67316cdb4803afcafbc912529e6e03ebd025bb46df381");
-  assert.equal(
-    publicContractManifest.auth_impact,
-    "owner-approved-auth-adjacent-context-selection"
-  );
-  assert.equal(
-    publicContractManifest.preserved_auth_contract,
-    "oauth-login-token-grant-callback-session-unchanged"
-  );
-  assert.deepEqual(
-    publicContractManifest.files.map(({ path }) => path),
-    [
-      "api.contract.request.example.json",
-      "api.contract.request.schema.json",
-      "api.contract.response.example.json",
-      "api.contract.response.schema.json",
-      "app.describe.example.json",
-      "app.describe.schema.json",
-      "describe.request.example.json",
-      "describe.response.example.json",
-      "describe.response.schema.json",
-      "operation.examples.json"
-    ]
-  );
-
-  const bundleParts = [];
-  for (const entry of publicContractManifest.files) {
-    const payload = await readPublicContractFile(entry.path, null);
-    const digest = createHash("sha256").update(payload).digest("hex");
-    assert.equal(digest, entry.sha256, entry.path);
-    bundleParts.push(Buffer.from(`${entry.path}\0`, "utf8"), Buffer.from(entry.sha256, "hex"));
-  }
-  assert.equal(
-    createHash("sha256").update(Buffer.concat(bundleParts)).digest("hex"),
-    publicContractManifest.bundle_sha256
-  );
-
-  const validateAppDescribeSchema = compilePublicSchema(appDescribeSchema);
-  assert.equal(validateAppDescribeSchema(appDescribe), true, JSON.stringify(validateAppDescribeSchema.errors));
+test("URL-backed synthetic BOS discovery satisfies every BOC consumer contract", () => {
   assert.equal(validateAppDescribe(appDescribe), appDescribe);
-  assert.deepEqual(describeRequest.operations, appDescribe.describe.operations);
-  assert.deepEqual(describeRequest.operations, [
+  assert.deepEqual(appDescribe.describe.operations, [
     "search",
     "create",
     "update",
@@ -317,46 +271,24 @@ test("archived BOS public release is byte-intact and every advertised operation 
     "calendar_read_event"
   ]);
 
-  const validateDescribeResponse = compilePublicSchema(describeResponseSchema);
-  assert.equal(validateDescribeResponse(describeResponse), true, JSON.stringify(validateDescribeResponse.errors));
   assert.equal(validateOperationDescription(describeResponse), describeResponse);
   assert.deepEqual(
     describeResponse.operations.map(({ operation }) => operation),
-    describeRequest.operations
-  );
-
-  for (const operation of describeResponse.operations) {
-    if (operation.status === "not_available") {
-      assert.equal(operationExamples[operation.operation], undefined);
-      continue;
-    }
-    const example = operationExamples[operation.operation];
-    assert.ok(example, `missing example for ${operation.operation}`);
-    assert.equal(operationExamples.routes[operation.operation], operation.execution.uri);
-    const validateInput = compilePublicSchema(operation.input_schema);
-    const validateOutput = compilePublicSchema(operation.output_schema);
-    assert.equal(validateInput(example.request), true, JSON.stringify(validateInput.errors));
-    assert.equal(validateOutput(example.response), true, JSON.stringify(validateOutput.errors));
-  }
-
-  const validateApiContractRequest = compilePublicSchema(apiContractRequestSchema);
-  const validateApiContractResponseSchema = compilePublicSchema(apiContractResponseSchema);
-  assert.equal(
-    validateApiContractRequest(apiContractRequest),
-    true,
-    JSON.stringify(validateApiContractRequest.errors)
-  );
-  assert.equal(
-    validateApiContractResponseSchema(apiContractResponse),
-    true,
-    JSON.stringify(validateApiContractResponseSchema.errors)
+    appDescribe.describe.operations
   );
   assert.equal(
     validateApiContractResponse(apiContractResponse, {
-      operation: apiContractRequest.operation,
+      operation: "calendar.events.search",
       source: apiContractResponse.source
     }),
     apiContractResponse
+  );
+
+  const invalidPublicCode = structuredClone(describeResponse);
+  invalidPublicCode.operations[0].error_contract.codes = [`a${"a".repeat(128)}`];
+  assert.throws(
+    () => validateOperationDescription(invalidPublicCode),
+    /error_contract|public error code/
   );
 });
 
@@ -382,9 +314,8 @@ test("api.contract.get response preserves current contract and BOSL classificati
       .map(({ contract }) => contract),
     ...serviceDescription.queries.map(({ contract }) => contract)
   ];
-  const validateApiContractRequest = compilePublicSchema(apiContractRequestSchema);
   for (const link of contractLinks) {
-    assert.equal(validateApiContractRequest(link.input), true);
+    assert.match(link.input.operation, /^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$/u);
     const response = {
       ...serverContract,
       operation: link.input.operation
@@ -401,10 +332,10 @@ test("api.contract.get response preserves current contract and BOSL classificati
   const unready = {
     ...serverContract,
     readiness: {
-      status: "configuration_required",
+      status: "source_not_available",
       requirements: [{
         operation: serverContract.operation,
-        status: "configuration_required",
+        status: "source_not_available",
         requirements: { category: "required" },
         recovery: {
           goal: "configure_campaign",
@@ -461,9 +392,7 @@ test("identity-v2 HTTP execution requires the discovered static context header",
 });
 
 test("api.contract.get rejects drift, private data, and contradictory node classification", () => {
-  const validateApiContractResponseSchema = compilePublicSchema(apiContractResponseSchema);
   const withNodeType = { ...apiContractResponse, node_type: "server" };
-  assert.equal(validateApiContractResponseSchema(withNodeType), false);
   assert.throws(
     () => validateApiContractResponse(withNodeType, {
       operation: apiContractResponse.operation
@@ -475,7 +404,6 @@ test("api.contract.get rejects drift, private data, and contradictory node class
     ...apiContractResponse,
     bosl_server_node: true
   };
-  assert.equal(validateApiContractResponseSchema(missingNodeType), false);
   assert.throws(
     () => validateApiContractResponse(missingNodeType, {
       operation: apiContractResponse.operation

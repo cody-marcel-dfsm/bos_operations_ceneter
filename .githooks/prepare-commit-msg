@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+"""Apply exact Oracle-owned trailers from the verified local receipt."""
+
+import subprocess
+import sys
+
+
+raise SystemExit(
+    subprocess.run(
+        [
+            sys.executable,
+            "tools/oracle_approval.py",
+            "apply-trailers",
+            sys.argv[1],
+        ],
+        check=False,
+    ).returncode
+)

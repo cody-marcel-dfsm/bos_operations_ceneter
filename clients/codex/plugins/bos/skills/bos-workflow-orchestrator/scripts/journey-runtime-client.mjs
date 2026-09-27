@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import Ajv2020 from "./vendor/ajv2020.bundle.mjs";
+import {validateSafeBosExecutionUri} from "../../bos-external-dependency-adapter/scripts/safe-execution-uri.mjs";
 
 const lifecycleVerbs = new Set(["start", "complete", "step", "failed", "state"]);
 const journeyStatuses = new Set([
@@ -82,6 +83,43 @@ function requireString(value, label) {
   return value;
 }
 
+function requireSafeString(value, label, maximum) {
+  requireString(value, label);
+  if (value.length > maximum || /[\r\n\u0000-\u001f\u007f]/u.test(value)) {
+    throw new Error(`${label} must be a bounded printable string`);
+  }
+  return value;
+}
+
+function requirePublicErrorMessage(value, label) {
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`${label} must be a non-empty string`);
+  }
+  let length = 0;
+  for (const _character of value) {
+    length += 1;
+    if (length > 2048) {
+      throw new Error(`${label} must contain at most 2048 Unicode characters`);
+    }
+  }
+  return value;
+}
+
+function validatePublicCode(value, label) {
+  if (typeof value !== "string" || !/^[a-z][a-z0-9_]{0,127}$/u.test(value)) {
+    throw new Error(`${label} must be an exact canonical public code`);
+  }
+  return value;
+}
+
+function validateCorrelationId(value, label) {
+  if (typeof value !== "string" ||
+      !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u.test(value)) {
+    throw new Error(`${label} must be a valid public correlation ID`);
+  }
+  return value;
+}
+
 function requireExactKeys(value, allowed, label) {
   for (const key of Object.keys(value)) {
     if (!allowed.has(key)) throw new Error(`${label} has undeclared field ${key}`);
@@ -110,23 +148,19 @@ function rejectInternalState(value, path = "journey response") {
   }
 }
 
+function rejectEnvelopeInternalState(value, publicError, path = "journey response") {
+  for (const [key, child] of Object.entries(value)) {
+    if (key === "error" && child === publicError) continue;
+    if (forbiddenPublicKeys.has(normalizedSecurityKey(key))) {
+      throw new Error(`${path}.${key} exposes internal journey state`);
+    }
+    rejectInternalState(child, `${path}.${key}`);
+  }
+}
+
 function validateHref(href, label) {
   requireString(href, label);
-  if (href !== href.trim() || /[\s\\]/u.test(href)) {
-    throw new Error(`${label} must be a complete returned HTTPS or origin-relative URI`);
-  }
-  let parsed;
-  try {
-    parsed = new URL(href, "https://bos.invalid");
-  } catch {
-    throw new Error(`${label} must be a complete returned HTTPS or origin-relative URI`);
-  }
-  const relative = href.startsWith("/") && !href.startsWith("//");
-  if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.hash ||
-      (relative && parsed.origin !== "https://bos.invalid") ||
-      (!relative && !href.startsWith("https://"))) {
-    throw new Error(`${label} must be a complete returned HTTPS or origin-relative URI`);
-  }
+  return validateSafeBosExecutionUri(href, label);
 }
 
 export function validateActionEnvelope(action, { lifecycleOnly = false } = {}) {
@@ -242,14 +276,7 @@ export function buildDiscoveredOperationRequest(contract, contextHandle, payload
   if (contract.execution.transport !== null && contract.execution.transport !== undefined) {
     throw new Error("journey_runtime operations are not direct HTTPS operations");
   }
-  requireString(contract.execution.uri, "operation contract.execution.uri");
-  if (!contract.execution.uri.startsWith("/") ||
-      contract.execution.uri.startsWith("//") ||
-      /[\s\\#]/u.test(contract.execution.uri)) {
-    throw new Error(
-      "operation contract.execution.uri must be a safe origin-relative URI"
-    );
-  }
+  validateHref(contract.execution.uri, "operation contract.execution.uri");
   requireObject(contract.input_schema, "operation contract.input_schema");
 
   const action = {
@@ -282,19 +309,19 @@ function validatePublicError(error, label = "error") {
     new Set(["code", "message", "retryable", "correlation_id", "details"]),
     label
   );
-  requireString(error.code, `${label}.code`);
-  requireString(error.message, `${label}.message`);
+  validatePublicCode(error.code, `${label}.code`);
+  requirePublicErrorMessage(error.message, `${label}.message`);
   if (typeof error.retryable !== "boolean") {
     throw new Error(`${label}.retryable must be boolean`);
   }
-  requireString(error.correlation_id, `${label}.correlation_id`);
+  validateCorrelationId(error.correlation_id, `${label}.correlation_id`);
   if (!Array.isArray(error.details)) {
     throw new Error(`${label}.details must be an array`);
   }
   error.details.forEach((detail, index) => {
     requireObject(detail, `${label}.details[${index}]`);
+    rejectInternalState(detail, `${label}.details[${index}]`);
   });
-  rejectInternalState(error, label);
   return error;
 }
 
@@ -380,7 +407,10 @@ export function validateClientResolution(resolution) {
 
 export function validateJourneyEnvelope(body) {
   requireObject(body, "journey response");
-  rejectInternalState(body);
+  const publicError = body.error === undefined
+    ? undefined
+    : validatePublicError(body.error);
+  rejectEnvelopeInternalState(body, publicError);
   requireString(body.identity, "journey response.identity");
   if (!journeyStatuses.has(body.status)) {
     throw new Error("journey response.status is invalid");
@@ -467,11 +497,11 @@ export function validateJourneyEnvelope(body) {
 
 export function validateRegistrationResponse(body) {
   requireObject(body, "registration response");
-  rejectInternalState(body, "registration response");
   if (typeof body.compiled !== "boolean") {
     throw new Error("registration response.compiled must be boolean");
   }
   if (body.compiled) {
+    rejectInternalState(body, "registration response");
     requireString(body.identity, "registration response.identity");
     validateActionEnvelope(body.action, { lifecycleOnly: true });
     if (body.action.verb !== "start" || body.action.method !== "POST" ||
@@ -480,15 +510,16 @@ export function validateRegistrationResponse(body) {
     }
     return body;
   }
-  validatePublicError(body.error, "registration response.error");
+  const publicError = validatePublicError(body.error, "registration response.error");
+  rejectEnvelopeInternalState(body, publicError, "registration response");
   if (!Array.isArray(body.errors) || body.errors.length === 0) {
     throw new Error("compile failure requires actionable compiler errors");
   }
   for (const [index, error] of body.errors.entries()) {
     requireObject(error, `registration response.errors[${index}]`);
-    for (const field of ["code", "path", "message"]) {
-      requireString(error[field], `registration response.errors[${index}].${field}`);
-    }
+    validatePublicCode(error.code, `registration response.errors[${index}].code`);
+    requireString(error.path, `registration response.errors[${index}].path`);
+    requireSafeString(error.message, `registration response.errors[${index}].message`, 2048);
   }
   if (Object.hasOwn(body, "action")) {
     throw new Error("compile failure must not return an action");
@@ -508,10 +539,12 @@ export function interpretJourneyResponse(response) {
     throw new Error("HTTP response.http_status must be an integer");
   }
   requireObject(response.body, "HTTP response.body");
-  rejectInternalState(response.body);
+  const publicError = response.body.error === undefined
+    ? undefined
+    : validatePublicError(response.body.error);
+  rejectEnvelopeInternalState(response.body, publicError);
 
-  if (response.body.error?.code === "JOURNEY_CREATION_RATE_LIMITED") {
-    validatePublicError(response.body.error);
+  if (publicError?.code === "journey_creation_rate_limited") {
     const seconds = response.body.retry_after_seconds;
     if (!Number.isInteger(seconds) || seconds < 1) {
       throw new Error("creation rate limit requires retry_after_seconds");
@@ -523,11 +556,10 @@ export function interpretJourneyResponse(response) {
     return {
       next: "await_explicit_user_request",
       retry_after_seconds: seconds,
-      error: response.body.error
+      error: publicError
     };
   }
-  if (response.body.error?.code === "JOURNEY_ACTIVE_LIMIT_REACHED") {
-    validatePublicError(response.body.error);
+  if (publicError?.code === "journey_active_limit_reached") {
     const resolution = requireObject(response.body.resolution, "active capacity resolution");
     requireExactKeys(
       resolution,
@@ -556,12 +588,11 @@ export function interpretJourneyResponse(response) {
         ? "request_stop_selection"
         : "capacity_unavailable",
       choices: resolution.stoppable_journeys,
-      error: response.body.error
+      error: publicError
     };
   }
-  if (response.http_status === 404 && response.body.error?.code === "JOURNEY_NOT_FOUND") {
-    validatePublicError(response.body.error);
-    return { next: "terminal_not_found", error: response.body.error };
+  if (response.http_status === 404 && publicError?.code === "journey_not_found") {
+    return { next: "terminal_not_found", error: publicError };
   }
 
   const body = validateJourneyEnvelope(response.body);

@@ -102,7 +102,7 @@ test("campaign requests use only the discovered contract and category", () => {
       ...metricsContract,
       execution: { ...metricsContract.execution, uri: "https://provider.example/metrics" }
     }, "fall-follow-up", contextHandle),
-    /origin-relative URI/
+    /safe origin-relative \/bos\/ URI/
   );
 });
 
@@ -183,7 +183,7 @@ test("client recovery resolution presents bounded intent without executable acti
     after_success: {
       verb: "step",
       method: "POST",
-      href: "/step?capability=opaque-private-action",
+      href: "/bos/step?capability=opaque-private-action",
       payload_schema: null
     }
   });

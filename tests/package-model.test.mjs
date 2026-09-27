@@ -2248,12 +2248,53 @@ test("feedback contract uses the BOS app with service-owned request identity", a
   assert.match(skill, /Supply no client submission identity[\s\S]*BOS Service derives request identity/i);
   assert.match(skill, /follow only the exact service-returned state action/i);
   assert.match(skill, /Do not claim triage, assignment, prioritization/);
-  assert.match(contract, /missing_or_ambiguous_scope/);
-  assert.match(contract, /feedback_create_not_allowed/);
-  assert.match(contract, /feedback_rate_limit_exceeded/);
-  assert.match(contract, /feedback_storage_unavailable/);
-  assert.match(contract, /idempotency_conflict/);
+  const expectedErrorCodes = [
+    "authentication_required",
+    "context_required",
+    "authorization_denied",
+    "invalid_request",
+    "invalid_target",
+    "rate_limited",
+    "service_unavailable",
+    "conflict"
+  ];
+  const feedbackErrorCodes = (content) => {
+    const errorSection = content.split("## Errors\n", 2)[1].split("\nThe client supplies", 1)[0];
+    return [...errorSection.matchAll(/^- `([a-z][a-z0-9_]*)`:/gmu)]
+      .map((match) => match[1]);
+  };
+  assert.deepEqual(feedbackErrorCodes(contract), expectedErrorCodes);
+  assert.doesNotMatch(
+    contract,
+    /missing_bos_authentication|missing_or_ambiguous_scope|feedback_create_not_allowed|invalid_feedback_payload|feedback_target_not_resolved|feedback_rate_limit_exceeded|feedback_storage_unavailable|idempotency_conflict|`forbidden`|`unavailable`|`409`/u
+  );
+  assert.match(contract, /exact string in the BOS response's `error\.code`/u);
+  assert.match(contract, /Do not infer[\s\S]*HTTP status[\s\S]*secondary reason[\s\S]*client-owned vocabulary/u);
   assert.doesNotMatch(contract, /"org_id"|"app_code"|"installed_app_id"/);
+
+  const products = await listProducts();
+  const roots = {
+    codex: `${root}/clients/codex/plugins`,
+    claude: `${root}/clients/claude/plugins`,
+    copilot: `${root}/clients/copilot/products`,
+    gemini: `${root}/clients/gemini/extensions`
+  };
+  for (const {manifest} of products) {
+    if (manifest.release_status === "disabled") continue;
+    const skills = await resolveProductSkills(manifest);
+    if (!skills.some((entry) => entry.name === "submit-feedback")) continue;
+    for (const client of manifest.clients) {
+      const generated = await readFile(
+        `${roots[client]}/${manifest.name}/skills/submit-feedback/references/feedback-contract.md`,
+        "utf8"
+      );
+      assert.deepEqual(
+        feedbackErrorCodes(generated),
+        expectedErrorCodes,
+        `${client}/${manifest.name} feedback error vocabulary`
+      );
+    }
+  }
 });
 
 test("Education Center composition contains only approved shared runtime foundations", async () => {
@@ -2640,7 +2681,8 @@ test("Oracle is repository-local and excluded from customer packages", async () 
   assert.match(localOracle, /python3 tools\/vault_index\.py sync --quiet/i);
   assert.match(localOracle, /Vault\/docs\/architecture\.md/i);
   assert.match(localOracle, /never distributed in customer BOS plugins/i);
-  assert.match(repositoryInstructions, /repository-local `.agents\/skills\/oracle`/i);
+  assert.match(repositoryInstructions, /npm run\s+oracle:review/i);
+  assert.match(repositoryInstructions, /must not load, invoke, quote, or impersonate/i);
   assert.equal(await pathExists(`${root}/source/platform/oracle/SKILL.md`), false);
 
   for (const clientRoot of [

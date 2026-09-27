@@ -428,7 +428,7 @@ and inspect its sanitized result before producing a final answer.
    Keep tokens, authorization codes, bearer values, and grant metadata out of
    chat, tool arguments, package files, and logs. Resume the original request
    after native authentication succeeds and live discovery is refreshed.
-6. When a domain call returns `authorization_required`, preserve its original
+6. When a domain call returns `provider_authorization_required`, preserve its original
    operation ID and activate the returned secure authorization path immediately
    in the active request. Use the host's native URL-mode elicitation when it is
    available; otherwise present the returned resource link as the next action.

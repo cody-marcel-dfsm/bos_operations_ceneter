@@ -5,11 +5,17 @@ description: Review BOS Operations Center repository changes against its archite
 
 # Operations Center Review
 
-Explicitly report authentication impact for the complete diff using Oracle's
-Authentication change review. Verify the owner approval and its scope; reuse it
-for all in-scope corrections until resolution. A new Oracle verdict does not
-require another owner approval. Reject an unapproved alteration or unresolved
-conflict between authentication architecture sources and the owner's requirement.
+Identify evidence that may require security-authority review without issuing an
+Oracle classification, warning, or verdict. The independent Oracle process owns
+authentication-impact classification and owner-approval decisions. Route the
+complete staged candidate to `npm run oracle:review` after this readiness pass.
+
+Verify that the durable proposal record predates implementation, matches the
+implemented Problem/Cause/Recommended change scope, and came from
+`npm run oracle:proposal`. A proposal verdict never replaces completed-tree
+review. Reject a material implementation divergence until the revised proposal
+receives fresh Oracle approval; user escalation is required only when Oracle
+flags an unapproved protected change.
 
 ## Request fulfillment review
 
@@ -72,7 +78,9 @@ agent behavior or a live product fix.
 7. Verify durable rules, issue history, and resolution guidance are current in
    the Vault and present in the Chroma index.
 8. Report findings first with exact file and line evidence.
-9. End with exactly one verdict: `APPROVED` or `REJECTED`.
+9. End with exactly one readiness result: `READINESS_PASS` or
+   `READINESS_FAIL`.
 
-Return `APPROVED` only when no material finding remains. A repository mutation
-after review requires a fresh complete review.
+Return `READINESS_PASS` only when no material finding remains. This result is
+advisory and cannot approve a repository mutation. A mutation after review
+requires a fresh readiness pass followed by a fresh Oracle utility review.

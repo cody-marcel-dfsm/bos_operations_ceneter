@@ -33,6 +33,11 @@ const executableDefinitions = [
     path: "skills/bos-external-dependency-adapter/scripts/discovered-operation-request.schema.mjs"
   },
   {
+    id: "external_dependency_safe_execution_uri",
+    source_path: "source/platform/bos-external-dependency-adapter/scripts/safe-execution-uri.mjs",
+    path: "skills/bos-external-dependency-adapter/scripts/safe-execution-uri.mjs"
+  },
+  {
     id: "shared_cache_consumer",
     source_path: "source/platform/bos-mcp-client/scripts/shared-cache-consumer.mjs",
     path: "skills/bos-mcp-client/scripts/shared-cache-consumer.mjs"
@@ -43,10 +48,121 @@ function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
 
-const describeSchema = JSON.parse(await readFile(join(
-  root,
-  "tests/fixtures/public-contracts/lead-director/v1/describe.response.schema.json"
-), "utf8"));
+const operationId = {type: "string", pattern: "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$"};
+const sourceReference = {
+  type: "object",
+  additionalProperties: false,
+  required: ["platform", "application", "plugin"],
+  properties: {
+    platform: {type: "string", minLength: 1},
+    application: {type: "string", minLength: 1},
+    plugin: {type: "string", minLength: 1}
+  }
+};
+const operationSchema = {
+  type: "object",
+  required: ["$schema", "type", "x-bos-fields"],
+  properties: {
+    $schema: {const: "https://json-schema.org/draft/2020-12/schema"},
+    type: {const: "object"},
+    "x-bos-fields": {type: "array"}
+  }
+};
+const limits = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "max_targets", "max_results_per_source", "pagination_supported",
+    "bulk_supported", "streaming_supported", "maximum_duration_seconds",
+    "maximum_fan_out"
+  ],
+  properties: {
+    max_targets: {type: ["integer", "null"], minimum: 1},
+    max_results_per_source: {type: ["integer", "null"], minimum: 1},
+    pagination_supported: {type: "boolean"},
+    bulk_supported: {type: "boolean"},
+    streaming_supported: {type: "boolean"},
+    maximum_duration_seconds: {type: "integer", minimum: 1},
+    maximum_fan_out: {type: "integer", minimum: 1}
+  }
+};
+const guarantees = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "read_consistency", "per_source_atomicity", "cross_source_atomicity",
+    "convergence", "idempotency"
+  ],
+  properties: {
+    read_consistency: {type: "string", minLength: 1},
+    per_source_atomicity: {type: "string", minLength: 1},
+    cross_source_atomicity: {type: "string", minLength: 1},
+    convergence: {type: "string", minLength: 1},
+    idempotency: {const: "service_owned"}
+  }
+};
+const errorContract = {
+  type: "object",
+  additionalProperties: false,
+  required: ["schema", "codes"],
+  properties: {
+    schema: {const: "lead-director-public-error/v1"},
+    codes: {
+      type: "array",
+      minItems: 1,
+      uniqueItems: true,
+      items: {type: "string", pattern: "^[a-z][a-z0-9_]{0,127}$"}
+    }
+  }
+};
+const describedOperation = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "operation", "status", "effect", "limits", "guarantees", "execution",
+    "input_schema", "output_schema", "error_contract", "sources"
+  ],
+  properties: {
+    operation: operationId,
+    status: {const: "described"},
+    effect: {type: "string", minLength: 1},
+    limits,
+    guarantees,
+    execution: {
+      type: "object",
+      additionalProperties: false,
+      required: ["method", "uri", "context_header"],
+      properties: {
+        method: {enum: ["GET", "POST", "PUT", "PATCH", "DELETE"]},
+        uri: {
+          type: "string",
+          maxLength: 4096,
+          pattern: "^/bos/(?!/)(?!.*//)(?!(?:[^/?]+/)*\\.{1,2}(?:/|\\?|$))(?!.*[#\\\\\\u0000-\\u001F\\u007F])(?:[A-Za-z0-9._~!$&'()*+,;=:@{}/?-]|%[0-9A-F]{2})+$"
+        },
+        context_header: {const: "X-BOS-Context-Handle"},
+        transport: {type: "null"}
+      }
+    },
+    input_schema: operationSchema,
+    output_schema: operationSchema,
+    error_contract: errorContract,
+    sources: {
+      type: "array",
+      minItems: 1,
+      items: {
+        type: "object",
+        required: ["source", "availability"],
+        properties: {
+          source: sourceReference,
+          availability: {enum: [
+            "ready", "provider_authorization_required", "source_not_available",
+            "source_temporarily_unavailable"
+          ]}
+        }
+      }
+    }
+  }
+};
 const discoveredOperationSchema = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
   $id: "bos://contracts/client-dependency/v1/discovered-operation-request",
@@ -93,7 +209,7 @@ const discoveredOperationSchema = {
     then: {not: {required: ["payload"]}},
     else: {required: ["payload"]}
   }],
-  $defs: describeSchema.$defs
+  $defs: {described_operation: describedOperation}
 };
 const discoveredOperationSerialized = `${JSON.stringify(discoveredOperationSchema, null, 2)}\n`;
 const discoveredOperationRuntimeSerialized =

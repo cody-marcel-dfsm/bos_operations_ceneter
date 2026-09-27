@@ -52,7 +52,7 @@ service is disconnected.
 
 Expected public states include `accepted`, `queued`, `in_progress`,
 `completed`, `failed`, and `duplicate`. Sanitize provider errors and use the
-existing `authorization_required` recovery envelope when direct provider
+existing `provider_authorization_required` recovery envelope when direct provider
 authorization is needed.
 
 ## Authorization and discovery

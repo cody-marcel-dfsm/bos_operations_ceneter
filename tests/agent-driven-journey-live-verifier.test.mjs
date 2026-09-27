@@ -141,6 +141,22 @@ test("multi-call rows preserve every exact source, method, body, status, and sch
     .observations.map(({ response }) => response.http_status);
   assert.deepEqual(expectedStatuses("AC-25"), [410, 404]);
   assert.deepEqual(expectedStatuses("AC-27"), [200, 404, 503, 200]);
+  const temporarilyUnavailable = approved.checks.find(({ id }) => id === "AC-27")
+    .observations.find(({ case: caseName }) => caseName === "source_temporarily_unavailable");
+  assert.deepEqual(temporarilyUnavailable, {
+    case: "source_temporarily_unavailable",
+    request: {
+      source: "discovered_contract",
+      method: "POST",
+      body_shape: "semantic_input"
+    },
+    response: {
+      http_status: 503,
+      schema_validated: true,
+      summary: "AC-27/source_temporarily_unavailable returned the approved public result"
+    },
+    assertions: ["source_temporarily_unavailable_503"]
+  });
   assert.deepEqual(expectedStatuses("AC-28"), [200, 200, 400, 410]);
   assert.deepEqual(
     approved.checks.find(({ id }) => id === "AC-24").observations.map(({ case: caseName, request, response }) => ({

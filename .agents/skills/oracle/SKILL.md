@@ -50,9 +50,13 @@ BOS Operations Center is the **BOS client product** member of the BOS Product
 Family. For any question or review concerning family membership,
 cross-project ownership, or a shared public contract, read completely:
 
-- `/Users/cody/Development/Projects/Vault/docs/architecture/bos-product-family.md`;
-  and
-- `/Users/cody/Development/Projects/.agents/skills/oracle/SKILL.md`.
+- `/Users/cody/Development/Projects/Vault/docs/architecture/bos-product-family.md`.
+
+Require a Projects-level verdict issued through `python3
+/Users/cody/Development/Projects/tools/projects_oracle.py --review "<request>"` for the exact
+cross-project candidate. Never read, load, adopt, or impersonate the
+Projects-level Oracle skill; the Projects utility starts that separate approver
+under its own authority.
 
 The Projects Oracle governs only the inter-project relationship. This local
 Oracle governs BOS Operations Center architecture, client skills,

@@ -19,15 +19,45 @@ const identity = "meeting-follow-up:approved-fixture";
 const start = {
   verb: "start",
   method: "POST",
-  href: "/bos/apps/lead-director/api/v1/organizations/example/journeys/meeting-follow-up:approved-fixture/start?capability=opaque",
+  href: "/bos/apps/lead-director/api/v1/organizations/example/journeys/meeting-follow-up%3Aapproved-fixture/start?capability=opaque",
   payload_schema: null
 };
 const state = {
   verb: "state",
   method: "GET",
-  href: "/bos/apps/lead-director/api/v1/organizations/example/journeys/meeting-follow-up:approved-fixture?capability=opaque-state",
+  href: "/bos/apps/lead-director/api/v1/organizations/example/journeys/meeting-follow-up%3Aapproved-fixture?capability=opaque-state",
   payload_schema: null
 };
+const canonicalEncodedState = {
+  ...state,
+  href: "/bos/apps/lead-director/api/v1/organizations/example/journeys/meeting-follow-up%3Acaf%C3%A9?capability=opaque-state"
+};
+const canonicalPercentTextState = {
+  ...state,
+  href: "/bos/apps/lead-director/api/v1/organizations/example/journeys/follow-up%3A%2520?capability=opaque-state"
+};
+const unsafeExecutionUris = [
+  "https://evil.example/bos/private",
+  "//evil.example/bos/private",
+  "/outside-bos/private",
+  "/bos/../../private",
+  "/bos/%2e%2e/private",
+  "/bos/%2E%2e/private",
+  "/bos/..?/private",
+  "/bos/apps/%2f..%2fprivate",
+  "/bos/apps/route%0d%0aInjected",
+  "/bos/apps/meeting-follow-up%3aexample-event",
+  "/bos/apps/caf%c3%a9",
+  "/bos/apps/caf%C3",
+  "/bos/apps/%C0%AFprivate",
+  "/bos/apps/%ED%A0%80",
+  "/bos/apps/cafe%CC%81",
+  "/bos/apps/%41dmin",
+  "/bos/apps/%5Cprivate",
+  "/bos/apps/route\r\nInjected",
+  "/bos/apps/route#fragment",
+  "/bos//private"
+];
 
 test("bodyless actions omit both body and Content-Type", () => {
   assert.deepEqual(buildActionRequest(start), {
@@ -40,10 +70,50 @@ test("bodyless actions omit both body and Content-Type", () => {
   assert.throws(() => buildActionRequest(start, null), /must not include a body/);
 });
 
+test("canonical percent-encoded journey identity is preserved by action and recovery builders", async () => {
+  assert.deepEqual(buildIdentityV2JourneyActionRequest(
+    canonicalEncodedState,
+    contextHandle
+  ), {
+    method: "GET",
+    href: canonicalEncodedState.href,
+    headers: {"X-BOS-Context-Handle": contextHandle},
+    body: undefined
+  });
+  assert.equal(buildActionRequest(canonicalPercentTextState).href, canonicalPercentTextState.href);
+  const requests = [];
+  const response = await runJourneyRecovery({
+    http_status: 202,
+    body: {
+      identity,
+      status: "in_progress",
+      current_node: {
+        code: "send_campaign",
+        type: "server",
+        operation: "sendgrid.campaign.send"
+      },
+      retry_after_seconds: 0,
+      action: canonicalEncodedState
+    }
+  }, {
+    contextHandle,
+    wait: async () => {},
+    invoke: async (request) => {
+      requests.push(request);
+      return {
+        http_status: 200,
+        body: {identity, status: "completed", outcome: {successful_sends: 1}}
+      };
+    }
+  });
+  assert.equal(response.body.status, "completed");
+  assert.equal(requests[0].href, canonicalEncodedState.href);
+});
+
 test("identity-v2 binds every journey lifecycle action without changing its payload", () => {
   for (const action of [
     start,
-    { ...start, verb: "step", href: "/step?capability=opaque" },
+    { ...start, verb: "step", href: "/bos/step?capability=opaque" },
     state
   ]) {
     assert.deepEqual(buildIdentityV2JourneyActionRequest(action, contextHandle), {
@@ -54,7 +124,7 @@ test("identity-v2 binds every journey lifecycle action without changing its payl
     });
   }
 
-  const failurePayload = { code: "CLIENT_STEP_FAILED", message: "Unable to finish." };
+  const failurePayload = { code: "client_step_failed", message: "Unable to finish." };
   const payloadSchema = {
     $schema: "https://json-schema.org/draft/2020-12/schema",
     type: "object",
@@ -69,7 +139,7 @@ test("identity-v2 binds every journey lifecycle action without changing its payl
     const action = {
       verb,
       method: "POST",
-      href: `/${verb}?capability=opaque`,
+      href: `/bos/${verb}?capability=opaque`,
       payload_schema: payloadSchema
     };
     assert.deepEqual(
@@ -96,7 +166,7 @@ test("closed empty-object business actions send exactly an empty JSON object", (
   const action = {
     verb: "read",
     method: "POST",
-    href: "https://api.example.test/read?selection=opaque",
+    href: "/bos/read?selection=opaque",
     payload_schema: {
       $schema: "https://json-schema.org/draft/2020-12/schema",
       type: "object",
@@ -116,6 +186,13 @@ test("closed empty-object business actions send exactly an empty JSON object", (
 
 test("returned actions are closed, method-bound, and safe to invoke verbatim", () => {
   assert.throws(
+    () => buildActionRequest({
+      ...start,
+      error_contract: {schema: "bos-public-error/v1", codes: []}
+    }),
+    /undeclared field error_contract/
+  );
+  assert.throws(
     () => buildActionRequest({ ...start, method: "GET" }),
     /start action must use POST/
   );
@@ -129,12 +206,77 @@ test("returned actions are closed, method-bound, and safe to invoke verbatim", (
   );
   assert.throws(
     () => buildActionRequest({ ...start, href: "/\\evil.example/start" }),
-    /complete returned HTTPS or origin-relative URI/
+    /safe origin-relative \/bos\/ URI/
   );
   assert.throws(
     () => buildActionRequest({ ...start, href: "/start\n?capability=opaque" }),
-    /complete returned HTTPS or origin-relative URI/
+    /safe origin-relative \/bos\/ URI/
   );
+});
+
+test("every journey request builder rejects unsafe routes before context attachment or transport", async () => {
+  const contract = {
+    operation: "calendar.events.search",
+    status: "described",
+    execution: {
+      context_header: "X-BOS-Context-Handle",
+      method: "POST",
+      transport: null,
+      uri: "/bos/apps/lead-director/calendar/events/search"
+    },
+    input_schema: {
+      type: "object",
+      required: ["query"],
+      properties: {query: {type: "string"}},
+      additionalProperties: false
+    }
+  };
+  let waitCalls = 0;
+  let transportCalls = 0;
+  for (const href of unsafeExecutionUris) {
+    assert.throws(
+      () => buildActionRequest({...start, href}),
+      /safe origin-relative \/bos\/ URI/
+    );
+    assert.throws(
+      () => buildIdentityV2JourneyActionRequest({...start, href}, "invalid-context"),
+      /safe origin-relative \/bos\/ URI/
+    );
+    assert.throws(
+      () => buildDiscoveredOperationRequest(
+        {...contract, execution: {...contract.execution, uri: href}},
+        "invalid-context",
+        {query: "recent meeting"}
+      ),
+      /safe origin-relative \/bos\/ URI/
+    );
+    await assert.rejects(
+      runJourneyRecovery({
+        http_status: 202,
+        body: {
+          identity,
+          status: "in_progress",
+          current_node: {
+            code: "send_campaign",
+            type: "server",
+            operation: "sendgrid.campaign.send"
+          },
+          retry_after_seconds: 0,
+          action: {...state, href}
+        }
+      }, {
+        contextHandle,
+        wait: async () => { waitCalls += 1; },
+        invoke: async () => {
+          transportCalls += 1;
+          return {http_status: 200, body: {}};
+        }
+      }),
+      /safe origin-relative \/bos\/ URI/
+    );
+  }
+  assert.equal(waitCalls, 0);
+  assert.equal(transportCalls, 0);
 });
 
 test("discovered HTTP operations bind only the selected opaque context handle", () => {
@@ -283,20 +425,36 @@ test("registration returns customer identity and bodyless start without executio
   const failure = validateRegistrationResponse({
     compiled: false,
     error: {
-      code: "JOURNEY_COMPILE_FAILED",
+      code: "journey_compile_failed",
       message: "The document did not compile.",
       retryable: false,
       correlation_id: "corr-safe",
       details: []
     },
-    errors: [{
-      code: "BOSL_REFERENCE_UNKNOWN",
-      path: "$.nodes[0].inputs.source",
-      message: "Use a declared reference."
-    }]
+    errors: [
+      {
+        code: "invalid_document",
+        path: "$",
+        message: "Correct the document structure."
+      },
+      {
+        code: "operation_not_available",
+        path: "$.nodes[0].operation",
+        message: "Use an operation currently advertised by Describe."
+      },
+      {
+        code: "invalid_node_input",
+        path: "$.nodes[0].inputs.source",
+        message: "Use an input accepted by the selected operation."
+      }
+    ]
   });
   assert.equal(failure.compiled, false);
   assert.equal(Object.hasOwn(failure, "action"), false);
+  assert.deepEqual(
+    failure.errors.map(({ code }) => code),
+    ["invalid_document", "operation_not_available", "invalid_node_input"]
+  );
 });
 
 test("in-progress recovery waits exactly and invokes only returned state actions", async () => {
@@ -330,18 +488,18 @@ test("in-progress recovery waits exactly and invokes only returned state actions
           after_success: {
             verb: "complete",
             method: "POST",
-            href: "/complete?capability=next",
+            href: "/bos/complete?capability=next",
             payload_schema: null
           },
           on_failure: {
             verb: "failed",
             method: "POST",
-            href: "/failed?capability=next",
+            href: "/bos/failed?capability=next",
             payload_schema: {
               type: "object",
               required: ["code", "message"],
               properties: {
-                code: { enum: ["USER_STOPPED", "CLIENT_STEP_FAILED"] },
+                code: { enum: ["user_stopped", "client_step_failed"] },
                 message: { type: "string", minLength: 1 }
               },
               additionalProperties: false
@@ -369,18 +527,18 @@ test("in-progress recovery waits exactly and invokes only returned state actions
   assert.equal(result.body.status, "awaiting_client");
 });
 
-test("public errors require sanitized detail arrays and normalized internal keys fail closed", () => {
+test("public errors require the exact closed envelope and canonical identifiers", () => {
   assert.throws(
     () => validateRegistrationResponse({
       compiled: false,
       error: {
-        code: "JOURNEY_COMPILE_FAILED",
+        code: "journey_compile_failed",
         message: "The document did not compile.",
         retryable: false,
         correlation_id: "corr-safe",
         details: { leaked: "object" }
       },
-      errors: [{ code: "INVALID", path: "$", message: "Invalid." }]
+      errors: [{ code: "invalid", path: "$", message: "Invalid." }]
     }),
     /details must be an array/
   );
@@ -388,17 +546,40 @@ test("public errors require sanitized detail arrays and normalized internal keys
     () => validateRegistrationResponse({
       compiled: false,
       error: {
-        code: "JOURNEY_COMPILE_FAILED",
+        code: "journey_compile_failed",
         message: "The document did not compile.",
         retryable: false,
         correlation_id: "corr-safe",
         details: [],
         provider_error: "must stay private"
       },
-      errors: [{ code: "INVALID", path: "$", message: "Invalid." }]
+      errors: [{ code: "invalid", path: "$", message: "Invalid." }]
     }),
     /provider_error.*internal journey state|undeclared field provider_error/
   );
+  for (const [field, value, expected] of [
+    ["code", "AUTHENTICATION_REQUIRED", /exact canonical public code/],
+    ["code", "bad\/id", /exact canonical public code/],
+    ["code", `a${"a".repeat(128)}`, /exact canonical public code/],
+    ["correlation_id", "bad/id", /valid public correlation ID/],
+    ["correlation_id", "a".repeat(129), /valid public correlation ID/]
+  ]) {
+    assert.throws(
+      () => validateRegistrationResponse({
+        compiled: false,
+        error: {
+          code: "journey_compile_failed",
+          message: "The document did not compile.",
+          retryable: false,
+          correlation_id: "corr-safe",
+          details: [],
+          [field]: value
+        },
+        errors: [{ code: "invalid_document", path: "$", message: "Invalid." }]
+      }),
+      expected
+    );
+  }
   assert.throws(
     () => validateJourneyEnvelope({
       identity,
@@ -406,6 +587,50 @@ test("public errors require sanitized detail arrays and normalized internal keys
       executionId: "private",
       action: start
     }),
+    /internal journey state/
+  );
+});
+
+test("canonical public error messages preserve the exact service string contract", () => {
+  const registration = (message, details = []) => ({
+    compiled: false,
+    error: {
+      code: "journey_compile_failed",
+      message,
+      retryable: false,
+      correlation_id: "corr-safe",
+      details
+    },
+    errors: [{code: "invalid_document", path: "$", message: "Invalid."}]
+  });
+  const sensitiveMessage =
+    "Bearer authentication is required.\nThe token and stack_trace terms are public.\t\u0000";
+
+  for (const message of [" ", sensitiveMessage, "😀".repeat(2048)]) {
+    const response = registration(message);
+    assert.equal(validateRegistrationResponse(response).error.message, message);
+  }
+  const failed = {
+    identity,
+    status: "failed",
+    error: registration(sensitiveMessage).error
+  };
+  assert.equal(validateJourneyEnvelope(failed).error.message, sensitiveMessage);
+  assert.equal(interpretJourneyResponse({
+    http_status: 400,
+    headers: {},
+    body: failed
+  }).body.error.message, sensitiveMessage);
+  assert.throws(
+    () => validateRegistrationResponse(registration("")),
+    /non-empty string/
+  );
+  assert.throws(
+    () => validateRegistrationResponse(registration("😀".repeat(2049))),
+    /at most 2048 Unicode characters/
+  );
+  assert.throws(
+    () => validateRegistrationResponse(registration(sensitiveMessage, [{access_token: "private"}])),
     /internal journey state/
   );
 });
@@ -424,18 +649,18 @@ test("structured instructions retain goals and exact successor actions while con
     after_success: {
       verb: "step",
       method: "POST",
-      href: "/step?capability=preserved",
+      href: "/bos/step?capability=preserved",
       payload_schema: null
     },
     on_failure: {
       verb: "failed",
       method: "POST",
-      href: "/failed?capability=preserved",
+      href: "/bos/failed?capability=preserved",
       payload_schema: {
         type: "object",
         required: ["code", "message"],
         properties: {
-          code: { enum: ["USER_STOPPED", "CLIENT_STEP_FAILED"] },
+          code: { enum: ["user_stopped", "client_step_failed"] },
           message: { type: "string", minLength: 1 }
         },
         additionalProperties: false
@@ -458,7 +683,7 @@ test("client action required validates the published resolution union", () => {
     after_success: {
       verb: "step",
       method: "POST",
-      href: "/step?capability=opaque-recovery",
+      href: "/bos/step?capability=opaque-recovery",
       payload_schema: null
     }
   };
@@ -475,7 +700,7 @@ test("client action required validates the published resolution union", () => {
         operation: "calendar.events.read"
       },
       error: {
-        code: "AUTH_REQUIRED",
+        code: "authentication_required",
         message: "Reconnect the calendar.",
         retryable: false,
         correlation_id: "corr-safe",
@@ -547,7 +772,7 @@ test("response interpretation handles expiry and rate limiting without automatic
       status: "expired",
       expired_at: "2026-09-19T12:00:00Z",
       error: {
-        code: "JOURNEY_EXPIRED",
+        code: "journey_expired",
         message: "The journey expired.",
         retryable: false,
         correlation_id: "corr-safe",
@@ -563,7 +788,7 @@ test("response interpretation handles expiry and rate limiting without automatic
       status: "registration_rate_limited",
       retry_after_seconds: 90,
       error: {
-        code: "JOURNEY_CREATION_RATE_LIMITED",
+        code: "journey_creation_rate_limited",
         message: "Try again later.",
         retryable: true,
         correlation_id: "corr-safe",
@@ -573,6 +798,70 @@ test("response interpretation handles expiry and rate limiting without automatic
   });
   assert.equal(limited.next, "await_explicit_user_request");
   assert.equal(limited.retry_after_seconds, 90);
+
+  assert.throws(
+    () => interpretJourneyResponse({
+      http_status: 429,
+      headers: { "retry-after": "90" },
+      body: {
+        identity,
+        status: "registration_rate_limited",
+        retry_after_seconds: 90,
+        error: {
+          code: "JOURNEY_CREATION_RATE_LIMITED",
+          message: "Legacy aliases are not accepted.",
+          retryable: true,
+          correlation_id: "corr-safe",
+          details: []
+        }
+      }
+    }),
+    /exact canonical public code/
+  );
+  assert.throws(
+    () => interpretJourneyResponse({
+      http_status: 429,
+      headers: { "retry-after": "90" },
+      body: {
+        status: "registration_rate_limited",
+        retry_after_seconds: 90,
+        error: {
+          code: "journey_creation_rate_limited",
+          message: "Try again later.",
+          retryable: true,
+          correlation_id: "bad/id",
+          details: []
+        }
+      }
+    }),
+    /valid public correlation ID/
+  );
+});
+
+test("not-found interpretation consumes only the exact canonical server code", () => {
+  const response = {
+    http_status: 404,
+    headers: {},
+    body: {
+      error: {
+        code: "journey_not_found",
+        message: "The journey does not exist.",
+        retryable: false,
+        correlation_id: "corr-safe",
+        details: []
+      }
+    }
+  };
+  assert.equal(interpretJourneyResponse(response).next, "terminal_not_found");
+  assert.throws(
+    () => interpretJourneyResponse({
+      ...response,
+      body: {
+        error: { ...response.body.error, code: "JOURNEY_NOT_FOUND" }
+      }
+    }),
+    /exact canonical public code/
+  );
 });
 
 test("terminal envelopes contain no successor action and require their terminal payload", () => {
@@ -611,7 +900,7 @@ test("active capacity exposes only returned stoppable choices and exact state ac
     body: {
       identity,
       error: {
-        code: "JOURNEY_ACTIVE_LIMIT_REACHED",
+        code: "journey_active_limit_reached",
         message: "Choose a current journey to stop.",
         retryable: false,
         correlation_id: "corr-safe",

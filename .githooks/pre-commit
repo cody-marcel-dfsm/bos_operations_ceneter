@@ -28,7 +28,10 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
-    return 0
+    return subprocess.run(
+        [sys.executable, "tools/oracle_approval.py", "verify-staged"],
+        check=False,
+    ).returncode
 
 
 if __name__ == "__main__":
