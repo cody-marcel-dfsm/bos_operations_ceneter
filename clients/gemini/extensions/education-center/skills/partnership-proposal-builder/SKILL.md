@@ -14,6 +14,8 @@ initialization stages in order and resume the original request automatically
 after every required stage is current.
 
 First validate the customer-owned `config/customer-settings.json` against
+the product initializer's reconciled durable local profile. Restore only a
+valid confirmed counterpart owned by this same plugin before validation.
 `config/customer-settings.template.json`. Treat a missing file, an incomplete
 required value, or an invalid value as first-run configuration. Also migrate a
 missing/invalid `default_context` or missing/invalid product-specific BOS

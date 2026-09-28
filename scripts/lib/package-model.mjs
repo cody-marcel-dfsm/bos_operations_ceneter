@@ -592,6 +592,8 @@ export function injectSettingsPreflight(guidance, initializer) {
     "## Product first-run preflight",
     "",
     "Before performing this skill's workflow, resolve the installed product root and",
+    "run the product initializer's customer-settings reconciliation helper. Restore",
+    "only a valid confirmed counterpart owned by this same plugin, then",
     "validate its customer-owned `config/customer-settings.json` against",
     "`config/customer-settings.template.json`. Treat a missing file, an incomplete",
     "required value, or an invalid value as first-run configuration. A missing",
@@ -634,6 +636,8 @@ export function injectProductInitializationPreflight(guidance, {
   if (settingsInitializer) {
     lines.push(
       "First validate the customer-owned `config/customer-settings.json` against",
+      "the product initializer's reconciled durable local profile. Restore only a",
+      "valid confirmed counterpart owned by this same plugin before validation.",
       "`config/customer-settings.template.json`. Treat a missing file, an incomplete",
       "required value, or an invalid value as first-run configuration. Also migrate a",
       "missing/invalid `default_context` or missing/invalid product-specific BOS",

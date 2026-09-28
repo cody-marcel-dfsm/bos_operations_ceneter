@@ -20,6 +20,10 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { validateExtensionManifest } from "../source/platform/manage-customer-extension/scripts/manage-extension.mjs";
 import {
+  durableSettingsPath,
+  saveCustomerSettings
+} from "../source/verticals/education-center/education-center-customer-initialization/scripts/customer-settings.mjs";
+import {
   codexMarketplaceManifest,
   codexProductRoot,
   legacyCodexProductRoot,
@@ -533,11 +537,10 @@ async function applyCustomerSettings(options, paths) {
   const failures = validateCustomerSettings(settings);
   if (failures.length) throw new Error(`Invalid customer settings: ${failures.join("; ")}`);
   const configPath = join(paths.target, "config", "customer-settings.json");
-  await mkdir(dirname(configPath), { recursive: true });
-  await writeJson(configPath, settings);
-  await chmod(configPath, 0o600);
-  await rm(join(paths.target, "config", "customer-settings.initialization.json"), {
-    force: true
+  await saveCustomerSettings(settings, {
+    durablePath: durableSettingsPath(options.home),
+    overlayPath: configPath,
+    initializationPath: join(paths.target, "config", "customer-settings.initialization.json")
   });
 }
 

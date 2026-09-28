@@ -11,6 +11,17 @@ This workflow configures non-secret operating context. It grants no authority
 and never collects credentials, API keys, tokens, passwords, or provider
 secrets.
 
+Before classifying setup as missing, run
+`node scripts/customer-settings.mjs reconcile` from this skill directory. The
+helper keeps the complete confirmed profile in the operating system's existing
+`BOS/plugins/education-center` local configuration area and mirrors it into the
+active plugin's `config/customer-settings.json`. A valid durable profile repairs
+a missing, invalid, or stale overlay without confirmation; a valid confirmed
+overlay repairs a missing or invalid durable copy. When neither Education Center
+counterpart is valid, continue this consolidated setup workflow. Never restore
+from BOS, another plugin, an initialization draft, conversation text, package
+defaults, or server identity metadata.
+
 ## Default operating context
 
 Setup also establishes the default organization used when a request omits one.
@@ -39,8 +50,10 @@ customer-owned values. A failed plugin-store write leaves setup incomplete.
 
 ## Derivation order
 
-1. Load `config/customer-settings.template.json` as package defaults, then
-   recursively overlay `config/customer-settings.json` when present. Use
+1. Reconcile durable and overlay settings with
+   `node scripts/customer-settings.mjs reconcile`, then load
+   `config/customer-settings.template.json` as package defaults and recursively
+   overlay the repaired `config/customer-settings.json` when present. Use
    `config/customer-settings.initialization.json` only while completing a new
    installation. Never copy customer values into the template or a packaged
    skill.
@@ -153,12 +166,15 @@ client source retains its native account authorization and recovery boundary.
 ## Apply and verify
 
 1. Validate the completed object against the installed template and allowlist.
-2. Write it to `config/customer-settings.json` with mode `0600`.
-3. Remove `config/customer-settings.initialization.json` after the validated
-   file is safely written.
-4. Re-read the file, confirm required values, and report which values were
+2. Pass the confirmed object on standard input to
+   `node scripts/customer-settings.mjs save`. This atomically writes each durable
+   profile and active overlay with mode `0600`.
+3. The helper removes `config/customer-settings.initialization.json` only after
+   both validated copies are safely written.
+4. Reconcile and re-read both copies, confirm required values, and report which values were
    derived, confirmed, or intentionally left unused.
-5. Preserve the customer settings file across package upgrades.
+5. Treat the durable profile as customer-owned local configuration and restore
+   its active overlay after package upgrades without repeating confirmation.
 
 The completed `brand_display_name` is the default tenant terminology for every
 Education Center skill. A typed customer extension may override

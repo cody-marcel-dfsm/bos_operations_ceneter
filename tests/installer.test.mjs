@@ -32,6 +32,10 @@ import {
   codexProductRoot
 } from "../scripts/lib/codex-layout.mjs";
 import { hashFile, readJson, root } from "../scripts/lib/package-model.mjs";
+import {
+  durableSettingsPath,
+  reconcileCustomerSettings
+} from "../source/verticals/education-center/education-center-customer-initialization/scripts/customer-settings.mjs";
 
 async function temporaryHome() {
   return mkdtemp(join(tmpdir(), "bos-install-test-"));
@@ -527,6 +531,21 @@ test("customer settings validate, install, and survive product updates", async (
   assert.equal(report.settings.state, "current");
   assert.deepEqual(JSON.parse(await readFile(settingsPath, "utf8")), customerSettings);
   assert(report.actions.preserve.includes("config/customer-settings.json"));
+
+  const updatedSettings = { ...customerSettings, location_display_name: "Updated Center" };
+  await applyInstallation({
+    home,
+    product: "education-center",
+    settings: updatedSettings
+  });
+  const durablePath = durableSettingsPath(home);
+  assert.deepEqual(JSON.parse(await readFile(durablePath, "utf8")), updatedSettings);
+  assert.equal((await stat(durablePath)).mode & 0o777, 0o600);
+  assert.equal((await reconcileCustomerSettings({ durablePath, overlayPath: settingsPath })).state, "current");
+  await rm(settingsPath);
+  const restored = await reconcileCustomerSettings({ durablePath, overlayPath: settingsPath });
+  assert.equal(restored.source, "durable");
+  assert.deepEqual(JSON.parse(await readFile(settingsPath, "utf8")), updatedSettings);
 });
 
 test("customer settings reject missing identity and invalid timezone", () => {
