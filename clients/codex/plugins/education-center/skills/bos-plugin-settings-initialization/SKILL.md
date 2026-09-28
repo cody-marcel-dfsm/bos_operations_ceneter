@@ -9,6 +9,8 @@ description: Initialize or repair plugin-service connections and required BOS pl
 ## Product first-run preflight
 
 Before performing this skill's workflow, resolve the installed product root and
+run the product initializer's customer-settings reconciliation helper. Restore
+only a valid confirmed counterpart owned by this same plugin, then
 validate its customer-owned `config/customer-settings.json` against
 `config/customer-settings.template.json`. Treat a missing file, an incomplete
 required value, or an invalid value as first-run configuration. A missing
