@@ -280,9 +280,13 @@ and protect against graph cycles.
 
 Resolve record-to-graph membership from current application evidence. Never
 infer an entity type or combine ambiguous matches. Ask for disambiguation only when identity or graph membership requires
-it. If no graph membership or current node can be verified, show the requested
-verified details and the precise missing graph evidence. If current state is
-known but topology is partial, use the partial-evidence presentation below.
+it. If Lead Director graph membership cannot be verified but an authorized
+source verifies the person's current state, use the partial-evidence
+presentation below and label that state as external evidence rather than a Lead
+Director graph node. If no current state can be verified, show the requested
+verified details and the precise missing graph evidence without inventing a
+node. If current state is known but topology is partial, use the
+partial-evidence presentation below.
 An explicit user request for a different format takes precedence.
 
 ## Adapt the access pattern
@@ -369,7 +373,7 @@ order, prior screenshots, or sales conventions.
 
 After the discovery and read sequence has failed to obtain either a verified
 structural route or a path result, and authorized reads have verified the
-record's current state, render a **Partial journey —
+person's current state from any authorized source, render a **Partial journey —
 verified milestones only** diagram on the first response. This presentation
 uses evidence already obtained through an authorized workflow; it grants no
 alternate endpoint or authentication bypass. The Current-host read execution
@@ -378,9 +382,14 @@ any typed discovery or provider failure and state which graph evidence is
 missing. With no verified current state, report the failure without a fabricated
 journey.
 
-Show the verified current state. When the user requests a goal, show it as a
-distinct node. Include any verified application-owned goals even when none was
-requested; omit a goal placeholder only when no goal can be resolved.
+Show at least one standalone current-state node for every verified current
+state. A state verified only by an external provider is labeled **Current state
+— external evidence** with its source and freshness; this external-evidence
+node establishes no Lead Director graph membership, transition, goal, or
+reachability. Draw no edge from that node unless current application graph
+evidence verifies it. When the user requests a goal, show it as a distinct
+node. Include any verified application-owned goals even when none was requested;
+omit a goal placeholder only when no goal can be resolved.
 Label an explicit goal **Requested goal — attainment unverified** and an
 application-selected goal **Graph goal — attainment unverified** unless attainment
 is verified.
@@ -389,11 +398,16 @@ links **Recorded chronology**, never as completed graph transitions. Use a
 non-directional dotted connector labeled **Progression unverified** between
 current state and goal when no path is known. Include a legend that this link
 indicates missing evidence and establishes no reachability or eligible next
-step. Add no inferred intermediate stages or percentage complete. Keep future
-events pending. Put this visual before record details, with source freshness
-and limitations immediately below it. Do not wait for the user to ask for a
-visual or retry. An optional provider check failing does not erase independent
-verified record evidence.
+step. These connector rules apply only when application evidence verifies graph
+membership for the current state. Keep an external-evidence current-state node
+standalone: attach no chronology link, dotted connector, goal edge, or other
+edge without verified application graph evidence. A requested goal may appear
+as a separate unconnected node with attainment and reachability unverified.
+Add no inferred intermediate stages or percentage complete. Keep future events
+pending. Put this visual before record details, with source freshness and
+limitations immediately below it. Do not wait for the user to ask for a visual
+or retry. An optional provider check failing does not erase independent verified
+record evidence.
 
 ## Render the native graph
 
@@ -511,8 +525,10 @@ Before sending any response that displays a Lead Director record, verify that ea
 contains the detailed format above, including the Mermaid graph and profile details. Known topology
 requires the exact current-to-goal route. If a specific discovery/read failure
 prevents that route, include the partial-evidence graph of the verified current
-state and a precise limitation. A successful record read plus unavailable
-topology never justifies omitting the graph. With no verified current state,
-state the missing evidence without inventing a node. An explicit user format
+state and a precise limitation. This includes a source-labeled standalone node
+when only external evidence verifies the current state. A successful record or
+external-state read plus unavailable topology never justifies omitting the
+graph. With no verified current state, state the missing evidence without
+inventing a node. An explicit user format
 instruction retains precedence. A tool result, commentary promise, status bullet,
 or plain-text path alone does not satisfy the default graph presentation.

@@ -69,6 +69,17 @@ relevant reads fail or are unavailable. Identify the actual failed operation and
 unattempted dependencies. Never claim that a current-state box or dotted goal
 placeholder meets full path acceptance.
 
+When Lead Director membership or topology is unavailable and an authorized
+external source verifies the person's current state, partial presentation
+contains at least one standalone current-state node labeled as external evidence
+with source and freshness. That node asserts no Lead Director graph membership,
+transition, goal, or reachability. The client draws no edge or additional state
+without supporting application evidence. Chronology links, dotted progression
+connectors, and goal edges never attach to an external-evidence current-state
+node without verified application graph evidence; a requested goal remains a
+separate unconnected node. With no verified current state, the client reports
+the missing evidence without inventing a node.
+
 ## Evidence composition
 
 Keep four evidence classes separate:
