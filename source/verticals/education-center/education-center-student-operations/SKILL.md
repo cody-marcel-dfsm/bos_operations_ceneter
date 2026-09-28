@@ -58,6 +58,27 @@ native account recovery for the exact configured mailbox.
 - Reconcile with stable provider IDs first, then normalized name plus another
   strong field. Keep ambiguous matches separate.
 
+## Calimatic-first named-person results
+
+When Calimatic resolves a named-person lookup and the person is or may be a
+lead, use the verified identity evidence to attempt an authorized Lead Director
+match before presenting the final result. Invoke `crm-customer-journey` for an
+exact match and continue through its current-state, goal, path, and graph
+contract in the same turn. A Calimatic student or family result is external
+evidence for that journey; it never proves Lead Director graph membership.
+
+Keep ambiguous Lead Director candidates separate and request the minimum
+disambiguating value. If there is no matching Lead Director record, preserve
+the verified Calimatic details and identify the missing Lead Director graph
+evidence. When an authorized Calimatic result supplies a verified current
+state, render a partial graph with at least one standalone current-state graph
+node labeled as Calimatic external evidence, including source freshness. That
+external evidence never establishes Lead Director graph membership; add no
+inferred transition, goal, or reachability. With no verified current state,
+report the limitation without inventing a node. A broad roster or enrollment
+report that does not request individual lead details does not require a
+per-person graph.
+
 ## Progress reports
 
 - Discover the configured progress-report or student-record source.

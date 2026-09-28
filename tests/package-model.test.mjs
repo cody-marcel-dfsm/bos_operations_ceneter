@@ -2832,6 +2832,61 @@ test("organization-described Lead Director records default to graph presentation
   assert.doesNotMatch(visual, /one record outside journey-position work/);
 });
 
+test("Calimatic-first named-person results still attempt Lead Director graph resolution", async () => {
+  const routing = await readFile(
+    `${root}/source/verticals/education-center/education-center-service-routing/SKILL.md`,
+    "utf8"
+  );
+  const students = await readFile(
+    `${root}/source/verticals/education-center/education-center-student-operations/SKILL.md`,
+    "utf8"
+  );
+  const journey = await readFile(
+    `${root}/source/capabilities/crm-customer-journey/SKILL.md`,
+    "utf8"
+  );
+
+  for (const guidance of [routing, students]) {
+    assert.match(
+      guidance,
+      /Calimatic[\s\S]*named-person[\s\S]*Lead Director[\s\S]*crm-customer-journey/i
+    );
+    assert.match(
+      guidance,
+      /no matching Lead Director record[\s\S]*verified current\s+state[\s\S]*standalone[\s\S]*graph\s+node/i
+    );
+    assert.match(
+      guidance,
+      /external evidence[\s\S]*never[\s\S]*Lead Director (?:graph )?membership/i
+    );
+  }
+
+  assert.match(
+    journey,
+    /current state from any authorized source[\s\S]*at least one standalone current-state\s+node/i
+  );
+  assert.match(
+    journey,
+    /external-evidence\s+node[\s\S]*no Lead Director graph membership,\s+transition, goal, or\s+reachability/i
+  );
+  assert.match(
+    journey,
+    /external-evidence current-state node[\s\S]*standalone[\s\S]*no chronology link, dotted connector, goal edge, or other\s+edge/i
+  );
+  assert.match(
+    journey,
+    /requested goal[\s\S]*separate unconnected node[\s\S]*reachability unverified/i
+  );
+  assert.match(
+    journey,
+    /no verified current state[\s\S]*(?:report the failure|without a fabricated journey)/i
+  );
+  assert.match(
+    students,
+    /broad[\s\S]*(?:roster|enrollment report)[\s\S]*does not require[\s\S]*per-person graph/i
+  );
+});
+
 
 test("journey reads use the current authenticated operating contract", async () => {
   for (const file of ["source/capabilities/crm-customer-journey/SKILL.md"]) {

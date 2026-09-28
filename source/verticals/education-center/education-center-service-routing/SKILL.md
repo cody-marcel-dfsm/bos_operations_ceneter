@@ -45,6 +45,19 @@ request. Select and read `crm-customer-journey` before presenting its result,
 even when the lookup uses a search operation. Determine presentation from user
 intent, independently of the tool name or response being an array. A successful
 single-person lookup must continue into the graph workflow in the same turn.
+When Calimatic resolves a named-person result first and that person is or may be
+a lead, reconcile the verified identity against Lead Director and invoke
+`crm-customer-journey` before the final response. The source that found the
+person first never removes this graph attempt. Preserve ambiguous identity
+matches and ask for disambiguation before targeted journey resolution. If the
+attempt returns no matching Lead Director record, report the precise missing
+Lead Director membership and topology evidence. When Calimatic supplies a
+verified current state, use `crm-customer-journey`'s partial-evidence contract
+to render a graph with at least one standalone current-state graph node labeled with
+its source and freshness. Treat that node as external evidence; never represent
+it as Lead Director graph membership, and add no inferred transitions, goals,
+or reachability. With no verified current state, report the missing evidence
+without fabricating a node.
 Broad filtered lists preserve their filters and pagination and display each
 returned lead in the detailed format below. Keep ambiguous matches separate;
 show only the graph membership verified for each candidate and disambiguate
