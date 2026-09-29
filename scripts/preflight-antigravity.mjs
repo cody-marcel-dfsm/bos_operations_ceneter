@@ -24,6 +24,7 @@ const productsRoot = join(repositoryRoot, "products");
 const extensionsRoot = join(repositoryRoot, "clients", "gemini", "extensions");
 const activeNames = [];
 const disabledProducts = [];
+const independentNames = new Set();
 
 for (const entry of await readdir(productsRoot, { withFileTypes: true })) {
   if (!entry.isDirectory()) continue;
@@ -36,6 +37,9 @@ for (const entry of await readdir(productsRoot, { withFileTypes: true })) {
   }
   if (product.name !== entry.name) {
     throw new Error(`product directory/name mismatch for ${entry.name}`);
+  }
+  for (const dependency of product.independent_product_dependencies ?? []) {
+    independentNames.add(dependency.name);
   }
   if (product.release_status === "disabled") {
     disabledProducts.push({
@@ -114,6 +118,7 @@ if (
 process.stdout.write(
   [
     ...activeNames.sort().map((name) => `active:${name}`),
-    ...expectedDisabled.map(({ name }) => `disabled:${name}`)
+    ...expectedDisabled.map(({ name }) => `disabled:${name}`),
+    ...[...independentNames].sort().map((name) => `independent:${name}`)
   ].join("\n") + "\n"
 );

@@ -11,6 +11,13 @@ role, capability, and provider scope for every operation.
 Publish `.bos-product.json` with schema version `2`, the product's name, version,
 client, descriptive application name, `connection_owner: "bos"`,
 `dependency_products: ["bos"]`, and `authentication: "bos_dependency"`.
+
+An independently distributed BOS-family dependency is declared separately in
+`independent_product_dependencies` and its name is also present in
+`dependency_products`. The typed dependency lists the packaged skills and
+runtime-verification tool names required before the dependent workflow runs.
+Installers resolve it from its own distribution and never construct a selector
+inside the current product marketplace.
 Retain `ONE_ORGANIZATION_APPLICATION_INSTALLATION_ROLE_PER_GRANT` and the generic
 `bos.authentication-handoff/v1` readiness contract. Package identity supplies no
 execution authority and never selects server context.

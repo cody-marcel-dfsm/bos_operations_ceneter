@@ -29,7 +29,26 @@ test("Codex runtime verifier requires the package-owned MCP binding", async () =
   }));
   const catalog = join(home, "catalog.json");
   const runtimeProducts = await Promise.all(["bos", "education-center"].map(name => readJson(join(root, "products", name, "product.json"))));
-  await writeFile(catalog, JSON.stringify({tools: [...new Set(runtimeProducts.flatMap(p => p.runtime_verification_tools))].map(name => ({name}))}));
+  const requiredTools = runtimeProducts.flatMap((product) => [
+    ...product.runtime_verification_tools,
+    ...(product.independent_product_dependencies ?? []).flatMap(
+      (dependency) => dependency.required_runtime_verification_tools
+    )
+  ]);
+  await writeFile(catalog, JSON.stringify({tools: [...new Set(requiredTools)].map(name => ({name}))}));
+
+  const myCrm = join(home, "source", "my-crm");
+  for (const skill of ["my-crm-record-operations", "my-crm-customer-journey"]) {
+    await mkdir(join(myCrm, "skills", skill), { recursive: true });
+    await writeFile(join(myCrm, "skills", skill, "SKILL.md"), `---\nname: ${skill}\n---\n`);
+  }
+  await writeFile(join(myCrm, ".bos-product.json"), JSON.stringify({
+    name: "my-crm",
+    version: "0.2.26",
+    runtime_verification_tools: runtimeProducts
+      .flatMap((product) => product.independent_product_dependencies ?? [])
+      .flatMap((dependency) => dependency.required_runtime_verification_tools)
+  }));
 
   let nativeServers = [{name:"BOS-Platform",enabled:true,transport:{url:"https://dfsm.ai/mcp/apps/bos/platform"}}];
   const runCommand = async (_command, args) => {
@@ -37,7 +56,8 @@ test("Codex runtime verifier requires the package-owned MCP binding", async () =
     if (args[1] === "list" && args[0] === "plugin") return { stdout: JSON.stringify({
       installed: [
         { pluginId: "bos@bos-education-center", installed: true, enabled: true, version: currentVersion, source: { path: source } },
-        { pluginId: "education-center@bos-education-center", installed: true, enabled: true, version: currentVersion, source: { path: join(home, "source", "education-center") } }
+        { pluginId: "education-center@bos-education-center", installed: true, enabled: true, version: currentVersion, source: { path: join(home, "source", "education-center") } },
+        { pluginId: "my-crm@my-crm-local", installed: true, enabled: true, version: "0.2.26", source: { path: myCrm } }
       ]
     }) };
     return { stdout: JSON.stringify({ marketplaces: [{ name: "bos-education-center" }] }) };
@@ -52,6 +72,7 @@ test("Codex runtime verifier requires the package-owned MCP binding", async () =
   assert.equal(report.mcp_binding.server.oauth_resource, "https://dfsm.ai/mcp/apps/bos/platform");
   assert.equal(report.mcp_binding.server.required, false);
   assert.equal(report.mcp_binding.server.startup_timeout_sec, 180);
+  assert.deepEqual(report.independent_products, [{ name: "my-crm", version: "0.2.26", state: "ready" }]);
   assert.equal(report.live_tool_surface.semantics, "operation_schema_only");
   assert.equal(report.live_tool_surface.authorization_source, "tools_call_server_result");
   nativeServers.push({...nativeServers[0], name:"platform"});
@@ -59,6 +80,19 @@ test("Codex runtime verifier requires the package-owned MCP binding", async () =
   assert.equal(duplicate.ok, false);
   assert.ok(duplicate.failures.some(message => message.includes("exactly one current host binding")));
   nativeServers = nativeServers.slice(0, 1);
+  await writeFile(join(myCrm, ".bos-product.json"), JSON.stringify({
+    name: "my-crm", version: "0.2.25", runtime_verification_tools: []
+  }));
+  const downgraded = await inspectCodexRuntime({home, runCommand, catalogPath: catalog});
+  assert.equal(downgraded.ok, false);
+  assert.match(downgraded.failures.join("\n"), /independent product my-crm is outdated/);
+  await writeFile(join(myCrm, ".bos-product.json"), JSON.stringify({
+    name: "my-crm",
+    version: "0.2.26",
+    runtime_verification_tools: runtimeProducts
+      .flatMap((product) => product.independent_product_dependencies ?? [])
+      .flatMap((dependency) => dependency.required_runtime_verification_tools)
+  }));
   await writeFile(join(education, ".mcp.json"), JSON.stringify({mcpServers:{"education-center":{type:"http",url:"https://dfsm.ai/mcp/apps/leaddirector/education-center"}}}));
   const stale = await inspectCodexRuntime({home, runCommand, catalogPath: catalog});
   assert.equal(stale.ok, false);

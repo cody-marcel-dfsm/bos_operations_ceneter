@@ -131,10 +131,16 @@ and call `bos_get_context` as soon as it is callable. Complete the required
 scope and initialization preflights, then resume the requested read without
 waiting for a second prompt. Any lead or contact detail request, including a
 single field or profile, and any request for progress toward enrollment requires
-the packaged `crm-customer-journey` capability discovered through the Education
-Center MCP connection. Invoke its advertised API contract and include a native
+the installed My CRM `my-crm-customer-journey` skill. It discovers the current
+Lead Director contract through the BOS connection. Invoke its advertised API contract and include a native
 visual with current position and resolved canonical goals, using its
 partial-evidence presentation when topology is unavailable.
+
+My CRM is an independently distributed required product. When it is missing,
+disabled, or lacks `my-crm-record-operations`, `my-crm-customer-journey`, or
+the canonical `lead_director_*` verification operations, stop before generic
+CRM work and return the package's dependency-required instruction. Never fall
+back to an Education Center copy, compatibility alias, or second connection.
 
 Load `config/customer-settings.template.json` from the installed
 `education-center` product as package defaults, then recursively overlay
@@ -147,18 +153,18 @@ and ask the user for the unresolved remainder.
 
 A named-person lookup such as “find this lead,” “look up this contact,” or a
 lookup by email, phone, or a current record selector is an individual detail
-request. Select and read `crm-customer-journey` before presenting its result,
+request. Select and read `my-crm-customer-journey` before presenting its result,
 even when the lookup uses a search operation. Determine presentation from user
 intent, independently of the tool name or response being an array. A successful
 single-person lookup must continue into the graph workflow in the same turn.
 When Calimatic resolves a named-person result first and that person is or may be
 a lead, reconcile the verified identity against Lead Director and invoke
-`crm-customer-journey` before the final response. The source that found the
+`my-crm-customer-journey` before the final response. The source that found the
 person first never removes this graph attempt. Preserve ambiguous identity
 matches and ask for disambiguation before targeted journey resolution. If the
 attempt returns no matching Lead Director record, report the precise missing
 Lead Director membership and topology evidence. When Calimatic supplies a
-verified current state, use `crm-customer-journey`'s partial-evidence contract
+verified current state, use `my-crm-customer-journey`'s partial-evidence contract
 to render a graph with at least one standalone current-state graph node labeled with
 its source and freshness. Treat that node as external evidence; never represent
 it as Lead Director graph membership, and add no inferred transitions, goals,
@@ -169,7 +175,7 @@ returned lead in the detailed format below. Keep ambiguous matches separate;
 show only the graph membership verified for each candidate and disambiguate
 before any targeted action.
 
-Whenever a lead is displayed, use `crm-customer-journey`'s detailed display
+Whenever a lead is displayed, use `my-crm-customer-journey`'s detailed display
 contract: current-state-to-goal graph with bold green preferred positive route,
 profile details and freshness. Read the advertised graph and canonical goals
 after a current-stage-only record result; an empty available-actions list does
@@ -179,9 +185,9 @@ matches, previews/receipts and each displayed list entry. Obtain missing display
 evidence after a confirmed write without replaying it. Preserve pagination,
 explicit user formats and historical labeling for deleted records.
 
-For lead search, create, update, delete, or removal requests, load the packaged
-`crm-record-operations` workflow, discover its live contract through Education
-Center MCP, and execute through the exact advertised deterministic HTTPS API.
+For lead search, create, update, delete, or removal requests, load the installed
+My CRM `my-crm-record-operations` workflow, discover its live Lead Director
+contract through BOS, and execute through the exact advertised deterministic HTTPS API.
 Apply its exact targets, confirmation requirements, receipt verification, and
 post-result journey display.
 
@@ -211,7 +217,7 @@ or partial operation. Preserve the exact per-source error and follow only an
 exact returned state action for an uncertain outcome; never replay the create.
 After success,
 read the new record and present its verified details and graph position through
-`crm-customer-journey`.
+`my-crm-customer-journey`.
 
 ## Tenant terminology
 

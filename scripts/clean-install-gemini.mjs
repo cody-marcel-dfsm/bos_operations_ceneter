@@ -47,7 +47,7 @@ export async function cleanInstallGemini({
     await runCommand("gemini", ["extensions", "install", source]);
     actions.push(`installed_extension:${product.name}`);
   }
-  const verification = await inspect({ home, base });
+  const verification = await inspect({ home, base, runCommand });
   if (!verification.ok) {
     throw new Error(`Gemini post-install verification failed:\n${verification.failures.join("\n")}`);
   }

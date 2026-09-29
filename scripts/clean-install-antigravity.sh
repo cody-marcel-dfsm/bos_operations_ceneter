@@ -4,7 +4,7 @@ set -eu
 
 # DESTRUCTIVE CLEAN INSTALLER
 #
-# This command permanently removes every installed BOS Antigravity product
+# This command permanently removes every installed BOS Operations Center Antigravity product
 # folder or symlink, including all local customizations stored inside those
 # product directories. It creates no backup. The user must explicitly confirm
 # this destruction before the script performs any filesystem mutation.
@@ -19,12 +19,12 @@ CONFIRMATION_PHRASE="DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS"
 
 printf '%s\n' \
   "WARNING: DESTRUCTIVE CLEAN INSTALL" \
-  "This command permanently deletes every installed BOS Antigravity product" \
+  "This command permanently deletes every installed BOS Operations Center Antigravity product" \
   "folder and symlink under:" \
   "  $PLUGINS_DIR" \
   "All local customizations stored inside those BOS product folders will be lost." \
   "No backup or automatic recovery will be created." \
-  "Unrelated non-BOS Antigravity plugins are preserved." \
+  "Independently distributed required products and unrelated plugins are preserved." \
   "" \
   "To agree to this destruction, type exactly:" \
   "  $CONFIRMATION_PHRASE"
@@ -47,15 +47,23 @@ if ! PREFLIGHT_PRODUCTS=$(node "$SCRIPT_DIR/preflight-antigravity.mjs" "$REPOSIT
 fi
 ACTIVE_PRODUCTS=$(printf '%s\n' "$PREFLIGHT_PRODUCTS" | sed -n 's/^active://p')
 DISABLED_PRODUCTS=$(printf '%s\n' "$PREFLIGHT_PRODUCTS" | sed -n 's/^disabled://p')
+INDEPENDENT_PRODUCTS=$(printf '%s\n' "$PREFLIGHT_PRODUCTS" | sed -n 's/^independent://p')
 
 echo "Confirmation accepted. Permanently deleting prior BOS Antigravity plugins without backups."
 mkdir -p "$PLUGINS_DIR"
 
-# DESTRUCTIVE: remove every installed BOS product, including any local files or
-# customer customizations stored inside the product directory. No backup is
-# created. This block runs only after exact user confirmation and preflight.
+# DESTRUCTIVE: remove every installed BOS Operations Center product, including
+# local files or customer customizations stored inside the product directory.
+# Independently distributed dependencies are preserved. No backup is created.
 for TARGET in "$PLUGINS_DIR"/*; do
-  if [ -e "$TARGET/.bos-product.json" ]; then
+  TARGET_NAME=$(basename "$TARGET")
+  PRESERVE=false
+  for NAME in $INDEPENDENT_PRODUCTS; do
+    if [ "$TARGET_NAME" = "$NAME" ]; then
+      PRESERVE=true
+    fi
+  done
+  if [ "$PRESERVE" = false ] && [ -e "$TARGET/.bos-product.json" ]; then
     rm -rf "$TARGET"
   fi
 done

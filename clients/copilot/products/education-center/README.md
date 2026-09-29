@@ -4,6 +4,7 @@ Education Operation Center coordinates complex, evidence-backed work across an e
 
 Copy `skills/` into the target repository's `.agents/skills/` directory.
 Install BOS first. This product uses the BOS connection and its native authentication action.
+Install required independent product `my-crm` from its own distribution before using dependent workflows.
 
-Verify this product in the target repository with `npm run install:verify:copilot-runtime -- --target <repository> --product education-center`.
+Verify this product in the target repository with `npm run install:verify:copilot-runtime -- --target <repository> --product education-center --independent-product-root my-crm=<installed-my-crm-product-root>`.
 Copilot reads repository configuration directly and has no BOS package-cache layer.

@@ -23,7 +23,8 @@ discoverable. Use `gemini extensions update bos` for later releases.
 
 Run `./scripts/clean-install-antigravity.sh` once from the synced BOS Operations Center
 repository. This is an intentionally destructive clean install: it deletes prior BOS
-product entries, including local customizations, without backups,
+Operations Center product entries, including local customizations, without backups,
+while preserving independently distributed required products,
 then links every generated Gemini product into `~/.gemini/config/plugins/`.
 It resolves the repository from the installer's own location, independent of the
 current working directory. Before changing files, it displays the deletion warning and

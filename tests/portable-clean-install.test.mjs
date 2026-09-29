@@ -13,6 +13,24 @@ async function temporaryHome(context, prefix) {
   return home;
 }
 
+async function seedGeminiMyCrm(home) {
+  const installed = join(home, ".gemini", "extensions", "my-crm");
+  for (const skill of ["my-crm-record-operations", "my-crm-customer-journey"]) {
+    await mkdir(join(installed, "skills", skill), { recursive: true });
+    await writeFile(join(installed, "skills", skill, "SKILL.md"), `---\nname: ${skill}\n---\n`);
+  }
+  await writeFile(join(installed, ".bos-product.json"), JSON.stringify({
+    name: "my-crm",
+    version: "0.2.26",
+    runtime_verification_tools: [
+      "lead_director_create_lead",
+      "lead_director_search_leads",
+      "lead_director_update_lead",
+      "lead_director_get_customer_journey"
+    ]
+  }));
+}
+
 test("Claude clean installer removes only validated BOS cache and reinstalls both products", async (context) => {
   const home = await temporaryHome(context, "bos-claude-clean-");
   const cache = join(home, ".claude", "plugins", "cache", "bos-education-center");
@@ -45,6 +63,7 @@ test("Claude clean installer removes only validated BOS cache and reinstalls bot
 
 test("Gemini clean installer removes residual copies and verifies native reinstall", async (context) => {
   const home = await temporaryHome(context, "bos-gemini-clean-");
+  await seedGeminiMyCrm(home);
   for (const product of ["bos", "education-center"]) {
     const installed = join(home, ".gemini", "extensions", product);
     await mkdir(installed, { recursive: true });
@@ -53,6 +72,15 @@ test("Gemini clean installer removes residual copies and verifies native reinsta
   const calls = [];
   const runCommand = async (_command, args) => {
     calls.push(args);
+    if (args[0] === "extensions" && args[1] === "list") {
+      return { stdout: JSON.stringify({
+        extensions: [{
+          name: "my-crm",
+          isActive: true,
+          path: join(home, ".gemini", "extensions", "my-crm")
+        }]
+      }) };
+    }
     if (args[1] === "install") {
       const source = args[2];
       const product = source.split("/").at(-1);
@@ -70,6 +98,7 @@ test("Gemini clean installer removes residual copies and verifies native reinsta
   assert.equal(report.ok, true);
   assert.equal(calls.filter((args) => args[1] === "uninstall").length, 2);
   assert.equal(calls.filter((args) => args[1] === "install").length, 2);
+  assert(calls.some((args) => args.join(" ") === "extensions list --output-format json"));
 });
 
 test("Gemini clean installer verifies the CLI before deleting installed state", async (context) => {

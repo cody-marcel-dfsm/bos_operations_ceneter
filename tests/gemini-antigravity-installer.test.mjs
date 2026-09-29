@@ -44,6 +44,27 @@ async function runInstaller(options) {
   return runScript(script, options);
 }
 
+async function seedIndependentMyCrm(home, sandbox) {
+  const source = join(sandbox, "independent", "my-crm");
+  for (const skill of ["my-crm-record-operations", "my-crm-customer-journey"]) {
+    await mkdir(join(source, "skills", skill), { recursive: true });
+    await writeFile(join(source, "skills", skill, "SKILL.md"), `---\nname: ${skill}\n---\n`);
+  }
+  await writeFile(join(source, ".bos-product.json"), JSON.stringify({
+    name: "my-crm",
+    version: "0.2.26",
+    runtime_verification_tools: [
+      "lead_director_create_lead",
+      "lead_director_search_leads",
+      "lead_director_update_lead",
+      "lead_director_get_customer_journey"
+    ]
+  }));
+  const pluginsRoot = join(home, ".gemini", "config", "plugins");
+  await mkdir(pluginsRoot, { recursive: true });
+  await symlink(source, join(pluginsRoot, "my-crm"));
+}
+
 test("Antigravity shell installer resolves the repository independently of cwd", async (context) => {
   const sandbox = await mkdtemp(join(tmpdir(), "bos-antigravity-shell-"));
   context.after(() => rm(sandbox, { recursive: true, force: true }));
@@ -52,6 +73,7 @@ test("Antigravity shell installer resolves the repository independently of cwd",
   const pluginsRoot = join(home, ".gemini", "config", "plugins");
   await mkdir(cwd, { recursive: true });
   await mkdir(home, { recursive: true });
+  await seedIndependentMyCrm(home, sandbox);
 
   const { stdout } = await runInstaller({ cwd, home });
 
@@ -109,6 +131,7 @@ test("Antigravity shell installer removes prior BOS entries and preserves unrela
   await writeFile(join(priorBos, ".bos-product.json"), "{}\n");
   await writeFile(join(priorBos, "old.txt"), "remove\n");
   await writeFile(join(unrelated, "keep.txt"), "keep\n");
+  await seedIndependentMyCrm(home, sandbox);
 
   await runInstaller({ cwd: sandbox, home });
 
@@ -125,6 +148,7 @@ test("Antigravity shell installer replaces broken current-product symlinks", asy
   const target = join(pluginsRoot, "education-center");
   await mkdir(pluginsRoot, { recursive: true });
   await symlink(join(sandbox, "missing-source"), target);
+  await seedIndependentMyCrm(home, sandbox);
 
   await runInstaller({ cwd: sandbox, home });
 

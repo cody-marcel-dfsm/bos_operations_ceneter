@@ -144,7 +144,9 @@ test('active Education Center composition detects default migration on every cli
     'clients/codex/plugins/education-center', 'clients/claude/plugins/education-center',
     'clients/copilot/products/education-center', 'clients/gemini/extensions/education-center'
   ]) {
-    const guidance = await readFile(`${path}/skills/crm-record-operations/SKILL.md`, 'utf8');
+    const guidance = await readFile(
+      `${path}/skills/education-center-service-routing/SKILL.md`, 'utf8'
+    );
     assert.match(guidance, /missing\/invalid `default_context`/);
     assert.match(guidance, /missing\/invalid product-specific BOS/);
     assert.match(guidance, /confirmed valid mirror for this plugin without asking again/);

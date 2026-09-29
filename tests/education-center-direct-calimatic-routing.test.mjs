@@ -26,7 +26,7 @@ test("Education Center service routing preserves BOS scope while honoring eviden
 
   assert.match(skill, /Education Center product\s+MCP/i);
   assert.match(skill, /execute the selected application operation through its exact[\s\S]*deterministic HTTPS API/i);
-  assert.match(skill, /discover its live contract through Education[\s\S]*Center MCP[\s\S]*execute through the exact advertised deterministic HTTPS API/i);
+  assert.match(skill, /my-crm-record-operations[\s\S]*discover its live Lead Director[\s\S]*contract through BOS[\s\S]*execute through the exact advertised deterministic HTTPS API/i);
   assert.doesNotMatch(skill, /execute through Education Center MCP/i);
   assert.match(skill, /Platform and application discovery use the same BOS connection/i);
   assert.match(skill, /source_routes\.calimatic[\s\S]*package default is BOS/i);

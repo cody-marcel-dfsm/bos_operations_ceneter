@@ -1,10 +1,30 @@
+import { execFile } from "node:child_process";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { verifyDependentConnection, activeClientProducts, compareTrees, verifyInstalledMetadata } from "./lib/client-runtime-verification.mjs";
+import { promisify } from "node:util";
+import {
+  verifyDependentConnection,
+  activeClientProducts,
+  compareTrees,
+  verifyIndependentProductReadiness,
+  verifyInstalledMetadata
+} from "./lib/client-runtime-verification.mjs";
+import { independentDependencyContracts } from "./lib/independent-product-dependencies.mjs";
 import { root, stableJson } from "./lib/package-model.mjs";
 
-export async function inspectGeminiRuntime({ home = homedir(), base = root } = {}) {
+const execFileAsync = promisify(execFile);
+
+function commandJson(result) {
+  const output = typeof result === "string" ? result : result?.stdout;
+  return JSON.parse(output ?? "");
+}
+
+export async function inspectGeminiRuntime({
+  home = homedir(),
+  base = root,
+  runCommand = execFileAsync
+} = {}) {
   const products = await activeClientProducts("gemini");
   const failures = [];
   const states = {};
@@ -36,7 +56,36 @@ export async function inspectGeminiRuntime({ home = homedir(), base = root } = {
     };
     failures.push(...productFailures);
   }
-  return { schema_version: "1", ok: failures.length === 0, installed_products: states, failures };
+  let nativeExtensions = [];
+  try {
+    const registry = commandJson(await runCommand(
+      "gemini",
+      ["extensions", "list", "--output-format", "json"]
+    ));
+    nativeExtensions = Array.isArray(registry) ? registry : registry.extensions ?? [];
+  } catch (error) {
+    failures.push(`Gemini native extension readiness is unavailable: ${error.message}`);
+  }
+  const independentReadiness = await verifyIndependentProductReadiness(
+    products,
+    nativeExtensions.map((entry) => ({
+      name: entry.name ?? entry.id,
+      enabled: entry.isActive === true,
+      installPath: entry.installPath ?? entry.path ?? (
+        (entry.name ?? entry.id) ? join(home, ".gemini", "extensions", entry.name ?? entry.id) : undefined
+      )
+    })).filter(({ name }) => independentDependencyContracts(products).some(
+      (dependency) => dependency.name === name
+    ))
+  );
+  failures.push(...independentReadiness.failures);
+  return {
+    schema_version: "1",
+    ok: failures.length === 0,
+    installed_products: states,
+    independent_products: independentReadiness.results,
+    failures
+  };
 }
 
 async function main() {

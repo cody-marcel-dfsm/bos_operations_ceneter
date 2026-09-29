@@ -47,6 +47,18 @@ for (const { manifest } of products) {
   });
 }
 
+function independentDependencyInstructions(product) {
+  return (product.independent_product_dependencies ?? []).map(({ name }) =>
+    `Install required independent product \`${name}\` from its own distribution before using dependent workflows.`
+  );
+}
+
+function copilotIndependentDependencyArgs(product) {
+  return (product.independent_product_dependencies ?? [])
+    .map(({ name }) => ` --independent-product-root ${name}=<installed-${name}-product-root>`)
+    .join("");
+}
+
 await rm(stage, { recursive: true, force: true });
 await mkdir(stagedClients, { recursive: true });
 
@@ -180,6 +192,7 @@ for (const { product, skills } of resolved) {
           "## BOS connection and security",
           "",
           "Install the BOS plugin first as this product's required platform dependency.",
+          ...independentDependencyInstructions(product),
           "Education Operation Center uses the BOS foundation connection. BOS evaluates",
           "organization, installation, role, plugin, capability, provider, and tool",
           "authorization on every private operation.",
@@ -255,10 +268,11 @@ for (const { product, skills } of resolved) {
             `Install required product dependencies first: ${product.dependencies.join(", ")}.`
           ] : [])
         ] : [
-          "Install BOS first. This product uses the BOS connection and its native authentication action."
+          "Install BOS first. This product uses the BOS connection and its native authentication action.",
+          ...independentDependencyInstructions(product)
         ]),
         "",
-        `Verify this product in the target repository with \`npm run install:verify:copilot-runtime -- --target <repository> --product ${product.name}\`.`,
+        `Verify this product in the target repository with \`npm run install:verify:copilot-runtime -- --target <repository> --product ${product.name}${copilotIndependentDependencyArgs(product)}\`.`,
         "Copilot reads repository configuration directly and has no BOS package-cache layer.",
         ""
       ].join("\n")
@@ -322,7 +336,8 @@ for (const { product, skills } of resolved) {
             `Install required product dependencies first: ${product.dependencies.join(", ")}.`
           ] : [])
         ] : [
-          "Install BOS first. This product uses the BOS connection and its native authentication action."
+          "Install BOS first. This product uses the BOS connection and its native authentication action.",
+          ...independentDependencyInstructions(product)
         ]),
         "",
         "For a bounded recovery, run `npm run clean-install:gemini -- --confirmation",
@@ -335,7 +350,8 @@ for (const { product, skills } of resolved) {
         "",
         "Run `./scripts/clean-install-antigravity.sh` once from the synced BOS Operations Center",
         "repository. This is an intentionally destructive clean install: it deletes prior BOS",
-        "product entries, including local customizations, without backups,",
+        "Operations Center product entries, including local customizations, without backups,",
+        "while preserving independently distributed required products,",
         "then links every generated Gemini product into `~/.gemini/config/plugins/`.",
         "It resolves the repository from the installer's own location, independent of the",
         "current working directory. Before changing files, it displays the deletion warning and",
@@ -433,7 +449,8 @@ await writeFile(
     "## Antigravity 2.0 Desktop",
     "",
     "Run `./scripts/clean-install-antigravity.sh` once. This intentionally destructive clean installer",
-    "deletes prior BOS product entries, including local customizations, without backups,",
+    "deletes prior BOS Operations Center product entries, including local customizations, without backups,",
+    "while preserving independently distributed required products,",
     "locates this repository from its own file path, and requires typed confirmation of",
     "`DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS` before changing files,",
     "and creates one product symlink in `~/.gemini/config/plugins/` for each active product.",

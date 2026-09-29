@@ -4,6 +4,11 @@ import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { verifyInstalledMetadata } from "./lib/client-runtime-verification.mjs";
+import {
+  assertIndependentProductsReady,
+  inspectInstalledIndependentProducts,
+  localDependencyNames
+} from "./lib/independent-product-dependencies.mjs";
 
 const projectRoot = resolve(import.meta.dirname, "..");
 const defaultProduct = "bos";
@@ -120,7 +125,7 @@ export async function installClaudeLocal({
     run("claude", ["plugin", "list", "--json"], { capture: true }),
     "plugin list"
   );
-  for (const dependency of productMetadata.dependency_products ?? []) {
+  for (const dependency of localDependencyNames(productMetadata)) {
     const dependencySelector = `${dependency}@${marketplace.name}`;
     const installedDependency = installedPlugins.find(
       (entry) => entry.id === dependencySelector
@@ -143,6 +148,14 @@ export async function installClaudeLocal({
       ]);
     }
   }
+  assertIndependentProductsReady(await inspectInstalledIndependentProducts(
+    productMetadata,
+    installedPlugins.map((entry) => ({
+      name: entry.id?.split("@")[0],
+      enabled: entry.enabled,
+      installPath: entry.installPath
+    }))
+  ));
   const installed = marketplaceReplaced
     ? undefined
     : installedPlugins.find((entry) => entry.id === selector);
@@ -178,7 +191,7 @@ export async function installClaudeLocal({
   if (!verified.installPath) {
     throw new Error(`Claude did not report an active installPath for ${selector}`);
   }
-  for (const dependency of productMetadata.dependency_products ?? []) {
+  for (const dependency of localDependencyNames(productMetadata)) {
     const dependencySelector = `${dependency}@${marketplace.name}`;
     const verifiedDependency = verifiedPlugins.find(
       (entry) => entry.id === dependencySelector

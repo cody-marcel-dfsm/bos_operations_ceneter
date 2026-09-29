@@ -168,10 +168,14 @@ native account recovery for the exact configured mailbox.
 
 When Calimatic resolves a named-person lookup and the person is or may be a
 lead, use the verified identity evidence to attempt an authorized Lead Director
-match before presenting the final result. Invoke `crm-customer-journey` for an
+match before presenting the final result. Invoke the installed My CRM
+`my-crm-customer-journey` skill for an
 exact match and continue through its current-state, goal, path, and graph
 contract in the same turn. A Calimatic student or family result is external
 evidence for that journey; it never proves Lead Director graph membership.
+When My CRM is missing, disabled, or outdated, return the package's explicit
+dependency-required instruction and preserve the verified Calimatic result
+without inventing CRM state or using an Education Center compatibility alias.
 
 Keep ambiguous Lead Director candidates separate and request the minimum
 disambiguating value. If there is no matching Lead Director record, preserve

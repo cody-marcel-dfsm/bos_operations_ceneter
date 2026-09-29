@@ -41,6 +41,11 @@ import {
   stableJson,
   writeJson
 } from "./lib/package-model.mjs";
+import {
+  independentDependencyFailures,
+  independentDependencyNames,
+  inspectInstalledIndependentProducts
+} from "./lib/independent-product-dependencies.mjs";
 
 const stateFileName = ".bos-package-state.json";
 const codexMarketplaceIdentity = Object.freeze({
@@ -182,7 +187,32 @@ async function isRetiredDependentTransport(path, productName) {
   } catch { return false; }
 }
 
-async function configureCodexBosMcp(_options, paths) {
+async function installedCodexIndependentProducts(options) {
+  if (Array.isArray(options.installedIndependentProducts)) {
+    return options.installedIndependentProducts;
+  }
+  try {
+    const runCommand = options.runCommand ?? execFileAsync;
+    const result = await runCommand("codex", ["plugin", "list", "--json"]);
+    const listing = JSON.parse(result?.stdout ?? result ?? "");
+    return (listing.installed ?? []).map((entry) => {
+      const [name, marketplace] = String(entry.pluginId ?? "").split("@");
+      return {
+        name,
+        enabled: entry.installed !== false && entry.enabled !== false,
+        installPath: entry.source?.path ?? entry.installPath ?? (
+          name && marketplace && entry.version
+            ? join(options.home ?? homedir(), ".codex", "plugins", "cache", marketplace, name, entry.version)
+            : undefined
+        )
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+async function configureCodexBosMcp(options, paths) {
   const metadata = await readJson(join(paths.target, ".bos-product.json"));
   const appPath = join(paths.target, ".app.json");
   const runtimePath = join(paths.target, ".mcp.json");
@@ -193,7 +223,25 @@ async function configureCodexBosMcp(_options, paths) {
         plugin.mcpServers || plugin.apps || await pathExists(appPath) || await pathExists(runtimePath)) {
       throw new Error("Dependent product must use only the BOS connection");
     }
-    return { state: "bos_dependency", connection_owner: "bos" };
+    const independentDependencies = [...independentDependencyNames(metadata)];
+    const independentResults = await inspectInstalledIndependentProducts(
+      metadata,
+      await installedCodexIndependentProducts(options)
+    );
+    const independentFailures = independentDependencyFailures(independentResults);
+    return {
+      state: independentFailures.length > 0
+        ? "independent_dependency_required"
+        : "bos_dependency",
+      connection_owner: "bos",
+      ...(independentDependencies.length > 0 ? {
+        independent_products: independentDependencies,
+        independent_product_readiness: independentResults,
+        ...(independentFailures.length > 0 ? {
+          reason: independentFailures.join("; ")
+        } : {})
+      } : {})
+    };
   }
   if (metadata.authentication === "none") {
     if (metadata.application_name !== undefined ||
@@ -1129,7 +1177,9 @@ export async function verifyInstallation(options = {}) {
   report.runtime = await configureCodexBosMcp(options, report.paths);
   report.ok =
     report.state === "managed-current" && report.marketplace === "current" &&
-    ["current", "host_managed", "bos_managed"].includes(report.runtime.state);
+    ["current", "host_managed", "bos_managed", "bos_dependency"].includes(
+      report.runtime.state
+    );
   return report;
 }
 

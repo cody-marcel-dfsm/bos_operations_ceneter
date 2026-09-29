@@ -476,7 +476,9 @@ test("Education Center packages include governed single-lead Agent Call operatio
     `${agentCalls.sourcePath}/references/capability-contract.md`,
     "utf8"
   );
-  assert.match(guidance, /education_center_search_leads/);
+  assert.match(guidance, /my-crm-record-operations/);
+  assert.match(guidance, /lead_director_search_leads/);
+  assert.doesNotMatch(guidance, /education_center_search_leads/);
   assert.match(guidance, /education_center_initiate_agent_call/);
   assert.match(guidance, /attributes\.available_actions\[\][\s\S]*agent_call/i);
   assert.match(
@@ -1915,6 +1917,47 @@ test("package schema requires product-owned runtime and BOS dependencies", () =>
   };
   for (const field of ["mcp_group_name", "mcp_resource_url", "oauth", "codex_mcp_startup_timeout_sec", "codex_mcp_tool_timeout_sec"]) delete subservice[field];
   assert.deepEqual(validateProduct(subservice), []);
+  const independentDependency = {
+    name: "my-crm",
+    distribution: "independent",
+    required_skills: ["my-crm-record-operations", "my-crm-customer-journey"],
+    required_runtime_verification_tools: [
+      "lead_director_search_leads",
+      "lead_director_get_customer_journey"
+    ]
+  };
+  assert.deepEqual(validateProduct({
+    ...subservice,
+    independent_product_dependencies: [independentDependency]
+  }), []);
+  assert.match(validateProduct({
+    ...subservice,
+    independent_product_dependencies: [{
+      ...independentDependency,
+      distribution: "same-marketplace"
+    }]
+  }).join("\n"), /independent product distribution must be independent/);
+  assert.match(validateProduct({
+    ...subservice,
+    independent_product_dependencies: [{
+      ...independentDependency,
+      name: "bos"
+    }]
+  }).join("\n"), /independent product dependency names must be unique external products/);
+  assert.match(validateProduct({
+    ...subservice,
+    independent_product_dependencies: [{
+      ...independentDependency,
+      required_skills: []
+    }]
+  }).join("\n"), /required_skills must contain unique public names/);
+  assert.match(validateProduct({
+    ...subservice,
+    independent_product_dependencies: [{
+      ...independentDependency,
+      transport: "bos"
+    }]
+  }).join("\n"), /complete closed contract/);
   assert.match(validateProduct({ ...subservice, oauth: base.oauth }).join("\n"), /dependent products cannot declare oauth/);
   assert.match(validateProduct({ ...subservice, connection_owner: subservice.name }).join("\n"), /BOS connection ownership/);
   assert.match(
@@ -2003,6 +2046,9 @@ test("disabled product inventory is generated for idempotent client pruning", as
 });
 
 test("BOS owns OAuth and Education Center delegates through its dependency", async () => {
+  const educationManifest = (await listProducts()).find(
+    ({ manifest }) => manifest.name === "education-center"
+  ).manifest;
   const codexRoot = `${root}/clients/codex/plugins/bos`;
   const metadata = JSON.parse(await readFile(`${codexRoot}/.bos-product.json`, "utf8"));
   const plugin = JSON.parse(await readFile(`${codexRoot}/.codex-plugin/plugin.json`, "utf8"));
@@ -2050,7 +2096,11 @@ test("BOS owns OAuth and Education Center delegates through its dependency", asy
   await assert.rejects(access(`${educationRoot}/.app.json`));
   const educationMetadata = JSON.parse(await readFile(`${educationRoot}/.bos-product.json`, "utf8"));
   assert.equal(educationMetadata.connection_owner, "bos");
-  assert.deepEqual(educationMetadata.dependency_products, ["bos"]);
+  assert.deepEqual(educationMetadata.dependency_products, ["bos", "my-crm"]);
+  assert.deepEqual(
+    educationMetadata.independent_product_dependencies,
+    educationManifest.independent_product_dependencies
+  );
   assert.equal(educationMetadata.authentication, "bos_dependency");
   assert.equal(educationMetadata.resource_url, undefined);
 });
@@ -2760,74 +2810,49 @@ test("My CRM remains external while BOS supplies its installable platform depend
 });
 
 
-test("Education Center ships its referenced journey and graph contracts on every client", async () => {
+test("Education Center delegates generic CRM skills to independent My CRM on every client", async () => {
   const products = await listProducts();
   const education = products.find(({ manifest }) => manifest.name === "education-center").manifest;
   const skills = await resolveProductSkills(education);
-  const journey = skills.find(({ name }) => name === "crm-customer-journey");
-  assert(journey, "Education Center must ship the journey its lead routing requires");
-  assert(skills.some(({ name }) => name === "crm-record-operations"),
-    "Education Center must ship its lead record workflow");
-  const records = skills.find(({ name }) => name === "crm-record-operations");
+  assert.equal(skills.some(({ name }) => name === "crm-customer-journey"), false);
+  assert.equal(skills.some(({ name }) => name === "crm-record-operations"), false);
   assert.deepEqual(education.dependencies, ["bos"]);
+  assert.deepEqual(education.independent_product_dependencies.map(({ name }) => name), ["my-crm"]);
+  for (const retired of [
+    "source/capabilities/crm-customer-journey/SKILL.md",
+    "source/capabilities/crm-record-operations/SKILL.md"
+  ]) {
+    assert.equal(await pathExists(`${root}/${retired}`), false, retired);
+  }
   for (const clientRoot of [
     "clients/claude/plugins", "clients/codex/plugins",
     "clients/copilot/products", "clients/gemini/extensions"
   ]) {
-    const destination = `${root}/${clientRoot}/education-center/skills/${journey.name}`;
-    const generated = await readFile(`${destination}/SKILL.md`, "utf8");
-    const canonical = await readFile(journey.skillFile, "utf8");
-    assert.equal(generated, transformProductSkillGuidance(education, journey.name, canonical));
-    for (const reference of ["connected-graph-read.md", "journey-graph-contract.md"]) {
-      assert.equal(await readFile(`${destination}/references/${reference}`, "utf8"),
-        await readFile(`${journey.sourcePath}/references/${reference}`, "utf8"));
+    for (const retired of ["crm-customer-journey", "crm-record-operations"]) {
+      assert.equal(await pathExists(
+        `${root}/${clientRoot}/education-center/skills/${retired}/SKILL.md`
+      ), false);
     }
-    const recordGuidance = await readFile(
-      `${root}/${clientRoot}/education-center/skills/${records.name}/SKILL.md`,
+    const routing = await readFile(
+      `${root}/${clientRoot}/education-center/skills/education-center-service-routing/SKILL.md`,
       "utf8"
     );
-    assert.match(
-      recordGuidance,
-      /one exact conceptual business record[\s\S]*one through five explicit source-record targets/i
-    );
-    assert.match(
-      recordGuidance,
-      /one conceptual record represented by one to five[\s\S]*explicit source records/i
-    );
-    assert.match(
-      recordGuidance,
-      /uncertain mutation[\s\S]*exact service-returned bodyless[\s\S]*Never replay the mutation/i
-    );
-    assert.match(
-      recordGuidance,
-      /per-source error[\s\S]*exact service-returned[\s\S]*Never construct a reconciliation read/i
-    );
-    assert.doesNotMatch(recordGuidance, /more than one affected\s+record blocks/i);
-    assert.doesNotMatch(recordGuidance, /reconcile uncertain outcomes with a read/i);
+    assert.match(routing, /my-crm-record-operations/);
+    assert.match(routing, /my-crm-customer-journey/);
+    assert.match(routing, /dependency-required instruction/i);
   }
 });
 
-test("organization-described Lead Director records default to graph presentation", async () => {
-  for (const file of [
-    "source/capabilities/crm-customer-journey/SKILL.md",
-    "source/capabilities/crm-record-operations/SKILL.md"
-  ]) {
-    const text = await readFile(`${root}/${file}`, "utf8");
-    assert.match(text, /organization-described|organization Describe/i, file);
-    assert.match(text, /crm-customer-journey/);
-  }
-  const journey = await readFile(`${root}/source/capabilities/crm-customer-journey/SKILL.md`, "utf8");
-  const records = await readFile(`${root}/source/capabilities/crm-record-operations/SKILL.md`, "utf8");
-  assert.match(journey, /When no goal is requested/);
-  assert.match(journey, /record-to-graph[\s\S]*ambiguous/);
-  assert.match(journey, /Never substitute[\s\S]*`lead`, `contact`, `customer`/i);
-  assert.match(journey, /requested fields[\s\S]*below the graph/);
-  assert.match(
-    records,
-    /response is incomplete[\s\S]*current node[\s\S]*resolved goal[\s\S]*every intermediate node[\s\S]*gates or blockers/i
+test("Education Center retains organization-described graph routing through My CRM", async () => {
+  const routing = await readFile(
+    `${root}/source/verticals/education-center/education-center-service-routing/SKILL.md`,
+    "utf8"
   );
-  assert.match(records, /Never replace this path with a list of available actions/i);
-  assert.match(records, /continue goal and path discovery/i);
+  assert.match(routing, /my-crm-customer-journey/);
+  assert.match(routing, /current-state-to-goal graph/i);
+  assert.match(routing, /advertised graph and canonical goals/i);
+  assert.match(routing, /partial-evidence presentation/i);
+  assert.doesNotMatch(routing, /education_center_get_customer_journey/);
   const visual = await readFile(`${root}/source/platform/bos-visual-output/SKILL.md`, "utf8");
   assert.doesNotMatch(visual, /one record outside journey-position work/);
 });
@@ -2841,11 +2866,6 @@ test("Calimatic-first named-person results still attempt Lead Director graph res
     `${root}/source/verticals/education-center/education-center-student-operations/SKILL.md`,
     "utf8"
   );
-  const journey = await readFile(
-    `${root}/source/capabilities/crm-customer-journey/SKILL.md`,
-    "utf8"
-  );
-
   for (const guidance of [routing, students]) {
     assert.match(
       guidance,
@@ -2860,27 +2880,9 @@ test("Calimatic-first named-person results still attempt Lead Director graph res
       /external evidence[\s\S]*never[\s\S]*Lead Director (?:graph )?membership/i
     );
   }
-
-  assert.match(
-    journey,
-    /current state from any authorized source[\s\S]*at least one standalone current-state\s+node/i
-  );
-  assert.match(
-    journey,
-    /external-evidence\s+node[\s\S]*no Lead Director graph membership,\s+transition, goal, or\s+reachability/i
-  );
-  assert.match(
-    journey,
-    /external-evidence current-state node[\s\S]*standalone[\s\S]*no chronology link, dotted connector, goal edge, or other\s+edge/i
-  );
-  assert.match(
-    journey,
-    /requested goal[\s\S]*separate unconnected node[\s\S]*reachability unverified/i
-  );
-  assert.match(
-    journey,
-    /no verified current state[\s\S]*(?:report the failure|without a fabricated journey)/i
-  );
+  assert.match(routing, /partial-evidence contract/i);
+  assert.match(routing, /standalone current-state graph node/i);
+  assert.match(students, /dependency-required instruction/i);
   assert.match(
     students,
     /broad[\s\S]*(?:roster|enrollment report)[\s\S]*does not require[\s\S]*per-person graph/i
@@ -2888,32 +2890,15 @@ test("Calimatic-first named-person results still attempt Lead Director graph res
 });
 
 
-test("journey reads use the current authenticated operating contract", async () => {
-  for (const file of ["source/capabilities/crm-customer-journey/SKILL.md"]) {
-    const guidance = await readFile(`${root}/${file}`, "utf8");
-    assert.match(guidance, /## Current-host read execution/);
-    assert.match(guidance, /live-discovered[\s\S]*read/);
-    assert.match(guidance, /denial[\s\S]*never/);
-    assert.match(guidance, /partial/);
-  }
-  const journey = await readFile(`${root}/source/capabilities/crm-customer-journey/SKILL.md`, "utf8");
-  assert.match(journey, /BOS connection scoped to the authorized application[\s\S]*discovery[\s\S]*exact advertised deterministic HTTPS APIs/i);
-  assert.match(journey, /current BOS platform connection[\s\S]*Discover the current app/i);
-  assert.doesNotMatch(journey, /record and graph reads on Education Center MCP/i);
-  assert.match(journey, /without client-supplied authority fields/i);
-  assert.doesNotMatch(journey, /or central compatibility alias for this journey workflow/);
-});
-
-
-test("record creation uses server source selectors and structured success", async () => {
-  const guidance = await readFile(`${root}/source/capabilities/crm-record-operations/SKILL.md`, "utf8");
-  assert.match(guidance, /BOS connection scoped to the authorized application for authenticated[\s\S]*application discovery/i);
-  assert.match(guidance, /business operation through[\s\S]*deterministic HTTPS API/i);
-  assert.match(guidance, /Never manufacture `source_type` or `source_identity`/);
-  assert.match(guidance, /Supply no client duplicate pre-check, version, idempotency key/i);
-  assert.match(guidance, /`complete: false`[\s\S]*`source_mutation_failed`/);
-  assert.match(guidance, /current operating contract/);
-  assert.doesNotMatch(guidance, /host cutover|migration compatibility|compatibility read/);
+test("focused Agent Call resolves records through My CRM canonical discovery", async () => {
+  const guidance = await readFile(
+    `${root}/source/capabilities/agent-call-operations/SKILL.md`, "utf8"
+  );
+  assert.match(guidance, /my-crm-record-operations/);
+  assert.match(guidance, /lead_director_search_leads/);
+  assert.match(guidance, /task-scoped BOS contract/i);
+  assert.match(guidance, /dependency-required instruction/i);
+  assert.doesNotMatch(guidance, /education_center_search_leads/);
 });
 
 

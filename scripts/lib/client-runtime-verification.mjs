@@ -2,6 +2,10 @@ import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, realpath } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { verifyExternalProductPackage } from "./product-mcp-contract.mjs";
+import {
+  independentDependencyFailures,
+  inspectIndependentDependencies
+} from "./independent-product-dependencies.mjs";
 import { listProducts, mcpServerName, pathExists, readJson, root } from "./package-model.mjs";
 
 export async function activeClientProducts(client) {
@@ -80,6 +84,14 @@ export async function verifyDependentConnection(packageRoot, product) {
   } catch (error) {
     return [`${product.name}: dependency verification failed: ${error.message}`];
   }
+}
+
+export async function verifyIndependentProductReadiness(products, installedProducts) {
+  const results = await inspectIndependentDependencies(products, installedProducts);
+  return {
+    results,
+    failures: independentDependencyFailures(results)
+  };
 }
 
 export async function retiredConnectionFailures(servers) {

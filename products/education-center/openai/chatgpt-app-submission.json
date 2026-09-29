@@ -55,18 +55,6 @@
         "open_world_justification": "May retrieve current roster and capacity evidence from organization-authorized services outside ChatGPT.",
         "destructive_justification": "The report operation does not change registrations, attendance, staffing, or capacity."
       }
-    },
-    "education_center_search_leads": {
-      "annotations": {
-        "readOnlyHint": true,
-        "openWorldHint": true,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Searches authorized lead records and returns current trial or enrollment evidence without changing a lead.",
-        "open_world_justification": "May read current lead and journey data from organization-authorized services outside ChatGPT.",
-        "destructive_justification": "The search does not create, update, contact, or delete a lead."
-      }
     }
   },
   "test_cases": [
@@ -103,11 +91,11 @@
       "expected_output_url": null
     },
     {
-      "description": "Display fictional review leads with verified state graphs and paths to canonical goals.",
-      "user_prompt": "Find synthetic leads created during the review week and summarize their current trial or enrollment status.",
+      "description": "Find fictional students for a bounded family follow-up review.",
+      "user_prompt": "Find synthetic students with an active enrollment who need a guardian contact review this week.",
       "file_attachment_urls": null,
-      "tools_triggered": "education_center_search_leads",
-      "expected_output": "Returns each fictional lead with created date, current state, profile and freshness, plus a native state graph and readable text paths from the current node through every intermediate node to application-owned goals. Highlights the preferred positive route in bold green, labels structural eligibility limits, and preserves filters and pagination. Reads graph evidence through the BOS platform connection; a current-stage badge or activity timeline alone fails this test. If graph discovery fails, identifies the failed read and labels the partial graph as incomplete acceptance without inventing transitions.",
+      "tools_triggered": "education_center_search_students",
+      "expected_output": "Returns only fictional matching students with the minimum enrollment and guardian-contact evidence required for review, preserving source attribution and omitting unnecessary identifiers.",
       "expected_output_url": null
     }
   ],

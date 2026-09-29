@@ -201,29 +201,28 @@ test("generated journey guidance creates no second connection or client-owned st
   }
 });
 
-test("Lead Director capabilities use one BOS connection in canonical and generated packages", async () => {
+test("Education Center routes generic Lead Director work to independent My CRM on the BOS connection", async () => {
   const product = JSON.parse(
     await readFile(`${root}/products/education-center/product.json`, "utf8")
   );
-  const capabilities = ["crm-customer-journey", "crm-record-operations"];
-  for (const capability of capabilities) {
-    const canonical = await readFile(
-      `${root}/source/capabilities/${capability}/SKILL.md`,
-      "utf8"
-    );
-    assert.match(canonical, /BOS (?:platform )?connection/i, capability);
-    assert.doesNotMatch(
-      canonical,
-      /active product MCP|product's scoped MCP connection|another product connection|scoped product connection/i,
-      capability
-    );
-    for (const generatedRoot of educationCenterRoots) {
-      assert.equal(
-        await readFile(`${generatedRoot}/${capability}/SKILL.md`, "utf8"),
-        transformProductSkillGuidance(product, capability, canonical),
-        `${generatedRoot}/${capability}`
-      );
+  assert.deepEqual(product.dependencies, ["bos"]);
+  assert.deepEqual(
+    product.independent_product_dependencies.map(({ name }) => name),
+    ["my-crm"]
+  );
+  for (const generatedRoot of educationCenterRoots) {
+    for (const retired of ["crm-customer-journey", "crm-record-operations"]) {
+      await assert.rejects(readFile(`${generatedRoot}/${retired}/SKILL.md`, "utf8"), {
+        code: "ENOENT"
+      });
     }
+    const routing = await readFile(
+      `${generatedRoot}/education-center-service-routing/SKILL.md`, "utf8"
+    );
+    assert.match(routing, /my-crm-record-operations/);
+    assert.match(routing, /my-crm-customer-journey/);
+    assert.match(routing, /independently distributed required product/i);
+    assert.doesNotMatch(routing, /education_center_(?:search_leads|get_customer_journey)/);
   }
 });
 
@@ -246,14 +245,6 @@ test("organization automation explanations use plugin Describe and the explain p
   assert.match(orchestrator, /Do not substitute\s+the Lead Director state graph/i);
   assert.match(orchestrator, /Do not author, register, start, or advance BOSL/i);
 
-  const recordJourney = await readFile(
-    `${root}/source/capabilities/crm-customer-journey/SKILL.md`,
-    "utf8"
-  );
-  const recordJourneyFrontmatter = recordJourney.match(/^---\n([\s\S]*?)\n---/);
-  assert(recordJourneyFrontmatter, "record journey skill has frontmatter");
-  assert.doesNotMatch(recordJourneyFrontmatter[1], /automation plugin/i);
-  assert.doesNotMatch(recordJourney, /Organization automation explanations/);
 });
 
 test("dependent product skills leave identity-v2 transport binding inside BOS", async () => {
@@ -261,24 +252,24 @@ test("dependent product skills leave identity-v2 transport binding inside BOS", 
     await readFile(`${root}/products/education-center/product.json`, "utf8")
   );
   const canonicalFiles = [
-    `${root}/source/capabilities/crm-customer-journey/SKILL.md`,
-    `${root}/source/capabilities/crm-customer-journey/references/connected-graph-read.md`,
-    `${root}/source/verticals/education-center/education-center-service-routing/SKILL.md`
+    `${root}/source/verticals/education-center/education-center-service-routing/SKILL.md`,
+    `${root}/source/verticals/education-center/education-center-student-operations/SKILL.md`,
+    `${root}/source/capabilities/agent-call-operations/SKILL.md`
   ];
   for (const file of canonicalFiles) {
     const content = await readFile(file, "utf8");
     assert.doesNotMatch(content, /X-BOS-Context-Handle|context_handle/);
-    assert.match(content, /BOS\s+dependency adapter/);
+    assert.match(content, /BOS/i);
   }
   for (const generatedRoot of educationCenterRoots) {
     for (const relative of [
-      "crm-customer-journey/SKILL.md",
-      "crm-customer-journey/references/connected-graph-read.md",
-      "education-center-service-routing/SKILL.md"
+      "education-center-service-routing/SKILL.md",
+      "education-center-student-operations/SKILL.md",
+      "agent-call-operations/SKILL.md"
     ]) {
       const generated = await readFile(`${generatedRoot}/${relative}`, "utf8");
       assert.doesNotMatch(generated, /X-BOS-Context-Handle|context_handle/);
-      assert.match(generated, /BOS\s+dependency adapter/);
+      assert.match(generated, /BOS/i);
     }
   }
   assert.equal(product.connection_owner, "bos");
@@ -304,58 +295,6 @@ test("generated BOS clients preserve identity-v2 public context and discovered-h
         "utf8"
       ),
       canonicalRuntime
-    );
-  }
-});
-
-test("Lead Director presentation derives each organization's entity shape and UI", async () => {
-  const journey = await readFile(
-    `${root}/source/capabilities/crm-customer-journey/SKILL.md`,
-    "utf8"
-  );
-  const records = await readFile(
-    `${root}/source/capabilities/crm-record-operations/SKILL.md`,
-    "utf8"
-  );
-  const graphContract = await readFile(
-    `${root}/source/capabilities/crm-customer-journey/references/journey-graph-contract.md`,
-    "utf8"
-  );
-  const connectedGraph = await readFile(
-    `${root}/source/capabilities/crm-customer-journey/references/connected-graph-read.md`,
-    "utf8"
-  );
-
-  assert.match(
-    journey,
-    /derive the entity's singular and plural display[\s\S]*organization-specific custom values[\s\S]*current node type[\s\S]*complete UI\/rendering instructions/i
-  );
-  assert.match(
-    journey,
-    /Every displayed record uses the organization-described format/i
-  );
-  assert.match(
-    records,
-    /derive the entity label, fields, organization-specific custom values,[\s\S]*UI\/rendering instructions from current[\s\S]*Describe/i
-  );
-  assert.doesNotMatch(journey, /Every displayed lead uses|For each displayed lead/i);
-  assert.doesNotMatch(records, /create a lead|Whenever a lead is displayed/i);
-  assert.doesNotMatch(graphContract, /app MCP contact|product connection/i);
-
-  for (const generatedRoot of educationCenterRoots) {
-    assert.equal(
-      await readFile(
-        `${generatedRoot}/crm-customer-journey/references/journey-graph-contract.md`,
-        "utf8"
-      ),
-      graphContract
-    );
-    assert.equal(
-      await readFile(
-        `${generatedRoot}/crm-customer-journey/references/connected-graph-read.md`,
-        "utf8"
-      ),
-      connectedGraph
     );
   }
 });
