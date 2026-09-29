@@ -59,6 +59,47 @@
         "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
       }
     },
+    "independent_product_dependencies": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "distribution",
+          "required_skills",
+          "required_runtime_verification_tools"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "distribution": {
+            "const": "independent"
+          },
+          "required_skills": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+            }
+          },
+          "required_runtime_verification_tools": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]*$"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
     "authentication": {
       "const": "bos_dependency"
     },

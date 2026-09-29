@@ -4,7 +4,12 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { verifyDependentConnection, activeClientProducts, verifyInstalledMetadata } from "./lib/client-runtime-verification.mjs";
+import {
+  verifyDependentConnection,
+  activeClientProducts,
+  verifyIndependentProductReadiness,
+  verifyInstalledMetadata
+} from "./lib/client-runtime-verification.mjs";
 import { pathExists, stableJson } from "./lib/package-model.mjs";
 
 const execFileAsync = promisify(execFile);
@@ -63,6 +68,15 @@ export async function inspectClaudeRuntime({
         .map((candidate) => candidate.name).sort()
       : [];
   }
+  const independentReadiness = await verifyIndependentProductReadiness(
+    products,
+    installed.map((entry) => ({
+      name: String(entry.id ?? "").split("@")[0],
+      enabled: entry.enabled !== false,
+      installPath: entry.installPath
+    }))
+  );
+  failures.push(...independentReadiness.failures);
   const marketplaceCurrent = marketplaces.some((entry) => entry.name === marketplace);
   if (!marketplaceCurrent) failures.push(`${marketplace} marketplace is not registered`);
   return {
@@ -70,6 +84,7 @@ export async function inspectClaudeRuntime({
     ok: failures.length === 0,
     marketplace: { name: marketplace, state: marketplaceCurrent ? "current" : "missing" },
     installed_products: states,
+    independent_products: independentReadiness.results,
     retained_cache_versions: retainedVersions,
     retained_cache_policy: "Claude may retain inactive versions for seven days; only plugin-list installPath is active.",
     failures

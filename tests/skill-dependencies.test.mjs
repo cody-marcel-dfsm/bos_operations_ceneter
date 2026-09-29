@@ -41,8 +41,14 @@ test('active repository products satisfy workflow dependencies and standalone BO
   const bos = products.find(p => p.name === 'bos');
   assert((await resolveProductSkills(bos)).some(s => s.name === 'bos-mcp-client'));
   assert.deepEqual(bos.dependencies, []);
-  const broken = structuredClone(products);
-  const education = broken.find(p => p.name === 'education-center');
-  education.includes = education.includes.filter(i => !i.endsWith('/crm-customer-journey'));
-  assert.match((await checkSkillDependencies(broken)).join('\n'), /education-center.*unavailable skill crm-customer-journey/);
+  const education = products.find(p => p.name === 'education-center');
+  assert.deepEqual(education.dependencies, ['bos']);
+  assert.deepEqual(
+    education.independent_product_dependencies.map(({name}) => name),
+    ['my-crm']
+  );
+  assert.equal(
+    education.includes.some(i => /crm-(?:customer-journey|record-operations)$/.test(i)),
+    false
+  );
 });

@@ -23,7 +23,8 @@ to verify the native installation and bundled skills.
 ## Antigravity 2.0 Desktop
 
 Run `./scripts/clean-install-antigravity.sh` once. This intentionally destructive clean installer
-deletes prior BOS product entries, including local customizations, without backups,
+deletes prior BOS Operations Center product entries, including local customizations, without backups,
+while preserving independently distributed required products,
 locates this repository from its own file path, and requires typed confirmation of
 `DELETE ALL BOS ANTIGRAVITY CUSTOMIZATIONS` before changing files,
 and creates one product symlink in `~/.gemini/config/plugins/` for each active product.

@@ -1,10 +1,21 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { retiredConnectionFailures, activeClientProducts, compareTrees } from "./lib/client-runtime-verification.mjs";
+import {
+  retiredConnectionFailures,
+  activeClientProducts,
+  compareTrees,
+  verifyIndependentProductReadiness
+} from "./lib/client-runtime-verification.mjs";
+import { independentDependencyContracts } from "./lib/independent-product-dependencies.mjs";
 import { pathExists, readJson, root, stableJson } from "./lib/package-model.mjs";
 
-export async function inspectCopilotRuntime({ target, product = "education-center", base = root } = {}) {
+export async function inspectCopilotRuntime({
+  target,
+  product = "education-center",
+  base = root,
+  independentProductRoots = {}
+} = {}) {
   if (!target) throw new Error("Copilot verification requires --target <repository>");
   const products = await activeClientProducts("copilot");
   const selected = products.find((candidate) => candidate.name === product);
@@ -52,6 +63,33 @@ export async function inspectCopilotRuntime({ target, product = "education-cente
     skillStates[entry.name] = skillFailures.length === 0 ? "current" : "incomplete";
     failures.push(...skillFailures);
   }
+  const dependencyContracts = independentDependencyContracts([selected]);
+  const independentReadiness = await verifyIndependentProductReadiness(
+    [selected],
+    dependencyContracts.map(({ name }) => ({
+      name,
+      enabled: Boolean(independentProductRoots[name]),
+      installPath: independentProductRoots[name]
+    }))
+  );
+  failures.push(...independentReadiness.failures);
+  for (const dependency of dependencyContracts) {
+    const packageRoot = independentProductRoots[dependency.name];
+    for (const skill of dependency.required_skills) {
+      const installedSkill = join(skillsRoot, skill);
+      if (!await pathExists(join(installedSkill, "SKILL.md"))) {
+        failures.push(`independent product ${dependency.name} skill is missing from Copilot: ${skill}`);
+        continue;
+      }
+      if (packageRoot) {
+        const packagedSkill = join(packageRoot, "skills", skill);
+        const skillFailures = await compareTrees(packagedSkill, installedSkill);
+        failures.push(...skillFailures.map(
+          (failure) => `independent product ${dependency.name} skill ${skill}: ${failure}`
+        ));
+      }
+    }
+  }
   return {
     schema_version: "1",
     ok: failures.length === 0,
@@ -62,6 +100,7 @@ export async function inspectCopilotRuntime({ target, product = "education-cente
     mcp_paths: mcpPaths,
     skills_root: skillsRoot,
     skills: skillStates,
+    independent_products: independentReadiness.results,
     failures
   };
 }
@@ -70,9 +109,17 @@ async function main() {
   const args = process.argv.slice(2);
   const targetIndex = args.indexOf("--target");
   const productIndex = args.indexOf("--product");
+  const independentProductRoots = {};
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] !== "--independent-product-root") continue;
+    const [name, path] = String(args[index + 1] ?? "").split("=", 2);
+    if (!name || !path) throw new Error("--independent-product-root requires name=/absolute/path");
+    independentProductRoots[name] = resolve(path);
+  }
   const report = await inspectCopilotRuntime({
     target: targetIndex >= 0 ? resolve(args[targetIndex + 1]) : undefined,
-    product: productIndex >= 0 ? args[productIndex + 1] : "education-center"
+    product: productIndex >= 0 ? args[productIndex + 1] : "education-center",
+    independentProductRoots
   });
   if (args.includes("--json")) process.stdout.write(stableJson(report));
   else {

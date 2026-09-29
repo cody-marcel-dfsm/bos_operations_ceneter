@@ -135,6 +135,7 @@ test("product MCP contract preserves BOS ownership and exact scope", async () =>
     authorization_enforcement_owner: "bos-service",
     authorization_scope_policy: authorizationScopePolicy,
     authentication_handoff_contract: "bos.authentication-handoff/v1",
+    independent_product_dependency_contract: "bos.independent-product-dependency/v1",
     compatibility: {
       additive_fields: "ACCEPT",
       unknown_authentication_condition: "DELEGATE_TO_BOS",
@@ -143,7 +144,7 @@ test("product MCP contract preserves BOS ownership and exact scope", async () =>
   });
   assert.deepEqual(result.products.map(({ name, dependencies, connection_owner }) => ({name, dependencies, connection_owner})), [
     { name: "bos", dependencies: [], connection_owner: "bos" },
-    { name: "education-center", dependencies: ["bos"], connection_owner: "bos" }
+    { name: "education-center", dependencies: ["bos", "my-crm"], connection_owner: "bos" }
   ]);
 });
 

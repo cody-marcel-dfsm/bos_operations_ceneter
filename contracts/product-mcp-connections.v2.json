@@ -17,6 +17,7 @@
     "authorization_enforcement_owner": "bos-service",
     "authorization_scope_policy": "ONE_ORGANIZATION_APPLICATION_INSTALLATION_ROLE_PER_GRANT",
     "authentication_handoff_contract": "bos.authentication-handoff/v1",
+    "independent_product_dependency_contract": "bos.independent-product-dependency/v1",
     "compatibility": {
       "additive_fields": "ACCEPT",
       "unknown_authentication_condition": "DELEGATE_TO_BOS",
@@ -95,7 +96,24 @@
     {
       "name": "education-center",
       "dependencies": [
-        "bos"
+        "bos",
+        "my-crm"
+      ],
+      "independent_product_dependencies": [
+        {
+          "name": "my-crm",
+          "distribution": "independent",
+          "required_skills": [
+            "my-crm-record-operations",
+            "my-crm-customer-journey"
+          ],
+          "required_runtime_verification_tools": [
+            "lead_director_create_lead",
+            "lead_director_search_leads",
+            "lead_director_update_lead",
+            "lead_director_get_customer_journey"
+          ]
+        }
       ],
       "application_name": "leaddirector",
       "connection_owner": "bos",
@@ -110,9 +128,7 @@
         "bos_apply_plugin_settings",
         "education_center_get_camp_roster_report",
         "education_center_list_enrollments",
-        "education_center_search_leads",
-        "education_center_search_students",
-        "education_center_get_customer_journey"
+        "education_center_search_students"
       ]
     }
   ],

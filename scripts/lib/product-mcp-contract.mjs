@@ -594,7 +594,12 @@ export async function verifyProductMcpContract({
     })) {
       const metadata = await readJson(join(root, metadataPath));
       if (metadata.client !== client || metadata.connection_owner !== product.name ||
-          JSON.stringify(metadata.dependency_products) !== JSON.stringify(product.dependencies) ||
+          JSON.stringify(metadata.dependency_products) !== JSON.stringify([
+            ...product.dependencies,
+            ...(product.independent_product_dependencies ?? []).map(({ name }) => name)
+          ]) ||
+          JSON.stringify(metadata.independent_product_dependencies) !==
+            JSON.stringify(product.independent_product_dependencies) ||
           metadata.resource_url !== product.mcp_resource_url ||
           metadata.application_name !== product.application_name ||
           metadata.mcp_group_name !== product.mcp_group_name ||
@@ -636,6 +641,32 @@ async function verifyExternalFoundationPackage(repositoryRoot, packageRoot, meta
   if (!Array.isArray(dependencies) || dependencies.some(name => typeof name !== "string" || !productNamePattern.test(name)) ||
       new Set(dependencies).size !== dependencies.length || !dependencies.includes(requirements.foundation_dependency)) {
     add("missing_foundation_dependency", "Unique valid dependency names including BOS are required.");
+  }
+  const independentSchema = await readJson(join(
+    repositoryRoot,
+    "contracts",
+    "independent-product-dependency.v1.schema.json"
+  ));
+  const validateIndependentDependency = new Ajv2020({ strict: false, allErrors: true })
+    .compile(independentSchema);
+  const independentDependencies = metadata.independent_product_dependencies ?? [];
+  if (!Array.isArray(independentDependencies) || independentDependencies.some(
+    (dependency) => !validateIndependentDependency(dependency)
+  )) {
+    add(
+      "independent_product_dependency",
+      "Independent product dependencies must satisfy bos.independent-product-dependency/v1."
+    );
+  } else {
+    const independentNames = independentDependencies.map(({ name }) => name);
+    if (new Set(independentNames).size !== independentNames.length ||
+        independentNames.some((name) => name === metadata.name || name === "bos" ||
+          !dependencies?.includes(name))) {
+      add(
+        "independent_product_dependency",
+        "Independent product names must be unique, external, and present in dependency_products."
+      );
+    }
   }
   if (metadata.authentication !== "bos_dependency") add("authentication_protocol", "Authentication delegates to the BOS connection.");
   if (metadata.authorization_scope_policy !== authorizationScopePolicy) add("authorization_scope_policy", "Exact server-owned grant scope is required.");

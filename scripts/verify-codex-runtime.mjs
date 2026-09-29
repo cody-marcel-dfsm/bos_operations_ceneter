@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { verifyExternalProductPackage } from "./lib/product-mcp-contract.mjs";
+import { verifyIndependentProductReadiness } from "./lib/client-runtime-verification.mjs";
 import {
   mcpServerName, listProducts, pathExists, readJson, root, stableJson } from "./lib/package-model.mjs";
 
@@ -155,6 +156,22 @@ export async function inspectCodexRuntime(rawOptions = {}) {
   const installedById = new Map(
     (pluginListing.installed ?? []).map((entry) => [entry.pluginId, entry])
   );
+  const independentInstalled = (pluginListing.installed ?? []).map((entry) => {
+    const [name, marketplace] = String(entry.pluginId ?? "").split("@");
+    return {
+      name,
+      enabled: entry.installed !== false && entry.enabled !== false,
+      installPath: entry.source?.path ?? entry.installPath ?? (
+        name && marketplace && entry.version
+          ? join(options.home, ".codex", "plugins", "cache", marketplace, name, entry.version)
+          : undefined
+      )
+    };
+  });
+  const independentReadiness = await verifyIndependentProductReadiness(
+    activeProducts,
+    independentInstalled
+  );
   const installedProducts = {};
   const cacheVersions = {};
   const packageRoots = {};
@@ -192,9 +209,12 @@ export async function inspectCodexRuntime(rawOptions = {}) {
   );
   const catalog = catalogPath ? await readJson(catalogPath) : null;
   const discovered = publicToolNames(catalog);
-  const requiredTools = [...new Set(activeProducts.flatMap(
-    (product) => product.runtime_verification_tools ?? []
-  ))].sort();
+  const requiredTools = [...new Set(activeProducts.flatMap((product) => [
+    ...(product.runtime_verification_tools ?? []),
+    ...(product.independent_product_dependencies ?? []).flatMap(
+      ({ required_runtime_verification_tools }) => required_runtime_verification_tools
+    )
+  ]))].sort();
   const missingTools = requiredTools.filter((tool) => !discovered.has(tool));
   const packageFailures = activeProducts.flatMap((product) => {
     const versions = cacheVersions[product.name];
@@ -220,6 +240,7 @@ export async function inspectCodexRuntime(rawOptions = {}) {
   const failures = [
     ...nativeBindingFailures,
     ...dependentBindingFailures,
+    ...independentReadiness.failures,
     ...registryFailures,
     ...(marketplaceCurrent ? [] : [`${options.marketplace} marketplace is not registered`]),
     ...packageFailures,
@@ -237,6 +258,7 @@ export async function inspectCodexRuntime(rawOptions = {}) {
       state: marketplaceCurrent ? "current" : "missing"
     },
     installed_products: installedProducts,
+    independent_products: independentReadiness.results,
     cache_versions: cacheVersions,
     package_roots: packageRoots,
     mcp_binding: mcpBinding,

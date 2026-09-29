@@ -1,7 +1,14 @@
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { verifyDependentConnection, activeClientProducts, verifyExactSymlink, verifyInstalledMetadata } from "./lib/client-runtime-verification.mjs";
+import {
+  verifyDependentConnection,
+  activeClientProducts,
+  verifyExactSymlink,
+  verifyIndependentProductReadiness,
+  verifyInstalledMetadata
+} from "./lib/client-runtime-verification.mjs";
+import { independentDependencyContracts } from "./lib/independent-product-dependencies.mjs";
 import { root, stableJson } from "./lib/package-model.mjs";
 
 export async function inspectAntigravityRuntime({ home = homedir(), base = root } = {}) {
@@ -26,7 +33,32 @@ export async function inspectAntigravityRuntime({ home = homedir(), base = root 
     };
     failures.push(...productFailures);
   }
-  return { schema_version: "1", ok: failures.length === 0, installed_products: states, failures };
+  const independentReadiness = await verifyIndependentProductReadiness(
+    products,
+    await Promise.all(independentDependencyContracts(products).map(async ({ name }) => {
+      const installPath = join(home, ".gemini", "config", "plugins", name);
+      try {
+        const details = await lstat(installPath);
+        if (!details.isSymbolicLink()) {
+          failures.push(`Antigravity independent product ${name} is not registered as a plugin symlink`);
+          return { name, enabled: false, installPath };
+        }
+        await realpath(installPath);
+        return { name, enabled: true, installPath };
+      } catch (error) {
+        failures.push(`Antigravity independent product ${name} registration is unavailable: ${error.message}`);
+        return { name, enabled: false };
+      }
+    }))
+  );
+  failures.push(...independentReadiness.failures);
+  return {
+    schema_version: "1",
+    ok: failures.length === 0,
+    installed_products: states,
+    independent_products: independentReadiness.results,
+    failures
+  };
 }
 
 async function main() {
@@ -46,3 +78,4 @@ async function main() {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   main().catch((error) => { console.error(error.message); process.exitCode = 1; });
 }
+import { lstat, realpath } from "node:fs/promises";

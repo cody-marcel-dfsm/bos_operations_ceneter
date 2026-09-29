@@ -255,7 +255,9 @@ async function validateProducts() {
       if (
         metadata.connection_owner !== manifest.connection_owner ||
         JSON.stringify(metadata.dependency_products) !==
-          JSON.stringify(manifest.dependencies) ||
+          JSON.stringify(expectedOwnership.dependency_products) ||
+        JSON.stringify(metadata.independent_product_dependencies) !==
+          JSON.stringify(expectedOwnership.independent_product_dependencies) ||
         metadata.application_name !== manifest.application_name ||
         metadata.mcp_group_name !== manifest.mcp_group_name ||
         metadata.mcp_server_name !== (ownsHostConnection(manifest) ? mcpServerName(manifest) : undefined) ||

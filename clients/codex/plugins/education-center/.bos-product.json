@@ -1,7 +1,7 @@
 {
   "schema_version": "2",
   "name": "education-center",
-  "version": "0.4.126",
+  "version": "0.4.127",
   "client": "codex",
   "application_name": "leaddirector",
   "runtime_verification_tools": [
@@ -13,13 +13,28 @@
     "bos_apply_plugin_settings",
     "education_center_get_camp_roster_report",
     "education_center_list_enrollments",
-    "education_center_search_leads",
-    "education_center_search_students",
-    "education_center_get_customer_journey"
+    "education_center_search_students"
   ],
   "connection_owner": "bos",
   "dependency_products": [
-    "bos"
+    "bos",
+    "my-crm"
+  ],
+  "independent_product_dependencies": [
+    {
+      "name": "my-crm",
+      "distribution": "independent",
+      "required_skills": [
+        "my-crm-record-operations",
+        "my-crm-customer-journey"
+      ],
+      "required_runtime_verification_tools": [
+        "lead_director_create_lead",
+        "lead_director_search_leads",
+        "lead_director_update_lead",
+        "lead_director_get_customer_journey"
+      ]
+    }
   ],
   "authentication": "bos_dependency",
   "authorization_scope_policy": "ONE_ORGANIZATION_APPLICATION_INSTALLATION_ROLE_PER_GRANT",

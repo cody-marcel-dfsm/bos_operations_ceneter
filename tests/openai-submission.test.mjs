@@ -147,8 +147,7 @@ test("BOS and Education OpenAI cases stay within their product MCP scope", async
     "bos_get_context",
     "education_center_search_students",
     "education_center_list_enrollments",
-    "education_center_get_camp_roster_report",
-    "education_center_search_leads"
+    "education_center_get_camp_roster_report"
   ]);
   assert.ok(education.test_cases.slice(1).every(({ tools_triggered }) =>
     tools_triggered.startsWith("education_center_")

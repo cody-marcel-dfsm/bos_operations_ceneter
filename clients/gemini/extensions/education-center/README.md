@@ -8,6 +8,7 @@ Both surfaces load the same packaged skills and fixed BOS product identity.
 Install this extension from a terminal with `gemini extensions install clients/gemini/extensions/education-center`.
 Gemini CLI copies the extension into its managed extension directory.
 Install BOS first. This product uses the BOS connection and its native authentication action.
+Install required independent product `my-crm` from its own distribution before using dependent workflows.
 
 For a bounded recovery, run `npm run clean-install:gemini -- --confirmation
 "DELETE ALL BOS GEMINI EXTENSION STATE"`. Restart Gemini CLI after installation
@@ -19,7 +20,8 @@ discoverable. Use `gemini extensions update education-center` for later releases
 
 Run `./scripts/clean-install-antigravity.sh` once from the synced BOS Operations Center
 repository. This is an intentionally destructive clean install: it deletes prior BOS
-product entries, including local customizations, without backups,
+Operations Center product entries, including local customizations, without backups,
+while preserving independently distributed required products,
 then links every generated Gemini product into `~/.gemini/config/plugins/`.
 It resolves the repository from the installer's own location, independent of the
 current working directory. Before changing files, it displays the deletion warning and

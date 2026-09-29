@@ -57,6 +57,10 @@ export function externalProductDependencyContract(
     authorization_enforcement_owner: "bos-service",
     authorization_scope_policy: authorizationScopePolicy,
     authentication_handoff_contract: "bos.authentication-handoff/v1",
+    ...(version === "2" ? {
+      independent_product_dependency_contract:
+        "bos.independent-product-dependency/v1"
+    } : {}),
     compatibility: {
       additive_fields: "ACCEPT",
       unknown_authentication_condition: "DELEGATE_TO_BOS",
@@ -69,9 +73,17 @@ export function productRuntimeOwnershipMetadata(
   product,
   foundationProduct = "bos"
 ) {
+  const independentProductDependencies =
+    product.independent_product_dependencies ?? [];
   return {
     connection_owner: product.connection_owner,
-    dependency_products: product.dependencies,
+    dependency_products: [
+      ...product.dependencies,
+      ...independentProductDependencies.map(({ name }) => name)
+    ],
+    ...(independentProductDependencies.length > 0 ? {
+      independent_product_dependencies: independentProductDependencies
+    } : {}),
     authentication: product.runtime ? (ownsHostConnection(product) ? "oauth_2_1" : "bos_dependency") : "none",
     ...(product.runtime ? {
       authorization_scope_policy: authorizationScopePolicy,
@@ -140,7 +152,13 @@ export function productMcpConnectionsContract(products) {
     },
     products: runtimeProducts.map((product) => ({
       name: product.name,
-      dependencies: product.dependencies,
+      dependencies: [
+        ...product.dependencies,
+        ...(product.independent_product_dependencies ?? []).map(({ name }) => name)
+      ],
+      ...((product.independent_product_dependencies ?? []).length > 0 ? {
+        independent_product_dependencies: product.independent_product_dependencies
+      } : {}),
       application_name: product.application_name,
       connection_owner: product.connection_owner,
       authentication: product.authentication,

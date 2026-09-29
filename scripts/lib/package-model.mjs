@@ -68,6 +68,7 @@ export function validateProduct(manifest, path = "product.json") {
     "category",
     "authentication",
     "dependencies",
+    "independent_product_dependencies",
     "clients",
     "includes",
     "runtime",
@@ -200,6 +201,47 @@ export function validateProduct(manifest, path = "product.json") {
     failures.push(`${path}: BOS foundation product must not declare a product dependency`);
   } else if (manifest.name !== "bos" && !manifest.dependencies.includes("bos")) {
     failures.push(`${path}: subservice products must depend on bos`);
+  }
+  const independentDependencies = manifest.independent_product_dependencies ?? [];
+  if (!Array.isArray(independentDependencies)) {
+    failures.push(`${path}: independent_product_dependencies must be an array`);
+  } else {
+    const names = new Set();
+    for (const dependency of independentDependencies) {
+      const keys = dependency && typeof dependency === "object" && !Array.isArray(dependency)
+        ? Object.keys(dependency).sort()
+        : [];
+      if (JSON.stringify(keys) !== JSON.stringify([
+        "distribution",
+        "name",
+        "required_runtime_verification_tools",
+        "required_skills"
+      ])) {
+        failures.push(`${path}: independent product dependencies require the complete closed contract`);
+        continue;
+      }
+      if (!productNamePattern.test(dependency.name ?? "") ||
+          dependency.name === manifest.name || dependency.name === "bos" ||
+          manifest.dependencies.includes(dependency.name) || names.has(dependency.name)) {
+        failures.push(`${path}: independent product dependency names must be unique external products`);
+      }
+      names.add(dependency.name);
+      if (dependency.distribution !== "independent") {
+        failures.push(`${path}: independent product distribution must be independent`);
+      }
+      for (const field of ["required_skills", "required_runtime_verification_tools"]) {
+        const values = dependency[field];
+        const pattern = field === "required_skills" ? productNamePattern : publicToolNamePattern;
+        if (!Array.isArray(values) || values.length === 0 ||
+            values.some((value) => typeof value !== "string" || !pattern.test(value)) ||
+            new Set(values).size !== values.length) {
+          failures.push(`${path}: ${field} must contain unique public names`);
+        }
+      }
+    }
+    if (manifest.name === "bos" && independentDependencies.length > 0) {
+      failures.push(`${path}: BOS foundation product cannot require an independent product`);
+    }
   }
   if (!Array.isArray(manifest.clients) || manifest.clients.length === 0) {
     failures.push(`${path}: clients must be a non-empty array`);

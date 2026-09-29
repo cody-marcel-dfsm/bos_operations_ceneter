@@ -15,12 +15,24 @@ test('all client packages retain application requirements with only BOS transpor
   const product = contract.products.find(p => p.name === 'education-center');
   assert.equal(product.application_name, 'leaddirector');
   assert.equal(product.connection_owner, 'bos');
-  assert.ok(product.runtime_verification_tools.includes('education_center_search_leads'));
+  assert.equal(product.runtime_verification_tools.includes('education_center_search_leads'), false);
+  assert.equal(product.runtime_verification_tools.includes('education_center_get_customer_journey'), false);
+  assert.deepEqual(product.dependencies, ['bos', 'my-crm']);
+  assert.deepEqual(product.independent_product_dependencies, [{
+    name: 'my-crm',
+    distribution: 'independent',
+    required_skills: ['my-crm-record-operations', 'my-crm-customer-journey'],
+    required_runtime_verification_tools: [
+      'lead_director_create_lead', 'lead_director_search_leads',
+      'lead_director_update_lead', 'lead_director_get_customer_journey'
+    ]
+  }]);
   for (const base of dependentRoots) {
     const packageRoot = join(root, base, 'education-center');
     const result = await verifyExternalProductPackage({root, packageRoot});
     assert.equal(result.status, 'passed', JSON.stringify(result.violations));
-    assert.ok(await pathExists(join(packageRoot, 'skills/crm-customer-journey/SKILL.md')));
+    assert.equal(await pathExists(join(packageRoot, 'skills/crm-customer-journey/SKILL.md')), false);
+    assert.equal(await pathExists(join(packageRoot, 'skills/crm-record-operations/SKILL.md')), false);
     for (const artifact of ['.mcp.json', '.app.json', '.github/mcp.json', 'mcp_config.json', 'CONNECTORS.md']) {
       assert.equal(await pathExists(join(packageRoot, artifact)), false, artifact);
     }

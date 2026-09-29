@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.126",
+  "version": "0.4.127",
   "release_status": "active",
   "display_name": "Education Operation Center",
   "description": "Email, calendars, billing, and enrollment for BOS-composed ad hoc workflows.",
@@ -15,6 +15,22 @@
   "authentication": "ON_USE",
   "dependencies": [
     "bos"
+  ],
+  "independent_product_dependencies": [
+    {
+      "name": "my-crm",
+      "distribution": "independent",
+      "required_skills": [
+        "my-crm-record-operations",
+        "my-crm-customer-journey"
+      ],
+      "required_runtime_verification_tools": [
+        "lead_director_create_lead",
+        "lead_director_search_leads",
+        "lead_director_update_lead",
+        "lead_director_get_customer_journey"
+      ]
+    }
   ],
   "runtime": "bos",
   "application_name": "leaddirector",
@@ -42,9 +58,7 @@
     "bos_apply_plugin_settings",
     "education_center_get_camp_roster_report",
     "education_center_list_enrollments",
-    "education_center_search_leads",
-    "education_center_search_students",
-    "education_center_get_customer_journey"
+    "education_center_search_students"
   ],
   "includes": [
     "platform/bos-mcp-client",
@@ -52,8 +66,6 @@
     "platform/bos-plugin-settings-initialization",
     "platform/submit-feedback",
     "platform/manage-customer-extension",
-    "capabilities/crm-customer-journey",
-    "capabilities/crm-record-operations",
     "capabilities/agent-call-operations",
     "capabilities/review-outreach",
     "capabilities/sendgrid-campaign-operations",

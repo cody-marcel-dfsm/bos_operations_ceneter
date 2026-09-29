@@ -22,6 +22,7 @@ students.
 ## BOS connection and security
 
 Install the BOS plugin first as this product's required platform dependency.
+Install required independent product `my-crm` from its own distribution before using dependent workflows.
 Education Operation Center uses the BOS foundation connection. BOS evaluates
 organization, installation, role, plugin, capability, provider, and tool
 authorization on every private operation.

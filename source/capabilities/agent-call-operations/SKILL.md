@@ -17,9 +17,13 @@ before invoking the call mutation.
 
 1. Call `bos_get_context` once and require one server-derived Education Center
    organization, installation, delegated role, and Agent Call capability.
-2. Search with `education_center_search_leads` using the identifying information
-   supplied by the user. Normalize a phone number only for matching; keep the
-   full value out of the final response unless the user requests it.
+2. Invoke the installed My CRM `my-crm-record-operations` skill to discover and
+   call the canonical `lead_director_search_leads` operation with the identifying
+   information supplied by the user. Use the task-scoped BOS contract and exact
+   returned record/action evidence. Normalize a phone number only for matching;
+   keep the full value out of the final response unless the user requests it.
+   When My CRM is missing, disabled, or outdated, return the package's explicit
+   dependency-required instruction before provider recovery or call dispatch.
 3. Resolve exactly one lead. Ask for one distinguishing value when several
    records remain. Return `lead_not_found` without a mutation when none match.
 4. Confirm from live server state that the lead exposes the Agent Call action.

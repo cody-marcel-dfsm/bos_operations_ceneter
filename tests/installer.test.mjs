@@ -41,6 +41,25 @@ async function temporaryHome() {
   return mkdtemp(join(tmpdir(), "bos-install-test-"));
 }
 
+async function createInstalledMyCrm(home) {
+  const installPath = join(home, "independent", "my-crm");
+  for (const skill of ["my-crm-record-operations", "my-crm-customer-journey"]) {
+    await mkdir(join(installPath, "skills", skill), { recursive: true });
+    await writeFile(join(installPath, "skills", skill, "SKILL.md"), `---\nname: ${skill}\n---\n`);
+  }
+  await writeFile(join(installPath, ".bos-product.json"), JSON.stringify({
+    name: "my-crm",
+    version: "0.2.26",
+    runtime_verification_tools: [
+      "lead_director_create_lead",
+      "lead_director_search_leads",
+      "lead_director_update_lead",
+      "lead_director_get_customer_journey"
+    ]
+  }));
+  return { name: "my-crm", enabled: true, installPath };
+}
+
 function installedProduct(home, product) {
   return codexProductRoot({ home, product });
 }
@@ -888,25 +907,84 @@ test("unmanaged obsolete app package converges to package-owned MCP", async () =
 test("dependent-product installation retains skills without a second MCP file", async () => {
   const home = await temporaryHome();
   const target = installedProduct(home, "education-center");
-  const applied = await applyInstallationRaw({ home, product: "education-center" });
+  const applied = await applyInstallationRaw({
+    home,
+    product: "education-center",
+    installedIndependentProducts: []
+  });
   assert.equal(applied.state, "managed-current");
+  assert.equal(applied.runtime.state, "independent_dependency_required");
+  assert.deepEqual(applied.runtime.independent_products, ["my-crm"]);
+  assert.equal(applied.runtime.independent_product_readiness[0].state, "missing");
   await assert.rejects(readFile(join(target, ".mcp.json"), "utf8"), {code:"ENOENT"});
   const metadata = JSON.parse(await readFile(join(target, ".bos-product.json"), "utf8"));
   assert.equal(metadata.connection_owner, "bos");
   assert.equal(metadata.application_name, "leaddirector");
+  assert.deepEqual(metadata.dependency_products, ["bos", "my-crm"]);
+  assert.deepEqual(
+    metadata.independent_product_dependencies.map(({ name }) => name),
+    ["my-crm"]
+  );
+});
+
+test("dependent-product verification becomes ready with a complete independent My CRM install", async () => {
+  const home = await temporaryHome();
+  const myCrm = await createInstalledMyCrm(home);
+  const options = {
+    home,
+    product: "education-center",
+    installedIndependentProducts: [myCrm]
+  };
+  const applied = await applyInstallationRaw(options);
+  assert.equal(applied.runtime.state, "bos_dependency");
+  assert.deepEqual(applied.runtime.independent_product_readiness, [{
+    name: "my-crm",
+    version: "0.2.26",
+    state: "ready"
+  }]);
+  const verified = await verifyInstallationRaw(options);
+  assert.equal(verified.ok, true);
+  assert.equal(verified.runtime.state, "bos_dependency");
+});
+
+test("Education Center upgrade removes managed transitional CRM copies and preserves user files", async () => {
+  const home = await temporaryHome();
+  const target = installedProduct(home, "education-center");
+  await applyInstallationRaw({ home, product: "education-center", installedIndependentProducts: [] });
+  const statePath = join(target, ".bos-package-state.json");
+  await chmod(statePath, 0o644);
+  const state = JSON.parse(await readFile(statePath, "utf8"));
+  for (const skill of ["crm-record-operations", "crm-customer-journey"]) {
+    const relative = `skills/${skill}/SKILL.md`;
+    const path = join(target, relative);
+    await mkdir(dirname(path), { recursive: true });
+    await writeFile(path, `---\nname: ${skill}\n---\ntransitional copy\n`);
+    state.managed_paths.push(relative);
+    state.managed_hashes[relative] = await hashFile(path);
+  }
+  await writeFile(join(target, "customer-note.txt"), "preserve me");
+  await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`);
+
+  await applyInstallationRaw({ home, product: "education-center", installedIndependentProducts: [] });
+  for (const skill of ["crm-record-operations", "crm-customer-journey"]) {
+    await assert.rejects(readFile(join(target, "skills", skill, "SKILL.md")), {
+      code: "ENOENT"
+    });
+  }
+  assert.equal(await readFile(join(target, "customer-note.txt"), "utf8"), "preserve me");
 });
 
 test("upgrade removes an exact retired dependent binding and preserves unrelated files", async () => {
   const home = await temporaryHome();
   const target = installedProduct(home, "education-center");
-  await applyInstallationRaw({home, product:"education-center"});
+  await applyInstallationRaw({home, product:"education-center", installedIndependentProducts: []});
   await writeFile(join(target, ".mcp.json"), JSON.stringify({mcpServers:{"education-center":{
     type:"http", url:"https://dfsm.ai/mcp/apps/leaddirector/education-center",
     oauth_resource:"https://dfsm.ai/mcp/apps/leaddirector/education-center", required:false,
     startup_timeout_sec:180, tool_timeout_sec:180
   }}}));
   await writeFile(join(target, "customer-note.txt"), "preserve me");
-  await applyInstallationRaw({home, product:"education-center"});
+  await applyInstallationRaw({home, product:"education-center", installedIndependentProducts: []});
   await assert.rejects(readFile(join(target, ".mcp.json")), {code:"ENOENT"});
   assert.equal(await readFile(join(target, "customer-note.txt"), "utf8"), "preserve me");
 });
