@@ -30,10 +30,15 @@ business purpose alone never does.
    never construct or alter provider identifiers.
 2. Answer from the message body when the requested information is already in
    the thread. When the person needs a file, image, document, or other attached
-   content, resolve the callable BOS MCP `gmail_get_attachment` operation through
-   the current host catalog and invoke its advertised schema with the exact
-   `thread_id`, `message_id`, and `attachment_id` from that thread. This MCP
-   compatibility operation supplies the native embedded resource.
+   content, discover the current context's callable BOS tool whose live
+   descriptor identifies Gmail attachment download, declares a resource effect,
+   and returns a native embedded resource. Require its advertised input schema
+   to accept the exact `thread_id`, `message_id`, and `attachment_id` from that
+   thread. For identity-v2, use `bos_list_context_tools` with the fresh selected
+   context and `bos_execute` with the exact returned tool name and those three
+   arguments; for a legacy directly callable tool, invoke its advertised name
+   and schema. Context-specific tool names are discovery results, not static
+   client configuration.
 3. If several attachments could satisfy the request, identify them by
    provider-derived filename and MIME type and ask the person to select one.
    Continue directly when the request identifies exactly one attachment.
