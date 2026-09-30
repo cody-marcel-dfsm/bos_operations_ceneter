@@ -82,6 +82,11 @@ const limits = {
     pagination_supported: {type: "boolean"},
     bulk_supported: {type: "boolean"},
     streaming_supported: {type: "boolean"},
+    maximum_attachment_bytes: {
+      type: "integer",
+      minimum: 1,
+      maximum: 25 * 1024 * 1024
+    },
     maximum_duration_seconds: {type: "integer", minimum: 1},
     maximum_fan_out: {type: "integer", minimum: 1}
   }
@@ -111,7 +116,10 @@ const errorContract = {
       type: "array",
       minItems: 1,
       uniqueItems: true,
-      items: {type: "string", pattern: "^[a-z][a-z0-9_]{0,127}$"}
+      items: {
+        type: "string",
+        pattern: "^(?:[a-z][a-z0-9_]{0,127}|[A-Z][A-Z0-9_]{0,127})$"
+      }
     }
   }
 };
@@ -140,7 +148,34 @@ const describedOperation = {
           pattern: "^/bos/(?!/)(?!.*//)(?!(?:[^/?]+/)*\\.{1,2}(?:/|\\?|$))(?!.*[#\\\\\\u0000-\\u001F\\u007F])(?:[A-Za-z0-9._~!$&'()*+,;=:@{}/?-]|%[0-9A-F]{2})+$"
         },
         context_header: {const: "X-BOS-Context-Handle"},
-        transport: {type: "null"}
+        transport: {type: "null"},
+        response: {
+          type: "object",
+          additionalProperties: false,
+          required: ["body", "content_type", "headers"],
+          properties: {
+            body: {const: "binary"},
+            content_type: {const: "provider"},
+            headers: {
+              type: "array",
+              minItems: 6,
+              maxItems: 6,
+              uniqueItems: true,
+              items: {enum: [
+                "Content-Disposition", "Content-Length", "Content-Type",
+                "Digest", "X-Content-SHA256", "X-Correlation-ID"
+              ]},
+              allOf: [
+                {contains: {const: "Content-Disposition"}},
+                {contains: {const: "Content-Length"}},
+                {contains: {const: "Content-Type"}},
+                {contains: {const: "Digest"}},
+                {contains: {const: "X-Content-SHA256"}},
+                {contains: {const: "X-Correlation-ID"}}
+              ]
+            }
+          }
+        }
       }
     },
     input_schema: operationSchema,
@@ -182,7 +217,8 @@ const discoveredOperationSchema = {
               method: {enum: ["GET", "POST", "PUT", "PATCH", "DELETE"]},
               uri: {type: "string"},
               context_header: {const: "X-BOS-Context-Handle"},
-              transport: {type: "null"}
+              transport: {type: "null"},
+              response: {$ref: "#/$defs/described_operation/properties/execution/properties/response"}
             },
             required: ["method", "uri", "context_header"]
           }

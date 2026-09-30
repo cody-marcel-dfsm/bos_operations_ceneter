@@ -1277,6 +1277,20 @@ test("service routing composes package defaults with preserved customer settings
   );
 });
 
+test("email routing delivers authorized Gmail attachments as embedded resources", async () => {
+  const guidance = await readFile(
+    `${root}/source/capabilities/email-account-routing/SKILL.md`,
+    "utf8"
+  );
+  assert.match(guidance, /thread_id.*message_id.*attachment_id/is);
+  assert.match(guidance, /callable BOS MCP `gmail_get_attachment` operation/i);
+  assert.match(guidance, /provider-derived filename and MIME type/i);
+  assert.match(guidance, /returned embedded resource as the downloadable result/i);
+  assert.match(guidance, /raw bytes alone are an embedded downloadable resource/i);
+  assert.match(guidance, /ephemeral response content/i);
+  assert.match(guidance, /browser session or separate browser\s+sign-in is outside this routing path/i);
+});
+
 test("every Education Center skill applies tenant brand terminology only to display copy", async () => {
   const product = (await listProducts()).find(
     ({ manifest }) => manifest.name === "education-center"

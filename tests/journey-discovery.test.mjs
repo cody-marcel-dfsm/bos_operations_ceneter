@@ -284,11 +284,119 @@ test("URL-backed synthetic BOS discovery satisfies every BOC consumer contract",
     apiContractResponse
   );
 
+  const uppercaseDescription = structuredClone(describeResponse);
+  uppercaseDescription.operations[0].error_contract.codes = ["INVALID_REQUEST"];
+  assert.equal(
+    validateOperationDescription(uppercaseDescription),
+    uppercaseDescription
+  );
+  const uppercaseContract = structuredClone(apiContractResponse);
+  uppercaseContract.public_errors[0].code = "INVALID_REQUEST";
+  assert.equal(
+    validateApiContractResponse(uppercaseContract, {
+      operation: "calendar.events.search",
+      source: uppercaseContract.source
+    }),
+    uppercaseContract
+  );
+
   const invalidPublicCode = structuredClone(describeResponse);
   invalidPublicCode.operations[0].error_contract.codes = [`a${"a".repeat(128)}`];
   assert.throws(
     () => validateOperationDescription(invalidPublicCode),
     /error_contract|public error code/
+  );
+});
+
+test("attachment discovery preserves bounded binary response contracts end to end", () => {
+  const binaryResponse = {
+    body: "binary",
+    content_type: "provider",
+    headers: [
+      "Content-Disposition",
+      "Content-Length",
+      "Content-Type",
+      "Digest",
+      "X-Content-SHA256",
+      "X-Correlation-ID"
+    ]
+  };
+  const attachmentDescription = structuredClone(operationDescription);
+  attachmentDescription.operations[0] = {
+    ...attachmentDescription.operations[0],
+    operation: "gmail_read_attachment",
+    limits: {
+      ...attachmentDescription.operations[0].limits,
+      maximum_attachment_bytes: 25 * 1024 * 1024
+    },
+    execution: {
+      ...attachmentDescription.operations[0].execution,
+      response: binaryResponse
+    },
+    sources: [{
+      ...describeResponse.operations[0].sources[0],
+      limits: {
+        ...describeResponse.operations[0].sources[0].limits,
+        maximum_attachment_bytes: 25 * 1024 * 1024
+      }
+    }]
+  };
+  assert.equal(
+    validateOperationDescription(attachmentDescription),
+    attachmentDescription
+  );
+
+  const attachmentContract = structuredClone(apiContractResponse);
+  Object.assign(attachmentContract, {
+    operation: "gmail.attachments.read",
+    permission: "gmail.threads.read",
+    limits: {
+      ...attachmentContract.limits,
+      maximum_attachment_bytes: 25 * 1024 * 1024
+    },
+    execution: {
+      ...attachmentContract.execution,
+      uri: "/bos/apps/lead-director/api/v1/organizations/{organization}/gmail/attachments/read",
+      response: binaryResponse
+    },
+    output_schema: {
+      ...attachmentContract.output_schema,
+      "x-bos-http-response": {
+        body: "binary",
+        content_type: "provider",
+        headers: {
+          filename: "Content-Disposition",
+          mime_type: "Content-Type",
+          size_bytes: "Content-Length",
+          sha256: "X-Content-SHA256",
+          digest: "Digest",
+          correlation_id: "X-Correlation-ID"
+        }
+      }
+    }
+  });
+  assert.equal(
+    validateApiContractResponse(attachmentContract, {
+      operation: "gmail.attachments.read",
+      source: attachmentContract.source
+    }),
+    attachmentContract
+  );
+
+  const oversized = structuredClone(attachmentDescription);
+  oversized.operations[0].limits.maximum_attachment_bytes = 25 * 1024 * 1024 + 1;
+  assert.throws(
+    () => validateOperationDescription(oversized),
+    /maximum_attachment_bytes/
+  );
+  const incomplete = structuredClone(attachmentContract);
+  incomplete.execution.response.headers.pop();
+  assert.throws(
+    () => validateApiContractResponse(incomplete, {
+      operation: "gmail.attachments.read",
+      source: incomplete.source
+    }),
+    /exact binary download headers/
   );
 });
 

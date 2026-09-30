@@ -9,7 +9,7 @@
     {
       "id": "external_dependency_adapter",
       "path": "skills/bos-external-dependency-adapter/scripts/external-dependency-adapter.mjs",
-      "sha256": "956a379074c05248711e5c45f2e1cdb750bcc990982e31b37a2b8b3b6117cac1"
+      "sha256": "46f55dd7d49794882a2df02635c082e3a5f55b9a0412703e0cd5cb24726f170f"
     },
     {
       "id": "external_dependency_schema_runtime",
@@ -19,7 +19,7 @@
     {
       "id": "external_dependency_discovered_operation_schema",
       "path": "skills/bos-external-dependency-adapter/scripts/discovered-operation-request.schema.mjs",
-      "sha256": "4d9296dfb3e46ca9cdae3af1a9af91a80f33c4075d38ceff379da1666c2e467e"
+      "sha256": "1831c9e273f8bd6510e1260403376935655c333444670e38022fef1ad6596651"
     },
     {
       "id": "external_dependency_safe_execution_uri",
@@ -46,7 +46,7 @@
     {
       "path": "discovered-operation.request.schema.json",
       "media_type": "application/schema+json",
-      "sha256": "62475aa9d2e2beca275bff529f1b0d98badd2771eb0f58226f09820e95fb2b40"
+      "sha256": "5f2491a60d8488989ba0e432f3c012550cd4c6cf7b46055d577b5b21f54b3409"
     },
     {
       "path": "discovered-operation.response.example.json",
@@ -79,5 +79,5 @@
       "sha256": "046c4dd184af18af526ed64bd37a75dd316397b3d1437886eb7f57deb5e99d2d"
     }
   ],
-  "bundle_sha256": "e8acf76b181383bd980d5157befc0952e2a4b3b91232586091743655a4e2642b"
+  "bundle_sha256": "adb5eb550fdc359f3745372aabb8c5603f2a912083a973352474982c218ccbb1"
 }

@@ -106,7 +106,8 @@ function requirePublicErrorMessage(value, label) {
 }
 
 function validatePublicCode(value, label) {
-  if (typeof value !== "string" || !/^[a-z][a-z0-9_]{0,127}$/u.test(value)) {
+  if (typeof value !== "string" ||
+      !/^(?:[a-z][a-z0-9_]{0,127}|[A-Z][A-Z0-9_]{0,127})$/u.test(value)) {
     throw new Error(`${label} must be an exact canonical public code`);
   }
   return value;

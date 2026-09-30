@@ -582,6 +582,12 @@ function validateOperationLimits(limits, label, { complete = false } = {}) {
       limits.maximum_fan_out > 100) {
     throw new Error(`${label}.maximum_fan_out must be an integer from 1 through 100`);
   }
+  if (Object.hasOwn(limits, "maximum_attachment_bytes") &&
+      (!Number.isInteger(limits.maximum_attachment_bytes) ||
+       limits.maximum_attachment_bytes < 1 ||
+       limits.maximum_attachment_bytes > 25 * 1024 * 1024)) {
+    throw new Error(`${label}.maximum_attachment_bytes must be an integer from 1 through 26214400`);
+  }
   if (!complete) return;
   for (const field of ["max_targets", "max_results_per_source"]) {
     if (limits[field] !== null &&
@@ -610,6 +616,7 @@ function validateSourceOperationLimits(limits, label) {
       "pagination_supported",
       "bulk_supported",
       "streaming_supported",
+      "maximum_attachment_bytes",
       "maximum_duration_seconds",
       "maximum_fan_out"
     ]),
@@ -636,6 +643,12 @@ function validateSourceOperationLimits(limits, label) {
       (!Number.isInteger(limits.maximum_fan_out) ||
        limits.maximum_fan_out < 1 || limits.maximum_fan_out > 100)) {
     throw new Error(`${label}.maximum_fan_out must be an integer from 1 through 100`);
+  }
+  if (Object.hasOwn(limits, "maximum_attachment_bytes") &&
+      (!Number.isInteger(limits.maximum_attachment_bytes) ||
+       limits.maximum_attachment_bytes < 1 ||
+       limits.maximum_attachment_bytes > 25 * 1024 * 1024)) {
+    throw new Error(`${label}.maximum_attachment_bytes must be an integer from 1 through 26214400`);
   }
 }
 
@@ -679,7 +692,8 @@ function validateErrorContract(contract, label) {
   requireExactKeys(contract, new Set(["schema", "codes"]), label);
   requireString(contract.schema, `${label}.schema`);
   requireStringArray(contract.codes, `${label}.codes`);
-  if (contract.codes.some((code) => !/^[a-z][a-z0-9_]{0,127}$/u.test(code))) {
+  if (contract.codes.some((code) =>
+    !/^(?:[a-z][a-z0-9_]{0,127}|[A-Z][A-Z0-9_]{0,127})$/u.test(code))) {
     throw new Error(`${label}.codes must contain exact canonical public error codes`);
   }
   if (new Set(contract.codes).size !== contract.codes.length) {
@@ -704,7 +718,7 @@ function validateExecutionContract(execution, label) {
   requireObject(execution, label);
   requireExactKeys(
     execution,
-    new Set(["method", "uri", "context_header", "transport"]),
+    new Set(["method", "uri", "context_header", "transport", "response"]),
     label
   );
 
@@ -722,6 +736,9 @@ function validateExecutionContract(execution, label) {
       if (execution[field] !== null && execution[field] !== undefined) {
         throw new Error(`${label}.${field} must be null for journey_runtime`);
       }
+    }
+    if (Object.hasOwn(execution, "response")) {
+      throw new Error(`${label}.response is available only for HTTP execution`);
     }
     return;
   }
@@ -746,6 +763,32 @@ function validateExecutionContract(execution, label) {
   }
   if (execution.transport !== null && execution.transport !== undefined) {
     throw new Error(`${label}.transport must be null for HTTP execution`);
+  }
+  if (Object.hasOwn(execution, "response")) {
+    const response = execution.response;
+    requireObject(response, `${label}.response`);
+    requireExactKeys(
+      response,
+      new Set(["body", "content_type", "headers"]),
+      `${label}.response`
+    );
+    if (response.body !== "binary" || response.content_type !== "provider") {
+      throw new Error(`${label}.response must declare provider-typed binary content`);
+    }
+    const expectedHeaders = new Set([
+      "Content-Disposition",
+      "Content-Length",
+      "Content-Type",
+      "Digest",
+      "X-Content-SHA256",
+      "X-Correlation-ID"
+    ]);
+    if (!Array.isArray(response.headers) ||
+        response.headers.length !== expectedHeaders.size ||
+        response.headers.some((header) => !expectedHeaders.has(header)) ||
+        new Set(response.headers).size !== response.headers.length) {
+      throw new Error(`${label}.response.headers must declare the exact binary download headers`);
+    }
   }
 }
 
@@ -778,7 +821,7 @@ function validatePublicOperationError(error, label) {
     label
   );
   requireString(error.code, `${label}.code`);
-  if (!/^[a-z][a-z0-9_]{0,127}$/u.test(error.code)) {
+  if (!/^(?:[a-z][a-z0-9_]{0,127}|[A-Z][A-Z0-9_]{0,127})$/u.test(error.code)) {
     throw new Error(`${label}.code must be a public error code`);
   }
   requireString(error.message, `${label}.message`);
@@ -1045,6 +1088,7 @@ export function validateOperationDescription(response) {
         "pagination_supported",
         "bulk_supported",
         "streaming_supported",
+        "maximum_attachment_bytes",
         "maximum_duration_seconds",
         "maximum_fan_out"
       ]),

@@ -120,6 +120,31 @@ const discoveredOperation = {
     availability: "ready"
   }]
 };
+const binaryDiscoveredOperation = {
+  ...discoveredOperation,
+  operation: "gmail_read_attachment",
+  limits: {...discoveredOperation.limits, maximum_attachment_bytes: 25 * 1024 * 1024},
+  execution: {
+    ...discoveredOperation.execution,
+    response: {
+      body: "binary",
+      content_type: "provider",
+      headers: [
+        "Content-Disposition", "Content-Length", "Content-Type", "Digest",
+        "X-Content-SHA256", "X-Correlation-ID"
+      ]
+    }
+  }
+};
+const attachmentHeaders = (length) => ({
+  "Content-Disposition": 'attachment; filename="quote.pdf"',
+  "Content-Length": String(length),
+  "Content-Type": "application/pdf",
+  Digest: "sha-256=synthetic-digest",
+  "X-Content-SHA256": "synthetic-sha256",
+  "X-Correlation-ID": "corr-attachment-1",
+  "X-BOS-Context-Handle": handle("a")
+});
 const syntheticBos = await startSyntheticBosDiscoveryService();
 after(() => syntheticBos.close());
 const authoritativeDescribe = await fetchSyntheticDiscovery(
@@ -344,6 +369,96 @@ test("discovered operation invocation validates and binds current context privat
   }]);
   assert.deepEqual(response, { status: 200, body: { records: [] } });
   assert.equal(JSON.stringify(response).includes("context_handle"), false);
+});
+
+test("binary attachment responses preserve only bounded public download headers", async () => {
+  const downloadHeaders = attachmentHeaders(4);
+  const response = await adapter({request: async () => ({
+    status: 200,
+    headers: downloadHeaders,
+    body: new Uint8Array([37, 80, 68, 70])
+  })}).invokeDiscoveredOperation(binaryDiscoveredOperation, {text: "Synthetic Quote"});
+  assert.deepEqual([...response.body], [37, 80, 68, 70]);
+  assert.deepEqual(response.headers, {
+    "content-disposition": 'attachment; filename="quote.pdf"',
+    "content-length": "4",
+    "content-type": "application/pdf",
+    digest: "sha-256=synthetic-digest",
+    "x-content-sha256": "synthetic-sha256",
+    "x-correlation-id": "corr-attachment-1"
+  });
+  const jsonResponse = await adapter({request: async () => ({
+    status: 200,
+    headers: downloadHeaders,
+    body: {records: []}
+  })}).invokeDiscoveredOperation(discoveredOperation, {text: "Synthetic Quote"});
+  assert.deepEqual(jsonResponse.headers, {
+    "content-type": "application/pdf",
+    "x-correlation-id": "corr-attachment-1"
+  });
+  await assert.rejects(
+    adapter({request: async () => ({
+      status: 200,
+      headers: {...downloadHeaders, "Content-Disposition": "attachment; filename=unsafe\r\nname"},
+      body: new Uint8Array([37, 80, 68, 70])
+    })}).invokeDiscoveredOperation(binaryDiscoveredOperation, {text: "Synthetic Quote"}),
+    /bounded printable string/
+  );
+});
+
+test("binary responses require the advertised contract, headers, and byte limit", async () => {
+  const bytes = new Uint8Array([37, 80, 68, 70]);
+  const current = (contact, response) => adapter({request: async () => response})
+    .invokeDiscoveredOperation(contact, {text: "Synthetic Quote"});
+  await assert.rejects(
+    current(discoveredOperation, {status: 200, headers: attachmentHeaders(4), body: bytes}),
+    /successful described binary operation/
+  );
+  await assert.rejects(
+    adapter({request: async () => ({status: 200, headers: attachmentHeaders(4), body: bytes})})
+      .invokeReturnedAction(completeAction, {acknowledged: true}),
+    /successful described binary operation/
+  );
+  await assert.rejects(
+    current({...binaryDiscoveredOperation, limits: discoveredOperation.limits},
+      {status: 200, headers: attachmentHeaders(4), body: bytes}),
+    /requires an attachment byte limit/
+  );
+  await assert.rejects(
+    current({...binaryDiscoveredOperation, limits: {...binaryDiscoveredOperation.limits, maximum_attachment_bytes: 3}},
+      {status: 200, headers: attachmentHeaders(4), body: bytes}),
+    /exceeds the described attachment limit/
+  );
+  await assert.rejects(
+    current(binaryDiscoveredOperation,
+      {status: 200, headers: {...attachmentHeaders(4), "Content-Length": "5"}, body: bytes}),
+    /Content-Length does not match/
+  );
+  const missingDigest = attachmentHeaders(4);
+  delete missingDigest.Digest;
+  await assert.rejects(
+    current(binaryDiscoveredOperation, {status: 200, headers: missingDigest, body: bytes}),
+    /missing described header Digest/
+  );
+  await assert.rejects(
+    current(binaryDiscoveredOperation, {status: 200, headers: attachmentHeaders(4), body: {records: []}}),
+    /returned a non-binary response/
+  );
+});
+
+test("near-limit binary attachment bodies bypass structured-response byte enumeration", async () => {
+  const bytes = new Uint8Array(25 * 1024 * 1024);
+  bytes[0] = 37;
+  bytes[bytes.length - 1] = 70;
+  const response = await adapter({request: async () => ({
+    status: 200,
+    headers: attachmentHeaders(bytes.length),
+    body: bytes
+  })}).invokeDiscoveredOperation(binaryDiscoveredOperation, {text: "Synthetic Quote"});
+  assert.equal(response.body.length, bytes.length);
+  assert.equal(response.body[0], 37);
+  assert.equal(response.body[response.body.length - 1], 70);
+  assert.equal(response.headers["content-length"], String(bytes.length));
 });
 
 test("discovered operation invocation requires the complete authoritative Describe contact", async () => {
@@ -839,6 +954,14 @@ test("public error messages use the exact service length contract without conten
   };
   assert.deepEqual(await adapter({request: async () => accepted})
     .invokeStateAction(stateAction), accepted);
+  const uppercase = {
+    ...accepted,
+    body: {error: {...accepted.body.error, code: "INVALID_REQUEST"}}
+  };
+  assert.deepEqual(
+    await adapter({request: async () => uppercase}).invokeStateAction(stateAction),
+    uppercase
+  );
   await assert.rejects(
     adapter({
       request: async () => ({
@@ -1008,7 +1131,7 @@ test("malformed errors fail closed anywhere in composed and child business resul
       error: {code: canonical.code, message: canonical.message, retryable: true, details: []}
     },
     {name: "extra field", error: {...canonical, explanation: "widened"}},
-    {name: "invalid code", error: {...canonical, code: "SOURCE_UNAVAILABLE"}},
+    {name: "invalid code", error: {...canonical, code: "Source_UNAVAILABLE"}},
     {name: "invalid retryable", error: {...canonical, retryable: "true"}},
     {
       name: "private details",

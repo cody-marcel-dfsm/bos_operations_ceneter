@@ -558,7 +558,7 @@ test("public errors require the exact closed envelope and canonical identifiers"
     /provider_error.*internal journey state|undeclared field provider_error/
   );
   for (const [field, value, expected] of [
-    ["code", "AUTHENTICATION_REQUIRED", /exact canonical public code/],
+    ["code", "Authentication_REQUIRED", /exact canonical public code/],
     ["code", "bad\/id", /exact canonical public code/],
     ["code", `a${"a".repeat(128)}`, /exact canonical public code/],
     ["correlation_id", "bad/id", /valid public correlation ID/],
@@ -610,6 +610,16 @@ test("canonical public error messages preserve the exact service string contract
     const response = registration(message);
     assert.equal(validateRegistrationResponse(response).error.message, message);
   }
+  assert.equal(
+    validateRegistrationResponse({
+      ...registration("Uppercase operation-owned code."),
+      error: {
+        ...registration("Uppercase operation-owned code.").error,
+        code: "INVALID_REQUEST"
+      }
+    }).error.code,
+    "INVALID_REQUEST"
+  );
   const failed = {
     identity,
     status: "failed",
@@ -808,7 +818,7 @@ test("response interpretation handles expiry and rate limiting without automatic
         status: "registration_rate_limited",
         retry_after_seconds: 90,
         error: {
-          code: "JOURNEY_CREATION_RATE_LIMITED",
+          code: "Journey_CREATION_RATE_LIMITED",
           message: "Legacy aliases are not accepted.",
           retryable: true,
           correlation_id: "corr-safe",
@@ -857,7 +867,7 @@ test("not-found interpretation consumes only the exact canonical server code", (
     () => interpretJourneyResponse({
       ...response,
       body: {
-        error: { ...response.body.error, code: "JOURNEY_NOT_FOUND" }
+        error: { ...response.body.error, code: "Journey_NOT_FOUND" }
       }
     }),
     /exact canonical public code/

@@ -36,6 +36,141 @@ const educationCenterRoots = [
   `${root}/clients/gemini/extensions/education-center/skills`
 ];
 
+test("generated Codex adapter invokes the bounded Gmail attachment contract", async () => {
+  const generatedAdapter = await import(pathToFileURL(join(
+    generatedRoots[0],
+    "bos-external-dependency-adapter",
+    "scripts",
+    "external-dependency-adapter.mjs"
+  )));
+  const requests = [];
+  const contextHandle = `bos_ctx_v2_${"d".repeat(64)}`;
+  const contact = {
+    operation: "gmail_read_attachment",
+    status: "described",
+    effect: "read",
+    limits: {
+      max_targets: 1,
+      max_results_per_source: 1,
+      pagination_supported: false,
+      bulk_supported: false,
+      streaming_supported: true,
+      maximum_attachment_bytes: 25 * 1024 * 1024,
+      maximum_duration_seconds: 30,
+      maximum_fan_out: 1
+    },
+    guarantees: {
+      read_consistency: "provider_current",
+      per_source_atomicity: "source_published",
+      cross_source_atomicity: "not_applicable",
+      convergence: "not_applicable",
+      idempotency: "service_owned"
+    },
+    execution: {
+      method: "POST",
+      uri: "/bos/apps/lead-director/api/v1/organizations/current/gmail/attachments/read",
+      context_header: "X-BOS-Context-Handle",
+      response: {
+        body: "binary",
+        content_type: "provider",
+        headers: [
+          "Content-Disposition",
+          "Content-Length",
+          "Content-Type",
+          "Digest",
+          "X-Content-SHA256",
+          "X-Correlation-ID"
+        ]
+      }
+    },
+    input_schema: {
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      type: "object",
+      additionalProperties: false,
+      required: ["thread_id", "message_id", "attachment_id"],
+      properties: {
+        thread_id: {type: "string", minLength: 1},
+        message_id: {type: "string", minLength: 1},
+        attachment_id: {type: "string", minLength: 1}
+      },
+      "x-bos-fields": []
+    },
+    output_schema: {
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      type: "object",
+      "x-bos-fields": []
+    },
+    error_contract: {
+      schema: "lead-director-public-error/v1",
+      codes: ["INVALID_REQUEST", "ATTACHMENT_TOO_LARGE"]
+    },
+    sources: [{
+      source: {platform: "bos", application: "lead-director", plugin: "gmail"},
+      availability: "ready"
+    }]
+  };
+  const payload = {
+    thread_id: "thread-1",
+    message_id: "message-1",
+    attachment_id: "attachment-1"
+  };
+  const adapter = generatedAdapter.createBosExternalDependencyAdapter({
+    hostTransport: {
+      getProtectedResource: async () => "https://dfsm.ai/mcp/apps/bos/platform",
+      request: async (request) => {
+        requests.push(structuredClone(request));
+        return {
+          status: 200,
+          headers: {
+            "Content-Disposition": 'attachment; filename="quote.pdf"',
+            "Content-Length": "4",
+            "Content-Type": "application/pdf",
+            Digest: "sha-256=synthetic-digest",
+            "X-Content-SHA256": "synthetic-sha256",
+            "X-Correlation-ID": "corr-attachment-1"
+          },
+          body: new Uint8Array([37, 80, 68, 70])
+        };
+      },
+      recoverAuthentication: async () => ({status: "READY"})
+    },
+    contextProvider: {
+      getExecutionContextHeader: async () => "X-BOS-Context-Handle",
+      getCurrentContext: async () => ({
+        contract_version: "bos-identity-mcp/v2",
+        context: {
+          context_handle: contextHandle,
+          organization_name: "Example Organization",
+          application_name: "Lead Director",
+          installation_name: "Primary",
+          role_label: "Operator",
+          is_default: true
+        }
+      })
+    }
+  });
+  const response = await adapter.invokeDiscoveredOperation(contact, payload);
+  assert.equal(response.status, 200);
+  assert.deepEqual([...response.body], [37, 80, 68, 70]);
+  assert.deepEqual(response.headers, {
+    "content-disposition": 'attachment; filename="quote.pdf"',
+    "content-length": "4",
+    "content-type": "application/pdf",
+    digest: "sha-256=synthetic-digest",
+    "x-content-sha256": "synthetic-sha256",
+    "x-correlation-id": "corr-attachment-1"
+  });
+  assert.deepEqual(requests, [{
+    method: "POST",
+    href: contact.execution.uri,
+    headers: {
+      "content-type": "application/json",
+      "X-BOS-Context-Handle": contextHandle
+    },
+    body: JSON.stringify(payload)
+  }]);
+});
+
 test("BOS composes journey orchestration, discovery, cache maintenance, and visual output", async () => {
   const product = JSON.parse(await readFile(`${root}/products/bos/product.json`, "utf8"));
   for (const include of [
