@@ -5,6 +5,13 @@ description: Create the next repository release version, review and validate all
 
 # Ship It
 
+## Model inheritance
+
+Spawn native agents without a model override so they inherit the current task's
+selected model. Oracle CLI launchers pass that model explicitly to isolated
+`codex exec` processes and stop if it is unknown. Do not silently select a
+different model during release recovery.
+
 ## Release-only client delivery
 
 - Never hot-patch installed client files, managed plugin caches, or personal
