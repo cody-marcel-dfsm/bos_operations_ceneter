@@ -1283,7 +1283,11 @@ test("email routing delivers authorized Gmail attachments as embedded resources"
     "utf8"
   );
   assert.match(guidance, /thread_id.*message_id.*attachment_id/is);
-  assert.match(guidance, /callable BOS MCP `gmail_get_attachment` operation/i);
+  assert.match(guidance, /discover the current context's callable BOS tool/i);
+  assert.match(guidance, /Gmail attachment download, declares a resource effect/i);
+  assert.match(guidance, /bos_list_context_tools[\s\S]*bos_execute/i);
+  assert.match(guidance, /exact returned tool name/i);
+  assert.doesNotMatch(guidance, /gmail_get_attachment|education_center_download_email_attachment/i);
   assert.match(guidance, /provider-derived filename and MIME type/i);
   assert.match(guidance, /returned embedded resource as the downloadable result/i);
   assert.match(guidance, /raw bytes alone are an embedded downloadable resource/i);
