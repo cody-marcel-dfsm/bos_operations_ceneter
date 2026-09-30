@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """Issue and verify tree-bound Operations Center approvals."""
 from __future__ import annotations
-import argparse, hashlib, json, re, subprocess, sys, tempfile
+import argparse, hashlib, json, os, re, subprocess, sys, tempfile
 from pathlib import Path
 from typing import Any, Callable, Sequence
+if __package__:
+    from .codex_child_model import selected_model
+else:
+    from codex_child_model import selected_model
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = 1
@@ -119,8 +123,9 @@ def _oracle(root: Path, tree: str, paths: list[str], evidence: dict[str,str], ow
 Read .agents/skills/oracle/SKILL.md completely and wear that approver skill. Read AGENTS.md and all required private Vault authority. Review git diff --cached and this evidence read-only. Only this process issues Oracle warnings and verdicts. Return JSON matching the supplied schema. Classify authentication_impact as AUTHENTICATION or NONE. An APPROVED authentication review requires owner_approval_status APPROVED. A REJECTED authentication review may report APPROVED, MISSING, or INVALID. A NONE review uses NOT_REQUIRED. Only APPROVED with no findings can issue a receipt.\n{json.dumps(request, indent=2, sort_keys=True)}"""
     with tempfile.TemporaryDirectory(prefix="boc-oracle-") as directory:
         output = Path(directory) / "result.json"
-        cmd = ["codex","exec","--ephemeral","--ignore-user-config","--sandbox","read-only","--cd",str(root),"--output-schema",str(root / ".agents/skills/oracle/review-output.schema.json"),"--output-last-message",str(output),prompt]
-        completed = subprocess.run(cmd, cwd=root, capture_output=True, text=True)
+        model = selected_model()
+        cmd = ["codex","exec","--ephemeral","--ignore-user-config","--model",model,"--sandbox","read-only","--cd",str(root),"--output-schema",str(root / ".agents/skills/oracle/review-output.schema.json"),"--output-last-message",str(output),prompt]
+        completed = subprocess.run(cmd, cwd=root, capture_output=True, text=True, env={**os.environ, "CODEX_SELECTED_MODEL": model})
         if completed.returncode:
             raise OracleApprovalError("Independent Oracle process failed: " + (completed.stderr or completed.stdout).strip())
         try: return json.loads(output.read_text())
@@ -139,8 +144,9 @@ Return JSON matching the supplied schema. Verify the stated problem and cause, c
 {json.dumps(payload, indent=2, sort_keys=True)}"""
     with tempfile.TemporaryDirectory(prefix="boc-oracle-proposal-") as directory:
         output = Path(directory) / "result.json"
-        cmd = ["codex","exec","--ephemeral","--ignore-user-config","--sandbox","read-only","--cd",str(root),"--output-schema",str(root / ".agents/skills/oracle/review-output.schema.json"),"--output-last-message",str(output),prompt]
-        completed = subprocess.run(cmd, cwd=root, capture_output=True, text=True)
+        model = selected_model()
+        cmd = ["codex","exec","--ephemeral","--ignore-user-config","--model",model,"--sandbox","read-only","--cd",str(root),"--output-schema",str(root / ".agents/skills/oracle/review-output.schema.json"),"--output-last-message",str(output),prompt]
+        completed = subprocess.run(cmd, cwd=root, capture_output=True, text=True, env={**os.environ, "CODEX_SELECTED_MODEL": model})
         if completed.returncode:
             raise OracleApprovalError("Independent Oracle proposal review failed: " + (completed.stderr or completed.stdout).strip())
         try: return json.loads(output.read_text())

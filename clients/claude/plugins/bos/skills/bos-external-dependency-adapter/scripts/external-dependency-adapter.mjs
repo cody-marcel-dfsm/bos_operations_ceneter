@@ -34,6 +34,9 @@ const contextFields = new Set([
 const contextHandlePattern = /^bos_ctx_v2_[a-f0-9]{64}$/u;
 const requiredContextHeader = "X-BOS-Context-Handle";
 const safeResponseHeaders = new Set(["content-type", "retry-after", "x-correlation-id"]);
+const safeBinaryResponseHeaders = new Set([
+  "content-disposition", "content-length", "digest", "x-content-sha256"
+]);
 const sensitiveKeys = new Set([
   "access_token", "refresh_token", "bearer_token", "authorization", "authorization_header",
   "context_handle", "opaque_context", "authority_context", "grant_id", "organization_id",
@@ -329,7 +332,8 @@ function requirePublicErrorMessage(value) {
 function validatePublicError(value) {
   requireObject(value, "BOS public error");
   requireExactKeys(value, publicErrorFields, [], "BOS public error");
-  if (typeof value.code !== "string" || !/^[a-z][a-z0-9_]{0,127}$/u.test(value.code)) {
+  if (typeof value.code !== "string" ||
+      !/^(?:[a-z][a-z0-9_]{0,127}|[A-Z][A-Z0-9_]{0,127})$/u.test(value.code)) {
     throw new TypeError("BOS public error.code is invalid");
   }
   requirePublicErrorMessage(value.message);
@@ -433,6 +437,7 @@ function rejectPublicResponseData(
     throw new TypeError(`${path} exposes private BOS transport data`);
   }
   if (!value || typeof value !== "object") return;
+  if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) return;
   if (Array.isArray(value)) {
     value.forEach((entry, index) =>
       rejectPublicResponseData(entry, `${path}[${index}]`, canonicalErrors));
@@ -460,18 +465,45 @@ function rejectPublicResponseData(
   }
 }
 
-function publicResponse(value) {
+function publicResponse(value, {binaryContract = null} = {}) {
   requireObject(value, "BOS transport response");
   if (!Number.isInteger(value.status) || value.status < 100 || value.status > 599) {
     throw new TypeError("BOS transport response.status is invalid");
   }
-  const canonicalErrors = validateSanctionedResponseErrors(value.body);
-  rejectPublicResponseData(value.body, "BOS transport response.body", canonicalErrors);
+  const binaryBody = value.body instanceof ArrayBuffer || ArrayBuffer.isView(value.body);
+  if (binaryBody) {
+    if (!binaryContract || value.status < 200 || value.status >= 300) {
+      throw new TypeError("Binary response requires a successful described binary operation");
+    }
+    if (value.body.byteLength > binaryContract.maxBytes) {
+      throw new TypeError("Binary response exceeds the described attachment limit");
+    }
+  } else if (binaryContract && value.status >= 200 && value.status < 300) {
+    throw new TypeError("Described binary operation returned a non-binary response");
+  }
+  if (!binaryBody) {
+    const canonicalErrors = validateSanctionedResponseErrors(value.body);
+    rejectPublicResponseData(value.body, "BOS transport response.body", canonicalErrors);
+  }
   const headers = {};
   if (value.headers && typeof value.headers === "object" && !Array.isArray(value.headers)) {
     for (const [name, header] of Object.entries(value.headers)) {
       const normalized = name.toLowerCase();
-      if (safeResponseHeaders.has(normalized) && typeof header === "string") headers[normalized] = header;
+      if ((safeResponseHeaders.has(normalized) || (binaryBody && safeBinaryResponseHeaders.has(normalized))) &&
+          typeof header === "string") {
+        headers[normalized] = requireSafeString(header, `BOS transport response.headers.${normalized}`, 1024);
+      }
+    }
+  }
+  if (binaryBody) {
+    for (const name of binaryContract.headers) {
+      if (!Object.hasOwn(headers, name.toLowerCase())) {
+        throw new TypeError(`Binary response is missing described header ${name}`);
+      }
+    }
+    const declaredLength = Number(headers["content-length"]);
+    if (!Number.isSafeInteger(declaredLength) || declaredLength !== value.body.byteLength) {
+      throw new TypeError("Binary response Content-Length does not match its body");
     }
   }
   return {
@@ -615,7 +647,7 @@ export function createBosExternalDependencyAdapter({
     }
   };
 
-  const interpretTransport = (value, {thrown = false} = {}) => {
+  const interpretTransport = (value, {thrown = false, binaryContract = null} = {}) => {
     const condition = authenticationCondition(value);
     if (condition) return {condition, resource: value?.resource};
     try {
@@ -623,7 +655,7 @@ export function createBosExternalDependencyAdapter({
       return {
         condition: null,
         resource: value?.resource,
-        response: canonicalFailure?.response ?? publicResponse(value)
+        response: canonicalFailure?.response ?? publicResponse(value, {binaryContract})
       };
     } catch (error) {
       if (thrown) throw new BosDependencyAdapterError("The BOS dependency transport failed");
@@ -669,6 +701,17 @@ export function createBosExternalDependencyAdapter({
     const pinnedPayload = payloadSupplied
       ? structuredSnapshot(payload, "discovered operation payload")
       : payload;
+    const described = validateDiscoveredOperation(pinnedContact, payloadSupplied, pinnedPayload).contact;
+    const binaryResponse = described.execution.response;
+    const binaryContract = binaryResponse?.body === "binary"
+      ? {
+          maxBytes: described.limits.maximum_attachment_bytes,
+          headers: binaryResponse.headers
+        }
+      : null;
+    if (binaryContract && (!Number.isSafeInteger(binaryContract.maxBytes) || binaryContract.maxBytes < 1)) {
+      throw new TypeError("Described binary operation requires an attachment byte limit");
+    }
     const requestOnceDiscovered = async () => {
       const request = await buildDiscoveredRequest(pinnedContact, payloadSupplied, pinnedPayload);
       try {
@@ -679,10 +722,10 @@ export function createBosExternalDependencyAdapter({
     };
     const attempt = async () => {
       try {
-        return interpretTransport(await requestOnceDiscovered());
+        return interpretTransport(await requestOnceDiscovered(), {binaryContract});
       } catch (error) {
         if (!(error instanceof BosTransportThrown)) throw error;
-        return interpretTransport(error.cause, {thrown: true});
+        return interpretTransport(error.cause, {thrown: true, binaryContract});
       }
     };
 

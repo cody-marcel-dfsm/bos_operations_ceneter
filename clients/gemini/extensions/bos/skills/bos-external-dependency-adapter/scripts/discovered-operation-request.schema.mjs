@@ -37,6 +37,9 @@ export default {
                 },
                 "transport": {
                   "type": "null"
+                },
+                "response": {
+                  "$ref": "#/$defs/described_operation/properties/execution/properties/response"
                 }
               },
               "required": [
@@ -158,6 +161,11 @@ export default {
             "streaming_supported": {
               "type": "boolean"
             },
+            "maximum_attachment_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 26214400
+            },
             "maximum_duration_seconds": {
               "type": "integer",
               "minimum": 1
@@ -228,6 +236,71 @@ export default {
             },
             "transport": {
               "type": "null"
+            },
+            "response": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "body",
+                "content_type",
+                "headers"
+              ],
+              "properties": {
+                "body": {
+                  "const": "binary"
+                },
+                "content_type": {
+                  "const": "provider"
+                },
+                "headers": {
+                  "type": "array",
+                  "minItems": 6,
+                  "maxItems": 6,
+                  "uniqueItems": true,
+                  "items": {
+                    "enum": [
+                      "Content-Disposition",
+                      "Content-Length",
+                      "Content-Type",
+                      "Digest",
+                      "X-Content-SHA256",
+                      "X-Correlation-ID"
+                    ]
+                  },
+                  "allOf": [
+                    {
+                      "contains": {
+                        "const": "Content-Disposition"
+                      }
+                    },
+                    {
+                      "contains": {
+                        "const": "Content-Length"
+                      }
+                    },
+                    {
+                      "contains": {
+                        "const": "Content-Type"
+                      }
+                    },
+                    {
+                      "contains": {
+                        "const": "Digest"
+                      }
+                    },
+                    {
+                      "contains": {
+                        "const": "X-Content-SHA256"
+                      }
+                    },
+                    {
+                      "contains": {
+                        "const": "X-Correlation-ID"
+                      }
+                    }
+                  ]
+                }
+              }
             }
           }
         },
@@ -286,7 +359,7 @@ export default {
               "uniqueItems": true,
               "items": {
                 "type": "string",
-                "pattern": "^[a-z][a-z0-9_]{0,127}$"
+                "pattern": "^(?:[a-z][a-z0-9_]{0,127}|[A-Z][A-Z0-9_]{0,127})$"
               }
             }
           }

@@ -55,6 +55,7 @@ test("proposal review records scope without issuing a commit-acceptance receipt"
   writeFileSync(join(workspace, "AGENTS.md"), "governed\n");
   writeFileSync(join(workspace, ".gitignore"), "__pycache__/\n*.pyc\n");
   writeFileSync(join(workspace, "tools", "oracle_approval.py"), read("tools/oracle_approval.py"));
+  writeFileSync(join(workspace, "tools", "codex_child_model.py"), read("tools/codex_child_model.py"));
   git("add", ".");
   git("commit", "-qm", "initial");
   execFileSync("python3", ["-c", [
@@ -77,6 +78,7 @@ test("completed review refuses a rejected proposal record", () => {
   writeFileSync(join(workspace, "AGENTS.md"), "governed\n");
   writeFileSync(join(workspace, ".gitignore"), "__pycache__/\n*.pyc\n");
   writeFileSync(join(workspace, "tools", "oracle_approval.py"), read("tools/oracle_approval.py"));
+  writeFileSync(join(workspace, "tools", "codex_child_model.py"), read("tools/codex_child_model.py"));
   writeFileSync(join(workspace, "candidate.txt"), "initial\n");
   git("add", ".");
   git("commit", "-qm", "initial");
@@ -100,6 +102,7 @@ test("Oracle receipt rejects stale state, forged trailers, and unstamped commits
   writeFileSync(join(workspace, ".agents", "skills", "oracle", "SKILL.md"), "oracle\n");
   writeFileSync(join(workspace, ".gitignore"), "__pycache__/\n*.pyc\n");
   writeFileSync(join(workspace, "tools", "oracle_approval.py"), read("tools/oracle_approval.py"));
+  writeFileSync(join(workspace, "tools", "codex_child_model.py"), read("tools/codex_child_model.py"));
   writeFileSync(join(workspace, "candidate.txt"), "initial\n");
   git("add", ".");
   git("commit", "-qm", "initial");

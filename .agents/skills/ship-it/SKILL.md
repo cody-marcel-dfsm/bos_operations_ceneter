@@ -5,6 +5,13 @@ description: Create the next repository release version, review and validate all
 
 # Ship It
 
+## Model inheritance
+
+Spawn native agents without a model override so they inherit the current task's
+selected model. Oracle CLI launchers pass that model explicitly to isolated
+`codex exec` processes and stop if it is unknown. Do not silently select a
+different model during release recovery.
+
 ## Release-only client delivery
 
 - Never hot-patch installed client files, managed plugin caches, or personal
@@ -149,7 +156,10 @@ requested outcome.
 
 ## Preflight
 
-1. Resolve the repository root, current branch, default branch, upstream, remotes, and complete status, including staged, unstaged, untracked, renamed, and deleted files.
+1. Fetch the configured remote default branch and record its SHA. Resolve the
+   repository root, current branch, upstream, remotes, divergence from that
+   default branch, and complete status, including staged, unstaged, untracked,
+   renamed, and deleted files.
 2. Read the repository's applicable instructions and release/build documentation. Use its native review, validation, build, and release checks.
 3. Stop before mutation when the repository is in a merge, rebase,
    cherry-pick, conflicted, or detached-HEAD state; when the default branch,
@@ -163,6 +173,13 @@ requested outcome.
    form. Ask no question about the already-authorized push or merge.
 4. Review the entire pending change set. Inspect untracked files before staging. Treat every existing change as user-owned and in scope for this invocation.
 5. Block the shipment and report exact findings when the changes expose credentials or private data, contain a material correctness or security defect, include an obviously accidental large artifact, or conflict with repository instructions. Never discard or rewrite the user's work while resolving a blocker.
+6. If a dirty checkout is behind the remote default branch, preserve all of
+   its original work intact and prepare the release in a suitable current-base
+   checkout. Account for every amended file while reconciling its intended
+   behavior with current code; retain newer remote safeguards and stop when
+   an overlap cannot be resolved safely. Re-fetch before final Oracle review
+   and publication; if the remote base moved, integrate it and repeat affected
+   validation and review. Never publish the stale tree wholesale.
 
 ## Create the release branch
 
