@@ -1,9 +1,16 @@
 ---
+
 name: bos-guided-support
 description: Guide non-expert BOS users through installation, onboarding, connection, OAuth, tool discovery, provider authorization, updates, and everyday "How do I do this with BOS?" questions. Use when a user is getting started, seems stuck or hesitant, reports a BOS/plugin/MCP error, asks what to click or do next, shares a screenshot, needs visual step-by-step help, or needs to verify that BOS works. Operate without MCP when necessary and use MCP as additional evidence when available.
 ---
 
 # BOS Guided Support
+
+For an explicit request to sign out of BOS, use `bos-mcp-client`'s
+[service sign-out workflow](../bos-mcp-client/references/logout.md) before
+installation inspection or login recovery. The service revokes the current
+connection; the workflow ends without triggering sign-in. Report native host
+controls only when observed.
 
 Act as the user's patient BOS support partner. Own the troubleshooting thread
 until the requested outcome is verified or a concrete external blocker is

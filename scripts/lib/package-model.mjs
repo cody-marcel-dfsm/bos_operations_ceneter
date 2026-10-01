@@ -600,6 +600,12 @@ export function injectOrganizationScopePreflight(guidance) {
   }
   const preflight = [
     "## Scoped authorization preflight",
+    "For an explicit BOS sign-out request, first follow `bos-mcp-client`'s",
+    "current-connection sign-out branch. Invoke only discovered `bos_logout`",
+    "with empty arguments and terminate after its receipt or canonical challenged",
+    "401. This connection-level action precedes context/default selection and",
+    "authentication recovery; do not sign in to perform logout.",
+    "",
     "",
     "First apply the versioned identity-context workflow in `bos-mcp-client`.",
     "For live `bos-identity-mcp/v2`, resolve explicit request scope or the saved",
@@ -632,6 +638,10 @@ export function injectSettingsPreflight(guidance, initializer) {
   if (!frontmatter) throw new Error("Cannot inject settings preflight without frontmatter");
   const preflight = [
     "## Product first-run preflight",
+    "",
+    "For explicit BOS sign-out, follow `bos-mcp-client`'s terminal logout branch",
+    "before initialization, settings reconciliation, context selection or login.",
+    "Do not authenticate to sign out; preserve confirmed preferences.",
     "",
     "Before performing this skill's workflow, resolve the installed product root and",
     "run the product initializer's customer-settings reconciliation helper. Restore",
@@ -668,6 +678,10 @@ export function injectProductInitializationPreflight(guidance, {
   if (!settingsInitializer && !pluginSettingsInitializer) return guidance;
   const lines = [
     "## Product initialization preflight",
+    "",
+    "For explicit BOS sign-out, follow `bos-mcp-client`'s terminal logout branch",
+    "before initialization, settings reconciliation, context selection or login.",
+    "Do not authenticate to sign out; preserve confirmed preferences.",
     "",
     "Before performing this skill's workflow, preserve the pending request and",
     "complete the product's host-managed BOS authentication. Run the configured",

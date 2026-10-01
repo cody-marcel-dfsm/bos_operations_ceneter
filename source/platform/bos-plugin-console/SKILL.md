@@ -4,7 +4,15 @@ description: Show and manage BOS plugin, connection, enablement, server-settings
 ---
 
 
-For live `bos-identity-mcp/v2`, first apply [identity-context compatibility](../bos-mcp-client/references/identity-context.md).
+An explicit sign-out request routes directly to `bos-mcp-client`'s
+[current-connection sign-out](../bos-mcp-client/references/logout.md) workflow.
+It terminates without rendering or refreshing this protected console.
+For an authenticated console, offer **Sign out of BOS** as a conversational
+action when the platform's live discovery advertises `bos_logout`. Use the
+host's supported follow-up affordance, or show the prompt “Sign out of BOS.”
+Keep the native host's authentication controls grounded in observed UI.
+
+For other requests with live `bos-identity-mcp/v2`, first apply [identity-context compatibility](../bos-mcp-client/references/identity-context.md).
 Its fresh authorized-context selection and saved-default rules govern this
 workflow; single-context grant wording below applies to legacy discovery.
 # BOS Plugin Console

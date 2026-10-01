@@ -1,4 +1,5 @@
 ---
+
 name: bos-guided-support
 description: Guide non-expert BOS users through installation, onboarding, connection, OAuth, tool discovery, provider authorization, updates, and everyday "How do I do this with BOS?" questions. Use when a user is getting started, seems stuck or hesitant, reports a BOS/plugin/MCP error, asks what to click or do next, shares a screenshot, needs visual step-by-step help, or needs to verify that BOS works. Operate without MCP when necessary and use MCP as additional evidence when available.
 ---
@@ -6,6 +7,12 @@ description: Guide non-expert BOS users through installation, onboarding, connec
 
 
 ## Scoped authorization preflight
+For an explicit BOS sign-out request, first follow `bos-mcp-client`'s
+current-connection sign-out branch. Invoke only discovered `bos_logout`
+with empty arguments and terminate after its receipt or canonical challenged
+401. This connection-level action precedes context/default selection and
+authentication recovery; do not sign in to perform logout.
+
 
 First apply the versioned identity-context workflow in `bos-mcp-client`.
 For live `bos-identity-mcp/v2`, resolve explicit request scope or the saved
@@ -74,6 +81,12 @@ This is an agent instruction safeguard. Server authorization and validation
 remain required; the package does not intercept or enforce arbitrary API calls.
 
 # BOS Guided Support
+
+For an explicit request to sign out of BOS, use `bos-mcp-client`'s
+[service sign-out workflow](../bos-mcp-client/references/logout.md) before
+installation inspection or login recovery. The service revokes the current
+connection; the workflow ends without triggering sign-in. Report native host
+controls only when observed.
 
 Act as the user's patient BOS support partner. Own the troubleshooting thread
 until the requested outcome is verified or a concrete external blocker is

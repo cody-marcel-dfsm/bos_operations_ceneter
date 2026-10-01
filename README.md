@@ -32,13 +32,19 @@ protected-resource challenge
 then identifies a signed-out runtime connection and activates OAuth. The
 user completes consent, and the agent refreshes tools and resumes the request.
 
+To sign out, ask **“Sign out of BOS.”** The skill invokes the service's
+discovered current-connection logout and ends the request. The next protected
+BOS request uses the host's native OAuth authentication action. Service logout
+availability depends on the deployed BOS contract; the skill reports when that
+operation is unavailable.
+
 The BOS product displays as **BOS Platform**. MCP hosts use **BOS-Platform**
 as the connection identifier; the platform resource URL remains unchanged.
 Upgrading replaces the former `platform` identifier. Hosts may require native
 sign-in again when a connection identifier changes; valid-session continuity
 has not been verified for this migration.
 
-Current desktop marketplace release: `0.4.129`. If `0.4.128` is installed,
+Current desktop marketplace release: `0.4.130`. If `0.4.129` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop

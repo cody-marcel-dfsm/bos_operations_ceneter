@@ -6,6 +6,12 @@ description: Plan application-neutral Business Operating System changes, migrati
 
 
 ## Scoped authorization preflight
+For an explicit BOS sign-out request, first follow `bos-mcp-client`'s
+current-connection sign-out branch. Invoke only discovered `bos_logout`
+with empty arguments and terminate after its receipt or canonical challenged
+401. This connection-level action precedes context/default selection and
+authentication recovery; do not sign in to perform logout.
+
 
 First apply the versioned identity-context workflow in `bos-mcp-client`.
 For live `bos-identity-mcp/v2`, resolve explicit request scope or the saved
