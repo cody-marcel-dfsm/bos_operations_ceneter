@@ -54,6 +54,35 @@ or promise to continue does not complete an implementation request.
 
 ## Establish ownership before a server handoff
 
+### Repeatable public MCP/OAuth discovery evidence
+
+For signed-out discovery investigations or comparisons after an authorized release,
+run the existing client-owned verifier in its read-only smoke mode:
+
+```bash
+npm run --silent contract:oauth-discovery-live -- --smoke --resource-url https://dfsm.ai/mcp/apps/bos/platform --format json
+```
+
+Retain the small JSON report under `Vault/tmp/<workflow>/` when evidence retention
+is needed. Repeat with `--compare <previous-report.json>` to identify status or
+metadata changes independently of timestamps and correlation IDs. The helper uses
+public curl GETs only, follows the validated advertised resource metadata, and
+checks resource/issuer alignment and S256. It never registers clients, signs in,
+calls token endpoints, stores cookies/tokens, or creates grants. A blocked DNS,
+TLS, timeout, or tool result is an investigation limitation, not a server defect;
+surface every failure with the observed operation and safe correlation when available.
+Browser/web-fetch errors do not replace direct HTTP evidence. This smoke check
+does not replace the existing strict contract gate or prove full reviewer login.
+
+Keep service deployment, versioned client-plugin publication, and public
+marketplace snapshot submission/approval separate. Public marketplace snapshots
+do not update merely because a Git release merged. Inspect all freshly exposed
+tools and public resource contracts, including equivalent operation names;
+cached skill availability never proves current authenticated callable access.
+Before `ship-it`, establish the exact reviewed scope and separately authorized
+release effects. A read-only investigation or successful smoke check authorizes
+no source publication, installation, grant change, or deployment.
+
 Inspect the relevant canonical skill, routing/default behavior, generated
 consumer, and available execution evidence before attributing a defect to the
 server. An absent tool in the initial catalog or a partial screenshot establishes
