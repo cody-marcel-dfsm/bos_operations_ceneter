@@ -8,6 +8,10 @@ description: Initialize or repair plugin-service connections and required BOS pl
 
 ## Product first-run preflight
 
+For explicit BOS sign-out, follow `bos-mcp-client`'s terminal logout branch
+before initialization, settings reconciliation, context selection or login.
+Do not authenticate to sign out; preserve confirmed preferences.
+
 Before performing this skill's workflow, resolve the installed product root and
 run the product initializer's customer-settings reconciliation helper. Restore
 only a valid confirmed counterpart owned by this same plugin, then

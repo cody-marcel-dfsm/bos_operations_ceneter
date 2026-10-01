@@ -1,6 +1,6 @@
 ---
 name: bos-mcp-client
-description: Operate the BOS platform MCP connection, including server-evaluated product scope, live tool discovery, transport recovery, provider authorization recovery, and automatic BOS authentication handoff for dependent plugins.
+description: Operate the BOS platform MCP connection, including service-owned sign-out, server-evaluated product scope, live tool discovery, transport recovery, provider authorization recovery, and automatic BOS authentication handoff for dependent plugins.
 ---
 
 
@@ -48,6 +48,10 @@ destructive hint cannot establish safety.
 
 This is an agent instruction safeguard. Server authorization and validation
 remain required; the package does not intercept or enforce arbitrary API calls.
+
+For an explicit “sign out of BOS” or “log out of BOS” request, first follow
+[current-connection sign-out](references/logout.md). That terminal workflow
+precedes context/default selection and authentication recovery.
 
 For live `bos-identity-mcp/v2`, first apply [identity-context compatibility](references/identity-context.md).
 Its fresh authorized-context selection and saved-default rules govern this
