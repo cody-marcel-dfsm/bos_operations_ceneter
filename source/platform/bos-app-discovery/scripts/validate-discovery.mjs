@@ -164,6 +164,23 @@ function normalizedSecurityKey(value) {
     .toLowerCase();
 }
 
+function publicDisplayLabelSchema(key, value, path) {
+  if (!["location_context", "ownership_context"].includes(key) ||
+      !/^operation Describe response\.operations\.\d+(?:\.sources\.\d+)?\.output_schema(?:\.[A-Za-z0-9_$-]+)*\.properties$/u.test(path) ||
+      !value || typeof value !== "object" || Array.isArray(value)) return false;
+  if (Object.keys(value).length !== 4 ||
+      !["type", "properties", "required", "additionalProperties"].every(field => Object.hasOwn(value, field)) ||
+      value.type !== "object" || value.additionalProperties !== false ||
+      !Array.isArray(value.required) || value.required.length !== 1 || value.required[0] !== "label") return false;
+  const properties = value.properties;
+  if (!properties || typeof properties !== "object" || Array.isArray(properties) ||
+      Object.keys(properties).length !== 1 || !Object.hasOwn(properties, "label")) return false;
+  const label = properties.label;
+  return !!label && typeof label === "object" && !Array.isArray(label) &&
+    Object.keys(label).length === 3 && label.type === "string" &&
+    label.minLength === 1 && label.maxLength === 255;
+}
+
 function rejectRawAuthority(value, path = "descriptor", insideProvider = false) {
   if (typeof value === "string") {
     if (privateDiscoveryText.test(value)) {
@@ -175,7 +192,7 @@ function rejectRawAuthority(value, path = "descriptor", insideProvider = false) 
   for (const [key, child] of Object.entries(value)) {
     const normalized = normalizedSecurityKey(key);
     const tokens = new Set(normalized.split("_").filter(Boolean));
-    const explicitlyPublic = key === "$id" || publicSecurityKeys.has(normalized);
+    const explicitlyPublic = key === "$id" || publicSecurityKeys.has(normalized) || publicDisplayLabelSchema(key, child, path);
     const providerDiagnostic =
       (insideProvider || tokens.has("provider")) &&
       ["error", "errors", "exception", "message", "response", "text"]
