@@ -1051,3 +1051,26 @@ test('existing optional multiple-selector limit preserves Boolean values and rej
  const unknown=structuredClone(operationDescription);unknown.operations[0].limits.invented_selector_limit=true;
  assert.throws(()=>validateOperationDescription(unknown),/undeclared field/);
 });
+
+test('operation Describe accepts exact closed public display-label schemas at output property positions',()=>{
+ const label={type:'object',properties:{label:{type:'string',minLength:1,maxLength:255}},required:['label'],additionalProperties:false};
+ for(const field of ['location_context','ownership_context']) {
+  for(const nested of [false,true]) {
+   const document=structuredClone(operationDescription),schema=document.operations[0].output_schema;
+   schema.properties=nested?{files:{type:'array',items:{type:'object',properties:{[field]:structuredClone(label)}}}}:{[field]:structuredClone(label)};
+   assert.equal(validateOperationDescription(document),document);
+   assert.deepEqual((nested?schema.properties.files.items.properties:schema.properties)[field],label);
+  }
+ }
+});
+
+test('display-label exceptions reject open, altered, private and misplaced schema shapes',()=>{
+ const label={type:'object',properties:{label:{type:'string',minLength:1,maxLength:255}},required:['label'],additionalProperties:false};
+ const invalid=[{...label,properties:{label:{type:'string'}}},{...label,properties:{label:{type:'string',minLength:0,maxLength:255}}},{...label,properties:{label:{type:'string',minLength:1,maxLength:256}}},{...label,additionalProperties:true},{...label,additionalProperties:{}},{...label,type:'string'},{...label,required:[]},{...label,required:['label','extra']},{...label,properties:{label:{type:'number'}}},{...label,properties:{label:{type:'string',default:'private'}}},{...label,properties:{label:{type:'string'},context_handle:{type:'string'}}},{...label,description:'Bearer abcdefghijklmnopqrstuvwxyz'}];
+ for(const field of ['location_context','ownership_context']) {
+  for(const shape of invalid){const document=structuredClone(operationDescription);document.operations[0].output_schema.properties={[field]:shape};assert.throws(()=>validateOperationDescription(document),/raw authority|private discovery/);}
+  for(const position of ['input_schema','guarantees']){const document=structuredClone(operationDescription);document.operations[0][position].properties={[field]:label};assert.throws(()=>validateOperationDescription(document),/raw authority/);}
+  const sibling=structuredClone(operationDescription);sibling.operations[0].output_schema.properties={[field]:label,context_handle:{type:'string'}};assert.throws(()=>validateOperationDescription(sibling),/raw authority/);
+  for(const altered of [field.toUpperCase(),field.replaceAll('_','-'),'tenant_context']){const document=structuredClone(operationDescription);document.operations[0].output_schema.properties={[altered]:label};assert.throws(()=>validateOperationDescription(document),/raw authority/);}
+ }
+});
