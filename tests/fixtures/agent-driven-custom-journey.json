@@ -7,7 +7,7 @@
     "describe": {
       "contract_version": "lead-director-describe/v1",
       "method": "POST",
-      "uri": "/bos/apps/lead-director/api/v1/organizations/{organization}/describe",
+      "uri": "/bos/apps/lead-director/api/v1/organizations/synthetic/describe",
       "max_operations": 5,
       "operations": [
         "search",

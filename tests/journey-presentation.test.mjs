@@ -20,7 +20,7 @@ const statusContract = {
     context_header: "X-BOS-Context-Handle",
     method: "POST",
     transport: null,
-    uri: "/bos/apps/lead-director/api/v1/organizations/{organization}/campaign/status"
+    uri: "/bos/apps/lead-director/api/v1/organizations/synthetic/campaign/status"
   },
   input_schema: {
     type: "object",
@@ -37,7 +37,7 @@ const metricsContract = {
     context_header: "X-BOS-Context-Handle",
     method: "POST",
     transport: null,
-    uri: "/bos/apps/lead-director/api/v1/organizations/{organization}/campaign/metrics"
+    uri: "/bos/apps/lead-director/api/v1/organizations/synthetic/campaign/metrics"
   },
   input_schema: {
     type: "object",

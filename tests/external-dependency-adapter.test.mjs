@@ -96,7 +96,7 @@ const discoveredOperation = {
   execution: {
     context_header: "X-BOS-Context-Handle",
     method: "POST",
-    uri: "/bos/apps/lead-director/api/v1/organizations/{organization}/search"
+    uri: "/bos/apps/lead-director/api/v1/organizations/synthetic/search"
   },
   input_schema: {
     $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -630,7 +630,7 @@ test("discovered operation snapshots validated contact and payload before contex
   const contact = structuredClone(discoveredOperation);
   const payload = {text: "Synthetic Contact 7F3A91"};
   const pending = current.invokeDiscoveredOperation(contact, payload);
-  contact.execution.uri = "/bos/apps/lead-director/api/v1/organizations/{organization}/delete";
+  contact.execution.uri = "/bos/apps/lead-director/api/v1/organizations/synthetic/delete";
   payload.text = "";
   payload.context_handle = handle("b");
   releaseContext();
@@ -696,7 +696,7 @@ test("discovered operation authentication recovery is bounded and rebinds fresh 
   const payload = {text: "Synthetic Contact"};
   const pending = current.invokeDiscoveredOperation(contact, payload);
   await firstRequest;
-  contact.execution.uri = "/bos/apps/lead-director/api/v1/organizations/{organization}/delete";
+  contact.execution.uri = "/bos/apps/lead-director/api/v1/organizations/synthetic/delete";
   payload.text = "";
   payload.context_handle = handle("c");
   releaseRecovery();
