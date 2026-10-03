@@ -1,0 +1,182 @@
+{
+  "schema_version": 1,
+  "cases": {
+    "starter-1": {
+      "allowed_effects": [
+        "read",
+        "prepare"
+      ],
+      "assertion_evidence": "response",
+      "requirements": [
+        {
+          "id": "initialization-recommendations",
+          "operator": "equals"
+        }
+      ]
+    },
+    "starter-2": {
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "response",
+      "requirements": [
+        {
+          "id": "daily-operations-plan",
+          "operator": "equals"
+        }
+      ]
+    },
+    "starter-3": {
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "response",
+      "requirements": [
+        {
+          "id": "director-weekly-summary",
+          "operator": "equals"
+        }
+      ]
+    },
+    "positive-1": {
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "identity",
+      "requirements": [
+        {
+          "id": "authorized-role",
+          "operator": "equals"
+        },
+        {
+          "id": "provider-readiness",
+          "operator": "equals"
+        }
+      ]
+    },
+    "positive-2": {
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "response",
+      "requirements": [
+        {
+          "id": "matching-students",
+          "operator": "equals"
+        },
+        {
+          "id": "active-records",
+          "operator": "equals"
+        },
+        {
+          "id": "source-attribution",
+          "operator": "equals"
+        }
+      ]
+    },
+    "positive-3": {
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "response",
+      "requirements": [
+        {
+          "id": "class-grouping",
+          "operator": "equals"
+        },
+        {
+          "id": "enrollment-dates",
+          "operator": "equals"
+        },
+        {
+          "id": "status",
+          "operator": "equals"
+        },
+        {
+          "id": "source-attribution",
+          "operator": "equals"
+        }
+      ]
+    },
+    "positive-4": {
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "response",
+      "requirements": [
+        {
+          "id": "daily-attendance",
+          "operator": "equals"
+        },
+        {
+          "id": "capacity",
+          "operator": "equals"
+        },
+        {
+          "id": "open-seats",
+          "operator": "equals"
+        },
+        {
+          "id": "source-attribution",
+          "operator": "equals"
+        }
+      ]
+    },
+    "positive-5": {
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "response",
+      "requirements": [
+        {
+          "id": "matching-students",
+          "operator": "equals"
+        },
+        {
+          "id": "guardian-review",
+          "operator": "equals"
+        },
+        {
+          "id": "source-attribution",
+          "operator": "equals"
+        }
+      ]
+    },
+    "negative-1": {
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "answer",
+      "requirements": [
+        {
+          "id": "no-product-invocation",
+          "operator": "equals"
+        }
+      ]
+    },
+    "negative-2": {
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "answer",
+      "requirements": [
+        {
+          "id": "no-product-invocation",
+          "operator": "equals"
+        }
+      ]
+    },
+    "negative-3": {
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "answer",
+      "requirements": [
+        {
+          "id": "no-product-invocation",
+          "operator": "equals"
+        }
+      ]
+    }
+  }
+}

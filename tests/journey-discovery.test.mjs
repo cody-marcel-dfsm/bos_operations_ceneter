@@ -990,3 +990,14 @@ test("operation Describe validates exact execution contracts and bounded runtime
     /maximum_fan_out/
   );
 });
+
+test('advertised operation catalog can exceed unchanged Describe batch size',()=>{
+ const response=structuredClone(appDescribe);
+ response.describe.operations=['search','create','update','calendar_search_events','calendar_read_event','google-drive-context.files.search','google-drive-context.files.read','gmail.attachments.read'];
+ assert.equal(response.describe.max_operations,5);
+ assert.doesNotThrow(()=>validateAppDescribe(response));
+ assert.throws(()=>validateAppDescribe({...response,describe:{...response.describe,operations:[...response.describe.operations,'search']}}),/unique/);
+ assert.throws(()=>validateAppDescribe({...response,describe:{...response.describe,max_operations:8}}),/max_operations must be 5/);
+ const oversized=structuredClone(describeResponse);oversized.operations=Array.from({length:6},()=>structuredClone(describeResponse.operations[0]));
+ assert.throws(()=>validateOperationDescription(oversized));
+});

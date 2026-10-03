@@ -28,6 +28,13 @@ export function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
 
+export function isWatcherProcessMetadata(path, body) {
+  return resolve(path) === join(root, "Vault", "tmp", "vault-index", "watcher.pid") &&
+    body.length <= 11 && /^[1-9][0-9]{0,9}\n?$/u.test(body.toString("ascii")) &&
+    body.every((byte) => byte === 10 || (byte >= 48 && byte <= 57)) &&
+    Number(body.toString("ascii")) <= 2 ** 31 - 1;
+}
+
 function allowedSyntheticDomain(domain) {
   const current = domain.toLowerCase();
   return current === "example.com" || current === "example.org" ||
@@ -125,6 +132,10 @@ export async function privacyFailures({extraPaths = []} = {}) {
     if (!textExtensions.has(extname(path).toLowerCase())) {
       let body;
       try { body = await readFile(path); } catch { continue; }
+      if (isWatcherProcessMetadata(path, body)) {
+        findings.push(...customerDataFindings(body.toString("utf8"), relative(root, path), blockedDigests));
+        continue;
+      }
       if (!approvedBinaryDigests.has(sha256(body))) {
         findings.push(`${relative(root, path)}: unreviewed binary publication artifact`);
       }

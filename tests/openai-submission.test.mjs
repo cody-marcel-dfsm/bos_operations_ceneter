@@ -135,8 +135,7 @@ test("BOS and Education OpenAI cases stay within their product MCP scope", async
   assert.doesNotMatch(JSON.stringify(bos), /education_center_/);
   assert.doesNotMatch(JSON.stringify(bos), /Bright Horizons|Northstar Coding Academy/);
 
-  assert.match(bos.negative_test_cases[1].user_prompt, /student camp roster/i);
-  assert.match(bos.negative_test_cases[1].expected_output, /Education Operation Center/i);
+  assert.equal(bos.negative_test_cases[1].tools_triggered, null);
   assert.match(bos.negative_test_cases[2].user_prompt, /another organization/i);
   assert.match(bos.negative_test_cases[2].expected_output, /cross-tenant/i);
 

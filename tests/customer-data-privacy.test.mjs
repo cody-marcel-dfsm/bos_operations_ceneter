@@ -6,11 +6,25 @@ import test from "node:test";
 
 import {
   customerDataFindings,
+  isWatcherProcessMetadata,
   normalizeSensitiveText,
   privacyFailures,
+  root,
   sha256
 } from "../scripts/check-customer-data.mjs";
 import {syntheticIdentity} from "../scripts/lib/synthetic-fixtures.mjs";
+
+test("privacy scanner narrowly recognizes bounded ASCII watcher process metadata", () => {
+  const path = join(root, "Vault", "tmp", "vault-index", "watcher.pid");
+  for (const value of ["1", "12345\n", `${2 ** 31 - 1}\n`]) {
+    assert.equal(isWatcherProcessMetadata(path, Buffer.from(value)), true);
+  }
+  for (const value of ["", "0\n", `${2 ** 31}\n`, "1".repeat(11), "12\n34", "12\r\n", "123@example.com", "123\0"]) {
+    assert.equal(isWatcherProcessMetadata(path, Buffer.from(value)), false);
+  }
+  assert.equal(isWatcherProcessMetadata(path, Buffer.from([0xb1])), false);
+  assert.equal(isWatcherProcessMetadata(join(root, "watcher.pid"), Buffer.from("123\n")), false);
+});
 
 test("privacy scanner accepts generated tenant-neutral fixtures", () => {
   const fixture = syntheticIdentity("privacy-test");

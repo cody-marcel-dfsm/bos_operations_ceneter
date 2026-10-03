@@ -121,11 +121,11 @@
       "expected_output_url": null
     },
     {
-      "description": "Route an application-owned education workflow to its owning product boundary.",
-      "user_prompt": "Build next week's student camp roster for my education center.",
+      "description": "Do not trigger BOS for an unrelated creative-writing request.",
+      "user_prompt": "Write a four-line poem about autumn leaves.",
       "file_attachment_urls": null,
       "tools_triggered": null,
-      "expected_output": "The BOS platform MCP should not execute the education operation; the request belongs to the Education Operation Center plugin and its product-owned MCP.",
+      "expected_output": "Answer the creative-writing request without invoking BOS applications, settings, connections, or business workflows.",
       "expected_output_url": null
     },
     {
