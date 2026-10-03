@@ -6,6 +6,37 @@ import {readPublishedFile,verifyPublishedPackage} from './marketplace-published-
 import {digest} from './marketplace-prompt-catalog.mjs';
 
 const controls=new Set(['app.describe','plugins.list','service.describe','api.contract.get','discovery.refresh']);
+export function reviewerDiscoveryDocument(value,state,resourceUri) {
+  let document=body(value);
+  let extracted=false;
+  const object=value=>value&&typeof value==='object'&&!Array.isArray(value);
+  if(!object(document))throw new Error('reviewer_document_invalid');
+  if((Object.hasOwn(document,'contents')||(document.contract_version==='bos-identity-mcp/v2'&&Object.hasOwn(document,'result')))&&Object.hasOwn(document,'server')&&!['BOS-Platform','BOS_Platform'].includes(document.server))throw new Error('reviewer_document_scope_invalid');
+  if(Object.hasOwn(document,'contents')) {
+    if((Object.hasOwn(document,'context_handle')&&document.context_handle!==state.handle)||(Object.hasOwn(document,'server')&&!['BOS-Platform','BOS_Platform'].includes(document.server)))throw new Error('reviewer_document_scope_invalid');
+    if(Object.hasOwn(document,'context')&&(!object(document.context)||document.context.context_handle!==state.handle||!selectReviewerContext([document.context],state)))throw new Error('reviewer_document_scope_invalid');
+    if(!resourceUri||!Array.isArray(document.contents)||document.contents.length!==1)throw new Error('reviewer_resource_ambiguous');
+    const row=document.contents[0];
+    if(!object(row)||row.uri!==resourceUri||typeof row.text!=='string'||Object.hasOwn(row,'blob')||!/^application\/(?:json|[a-z0-9.+-]+\+json)$/i.test(row.mimeType??''))throw new Error('reviewer_resource_invalid');
+    document=JSON.parse(row.text);
+    extracted=true;
+    if(!object(document))throw new Error('reviewer_document_invalid');
+  }
+  if(document.contract_version==='bos-identity-mcp/v2'&&Object.hasOwn(document,'result')) {
+    if((Object.hasOwn(document,'context_handle')&&document.context_handle!==state.handle)||(Object.hasOwn(document,'server')&&!['BOS-Platform','BOS_Platform'].includes(document.server)))throw new Error('reviewer_document_scope_invalid');
+    if(!object(document.result)||!object(document.context)||document.context.context_handle!==state.handle||!selectReviewerContext([document.context],state))throw new Error('reviewer_document_scope_invalid');
+    document=document.result;
+    extracted=true;
+  }
+  const verify=item=>{
+    if(!object(item)&&!Array.isArray(item))return;
+    if(Object.hasOwn(item,'context_handle')&&item.context_handle!==state.handle)throw new Error('reviewer_document_scope_invalid');
+    if(Object.hasOwn(item,'server')&&!['BOS-Platform','BOS_Platform'].includes(item.server))throw new Error('reviewer_document_scope_invalid');
+    for(const child of Object.values(item))verify(child);
+  };
+  if(extracted)verify(document);
+  return document;
+}
 const privateInput=value=>value&&typeof value==='object'&&Object.entries(value).some(([key,v])=>/^(?:context_handle|context_id|org_id|organization_id|tenant_id|role_id|installed_app_id|authorization|access_token|refresh_token|cookie)$/i.test(key)||privateInput(v));
 const spec=(name,description,properties={},required=[])=>({type:'function',name,description,inputSchema:{type:'object',additionalProperties:false,properties,required}});
 const definitions=[
@@ -54,8 +85,8 @@ export async function createReviewerTools({session,state,release}) {
       return {status:response.status,headers:Object.fromEntries(response.headers),body:responseBody};
     }}
   });
-  const expose=value=>{
-    const raw=body(value),id=digest(raw);documents.set(id,structuredClone(raw));
+  const expose=(value,resourceUri)=>{
+    const raw=reviewerDiscoveryDocument(value,state,resourceUri),id=digest(raw);documents.set(id,structuredClone(raw));
     const advertised=[];
     const collect=(item,foreign=false)=>{
       if(typeof item==='string'){try{collect(JSON.parse(item),foreign);}catch{}return;}
@@ -76,7 +107,7 @@ export async function createReviewerTools({session,state,release}) {
     const previousHandle=state.handle;
     const response=await run();observe({...event,tool_response:response},state);
     if(state.handle!==previousHandle){documents.clear();contacts.clear();}
-    return response?.isError?{isError:true,...expose(response)}:expose(response);
+    return response?.isError?{isError:true,...expose(response,event.tool_input?.uri)}:expose(response,event.tool_input?.uri);
   };
   const call=async(name,args={})=>{
     if(privateInput(args))throw new Error('reviewer_authority_argument');
