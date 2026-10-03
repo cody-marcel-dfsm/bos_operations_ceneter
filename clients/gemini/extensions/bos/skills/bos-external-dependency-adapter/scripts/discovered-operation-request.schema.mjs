@@ -400,6 +400,9 @@ export default {
               "availability": {
                 "enum": [
                   "ready",
+                  "authorization_required",
+                  "configuration_required",
+                  "temporarily_unavailable",
                   "provider_authorization_required",
                   "source_not_available",
                   "source_temporarily_unavailable"

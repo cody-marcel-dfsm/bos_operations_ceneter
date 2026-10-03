@@ -19,7 +19,7 @@
     {
       "id": "external_dependency_discovered_operation_schema",
       "path": "skills/bos-external-dependency-adapter/scripts/discovered-operation-request.schema.mjs",
-      "sha256": "1831c9e273f8bd6510e1260403376935655c333444670e38022fef1ad6596651"
+      "sha256": "7e9da6c8b53e8704ccc4807597473f01096f490494a0c56245df0349237120bc"
     },
     {
       "id": "external_dependency_safe_execution_uri",
@@ -46,7 +46,7 @@
     {
       "path": "discovered-operation.request.schema.json",
       "media_type": "application/schema+json",
-      "sha256": "5f2491a60d8488989ba0e432f3c012550cd4c6cf7b46055d577b5b21f54b3409"
+      "sha256": "2386b825ce846421dc14104b66a3a31ba7becddea8b5d75e5f113bee0e1670e9"
     },
     {
       "path": "discovered-operation.response.example.json",
@@ -79,5 +79,5 @@
       "sha256": "046c4dd184af18af526ed64bd37a75dd316397b3d1437886eb7f57deb5e99d2d"
     }
   ],
-  "bundle_sha256": "2fd85ae17dc71f5853c5f8abd3a34997c82b0ba53c2f91a6d1cf4aac8176d308"
+  "bundle_sha256": "5852221b54bc826c58f3765fcc398ebc8a4d0f6bb4650b1b25fe2f9e5c47798d"
 }

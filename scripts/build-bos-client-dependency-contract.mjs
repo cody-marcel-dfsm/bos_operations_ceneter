@@ -190,7 +190,8 @@ const describedOperation = {
         properties: {
           source: sourceReference,
           availability: {enum: [
-            "ready", "provider_authorization_required", "source_not_available",
+            "ready", "authorization_required", "configuration_required", "temporarily_unavailable",
+            "provider_authorization_required", "source_not_available",
             "source_temporarily_unavailable"
           ]}
         }

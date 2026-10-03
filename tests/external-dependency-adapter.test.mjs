@@ -1601,3 +1601,29 @@ test("automatic recovery preserves the protected resource carried by the failed 
   assert.equal((await current.invokeStateAction(stateAction)).status, 200);
   assert.equal(messages[0].protected_resource, discovered);
 });
+
+
+test("discovered source states preserve current and archived spelling through dependency validation", async () => {
+  for (const availability of ["ready", "authorization_required", "configuration_required", "temporarily_unavailable", "provider_authorization_required", "source_not_available", "source_temporarily_unavailable"]) {
+    const contact = structuredClone(discoveredOperation);
+    contact.sources[0].availability = availability;
+    const requests = [];
+    const current = adapter({request: async (request) => {
+      requests.push(structuredClone(request));
+      return {status: 200, body: {records: []}};
+    }});
+    assert.equal((await current.invokeDiscoveredOperation(contact, {text: "Synthetic Contact"})).status, 200);
+    assert.equal(contact.sources[0].availability, availability);
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].href, contact.execution.uri);
+    assert.equal(requests[0].headers["X-BOS-Context-Handle"], handle("a"));
+  }
+  for (const availability of ["unknown", "Ready", "AUTHORIZATION_REQUIRED"]) {
+    const contact = structuredClone(discoveredOperation);
+    contact.sources[0].availability = availability;
+    let requests = 0;
+    const current = adapter({request: async () => { requests += 1; return {status: 200, body: {records: []}}; }});
+    await assert.rejects(current.invokeDiscoveredOperation(contact, {text: "Synthetic Contact"}), /immutable public schema/);
+    assert.equal(requests, 0);
+  }
+});
