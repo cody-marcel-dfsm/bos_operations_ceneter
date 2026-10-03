@@ -1,10 +1,12 @@
 import {pathToFileURL} from 'node:url';
 import Ajv from 'ajv/dist/2020.js';
 import {permission,observe,body,sanitized,selectReviewerContext} from './marketplace-native-hook.mjs';
-import {createInstalledAcceptance,installedPath,documentDigests} from './marketplace-native-resources.mjs';
+import {createInstalledAcceptance,installedPath,documentDigests,installedValidatorModes} from './marketplace-native-resources.mjs';
 import {readPublishedFile,verifyPublishedPackage} from './marketplace-published-package.mjs';
 import {digest} from './marketplace-prompt-catalog.mjs';
 import {trustedUrl} from './marketplace-reviewer-session.mjs';
+
+import {reviewerFailureCode} from './marketplace-reviewer-diagnostics.mjs';
 
 const controls=new Set(['app.describe','plugins.list','service.describe','api.contract.get','discovery.refresh']);
 export function reviewerDiscoveryDocument(value,state,resourceUri) {
@@ -44,7 +46,7 @@ const definitions=[
   spec('acceptance_guard_probe','Verify the test guard by requesting a deliberate denial.'),
   spec('acceptance_guard_status','Check whether the deliberate denial was recorded.'),
   spec('acceptance_read_installed','Read a verified published installed skill or reference.',{product:{type:'string'},path:{type:'string'}},['path']),
-  spec('acceptance_validate_installed','Validate an actual discovered document with the published validator. Supply its returned document_id; the host retains its exact original bytes.',{path:{type:'string'},mode:{type:'string'},document_id:{type:'string'}},['path','mode','document_id']),
+  spec('acceptance_validate_installed','Validate an actual discovered document with the published validator. Supply its returned document_id; the host retains its exact original bytes. Use app-describe for the app.describe resource; operation-describe for an HTTPS Describe response; api-contract for an API contract response; service-journey for a service journey description. Other supported modes are contact, service, graph, plugins and discovery-refresh.',{path:{type:'string'},mode:{type:'string',enum:installedValidatorModes},document_id:{type:'string'}},['path','mode','document_id']),
   spec('bos_get_context','Discover and select the exact marketplace reviewer scope; the test host retains its private selector.'),
   spec('bos_list_context_tools','Discover tools for the selected reviewer scope.'),
   spec('bos_list_resources','List BOS discovery resources for the reviewer connection.'),
@@ -172,10 +174,11 @@ export async function createReviewerTools({session,state,release}) {
     return {status:result.status,body:sanitized(result.body),operation:contact.operation,transport:'https'};
   };
   return {definitions,call:async(name,args)=>{
-    try{return await call(name,args);}catch{
-      state.observations.push({tool:name,input:sanitized(args),response:{reason:'reviewer_tool_failed'},is_error:true});
+    try{return await call(name,args);}catch(error){
+      const reason=reviewerFailureCode(error);
+      state.observations.push({tool:name,input:sanitized(args),response:{reason},is_error:true});
       if(state.kind==='negative')state.denials.push({tool:name,reason:'negative_case_business_call'});
-      return {isError:true,reason:'reviewer_tool_failed'};
+      return {isError:true,reason};
     }
   }};
 }

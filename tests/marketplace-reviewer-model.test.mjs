@@ -4,7 +4,7 @@ import {EventEmitter} from 'node:events';
 import {PassThrough,Writable} from 'node:stream';
 import {runReviewerModel} from '../scripts/marketplace-reviewer-model.mjs';
 
-function host({servers=[],unexpected=false}={}) {
+function host({servers=[],unexpected=false,failure,failureMethod='error'}={}) {
   const messages=[],child=new EventEmitter();child.stdout=new PassThrough();child.kill=()=>{};
   const reply=value=>queueMicrotask(()=>child.stdout.write(JSON.stringify(value)+'\n'));
   child.stdin=new Writable({write(chunk,encoding,done){
@@ -14,7 +14,8 @@ function host({servers=[],unexpected=false}={}) {
     if(message.method==='thread/start')reply({id:message.id,result:{thread:{id:'isolated'}}});
     if(message.method==='turn/start'){
       reply({id:message.id,result:{}});
-      if(unexpected)reply({method:'item/completed',params:{threadId:'isolated',item:{type:'mcpToolCall'}}});
+      if(failure)reply({method:failureMethod,params:{threadId:'isolated',willRetry:false,error:{message:failure},turn:{status:'failed',error:{message:failure}}}});
+      else if(unexpected)reply({method:'item/completed',params:{threadId:'isolated',item:{type:'mcpToolCall'}}});
       else reply({id:'tool-request',method:'item/tool/call',params:{threadId:'isolated',tool:'test_capability',arguments:{query:'business'},callId:'call',turnId:'turn'}});
     }
     if(message.id==='tool-request'){
@@ -49,4 +50,14 @@ test('disabled connection metadata with no runtime or tools is allowed without u
 test('unexpected native MCP execution fails the isolated run',async()=>{
   const fake=host({unexpected:true});
   await assert.rejects(runReviewerModel({prompt:'exact',directory:'/tmp',serverInventory:[],spawnImpl:fake.spawnImpl,tools:{definitions:[],call:async()=>{}}}),/model_failed/);
+});
+
+
+test('upstream model policy, rate and authentication notifications retain only fixed failure categories',async()=>{
+ const rows=[['content was flagged; private synthetic detail','reviewer_model_policy_rejection'],['quota exceeded; private synthetic detail','reviewer_model_rate_limit'],['authentication failed; private synthetic detail','reviewer_model_authentication_failure'],['private arbitrary failure','reviewer_model_failed']];
+ for(const failureMethod of ['error','turn/completed']) for(const [failure,expected] of rows) {
+  const fake=host({failure,failureMethod});let calls=0;
+  await assert.rejects(runReviewerModel({prompt:'Exact configured negative prompt',directory:'/tmp',serverInventory:[],spawnImpl:fake.spawnImpl,tools:{definitions:[tool],call:async()=>{calls++;}}}),error=>error.message===expected);
+  assert.equal(calls,0);
+ }
 });

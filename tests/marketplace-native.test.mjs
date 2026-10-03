@@ -3,7 +3,7 @@ import {digest} from '../scripts/marketplace-prompt-catalog.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {permission,observe,sanitized,selectReviewerContext} from '../scripts/marketplace-native-hook.mjs';
-import {installedPath,observedDocument,documentDigests} from '../scripts/marketplace-native-resources.mjs';
+import {installedPath,observedDocument,documentDigests,createInstalledAcceptance,installedValidatorModes} from '../scripts/marketplace-native-resources.mjs';
 import {mkdtemp,mkdir,writeFile,rm,symlink,realpath} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
@@ -154,4 +154,35 @@ test('business-case proof requires successful scoped deterministic HTTPS and exa
  assert.deepEqual(caseResponseFailures(item,reviewerResponses([observed])),[]);
  for(const changed of [{transport:undefined},{transport:'https-discovery'},{scope_verified:false},{is_error:true},{tool:'search'}])assert.ok(caseResponseFailures(item,reviewerResponses([{...observed,...changed}])).length>0);
  assert.equal(reviewerResponses([{tool:'bos.execute',input:{tool_name:'plugins.list'},scope_verified:true,response:{plugins:[]}}])[0].operation,'plugins.list');
+});
+
+
+test('failed native receipts retain only completed session and binding proofs with closed diagnostics',async()=>{
+ const {failedNativeCaseReceipt}=await import('../scripts/marketplace-native-run.mjs');
+ const base={product:'bos',id:'negative-3',release_commit:'published'};
+ const session={evidence:{reviewer_url_sha256:'actual-url-hash',reviewer_login_http_status:200,authentication_source:'exact_reviewer_entry_consent_pkce',isolated_connection:true,access_token:'secret'}};
+ const failed=failedNativeCaseReceipt(base,session,true,new Error('reviewer_model_failed'));
+ assert.deepEqual(failed,{...base,reviewer_url_sha256:'actual-url-hash',reviewer_login_http_status:200,authentication_source:'exact_reviewer_entry_consent_pkce',isolated_connection:true,bos_binding_provenance_verified:true,status:'FAIL',reason:'reviewer_model_failed'});
+ const beforeBinding=failedNativeCaseReceipt(base,null,false,new Error('private secret details'));
+ assert.deepEqual(beforeBinding,{...base,status:'FAIL',reason:'native_execution_or_prerequisite_failed'});
+ assert.equal(Object.hasOwn(beforeBinding,'authentication_source'),false);
+ assert.equal(Object.hasOwn(beforeBinding,'bos_binding_provenance_verified'),false);
+ assert.equal(failedNativeCaseReceipt(base,null,true,{code:'reviewer_consent_unavailable'}).reason,'reviewer_consent_unavailable');
+ assert.equal(failedNativeCaseReceipt(base,null,false,{code:'reviewer_arbitrary_secret'}).reason,'native_execution_or_prerequisite_failed');
+});
+
+test('aggregate diagnostics preserve bounded failure categories and reject arbitrary error strings',async()=>{
+ const {reviewerObservationFailures,reviewerFailureCode}=await import('../scripts/marketplace-reviewer-diagnostics.mjs');
+ assert.deepEqual(reviewerObservationFailures([{is_error:true,response:{reason:'reviewer_validator_mode_unsupported'}},{is_error:true,response:{reason:'reviewer_validator_mode_unsupported'}},{is_error:true,response:{reason:'token private secret'}},{response:{valid:false,diagnostic:'private secret'}}]),['reviewer_validator_mode_unsupported','reviewer_tool_failed','reviewer_validation_failed']);
+ assert.equal(reviewerFailureCode(new Error('reviewer_describe_response_invalid')),'reviewer_describe_response_invalid');
+ assert.equal(reviewerFailureCode(new Error('reviewer_describe_response_invalid secret')),'reviewer_tool_failed');
+ assert.equal(reviewerFailureCode({code:'reviewer_model_output_invalid'}),'reviewer_model_output_invalid');
+});
+
+
+test('installed acceptance exposes exactly its supported validator modes and rejects unknown modes',async()=>{
+ const tools=createInstalledAcceptance({},async()=>({}));
+ assert.deepEqual(tools.list.find(row=>row.name==='validate_installed').inputSchema.properties.mode.enum,installedValidatorModes);
+ assert.equal(installedValidatorModes.length,9);
+ await assert.rejects(tools.call('validate_installed',{mode:'unknown'}),{message:'reviewer_validator_mode_unsupported'});
 });

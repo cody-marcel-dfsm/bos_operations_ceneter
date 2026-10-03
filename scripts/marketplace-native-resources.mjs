@@ -4,6 +4,7 @@ import {resolve, relative, isAbsolute} from 'node:path';
 import {spawn} from 'node:child_process';
 import {createInterface} from 'node:readline';
 import {createHash} from 'node:crypto';
+export const installedValidatorModes = Object.freeze(['contact','service','graph','app-describe','plugins','discovery-refresh','service-journey','operation-describe','api-contract']);
 export async function installedPath(root,path) {
  const base=await realpath(root), file=await realpath(resolve(base,path)), rel=relative(base,file);
  if(rel.startsWith('..')||isAbsolute(rel)||!rel.startsWith('skills/'))throw new Error('Resource must be inside verified installed skills');
@@ -23,10 +24,11 @@ export function observedDocument(hashes,document) {
 }
 export function createInstalledAcceptance(config,getState) {
  const tool=(name,properties,required=[])=>({name,description:name,inputSchema:{type:'object',properties,required,additionalProperties:false},annotations:{readOnlyHint:true}});
- const list=[tool('guard_probe',{}),tool('guard_status',{}),tool('read_installed',{product:{type:'string'},path:{type:'string'}},['path']),tool('validate_installed',{path:{type:'string'},mode:{type:'string'},document:{type:'object'}},['path','mode','document'])];
+ const list=[tool('guard_probe',{}),tool('guard_status',{}),tool('read_installed',{product:{type:'string'},path:{type:'string'}},['path']),tool('validate_installed',{path:{type:'string'},mode:{type:'string',enum:installedValidatorModes},document:{type:'object'}},['path','mode','document'])];
  async function call(name,args) {
   if(name==='guard_probe')throw new Error('Guard canary executed: hook enforcement unavailable');
   if(name==='guard_status'){const s=await getState();return {ready:s.canary===true};}
+  if(name==='validate_installed'&&!installedValidatorModes.includes(args.mode))throw new Error('reviewer_validator_mode_unsupported');
   const selected=args.product??config.product;
   if(!Object.hasOwn(config.installed_roots,selected))throw new Error('Unknown installed product');
   const root=name==='validate_installed'?(config.installed_roots.bos??config.installed_root):config.installed_roots[selected];
@@ -34,7 +36,7 @@ export function createInstalledAcceptance(config,getState) {
   const commit=config.published_commits[name==='validate_installed'?'bos':selected]??config.published_commits[config.product];
   await readPublishedFile(root,commit,relative(root,path));
   if(name==='read_installed') {if(!/\.(?:md|json|mjs)$/.test(path))throw new Error('Unsupported published resource');return {text:await readFile(path,'utf8')};}
-  if(name!=='validate_installed'||!path.endsWith('/scripts/validate-discovery.mjs')||!['contact','service','graph','app-describe','plugins','discovery-refresh','service-journey','operation-describe','api-contract'].includes(args.mode))throw new Error('Unsupported installed validator');
+  if(name!=='validate_installed'||!path.endsWith('/scripts/validate-discovery.mjs')||!installedValidatorModes.includes(args.mode))throw new Error('Unsupported installed validator');
   await verifyPublishedPackage(root,commit);
   const state=await getState();
   const target=args.mode==='api-contract'?args.document.response:args.mode==='service-journey'?args.document.description:args.document;
