@@ -116,6 +116,8 @@ test("generated Codex adapter invokes the bounded Gmail attachment contract", as
   };
   const adapter = generatedAdapter.createBosExternalDependencyAdapter({
     hostTransport: {
+      captureExecutionScope: async () => async () => true,
+      verifyExecutionIntent: async () => true,
       getProtectedResource: async () => "https://dfsm.ai/mcp/apps/bos/platform",
       request: async (request) => {
         requests.push(structuredClone(request));
@@ -294,6 +296,8 @@ test("every generated dependency adapter preserves null errors and rejects incom
     const {createBosExternalDependencyAdapter} = await import(moduleUrl);
     const createAdapter = (request) => createBosExternalDependencyAdapter({
       hostTransport: {
+      captureExecutionScope: async () => async () => true,
+      verifyExecutionIntent: async () => true,
         request,
         recoverAuthentication: async () => {
           throw new Error("recovery must not run");
@@ -539,6 +543,8 @@ test("extracted BOS archive executes Draft 2020-12 journey helpers without repos
   const adapterRequests = [];
   const adapter = dependencyAdapter.createBosExternalDependencyAdapter({
     hostTransport: {
+      captureExecutionScope: async () => async () => true,
+      verifyExecutionIntent: async () => true,
       getProtectedResource: async () => "https://dfsm.ai/mcp/apps/bos/platform",
       request: async (request) => {
         adapterRequests.push(structuredClone(request));

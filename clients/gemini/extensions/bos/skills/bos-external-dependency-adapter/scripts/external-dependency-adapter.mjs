@@ -540,6 +540,40 @@ export function createBosExternalDependencyAdapter({
   if (typeof contextProvider?.getExecutionContextHeader !== "function") {
     throw new TypeError("contextProvider.getExecutionContextHeader is required");
   }
+  const captureExecutionScope = async () => {
+    if (typeof hostTransport.captureExecutionScope !== "function") return null;
+    try {
+      const check = await hostTransport.captureExecutionScope();
+      if (typeof check !== "function") throw new Error();
+      return check;
+    } catch {
+      throw new BosDependencyAdapterError("Trusted BOS execution scope is unavailable");
+    }
+  };
+  const assertExecutionScope = async (check) => {
+    try {
+      if (typeof check !== "function" || await check() !== true) throw new Error();
+    } catch {
+      throw new BosDependencyAdapterError("BOS execution scope changed or is unverified; rediscover and re-preview");
+    }
+  };
+  const verifyExecutionIntent = async (intent) => {
+    try {
+      if (typeof hostTransport.verifyExecutionIntent !== "function" ||
+          await hostTransport.verifyExecutionIntent(structuredSnapshot(intent, "execution intent")) !== true) throw new Error();
+      return true;
+    } catch {
+      throw new BosDependencyAdapterError("Trusted BOS execution review is required; prepare the exact intent for review");
+    }
+  };
+  const verifyRequest = async (request, contract, scopeCheck, sensitive) => {
+    if (!sensitive) return;
+    await assertExecutionScope(scopeCheck);
+    await verifyExecutionIntent({request, contract});
+    // Consent or asynchronous review may itself change the host selection.
+    await assertExecutionScope(scopeCheck);
+  };
+
   const handoffInput = async ({ resource, condition, host_correlation }) => {
     const selected = resource ?? await hostTransport.getProtectedResource();
     return { resource: selected, condition, host_correlation };
@@ -638,8 +672,9 @@ export function createBosExternalDependencyAdapter({
     };
   };
 
-  const requestOnce = async (action, payloadSupplied, payload, state) => {
+  const requestOnce = async (action, payloadSupplied, payload, state, scopeCheck) => {
     const request = await buildRequest(action, payloadSupplied, payload, state);
+    await verifyRequest(request, action, scopeCheck, !state && request.method !== "GET");
     try {
       return await hostTransport.request(request);
     } catch (cause) {
@@ -668,13 +703,15 @@ export function createBosExternalDependencyAdapter({
     const pinnedPayload = payloadSupplied
       ? structuredSnapshot(payload, "returned action payload")
       : payload;
+    const scopeCheck = await captureExecutionScope();
     const attempt = async () => {
       try {
         return interpretTransport(await requestOnce(
           pinnedAction,
           payloadSupplied,
           pinnedPayload,
-          state
+          state,
+          scopeCheck
         ));
       } catch (error) {
         if (!(error instanceof BosTransportThrown)) throw error;
@@ -689,6 +726,7 @@ export function createBosExternalDependencyAdapter({
       condition: outcome.condition
     });
 
+    await assertExecutionScope(scopeCheck);
     outcome = await attempt();
     if (outcome.condition) {
       throw new BosDependencyAdapterError("BOS authentication recovery did not restore the operation");
@@ -712,8 +750,10 @@ export function createBosExternalDependencyAdapter({
     if (binaryContract && (!Number.isSafeInteger(binaryContract.maxBytes) || binaryContract.maxBytes < 1)) {
       throw new TypeError("Described binary operation requires an attachment byte limit");
     }
+    const scopeCheck = await captureExecutionScope();
     const requestOnceDiscovered = async () => {
       const request = await buildDiscoveredRequest(pinnedContact, payloadSupplied, pinnedPayload);
+      await verifyRequest(request, pinnedContact, scopeCheck, described.effect !== "read");
       try {
         return await hostTransport.request(request);
       } catch (cause) {
@@ -736,6 +776,7 @@ export function createBosExternalDependencyAdapter({
       condition: outcome.condition
     });
 
+    await assertExecutionScope(scopeCheck);
     outcome = await attempt();
     if (outcome.condition) {
       throw new BosDependencyAdapterError("BOS authentication recovery did not restore the operation");
@@ -744,6 +785,8 @@ export function createBosExternalDependencyAdapter({
   };
 
   return Object.freeze({
+    captureExecutionScope,
+    verifyExecutionIntent,
     recoverAuthentication,
     waitForAuthentication,
     invokeDiscoveredOperation(contact, payload) {

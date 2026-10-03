@@ -82,3 +82,12 @@ the adapter performs one generic BOS authentication handoff, waits through one
 host-owned action when required, obtains a fresh context, and invokes the same
 action once. A second authentication result is a terminal sanitized recovery
 failure. Non-authentication failures are never replayed.
+
+
+## Trusted execution review and scope continuity
+
+The trusted BOS host supplies `hostTransport.captureExecutionScope()`, returning a private verification closure, and `hostTransport.verifyExecutionIntent(intent)`, returning exactly `true` only after validating the exact immutable request/contract. Approval artifacts and scope fingerprints stay inside the host. Bind approval to actor, organization, application, installation, role, effect, targets, parameters and version, with expiry and one-time use. Verify one conceptual record for CRM updates/deletes and genuine human approval for deletion; verify required goal completion before journey success. Model-supplied confirmation booleans never replace that evidence. The host must invalidate pending scope-bound approvals when its scope closure detects a change and validate the request context atomically at dispatch.
+
+Sensitive described effects and non-GET returned actions require both guards before dispatch. The adapter checks scope again after asynchronous review. Every retry after authentication recovery requires the original closure to prove continuity; handle rotation within the same business scope remains valid. Missing or changed scope stops execution and requires rediscovery/re-preview, preserving service-owned state reconciliation. The public adapter exposes captureExecutionScope and verifyExecutionIntent as delegation methods, without exposing raw scope or approval artifacts to dependent products.
+
+A native host without these callbacks supports reads and request preparation; sensitive invocation and unproven recovery fail closed. This repository supplies the integration contract and synthetic tests; it contains no permissive production verifier and establishes no native approval acceptance. Server wire APIs, grants, credential storage and the single BOS connection retain their existing owners. Removing host support returns to preparation-only behavior.
