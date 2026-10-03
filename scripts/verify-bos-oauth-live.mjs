@@ -26,7 +26,7 @@ if (!new Set(["json", "text"]).has(format)) {
 
 const result = await probeBosOAuthAuthorize({
   authorizeUrl,
-  debug: process.env.BOS_HTTP_DEBUG !== "0"
+  debug: process.env.BOS_HTTP_DEBUG === "1"
 });
 if (format === "json") {
   console.log(JSON.stringify(result, null, 2));

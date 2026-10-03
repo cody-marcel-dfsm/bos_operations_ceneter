@@ -1,4 +1,4 @@
-const secretKeyPattern = /(?:authorization|cookie|set-cookie|www-authenticate|proxy-authenticate|token|secret|password|passwd|code|state|verifier|challenge|assertion|credential|session|account[-_]?id|organization[-_]?id|owners?)/i;
+const secretKeyPattern = /(?:authorization|cookie|set-cookie|www-authenticate|proxy-authenticate|token|secret|password|passwd|code|state|verifier|challenge|assertion|credential|session|account[-_]?id|organization[-_]?id|owners?|context[-_]?handle|(?:org|tenant|user|role|actor|installation)[-_]?id)/i;
 const safeUrlParameterNames = new Set(["resource"]);
 const maximumBodyCharacters = 16_384;
 const maximumProtocolPayloadCharacters = 4_096;
@@ -7,6 +7,7 @@ const maximumErrorCharacters = 4_096;
 function redactScalar(value) {
   if (typeof value !== "string") return value;
   return value
+    .replace(/\bbos_ctx_v2[^\s\"\'<>;,}\]]*/gi, "[REDACTED]")
     .replace(
       /(\b(?:authorization|proxy[-_ ]?authorization|cookie|set[-_ ]?cookie)\b\s*[:=]\s*)[\s\S]*/i,
       "$1[REDACTED]"
@@ -45,7 +46,7 @@ export function sanitizeDebugError(error) {
 }
 
 export function createProtocolDebugLogger({
-  enabled = process.env.BOS_HTTP_DEBUG !== "0",
+  enabled = true,
   writer = (line) => process.stderr.write(`${line}\n`),
   source = "bos-protocol"
 } = {}) {
@@ -56,7 +57,11 @@ export function createProtocolDebugLogger({
     },
     write(entry) {
       if (!enabled) return;
-      const redacted = redactValue(entry);
+      const redacted = Object.fromEntries(
+        ["event", "request_id", "protocol_id", "method", "duration_ms", "ok"]
+          .filter((key) => entry[key] !== undefined)
+          .map((key) => [key, redactValue(entry[key], key)])
+      );
       const event = {
         timestamp: new Date().toISOString(),
         source,
@@ -113,13 +118,17 @@ function redactHeaders(headers) {
       : Object.entries(headers);
   return Object.fromEntries(entries.map(([name, value]) => [
     name.toLowerCase(),
-    secretKeyPattern.test(name) ? "[REDACTED]" : redactScalar(String(value))
+    secretKeyPattern.test(name) || !["content-type", "content-length"].includes(name.toLowerCase())
+      ? "[REDACTED]" : redactScalar(String(value))
   ]));
 }
 
 function redactBody(body, contentType = "") {
   if (body == null) return null;
   const text = typeof body === "string" ? body : String(body);
+  if (text === "[REDACTED_OVERSIZED_BODY]" || text.length > maximumBodyCharacters) {
+    return {value: "[REDACTED_OVERSIZED_BODY]", truncated: true};
+  }
   const structuredContent = !contentType ||
     /^(?:application\/(?:json|[^;]+\+json))(?:;|$)/i.test(contentType);
   try {
@@ -155,30 +164,49 @@ function redactBody(body, contentType = "") {
         truncated: false
       };
     }
-    const redacted = redactScalar(text);
-    return {
-      value: redacted.slice(0, maximumBodyCharacters),
-      truncated: redacted.length > maximumBodyCharacters,
-      original_characters: text.length
-    };
+    return {value: "[REDACTED_NON_STRUCTURED_BODY]", truncated: false};
   }
 }
 
 async function responseBody(response) {
+  // Consume only a bounded prefix of the diagnostic clone. The caller retains
+  // the original response, including its unread body.
+  const reader = response.clone().body?.getReader();
+  if (!reader) return "";
+  const chunks = [];
+  let size = 0;
   try {
-    return await response.clone().text();
-  } catch (error) {
-    return `[unavailable: ${error.message}]`;
+    while (size <= maximumBodyCharacters) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      const remaining = maximumBodyCharacters + 1 - size;
+      chunks.push(value.subarray(0, remaining));
+      size += Math.min(value.byteLength, remaining);
+      if (size > maximumBodyCharacters) break;
+    }
+    if (size > maximumBodyCharacters) return "[REDACTED_OVERSIZED_BODY]";
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
+    return new TextDecoder().decode(bytes);
+  } catch {
+    return "[REDACTED_UNAVAILABLE_BODY]";
+  } finally {
+    // Cancellation of a tee branch can wait for the other branch. Do not wait
+    // for the original response to be consumed by the caller.
+    reader.cancel().catch(() => {});
   }
 }
 
 export function createHttpDebugFetch(fetchImpl = fetch, {
-  enabled = process.env.BOS_HTTP_DEBUG !== "0",
+  enabled = true,
   writer = (line) => process.stderr.write(`${line}\n`),
   source = "bos-contract",
-  includeHeaders = true,
-  includeBodies = true
+  includeHeaders = false,
+  includeBodies = false,
+  diagnosticData = null
 } = {}) {
+  const traceBodies = enabled && includeBodies && diagnosticData === "synthetic";
   let requestSequence = 0;
   const write = (entry) => {
     if (!enabled) return;
@@ -196,9 +224,9 @@ export function createHttpDebugFetch(fetchImpl = fetch, {
       event: "http.request",
       request_id: requestId,
       method: (init.method ?? "GET").toUpperCase(),
-      url: redactDebugUrl(url),
+      url: includeHeaders ? redactDebugUrl(url) : "[OMITTED_BY_POLICY]",
       headers: includeHeaders ? redactHeaders(init.headers) : "[OMITTED_BY_POLICY]",
-      body: includeBodies
+      body: traceBodies
         ? redactBody(
           init.body,
           new Headers(init.headers).get("content-type") ?? ""
@@ -216,7 +244,7 @@ export function createHttpDebugFetch(fetchImpl = fetch, {
         headers: includeHeaders
           ? redactHeaders(response.headers)
           : "[OMITTED_BY_POLICY]",
-        body: includeBodies
+        body: traceBodies
           ? redactBody(
             await responseBody(response),
             response.headers.get("content-type") ?? ""
@@ -231,8 +259,7 @@ export function createHttpDebugFetch(fetchImpl = fetch, {
         request_id: requestId,
         duration_ms: Date.now() - startedAt,
         error: {
-          name: sanitizedError.name,
-          message: sanitizedError.message
+          name: "TransportError"
         }
       });
       throw sanitizedError;

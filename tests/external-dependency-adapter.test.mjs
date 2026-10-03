@@ -216,7 +216,7 @@ function adapter({
   getProtectedResource = async () => resource
 } = {}) {
   return createBosExternalDependencyAdapter({
-    hostTransport: { request, recoverAuthentication, waitForAuthentication, getProtectedResource },
+    hostTransport: { request, recoverAuthentication, waitForAuthentication, getProtectedResource, captureExecutionScope: async () => async () => true, verifyExecutionIntent: async () => true },
     contextProvider: { getCurrentContext, getExecutionContextHeader }
   });
 }

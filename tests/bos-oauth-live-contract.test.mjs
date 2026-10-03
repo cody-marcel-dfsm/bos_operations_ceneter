@@ -37,6 +37,7 @@ test("HTTP debug logging pairs every request with a redacted response", async ()
     }
   ), {
     writer: (line) => lines.push(JSON.parse(line)),
+    includeHeaders: true, includeBodies: true, diagnosticData: "synthetic",
     source: "test-http"
   });
 
@@ -122,6 +123,7 @@ test("HTTP debug logging never records HTML challenge bodies", async () => {
     { status: 403, headers: { "content-type": "text/html; charset=UTF-8" } }
   ), {
     writer: (line) => lines.push(JSON.parse(line)),
+    includeBodies: true, diagnosticData: "synthetic",
     source: "test-html-challenge"
   });
 
@@ -171,6 +173,7 @@ test("HTTP debug logging redacts oversized JSON before bounding it", async () =>
     { headers: { "content-type": "application/json" } }
   ), {
     writer: (line) => lines.push(JSON.parse(line)),
+    includeBodies: true, diagnosticData: "synthetic",
     source: "test-oversized-json"
   });
 
@@ -178,7 +181,7 @@ test("HTTP debug logging redacts oversized JSON before bounding it", async () =>
 
   assert.equal(lines[1].body.truncated, true);
   assert.equal(typeof lines[1].body.value, "string");
-  assert.match(lines[1].body.value, /\[REDACTED\]/);
+  assert.equal(lines[1].body.value, "[REDACTED_OVERSIZED_BODY]");
   assert.doesNotMatch(
     JSON.stringify(lines),
     /account-secret|organization-secret|token-secret|refresh-secret/
@@ -192,6 +195,7 @@ test("HTTP debug logging suppresses malformed structured bodies", async () => {
     { headers: { "content-type": "application/json" } }
   ), {
     writer: (line) => lines.push(JSON.parse(line)),
+    includeBodies: true, diagnosticData: "synthetic",
     source: "test-malformed-json"
   });
 
@@ -260,8 +264,7 @@ test("protocol diagnostics bound the final serialized event after oversized summ
   assert.equal(event.request_id, "test-protocol-1");
   assert.equal(event.method, "plugin/read");
   assert.equal(event.summary, undefined);
-  assert.equal(event.payload.truncated, true);
-  assert(event.payload.original_characters > 20_000);
+  assert.equal(event.payload, undefined);
 });
 
 function authorizeUrl() {
@@ -639,7 +642,7 @@ test("Codex stale-refresh recovery diagnostics never expose either token", async
     debugLines.join("\n"),
     new RegExp(`${unknownRefresh}|reauthentication_handoff_secret`)
   );
-  assert.match(debugLines.join("\n"), /\[REDACTED\]/);
+  assert.match(debugLines.join("\n"), /\[OMITTED_BY_POLICY\]/);
 });
 
 test("Codex stale-refresh recovery rejects a pre-authentication tool surface", async () => {
