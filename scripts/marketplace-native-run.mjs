@@ -45,6 +45,11 @@ export async function judgeEvidence(evidence,item,catalog,model,directory) {
  if(execution.failure)return {pass:false,missing:['evaluation_'+execution.failure]};
  try{return JSON.parse(await readFile(outputPath,'utf8'));}catch{return {pass:false,missing:['evaluation_output_invalid']};}
 }
+export function classifyCompletion(kind,status,reasons) {
+ const failures=[...reasons];
+ if(kind!=='negative'&&status!=='completed')failures.push('product_prerequisite');
+ return {status:failures.length?'FAIL':'PASS',reason:failures.join(',')};
+}
 export async function nativeCase(catalog,item,config,release,model) {
  const directory=await mkdtemp(join(tmpdir(),'marketplace-native-'));
  const base={transport_mode:'published_host_binding',id:item.id,prompt_sha256:digest(item.prompt),configuration_sha256:catalog.configuration_sha256,installed_version:release.version,release_commit:release.release_commit,...(release.dependency?{bos_dependency_commit:release.dependency.release_commit}:{})};
@@ -82,7 +87,7 @@ export async function nativeCase(catalog,item,config,release,model) {
   const guardRequired=item.kind!=='negative'||nativeTools.length>0;
   const errors=observed.some(row=>row.is_error||row.response?.valid===false);
   const calls=observed.filter(row=>!['guard.status','read.installed','validate.installed'].includes(row.tool));
-  const reasons=[];if(state.denials.some(row=>row.reason!=='guard_canary_denied'))reasons.push('guard_rejected_tool_attempt');if(guardRequired&&!guard)reasons.push('guard_unverified');if(!state.handle && item.kind!=='negative')reasons.push('reviewer_scope_unverified');if(code!==0)reasons.push('native_execution_failed');if(result.status!=='completed')reasons.push('product_prerequisite');if(errors)reasons.push('contract_or_api_failure');if(observed.some(row=>row.tool==='read.mcp.resource'&&row.input?.uri?.includes('app.describe'))&&!observed.some(row=>row.tool==='validate.installed'&&row.input?.mode==='app-describe'&&row.response?.valid===true))reasons.push('unvalidated_app_description');if(!result.answer?.trim())reasons.push('empty_answer');
+  const reasons=[];if(state.denials.some(row=>row.reason!=='guard_canary_denied'))reasons.push('guard_rejected_tool_attempt');if(guardRequired&&!guard)reasons.push('guard_unverified');if(!state.handle && item.kind!=='negative')reasons.push('reviewer_scope_unverified');if(code!==0)reasons.push('native_execution_failed');if(errors)reasons.push('contract_or_api_failure');if(observed.some(row=>row.tool==='read.mcp.resource'&&row.input?.uri?.includes('app.describe'))&&!observed.some(row=>row.tool==='validate.installed'&&row.input?.mode==='app-describe'&&row.response?.valid===true))reasons.push('unvalidated_app_description');if(!result.answer?.trim())reasons.push('empty_answer');
   // Native observations are actual host calls. A model's completion claim never grants PASS.
   if(item.kind!=='negative' && !calls.length)reasons.push('missing_live_execution');
   if(item.expected_operation && !observed.some(row=>row.tool===item.expected_operation.replaceAll('_','.') || row.input?.tool_name===item.expected_operation))reasons.push('expected_operation_missing');
@@ -92,7 +97,7 @@ export async function nativeCase(catalog,item,config,release,model) {
   if(judgment.pass!==true||judgment.missing?.length!==0)reasons.push('configured_outcome_failed');
   for(const reason of judgment.missing??[])if(/^evaluation_(?:native_(?:host_policy_rejection|rate_limit|authentication_failure|request_failed|timeout|process_failed)|output_invalid)$/.test(reason))reasons.push(reason);
   if(loginStatus!==200)reasons.push('reviewer_login_http_'+loginStatus);
-  return {...base,status:reasons.length?'FAIL':'PASS',reason:reasons.join(','),evaluation_missing_count:judgment.missing?.length,native_calls:calls.length,tools:[...new Set(calls.map(row=>row.tool))],guard_verified:guard,guard_required:guardRequired,reviewer_scope_verified:!!state.handle,evidence_sha256:digest(evidence),observed_status:result.status,validator_failure_count:observed.filter(row=>row.response?.valid===false).length,reviewer_login_http_status:loginStatus};
+  return {...base,...classifyCompletion(item.kind,result.status,reasons),evaluation_missing_count:judgment.missing?.length,native_calls:calls.length,tools:[...new Set(calls.map(row=>row.tool))],guard_verified:guard,guard_required:guardRequired,reviewer_scope_verified:!!state.handle,evidence_sha256:digest(evidence),observed_status:result.status,validator_failure_count:observed.filter(row=>row.response?.valid===false).length,reviewer_login_http_status:loginStatus};
  }catch{return {...base,status:'FAIL',reason:'native_execution_or_prerequisite_failed'};}finally{await rm(directory,{recursive:true,force:true});}
 }
 export async function runNativeCatalog(load,config,verifyRelease,model,selected=[],execute=nativeCase) {

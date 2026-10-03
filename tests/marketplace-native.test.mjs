@@ -1,4 +1,4 @@
-import {verifyNativeReviewer,classifyNativeFailure} from '../scripts/marketplace-native-run.mjs';
+import {verifyNativeReviewer,classifyNativeFailure,classifyCompletion} from '../scripts/marketplace-native-run.mjs';
 import {digest} from '../scripts/marketplace-prompt-catalog.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -130,4 +130,18 @@ test('native diagnostic classification retains no raw provider content',()=>{
  assert.equal(classifyNativeFailure({type:'error',message:'Invalid access token'}),'native_authentication_failure');
  assert.equal(classifyNativeFailure({type:'error',message:'Unexpected upstream failure'}),'native_request_failed');
  assert.equal(classifyNativeFailure({type:'item.completed',message:'This content was flagged for possible cybersecurity risk'}),null);
+});
+
+test('negative refusal status passes only after all other acceptance gates pass',()=>{
+ assert.deepEqual(classifyCompletion('negative','blocked',[]),{status:'PASS',reason:''});
+ assert.deepEqual(classifyCompletion('negative','completed',[]),{status:'PASS',reason:''});
+ for(const reason of ['configured_outcome_failed','negative_native_invocation','guard_unverified']) {
+  assert.deepEqual(classifyCompletion('negative','blocked',[reason]),{status:'FAIL',reason});
+ }
+ for(const kind of ['starter','positive']) {
+  assert.deepEqual(classifyCompletion(kind,'blocked',[]),{status:'FAIL',reason:'product_prerequisite'});
+  assert.deepEqual(classifyCompletion(kind,'completed',[]),{status:'PASS',reason:''});
+ }
+ const existing=['configured_outcome_failed'];classifyCompletion('positive','blocked',existing);
+ assert.deepEqual(existing,['configured_outcome_failed']);
 });
