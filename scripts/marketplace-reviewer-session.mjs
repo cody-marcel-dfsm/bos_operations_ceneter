@@ -36,6 +36,8 @@ export function reviewerConsent(html,origin) {
 export async function openReviewerSession({reviewerUrl,resource,fetchImpl=fetch}) {
   const origin=new URL(resource).origin;
   trustedUrl(resource,origin);trustedUrl(reviewerUrl,origin);
+  const requestedProtocol='2025-06-18';
+  let negotiatedProtocol=requestedProtocol;
   let grant=null,metadata=null,clientId=null,closed=false,sessionId=null,rpcId=0;
   const cookies=new Map();
   const listener=createServer((req,res)=>{res.writeHead(404);res.end();});
@@ -113,7 +115,7 @@ export async function openReviewerSession({reviewerUrl,resource,fetchImpl=fetch}
       return request(url,{...options,headers});
     };
     const rpc=async(method,params={})=>{
-      const headers={'content-type':'application/json',accept:'application/json, text/event-stream','mcp-protocol-version':'2024-11-05'};
+      const headers={'content-type':'application/json',accept:'application/json, text/event-stream','mcp-protocol-version':negotiatedProtocol};
       if(sessionId)headers['mcp-session-id']=sessionId;
       const id=++rpcId;const response=await authorized(resource,{method:'POST',headers,body:JSON.stringify({jsonrpc:'2.0',id,method,params})});
       if(!response.ok)fail('reviewer_mcp_request_failed');
@@ -122,8 +124,10 @@ export async function openReviewerSession({reviewerUrl,resource,fetchImpl=fetch}
       try{envelope=JSON.parse(text);}catch{const rows=text.split(/\r?\n/).filter(row=>row.startsWith('data:')).map(row=>{try{return JSON.parse(row.slice(5).trim());}catch{return null;}});envelope=rows.find(row=>row?.id===id);}
       if(envelope?.id!==id||envelope.error||!Object.hasOwn(envelope,'result'))fail('reviewer_mcp_response_invalid');return envelope.result;
     };
-    await rpc('initialize',{protocolVersion:'2024-11-05',capabilities:{},clientInfo:{name:'marketplace-reviewer-test',version:'1'}});
-    const initializedHeaders={'content-type':'application/json',accept:'application/json, text/event-stream','mcp-protocol-version':'2024-11-05',...(sessionId?{'mcp-session-id':sessionId}:{})};
+    const negotiation=await rpc('initialize',{protocolVersion:requestedProtocol,capabilities:{},clientInfo:{name:'marketplace-reviewer-test',version:'1'}});
+    if(negotiation.protocolVersion!==requestedProtocol)fail('reviewer_mcp_protocol_unsupported');
+    negotiatedProtocol=negotiation.protocolVersion;
+    const initializedHeaders={'content-type':'application/json',accept:'application/json, text/event-stream','mcp-protocol-version':negotiatedProtocol,...(sessionId?{'mcp-session-id':sessionId}:{})};
     const initialized=await authorized(resource,{method:'POST',headers:initializedHeaders,body:JSON.stringify({jsonrpc:'2.0',method:'notifications/initialized'})});
     if(!initialized.ok)fail('reviewer_mcp_initialization_failed');await initialized.body?.cancel();
     return Object.freeze({rpc,request:authorized,close:cleanup,evidence:Object.freeze({reviewer_url_sha256:createHash('sha256').update(reviewerUrl).digest('hex'),reviewer_login_http_status:200,authentication_source:'exact_reviewer_entry_consent_pkce',isolated_connection:true})});
