@@ -1627,3 +1627,23 @@ test("discovered source states preserve current and archived spelling through de
     assert.equal(requests, 0);
   }
 });
+
+
+test('dependency schema accepts existing optional Boolean multiple-selector limit and fails invalid metadata before requests',async()=>{
+ for(const value of [true,false]) {
+  const contact=structuredClone(discoveredOperation);contact.limits.multiple_selectors_per_source=value;
+  const requests=[];const current=adapter({request:async request=>{requests.push(request);return {status:200,body:{records:[]}};}});
+  assert.equal((await current.invokeDiscoveredOperation(contact,{text:'Synthetic Contact'})).status,200);
+  assert.equal(contact.limits.multiple_selectors_per_source,value);assert.equal(requests.length,1);
+  assert.equal(requests[0].headers['X-BOS-Context-Handle'],handle('a'));
+ }
+ for(const value of [null,'true',1,{},[]]) {
+  const contact=structuredClone(discoveredOperation);contact.limits.multiple_selectors_per_source=value;
+  let requests=0;const current=adapter({request:async()=>{requests++;return {status:200,body:{records:[]}};}});
+  await assert.rejects(current.invokeDiscoveredOperation(contact,{text:'Synthetic Contact'}),/immutable public schema/);
+  assert.equal(requests,0);
+ }
+ const contact=structuredClone(discoveredOperation);contact.limits.invented_selector_limit=true;
+ let requests=0;const current=adapter({request:async()=>{requests++;return {status:200,body:{records:[]}};}});
+ await assert.rejects(current.invokeDiscoveredOperation(contact,{text:'Synthetic Contact'}),/immutable public schema/);assert.equal(requests,0);
+});

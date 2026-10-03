@@ -161,6 +161,9 @@ export default {
             "streaming_supported": {
               "type": "boolean"
             },
+            "multiple_selectors_per_source": {
+              "type": "boolean"
+            },
             "maximum_attachment_bytes": {
               "type": "integer",
               "minimum": 1,

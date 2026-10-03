@@ -8,7 +8,7 @@ import {promisify} from 'node:util';
 import {createReviewerTools,reviewerDiscoveryDocument} from '../scripts/marketplace-reviewer-tools.mjs';
 import {syntheticAppDescribe,syntheticOperationDescribe} from './helpers/synthetic-bos-discovery-service.mjs';
 import {digest} from '../scripts/marketplace-prompt-catalog.mjs';
-import {documentDigests,observedDocument} from '../scripts/marketplace-native-resources.mjs';
+import {documentDigests,observedDocument,installedValidatorModes} from '../scripts/marketplace-native-resources.mjs';
 
 const run=promisify(execFile);
 const context={context_handle:'bos_ctx_v2_'+'a'.repeat(64),organization_name:'Synthetic',application_name:'Synthetic App',installation_name:'Synthetic Installation',role_label:'Reviewer',is_default:true};
@@ -40,8 +40,16 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
    return new Response(JSON.stringify(response),{headers:{'content-type':'application/json'}});
   }};
   const tools=await createReviewerTools({session,state,release:{path:root,release_commit:commit}});
+  const definition=tools.definitions.find(row=>row.name==='acceptance_validate_installed');
+  assert.deepEqual(definition.inputSchema.properties.mode.enum,installedValidatorModes);
+  assert.match(definition.description,/app-describe.*app.describe resource/);
+  assert.match(definition.description,/operation-describe.*HTTPS Describe response/);
   const observed=await tools.call('bos_read_resource',{uri});const args={document_id:observed.document_id,operations:['search']};
   assert.equal((await tools.call('bos_https_describe',args)).isError,true);assert.equal(requests,0);
+  const invalidMode=await tools.call('acceptance_validate_installed',{path:'skills/bos-app-discovery/scripts/validate-discovery.mjs',mode:'invented-mode',document_id:observed.document_id});
+  assert.deepEqual(invalidMode,{isError:true,reason:'reviewer_validator_mode_unsupported'});
+  assert.equal(requests,0);
+  assert.equal(state.validated_contracts['app-describe'],undefined);
   const checked=await tools.call('acceptance_validate_installed',{path:'skills/bos-app-discovery/scripts/validate-discovery.mjs',mode:'app-describe',document_id:observed.document_id});
   assert.equal(checked.valid,true);
   for(const keys of [[],['search','search'],['unadvertised'],Array(6).fill('search')]){
@@ -61,7 +69,8 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   assert.doesNotMatch(JSON.stringify(result),/bos_ctx_v2_|context_handle/);
   response={...response,operations:[]};assert.equal((await tools.call('bos_https_describe',args)).isError,true);
   response=describeResponse();response.operations[0].input_schema=null;
-  assert.equal((await tools.call('bos_https_describe',args)).isError,true);
+  assert.deepEqual(await tools.call('bos_https_describe',args),{isError:true,reason:'reviewer_describe_response_invalid'});
+  assert.equal(state.observations.at(-1).response.reason,'reviewer_describe_response_invalid');
   response={...syntheticOperationDescribe(),operations:[{operation:'search',status:'not_available'}]};
   const unavailable=await tools.call('bos_https_describe',args);
   assert.deepEqual(unavailable.document.operations,response.operations);assert.equal(unavailable.advertised_https_contacts,undefined);

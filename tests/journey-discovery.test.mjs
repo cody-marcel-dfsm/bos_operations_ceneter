@@ -1027,3 +1027,27 @@ test("operation source availability preserves current and archived states", () =
     assert.throws(() => validateOperationDescription(response), /availability is invalid/);
   }
 });
+
+
+test('existing optional multiple-selector limit preserves Boolean values and rejects invalid or unknown fields',()=>{
+ for(const value of [true,false]) {
+  const document=structuredClone(operationDescription);
+  document.operations[0].sources=[structuredClone(describeResponse.operations[0].sources[0])];
+  document.operations[0].limits.multiple_selectors_per_source=value;
+  document.operations[0].sources[0].limits.multiple_selectors_per_source=value;
+  assert.equal(validateOperationDescription(document),document);
+  assert.equal(document.operations[0].limits.multiple_selectors_per_source,value);
+  assert.equal(document.operations[0].sources[0].limits.multiple_selectors_per_source,value);
+ }
+ assert.equal(validateOperationDescription(operationDescription),operationDescription);
+ for(const value of [null,'true',1,{},[]]) {
+  for(const target of ['operation','source']) {
+   const document=structuredClone(operationDescription);
+  document.operations[0].sources=[structuredClone(describeResponse.operations[0].sources[0])];
+   (target==='operation'?document.operations[0].limits:document.operations[0].sources[0].limits).multiple_selectors_per_source=value;
+   assert.throws(()=>validateOperationDescription(document),/multiple_selectors_per_source/);
+  }
+ }
+ const unknown=structuredClone(operationDescription);unknown.operations[0].limits.invented_selector_limit=true;
+ assert.throws(()=>validateOperationDescription(unknown),/undeclared field/);
+});

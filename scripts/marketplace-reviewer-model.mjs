@@ -1,3 +1,4 @@
+import {reviewerFailureCode,reviewerModelNotificationFailure} from './marketplace-reviewer-diagnostics.mjs';
 import {spawn,execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {createInterface} from 'node:readline';
@@ -20,14 +21,14 @@ export async function runReviewerModel({prompt,model,directory,instructions,tool
   completed.catch(()=>{});
   const send=message=>child.stdin.write(JSON.stringify(message)+'\n');
   const request=(method,params)=>new Promise((resolve,reject)=>{const current=++id;pending.set(current,{resolve,reject});send({jsonrpc:'2.0',id:current,method,params});});
-  const fail=()=>{if(finished)return;finished=true;for(const waiter of pending.values())waiter.reject(new Error('reviewer_model_failed'));pending.clear();rejectTurn(new Error('reviewer_model_failed'));};
+  const fail=(reason='reviewer_model_failed')=>{if(finished)return;finished=true;const known=reviewerFailureCode({code:reason});const code=known.startsWith('reviewer_model_')?known:'reviewer_model_failed';for(const waiter of pending.values())waiter.reject(new Error(code));pending.clear();rejectTurn(new Error(code));};
   const timer=setTimeout(()=>{fail();child.kill('SIGTERM');},timeout);
   child.on('error',fail);child.on('close',()=>{if(!finished)fail();});
   const lines=createInterface({input:child.stdout});
   let handling=Promise.resolve();
   lines.on('line',line=>{
     let message;try{message=JSON.parse(line);}catch{return;}
-    if(message.id!==undefined&&!message.method){const waiter=pending.get(message.id);if(!waiter)return;pending.delete(message.id);if(message.error)waiter.reject(new Error('reviewer_model_request_failed'));else waiter.resolve(message.result);return;}
+    if(message.id!==undefined&&!message.method){const waiter=pending.get(message.id);if(!waiter)return;pending.delete(message.id);if(message.error)waiter.reject(new Error(reviewerModelNotificationFailure(message,'reviewer_model_request_failed')));else waiter.resolve(message.result);return;}
     if(message.method==='item/tool/call'&&message.id!==undefined){
       handling=handling.then(async()=>{
         const params=message.params;
@@ -35,7 +36,7 @@ export async function runReviewerModel({prompt,model,directory,instructions,tool
           send({jsonrpc:'2.0',id:message.id,result:{success:false,contentItems:[{type:'inputText',text:'Unknown test capability'}]}});return;
         }
         nativeTools.push({server:params.tool.startsWith('acceptance_')?'Acceptance':'reviewer-test-host',tool:params.tool});
-        let value;try{const args=typeof params.arguments==='string'?JSON.parse(params.arguments):params.arguments;value=await tools.call(params.tool,args??{});}catch{value={isError:true,reason:'reviewer_tool_failed'};}
+        let value;try{const args=typeof params.arguments==='string'?JSON.parse(params.arguments):params.arguments;value=await tools.call(params.tool,args??{});}catch(error){value={isError:true,reason:reviewerFailureCode(error)};}
         send({jsonrpc:'2.0',id:message.id,result:{success:value.isError!==true,contentItems:[{type:'inputText',text:JSON.stringify(value)}]}});
       }).catch(fail);return;
     }
@@ -45,9 +46,9 @@ export async function runReviewerModel({prompt,model,directory,instructions,tool
       if(['commandExecution','mcpToolCall','webSearch','fileChange'].includes(item?.type))fail();
     }
     if(message.method==='turn/completed'&&message.params?.threadId===threadId){
-      if(message.params.turn?.status!=='completed')fail();else{finished=true;resolveTurn();}
+      if(message.params.turn?.status!=='completed')fail(reviewerModelNotificationFailure(message));else{finished=true;resolveTurn();}
     }
-    if(message.method==='error'&&message.params?.willRetry!==true)fail();
+    if(message.method==='error'&&message.params?.willRetry!==true)fail(reviewerModelNotificationFailure(message));
   });
   try {
     await request('initialize',{clientInfo:{name:'marketplace-reviewer-integration',version:'1'},capabilities:{experimentalApi:true}});

@@ -572,6 +572,10 @@ export function validateDiscoveryRefresh(response) {
 
 function validateOperationLimits(limits, label, { complete = false } = {}) {
   requireObject(limits, label);
+  if (Object.hasOwn(limits, "multiple_selectors_per_source") &&
+      typeof limits.multiple_selectors_per_source !== "boolean") {
+    throw new Error(`${label}.multiple_selectors_per_source must be a boolean`);
+  }
   if (!Number.isInteger(limits.maximum_duration_seconds) ||
       limits.maximum_duration_seconds < 1 ||
       limits.maximum_duration_seconds > 900) {
@@ -608,6 +612,10 @@ function validateOperationLimits(limits, label, { complete = false } = {}) {
 
 function validateSourceOperationLimits(limits, label) {
   requireObject(limits, label);
+  if (Object.hasOwn(limits, "multiple_selectors_per_source") &&
+      typeof limits.multiple_selectors_per_source !== "boolean") {
+    throw new Error(`${label}.multiple_selectors_per_source must be a boolean`);
+  }
   requireExactKeys(
     limits,
     new Set([
@@ -616,6 +624,7 @@ function validateSourceOperationLimits(limits, label) {
       "pagination_supported",
       "bulk_supported",
       "streaming_supported",
+      "multiple_selectors_per_source",
       "maximum_attachment_bytes",
       "maximum_duration_seconds",
       "maximum_fan_out"
@@ -1088,6 +1097,7 @@ export function validateOperationDescription(response) {
         "pagination_supported",
         "bulk_supported",
         "streaming_supported",
+        "multiple_selectors_per_source",
         "maximum_attachment_bytes",
         "maximum_duration_seconds",
         "maximum_fan_out"

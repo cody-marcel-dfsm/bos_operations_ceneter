@@ -82,6 +82,7 @@ const limits = {
     pagination_supported: {type: "boolean"},
     bulk_supported: {type: "boolean"},
     streaming_supported: {type: "boolean"},
+    multiple_selectors_per_source: {type: "boolean"},
     maximum_attachment_bytes: {
       type: "integer",
       minimum: 1,
