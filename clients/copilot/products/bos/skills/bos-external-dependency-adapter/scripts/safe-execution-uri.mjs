@@ -1,4 +1,4 @@
-const rawUriPattern = /^(?:[A-Za-z0-9._~!$&'()*+,;=:@{}/?-]|%[0-9A-F]{2})+$/u;
+const rawUriPattern = /^(?:[A-Za-z0-9._~!$&'()*+,;=:@/?-]|%[0-9A-F]{2})+$/u;
 const percentOctetPattern = /%([0-9A-F]{2})/gu;
 const asciiUnreservedByte = (byte) =>
   (byte >= 0x41 && byte <= 0x5A) ||
@@ -29,7 +29,7 @@ export function validateSafeBosExecutionUri(value, label = "execution URI") {
     throw new TypeError(`${label} must be a canonical safe origin-relative /bos/ URI`);
   }
   if (decoded.normalize("NFC") !== decoded || decodedControlPattern.test(decoded) ||
-      /[\\#]/u.test(decoded)) {
+      /[\\#{}]/u.test(decoded)) {
     throw new TypeError(`${label} must be a canonical safe origin-relative /bos/ URI`);
   }
 

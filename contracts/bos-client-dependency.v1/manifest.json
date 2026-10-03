@@ -24,7 +24,7 @@
     {
       "id": "external_dependency_safe_execution_uri",
       "path": "skills/bos-external-dependency-adapter/scripts/safe-execution-uri.mjs",
-      "sha256": "22898160f65ed1b534fb7e69cc81b7a95f914a53d004a308c51ea287bac28675"
+      "sha256": "efca627eeb29155e2017c36cf82656a94085f13d13453d31745d4a7baff76701"
     },
     {
       "id": "shared_cache_consumer",
@@ -79,5 +79,5 @@
       "sha256": "046c4dd184af18af526ed64bd37a75dd316397b3d1437886eb7f57deb5e99d2d"
     }
   ],
-  "bundle_sha256": "adb5eb550fdc359f3745372aabb8c5603f2a912083a973352474982c218ccbb1"
+  "bundle_sha256": "2fd85ae17dc71f5853c5f8abd3a34997c82b0ba53c2f91a6d1cf4aac8176d308"
 }

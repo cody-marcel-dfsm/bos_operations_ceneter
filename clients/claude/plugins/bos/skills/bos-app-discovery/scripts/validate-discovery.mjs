@@ -91,7 +91,7 @@ const goalClasses = new Set([
 const leadDirectorAppDescribe = Object.freeze({
   contractVersion: "lead-director-describe/v1",
   method: "POST",
-  uri: "/bos/apps/lead-director/api/v1/organizations/{organization}/describe",
+  uri: /^\/bos\/apps\/lead-director\/api\/v1\/organizations\/[A-Za-z0-9][A-Za-z0-9._~-]{0,127}\/describe$/u,
   maxOperations: 5
 });
 const operationIdPattern = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u;
@@ -309,7 +309,7 @@ export function validateAppDescribe(description) {
     throw new Error(`app.describe response.describe.method must be ${leadDirectorAppDescribe.method}`);
   }
   requireString(description.describe.uri, "app.describe response.describe.uri");
-  if (description.describe.uri !== leadDirectorAppDescribe.uri) {
+  if (!leadDirectorAppDescribe.uri.test(description.describe.uri)) {
     throw new Error(`app.describe response.describe.uri must be ${leadDirectorAppDescribe.uri}`);
   }
   if (description.describe.max_operations !== leadDirectorAppDescribe.maxOperations) {
@@ -748,7 +748,7 @@ function validateExecutionContract(execution, label) {
   }
   requireString(execution.uri, `${label}.uri`);
   if (!execution.uri.startsWith("/") || execution.uri.startsWith("//") ||
-      /[\s\\#]/u.test(execution.uri)) {
+      /[\s\\#{}]/u.test(execution.uri) || /%(?:7b|7d)/iu.test(execution.uri)) {
     throw new Error(`${label}.uri must be a safe returned origin-relative URI`);
   }
 

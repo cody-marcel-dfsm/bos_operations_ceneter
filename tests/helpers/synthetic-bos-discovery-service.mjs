@@ -39,7 +39,7 @@ export function syntheticAppDescribe() {
     describe: {
       contract_version: "lead-director-describe/v1",
       method: "POST",
-      uri: "/bos/apps/lead-director/api/v1/organizations/{organization}/describe",
+      uri: "/bos/apps/lead-director/api/v1/organizations/synthetic/describe",
       max_operations: 5,
       operations: ["search", "create", "update", "delete", "calendar_read_event"]
     },
@@ -86,7 +86,7 @@ export function syntheticOperationDescribe() {
       execution: {
         context_header: "X-BOS-Context-Handle",
         method: "POST",
-        uri: "/bos/apps/lead-director/api/v1/organizations/{organization}/search"
+        uri: "/bos/apps/lead-director/api/v1/organizations/synthetic/search"
       },
       input_schema: inputSchema,
       output_schema: outputSchema,
@@ -136,7 +136,7 @@ export function syntheticApiContract() {
       context_header: "X-BOS-Context-Handle",
       method: "POST",
       transport: null,
-      uri: "/bos/apps/lead-director/api/v1/organizations/{organization}/calendar/events/search"
+      uri: "/bos/apps/lead-director/api/v1/organizations/synthetic/calendar/events/search"
     },
     retry_policy: {maximum_attempts: 2},
     receipt_schema: schema({count: {type: "integer", minimum: 0}}, ["count"]),

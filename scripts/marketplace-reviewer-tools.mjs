@@ -4,6 +4,7 @@ import {permission,observe,body,sanitized,selectReviewerContext} from './marketp
 import {createInstalledAcceptance,installedPath,documentDigests} from './marketplace-native-resources.mjs';
 import {readPublishedFile,verifyPublishedPackage} from './marketplace-published-package.mjs';
 import {digest} from './marketplace-prompt-catalog.mjs';
+import {trustedUrl} from './marketplace-reviewer-session.mjs';
 
 const controls=new Set(['app.describe','plugins.list','service.describe','api.contract.get','discovery.refresh']);
 export function reviewerDiscoveryDocument(value,state,resourceUri) {
@@ -49,6 +50,7 @@ const definitions=[
   spec('bos_list_resources','List BOS discovery resources for the reviewer connection.'),
   spec('bos_read_resource','Read an advertised BOS discovery resource.',{uri:{type:'string'}},['uri']),
   spec('bos_control_discover','Run a discovered BOS control-plane operation. Business operations use bos_https_operation.',{operation:{type:'string',enum:[...controls]},arguments:{type:'object'}},['operation','arguments']),
+  spec('bos_https_describe','POST one to five current advertised operation keys to the validated app.describe contact. Use its observed document_id.',{document_id:{type:'string'},operations:{type:'array',minItems:1,maxItems:5,uniqueItems:true,items:{type:'string'}}},['document_id','operations']),
   spec('bos_https_operation','Execute an operation contact returned by actual discovery through the published BOS HTTPS dependency adapter. Use the returned contact_id and its exact payload schema.',{contact_id:{type:'string'},payload:{}},['contact_id'])
 ];
 
@@ -136,6 +138,26 @@ export async function createReviewerTools({session,state,release}) {
     if(name==='bos_control_discover'){
       if(!controls.has(args.operation))throw new Error('reviewer_mcp_business_call_forbidden');
       return guarded({tool_name:'mcp__BOS__bos_execute',tool_input:{context_handle:state.handle,tool_name:args.operation,arguments:args.arguments}},()=>mcp('bos.execute',{context_handle:state.handle,tool_name:args.operation,arguments:args.arguments}));
+    }
+    if(name==='bos_https_describe'){
+      if(!state.canary||state.kind==='negative'||!state.handle||!state.allowed_effects?.includes('read'))throw new Error('reviewer_discovery_not_approved');
+      const app=documents.get(args.document_id),contact=app?.describe,keys=args.operations;
+      if(!app||state.validated_contracts?.['app-describe']!==digest(app)||Object.values(state.failed_validations??{}).some(Boolean))throw new Error('reviewer_app_description_unvalidated');
+      if(contact?.method!=='POST'||contact.max_operations!==5||!Array.isArray(contact.operations)||!Array.isArray(keys)||keys.length<1||keys.length>5||new Set(keys).size!==keys.length||keys.some(key=>typeof key!=='string'||!contact.operations.includes(key)))throw new Error('reviewer_describe_selection_invalid');
+      if(typeof contact.uri!=='string'||/[{}]/.test(contact.uri)||/%(?:7b|7d)/i.test(contact.uri))throw new Error('reviewer_describe_contact_unresolved');
+      const origin=new URL(state.resource).origin,url=trustedUrl(new URL(contact.uri,origin).href,origin);
+      if(url.search||!url.pathname.endsWith('/describe'))throw new Error('reviewer_describe_contact_invalid');
+      const current=await freshContext();
+      if(!documents.has(args.document_id)||state.validated_contracts?.['app-describe']!==digest(app))throw new Error('reviewer_discovery_refresh_required');
+      const response=await session.request(url.href,{method:contact.method,headers:{'content-type':'application/json','X-BOS-Context-Handle':current.context.context_handle},body:JSON.stringify({operations:keys})});
+      if(!response.ok||!/^application\/(?:json|[a-z0-9.+-]+\+json)(?:;|$)/i.test(response.headers.get('content-type')??''))throw new Error('reviewer_describe_http_failed');
+      const raw=reviewerDiscoveryDocument(await response.json(),state);
+      if(!Array.isArray(raw.operations)||JSON.stringify(raw.operations.map(row=>row.operation))!==JSON.stringify(keys))throw new Error('reviewer_describe_response_mismatch');
+      observe({tool_name:'mcp__BOS__app_describe',tool_input:{operations:keys},tool_response:raw},state);
+      state.observations.at(-1).transport='https-discovery';
+      const validation=await installed.call('validate_installed',{path:'skills/bos-app-discovery/scripts/validate-discovery.mjs',mode:'operation-describe',document:raw});
+      if(validation.valid!==true)throw new Error('reviewer_describe_response_invalid');
+      return {...expose(raw),transport:'https-discovery'};
     }
     if(name!=='bos_https_operation')throw new Error('reviewer_tool_unknown');
     const contact=contacts.get(args.contact_id);if(!contact)throw new Error('reviewer_contact_not_observed');

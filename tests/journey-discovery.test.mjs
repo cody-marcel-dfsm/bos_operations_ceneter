@@ -187,7 +187,7 @@ const operationDescription = {
     },
     execution: {
       method: "POST",
-      uri: "/bos/apps/lead-director/api/v1/organizations/{organization}/calendar/events/read"
+      uri: "/bos/apps/lead-director/api/v1/organizations/synthetic/calendar/events/read"
     },
     input_schema: {
       $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -356,7 +356,7 @@ test("attachment discovery preserves bounded binary response contracts end to en
     },
     execution: {
       ...attachmentContract.execution,
-      uri: "/bos/apps/lead-director/api/v1/organizations/{organization}/gmail/attachments/read",
+      uri: "/bos/apps/lead-director/api/v1/organizations/synthetic/gmail/attachments/read",
       response: binaryResponse
     },
     output_schema: {
@@ -1000,4 +1000,16 @@ test('advertised operation catalog can exceed unchanged Describe batch size',()=
  assert.throws(()=>validateAppDescribe({...response,describe:{...response.describe,max_operations:8}}),/max_operations must be 5/);
  const oversized=structuredClone(describeResponse);oversized.operations=Array.from({length:6},()=>structuredClone(describeResponse.operations[0]));
  assert.throws(()=>validateOperationDescription(oversized));
+});
+
+
+test("complete returned contacts reject unresolved organization templates", () => {
+  for (const coordinate of ["{organization}", "%7Borganization%7D"]) {
+    const app=structuredClone(appDescribe);
+    app.describe.uri=app.describe.uri.replace("/synthetic/",`/${coordinate}/`);
+    assert.throws(() => validateAppDescribe(app), /describe.uri/);
+    const response=structuredClone(describeResponse);
+    response.operations[0].execution.uri=response.operations[0].execution.uri.replace("/synthetic/",`/${coordinate}/`);
+    assert.throws(() => validateOperationDescription(response), /origin-relative URI/);
+  }
 });
