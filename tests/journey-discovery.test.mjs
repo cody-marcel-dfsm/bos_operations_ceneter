@@ -1013,3 +1013,17 @@ test("complete returned contacts reject unresolved organization templates", () =
     assert.throws(() => validateOperationDescription(response), /origin-relative URI/);
   }
 });
+
+
+test("operation source availability preserves current and archived states", () => {
+  for (const availability of ["ready", "authorization_required", "configuration_required", "temporarily_unavailable", "provider_authorization_required", "source_not_available", "source_temporarily_unavailable"]) {
+    const response = structuredClone(describeResponse);
+    response.operations[0].sources[0].availability = availability;
+    assert.equal(validateOperationDescription(response).operations[0].sources[0].availability, availability);
+  }
+  for (const availability of ["unknown", "Ready", "AUTHORIZATION_REQUIRED"]) {
+    const response = structuredClone(describeResponse);
+    response.operations[0].sources[0].availability = availability;
+    assert.throws(() => validateOperationDescription(response), /availability is invalid/);
+  }
+});
