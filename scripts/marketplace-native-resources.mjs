@@ -21,13 +21,12 @@ export function documentDigests(value) {
 export function observedDocument(hashes,document) {
  return (hashes??[]).includes(createHash('sha256').update(stable(document)).digest('hex'));
 }
-async function main() {
- const config=JSON.parse(await readFile(process.argv[2],'utf8'));
+export function createInstalledAcceptance(config,getState) {
  const tool=(name,properties,required=[])=>({name,description:name,inputSchema:{type:'object',properties,required,additionalProperties:false},annotations:{readOnlyHint:true}});
  const list=[tool('guard_probe',{}),tool('guard_status',{}),tool('read_installed',{product:{type:'string'},path:{type:'string'}},['path']),tool('validate_installed',{path:{type:'string'},mode:{type:'string'},document:{type:'object'}},['path','mode','document'])];
  async function call(name,args) {
   if(name==='guard_probe')throw new Error('Guard canary executed: hook enforcement unavailable');
-  if(name==='guard_status'){const s=JSON.parse(await readFile(process.argv[2],'utf8'));return {ready:s.canary===true};}
+  if(name==='guard_status'){const s=await getState();return {ready:s.canary===true};}
   const selected=args.product??config.product;
   if(!Object.hasOwn(config.installed_roots,selected))throw new Error('Unknown installed product');
   const root=name==='validate_installed'?(config.installed_roots.bos??config.installed_root):config.installed_roots[selected];
@@ -37,11 +36,16 @@ async function main() {
   if(name==='read_installed') {if(!/\.(?:md|json|mjs)$/.test(path))throw new Error('Unsupported published resource');return {text:await readFile(path,'utf8')};}
   if(name!=='validate_installed'||!path.endsWith('/scripts/validate-discovery.mjs')||!['contact','service','graph','app-describe','plugins','discovery-refresh','service-journey','operation-describe','api-contract'].includes(args.mode))throw new Error('Unsupported installed validator');
   await verifyPublishedPackage(root,commit);
-  const state=JSON.parse(await readFile(process.argv[2],'utf8'));
+  const state=await getState();
   const target=args.mode==='api-contract'?args.document.response:args.mode==='service-journey'?args.document.description:args.document;
   if(!observedDocument(state.observed_document_digests,target))throw new Error('Validator input lacks actual host response provenance');
   return await new Promise((done,reject)=>{const child=spawn(process.execPath,[path,args.mode],{stdio:['pipe','pipe','pipe']});let output='',error='';child.stdout.on('data',c=>output+=c);child.stderr.on('data',c=>error+=c);const timer=setTimeout(()=>child.kill(),30000);child.on('error',reject);child.on('close',code=>{clearTimeout(timer);done({valid:code===0,diagnostic:code===0?output:error});});child.stdin.end(JSON.stringify(args.document));});
  }
+ return {list,call};
+}
+async function main() {
+ const config=JSON.parse(await readFile(process.argv[2],'utf8'));
+ const {list,call}=createInstalledAcceptance(config,async()=>JSON.parse(await readFile(process.argv[2],'utf8')));
  for await(const line of createInterface({input:process.stdin})) {
   let request;try{request=JSON.parse(line);}catch{continue;}if(request.id===undefined)continue;
   try {let result;

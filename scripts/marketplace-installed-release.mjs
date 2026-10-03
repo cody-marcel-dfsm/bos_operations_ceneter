@@ -13,7 +13,7 @@ export async function installedRelease(catalog) {
   const path = matching[0].source.path;
   const plugin = JSON.parse(await readFile(join(path, '.codex-plugin/plugin.json'), 'utf8'));
   if (plugin.version !== catalog.version || JSON.stringify(plugin.interface.defaultPrompt) !== JSON.stringify(catalog.cases.filter(row => row.kind === 'starter').map(row => row.prompt))) throw new Error('Installed starter/version mismatch');
-  if (plugin.description !== catalog.description) throw new Error('Installed description mismatch');
+  if ((plugin.interface.longDescription??plugin.description) !== catalog.description || (catalog.short_description&&plugin.description!==catalog.short_description)) throw new Error('Installed description mismatch');
   const {stdout: commit} = await run('git', ['rev-parse', 'HEAD'], {cwd: path});
   const sha = commit.trim();
   if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('Installed commit unavailable');

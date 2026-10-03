@@ -130,7 +130,10 @@ test("BOS and Education OpenAI cases stay within their product MCP scope", async
       "bos_begin_plugin_service_connection"
     ]
   );
-  assert.match(JSON.stringify(bos.test_cases), /Acme Operations/);
+  assert.doesNotMatch(JSON.stringify(bos.test_cases), /Acme Operations/);
+  assert.ok(bos.test_cases.every(({ user_prompt }) =>
+    user_prompt.includes("my connected authorized review organization")
+  ));
   assert.match(JSON.stringify(bos.test_cases), /Workflow Sandbox/);
   assert.doesNotMatch(JSON.stringify(bos), /education_center_/);
   assert.doesNotMatch(JSON.stringify(bos), /Bright Horizons|Northstar Coding Academy/);
