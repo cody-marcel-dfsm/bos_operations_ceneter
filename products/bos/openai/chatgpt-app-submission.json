@@ -72,23 +72,23 @@
   "test_cases": [
     {
       "description": "Resolve the reviewer's authorized BOS context for governed workflow execution.",
-      "user_prompt": "For Acme Operations, show the organization, role, and BOS capabilities available for governed workflows.",
+      "user_prompt": "For my connected authorized review organization, show the organization, role, and BOS capabilities available for governed workflows.",
       "file_attachment_urls": null,
       "tools_triggered": "bos_get_context",
-      "expected_output": "Returns the authorized Acme Operations context, effective role, and available BOS platform capabilities without exposing opaque authority identifiers or credentials.",
+      "expected_output": "Returns the connected authorized review organization context, effective role, and available BOS platform capabilities without exposing opaque authority identifiers or credentials.",
       "expected_output_url": null
     },
     {
       "description": "Audit readiness across the fictional review organization's installed service mesh.",
-      "user_prompt": "For Acme Operations, audit the Workflow Sandbox service mesh and show what is ready, disabled, disconnected, or awaiting authorization.",
+      "user_prompt": "For my connected authorized review organization, audit the Workflow Sandbox service mesh and show what is ready, disabled, disconnected, or awaiting authorization.",
       "file_attachment_urls": null,
       "tools_triggered": "bos_list_plugin_services",
-      "expected_output": "Summarizes the fictional Workflow Sandbox plugin and service readiness, enablement, and allowed connection actions for Acme Operations.",
+      "expected_output": "Summarizes the fictional Workflow Sandbox plugin and service readiness, enablement, and allowed connection actions for the connected authorized review organization.",
       "expected_output_url": null
     },
     {
       "description": "Inspect the typed platform configuration controlling a fictional workflow.",
-      "user_prompt": "For Acme Operations, show the settings controlling Workflow Sandbox and identify anything preventing execution.",
+      "user_prompt": "For my connected authorized review organization, show the settings controlling Workflow Sandbox and identify anything preventing execution.",
       "file_attachment_urls": null,
       "tools_triggered": "bos_get_plugin_settings",
       "expected_output": "Returns the fictional plugin's readable typed settings, current revision, and execution impact. If a required field is unset, invokes the packaged settings initializer on BOS MCP, shows sourced recommendations and requests confirmation before persisting any value. Works with BOS alone, using current context and confirmed inputs without requiring Education Center, My CRM or a nonexistent customer-settings initializer.",
@@ -96,7 +96,7 @@
     },
     {
       "description": "Apply one explicit governed plugin-enablement action in the fictional review organization.",
-      "user_prompt": "Enable Workflow Sandbox for Acme Operations.",
+      "user_prompt": "Enable Workflow Sandbox for my connected authorized review organization.",
       "file_attachment_urls": null,
       "tools_triggered": "bos_set_plugin_enabled",
       "expected_output": "Enables only the fictional Workflow Sandbox plugin after resolving its current selector and revision, then returns an audited committed result and refreshed readiness.",
@@ -104,7 +104,7 @@
     },
     {
       "description": "Start one explicit service-authorization flow needed by the fictional workflow.",
-      "user_prompt": "For Acme Operations, start the connection flow for the Synthetic Accounting service required by Workflow Sandbox.",
+      "user_prompt": "For my connected authorized review organization, start the connection flow for the Synthetic Accounting service required by Workflow Sandbox.",
       "file_attachment_urls": null,
       "tools_triggered": "bos_begin_plugin_service_connection",
       "expected_output": "Starts only the fictional Synthetic Accounting connection transaction, returns the secure user-consent action, and preserves the workflow for continuation after authorization.",
