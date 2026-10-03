@@ -316,9 +316,9 @@ export function validateAppDescribe(description) {
     throw new Error(`app.describe response.describe.max_operations must be ${leadDirectorAppDescribe.maxOperations}`);
   }
   requireStringArray(description.describe.operations, "app.describe response.describe.operations");
-  if (description.describe.operations.length > description.describe.max_operations ||
-      new Set(description.describe.operations).size !== description.describe.operations.length) {
-    throw new Error("app.describe response.describe.operations exceed or duplicate the published bound");
+  // max_operations bounds each Describe request, not the advertised catalog.
+  if (new Set(description.describe.operations).size !== description.describe.operations.length) {
+    throw new Error("app.describe response.describe.operations must be unique");
   }
   if (description.describe.operations.some((operation) => !operationIdPattern.test(operation))) {
     throw new Error("app.describe response.describe.operations contains an invalid operation identifier");

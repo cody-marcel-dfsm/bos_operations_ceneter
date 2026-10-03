@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "cases": {
+    "starter-1": {
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "response",
+      "requirements": [
+        {
+          "id": "installed-apps",
+          "operator": "equals"
+        },
+        {
+          "id": "installed-skills",
+          "operator": "equals"
+        }
+      ]
+    },
+    "starter-2": {
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "response",
+      "requirements": [
+        {
+          "id": "tools",
+          "operator": "equals"
+        },
+        {
+          "id": "workflows",
+          "operator": "equals"
+        }
+      ]
+    },
+    "starter-3": {
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "response",
+      "requirements": [
+        {
+          "id": "connection-readiness",
+          "operator": "equals"
+        }
+      ]
+    },
+    "positive-1": {
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "identity",
+      "requirements": [
+        {
+          "id": "authorized-role",
+          "operator": "equals"
+        },
+        {
+          "id": "capabilities",
+          "operator": "equals"
+        }
+      ]
+    },
+    "positive-2": {
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "response",
+      "requirements": [
+        {
+          "id": "service-readiness",
+          "operator": "equals"
+        }
+      ]
+    },
+    "positive-3": {
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "response",
+      "requirements": [
+        {
+          "id": "typed-settings",
+          "operator": "equals"
+        },
+        {
+          "id": "execution-blockers",
+          "operator": "equals"
+        }
+      ]
+    },
+    "positive-4": {
+      "allowed_effects": [
+        "read",
+        "write"
+      ],
+      "assertion_evidence": "response",
+      "requires_input_binding": true,
+      "requirements": [
+        {
+          "id": "committed-enable-state",
+          "operator": "equals"
+        }
+      ]
+    },
+    "positive-5": {
+      "allowed_effects": [
+        "read",
+        "connect"
+      ],
+      "assertion_evidence": "response",
+      "requires_input_binding": true,
+      "requirements": [
+        {
+          "id": "secure-consent-action",
+          "operator": "equals"
+        }
+      ]
+    },
+    "negative-1": {
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "answer",
+      "requirements": [
+        {
+          "id": "no-product-invocation",
+          "operator": "equals"
+        }
+      ]
+    },
+    "negative-2": {
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "answer",
+      "requirements": [
+        {
+          "id": "no-product-invocation",
+          "operator": "equals"
+        }
+      ]
+    },
+    "negative-3": {
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "answer",
+      "requirements": [
+        {
+          "id": "no-product-invocation",
+          "operator": "equals"
+        }
+      ]
+    }
+  }
+}
