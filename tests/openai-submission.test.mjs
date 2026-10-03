@@ -113,47 +113,28 @@ test("BOS and Education OpenAI cases stay within their product MCP scope", async
   const bos = JSON.parse(await readFile(
     `${root}/products/bos/openai/chatgpt-app-submission.json`, "utf8"
   ));
-  assert.deepEqual(Object.keys(bos.tools), [
-    "bos_get_context",
-    "bos_list_plugin_services",
-    "bos_get_plugin_settings",
-    "bos_set_plugin_enabled",
-    "bos_begin_plugin_service_connection"
-  ]);
-  assert.deepEqual(
-    bos.test_cases.map(({ tools_triggered }) => tools_triggered),
-    [
-      "bos_get_context",
-      "bos_list_plugin_services",
-      "bos_get_plugin_settings",
-      "bos_set_plugin_enabled",
-      "bos_begin_plugin_service_connection"
-    ]
-  );
-  assert.doesNotMatch(JSON.stringify(bos.test_cases), /Acme Operations/);
-  assert.ok(bos.test_cases.every(({ user_prompt }) =>
-    user_prompt.includes("my connected authorized review organization")
-  ));
-  assert.match(JSON.stringify(bos.test_cases), /Workflow Sandbox/);
+  const currentTools = ['bos_logout', 'bos_get_context', 'bos_list_context_tools', 'bos_execute', 'plugins.list', 'service.describe', 'api.contract.get', 'discovery.refresh'];
+  assert.deepEqual(Object.keys(bos.tools), currentTools);
+  assert.ok(bos.test_cases.every(({tools_triggered}) => currentTools.includes(tools_triggered)));
+  assert.ok(bos.test_cases.every(({user_prompt}) => user_prompt.includes('my connected authorized review organization')));
+  assert.doesNotMatch(JSON.stringify(bos.test_cases), /Workflow Sandbox|Synthetic Accounting/);
   assert.doesNotMatch(JSON.stringify(bos), /education_center_/);
   assert.doesNotMatch(JSON.stringify(bos), /Bright Horizons|Northstar Coding Academy/);
 
   assert.equal(bos.negative_test_cases[1].tools_triggered, null);
-  assert.match(bos.negative_test_cases[2].user_prompt, /another organization/i);
+  assert.match(bos.negative_test_cases[2].user_prompt, /organization that I do not belong to/i);
   assert.match(bos.negative_test_cases[2].expected_output, /cross-tenant/i);
 
   const education = JSON.parse(await readFile(
     `${root}/products/education-center/openai/chatgpt-app-submission.json`, "utf8"
   ));
-  assert.deepEqual(Object.keys(education.tools), [
-    "bos_get_context",
-    "education_center_search_students",
-    "education_center_list_enrollments",
-    "education_center_get_camp_roster_report"
-  ]);
-  assert.ok(education.test_cases.slice(1).every(({ tools_triggered }) =>
-    tools_triggered.startsWith("education_center_")
-  ));
+  assert.deepEqual(Object.keys(education.tools), currentTools);
+  assert.ok(education.test_cases.every(({tools_triggered}) => currentTools.includes(tools_triggered)));
+  assert.match(education.test_cases[3].user_prompt, /whether capacity/);
+  assert.match(education.test_cases[4].user_prompt, /missing or incomplete guardian contact fields/);
+  const policy = JSON.parse(await readFile(`${root}/products/education-center/openai/acceptance-policy.json`, 'utf8'));
+  assert.ok([2, 3, 4, 5].every(id => policy.cases[`positive-${id}`].requires_business_https));
+
 });
 
 test("OpenAI submission paths reject temporary or escaping locations", async () => {

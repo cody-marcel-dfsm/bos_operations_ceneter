@@ -8,52 +8,102 @@
     "category": "PRODUCTIVITY"
   },
   "tools": {
+    "bos_logout": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Ends the current BOS connection session only when the user explicitly requests sign-out.",
+        "open_world_justification": "Uses the existing authenticated BOS platform discovery/control connection and its advertised operation contract.",
+        "destructive_justification": "The session sign-out explicitly ends access."
+      }
+    },
     "bos_get_context": {
       "annotations": {
         "readOnlyHint": true,
-        "openWorldHint": false,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Returns the reviewer's authorized organization, role, installed application, and capability context without changing records.",
-        "open_world_justification": "Reads private authorization context from the BOS platform connection and does not publish content or change an external system.",
-        "destructive_justification": "Does not delete, overwrite, revoke, send, or perform another irreversible action."
+        "read_only_justification": "Reads the authenticated reviewer's currently authorized organization, application, installation and role choices.",
+        "open_world_justification": "Uses the existing authenticated BOS platform discovery/control connection and its advertised operation contract.",
+        "destructive_justification": "Reads discovery metadata and does not change business records."
       }
     },
-    "education_center_search_students": {
+    "bos_list_context_tools": {
       "annotations": {
         "readOnlyHint": true,
-        "openWorldHint": true,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Searches authorized student records and returns matched evidence without creating or updating records.",
-        "open_world_justification": "May read current student data from an organization-authorized education service outside ChatGPT.",
-        "destructive_justification": "The search does not alter student, enrollment, or provider records."
+        "read_only_justification": "Discovers currently advertised operations for the selected authorized context.",
+        "open_world_justification": "Uses the existing authenticated BOS platform discovery/control connection and its advertised operation contract.",
+        "destructive_justification": "Reads discovery metadata and does not change business records."
       }
     },
-    "education_center_list_enrollments": {
+    "bos_execute": {
       "annotations": {
-        "readOnlyHint": true,
-        "openWorldHint": true,
-        "destructiveHint": false
+        "readOnlyHint": false,
+        "destructiveHint": true
       },
       "justifications": {
-        "read_only_justification": "Lists authorized enrollment records for a bounded date range without changing enrollment state.",
-        "open_world_justification": "May read current enrollment data from an organization-authorized education service outside ChatGPT.",
-        "destructive_justification": "The listing operation does not create, update, cancel, or delete an enrollment."
+        "read_only_justification": "Dispatches an explicitly discovered operation under its server-enforced context and effect checks; submission cases use discovery controls only.",
+        "open_world_justification": "Uses the existing authenticated BOS platform discovery/control connection and its advertised operation contract.",
+        "destructive_justification": "The dispatcher preserves the discovered operation's bounded effect and approval requirements."
       }
     },
-    "education_center_get_camp_roster_report": {
+    "plugins.list": {
       "annotations": {
         "readOnlyHint": true,
-        "openWorldHint": true,
-        "destructiveHint": false
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
       },
       "justifications": {
-        "read_only_justification": "Builds a report from authorized camp, registration, attendance, and capacity evidence without mutating those records.",
-        "open_world_justification": "May retrieve current roster and capacity evidence from organization-authorized services outside ChatGPT.",
-        "destructive_justification": "The report operation does not change registrations, attendance, staffing, or capacity."
+        "read_only_justification": "Reads the authorized installed application and service directory.",
+        "open_world_justification": "Uses the existing authenticated BOS platform discovery/control connection and its advertised operation contract.",
+        "destructive_justification": "Reads discovery metadata and does not change business records."
+      }
+    },
+    "service.describe": {
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Reads a currently advertised service description.",
+        "open_world_justification": "Uses the existing authenticated BOS platform discovery/control connection and its advertised operation contract.",
+        "destructive_justification": "Reads discovery metadata and does not change business records."
+      }
+    },
+    "api.contract.get": {
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Reads a currently advertised API contract.",
+        "open_world_justification": "Uses the existing authenticated BOS platform discovery/control connection and its advertised operation contract.",
+        "destructive_justification": "Reads discovery metadata and does not change business records."
+      }
+    },
+    "discovery.refresh": {
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Refreshes authorized discovery metadata without changing business records.",
+        "open_world_justification": "Uses the existing authenticated BOS platform discovery/control connection and its advertised operation contract.",
+        "destructive_justification": "Reads discovery metadata and does not change business records."
       }
     }
   },
@@ -70,7 +120,7 @@
       "description": "Find fictional students and their active education records.",
       "user_prompt": "Find the synthetic students whose last name is Rivera and show their active education records.",
       "file_attachment_urls": null,
-      "tools_triggered": "education_center_search_students",
+      "tools_triggered": "bos_get_context",
       "expected_output": "Returns only matching fictional students with active class or enrollment facts and source attribution, omitting unnecessary internal identifiers.",
       "expected_output_url": null
     },
@@ -78,24 +128,24 @@
       "description": "List fictional enrollments for a fixed review week and group them by class.",
       "user_prompt": "List enrollments from September 14 through September 20, 2026, and group them by class.",
       "file_attachment_urls": null,
-      "tools_triggered": "education_center_list_enrollments",
+      "tools_triggered": "bos_get_context",
       "expected_output": "Groups fictional enrollment records by class with dates, status, and source evidence, including a clear empty state where applicable.",
       "expected_output_url": null
     },
     {
-      "description": "Produce a capacity-aware camp roster report from fictional review data.",
-      "user_prompt": "Create a roster report for the synthetic camps running September 14 through September 18, 2026, with daily attendance and open seats.",
+      "description": "Produce a source-backed daily camp roster report and identify capacity evidence.",
+      "user_prompt": "Create a roster report for the synthetic camps running September 14 through September 18, 2026, with per-day student counts and attendance evidence. State whether capacity and open-seat calculations are supported by the returned data.",
       "file_attachment_urls": null,
-      "tools_triggered": "education_center_get_camp_roster_report",
-      "expected_output": "Returns per-camp and per-day roster totals, capacity, filled seats, open seats, and source notes while identifying any missing evidence.",
+      "tools_triggered": "bos_get_context",
+      "expected_output": "Returns per-camp and per-day student counts and attendance evidence with source attribution; reports capacity and open seats only from explicit source evidence and otherwise states the missing capacity evidence.",
       "expected_output_url": null
     },
     {
       "description": "Find fictional students for a bounded family follow-up review.",
-      "user_prompt": "Find synthetic students with an active enrollment who need a guardian contact review this week.",
+      "user_prompt": "Find synthetic students with active enrollment and identify missing or incomplete guardian contact fields. Show the enrollment and contact evidence supporting each flagged record.",
       "file_attachment_urls": null,
-      "tools_triggered": "education_center_search_students",
-      "expected_output": "Returns only fictional matching students with the minimum enrollment and guardian-contact evidence required for review, preserving source attribution and omitting unnecessary identifiers.",
+      "tools_triggered": "bos_get_context",
+      "expected_output": "Returns only fictional students with active enrollment and demonstrably missing or incomplete returned guardian contact fields, preserves source evidence and names the missing fields without assuming a follow-up schedule.",
       "expected_output_url": null
     }
   ],

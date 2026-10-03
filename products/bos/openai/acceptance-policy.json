@@ -80,39 +80,63 @@
       "assertion_evidence": "response",
       "requirements": [
         {
-          "id": "typed-settings",
+          "id": "search-contracts",
           "operator": "equals"
         },
         {
-          "id": "execution-blockers",
+          "id": "source-availability",
           "operator": "equals"
+        },
+        {
+          "id": "operation-limits",
+          "operator": "equals"
+        }
+      ],
+      "expected_semantic_operations": [
+        {
+          "operation": "app.describe",
+          "transport": "https_discovery"
         }
       ]
     },
     "positive-4": {
       "allowed_effects": [
-        "read",
-        "write"
+        "read"
       ],
       "assertion_evidence": "response",
-      "requires_input_binding": true,
       "requirements": [
         {
-          "id": "committed-enable-state",
+          "id": "mutation-contracts",
           "operator": "equals"
+        },
+        {
+          "id": "target-limits",
+          "operator": "equals"
+        },
+        {
+          "id": "no-mutation",
+          "operator": "equals"
+        }
+      ],
+      "expected_semantic_operations": [
+        {
+          "operation": "app.describe",
+          "transport": "https_discovery"
         }
       ]
     },
     "positive-5": {
       "allowed_effects": [
-        "read",
-        "connect"
+        "read"
       ],
       "assertion_evidence": "response",
-      "requires_input_binding": true,
       "requirements": [
         {
-          "id": "secure-consent-action",
+          "id": "workflow-capabilities",
+          "operator": "equals"
+        },
+        {
+          "id": "workflow-prerequisites",
           "operator": "equals"
         }
       ]

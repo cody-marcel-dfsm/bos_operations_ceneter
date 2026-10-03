@@ -145,3 +145,13 @@ test('negative refusal status passes only after all other acceptance gates pass'
  const existing=['configured_outcome_failed'];classifyCompletion('positive','blocked',existing);
  assert.deepEqual(existing,['configured_outcome_failed']);
 });
+
+
+test('business-case proof requires successful scoped deterministic HTTPS and exact semantic evidence', async()=>{
+ const {reviewerResponses,caseResponseFailures}=await import('../scripts/marketplace-native-run.mjs');
+ const item={requires_business_https:true,expected_semantic_operations:[{operation:'students.read',transport:'deterministic_https'}]};
+ const observed={tool:'students.read',response:{body:{students:[{name:'Synthetic Student'}]}},scope_verified:true,is_error:false,transport:'https'};
+ assert.deepEqual(caseResponseFailures(item,reviewerResponses([observed])),[]);
+ for(const changed of [{transport:undefined},{transport:'https-discovery'},{scope_verified:false},{is_error:true},{tool:'search'}])assert.ok(caseResponseFailures(item,reviewerResponses([{...observed,...changed}])).length>0);
+ assert.equal(reviewerResponses([{tool:'bos.execute',input:{tool_name:'plugins.list'},scope_verified:true,response:{plugins:[]}}])[0].operation,'plugins.list');
+});

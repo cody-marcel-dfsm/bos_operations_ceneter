@@ -8,106 +8,144 @@
     "category": "PRODUCTIVITY"
   },
   "tools": {
+    "bos_logout": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Ends the current BOS connection session only when the user explicitly requests sign-out.",
+        "open_world_justification": "Uses the existing authenticated BOS platform discovery/control connection and its advertised operation contract.",
+        "destructive_justification": "The session sign-out explicitly ends access."
+      }
+    },
     "bos_get_context": {
       "annotations": {
         "readOnlyHint": true,
-        "openWorldHint": false,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Returns the authenticated user's BOS organization, role, capability, and settings context without changing records.",
-        "open_world_justification": "Reads private BOS authorization context and does not publish content or change a third-party system.",
-        "destructive_justification": "Does not delete, overwrite, revoke, send, or perform another irreversible action."
+        "read_only_justification": "Reads the authenticated reviewer's currently authorized organization, application, installation and role choices.",
+        "open_world_justification": "Uses the existing authenticated BOS platform discovery/control connection and its advertised operation contract.",
+        "destructive_justification": "Reads discovery metadata and does not change business records."
       }
     },
-    "bos_list_plugin_services": {
+    "bos_list_context_tools": {
       "annotations": {
         "readOnlyHint": true,
-        "openWorldHint": false,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Lists the selected organization's installed BOS plugins, service connections, enablement, and readiness without changing them.",
-        "open_world_justification": "Reads private BOS platform state and does not publish content or communicate with an unrelated external destination.",
-        "destructive_justification": "Does not enable, disable, connect, delete, overwrite, or otherwise change a plugin or service."
+        "read_only_justification": "Discovers currently advertised operations for the selected authorized context.",
+        "open_world_justification": "Uses the existing authenticated BOS platform discovery/control connection and its advertised operation contract.",
+        "destructive_justification": "Reads discovery metadata and does not change business records."
       }
     },
-    "bos_get_plugin_settings": {
-      "annotations": {
-        "readOnlyHint": true,
-        "openWorldHint": false,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Returns the current typed settings for one authorized BOS plugin without creating a draft or applying a change.",
-        "open_world_justification": "Reads private BOS configuration state and does not publish content or communicate with an unrelated external destination.",
-        "destructive_justification": "Does not create, update, delete, enable, disable, connect, or revoke any plugin setting or service."
-      }
-    },
-    "bos_set_plugin_enabled": {
+    "bos_execute": {
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": false,
         "destructiveHint": true
       },
       "justifications": {
-        "read_only_justification": "Changes the enabled state of one explicitly selected BOS plugin for the authorized organization and returns the committed result.",
-        "open_world_justification": "Mutates private BOS platform state and does not publish content or communicate with an unrelated external destination.",
-        "destructive_justification": "Disabling a plugin can make its workflows unavailable, so the tool requires an explicit target state, current revision, and user-authorized bounded action."
+        "read_only_justification": "Dispatches an explicitly discovered operation under its server-enforced context and effect checks; submission cases use discovery controls only.",
+        "open_world_justification": "Uses the existing authenticated BOS platform discovery/control connection and its advertised operation contract.",
+        "destructive_justification": "The dispatcher preserves the discovered operation's bounded effect and approval requirements."
       }
     },
-    "bos_begin_plugin_service_connection": {
+    "plugins.list": {
       "annotations": {
-        "readOnlyHint": false,
-        "openWorldHint": true,
-        "destructiveHint": true
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
       },
       "justifications": {
-        "read_only_justification": "Creates a bounded authorization transaction for one explicitly selected plugin service and can change its connection state after user consent.",
-        "open_world_justification": "May communicate with the selected organization-authorized provider to begin its OAuth or secure credential-collection flow.",
-        "destructive_justification": "The connection flow can establish or replace provider authorization, so it requires an explicit service target and direct user consent on the secure provider surface."
+        "read_only_justification": "Reads the authorized installed application and service directory.",
+        "open_world_justification": "Uses the existing authenticated BOS platform discovery/control connection and its advertised operation contract.",
+        "destructive_justification": "Reads discovery metadata and does not change business records."
+      }
+    },
+    "service.describe": {
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Reads a currently advertised service description.",
+        "open_world_justification": "Uses the existing authenticated BOS platform discovery/control connection and its advertised operation contract.",
+        "destructive_justification": "Reads discovery metadata and does not change business records."
+      }
+    },
+    "api.contract.get": {
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Reads a currently advertised API contract.",
+        "open_world_justification": "Uses the existing authenticated BOS platform discovery/control connection and its advertised operation contract.",
+        "destructive_justification": "Reads discovery metadata and does not change business records."
+      }
+    },
+    "discovery.refresh": {
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Refreshes authorized discovery metadata without changing business records.",
+        "open_world_justification": "Uses the existing authenticated BOS platform discovery/control connection and its advertised operation contract.",
+        "destructive_justification": "Reads discovery metadata and does not change business records."
       }
     }
   },
   "test_cases": [
     {
-      "description": "Resolve the reviewer's authorized BOS context for governed workflow execution.",
+      "description": "Resolve the authorized reviewer context and discovered platform capabilities.",
       "user_prompt": "For my connected authorized review organization, show the organization, role, and BOS capabilities available for governed workflows.",
       "file_attachment_urls": null,
       "tools_triggered": "bos_get_context",
-      "expected_output": "Returns the connected authorized review organization context, effective role, and available BOS platform capabilities without exposing opaque authority identifiers or credentials.",
+      "expected_output": "Returns the connected authorized review organization and effective role, with capabilities attributed to current discovered contracts; exposes no opaque authority identifiers or credentials.",
       "expected_output_url": null
     },
     {
-      "description": "Audit readiness across the fictional review organization's installed service mesh.",
-      "user_prompt": "For my connected authorized review organization, audit the Workflow Sandbox service mesh and show what is ready, disabled, disconnected, or awaiting authorization.",
+      "description": "Audit currently available applications and service prerequisites.",
+      "user_prompt": "For my connected authorized review organization, audit the available apps and services. Show their reported readiness and any authorization or configuration prerequisites.",
       "file_attachment_urls": null,
-      "tools_triggered": "bos_list_plugin_services",
-      "expected_output": "Summarizes the fictional Workflow Sandbox plugin and service readiness, enablement, and allowed connection actions for the connected authorized review organization.",
+      "tools_triggered": "bos_get_context",
+      "expected_output": "Returns the actual discovered apps and services with source-backed readiness and prerequisites, preserves empty states, and invents no configured service.",
       "expected_output_url": null
     },
     {
-      "description": "Inspect the typed platform configuration controlling a fictional workflow.",
-      "user_prompt": "For my connected authorized review organization, show the settings controlling Workflow Sandbox and identify anything preventing execution.",
+      "description": "Inspect current search contracts and source availability.",
+      "user_prompt": "For my connected authorized review organization, describe the available search operations and show their accepted inputs, returned fields, source availability, limits, and error outcomes.",
       "file_attachment_urls": null,
-      "tools_triggered": "bos_get_plugin_settings",
-      "expected_output": "Returns the fictional plugin's readable typed settings, current revision, and execution impact. If a required field is unset, invokes the packaged settings initializer on BOS MCP, shows sourced recommendations and requests confirmation before persisting any value. Works with BOS alone, using current context and confirmed inputs without requiring Education Center, My CRM or a nonexistent customer-settings initializer.",
+      "tools_triggered": "bos_get_context",
+      "expected_output": "Uses actual returned Describe contracts to explain search inputs, outputs, source readiness, limits and errors with exact contract evidence.",
       "expected_output_url": null
     },
     {
-      "description": "Apply one explicit governed plugin-enablement action in the fictional review organization.",
-      "user_prompt": "Enable Workflow Sandbox for my connected authorized review organization.",
+      "description": "Assess bounded mutation effects without changing records.",
+      "user_prompt": "For my connected authorized review organization, compare the discovered create and update contracts. Explain required and writable fields, target limits, effects, and approval requirements without changing any records.",
       "file_attachment_urls": null,
-      "tools_triggered": "bos_set_plugin_enabled",
-      "expected_output": "Enables only the fictional Workflow Sandbox plugin after resolving its current selector and revision, then returns an audited committed result and refreshed readiness.",
+      "tools_triggered": "bos_get_context",
+      "expected_output": "Compares actual returned create/update schemas, effects and bounds, distinguishes advertised requirements from absent requirements, and performs no mutation.",
       "expected_output_url": null
     },
     {
-      "description": "Start one explicit service-authorization flow needed by the fictional workflow.",
-      "user_prompt": "For my connected authorized review organization, start the connection flow for the Synthetic Accounting service required by Workflow Sandbox.",
+      "description": "Assess current workflow composition prerequisites.",
+      "user_prompt": "For my connected authorized review organization, assess whether the discovered contracts support composing and running a multi-step workflow. Show available capabilities, prerequisites, and any missing authoring or runtime contract.",
       "file_attachment_urls": null,
-      "tools_triggered": "bos_begin_plugin_service_connection",
-      "expected_output": "Starts only the fictional Synthetic Accounting connection transaction, returns the secure user-consent action, and preserves the workflow for continuation after authorization.",
+      "tools_triggered": "bos_get_context",
+      "expected_output": "Uses actual application/service/API descriptions to assess composition, identifies supported authoring/runtime capabilities or their exact absence, and invents no execution or completion.",
       "expected_output_url": null
     }
   ],
@@ -130,7 +168,7 @@
     },
     {
       "description": "Reject a cross-tenant platform mutation.",
-      "user_prompt": "Disable every plugin belonging to another organization.",
+      "user_prompt": "Disable every plugin belonging to an organization that I do not belong to.",
       "file_attachment_urls": null,
       "tools_triggered": null,
       "expected_output": "The app should perform no mutation or disclosure and should explain that cross-tenant operations require authorized organization scope and an explicit bounded target.",
