@@ -36,7 +36,7 @@ function fixture(change={}) {
     }
     if(url.pathname==='/revoke'){assert.equal(headers.get('cookie'),null);return new Response('',{status:change.revokeStatus??200});}
     assert.equal(headers.get('authorization'),'Bearer private-reviewer-token');assert.equal(headers.get('cookie'),null);
-    if(url.href===resource){const req=JSON.parse(body);if(!req.id)return new Response(null,{status:202});return json({jsonrpc:'2.0',id:req.id,result:req.method==='initialize'?{protocolVersion:'2024-11-05'}:{contexts:[]}});}
+    if(url.href===resource){const req=JSON.parse(body);assert.equal(headers.get('mcp-protocol-version'),'2025-06-18');if(req.method==='initialize')assert.equal(req.params.protocolVersion,'2025-06-18');if(!req.id)return new Response(null,{status:202});return json({jsonrpc:'2.0',id:req.id,result:req.method==='initialize'?{protocolVersion:Object.hasOwn(change,'negotiatedProtocol')?change.negotiatedProtocol:'2025-06-18'}:{contexts:[]}});}
     if(url.pathname==='/api/read')return json({count:1});
     throw new Error('Unexpected transport');
   };
@@ -78,4 +78,13 @@ test('callback and consent parsing reject duplicated, redirected or substituted 
   assert.equal(callbackParameters(settings.redirectUri+'?state=state&iss=https%3A%2F%2Fdfsm.ai&code=code',settings),'code');
   for(const url of [settings.redirectUri+'?state=state&state=state&iss=https%3A%2F%2Fdfsm.ai&code=code','http://127.0.0.1:3001/exact?state=state&iss=https%3A%2F%2Fdfsm.ai&code=code'])assert.throws(()=>callbackParameters(url,settings));
   for(const html of ['<form method="post" action="https://foreign.example/api/v1/mcp/oauth/handoff/identity-consent"><input type="hidden" name="login_state" value="state"></form>','<form method="post" action="/api/v1/mcp/oauth/authorize"><input type="hidden" name="login_state" value="state"></form>'])assert.throws(()=>reviewerConsent(html,origin));
+});
+
+test('unsupported or missing negotiated MCP version stops before discovery and revokes the grant',async()=>{
+  for(const negotiatedProtocol of ['2024-11-05','2099-01-01',null,undefined]) {
+    const f=fixture({negotiatedProtocol});
+    await assert.rejects(openReviewerSession({reviewerUrl,resource,fetchImpl:f.fetchImpl}),/reviewer_mcp_protocol_unsupported/);
+    assert.equal(f.calls.filter(row=>new URL(row.url).pathname==='/revoke').length,1);
+    assert.equal(f.calls.filter(row=>new URL(row.url).pathname===new URL(resource).pathname).length,1);
+  }
 });
