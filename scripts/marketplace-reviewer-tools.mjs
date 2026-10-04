@@ -52,7 +52,7 @@ const definitions=[
   spec('bos_list_resources','List BOS discovery resources for the reviewer connection.'),
   spec('bos_read_resource','Read an advertised BOS discovery resource.',{uri:{type:'string'}},['uri']),
   spec('bos_control_discover','Run a discovered BOS control-plane operation. Business operations use bos_https_operation.',{operation:{type:'string',enum:[...controls]},arguments:{type:'object'}},['operation','arguments']),
-  spec('bos_https_describe','POST one to five current advertised operation keys to the validated app.describe contact. Use its observed document_id.',{document_id:{type:'string'},operations:{type:'array',minItems:1,maxItems:5,uniqueItems:true,items:{type:'string'}}},['document_id','operations']),
+  spec('bos_https_describe','POST one to five current advertised operation keys to the validated app.describe contact. Use its observed document_id. The host validates the exact parent response with the verified published operation-describe validator before exposing contacts; published_validation identifies that proof and its coverage. Additional applicable published prerequisites remain required.',{document_id:{type:'string'},operations:{type:'array',minItems:1,maxItems:5,uniqueItems:true,items:{type:'string'}}},['document_id','operations']),
   spec('bos_https_operation','Execute an operation contact returned by actual discovery through the published BOS HTTPS dependency adapter. Use the returned contact_id and its exact payload schema.',{contact_id:{type:'string'},payload:{}},['contact_id'])
 ];
 
@@ -161,7 +161,8 @@ export async function createReviewerTools({session,state,release}) {
       state.observations.at(-1).transport='https-discovery';
       const validation=await installed.call('validate_installed',{path:'skills/bos-app-discovery/scripts/validate-discovery.mjs',mode:'operation-describe',document:raw});
       if(validation.valid!==true)throw new Error('reviewer_describe_response_invalid');
-      return {...expose(raw),transport:'https-discovery'};
+      const exposed=expose(raw);
+      return {...exposed,transport:'https-discovery',published_validation:{valid:true,mode:'operation-describe',document_id:exposed.document_id,release_commit:bos.release_commit}};
     }
     if(name!=='bos_https_operation')throw new Error('reviewer_tool_unknown');
     const contact=contacts.get(args.contact_id);if(!contact)throw new Error('reviewer_contact_not_observed');
