@@ -118,6 +118,27 @@ the necessary operation descriptions in batches within that contact's advertised
 maximum, and explicitly identify any unresolved description. Group capabilities
 for readability while preserving complete coverage of the advertised operations.
 
+Include every native tool returned by `bos_list_context_tools` for each observed
+authorized context. Follow an advertised `_meta["bos/apiContract"]` through its
+returned capability and exact input, resolving that capability in the current
+catalog. Preserve the advertised semantic identifier verbatim. Account for
+aliases separately; aliases sharing one exact contract link in the same context
+can use one validated observation within this assessment. Reconcile native
+argument bounds with the linked execution contract's limits, pagination and
+transport. Report differing declarations explicitly and retain their exact
+surfaces; unresolved contradictions supply no execution guarantee.
+
+For readiness and current-capability assessments, report the response's literal
+observation timestamp and its age against the current context or server
+reference time. Fresh authorization and a newly retrieved response establish
+authorized retrieval; current readiness requires its own timely facts and
+execution-prerequisite evidence. Label current readiness **unverified** when
+that evidence is missing or stale, including in the headline. Attribute
+availability values to the advertised contract and list the observed
+prerequisites and freshness limitation. Preserve `observed_at`; never substitute
+the fetch time for it. Continue the bounded read-only assessment with those
+limitations, and retain each required business operation's own fail-closed gate.
+
 A request to list accessible apps, audit readiness, compare contracts, or assess
 workflow feasibility is fulfilled by that bounded evidence, including explicit
 empty states and unavailable capabilities. Describe the scope actually observed
