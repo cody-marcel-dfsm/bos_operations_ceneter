@@ -166,7 +166,7 @@ function normalizedSecurityKey(value) {
 
 function publicDisplayLabelSchema(key, value, path) {
   if (!["location_context", "ownership_context"].includes(key) ||
-      !/^operation Describe response\.operations\.\d+(?:\.sources\.\d+)?\.output_schema(?:\.[A-Za-z0-9_$-]+)*\.properties$/u.test(path) ||
+      !/^(?:operation Describe response\.operations\.\d+(?:\.sources\.\d+)?|api\.contract\.get response)\.output_schema(?:\.[A-Za-z0-9_$-]+)*\.properties$/u.test(path) ||
       !value || typeof value !== "object" || Array.isArray(value)) return false;
   if (Object.keys(value).length !== 4 ||
       !["type", "properties", "required", "additionalProperties"].every(field => Object.hasOwn(value, field)) ||
