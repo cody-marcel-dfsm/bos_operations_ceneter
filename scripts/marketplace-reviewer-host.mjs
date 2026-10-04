@@ -8,6 +8,11 @@ import {nativeCase,verifyNativeReviewer,reviewerConfigurationDigest} from './mar
 import {installedRelease} from './marketplace-installed-release.mjs';
 import {digest} from './marketplace-prompt-catalog.mjs';
 
+export function reviewerHostReceipt(result,item,catalog) {
+  const {diagnostics,...receipt}=result;
+  return {...receipt,prompt_sha256:digest(item.prompt),configuration_sha256:catalog.configuration_sha256};
+}
+
 // Optional maintainer-only capability for independently owned test runners.
 // The caller executes no BOS source and receives only a sanitized case receipt.
 export async function serveReviewerHost(config,{execute=nativeCase,verifyRelease=installedRelease}={}) {
@@ -39,7 +44,8 @@ export async function serveReviewerHost(config,{execute=nativeCase,verifyRelease
           const bos=release.dependency??release;
           if(bos.release_commit!==release_expected?.bos_dependency?.release_commit||bos.package_sha256!==release_expected?.bos_dependency?.package_sha256)throw new Error('reviewer_host_dependency_mismatch');
           const result=await execute(catalog,item,config,release,model);
-          respond({...result,prompt_sha256:digest(item.prompt),configuration_sha256:catalog.configuration_sha256});
+          if(result.diagnostics)console.error(JSON.stringify({product:catalog.product,id:item.id,status:result.status,diagnostics:result.diagnostics}));
+          respond(reviewerHostReceipt(result,item,catalog));
         }catch{respond({status:'FAIL',reason:'reviewer_host_execution_or_release_failed'});}
         finally{busy=false;}
       })().catch(()=>respond({status:'FAIL',reason:'reviewer_host_failed'}));

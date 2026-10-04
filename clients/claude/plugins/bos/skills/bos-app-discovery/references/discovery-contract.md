@@ -19,6 +19,12 @@ An accessible-inventory or readiness assessment can complete with those facts;
 an organization-wide directory is needed for facts beyond that observed scope.
 Missing business-data or execution prerequisites still stop the affected task.
 
+A configured application role catalog does not establish accessible roles;
+match every accessible-role claim to fresh authorized contexts. For a full
+inventory, cover all currently advertised operation keys and catalog entries,
+using the returned Describe batch maximum for required descriptions and
+explicitly identifying unresolved descriptions.
+
 Legacy directory discovery returns the authenticated scoped-grant description
 and an authorized installed-app directory. Each directory app contact contains:
 

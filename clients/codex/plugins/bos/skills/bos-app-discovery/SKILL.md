@@ -152,6 +152,16 @@ to their exact application, operation, or source; an empty plugin list means
 that application's returned catalog is empty. Preserve contract versions and
 observation timestamps when returned.
 
+Accessible roles come exclusively from fresh authorized contexts. An
+application's configured role catalog describes possible roles; each claimed
+accessible role requires its own matching authorized context.
+
+For a full inventory, account for every operation key advertised by each
+app.describe contact and every returned public plugin/service entry. Resolve
+the necessary operation descriptions in batches within that contact's advertised
+maximum, and explicitly identify any unresolved description. Group capabilities
+for readability while preserving complete coverage of the advertised operations.
+
 A request to list accessible apps, audit readiness, compare contracts, or assess
 workflow feasibility is fulfilled by that bounded evidence, including explicit
 empty states and unavailable capabilities. Describe the scope actually observed

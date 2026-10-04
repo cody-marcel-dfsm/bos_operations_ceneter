@@ -5,9 +5,17 @@ import {mkdtemp,writeFile,rm,lstat} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createHash} from 'node:crypto';
-import {serveReviewerHost} from '../scripts/marketplace-reviewer-host.mjs';
+import {serveReviewerHost,reviewerHostReceipt} from '../scripts/marketplace-reviewer-host.mjs';
 import {digest} from '../scripts/marketplace-prompt-catalog.mjs';
 import {reviewerConfigurationDigest} from '../scripts/marketplace-native-run.mjs';
+
+test('host preserves the exact legacy receipt and keeps diagnostics private',()=>{
+  const item={prompt:'Exact configured prompt'},catalog={configuration_sha256:'current-configuration'};
+  const receipt={status:'FAIL',reason:'configured_outcome_failed',fixture_outcome_verified:true,independent_grading_verified:false,grant_cleanup_verified:true};
+  const result={...receipt,diagnostics:{completion_reason:'Synthetic diagnostic',evaluation_missing:['Required evidence absent']}};
+  assert.deepEqual(reviewerHostReceipt(result,item,catalog),{...receipt,prompt_sha256:digest(item.prompt),configuration_sha256:catalog.configuration_sha256});
+  assert.equal(Object.hasOwn(result,'diagnostics'),true);
+});
 
 test('private test capability binds the configured reviewer, exact case and independently checked release',async()=>{
   const directory=await mkdtemp(join(tmpdir(),'reviewer-host-unit-'));let host;
