@@ -219,6 +219,26 @@ verified local comparison capability when available, with original observed
 schema references. Its complete differences prove no semantic correspondence,
 validation, interoperability, authority or readiness; retain those separate gates.
 
+For a full inventory, present a final reconciliation table with a row for every
+advertised native operation and every described public API operation. Use the
+exact operation name and application/service scope. Include its exact linked
+counterpart or state `No observed counterpart`, its declared execution mode,
+input and output constraints, limits and pagination, contract version and
+observation time, validation status, and any unresolved difference. Count the
+native rows, public API rows, exact comparisons, and unresolved rows before
+calling the inventory complete. Keep aliases visible in the row or identify
+their shared exact contract link.
+
+State the current identity role from the selected fresh context row verbatim.
+List additional accessible roles only when separate fresh authorized context
+rows establish them. Present configured role definitions as application
+metadata, separate from current access. For each capability, copy the exact
+execution mode from its observed contract: label `journey_runtime` as journey
+runtime, and label HTTPS only when the current contract describes that route.
+Use the exact advertised API-contract link and its returned schema when
+reconciling native and public operations. Record failed or unavailable
+observations in the table and preserve their effect on the assessment.
+
 For readiness and current-capability assessments, report the response's literal
 observation timestamp. Calculate its age only from a verified current host,
 context or server reference time, and state that reference alongside the

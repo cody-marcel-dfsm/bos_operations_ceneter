@@ -27,9 +27,26 @@ context's role as the current identity. A configured application role catalog
 supplies role definitions; include those definitions when explicitly requested
 and label them as configured application metadata.
 
+In the final inventory, report the selected context role verbatim. Each
+additional accessible-role claim maps to its own fresh authorized context row.
+Keep configured role definitions labeled as application metadata, separate from
+observed access. The final response names only roles established by those
+observations.
+
 For a full inventory, cover all currently advertised operation keys and catalog entries,
 using the returned Describe batch maximum for required descriptions and
 explicitly identifying unresolved descriptions.
+
+Present a reconciliation table with one row for each advertised native
+operation and each described public API operation. Include application/service
+scope, exact operation name and linked counterpart, execution mode, input/output
+constraints, limits, pagination, contract version, observation time,
+validation status, and unresolved differences. State `No observed counterpart`
+when discovery supplies no exact link. Mark `journey_runtime` as journey
+runtime; use HTTPS only when the observed contract declares the HTTP route.
+Include failed and unavailable reads with their effect on the inventory. Report
+counts for native operations, public API operations, exact comparisons, and
+unresolved rows before describing coverage as complete.
 
 Validate each document against its actual envelope type. For identity-v2,
 validate the application resource with `app-describe` and the complete HTTPS
