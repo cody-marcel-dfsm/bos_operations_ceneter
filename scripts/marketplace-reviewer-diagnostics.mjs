@@ -45,6 +45,7 @@ const failureCodes = new Set([
   "reviewer_oauth_metadata_invalid",
   "reviewer_origin_mismatch",
   "reviewer_published_prerequisite_required",
+  "reviewer_preference_read_failed",
   "reviewer_reauthentication_required",
   "reviewer_registration_invalid",
   "reviewer_resource_ambiguous",
