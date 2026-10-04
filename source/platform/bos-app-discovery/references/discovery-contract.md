@@ -38,6 +38,12 @@ its individual operation contacts. The legacy `api-contract` mode validates
 the actual `api.contract.get` response envelope. An individual identity-v2
 operation contact retains its parent Describe provenance and validation.
 
+The existing `lead-director.journeys.register` API contract declares
+`lead-director-journey-registration/v1`. Validate that application-owned
+registration subtype through `api-contract`, preserving its raw BOSL schemas,
+limits, guarantees, execution contact, public errors, and private freshness.
+Plugin operation contracts retain their structured source requirements.
+
 Copy advertised resource references exactly as returned by the current host,
 preserving their spelling and encoding. When the host presents a private
 placeholder, it owns resolution to the original reference. Resolve a missing

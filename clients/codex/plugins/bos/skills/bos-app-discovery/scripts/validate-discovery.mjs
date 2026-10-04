@@ -891,9 +891,75 @@ function validateOperationRecovery(recovery, label) {
   }
 }
 
+export function validateJourneyRegistrationContractResponse(response, expected = {}) {
+  const label = "journey registration contract";
+  requireObject(response, label);
+  rejectRawAuthority(response, label);
+  const fields = new Set(["operation", "contract_version", "title", "description", "input_schema", "output_schema", "limits", "guarantees", "execution", "public_errors", "ttlMs", "cacheScope"]);
+  requireExactKeys(response, fields, label);
+  for (const field of fields) if (!Object.hasOwn(response, field)) throw new Error(`${label}.${field} is required`);
+  if (response.operation !== "lead-director.journeys.register" ||
+      response.contract_version !== "lead-director-journey-registration/v1") {
+    throw new Error(`${label} must declare the exact published operation and version`);
+  }
+  if ((expected.operation !== undefined && expected.operation !== response.operation) || expected.source !== undefined) {
+    throw new Error(`${label} must match the application-owned registration link`);
+  }
+  requireString(response.title, `${label}.title`);
+  requireString(response.description, `${label}.description`);
+  validateContractObjectSchema(response.input_schema, `${label}.input_schema`);
+  const inputFields = ["identity", "name", "inputs", "entry", "nodes"];
+  requireObject(response.input_schema.properties, `${label}.input_schema.properties`);
+  requireExactKeys(response.input_schema.properties, new Set(inputFields), `${label}.input_schema.properties`);
+  if (response.input_schema.additionalProperties !== false ||
+      !Array.isArray(response.input_schema.required) ||
+      response.input_schema.required.length !== inputFields.length ||
+      inputFields.some(field => !Object.hasOwn(response.input_schema.properties, field) || !response.input_schema.required.includes(field))) {
+    throw new Error(`${label}.input_schema must declare the complete raw BOSL object`);
+  }
+  validateEmbeddedSchema(response.output_schema, `${label}.output_schema`);
+  if (!Array.isArray(response.output_schema.oneOf) || response.output_schema.oneOf.length === 0 ||
+      response.output_schema.oneOf.some(branch => branch.type !== "object" || branch.additionalProperties !== false)) {
+    throw new Error(`${label}.output_schema must declare closed object response variants`);
+  }
+  const limitFields = new Set(["document_bytes", "string_bytes", "nesting_depth", "nodes", "transitions", "predicates", "node_visits", "total_visits", "operation_retries", "operation_duration_seconds", "execution_duration_seconds", "fan_out", "created_per_user_per_hour", "active_per_user", "active_per_application_organization", "execution_ttl_hours", "metadata_retention_days"]);
+  requireObject(response.limits, `${label}.limits`);
+  requireExactKeys(response.limits, limitFields, `${label}.limits`);
+  for (const field of limitFields) if (!Number.isSafeInteger(response.limits[field]) || response.limits[field] < 1) throw new Error(`${label}.limits.${field} must be a positive safe integer`);
+  requireObject(response.guarantees, `${label}.guarantees`);
+  requireExactKeys(response.guarantees, new Set(["idempotent", "server_owned_state", "client_generated_keys"]), `${label}.guarantees`);
+  if (response.guarantees.idempotent !== true || response.guarantees.server_owned_state !== true || response.guarantees.client_generated_keys !== false) {
+    throw new Error(`${label}.guarantees must preserve server-owned state and idempotency`);
+  }
+  requireObject(response.execution, `${label}.execution`);
+  requireExactKeys(response.execution, new Set(["method", "uri", "transport", "context_header"]), `${label}.execution`);
+  if (response.execution.method !== "POST" || typeof response.execution.uri !== "string" ||
+      !/^\/bos\/apps\/lead-director\/api\/v1\/organizations\/[A-Za-z0-9][A-Za-z0-9._~-]{0,127}\/journeys\/register$/u.test(response.execution.uri)) {
+    throw new Error(`${label}.execution must use the exact safe registration POST route`);
+  }
+  const expanded = Object.hasOwn(response.execution, "transport") || Object.hasOwn(response.execution, "context_header");
+  if (expanded && (response.execution.transport !== "https" || response.execution.context_header !== bosContextHeader)) {
+    throw new Error(`${label}.execution must declare HTTPS and the current context header together`);
+  }
+  if (!Array.isArray(response.public_errors) || response.public_errors.length === 0) throw new Error(`${label}.public_errors must be non-empty`);
+  const codes = new Set();
+  for (const error of response.public_errors) {
+    requireObject(error, `${label}.public_errors entry`);
+    requireExactKeys(error, new Set(["code", "http_status", "retryable"]), `${label}.public_errors entry`);
+    if (typeof error.code !== "string" || !/^[A-Z][A-Z0-9_]{0,127}$/u.test(error.code) || codes.has(error.code) ||
+        !Number.isInteger(error.http_status) || error.http_status < 400 || error.http_status > 599 || typeof error.retryable !== "boolean") {
+      throw new Error(`${label}.public_errors must contain unique typed public errors`);
+    }
+    codes.add(error.code);
+  }
+  if (response.ttlMs !== 0 || response.cacheScope !== "private") throw new Error(`${label} must be fresh private MCP data`);
+  return response;
+}
+
 export function validateApiContractResponse(response, expected = {}) {
   const label = "api.contract.get response";
   requireObject(response, label);
+  if (response.operation === "lead-director.journeys.register") return validateJourneyRegistrationContractResponse(response, expected);
   rejectRawAuthority(response, label);
   requireExactKeys(
     response,
