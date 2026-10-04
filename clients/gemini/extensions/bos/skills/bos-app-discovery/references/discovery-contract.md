@@ -19,6 +19,18 @@ An accessible-inventory or readiness assessment can complete with those facts;
 an organization-wide directory is needed for facts beyond that observed scope.
 Missing business-data or execution prerequisites still stop the affected task.
 
+For full inventories, answer with one exact selected-identity row, coverage
+totals, and a reconciliation table. The table has one row for each advertised
+native operation and each described public API operation, with these columns:
+scope/source, exact operation and aliases, exact counterpart or `No observed
+counterpart`, declared execution mode, input/output constraints and bounds,
+limits/pagination, contract version and observed time/age, validation attempts,
+errors, recovery, and current result. Do not add roles from memory or prose
+examples. Preserve every missing, stale, failed, and recovered observation;
+counts must match the rows before claiming complete coverage. Report an empty
+input schema as a valid zero-input action when the observed contract accepts
+`{}`. Record validation failure and recovery as separate observed outcomes.
+
 Before presenting an accessible inventory, build an internal authorization
 table from the fresh context rows: organization, application, installation,
 and role label. Match every final accessible-app, installation, and role claim
