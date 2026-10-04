@@ -7,6 +7,20 @@ description: Route requests through authenticated BOS app discovery, including f
 For live `bos-identity-mcp/v2`, first apply [identity-context compatibility](../bos-mcp-client/references/identity-context.md).
 Its fresh authorized-context selection and saved-default rules govern this
 workflow; single-context grant wording below applies to legacy discovery.
+
+For identity-v2 application discovery, validate the application resource with
+`app-describe` and each complete HTTPS Describe parent response with
+`operation-describe`. That parent validation covers its returned operation
+contacts. Apply `api-contract` only to an actual legacy `api.contract.get`
+response envelope. Retain every failed discovery or validation observation and
+report its effect on the requested assessment.
+
+For BOSL schema, reference, and examples, resolve each stable resource identity
+against the fresh resource catalog returned for the selected context. Select
+the single matching resource and read its exact server-advertised scoped URI.
+Preserve that URI verbatim; the server owns its context selector. Missing or
+ambiguous matches stop the read. Never append, construct, substitute, or guess
+a context handle or invocation URI.
 # BOS App Discovery
 
 First execute the first-action tool lookup in `bos-mcp-client`. Resolve deferred
@@ -22,15 +36,20 @@ services, goals, and machine-readable API contracts.
 Read [the discovery contract](references/discovery-contract.md) before the first
 app-directory or per-app MCP query in a request.
 
-For Agent-Driven Custom Journey authoring, call fresh `app.describe` with `{}`
-and validate its BOSL resource links with `scripts/validate-discovery.mjs`.
-Read each exact schema, reference, and examples URI through the same authenticated
-BOS connection. Then call `plugins.list` with `{}`, preserve readiness separately
+For Agent-Driven Custom Journey authoring, obtain a fresh application description
+through current advertised discovery and validate its BOSL resource links with
+`scripts/validate-discovery.mjs`. Use the identity-v2 resource selection and
+validation rules above; legacy discovery calls its advertised `app.describe`
+with `{}`. Read each exact advertised schema, reference, and examples URI through
+the same authenticated BOS connection. Then call `plugins.list` with `{}`, preserve readiness separately
 from accessibility, copy the selected plugin's complete `service.describe` input
 verbatim, and validate compact/detailed journey agreement. Follow each returned
 operation-contract link through current discovery with the link's exact input.
-Validate the returned envelope with `scripts/validate-discovery.mjs api-contract`,
-including the requested semantic operation, selected structured source when the
+Validate a complete identity-v2 HTTPS Describe response with
+`scripts/validate-discovery.mjs operation-describe`, covering its returned
+contacts. Validate an actual legacy `api.contract.get` response with
+`scripts/validate-discovery.mjs api-contract`. Preserve the requested semantic
+operation, selected structured source when the
 link belongs to a plugin, deterministic execution URI, schemas, source
 readiness, exact duration/fan-out limits, and private non-cacheable metadata.
 `bosl_server_node: true` requires `node_type: server`; a deterministic API with
