@@ -200,13 +200,17 @@ returned capability and exact input, resolving that capability in the current
 catalog. Preserve the advertised semantic identifier verbatim. Account for
 aliases separately; aliases sharing one exact contract link in the same context
 can use one validated observation within this assessment. Reconcile native
-argument bounds with the linked execution contract's limits, pagination and
-transport. Report differing declarations explicitly and retain their exact
-surfaces; unresolved contradictions supply no execution guarantee.
+input and output schemas with the linked execution contract: required and
+optional fields, accepted values and bounds, response shapes, limits, pagination
+and transport. State each observed difference with both exact declarations and
+their source surfaces. Preserve unresolved differences without assuming a
+translation or supplying an execution guarantee.
 
 For readiness and current-capability assessments, report the response's literal
-observation timestamp and its age against the current context or server
-reference time. Fresh authorization and a newly retrieved response establish
+observation timestamp. Calculate its age only from a verified current context
+or server reference time, and state that reference alongside the calculation.
+When no verified reference is available, report the literal timestamp and that
+its age is unverified; do not estimate a current time. Fresh authorization and a newly retrieved response establish
 authorized retrieval; current readiness requires its own timely facts and
 execution-prerequisite evidence. Label current readiness **unverified** when
 that evidence is missing or stale, including in the headline. Attribute
