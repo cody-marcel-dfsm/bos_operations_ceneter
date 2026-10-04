@@ -10,8 +10,17 @@ a live-described tool. Tool catalog absence is insufficient evidence of missing
 resource discovery. Optional resource-template method failure does not block
 listed resource reads. Follow the concrete host procedure in `../SKILL.md`.
 
-The BOS MCP returns the current authenticated scoped-grant description and an
-authorized installed-app directory. Each app contact contains:
+For identity-v2, fresh authorized contexts identify accessible application and
+installation choices in their server-authorized organization and role. Use the
+selected context's current advertised application description and service
+catalog to report its capabilities, readiness, and empty states. Keep each
+observation scoped to its application and include returned versions and times.
+An accessible-inventory or readiness assessment can complete with those facts;
+an organization-wide directory is needed for facts beyond that observed scope.
+Missing business-data or execution prerequisites still stop the affected task.
+
+Legacy directory discovery returns the authenticated scoped-grant description
+and an authorized installed-app directory. Each directory app contact contains:
 
 - descriptive `app_code`, `display_name`, and `description`;
 - an HTTPS `mcp_resource` or equivalent opaque contact;

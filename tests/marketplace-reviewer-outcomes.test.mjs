@@ -206,3 +206,46 @@ test('precise freshness retains calendar timezone format and integer-limit rejec
  assert.equal(reviewerOutcomeMatches(envelope([fact,rule]),data('2026-10-03T20:00:00.123456Z'),[],{...clock,execution_started_at:'2026-02-30T20:00:00.123456Z'}),false);
  for(const value of [{maximum_age_ms:1.5,future_skew_ms:0},{maximum_age_ms:1,future_skew_ms:0.5}])assert.equal(reviewerOutcomeMatches(envelope([fact,{...rule,value}]),data(clock.execution_started_at),[],clock),false);
 });
+
+
+test('opt-in equality accepts repeated complete identity metadata and preserves strict defaults and independent literal truth',()=>{
+ const metadata={contract_version:'bos-identity-mcp/v2',contexts:[{organization_name:'Synthetic',application_name:'Synthetic App',installation_name:'Synthetic Installation',role_label:'Reviewer',is_default:true}]};
+ const tools={contract_version:'bos-identity-mcp/v2',tools:[{name:'synthetic.lookup',description:'Synthetic read',inputSchema:{type:'object'}}],resources:[{uri:'bos://apps/synthetic/reference',name:'Synthetic reference'}]};
+ for(const [operation,body] of [['bos.get.context',metadata],['bos.list.context.tools',tools]]){
+  const chosen={operation,transport:'mcp_discovery',consistent_metadata:true},rule={operator:'equals',response:chosen,path:'/contract_version',value:'bos-identity-mcp/v2'};
+  const row={operation,transport:'mcp_discovery',successful:true,body:structuredClone(body)},data={responses:[row,structuredClone(row)]};
+  assert.equal(matches([rule],data),true);assert.equal(matches([{...rule,response:{operation,transport:'mcp_discovery'}}],data),false);
+  assert.equal(matches([{...rule,value:'invented-version'}],data),false);assert.equal(matches([rule],data,[{id:'missing',operator:'equals'}]),false);
+  assert.equal(matches([rule],{responses:[]}),false);assert.equal(matches([rule],{responses:data.responses.map(row=>({...row,successful:false}))}),false);
+  const changed=structuredClone(data);if(operation==='bos.get.context')changed.responses[1].body.contexts[0].is_default=false;else changed.responses[1].body.tools[0].description='Different full metadata';
+  assert.equal(matches([rule],changed),false);
+  for(const invalid of [undefined,null,[],{}, {contract_version:'wrong',contexts:[],tools:[],resources:[]}, operation==='bos.get.context'?{...metadata,contexts:[{}]}:{...tools,tools:[{name:'synthetic.lookup'}]},operation==='bos.get.context'?{...metadata,contexts:null}:{...tools,resources:[null]}])assert.equal(matches([rule],{responses:[{...row,body:invalid},{...row,body:structuredClone(invalid)}]}),false);
+ }
+});
+
+test('consistent metadata is limited to equals on identity or typed HTTPS Describe selectors',()=>{
+ const body={contract_version:'bos-identity-mcp/v2',contexts:[{organization_name:'Synthetic',application_name:'Synthetic App',installation_name:'Synthetic Installation',role_label:'Reviewer'}]};
+ const chosen={operation:'bos.get.context',transport:'mcp_discovery',consistent_metadata:true},rule={operator:'equals',response:chosen,path:'/contract_version',value:'bos-identity-mcp/v2'};
+ const data={responses:[response({count:2}),{operation:chosen.operation,transport:chosen.transport,successful:true,body}]};
+ for(const value of [false,null,1,'true',undefined])assert.equal(matches([{...rule,response:{...chosen,consistent_metadata:value}}],data),false);
+ for(const changed of [{operation:'plugins.list'},{transport:'https_discovery'},{transport:'deterministic_https'},{operation:'search',transport:'deterministic_https'},{operation:'app.describe',transport:'https_discovery'},{operation:'api.contract.get',api_contract_operation:'calendar.events.search'},{extra:true}])assert.equal(matches([{...rule,response:{...chosen,...changed}}],data),false);
+ for(const operator of ['contains','min_length','timestamp_age','same_values'])assert.equal(matches([fact,{...rule,operator}],data),false);
+ assert.equal(matches([{...rule,other_response:chosen}],data),false);
+ assert.equal(matches([fact,{...fact,response:{...selector,consistent_metadata:true}}],data),false);
+ assert.equal(matches([{...rule,value:null}],data),false);assert.equal(reviewerOutcomeMatches({...envelope([rule]),product:'my-crm'},data,[],context),false);
+});
+
+test('consistent typed Describe equality validates every full batch and compares complete DTOs',async()=>{
+ const {validateOperationDescription}=await import('../source/platform/bos-app-discovery/scripts/validate-discovery.mjs');
+ const rule={...describedFact,response:{...describedSelector,consistent_metadata:true}},data=describedData();data.responses.push(structuredClone(data.responses[0]));
+ assert.equal(matches([rule],data),true);assert.equal(matches([describedFact],data),false);
+ const changed=structuredClone(data);changed.responses.at(-1).body.operations[0].limits.max_results_per_source=4;
+ assert.doesNotThrow(()=>validateOperationDescription(changed.responses.at(-1).body));assert.equal(matches([rule],changed),false);
+ for(const mutate of [rows=>rows[1].body.operations[0].status='invalid',rows=>delete rows[1].body.operations[0].input_schema,rows=>rows[1].body.operations.push(structuredClone(rows[1].body.operations[0])),rows=>rows[0].body.operations=[],rows=>rows[0].body.operations[0].status='not_available']){
+  const invalid=structuredClone(data);mutate(invalid.responses);assert.equal(matches([rule],invalid),false);
+ }
+ assert.equal(matches([{...rule,response:{...rule.response,api_contract_operation:'calendar.events.search'}}],data),false);
+ assert.equal(matches([rule],{responses:data.responses.filter(row=>row.body.operations[0].operation!=='search')}),false);
+ const api=apiData();api.responses.push(structuredClone(api.responses[0]));assert.equal(matches([{...apiFact,response:{...apiSelector,consistent_metadata:true}}],api),false);
+ const same={operator:'same_values',response:rule.response,path:'/sources',project_paths:['/source/plugin'],other_response:rule.response,other_path:'/sources',other_project_paths:['/source/plugin']};assert.equal(matches([rule,same],data),false);
+});

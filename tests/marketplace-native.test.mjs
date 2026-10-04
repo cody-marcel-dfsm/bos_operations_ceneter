@@ -1,4 +1,4 @@
-import {verifyNativeReviewer,classifyNativeFailure,classifyCompletion} from '../scripts/marketplace-native-run.mjs';
+import {verifyNativeReviewer,classifyNativeFailure,classifyCompletion,caseDiagnostics} from '../scripts/marketplace-native-run.mjs';
 import {digest} from '../scripts/marketplace-prompt-catalog.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -7,6 +7,18 @@ import {installedPath,observedDocument,documentDigests,createInstalledAcceptance
 import {mkdtemp,mkdir,writeFile,rm,symlink,realpath} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
+test('retained case diagnostics identify failures while removing credentials and private selectors',()=>{
+ const diagnostic=caseDiagnostics({reason:'Missing source for reader@example.invalid; Bearer credential-value; https://example.invalid/recover?dependency_token=private-value; bos_ctx_v2_'+ 'a'.repeat(64)+'; 00000000-0000-0000-0000-000000000001'}, {missing:['Missing contract provenance','x'.repeat(3000)]},[
+  {tool:'bos_https_describe',is_error:true,response:{reason:'reviewer_document_not_observed'}},
+  {tool:'validate.installed',response:{valid:false,diagnostic:'credential-value'}},
+  {tool:'bos.get.context',response:{contexts:[]}}
+ ]);
+ assert.match(diagnostic.completion_reason,/Missing source/);
+ assert.doesNotMatch(JSON.stringify(diagnostic),/reader@example|credential-value|private-value|bos_ctx_v2_|00000000-0000/);
+ assert.equal(diagnostic.evaluation_missing[0],'Missing contract provenance');
+ assert.equal(diagnostic.evaluation_missing[1].length,2000);
+ assert.deepEqual(diagnostic.failed_steps,[{tool:'bos_https_describe',reason:'reviewer_document_not_observed'},{tool:'validate.installed',reason:'reviewer_validation_failed'}]);
+});
 test('scope and negative/effect checks run before dispatch',()=>{
  const state={canary:true,handle:'selected',kind:'positive',allowed_effects:['read'],tools:[{name:'plugins.list',_meta:{'bos/effect':'read'},inputSchema:{type:'object',additionalProperties:false}}]};
  assert.equal(permission({tool_name:'mcp__BOS_Platform__bos_execute',tool_input:{context_handle:'other',tool_name:'plugins.list',arguments:{}}},state),'wrong_scope');
@@ -185,4 +197,16 @@ test('installed acceptance exposes exactly its supported validator modes and rej
  assert.deepEqual(tools.list.find(row=>row.name==='validate_installed').inputSchema.properties.mode.enum,installedValidatorModes);
  assert.equal(installedValidatorModes.length,9);
  await assert.rejects(tools.call('validate_installed',{mode:'unknown'}),{message:'reviewer_validator_mode_unsupported'});
+});
+
+test('grading context retains the exact assertion clock and original source observations while containing private scope identifiers',async()=>{
+ const {withGradingContext}=await import('../scripts/marketplace-native-run.mjs');
+ const observations=[{tool:'records.search',response:{observed_at:'2026-10-03T12:00:00.123456Z'},is_error:false}];
+ const evidence={answer:'Synthetic answer',observations,denials:[],native_tools:[]};
+ const referenceTime='2026-10-03T12:00:01.123Z',scope={organization_name:'Synthetic',application_name:'Synthetic App',installation_name:'Synthetic Installation',role_label:'Reviewer',context_handle:'private-handle',access_token:'private-token',url:'https://private.invalid'};
+ const result=withGradingContext(evidence,{referenceTime,scope,scopeVerified:true,bindingVerified:true,bos:{release_commit:'published',package_sha256:'actual-package-hash',url:'https://private.invalid'}});
+ assert.equal(result.evaluation_reference_time,referenceTime);assert.equal(result.observations,observations);assert.equal(result.observations[0].response.observed_at,'2026-10-03T12:00:00.123456Z');
+ assert.deepEqual(result.reviewer_scope,{organization_name:'Synthetic',application_name:'Synthetic App',installation_name:'Synthetic Installation',role_label:'Reviewer',verified:true,resolution_basis:'explicit_review_fixture_scope',preference_read_performed:false});
+ assert.deepEqual(result.bos_binding,{verified:true,release_commit:'published',package_sha256:'actual-package-hash'});assert.doesNotMatch(JSON.stringify(result),/private-handle|private-token|private.invalid/);assert.equal(Object.hasOwn(evidence,'evaluation_reference_time'),false);
+ const failed=withGradingContext(evidence,{referenceTime,scope,scopeVerified:false,bindingVerified:false,bos:{}});assert.equal(failed.reviewer_scope.verified,false);assert.equal(failed.bos_binding.verified,false);
 });

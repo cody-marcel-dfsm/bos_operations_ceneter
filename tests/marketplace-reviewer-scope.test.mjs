@@ -31,3 +31,12 @@ test('host scope preflight propagates transport failure without claiming scope',
   const state=makeState();const transport={rpc:async()=>{throw new Error('reviewer_mcp_request_failed');}};
   await assert.rejects(verifyReviewerScope(transport,state),/reviewer_mcp_request_failed/);assert.equal(state.handle,undefined);
 });
+
+
+test('host scope capture emits only actual selected public labels and preserves model discovery state',async()=>{
+ const state=makeState(),original=structuredClone(state);let captured;
+ const actual={...context,access_token:'private-token',private_url:'https://private.invalid',organization_id:'private-id'};
+ assert.equal(await verifyReviewerScope(session(envelope([actual])),state,value=>{captured=value;}),true);
+ assert.deepEqual(captured,{organization_name:context.organization_name,application_name:context.application_name,installation_name:context.installation_name,role_label:context.role_label});assert.equal(Object.isFrozen(captured),true);assert.deepEqual(state,original);assert.doesNotMatch(JSON.stringify(captured),/context_handle|private-token|private.invalid|private-id/);
+ let called=false;await assert.rejects(verifyReviewerScope(session(envelope([{...actual,role_label:'Other'}])),state,()=>{called=true;}),/reviewer_identity_unverified/);assert.equal(called,false);assert.deepEqual(state,original);
+});

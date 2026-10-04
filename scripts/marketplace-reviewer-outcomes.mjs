@@ -13,16 +13,30 @@ function at(value, path) {
   }
   return value;
 }
-function responseSelection(evidence, selector) {
+const record = value => value && typeof value === 'object' && !Array.isArray(value);
+const publicName = value => typeof value === 'string' && value.trim().length > 0;
+function identityMetadata(body, operation) {
+  if (!record(body) || body.contract_version !== 'bos-identity-mcp/v2') return false;
+  if (operation === 'bos.get.context') return Array.isArray(body.contexts) && body.contexts.length > 0 && body.contexts.every(row => record(row) && ['organization_name', 'application_name', 'installation_name', 'role_label'].every(key => publicName(row[key])));
+  return Array.isArray(body.tools) && body.tools.every(row => record(row) && publicName(row.name) && typeof row.description === 'string' && record(row.inputSchema)) && Array.isArray(body.resources) && body.resources.every(row => record(row) && publicName(row.uri) && publicName(row.name));
+}
+function responseSelection(evidence, selector, operator) {
   if (!selector || typeof selector !== 'object' || Array.isArray(selector) || typeof selector.operation !== 'string' || !selector.operation || !transports.has(selector.transport) || !Array.isArray(evidence.responses ?? [])) return undefined;
-  const keys = Object.keys(selector).sort().join(',');
+  const consistent = Object.hasOwn(selector, 'consistent_metadata');
+  if (consistent && (selector.consistent_metadata !== true || operator !== 'equals')) return undefined;
+  const keys = Object.keys(selector).filter(key => key !== 'consistent_metadata').sort().join(',');
   const described = keys === 'described_operation,operation,transport';
   const apiContract = keys === 'api_contract_operation,operation,transport';
   if (keys !== 'operation,transport' && !described && !apiContract) return undefined;
   if (described && (selector.operation !== 'app.describe' || selector.transport !== 'https_discovery' || typeof selector.described_operation !== 'string' || !/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u.test(selector.described_operation))) return undefined;
   if (apiContract && (selector.operation !== 'api.contract.get' || selector.transport !== 'mcp_discovery' || typeof selector.api_contract_operation !== 'string' || !/^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$/u.test(selector.api_contract_operation))) return undefined;
+  const identity = selector.transport === 'mcp_discovery' && ['bos.get.context', 'bos.list.context.tools'].includes(selector.operation);
+  if (consistent && !described && !identity) return undefined;
   const matches = (evidence.responses ?? []).map((row, index) => ({row, index})).filter(({row}) => row?.operation === selector.operation && row.transport === selector.transport && row.successful === true);
-  if (!described && !apiContract) return matches.length === 1 ? {body: matches[0].row.body, origin: `/responses/${matches[0].index}/body`} : undefined;
+  if (!described && !apiContract) {
+    if (consistent ? !matches.length || !matches.every(({row}) => identityMetadata(row.body, selector.operation) && isDeepStrictEqual(row.body, matches[0].row.body)) : matches.length !== 1) return undefined;
+    return {body: matches[0].row.body, origin: `/responses/${matches[0].index}/body`};
+  }
   const contracts = [];
   for (const {row, index} of matches) {
     if (apiContract) {
@@ -36,7 +50,8 @@ function responseSelection(evidence, selector) {
       if (body.operation === selector.described_operation) contracts.push({body, origin: `/responses/${index}/body/operations/${operationIndex}`});
     });
   }
-  return contracts.length === 1 && (apiContract || contracts[0].body.status === 'described') ? contracts[0] : undefined;
+  const unique = consistent ? contracts.length > 0 && contracts.every(row => isDeepStrictEqual(row.body, contracts[0].body)) : contracts.length === 1;
+  return unique && (apiContract || contracts[0].body.status === 'described') ? contracts[0] : undefined;
 }
 function projected(value, paths) {
   if (paths === undefined) return value;
@@ -51,13 +66,13 @@ function projected(value, paths) {
 }
 function selected(evidence, rule, other = false) {
   const prefix = other ? 'other_' : '';
-  const base = rule[prefix + 'response'] ? responseSelection(evidence, rule[prefix + 'response'])?.body : rule[prefix + 'evidence'] === 'answer' ? evidence.answer : rule[prefix + 'evidence'] === 'effects' ? {prohibited_effects: evidence.prohibited_effects} : undefined;
+  const base = rule[prefix + 'response'] ? responseSelection(evidence, rule[prefix + 'response'], rule.operator)?.body : rule[prefix + 'evidence'] === 'answer' ? evidence.answer : rule[prefix + 'evidence'] === 'effects' ? {prohibited_effects: evidence.prohibited_effects} : undefined;
   return projected(at(base, rule[prefix + 'path']), rule[prefix + 'project_paths']);
 }
 function selectedLocations(evidence, rule, other = false) {
   const prefix = other ? 'other_' : '', selector = rule[prefix + 'response'];
   if (!selector) return [];
-  const selection = responseSelection(evidence, selector), path = rule[prefix + 'path'];
+  const selection = responseSelection(evidence, selector, rule.operator), path = rule[prefix + 'path'];
   if (!selection) return [];
   const value = at(selection.body, path);
   if (!Array.isArray(value)) return [];
@@ -99,6 +114,7 @@ export function reviewerOutcomeMatches(assertion, evidence, requirements = [], b
   const rules = assertion.rules;
   const ruleKeys = new Set(['requirement', 'operator', 'response', 'path', 'project_paths', 'value', 'evidence', 'other_response', 'other_path', 'other_project_paths', 'other_evidence', 'distinct_by_path']);
   if (!Array.isArray(rules) || !rules.every(rule => rule && typeof rule === 'object' && !Array.isArray(rule) && Object.keys(rule).every(key => ruleKeys.has(key)))) return false;
+  if (rules.some(rule => rule.other_response && Object.hasOwn(rule.other_response, 'consistent_metadata'))) return false;
   if (!Array.isArray(rules) || !rules.length || rules.length > 64 || !rules.some(rule => rule.response && rule.operator === 'equals' && rule.value !== undefined && rule.value !== null)) return false;
   if (!requirements.every(required => rules.some(rule => rule.requirement === required.id && rule.operator === required.operator && (required.minimum === undefined || (typeof rule.value === 'number' && rule.value >= required.minimum)) && (required.operator !== 'timestamp_age' || (rule.value?.maximum_age_ms <= required.maximum_age_ms && rule.value?.future_skew_ms <= required.future_skew_ms))))) return false;
   return rules.every(rule => {
