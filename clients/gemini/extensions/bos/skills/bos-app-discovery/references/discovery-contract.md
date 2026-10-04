@@ -88,6 +88,24 @@ semantic equivalents of:
 Semantic capability names guide discovery. Literal resource, tool, URI, and API
 operation names come from the current versioned response.
 
+Full inventory also covers every native tool in the selected context's current
+catalog. An advertised `_meta["bos/apiContract"]` identifies a capability and its
+exact input. Resolve that capability through current discovery, copy the input,
+and validate the actual returned contract. Preserve semantic identifiers,
+including their spelling. Account for aliases sharing that exact link in the
+same context with one validated contract observation during this assessment.
+Keep native argument bounds and linked HTTPS execution limits attributed to
+their respective surfaces; state differing limits, pagination declarations and
+unresolved contradictions explicitly.
+
+Readiness reports preserve the returned `observed_at` and identify its age using
+the current authorized context or server reference time. Present stale or
+missing observation evidence as a freshness limitation. Mark current readiness
+unverified whenever timely facts or current execution prerequisites are
+unestablished, including in summaries; label declared availability as advertised.
+Fresh authentication and retrieval retain their own provenance and do not
+replace a response observation timestamp or establish provider connectivity.
+
 For Agent-Driven Custom Journeys, fresh `app.describe` also publishes one scoped
 application reference and exact authenticated BOSL schema, language-reference,
 and conformance-example resource URIs plus an opaque descriptor token.
