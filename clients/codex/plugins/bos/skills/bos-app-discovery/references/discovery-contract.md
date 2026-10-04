@@ -31,6 +31,25 @@ For a full inventory, cover all currently advertised operation keys and catalog 
 using the returned Describe batch maximum for required descriptions and
 explicitly identifying unresolved descriptions.
 
+Validate each document against its actual envelope type. For identity-v2,
+validate the application resource with `app-describe` and the complete HTTPS
+Describe response with `operation-describe`; that response validation covers
+its individual operation contacts. The legacy `api-contract` mode validates
+the actual `api.contract.get` response envelope. An individual identity-v2
+operation contact retains its parent Describe provenance and validation.
+
+Copy advertised resource references exactly as returned by the current host,
+preserving their spelling and encoding. When the host presents a private
+placeholder, it owns resolution to the original reference. Resolve a missing
+reference through current advertised discovery before using it.
+
+Before presenting capabilities or prerequisites, reconcile readiness,
+execution mode, limits, capability flags, and input/output schemas. Report
+observed disagreements explicitly, including each conflicting declaration;
+leave the affected feature unresolved until its governing contract clarifies
+it. Distinguish source readiness from the transport or runtime prerequisites
+needed to execute its operation.
+
 Legacy directory discovery returns the authenticated scoped-grant description
 and an authorized installed-app directory. Each directory app contact contains:
 

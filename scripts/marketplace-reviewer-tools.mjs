@@ -46,11 +46,11 @@ const definitions=[
   spec('acceptance_guard_probe','Verify the test guard by requesting a deliberate denial.'),
   spec('acceptance_guard_status','Check whether the deliberate denial was recorded.'),
   spec('acceptance_read_installed','Read a verified published installed skill or reference.',{product:{type:'string'},path:{type:'string'}},['path']),
-  spec('acceptance_validate_installed','Validate an actual discovered document with the published validator. Supply its returned document_id; the host retains its exact original bytes. Use app-describe for the app.describe resource; operation-describe for an HTTPS Describe response; api-contract for an API contract response; service-journey for a service journey description. Other supported modes are contact, service, graph, plugins and discovery-refresh.',{path:{type:'string'},mode:{type:'string',enum:installedValidatorModes},document_id:{type:'string'}},['path','mode','document_id']),
+  spec('acceptance_validate_installed','Validate an actual discovered document with the published validator. Supply its returned document_id; the host retains its exact original bytes. Use app-describe for the app.describe resource and operation-describe for the complete HTTPS Describe response (the parent document). Individual HTTPS operation contacts are covered by that parent validation; they are not legacy api-contract envelopes. Use api-contract only for the actual legacy api.contract.get response, and service-journey for a service journey description. Other supported modes are contact, service, graph, plugins and discovery-refresh.',{path:{type:'string'},mode:{type:'string',enum:installedValidatorModes},document_id:{type:'string'}},['path','mode','document_id']),
   spec('bos_get_context','Discover and select the exact marketplace reviewer scope; the test host retains its private selector.'),
   spec('bos_list_context_tools','Discover tools for the selected reviewer scope.'),
   spec('bos_list_resources','List BOS discovery resources for the reviewer connection.'),
-  spec('bos_read_resource','Read an advertised BOS discovery resource.',{uri:{type:'string'}},['uri']),
+  spec('bos_read_resource','Read an advertised BOS discovery resource. Copy the exact returned uri string, including any host-presented private placeholder. Preserve spelling and encoding; the host resolves its retained original reference.',{uri:{type:'string'}},['uri']),
   spec('bos_control_discover','Run a discovered BOS control-plane operation. Business operations use bos_https_operation.',{operation:{type:'string',enum:[...controls]},arguments:{type:'object'}},['operation','arguments']),
   spec('bos_https_describe','POST one to five current advertised operation keys to the validated app.describe contact. Use its observed document_id. The host validates the exact parent response with the verified published operation-describe validator before exposing contacts; published_validation identifies that proof and its coverage. Additional applicable published prerequisites remain required.',{document_id:{type:'string'},operations:{type:'array',minItems:1,maxItems:5,uniqueItems:true,items:{type:'string'}}},['document_id','operations']),
   spec('bos_https_operation','Execute an operation contact returned by actual discovery through the published BOS HTTPS dependency adapter. Use the returned contact_id and its exact payload schema.',{contact_id:{type:'string'},payload:{}},['contact_id'])
@@ -160,6 +160,10 @@ export async function createReviewerTools({session,state,release}) {
       observe({tool_name:'mcp__BOS__app_describe',tool_input:{operations:keys},tool_response:raw},state);
       state.observations.at(-1).transport='https-discovery';
       const validation=await installed.call('validate_installed',{path:'skills/bos-app-discovery/scripts/validate-discovery.mjs',mode:'operation-describe',document:raw});
+      // Record the actual host-owned invocation for independent grading. The
+      // existing validator check below remains the dispatch gate; this receipt
+      // adds observations without changing model-validation or dispatch state.
+      state.observations.push({tool:'validate.installed',input:{path:'skills/bos-app-discovery/scripts/validate-discovery.mjs',mode:'operation-describe',document:sanitized(raw)},response:sanitized(validation),scope_verified:!!state.handle,is_error:validation.valid!==true,validation_origin:'host_https_describe'});
       if(validation.valid!==true)throw new Error('reviewer_describe_response_invalid');
       const exposed=expose(raw);
       return {...exposed,transport:'https-discovery',published_validation:{valid:true,mode:'operation-describe',document_id:exposed.document_id,release_commit:bos.release_commit}};
