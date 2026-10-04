@@ -110,7 +110,18 @@ The corresponding deterministic operation Describe response repeats those
 exact fields for every ready operation. Validate it with
 `validate-discovery.mjs operation-describe` before planning or invocation.
 
-Follow every `api.contract.get` link with its exact returned input. Validate the
+For read-only journey feasibility, follow the same advertised BOSL resources and
+operation-contract links as authoring. Read and validate the actual advertised
+journey-registration contract before reporting compiler/runtime limits,
+required inputs, guarantees, failures, or prerequisites. Return the assessment
+without registering or executing a journey.
+
+Follow every `api.contract.get` link with its exact returned input. An operation
+identifier returned by HTTP Describe is a selector for that HTTP contract; it
+does not independently advertise a legacy semantic contract lookup. If no
+operation-contract link exists, report the missing BOSL evidence and preserve
+the validated HTTP description. Never construct a semantic lookup identifier
+from the HTTP operation name. Validate the
 response with `validate-discovery.mjs api-contract`, passing the requested
 operation and, for a plugin-owned link, the selected complete structured source.
 The response binds the operation and source to its current schemas, reference

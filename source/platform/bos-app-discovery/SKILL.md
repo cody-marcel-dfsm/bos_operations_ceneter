@@ -36,7 +36,8 @@ services, goals, and machine-readable API contracts.
 Read [the discovery contract](references/discovery-contract.md) before the first
 app-directory or per-app MCP query in a request.
 
-For Agent-Driven Custom Journey authoring, obtain a fresh application description
+For Agent-Driven Custom Journey authoring or a read-only assessment of journey
+feasibility, obtain a fresh application description
 through current advertised discovery and validate its BOSL resource links with
 `scripts/validate-discovery.mjs`. Use the identity-v2 resource selection and
 validation rules above; legacy discovery calls its advertised `app.describe`
@@ -45,6 +46,10 @@ the same authenticated BOS connection. Then call `plugins.list` with `{}`, prese
 from accessibility, copy the selected plugin's complete `service.describe` input
 verbatim, and validate compact/detailed journey agreement. Follow each returned
 operation-contract link through current discovery with the link's exact input.
+Read and validate the advertised journey-registration contract before assessing
+compiler/runtime feasibility, limits, required inputs, or prerequisites. A
+read-only assessment ends with evidence and performs no registration or journey
+execution.
 Validate a complete identity-v2 HTTPS Describe response with
 `scripts/validate-discovery.mjs operation-describe`, covering its returned
 contacts. Validate an actual legacy `api.contract.get` response with
@@ -52,6 +57,11 @@ contacts. Validate an actual legacy `api.contract.get` response with
 operation, selected structured source when the
 link belongs to a plugin, deterministic execution URI, schemas, source
 readiness, exact duration/fan-out limits, and private non-cacheable metadata.
+An HTTP Describe operation identifier alone supplies no `api.contract.get`
+lookup input. Use only an explicitly advertised operation-contract link and its
+exact returned input; when that link is absent, report the missing BOSL contract
+evidence and retain the validated HTTP description for its declared purpose.
+Never derive a legacy semantic identifier from an HTTP operation name.
 `bosl_server_node: true` requires `node_type: server`; a deterministic API with
 `bosl_server_node: false` omits `node_type` and remains callable outside a
 journey but cannot be authored as a BOSL server node. Never infer either
