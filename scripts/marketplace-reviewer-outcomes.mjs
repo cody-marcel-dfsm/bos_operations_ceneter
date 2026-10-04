@@ -1,4 +1,5 @@
 import {isDeepStrictEqual} from 'node:util';
+import {validateOperationDescription, validateApiContractResponse} from '../source/platform/bos-app-discovery/scripts/validate-discovery.mjs';
 
 const transports = new Set(['deterministic_https', 'https_discovery', 'mcp_discovery']);
 const stable = value => JSON.stringify(value, (_, row) => row && typeof row === 'object' && !Array.isArray(row) ? Object.fromEntries(Object.keys(row).sort().map(key => [key, row[key]])) : row);
@@ -12,10 +13,30 @@ function at(value, path) {
   }
   return value;
 }
-function responseBody(evidence, selector) {
-  if (!selector || Object.keys(selector).sort().join(',') !== 'operation,transport' || typeof selector.operation !== 'string' || !selector.operation || !transports.has(selector.transport)) return undefined;
-  const matches = (evidence.responses ?? []).filter(row => row.operation === selector.operation && row.transport === selector.transport && row.successful === true);
-  return matches.length === 1 ? matches[0].body : undefined;
+function responseSelection(evidence, selector) {
+  if (!selector || typeof selector !== 'object' || Array.isArray(selector) || typeof selector.operation !== 'string' || !selector.operation || !transports.has(selector.transport) || !Array.isArray(evidence.responses ?? [])) return undefined;
+  const keys = Object.keys(selector).sort().join(',');
+  const described = keys === 'described_operation,operation,transport';
+  const apiContract = keys === 'api_contract_operation,operation,transport';
+  if (keys !== 'operation,transport' && !described && !apiContract) return undefined;
+  if (described && (selector.operation !== 'app.describe' || selector.transport !== 'https_discovery' || typeof selector.described_operation !== 'string' || !/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u.test(selector.described_operation))) return undefined;
+  if (apiContract && (selector.operation !== 'api.contract.get' || selector.transport !== 'mcp_discovery' || typeof selector.api_contract_operation !== 'string' || !/^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$/u.test(selector.api_contract_operation))) return undefined;
+  const matches = (evidence.responses ?? []).map((row, index) => ({row, index})).filter(({row}) => row?.operation === selector.operation && row.transport === selector.transport && row.successful === true);
+  if (!described && !apiContract) return matches.length === 1 ? {body: matches[0].row.body, origin: `/responses/${matches[0].index}/body`} : undefined;
+  const contracts = [];
+  for (const {row, index} of matches) {
+    if (apiContract) {
+      const body = row.body?.result;
+      try { validateApiContractResponse(body); } catch { return undefined; }
+      if (body.operation === selector.api_contract_operation) contracts.push({body, origin: `/responses/${index}/body/result`});
+      continue;
+    }
+    try { validateOperationDescription(row.body); } catch { return undefined; }
+    row.body.operations.forEach((body, operationIndex) => {
+      if (body.operation === selector.described_operation) contracts.push({body, origin: `/responses/${index}/body/operations/${operationIndex}`});
+    });
+  }
+  return contracts.length === 1 && (apiContract || contracts[0].body.status === 'described') ? contracts[0] : undefined;
 }
 function projected(value, paths) {
   if (paths === undefined) return value;
@@ -30,18 +51,17 @@ function projected(value, paths) {
 }
 function selected(evidence, rule, other = false) {
   const prefix = other ? 'other_' : '';
-  const base = rule[prefix + 'response'] ? responseBody(evidence, rule[prefix + 'response']) : rule[prefix + 'evidence'] === 'answer' ? evidence.answer : rule[prefix + 'evidence'] === 'effects' ? {prohibited_effects: evidence.prohibited_effects} : undefined;
+  const base = rule[prefix + 'response'] ? responseSelection(evidence, rule[prefix + 'response'])?.body : rule[prefix + 'evidence'] === 'answer' ? evidence.answer : rule[prefix + 'evidence'] === 'effects' ? {prohibited_effects: evidence.prohibited_effects} : undefined;
   return projected(at(base, rule[prefix + 'path']), rule[prefix + 'project_paths']);
 }
 function selectedLocations(evidence, rule, other = false) {
   const prefix = other ? 'other_' : '', selector = rule[prefix + 'response'];
   if (!selector) return [];
-  const matches = (evidence.responses ?? []).map((row, index) => ({row, index})).filter(({row}) => row.operation === selector.operation && row.transport === selector.transport && row.successful === true);
-  if (matches.length !== 1) return [];
-  const {row, index} = matches[0], path = rule[prefix + 'path'];
-  const value = at(row.body, path);
+  const selection = responseSelection(evidence, selector), path = rule[prefix + 'path'];
+  if (!selection) return [];
+  const value = at(selection.body, path);
   if (!Array.isArray(value)) return [];
-  const origin = `/responses/${index}/body${path}`;
+  const origin = selection.origin + path;
   let entries = value.map((value, index) => ({value, path: `${origin}/${index}`}));
   for (const projection of rule[prefix + 'project_paths'] ?? []) {
     const next = [];
@@ -59,14 +79,20 @@ function completeSource(value) {
   return value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).sort().join(',') === 'application,platform,plugin' && Object.values(value).every(row => typeof row === 'string' && row.trim());
 }
 function timestamp(value) {
-  if (typeof value !== 'string') return NaN;
-  const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?(Z|[+-]\d{2}:\d{2})$/.exec(value);
-  if (!parts) return NaN;
+  if (typeof value !== 'string') return undefined;
+  const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(Z|[+-]\d{2}:\d{2})$/.exec(value);
+  if (!parts) return undefined;
   const [year, month, day, hour, minute, second] = parts.slice(1, 7).map(Number);
   const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
   const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  if (month < 1 || month > 12 || day < 1 || day > days[month - 1] || hour > 23 || minute > 59 || second > 59) return NaN;
-  return Date.parse(value);
+  if (month < 1 || month > 12 || day < 1 || day > days[month - 1] || hour > 23 || minute > 59 || second > 59) return undefined;
+  if (parts[8] !== 'Z') {
+    const [offsetHour, offsetMinute] = parts[8].slice(1).split(':').map(Number);
+    if (offsetHour > 23 || offsetMinute > 59) return undefined;
+  }
+  const milliseconds = Date.parse(value.replace(/\.\d+(?=Z|[+-])/, ''));
+  if (!Number.isFinite(milliseconds)) return undefined;
+  return BigInt(milliseconds) * 1000000n + BigInt((parts[7] ?? '').padEnd(9, '0'));
 }
 export function reviewerOutcomeMatches(assertion, evidence, requirements = [], binding = {}) {
   if (Object.keys(assertion ?? {}).sort().join(',') !== 'case_id,product,rules,schema' || assertion?.schema !== 'marketplace-case-assertions/v1' || !binding.product || !binding.case_id || assertion.product !== binding.product || assertion.case_id !== binding.case_id) return false;
@@ -96,9 +122,12 @@ export function reviewerOutcomeMatches(assertion, evidence, requirements = [], b
     }
     if (rule.operator === 'timestamp_age') {
       const clock = timestamp(binding.execution_started_at), limit = rule.value;
-      if (!Number.isFinite(clock) || !limit || !Number.isInteger(limit.maximum_age_ms) || limit.maximum_age_ms < 1 || limit.maximum_age_ms > 604800000 || !Number.isInteger(limit.future_skew_ms) || limit.future_skew_ms < 0 || limit.future_skew_ms > 300000) return false;
+      if (typeof clock !== 'bigint' || !limit || !Number.isInteger(limit.maximum_age_ms) || limit.maximum_age_ms < 1 || limit.maximum_age_ms > 604800000 || !Number.isInteger(limit.future_skew_ms) || limit.future_skew_ms < 0 || limit.future_skew_ms > 300000) return false;
       const timestamps = Array.isArray(value) ? value : [value];
-      return timestamps.length > 0 && timestamps.length <= 1000 && timestamps.every(row => Number.isFinite(timestamp(row)) && clock - timestamp(row) <= limit.maximum_age_ms && timestamp(row) - clock <= limit.future_skew_ms);
+      return timestamps.length > 0 && timestamps.length <= 1000 && timestamps.every(row => {
+        const time = timestamp(row);
+        return typeof time === 'bigint' && clock - time <= BigInt(limit.maximum_age_ms) * 1000000n && time - clock <= BigInt(limit.future_skew_ms) * 1000000n;
+      });
     }
     return false;
   });

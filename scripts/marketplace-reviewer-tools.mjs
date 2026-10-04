@@ -119,9 +119,11 @@ export async function createReviewerTools({session,state,release}) {
       const short=name.slice('acceptance_'.length);const event={tool_name:'mcp__Acceptance__'+short,tool_input:args};
       if(short==='validate_installed'){
         const original=documents.get(args.document_id);if(!original)throw new Error('reviewer_document_not_observed');
-        const target=args.mode==='api-contract'?original.response:args.mode==='service-journey'?original.description:original;
+        const legacyApiWrapper=args.mode==='api-contract'&&Object.hasOwn(original,'response');
+        const target=args.mode==='api-contract'?(legacyApiWrapper?original.response:original):args.mode==='service-journey'?original.description:original;
         if(!state.observed_document_digests?.includes(documentDigests(target)[0]))throw new Error('reviewer_document_not_observed');
-        event.tool_input={path:args.path,mode:args.mode,document:original};
+        const document=args.mode==='api-contract'&&!legacyApiWrapper?{operation:target.operation,...(Object.hasOwn(target,'source')?{source:target.source}:{}),response:target}:original;
+        event.tool_input={path:args.path,mode:args.mode,document};
       }
       state.pre_calls=(state.pre_calls??0)+1;const denied=permission(event,state);
       if(denied){state.denials.push({tool:name,reason:denied});return {isError:true,reason:denied};}

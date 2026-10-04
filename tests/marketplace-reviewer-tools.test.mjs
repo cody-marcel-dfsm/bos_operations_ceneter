@@ -6,7 +6,7 @@ import {tmpdir} from 'node:os';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {createReviewerTools,reviewerDiscoveryDocument} from '../scripts/marketplace-reviewer-tools.mjs';
-import {syntheticAppDescribe,syntheticOperationDescribe} from './helpers/synthetic-bos-discovery-service.mjs';
+import {syntheticAppDescribe,syntheticOperationDescribe,syntheticApiContract} from './helpers/synthetic-bos-discovery-service.mjs';
 import {digest} from '../scripts/marketplace-prompt-catalog.mjs';
 import {documentDigests,observedDocument,installedValidatorModes} from '../scripts/marketplace-native-resources.mjs';
 
@@ -153,4 +153,42 @@ test('test host uses the verified adapter, fresh reviewer context and advertised
     assert.equal((await tools.call('bos_https_operation',{contact_id:contactId,payload:{text:'synthetic'}})).isError,true);assert.equal(requests,1);
     state.kind='negative';assert.equal((await tools.call('bos_control_discover',{operation:'app.describe',arguments:{}})).isError,true);
   }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('actual retained API contracts validate with canonical wrapper and exact observed provenance',async()=>{
+ const root=await realpath(await mkdtemp(join(tmpdir(),'reviewer-api-wrapper-unit-')));
+ try{
+  for(const skill of ['bos-external-dependency-adapter','bos-app-discovery']){
+   const target=join(root,'skills',skill,'scripts');await mkdir(target,{recursive:true});
+   await cp(new URL('../source/platform/'+skill+'/scripts/',import.meta.url),target,{recursive:true});
+  }
+  await run('git',['init','--quiet'],{cwd:root});await run('git',['add','.'],{cwd:root});
+  await run('git',['-c','user.name=Synthetic Test','-c','user.email=test@example.invalid','commit','--quiet','-m','Synthetic published API validator fixture'],{cwd:root});
+  const commit=(await run('git',['rev-parse','HEAD'],{cwd:root})).stdout.trim();
+  const state={product:'bos',installed_root:root,installed_roots:{bos:root},published_commits:{bos:commit},organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,resource:'https://dfsm.ai/mcp/apps/bos/platform',canary:true,kind:'positive',handle:context.context_handle,observations:[],denials:[],allowed_effects:['read'],tools:[{name:'api.contract.get',annotations:{readOnlyHint:true},_meta:{'bos/effect':'read'},inputSchema:{type:'object'}}],validated_contracts:{},failed_validations:{}};
+  let contract=syntheticApiContract(),current=context,requests=0;
+  const session={rpc:async(method,params)=>{
+   if(method==='tools/list')return {tools:[{name:'bos.execute'}]};
+   requests++;assert.equal(params.name,'bos.execute');assert.equal(params.arguments.tool_name,'api.contract.get');
+   return {structuredContent:{contract_version:'bos-identity-mcp/v2',context:current,result:contract}};
+  }};
+  const tools=await createReviewerTools({session,state,release:{path:root,release_commit:commit}});
+  const discover=()=>tools.call('bos_control_discover',{operation:'api.contract.get',arguments:{operation:'calendar.events.search'}});
+  const validate=document_id=>tools.call('acceptance_validate_installed',{path:'skills/bos-app-discovery/scripts/validate-discovery.mjs',mode:'api-contract',document_id});
+  const direct=await discover();assert.deepEqual(direct.document,contract);assert.equal(direct.document.response,undefined);
+  assert.equal((await validate(direct.document_id)).valid,true);
+  assert.equal(state.validated_contracts['api-contract'],documentDigests(contract)[0]);
+  assert.equal(Object.values(state.failed_validations).some(Boolean),false);
+  assert.deepEqual(await validate('invented-document'),{isError:true,reason:'reviewer_document_not_observed'});
+  const hashes=state.observed_document_digests;state.observed_document_digests=[];
+  assert.deepEqual(await validate(direct.document_id),{isError:true,reason:'reviewer_document_not_observed'});
+  state.observed_document_digests=hashes;
+  const target=contract;contract={operation:target.operation,source:target.source,response:target};
+  const legacy=await discover();assert.equal((await validate(legacy.document_id)).valid,true);
+  contract={...contract,operation:'other.synthetic.operation'};
+  const malformedWrapper=await discover();assert.equal((await validate(malformedWrapper.document_id)).valid,false);
+  assert.equal(state.validated_contracts['api-contract'],undefined);
+  assert.equal(Object.values(state.failed_validations).some(Boolean),true);
+  const before=requests;assert.equal((await discover()).isError,true);assert.equal(requests,before);
+ }finally{await rm(root,{recursive:true,force:true});}
 });
