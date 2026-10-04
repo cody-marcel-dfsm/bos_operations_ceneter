@@ -173,6 +173,31 @@ Every operation retains request-time server authorization.
 
 ## Accessible inventory and readiness assessments
 
+For any request for a full BOS inventory, use the response format below before
+writing a summary. Fill it only from retained, current observations; never
+replace an absent row with a guessed capability, role, constraint, or route.
+
+1. **Authorized identity:** report the selected organization, application,
+   installation, and role exactly as one fresh `bos_get_context` row returned
+   them. Do not list other roles unless each has its own fresh authorized
+   context row. Omit role examples and common role names from memory.
+2. **Coverage totals:** state counts for observed native operations, described
+   public API operations, exact linked pairs, aliases, and unresolved rows.
+3. **Evidence table:** include one row for every advertised native operation
+   and every described public API operation.
+
+| Scope and source | Exact operation and aliases | Exact counterpart or no observed counterpart | Declared execution mode | Input/output constraints and bounds | Limits and pagination | Contract version, observed time and age | Validation attempts, errors, recovery and current result |
+|---|---|---|---|---|---|---|---|
+| Copy the application/service and source surface | Copy observed names verbatim | Copy the exact link or state `No observed counterpart` | Copy `journey_runtime`, HTTPS, or the observed mode | Copy declarations and exact differences | Copy observed values | Copy observed version/time; calculate age from the latest guard `reference_time` | Record every attempted document/mode and result; include failures and any observed recovery |
+
+Do not describe coverage as complete when a table row, required description,
+linked contract, exact constraint, or validation result is missing. Keep the
+failed observation and its effect visible. When an advertised action has an
+empty input schema and accepts `{}`, report it as an available zero-input
+action; do not call its inputs or operation missing. Report a failed validation
+and its recovery separately, and claim recovery only after observing its
+result.
+
 For identity-v2, use fresh authorized contexts to identify application and
 installation choices accessible in the selected organization and role. Read
 and validate each applicable advertised application description and service
