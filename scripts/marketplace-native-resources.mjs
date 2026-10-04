@@ -27,8 +27,16 @@ export function createInstalledAcceptance(config,getState) {
  const list=[tool('guard_probe',{}),tool('guard_status',{}),tool('read_installed',{product:{type:'string'},path:{type:'string'}},['path']),tool('validate_installed',{path:{type:'string'},mode:{type:'string',enum:installedValidatorModes},document:{type:'object'}},['path','mode','document'])];
  async function call(name,args) {
   if(name==='guard_probe')throw new Error('Guard canary executed: hook enforcement unavailable');
-  if(name==='guard_status'){const s=await getState();return {ready:s.canary===true};}
+  if(name==='guard_status'){const s=await getState();return {ready:s.canary===true,reference_time:new Date().toISOString(),reference_time_source:'reviewer_host_utc_clock'};}
   if(name==='validate_installed'&&!installedValidatorModes.includes(args.mode))throw new Error('reviewer_validator_mode_unsupported');
+ if(name==='compare_schemas'){
+  const state=await getState();
+  if(!state.canary||state.kind!=='positive'||!state.handle||!state.allowed_effects?.includes('read')||!state.validated_contracts?.['app-describe']||Object.values(state.failed_validations??{}).some(Boolean))throw new Error('reviewer_published_prerequisite_required');
+  if(!Array.isArray(args.pairs)||args.pairs.length<1||args.pairs.length>32||!Array.isArray(args.proof_documents)||!args.proof_documents.length||args.proof_documents.some(doc=>!observedDocument(state.observed_document_digests,doc)))throw new Error('reviewer_document_not_observed');
+  const root=config.installed_roots.bos,commit=config.published_commits.bos,relativePath='skills/bos-app-discovery/scripts/compare-schema-surfaces.mjs';
+  const path=await installedPath(root,relativePath);await readPublishedFile(root,commit,relativePath);await verifyPublishedPackage(root,commit);
+  return await new Promise((done,reject)=>{const child=spawn(process.execPath,[path],{stdio:['pipe','pipe','pipe']});let output='',error='';child.stdout.on('data',c=>output+=c);child.stderr.on('data',c=>error+=c);const timer=setTimeout(()=>child.kill(),30000);child.on('error',reject);child.on('close',code=>{clearTimeout(timer);if(code!==0){reject(new Error('reviewer_validation_failed'));return;}try{done(JSON.parse(output));}catch{reject(new Error('reviewer_validation_failed'));}});child.stdin.end(JSON.stringify({pairs:args.pairs}));});
+ }
   const selected=args.product??config.product;
   if(!Object.hasOwn(config.installed_roots,selected))throw new Error('Unknown installed product');
   const root=name==='validate_installed'?(config.installed_roots.bos??config.installed_root):config.installed_roots[selected];

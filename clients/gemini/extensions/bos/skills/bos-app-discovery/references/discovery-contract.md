@@ -98,9 +98,15 @@ Compare native and linked HTTPS input and output schemas, including required
 and optional fields, accepted values and bounds, response shapes, limits,
 pagination and transport. Attribute each difference to its exact source
 declarations. Preserve unresolved differences without inventing a translation.
+Use a complete per-operation ledger covering native aliases and all observed
+counterparts, with every input requirement, output/media shape, limit and
+execution declaration accounted for. Carry each differing declaration into the
+final assessment. The packaged schema comparison helper compares declarations
+from exact observed schemas; its output provides no correspondence, validation,
+interoperability, authorization or readiness guarantee.
 
 Readiness reports preserve the returned `observed_at`. Calculate age only from
-a verified current authorized context or server reference time and state the
+a verified current host, authorized context or server reference time and state the
 reference used. If that reference is unavailable, preserve the timestamp and
 report age as unverified rather than estimating a current time. Present stale or
 missing observation evidence as a freshness limitation. Mark current readiness

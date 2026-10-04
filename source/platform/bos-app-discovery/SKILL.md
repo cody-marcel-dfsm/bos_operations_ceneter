@@ -130,9 +130,23 @@ and transport. State each observed difference with both exact declarations and
 their source surfaces. Preserve unresolved differences without assuming a
 translation or supplying an execution guarantee.
 
+Build a complete internal comparison ledger with a row for every native
+operation and its observed counterpart, retaining each alias. Cover required
+and optional inputs, field constraints, selectors, write-target shapes, version
+and idempotency declarations, output shapes and media, effects, limits,
+pagination and transport. Mark a missing counterpart or declaration explicitly.
+Check the ledger against the original catalogs and carry every identified
+difference into the final assessment; a representative example does not cover
+the other operations. The packaged [schema comparison helper](scripts/compare-schema-surfaces.mjs)
+compares exact declared schemas in batches of one to 32 pairs. Use the host's
+verified local comparison capability when available, with original observed
+schema references. Its complete differences prove no semantic correspondence,
+validation, interoperability, authority or readiness; retain those separate gates.
+
 For readiness and current-capability assessments, report the response's literal
-observation timestamp. Calculate its age only from a verified current context
-or server reference time, and state that reference alongside the calculation.
+observation timestamp. Calculate its age only from a verified current host,
+context or server reference time, and state that reference alongside the
+calculation.
 When no verified reference is available, report the literal timestamp and that
 its age is unverified; do not estimate a current time. Fresh authorization and a newly retrieved response establish
 authorized retrieval; current readiness requires its own timely facts and

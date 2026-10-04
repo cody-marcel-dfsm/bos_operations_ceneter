@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,mkdir,cp,rm,realpath} from 'node:fs/promises';
+import {mkdtemp,mkdir,cp,rm,realpath,readFile,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {execFile} from 'node:child_process';
@@ -28,11 +28,12 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   app.describe.uri='/bos/apps/lead-director/api/v1/organizations/synthetic/describe';
   const state={product:'bos',installed_root:root,installed_roots:{bos:root},published_commits:{bos:commit},organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,resource:'https://dfsm.ai/mcp/apps/bos/platform',canary:true,kind:'positive',handle:context.context_handle,resources:[uri],observations:[],denials:[],allowed_effects:['read'],validated_contracts:{},failed_validations:{}};
   const describeResponse=()=>{const value=syntheticOperationDescribe();value.operations=value.operations.slice(0,1);return value;};
-  let current=context,requests=0,response=describeResponse();
+  let current=context,requests=0,response=describeResponse(),nativeSchema={type:'object',required:[],properties:{query:{type:'string'}}};
   const session={rpc:async(method,params)=>{
-   if(method==='tools/list')return {tools:[{name:'bos_get_context'}]};
+   if(method==='tools/list')return {tools:[{name:'bos_get_context'},{name:'bos_list_context_tools'}]};
    if(method==='resources/read')return {contents:[{uri,mimeType:'application/json',text:JSON.stringify(app)}]};
    if(method==='resources/list')return {context_handle:current.context_handle,resources:[{uri,name:'app.describe',mimeType:'application/json'}]};
+   if(params.name==='bos_list_context_tools')return {structuredContent:{context_handle:current.context_handle,tools:[{name:'synthetic_search',inputSchema:nativeSchema,outputSchema:{type:'object',additionalProperties:true}}]}};
    assert.equal(params.name,'bos_get_context');return {structuredContent:{contract_version:'bos-identity-mcp/v2',contexts:[current]}};
   },request:async(url,options)=>{
    requests++;assert.equal(url,'https://dfsm.ai'+app.describe.uri);assert.equal(options.method,'POST');
@@ -76,6 +77,28 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   const receipt=state.observations.findLast(row=>row.validation_origin==='host_https_describe');
   assert.equal(receipt.tool,'validate.installed');assert.equal(receipt.input.mode,'operation-describe');assert.equal(receipt.response.valid,true);assert.equal(receipt.is_error,false);assert.deepEqual(receipt.input.document,response);
   assert.deepEqual({validated:state.validated_contracts,failed:state.failed_validations},validationState);
+  const schemaPair={left:{document_id:result.document_id,pointer:'/operations/0/input_schema'},right:{document_id:result.document_id,pointer:'/operations/0/output_schema'}};
+  const nativeCatalog=await tools.call('bos_list_context_tools',{});
+  const nativeComparison=await tools.call('acceptance_compare_schemas',{pairs:[{left:{document_id:nativeCatalog.document_id,pointer:'/tools/0/inputSchema'},right:schemaPair.left}]});
+  assert.equal(nativeComparison.isError,undefined);assert.ok(nativeComparison.comparisons[0].declaration_differences.some(row=>row.pointer==='/required'));
+  nativeSchema={type:'object',properties:{context_handle:{type:'string',enum:[context.context_handle]}}};
+  const privateCatalog=await tools.call('bos_list_context_tools',{});
+  assert.equal((await tools.call('acceptance_compare_schemas',{pairs:[{left:{document_id:privateCatalog.document_id,pointer:'/tools/0/inputSchema'},right:schemaPair.left}]})).isError,true);
+  const beforeComparison=requests,comparison=await tools.call('acceptance_compare_schemas',{pairs:[schemaPair]});
+  assert.equal(comparison.isError,undefined);assert.equal(comparison.comparisons[0].complete,true);
+  assert.ok(comparison.comparisons[0].declaration_differences.length);assert.deepEqual(comparison.comparisons[0].left,schemaPair.left);
+  assert.equal(requests,beforeComparison);
+  assert.equal((await tools.call('acceptance_compare_schemas',{pairs:[{...schemaPair,left:{document_id:'not-observed',pointer:'/input_schema'}}]})).isError,true);
+  assert.equal((await tools.call('acceptance_compare_schemas',{pairs:[{...schemaPair,left:{document_id:observed.document_id,pointer:'/describe'}}]})).isError,true);
+  assert.equal((await tools.call('acceptance_compare_schemas',{pairs:[{...schemaPair,left:{document_id:result.document_id,pointer:'/operations/0/input_schema/~2'}}]})).isError,true);
+  state.kind='negative';assert.equal((await tools.call('acceptance_compare_schemas',{pairs:[schemaPair]})).isError,true);state.kind='positive';
+  state.failed_validations['api-contract']=true;assert.equal((await tools.call('acceptance_compare_schemas',{pairs:[schemaPair]})).isError,true);delete state.failed_validations['api-contract'];
+  const helper=join(root,'skills/bos-app-discovery/scripts/compare-schema-surfaces.mjs'),originalHelper=await readFile(helper);
+  await writeFile(helper,Buffer.concat([originalHelper,Buffer.from('\n// altered package fixture\n')]));
+  assert.equal((await tools.call('acceptance_compare_schemas',{pairs:[schemaPair]})).isError,true);
+  await writeFile(helper,originalHelper);
+  assert.equal((await tools.call('acceptance_compare_schemas',{pairs:[schemaPair]})).comparisons[0].complete,true);
+
   assert.equal(result.isError,undefined);assert.equal(result.document.contract_version,'lead-director-describe/v1');
   assert.equal(result.advertised_https_contacts.length,1);assert.equal(requests,1);
   assert.doesNotMatch(JSON.stringify(result),/bos_ctx_v2_|context_handle/);
@@ -100,6 +123,7 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   assert.match(refreshed.document_id,/^doc_[1-9][0-9]*$/);
   assert.deepEqual(await tools.call('acceptance_validate_installed',{mode:'app-describe',document_id:observed.document_id}),{isError:true,reason:'reviewer_document_not_observed'});
   assert.deepEqual(await tools.call('bos_https_operation',{contact_id:result.advertised_https_contacts[0].contact_id,payload:{}}),{isError:true,reason:'reviewer_contact_not_observed'});
+  assert.equal((await tools.call('acceptance_compare_schemas',{pairs:[schemaPair]})).isError,true);
  }finally{await rm(root,{recursive:true,force:true});}
 });
 
