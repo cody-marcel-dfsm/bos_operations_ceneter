@@ -22,7 +22,7 @@ export function permission(event, state) {
  if(event.tool_name?.includes('Acceptance')) {
   if(name==='guard.probe') {state.canary=true;return 'guard_canary_denied';}
   if(['guard.status','read.installed','validate.installed'].includes(name)) return null;
-  if(name==='compare.schemas')return state.canary&&state.kind==='positive'&&state.handle&&state.allowed_effects?.includes('read')&&state.validated_contracts?.['app-describe']&&!Object.values(state.failed_validations??{}).some(Boolean)?null:'published_prerequisite_required';
+  if(name==='compare.schemas')return state.canary&&['positive','starter'].includes(state.kind)&&state.handle&&state.allowed_effects?.includes('read')&&state.validated_contracts?.['app-describe']&&!Object.values(state.failed_validations??{}).some(Boolean)?null:'published_prerequisite_required';
  }
  if(['update_plan'].includes(event.tool_name)) return null;
  if(!state.canary) return 'guard_canary_required';

@@ -1,6 +1,6 @@
 import {readPublishedFile,verifyPublishedPackage} from './marketplace-published-package.mjs';
 import {readFile, realpath} from 'node:fs/promises';
-import {resolve, relative, isAbsolute} from 'node:path';
+import {resolve, relative, isAbsolute, dirname} from 'node:path';
 import {spawn} from 'node:child_process';
 import {createInterface} from 'node:readline';
 import {createHash} from 'node:crypto';
@@ -23,27 +23,55 @@ export function observedDocument(hashes,document) {
  return (hashes??[]).includes(createHash('sha256').update(stable(document)).digest('hex'));
 }
 export function createInstalledAcceptance(config,getState) {
+ const references=new Map(),referenceKeys=new Map();let nextReference=0;
+ const registerReference=async(product,path)=>{
+  if(!Object.hasOwn(config.installed_roots??{},product))throw new Error('Unknown installed product');
+  const root=config.installed_roots[product],file=await installedPath(root,path),publishedPath=relative(root,file),commit=config.published_commits[product]??config.published_commits[config.product];
+  if(!/\.(?:md|json|mjs)$/.test(file))throw new Error('Unsupported published resource');
+  await readPublishedFile(root,commit,publishedPath);
+  const key=product+'\0'+publishedPath;let id=referenceKeys.get(key);
+  if(!id){id='file_'+(++nextReference);referenceKeys.set(key,id);references.set(id,{reference_id:id,product,path:publishedPath});}
+  return references.get(id);
+ };
  const tool=(name,properties,required=[])=>({name,description:name,inputSchema:{type:'object',properties,required,additionalProperties:false},annotations:{readOnlyHint:true}});
- const list=[tool('guard_probe',{}),tool('guard_status',{}),tool('read_installed',{product:{type:'string'},path:{type:'string'}},['path']),tool('validate_installed',{path:{type:'string'},mode:{type:'string',enum:installedValidatorModes},document:{type:'object'}},['path','mode','document'])];
+ const list=[tool('guard_probe',{}),tool('guard_status',{}),tool('read_installed',{product:{type:'string'},path:{type:'string'},reference_id:{type:'string'}},[]),tool('validate_installed',{path:{type:'string'},mode:{type:'string',enum:installedValidatorModes},document:{type:'object'}},['path','mode','document'])];
  async function call(name,args) {
   if(name==='guard_probe')throw new Error('Guard canary executed: hook enforcement unavailable');
   if(name==='guard_status'){const s=await getState();return {ready:s.canary===true,reference_time:new Date().toISOString(),reference_time_source:'reviewer_host_utc_clock'};}
   if(name==='validate_installed'&&!installedValidatorModes.includes(args.mode))throw new Error('reviewer_validator_mode_unsupported');
  if(name==='compare_schemas'){
   const state=await getState();
-  if(!state.canary||state.kind!=='positive'||!state.handle||!state.allowed_effects?.includes('read')||!state.validated_contracts?.['app-describe']||Object.values(state.failed_validations??{}).some(Boolean))throw new Error('reviewer_published_prerequisite_required');
+  if(!state.canary||!['positive','starter'].includes(state.kind)||!state.handle||!state.allowed_effects?.includes('read')||!state.validated_contracts?.['app-describe']||Object.values(state.failed_validations??{}).some(Boolean))throw new Error('reviewer_published_prerequisite_required');
   if(!Array.isArray(args.pairs)||args.pairs.length<1||args.pairs.length>32||!Array.isArray(args.proof_documents)||!args.proof_documents.length||args.proof_documents.some(doc=>!observedDocument(state.observed_document_digests,doc)))throw new Error('reviewer_document_not_observed');
   const root=config.installed_roots.bos,commit=config.published_commits.bos,relativePath='skills/bos-app-discovery/scripts/compare-schema-surfaces.mjs';
   const path=await installedPath(root,relativePath);await readPublishedFile(root,commit,relativePath);await verifyPublishedPackage(root,commit);
   return await new Promise((done,reject)=>{const child=spawn(process.execPath,[path],{stdio:['pipe','pipe','pipe']});let output='',error='';child.stdout.on('data',c=>output+=c);child.stderr.on('data',c=>error+=c);const timer=setTimeout(()=>child.kill(),30000);child.on('error',reject);child.on('close',code=>{clearTimeout(timer);if(code!==0){reject(new Error('reviewer_validation_failed'));return;}try{done(JSON.parse(output));}catch{reject(new Error('reviewer_validation_failed'));}});child.stdin.end(JSON.stringify({pairs:args.pairs}));});
  }
-  const selected=args.product??config.product;
+  const ref=name==='read_installed'&&args.reference_id?references.get(args.reference_id):null;
+ if(name==='read_installed'&&args.reference_id&&(!ref||(args.product&&args.product!==ref.product)||(args.path&&args.path!==ref.path)))throw new Error('reviewer_document_not_observed');
+ const selected=ref?.product??args.product??config.product;
   if(!Object.hasOwn(config.installed_roots,selected))throw new Error('Unknown installed product');
   const root=name==='validate_installed'?(config.installed_roots.bos??config.installed_root):config.installed_roots[selected];
-  const path=await installedPath(root,args.path);
+  const path=await installedPath(root,ref?.path??args.path);
   const commit=config.published_commits[name==='validate_installed'?'bos':selected]??config.published_commits[config.product];
   await readPublishedFile(root,commit,relative(root,path));
-  if(name==='read_installed') {if(!/\.(?:md|json|mjs)$/.test(path))throw new Error('Unsupported published resource');return {text:await readFile(path,'utf8')};}
+ if(name==='read_installed') {
+  if(!/\.(?:md|json|mjs)$/.test(path))throw new Error('Unsupported published resource');
+  const text=await readFile(path,'utf8'),self=await registerReference(selected,relative(root,path)),offered=[],unavailable=[];
+  if(path.endsWith('.md')){
+   const links=[...text.matchAll(/\[([^\]]+)\]\((<[^>]+>|[^)\s]+)(?:\s+"[^"]*")?\)/g)];
+   const results=await Promise.allSettled(links.map(async link=>{
+    const target=link[2].replace(/^<|>$/g,'').split('#')[0];
+    if(!target||/^(?:[a-z][a-z0-9+.-]*:|[\/\\])/i.test(target)||! /\.(?:md|json|mjs)$/i.test(target))return null;
+    const decoded=decodeURIComponent(target);
+    const file=await registerReference(selected,relative(root,resolve(dirname(path),decoded)));
+    return {...file,label:link[1],target};
+   }));
+   results.forEach((result,index)=>{if(result.status==='fulfilled'){if(result.value)offered.push(result.value);}else unavailable.push({target:links[index][2],reason:'not_in_verified_published_package'});});
+  }
+  return {text,reference_id:self.reference_id,references:offered,...(unavailable.length?{unavailable_references:unavailable}:{})};
+ }
+
   if(name!=='validate_installed'||!path.endsWith('/scripts/validate-discovery.mjs')||!installedValidatorModes.includes(args.mode))throw new Error('Unsupported installed validator');
   await verifyPublishedPackage(root,commit);
   const state=await getState();
