@@ -1,0 +1,263 @@
+{
+  "operation": "google-drive-context.files.search",
+  "contract_version": "1.0.0",
+  "source": {
+    "platform": "bos",
+    "application": "lead-director",
+    "plugin": "google-drive-context"
+  },
+  "bosl_server_node": true,
+  "node_type": "server",
+  "title": "Find one exact Google Drive file",
+  "description": "Find one exact configured Google Drive file and keep its provider identity server-side.",
+  "permission": "google-drive-context.files.read",
+  "input_schema": {
+    "type": "object",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "exact_name"
+    ],
+    "properties": {
+      "exact_name": {
+        "type": "string",
+        "maxLength": 255,
+        "minLength": 1,
+        "allowed_references": [
+          "journey_input",
+          "literal"
+        ]
+      }
+    },
+    "x-bos-fields": [
+      {
+        "path": "exact_name",
+        "default": null,
+        "nullable": false,
+        "data_type": "varchar",
+        "constraints": {
+          "max_length": 255
+        },
+        "ordinal_position": 1
+      }
+    ],
+    "additionalProperties": false
+  },
+  "output_schema": {
+    "type": "object",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "files"
+    ],
+    "properties": {
+      "files": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "source",
+            "name",
+            "mime_type",
+            "modified_at",
+            "ownership_context",
+            "location_context"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source": {
+              "type": "object",
+              "required": [
+                "platform",
+                "application",
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "google-drive-context"
+                },
+                "platform": {
+                  "const": "bos"
+                },
+                "application": {
+                  "const": "lead-director"
+                }
+              },
+              "additionalProperties": false
+            },
+            "mime_type": {
+              "type": "string"
+            },
+            "modified_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "location_context": {
+              "type": "object",
+              "required": [
+                "label"
+              ],
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "maxLength": 255,
+                  "minLength": 1
+                }
+              },
+              "additionalProperties": false
+            },
+            "ownership_context": {
+              "type": "object",
+              "required": [
+                "label"
+              ],
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "maxLength": 255,
+                  "minLength": 1
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "maxItems": 1,
+        "minItems": 1
+      },
+      "file_1": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    "x-bos-fields": [
+      {
+        "path": "files",
+        "default": null,
+        "nullable": false,
+        "data_type": "json",
+        "constraints": {
+          "max_items": 1
+        },
+        "ordinal_position": 1
+      },
+      {
+        "path": "file_1",
+        "default": null,
+        "nullable": true,
+        "data_type": "reference",
+        "constraints": {},
+        "ordinal_position": 2
+      }
+    ],
+    "additionalProperties": false
+  },
+  "allowed_references": {
+    "exact_name": [
+      "journey_input",
+      "literal"
+    ]
+  },
+  "effect": "read",
+  "approval": {
+    "required": false
+  },
+  "limits": {
+    "max_targets": 1,
+    "bulk_supported": false,
+    "maximum_fan_out": 1,
+    "streaming_supported": false,
+    "pagination_supported": false,
+    "max_results_per_source": 1,
+    "maximum_duration_seconds": 30
+  },
+  "guarantees": {
+    "convergence": "not_applicable",
+    "idempotency": "service_owned",
+    "read_consistency": "point_in_time",
+    "per_source_atomicity": "not_applicable",
+    "cross_source_atomicity": "not_applicable"
+  },
+  "execution": {
+    "method": null,
+    "uri": null,
+    "context_header": null,
+    "transport": "journey_runtime"
+  },
+  "retry_policy": {
+    "maximum_attempts": 2
+  },
+  "receipt_schema": {
+    "type": "object",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "outcome",
+      "count"
+    ],
+    "properties": {
+      "count": {
+        "const": 1
+      },
+      "outcome": {
+        "const": "observed"
+      }
+    },
+    "x-bos-fields": [
+      {
+        "path": "outcome",
+        "default": null,
+        "nullable": false,
+        "data_type": "varchar",
+        "constraints": {},
+        "ordinal_position": 1
+      },
+      {
+        "path": "count",
+        "default": null,
+        "nullable": false,
+        "data_type": "integer",
+        "constraints": {},
+        "ordinal_position": 2
+      }
+    ],
+    "additionalProperties": false
+  },
+  "public_errors": [
+    {
+      "code": "DRIVE_INPUT_INVALID",
+      "message": "The exact Drive file request is invalid or ambiguous.",
+      "retryable": false,
+      "http_status": 422,
+      "details_schema": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "code": "SOURCE_TEMPORARILY_UNAVAILABLE",
+      "message": "The configured Drive source is temporarily unavailable.",
+      "retryable": true,
+      "http_status": 503,
+      "details_schema": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      }
+    }
+  ],
+  "recovery": null,
+  "provenance": {
+    "kind": "installed_plugin"
+  },
+  "readiness": {
+    "status": "ready",
+    "requirements": []
+  },
+  "ttlMs": 0,
+  "cacheScope": "private"
+}

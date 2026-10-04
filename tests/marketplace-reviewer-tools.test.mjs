@@ -32,6 +32,7 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   const session={rpc:async(method,params)=>{
    if(method==='tools/list')return {tools:[{name:'bos_get_context'}]};
    if(method==='resources/read')return {contents:[{uri,mimeType:'application/json',text:JSON.stringify(app)}]};
+   if(method==='resources/list')return {context_handle:current.context_handle,resources:[{uri,name:'app.describe',mimeType:'application/json'}]};
    assert.equal(params.name,'bos_get_context');return {structuredContent:{contract_version:'bos-identity-mcp/v2',contexts:[current]}};
   },request:async(url,options)=>{
    requests++;assert.equal(url,'https://dfsm.ai'+app.describe.uri);assert.equal(options.method,'POST');
@@ -42,15 +43,21 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   const tools=await createReviewerTools({session,state,release:{path:root,release_commit:commit}});
   const definition=tools.definitions.find(row=>row.name==='acceptance_validate_installed');
   assert.deepEqual(definition.inputSchema.properties.mode.enum,installedValidatorModes);
+  assert.deepEqual(definition.inputSchema.required,['mode','document_id']);
+  assert.deepEqual(definition.inputSchema.properties.path.enum,['skills/bos-app-discovery/scripts/validate-discovery.mjs']);
   assert.match(definition.description,/app-describe.*app.describe resource/);
   assert.match(definition.description,/operation-describe.*HTTPS Describe response/);
-  const observed=await tools.call('bos_read_resource',{uri});const args={document_id:observed.document_id,operations:['search']};
+  const observed=await tools.call('bos_read_resource',{uri});
+  assert.match(observed.document_id,/^doc_[1-9][0-9]*$/);
+  assert.equal((await tools.call('bos_read_resource',{uri})).document_id,observed.document_id);
+  const args={document_id:observed.document_id,operations:['search']};
   assert.equal((await tools.call('bos_https_describe',args)).isError,true);assert.equal(requests,0);
   const invalidMode=await tools.call('acceptance_validate_installed',{path:'skills/bos-app-discovery/scripts/validate-discovery.mjs',mode:'invented-mode',document_id:observed.document_id});
   assert.deepEqual(invalidMode,{isError:true,reason:'reviewer_validator_mode_unsupported'});
   assert.equal(requests,0);
   assert.equal(state.validated_contracts['app-describe'],undefined);
-  const checked=await tools.call('acceptance_validate_installed',{path:'skills/bos-app-discovery/scripts/validate-discovery.mjs',mode:'app-describe',document_id:observed.document_id});
+  assert.deepEqual(await tools.call('acceptance_validate_installed',{path:'skills/other/validator.mjs',mode:'app-describe',document_id:observed.document_id}),{isError:true,reason:'reviewer_tool_failed'});
+  const checked=await tools.call('acceptance_validate_installed',{mode:'app-describe',document_id:observed.document_id});
   assert.equal(checked.valid,true);
   for(const keys of [[],['search','search'],['unadvertised'],Array(6).fill('search')]){
    assert.equal((await tools.call('bos_https_describe',{...args,operations:keys})).isError,true);
@@ -85,6 +92,14 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   const before=requests;state.kind='negative';assert.equal((await tools.call('bos_https_describe',args)).isError,true);assert.equal(requests,before);state.kind='positive';
   current={...context,context_handle:'bos_ctx_v2_'+'b'.repeat(64)};
   assert.equal((await tools.call('bos_https_describe',args)).isError,true);assert.equal(requests,before);
+  assert.deepEqual(await tools.call('acceptance_validate_installed',{mode:'app-describe',document_id:observed.document_id}),{isError:true,reason:'reviewer_document_not_observed'});
+  await tools.call('bos_get_context',{});await tools.call('bos_list_resources',{});
+  assert.equal(state.handle,current.context_handle);
+  const refreshed=await tools.call('bos_read_resource',{uri});
+  assert.notEqual(refreshed.document_id,observed.document_id);
+  assert.match(refreshed.document_id,/^doc_[1-9][0-9]*$/);
+  assert.deepEqual(await tools.call('acceptance_validate_installed',{mode:'app-describe',document_id:observed.document_id}),{isError:true,reason:'reviewer_document_not_observed'});
+  assert.deepEqual(await tools.call('bos_https_operation',{contact_id:result.advertised_https_contacts[0].contact_id,payload:{}}),{isError:true,reason:'reviewer_contact_not_observed'});
  }finally{await rm(root,{recursive:true,force:true});}
 });
 
@@ -147,6 +162,11 @@ test('test host uses the verified adapter, fresh reviewer context and advertised
     const contactId=described.advertised_https_contacts[0].contact_id;
     const result=await tools.call('bos_https_operation',{contact_id:contactId,payload:{text:'synthetic'}});
     assert.deepEqual(result.body,{count:2});assert.equal(result.transport,'https');assert.equal(requests,1);assert.equal(contextReads,1);
+    const businessReceipt=state.observations.findLast(row=>row.transport==='https');
+    assert.equal(businessReceipt.contact_sha256,digest(contact));
+    assert.match(businessReceipt.contact_sha256,/^[a-f0-9]{64}$/);
+    assert.notEqual(businessReceipt.contact_sha256,contactId);
+    assert.match(contactId,/^doc_[1-9][0-9]*$/);
     assert.doesNotMatch(JSON.stringify(result),/context_handle|bos_ctx_v2/);
     for(const payload of [{text:'synthetic',org_id:'foreign'},{text:''}]){assert.equal((await tools.call('bos_https_operation',{contact_id:contactId,payload})).isError,true);}
     assert.equal(requests,1);

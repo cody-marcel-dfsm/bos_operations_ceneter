@@ -191,3 +191,5 @@ and a sanitized continuation reference for the per-app operation. Apply the
 Current-host read execution rule in `../SKILL.md` to independently authorized
 authenticated reads. Preserve a partial result when those reads succeed.
 Browser or copied-endpoint work never repairs this state.
+
+Public `location_context` and `ownership_context` output-schema properties are display labels in both operation Describe and legacy `api.contract.get` descriptors only when they are closed objects containing exactly one required `label` string with minimum length 1 and maximum length 255. Raw context selectors, credentials, altered or open shapes, and those fields in input or other descriptor positions retain rejection.

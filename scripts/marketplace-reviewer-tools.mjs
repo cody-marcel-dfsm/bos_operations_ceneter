@@ -41,12 +41,13 @@ export function reviewerDiscoveryDocument(value,state,resourceUri) {
   return document;
 }
 const privateInput=value=>value&&typeof value==='object'&&Object.entries(value).some(([key,v])=>/^(?:context_handle|context_id|org_id|organization_id|tenant_id|role_id|installed_app_id|authorization|access_token|refresh_token|cookie)$/i.test(key)||privateInput(v));
+const discoveryValidatorPath='skills/bos-app-discovery/scripts/validate-discovery.mjs';
 const spec=(name,description,properties={},required=[])=>({type:'function',name,description,inputSchema:{type:'object',additionalProperties:false,properties,required}});
 const definitions=[
   spec('acceptance_guard_probe','Verify the test guard by requesting a deliberate denial.'),
   spec('acceptance_guard_status','Check whether the deliberate denial was recorded.'),
   spec('acceptance_read_installed','Read a verified published installed skill or reference.',{product:{type:'string'},path:{type:'string'}},['path']),
-  spec('acceptance_validate_installed','Validate an actual discovered document with the published validator. Supply its returned document_id; the host retains its exact original bytes. Use app-describe for the app.describe resource and operation-describe for the complete HTTPS Describe response (the parent document). Individual HTTPS operation contacts are covered by that parent validation; they are not legacy api-contract envelopes. Use api-contract only for the actual legacy api.contract.get response, and service-journey for a service journey description. Other supported modes are contact, service, graph, plugins and discovery-refresh.',{path:{type:'string'},mode:{type:'string',enum:installedValidatorModes},document_id:{type:'string'}},['path','mode','document_id']),
+  spec('acceptance_validate_installed','Validate an actual discovered document with the host-bound verified published validator; no validator path is needed. Supply its returned document_id; the host retains its exact original bytes. Use app-describe for the app.describe resource and operation-describe for the complete HTTPS Describe response (the parent document). Individual HTTPS operation contacts are covered by that parent validation; they are not legacy api-contract envelopes. Use api-contract only for the actual legacy api.contract.get response, and service-journey for a service journey description. Other supported modes are contact, service, graph, plugins and discovery-refresh.',{path:{type:'string',enum:[discoveryValidatorPath]},mode:{type:'string',enum:installedValidatorModes},document_id:{type:'string'}},['mode','document_id']),
   spec('bos_get_context','Discover and select the exact marketplace reviewer scope; the test host retains its private selector.'),
   spec('bos_list_context_tools','Discover tools for the selected reviewer scope.'),
   spec('bos_list_resources','List BOS discovery resources for the reviewer connection.'),
@@ -66,7 +67,15 @@ export async function createReviewerTools({session,state,release}) {
   const {createBosExternalDependencyAdapter}=await import(pathToFileURL(adapterPath).href);
   const offered=(await session.rpc('tools/list')).tools;
   if(!Array.isArray(offered))throw new Error('reviewer_discovery_tools_missing');
-  const documents=new Map(),contacts=new Map(),ajv=new Ajv({strict:false,validateFormats:false});
+  const documents=new Map(),contacts=new Map(),references=new Map(),ajv=new Ajv({strict:false,validateFormats:false});
+  let nextReference=0;
+  const clearReferences=()=>{documents.clear();contacts.clear();references.clear();};
+  const retainDocument=raw=>{
+    const hash=digest(raw),existing=references.get(hash);
+    if(existing&&documents.has(existing))return existing;
+    const reference='doc_'+(++nextReference);
+    references.set(hash,reference);documents.set(reference,structuredClone(raw));return reference;
+  };
   const toolName=name=>{
     const rows=offered.filter(row=>row.name===name||row.name.replaceAll('_','.')===name.replaceAll('_','.'));
     if(rows.length!==1)throw new Error('reviewer_discovery_tool_missing');return rows[0].name;
@@ -77,7 +86,7 @@ export async function createReviewerTools({session,state,release}) {
     if(response.isError)throw new Error('reviewer_identity_unverified');
     const selected=selectReviewerContext(value.contexts??value.authorized_contexts??[],state);
     if(!selected?.context_handle)throw new Error('reviewer_identity_unverified');
-    if(state.handle&&state.handle!==selected.context_handle){documents.clear();contacts.clear();state.validated_contracts={};state.failed_validations={};throw new Error('reviewer_discovery_refresh_required');}
+    if(state.handle&&state.handle!==selected.context_handle){clearReferences();state.validated_contracts={};state.failed_validations={};throw new Error('reviewer_discovery_refresh_required');}
     state.handle=selected.context_handle;
     return {contract_version:value.contract_version,context:Object.fromEntries(['context_handle','organization_name','application_name','installation_name','role_label','is_default'].map(key=>[key,selected[key]]))};
   };
@@ -90,7 +99,7 @@ export async function createReviewerTools({session,state,release}) {
     }}
   });
   const expose=(value,resourceUri)=>{
-    const raw=reviewerDiscoveryDocument(value,state,resourceUri),id=digest(raw);documents.set(id,structuredClone(raw));
+    const raw=reviewerDiscoveryDocument(value,state,resourceUri),id=retainDocument(raw);
     const advertised=[];
     const collect=(item,foreign=false)=>{
       if(typeof item==='string'){try{collect(JSON.parse(item),foreign);}catch{}return;}
@@ -98,7 +107,7 @@ export async function createReviewerTools({session,state,release}) {
       foreign||=!!item.context_handle&&item.context_handle!==state.handle;
       foreign||=!!item.server&&!['BOS-Platform','BOS_Platform'].includes(item.server);
       if(foreign)return;
-      if(item.status==='described'&&item.operation&&item.execution&&item.input_schema){const contactId=digest(item);contacts.set(contactId,structuredClone(item));documents.set(contactId,structuredClone(item));advertised.push({contact_id:contactId,document_id:contactId,contact:sanitized(item)});}
+      if(item.status==='described'&&item.operation&&item.execution&&item.input_schema){const contactId=retainDocument(item);contacts.set(contactId,structuredClone(item));advertised.push({contact_id:contactId,document_id:contactId,contact:sanitized(item)});}
       for(const nested of Object.values(item))collect(nested,foreign);
     };
     collect(raw);
@@ -110,7 +119,7 @@ export async function createReviewerTools({session,state,release}) {
     if(denial){state.denials.push({tool:event.tool_name,reason:denial});return {isError:true,reason:denial};}
     const previousHandle=state.handle;
     const response=await run();observe({...event,tool_response:response},state);
-    if(state.handle!==previousHandle){documents.clear();contacts.clear();}
+    if(state.handle!==previousHandle)clearReferences();
     return response?.isError?{isError:true,...expose(response,event.tool_input?.uri)}:expose(response,event.tool_input?.uri);
   };
   const call=async(name,args={})=>{
@@ -118,12 +127,13 @@ export async function createReviewerTools({session,state,release}) {
     if(name.startsWith('acceptance_')){
       const short=name.slice('acceptance_'.length);const event={tool_name:'mcp__Acceptance__'+short,tool_input:args};
       if(short==='validate_installed'){
+        if(Object.hasOwn(args,'path')&&args.path!==discoveryValidatorPath)throw new Error('reviewer_tool_failed');
         const original=documents.get(args.document_id);if(!original)throw new Error('reviewer_document_not_observed');
         const legacyApiWrapper=args.mode==='api-contract'&&Object.hasOwn(original,'response');
         const target=args.mode==='api-contract'?(legacyApiWrapper?original.response:original):args.mode==='service-journey'?original.description:original;
         if(!state.observed_document_digests?.includes(documentDigests(target)[0]))throw new Error('reviewer_document_not_observed');
         const document=args.mode==='api-contract'&&!legacyApiWrapper?{operation:target.operation,...(Object.hasOwn(target,'source')?{source:target.source}:{}),response:target}:original;
-        event.tool_input={path:args.path,mode:args.mode,document};
+        event.tool_input={path:discoveryValidatorPath,mode:args.mode,document};
       }
       state.pre_calls=(state.pre_calls??0)+1;const denied=permission(event,state);
       if(denied){state.denials.push({tool:name,reason:denied});return {isError:true,reason:denied};}
@@ -176,7 +186,7 @@ export async function createReviewerTools({session,state,release}) {
     if(contact.effect!=='read'&&!(state.effect_binding?.operation===contact.operation&&state.effect_binding.effect===contact.effect&&state.effect_binding.input_sha256===digest(args.payload??{})))throw new Error('reviewer_effect_not_approved');
     const result=Object.hasOwn(args,'payload')?await adapter.invokeDiscoveredOperation(contact,args.payload):await adapter.invokeDiscoveredOperation(contact);
     const valid=result.status>=200&&result.status<300&&ajv.compile(contact.output_schema)(result.body);
-    state.observations.push({tool:contact.operation,input:sanitized(args.payload??{}),response:sanitized(result),scope_verified:true,is_error:!valid,transport:'https',contact_sha256:args.contact_id});
+    state.observations.push({tool:contact.operation,input:sanitized(args.payload??{}),response:sanitized(result),scope_verified:true,is_error:!valid,transport:'https',contact_sha256:digest(contact)});
     if(!valid)throw new Error('reviewer_api_contract_failed');
     return {status:result.status,body:sanitized(result.body),operation:contact.operation,transport:'https'};
   };
