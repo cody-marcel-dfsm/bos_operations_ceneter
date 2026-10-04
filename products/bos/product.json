@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.142",
+  "version": "0.4.143",
   "release_status": "active",
   "display_name": "BOS Platform",
   "description": "Deterministic workflows and ad hoc composition across a federated agentic mesh.",
@@ -84,7 +84,7 @@
     "bos_set_provider_credential"
   ],
   "default_prompts": [
-    "List the BOS apps and skills installed for my organization.",
+    "List the BOS apps and public services accessible to my organization.",
     "Show me the tools and workflows available in each BOS app.",
     "Check which BOS apps are connected and ready to use."
   ],

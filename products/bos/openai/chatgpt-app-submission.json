@@ -126,7 +126,7 @@
     },
     {
       "description": "Inspect current search contracts and source availability.",
-      "user_prompt": "For my connected authorized review organization, describe the available search operations and show their accepted inputs, returned fields, source availability, limits, and error outcomes.",
+      "user_prompt": "For my connected authorized review organization, describe CRM record search inputs, returned fields, source availability, limits, and error outcomes.",
       "file_attachment_urls": null,
       "tools_triggered": "bos_get_context",
       "expected_output": "Uses actual returned Describe contracts to explain search inputs, outputs, source readiness, limits and errors with exact contract evidence.",
@@ -134,7 +134,7 @@
     },
     {
       "description": "Assess bounded mutation effects without changing records.",
-      "user_prompt": "For my connected authorized review organization, compare the discovered create and update contracts. Explain required and writable fields, target limits, effects, and approval requirements without changing any records.",
+      "user_prompt": "For my connected authorized review organization, compare the CRM record create and update contracts. Explain required and writable fields, target limits, effects, and approval requirements without changing any records.",
       "file_attachment_urls": null,
       "tools_triggered": "bos_get_context",
       "expected_output": "Compares actual returned create/update schemas, effects and bounds, distinguishes advertised requirements from absent requirements, and performs no mutation.",

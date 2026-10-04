@@ -12,7 +12,7 @@
           "operator": "equals"
         },
         {
-          "id": "installed-skills",
+          "id": "public-services",
           "operator": "equals"
         }
       ]

@@ -1,3 +1,4 @@
+import {syntheticOperationDescribe,syntheticApiContract} from './helpers/synthetic-bos-discovery-service.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {reviewerOutcomeMatches} from '../scripts/marketplace-reviewer-outcomes.mjs';
@@ -76,4 +77,109 @@ test('same-values compares resolved evidence locations instead of selector synta
  assert.equal(matches([fact,{...rule,other_path:'/independent'}],data),true);
  const direct={operator:'same_values',response:selector,path:'/records',other_response:selector,other_path:'/records',other_project_paths:['']};
  assert.equal(matches([fact,direct],data),false);
+});
+
+const describedSelector={operation:'app.describe',transport:'https_discovery',described_operation:'search'};
+const describedResponse=body=>({operation:'app.describe',transport:'https_discovery',successful:true,body});
+const describedFact={operator:'equals',response:describedSelector,path:'/operation',value:'search'};
+function describedData() {
+ const body=syntheticOperationDescribe();
+ body.operations=body.operations.map(operation=>operation.status==='not_available'?{...structuredClone(body.operations[0]),operation:operation.operation}:operation);
+ return {responses:body.operations.map(operation=>describedResponse({...body,operations:[operation]}))};
+}
+test('described-operation selects independent literal contract truth across successful bounded batches',()=>{
+ const data=describedData();
+ assert.equal(matches([describedFact],data),true);
+ assert.equal(matches([{...describedFact,value:'create'}],data),false);
+ const other={...describedSelector,described_operation:'create'};
+ assert.equal(matches([describedFact,{operator:'equals',response:other,path:'/operation',value:'create'}],data),true);
+ assert.equal(matches([{...describedFact,response:{operation:'app.describe',transport:'https_discovery'}}],data),false);
+ data.responses.push({...data.responses[0],successful:false});
+ assert.equal(matches([describedFact],data),true);
+});
+test('described-operation rejects missing, duplicate, malformed and unavailable contracts',()=>{
+ const original=describedData();
+ for(const mutate of [
+  data=>data.responses.splice(0,1),
+  data=>data.responses.push(structuredClone(data.responses[0])),
+  data=>data.responses[0].body.operations.push(structuredClone(data.responses[0].body.operations[0])),
+  data=>data.responses[0].body.operations=[],
+  data=>data.responses[0].body.operations=Array(6).fill(data.responses[0].body.operations[0]),
+  data=>data.responses[0].body.operations[0].status='unknown',
+  data=>data.responses[0].body.operations[0]={operation:'search',status:'not_available'},
+  data=>delete data.responses[0].body.operations[0].input_schema,
+  data=>data.responses[1].body.operations[0].operation='invalid operation',
+  data=>data.responses[0].body.operations=[null],
+  data=>data.responses[0].body=null,
+  data=>data.responses={}
+ ]){const data=structuredClone(original);mutate(data);assert.equal(matches([describedFact],data),false);}
+ for(const selector of [
+  {...describedSelector,described_operation:''},
+  {...describedSelector,described_operation:'invalid operation'},
+  {...describedSelector,described_operation:null},
+  {...describedSelector,described_operation:[]},
+  {...describedSelector,operation:'search'},
+  {...describedSelector,transport:'mcp_discovery'},
+  {...describedSelector,extra:true}
+ ])assert.equal(matches([{...describedFact,response:selector}],original),false);
+});
+test('described-operation and whole-batch aliases preserve physical evidence independence',()=>{
+ const data=describedData();data.responses=data.responses.slice(0,1);
+ const whole={operation:'app.describe',transport:'https_discovery'};
+ const compare={operator:'same_values',response:describedSelector,path:'/sources',project_paths:['/source/plugin'],other_response:whole,other_path:'/operations',other_project_paths:['/sources','/source/plugin']};
+ assert.equal(matches([describedFact,compare],data),false);
+ assert.equal(matches([describedFact,{...compare,other_response:describedSelector,other_path:'/sources',other_project_paths:['','/source/plugin']}],data),false);
+ const independent=structuredClone(data.responses[0].body.operations[0]);independent.operation='create';
+ data.responses.push(describedResponse({...data.responses[0].body,operations:[independent]}));
+ assert.equal(matches([describedFact,{...compare,other_response:{...describedSelector,described_operation:'create'},other_path:'/sources',other_project_paths:['/source/plugin']}],data),true);
+ assert.equal(matches([describedFact],data,[{id:'uncovered',operator:'equals'}]),false);
+ assert.equal(reviewerOutcomeMatches({...envelope([describedFact]),product:'my-crm'},data,[],context),false);
+});
+
+const apiSelector={operation:'api.contract.get',transport:'mcp_discovery',api_contract_operation:'calendar.events.search'};
+const apiResponse=result=>({operation:'api.contract.get',transport:'mcp_discovery',successful:true,body:{result}});
+const apiFact={operator:'equals',response:apiSelector,path:'/operation',value:'calendar.events.search'};
+const apiData=()=>({responses:[apiResponse(syntheticApiContract()),apiResponse({...syntheticApiContract(),operation:'journey.synthetic.register'})]});
+test('API-contract selector validates actual unique results across mixed successful controls',()=>{
+ const data=apiData();assert.equal(matches([apiFact],data),true);
+ assert.equal(matches([{...apiFact,value:'journey.synthetic.register'}],data),false);
+ assert.equal(matches([apiFact,{...apiFact,response:{...apiSelector,api_contract_operation:'journey.synthetic.register'},value:'journey.synthetic.register'}],data),true);
+ const whole={operation:'api.contract.get',transport:'mcp_discovery'};
+ assert.equal(matches([{...apiFact,response:whole,path:'/result/operation'}],data),false);
+ assert.equal(matches([{...apiFact,response:whole,path:'/result/operation'}],{responses:[data.responses[0]]}),true);
+ data.responses.push({...structuredClone(data.responses[0]),successful:false});assert.equal(matches([apiFact],data),true);
+});
+test('API-contract selector rejects missing duplicate malformed contracts and selector scope',()=>{
+ for(const mutate of [
+  data=>data.responses.splice(0,1),
+  data=>data.responses.push(structuredClone(data.responses[0])),
+  data=>delete data.responses[0].body.result,
+  data=>data.responses[0].body.result=null,
+  data=>data.responses[0].body.result=[],
+  data=>delete data.responses[0].body.result.input_schema,
+  data=>data.responses[1].body.result.operation='not_dotted',
+  data=>data.responses[1].body.result.input_schema.type='invalid',
+  data=>data.responses[1].body.result.extra=true
+ ]){const data=apiData();mutate(data);assert.equal(matches([apiFact],data),false);}
+ for(const selector of [
+  {...apiSelector,api_contract_operation:''},
+  {...apiSelector,api_contract_operation:null},
+  {...apiSelector,api_contract_operation:[]},
+  {...apiSelector,api_contract_operation:'not_dotted'},
+  {...apiSelector,operation:'app.describe'},
+  {...apiSelector,transport:'https_discovery'},
+  {...apiSelector,described_operation:'search'},
+  {...apiSelector,extra:true}
+ ])assert.equal(matches([{...apiFact,response:selector}],apiData()),false);
+});
+test('API-contract result and whole-envelope aliases retain physical evidence independence',()=>{
+ const data=apiData();data.responses=data.responses.slice(0,1);
+ const whole={operation:'api.contract.get',transport:'mcp_discovery'};
+ const compare={operator:'same_values',response:apiSelector,path:'/public_errors',project_paths:['/code'],other_response:whole,other_path:'/result/public_errors',other_project_paths:['/code']};
+ assert.equal(matches([apiFact,compare],data),false);
+ assert.equal(matches([apiFact,{...compare,other_response:apiSelector,other_path:'/public_errors',other_project_paths:['','/code']}],data),false);
+ const mixed=apiData();
+ assert.equal(matches([apiFact,{...compare,other_response:{...apiSelector,api_contract_operation:'journey.synthetic.register'},other_path:'/public_errors'}],mixed),true);
+ assert.equal(matches([compare],data),false);
+ assert.equal(matches([apiFact],mixed,[{id:'missing',operator:'equals'}]),false);
 });

@@ -1237,7 +1237,7 @@ test("BOS starter prompts use concrete customer language", async () => {
   )?.manifest;
   assert(product);
   assert.deepEqual(product.default_prompts, [
-    "List the BOS apps and skills installed for my organization.",
+    "List the BOS apps and public services accessible to my organization.",
     "Show me the tools and workflows available in each BOS app.",
     "Check which BOS apps are connected and ready to use."
   ]);
