@@ -20,6 +20,18 @@ inventory incomplete whenever a required description, comparison, constraint,
 or validation is unavailable. Do not execute business operations or mutations
 for this discovery request.
 
+Before drafting, audit the evidence row by row. State organization, application,
+installation, and role only when the selected fresh context explicitly returns
+them; never infer additional access from examples or role names. Retrieve and
+validate each advertised public HTTPS Describe response before calling its
+operations described; a native tool list or `app.describe` alone does not
+establish that observation. For every native and public operation, retain its
+exact required and optional fields, field constraints and bounds, output
+shape, limits, pagination, version, observation time, and validation result;
+leave any unsupported field unresolved. Immediately before calculating ages,
+read guard status again and use that response's exact `reference_time` for all
+age calculations and the stated reference.
+
 
 For live `bos-identity-mcp/v2`, first apply [identity-context compatibility](../bos-mcp-client/references/identity-context.md).
 Its fresh authorized-context selection and saved-default rules govern this
