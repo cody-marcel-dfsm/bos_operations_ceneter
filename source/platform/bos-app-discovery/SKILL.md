@@ -3,6 +3,23 @@ name: bos-app-discovery
 description: Route requests through authenticated BOS app discovery, including finding skills and operations that can contribute to an ad hoc dynamic BOSL workflow. Use when app scope, service ownership, workflow composition, graph shape, or API contracts must be discovered at runtime.
 ---
 
+## Requests to list available tools and workflows
+
+When the user asks what tools, workflows, or operations are available across
+BOS applications, perform a read-only full inventory before summarizing. Apply
+`bos-mcp-client`'s first-action and identity-context rules, establish the exact
+authorized contexts, and enumerate native tools separately for each context.
+Read each exact advertised application description and service catalog. For
+every advertised HTTPS Describe contact, retrieve all operations in the
+contact's bounded batches and validate the complete returned parent document.
+Follow each native tool's exact advertised API-contract link, compare its
+declared input and output schemas with the public contract, and preserve any
+unresolved or unavailable counterpart. Report coverage counts and the complete
+per-operation inventory using the table and freshness rules below; label the
+inventory incomplete whenever a required description, comparison, constraint,
+or validation is unavailable. Do not execute business operations or mutations
+for this discovery request.
+
 
 For live `bos-identity-mcp/v2`, first apply [identity-context compatibility](../bos-mcp-client/references/identity-context.md).
 Its fresh authorized-context selection and saved-default rules govern this
