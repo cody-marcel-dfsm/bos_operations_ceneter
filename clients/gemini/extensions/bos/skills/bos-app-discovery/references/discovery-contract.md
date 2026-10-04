@@ -94,12 +94,15 @@ exact input. Resolve that capability through current discovery, copy the input,
 and validate the actual returned contract. Preserve semantic identifiers,
 including their spelling. Account for aliases sharing that exact link in the
 same context with one validated contract observation during this assessment.
-Keep native argument bounds and linked HTTPS execution limits attributed to
-their respective surfaces; state differing limits, pagination declarations and
-unresolved contradictions explicitly.
+Compare native and linked HTTPS input and output schemas, including required
+and optional fields, accepted values and bounds, response shapes, limits,
+pagination and transport. Attribute each difference to its exact source
+declarations. Preserve unresolved differences without inventing a translation.
 
-Readiness reports preserve the returned `observed_at` and identify its age using
-the current authorized context or server reference time. Present stale or
+Readiness reports preserve the returned `observed_at`. Calculate age only from
+a verified current authorized context or server reference time and state the
+reference used. If that reference is unavailable, preserve the timestamp and
+report age as unverified rather than estimating a current time. Present stale or
 missing observation evidence as a freshness limitation. Mark current readiness
 unverified whenever timely facts or current execution prerequisites are
 unestablished, including in summaries; label declared availability as advertised.
