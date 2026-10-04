@@ -5,7 +5,6 @@ description: Route requests through authenticated BOS app discovery, including f
 
 
 
-
 ## Scoped authorization preflight
 For an explicit BOS sign-out request, first follow `bos-mcp-client`'s
 current-connection sign-out branch. Invoke only discovered `bos_logout`
@@ -79,6 +78,24 @@ destructive hint cannot establish safety.
 
 This is an agent instruction safeguard. Server authorization and validation
 remain required; the package does not intercept or enforce arbitrary API calls.
+
+## Requests to list available tools and workflows
+
+When the user asks what tools, workflows, or operations are available across
+BOS applications, perform a read-only full inventory before summarizing. Apply
+`bos-mcp-client`'s first-action and identity-context rules, establish the exact
+authorized contexts, and enumerate native tools separately for each context.
+Read each exact advertised application description and service catalog. For
+every advertised HTTPS Describe contact, retrieve all operations in the
+contact's bounded batches and validate the complete returned parent document.
+Follow each native tool's exact advertised API-contract link, compare its
+declared input and output schemas with the public contract, and preserve any
+unresolved or unavailable counterpart. Report coverage counts and the complete
+per-operation inventory using the table and freshness rules below; label the
+inventory incomplete whenever a required description, comparison, constraint,
+or validation is unavailable. Do not execute business operations or mutations
+for this discovery request.
+
 
 For live `bos-identity-mcp/v2`, first apply [identity-context compatibility](../bos-mcp-client/references/identity-context.md).
 Its fresh authorized-context selection and saved-default rules govern this

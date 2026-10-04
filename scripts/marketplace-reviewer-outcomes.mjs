@@ -109,42 +109,75 @@ function timestamp(value) {
   if (!Number.isFinite(milliseconds)) return undefined;
   return BigInt(milliseconds) * 1000000n + BigInt((parts[7] ?? '').padEnd(9, '0'));
 }
-export function reviewerOutcomeMatches(assertion, evidence, requirements = [], binding = {}) {
-  if (Object.keys(assertion ?? {}).sort().join(',') !== 'case_id,product,rules,schema' || assertion?.schema !== 'marketplace-case-assertions/v1' || !binding.product || !binding.case_id || assertion.product !== binding.product || assertion.case_id !== binding.case_id) return false;
+const safeRequirementId = value => typeof value === 'string' && /^[a-z][a-z0-9-]{0,63}$/.test(value);
+
+function matchesRule(rule, evidence, binding) {
+  const value = selected(evidence, rule);
+  if (value === undefined || value === null) return false;
+  if (rule.operator === 'equals') return rule.value !== undefined && rule.value !== null && isDeepStrictEqual(value, rule.value);
+  if (rule.operator === 'contains') return typeof value === 'string' && typeof rule.value === 'string' && rule.value.length > 0 && value.includes(rule.value);
+  if (rule.operator === 'same_values') {
+    const other = selected(evidence, rule, true);
+    if (!Array.isArray(value) || !Array.isArray(other) || !value.length || !value.every(row => row !== undefined && row !== null) || !other.every(row => row !== undefined && row !== null)) return false;
+    const locations = selectedLocations(evidence, rule), otherLocations = new Set(selectedLocations(evidence, rule, true));
+    return locations.length > 0 && otherLocations.size > 0 && !locations.some(path => otherLocations.has(path)) && isDeepStrictEqual(value.map(stable).sort(), other.map(stable).sort());
+  }
+  if (rule.operator === 'min_length') {
+    if (!Array.isArray(value) || value.length > 1000 || !Number.isInteger(rule.value) || rule.value < 1 || value.length < rule.value) return false;
+    const provenance = ['source-provenance', 'multiple-sources'].includes(rule.requirement);
+    if (provenance && typeof rule.distinct_by_path !== 'string') return false;
+    const distinct = typeof rule.distinct_by_path === 'string' ? value.map(row => at(row, rule.distinct_by_path)) : value;
+    if (provenance && !distinct.every(completeSource)) return false;
+    return distinct.every(row => row !== undefined && row !== null) && new Set(distinct.map(stable)).size === distinct.length;
+  }
+  if (rule.operator === 'timestamp_age') {
+    const clock = timestamp(binding.execution_started_at), limit = rule.value;
+    if (typeof clock !== 'bigint' || !limit || !Number.isInteger(limit.maximum_age_ms) || limit.maximum_age_ms < 1 || limit.maximum_age_ms > 604800000 || !Number.isInteger(limit.future_skew_ms) || limit.future_skew_ms < 0 || limit.future_skew_ms > 300000) return false;
+    const timestamps = Array.isArray(value) ? value : [value];
+    return timestamps.length > 0 && timestamps.length <= 1000 && timestamps.every(row => {
+      const time = timestamp(row);
+      return typeof time === 'bigint' && clock - time <= BigInt(limit.maximum_age_ms) * 1000000n && time - clock <= BigInt(limit.future_skew_ms) * 1000000n;
+    });
+  }
+  return false;
+}
+
+export function reviewerOutcomeDiagnostics(assertion, evidence, requirements = [], binding = {}) {
+  const promptIds = [...new Set(requirements.map(row => row?.id).filter(safeRequirementId))].sort();
+  const unmatchedPrompt = () => promptIds.map(requirement_id => ({requirement_id, status: 'unmatched'}));
+  const fail = issue_class => ({status: 'unmatched', issue_class, requirements: unmatchedPrompt()});
+  if (assertion === undefined || assertion === null) return fail('case_assertion_missing');
+  if (Object.keys(assertion ?? {}).sort().join(',') !== 'case_id,product,rules,schema' || assertion?.schema !== 'marketplace-case-assertions/v1') return fail('assertion_schema_invalid');
+  if (!binding.product || !binding.case_id || assertion.product !== binding.product || assertion.case_id !== binding.case_id) return fail('assertion_case_binding_mismatch');
   const rules = assertion.rules;
   const ruleKeys = new Set(['requirement', 'operator', 'response', 'path', 'project_paths', 'value', 'evidence', 'other_response', 'other_path', 'other_project_paths', 'other_evidence', 'distinct_by_path']);
-  if (!Array.isArray(rules) || !rules.every(rule => rule && typeof rule === 'object' && !Array.isArray(rule) && Object.keys(rule).every(key => ruleKeys.has(key)))) return false;
-  if (rules.some(rule => rule.other_response && Object.hasOwn(rule.other_response, 'consistent_metadata'))) return false;
-  if (!Array.isArray(rules) || !rules.length || rules.length > 64 || !rules.some(rule => rule.response && rule.operator === 'equals' && rule.value !== undefined && rule.value !== null)) return false;
-  if (!requirements.every(required => rules.some(rule => rule.requirement === required.id && rule.operator === required.operator && (required.minimum === undefined || (typeof rule.value === 'number' && rule.value >= required.minimum)) && (required.operator !== 'timestamp_age' || (rule.value?.maximum_age_ms <= required.maximum_age_ms && rule.value?.future_skew_ms <= required.future_skew_ms))))) return false;
-  return rules.every(rule => {
-    const value = selected(evidence, rule);
-    if (value === undefined || value === null) return false;
-    if (rule.operator === 'equals') return rule.value !== undefined && rule.value !== null && isDeepStrictEqual(value, rule.value);
-    if (rule.operator === 'contains') return typeof value === 'string' && typeof rule.value === 'string' && rule.value.length > 0 && value.includes(rule.value);
-    if (rule.operator === 'same_values') {
-      const other = selected(evidence, rule, true);
-      if (!Array.isArray(value) || !Array.isArray(other) || !value.length || !value.every(row => row !== undefined && row !== null) || !other.every(row => row !== undefined && row !== null)) return false;
-      const locations = selectedLocations(evidence, rule), otherLocations = new Set(selectedLocations(evidence, rule, true));
-      return locations.length > 0 && otherLocations.size > 0 && !locations.some(path => otherLocations.has(path)) && isDeepStrictEqual(value.map(stable).sort(), other.map(stable).sort());
+  if (!Array.isArray(rules) || !rules.every(rule => rule && typeof rule === 'object' && !Array.isArray(rule) && Object.keys(rule).every(key => ruleKeys.has(key)))) return fail('assertion_rules_invalid');
+  if (rules.some(rule => rule.other_response && Object.hasOwn(rule.other_response, 'consistent_metadata'))) return fail('assertion_rules_invalid');
+  if (!rules.length || rules.length > 64 || !rules.some(rule => rule.response && rule.operator === 'equals' && rule.value !== undefined && rule.value !== null)) return fail('assertion_rules_invalid');
+  const coversPrompt = requirements.every(required => rules.some(rule => rule.requirement === required.id && rule.operator === required.operator && (required.minimum === undefined || (typeof rule.value === 'number' && rule.value >= required.minimum)) && (required.operator !== 'timestamp_age' || (rule.value?.maximum_age_ms <= required.maximum_age_ms && rule.value?.future_skew_ms <= required.future_skew_ms))));
+  if (!coversPrompt) return fail('prompt_requirements_uncovered');
+  const allowedIds = new Set(promptIds);
+  const statuses = new Map(promptIds.map(requirement_id => [requirement_id, 'matched']));
+  let unboundRuleCount = 0;
+  let rulesMatched = true;
+  for (const rule of rules) {
+    const matched = matchesRule(rule, evidence, binding);
+    rulesMatched &&= matched;
+    if (!allowedIds.has(rule.requirement)) {
+      unboundRuleCount += 1;
+      continue;
     }
-    if (rule.operator === 'min_length') {
-      if (!Array.isArray(value) || value.length > 1000 || !Number.isInteger(rule.value) || rule.value < 1 || value.length < rule.value) return false;
-      const provenance = ['source-provenance', 'multiple-sources'].includes(rule.requirement);
-      if (provenance && typeof rule.distinct_by_path !== 'string') return false;
-      const distinct = typeof rule.distinct_by_path === 'string' ? value.map(row => at(row, rule.distinct_by_path)) : value;
-      if (provenance && !distinct.every(completeSource)) return false;
-      return distinct.every(row => row !== undefined && row !== null) && new Set(distinct.map(stable)).size === distinct.length;
-    }
-    if (rule.operator === 'timestamp_age') {
-      const clock = timestamp(binding.execution_started_at), limit = rule.value;
-      if (typeof clock !== 'bigint' || !limit || !Number.isInteger(limit.maximum_age_ms) || limit.maximum_age_ms < 1 || limit.maximum_age_ms > 604800000 || !Number.isInteger(limit.future_skew_ms) || limit.future_skew_ms < 0 || limit.future_skew_ms > 300000) return false;
-      const timestamps = Array.isArray(value) ? value : [value];
-      return timestamps.length > 0 && timestamps.length <= 1000 && timestamps.every(row => {
-        const time = timestamp(row);
-        return typeof time === 'bigint' && clock - time <= BigInt(limit.maximum_age_ms) * 1000000n && time - clock <= BigInt(limit.future_skew_ms) * 1000000n;
-      });
-    }
-    return false;
-  });
+    if (!matched) statuses.set(rule.requirement, 'unmatched');
+  }
+  const issue_class = rulesMatched ? 'all_rules_matched' : unboundRuleCount ? 'rule_requirement_unbound' : 'observation_rule_mismatch';
+  return {
+    status: rulesMatched ? 'matched' : 'unmatched',
+    issue_class,
+    requirements: [...statuses].map(([requirement_id, status]) => ({requirement_id, status})),
+    ...(unboundRuleCount ? {unbound_rule_count: unboundRuleCount} : {})
+  };
+}
+
+export function reviewerOutcomeMatches(assertion, evidence, requirements = [], binding = {}) {
+  return reviewerOutcomeDiagnostics(assertion, evidence, requirements, binding).status === 'matched';
 }

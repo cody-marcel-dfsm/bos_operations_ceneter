@@ -1,7 +1,7 @@
 import {syntheticOperationDescribe,syntheticApiContract} from './helpers/synthetic-bos-discovery-service.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {reviewerOutcomeMatches} from '../scripts/marketplace-reviewer-outcomes.mjs';
+import {reviewerOutcomeDiagnostics,reviewerOutcomeMatches} from '../scripts/marketplace-reviewer-outcomes.mjs';
 const context={product:'bos',case_id:'positive-1',execution_started_at:'2026-10-03T20:00:00Z'};
 const selector={operation:'search',transport:'deterministic_https'};
 const fact={requirement:'records',operator:'equals',response:selector,path:'/count',value:2};
@@ -9,6 +9,28 @@ const envelope=rules=>({schema:'marketplace-case-assertions/v1',product:'bos',ca
 const response=body=>({operation:'search',transport:'deterministic_https',successful:true,body});
 const evidence={responses:[response({count:2})]};
 const matches=(rules,data=evidence,requirements=[])=>reviewerOutcomeMatches(envelope(rules),data,requirements,context);
+test('fixture diagnostics expose only validated requirement IDs and match status',()=>{
+ const secret='private synthetic value 4892',rule={requirement:'freshness',operator:'equals',response:selector,path:'/private/customer/path',value:secret};
+ const requirements=[{id:'records',operator:'equals'},{id:'freshness',operator:'equals'}];
+ const data={responses:[response({count:2,private_customer_field:'another private value'})]};
+ const result=reviewerOutcomeDiagnostics(envelope([fact,rule]),data,requirements,context);
+ assert.deepEqual(result,{status:'unmatched',issue_class:'observation_rule_mismatch',requirements:[{requirement_id:'freshness',status:'unmatched'},{requirement_id:'records',status:'matched'}]});
+ assert.doesNotMatch(JSON.stringify(result),/private|4892|customer\/path/);
+ assert.equal(reviewerOutcomeMatches(envelope([fact]),evidence,[],context),true);
+});
+test('missing fixture diagnostics name only the published requirement IDs',()=>{
+ assert.deepEqual(reviewerOutcomeDiagnostics(undefined,evidence,[{id:'records',operator:'equals'}],context),{status:'unmatched',issue_class:'case_assertion_missing',requirements:[{requirement_id:'records',status:'unmatched'}]});
+});
+test('fixture diagnostics never retain rule labels outside the published requirement allowlist',()=>{
+ const privateLabel='synthetic-private-label',privateRule={...fact,requirement:privateLabel};
+ const result=reviewerOutcomeDiagnostics(envelope([privateRule]),evidence,[],context);
+ assert.deepEqual(result,{status:'matched',issue_class:'all_rules_matched',requirements:[],unbound_rule_count:1});
+ assert.doesNotMatch(JSON.stringify(result),new RegExp(privateLabel));
+ const mismatched=reviewerOutcomeDiagnostics(envelope([{...privateRule,path:'/missing'}]),evidence,[],context);
+ assert.deepEqual(mismatched,{status:'unmatched',issue_class:'rule_requirement_unbound',requirements:[],unbound_rule_count:1});
+ assert.doesNotMatch(JSON.stringify(mismatched),new RegExp(privateLabel));
+ assert.equal(reviewerOutcomeMatches(envelope([privateRule]),evidence,[],context),true);
+});
 test('fixture assertions bind product/case, successful unique semantic response and independent truth',()=>{
  assert.equal(matches([fact],evidence,[{id:'records',operator:'equals'}]),true);
  assert.equal(matches([fact],{responses:[response({count:1})]}),false);

@@ -1,5 +1,6 @@
-import {verifyNativeReviewer,classifyNativeFailure,classifyCompletion,caseDiagnostics} from '../scripts/marketplace-native-run.mjs';
-import {digest} from '../scripts/marketplace-prompt-catalog.mjs';
+import {verifyNativeReviewer,classifyNativeFailure,classifyCompletion,caseDiagnostics,reviewerTurnTimeoutMs} from '../scripts/marketplace-native-run.mjs';
+import {digest,loadPromptCatalog} from '../scripts/marketplace-prompt-catalog.mjs';
+import {fileURLToPath} from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {permission,observe,sanitized,selectReviewerContext} from '../scripts/marketplace-native-hook.mjs';
@@ -7,6 +8,14 @@ import {installedPath,observedDocument,documentDigests,createInstalledAcceptance
 import {mkdtemp,mkdir,writeFile,rm,symlink,realpath} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
+test('only the configured full-inventory case receives the longer bounded reviewer turn',async()=>{
+ const root=fileURLToPath(new URL('../',import.meta.url));
+ const catalog=await loadPromptCatalog(root,'bos');
+ assert.equal(reviewerTurnTimeoutMs(catalog.cases.find(row=>row.id==='starter-2')),900000);
+ assert.equal(reviewerTurnTimeoutMs(catalog.cases.find(row=>row.id==='starter-1')),300000);
+ assert.equal(reviewerTurnTimeoutMs({}),300000);
+ for(const value of [0,299999,600000,900001,'900000'])assert.throws(()=>reviewerTurnTimeoutMs({reviewer_timeout_ms:value}),/reviewer_turn_timeout_invalid/);
+});
 test('retained case diagnostics identify failures while removing credentials and private selectors',()=>{
  const diagnostic=caseDiagnostics({reason:'Missing source for reader@example.invalid; Bearer credential-value; https://example.invalid/recover?dependency_token=private-value; bos_ctx_v2_'+ 'a'.repeat(64)+'; 00000000-0000-0000-0000-000000000001'}, {missing:['Missing contract provenance','x'.repeat(3000)]},[
   {tool:'bos_https_describe',is_error:true,response:{reason:'reviewer_document_not_observed'}},
