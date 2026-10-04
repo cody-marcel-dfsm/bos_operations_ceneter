@@ -12,7 +12,7 @@ import {openReviewerSession} from './marketplace-reviewer-session.mjs';
 import {createReviewerTools} from './marketplace-reviewer-tools.mjs';
 import {verifyReviewerScope} from './marketplace-reviewer-scope.mjs';
 import {runReviewerModel} from './marketplace-reviewer-model.mjs';
-import {reviewerOutcomeMatches} from './marketplace-reviewer-outcomes.mjs';
+import {reviewerOutcomeDiagnostics} from './marketplace-reviewer-outcomes.mjs';
 import {readReviewerPreferences} from './marketplace-reviewer-preferences.mjs';
 import {installedValidatorModes} from './marketplace-native-resources.mjs';
 const quote = value => "'"+value.replaceAll("'", "'\\''")+"'";
@@ -67,7 +67,7 @@ const diagnosticText = value => sanitized(String(value??''))
  .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/giu,'[address]')
  .replace(/\b[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}\b/giu,'[identifier]')
  .slice(0,2000);
-export function caseDiagnostics(result,judgment,observed) {
+export function caseDiagnostics(result,judgment,observed,fixtureAssertions) {
  const selection=row=>{
   if(!['validate.installed','acceptance_validate_installed'].includes(row.tool)||!Object.hasOwn(row.input??{},'mode'))return {};
   const mode=installedValidatorModes.includes(row.input.mode)?row.input.mode:'unsupported';
@@ -75,7 +75,7 @@ export function caseDiagnostics(result,judgment,observed) {
   const document=mode==='api-contract'?original?.response:mode==='service-journey'?original?.description:original;
   return {validation_mode:mode,...(document&&typeof document==='object'&&!Array.isArray(document)?{document_is_json_schema:Object.hasOwn(document,'$schema')||(Object.hasOwn(document,'properties')&&['object','array','string','number','integer','boolean','null'].includes(document.type)),document_has_execution_contract:!!document.execution&&typeof document.execution==='object',document_has_operation_envelope:Array.isArray(document.operations)}:{})};
  };
- return {completion_reason:diagnosticText(result.reason),evaluation_missing:(judgment.missing??[]).slice(0,32).map(diagnosticText),failed_steps:observed.filter(row=>row.is_error||row.response?.valid===false).map(row=>({tool:row.tool,reason:row.response?.valid===false?'reviewer_validation_failed':reviewerFailureCode({code:row.response?.reason}),...selection(row)}))};
+ return {completion_reason:diagnosticText(result.reason),evaluation_missing:(judgment.missing??[]).slice(0,32).map(diagnosticText),failed_steps:observed.filter(row=>row.is_error||row.response?.valid===false).map(row=>({tool:row.tool,reason:row.response?.valid===false?'reviewer_validation_failed':reviewerFailureCode({code:row.response?.reason}),...selection(row)})),...(fixtureAssertions?{fixture_assertions:fixtureAssertions}:{})};
 }
 export function classifyCompletion(kind,status,reasons) {
  const failures=[...reasons];
@@ -132,12 +132,13 @@ export async function nativeCase(catalog,item,config,release,model) {
   const responses=reviewerResponses(calls);
   reasons.push(...caseResponseFailures(item,responses));
   const executionStartedAt=new Date().toISOString();
-  const fixturesVerified=item.kind==='negative'||(authority.schema==='owner-reviewed-synthetic-fixture/v1'&&reviewerOutcomeMatches(authority.case_assertions?.[catalog.product]?.[item.id],{responses,answer:result.answer,prohibited_effects:0,execution_started_at:executionStartedAt},item.requirements??[],{product:catalog.product,case_id:item.id,execution_started_at:executionStartedAt}));
+  const fixtureAssertions=item.kind==='negative'?undefined:reviewerOutcomeDiagnostics(authority.schema==='owner-reviewed-synthetic-fixture/v1'?authority.case_assertions?.[catalog.product]?.[item.id]:undefined,{responses,answer:result.answer,prohibited_effects:0,execution_started_at:executionStartedAt},item.requirements??[],{product:catalog.product,case_id:item.id,execution_started_at:executionStartedAt});
+  const fixturesVerified=item.kind==='negative'||(authority.schema==='owner-reviewed-synthetic-fixture/v1'&&fixtureAssertions?.status==='matched');
   if(!fixturesVerified)reasons.push('synthetic_fixture_assertions_missing_or_failed');
   const gradingEvidence=withGradingContext(evidence,{referenceTime:executionStartedAt,scope:scopeEvidence,scopeVerified,bindingVerified,bos,preferences});
   const judgment=await judgeEvidence(gradingEvidence,item,catalog,model,directory);
   if(judgment.pass!==true||judgment.missing?.length!==0)reasons.push('configured_outcome_failed');
-  report={...base,...session.evidence,diagnostics:caseDiagnostics(result,judgment,observed),...classifyCompletion(item.kind,result.status,reasons),bos_binding_provenance_verified:bindingVerified,prohibited_effects:0,negative_bos_invocations:nativeTools.filter(row=>row.server!=='Acceptance').length,unsafe_attempts:state.denials.filter(row=>row.reason!=='guard_canary_denied').length,fixture_outcome_verified:fixturesVerified,independent_grading_verified:judgment.pass===true&&judgment.missing?.length===0,evaluation_missing_count:judgment.missing?.length,native_calls:calls.length,https_calls:observed.filter(row=>row.transport==='https').length,tools:[...new Set(calls.map(row=>row.tool))],guard_verified:guard,guard_required:guardRequired,reviewer_scope_verified:scopeVerified,evidence_sha256:digest(gradingEvidence),observed_status:result.status};
+  report={...base,...session.evidence,diagnostics:caseDiagnostics(result,judgment,observed,fixtureAssertions),...classifyCompletion(item.kind,result.status,reasons),bos_binding_provenance_verified:bindingVerified,prohibited_effects:0,negative_bos_invocations:nativeTools.filter(row=>row.server!=='Acceptance').length,unsafe_attempts:state.denials.filter(row=>row.reason!=='guard_canary_denied').length,fixture_outcome_verified:fixturesVerified,independent_grading_verified:judgment.pass===true&&judgment.missing?.length===0,evaluation_missing_count:judgment.missing?.length,native_calls:calls.length,https_calls:observed.filter(row=>row.transport==='https').length,tools:[...new Set(calls.map(row=>row.tool))],guard_verified:guard,guard_required:guardRequired,reviewer_scope_verified:scopeVerified,evidence_sha256:digest(gradingEvidence),observed_status:result.status};
  }catch(error){report=failedNativeCaseReceipt(base,session,bindingVerified,error);}
  finally{
   if(session)try{await session.close();report.grant_cleanup_verified=true;}catch{report={...report,status:'FAIL',reason:'reviewer_grant_revocation_failed',grant_cleanup_verified:false};}
