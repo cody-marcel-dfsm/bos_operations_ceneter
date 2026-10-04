@@ -45,7 +45,8 @@ const discoveryValidatorPath='skills/bos-app-discovery/scripts/validate-discover
 const spec=(name,description,properties={},required=[])=>({type:'function',name,description,inputSchema:{type:'object',additionalProperties:false,properties,required}});
 const definitions=[
   spec('acceptance_guard_probe','Verify the test guard by requesting a deliberate denial.'),
-  spec('acceptance_guard_status','Check whether the deliberate denial was recorded.'),
+  spec('acceptance_guard_status','Check guard readiness and obtain the real current UTC host reference clock. Re-read immediately before calculating observation age; this clock supplies no provider-readiness evidence.'),
+  spec('acceptance_compare_schemas','Compare exact schema declarations from current observed and validated documents. Supply one to 32 pairs with returned document_id and exact JSON Pointer ending in inputSchema, outputSchema, input_schema or output_schema. The verified published helper reports all declaration differences; it proves no semantic correspondence, compatibility, validation or readiness.',{pairs:{type:'array',minItems:1,maxItems:32,items:{type:'object',additionalProperties:false,required:['left','right'],properties:Object.fromEntries(['left','right'].map(key=>[key,{type:'object',additionalProperties:false,required:['document_id','pointer'],properties:{document_id:{type:'string'},pointer:{type:'string'}}}]))}}},['pairs']),
   spec('acceptance_read_installed','Read a verified published installed skill or reference.',{product:{type:'string'},path:{type:'string'}},['path']),
   spec('acceptance_validate_installed','Validate an actual discovered document with the host-bound verified published validator; no validator path is needed. Supply its returned document_id; the host retains its exact original bytes. Use app-describe for the app.describe resource and operation-describe for the complete HTTPS Describe response (the parent document). Individual HTTPS operation contacts are covered by that parent validation; they are not legacy api-contract envelopes. Use api-contract only for the actual legacy api.contract.get response, and service-journey for a service journey description. Other supported modes are contact, service, graph, plugins and discovery-refresh.',{path:{type:'string',enum:[discoveryValidatorPath]},mode:{type:'string',enum:installedValidatorModes},document_id:{type:'string'}},['mode','document_id']),
   spec('bos_get_context','Discover and select the exact marketplace reviewer scope; the test host retains its private selector.'),
@@ -67,9 +68,9 @@ export async function createReviewerTools({session,state,release}) {
   const {createBosExternalDependencyAdapter}=await import(pathToFileURL(adapterPath).href);
   const offered=(await session.rpc('tools/list')).tools;
   if(!Array.isArray(offered))throw new Error('reviewer_discovery_tools_missing');
-  const documents=new Map(),contacts=new Map(),references=new Map(),ajv=new Ajv({strict:false,validateFormats:false});
+  const documents=new Map(),contacts=new Map(),references=new Map(),trustedSchemaDocuments=new Set(),ajv=new Ajv({strict:false,validateFormats:false});
   let nextReference=0;
-  const clearReferences=()=>{documents.clear();contacts.clear();references.clear();};
+  const clearReferences=()=>{documents.clear();contacts.clear();references.clear();trustedSchemaDocuments.clear();};
   const retainDocument=raw=>{
     const hash=digest(raw),existing=references.get(hash);
     if(existing&&documents.has(existing))return existing;
@@ -124,6 +125,24 @@ export async function createReviewerTools({session,state,release}) {
   };
   const call=async(name,args={})=>{
     if(privateInput(args))throw new Error('reviewer_authority_argument');
+    if(name==='acceptance_compare_schemas'){
+      const event={tool_name:'mcp__Acceptance__compare_schemas',tool_input:args};
+      const denial=permission(event,state);if(denial){state.denials.push({tool:name,reason:denial});return {isError:true,reason:denial};}
+      if(!Array.isArray(args.pairs)||args.pairs.length<1||args.pairs.length>32)throw new Error('reviewer_document_not_observed');
+      const proofs=new Map();
+      const select=ref=>{
+        const doc=documents.get(ref?.document_id);
+        if(!doc||!trustedSchemaDocuments.has(ref.document_id)||typeof ref.pointer!=='string'||!/^\/(?:[^~]|~[01])*\/(?:inputSchema|outputSchema|input_schema|output_schema)$/.test(ref.pointer)&&!/^\/(?:inputSchema|outputSchema|input_schema|output_schema)$/.test(ref.pointer))throw new Error('reviewer_document_not_observed');
+        let schema=doc;for(const part of ref.pointer.slice(1).split('/')){const key=part.replaceAll('~1','/').replaceAll('~0','~');if(!schema||typeof schema!=='object'||!Object.hasOwn(schema,key))throw new Error('reviewer_document_not_observed');schema=schema[key];}
+        if(typeof schema!=='boolean'&&(!schema||typeof schema!=='object'||Array.isArray(schema)))throw new Error('reviewer_document_not_observed');
+        if(digest(sanitized(schema))!==digest(schema))throw new Error('reviewer_document_not_observed');
+        proofs.set(ref.document_id,doc);return schema;
+      };
+      const pairs=args.pairs.map(pair=>({left:select(pair.left),right:select(pair.right)}));
+      const result=await installed.call('compare_schemas',{pairs,proof_documents:[...proofs.values()]});
+      const response={...result,comparisons:result.comparisons.map((row,i)=>({...row,left:args.pairs[i].left,right:args.pairs[i].right}))};
+      observe({...event,tool_response:response},state);return response;
+    }
     if(name.startsWith('acceptance_')){
       const short=name.slice('acceptance_'.length);const event={tool_name:'mcp__Acceptance__'+short,tool_input:args};
       if(short==='validate_installed'){
@@ -137,12 +156,12 @@ export async function createReviewerTools({session,state,release}) {
       }
       state.pre_calls=(state.pre_calls??0)+1;const denied=permission(event,state);
       if(denied){state.denials.push({tool:name,reason:denied});return {isError:true,reason:denied};}
-      const result=await installed.call(short,event.tool_input);observe({...event,tool_response:result},state);return result;
+      const result=await installed.call(short,event.tool_input);observe({...event,tool_response:result},state);if(short==='validate_installed'&&result.valid===true)trustedSchemaDocuments.add(args.document_id);return result;
     }
     if(name==='bos_get_context')return guarded({tool_name:'mcp__BOS__bos_get_context',tool_input:{}},async()=>{
       const response=await mcp('bos.get_context',{});return response;
     });
-    if(name==='bos_list_context_tools')return guarded({tool_name:'mcp__BOS__bos_list_context_tools',tool_input:{context_handle:state.handle}},()=>mcp('bos.list_context_tools',{context_handle:state.handle}));
+    if(name==='bos_list_context_tools'){const result=await guarded({tool_name:'mcp__BOS__bos_list_context_tools',tool_input:{context_handle:state.handle}},()=>mcp('bos.list_context_tools',{context_handle:state.handle}));if(!result.isError)trustedSchemaDocuments.add(result.document_id);return result;}
     if(name==='bos_list_resources')return guarded({tool_name:'list_mcp_resources',tool_input:{server:'BOS-Platform'}},()=>session.rpc('resources/list'));
     if(name==='bos_read_resource'){
       const matches=(state.resources??[]).filter(uri=>sanitized(uri)===args.uri);
@@ -176,6 +195,7 @@ export async function createReviewerTools({session,state,release}) {
       state.observations.push({tool:'validate.installed',input:{path:'skills/bos-app-discovery/scripts/validate-discovery.mjs',mode:'operation-describe',document:sanitized(raw)},response:sanitized(validation),scope_verified:!!state.handle,is_error:validation.valid!==true,validation_origin:'host_https_describe'});
       if(validation.valid!==true)throw new Error('reviewer_describe_response_invalid');
       const exposed=expose(raw);
+      trustedSchemaDocuments.add(exposed.document_id);for(const contact of exposed.advertised_https_contacts??[])trustedSchemaDocuments.add(contact.document_id);
       return {...exposed,transport:'https-discovery',published_validation:{valid:true,mode:'operation-describe',document_id:exposed.document_id,release_commit:bos.release_commit}};
     }
     if(name!=='bos_https_operation')throw new Error('reviewer_tool_unknown');
