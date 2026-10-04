@@ -8,7 +8,7 @@ import {promisify} from 'node:util';
 import {createReviewerTools,reviewerDiscoveryDocument} from '../scripts/marketplace-reviewer-tools.mjs';
 import {syntheticAppDescribe,syntheticOperationDescribe,syntheticApiContract} from './helpers/synthetic-bos-discovery-service.mjs';
 import {digest} from '../scripts/marketplace-prompt-catalog.mjs';
-import {documentDigests,observedDocument,installedValidatorModes} from '../scripts/marketplace-native-resources.mjs';
+import {documentDigests,observedDocument,installedValidatorModes,createInstalledAcceptance} from '../scripts/marketplace-native-resources.mjs';
 
 const run=promisify(execFile);
 const context={context_handle:'bos_ctx_v2_'+'a'.repeat(64),organization_name:'Synthetic',application_name:'Synthetic App',installation_name:'Synthetic Installation',role_label:'Reviewer',is_default:true};
@@ -86,6 +86,8 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   assert.equal((await tools.call('acceptance_compare_schemas',{pairs:[{left:{document_id:privateCatalog.document_id,pointer:'/tools/0/inputSchema'},right:schemaPair.left}]})).isError,true);
   const beforeComparison=requests,comparison=await tools.call('acceptance_compare_schemas',{pairs:[schemaPair]});
   assert.equal(comparison.isError,undefined);assert.equal(comparison.comparisons[0].complete,true);
+  state.kind='starter';assert.equal((await tools.call('acceptance_compare_schemas',{pairs:[schemaPair]})).comparisons[0].complete,true);
+  state.kind='unknown';assert.equal((await tools.call('acceptance_compare_schemas',{pairs:[schemaPair]})).isError,true);state.kind='positive';
   assert.ok(comparison.comparisons[0].declaration_differences.length);assert.deepEqual(comparison.comparisons[0].left,schemaPair.left);
   assert.equal(requests,beforeComparison);
   assert.equal((await tools.call('acceptance_compare_schemas',{pairs:[{...schemaPair,left:{document_id:'not-observed',pointer:'/input_schema'}}]})).isError,true);
@@ -242,5 +244,31 @@ test('actual retained API contracts validate with canonical wrapper and exact ob
   assert.equal(state.validated_contracts['api-contract'],undefined);
   assert.equal(Object.values(state.failed_validations).some(Boolean),true);
   const before=requests;assert.equal((await discover()).isError,true);assert.equal(requests,before);
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
+
+test('installed Markdown references are verified, provenance-bound and contained in published skills',async()=>{
+ const root=await realpath(await mkdtemp(join(tmpdir(),'reviewer-installed-references-')));
+ try{
+  const refs=join(root,'skills/demo/references');await mkdir(refs,{recursive:true});
+  await writeFile(join(root,'skills/demo/SKILL.md'),'# Demo\n[Guide](./references/guide.md)\n[Missing](./references/missing.md)\n[Escape](../../outside.md)\n');
+  await writeFile(join(refs,'guide.md'),'# Verified guide\n');
+  await writeFile(join(root,'outside.md'),'# Outside skills\n');
+  await run('git',['init','--quiet'],{cwd:root});await run('git',['add','.'],{cwd:root});
+  await run('git',['-c','user.name=Synthetic Test','-c','user.email=test@example.invalid','commit','--quiet','-m','Synthetic published reference fixture'],{cwd:root});
+  const commit=(await run('git',['rev-parse','HEAD'],{cwd:root})).stdout.trim();
+  const config={product:'bos',installed_root:root,installed_roots:{bos:root},published_commits:{bos:commit}};
+  const acceptance=createInstalledAcceptance(config,async()=>({canary:true,kind:'positive'}));
+  const index=await acceptance.call('read_installed',{product:'bos',path:'skills/demo/SKILL.md'});
+  assert.match(index.text,/# Demo/);assert.match(index.reference_id,/^file_[1-9][0-9]*$/);
+  assert.equal(index.references.length,1);assert.equal(index.references[0].path,'skills/demo/references/guide.md');
+  assert.equal(index.references[0].product,'bos');assert.equal(index.unavailable_references.length,2);
+  assert.ok(index.unavailable_references.every(row=>row.reason==='not_in_verified_published_package'));
+  const guide=await acceptance.call('read_installed',{reference_id:index.references[0].reference_id});
+  assert.match(guide.text,/# Verified guide/);assert.equal(guide.reference_id,index.references[0].reference_id);
+  await assert.rejects(()=>acceptance.call('read_installed',{path:'../../outside.md',product:'bos'}));
+  await assert.rejects(()=>acceptance.call('read_installed',{reference_id:'file_999'}));
+  await assert.rejects(()=>acceptance.call('read_installed',{reference_id:index.references[0].reference_id,product:'other'}));
  }finally{await rm(root,{recursive:true,force:true});}
 });
