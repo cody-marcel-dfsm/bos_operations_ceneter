@@ -183,3 +183,26 @@ test('API-contract result and whole-envelope aliases retain physical evidence in
  assert.equal(matches([compare],data),false);
  assert.equal(matches([apiFact],mixed,[{id:'missing',operator:'equals'}]),false);
 });
+
+test('freshness accepts canonical microseconds and retains nanosecond age/skew boundaries',()=>{
+ const rule={operator:'timestamp_age',response:selector,path:'/timestamp',value:{maximum_age_ms:300000,future_skew_ms:30000}};
+ const clock={...context,execution_started_at:'2026-10-03T20:00:00.000000001Z'};
+ const check=time=>reviewerOutcomeMatches(envelope([fact,rule]),{responses:[response({count:2,timestamp:time})]},[],clock);
+ for(const time of ['2026-10-03T19:59:00.123456Z','2026-10-03T20:00:00.000000001Z','2026-10-03T19:55:00.000000001Z','2026-10-03T20:00:30.000000001Z','2026-10-03T21:00:00.000000001+01:00'])assert.equal(check(time),true);
+ for(const time of ['2026-10-03T19:55:00.000000000Z','2026-10-03T20:00:30.000000002Z','2026-10-03T19:54:59.999999999Z'])assert.equal(check(time),false);
+ const epoch={...context,execution_started_at:'1970-01-01T00:00:00.000000000Z'};
+ const bounded={...rule,value:{maximum_age_ms:1,future_skew_ms:0}};
+ const beforeEpoch=time=>reviewerOutcomeMatches(envelope([fact,bounded]),{responses:[response({count:2,timestamp:time})]},[],epoch);
+ assert.equal(beforeEpoch('1969-12-31T23:59:59.999000000Z'),true);
+ assert.equal(beforeEpoch('1969-12-31T23:59:59.998999999Z'),false);
+ assert.equal(beforeEpoch('1970-01-01T00:00:00.000000001Z'),false);
+});
+test('precise freshness retains calendar timezone format and integer-limit rejection',()=>{
+ const rule={operator:'timestamp_age',response:selector,path:'/timestamp',value:{maximum_age_ms:300000,future_skew_ms:30000}};
+ const clock={...context,execution_started_at:'2026-10-03T20:00:00.123456789Z'};
+ const data=time=>({responses:[response({count:2,timestamp:time})]});
+ for(const time of ['2026-10-03T20:00:00.1Z','2026-10-03T20:00:00.123456Z','2026-10-03T20:00:00.123456789Z'])assert.equal(reviewerOutcomeMatches(envelope([fact,rule]),data(time),[],clock),true);
+ for(const time of ['2026-02-30T20:00:00.123456Z','2026-10-03T24:00:00.123456Z','2026-10-03T20:00:00.123456+24:00','2026-10-03T20:00:00.123456-00:60','2026-10-03T20:00:00.1234567890Z','2026-10-03T20:00:00.Z','2026-10-03T20:00:00.123456'])assert.equal(reviewerOutcomeMatches(envelope([fact,rule]),data(time),[],clock),false);
+ assert.equal(reviewerOutcomeMatches(envelope([fact,rule]),data('2026-10-03T20:00:00.123456Z'),[],{...clock,execution_started_at:'2026-02-30T20:00:00.123456Z'}),false);
+ for(const value of [{maximum_age_ms:1.5,future_skew_ms:0},{maximum_age_ms:1,future_skew_ms:0.5}])assert.equal(reviewerOutcomeMatches(envelope([fact,{...rule,value}]),data(clock.execution_started_at),[],clock),false);
+});

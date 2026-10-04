@@ -79,14 +79,20 @@ function completeSource(value) {
   return value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).sort().join(',') === 'application,platform,plugin' && Object.values(value).every(row => typeof row === 'string' && row.trim());
 }
 function timestamp(value) {
-  if (typeof value !== 'string') return NaN;
-  const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?(Z|[+-]\d{2}:\d{2})$/.exec(value);
-  if (!parts) return NaN;
+  if (typeof value !== 'string') return undefined;
+  const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(Z|[+-]\d{2}:\d{2})$/.exec(value);
+  if (!parts) return undefined;
   const [year, month, day, hour, minute, second] = parts.slice(1, 7).map(Number);
   const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
   const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  if (month < 1 || month > 12 || day < 1 || day > days[month - 1] || hour > 23 || minute > 59 || second > 59) return NaN;
-  return Date.parse(value);
+  if (month < 1 || month > 12 || day < 1 || day > days[month - 1] || hour > 23 || minute > 59 || second > 59) return undefined;
+  if (parts[8] !== 'Z') {
+    const [offsetHour, offsetMinute] = parts[8].slice(1).split(':').map(Number);
+    if (offsetHour > 23 || offsetMinute > 59) return undefined;
+  }
+  const milliseconds = Date.parse(value.replace(/\.\d+(?=Z|[+-])/, ''));
+  if (!Number.isFinite(milliseconds)) return undefined;
+  return BigInt(milliseconds) * 1000000n + BigInt((parts[7] ?? '').padEnd(9, '0'));
 }
 export function reviewerOutcomeMatches(assertion, evidence, requirements = [], binding = {}) {
   if (Object.keys(assertion ?? {}).sort().join(',') !== 'case_id,product,rules,schema' || assertion?.schema !== 'marketplace-case-assertions/v1' || !binding.product || !binding.case_id || assertion.product !== binding.product || assertion.case_id !== binding.case_id) return false;
@@ -116,9 +122,12 @@ export function reviewerOutcomeMatches(assertion, evidence, requirements = [], b
     }
     if (rule.operator === 'timestamp_age') {
       const clock = timestamp(binding.execution_started_at), limit = rule.value;
-      if (!Number.isFinite(clock) || !limit || !Number.isInteger(limit.maximum_age_ms) || limit.maximum_age_ms < 1 || limit.maximum_age_ms > 604800000 || !Number.isInteger(limit.future_skew_ms) || limit.future_skew_ms < 0 || limit.future_skew_ms > 300000) return false;
+      if (typeof clock !== 'bigint' || !limit || !Number.isInteger(limit.maximum_age_ms) || limit.maximum_age_ms < 1 || limit.maximum_age_ms > 604800000 || !Number.isInteger(limit.future_skew_ms) || limit.future_skew_ms < 0 || limit.future_skew_ms > 300000) return false;
       const timestamps = Array.isArray(value) ? value : [value];
-      return timestamps.length > 0 && timestamps.length <= 1000 && timestamps.every(row => Number.isFinite(timestamp(row)) && clock - timestamp(row) <= limit.maximum_age_ms && timestamp(row) - clock <= limit.future_skew_ms);
+      return timestamps.length > 0 && timestamps.length <= 1000 && timestamps.every(row => {
+        const time = timestamp(row);
+        return typeof time === 'bigint' && clock - time <= BigInt(limit.maximum_age_ms) * 1000000n && time - clock <= BigInt(limit.future_skew_ms) * 1000000n;
+      });
     }
     return false;
   });
