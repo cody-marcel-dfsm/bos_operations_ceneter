@@ -76,9 +76,12 @@ to their exact application, operation, or source; an empty plugin list means
 that application's returned catalog is empty. Preserve contract versions and
 observation timestamps when returned.
 
-Accessible roles come exclusively from fresh authorized contexts. An
-application's configured role catalog describes possible roles; each claimed
-accessible role requires its own matching authorized context.
+Build accessible application, installation, and role rows from fresh authorized
+contexts. Use the selected context's role for the current identity. Before
+presenting the inventory, reconcile every access claim against those rows.
+Include configured role definitions when the user explicitly requests them,
+with their application-catalog provenance. Follow the final-output reconciliation
+procedure in [the discovery contract](references/discovery-contract.md).
 
 For a full inventory, account for every operation key advertised by each
 app.describe contact and every returned public plugin/service entry. Resolve

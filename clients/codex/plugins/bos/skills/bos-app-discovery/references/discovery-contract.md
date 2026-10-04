@@ -19,9 +19,15 @@ An accessible-inventory or readiness assessment can complete with those facts;
 an organization-wide directory is needed for facts beyond that observed scope.
 Missing business-data or execution prerequisites still stop the affected task.
 
-A configured application role catalog does not establish accessible roles;
-match every accessible-role claim to fresh authorized contexts. For a full
-inventory, cover all currently advertised operation keys and catalog entries,
+Before presenting an accessible inventory, build an internal authorization
+table from the fresh context rows: organization, application, installation,
+and role label. Match every final accessible-app, installation, and role claim
+to a row in that table, within the selected request scope. Report the selected
+context's role as the current identity. A configured application role catalog
+supplies role definitions; include those definitions when explicitly requested
+and label them as configured application metadata.
+
+For a full inventory, cover all currently advertised operation keys and catalog entries,
 using the returned Describe batch maximum for required descriptions and
 explicitly identifying unresolved descriptions.
 

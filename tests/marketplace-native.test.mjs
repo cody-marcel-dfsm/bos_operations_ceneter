@@ -19,6 +19,26 @@ test('retained case diagnostics identify failures while removing credentials and
  assert.equal(diagnostic.evaluation_missing[1].length,2000);
  assert.deepEqual(diagnostic.failed_steps,[{tool:'bos_https_describe',reason:'reviewer_document_not_observed'},{tool:'validate.installed',reason:'reviewer_validation_failed'}]);
 });
+test('validator selection diagnostics retain only supported modes and boolean document categories',()=>{
+ const result=caseDiagnostics({}, {},[
+  {tool:'validate.installed',response:{valid:false,diagnostic:'private-token'},input:{mode:'app-describe',document:{$schema:'private-url',type:'object',properties:{'private-customer':{default:'private-value'}}}}},
+  {tool:'validate.installed',response:{valid:false},input:{mode:'api-contract',document:{response:{execution:{uri:'private-url'},operations:[]},access_token:'private-token'}}},
+  {tool:'acceptance_validate_installed',is_error:true,response:{reason:'reviewer_document_not_observed'},input:{mode:'private-token',document_id:'private-selector'}}
+ ]);
+ assert.deepEqual(result.failed_steps,[
+  {tool:'validate.installed',reason:'reviewer_validation_failed',validation_mode:'app-describe',document_is_json_schema:true,document_has_execution_contract:false,document_has_operation_envelope:false},
+  {tool:'validate.installed',reason:'reviewer_validation_failed',validation_mode:'api-contract',document_is_json_schema:false,document_has_execution_contract:true,document_has_operation_envelope:true},
+  {tool:'acceptance_validate_installed',reason:'reviewer_document_not_observed',validation_mode:'unsupported'}
+ ]);
+ assert.doesNotMatch(JSON.stringify(result),/private-/);
+});
+test('actor scope proof contains only actual public preflight labels and a strict verification flag',async()=>{
+ const {publicReviewerScope}=await import('../scripts/marketplace-native-run.mjs');
+ const scope={organization_name:'Synthetic',application_name:'App',installation_name:'Installation',role_label:'Authorized role',configured_roles:['Other role'],context_handle:'private-selector',access_token:'private-token',uri:'private-url'};
+ assert.deepEqual(publicReviewerScope(scope,true),{organization_name:'Synthetic',application_name:'App',installation_name:'Installation',role_label:'Authorized role',verified:true});
+ assert.equal(publicReviewerScope(scope,'true').verified,false);
+ assert.doesNotMatch(JSON.stringify(publicReviewerScope(scope,true)),/private-|Other role/);
+});
 test('scope and negative/effect checks run before dispatch',()=>{
  const state={canary:true,handle:'selected',kind:'positive',allowed_effects:['read'],tools:[{name:'plugins.list',_meta:{'bos/effect':'read'},inputSchema:{type:'object',additionalProperties:false}}]};
  assert.equal(permission({tool_name:'mcp__BOS_Platform__bos_execute',tool_input:{context_handle:'other',tool_name:'plugins.list',arguments:{}}},state),'wrong_scope');

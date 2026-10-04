@@ -64,6 +64,7 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   }
   assert.equal(requests,0);app.describe.uri=originalUri;state.validated_contracts['app-describe']=digest(app);
   const result=await tools.call('bos_https_describe',args);
+  assert.deepEqual(result.published_validation,{valid:true,mode:'operation-describe',document_id:result.document_id,release_commit:commit});
   assert.equal(result.isError,undefined);assert.equal(result.document.contract_version,'lead-director-describe/v1');
   assert.equal(result.advertised_https_contacts.length,1);assert.equal(requests,1);
   assert.doesNotMatch(JSON.stringify(result),/bos_ctx_v2_|context_handle/);
