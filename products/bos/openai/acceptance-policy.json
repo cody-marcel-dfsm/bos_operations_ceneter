@@ -22,6 +22,7 @@
         "read"
       ],
       "assertion_evidence": "response",
+      "reviewer_timeout_ms": 900000,
       "requirements": [
         {
           "id": "tools",
