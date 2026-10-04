@@ -63,14 +63,21 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
    assert.equal((await tools.call('bos_https_describe',{...args,document_id:changed.document_id})).isError,true);
   }
   assert.equal(requests,0);app.describe.uri=originalUri;state.validated_contracts['app-describe']=digest(app);
+  const validationState=structuredClone({validated:state.validated_contracts,failed:state.failed_validations});
   const result=await tools.call('bos_https_describe',args);
   assert.deepEqual(result.published_validation,{valid:true,mode:'operation-describe',document_id:result.document_id,release_commit:commit});
+  const receipt=state.observations.findLast(row=>row.validation_origin==='host_https_describe');
+  assert.equal(receipt.tool,'validate.installed');assert.equal(receipt.input.mode,'operation-describe');assert.equal(receipt.response.valid,true);assert.equal(receipt.is_error,false);assert.deepEqual(receipt.input.document,response);
+  assert.deepEqual({validated:state.validated_contracts,failed:state.failed_validations},validationState);
   assert.equal(result.isError,undefined);assert.equal(result.document.contract_version,'lead-director-describe/v1');
   assert.equal(result.advertised_https_contacts.length,1);assert.equal(requests,1);
   assert.doesNotMatch(JSON.stringify(result),/bos_ctx_v2_|context_handle/);
+  const validationCount=state.observations.filter(row=>row.validation_origin==='host_https_describe').length;
   response={...response,operations:[]};assert.equal((await tools.call('bos_https_describe',args)).isError,true);
+  assert.equal(state.observations.filter(row=>row.validation_origin==='host_https_describe').length,validationCount);
   response=describeResponse();response.operations[0].input_schema=null;
   assert.deepEqual(await tools.call('bos_https_describe',args),{isError:true,reason:'reviewer_describe_response_invalid'});
+  const failedReceipt=state.observations.findLast(row=>row.validation_origin==='host_https_describe');assert.equal(failedReceipt.response.valid,false);assert.equal(failedReceipt.is_error,true);
   assert.equal(state.observations.at(-1).response.reason,'reviewer_describe_response_invalid');
   response={...syntheticOperationDescribe(),operations:[{operation:'search',status:'not_available'}]};
   const unavailable=await tools.call('bos_https_describe',args);

@@ -102,7 +102,7 @@ export function observe(event,state) {
   if(typeof value.server==='string'&&!['BOS-Platform','BOS_Platform'].includes(value.server))return;
   if(typeof value.context_handle==='string'&&value.context_handle!==state.handle)return;
   for(const [key,v]of Object.entries(value)){
-   if((key==='uri'||key==='resource_uri')&&typeof v==='string'&&v.startsWith('bos://')){
+   if(['uri','resource_uri','schema_uri','reference_uri','examples_uri'].includes(key)&&typeof v==='string'&&v.startsWith('bos://')){
     const defaultBound=listed&&state.default_scope_selected===true&&prefixes.some(prefix=>prefix&&v.startsWith(prefix));
     if(advertisedResource(v,state,inherited||defaultBound))state.resources=[...new Set([...(state.resources??[]),v])];
    }else if(typeof v==='object'||typeof v==='string')collect(v);

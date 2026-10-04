@@ -103,6 +103,17 @@ test('same-server scope-bound resource listings and nested documents enable disc
  observe({tool_name:'list_mcp_resources',tool_input:{server:'Other'},tool_response:{context_handle:'selected',resources:[{uri:'bos://apps/synthetic/wrong-server'}]}},state);
  assert.ok(!state.resources.some(uri=>uri.includes('wrong-server')));
 });
+test('published BOSL descriptor links inherit observed parent scope and reject foreign or unadvertised reads',()=>{
+ const parent='bos://apps/synthetic/root?context_handle=selected';
+ const state={handle:'selected',canary:true,kind:'positive',resources:[parent],observations:[]};
+ const descriptor={schema_uri:'bos://apps/synthetic/bosl/schema',reference_uri:'bos://apps/synthetic/bosl/reference',examples_uri:'bos://apps/synthetic/bosl/examples'};
+ const rejected=[{server:'Other',schema_uri:'bos://apps/synthetic/foreign-server'}, {context_handle:'other',reference_uri:'bos://apps/synthetic/foreign-context'}, {examples_uri:'bos://apps/synthetic/foreign-query?context_handle=other'}, {arbitrary_uri:'bos://apps/synthetic/unadvertised'}];
+ observe({tool_name:'read_mcp_resource',tool_input:{server:'BOS-Platform',uri:parent},tool_response:{contents:[{text:JSON.stringify({bosl:descriptor,references:rejected})}]}},state);
+ for(const uri of Object.values(descriptor))assert.equal(permission({tool_name:'read_mcp_resource',tool_input:{server:'BOS-Platform',uri}},state),null);
+ for(const item of rejected){const uri=Object.values(item).find(value=>value.startsWith('bos://'));assert.ok(!state.resources.includes(uri));assert.equal(permission({tool_name:'read_mcp_resource',tool_input:{server:'BOS-Platform',uri}},state),'undiscovered_resource');}
+ assert.equal(permission({tool_name:'read_mcp_resource',tool_input:{server:'Other',uri:descriptor.schema_uri}},state),'undiscovered_resource');
+ assert.equal(permission({tool_name:'read_mcp_resource',tool_input:{server:'BOS-Platform',uri:descriptor.schema_uri+'/invented'}},state),'undiscovered_resource');
+});
 test('unbound listing resources require a selected server default and matching application prefix',()=>{
  const state={handle:'selected',default_scope_selected:false,observations:[],resources:['bos://apps/synthetic/root?context_handle=selected']};
  const event={tool_name:'list_mcp_resources',tool_input:{server:'BOS-Platform'},tool_response:{resources:[{uri:'bos://apps/synthetic/next'}]}};
