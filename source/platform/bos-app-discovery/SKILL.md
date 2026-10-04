@@ -15,8 +15,8 @@ First execute the first-action tool lookup in `bos-mcp-client`. Resolve deferred
 diagnostics. A resource list alone cannot establish missing BOS tools.
 
 GPT owns request routing, planning, service selection, API invocation, and
-cross-app evidence composition. BOS MCP supplies the exact grant-bound scope and
-the installed-app directory. Each selected app MCP supplies its own graph, plugins,
+cross-app evidence composition. BOS MCP supplies current server-authorized scope choices for identity-v2
+and the exact grant-bound scope and advertised directory for legacy discovery. Each selected app MCP supplies its own graph, plugins,
 services, goals, and machine-readable API contracts.
 
 Read [the discovery contract](references/discovery-contract.md) before the first
@@ -65,6 +65,24 @@ Directory or transport limitations remain scoped to that operation. An
 access denial never permits switching routes to evade it. Missing or ambiguous
 context, revoked grants, and explicit access denials stop the affected operation.
 Every operation retains request-time server authorization.
+
+## Accessible inventory and readiness assessments
+
+For identity-v2, use fresh authorized contexts to identify application and
+installation choices accessible in the selected organization and role. Read
+and validate each applicable advertised application description and service
+catalog through its authorized context. Attribute readiness and prerequisites
+to their exact application, operation, or source; an empty plugin list means
+that application's returned catalog is empty. Preserve contract versions and
+observation timestamps when returned.
+
+A request to list accessible apps, audit readiness, compare contracts, or assess
+workflow feasibility is fulfilled by that bounded evidence, including explicit
+empty states and unavailable capabilities. Describe the scope actually observed
+and any remaining inventory limitation. Require an organization-wide directory
+when the requested facts extend beyond the fresh authorized choices and scoped
+descriptions. A required business read or execution still stops when its own
+prerequisites are unavailable.
 
 ## Execute BOS resource discovery
 
