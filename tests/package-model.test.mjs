@@ -224,11 +224,17 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
   assert.match(guidance, /host_capability_unavailable/);
   assert.match(guidance, /no browser[\s\S]*DOM[\s\S]*cached selector/i);
   assert.match(guidance, /connection's exact[\s\S]*organization[\s\S]*application[\s\S]*installation[\s\S]*role grant/i);
+  assert.match(guidance, /final reconciliation table with a row for every[\s\S]*native operation[\s\S]*public API operation/i);
+  assert.match(guidance, /state `No observed counterpart`[\s\S]*declared execution mode[\s\S]*validation status/i);
+  assert.match(guidance, /List additional accessible roles only when separate fresh authorized context\s+rows establish them/i);
+  assert.match(guidance, /label `journey_runtime` as journey\s+runtime/i);
   assert.doesNotMatch(guidance, /default_organization_label|client-preferences\.mjs|context_id/i);
   assert.match(contract, /`app\.describe`/);
   assert.match(contract, /`graph\.describe`/);
   assert.match(contract, /`services\.list`/);
   assert.match(contract, /`api\.contract\.get`/);
+  assert.match(contract, /one row for each advertised native[\s\S]*public API operation/i);
+  assert.match(contract, /No observed counterpart[\s\S]*journey_runtime[\s\S]*unresolved rows/i);
   assert.match(contract, /audience-bound/i);
   assert.match(contract, /another[\s\S]*fails closed at the grant[\s\S]*boundary/i);
   await access(`${discovery.sourcePath}/scripts/validate-discovery.mjs`);
