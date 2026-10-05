@@ -157,6 +157,27 @@ returned prefix when inspecting its `document_id`. Direct documents use the
 root. This binding supplies source location only and establishes no constructed
 URI or contract equivalence.
 
+Print original-source field provenance in the final execution and error
+ledgers for every group observation, including every member operation in a
+grouped row. Resolve its `document_index` through `source_documents`; copy the
+original `document_id` and its returned `pointer` prefix, or the empty prefix
+for a direct document. A declared execution field's final reference is that
+prefix plus `execution_pointer` plus `/` and the RFC 6901 escaped `field`;
+print it alongside the literal method, transport, or context-header value.
+A declared response's final reference is the prefix plus `response_pointer`;
+print its exact `/body`, `/content_type`, and `/headers` paths and each header
+name's actual source array index. Inspect the original response to preserve
+its actual header ordering for each observation. An error entry's final
+reference is the prefix plus `errors_pointer` and its exact observed child
+paths for code, HTTP status, and retryability. Preserve actual array indexes
+and object keys, escaping `~` as `~0` and `/` as `~1`. An explicit null retains
+its real field pointer; report an absent field under its observed containing
+object without inventing a missing field pointer or response pointer.
+Ordinary CLI consumers identify the actual input document selected by
+`document_index`, with root-relative pointers. Derived projection references
+locate the ledger; the final report also prints each original-source reference
+and field pointer.
+
 The projector's summaries count unique operations separately by contract kind,
 selected descriptive scope, and exact declared source when present. Keep public
 operation-Describe counts separate from API-contract registration/native counts.

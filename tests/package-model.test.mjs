@@ -309,6 +309,12 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
     assert.match(reportingGuidance, /`summaries\.error_groups`[\s\S]*general public errors[\s\S]*operation-specific or source-specific\s+errors[\s\S]*declared HTTP status[\s\S]*retryability value/i);
     assert.match(reportingGuidance, /source observations[\s\S]*declaration pointers/i);
     assert.match(reportingGuidance, /reconcile[\s\S]*every execution and error group/i);
+    assert.match(reportingGuidance, /Print original-source field provenance in the final execution and error\s+ledgers for every group observation/i);
+    assert.match(reportingGuidance, /`document_index` through `source_documents`[\s\S]*original `document_id`[\s\S]*`pointer` prefix/i);
+    assert.match(reportingGuidance, /prefix plus `execution_pointer` plus `\/`[\s\S]*RFC 6901 escaped `field`/i);
+    assert.match(reportingGuidance, /`response_pointer`[\s\S]*`\/body`[\s\S]*`\/content_type`[\s\S]*`\/headers`[\s\S]*actual\s+source array index/i);
+    assert.match(reportingGuidance, /`errors_pointer`[\s\S]*exact observed child\s+paths[\s\S]*HTTP status[\s\S]*retryability/i);
+    assert.match(reportingGuidance, /explicit null retains[\s\S]*real field pointer[\s\S]*absent field[\s\S]*without inventing a missing\s+field pointer or response pointer/i);
   }
 
   for (const clientPath of [

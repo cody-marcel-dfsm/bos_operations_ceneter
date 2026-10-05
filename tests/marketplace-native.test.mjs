@@ -10,6 +10,64 @@ import {installedPath,observedDocument,documentDigests,createInstalledAcceptance
 import {mkdtemp,mkdir,writeFile,rm,symlink,realpath} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
+import {reviewerErrorDiagnostic,reviewerErrorMetadata,reviewerModelDiagnostics} from '../scripts/marketplace-reviewer-diagnostics.mjs';
+import {failedNativeCaseReceipt,partialCaseDiagnostics} from '../scripts/marketplace-native-run.mjs';
+
+test('fixed error classifications preserve known transport codes and withhold unknown error material',()=>{
+ for(const [error,category,code] of [
+  [{name:'TimeoutError',message:'Bearer private-token'},'request_timeout_or_abort',undefined],
+  [{code:-32602,message:'https://private.invalid'},'jsonrpc_error',-32602],
+  [{cause:{code:'ECONNRESET'},message:'private-context'},'network_error','ECONNRESET'],
+  [{code:'reviewer_mcp_response_invalid'},'reviewer_error','reviewer_mcp_response_invalid'],
+  [{name:'SyntaxError',message:'private-json'},'response_parse_error',undefined],
+  [{name:'private-name',code:'private-code',message:'private-token'},'unrecognized_error',undefined]
+ ]){
+  const result=reviewerErrorDiagnostic(error);assert.equal(result.error_category,category);assert.equal(result.error_code,code);
+  assert.doesNotMatch(JSON.stringify(result),/private|Bearer/);
+  assert.deepEqual(reviewerErrorMetadata({...result,raw:error}),result);
+ }
+ assert.deepEqual(reviewerErrorMetadata({error_category:'private-category',error_code:'private-code',error_code_present:true}),{error_category:'unrecognized_error',error_code_present:true});
+});
+
+test('partial timeout receipts retain safe observation coverage and remain ungraded failures',()=>{
+ const model=reviewerModelDiagnostics({phase:'tool_handler',elapsed_ms:300000,phase_elapsed_ms:42,phase_durations:{turn_running:299958,private_phase:3},pending_tool:'bos_control_discover',pending_control_operation:'api.contract.get',pending_tool_elapsed_ms:42,completed_tool_calls:4,raw:'private-token'});
+ const error=Object.assign(new Error('reviewer_model_timeout'),{reviewer_diagnostics:model});
+ const state={context_handle:'private-context',observations:[
+  {tool:'app.describe',transport:'https-discovery',input:{operations:['create']},response:{operations:[{operation:'create'}]}},
+  {tool:'validate.installed',validation_origin:'host_https_describe',response:{valid:true}},
+  {tool:'bos.execute',input:{tool_name:'api.contract.get',arguments:{token:'private-token'}},is_error:true,response:{reason:'reviewer_tool_failed',error_diagnostic:{error_category:'network_error',error_code_present:true,error_code:'ECONNRESET'}}},
+  {tool:'private-tool',is_error:true,response:{reason:'private-error',error_diagnostic:{error_category:'private-category'}}}
+ ]};
+ const receipt=failedNativeCaseReceipt({id:'synthetic-case'},null,true,error,300042,state);
+ assert.equal(receipt.status,'FAIL');assert.equal(receipt.reason,'reviewer_model_timeout');
+ const d=receipt.diagnostics;assert.equal(d.partial,true);assert.equal(d.grading_attempted,false);assert.equal(d.observed_count,4);assert.equal(d.failed_observation_count,2);
+ assert.equal(d.known_tool_counts['unrecognized_tool'],1);assert.deepEqual(d.model_execution,model);
+ assert.deepEqual(d.failed_steps[0],{tool:'bos.execute',reason:'reviewer_tool_failed',control_operation:'api.contract.get',error_diagnostic:{error_category:'network_error',error_code_present:true,error_code:'ECONNRESET'}});
+ assert.equal(d.https_describe_coverage.successful_parent_validations,1);
+ assert.doesNotMatch(JSON.stringify(receipt),/private-context|private-token|private-tool|private-error|private-category|private_phase/);
+ assert.equal(partialCaseDiagnostics({observations:[]},error).observed_count,0);
+ assert.equal(partialCaseDiagnostics({observations:[],grading_attempted:true},error).grading_attempted,true);
+ const many=Array.from({length:40},(_,index)=>({operation:'public_operation_'+index}));
+ const bounded=partialCaseDiagnostics({observations:[{tool:'app.describe',transport:'https-discovery',input:{operations:many.map(row=>row.operation)},response:{operations:many}}]},error).https_describe_coverage;
+ assert.equal(bounded.requested_operations.length,32);assert.equal(bounded.returned_operations.length,32);
+ assert.equal(bounded.operation_names_truncated,true);assert.equal(bounded.requested_operation_count,40);assert.equal(bounded.returned_operation_count,40);
+});
+
+test('diagnostic selection rejects unknown controls and malformed model metadata',()=>{
+ const failed=caseDiagnostics({}, {},[{tool:'bos.execute',input:{tool_name:'private-control'},is_error:true,response:{reason:'reviewer_tool_failed'}}]);
+ assert.equal(Object.hasOwn(failed.failed_steps[0],'control_operation'),false);
+ const d=reviewerModelDiagnostics({phase:'private-phase',elapsed_ms:-1,phase_durations:{private_phase:1,initialize:'private-duration'},pending_tool:'private-tool',pending_control_operation:'private-control',completed_tool_calls:Infinity});
+ assert.equal(d.phase,'unrecognized_phase');assert.equal(d.elapsed_ms,0);assert.equal(d.pending_tool,'unrecognized_tool');assert.equal(d.completed_tool_calls,0);
+ assert.doesNotMatch(JSON.stringify(d),/private-/);
+ const raw={isError:true,content:[{type:'text',text:'private-upstream-text'}]};
+ const diagnostic=reviewerErrorDiagnostic({code:-32602});
+ const observed={tool:'bos.execute',input:{tool_name:'service.describe'},is_error:true,response:raw,
+  control_operation:'service.describe',error_diagnostic:diagnostic};
+ const result=caseDiagnostics({}, {},[observed]);
+ assert.deepEqual(result.failed_steps[0],{tool:'bos.execute',reason:'reviewer_tool_failed',control_operation:'service.describe',error_diagnostic:diagnostic});
+ assert.strictEqual(observed.response,raw);
+ assert.doesNotMatch(JSON.stringify(result),/private-upstream-text/);
+});
 
 function nativeProcessFixture({stderr=[],stdout=[],code=1,signal=null,waitForKill=false}={}) {
  return ()=>{

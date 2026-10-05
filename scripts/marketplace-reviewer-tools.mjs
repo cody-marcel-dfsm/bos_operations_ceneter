@@ -6,7 +6,7 @@ import {readPublishedFile,verifyPublishedPackage} from './marketplace-published-
 import {digest} from './marketplace-prompt-catalog.mjs';
 import {trustedUrl} from './marketplace-reviewer-session.mjs';
 
-import {reviewerFailureCode} from './marketplace-reviewer-diagnostics.mjs';
+import {reviewerFailureCode,reviewerErrorDiagnostic,reviewerDiagnosticControl} from './marketplace-reviewer-diagnostics.mjs';
 
 const controls=new Set(['app.describe','plugins.list','service.describe','api.contract.get','discovery.refresh']);
 export function reviewerDiscoveryDocument(value,state,resourceUri) {
@@ -90,7 +90,7 @@ export async function createReviewerTools({session,state,release}) {
   const {createBosExternalDependencyAdapter}=await import(pathToFileURL(adapterPath).href);
   const offered=(await session.rpc('tools/list')).tools;
   if(!Array.isArray(offered))throw new Error('reviewer_discovery_tools_missing');
-  const documents=new Map(),contacts=new Map(),references=new Map(),trustedSchemaDocuments=new Set(),originalDocuments=new Map(),ajv=new Ajv({strict:false,validateFormats:false});
+  const documents=new Map(),contacts=new Map(),references=new Map(),trustedSchemaDocuments=new Set(),originalDocuments=new Map(),controlFailureDiagnostics=new WeakMap(),ajv=new Ajv({strict:false,validateFormats:false});
   let nextReference=0,authorizedContextSource=null;
   const clearReferences=()=>{documents.clear();contacts.clear();references.clear();trustedSchemaDocuments.clear();originalDocuments.clear();authorizedContextSource=null;};
   const retainDocument=raw=>{
@@ -159,15 +159,26 @@ export async function createReviewerTools({session,state,release}) {
     if(denial){state.denials.push({tool:event.tool_name,reason:denial});return {isError:true,reason:denial};}
     if(event.tool_name==='mcp__BOS__bos_get_context')authorizedContextSource=null;
     const previousHandle=state.handle;
-    const response=await run();observe({...event,tool_response:response},state);
-    if(state.handle!==previousHandle)clearReferences();
-    const exposed=expose(response,event.tool_input?.uri,event.tool_input?.tool_name==='api.contract.get'?'api-contract':undefined);
-    if(event.tool_name==='mcp__BOS__bos_get_context'){
-      authorizedContextSource=null;
-      if(!response?.isError)bindAuthorizedContext(documents.get(exposed.document_id));
+    const control=event.tool_name==='mcp__BOS__bos_execute'?reviewerDiagnosticControl(event.tool_input?.tool_name):null;
+    try{
+      const response=await run();
+      observe({...event,tool_response:response},state);
+      const failureDiagnostic=control&&response?.isError?{control_operation:control,error_diagnostic:reviewerErrorDiagnostic(body(response)?.error??response.error??body(response))}:{};
+      if(response?.isError&&control)Object.assign(state.observations.at(-1),failureDiagnostic);
+      if(state.handle!==previousHandle)clearReferences();
+      const exposed=expose(response,event.tool_input?.uri,event.tool_input?.tool_name==='api.contract.get'?'api-contract':undefined);
+      if(event.tool_name==='mcp__BOS__bos_get_context'){
+        authorizedContextSource=null;
+        if(!response?.isError)bindAuthorizedContext(documents.get(exposed.document_id));
+      }
+      let identity={};if(!response?.isError&&authorizedContextSource){try{identity={authorized_context:reportingContext()};}catch{}}
+      return response?.isError?{isError:true,...exposed,...failureDiagnostic}:{...identity,...exposed};
+    }catch(error){
+      if(!control)throw error;
+      const failure=new Error(reviewerFailureCode(error));
+      controlFailureDiagnostics.set(failure,{control_operation:control,error_diagnostic:reviewerErrorDiagnostic(error)});
+      throw failure;
     }
-    let identity={};if(!response?.isError&&authorizedContextSource){try{identity={authorized_context:reportingContext()};}catch{}}
-    return response?.isError?{isError:true,...exposed}:{...identity,...exposed};
   };
   const call=async(name,args={})=>{
     if(privateInput(args))throw new Error('reviewer_authority_argument');
@@ -312,9 +323,10 @@ export async function createReviewerTools({session,state,release}) {
   return {definitions,call:async(name,args)=>{
     try{return await call(name,args);}catch(error){
       const reason=reviewerFailureCode(error);
-      state.observations.push({tool:name,input:sanitized(args),response:{reason},is_error:true});
+      const diagnostic=controlFailureDiagnostics.get(error)??{};
+      state.observations.push({tool:name,input:sanitized(args),response:{reason,...diagnostic},is_error:true});
       if(state.kind==='negative')state.denials.push({tool:name,reason:'negative_case_business_call'});
-      return {isError:true,reason};
+      return {isError:true,reason,...diagnostic};
     }
   }};
 }

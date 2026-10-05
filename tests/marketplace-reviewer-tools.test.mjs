@@ -416,6 +416,46 @@ test('actual retained API contracts validate with canonical wrapper and exact ob
 });
 
 
+test('scoped control failure diagnostics retain fixed categories and preserve guards and raw observations',async()=>{
+ const root=await realpath(await mkdtemp(join(tmpdir(),'reviewer-control-diagnostic-')));
+ try{
+  const target=join(root,'skills/bos-external-dependency-adapter/scripts');await mkdir(target,{recursive:true});
+  await cp(new URL('../source/platform/bos-external-dependency-adapter/scripts/',import.meta.url),target,{recursive:true});
+  await run('git',['init','--quiet'],{cwd:root});await run('git',['add','.'],{cwd:root});
+  await run('git',['-c','user.name=Synthetic Test','-c','user.email=test@example.invalid','commit','--quiet','-m','Synthetic control diagnostics fixture'],{cwd:root});
+  const commit=(await run('git',['rev-parse','HEAD'],{cwd:root})).stdout.trim();
+  const state={product:'bos',installed_root:root,organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,resource:'https://dfsm.ai/mcp/apps/bos/platform',canary:true,kind:'positive',handle:context.context_handle,observations:[],denials:[],allowed_effects:['read'],tools:[{name:'api.contract.get',annotations:{readOnlyHint:true},_meta:{'bos/effect':'read'},inputSchema:{type:'object'}}],validated_contracts:{},failed_validations:{}};
+  let upstreamError=null,requests=0;
+  let raw={isError:true,structuredContent:{error:{code:-32602,message:'Bearer synthetic-secret',access_token:'synthetic-secret'}}};
+  const session={rpc:async(method)=>{if(method==='tools/list')return {tools:[{name:'bos.execute'}]};requests++;if(upstreamError)throw upstreamError;return raw;}};
+  const tools=await createReviewerTools({session,state,release:{path:root,release_commit:commit}});
+  const discover=()=>tools.call('bos_control_discover',{operation:'api.contract.get',arguments:{operation:'synthetic.operation'}});
+  const failed=await discover();assert.equal(failed.isError,true);assert.equal(failed.authorized_context,undefined);
+  assert.deepEqual(failed.error_diagnostic,{error_category:'jsonrpc_error',error_code_present:true,error_code:-32602});assert.equal(failed.control_operation,'api.contract.get');
+  const observation=state.observations.at(-1);assert.equal(observation.is_error,true);
+  assert.deepEqual(observation.response,{error:{code:-32602,message:'[credential]'}});
+  assert.deepEqual(observation.error_diagnostic,failed.error_diagnostic);
+  assert.doesNotMatch(JSON.stringify(failed.error_diagnostic),/synthetic-secret|Bearer|access_token|arguments|message/);
+  upstreamError=Object.assign(new Error('Bearer synthetic-secret'),{code:'synthetic-private-code',cause:{code:'ECONNRESET',message:'synthetic-secret'},control_diagnostic:{control_operation:'synthetic-secret',error_diagnostic:{error_code:'synthetic-secret'}}});
+  const transport=await discover();assert.equal(transport.reason,'reviewer_tool_failed');assert.equal(transport.isError,true);
+  assert.deepEqual(transport.error_diagnostic,{error_category:'network_error',error_code_present:true,error_code:'ECONNRESET'});
+  assert.deepEqual(state.observations.at(-1).response,{reason:'reviewer_tool_failed',control_operation:'api.contract.get',error_diagnostic:transport.error_diagnostic});
+  assert.doesNotMatch(JSON.stringify(transport),/synthetic-secret|synthetic-private-code|Bearer|arguments|cause|message/);
+  upstreamError=Object.assign(new Error('synthetic-secret'),{code:'reviewer_session_expired'});
+  const known=await discover();assert.equal(known.reason,'reviewer_session_expired');assert.equal(known.error_diagnostic.error_code,'reviewer_session_expired');
+  upstreamError=Object.assign(new Error('synthetic-secret'),{code:'synthetic-private-code'});
+  assert.deepEqual((await discover()).error_diagnostic,{error_category:'unrecognized_error',error_code_present:true});
+  upstreamError=null;raw={structuredContent:'Bearer synthetic-secret'};
+  const malformed=await discover();assert.equal(malformed.isError,true);assert.equal(malformed.reason,'reviewer_document_invalid');
+  assert.equal(malformed.control_operation,'api.contract.get');assert.deepEqual(malformed.error_diagnostic,{error_category:'unrecognized_error',error_code_present:false});
+  assert.equal(state.observations.at(-2).response,'[credential]');
+  assert.deepEqual(state.observations.at(-1).response,{reason:'reviewer_document_invalid',control_operation:'api.contract.get',error_diagnostic:malformed.error_diagnostic});
+  assert.doesNotMatch(JSON.stringify(malformed),/synthetic-secret|Bearer|arguments|message/);
+  const before=requests;state.canary=false;const denied=await discover();assert.equal(denied.isError,true);assert.equal(denied.error_diagnostic,undefined);assert.equal(requests,before);
+  const invalid=await tools.call('bos_control_discover',{operation:'synthetic-private-operation',arguments:{}});assert.equal(invalid.reason,'reviewer_mcp_business_call_forbidden');assert.equal(invalid.error_diagnostic,undefined);assert.equal(invalid.control_operation,undefined);
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
 test('installed Markdown references are verified, provenance-bound and contained in published skills',async()=>{
  const root=await realpath(await mkdtemp(join(tmpdir(),'reviewer-installed-references-')));
  const crmRoot=await realpath(await mkdtemp(join(tmpdir(),'reviewer-installed-crm-')));

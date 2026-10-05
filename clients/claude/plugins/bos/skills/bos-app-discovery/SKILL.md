@@ -193,6 +193,27 @@ contract kind, source observations, and declaration pointers for both ledgers;
 read their retained projection document when the initial summary is bounded.
 Reconcile the final report against every execution and error group before
 finishing, retaining conflicting, null, and absent declarations explicitly.
+
+Print original-source field provenance in the final execution and error
+ledgers for every group observation, including each member operation of a
+grouped row. Resolve its `document_index` through `source_documents` and copy
+that original `document_id`; use its exact returned `pointer` prefix, or the
+empty prefix for a direct document. For each declared execution field, print
+the prefix plus `execution_pointer` plus `/` and its RFC 6901 escaped `field`
+alongside the literal method, transport, or context-header value. For a declared
+response, print the prefix plus `response_pointer` and its exact `/body`,
+`/content_type`, and `/headers` paths; attribute each header name to its actual
+source array index after inspecting that original response. For every error
+entry, print the prefix plus `errors_pointer` and the exact observed child
+paths for its code, HTTP status, and retryability declarations. Use the
+original array indexes and object keys, escaping `~` as `~0` and `/` as `~1`.
+An explicit null retains its real field pointer; an absent field is reported
+as absent under its observed containing object, without inventing a missing
+field pointer or response pointer. Ordinary CLI consumers identify the actual
+input document selected by `document_index`, with root-relative pointers.
+Retained projection IDs locate derived facts; the final ledger also prints
+each original-source reference and field pointer.
+
 Report its pagination tensions with both exact schema-field and flag declarations;
 these observations do not invalidate a contract or establish runtime behavior.
 Use `summaries` for any transport totals, retaining their contract-kind and
