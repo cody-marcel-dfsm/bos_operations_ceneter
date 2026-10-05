@@ -31,6 +31,8 @@ const failureCodes = new Set([
   "reviewer_grant_invalid",
   "reviewer_grant_revocation_failed",
   "reviewer_identity_unverified",
+  "reviewer_installed_product_ambiguous",
+  "reviewer_installed_product_unresolved",
   "reviewer_mcp_business_call_forbidden",
   "reviewer_mcp_initialization_failed",
   "reviewer_mcp_protocol_unsupported",
