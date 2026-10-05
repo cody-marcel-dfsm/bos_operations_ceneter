@@ -282,129 +282,77 @@ For any request for a full BOS inventory, use the response format below before
 writing a summary. Fill it only from retained, current observations; never
 replace an absent row with a guessed capability, role, constraint, or route.
 
-### Accuracy audit before writing the inventory
+### Ordered evidence workflow for a full inventory
 
-Complete this audit before drafting prose and check it again against the final
-table. Copy execution mode, version, readiness, input/output declarations, and
-limits from each operation's own validated contract; never apply one operation's
-value to another. Report a version only when that operation declares one, and
-say `not declared` when it does not. Describe returned data from the output
-schema, not the operation name: never claim file contents unless the response
-schema declares content. Show readiness values for each relevant operation; if
-they disagree, report both sources and leave readiness unresolved. Show cursor
-fields together with `pagination_supported`; if the declarations conflict,
-preserve both and mark pagination unresolved. Check that every advertised
-native operation and described public API operation has a row, and that the
-coverage totals equal those rows before calling the inventory complete.
+Complete these steps in order before drafting the answer. Maintain one working
+ledger from current observations; do not write a completeness summary until the
+ledger passes the final coverage check.
 
-1. **Authorized identity:** report the selected organization, application,
-   installation, and role exactly as one fresh `bos_get_context` row returned
-   them. Do not list other roles unless each has its own fresh authorized
-   context row. Omit role examples and common role names from memory.
-2. **Coverage totals:** state counts for observed native operations, described
-   public API operations, exact linked pairs, aliases, and unresolved rows.
-3. **Evidence table:** include one row for every advertised native operation
-   and every described public API operation.
+1. **Bind identity.** Use fresh authorized contexts to identify the selected
+   organization, application, installation, and role. For identity-v2, record
+   accessible application, installation, and role choices only from their own
+   fresh context rows. Reconcile every access claim against those rows; keep
+   configured role definitions separate as application metadata.
+2. **Enumerate the sources.** Record every native tool returned by
+   `bos_list_context_tools` for each observed context, every operation key
+   advertised by each `app.describe` contact, and every returned public
+   plugin/service entry. Preserve exact names and semantic identifiers. Keep
+   aliases as separate rows; aliases sharing the same exact contract link in
+   the same context may share one validated observation.
+3. **Resolve and validate each contract.** Follow every advertised
+   `_meta["bos/apiContract"]` through its returned capability, exact input, and
+   current catalog. Retrieve every required public operation description in
+   batches within its advertised maximum. Validate the complete returned
+   document and retain its exact source, operation, version, and observation
+   time. Mark missing or failed descriptions unresolved.
+4. **Compare only observed schemas.** Do not call schema comparison with a
+   document ID or schema pointer until that exact document and pointer have
+   been returned and validated in this assessment. If validation or comparison
+   fails, retain the attempted document/mode, exact error, and recovery result;
+   do not invent or reconstruct identifiers, retry with guessed inputs, or
+   report a comparison as successful. The packaged [schema comparison
+   helper](scripts/compare-schema-surfaces.mjs) compares exact declared schemas
+   in batches of one to 32 pairs. Schema differences establish no semantic
+   correspondence, validation, interoperability, authority, or readiness.
+5. **Complete every ledger row.** For each native operation and public
+   counterpart, compare required and optional inputs, accepted values and
+   bounds, selectors, write-target shapes, output shapes and media, effects,
+   limits, pagination, idempotency, version, and transport. Copy each value from
+   that operation's own validated contract. State both exact declarations and
+   their source surfaces for every difference; mark absent declarations and
+   missing counterparts explicitly. Include zero-input `{}` actions as
+   available actions, and report failed validation separately from any observed
+   recovery.
+6. **Reconcile access, readiness, and freshness.** Attribute each readiness or
+   prerequisite value to its exact application, operation, or source; an empty
+   plugin list means that application's returned catalog is empty. Preserve
+   conflicting declarations, including cursor fields alongside
+   `pagination_supported`, and leave the affected conclusion unresolved. Use an
+   exact `evaluation_reference_time` when the current task or reviewer supplies
+   one; otherwise use the latest verified guard `reference_time`. State that
+   reference and calculate age from the response's literal `observed_at`; never
+   substitute fetch time or memory. Without a verified reference, report age as
+   unverified. Fresh authorization establishes access, while current readiness
+   requires its own timely evidence and execution prerequisites; label it
+   **unverified** when either is missing or stale.
+7. **Audit, then write.** Check the ledger against the original catalogs. The
+   final table must contain one row for every native operation, alias, and
+   described public API operation, with its exact counterpart or `No observed
+   counterpart`, execution mode, input/output constraints, limits/pagination,
+   version/time, validation result, and unresolved differences. Count native
+   rows, public rows, exact links, aliases, and unresolved rows. If any source,
+   description, comparison, required field, or validation is missing, label the
+   inventory incomplete and identify the affected rows before any summary.
+   Carry every observed difference into the answer; examples never stand in
+   for unlisted operations. Follow the final-output reconciliation procedure
+   in [the discovery contract](references/discovery-contract.md).
 
-| Scope and source | Exact operation and aliases | Exact counterpart or no observed counterpart | Declared execution mode | Input/output constraints and bounds | Limits and pagination | Contract version, observed time and age | Validation attempts, errors, recovery and current result |
-|---|---|---|---|---|---|---|---|
-| Copy the application/service and source surface | Copy observed names verbatim | Copy the exact link or state `No observed counterpart` | Copy `journey_runtime`, HTTPS, or the observed mode | Copy declarations and exact differences | Copy observed values | Copy observed version/time; calculate age from the latest guard `reference_time` | Record every attempted document/mode and result; include failures and any observed recovery |
-
-Do not describe coverage as complete when a table row, required description,
-linked contract, exact constraint, or validation result is missing. Keep the
-failed observation and its effect visible. When an advertised action has an
-empty input schema and accepts `{}`, report it as an available zero-input
-action; do not call its inputs or operation missing. Report a failed validation
-and its recovery separately, and claim recovery only after observing its
-result.
-
-For identity-v2, use fresh authorized contexts to identify application and
-installation choices accessible in the selected organization and role. Read
-and validate each applicable advertised application description and service
-catalog through its authorized context. Attribute readiness and prerequisites
-to their exact application, operation, or source; an empty plugin list means
-that application's returned catalog is empty. Preserve contract versions and
-observation timestamps when returned.
-
-Build accessible application, installation, and role rows from fresh authorized
-contexts. Use the selected context's role for the current identity. Before
-presenting the inventory, reconcile every access claim against those rows.
-Include configured role definitions when the user explicitly requests them,
-with their application-catalog provenance. Follow the final-output reconciliation
-procedure in [the discovery contract](references/discovery-contract.md).
-
-For a full inventory, account for every operation key advertised by each
-app.describe contact and every returned public plugin/service entry. Resolve
-the necessary operation descriptions in batches within that contact's advertised
-maximum, and explicitly identify any unresolved description. Group capabilities
-for readability while preserving complete coverage of the advertised operations.
-
-Include every native tool returned by `bos_list_context_tools` for each observed
-authorized context. Follow an advertised `_meta["bos/apiContract"]` through its
-returned capability and exact input, resolving that capability in the current
-catalog. Preserve the advertised semantic identifier verbatim. Account for
-aliases separately; aliases sharing one exact contract link in the same context
-can use one validated observation within this assessment. Reconcile native
-input and output schemas with the linked execution contract: required and
-optional fields, accepted values and bounds, response shapes, limits, pagination
-and transport. State each observed difference with both exact declarations and
-their source surfaces. Preserve unresolved differences without assuming a
-translation or supplying an execution guarantee.
-
-Build a complete internal comparison ledger with a row for every native
-operation and its observed counterpart, retaining each alias. Cover required
-and optional inputs, field constraints, selectors, write-target shapes, version
-and idempotency declarations, output shapes and media, effects, limits,
-pagination and transport. Mark a missing counterpart or declaration explicitly.
-Check the ledger against the original catalogs and carry every identified
-difference into the final assessment; a representative example does not cover
-the other operations. The packaged [schema comparison helper](scripts/compare-schema-surfaces.mjs)
-compares exact declared schemas in batches of one to 32 pairs. Use the host's
-verified local comparison capability when available, with original observed
-schema references. Its complete differences prove no semantic correspondence,
-validation, interoperability, authority or readiness; retain those separate gates.
-
-For a full inventory, present a final reconciliation table with a row for every
-advertised native operation and every described public API operation. Use the
-exact operation name and application/service scope. Include its exact linked
-counterpart or state `No observed counterpart`, its declared execution mode,
-input and output constraints, limits and pagination, contract version and
-observation time, validation status, and any unresolved difference. Count the
-native rows, public API rows, exact comparisons, and unresolved rows before
-calling the inventory complete. Keep aliases visible in the row or identify
-their shared exact contract link.
-
-State the current identity role from the selected fresh context row verbatim.
-List additional accessible roles only when separate fresh authorized context
-rows establish them. Present configured role definitions as application
-metadata, separate from current access. For each capability, copy the exact
-execution mode from its observed contract: label `journey_runtime` as journey
-runtime, and label HTTPS only when the current contract describes that route.
-Use the exact advertised API-contract link and its returned schema when
-reconciling native and public operations. Record failed or unavailable
-observations in the table and preserve their effect on the assessment.
-
-For readiness and current-capability assessments, report the response's literal
-observation timestamp. Calculate its age only from a verified current host,
-context or server reference time, and state that reference alongside the
-calculation.
-When no verified reference is available, report the literal timestamp and that
-its age is unverified; do not estimate a current time. Fresh authorization and a newly retrieved response establish
-authorized retrieval; current readiness requires its own timely facts and
-execution-prerequisite evidence. Label current readiness **unverified** when
-that evidence is missing or stale, including in the headline. Attribute
-availability values to the advertised contract and list the observed
-prerequisites and freshness limitation. Preserve `observed_at`; never substitute
-the fetch time for it. Continue the bounded read-only assessment with those
-limitations, and retain each required business operation's own fail-closed gate.
-
-A request to list accessible apps, audit readiness, compare contracts, or assess
-workflow feasibility is fulfilled by that bounded evidence, including explicit
-empty states and unavailable capabilities. Describe the scope actually observed
-and any remaining inventory limitation. Require an organization-wide directory
-when the requested facts extend beyond the fresh authorized choices and scoped
-descriptions. A required business read or execution still stops when its own
-prerequisites are unavailable.
+Copy execution mode from each operation's validated contract: label
+`journey_runtime` as journey runtime and label HTTPS only when the operation
+declares that route. Describe returned data from its output schema, never from
+the operation name; do not claim file contents unless the schema declares them.
+Report a version only when declared, and say `not declared` otherwise. Keep
+each required business operation's own fail-closed gate.
 
 ## Execute BOS resource discovery
 

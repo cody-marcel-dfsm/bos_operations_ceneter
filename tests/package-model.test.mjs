@@ -213,6 +213,7 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
   const discovery = skills.find((skill) => skill.name === "bos-app-discovery");
   assert(discovery, "bos must include app discovery");
   const guidance = await readFile(discovery.skillFile, "utf8");
+  const sourceGuidance = await readFile(`${discovery.sourcePath}/SKILL.md`, "utf8");
   const contract = await readFile(
     `${discovery.sourcePath}/references/discovery-contract.md`,
     "utf8"
@@ -224,22 +225,34 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
   assert.match(guidance, /host_capability_unavailable/);
   assert.match(guidance, /no browser[\s\S]*DOM[\s\S]*cached selector/i);
   assert.match(guidance, /connection's exact[\s\S]*organization[\s\S]*application[\s\S]*installation[\s\S]*role grant/i);
-  assert.match(guidance, /final reconciliation table with a row for every[\s\S]*native operation[\s\S]*public API operation/i);
-  assert.match(guidance, /state `No observed counterpart`[\s\S]*declared execution mode[\s\S]*validation status/i);
-  assert.match(guidance, /List additional accessible roles only when separate fresh authorized context\s+rows establish them/i);
-  assert.match(guidance, /label `journey_runtime` as journey\s+runtime/i);
-  assert.match(guidance, /Authorized identity:[\s\S]*Omit role examples and common role names from memory/i);
-  assert.match(guidance, /Coverage totals:[\s\S]*native operations[\s\S]*public API operations[\s\S]*exact linked pairs/i);
-  assert.match(guidance, /one row for every advertised native operation[\s\S]*described public API operation/i);
-  assert.match(guidance, /accepts `\{\}`[\s\S]*zero-input\s+action/i);
-  assert.match(guidance, /failed validation\s+and its recovery separately/i);
-  const sourceGuidance = await readFile(`${discovery.sourcePath}/SKILL.md`, "utf8");
-  assert.match(sourceGuidance, /Accuracy audit before writing the inventory/i);
-  assert.match(sourceGuidance, /Report a version only when that operation declares one/i);
-  assert.match(sourceGuidance, /never claim file contents unless the response\s+schema declares content/i);
-  assert.match(sourceGuidance, /Show readiness values for each relevant operation[\s\S]*if\s+they disagree, report both sources and leave readiness unresolved/i);
+  assert.match(sourceGuidance, /Ordered evidence workflow for a full inventory/i);
+  assert.match(sourceGuidance, /every native operation, alias, and\s+described public API operation/i);
+  assert.match(sourceGuidance, /`No observed\s+counterpart`[\s\S]*execution mode[\s\S]*validation result/i);
+  assert.match(sourceGuidance, /Use fresh authorized contexts[\s\S]*Reconcile every access claim against those rows/i);
+  assert.match(sourceGuidance, /`journey_runtime` as journey runtime/i);
+  assert.match(sourceGuidance, /Include zero-input `\{\}` actions as\s+available actions/i);
+  assert.match(sourceGuidance, /report failed validation separately from any observed\s+recovery/i);
+  const inventorySteps = [
+    "1. **Bind identity.**",
+    "2. **Enumerate the sources.**",
+    "3. **Resolve and validate each contract.**",
+    "4. **Compare only observed schemas.**",
+    "5. **Complete every ledger row.**",
+    "6. **Reconcile access, readiness, and freshness.**",
+    "7. **Audit, then write.**"
+  ];
+  const inventoryStepOffsets = inventorySteps.map((step) =>
+    sourceGuidance.indexOf(step)
+  );
+  assert(inventoryStepOffsets.every((offset) => offset >= 0));
+  assert(inventoryStepOffsets.every((offset, index) =>
+    index === 0 || offset > inventoryStepOffsets[index - 1]
+  ));
+  assert.match(sourceGuidance, /Do not call schema comparison with a\s+document ID or schema pointer until that exact document and pointer have\s+been returned and validated in this assessment/i);
+  assert.match(sourceGuidance, /exact `evaluation_reference_time` when the current task or reviewer supplies\s+one; otherwise use the latest verified guard `reference_time`/i);
+  assert.match(sourceGuidance, /label the\s+inventory incomplete and identify the affected rows before any summary/i);
+  assert.match(sourceGuidance, /Report a version only when declared, and say\s+`not declared` otherwise/i);
   assert.match(sourceGuidance, /pagination_supported/i);
-  assert.match(sourceGuidance, /preserve both and mark pagination unresolved/i);
   assert.match(guidance, /## Requests to compare application API contracts/);
   assert.match(guidance, /For live `bos-identity-mcp\/v2`, follow this order[\s\S]*exact `app\.describe` resource advertised[\s\S]*exact URI[\s\S]*validate[\s\S]*`app-describe`/i);
   assert.match(guidance, /Match each operation named by the request to the exact keys[\s\S]*`describe\.operations`[\s\S]*host-authenticated HTTPS Describe capability/i);
@@ -273,6 +286,14 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
   ]) {
     const clientGuidance = await readFile(clientPath, "utf8");
     assert.match(clientGuidance, /## App discovery workflow/);
+    let previousStepOffset = -1;
+    for (const step of inventorySteps) {
+      const stepOffset = clientGuidance.indexOf(step);
+      assert(stepOffset > previousStepOffset, `${clientPath} must package inventory step ${step}`);
+      previousStepOffset = stepOffset;
+    }
+    assert.match(clientGuidance, /Do not call schema comparison with a\s+document ID or schema pointer until that exact document and pointer have\s+been returned and validated in this assessment/i);
+    assert.match(clientGuidance, /exact `evaluation_reference_time` when the current task or reviewer supplies\s+one; otherwise use the latest verified guard `reference_time`/i);
     assert.match(clientGuidance, /## Requests to compare application API contracts/);
     assert.match(clientGuidance, /For a create-and-update comparison, request\s+both `create` and `update` together in one batch when those exact keys are\s+advertised/i);
     assert.match(clientGuidance, /Report execution transport only when the operation's `execution\.transport`\s+field explicitly declares it[\s\S]*HTTPS Describe is the contract retrieval\s+transport[\s\S]*enumerate every field and\s+literal value present in each operation's `limits` object/i);
