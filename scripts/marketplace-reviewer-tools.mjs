@@ -42,10 +42,31 @@ export function reviewerDiscoveryDocument(value,state,resourceUri) {
 }
 const privateInput=value=>value&&typeof value==='object'&&Object.entries(value).some(([key,v])=>/^(?:context_handle|context_id|org_id|organization_id|tenant_id|role_id|installed_app_id|authorization|access_token|refresh_token|cookie)$/i.test(key)||privateInput(v));
 const discoveryValidatorPath='skills/bos-app-discovery/scripts/validate-discovery.mjs';
+export function readReviewerDocument(raw,{document_id,pointer='',offset=0}) {
+  if(typeof document_id!=='string'||document_id.length>64||typeof pointer!=='string'||Buffer.byteLength(JSON.stringify(pointer))>1024||!Number.isSafeInteger(offset)||offset<0||!(pointer===''||/^\/(?:[^~]|~[01])*$/u.test(pointer)))throw new Error('reviewer_document_not_observed');
+  let value=sanitized(raw);
+  for(const token of pointer===''?[]:pointer.slice(1).split('/')){
+    const key=token.replaceAll('~1','/').replaceAll('~0','~');
+    if(value===null||typeof value!=='object'||(Array.isArray(value)&&!/^(?:0|[1-9][0-9]*)$/.test(key))||!Object.hasOwn(value,key))return {document_id,pointer,found:false,view:'sanitized_document'};
+    value=value[key];
+  }
+  const text=JSON.stringify(value),base={document_id,pointer,found:true,view:'sanitized_document'};
+  if(offset>text.length||(offset>0&&/[\uDC00-\uDFFF]/u.test(text[offset])&&/[\uD800-\uDBFF]/u.test(text[offset-1])))throw new Error('reviewer_document_not_observed');
+  if(Buffer.byteLength(text)<=4096&&offset===0)return {...base,value};
+  let end=Math.min(text.length,offset+2048),response;
+  do{
+    if(end<text.length&&/[\uD800-\uDBFF]/u.test(text[end-1])&&/[\uDC00-\uDFFF]/u.test(text[end]))end--;
+    response={...base,format:'json_text',offset,text:text.slice(offset,end),next_offset:end,complete:end===text.length,serialized_bytes:Buffer.byteLength(text)};
+    if(Buffer.byteLength(JSON.stringify(response))<=8192)break;
+    end=offset+Math.floor((end-offset)/2);
+  }while(end>offset);
+  return response;
+}
 const spec=(name,description,properties={},required=[])=>({type:'function',name,description,inputSchema:{type:'object',additionalProperties:false,properties,required}});
 const definitions=[
   spec('acceptance_guard_probe','Verify the test guard by requesting a deliberate denial.'),
   spec('acceptance_guard_status','Check guard readiness and obtain the real current UTC host reference clock. Re-read immediately before calculating observation age; this clock supplies no provider-readiness evidence.'),
+  spec('acceptance_read_document','Read an exact sanitized value from a returned document_id using an RFC 6901 JSON Pointer, or an empty pointer for the entire document. No network request or validation is performed. found:false means absent from the sanitized view; null and false remain values. Large values return json_text chunks: concatenate text using the exact next_offset until complete, then parse JSON. Offsets count JavaScript UTF-16 code units; replies are bounded to 8192 UTF-8 bytes. Contact document_id resolves to the complete retained operation; parent_document_id and pointer identify its location in the parent.',{document_id:{type:'string',maxLength:64},pointer:{type:'string',maxLength:1024},offset:{type:'integer',minimum:0}},['document_id']),
   spec('acceptance_compare_schemas','Use only after app.describe is validated and no published validation failure remains. Compare exact JSON Schema values (object or boolean) from a document_id returned by bos_list_context_tools or bos_https_describe, or from any document_id whose acceptance_validate_installed call returned valid:true for its actual document type, including a valid legacy api-contract response. Each exact JSON Pointer must select a schema under inputSchema, outputSchema, input_schema, or output_schema. Identity/context observations such as bos_get_context are not schema evidence unless the published validator successfully validates that exact document and the pointer selects a schema. The helper reports declaration differences only; it proves no semantic correspondence, compatibility, validation, or readiness.',{pairs:{type:'array',minItems:1,maxItems:32,items:{type:'object',additionalProperties:false,required:['left','right'],properties:Object.fromEntries(['left','right'].map(key=>[key,{type:'object',additionalProperties:false,required:['document_id','pointer'],properties:{document_id:{type:'string'},pointer:{type:'string'}}}]))}}},['pairs']),
   spec('acceptance_read_installed','Read a verified published installed skill or reference. Copy the exact product/path pair from the offered skill index. If product is omitted, the host accepts only a path unique to one verified installed product. Each Markdown response offers verified references with product provenance and explicit unavailable-reference status. A returned reference_id binds its exact published product and file. Never invent a filename, product, or reference path.',{product:{type:'string'},path:{type:'string'},reference_id:{type:'string'}},[]),
   spec('acceptance_validate_installed','Validate an actual discovered document with the host-bound verified published validator; no validator path is needed. Supply its returned document_id; the host retains its exact original bytes. Use app-describe for the app.describe resource and operation-describe for the complete HTTPS Describe response (the parent document). Individual HTTPS operation contacts are covered by that parent validation; they are not legacy api-contract envelopes. Use api-contract only for the actual legacy api.contract.get response, and service-journey for a service journey description. Other supported modes are contact, service, graph, plugins and discovery-refresh.',{path:{type:'string',enum:[discoveryValidatorPath]},mode:{type:'string',enum:installedValidatorModes},document_id:{type:'string'}},['mode','document_id']),
@@ -102,14 +123,14 @@ export async function createReviewerTools({session,state,release}) {
   const expose=(value,resourceUri)=>{
     const raw=reviewerDiscoveryDocument(value,state,resourceUri),id=retainDocument(raw);
     const advertised=[];
-    const collect=(item,foreign=false)=>{
-      if(typeof item==='string'){try{collect(JSON.parse(item),foreign);}catch{}return;}
+    const collect=(item,foreign=false,pointer='')=>{
+      if(typeof item==='string'){try{collect(JSON.parse(item),foreign,null);}catch{}return;}
       if(!item||typeof item!=='object')return;
       foreign||=!!item.context_handle&&item.context_handle!==state.handle;
       foreign||=!!item.server&&!['BOS-Platform','BOS_Platform'].includes(item.server);
       if(foreign)return;
-      if(item.status==='described'&&item.operation&&item.execution&&item.input_schema){const contactId=retainDocument(item);contacts.set(contactId,structuredClone(item));advertised.push({contact_id:contactId,document_id:contactId,contact:sanitized(item)});}
-      for(const nested of Object.values(item))collect(nested,foreign);
+      if(item.status==='described'&&item.operation&&item.execution&&item.input_schema){const contactId=retainDocument(item);contacts.set(contactId,structuredClone(item));advertised.push({contact_id:contactId,document_id:contactId,...(pointer===null?{}:{parent_document_id:id,pointer}),operation:item.operation});}
+      for(const [key,nested] of Object.entries(item))collect(nested,foreign,pointer===null?null:pointer+'/'+key.replaceAll('~','~0').replaceAll('/','~1'));
     };
     collect(raw);
     return {document_id:id,document:sanitized(raw),...(advertised.length?{advertised_https_contacts:advertised}:{})};
@@ -125,6 +146,13 @@ export async function createReviewerTools({session,state,release}) {
   };
   const call=async(name,args={})=>{
     if(privateInput(args))throw new Error('reviewer_authority_argument');
+    if(name==='acceptance_read_document'){
+      if(!state.canary||!['positive','starter'].includes(state.kind)||!state.handle||!state.allowed_effects?.includes('read')){
+        state.denials.push({tool:name,reason:'published_prerequisite_required'});return {isError:true,reason:'published_prerequisite_required'};
+      }
+      if(Object.keys(args).some(key=>!['document_id','pointer','offset'].includes(key))||!documents.has(args.document_id))throw new Error('reviewer_document_not_observed');
+      return readReviewerDocument(documents.get(args.document_id),args);
+    }
     if(name==='acceptance_compare_schemas'){
       const event={tool_name:'mcp__Acceptance__compare_schemas',tool_input:args};
       const denial=permission(event,state);if(denial){state.denials.push({tool:name,reason:denial});return {isError:true,reason:denial};}

@@ -226,8 +226,10 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
   assert.match(guidance, /no browser[\s\S]*DOM[\s\S]*cached selector/i);
   assert.match(guidance, /connection's exact[\s\S]*organization[\s\S]*application[\s\S]*installation[\s\S]*role grant/i);
   assert.match(sourceGuidance, /Ordered evidence workflow for a full inventory/i);
-  assert.match(sourceGuidance, /Treat a request to list accessible BOS apps or public services, or to show\s+tools\/workflows per app, as a full-inventory request even when the prompt does\s+not say "full"/i);
-  assert.match(sourceGuidance, /Make the reconciliation table the primary answer; add a summary\s+only after the table passes its coverage check/i);
+  assert.match(sourceGuidance, /Keep app\/service lists, identity summaries, readiness checks, and tool\/workflow\s+availability lists within their requested facts/i);
+  assert.match(sourceGuidance, /complete contract audit\s+requires an explicit detailed or comprehensive request/i);
+  assert.match(sourceGuidance, /\*\*Tools and workflows:\*\*[\s\S]*`journey_registration\.contract`[\s\S]*exact `capability` and `input`[\s\S]*validate the actual response with `api-contract`/i);
+  assert.match(sourceGuidance, /For a read-only assessment of journey feasibility[\s\S]*raw BOSL input\/output schemas[\s\S]*Read additional advertised BOSL schema, reference, or examples resources when[\s\S]*required grammar or feasibility evidence missing[\s\S]*Actual authoring\s+retains the full resource and contract prerequisites/i);
   assert.match(sourceGuidance, /separate\s+rows for each native operation \(including each alias\), each described public\s+operation, and each schema-comparison result/i);
   assert.match(sourceGuidance, /one entry for every submitted pair and result/i);
   assert.match(sourceGuidance, /only through its exact advertised\s+contract reference; similar names or schemas do not establish a counterpart/i);
@@ -293,8 +295,10 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
   ]) {
     const clientGuidance = await readFile(clientPath, "utf8");
     assert.match(clientGuidance, /## App discovery workflow/);
-    assert.match(clientGuidance, /Treat a request to list accessible BOS apps or public services, or to show\s+tools\/workflows per app, as a full-inventory request even when the prompt does\s+not say "full"/i);
-    assert.match(clientGuidance, /Make the reconciliation table the primary answer; add a summary\s+only after the table passes its coverage check/i);
+    assert.match(clientGuidance, /Keep app\/service lists, identity summaries, readiness checks, and tool\/workflow\s+availability lists within their requested facts/i);
+    assert.match(clientGuidance, /complete contract audit\s+requires an explicit detailed or comprehensive request/i);
+    assert.match(clientGuidance, /\*\*Tools and workflows:\*\*[\s\S]*`journey_registration\.contract`[\s\S]*exact `capability` and `input`[\s\S]*validate the actual response with `api-contract`/i);
+    assert.match(clientGuidance, /For a read-only assessment of journey feasibility[\s\S]*raw BOSL input\/output schemas[\s\S]*Actual authoring\s+retains the full resource and contract prerequisites/i);
     let previousStepOffset = -1;
     for (const step of inventorySteps) {
       const stepOffset = clientGuidance.indexOf(step);

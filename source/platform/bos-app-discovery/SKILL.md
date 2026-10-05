@@ -3,38 +3,57 @@ name: bos-app-discovery
 description: Route requests through authenticated BOS app discovery, including finding skills and operations that can contribute to an ad hoc dynamic BOSL workflow. Use when app scope, service ownership, workflow composition, graph shape, or API contracts must be discovered at runtime.
 ---
 
-## Requests to list available tools and workflows
+## Match discovery to the requested assessment
 
-Treat a request to list accessible BOS apps or public services, or to show
-tools/workflows per app, as a full-inventory request even when the prompt does
-not say "full". Make the reconciliation table the primary answer; add a summary
-only after the table passes its coverage check. For every request asking what
-tools, workflows, or operations are available across BOS applications, perform
-a read-only full inventory before summarizing. Apply
-`bos-mcp-client`'s first-action and identity-context rules, establish the exact
-authorized contexts, and enumerate native tools separately for each context.
-Read each exact advertised application description and service catalog. For
-every advertised HTTPS Describe contact, retrieve all operations in the
-contact's bounded batches and validate the complete returned parent document.
-Follow each native tool's exact advertised API-contract link, compare its
-declared input and output schemas with the public contract, and preserve any
-unresolved or unavailable counterpart. Report coverage counts and the complete
-per-operation inventory using the table and freshness rules below; label the
-inventory incomplete whenever a required description, comparison, constraint,
-or validation is unavailable. Do not execute business operations or mutations
-for this discovery request.
+Use `bos-mcp-client`'s first-action and identity-context rules for every BOS
+assessment. Establish fresh authorized contexts and validate the selected
+application description. Report organization, application, installation, and
+role only from those context rows; keep configured role definitions labeled as
+application metadata when explicitly requested. The selected context's role is
+the current identity. A role name in an application catalog supplies no
+additional accessible context.
 
-Before drafting, audit the evidence row by row. State organization, application,
-installation, and role only when the selected fresh context explicitly returns
-them; never infer additional access from examples or role names. Retrieve and
-validate each advertised public HTTPS Describe response before calling its
-operations described; a native tool list or `app.describe` alone does not
-establish that observation. For every native and public operation, retain its
-exact required and optional fields, field constraints and bounds, output
-shape, limits, pagination, version, observation time, and validation result;
-leave any unsupported field unresolved. Immediately before calculating ages,
-read guard status again and use that response's exact `reference_time` for all
-age calculations and the stated reference.
+Choose the evidence needed for the actual request:
+
+- **Apps and public services:** list the fresh authorized applications and the
+  actual returned public-service catalog, including empty catalogs, ownership,
+  declared capabilities, provenance, and available versions and observation
+  times. Preserve application boundaries for nested provider services.
+- **Identity and capability summaries:** report the selected authorized context
+  and capabilities from its fresh native tool catalog and validated application
+  descriptions. Attribute capability claims to those observations.
+- **Readiness and prerequisites:** read the application/service catalog and the
+  operation descriptions needed for the requested source readiness. Preserve
+  every observed readiness declaration and conflict, including different
+  readiness reported for one source's search and dedicated operations. When an
+  advertised search contract declares source readiness, retrieve and validate
+  that contract and preserve its actual source rows alongside the service
+  catalog's declarations. Keep current readiness unverified when timely provider
+  or execution evidence is missing; advertised availability remains attributable to its source.
+- **Tools and workflows:** enumerate the native tools, public services, and
+  workflow capabilities in each authorized app. Follow the validated application
+  description's separately advertised `journey_registration.contract` through
+  its exact `capability` and `input`, resolve the callable through current
+  discovery, and validate the actual response with `api-contract`. Include its
+  raw BOSL required inputs, supported node types, server-owned guarantees,
+  execution declaration, compiler/runtime limits, and public errors in the
+  workflow assessment. When the link or a required observation is unavailable,
+  identify that missing evidence explicitly.
+- **Detailed contracts and full inventories:** use the named-contract comparison
+  section for requested operation schemas, fields, bounds, effects, limits, and
+  errors. Use the full-inventory workflow for an explicitly comprehensive
+  per-operation contract audit, including native/public schema reconciliation.
+
+Keep app/service lists, identity summaries, readiness checks, and tool/workflow
+availability lists within their requested facts. A complete contract audit
+requires an explicit detailed or comprehensive request. Retrieve and validate
+operation-level contracts whenever a requested fact depends on them; a native
+tool catalog or application description alone supplies no public operation
+schema. For all assessments, preserve failed reads, missing prerequisites,
+observed conflicts, exact source provenance, and validation results relevant to
+the requested facts. Read guard status immediately before calculating ages and
+use its exact `reference_time` with each literal source `observed_at`. Perform
+no business operation, registration, or mutation for a read-only assessment.
 
 
 For live `bos-identity-mcp/v2`, first apply [identity-context compatibility](../bos-mcp-client/references/identity-context.md).
@@ -145,20 +164,31 @@ services, goals, and machine-readable API contracts.
 Read [the discovery contract](references/discovery-contract.md) before the first
 app-directory or per-app MCP query in a request.
 
-For Agent-Driven Custom Journey authoring or a read-only assessment of journey
-feasibility, obtain a fresh application description
-through current advertised discovery and validate its BOSL resource links with
-`scripts/validate-discovery.mjs`. Use the identity-v2 resource selection and
-validation rules above; legacy discovery calls its advertised `app.describe`
-with `{}`. Read each exact advertised schema, reference, and examples URI through
-the same authenticated BOS connection. Then call `plugins.list` with `{}`, preserve readiness separately
-from accessibility, copy the selected plugin's complete `service.describe` input
-verbatim, and validate compact/detailed journey agreement. Follow each returned
+For Agent-Driven Custom Journey authoring, obtain a fresh application
+description through current advertised discovery and validate its BOSL resource
+links with `scripts/validate-discovery.mjs`. Use the identity-v2 resource
+selection and validation rules above; legacy discovery calls its advertised
+`app.describe` with `{}`. Read each exact advertised schema, reference, and
+examples URI through the same authenticated BOS connection. Then call
+`plugins.list` with `{}`, preserve readiness separately from accessibility,
+copy the selected plugin's complete `service.describe` input verbatim, and
+validate compact/detailed journey agreement. Follow each returned
 operation-contract link through current discovery with the link's exact input.
 Read and validate the advertised journey-registration contract before assessing
-compiler/runtime feasibility, limits, required inputs, or prerequisites. A
-read-only assessment ends with evidence and performs no registration or journey
-execution.
+compiler/runtime feasibility, limits, required inputs, or prerequisites.
+
+For a read-only assessment of journey feasibility, validate the fresh
+application description and follow its `journey_registration.contract` using
+the exact advertised `capability` and `input`. Validate that actual response
+with `api-contract` and assess its raw BOSL input/output schemas, required
+fields, supported node types, guarantees, execution, compiler/runtime limits,
+and public errors. Read the actual service catalog and relevant service or
+operation contracts for capabilities and readiness the assessment requires.
+Read additional advertised BOSL schema, reference, or examples resources when
+those observations leave required grammar or feasibility evidence missing.
+Preserve that missing evidence explicitly. A read-only assessment ends with
+evidence and performs no registration or journey execution. Actual authoring
+retains the full resource and contract prerequisites above.
 Validate a complete identity-v2 HTTPS Describe response with
 `scripts/validate-discovery.mjs operation-describe`, covering its returned
 contacts. Validate an actual legacy `api.contract.get` response with
@@ -206,7 +236,7 @@ Every operation retains request-time server authorization.
 
 ## Accessible inventory and readiness assessments
 
-For any request for a full BOS inventory, use the response format below before
+For an explicitly comprehensive BOS contract inventory, use the response format below before
 writing a summary. Fill it only from retained, current observations; never
 replace an absent row with a guessed capability, role, constraint, or route.
 
@@ -223,13 +253,16 @@ ledger passes the final coverage check.
    configured role definitions separate as application metadata.
 2. **Enumerate the sources.** Record every native tool returned by
    `bos_list_context_tools` for each observed context, every operation key
-   advertised by each `app.describe` contact, and every returned public
-   plugin/service entry. Preserve exact names and semantic identifiers. Keep
+   advertised by each `app.describe` contact, every separately advertised
+   `journey_registration.contract`, and every returned public plugin/service entry. Preserve exact names and semantic identifiers. Keep
    aliases as separate rows; aliases sharing the same exact contract link in
    the same context may share one validated observation.
 3. **Resolve and validate each contract.** Follow every advertised
-   `_meta["bos/apiContract"]` through its returned capability, exact input, and
-   current catalog. Retrieve every required public operation description in
+   `_meta["bos/apiContract"]` and application `journey_registration.contract`
+   through their returned capability, exact input, and current catalog. Retrieve
+   and validate the actual registration response with `api-contract`; public
+   Describe coverage does not replace this separate observation. Retrieve every
+   required public operation description in
    batches within its advertised maximum. Validate the complete returned
    document and retain its exact source, operation, version, and observation
    time. Mark missing or failed descriptions unresolved.
