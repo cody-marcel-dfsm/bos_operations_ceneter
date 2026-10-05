@@ -238,6 +238,10 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
   assert.match(guidance, /Match each operation named by the request to the exact keys[\s\S]*`describe\.operations`[\s\S]*host-authenticated HTTPS Describe capability/i);
   assert.match(guidance, /For a create-and-update comparison, request\s+both `create` and `update` when those exact keys are advertised/i);
   assert.match(guidance, /Do not finish from native MCP\s+tool descriptors[\s\S]*schema-difference\s+output alone/i);
+  assert.match(guidance, /use the validated returned operation objects as\s+the evidence for required and optional fields, effects, bounds, limits,\s+pagination, and error declarations/i);
+  assert.match(guidance, /Do not use `acceptance_compare_schemas` or\s+`compare\.schemas` to establish any of those declarations/i);
+  assert.match(guidance, /only after\s+the exact source documents have been observed and validated[\s\S]*copy each returned\s+`document_id` and exact schema JSON Pointer/i);
+  assert.match(guidance, /Never guess,\s+reuse, or reconstruct a document identifier or schema pointer/i);
   assert.match(guidance, /If the requested operation key is not advertised[\s\S]*report that part\s+of the comparison as unresolved/i);
   assert.doesNotMatch(guidance, /default_organization_label|client-preferences\.mjs|context_id/i);
   assert.match(contract, /`app\.describe`/);
@@ -263,6 +267,8 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
     assert.match(clientGuidance, /## Requests to compare application API contracts/);
     assert.match(clientGuidance, /For a create-and-update comparison, request\s+both `create` and `update` when those exact keys are advertised/i);
     assert.match(clientGuidance, /Do not finish from native MCP\s+tool descriptors[\s\S]*schema-difference\s+output alone/i);
+    assert.match(clientGuidance, /Do not use `acceptance_compare_schemas` or\s+`compare\.schemas` to establish any of those declarations/i);
+    assert.match(clientGuidance, /only after\s+the exact source documents have been observed and validated[\s\S]*copy each returned\s+`document_id` and exact schema JSON Pointer/i);
   }
 });
 

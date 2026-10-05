@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.162",
+  "version": "0.4.163",
   "release_status": "active",
   "display_name": "BOS Platform",
   "description": "Deterministic workflows and ad hoc composition across a federated agentic mesh.",
