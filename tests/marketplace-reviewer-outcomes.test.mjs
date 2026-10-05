@@ -14,7 +14,7 @@ test('fixture diagnostics expose only validated requirement IDs and match status
  const requirements=[{id:'records',operator:'equals'},{id:'freshness',operator:'equals'}];
  const data={responses:[response({count:2,private_customer_field:'another private value'})]};
  const result=reviewerOutcomeDiagnostics(envelope([fact,rule]),data,requirements,context);
- assert.deepEqual(result,{status:'unmatched',issue_class:'observation_rule_mismatch',requirements:[{requirement_id:'freshness',status:'unmatched'},{requirement_id:'records',status:'matched'}]});
+ assert.deepEqual(result,{status:'unmatched',issue_class:'observation_rule_mismatch',requirements:[{requirement_id:'freshness',status:'unmatched'},{requirement_id:'records',status:'matched'}],rule_diagnostics:[]});
  assert.doesNotMatch(JSON.stringify(result),/private|4892|customer\/path/);
  assert.equal(reviewerOutcomeMatches(envelope([fact]),evidence,[],context),true);
 });
@@ -24,10 +24,10 @@ test('missing fixture diagnostics name only the published requirement IDs',()=>{
 test('fixture diagnostics never retain rule labels outside the published requirement allowlist',()=>{
  const privateLabel='synthetic-private-label',privateRule={...fact,requirement:privateLabel};
  const result=reviewerOutcomeDiagnostics(envelope([privateRule]),evidence,[],context);
- assert.deepEqual(result,{status:'matched',issue_class:'all_rules_matched',requirements:[],unbound_rule_count:1});
+ assert.deepEqual(result,{status:'matched',issue_class:'all_rules_matched',requirements:[],rule_diagnostics:[],unbound_rule_count:1});
  assert.doesNotMatch(JSON.stringify(result),new RegExp(privateLabel));
  const mismatched=reviewerOutcomeDiagnostics(envelope([{...privateRule,path:'/missing'}]),evidence,[],context);
- assert.deepEqual(mismatched,{status:'unmatched',issue_class:'rule_requirement_unbound',requirements:[],unbound_rule_count:1});
+ assert.deepEqual(mismatched,{status:'unmatched',issue_class:'rule_requirement_unbound',requirements:[],rule_diagnostics:[],unbound_rule_count:1});
  assert.doesNotMatch(JSON.stringify(mismatched),new RegExp(privateLabel));
  assert.equal(reviewerOutcomeMatches(envelope([privateRule]),evidence,[],context),true);
 });
@@ -144,6 +144,23 @@ test('described-operation rejects missing, duplicate, malformed and unavailable 
   {...describedSelector,transport:'mcp_discovery'},
   {...describedSelector,extra:true}
  ])assert.equal(matches([{...describedFact,response:selector}],original),false);
+});
+test('Describe assertion diagnostics expose selection, path, and equality stages without values',()=>{
+ const rule={requirement:'contracts',operator:'equals',response:describedSelector,path:'/effect',value:'read'};
+ const requirements=[{id:'contracts',operator:'equals'}];
+ const assertion=envelope([rule]);
+ const result=reviewerOutcomeDiagnostics(assertion,describedData(),requirements,context);
+ assert.equal(result.rule_diagnostics[0].response_status,'selected_and_validated');
+ assert.equal(result.rule_diagnostics[0].path_status,'resolved');
+ assert.equal(result.rule_diagnostics[0].equality_status,'matched');
+ const mismatched=reviewerOutcomeDiagnostics(envelope([{...rule,value:'write'}]),describedData(),requirements,context);
+ assert.equal(mismatched.rule_diagnostics[0].equality_status,'mismatched');
+ const missing=reviewerOutcomeDiagnostics(assertion,{responses:[]},requirements,context);
+ assert.deepEqual(missing.rule_diagnostics[0],{requirement_id:'contracts',operation:'search',path:'/effect',status:'unmatched',response_status:'no_matching_response',path_status:'missing',equality_status:'not_evaluated'});
+ assert.doesNotMatch(JSON.stringify(result.rule_diagnostics),/read|write/);
+ const unbound=reviewerOutcomeDiagnostics(envelope([{...rule,requirement:'private-unbound-label'}]),describedData(),[],context);
+ assert.deepEqual(unbound.rule_diagnostics,[]);
+ assert.equal(unbound.unbound_rule_count,1);
 });
 test('described-operation and whole-batch aliases preserve physical evidence independence',()=>{
  const data=describedData();data.responses=data.responses.slice(0,1);

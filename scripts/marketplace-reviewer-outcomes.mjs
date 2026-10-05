@@ -174,6 +174,26 @@ export function reviewerOutcomeDiagnostics(assertion, evidence, requirements = [
     status: rulesMatched ? 'matched' : 'unmatched',
     issue_class,
     requirements: [...statuses].map(([requirement_id, status]) => ({requirement_id, status})),
+    rule_diagnostics: rules.flatMap(rule => {
+      const operation = rule.response?.described_operation;
+      const path = rule.path;
+      if (rule.response?.operation !== 'app.describe' || rule.response?.transport !== 'https_discovery' || !safeRequirementId(rule.requirement) || !allowedIds.has(rule.requirement) || typeof operation !== 'string' || !/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u.test(operation) || typeof path !== 'string' || path.length > 256 || !/^\/(?:[A-Za-z0-9_.-]+(?:~[01])?)(?:\/(?:[A-Za-z0-9_.-]+(?:~[01])?))*$/u.test(path)) return [];
+      const selectedResponse = responseSelection(evidence, rule.response, rule.operator);
+      const candidates = (evidence.responses ?? []).filter(row => row?.operation === rule.response.operation && row.transport === rule.response.transport);
+      const successfulCandidates = candidates.filter(row => row.successful === true);
+      let matchingContractCount = 0, validParentCount = 0;
+      for (const candidate of successfulCandidates) {
+        try {
+          validateOperationDescription(candidate.body);
+          validParentCount++;
+          matchingContractCount += candidate.body.operations.filter(item => item.operation === operation).length;
+        } catch {}
+      }
+      const pathValue = selectedResponse ? at(selectedResponse.body, path) : undefined;
+      const value = selected(evidence, rule);
+      const responseStatus = selectedResponse ? 'selected_and_validated' : !candidates.length ? 'no_matching_response' : !successfulCandidates.length ? 'no_successful_response' : !validParentCount ? 'parent_invalid' : matchingContractCount > 1 ? 'ambiguous_contract_matches' : matchingContractCount === 0 ? 'operation_not_found' : 'parent_invalid_or_ambiguous';
+      return [{requirement_id: rule.requirement, operation, path, status: matchesRule(rule, evidence, binding) ? 'matched' : 'unmatched', response_status: responseStatus, path_status: pathValue === undefined || pathValue === null ? 'missing' : 'resolved', equality_status: value === undefined || value === null ? 'not_evaluated' : isDeepStrictEqual(value, rule.value) ? 'matched' : 'mismatched'}];
+    }),
     ...(unboundRuleCount ? {unbound_rule_count: unboundRuleCount} : {})
   };
 }

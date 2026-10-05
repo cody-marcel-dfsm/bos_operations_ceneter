@@ -26,7 +26,7 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   const commit=(await run('git',['rev-parse','HEAD'],{cwd:root})).stdout.trim();
   const uri='bos://apps/lead-director/app.describe',app=syntheticAppDescribe();
   app.describe.uri='/bos/apps/lead-director/api/v1/organizations/synthetic/describe';
-  const state={product:'bos',installed_root:root,installed_roots:{bos:root},published_commits:{bos:commit},organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,resource:'https://dfsm.ai/mcp/apps/bos/platform',canary:true,kind:'positive',handle:context.context_handle,resources:[uri],observations:[],denials:[],allowed_effects:['read'],validated_contracts:{},failed_validations:{}};
+  const state={product:'bos',installed_root:root,installed_roots:{bos:root},published_commits:{bos:commit},organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,resource:'https://dfsm.ai/mcp/apps/bos/platform',canary:true,kind:'positive',handle:context.context_handle,resources:[uri],observations:[],fixtureResponses:[],denials:[],allowed_effects:['read'],validated_contracts:{},failed_validations:{}};
   const describeResponse=()=>{const value=syntheticOperationDescribe();value.operations=value.operations.slice(0,1);return value;};
   let current=context,requests=0,response=describeResponse(),nativeSchema={type:'object',required:[],properties:{query:{type:'string'}}};
   const session={rpc:async(method,params)=>{
@@ -74,6 +74,7 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   const validationState=structuredClone({validated:state.validated_contracts,failed:state.failed_validations});
   const result=await tools.call('bos_https_describe',args);
   assert.deepEqual(result.published_validation,{valid:true,mode:'operation-describe',document_id:result.document_id,release_commit:commit});
+  assert.deepEqual(state.fixtureResponses,[{operation:'app.describe',transport:'https_discovery',successful:true,body:response}]);
   const receipt=state.observations.findLast(row=>row.validation_origin==='host_https_describe');
   assert.equal(receipt.tool,'validate.installed');assert.equal(receipt.input.mode,'operation-describe');assert.equal(receipt.response.valid,true);assert.equal(receipt.is_error,false);assert.deepEqual(receipt.input.document,response);
   assert.deepEqual({validated:state.validated_contracts,failed:state.failed_validations},validationState);
@@ -104,12 +105,17 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   assert.equal(result.isError,undefined);assert.equal(result.document.contract_version,'lead-director-describe/v1');
   assert.equal(result.advertised_https_contacts.length,1);assert.equal(requests,1);
   assert.doesNotMatch(JSON.stringify(result),/bos_ctx_v2_|context_handle/);
+  assert.equal((await tools.call('bos_https_describe',args)).isError,undefined);
+  assert.equal(state.fixtureResponses.length,2);
   const validationCount=state.observations.filter(row=>row.validation_origin==='host_https_describe').length;
+  const fixtureResponseCount=state.fixtureResponses.length;
   response={...response,operations:[]};assert.equal((await tools.call('bos_https_describe',args)).isError,true);
   assert.equal(state.observations.filter(row=>row.validation_origin==='host_https_describe').length,validationCount);
+  assert.equal(state.fixtureResponses.length,fixtureResponseCount);
   response=describeResponse();response.operations[0].input_schema=null;
   assert.deepEqual(await tools.call('bos_https_describe',args),{isError:true,reason:'reviewer_describe_response_invalid'});
   const failedReceipt=state.observations.findLast(row=>row.validation_origin==='host_https_describe');assert.equal(failedReceipt.response.valid,false);assert.equal(failedReceipt.is_error,true);
+  assert.equal(state.fixtureResponses.length,fixtureResponseCount);
   assert.equal(state.observations.at(-1).response.reason,'reviewer_describe_response_invalid');
   response={...syntheticOperationDescribe(),operations:[{operation:'search',status:'not_available'}]};
   const unavailable=await tools.call('bos_https_describe',args);

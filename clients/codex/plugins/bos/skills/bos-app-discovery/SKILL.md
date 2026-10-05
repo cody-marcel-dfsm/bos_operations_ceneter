@@ -130,8 +130,12 @@ resource, call the current authenticated HTTPS Describe tool with its exact
 runtime, call `bos_https_describe` with `document_id` copied from the validated
 resource and `operations` copied from `describe.operations`; when both are
 advertised for a create/update comparison, call it with
-`operations: ["create", "update"]`. Read the returned operation descriptions
-and their published validation before drafting. Do not complete from
+`operations: ["create", "update"]` in one request. When the requested keys fit
+the advertised maximum, send them together exactly once; do not split them into
+per-operation requests or repeat a successful key in another batch. Use
+additional non-overlapping batches only when the required key set exceeds the
+maximum. Read the returned operation descriptions and their published
+validation before drafting. Do not complete from
 `app.describe` alone if the HTTPS call or either required description is
 missing; report the unsupported part as unresolved.
 
@@ -142,7 +146,9 @@ missing; report the unsupported part as unresolved.
    resource's `describe.operations` list. Request every matching key through the
    advertised host-authenticated HTTPS Describe capability, in batches no
    larger than its declared maximum. For a create-and-update comparison, request
-   both `create` and `update` when those exact keys are advertised.
+   both `create` and `update` together in one batch when those exact keys are
+   advertised; do not repeat a successfully described operation in another
+   batch.
 3. Preserve each complete HTTPS Describe parent response and validate it with
    `operation-describe`. Compare the requested fields, effects, limits, and
    errors from the returned operation objects. Do not finish from native MCP
