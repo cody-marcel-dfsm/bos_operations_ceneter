@@ -226,6 +226,11 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
   assert.match(guidance, /no browser[\s\S]*DOM[\s\S]*cached selector/i);
   assert.match(guidance, /connection's exact[\s\S]*organization[\s\S]*application[\s\S]*installation[\s\S]*role grant/i);
   assert.match(sourceGuidance, /Ordered evidence workflow for a full inventory/i);
+  assert.match(sourceGuidance, /\*\*Authorized context\*\* row[\s\S]*Copy its public labels\s+verbatim from the selected current `bos\.get\.context` row/i);
+  assert.match(sourceGuidance, /`authorized_context` reporting row[\s\S]*exact\s+source reference/i);
+  assert.match(sourceGuidance, /user explicitly requests configured role definitions[\s\S]*\*\*Configured application role metadata\*\*/i);
+  assert.match(contract, /\*\*Authorized context\*\* row[\s\S]*Copy each public label verbatim[\s\S]*selected current `bos\.get\.context` row/i);
+  assert.match(contract, /Include configured role definitions only when the user requests them[\s\S]*separate type \*\*Configured application role metadata\*\*/i);
   assert.match(sourceGuidance, /Keep app\/service lists, identity summaries, readiness checks, and tool\/workflow\s+availability lists within their requested facts/i);
   assert.match(sourceGuidance, /complete contract audit\s+requires an explicit detailed or comprehensive request/i);
   assert.match(sourceGuidance, /\*\*Tools and workflows:\*\*[\s\S]*`journey_registration\.contract`[\s\S]*exact `capability` and `input`[\s\S]*validate the actual response with `api-contract`/i);

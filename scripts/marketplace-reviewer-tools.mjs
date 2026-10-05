@@ -91,13 +91,25 @@ export async function createReviewerTools({session,state,release}) {
   const offered=(await session.rpc('tools/list')).tools;
   if(!Array.isArray(offered))throw new Error('reviewer_discovery_tools_missing');
   const documents=new Map(),contacts=new Map(),references=new Map(),trustedSchemaDocuments=new Set(),ajv=new Ajv({strict:false,validateFormats:false});
-  let nextReference=0;
-  const clearReferences=()=>{documents.clear();contacts.clear();references.clear();trustedSchemaDocuments.clear();};
+  let nextReference=0,authorizedContextSource=null;
+  const clearReferences=()=>{documents.clear();contacts.clear();references.clear();trustedSchemaDocuments.clear();authorizedContextSource=null;};
   const retainDocument=raw=>{
     const hash=digest(raw),existing=references.get(hash);
     if(existing&&documents.has(existing))return existing;
     const reference='doc_'+(++nextReference);
     references.set(hash,reference);documents.set(reference,structuredClone(raw));return reference;
+  };
+  const bindAuthorizedContext=raw=>{
+    const selected=selectReviewerContext(raw?.contexts??raw?.authorized_contexts??[],state);
+    if(!selected||selected.context_handle!==state.handle)throw new Error('reviewer_identity_unverified');
+    const scoped={contract_version:raw.contract_version,contexts:[structuredClone(selected)]},documentId=retainDocument(scoped);
+    authorizedContextSource={document_id:documentId,digest:digest(scoped),context_handle:state.handle};
+  };
+  const reportingContext=()=>{
+    const proof=authorizedContextSource,raw=documents.get(proof?.document_id);
+    const selected=selectReviewerContext(raw?.contexts??raw?.authorized_contexts??[],state);
+    if(!proof||!raw||digest(raw)!==proof.digest||proof.context_handle!==state.handle||selected?.context_handle!==state.handle)throw new Error('reviewer_identity_unverified');
+    return {kind:'authorized_context_observation',organization:selected.organization_name,application:selected.application_name,installation:selected.installation_name,role:selected.role_label,provenance:{operation:'bos.get.context',document_id:proof.document_id}};
   };
   const toolName=name=>{
     const rows=offered.filter(row=>row.name===name||row.name.replaceAll('_','.')===name.replaceAll('_','.'));
@@ -105,6 +117,7 @@ export async function createReviewerTools({session,state,release}) {
   };
   const mcp=async(name,args)=>session.rpc('tools/call',{name:toolName(name),arguments:args});
   const freshContext=async()=>{
+    authorizedContextSource=null;
     const response=await mcp('bos.get_context',{}),value=body(response);
     if(response.isError)throw new Error('reviewer_identity_unverified');
     const selected=selectReviewerContext(value.contexts??value.authorized_contexts??[],state);
@@ -112,6 +125,8 @@ export async function createReviewerTools({session,state,release}) {
     if(state.handle&&state.handle!==selected.context_handle){clearReferences();state.validated_contracts={};state.failed_validations={};state.validated_document_proofs={};state.selected_scope=null;throw new Error('reviewer_discovery_refresh_required');}
     state.handle=selected.context_handle;
     state.selected_scope={organization:selected.organization_name,application:selected.application_name,installation:selected.installation_name,role:selected.role_label,context_handle:state.handle};
+    observe({tool_name:'mcp__BOS__bos_get_context',tool_input:{},tool_response:response},state);
+    bindAuthorizedContext(value);
     return {contract_version:value.contract_version,context:Object.fromEntries(['context_handle','organization_name','application_name','installation_name','role_label','is_default'].map(key=>[key,selected[key]]))};
   };
   const adapter=createBosExternalDependencyAdapter({
@@ -141,10 +156,16 @@ export async function createReviewerTools({session,state,release}) {
     state.pre_calls=(state.pre_calls??0)+1;
     const denial=permission(event,state);
     if(denial){state.denials.push({tool:event.tool_name,reason:denial});return {isError:true,reason:denial};}
+    if(event.tool_name==='mcp__BOS__bos_get_context')authorizedContextSource=null;
     const previousHandle=state.handle;
     const response=await run();observe({...event,tool_response:response},state);
     if(state.handle!==previousHandle)clearReferences();
-    return response?.isError?{isError:true,...expose(response,event.tool_input?.uri)}:expose(response,event.tool_input?.uri);
+    const exposed=expose(response,event.tool_input?.uri);
+    if(event.tool_name==='mcp__BOS__bos_get_context'){
+      authorizedContextSource=null;
+      if(!response?.isError)bindAuthorizedContext(documents.get(exposed.document_id));
+    }
+    return response?.isError?{isError:true,...exposed}:exposed;
   };
   const call=async(name,args={})=>{
     if(privateInput(args))throw new Error('reviewer_authority_argument');
@@ -184,9 +205,11 @@ export async function createReviewerTools({session,state,release}) {
         if(!proof||!['operation-describe','api-contract'].includes(proof.mode))throw new Error('reviewer_document_not_observed');
         return {kind:proof.mode,document};
       });
+      const authorizedContext=reportingContext();
       const projection=sanitized(await installed.call('project_contract_facts',{documents:inputs}));
+      if(digest(reportingContext())!==digest(authorizedContext))throw new Error('reviewer_discovery_refresh_required');
       const derivedId=retainDocument(projection);
-      const response={summaries:projection.summaries,document_id:derivedId,view:'derived_contract_facts',source_documents:args.document_ids.map((document_id,document_index)=>({document_id,document_index})),helper:{path:'skills/bos-app-discovery/scripts/project-contract-facts.mjs',release_commit:bos.release_commit},projection};
+      const response={authorized_context:authorizedContext,summaries:projection.summaries,document_id:derivedId,view:'derived_contract_facts',source_documents:args.document_ids.map((document_id,document_index)=>({document_id,document_index})),helper:{path:'skills/bos-app-discovery/scripts/project-contract-facts.mjs',release_commit:bos.release_commit},projection};
       observe({...event,tool_response:response},state);return response;
     }
     if(name.startsWith('acceptance_')){
