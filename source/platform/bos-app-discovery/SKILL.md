@@ -61,6 +61,17 @@ For live `bos-identity-mcp/v2`, follow this order:
    output alone; those are separate evidence surfaces and cannot substitute for
    the requested public operation descriptions.
 
+Do not finish this workflow after reading or validating `app.describe`. Resolve
+the current authenticated HTTPS Describe callable from the live tool catalog;
+in the reviewer-native runtime it is `bos_https_describe`. Call it with
+`document_id` copied verbatim from the validated `app.describe` resource and
+`operations` containing the exact advertised keys, within the declared batch
+maximum. For an advertised create/update pair, request both exact keys in that
+call when the maximum permits. Examine and validate the returned operation
+descriptions before drafting; if the callable or required response is
+unavailable, report the comparison unresolved instead of finishing from
+`app.describe` or a schema helper.
+
 For the semantic comparison, use the validated returned operation objects as
 the evidence for required and optional fields, effects, bounds, limits,
 pagination, and error declarations. Do not use `acceptance_compare_schemas` or
