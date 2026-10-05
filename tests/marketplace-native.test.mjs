@@ -1,4 +1,4 @@
-import {verifyNativeReviewer,classifyNativeFailure,classifyCompletion,caseDiagnostics,httpsDescribeCoverage,reviewerTurnTimeoutMs} from '../scripts/marketplace-native-run.mjs';
+import {verifyNativeReviewer,classifyNativeFailure,classifyCompletion,caseDiagnostics,httpsDescribeCoverage,reviewerTurnTimeoutMs,latestReviewerClockReference} from '../scripts/marketplace-native-run.mjs';
 import {digest,loadPromptCatalog} from '../scripts/marketplace-prompt-catalog.mjs';
 import {fileURLToPath} from 'node:url';
 import test from 'node:test';
@@ -260,4 +260,16 @@ test('grading context retains the exact assertion clock and original source obse
  assert.deepEqual(result.reviewer_scope,{organization_name:'Synthetic',application_name:'Synthetic App',installation_name:'Synthetic Installation',role_label:'Reviewer',verified:true,resolution_basis:'explicit_review_fixture_scope',preference_read_performed:false});
  assert.deepEqual(result.bos_binding,{verified:true,release_commit:'published',package_sha256:'actual-package-hash'});assert.doesNotMatch(JSON.stringify(result),/private-handle|private-token|private.invalid/);assert.equal(Object.hasOwn(evidence,'evaluation_reference_time'),false);
  const failed=withGradingContext(evidence,{referenceTime,scope,scopeVerified:false,bindingVerified:false,bos:{}});assert.equal(failed.reviewer_scope.verified,false);assert.equal(failed.bos_binding.verified,false);
+});
+
+test('grading clock uses the latest successful valid reviewer guard observation',()=>{
+ const observations=[
+  {tool:'guard.status',response:{ready:true,reference_time:'2026-10-03T12:00:00.000Z',reference_time_source:'reviewer_host_utc_clock'}},
+  {tool:'guard.status',is_error:true,response:{ready:false,reference_time:'2026-10-03T12:01:00.000Z',reference_time_source:'reviewer_host_utc_clock'}},
+  {tool:'guard.status',response:{ready:true,reference_time:'2026-10-03T12:02:00.000Z',reference_time_source:'reviewer_host_utc_clock'}}
+ ];
+ assert.equal(latestReviewerClockReference(observations),'2026-10-03T12:02:00.000Z');
+ assert.equal(latestReviewerClockReference([...observations,{tool:'guard.status',response:{ready:true,reference_time:'2026-10-03T12:03:00.000Z',reference_time_source:'untrusted'}}]),'2026-10-03T12:02:00.000Z');
+ assert.equal(latestReviewerClockReference([{tool:'guard.status',response:{ready:true,reference_time:'2026-02-30T12:00:00.000Z',reference_time_source:'reviewer_host_utc_clock'}}]),undefined);
+ assert.equal(latestReviewerClockReference([{tool:'guard.status',response:{ready:false,reference_time:'2026-10-03T12:00:00.000Z',reference_time_source:'reviewer_host_utc_clock'}}]),undefined);
 });
