@@ -237,6 +237,7 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
   assert.match(guidance, /For live `bos-identity-mcp\/v2`, follow this order[\s\S]*exact `app\.describe` resource advertised[\s\S]*exact URI[\s\S]*validate[\s\S]*`app-describe`/i);
   assert.match(guidance, /Match each operation named by the request to the exact keys[\s\S]*`describe\.operations`[\s\S]*host-authenticated HTTPS Describe capability/i);
   assert.match(guidance, /For a create-and-update comparison, request\s+both `create` and `update` together in one batch when those exact keys are\s+advertised/i);
+  assert.match(guidance, /Report execution transport only when the operation's `execution\.transport`\s+field explicitly declares it[\s\S]*HTTPS Describe is the contract retrieval\s+transport[\s\S]*enumerate every field and\s+literal value present in each operation's `limits` object/i);
   assert.match(guidance, /Do not finish from native MCP\s+tool descriptors[\s\S]*schema-difference\s+output alone/i);
   assert.match(guidance, /use the validated returned operation objects as\s+the evidence for required and optional fields, effects, bounds, limits,\s+pagination, and error declarations/i);
   assert.match(guidance, /Do not use `acceptance_compare_schemas` or\s+`compare\.schemas` to establish any of those declarations/i);
@@ -267,6 +268,7 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
     assert.match(clientGuidance, /## App discovery workflow/);
     assert.match(clientGuidance, /## Requests to compare application API contracts/);
     assert.match(clientGuidance, /For a create-and-update comparison, request\s+both `create` and `update` together in one batch when those exact keys are\s+advertised/i);
+    assert.match(clientGuidance, /Report execution transport only when the operation's `execution\.transport`\s+field explicitly declares it[\s\S]*HTTPS Describe is the contract retrieval\s+transport[\s\S]*enumerate every field and\s+literal value present in each operation's `limits` object/i);
     assert.match(clientGuidance, /Do not finish from native MCP\s+tool descriptors[\s\S]*schema-difference\s+output alone/i);
     assert.match(clientGuidance, /Do not use `acceptance_compare_schemas` or\s+`compare\.schemas` to establish any of those declarations/i);
     assert.match(clientGuidance, /only after\s+the exact source documents have been observed and validated[\s\S]*copy each returned\s+`document_id` and exact schema JSON Pointer/i);

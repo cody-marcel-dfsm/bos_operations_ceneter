@@ -167,6 +167,16 @@ validated document or exact schema pointer is unavailable, leave that
 structural comparison unresolved and report the missing evidence. Never guess,
 reuse, or reconstruct a document identifier or schema pointer.
 
+Report execution transport only when the operation's `execution.transport`
+field explicitly declares it. HTTPS Describe is the contract retrieval
+transport; it does not establish the operation's execution transport. When
+`execution.transport` is absent or null, state that execution transport is
+unspecified and leave it unresolved. For limits, enumerate every field and
+literal value present in each operation's `limits` object in the comparison;
+preserve fields that appear on only one operation and do not omit less
+prominent limits. Mark an absent declaration as unavailable instead of
+inferring or defaulting it.
+
 If the requested operation key is not advertised, a key is missing from the
 response, or its response cannot be retrieved and validated, report that part
 of the comparison as unresolved and identify the missing evidence.
