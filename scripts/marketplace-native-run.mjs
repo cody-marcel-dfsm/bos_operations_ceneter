@@ -73,6 +73,26 @@ const diagnosticText = value => sanitized(String(value??''))
  .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/giu,'[address]')
  .replace(/\b[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}\b/giu,'[identifier]')
  .slice(0,2000);
+export function httpsDescribeCoverage(observed=[]) {
+ const validKey=value=>typeof value==='string'&&value.length<=128&&/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u.test(value)?value:null;
+ const requested=new Set(),returned=new Set();
+ for(const row of observed){
+  if(row?.transport==='https-discovery'&&row.tool==='app.describe'){
+   for(const key of row.input?.operations??[]){const safe=validKey(key);if(safe)requested.add(safe);}
+   for(const operation of row.response?.operations??[]){const safe=validKey(operation?.operation);if(safe)returned.add(safe);}
+  }
+  if(row?.tool==='bos_https_describe'&&row.is_error===true){
+   for(const key of row.input?.operations??[]){const safe=validKey(key);if(safe)requested.add(safe);}
+  }
+ }
+ const validations=observed.filter(row=>row?.validation_origin==='host_https_describe');
+ return {
+  requested_operations:[...requested].sort(),
+  returned_operations:[...returned].sort(),
+  successful_parent_validations:validations.filter(row=>row.response?.valid===true&&!row.is_error).length,
+  failed_parent_validations:validations.filter(row=>row.response?.valid!==true||row.is_error).length
+ };
+}
 export function caseDiagnostics(result,judgment,observed,fixtureAssertions) {
  const selection=row=>{
   if(!['validate.installed','acceptance_validate_installed'].includes(row.tool)||!Object.hasOwn(row.input??{},'mode'))return {};
@@ -81,7 +101,8 @@ export function caseDiagnostics(result,judgment,observed,fixtureAssertions) {
   const document=mode==='api-contract'?original?.response:mode==='service-journey'?original?.description:original;
   return {validation_mode:mode,...(document&&typeof document==='object'&&!Array.isArray(document)?{document_is_json_schema:Object.hasOwn(document,'$schema')||(Object.hasOwn(document,'properties')&&['object','array','string','number','integer','boolean','null'].includes(document.type)),document_has_execution_contract:!!document.execution&&typeof document.execution==='object',document_has_operation_envelope:Array.isArray(document.operations)}:{})};
  };
- return {completion_reason:diagnosticText(result.reason),evaluation_missing:(judgment.missing??[]).slice(0,32).map(diagnosticText),failed_steps:observed.filter(row=>row.is_error||row.response?.valid===false).map(row=>({tool:row.tool,reason:row.response?.valid===false?'reviewer_validation_failed':reviewerFailureCode({code:row.response?.reason}),...selection(row)})),...(fixtureAssertions?{fixture_assertions:fixtureAssertions}:{})};
+ const describeCoverage=httpsDescribeCoverage(observed);
+ return {completion_reason:diagnosticText(result.reason),evaluation_missing:(judgment.missing??[]).slice(0,32).map(diagnosticText),failed_steps:observed.filter(row=>row.is_error||row.response?.valid===false).map(row=>({tool:row.tool,reason:row.response?.valid===false?'reviewer_validation_failed':reviewerFailureCode({code:row.response?.reason}),...selection(row)})),...(describeCoverage.requested_operations.length||describeCoverage.returned_operations.length||describeCoverage.successful_parent_validations||describeCoverage.failed_parent_validations?{https_describe_coverage:describeCoverage}:{}),...(fixtureAssertions?{fixture_assertions:fixtureAssertions}:{})};
 }
 export function classifyCompletion(kind,status,reasons) {
  const failures=[...reasons];
@@ -115,7 +136,7 @@ export async function nativeCase(catalog,item,config,release,model) {
   await verifyPackageOwnedBinding(release.entries,bos.plugin_id,binding);
   bindingVerified=true;
   if(item.kind!=='negative')preferences=await readReviewerPreferences(catalog.product,bos);
-  const state={case_id:item.id,application:config.review_application,installation:config.review_installation,organization:config.review_organization,role:config.review_role??'Director',kind:item.kind,product:catalog.product,resource:binding.url,installed_root:release.path,published_commits:{[catalog.product]:release.release_commit,bos:bos.release_commit},installed_roots:{[catalog.product]:release.path,bos:bos.path},allowed_effects:(item.allowed_effects??['read']).filter(effect=>(authority.allowed_effects??['read']).includes(effect)),effect_binding:authority.effect_bindings?.[item.id],observations:[],denials:[],pre_calls:0};
+  const state={case_id:item.id,application:config.review_application,installation:config.review_installation,organization:config.review_organization,role:config.review_role??'Director',kind:item.kind,product:catalog.product,resource:binding.url,installed_root:release.path,published_commits:{[catalog.product]:release.release_commit,bos:bos.release_commit},installed_roots:{[catalog.product]:release.path,bos:bos.path},allowed_effects:(item.allowed_effects??['read']).filter(effect=>(authority.allowed_effects??['read']).includes(effect)),effect_binding:authority.effect_bindings?.[item.id],observations:[],fixtureResponses:[],denials:[],pre_calls:0};
   session=await openReviewerSession({reviewerUrl:config.reviewer_login_url,resource:binding.url});
   scopeVerified=await verifyReviewerScope(session,state,value=>{scopeEvidence=value;});
   const tools=await createReviewerTools({session,state,release});
@@ -135,7 +156,8 @@ export async function nativeCase(catalog,item,config,release,model) {
   if(item.kind!=='negative'&&!state.validated_contracts?.['app-describe'])reasons.push('unvalidated_app_description');
   if(item.kind==='negative'&&nativeTools.some(row=>row.server!=='Acceptance'))reasons.push('negative_native_invocation');
   if(catalog.product==='my-crm'&&item.kind!=='negative'&&!observed.some(row=>row.transport==='https'&&!row.is_error))reasons.push('advertised_https_api_response_missing');
-  const responses=reviewerResponses(calls);
+  const projectedResponses=reviewerResponses(calls).filter(row=>!(row.operation==='app.describe'&&row.transport==='https_discovery'));
+  const responses=[...projectedResponses,...state.fixtureResponses];
   reasons.push(...caseResponseFailures(item,responses));
   const executionStartedAt=new Date().toISOString();
   const fixtureAssertions=item.kind==='negative'?undefined:reviewerOutcomeDiagnostics(authority.schema==='owner-reviewed-synthetic-fixture/v1'?authority.case_assertions?.[catalog.product]?.[item.id]:undefined,{responses,answer:result.answer,prohibited_effects:0,execution_started_at:executionStartedAt},item.requirements??[],{product:catalog.product,case_id:item.id,execution_started_at:executionStartedAt});

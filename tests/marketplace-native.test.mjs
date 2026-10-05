@@ -1,4 +1,4 @@
-import {verifyNativeReviewer,classifyNativeFailure,classifyCompletion,caseDiagnostics,reviewerTurnTimeoutMs} from '../scripts/marketplace-native-run.mjs';
+import {verifyNativeReviewer,classifyNativeFailure,classifyCompletion,caseDiagnostics,httpsDescribeCoverage,reviewerTurnTimeoutMs} from '../scripts/marketplace-native-run.mjs';
 import {digest,loadPromptCatalog} from '../scripts/marketplace-prompt-catalog.mjs';
 import {fileURLToPath} from 'node:url';
 import test from 'node:test';
@@ -27,6 +27,18 @@ test('retained case diagnostics identify failures while removing credentials and
  assert.equal(diagnostic.evaluation_missing[0],'Missing contract provenance');
  assert.equal(diagnostic.evaluation_missing[1].length,2000);
  assert.deepEqual(diagnostic.failed_steps,[{tool:'bos_https_describe',reason:'reviewer_document_not_observed'},{tool:'validate.installed',reason:'reviewer_validation_failed'}]);
+});
+test('HTTPS Describe diagnostics retain public operation names and omit private document and scope data',()=>{
+ const observed=[
+  {tool:'app.describe',transport:'https-discovery',input:{operations:['create','update'],document_id:'private-document'},response:{operations:[{operation:'create',input_schema:{properties:{customer_email:{type:'string'}}}},{operation:'update'}],uri:'https://private.invalid',context_handle:'bos_ctx_v2_secret'},is_error:false},
+  {tool:'validate.installed',validation_origin:'host_https_describe',response:{valid:true,document_id:'private-document'},is_error:false},
+  {tool:'bos_https_describe',is_error:true,input:{operations:['../secret','../../secret'],document_id:'private-document'},response:{reason:'reviewer_failed'}}
+ ];
+ const coverage=httpsDescribeCoverage(observed);
+ assert.deepEqual(coverage,{requested_operations:['create','update'],returned_operations:['create','update'],successful_parent_validations:1,failed_parent_validations:0});
+ const diagnostics=caseDiagnostics({}, {},observed);
+ assert.deepEqual(diagnostics.https_describe_coverage,coverage);
+ assert.doesNotMatch(JSON.stringify(diagnostics),/private-document|private\.invalid|bos_ctx_v2_secret|customer_email|secret/);
 });
 test('validator selection diagnostics retain only supported modes and boolean document categories',()=>{
  const result=caseDiagnostics({}, {},[
@@ -207,7 +219,6 @@ test('business-case proof requires successful scoped deterministic HTTPS and exa
  for(const changed of [{transport:undefined},{transport:'https-discovery'},{scope_verified:false},{is_error:true},{tool:'search'}])assert.ok(caseResponseFailures(item,reviewerResponses([{...observed,...changed}])).length>0);
  assert.equal(reviewerResponses([{tool:'bos.execute',input:{tool_name:'plugins.list'},scope_verified:true,response:{plugins:[]}}])[0].operation,'plugins.list');
 });
-
 
 test('failed native receipts retain only completed session and binding proofs with closed diagnostics',async()=>{
  const {failedNativeCaseReceipt}=await import('../scripts/marketplace-native-run.mjs');

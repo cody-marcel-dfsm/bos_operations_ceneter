@@ -194,6 +194,7 @@ export async function createReviewerTools({session,state,release}) {
       // adds observations without changing model-validation or dispatch state.
       state.observations.push({tool:'validate.installed',input:{path:'skills/bos-app-discovery/scripts/validate-discovery.mjs',mode:'operation-describe',document:sanitized(raw)},response:sanitized(validation),scope_verified:!!state.handle,is_error:validation.valid!==true,validation_origin:'host_https_describe'});
       if(validation.valid!==true)throw new Error('reviewer_describe_response_invalid');
+      state.fixtureResponses.push({operation:'app.describe',transport:'https_discovery',successful:true,body:raw});
       const exposed=expose(raw);
       trustedSchemaDocuments.add(exposed.document_id);for(const contact of exposed.advertised_https_contacts??[])trustedSchemaDocuments.add(contact.document_id);
       return {...exposed,transport:'https-discovery',published_validation:{valid:true,mode:'operation-describe',document_id:exposed.document_id,release_commit:bos.release_commit}};
