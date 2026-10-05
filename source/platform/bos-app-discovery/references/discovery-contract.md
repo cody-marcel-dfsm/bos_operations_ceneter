@@ -20,16 +20,25 @@ an organization-wide directory is needed for facts beyond that observed scope.
 Missing business-data or execution prerequisites still stop the affected task.
 
 For full inventories, answer with one exact selected-identity row, coverage
-totals, and a reconciliation table. The table has one row for each advertised
-native operation and each described public API operation, with these columns:
-scope/source, exact operation and aliases, exact counterpart or `No observed
-counterpart`, declared execution mode, input/output constraints and bounds,
-limits/pagination, contract version and observed time/age, validation attempts,
-errors, recovery, and current result. Do not add roles from memory or prose
-examples. Preserve every missing, stale, failed, and recovered observation;
-counts must match the rows before claiming complete coverage. Report an empty
-input schema as a valid zero-input action when the observed contract accepts
-`{}`. Record validation failure and recovery as separate observed outcomes.
+totals, and a source-keyed reconciliation table. Use separate rows for each
+advertised native operation (including each alias), each described public API
+operation, and each schema-comparison result. Native and public rows use these
+columns: scope/source, exact operation and alias, exact advertised counterpart
+or `No observed counterpart`, declared execution mode, input/output constraints
+and bounds, limits/pagination, contract version and observed time/age,
+validation attempts, errors, recovery, and current result. A comparison row
+identifies the exact operation/source and schema pointer on both sides, whether
+the declarations match, and every returned declaration difference. Join a
+native and public operation only through the exact advertised contract
+reference; structural similarity does not establish a relationship. Do not add
+roles from memory or prose examples. Preserve every missing, stale, failed, and
+recovered observation. Report counts for native operations, alias rows, public
+operations, exact advertised links, submitted schema pairs, returned
+comparison results, and unresolved rows; each count must reconcile to the
+corresponding table rows and observations before claiming complete coverage.
+Report an empty input schema as a valid zero-input action when the observed
+contract accepts `{}`. Record validation failure and recovery as separate
+observed outcomes.
 
 Before presenting an accessible inventory, build an internal authorization
 table from the fresh context rows: organization, application, installation,
@@ -49,16 +58,14 @@ For a full inventory, cover all currently advertised operation keys and catalog 
 using the returned Describe batch maximum for required descriptions and
 explicitly identifying unresolved descriptions.
 
-Present a reconciliation table with one row for each advertised native
-operation and each described public API operation. Include application/service
-scope, exact operation name and linked counterpart, execution mode, input/output
-constraints, limits, pagination, contract version, observation time,
-validation status, and unresolved differences. State `No observed counterpart`
-when discovery supplies no exact link. Mark `journey_runtime` as journey
-runtime; use HTTPS only when the observed contract declares the HTTP route.
-Include failed and unavailable reads with their effect on the inventory. Report
-counts for native operations, public API operations, exact comparisons, and
-unresolved rows before describing coverage as complete.
+Keep the table source-keyed through final drafting. Never combine native and
+public declarations into one row, and never assign a schema-comparison result
+to another operation based on similar names or shapes. Include failed and
+unavailable reads with their effect on the inventory. Mark `journey_runtime` as
+journey runtime; use HTTPS only when the observed contract declares the HTTP
+route. Report row counts for native operations, aliases, public operations,
+exact advertised links, submitted schema pairs, returned comparison results,
+and unresolved rows before describing coverage as complete.
 
 Validate each document against its actual envelope type. For identity-v2,
 validate the application resource with `app-describe` and the complete HTTPS

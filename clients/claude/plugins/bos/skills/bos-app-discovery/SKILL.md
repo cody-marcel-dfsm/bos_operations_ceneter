@@ -318,6 +318,13 @@ ledger passes the final coverage check.
    helper](scripts/compare-schema-surfaces.mjs) compares exact declared schemas
    in batches of one to 32 pairs. Schema differences establish no semantic
    correspondence, validation, interoperability, authority, or readiness.
+   Keep a comparison ledger with one entry for every submitted pair and result.
+   Record the exact native and public operation labels and schema pointers for
+   each side, whether declarations match, and every returned difference. Link
+   a native operation to a public operation only through its exact advertised
+   contract reference; similar names or schemas do not establish a counterpart.
+   A schema comparison reports structural differences and never creates or
+   proves an advertised relationship.
 5. **Complete every ledger row.** For each native operation and public
    counterpart, compare required and optional inputs, accepted values and
    bounds, selectors, write-target shapes, output shapes and media, effects,
@@ -339,12 +346,19 @@ ledger passes the final coverage check.
    unverified. Fresh authorization establishes access, while current readiness
    requires its own timely evidence and execution prerequisites; label it
    **unverified** when either is missing or stale.
-7. **Audit, then write.** Check the ledger against the original catalogs. The
-   final table must contain one row for every native operation, alias, and
-   described public API operation, with its exact counterpart or `No observed
-   counterpart`, execution mode, input/output constraints, limits/pagination,
-   version/time, validation result, and unresolved differences. Count native
-   rows, public rows, exact links, aliases, and unresolved rows. If any source,
+7. **Audit, then write.** Use source-keyed rows so evidence from different
+   operations cannot collapse together. The final answer contains separate
+   rows for each native operation (including each alias), each described public
+   operation, and each schema-comparison result. Native and public rows include
+   their exact advertised counterpart or `No observed counterpart`, execution
+   mode, input/output constraints and bounds, effects, limits/pagination,
+   version/time, validation result, and unresolved differences. Comparison
+   rows identify both exact operation/source labels and pointers, then carry
+   every returned declaration difference; never assign a comparison result to
+   a different operation because its schema looks similar. Count native
+   operations, alias rows, public operations, exact advertised links, submitted
+   schema pairs and returned comparison results, and unresolved rows. Counts
+   must match the corresponding rows and observations. If any source,
    description, comparison, required field, or validation is missing, label the
    inventory incomplete and identify the affected rows before any summary.
    Carry every observed difference into the answer; examples never stand in
