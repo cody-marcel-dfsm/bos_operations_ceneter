@@ -46,6 +46,19 @@ current authorized application before writing the comparison.
 
 For live `bos-identity-mcp/v2`, follow this order:
 
+**Required before writing any API contract comparison:** the application-level
+`app.describe` resource is not the operation-level HTTPS Describe response,
+even when it lists the requested operation keys. After validating that exact
+resource, call the current authenticated HTTPS Describe tool with its exact
+`document_id` and requested advertised operation keys. In the reviewer-native
+runtime, call `bos_https_describe` with `document_id` copied from the validated
+resource and `operations` copied from `describe.operations`; when both are
+advertised for a create/update comparison, call it with
+`operations: ["create", "update"]`. Read the returned operation descriptions
+and their published validation before drafting. Do not complete from
+`app.describe` alone if the HTTPS call or either required description is
+missing; report the unsupported part as unresolved.
+
 1. Select the exact `app.describe` resource advertised for the authorized
    application in the BOS resource catalog, read its exact URI, and validate
    that returned resource with `app-describe`.
@@ -60,17 +73,6 @@ For live `bos-identity-mcp/v2`, follow this order:
    tool descriptors, the semantic `app.describe` operation, or schema-difference
    output alone; those are separate evidence surfaces and cannot substitute for
    the requested public operation descriptions.
-
-Do not finish this workflow after reading or validating `app.describe`. Resolve
-the current authenticated HTTPS Describe callable from the live tool catalog;
-in the reviewer-native runtime it is `bos_https_describe`. Call it with
-`document_id` copied verbatim from the validated `app.describe` resource and
-`operations` containing the exact advertised keys, within the declared batch
-maximum. For an advertised create/update pair, request both exact keys in that
-call when the maximum permits. Examine and validate the returned operation
-descriptions before drafting; if the callable or required response is
-unavailable, report the comparison unresolved instead of finishing from
-`app.describe` or a schema helper.
 
 For the semantic comparison, use the validated returned operation objects as
 the evidence for required and optional fields, effects, bounds, limits,

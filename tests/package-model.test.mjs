@@ -242,7 +242,7 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
   assert.match(guidance, /Do not use `acceptance_compare_schemas` or\s+`compare\.schemas` to establish any of those declarations/i);
   assert.match(guidance, /only after\s+the exact source documents have been observed and validated[\s\S]*copy each returned\s+`document_id` and exact schema JSON Pointer/i);
   assert.match(guidance, /Never guess,\s+reuse, or reconstruct a document identifier or schema pointer/i);
-  assert.match(guidance, /Do not finish this workflow after reading or validating `app\.describe`[\s\S]*reviewer-native runtime it is `bos_https_describe`[\s\S]*`document_id` copied verbatim[\s\S]*`operations` containing the exact advertised keys[\s\S]*Examine and validate the returned operation\s+descriptions before drafting/i);
+  assert.match(guidance, /\*\*Required before writing any API contract comparison:\*\*[\s\S]*`app\.describe` resource is not the operation-level HTTPS Describe response[\s\S]*reviewer-native\s+runtime, call `bos_https_describe`[\s\S]*`document_id` copied from the validated\s+resource and `operations` copied from `describe\.operations`[\s\S]*`operations: \["create", "update"\]`[\s\S]*Do not complete from\s+`app\.describe` alone/i);
   assert.match(guidance, /If the requested operation key is not advertised[\s\S]*report that part\s+of the comparison as unresolved/i);
   assert.doesNotMatch(guidance, /default_organization_label|client-preferences\.mjs|context_id/i);
   assert.match(contract, /`app\.describe`/);
@@ -270,7 +270,7 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
     assert.match(clientGuidance, /Do not finish from native MCP\s+tool descriptors[\s\S]*schema-difference\s+output alone/i);
     assert.match(clientGuidance, /Do not use `acceptance_compare_schemas` or\s+`compare\.schemas` to establish any of those declarations/i);
     assert.match(clientGuidance, /only after\s+the exact source documents have been observed and validated[\s\S]*copy each returned\s+`document_id` and exact schema JSON Pointer/i);
-    assert.match(clientGuidance, /Do not finish this workflow after reading or validating `app\.describe`[\s\S]*reviewer-native runtime it is `bos_https_describe`[\s\S]*`document_id` copied verbatim[\s\S]*`operations` containing the exact advertised keys/i);
+    assert.match(clientGuidance, /\*\*Required before writing any API contract comparison:\*\*[\s\S]*`app\.describe` resource is not the operation-level HTTPS Describe response[\s\S]*reviewer-native\s+runtime, call `bos_https_describe`[\s\S]*`document_id` copied from the validated\s+resource and `operations` copied from `describe\.operations`[\s\S]*`operations: \["create", "update"\]`[\s\S]*Do not complete from\s+`app\.describe` alone/i);
   }
 });
 
