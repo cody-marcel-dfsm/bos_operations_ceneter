@@ -115,6 +115,28 @@ header names are declarations only. The ordinary CLI accepts observed documents
 and descriptive scope labels; a supported retained-document host capability
 resolves the exact validated originals and scope itself.
 
+Use `summaries.execution_groups` as a complete reporting ledger: account for
+every public operation and actual API-contract or registration operation with
+its full presence-aware method, transport, and context-header tuple. Include
+each declared response body, content type, and every response header name.
+An explicitly null transport leaves independently declared method and
+context-header values intact; preserve null and absent fields separately.
+Grouped rows list every member operation and retain contract kind, scope,
+source observations, and exact declaration pointers. Account for every
+`summaries.error_groups` entry, including general public errors and
+operation-specific or source-specific errors, with every declared HTTP status
+and retryability value. Read the retained projection document when a host
+summary is bounded, then reconcile every execution and error group against
+the completed report. These ledgers preserve observed declarations and add
+no runtime evidence, readiness, authority, or execution permission.
+
+Each group's `document_index` selects its observed input document. In a host's
+`source_documents` mapping, an optional `pointer` prefix anchors the group's
+declaration pointers inside that exact retained original wrapper; prepend the
+returned prefix when inspecting its `document_id`. Direct documents use the
+root. This binding supplies source location only and establishes no constructed
+URI or contract equivalence.
+
 The projector's summaries count unique operations separately by contract kind,
 selected descriptive scope, and exact declared source when present. Keep public
 operation-Describe counts separate from API-contract registration/native counts.

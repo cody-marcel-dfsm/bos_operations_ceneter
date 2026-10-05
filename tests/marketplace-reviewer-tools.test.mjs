@@ -346,6 +346,7 @@ test('actual retained API contracts validate with canonical wrapper and exact ob
   await tools.call('bos_get_context',{});
   const facts=await tools.call('acceptance_project_contract_facts',{document_ids:[direct.document_id]});
   assert.equal(facts.isError,undefined);assert.equal(facts.projection.operations[0].kind,'api-contract');
+  assert.deepEqual(facts.source_documents,[{document_id:direct.document_id,document_index:0}]);
   assert.equal(facts.projection.operations[0].scope.role,context.role_label);
   assert.deepEqual(await validate('invented-document'),{isError:true,reason:'reviewer_document_not_observed'});
   const hashes=state.observed_document_digests;state.observed_document_digests=[];
@@ -353,6 +354,20 @@ test('actual retained API contracts validate with canonical wrapper and exact ob
   state.observed_document_digests=hashes;
   const target=contract;contract={operation:target.operation,source:target.source,response:target};
   const legacy=await discover();assert.equal((await validate(legacy.document_id)).valid,true);
+  const wrappedFacts=await tools.call('acceptance_project_contract_facts',{document_ids:[legacy.document_id]});
+  assert.equal(wrappedFacts.isError,undefined);
+  assert.deepEqual(wrappedFacts.source_documents,[{document_id:legacy.document_id,document_index:0,pointer:'/response'}]);
+  for(const [groups,key] of [
+   [wrappedFacts.summaries[0].execution_groups,'execution_pointer'],
+   [wrappedFacts.summaries[0].error_groups,'errors_pointer']
+  ]){
+   const group=groups[0],observation=group.observations[0];
+   const source=wrappedFacts.source_documents[observation.document_index];
+   const read=await tools.call('acceptance_read_document',{document_id:source.document_id,pointer:source.pointer+observation[key]});
+   assert.equal(read.found,true);
+   if(key==='errors_pointer')assert.deepEqual(read.value,group.declaration);
+   else {assert.deepEqual(read.value,target.execution);for(const declaration of group.declarations)assert.equal(read.value[declaration.field],declaration.value);}
+  }
   contract={...contract,operation:'other.synthetic.operation'};
   const malformedWrapper=await discover();assert.equal((await validate(malformedWrapper.document_id)).valid,false);
   assert.equal(state.validated_contracts['api-contract'],undefined);

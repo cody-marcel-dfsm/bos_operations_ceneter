@@ -72,6 +72,7 @@ test('transport totals are derived from arbitrary mixed cardinalities rather tha
     assert.equal(result.summaries[0].unique_operations, count);
     assert.deepEqual(result.summaries[0].transport, expected);
     assert.equal(result.operations.length, documents.length);
+    assert.equal(result.summaries[0].execution_groups.reduce((sum, group) => sum + group.observations.length, 0), documents.length);
   }
 });
 
@@ -178,6 +179,88 @@ test('rejects invalid parents, wrong document kinds, authority-bearing scope and
   assert.throws(() => projectContractFacts({documents: [entry(parent(operation('scope')), 'operation-describe', {...scope, context_handle: 'private'})]}));
   assert.throws(() => projectContractFacts({documents: [{...entry(parent(operation('extra'))), observation_id: 'injected'}]}));
   assert.throws(() => projectContractFacts({documents: []}));
+});
+
+test('compact execution groups preserve complete null and absent declarations with exact observation pointers', () => {
+  const http = operation('http');
+  http.execution.transport = null;
+  const absent = operation('legacy_http');
+  delete absent.execution.transport;
+  const runtime = operation('runtime');
+  runtime.execution = {transport: 'journey_runtime', method: null, uri: null, context_header: null};
+  const documents = [entry(parent(http, absent, runtime)), entry(parent(structuredClone(http))), entry(registration(), 'api-contract')];
+  const result = projectContractFacts({documents});
+  const groups = result.summaries[0].execution_groups;
+  assert.equal(groups.length, 3);
+  assert.equal(groups[0].observations.length, 2);
+  assert.deepEqual(groups[0].declarations, ['method', 'transport', 'context_header'].map(field => ({field, declared: true, value: http.execution[field]})));
+  assert.deepEqual(groups[1].declarations.find(row => row.field === 'transport'), {field: 'transport', declared: false});
+  assert.deepEqual(groups[2].declarations, [{field: 'method', declared: true, value: null},
+    {field: 'transport', declared: true, value: 'journey_runtime'}, {field: 'context_header', declared: true, value: null}]);
+  assert.deepEqual(groups[0].response, {declared: false});
+  const resolve = (document, pointer) => pointer.split('/').slice(1).reduce((value, key) => value[key.replaceAll('~1', '/').replaceAll('~0', '~')], document);
+  for (const summary of result.summaries) for (const group of summary.execution_groups) for (const observed of group.observations) {
+    const raw = resolve(documents[observed.document_index].document, observed.execution_pointer);
+    for (const declaration of group.declarations) {
+      assert.equal(declaration.declared, Object.hasOwn(raw, declaration.field));
+      if (declaration.declared) assert.deepEqual(declaration.value, raw[declaration.field]);
+    }
+  }
+  assert.equal(result.summaries[1].execution_groups.length, 1);
+});
+
+test('binary response declarations retain public header names and literal order without false permutation conflicts', () => {
+  const raw = operation('binary_download');
+  raw.execution.uri = '/private-download-route-sentinel';
+  raw.execution.response = {body: 'binary', content_type: 'provider',
+    headers: ['Content-Disposition', 'Content-Length', 'Content-Type', 'Digest', 'X-Content-SHA256', 'X-Correlation-ID']};
+  const reordered = structuredClone(raw);
+  reordered.execution.response.headers.reverse();
+  const result = projectContractFacts({documents: [entry(parent(raw)), entry(parent(reordered))]});
+  assert.equal(result.summaries[0].conflicting_operations, 0);
+  assert.equal(result.summaries[0].execution_groups.length, 1);
+  assert.equal(result.summaries[0].execution_groups[0].observations.length, 2);
+  assert.deepEqual(result.summaries[0].execution_groups[0].response, {declared: true, value: raw.execution.response});
+  assert.deepEqual(result.operations[1].execution_response, {pointer: '/operations/0/execution/response', value: reordered.execution.response});
+  assert.equal(result.summaries[0].execution_groups[0].observations[1].response_pointer, '/operations/0/execution/response');
+  assert(!JSON.stringify(result).includes('private-download-route-sentinel'));
+  const invalid = structuredClone(raw);
+  invalid.execution.response.headers[0] = 'Authorization';
+  assert.throws(() => projectContractFacts({documents: [entry(parent(invalid))]}));
+});
+
+test('exact error groups retain registration statuses and retryability plus separately declared source errors', () => {
+  const api = registration();
+  const raw = operation('source_errors');
+  const result = projectContractFacts({documents: [entry(api, 'api-contract'), entry(parent(raw))]});
+  assert.deepEqual(result.summaries[0].error_groups, [{declaration: api.public_errors,
+    observations: [{document_index: 0, operation: api.operation, errors_pointer: '/public_errors'}]}]);
+  const publicGroups = result.summaries[1].error_groups;
+  assert.deepEqual(publicGroups[0].declaration, raw.error_contract);
+  assert.deepEqual(publicGroups[1], {source: raw.sources[0].source, declaration: raw.sources[0].error_contract,
+    observations: [{document_index: 1, operation: raw.operation, source: raw.sources[0].source, errors_pointer: '/operations/0/sources/0/error_contract'}]});
+  const missing = structuredClone(raw);
+  delete missing.sources[0].error_contract;
+  // A non-ready source carries no invented described contract or error declaration.
+  missing.sources[0] = {source: missing.sources[0].source, availability: 'temporarily_unavailable'};
+  assert.equal(projectContractFacts({documents: [entry(parent(missing))]}).summaries[0].error_groups.length, 1);
+});
+
+test('compact groups retain duplicate and conflicting observations and separate exact API sources', () => {
+  const first = syntheticApiContract();
+  const other = structuredClone(first);
+  other.source.plugin = 'distinct-provider';
+  const changed = structuredClone(first);
+  changed.execution.method = first.execution.method === 'POST' ? 'GET' : 'POST';
+  const result = projectContractFacts({documents: [entry(first, 'api-contract'), entry(structuredClone(first), 'api-contract'),
+    entry(other, 'api-contract'), entry(changed, 'api-contract')]});
+  const summary = result.summaries[0];
+  assert.equal(summary.unique_operations, 2);
+  assert.equal(summary.conflicting_operations, 1);
+  assert.equal(summary.execution_groups.length, 3);
+  assert.deepEqual(summary.execution_groups.map(group => group.observations.map(row => row.document_index)), [[0, 1], [3], [2]]);
+  assert.equal(summary.error_groups.length, 2);
+  assert.deepEqual(summary.error_groups.map(group => group.source), [first.source, other.source]);
 });
 
 test('CLI emits the same projection and keeps invalid-input stderr generic', () => {
