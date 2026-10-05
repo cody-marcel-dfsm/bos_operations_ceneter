@@ -233,6 +233,13 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
   assert.match(guidance, /one row for every advertised native operation[\s\S]*described public API operation/i);
   assert.match(guidance, /accepts `\{\}`[\s\S]*zero-input\s+action/i);
   assert.match(guidance, /failed validation\s+and its recovery separately/i);
+  const sourceGuidance = await readFile(`${discovery.sourcePath}/SKILL.md`, "utf8");
+  assert.match(sourceGuidance, /Accuracy audit before writing the inventory/i);
+  assert.match(sourceGuidance, /Report a version only when that operation declares one/i);
+  assert.match(sourceGuidance, /never claim file contents unless the response\s+schema declares content/i);
+  assert.match(sourceGuidance, /Show readiness values for each relevant operation[\s\S]*if\s+they disagree, report both sources and leave readiness unresolved/i);
+  assert.match(sourceGuidance, /pagination_supported/i);
+  assert.match(sourceGuidance, /preserve both and mark pagination unresolved/i);
   assert.match(guidance, /## Requests to compare application API contracts/);
   assert.match(guidance, /For live `bos-identity-mcp\/v2`, follow this order[\s\S]*exact `app\.describe` resource advertised[\s\S]*exact URI[\s\S]*validate[\s\S]*`app-describe`/i);
   assert.match(guidance, /Match each operation named by the request to the exact keys[\s\S]*`describe\.operations`[\s\S]*host-authenticated HTTPS Describe capability/i);

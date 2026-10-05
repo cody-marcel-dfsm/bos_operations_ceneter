@@ -206,6 +206,21 @@ For any request for a full BOS inventory, use the response format below before
 writing a summary. Fill it only from retained, current observations; never
 replace an absent row with a guessed capability, role, constraint, or route.
 
+### Accuracy audit before writing the inventory
+
+Complete this audit before drafting prose and check it again against the final
+table. Copy execution mode, version, readiness, input/output declarations, and
+limits from each operation's own validated contract; never apply one operation's
+value to another. Report a version only when that operation declares one, and
+say `not declared` when it does not. Describe returned data from the output
+schema, not the operation name: never claim file contents unless the response
+schema declares content. Show readiness values for each relevant operation; if
+they disagree, report both sources and leave readiness unresolved. Show cursor
+fields together with `pagination_supported`; if the declarations conflict,
+preserve both and mark pagination unresolved. Check that every advertised
+native operation and described public API operation has a row, and that the
+coverage totals equal those rows before calling the inventory complete.
+
 1. **Authorized identity:** report the selected organization, application,
    installation, and role exactly as one fresh `bos_get_context` row returned
    them. Do not list other roles unless each has its own fresh authorized
