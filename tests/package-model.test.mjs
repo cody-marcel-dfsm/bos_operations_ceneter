@@ -228,8 +228,11 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
   assert.match(sourceGuidance, /Ordered evidence workflow for a full inventory/i);
   assert.match(sourceGuidance, /Treat a request to list accessible BOS apps or public services, or to show\s+tools\/workflows per app, as a full-inventory request even when the prompt does\s+not say "full"/i);
   assert.match(sourceGuidance, /Make the reconciliation table the primary answer; add a summary\s+only after the table passes its coverage check/i);
-  assert.match(sourceGuidance, /every native operation, alias, and\s+described public API operation/i);
-  assert.match(sourceGuidance, /`No observed\s+counterpart`[\s\S]*execution mode[\s\S]*validation result/i);
+  assert.match(sourceGuidance, /separate\s+rows for each native operation \(including each alias\), each described public\s+operation, and each schema-comparison result/i);
+  assert.match(sourceGuidance, /one entry for every submitted pair and result/i);
+  assert.match(sourceGuidance, /only through its exact advertised\s+contract reference; similar names or schemas do not establish a counterpart/i);
+  assert.match(sourceGuidance, /submitted\s+schema pairs and returned comparison results/i);
+  assert.match(sourceGuidance, /No observed\s+counterpart[\s\S]*execution\s+mode[\s\S]*validation result/i);
   assert.match(sourceGuidance, /Use fresh authorized contexts[\s\S]*Reconcile every access claim against those rows/i);
   assert.match(sourceGuidance, /`journey_runtime` as journey runtime/i);
   assert.match(sourceGuidance, /Include zero-input `\{\}` actions as\s+available actions/i);
@@ -272,8 +275,10 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
   assert.match(contract, /`graph\.describe`/);
   assert.match(contract, /`services\.list`/);
   assert.match(contract, /`api\.contract\.get`/);
-  assert.match(contract, /one row for each advertised native[\s\S]*public API operation/i);
-  assert.match(contract, /one exact selected-identity row, coverage\s+totals, and a reconciliation table/i);
+  assert.match(contract, /separate rows for each\s+advertised native operation[\s\S]*each schema-comparison result/i);
+  assert.match(contract, /through the exact advertised\s+contract\s+reference; structural similarity does not establish a relationship/i);
+  assert.match(contract, /submitted\s+schema pairs,[\s\S]*returned\s+comparison results,[\s\S]*unresolved rows/i);
+  assert.match(contract, /one exact selected-identity row, coverage\s+totals, and a source-keyed reconciliation table/i);
   assert.match(contract, /Report an empty\s+input schema as a valid zero-input action[\s\S]*validation failure and recovery/i);
   assert.match(contract, /No observed counterpart[\s\S]*journey_runtime[\s\S]*unresolved rows/i);
   assert.match(contract, /audience-bound/i);
