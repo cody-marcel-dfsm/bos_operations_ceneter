@@ -295,6 +295,15 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
   assert.match(sourceGuidance, /Use the projection's complete `execution` and `limits` rows[\s\S]*every declared field and literal value/i);
   assert.match(sourceGuidance, /public operation-Describe counts and API-contract counts describe\s+separate sets/i);
   assert.match(contract, /Keep public\s+operation-Describe counts separate from API-contract registration\/native counts/i);
+  for (const reportingGuidance of [sourceGuidance, contract]) {
+    assert.match(reportingGuidance, /`summaries\.execution_groups`[\s\S]*every public operation and actual API-contract or\s+registration operation/i);
+    assert.match(reportingGuidance, /method, transport,[\s\S]*context-header tuple/i);
+    assert.match(reportingGuidance, /response body, content type, and\s+every response header name/i);
+    assert.match(reportingGuidance, /null transport[\s\S]*independently\s+declared method[\s\S]*context.header/i);
+    assert.match(reportingGuidance, /`summaries\.error_groups`[\s\S]*general public errors[\s\S]*operation-specific or source-specific\s+errors[\s\S]*declared HTTP status[\s\S]*retryability value/i);
+    assert.match(reportingGuidance, /source observations[\s\S]*declaration pointers/i);
+    assert.match(reportingGuidance, /reconcile[\s\S]*every execution and error group/i);
+  }
 
   for (const clientPath of [
     `${root}/clients/codex/plugins/bos/skills/bos-app-discovery/SKILL.md`,

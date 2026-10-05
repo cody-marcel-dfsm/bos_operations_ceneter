@@ -161,7 +161,19 @@ these same exact declarations from the validated documents.
 Use the projection's complete `execution` and `limits` rows in the workflow
 report: include every declared field and literal value, including document and
 lifecycle bounds. Preserve declared nulls and absent fields separately. Report
-its pagination tensions with both exact schema-field and flag declarations;
+every `summaries.execution_groups` entry with its complete method, transport,
+and context-header tuple for every public operation and actual API-contract or
+registration operation. Include each declared response body, content type, and
+every response header name. Group identical tuples only when every member
+operation and its source are listed; a null transport retains its independently
+declared method and context header. Account for every `summaries.error_groups`
+entry, including general public errors and operation-specific or source-specific
+errors, with each declared HTTP status and retryability value. Preserve scope,
+contract kind, source observations, and declaration pointers for both ledgers;
+read their retained projection document when the initial summary is bounded.
+Reconcile the final report against every execution and error group before
+finishing, retaining conflicting, null, and absent declarations explicitly.
+Report its pagination tensions with both exact schema-field and flag declarations;
 these observations do not invalidate a contract or establish runtime behavior.
 Use `summaries` for any transport totals, retaining their contract-kind and
 scope groups: public operation-Describe counts and API-contract counts describe

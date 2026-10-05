@@ -88,6 +88,9 @@ function rowFacts(operation, metadata, base) {
   const pointer = row.pointer;
   return {...row,
     execution: executionFacts(operation.execution, pointer + '/execution'),
+    ...(Object.hasOwn(operation.execution, 'response') ? {execution_response: {
+      pointer: pointer + '/execution/response', value: copy(operation.execution.response)
+    }} : {}),
     limits: fields(operation.limits, pointer + '/limits'),
     input: inputFacts(operation.input_schema, pointer + '/input_schema'),
     guarantees: copy(operation.guarantees), guarantees_pointer: pointer + '/guarantees',
@@ -115,6 +118,9 @@ function declarationFingerprint(row) {
     return value;
   };
   normalize(facts);
+  // The validator defines binary response header names as an exact set.
+  // Preserve their returned order in fact rows, normalize only comparison.
+  if (facts.execution_response) facts.execution_response.value.headers.sort();
   // Source row sequence is preserved: no source correspondence or precedence
   // equivalence is inferred. Normalize only each source's unordered declarations.
   if (facts.sources) facts.sources = facts.sources.map(normalize);
@@ -124,6 +130,37 @@ function transportKey(row) {
   if (row.status !== 'described') return 'unavailable';
   const fact = row.execution.find(item => item.field === 'transport');
   return !fact.declared ? 'absent' : fact.value === null ? 'declared_null' : 'value:' + fact.value;
+}
+function declarationGroups(rows) {
+  const executions = new Map(), errors = new Map();
+  const add = (groups, key, declaration, observation) => {
+    if (!groups.has(key)) groups.set(key, {...declaration, observations: []});
+    groups.get(key).observations.push(observation);
+  };
+  for (const row of rows) {
+    if (row.status !== 'described') continue;
+    const source = Object.hasOwn(row, 'source') ? {source: copy(row.source)} : {};
+    const observation = {document_index: row.document_index, operation: row.operation, ...source};
+    const declarations = row.execution.map(({field, declared, value}) => ({field, declared,
+      ...(declared ? {value: copy(value)} : {})}));
+    const response = row.execution_response
+      ? {declared: true, value: copy(row.execution_response.value)} : {declared: false};
+    const normalizedResponse = copy(response);
+    if (normalizedResponse.declared) normalizedResponse.value.headers.sort();
+    add(executions, stable([row.source ?? null, declarations, normalizedResponse]),
+      {...source, declarations, response}, {...observation, execution_pointer: row.pointer + '/execution',
+        ...(row.execution_response ? {response_pointer: row.execution_response.pointer} : {})});
+    add(errors, stable([row.source ?? null, row.errors]), {...source, declaration: copy(row.errors)},
+      {...observation, errors_pointer: row.errors_pointer});
+    for (const nested of row.sources) {
+      if (!Object.hasOwn(nested, 'errors')) continue;
+      add(errors, stable([nested.source, nested.errors]),
+        {source: copy(nested.source), declaration: copy(nested.errors)},
+        {document_index: row.document_index, operation: row.operation,
+          source: copy(nested.source), errors_pointer: nested.errors_pointer});
+    }
+  }
+  return {execution_groups: [...executions.values()], error_groups: [...errors.values()]};
 }
 function summariesOf(operations) {
   const groups = new Map();
@@ -156,7 +193,7 @@ function summariesOf(operations) {
         } else summary.transport[key]++;
       }
     }
-    return summary;
+    return {...summary, ...declarationGroups([...group.operations.values()].flat())};
   });
 }
 
