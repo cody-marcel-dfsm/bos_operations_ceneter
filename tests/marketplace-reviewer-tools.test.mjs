@@ -256,10 +256,15 @@ test('actual retained API contracts validate with canonical wrapper and exact ob
 
 test('installed Markdown references are verified, provenance-bound and contained in published skills',async()=>{
  const root=await realpath(await mkdtemp(join(tmpdir(),'reviewer-installed-references-')));
+ const crmRoot=await realpath(await mkdtemp(join(tmpdir(),'reviewer-installed-crm-')));
  try{
   const refs=join(root,'skills/demo/references');await mkdir(refs,{recursive:true});
   await writeFile(join(root,'skills/demo/SKILL.md'),'# Demo\n[Guide](./references/guide.md)\n[Missing](./references/missing.md)\n[Escape](../../outside.md)\n');
   await writeFile(join(refs,'guide.md'),'# Verified guide\n');
+  await mkdir(join(crmRoot,'skills/shared'),{recursive:true});
+  await writeFile(join(crmRoot,'skills/shared/SKILL.md'),'# CRM shared path\n');
+  await mkdir(join(crmRoot,'skills/crm-only'),{recursive:true});
+  await writeFile(join(crmRoot,'skills/crm-only/SKILL.md'),'# CRM only\n');
   await writeFile(join(root,'outside.md'),'# Outside skills\n');
   await run('git',['init','--quiet'],{cwd:root});await run('git',['add','.'],{cwd:root});
   await run('git',['-c','user.name=Synthetic Test','-c','user.email=test@example.invalid','commit','--quiet','-m','Synthetic published reference fixture'],{cwd:root});
@@ -276,5 +281,18 @@ test('installed Markdown references are verified, provenance-bound and contained
   await assert.rejects(()=>acceptance.call('read_installed',{path:'../../outside.md',product:'bos'}));
   await assert.rejects(()=>acceptance.call('read_installed',{reference_id:'file_999'}));
   await assert.rejects(()=>acceptance.call('read_installed',{reference_id:index.references[0].reference_id,product:'other'}));
- }finally{await rm(root,{recursive:true,force:true});}
+  await mkdir(join(root,'skills/shared'),{recursive:true});
+  await writeFile(join(root,'skills/shared/SKILL.md'),'# BOS shared path\n');
+  await run('git',['add','.'],{cwd:root});await run('git',['-c','user.name=Synthetic Test','-c','user.email=test@example.invalid','commit','--quiet','-m','Synthetic product-scope fixture'],{cwd:root});
+  const scopedCommit=(await run('git',['rev-parse','HEAD'],{cwd:root})).stdout.trim();
+  await run('git',['init','--quiet'],{cwd:crmRoot});await run('git',['add','.'],{cwd:crmRoot});
+  await run('git',['-c','user.name=Synthetic Test','-c','user.email=test@example.invalid','commit','--quiet','-m','Synthetic CRM product fixture'],{cwd:crmRoot});
+  const crmCommit=(await run('git',['rev-parse','HEAD'],{cwd:crmRoot})).stdout.trim();
+  const multi=createInstalledAcceptance({product:'my-crm',installed_roots:{bos:root,'my-crm':crmRoot},published_commits:{bos:scopedCommit,'my-crm':crmCommit}},async()=>({canary:true,kind:'negative'}));
+  const inferred=await multi.call('read_installed',{path:'skills/demo/SKILL.md'});
+  assert.match(inferred.text,/# Demo/);
+  const explicit=await multi.call('read_installed',{product:'my-crm',path:'skills/crm-only/SKILL.md'});
+  assert.match(explicit.text,/# CRM only/);
+  await assert.rejects(()=>multi.call('read_installed',{path:'skills/shared/SKILL.md'}),error=>error.message==='reviewer_installed_product_ambiguous');
+ }finally{await rm(root,{recursive:true,force:true});await rm(crmRoot,{recursive:true,force:true});}
 });

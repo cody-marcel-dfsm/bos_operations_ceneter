@@ -22,6 +22,15 @@ export function documentDigests(value) {
 export function observedDocument(hashes,document) {
  return (hashes??[]).includes(createHash('sha256').update(stable(document)).digest('hex'));
 }
+async function installedProductForPath(config,path) {
+ if(typeof path!=='string'||!path)throw new Error('reviewer_document_not_observed');
+ const matches=[];
+ for(const [product,root] of Object.entries(config.installed_roots??{})){
+  try{await installedPath(root,path);matches.push(product);}catch{}
+ }
+ if(matches.length===1)return matches[0];
+ throw new Error(matches.length?'reviewer_installed_product_ambiguous':'reviewer_installed_product_unresolved');
+}
 export function createInstalledAcceptance(config,getState) {
  const references=new Map(),referenceKeys=new Map();let nextReference=0;
  const registerReference=async(product,path)=>{
@@ -47,9 +56,9 @@ export function createInstalledAcceptance(config,getState) {
   const path=await installedPath(root,relativePath);await readPublishedFile(root,commit,relativePath);await verifyPublishedPackage(root,commit);
   return await new Promise((done,reject)=>{const child=spawn(process.execPath,[path],{stdio:['pipe','pipe','pipe']});let output='',error='';child.stdout.on('data',c=>output+=c);child.stderr.on('data',c=>error+=c);const timer=setTimeout(()=>child.kill(),30000);child.on('error',reject);child.on('close',code=>{clearTimeout(timer);if(code!==0){reject(new Error('reviewer_validation_failed'));return;}try{done(JSON.parse(output));}catch{reject(new Error('reviewer_validation_failed'));}});child.stdin.end(JSON.stringify({pairs:args.pairs}));});
  }
-  const ref=name==='read_installed'&&args.reference_id?references.get(args.reference_id):null;
+ const ref=name==='read_installed'&&args.reference_id?references.get(args.reference_id):null;
  if(name==='read_installed'&&args.reference_id&&(!ref||(args.product&&args.product!==ref.product)||(args.path&&args.path!==ref.path)))throw new Error('reviewer_document_not_observed');
- const selected=ref?.product??args.product??config.product;
+ const selected=name==='validate_installed'?'bos':ref?.product??args.product??await installedProductForPath(config,args.path);
   if(!Object.hasOwn(config.installed_roots,selected))throw new Error('Unknown installed product');
   const root=name==='validate_installed'?(config.installed_roots.bos??config.installed_root):config.installed_roots[selected];
   const path=await installedPath(root,ref?.path??args.path);
