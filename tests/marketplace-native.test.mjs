@@ -250,6 +250,17 @@ test('installed acceptance exposes exactly its supported validator modes and rej
  await assert.rejects(tools.call('validate_installed',{mode:'unknown'}),{message:'reviewer_validator_mode_unsupported'});
 });
 
+test('negative grading permits exact local governance evidence and rejects every discovery or business trace before model execution',async()=>{
+ const {negativeEvidenceAllowed,judgeEvidence}=await import('../scripts/marketplace-native-run.mjs');
+ const empty={native_tools:[],observations:[],denials:[]};
+ const permitted={native_tools:['acceptance_guard_probe','acceptance_guard_status','acceptance_read_installed'].map(tool=>({server:'Acceptance',tool})),observations:[{tool:'guard.status',is_error:false,response:{ready:true}},{tool:'read.installed',is_error:false,response:{text:'Published synthetic governance'}}],denials:[{reason:'guard_canary_denied'}]};
+ assert.equal(negativeEvidenceAllowed(empty),true);assert.equal(negativeEvidenceAllowed(permitted),true);
+ const invalid=[{...permitted,native_tools:[{server:'Acceptance',tool:'bos_get_context'}]},{...permitted,native_tools:[{server:'Acceptance',tool:'acceptance_bos_execute'}]},{...permitted,native_tools:[{server:'Acceptance',tool:'acceptance_validate_installed'}]},{...permitted,native_tools:[{server:'BOS-Platform',tool:'acceptance_read_installed'}]},{...permitted,native_tools:[{server:'reviewer-test-host',tool:'bos_https_operation'}]},{...permitted,observations:[{tool:'bos.get.context',is_error:false}]},{...permitted,observations:[{tool:'guard.status',is_error:true}]},{...permitted,observations:[{tool:'read.installed',is_error:false,response:{valid:false}}]},{...permitted,observations:[{tool:'read.installed',is_error:'false'}]},{...permitted,denials:[{reason:'negative_case_business_call'}]},{...permitted,native_tools:null},{...permitted,observations:null},{...permitted,denials:null},{...permitted,native_tools:[null]},{...permitted,observations:[null]},{...permitted,denials:[null]}];
+ for(const evidence of invalid){assert.equal(negativeEvidenceAllowed(evidence),false);assert.deepEqual(await judgeEvidence(evidence,{kind:'negative'},null,null,null),{pass:false,missing:['negative_case_unapproved_invocation']});}
+ // Eligibility retains semantic grading; it never establishes an actual case PASS.
+ assert.equal(negativeEvidenceAllowed(null),false);
+});
+
 test('grading context retains the exact assertion clock and original source observations while containing private scope identifiers',async()=>{
  const {withGradingContext}=await import('../scripts/marketplace-native-run.mjs');
  const observations=[{tool:'records.search',response:{observed_at:'2026-10-03T12:00:00.123456Z'},is_error:false}];

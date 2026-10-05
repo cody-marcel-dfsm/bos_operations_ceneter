@@ -11,6 +11,9 @@ import os
 import signal
 import sys
 import time
+import subprocess
+import tempfile
+from importlib.metadata import version
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 from pathlib import Path
@@ -32,7 +35,7 @@ MANIFEST_DIR = Path(
 )
 PID_FILE = VAULT_ROOT / "tmp" / "vault-index" / "watcher.pid"
 LOCK_FILE = VAULT_ROOT / "tmp" / "vault-index" / "watcher.lock"
-SYNC_LOCK_FILE = VAULT_ROOT / "tmp" / "vault-index" / "sync.lock"
+SYNC_LOCK_FILE = CHROMA_DIR.resolve().parent / f".{CHROMA_DIR.resolve().name}.access.lock"
 SYNC_LOCK_TIMEOUT_SECONDS = 5.0
 SYNC_LOCK_RETRY_SECONDS = 0.05
 COLLECTION_NAME = "vault_knowledge"
@@ -88,13 +91,43 @@ def utc_timestamp() -> str:
 
 def iter_sources() -> Iterable[Path]:
     """Yield private local Vault sources without consulting Git visibility."""
-    for path in sorted(VAULT_ROOT.rglob("*")):
-        if not path.is_file() or path.suffix.lower() not in TEXT_SUFFIXES:
-            continue
-        relative = path.relative_to(VAULT_ROOT)
-        if any(part in EXCLUDED_PARTS for part in relative.parts):
-            continue
-        yield path
+    found = []
+    for directory, subdirectories, filenames in os.walk(VAULT_ROOT):
+        subdirectories[:] = [name for name in subdirectories if name not in EXCLUDED_PARTS]
+        for name in filenames:
+            path = Path(directory) / name
+            if name not in EXCLUDED_PARTS and path.suffix.lower() in TEXT_SUFFIXES and path.is_file():
+                found.append(path)
+    yield from sorted(found)
+
+
+def canonical_digest(value) -> str:
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def index_configuration() -> dict:
+    return {"index_version": INDEX_VERSION, "collection": COLLECTION_NAME,
+            "chunk_characters": CHUNK_CHARACTERS, "overlap_characters": OVERLAP_CHARACTERS,
+            "embedding": "Chroma DefaultEmbeddingFunction/all-MiniLM-L6-v2",
+            "chromadb_version": version("chromadb"),
+            "indexer_sha256": file_digest(Path(__file__))}
+
+
+def atomic_json(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as output:
+        temporary = Path(output.name)
+        try:
+            output.write((json.dumps(payload, indent=2, sort_keys=True) + "\n").encode())
+            output.flush()
+            os.fsync(output.fileno())
+        except BaseException:
+            temporary.unlink(missing_ok=True)
+            raise
+    try:
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def file_digest(path: Path) -> str:
@@ -148,8 +181,8 @@ class _ReadableHTMLParser(HTMLParser):
             self.parts.append(data.strip())
 
 
-def read_source_text(path: Path) -> str:
-    text = path.read_text(encoding="utf-8", errors="replace")
+def read_source_text(path: Path, raw: bytes | None = None) -> str:
+    text = (path.read_bytes() if raw is None else raw).decode("utf-8", errors="replace")
     if path.suffix.lower() not in {".html", ".htm"}:
         return text
     parser = _ReadableHTMLParser()
@@ -175,9 +208,9 @@ def get_collection():
 def write_manifest(payload: dict) -> Path:
     MANIFEST_DIR.mkdir(parents=True, exist_ok=True)
     path = MANIFEST_DIR / f"{payload['indexed_at']}.json"
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    atomic_json(path, payload)
     latest = MANIFEST_DIR / "latest.json"
-    latest.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    atomic_json(latest, payload)
     return path
 
 
@@ -185,26 +218,45 @@ def _sync_unlocked(*, quiet: bool = False, force_manifest: bool = False) -> dict
     started = time.monotonic()
     indexed_at = utc_timestamp()
     source_hashes = snapshot()
+    configuration = index_configuration()
+    configuration_sha256 = canonical_digest(configuration)
     collection = get_collection()
     existing = collection.get(include=["metadatas"])
 
     ids_by_source: dict[str, list[str]] = {}
     hashes_by_source: dict[str, str] = {}
+    incompatible_sources: set[str] = set()
+    chunks_by_source: dict[str, list[int]] = {}
+    counts_by_source: dict[str, set[int]] = {}
     for item_id, metadata in zip(
         existing.get("ids", []), existing.get("metadatas", [])
     ):
         metadata = metadata or {}
         source = str(metadata.get("source", ""))
         if not source:
-            continue
+            raise RuntimeError("Vault collection contains an unbound source")
         ids_by_source.setdefault(source, []).append(item_id)
         hashes_by_source[source] = str(metadata.get("source_sha256", ""))
+        if metadata.get("source_sha256") != source_hashes.get(source):
+            incompatible_sources.add(source)
+        if metadata.get("index_configuration_sha256") != configuration_sha256:
+            incompatible_sources.add(source)
+        chunk, count = metadata.get("chunk"), metadata.get("chunk_count")
+        if type(chunk) is not int or type(count) is not int or chunk < 0 or count <= 0:
+            incompatible_sources.add(source)
+        else:
+            chunks_by_source.setdefault(source, []).append(chunk)
+            counts_by_source.setdefault(source, set()).add(count)
+
+    for source, identifiers in ids_by_source.items():
+        if counts_by_source.get(source) != {len(identifiers)} or sorted(chunks_by_source.get(source, [])) != list(range(len(identifiers))):
+            incompatible_sources.add(source)
 
     removed = sorted(set(ids_by_source) - set(source_hashes))
     changed = sorted(
         source
         for source, digest in source_hashes.items()
-        if hashes_by_source.get(source) != digest
+        if hashes_by_source.get(source) != digest or source in incompatible_sources
     )
 
     for source in removed + changed:
@@ -216,9 +268,12 @@ def _sync_unlocked(*, quiet: bool = False, force_manifest: bool = False) -> dict
     for source in changed:
         path = PROJECT_ROOT / source
         try:
-            text = read_source_text(path)
-        except OSError:
-            text = ""
+            raw = path.read_bytes()
+            text = read_source_text(path, raw)
+        except OSError as exc:
+            raise RuntimeError(f"Vault source disappeared during indexing: {source}") from exc
+        if hashlib.sha256(raw).hexdigest() != source_hashes[source]:
+            raise RuntimeError(f"Vault source changed during indexing: {source}")
         source_chunks = chunks(text)
         if not source_chunks:
             source_chunks = [f"Empty knowledge file: {source}"]
@@ -235,6 +290,7 @@ def _sync_unlocked(*, quiet: bool = False, force_manifest: bool = False) -> dict
                 "chunk_count": len(source_chunks),
                 "indexed_at": indexed_at,
                 "index_version": INDEX_VERSION,
+                "index_configuration_sha256": configuration_sha256,
             }
             for index in range(len(source_chunks))
         ]
@@ -246,16 +302,18 @@ def _sync_unlocked(*, quiet: bool = False, force_manifest: bool = False) -> dict
             )
         chunk_count += len(source_chunks)
 
+    if snapshot() != source_hashes:
+        raise RuntimeError("Vault sources changed during indexing; manifest was not published")
+
     payload = {
         "index_version": INDEX_VERSION,
         "indexed_at": indexed_at,
         "collection": COLLECTION_NAME,
         "source_count": len(source_hashes),
-        "canonical_source_snapshot_sha256": hashlib.sha256(
-            json.dumps(
-                source_hashes, sort_keys=True, separators=(",", ":")
-            ).encode()
-        ).hexdigest(),
+        "canonical_source_snapshot_sha256": canonical_digest(source_hashes),
+        "source_hashes": source_hashes,
+        "index_configuration": configuration,
+        "index_configuration_sha256": configuration_sha256,
         "collection_count": collection.count(),
         "changed_sources": changed,
         "removed_sources": removed,
@@ -264,7 +322,7 @@ def _sync_unlocked(*, quiet: bool = False, force_manifest: bool = False) -> dict
     }
     manifest = (
         write_manifest(payload)
-        if changed or removed or force_manifest
+        if changed or removed or force_manifest or not (MANIFEST_DIR / "latest.json").is_file()
         else None
     )
     if not quiet:
@@ -284,42 +342,102 @@ def _sync_unlocked(*, quiet: bool = False, force_manifest: bool = False) -> dict
     return payload
 
 
-def sync(
-    *,
-    quiet: bool = False,
-    force_manifest: bool = False,
-    lock_timeout_seconds: float = SYNC_LOCK_TIMEOUT_SECONDS,
-    lock_retry_seconds: float = SYNC_LOCK_RETRY_SECONDS,
-) -> dict:
-    """Serialize Chroma writers across the watcher and one-shot commands."""
-    if lock_timeout_seconds < 0:
-        raise ValueError("Vault sync lock timeout must be non-negative")
-    if lock_retry_seconds <= 0:
-        raise ValueError("Vault sync lock retry interval must be positive")
+def _native_operation(command: list[str], *,
+                      lock_timeout_seconds: float = SYNC_LOCK_TIMEOUT_SECONDS,
+                      lock_retry_seconds: float = SYNC_LOCK_RETRY_SECONDS):
+    """Parent owns the lock until the native child has fully terminated.
+
+    The child inherits the locked descriptor, retaining exclusion even if its
+    parent exits unexpectedly. Native objects never outlive the lock owner.
+    """
+    if lock_timeout_seconds < 0 or lock_retry_seconds <= 0:
+        raise ValueError("Vault lock timeout/retry must be non-negative/positive")
     SYNC_LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
     deadline = time.monotonic() + lock_timeout_seconds
-    with SYNC_LOCK_FILE.open("a+") as sync_lock:
+    with SYNC_LOCK_FILE.open("a+") as lock:
         while True:
             try:
-                fcntl.flock(
-                    sync_lock.fileno(),
-                    fcntl.LOCK_EX | fcntl.LOCK_NB,
-                )
+                # Embedded engine initialization may write even for a query.
+                fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
                 break
             except BlockingIOError as exc:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
-                    raise RuntimeError(
-                        "Vault sync lock "
-                        f"{SYNC_LOCK_FILE} was unavailable for "
-                        f"{lock_timeout_seconds:g} seconds"
-                    ) from exc
+                    raise RuntimeError(f"Vault access lock {SYNC_LOCK_FILE} unavailable for {lock_timeout_seconds:g} seconds") from exc
                 time.sleep(min(lock_retry_seconds, remaining))
-        return _sync_unlocked(quiet=quiet, force_manifest=force_manifest)
+        completed = subprocess.run(
+            [sys.executable, str(Path(__file__).resolve()), "--native-worker-lock-fd", str(lock.fileno()), *command],
+            pass_fds=(lock.fileno(),), capture_output=True, text=True,
+        )
+        if completed.returncode:
+            raise RuntimeError("Vault native operation failed: " + (completed.stderr or completed.stdout).strip())
+        return json.loads(completed.stdout)
+
+
+def sync(*, quiet: bool = False, force_manifest: bool = False,
+         lock_timeout_seconds: float = SYNC_LOCK_TIMEOUT_SECONDS,
+         lock_retry_seconds: float = SYNC_LOCK_RETRY_SECONDS) -> dict:
+    args = ["sync"] + (["--force-manifest"] if force_manifest else [])
+    result = _native_operation(args, lock_timeout_seconds=lock_timeout_seconds,
+                               lock_retry_seconds=lock_retry_seconds)
+    if not quiet:
+        print(f"Vault index synchronized: {len(result['changed_sources'])} changed, {len(result['removed_sources'])} removed")
+    return result
 
 
 def query(text: str, limit: int = 5) -> list[dict]:
+    return _native_operation(["query", text, "--limit", str(limit)])
+
+
+def snapshot_evidence(text: str, supplemental: str | None = None, limit: int = 5) -> dict:
+    args = ["evidence", text, "--limit", str(limit)]
+    if supplemental:
+        args += ["--supplemental", supplemental]
+    return _native_operation(args)
+
+
+def _current_manifest() -> tuple[dict, bytes]:
+    raw = (MANIFEST_DIR / "latest.json").read_bytes()
+    manifest = json.loads(raw)
+    if manifest.get("index_configuration_sha256") != canonical_digest(index_configuration()):
+        raise RuntimeError("Vault index configuration changed; synchronize before querying")
+    if manifest.get("index_configuration_sha256") != canonical_digest(manifest.get("index_configuration")):
+        raise RuntimeError("Vault manifest configuration binding is invalid")
+    if manifest.get("canonical_source_snapshot_sha256") != canonical_digest(manifest.get("source_hashes")):
+        raise RuntimeError("Vault manifest source binding is invalid")
+    if manifest.get("source_hashes") != snapshot():
+        raise RuntimeError("Vault index is stale for canonical sources; synchronize before querying")
+    return manifest, raw
+
+
+def _snapshot_evidence_unlocked(text: str, supplemental: str | None, limit: int) -> dict:
+    started = time.monotonic()
+    sync_started = time.monotonic()
+    _sync_unlocked(quiet=True)
+    sync_seconds = time.monotonic() - sync_started
+    manifest, raw = _current_manifest()
+    queries = [{"text": text, "limit": limit, "results": _query_unlocked(text, limit)}]
+    if supplemental and supplemental != text:
+        queries.append({"text": supplemental, "limit": limit, "results": _query_unlocked(supplemental, limit)})
+    after, after_raw = _current_manifest()
+    if raw != after_raw or manifest != after:
+        raise RuntimeError("Vault index changed during retrieval")
+    return {"kind": "vault-query-snapshot-v1", "index_manifest_sha256": hashlib.sha256(raw).hexdigest(),
+            "canonical_source_snapshot_sha256": manifest["canonical_source_snapshot_sha256"],
+            "source_hashes": manifest["source_hashes"], "indexed_at": manifest["indexed_at"],
+            "index_configuration": manifest["index_configuration"],
+            "index_configuration_sha256": manifest["index_configuration_sha256"], "queries": queries,
+            "timings": {"sync_seconds": round(sync_seconds, 6),
+                        "total_seconds": round(time.monotonic() - started, 6)}}
+
+
+def _query_unlocked(text: str, limit: int = 5) -> list[dict]:
+    if limit <= 0:
+        raise ValueError("Vault query limit must be positive")
+    manifest, _ = _current_manifest()
     collection = get_collection()
+    if collection.count() != manifest["collection_count"]:
+        raise RuntimeError("Vault collection count does not match its manifest; synchronize before querying")
     if collection.count() == 0:
         return []
     results = collection.query(
@@ -333,9 +451,25 @@ def query(text: str, limit: int = 5) -> list[dict]:
         results["metadatas"][0],
         results["distances"][0],
     ):
+        source = metadata["source"]
+        if metadata.get("source_sha256") != manifest["source_hashes"].get(source):
+            raise RuntimeError("Vault query source hash does not match its manifest")
+        if metadata.get("index_configuration_sha256") != manifest["index_configuration_sha256"]:
+            raise RuntimeError("Vault query configuration does not match its manifest")
+        source_path = PROJECT_ROOT / source
+        raw_source = source_path.read_bytes()
+        if hashlib.sha256(raw_source).hexdigest() != metadata["source_sha256"]:
+            raise RuntimeError("Vault query source changed during retrieval")
+        canonical_chunks = chunks(read_source_text(source_path, raw_source)) or [f"Empty knowledge file: {source}"]
+        chunk = metadata["chunk"]
+        if not isinstance(chunk, int) or not 0 <= chunk < len(canonical_chunks) or document != canonical_chunks[chunk]:
+            raise RuntimeError("Vault query chunk does not match its canonical source")
         matches.append(
             {
-                "source": metadata["source"],
+                "source": source,
+                "source_sha256": metadata["source_sha256"],
+                "chunk_sha256": hashlib.sha256(document.encode()).hexdigest(),
+                "index_configuration_sha256": metadata["index_configuration_sha256"],
                 "chunk": metadata["chunk"],
                 "indexed_at": metadata["indexed_at"],
                 "distance": round(float(distance), 6),
@@ -402,6 +536,7 @@ def watch(interval: float, *, daemon: bool = False) -> None:
 def main() -> None:
     ensure_stable_chroma_runtime()
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--native-worker-lock-fd", type=int, help=argparse.SUPPRESS)
     subparsers = parser.add_subparsers(dest="command", required=True)
     sync_parser = subparsers.add_parser("sync")
     sync_parser.add_argument("--quiet", action="store_true")
@@ -409,15 +544,39 @@ def main() -> None:
     query_parser = subparsers.add_parser("query")
     query_parser.add_argument("text")
     query_parser.add_argument("--limit", type=int, default=5)
+    evidence_parser = subparsers.add_parser("evidence")
+    evidence_parser.add_argument("text")
+    evidence_parser.add_argument("--supplemental")
+    evidence_parser.add_argument("--limit", type=int, default=5)
     watch_parser = subparsers.add_parser("watch")
     watch_parser.add_argument("--interval", type=float, default=2.0)
     watch_parser.add_argument("--daemon", action="store_true")
     args = parser.parse_args()
 
-    if args.command == "sync":
+    if args.native_worker_lock_fd is not None:
+        # Only the lock-holding parent starts this branch. Reject unrelated FDs.
+        descriptor = os.fstat(args.native_worker_lock_fd)
+        expected = SYNC_LOCK_FILE.stat()
+        if (descriptor.st_dev, descriptor.st_ino) != (expected.st_dev, expected.st_ino):
+            raise RuntimeError("Invalid native worker lock descriptor")
+        # Reacquiring an inherited open-file-description lock succeeds; an
+        # unheld descriptor must acquire exclusion before initializing Chroma.
+        fcntl.flock(args.native_worker_lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if args.command == "sync":
+            result = _sync_unlocked(quiet=True, force_manifest=args.force_manifest)
+        elif args.command == "query":
+            result = _query_unlocked(args.text, args.limit)
+        elif args.command == "evidence":
+            result = _snapshot_evidence_unlocked(args.text, args.supplemental, args.limit)
+        else:
+            raise RuntimeError("Native worker cannot watch")
+        print(json.dumps(result, indent=2))
+    elif args.command == "sync":
         sync(quiet=args.quiet, force_manifest=args.force_manifest)
     elif args.command == "query":
         print(json.dumps(query(args.text, args.limit), indent=2))
+    elif args.command == "evidence":
+        print(json.dumps(snapshot_evidence(args.text, args.supplemental, args.limit), indent=2))
     else:
         watch(args.interval, daemon=args.daemon)
 

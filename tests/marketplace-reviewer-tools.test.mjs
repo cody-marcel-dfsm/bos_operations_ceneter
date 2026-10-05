@@ -5,7 +5,7 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
-import {createReviewerTools,reviewerDiscoveryDocument} from '../scripts/marketplace-reviewer-tools.mjs';
+import {createReviewerTools,reviewerDiscoveryDocument,readReviewerDocument} from '../scripts/marketplace-reviewer-tools.mjs';
 import {syntheticAppDescribe,syntheticOperationDescribe,syntheticApiContract} from './helpers/synthetic-bos-discovery-service.mjs';
 import {digest} from '../scripts/marketplace-prompt-catalog.mjs';
 import {documentDigests,observedDocument,installedValidatorModes,createInstalledAcceptance} from '../scripts/marketplace-native-resources.mjs';
@@ -122,6 +122,19 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
 
   assert.equal(result.isError,undefined);assert.equal(result.document.contract_version,'lead-director-describe/v1');
   assert.equal(result.advertised_https_contacts.length,1);assert.equal(requests,1);
+  const retained=result.advertised_https_contacts[0];
+  assert.equal(retained.contact,undefined);assert.equal(retained.parent_document_id,result.document_id);assert.equal(retained.pointer,'/operations/0');assert.equal(retained.operation,'search');
+  const beforeRead=requests,observationsBeforeRead=state.observations.length,validationBeforeRead=structuredClone(state.validated_contracts);
+  assert.deepEqual((await tools.call('acceptance_read_document',{document_id:retained.document_id,pointer:'/input_schema'})).value,response.operations[0].input_schema);
+  assert.deepEqual((await tools.call('acceptance_read_document',{document_id:result.document_id,pointer:retained.pointer+'/input_schema'})).value,response.operations[0].input_schema);
+  assert.equal((await tools.call('acceptance_read_document',{document_id:retained.document_id,pointer:'/approval'})).found,false);
+  assert.equal(requests,beforeRead);assert.equal(state.observations.length,observationsBeforeRead);assert.deepEqual(state.validated_contracts,validationBeforeRead);
+  for(const override of [{kind:'negative'},{canary:false},{handle:null},{allowed_effects:[]}]){
+    const saved=Object.fromEntries(Object.keys(override).map(key=>[key,state[key]]));Object.assign(state,override);
+    assert.equal((await tools.call('acceptance_read_document',{document_id:retained.document_id})).isError,true);Object.assign(state,saved);
+  }
+  assert.equal(requests,beforeRead);
+  assert.deepEqual(await tools.call('acceptance_read_document',{document_id:'doc_forged'}),{isError:true,reason:'reviewer_document_not_observed'});
   assert.doesNotMatch(JSON.stringify(result),/bos_ctx_v2_|context_handle/);
   assert.equal((await tools.call('bos_https_describe',args)).isError,undefined);
   assert.equal(state.fixtureResponses.length,2);
@@ -150,8 +163,35 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   assert.match(refreshed.document_id,/^doc_[1-9][0-9]*$/);
   assert.deepEqual(await tools.call('acceptance_validate_installed',{mode:'app-describe',document_id:observed.document_id}),{isError:true,reason:'reviewer_document_not_observed'});
   assert.deepEqual(await tools.call('bos_https_operation',{contact_id:result.advertised_https_contacts[0].contact_id,payload:{}}),{isError:true,reason:'reviewer_contact_not_observed'});
+  assert.deepEqual(await tools.call('acceptance_read_document',{document_id:retained.document_id}),{isError:true,reason:'reviewer_document_not_observed'});
   assert.equal((await tools.call('acceptance_compare_schemas',{pairs:[schemaPair]})).isError,true);
  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('retained document reads preserve escaped pointers, absent/null/false and private redaction',()=>{
+ const raw={'a/b':{'~key':[null,false]},credentials:'private-value',public_value:'visible'};
+ const read=pointer=>readReviewerDocument(raw,{document_id:'doc_1',pointer});
+ assert.equal(read('/a~1b/~0key/0').value,null);assert.equal(read('/a~1b/~0key/1').value,false);
+ for(const pointer of ['/missing','/a~1b/~0key/01','/a~1b/~0key/length','/toString','/credentials'])assert.equal(read(pointer).found,false);
+ assert.deepEqual(read('').value,{'a/b':{'~key':[null,false]},public_value:'visible'});
+ assert.doesNotMatch(JSON.stringify(read('')),/private-value/);
+ for(const pointer of ['relative','/~2','/~'])assert.throws(()=>read(pointer),/reviewer_document_not_observed/);
+ for(const offset of [-1,1.5,'0',1000])assert.throws(()=>readReviewerDocument(raw,{document_id:'doc_1',offset}),/reviewer_document_not_observed/);
+});
+
+test('large retained JSON reconstructs exactly within UTF8 reply bounds without splitting surrogate pairs',()=>{
+ const raw={schema:{description:('\u0000"\\😀é漢').repeat(4000),properties:{nested:{type:'string'}}}};
+ let offset=0,serialized='',chunks=0;
+ do{
+  const response=readReviewerDocument(raw,{document_id:'doc_1',pointer:'/schema',offset});
+  assert.equal(response.format,'json_text');assert.equal(response.offset,offset);assert.ok(Buffer.byteLength(JSON.stringify(response))<=8192);
+  assert.equal(Buffer.from(response.text).toString('utf8'),response.text);serialized+=response.text;chunks++;
+  if(response.complete){assert.equal(response.serialized_bytes,Buffer.byteLength(serialized));break;}
+  assert.ok(response.next_offset>offset);offset=response.next_offset;
+ }while(chunks<1000);
+ assert.ok(chunks>1);assert.deepEqual(JSON.parse(serialized),raw.schema);
+ const scalar='😀'.repeat(4000);
+ assert.throws(()=>readReviewerDocument({scalar},{document_id:'doc_1',pointer:'/scalar',offset:2}),/reviewer_document_not_observed/);
 });
 
 test('standard JSON resource extraction preserves actual document provenance and passes the published validator',async()=>{

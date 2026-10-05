@@ -34,7 +34,7 @@ test("ordinary agents call the Oracle utility and cannot act as approver", () =>
   assert.match(workflow, /pull_request[\s\S]*verify-commit\s+"\$\{\{ github\.sha \}\}"/i);
   assert.match(workflow, /else[\s\S]*verify-range/i);
   assert.match(oracleUtility, /"--ignore-user-config"/i);
-  assert.match(oracleUtility, /vault_index\.py", "sync", "--quiet"/i);
+  assert.match(oracleUtility, /vault_index\.py", "evidence", VAULT_QUERY/i);
   assert.match(oracleUtility, /vault-query\.json/i);
   assert.match(oracleUtility, /A REJECTED authentication review may report APPROVED, MISSING, or INVALID/i);
   assert.match(oracleUtility, /proposal-review/);

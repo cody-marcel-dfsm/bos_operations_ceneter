@@ -19,6 +19,20 @@ An accessible-inventory or readiness assessment can complete with those facts;
 an organization-wide directory is needed for facts beyond that observed scope.
 Missing business-data or execution prerequisites still stop the affected task.
 
+Match the assessment to the requested facts. App/service lists use fresh
+context identities and the actual app-owned public-service catalog; identity
+and capability summaries use the selected context and native capability
+catalog. Readiness assessments use source-backed readiness and prerequisite
+evidence, preserving empty states, provenance, freshness, and every observed
+conflict. Retrieve and validate an advertised search contract when it declares
+source readiness, preserving those source rows alongside the service catalog's
+declarations. Tool/workflow availability lists include the actual advertised
+journey-registration contract and its supported authoring/runtime capabilities.
+An explicitly detailed or comprehensive contract audit uses the full-inventory
+reconciliation below. Retrieve operation schemas when the requested facts
+require them; ordinary availability summaries do not require an exhaustive
+native/public schema comparison.
+
 For full inventories, answer with one exact selected-identity row, coverage
 totals, and a source-keyed reconciliation table. Use separate rows for each
 advertised native operation (including each alias), each described public API
@@ -58,7 +72,7 @@ For a full inventory, cover all currently advertised operation keys and catalog 
 using the returned Describe batch maximum for required descriptions and
 explicitly identifying unresolved descriptions.
 
-Keep the table source-keyed through final drafting. Never combine native and
+For full contract inventories, keep the table source-keyed through final drafting. Never combine native and
 public declarations into one row, and never assign a schema-comparison result
 to another operation based on similar names or shapes. Include failed and
 unavailable reads with their effect on the inventory. Mark `journey_runtime` as
@@ -78,15 +92,22 @@ The existing `lead-director.journeys.register` API contract declares
 `lead-director-journey-registration/v1`. Validate that application-owned
 registration subtype through `api-contract`, preserving its raw BOSL schemas,
 limits, guarantees, execution contact, public errors, and private freshness.
-Plugin operation contracts retain their structured source requirements.
+Plugin operation contracts retain their structured source requirements. For tools/workflow
+and read-only feasibility assessments, follow the application's exact
+`journey_registration.contract.capability` and `.input` through current
+discovery and validate the actual returned contract. Enumerate this link
+separately from public Describe operations and native API-contract links; mark
+it unresolved when missing or unavailable. Complete public Describe retrieval
+does not establish registration-contract retrieval or validation.
 
 Copy advertised resource references exactly as returned by the current host,
 preserving their spelling and encoding. When the host presents a private
 placeholder, it owns resolution to the original reference. Resolve a missing
 reference through current advertised discovery before using it.
 
-Before presenting capabilities or prerequisites, reconcile readiness,
-execution mode, limits, capability flags, and input/output schemas. Report
+Before presenting capabilities or prerequisites, reconcile the readiness,
+execution mode, limits, capability flags, and input/output schemas needed for
+the requested facts. Report
 observed disagreements explicitly, including each conflicting declaration;
 leave the affected feature unresolved until its governing contract clarifies
 it. Distinguish source readiness from the transport or runtime prerequisites
@@ -173,11 +194,16 @@ The corresponding deterministic operation Describe response repeats those
 exact fields for every ready operation. Validate it with
 `validate-discovery.mjs operation-describe` before planning or invocation.
 
-For read-only journey feasibility, follow the same advertised BOSL resources and
-operation-contract links as authoring. Read and validate the actual advertised
-journey-registration contract before reporting compiler/runtime limits,
-required inputs, guarantees, failures, or prerequisites. Return the assessment
-without registering or executing a journey.
+For read-only journey feasibility, first read and validate the actual
+advertised journey-registration contract using its exact capability and input.
+Assess its raw BOSL input/output schemas, supported node types, required
+inputs, guarantees, compiler/runtime limits, execution declaration, and public
+errors. Use the actual service catalog and relevant operation contracts for
+source capabilities and readiness. Read additional advertised BOSL schema,
+reference, and examples resources only when needed to resolve missing grammar
+or feasibility evidence; identify unresolved evidence explicitly. Return the
+assessment without registering or executing a journey. Actual authoring
+continues to require the advertised BOSL resources and operation contracts.
 
 Follow every `api.contract.get` link with its exact returned input. An operation
 identifier returned by HTTP Describe is a selector for that HTTP contract; it
