@@ -39,6 +39,7 @@ const failureCodes = new Set([
   "reviewer_mcp_request_failed",
   "reviewer_mcp_response_invalid",
   "reviewer_model_failed",
+  "reviewer_model_timeout",
   "reviewer_model_policy_rejection",
   "reviewer_model_rate_limit",
   "reviewer_model_authentication_failure",
