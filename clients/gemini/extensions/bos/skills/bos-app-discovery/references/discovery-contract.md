@@ -60,7 +60,8 @@ installation, role, and source provenance. Copy each public label verbatim from
 the selected current `bos.get.context` row; preserve that exact context
 observation and row pointer as its source. A host-provided `authorized_context`
 row is a projection of that observation: copy its labels and source reference
-into the report. It supplies reporting provenance and creates no authorization
+into the report, retaining that same typed row from each successful scoped
+discovery wrapper. Attribute raw catalog metadata separately. It supplies reporting provenance and creates no authorization
 or execution permission. Each additional accessible application, installation,
 or role claim maps to its own fresh authorized context row within the requested
 scope.
@@ -114,6 +115,25 @@ rows in the report. Execution URIs and authority values are omitted; context
 header names are declarations only. The ordinary CLI accepts observed documents
 and descriptive scope labels; a supported retained-document host capability
 resolves the exact validated originals and scope itself.
+
+When a verified retained-document host supports default selection, omit
+`document_ids` after discovering and validating the contracts relevant to the
+request. It selects only current retained, successfully validated
+operation-Describe parents and API-contract originals. Reconcile its returned
+`source_documents` with the requested coverage; this selection supplies no
+missing discovery or validation. Explicit IDs must still be exact eligible
+returned references.
+
+The ordinary CLI's complete projection remains unchanged. A bounded host may
+return the derived `document_id`, `summaries_pointer`, `summary_count`, and
+`operations_pointer`, with compact summaries carrying their own `pointer` and
+`execution_groups`/`error_groups` references containing `count` and `pointer`.
+Copy these exact returned references for bounded reads. When compact summaries
+are omitted, inspect `summaries_pointer` first, then read every referenced group
+completely, following returned chunk offsets until complete. Read the retained
+`operations_pointer` for the execution and limit rows needed by the request.
+The compact response preserves access to the complete retained projection and
+establishes no additional source evidence or validation.
 
 Use `summaries.execution_groups` as a complete reporting ledger: account for
 every public operation and actual API-contract or registration operation with

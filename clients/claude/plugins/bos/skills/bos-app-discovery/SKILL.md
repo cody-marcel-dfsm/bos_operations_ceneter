@@ -89,7 +89,9 @@ application, installation, role, and source provenance. Copy its public labels
 verbatim from the selected current `bos.get.context` row. When the host returns
 an `authorized_context` reporting row, preserve that row's labels and exact
 source reference; ordinary clients retain the context observation and selected
-row pointer. Every additional accessible-context claim requires its own fresh
+row pointer. Carry that same typed row from successful scoped discovery
+wrappers into the assessment; raw application catalogs remain separately
+attributed metadata. Every additional accessible-context claim requires its own fresh
 context row within the requested scope.
 
 When the user explicitly requests configured role definitions, report them
@@ -155,8 +157,26 @@ the descriptive `organization`, `application`, `installation`, and `role`
 labels from the selected context. Scope labels group declarations and supply no
 authorization proof. In a host offering `acceptance_project_contract_facts`,
 pass only its retained validated document IDs; the host supplies the originals
-and scope. Preserve missing helper support as a reporting limitation and report
+and scope. When that verified host supports default selection, omit
+`document_ids` after the relevant contracts have been discovered and validated
+to select its current retained, successfully validated operation-Describe and
+API-contract originals. Inspect the returned `source_documents` to reconcile
+coverage with the requested facts; default selection supplies no missing
+discovery or validation. Explicit IDs still require exact returned eligible
+references. Preserve missing helper support as a reporting limitation and report
 these same exact declarations from the validated documents.
+
+The ordinary projector returns full summaries and operation rows. A bounded
+host may return `document_id`, `summaries_pointer`, `summary_count`, and
+`operations_pointer` for the complete retained projection, with compact
+summaries carrying `pointer` and `execution_groups`/`error_groups` objects
+containing `count` and `pointer`. Copy those exact returned references into
+bounded document reads. If compact summaries are omitted, read
+`summaries_pointer` first; read every referenced group completely and follow
+returned chunk offsets until complete. Use `operations_pointer` for the
+underlying execution and limit rows needed by the assessment. The compact
+response and the complete retained projection describe the same observations;
+neither supplies a new source or validation proof.
 
 Use the projection's complete `execution` and `limits` rows in the workflow
 report: include every declared field and literal value, including document and
