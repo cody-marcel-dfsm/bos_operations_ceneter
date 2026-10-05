@@ -44,16 +44,26 @@ operation's input or output schema, effects, field bounds, limits, pagination,
 or error declarations, retrieve the operation-level public contract from the
 current authorized application before writing the comparison.
 
-For live `bos-identity-mcp/v2`, use the exact advertised HTTPS Describe contact
-through the host-native authenticated HTTP capability. Request only the needed
-operation keys within that contact's declared batch maximum, preserve the
-returned document and operation contacts, and validate the complete parent
-response with `operation-describe` before comparing. A native tool descriptor
-or MCP semantic capability `app.describe` result is a separate evidence
-surface. It does not substitute for an advertised HTTPS Describe response or
-establish HTTPS observation. If the contact is absent or the response cannot be
-retrieved and validated, report the requested comparison as unresolved and
-identify the missing evidence instead of claiming it is complete.
+For live `bos-identity-mcp/v2`, follow this order:
+
+1. Select the exact `app.describe` resource advertised for the authorized
+   application in the BOS resource catalog, read its exact URI, and validate
+   that returned resource with `app-describe`.
+2. Match each operation named by the request to the exact keys in the validated
+   resource's `describe.operations` list. Request every matching key through the
+   advertised host-authenticated HTTPS Describe capability, in batches no
+   larger than its declared maximum. For a create-and-update comparison, request
+   both `create` and `update` when those exact keys are advertised.
+3. Preserve each complete HTTPS Describe parent response and validate it with
+   `operation-describe`. Compare the requested fields, effects, limits, and
+   errors from the returned operation objects. Do not finish from native MCP
+   tool descriptors, the semantic `app.describe` operation, or schema-difference
+   output alone; those are separate evidence surfaces and cannot substitute for
+   the requested public operation descriptions.
+
+If the requested operation key is not advertised, a key is missing from the
+response, or its response cannot be retrieved and validated, report that part
+of the comparison as unresolved and identify the missing evidence.
 
 For legacy discovery, follow the exact advertised `api.contract.get` link with
 its returned input and validate that response envelope as legacy evidence. Do
