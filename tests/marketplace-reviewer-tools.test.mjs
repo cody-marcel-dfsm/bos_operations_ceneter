@@ -31,8 +31,11 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   let current=context,requests=0,response=describeResponse(),nativeSchema={type:'object',required:[],properties:{query:{type:'string'}}};
   const session={rpc:async(method,params)=>{
    if(method==='tools/list')return {tools:[{name:'bos_get_context'},{name:'bos_list_context_tools'}]};
-   if(method==='resources/read')return {contents:[{uri,mimeType:'application/json',text:JSON.stringify(app)}]};
-   if(method==='resources/list')return {context_handle:current.context_handle,resources:[{uri,name:'app.describe',mimeType:'application/json'}]};
+   if(method==='resources/read')return {contents:[{uri:params.uri,mimeType:'application/json',text:JSON.stringify(app)}]};
+   if(method==='resources/list')return {resources:[
+    {uri:uri+'?context_handle='+current.context_handle,name:'app.describe',mimeType:'application/json'},
+    {uri:uri+'?context_handle='+('bos_ctx_v2_'+'c'.repeat(64)),name:'app.describe',mimeType:'application/json'}
+   ]};
    if(params.name==='bos_list_context_tools')return {structuredContent:{context_handle:current.context_handle,tools:[{name:'synthetic_search',inputSchema:nativeSchema,outputSchema:{type:'object',additionalProperties:true}}]}};
    assert.equal(params.name,'bos_get_context');return {structuredContent:{contract_version:'bos-identity-mcp/v2',contexts:[current]}};
   },request:async(url,options)=>{
@@ -48,9 +51,20 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   assert.deepEqual(definition.inputSchema.properties.path.enum,['skills/bos-app-discovery/scripts/validate-discovery.mjs']);
   assert.match(definition.description,/app-describe.*app.describe resource/);
   assert.match(definition.description,/operation-describe.*HTTPS Describe response/);
+  const comparisonDefinition=tools.definitions.find(row=>row.name==='acceptance_compare_schemas');
+  assert.match(comparisonDefinition.description,/acceptance_validate_installed call returned valid:true/);
+  assert.match(comparisonDefinition.description,/legacy api-contract response/);
+  assert.match(comparisonDefinition.description,/bos_get_context are not schema evidence/);
   const observed=await tools.call('bos_read_resource',{uri});
   assert.match(observed.document_id,/^doc_[1-9][0-9]*$/);
   assert.equal((await tools.call('bos_read_resource',{uri})).document_id,observed.document_id);
+  const listedResources=await tools.call('bos_list_resources',{});
+  assert.equal(listedResources.document.resources.length,1);
+  assert.equal(listedResources.document.resources[0].name,'app.describe');
+  assert.doesNotMatch(JSON.stringify(listedResources.document),new RegExp(context.context_handle));
+  assert.doesNotMatch(JSON.stringify(listedResources.document),/bos_ctx_v2_b{64}/);
+  const listedRead=await tools.call('bos_read_resource',{uri:listedResources.document.resources[0].uri});
+  assert.equal(listedRead.document_id,observed.document_id);
   const args={document_id:observed.document_id,operations:['search']};
   assert.equal((await tools.call('bos_https_describe',args)).isError,true);assert.equal(requests,0);
   const invalidMode=await tools.call('acceptance_validate_installed',{path:'skills/bos-app-discovery/scripts/validate-discovery.mjs',mode:'invented-mode',document_id:observed.document_id});
@@ -79,6 +93,10 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   assert.equal(receipt.tool,'validate.installed');assert.equal(receipt.input.mode,'operation-describe');assert.equal(receipt.response.valid,true);assert.equal(receipt.is_error,false);assert.deepEqual(receipt.input.document,response);
   assert.deepEqual({validated:state.validated_contracts,failed:state.failed_validations},validationState);
   const schemaPair={left:{document_id:result.document_id,pointer:'/operations/0/input_schema'},right:{document_id:result.document_id,pointer:'/operations/0/output_schema'}};
+  current={...context,inputSchema:{type:'object',properties:{untrusted:{type:'string'}}}};
+  const identityDocument=await tools.call('bos_get_context',{});
+  assert.deepEqual(await tools.call('acceptance_compare_schemas',{pairs:[{left:{document_id:identityDocument.document_id,pointer:'/contexts/0/inputSchema'},right:schemaPair.left}]}),{isError:true,reason:'reviewer_document_not_observed'});
+  current=context;
   const nativeCatalog=await tools.call('bos_list_context_tools',{});
   const nativeComparison=await tools.call('acceptance_compare_schemas',{pairs:[{left:{document_id:nativeCatalog.document_id,pointer:'/tools/0/inputSchema'},right:schemaPair.left}]});
   assert.equal(nativeComparison.isError,undefined);assert.ok(nativeComparison.comparisons[0].declaration_differences.some(row=>row.pointer==='/required'));
@@ -124,9 +142,10 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   current={...context,context_handle:'bos_ctx_v2_'+'b'.repeat(64)};
   assert.equal((await tools.call('bos_https_describe',args)).isError,true);assert.equal(requests,before);
   assert.deepEqual(await tools.call('acceptance_validate_installed',{mode:'app-describe',document_id:observed.document_id}),{isError:true,reason:'reviewer_document_not_observed'});
-  await tools.call('bos_get_context',{});await tools.call('bos_list_resources',{});
+  await tools.call('bos_get_context',{});const refreshedResources=await tools.call('bos_list_resources',{});
   assert.equal(state.handle,current.context_handle);
-  const refreshed=await tools.call('bos_read_resource',{uri});
+  assert.equal(refreshedResources.document.resources.length,1);
+  const refreshed=await tools.call('bos_read_resource',{uri:refreshedResources.document.resources[0].uri});
   assert.notEqual(refreshed.document_id,observed.document_id);
   assert.match(refreshed.document_id,/^doc_[1-9][0-9]*$/);
   assert.deepEqual(await tools.call('acceptance_validate_installed',{mode:'app-describe',document_id:observed.document_id}),{isError:true,reason:'reviewer_document_not_observed'});

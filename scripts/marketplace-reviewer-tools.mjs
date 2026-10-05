@@ -46,12 +46,12 @@ const spec=(name,description,properties={},required=[])=>({type:'function',name,
 const definitions=[
   spec('acceptance_guard_probe','Verify the test guard by requesting a deliberate denial.'),
   spec('acceptance_guard_status','Check guard readiness and obtain the real current UTC host reference clock. Re-read immediately before calculating observation age; this clock supplies no provider-readiness evidence.'),
-  spec('acceptance_compare_schemas','Compare exact schema declarations from current observed and validated documents. Supply one to 32 pairs with returned document_id and exact JSON Pointer ending in inputSchema, outputSchema, input_schema or output_schema. The verified published helper reports all declaration differences; it proves no semantic correspondence, compatibility, validation or readiness.',{pairs:{type:'array',minItems:1,maxItems:32,items:{type:'object',additionalProperties:false,required:['left','right'],properties:Object.fromEntries(['left','right'].map(key=>[key,{type:'object',additionalProperties:false,required:['document_id','pointer'],properties:{document_id:{type:'string'},pointer:{type:'string'}}}]))}}},['pairs']),
+  spec('acceptance_compare_schemas','Use only after app.describe is validated and no published validation failure remains. Compare exact JSON Schema values (object or boolean) from a document_id returned by bos_list_context_tools or bos_https_describe, or from any document_id whose acceptance_validate_installed call returned valid:true for its actual document type, including a valid legacy api-contract response. Each exact JSON Pointer must select a schema under inputSchema, outputSchema, input_schema, or output_schema. Identity/context observations such as bos_get_context are not schema evidence unless the published validator successfully validates that exact document and the pointer selects a schema. The helper reports declaration differences only; it proves no semantic correspondence, compatibility, validation, or readiness.',{pairs:{type:'array',minItems:1,maxItems:32,items:{type:'object',additionalProperties:false,required:['left','right'],properties:Object.fromEntries(['left','right'].map(key=>[key,{type:'object',additionalProperties:false,required:['document_id','pointer'],properties:{document_id:{type:'string'},pointer:{type:'string'}}}]))}}},['pairs']),
   spec('acceptance_read_installed','Read a verified published installed skill or reference. Copy the exact product/path pair from the offered skill index. If product is omitted, the host accepts only a path unique to one verified installed product. Each Markdown response offers verified references with product provenance and explicit unavailable-reference status. A returned reference_id binds its exact published product and file. Never invent a filename, product, or reference path.',{product:{type:'string'},path:{type:'string'},reference_id:{type:'string'}},[]),
   spec('acceptance_validate_installed','Validate an actual discovered document with the host-bound verified published validator; no validator path is needed. Supply its returned document_id; the host retains its exact original bytes. Use app-describe for the app.describe resource and operation-describe for the complete HTTPS Describe response (the parent document). Individual HTTPS operation contacts are covered by that parent validation; they are not legacy api-contract envelopes. Use api-contract only for the actual legacy api.contract.get response, and service-journey for a service journey description. Other supported modes are contact, service, graph, plugins and discovery-refresh.',{path:{type:'string',enum:[discoveryValidatorPath]},mode:{type:'string',enum:installedValidatorModes},document_id:{type:'string'}},['mode','document_id']),
   spec('bos_get_context','Discover and select the exact marketplace reviewer scope; the test host retains its private selector.'),
   spec('bos_list_context_tools','Discover tools for the selected reviewer scope.'),
-  spec('bos_list_resources','List BOS discovery resources for the reviewer connection.'),
+  spec('bos_list_resources','List only BOS discovery resources advertised for the exact selected reviewer context. The host removes resources from other contexts before returning the list.'),
   spec('bos_read_resource','Read an advertised BOS discovery resource. Copy the exact returned uri string, including any host-presented private placeholder. Preserve spelling and encoding; the host resolves its retained original reference.',{uri:{type:'string'}},['uri']),
   spec('bos_control_discover','Run a discovered BOS control-plane operation. Business operations use bos_https_operation.',{operation:{type:'string',enum:[...controls]},arguments:{type:'object'}},['operation','arguments']),
   spec('bos_https_describe','POST one to five current advertised operation keys to the validated app.describe contact. Use its observed document_id. The host validates the exact parent response with the verified published operation-describe validator before exposing contacts; published_validation identifies that proof and its coverage. Additional applicable published prerequisites remain required.',{document_id:{type:'string'},operations:{type:'array',minItems:1,maxItems:5,uniqueItems:true,items:{type:'string'}}},['document_id','operations']),
@@ -162,7 +162,23 @@ export async function createReviewerTools({session,state,release}) {
       const response=await mcp('bos.get_context',{});return response;
     });
     if(name==='bos_list_context_tools'){const result=await guarded({tool_name:'mcp__BOS__bos_list_context_tools',tool_input:{context_handle:state.handle}},()=>mcp('bos.list_context_tools',{context_handle:state.handle}));if(!result.isError)trustedSchemaDocuments.add(result.document_id);return result;}
-    if(name==='bos_list_resources')return guarded({tool_name:'list_mcp_resources',tool_input:{server:'BOS-Platform'}},()=>session.rpc('resources/list'));
+    if(name==='bos_list_resources')return guarded({tool_name:'list_mcp_resources',tool_input:{server:'BOS-Platform'}},async()=>{
+      const listed=await session.rpc('resources/list');
+      if(!state.handle||!Array.isArray(listed?.resources))throw new Error('reviewer_resource_list_invalid');
+      if(typeof listed.context_handle==='string'&&listed.context_handle!==state.handle)throw new Error('reviewer_document_scope_invalid');
+      const contextBound=listed.context_handle===state.handle;
+      const resources=listed.resources.filter(row=>{
+        if(!row||typeof row.uri!=='string')return false;
+        try {
+          const uri=new URL(row.uri);
+          if(uri.protocol!=='bos:')return false;
+          const handles=uri.searchParams.getAll('context_handle');
+          if(handles.length===1)return handles[0]===state.handle;
+          return handles.length===0&&contextBound;
+        }catch{return false;}
+      });
+      return {...listed,resources};
+    });
     if(name==='bos_read_resource'){
       const matches=(state.resources??[]).filter(uri=>sanitized(uri)===args.uri);
       if(matches.length!==1)throw new Error('reviewer_resource_not_observed');

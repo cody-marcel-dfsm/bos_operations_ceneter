@@ -86,10 +86,14 @@ pagination, and error declarations. Do not use `acceptance_compare_schemas` or
 `compare.schemas` to establish any of those declarations. Call a schema helper
 only when a structural schema difference is itself requested, and only after
 the exact source documents have been observed and validated; copy each returned
-`document_id` and exact schema JSON Pointer from those documents. If either
-validated document or exact schema pointer is unavailable, leave that
-structural comparison unresolved and report the missing evidence. Never guess,
-reuse, or reconstruct a document identifier or schema pointer.
+`document_id` and exact schema JSON Pointer from those documents. For the
+reviewer-native comparison tool, each source must be returned by
+`bos_list_context_tools` or `bos_https_describe`, or pass
+`acceptance_validate_installed` with `valid: true` for its actual document type,
+including a validated legacy `api-contract` response. Identity, readiness, and
+ordinary text documents are not schema evidence. If either validated document
+or exact schema pointer is unavailable, leave that structural comparison
+unresolved and report the missing evidence. Never guess, reuse, or reconstruct a document identifier or schema pointer.
 
 Report execution transport only when the operation's `execution.transport`
 field explicitly declares it. HTTPS Describe is the contract retrieval
