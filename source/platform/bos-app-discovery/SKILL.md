@@ -61,6 +61,17 @@ For live `bos-identity-mcp/v2`, follow this order:
    output alone; those are separate evidence surfaces and cannot substitute for
    the requested public operation descriptions.
 
+For the semantic comparison, use the validated returned operation objects as
+the evidence for required and optional fields, effects, bounds, limits,
+pagination, and error declarations. Do not use `acceptance_compare_schemas` or
+`compare.schemas` to establish any of those declarations. Call a schema helper
+only when a structural schema difference is itself requested, and only after
+the exact source documents have been observed and validated; copy each returned
+`document_id` and exact schema JSON Pointer from those documents. If either
+validated document or exact schema pointer is unavailable, leave that
+structural comparison unresolved and report the missing evidence. Never guess,
+reuse, or reconstruct a document identifier or schema pointer.
+
 If the requested operation key is not advertised, a key is missing from the
 response, or its response cannot be retrieved and validated, report that part
 of the comparison as unresolved and identify the missing evidence.
