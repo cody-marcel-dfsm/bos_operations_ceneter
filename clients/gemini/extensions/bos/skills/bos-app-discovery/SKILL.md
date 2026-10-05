@@ -83,11 +83,20 @@ remain required; the package does not intercept or enforce arbitrary API calls.
 
 Use `bos-mcp-client`'s first-action and identity-context rules for every BOS
 assessment. Establish fresh authorized contexts and validate the selected
-application description. Report organization, application, installation, and
-role only from those context rows; keep configured role definitions labeled as
-application metadata when explicitly requested. The selected context's role is
-the current identity. A role name in an application catalog supplies no
-additional accessible context.
+application description. Start each identity-bearing app, tool, workflow, or
+readiness report with an **Authorized context** row containing organization,
+application, installation, role, and source provenance. Copy its public labels
+verbatim from the selected current `bos.get.context` row. When the host returns
+an `authorized_context` reporting row, preserve that row's labels and exact
+source reference; ordinary clients retain the context observation and selected
+row pointer. Every additional accessible-context claim requires its own fresh
+context row within the requested scope.
+
+When the user explicitly requests configured role definitions, report them
+under **Configured application role metadata** with their separate catalog
+source. Keep that metadata type separate from the Authorized context row and
+copy the current role only from its context observation. Each identity claim in
+the report remains traceable to that same exact context source.
 
 Choose the evidence needed for the actual request:
 

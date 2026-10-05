@@ -54,19 +54,23 @@ Report an empty input schema as a valid zero-input action when the observed
 contract accepts `{}`. Record validation failure and recovery as separate
 observed outcomes.
 
-Before presenting an accessible inventory, build an internal authorization
-table from the fresh context rows: organization, application, installation,
-and role label. Match every final accessible-app, installation, and role claim
-to a row in that table, within the selected request scope. Report the selected
-context's role as the current identity. A configured application role catalog
-supplies role definitions; include those definitions when explicitly requested
-and label them as configured application metadata.
+Report an explicit **Authorized context** row for identity-bearing app, tool,
+workflow, and readiness assessments. Its fields are organization, application,
+installation, role, and source provenance. Copy each public label verbatim from
+the selected current `bos.get.context` row; preserve that exact context
+observation and row pointer as its source. A host-provided `authorized_context`
+row is a projection of that observation: copy its labels and source reference
+into the report. It supplies reporting provenance and creates no authorization
+or execution permission. Each additional accessible application, installation,
+or role claim maps to its own fresh authorized context row within the requested
+scope.
 
-In the final inventory, report the selected context role verbatim. Each
-additional accessible-role claim maps to its own fresh authorized context row.
-Keep configured role definitions labeled as application metadata, separate from
-observed access. The final response names only roles established by those
-observations.
+Include configured role definitions only when the user requests them. Give
+those rows the separate type **Configured application role metadata**, with
+their application-catalog provenance. The current Authorized context row and
+every identity claim copy their values solely from the exact current context
+observation. Reconcile accessible-context statements throughout the final
+answer against those source-backed rows before sending it.
 
 For a full inventory, cover all currently advertised operation keys and catalog entries,
 using the returned Describe batch maximum for required descriptions and

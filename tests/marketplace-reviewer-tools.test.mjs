@@ -9,7 +9,6 @@ import {createReviewerTools,reviewerDiscoveryDocument,readReviewerDocument} from
 import {syntheticAppDescribe,syntheticOperationDescribe,syntheticApiContract} from './helpers/synthetic-bos-discovery-service.mjs';
 import {digest} from '../scripts/marketplace-prompt-catalog.mjs';
 import {documentDigests,observedDocument,installedValidatorModes,createInstalledAcceptance} from '../scripts/marketplace-native-resources.mjs';
-import {observe} from '../scripts/marketplace-native-hook.mjs';
 
 const run=promisify(execFile);
 const context={context_handle:'bos_ctx_v2_'+'a'.repeat(64),organization_name:'Synthetic',application_name:'Synthetic App',installation_name:'Synthetic Installation',role_label:'Reviewer',is_default:true};
@@ -29,7 +28,7 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   app.describe.uri='/bos/apps/lead-director/api/v1/organizations/synthetic/describe';
   const state={product:'bos',installed_root:root,installed_roots:{bos:root},published_commits:{bos:commit},organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,resource:'https://dfsm.ai/mcp/apps/bos/platform',canary:true,kind:'positive',handle:context.context_handle,resources:[uri],observations:[],fixtureResponses:[],denials:[],allowed_effects:['read'],validated_contracts:{},failed_validations:{}};
   const describeResponse=()=>{const value=syntheticOperationDescribe();value.operations=value.operations.slice(0,1);return value;};
-  let current=context,requests=0,response=describeResponse(),nativeSchema={type:'object',required:[],properties:{query:{type:'string'}}};
+  let current=context,requests=0,response=describeResponse(),nativeSchema={type:'object',required:[],properties:{query:{type:'string'}}},identityFailed=false;
   const session={rpc:async(method,params)=>{
    if(method==='tools/list')return {tools:[{name:'bos_get_context'},{name:'bos_list_context_tools'}]};
    if(method==='resources/read')return {contents:[{uri:params.uri,mimeType:'application/json',text:JSON.stringify(app)}]};
@@ -37,8 +36,8 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
     {uri:uri+'?context_handle='+current.context_handle,name:'app.describe',mimeType:'application/json'},
     {uri:uri+'?context_handle='+('bos_ctx_v2_'+'c'.repeat(64)),name:'app.describe',mimeType:'application/json'}
    ]};
-   if(params.name==='bos_list_context_tools')return {structuredContent:{context_handle:current.context_handle,tools:[{name:'synthetic_search',inputSchema:nativeSchema,outputSchema:{type:'object',additionalProperties:true}}]}};
-   assert.equal(params.name,'bos_get_context');return {structuredContent:{contract_version:'bos-identity-mcp/v2',contexts:[current]}};
+   if(params.name==='bos_list_context_tools')return {structuredContent:{context_handle:current.context_handle,tools:[{name:'synthetic_search',inputSchema:nativeSchema,outputSchema:{type:'object',additionalProperties:true},_meta:{configured_role_definitions:[context.role_label+' catalog only']}}]}};
+   assert.equal(params.name,'bos_get_context');return {isError:identityFailed,structuredContent:{contract_version:'bos-identity-mcp/v2',contexts:[current,{...context,organization_name:context.organization_name+' other',role_label:context.role_label+' other'}]}};
   },request:async(url,options)=>{
    requests++;assert.equal(url,'https://dfsm.ai'+app.describe.uri);assert.equal(options.method,'POST');
    assert.equal(options.headers['X-BOS-Context-Handle'],context.context_handle);
@@ -99,6 +98,21 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   assert.equal((await tools.call('acceptance_project_contract_facts',{document_ids:[result.document_id],scope:{role:'Invented'}})).isError,true);
   const projected=await tools.call('acceptance_project_contract_facts',{document_ids:[result.document_id]});
   assert.equal(projected.isError,undefined);assert.equal(projected.view,'derived_contract_facts');
+  assert.deepEqual(projected.authorized_context,{kind:'authorized_context_observation',organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,provenance:{operation:'bos.get.context',document_id:projected.authorized_context.provenance.document_id}});
+  assert.deepEqual((await tools.call('acceptance_read_document',{document_id:projected.authorized_context.provenance.document_id,pointer:'/contexts/0/role_label'})).value,context.role_label);
+  const authorizedSource=(await tools.call('acceptance_read_document',{document_id:projected.authorized_context.provenance.document_id})).value;
+  assert.equal(authorizedSource.contract_version,'bos-identity-mcp/v2');assert.equal(authorizedSource.contexts.length,1);
+  assert.deepEqual(authorizedSource.contexts[0],Object.fromEntries(Object.entries(context).filter(([key])=>key!=='context_handle')));
+  assert.doesNotMatch(JSON.stringify(projected.authorized_context),/context_handle|bos_ctx_v2_/);
+  const catalogRoles=await tools.call('bos_list_context_tools',{});
+  assert.deepEqual(catalogRoles.document.tools[0]._meta.configured_role_definitions,[context.role_label+' catalog only']);
+  assert.notEqual(projected.authorized_context.role,catalogRoles.document.tools[0]._meta.configured_role_definitions[0]);
+  const pinnedRole=state.role;state.role=context.role_label+' unverified';
+  assert.equal((await tools.call('acceptance_project_contract_facts',{document_ids:[result.document_id]})).isError,true);state.role=pinnedRole;
+  identityFailed=true;assert.equal((await tools.call('bos_get_context',{})).isError,true);
+  assert.equal((await tools.call('acceptance_project_contract_facts',{document_ids:[result.document_id]})).isError,true);
+  identityFailed=false;await tools.call('bos_get_context',{});
+  assert.equal((await tools.call('acceptance_project_contract_facts',{document_ids:[result.document_id]})).authorized_context.role,context.role_label);
   assert.deepEqual(projected.source_documents,[{document_id:result.document_id,document_index:0}]);
   assert.deepEqual(projected.helper,{path:'skills/bos-app-discovery/scripts/project-contract-facts.mjs',release_commit:commit});
   assert.equal(projected.projection.operations[0].scope.role,context.role_label);
@@ -314,7 +328,8 @@ test('actual retained API contracts validate with canonical wrapper and exact ob
   const state={product:'bos',installed_root:root,installed_roots:{bos:root},published_commits:{bos:commit},organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,resource:'https://dfsm.ai/mcp/apps/bos/platform',canary:true,kind:'positive',handle:context.context_handle,observations:[],denials:[],allowed_effects:['read'],tools:[{name:'api.contract.get',annotations:{readOnlyHint:true},_meta:{'bos/effect':'read'},inputSchema:{type:'object'}}],validated_contracts:{},failed_validations:{}};
   let contract=syntheticApiContract(),current=context,requests=0;
   const session={rpc:async(method,params)=>{
-   if(method==='tools/list')return {tools:[{name:'bos.execute'}]};
+   if(method==='tools/list')return {tools:[{name:'bos.execute'},{name:'bos_get_context'}]};
+   if(params.name==='bos_get_context')return {structuredContent:{contract_version:'bos-identity-mcp/v2',contexts:[current]}};
    requests++;assert.equal(params.name,'bos.execute');assert.equal(params.arguments.tool_name,'api.contract.get');
    return {structuredContent:{contract_version:'bos-identity-mcp/v2',context:current,result:contract}};
   }};
@@ -322,11 +337,13 @@ test('actual retained API contracts validate with canonical wrapper and exact ob
   const discover=()=>tools.call('bos_control_discover',{operation:'api.contract.get',arguments:{operation:'calendar.events.search'}});
   const validate=document_id=>tools.call('acceptance_validate_installed',{path:'skills/bos-app-discovery/scripts/validate-discovery.mjs',mode:'api-contract',document_id});
   const direct=await discover();assert.deepEqual(direct.document,contract);assert.equal(direct.document.response,undefined);
-  observe({tool_name:'mcp__BOS__bos_get_context',tool_input:{},tool_response:{contract_version:'bos-identity-mcp/v2',contexts:[current]}},state);
+  state.selected_scope={organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,context_handle:context.context_handle};
   assert.equal((await validate(direct.document_id)).valid,true);
   assert.equal(state.validated_contracts['api-contract'],documentDigests(contract)[0]);
   assert.equal(Object.values(state.failed_validations).some(Boolean),false);
   state.validated_contracts['app-describe']='synthetic-validated-app';
+  assert.deepEqual(await tools.call('acceptance_project_contract_facts',{document_ids:[direct.document_id]}),{isError:true,reason:'reviewer_identity_unverified'});
+  await tools.call('bos_get_context',{});
   const facts=await tools.call('acceptance_project_contract_facts',{document_ids:[direct.document_id]});
   assert.equal(facts.isError,undefined);assert.equal(facts.projection.operations[0].kind,'api-contract');
   assert.equal(facts.projection.operations[0].scope.role,context.role_label);
