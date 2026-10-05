@@ -1,7 +1,7 @@
 {
   "schema_version": "2",
   "name": "education-center",
-  "version": "0.4.171",
+  "version": "0.4.172",
   "client": "gemini",
   "application_name": "leaddirector",
   "connection_owner": "bos",
