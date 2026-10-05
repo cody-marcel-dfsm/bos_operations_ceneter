@@ -67,7 +67,7 @@ const definitions=[
   spec('acceptance_guard_probe','Verify the test guard by requesting a deliberate denial.'),
   spec('acceptance_guard_status','Check guard readiness and obtain the real current UTC host reference clock. Re-read immediately before calculating observation age; this clock supplies no provider-readiness evidence.'),
   spec('acceptance_read_document','Read an exact sanitized value from a returned document_id using an RFC 6901 JSON Pointer, or an empty pointer for the entire document. No network request or validation is performed. found:false means absent from the sanitized view; null and false remain values. Large values return json_text chunks: concatenate text using the exact next_offset until complete, then parse JSON. Offsets count JavaScript UTF-16 code units; replies are bounded to 8192 UTF-8 bytes. Contact document_id resolves to the complete retained operation; parent_document_id and pointer identify its location in the parent.',{document_id:{type:'string',maxLength:64},pointer:{type:'string',maxLength:1024},offset:{type:'integer',minimum:0}},['document_id']),
-  spec('acceptance_project_contract_facts','Project declarations and counts from exact retained successfully validated operation-describe parents or api-contract responses using the verified published BOS helper. Supply source document_ids only. The host binds current selected scope. Returned derived document_id supports bounded inspection. Each source_documents document_index selects its retained original document_id; an optional pointer prefix anchors projection declaration pointers within that original wrapper, and absence selects the root. Projection supplies no validation, freshness, readiness, authority or execution permission.',{document_ids:{type:'array',minItems:1,maxItems:32,uniqueItems:true,items:{type:'string',maxLength:64}}},['document_ids']),
+  spec('acceptance_project_contract_facts','Project declarations and counts from exact retained successfully validated operation-describe parents or api-contract responses using the verified published BOS helper. Omit document_ids to select all current eligible retained originals, or supply exact validated source IDs. The host binds current selected scope. Returned document_id supports bounded inspection of the complete projection; summary and execution/error group pointers locate every ledger. Each source_documents document_index selects its retained original document_id; an optional pointer prefix anchors projection declaration pointers within that original wrapper, and absence selects the root. Projection supplies no validation, freshness, readiness, authority or execution permission.',{document_ids:{type:'array',minItems:1,maxItems:32,uniqueItems:true,items:{type:'string',maxLength:64}}}),
   spec('acceptance_compare_schemas','Use only after app.describe is validated and no published validation failure remains. Compare exact JSON Schema values (object or boolean) from a document_id returned by bos_list_context_tools or bos_https_describe, or from any document_id whose acceptance_validate_installed call returned valid:true for its actual document type, including a valid legacy api-contract response. Each exact JSON Pointer must select a schema under inputSchema, outputSchema, input_schema, or output_schema. Identity/context observations such as bos_get_context are not schema evidence unless the published validator successfully validates that exact document and the pointer selects a schema. The helper reports declaration differences only; it proves no semantic correspondence, compatibility, validation, or readiness.',{pairs:{type:'array',minItems:1,maxItems:32,items:{type:'object',additionalProperties:false,required:['left','right'],properties:Object.fromEntries(['left','right'].map(key=>[key,{type:'object',additionalProperties:false,required:['document_id','pointer'],properties:{document_id:{type:'string'},pointer:{type:'string'}}}]))}}},['pairs']),
   spec('acceptance_read_installed','Read a verified published installed skill or reference. Copy the exact product/path pair from the offered skill index. If product is omitted, the host accepts only a path unique to one verified installed product. Each Markdown response offers verified references with product provenance and explicit unavailable-reference status. A returned reference_id binds its exact published product and file. Never invent a filename, product, or reference path.',{product:{type:'string'},path:{type:'string'},reference_id:{type:'string'}},[]),
   spec('acceptance_validate_installed','Validate an actual discovered document with the host-bound verified published validator; no validator path is needed. Supply its returned document_id; the host retains its exact original bytes. Use app-describe for the app.describe resource and operation-describe for the complete HTTPS Describe response (the parent document). Individual HTTPS operation contacts are covered by that parent validation; they are not legacy api-contract envelopes. Use api-contract only for the actual legacy api.contract.get response, and service-journey for a service journey description. Other supported modes are contact, service, graph, plugins and discovery-refresh.',{path:{type:'string',enum:[discoveryValidatorPath]},mode:{type:'string',enum:installedValidatorModes},document_id:{type:'string'}},['mode','document_id']),
@@ -90,9 +90,9 @@ export async function createReviewerTools({session,state,release}) {
   const {createBosExternalDependencyAdapter}=await import(pathToFileURL(adapterPath).href);
   const offered=(await session.rpc('tools/list')).tools;
   if(!Array.isArray(offered))throw new Error('reviewer_discovery_tools_missing');
-  const documents=new Map(),contacts=new Map(),references=new Map(),trustedSchemaDocuments=new Set(),ajv=new Ajv({strict:false,validateFormats:false});
+  const documents=new Map(),contacts=new Map(),references=new Map(),trustedSchemaDocuments=new Set(),originalDocuments=new Map(),ajv=new Ajv({strict:false,validateFormats:false});
   let nextReference=0,authorizedContextSource=null;
-  const clearReferences=()=>{documents.clear();contacts.clear();references.clear();trustedSchemaDocuments.clear();authorizedContextSource=null;};
+  const clearReferences=()=>{documents.clear();contacts.clear();references.clear();trustedSchemaDocuments.clear();originalDocuments.clear();authorizedContextSource=null;};
   const retainDocument=raw=>{
     const hash=digest(raw),existing=references.get(hash);
     if(existing&&documents.has(existing))return existing;
@@ -137,8 +137,9 @@ export async function createReviewerTools({session,state,release}) {
       return {status:response.status,headers:Object.fromEntries(response.headers),body:responseBody};
     }}
   });
-  const expose=(value,resourceUri)=>{
+  const expose=(value,resourceUri,kind)=>{
     const raw=reviewerDiscoveryDocument(value,state,resourceUri),id=retainDocument(raw);
+    if(!value?.isError&&(kind==='api-contract'||Array.isArray(raw.operations)))originalDocuments.set(id,kind??'operation-describe');
     const advertised=[];
     const collect=(item,foreign=false,pointer='')=>{
       if(typeof item==='string'){try{collect(JSON.parse(item),foreign,null);}catch{}return;}
@@ -160,12 +161,13 @@ export async function createReviewerTools({session,state,release}) {
     const previousHandle=state.handle;
     const response=await run();observe({...event,tool_response:response},state);
     if(state.handle!==previousHandle)clearReferences();
-    const exposed=expose(response,event.tool_input?.uri);
+    const exposed=expose(response,event.tool_input?.uri,event.tool_input?.tool_name==='api.contract.get'?'api-contract':undefined);
     if(event.tool_name==='mcp__BOS__bos_get_context'){
       authorizedContextSource=null;
       if(!response?.isError)bindAuthorizedContext(documents.get(exposed.document_id));
     }
-    return response?.isError?{isError:true,...exposed}:exposed;
+    let identity={};if(!response?.isError&&authorizedContextSource){try{identity={authorized_context:reportingContext()};}catch{}}
+    return response?.isError?{isError:true,...exposed}:{...identity,...exposed};
   };
   const call=async(name,args={})=>{
     if(privateInput(args))throw new Error('reviewer_authority_argument');
@@ -197,21 +199,30 @@ export async function createReviewerTools({session,state,release}) {
     if(name==='acceptance_project_contract_facts'){
       const event={tool_name:'mcp__Acceptance__project_contract_facts',tool_input:args};
       const denial=permission(event,state);if(denial){state.denials.push({tool:name,reason:denial});return {isError:true,reason:denial};}
-      if(Object.keys(args).some(key=>key!=='document_ids')||!Array.isArray(args.document_ids)||args.document_ids.length<1||args.document_ids.length>32||new Set(args.document_ids).size!==args.document_ids.length)throw new Error('reviewer_document_not_observed');
-      const inputs=args.document_ids.map(id=>{
-        const original=documents.get(id);if(!original)throw new Error('reviewer_document_not_observed');
+      if(Object.keys(args).some(key=>key!=='document_ids'))throw new Error('reviewer_document_not_observed');
+      const eligible=id=>{
+        const original=documents.get(id);if(!original||!originalDocuments.has(id))return null;
         const document=Object.hasOwn(original,'response')?original.response:original;
-        const proof=state.validated_document_proofs?.[documentDigests(document)[0]];
-        if(!proof||!['operation-describe','api-contract'].includes(proof.mode))throw new Error('reviewer_document_not_observed');
+        const hash=documentDigests(document)[0],proof=state.validated_document_proofs?.[hash];
+        const keys=['organization','application','installation','role'];
+        if(!proof||proof.mode!==originalDocuments.get(id)||!['operation-describe','api-contract'].includes(proof.mode)||proof.context_handle!==state.handle||proof.scope?.context_handle!==state.handle||state.selected_scope?.context_handle!==state.handle||!state.observed_document_digests?.includes(hash)||keys.some(key=>typeof state.selected_scope?.[key]!=='string'||!state.selected_scope[key].trim()||proof.scope?.[key]!==state.selected_scope[key]))return null;
         return {kind:proof.mode,document};
-      });
+      };
+      const ids=Object.hasOwn(args,'document_ids')?args.document_ids:[...originalDocuments.keys()].filter(id=>eligible(id));
+      if(!Array.isArray(ids)||ids.length<1||ids.length>32||new Set(ids).size!==ids.length||ids.some(id=>typeof id!=='string'||id.length>64))throw new Error('reviewer_document_not_observed');
+      const inputs=ids.map(id=>{const input=eligible(id);if(!input)throw new Error('reviewer_document_not_observed');return input;});
       const authorizedContext=reportingContext();
       const projection=sanitized(await installed.call('project_contract_facts',{documents:inputs}));
       if(digest(reportingContext())!==digest(authorizedContext))throw new Error('reviewer_discovery_refresh_required');
       const derivedId=retainDocument(projection);
-      const sourceDocuments=args.document_ids.map((document_id,document_index)=>({document_id,document_index,...(inputs[document_index].kind==='api-contract'&&Object.hasOwn(documents.get(document_id),'response')?{pointer:'/response'}:{})}));
+      const sourceDocuments=ids.map((document_id,document_index)=>({document_id,document_index,...(inputs[document_index].kind==='api-contract'&&Object.hasOwn(documents.get(document_id),'response')?{pointer:'/response'}:{})}));
       const response={authorized_context:authorizedContext,summaries:projection.summaries,document_id:derivedId,view:'derived_contract_facts',source_documents:sourceDocuments,helper:{path:'skills/bos-app-discovery/scripts/project-contract-facts.mjs',release_commit:bos.release_commit},projection};
-      observe({...event,tool_response:response},state);return response;
+      observe({...event,tool_response:response},state);
+      const summaries=projection.summaries.map((row,index)=>({kind:row.kind,...Object.fromEntries(['unique_operations','described_operations','unavailable_operations','duplicate_observations','conflicting_operations'].map(key=>[key,row[key]])),pointer:'/summaries/'+index,execution_groups:{count:row.execution_groups.length,pointer:'/summaries/'+index+'/execution_groups'},error_groups:{count:row.error_groups.length,pointer:'/summaries/'+index+'/error_groups'},transport:row.transport}));
+      const visible={authorized_context:authorizedContext,document_id:derivedId,view:response.view,source_documents:sourceDocuments,helper:response.helper,summary_count:summaries.length,summaries_pointer:'/summaries',operations_pointer:'/operations',summaries};
+      if(Buffer.byteLength(JSON.stringify(visible))>8192)delete visible.summaries;
+      if(Buffer.byteLength(JSON.stringify(visible))>8192)throw new Error('reviewer_document_not_observed');
+      return visible;
     }
     if(name.startsWith('acceptance_')){
       const short=name.slice('acceptance_'.length);const event={tool_name:'mcp__Acceptance__'+short,tool_input:args};
@@ -284,7 +295,7 @@ export async function createReviewerTools({session,state,release}) {
       state.fixtureResponses.push({operation:'app.describe',transport:'https_discovery',successful:true,body:raw});
       const exposed=expose(raw);
       trustedSchemaDocuments.add(exposed.document_id);for(const contact of exposed.advertised_https_contacts??[])trustedSchemaDocuments.add(contact.document_id);
-      return {...exposed,transport:'https-discovery',published_validation:{valid:true,mode:'operation-describe',document_id:exposed.document_id,release_commit:bos.release_commit}};
+      return {authorized_context:reportingContext(),...exposed,transport:'https-discovery',published_validation:{valid:true,mode:'operation-describe',document_id:exposed.document_id,release_commit:bos.release_commit}};
     }
     if(name!=='bos_https_operation')throw new Error('reviewer_tool_unknown');
     const contact=contacts.get(args.contact_id);if(!contact)throw new Error('reviewer_contact_not_observed');

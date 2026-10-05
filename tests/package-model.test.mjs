@@ -296,6 +296,12 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
   assert.match(sourceGuidance, /public operation-Describe counts and API-contract counts describe\s+separate sets/i);
   assert.match(contract, /Keep public\s+operation-Describe counts separate from API-contract registration\/native counts/i);
   for (const reportingGuidance of [sourceGuidance, contract]) {
+    assert.match(reportingGuidance, /default selection[\s\S]*omit\s+`document_ids`[\s\S]*current retained, successfully validated[\s\S]*operation-Describe[\s\S]*API-contract originals/i);
+    assert.match(reportingGuidance, /`source_documents`[\s\S]*requested[\s\S]*no\s+missing\s+discovery or validation/i);
+    assert.match(reportingGuidance, /`summaries_pointer`[\s\S]*`summary_count`[\s\S]*`operations_pointer`/i);
+    assert.match(reportingGuidance, /`execution_groups`\/`error_groups`[\s\S]*`count` and `pointer`/i);
+    assert.match(reportingGuidance, /summaries\s+are omitted[\s\S]*`summaries_pointer` first[\s\S]*every referenced group\s+completely[\s\S]*chunk offsets until complete/i);
+    assert.match(reportingGuidance, /same typed row from[\s\S]*successful scoped[\s\S]*discovery\s+wrappers?/i);
     assert.match(reportingGuidance, /`summaries\.execution_groups`[\s\S]*every public operation and actual API-contract or\s+registration operation/i);
     assert.match(reportingGuidance, /method, transport,[\s\S]*context-header tuple/i);
     assert.match(reportingGuidance, /response body, content type, and\s+every response header name/i);

@@ -11,6 +11,10 @@ import {digest} from '../scripts/marketplace-prompt-catalog.mjs';
 import {documentDigests,observedDocument,installedValidatorModes,createInstalledAcceptance} from '../scripts/marketplace-native-resources.mjs';
 
 const run=promisify(execFile);
+async function retainedValue(tools,document_id,pointer=''){
+ let text='',offset=0;
+ for(;;){const row=await tools.call('acceptance_read_document',{document_id,pointer,offset});assert.equal(row.found,true);assert.ok(Buffer.byteLength(JSON.stringify(row))<=8192);if(Object.hasOwn(row,'value'))return row.value;text+=row.text;if(row.complete)return JSON.parse(text);offset=row.next_offset;}
+}
 const context={context_handle:'bos_ctx_v2_'+'a'.repeat(64),organization_name:'Synthetic',application_name:'Synthetic App',installation_name:'Synthetic Installation',role_label:'Reviewer',is_default:true};
 const contact={operation:'search',status:'described',effect:'read',limits:{max_targets:null,max_results_per_source:5,pagination_supported:false,bulk_supported:false,streaming_supported:false,maximum_duration_seconds:30,maximum_fan_out:5},guarantees:{read_consistency:'point_in_time',per_source_atomicity:'source_published',cross_source_atomicity:'not_applicable',convergence:'not_applicable',idempotency:'service_owned'},execution:{context_header:'X-BOS-Context-Handle',method:'POST',uri:'/bos/apps/synthetic/api/v1/organizations/synthetic/search'},input_schema:{$schema:'https://json-schema.org/draft/2020-12/schema',type:'object',additionalProperties:false,required:['text'],properties:{text:{type:'string',minLength:1}},'x-bos-fields':[]},output_schema:{$schema:'https://json-schema.org/draft/2020-12/schema',type:'object',required:['count'],properties:{count:{type:'integer'}},'x-bos-fields':[]},error_contract:{schema:'lead-director-public-error/v1',codes:['invalid_search_request','authentication_required']},sources:[{source:{platform:'bos',application:'synthetic',plugin:'synthetic'},availability:'ready'}]};
 
@@ -55,6 +59,8 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   assert.match(comparisonDefinition.description,/acceptance_validate_installed call returned valid:true/);
   assert.match(comparisonDefinition.description,/legacy api-contract response/);
   assert.match(comparisonDefinition.description,/bos_get_context are not schema evidence/);
+  const identity=await tools.call('bos_get_context',{});
+  assert.equal(identity.authorized_context.role,context.role_label);
   const observed=await tools.call('bos_read_resource',{uri});
   assert.match(observed.document_id,/^doc_[1-9][0-9]*$/);
   assert.equal((await tools.call('bos_read_resource',{uri})).document_id,observed.document_id);
@@ -97,6 +103,7 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   assert.equal((await tools.call('acceptance_project_contract_facts',{document_ids:[result.advertised_https_contacts[0].document_id]})).isError,true);
   assert.equal((await tools.call('acceptance_project_contract_facts',{document_ids:[result.document_id],scope:{role:'Invented'}})).isError,true);
   const projected=await tools.call('acceptance_project_contract_facts',{document_ids:[result.document_id]});
+  const fullProjection=await retainedValue(tools,projected.document_id);
   assert.equal(projected.isError,undefined);assert.equal(projected.view,'derived_contract_facts');
   assert.deepEqual(projected.authorized_context,{kind:'authorized_context_observation',organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,provenance:{operation:'bos.get.context',document_id:projected.authorized_context.provenance.document_id}});
   assert.deepEqual((await tools.call('acceptance_read_document',{document_id:projected.authorized_context.provenance.document_id,pointer:'/contexts/0/role_label'})).value,context.role_label);
@@ -105,18 +112,25 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   assert.deepEqual(authorizedSource.contexts[0],Object.fromEntries(Object.entries(context).filter(([key])=>key!=='context_handle')));
   assert.doesNotMatch(JSON.stringify(projected.authorized_context),/context_handle|bos_ctx_v2_/);
   const catalogRoles=await tools.call('bos_list_context_tools',{});
+  for(const wrapper of [identity,observed,listedResources,listedRead,result,catalogRoles]){
+   assert.equal(wrapper.authorized_context.role,context.role_label);
+   assert.equal(await retainedValue(tools,wrapper.authorized_context.provenance.document_id,'/contexts/0/role_label'),context.role_label);
+  }
   assert.deepEqual(catalogRoles.document.tools[0]._meta.configured_role_definitions,[context.role_label+' catalog only']);
   assert.notEqual(projected.authorized_context.role,catalogRoles.document.tools[0]._meta.configured_role_definitions[0]);
   const pinnedRole=state.role;state.role=context.role_label+' unverified';
   assert.equal((await tools.call('acceptance_project_contract_facts',{document_ids:[result.document_id]})).isError,true);state.role=pinnedRole;
-  identityFailed=true;assert.equal((await tools.call('bos_get_context',{})).isError,true);
+  identityFailed=true;const failedIdentity=await tools.call('bos_get_context',{});assert.equal(failedIdentity.isError,true);assert.equal(failedIdentity.authorized_context,undefined);
   assert.equal((await tools.call('acceptance_project_contract_facts',{document_ids:[result.document_id]})).isError,true);
   identityFailed=false;await tools.call('bos_get_context',{});
   assert.equal((await tools.call('acceptance_project_contract_facts',{document_ids:[result.document_id]})).authorized_context.role,context.role_label);
   assert.deepEqual(projected.source_documents,[{document_id:result.document_id,document_index:0}]);
   assert.deepEqual(projected.helper,{path:'skills/bos-app-discovery/scripts/project-contract-facts.mjs',release_commit:commit});
-  assert.equal(projected.projection.operations[0].scope.role,context.role_label);
-  assert.deepEqual(projected.summaries,projected.projection.summaries);
+  assert.equal(projected.projection,undefined);assert.ok(Buffer.byteLength(JSON.stringify(projected))<=8192);
+  assert.equal(fullProjection.operations[0].scope.role,context.role_label);
+  assert.equal(projected.summaries[0].unique_operations,fullProjection.summaries[0].unique_operations);
+  assert.deepEqual((await tools.call('acceptance_project_contract_facts',{})).source_documents,projected.source_documents);
+  for(const invalid of [[],Array(33).fill(result.document_id),[result.document_id,result.document_id]])assert.equal((await tools.call('acceptance_project_contract_facts',{document_ids:invalid})).isError,true);
   assert.equal((await tools.call('acceptance_read_document',{document_id:projected.document_id,pointer:'/operations/0/operation'})).value,'search');
   assert.equal((await tools.call('acceptance_project_contract_facts',{document_ids:[projected.document_id]})).isError,true);
   assert.equal(state.observations.findLast(row=>row.tool==='project.contract.facts').response.projection.operations[0].operation,'search');
@@ -125,9 +139,21 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   assert.equal((await tools.call('acceptance_project_contract_facts',{document_ids:[result.document_id]})).isError,true);
   await writeFile(factsHelper,factsBytes);
   const factsHash=documentDigests(response)[0],factsProof=state.validated_document_proofs[factsHash];
+  for(const modified of [{...factsProof,context_handle:'stale'},{...factsProof,scope:{...factsProof.scope,context_handle:'stale'}},{...factsProof,scope:{...factsProof.scope,role:'forged'}}]){
+   state.validated_document_proofs[factsHash]=modified;
+   assert.equal((await tools.call('acceptance_project_contract_facts',{})).isError,true);
+  }
   state.validated_document_proofs[factsHash]={...factsProof,mode:'app-describe'};
   assert.equal((await tools.call('acceptance_project_contract_facts',{document_ids:[result.document_id]})).isError,true);
+  assert.equal((await tools.call('acceptance_project_contract_facts',{})).isError,true);
+  delete state.validated_document_proofs[factsHash];assert.equal((await tools.call('acceptance_project_contract_facts',{})).isError,true);
   state.validated_document_proofs[factsHash]=factsProof;
+  const observedHashes=state.observed_document_digests;state.observed_document_digests=[];
+  assert.equal((await tools.call('acceptance_project_contract_facts',{})).isError,true);state.observed_document_digests=observedHashes;
+  const appHash=documentDigests(app)[0],contactHash=documentDigests(response.operations[0])[0];
+  state.validated_document_proofs[appHash]={...factsProof,mode:'api-contract'};state.validated_document_proofs[contactHash]={...factsProof,mode:'api-contract'};
+  assert.deepEqual((await tools.call('acceptance_project_contract_facts',{})).source_documents,projected.source_documents);
+  delete state.validated_document_proofs[appHash];delete state.validated_document_proofs[contactHash];
   const acceptance=createInstalledAcceptance(state,async()=>state),changedFacts=structuredClone(response);changedFacts.operations[0].limits.max_targets=4;
   await assert.rejects(()=>acceptance.call('project_contract_facts',{documents:[{kind:'operation-describe',document:changedFacts}]}),/reviewer_document_not_observed/);
   const schemaPair={left:{document_id:result.document_id,pointer:'/operations/0/input_schema'},right:{document_id:result.document_id,pointer:'/operations/0/output_schema'}};
@@ -290,10 +316,11 @@ test('test host uses the verified adapter, fresh reviewer context and advertised
       assert.equal(params.name,'bos.execute');assert.equal(params.arguments.tool_name,'app.describe');return {structuredContent:{contract_version:'bos-identity-mcp/v2',context:current,result:{operations:[contact]}}};
     },request:async(url,options)=>{requests++;assert.equal(url,'https://dfsm.ai'+contact.execution.uri);assert.equal(options.headers['X-BOS-Context-Handle'],context.context_handle);assert.deepEqual(JSON.parse(options.body),{text:'synthetic'});return new Response(JSON.stringify({count:2}),{headers:{'content-type':'application/json'}});}};
     const tools=await createReviewerTools({session,state,release:{path:root,release_commit:commit}});
+    await tools.call('bos_get_context',{});
     const described=await tools.call('bos_control_discover',{operation:'app.describe',arguments:{}});
     const contactId=described.advertised_https_contacts[0].contact_id;
     const result=await tools.call('bos_https_operation',{contact_id:contactId,payload:{text:'synthetic'}});
-    assert.deepEqual(result.body,{count:2});assert.equal(result.transport,'https');assert.equal(requests,1);assert.equal(contextReads,1);
+    assert.deepEqual(result.body,{count:2});assert.equal(result.transport,'https');assert.equal(requests,1);assert.equal(contextReads,2);
     const businessReceipt=state.observations.findLast(row=>row.transport==='https');
     assert.equal(businessReceipt.contact_sha256,digest(contact));
     assert.match(businessReceipt.contact_sha256,/^[a-f0-9]{64}$/);
@@ -315,7 +342,7 @@ test('test host uses the verified adapter, fresh reviewer context and advertised
   }finally{await rm(root,{recursive:true,force:true});}
 });
 
-test('actual retained API contracts validate with canonical wrapper and exact observed provenance',async()=>{
+test('actual retained API contracts validate with canonical wrapper and exact observed provenance',async(t)=>{
  const root=await realpath(await mkdtemp(join(tmpdir(),'reviewer-api-wrapper-unit-')));
  try{
   for(const skill of ['bos-external-dependency-adapter','bos-app-discovery']){
@@ -327,6 +354,7 @@ test('actual retained API contracts validate with canonical wrapper and exact ob
   const commit=(await run('git',['rev-parse','HEAD'],{cwd:root})).stdout.trim();
   const state={product:'bos',installed_root:root,installed_roots:{bos:root},published_commits:{bos:commit},organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,resource:'https://dfsm.ai/mcp/apps/bos/platform',canary:true,kind:'positive',handle:context.context_handle,observations:[],denials:[],allowed_effects:['read'],tools:[{name:'api.contract.get',annotations:{readOnlyHint:true},_meta:{'bos/effect':'read'},inputSchema:{type:'object'}}],validated_contracts:{},failed_validations:{}};
   let contract=syntheticApiContract(),current=context,requests=0;
+  contract.public_errors[0].message='Synthetic declaration 漢字 '.repeat(1500);
   const session={rpc:async(method,params)=>{
    if(method==='tools/list')return {tools:[{name:'bos.execute'},{name:'bos_get_context'}]};
    if(params.name==='bos_get_context')return {structuredContent:{contract_version:'bos-identity-mcp/v2',contexts:[current]}};
@@ -337,6 +365,7 @@ test('actual retained API contracts validate with canonical wrapper and exact ob
   const discover=()=>tools.call('bos_control_discover',{operation:'api.contract.get',arguments:{operation:'calendar.events.search'}});
   const validate=document_id=>tools.call('acceptance_validate_installed',{path:'skills/bos-app-discovery/scripts/validate-discovery.mjs',mode:'api-contract',document_id});
   const direct=await discover();assert.deepEqual(direct.document,contract);assert.equal(direct.document.response,undefined);
+  assert.equal(direct.isError,undefined);assert.equal(direct.authorized_context,undefined);
   state.selected_scope={organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,context_handle:context.context_handle};
   assert.equal((await validate(direct.document_id)).valid,true);
   assert.equal(state.validated_contracts['api-contract'],documentDigests(contract)[0]);
@@ -345,9 +374,16 @@ test('actual retained API contracts validate with canonical wrapper and exact ob
   assert.deepEqual(await tools.call('acceptance_project_contract_facts',{document_ids:[direct.document_id]}),{isError:true,reason:'reviewer_identity_unverified'});
   await tools.call('bos_get_context',{});
   const facts=await tools.call('acceptance_project_contract_facts',{document_ids:[direct.document_id]});
-  assert.equal(facts.isError,undefined);assert.equal(facts.projection.operations[0].kind,'api-contract');
+  const factsProjection=await retainedValue(tools,facts.document_id);
+  assert.ok(Buffer.byteLength(JSON.stringify(facts))<=8192);assert.ok(Buffer.byteLength(JSON.stringify(factsProjection))>8192);
+  t.diagnostic(JSON.stringify({actor_projection_bytes:Buffer.byteLength(JSON.stringify(facts)),retained_projection_bytes:Buffer.byteLength(JSON.stringify(factsProjection))}));
+  assert.equal(facts.projection,undefined);
+  assert.deepEqual(state.observations.findLast(row=>row.tool==='project.contract.facts').response.projection,factsProjection);
+  assert.deepEqual(await retainedValue(tools,facts.document_id,facts.summaries[0].error_groups.pointer),factsProjection.summaries[0].error_groups);
+  assert.equal((await discover()).authorized_context.role,context.role_label);
+  assert.equal(facts.isError,undefined);assert.equal(factsProjection.operations[0].kind,'api-contract');
   assert.deepEqual(facts.source_documents,[{document_id:direct.document_id,document_index:0}]);
-  assert.equal(facts.projection.operations[0].scope.role,context.role_label);
+  assert.equal(factsProjection.operations[0].scope.role,context.role_label);
   assert.deepEqual(await validate('invented-document'),{isError:true,reason:'reviewer_document_not_observed'});
   const hashes=state.observed_document_digests;state.observed_document_digests=[];
   assert.deepEqual(await validate(direct.document_id),{isError:true,reason:'reviewer_document_not_observed'});
@@ -355,19 +391,22 @@ test('actual retained API contracts validate with canonical wrapper and exact ob
   const target=contract;contract={operation:target.operation,source:target.source,response:target};
   const legacy=await discover();assert.equal((await validate(legacy.document_id)).valid,true);
   const wrappedFacts=await tools.call('acceptance_project_contract_facts',{document_ids:[legacy.document_id]});
+  const wrappedProjection=await retainedValue(tools,wrappedFacts.document_id);
   assert.equal(wrappedFacts.isError,undefined);
   assert.deepEqual(wrappedFacts.source_documents,[{document_id:legacy.document_id,document_index:0,pointer:'/response'}]);
   for(const [groups,key] of [
-   [wrappedFacts.summaries[0].execution_groups,'execution_pointer'],
-   [wrappedFacts.summaries[0].error_groups,'errors_pointer']
+   [wrappedProjection.summaries[0].execution_groups,'execution_pointer'],
+   [wrappedProjection.summaries[0].error_groups,'errors_pointer']
   ]){
    const group=groups[0],observation=group.observations[0];
    const source=wrappedFacts.source_documents[observation.document_index];
-   const read=await tools.call('acceptance_read_document',{document_id:source.document_id,pointer:source.pointer+observation[key]});
-   assert.equal(read.found,true);
-   if(key==='errors_pointer')assert.deepEqual(read.value,group.declaration);
-   else {assert.deepEqual(read.value,target.execution);for(const declaration of group.declarations)assert.equal(read.value[declaration.field],declaration.value);}
+   const value=await retainedValue(tools,source.document_id,source.pointer+observation[key]);
+   if(key==='errors_pointer')assert.deepEqual(value,group.declaration);
+   else {assert.deepEqual(value,target.execution);for(const declaration of group.declarations)assert.equal(value[declaration.field],declaration.value);}
   }
+  const defaults=await tools.call('acceptance_project_contract_facts',{});
+  assert.deepEqual(defaults.source_documents,[{document_id:direct.document_id,document_index:0},{document_id:legacy.document_id,document_index:1,pointer:'/response'}]);
+  assert.equal((await retainedValue(tools,defaults.document_id)).summaries[0].duplicate_observations,1);
   contract={...contract,operation:'other.synthetic.operation'};
   const malformedWrapper=await discover();assert.equal((await validate(malformedWrapper.document_id)).valid,false);
   assert.equal(state.validated_contracts['api-contract'],undefined);
