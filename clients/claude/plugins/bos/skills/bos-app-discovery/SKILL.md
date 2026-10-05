@@ -81,8 +81,12 @@ remain required; the package does not intercept or enforce arbitrary API calls.
 
 ## Requests to list available tools and workflows
 
-When the user asks what tools, workflows, or operations are available across
-BOS applications, perform a read-only full inventory before summarizing. Apply
+Treat a request to list accessible BOS apps or public services, or to show
+tools/workflows per app, as a full-inventory request even when the prompt does
+not say "full". Make the reconciliation table the primary answer; add a summary
+only after the table passes its coverage check. For every request asking what
+tools, workflows, or operations are available across BOS applications, perform
+a read-only full inventory before summarizing. Apply
 `bos-mcp-client`'s first-action and identity-context rules, establish the exact
 authorized contexts, and enumerate native tools separately for each context.
 Read each exact advertised application description and service catalog. For

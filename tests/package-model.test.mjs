@@ -226,6 +226,8 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
   assert.match(guidance, /no browser[\s\S]*DOM[\s\S]*cached selector/i);
   assert.match(guidance, /connection's exact[\s\S]*organization[\s\S]*application[\s\S]*installation[\s\S]*role grant/i);
   assert.match(sourceGuidance, /Ordered evidence workflow for a full inventory/i);
+  assert.match(sourceGuidance, /Treat a request to list accessible BOS apps or public services, or to show\s+tools\/workflows per app, as a full-inventory request even when the prompt does\s+not say "full"/i);
+  assert.match(sourceGuidance, /Make the reconciliation table the primary answer; add a summary\s+only after the table passes its coverage check/i);
   assert.match(sourceGuidance, /every native operation, alias, and\s+described public API operation/i);
   assert.match(sourceGuidance, /`No observed\s+counterpart`[\s\S]*execution mode[\s\S]*validation result/i);
   assert.match(sourceGuidance, /Use fresh authorized contexts[\s\S]*Reconcile every access claim against those rows/i);
@@ -286,6 +288,8 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
   ]) {
     const clientGuidance = await readFile(clientPath, "utf8");
     assert.match(clientGuidance, /## App discovery workflow/);
+    assert.match(clientGuidance, /Treat a request to list accessible BOS apps or public services, or to show\s+tools\/workflows per app, as a full-inventory request even when the prompt does\s+not say "full"/i);
+    assert.match(clientGuidance, /Make the reconciliation table the primary answer; add a summary\s+only after the table passes its coverage check/i);
     let previousStepOffset = -1;
     for (const step of inventorySteps) {
       const stepOffset = clientGuidance.indexOf(step);
