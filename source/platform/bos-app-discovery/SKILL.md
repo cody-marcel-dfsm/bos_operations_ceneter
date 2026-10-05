@@ -37,6 +37,28 @@ For live `bos-identity-mcp/v2`, first apply [identity-context compatibility](../
 Its fresh authorized-context selection and saved-default rules govern this
 workflow; single-context grant wording below applies to legacy discovery.
 
+## Requests to compare application API contracts
+
+When a request asks to explain, compare, or validate a named application API
+operation's input or output schema, effects, field bounds, limits, pagination,
+or error declarations, retrieve the operation-level public contract from the
+current authorized application before writing the comparison.
+
+For live `bos-identity-mcp/v2`, use the exact advertised HTTPS Describe contact
+through the host-native authenticated HTTP capability. Request only the needed
+operation keys within that contact's declared batch maximum, preserve the
+returned document and operation contacts, and validate the complete parent
+response with `operation-describe` before comparing. A native tool descriptor
+or MCP semantic capability `app.describe` result is a separate evidence
+surface. It does not substitute for an advertised HTTPS Describe response or
+establish HTTPS observation. If the contact is absent or the response cannot be
+retrieved and validated, report the requested comparison as unresolved and
+identify the missing evidence instead of claiming it is complete.
+
+For legacy discovery, follow the exact advertised `api.contract.get` link with
+its returned input and validate that response envelope as legacy evidence. Do
+not relabel its transport or infer an HTTPS Describe observation.
+
 For identity-v2 application discovery, validate the application resource with
 `app-describe` and each complete HTTPS Describe parent response with
 `operation-describe`. That parent validation covers its returned operation

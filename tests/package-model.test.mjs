@@ -233,6 +233,10 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
   assert.match(guidance, /one row for every advertised native operation[\s\S]*described public API operation/i);
   assert.match(guidance, /accepts `\{\}`[\s\S]*zero-input\s+action/i);
   assert.match(guidance, /failed validation\s+and its recovery separately/i);
+  assert.match(guidance, /## Requests to compare application API contracts/);
+  assert.match(guidance, /For live `bos-identity-mcp\/v2`[\s\S]*advertised HTTPS Describe contact[\s\S]*host-native authenticated HTTP capability/i);
+  assert.match(guidance, /MCP semantic capability `app\.describe`[\s\S]*does not\s+substitute[\s\S]*HTTPS Describe/i);
+  assert.match(guidance, /If\s+the contact is absent or the response cannot be\s+retrieved and\s+validated[\s\S]*report the requested\s+comparison as unresolved/i);
   assert.doesNotMatch(guidance, /default_organization_label|client-preferences\.mjs|context_id/i);
   assert.match(contract, /`app\.describe`/);
   assert.match(contract, /`graph\.describe`/);
@@ -252,7 +256,10 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
     `${root}/clients/copilot/products/bos/skills/bos-app-discovery/SKILL.md`,
     `${root}/clients/gemini/extensions/bos/skills/bos-app-discovery/SKILL.md`
   ]) {
-    assert.match(await readFile(clientPath, "utf8"), /## App discovery workflow/);
+    const clientGuidance = await readFile(clientPath, "utf8");
+    assert.match(clientGuidance, /## App discovery workflow/);
+    assert.match(clientGuidance, /## Requests to compare application API contracts/);
+    assert.match(clientGuidance, /MCP semantic capability `app\.describe`[\s\S]*does not\s+substitute[\s\S]*HTTPS Describe/i);
   }
 });
 

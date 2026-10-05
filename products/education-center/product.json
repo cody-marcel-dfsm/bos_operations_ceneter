@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.160",
+  "version": "0.4.161",
   "release_status": "active",
   "display_name": "Education Operation Center",
   "description": "Email, calendars, billing, and enrollment for BOS-composed ad hoc workflows.",
