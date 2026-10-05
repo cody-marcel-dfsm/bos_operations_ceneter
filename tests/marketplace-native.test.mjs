@@ -1,4 +1,6 @@
-import {verifyNativeReviewer,classifyNativeFailure,classifyCompletion,caseDiagnostics,httpsDescribeCoverage,reviewerTurnTimeoutMs,latestReviewerClockReference} from '../scripts/marketplace-native-run.mjs';
+import {verifyNativeReviewer,classifyNativeFailure,classifyCompletion,caseDiagnostics,httpsDescribeCoverage,reviewerTurnTimeoutMs,latestReviewerClockReference,runCodex,classifyNativeStderr,nativeExecutionDiagnostics} from '../scripts/marketplace-native-run.mjs';
+import {EventEmitter} from 'node:events';
+import {PassThrough} from 'node:stream';
 import {digest,loadPromptCatalog} from '../scripts/marketplace-prompt-catalog.mjs';
 import {fileURLToPath} from 'node:url';
 import test from 'node:test';
@@ -8,6 +10,50 @@ import {installedPath,observedDocument,documentDigests,createInstalledAcceptance
 import {mkdtemp,mkdir,writeFile,rm,symlink,realpath} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
+
+function nativeProcessFixture({stderr=[],stdout=[],code=1,signal=null,waitForKill=false}={}) {
+ return ()=>{
+  const child=new EventEmitter();child.stdout=new PassThrough();child.stderr=new PassThrough();child.stdin=new PassThrough();
+  child.kill=killSignal=>{child.stdout.write(JSON.stringify({type:'error',message:'Rate limit exceeded'})+'\n');child.emit('close',null,killSignal);};
+  child.stdin.on('finish',()=>queueMicrotask(()=>{
+   for(const chunk of stderr)child.stderr.write(chunk);for(const chunk of stdout)child.stdout.write(chunk);
+   if(!waitForKill)child.emit('close',code,signal);
+  }));return child;
+ };
+}
+
+test('native subprocess stderr classifies only fixed failure categories without exposing messages',async()=>{
+ const cases=[['Rate limit exceeded','native_rate_limit'],['Content was flagged for possible cybersecurity risk','native_host_policy_rejection'],['Invalid access token','native_authentication_failure'],['error: unexpected argument --unsupported','native_cli_usage_failure'],['maximum context length exceeded','native_input_limit'],['ENOSPC: no space left on device','native_io_failure'],['database is locked','native_database_locked']];
+ for(const [message,expected] of cases){
+  const stderr=message+' Bearer private-token user@example.invalid https://private.invalid/path?token=secret 00000000-0000-0000-0000-000000000001';
+  const execution=await runCodex([], 'unprinted input',1000,[],{spawnImpl:nativeProcessFixture({stderr:[stderr.slice(0,4),stderr.slice(4)]})});
+  assert.equal(execution.failure,expected);assert.equal(execution.stderr_classification,expected);assert.equal(execution.code,1);assert.ok(execution.elapsed_ms>=0);
+  assert.doesNotMatch(JSON.stringify(execution),/private-token|example.invalid|private.invalid|secret|00000000|unprinted input/);
+ }
+ assert.equal(classifyNativeStderr('unknown native failure with private details'),null);
+});
+
+test('native stderr capture stays bounded and unknown process failures remain failures',async()=>{
+ const execution=await runCodex([], '',1000,[],{spawnImpl:nativeProcessFixture({stderr:['x'.repeat(8190),'😀 private-token user@example.invalid'],stdout:['malformed output\n']})});
+ assert.equal(execution.failure,'native_process_failed');assert.equal(execution.stderr_bytes_retained,8192);assert.equal(execution.stderr_truncated,true);assert.equal(execution.stderr_classification,null);
+ assert.doesNotMatch(JSON.stringify(execution),/private-token|example.invalid|malformed output/);
+});
+
+test('native stdout failures and timeouts retain precedence while successful exits stay successful',async()=>{
+ const failed=await runCodex([], '',1000,[],{spawnImpl:nativeProcessFixture({stderr:['Rate limit exceeded'],stdout:[JSON.stringify({type:'error',message:'Policy violation'})+'\n']})});
+ assert.equal(failed.failure,'native_host_policy_rejection');assert.equal(failed.stderr_classification,'native_rate_limit');
+ const success=await runCodex([], '',1000,[],{spawnImpl:nativeProcessFixture({stderr:['Rate limit exceeded'],code:0})});assert.equal(success.failure,null);
+ const terminated=await runCodex([], '',1000,[],{spawnImpl:nativeProcessFixture({code:null,signal:'SIGKILL'})});assert.equal(terminated.failure,'native_process_failed');assert.equal(terminated.signal,'SIGKILL');
+ const timeout=await runCodex([], '',5,[],{spawnImpl:nativeProcessFixture({stderr:['Policy violation'],waitForKill:true})});assert.equal(timeout.failure,'native_timeout');assert.equal(timeout.signal,'SIGTERM');
+});
+
+test('grading diagnostics whitelist subprocess metadata and discard private fields and unknown categories',()=>{
+ const execution={exit_code:1,exit_signal:'SIGKILL',elapsed_ms:123,stderr_bytes_retained:8192,stderr_truncated:true,stderr_classification:'native_database_locked',stderr:'Bearer private-token',private_url:'https://private.invalid'};
+ assert.deepEqual(caseDiagnostics({}, {execution_diagnostics:execution},[]).evaluation_execution,{exit_code:1,exit_signal:'SIGKILL',elapsed_ms:123,stderr_bytes_retained:8192,stderr_truncated:true,stderr_classification:'native_database_locked'});
+ const rejected=nativeExecutionDiagnostics({code:'private-token',signal:'private-signal',elapsed_ms:-1,stderr_bytes_retained:8193,stderr_truncated:'true',stderr_classification:'private-category'});
+ assert.deepEqual(rejected,{exit_code:null,exit_signal:null,elapsed_ms:0,stderr_bytes_retained:0,stderr_truncated:false,stderr_classification:null});
+ assert.doesNotMatch(JSON.stringify(caseDiagnostics({}, {execution_diagnostics:{...execution,stderr_classification:'private-category'}},[])),/private-token|private.invalid|private-category/);
+});
 test('only the configured full-inventory case receives the longer bounded reviewer turn',async()=>{
  const root=fileURLToPath(new URL('../',import.meta.url));
  const catalog=await loadPromptCatalog(root,'bos');

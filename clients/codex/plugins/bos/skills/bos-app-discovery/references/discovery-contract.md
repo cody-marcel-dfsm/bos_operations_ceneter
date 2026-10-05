@@ -100,6 +100,29 @@ separately from public Describe operations and native API-contract links; mark
 it unresolved when missing or unavailable. Complete public Describe retrieval
 does not establish registration-contract retrieval or validation.
 
+For workflow reports, project the exact validated operation-Describe parents and
+API-contract responses with the packaged
+[contract-facts projector](../scripts/project-contract-facts.mjs). Its
+source-keyed fact rows preserve every execution method/transport/context-header
+name, limits entry, root required/property names, guarantees, errors, versions,
+and available freshness declarations. Include the complete execution and limit
+rows in the report. Execution URIs and authority values are omitted; context
+header names are declarations only. The ordinary CLI accepts observed documents
+and descriptive scope labels; a supported retained-document host capability
+resolves the exact validated originals and scope itself.
+
+The projector's summaries count unique operations separately by contract kind,
+selected descriptive scope, and exact declared source when present. Keep public
+operation-Describe counts separate from API-contract registration/native counts.
+Preserve null, absent, and declared transport states, duplicate observations,
+and conflicting declarations. Pagination tensions pair actual schema-field
+pointers with the same operation/source's literal pagination flag; retain both
+in the assessment without inferring runtime permission or invalidating the
+contract. A projection is derived reporting evidence and supplies no new
+source/schema evidence or authorization. Detailed contract comparisons retain
+the original validated documents and their existing requirements.
+
+
 Copy advertised resource references exactly as returned by the current host,
 preserving their spelling and encoding. When the host presents a private
 placeholder, it owns resolution to the original reference. Resolve a missing
