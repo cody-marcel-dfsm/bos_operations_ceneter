@@ -55,7 +55,7 @@ test('unexpected native MCP execution fails the isolated run',async()=>{
 
 test('an extended reviewer turn still terminates at its supplied bound',async()=>{
  const fake=host({stall:true});
- await assert.rejects(runReviewerModel({prompt:'Complete the full inventory.',directory:'/tmp',timeout:10,serverInventory:[],spawnImpl:fake.spawnImpl,tools:{definitions:[],call:async()=>({})}}),/reviewer_model_failed/);
+ await assert.rejects(runReviewerModel({prompt:'Complete the full inventory.',directory:'/tmp',timeout:10,serverInventory:[],spawnImpl:fake.spawnImpl,tools:{definitions:[],call:async()=>({})}}),/reviewer_model_timeout/);
  assert.ok(fake.killCount>=2);
 });
 

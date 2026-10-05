@@ -22,7 +22,7 @@ export async function runReviewerModel({prompt,model,directory,instructions,tool
   const send=message=>child.stdin.write(JSON.stringify(message)+'\n');
   const request=(method,params)=>new Promise((resolve,reject)=>{const current=++id;pending.set(current,{resolve,reject});send({jsonrpc:'2.0',id:current,method,params});});
   const fail=(reason='reviewer_model_failed')=>{if(finished)return;finished=true;const known=reviewerFailureCode({code:reason});const code=known.startsWith('reviewer_model_')?known:'reviewer_model_failed';for(const waiter of pending.values())waiter.reject(new Error(code));pending.clear();rejectTurn(new Error(code));};
-  const timer=setTimeout(()=>{fail();child.kill('SIGTERM');},timeout);
+  const timer=setTimeout(()=>{fail('reviewer_model_timeout');child.kill('SIGTERM');},timeout);
   child.on('error',fail);child.on('close',()=>{if(!finished)fail();});
   const lines=createInterface({input:child.stdout});
   let handling=Promise.resolve();

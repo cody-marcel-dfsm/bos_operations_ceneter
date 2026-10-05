@@ -12,7 +12,7 @@ test('only the configured full-inventory case receives the longer bounded review
  const root=fileURLToPath(new URL('../',import.meta.url));
  const catalog=await loadPromptCatalog(root,'bos');
  assert.equal(reviewerTurnTimeoutMs(catalog.cases.find(row=>row.id==='starter-2')),900000);
- assert.equal(reviewerTurnTimeoutMs(catalog.cases.find(row=>row.id==='starter-1')),300000);
+ assert.equal(reviewerTurnTimeoutMs(catalog.cases.find(row=>row.id==='starter-1')),900000);
  assert.equal(reviewerTurnTimeoutMs({}),300000);
  for(const value of [0,299999,600000,900001,'900000'])assert.throws(()=>reviewerTurnTimeoutMs({reviewer_timeout_ms:value}),/reviewer_turn_timeout_invalid/);
 });
@@ -224,8 +224,8 @@ test('failed native receipts retain only completed session and binding proofs wi
  const {failedNativeCaseReceipt}=await import('../scripts/marketplace-native-run.mjs');
  const base={product:'bos',id:'negative-3',release_commit:'published'};
  const session={evidence:{reviewer_url_sha256:'actual-url-hash',reviewer_login_http_status:200,authentication_source:'exact_reviewer_entry_consent_pkce',isolated_connection:true,access_token:'secret'}};
- const failed=failedNativeCaseReceipt(base,session,true,new Error('reviewer_model_failed'));
- assert.deepEqual(failed,{...base,reviewer_url_sha256:'actual-url-hash',reviewer_login_http_status:200,authentication_source:'exact_reviewer_entry_consent_pkce',isolated_connection:true,bos_binding_provenance_verified:true,status:'FAIL',reason:'reviewer_model_failed'});
+ const failed=failedNativeCaseReceipt(base,session,true,new Error('reviewer_model_failed'),3210);
+ assert.deepEqual(failed,{...base,reviewer_url_sha256:'actual-url-hash',reviewer_login_http_status:200,authentication_source:'exact_reviewer_entry_consent_pkce',isolated_connection:true,bos_binding_provenance_verified:true,elapsed_ms:3210,status:'FAIL',reason:'reviewer_model_failed'});
  const beforeBinding=failedNativeCaseReceipt(base,null,false,new Error('private secret details'));
  assert.deepEqual(beforeBinding,{...base,status:'FAIL',reason:'native_execution_or_prerequisite_failed'});
  assert.equal(Object.hasOwn(beforeBinding,'authentication_source'),false);

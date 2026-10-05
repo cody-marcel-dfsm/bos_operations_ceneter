@@ -127,12 +127,13 @@ export function caseResponseFailures(item,responses) {
  if(item.expected_semantic_operations&&!item.expected_semantic_operations.every(expected=>responses.some(row=>row.operation===expected.operation&&row.transport===expected.transport&&row.successful)))failures.push('expected_semantic_operation_missing');
  return failures;
 }
-export function failedNativeCaseReceipt(base, session, bindingVerified, error) {
+export function failedNativeCaseReceipt(base, session, bindingVerified, error, elapsedMs) {
  const evidence={};
  for(const key of ['reviewer_url_sha256','reviewer_login_http_status','authentication_source','isolated_connection']) if(Object.hasOwn(session?.evidence??{},key)) evidence[key]=session.evidence[key];
- return {...base,...evidence,...(bindingVerified===true?{bos_binding_provenance_verified:true}:{}),status:'FAIL',reason:reviewerFailureCode(error,'native_execution_or_prerequisite_failed')};
+ return {...base,...evidence,...(bindingVerified===true?{bos_binding_provenance_verified:true}:{}),...(Number.isSafeInteger(elapsedMs)&&elapsedMs>=0?{elapsed_ms:elapsedMs}:{}),status:'FAIL',reason:reviewerFailureCode(error,'native_execution_or_prerequisite_failed')};
 }
 export async function nativeCase(catalog,item,config,release,model) {
+ const caseStartedAt=Date.now();
  const directory=await mkdtemp(join(tmpdir(),'marketplace-native-'));
  const base={product:catalog.product,transport_mode:'isolated_reviewer_https_host',id:item.id,prompt_sha256:digest(item.prompt),configuration_sha256:catalog.configuration_sha256,reviewer_configuration_sha256:reviewerConfigurationDigest(config),installed_version:release.version,release_commit:release.release_commit,executed_package_sha256:release.package_sha256,bos_dependency_commit:(release.dependency??release).release_commit,bos_dependency_package_sha256:(release.dependency??release).package_sha256};
  let session=null,report,bindingVerified=false,scopeVerified=false,scopeEvidence,preferences;
@@ -180,11 +181,12 @@ export async function nativeCase(catalog,item,config,release,model) {
   const judgment=await judgeEvidence(gradingEvidence,item,catalog,model,directory);
   if(judgment.pass!==true||judgment.missing?.length!==0)reasons.push('configured_outcome_failed');
   report={...base,...session.evidence,diagnostics:caseDiagnostics(result,judgment,observed,fixtureAssertions),...classifyCompletion(item.kind,result.status,reasons),bos_binding_provenance_verified:bindingVerified,prohibited_effects:0,negative_bos_invocations:nativeTools.filter(row=>row.server!=='Acceptance').length,unsafe_attempts:state.denials.filter(row=>row.reason!=='guard_canary_denied').length,fixture_outcome_verified:fixturesVerified,independent_grading_verified:judgment.pass===true&&judgment.missing?.length===0,evaluation_missing_count:judgment.missing?.length,native_calls:calls.length,https_calls:observed.filter(row=>row.transport==='https').length,tools:[...new Set(calls.map(row=>row.tool))],guard_verified:guard,guard_required:guardRequired,reviewer_scope_verified:scopeVerified,evidence_sha256:digest(gradingEvidence),observed_status:result.status};
- }catch(error){report=failedNativeCaseReceipt(base,session,bindingVerified,error);}
+ }catch(error){report=failedNativeCaseReceipt(base,session,bindingVerified,error,Date.now()-caseStartedAt);}
  finally{
   if(session)try{await session.close();report.grant_cleanup_verified=true;}catch{report={...report,status:'FAIL',reason:'reviewer_grant_revocation_failed',grant_cleanup_verified:false};}
   await rm(directory,{recursive:true,force:true});
  }
+ report.elapsed_ms=Date.now()-caseStartedAt;
  return report;
 }
 
