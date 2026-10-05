@@ -37,8 +37,10 @@ Choose the evidence needed for the actual request:
   discovery, and validate the actual response with `api-contract`. Include its
   raw BOSL required inputs, supported node types, server-owned guarantees,
   execution declaration, compiler/runtime limits, and public errors in the
-  workflow assessment. When the link or a required observation is unavailable,
-  identify that missing evidence explicitly.
+  workflow assessment. Use the packaged contract-facts projection below to
+  preserve complete execution and limit declarations and observed pagination
+  tensions. When the link or a required observation is unavailable, identify
+  that missing evidence explicitly.
 - **Detailed contracts and full inventories:** use the named-contract comparison
   section for requested operation schemas, fields, bounds, effects, limits, and
   errors. Use the full-inventory workflow for an explicitly comprehensive
@@ -54,6 +56,36 @@ observed conflicts, exact source provenance, and validation results relevant to
 the requested facts. Read guard status immediately before calculating ages and
 use its exact `reference_time` with each literal source `observed_at`. Perform
 no business operation, registration, or mutation for a read-only assessment.
+
+
+### Preserve contract facts for workflow reporting
+
+For tool/workflow and journey-feasibility reports, use the packaged
+[contract-facts projector](scripts/project-contract-facts.mjs) on the exact
+validated operation-Describe parent documents and API-contract responses used
+by the assessment. Ordinary clients can invoke its stdin/stdout CLI with
+`{documents:[{kind,document,scope}]}`: `kind` is `operation-describe` or
+`api-contract`, `document` is the actual complete response, and `scope` contains
+the descriptive `organization`, `application`, `installation`, and `role`
+labels from the selected context. Scope labels group declarations and supply no
+authorization proof. In a host offering `acceptance_project_contract_facts`,
+pass only its retained validated document IDs; the host supplies the originals
+and scope. Preserve missing helper support as a reporting limitation and report
+these same exact declarations from the validated documents.
+
+Use the projection's complete `execution` and `limits` rows in the workflow
+report: include every declared field and literal value, including document and
+lifecycle bounds. Preserve declared nulls and absent fields separately. Report
+its pagination tensions with both exact schema-field and flag declarations;
+these observations do not invalidate a contract or establish runtime behavior.
+Use `summaries` for any transport totals, retaining their contract-kind and
+scope groups: public operation-Describe counts and API-contract counts describe
+separate sets. Preserve duplicate observations and conflicting declarations;
+use no aggregate count when those groups do not match the stated set. The
+projector supplies validated declarations only, with document indexes and JSON
+pointers; it establishes no source equivalence, authority, execution permission,
+or current readiness. Requested detailed schema comparisons still use the
+named-contract section and the original validated source documents.
 
 
 For live `bos-identity-mcp/v2`, first apply [identity-context compatibility](../bos-mcp-client/references/identity-context.md).

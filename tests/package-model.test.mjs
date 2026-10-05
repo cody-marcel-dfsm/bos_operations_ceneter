@@ -286,6 +286,10 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
   assert.match(contract, /audience-bound/i);
   assert.match(contract, /another[\s\S]*fails closed at the grant[\s\S]*boundary/i);
   await access(`${discovery.sourcePath}/scripts/validate-discovery.mjs`);
+  await access(`${discovery.sourcePath}/scripts/project-contract-facts.mjs`);
+  assert.match(sourceGuidance, /Use the projection's complete `execution` and `limits` rows[\s\S]*every declared field and literal value/i);
+  assert.match(sourceGuidance, /public operation-Describe counts and API-contract counts describe\s+separate sets/i);
+  assert.match(contract, /Keep public\s+operation-Describe counts separate from API-contract registration\/native counts/i);
 
   for (const clientPath of [
     `${root}/clients/codex/plugins/bos/skills/bos-app-discovery/SKILL.md`,

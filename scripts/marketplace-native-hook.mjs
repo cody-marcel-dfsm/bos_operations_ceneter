@@ -22,7 +22,7 @@ export function permission(event, state) {
  if(event.tool_name?.includes('Acceptance')) {
   if(name==='guard.probe') {state.canary=true;return 'guard_canary_denied';}
   if(['guard.status','read.installed','validate.installed'].includes(name)) return null;
-  if(name==='compare.schemas')return state.canary&&['positive','starter'].includes(state.kind)&&state.handle&&state.allowed_effects?.includes('read')&&state.validated_contracts?.['app-describe']&&!Object.values(state.failed_validations??{}).some(Boolean)?null:'published_prerequisite_required';
+  if(['compare.schemas','project.contract.facts'].includes(name))return state.canary&&['positive','starter'].includes(state.kind)&&state.handle&&state.allowed_effects?.includes('read')&&state.validated_contracts?.['app-describe']&&!Object.values(state.failed_validations??{}).some(Boolean)?null:'published_prerequisite_required';
  }
  if(['update_plan'].includes(event.tool_name)) return null;
  if(!state.canary) return 'guard_canary_required';
@@ -80,6 +80,11 @@ export function recordValidation(event,state) {
  const passed=!!hash&&state.observed_document_digests?.includes(hash)&&response?.valid===true&&event.tool_response?.isError!==true;
  state.failed_validations??={};state.failed_validations[mode+':'+hash]=!passed;
  state.validated_contracts??={};if(passed)state.validated_contracts[mode]=hash;else delete state.validated_contracts[mode];
+ state.validated_document_proofs??={};
+ if(['operation-describe','api-contract'].includes(mode)){
+  if(passed&&state.handle&&state.selected_scope)state.validated_document_proofs[hash]={mode,context_handle:state.handle,scope:{...state.selected_scope}};
+  else delete state.validated_document_proofs[hash];
+ }
 }
 export function observe(event,state) {
  const name=nameOf(event);let response=body(event.tool_response);
@@ -88,6 +93,8 @@ export function observe(event,state) {
   const contexts=response?.contexts??response?.authorized_contexts??[];
   const selected=selectReviewerContext(contexts,state);const match=selected?[selected]:[];
   if(selected){if(state.handle!==selected.context_handle){state.resources=[];state.tools=[];state.validated_contracts={};state.failed_validations={};state.observed_document_digests=[];}state.handle=selected.context_handle;state.default_scope_selected=selected.is_default===true;}else{delete state.handle;state.resources=[];state.tools=[];state.validated_contracts={};state.failed_validations={};state.observed_document_digests=[];state.default_scope_selected=false;}
+  if(!selected||state.selected_scope?.context_handle!==state.handle)state.validated_document_proofs={};
+  state.selected_scope=selected?{organization:selected.organization_name,application:selected.application_name,installation:selected.installation_name,role:selected.role_label,context_handle:state.handle}:null;
   response={contract_version:response?.contract_version,contexts:match};
  }
  if(name==='bos.list.context.tools' && event.tool_input?.context_handle===state.handle) state.tools=response?.tools??[];

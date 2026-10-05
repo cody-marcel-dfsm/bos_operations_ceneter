@@ -47,7 +47,25 @@ export function createInstalledAcceptance(config,getState) {
  async function call(name,args) {
   if(name==='guard_probe')throw new Error('Guard canary executed: hook enforcement unavailable');
   if(name==='guard_status'){const s=await getState();return {ready:s.canary===true,reference_time:new Date().toISOString(),reference_time_source:'reviewer_host_utc_clock'};}
-  if(name==='validate_installed'&&!installedValidatorModes.includes(args.mode))throw new Error('reviewer_validator_mode_unsupported');
+ if(name==='validate_installed'&&!installedValidatorModes.includes(args.mode))throw new Error('reviewer_validator_mode_unsupported');
+ if(name==='project_contract_facts'){
+  const state=await getState();
+  if(!state.canary||!['positive','starter'].includes(state.kind)||!state.handle||!state.allowed_effects?.includes('read')||!state.validated_contracts?.['app-describe']||Object.values(state.failed_validations??{}).some(Boolean)||state.observations?.some(row=>row.tool==='validate.installed'&&(row.is_error||row.response?.valid===false)))throw new Error('reviewer_published_prerequisite_required');
+  const scope=Object.fromEntries(['organization','application','installation','role'].map(key=>[key,state.selected_scope?.[key]]));
+  if(state.selected_scope?.context_handle!==state.handle||Object.values(scope).some(value=>typeof value!=='string'||!value.trim()))throw new Error('reviewer_scope_unverified');
+  if(!Array.isArray(args.documents)||args.documents.length<1||args.documents.length>32)throw new Error('reviewer_document_not_observed');
+  for(const item of args.documents){
+   const hash=documentDigests(item.document)[0],proof=state.validated_document_proofs?.[hash];
+   if(!['operation-describe','api-contract'].includes(item.kind)||!proof||proof.mode!==item.kind||proof.context_handle!==state.handle||!observedDocument(state.observed_document_digests,item.document)||JSON.stringify(Object.fromEntries(Object.keys(scope).map(key=>[key,proof.scope?.[key]])))!==JSON.stringify(scope))throw new Error('reviewer_document_not_observed');
+  }
+  const documents=args.documents.map(item=>({kind:item.kind,document:item.document,scope}));
+  const pinnedHandle=state.handle,proofHashes=documents.map(item=>documentDigests(item.document)[0]),pinnedScope=JSON.stringify(state.selected_scope),pinnedProofs=proofHashes.map(hash=>JSON.stringify(state.validated_document_proofs[hash]));
+  const root=config.installed_roots.bos,commit=config.published_commits.bos,relativePath='skills/bos-app-discovery/scripts/project-contract-facts.mjs';
+  const path=await installedPath(root,relativePath);await readPublishedFile(root,commit,relativePath);await verifyPublishedPackage(root,commit);
+  const result=await new Promise((done,reject)=>{const child=spawn(process.execPath,[path],{stdio:['pipe','pipe','pipe']});let output='';child.stdout.on('data',c=>output+=c);child.stderr.on('data',()=>{});const timer=setTimeout(()=>child.kill(),30000);child.on('error',error=>{clearTimeout(timer);reject(error);});child.on('close',code=>{clearTimeout(timer);if(code!==0){reject(new Error('reviewer_validation_failed'));return;}try{done(JSON.parse(output));}catch{reject(new Error('reviewer_validation_failed'));}});child.stdin.end(JSON.stringify({documents}));});
+  if(state.handle!==pinnedHandle||JSON.stringify(state.selected_scope)!==pinnedScope||proofHashes.some((hash,index)=>JSON.stringify(state.validated_document_proofs?.[hash])!==pinnedProofs[index]))throw new Error('reviewer_discovery_refresh_required');
+  return result;
+ }
  if(name==='compare_schemas'){
   const state=await getState();
   if(!state.canary||!['positive','starter'].includes(state.kind)||!state.handle||!state.allowed_effects?.includes('read')||!state.validated_contracts?.['app-describe']||Object.values(state.failed_validations??{}).some(Boolean))throw new Error('reviewer_published_prerequisite_required');

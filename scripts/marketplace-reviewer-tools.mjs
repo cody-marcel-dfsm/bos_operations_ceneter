@@ -67,6 +67,7 @@ const definitions=[
   spec('acceptance_guard_probe','Verify the test guard by requesting a deliberate denial.'),
   spec('acceptance_guard_status','Check guard readiness and obtain the real current UTC host reference clock. Re-read immediately before calculating observation age; this clock supplies no provider-readiness evidence.'),
   spec('acceptance_read_document','Read an exact sanitized value from a returned document_id using an RFC 6901 JSON Pointer, or an empty pointer for the entire document. No network request or validation is performed. found:false means absent from the sanitized view; null and false remain values. Large values return json_text chunks: concatenate text using the exact next_offset until complete, then parse JSON. Offsets count JavaScript UTF-16 code units; replies are bounded to 8192 UTF-8 bytes. Contact document_id resolves to the complete retained operation; parent_document_id and pointer identify its location in the parent.',{document_id:{type:'string',maxLength:64},pointer:{type:'string',maxLength:1024},offset:{type:'integer',minimum:0}},['document_id']),
+  spec('acceptance_project_contract_facts','Project declarations and counts from exact retained successfully validated operation-describe parents or api-contract responses using the verified published BOS helper. Supply source document_ids only. The host binds current selected scope. Returned derived document_id supports bounded inspection; projection supplies no validation, freshness, readiness, authority or execution permission.',{document_ids:{type:'array',minItems:1,maxItems:32,uniqueItems:true,items:{type:'string',maxLength:64}}},['document_ids']),
   spec('acceptance_compare_schemas','Use only after app.describe is validated and no published validation failure remains. Compare exact JSON Schema values (object or boolean) from a document_id returned by bos_list_context_tools or bos_https_describe, or from any document_id whose acceptance_validate_installed call returned valid:true for its actual document type, including a valid legacy api-contract response. Each exact JSON Pointer must select a schema under inputSchema, outputSchema, input_schema, or output_schema. Identity/context observations such as bos_get_context are not schema evidence unless the published validator successfully validates that exact document and the pointer selects a schema. The helper reports declaration differences only; it proves no semantic correspondence, compatibility, validation, or readiness.',{pairs:{type:'array',minItems:1,maxItems:32,items:{type:'object',additionalProperties:false,required:['left','right'],properties:Object.fromEntries(['left','right'].map(key=>[key,{type:'object',additionalProperties:false,required:['document_id','pointer'],properties:{document_id:{type:'string'},pointer:{type:'string'}}}]))}}},['pairs']),
   spec('acceptance_read_installed','Read a verified published installed skill or reference. Copy the exact product/path pair from the offered skill index. If product is omitted, the host accepts only a path unique to one verified installed product. Each Markdown response offers verified references with product provenance and explicit unavailable-reference status. A returned reference_id binds its exact published product and file. Never invent a filename, product, or reference path.',{product:{type:'string'},path:{type:'string'},reference_id:{type:'string'}},[]),
   spec('acceptance_validate_installed','Validate an actual discovered document with the host-bound verified published validator; no validator path is needed. Supply its returned document_id; the host retains its exact original bytes. Use app-describe for the app.describe resource and operation-describe for the complete HTTPS Describe response (the parent document). Individual HTTPS operation contacts are covered by that parent validation; they are not legacy api-contract envelopes. Use api-contract only for the actual legacy api.contract.get response, and service-journey for a service journey description. Other supported modes are contact, service, graph, plugins and discovery-refresh.',{path:{type:'string',enum:[discoveryValidatorPath]},mode:{type:'string',enum:installedValidatorModes},document_id:{type:'string'}},['mode','document_id']),
@@ -108,8 +109,9 @@ export async function createReviewerTools({session,state,release}) {
     if(response.isError)throw new Error('reviewer_identity_unverified');
     const selected=selectReviewerContext(value.contexts??value.authorized_contexts??[],state);
     if(!selected?.context_handle)throw new Error('reviewer_identity_unverified');
-    if(state.handle&&state.handle!==selected.context_handle){clearReferences();state.validated_contracts={};state.failed_validations={};throw new Error('reviewer_discovery_refresh_required');}
+    if(state.handle&&state.handle!==selected.context_handle){clearReferences();state.validated_contracts={};state.failed_validations={};state.validated_document_proofs={};state.selected_scope=null;throw new Error('reviewer_discovery_refresh_required');}
     state.handle=selected.context_handle;
+    state.selected_scope={organization:selected.organization_name,application:selected.application_name,installation:selected.installation_name,role:selected.role_label,context_handle:state.handle};
     return {contract_version:value.contract_version,context:Object.fromEntries(['context_handle','organization_name','application_name','installation_name','role_label','is_default'].map(key=>[key,selected[key]]))};
   };
   const adapter=createBosExternalDependencyAdapter({
@@ -169,6 +171,22 @@ export async function createReviewerTools({session,state,release}) {
       const pairs=args.pairs.map(pair=>({left:select(pair.left),right:select(pair.right)}));
       const result=await installed.call('compare_schemas',{pairs,proof_documents:[...proofs.values()]});
       const response={...result,comparisons:result.comparisons.map((row,i)=>({...row,left:args.pairs[i].left,right:args.pairs[i].right}))};
+      observe({...event,tool_response:response},state);return response;
+    }
+    if(name==='acceptance_project_contract_facts'){
+      const event={tool_name:'mcp__Acceptance__project_contract_facts',tool_input:args};
+      const denial=permission(event,state);if(denial){state.denials.push({tool:name,reason:denial});return {isError:true,reason:denial};}
+      if(Object.keys(args).some(key=>key!=='document_ids')||!Array.isArray(args.document_ids)||args.document_ids.length<1||args.document_ids.length>32||new Set(args.document_ids).size!==args.document_ids.length)throw new Error('reviewer_document_not_observed');
+      const inputs=args.document_ids.map(id=>{
+        const original=documents.get(id);if(!original)throw new Error('reviewer_document_not_observed');
+        const document=Object.hasOwn(original,'response')?original.response:original;
+        const proof=state.validated_document_proofs?.[documentDigests(document)[0]];
+        if(!proof||!['operation-describe','api-contract'].includes(proof.mode))throw new Error('reviewer_document_not_observed');
+        return {kind:proof.mode,document};
+      });
+      const projection=sanitized(await installed.call('project_contract_facts',{documents:inputs}));
+      const derivedId=retainDocument(projection);
+      const response={summaries:projection.summaries,document_id:derivedId,view:'derived_contract_facts',source_documents:args.document_ids.map((document_id,document_index)=>({document_id,document_index})),helper:{path:'skills/bos-app-discovery/scripts/project-contract-facts.mjs',release_commit:bos.release_commit},projection};
       observe({...event,tool_response:response},state);return response;
     }
     if(name.startsWith('acceptance_')){
@@ -238,6 +256,7 @@ export async function createReviewerTools({session,state,release}) {
       // adds observations without changing model-validation or dispatch state.
       state.observations.push({tool:'validate.installed',input:{path:'skills/bos-app-discovery/scripts/validate-discovery.mjs',mode:'operation-describe',document:sanitized(raw)},response:sanitized(validation),scope_verified:!!state.handle,is_error:validation.valid!==true,validation_origin:'host_https_describe'});
       if(validation.valid!==true)throw new Error('reviewer_describe_response_invalid');
+      state.validated_document_proofs??={};state.validated_document_proofs[documentDigests(raw)[0]]={mode:'operation-describe',context_handle:state.handle,scope:{...state.selected_scope}};
       state.fixtureResponses.push({operation:'app.describe',transport:'https_discovery',successful:true,body:raw});
       const exposed=expose(raw);
       trustedSchemaDocuments.add(exposed.document_id);for(const contact of exposed.advertised_https_contacts??[])trustedSchemaDocuments.add(contact.document_id);
