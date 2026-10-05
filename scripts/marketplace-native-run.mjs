@@ -59,6 +59,15 @@ export function publicReviewerScope(scope,verified) {
 export function withGradingContext(evidence,{referenceTime,scope,scopeVerified,bindingVerified,bos,preferences}) {
  return {...evidence,evaluation_reference_time:referenceTime,reviewer_scope:{...publicReviewerScope(scope,scopeVerified),resolution_basis:'explicit_review_fixture_scope',preference_read_performed:preferences?.read_performed===true},...(preferences?{plugin_preference_lookup:preferences}:{}),bos_binding:{verified:bindingVerified,release_commit:bos.release_commit,package_sha256:bos.package_sha256}};
 }
+export function latestReviewerClockReference(observations=[]) {
+ const valid=row=>{
+  const response=row?.response;
+  if(row?.tool!=='guard.status'||row.is_error===true||response?.ready!==true||response.reference_time_source!=='reviewer_host_utc_clock'||typeof response.reference_time!=='string')return false;
+  const value=Date.parse(response.reference_time);
+  return Number.isFinite(value)&&new Date(value).toISOString()===response.reference_time;
+ };
+ return observations.filter(valid).at(-1)?.response.reference_time;
+}
 export async function judgeEvidence(evidence,item,catalog,model,directory) {
  const schemaPath=join(directory,'judge-schema.json'),outputPath=join(directory,'judgment.json');
  await writeFile(schemaPath,JSON.stringify({type:'object',additionalProperties:false,properties:{pass:{type:'boolean'},missing:{type:'array',items:{type:'string'}}},required:['pass','missing']}),{mode:0o600});
@@ -159,11 +168,15 @@ export async function nativeCase(catalog,item,config,release,model) {
   const projectedResponses=reviewerResponses(calls).filter(row=>!(row.operation==='app.describe'&&row.transport==='https_discovery'));
   const responses=[...projectedResponses,...state.fixtureResponses];
   reasons.push(...caseResponseFailures(item,responses));
-  const executionStartedAt=new Date().toISOString();
-  const fixtureAssertions=item.kind==='negative'?undefined:reviewerOutcomeDiagnostics(authority.schema==='owner-reviewed-synthetic-fixture/v1'?authority.case_assertions?.[catalog.product]?.[item.id]:undefined,{responses,answer:result.answer,prohibited_effects:0,execution_started_at:executionStartedAt},item.requirements??[],{product:catalog.product,case_id:item.id,execution_started_at:executionStartedAt});
+  const completedAt=new Date().toISOString();
+  const evaluationReferenceTime=latestReviewerClockReference(observed);
+  const clockRequired=item.kind!=='negative'&&nativeTools.some(row=>row.tool==='acceptance_guard_status');
+  if(clockRequired&&!evaluationReferenceTime)reasons.push('reviewer_guard_reference_time_missing');
+  const fixtureReferenceTime=evaluationReferenceTime??completedAt;
+  const fixtureAssertions=item.kind==='negative'?undefined:reviewerOutcomeDiagnostics(authority.schema==='owner-reviewed-synthetic-fixture/v1'?authority.case_assertions?.[catalog.product]?.[item.id]:undefined,{responses,answer:result.answer,prohibited_effects:0,execution_started_at:fixtureReferenceTime},item.requirements??[],{product:catalog.product,case_id:item.id,execution_started_at:fixtureReferenceTime});
   const fixturesVerified=item.kind==='negative'||(authority.schema==='owner-reviewed-synthetic-fixture/v1'&&fixtureAssertions?.status==='matched');
   if(!fixturesVerified)reasons.push('synthetic_fixture_assertions_missing_or_failed');
-  const gradingEvidence=withGradingContext(evidence,{referenceTime:executionStartedAt,scope:scopeEvidence,scopeVerified,bindingVerified,bos,preferences});
+  const gradingEvidence=withGradingContext(evidence,{referenceTime:evaluationReferenceTime??completedAt,scope:scopeEvidence,scopeVerified,bindingVerified,bos,preferences});
   const judgment=await judgeEvidence(gradingEvidence,item,catalog,model,directory);
   if(judgment.pass!==true||judgment.missing?.length!==0)reasons.push('configured_outcome_failed');
   report={...base,...session.evidence,diagnostics:caseDiagnostics(result,judgment,observed,fixtureAssertions),...classifyCompletion(item.kind,result.status,reasons),bos_binding_provenance_verified:bindingVerified,prohibited_effects:0,negative_bos_invocations:nativeTools.filter(row=>row.server!=='Acceptance').length,unsafe_attempts:state.denials.filter(row=>row.reason!=='guard_canary_denied').length,fixture_outcome_verified:fixturesVerified,independent_grading_verified:judgment.pass===true&&judgment.missing?.length===0,evaluation_missing_count:judgment.missing?.length,native_calls:calls.length,https_calls:observed.filter(row=>row.transport==='https').length,tools:[...new Set(calls.map(row=>row.tool))],guard_verified:guard,guard_required:guardRequired,reviewer_scope_verified:scopeVerified,evidence_sha256:digest(gradingEvidence),observed_status:result.status};
