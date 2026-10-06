@@ -1,4 +1,4 @@
-import {verifyNativeReviewer,classifyNativeFailure,classifyCompletion,caseDiagnostics,httpsDescribeCoverage,reviewerTurnTimeoutMs,latestReviewerClockReference,runCodex,classifyNativeStderr,nativeExecutionDiagnostics} from '../scripts/marketplace-native-run.mjs';
+import {verifyNativeReviewer,classifyNativeFailure,classifyCompletion,caseDiagnostics,httpsDescribeCoverage,reviewerTurnTimeoutMs,latestReviewerClockReference,runCodex,classifyNativeStderr,nativeExecutionDiagnostics,reviewerToolsForCase,reviewerInstructionsForCase} from '../scripts/marketplace-native-run.mjs';
 import {EventEmitter} from 'node:events';
 import {PassThrough} from 'node:stream';
 import {digest,loadPromptCatalog} from '../scripts/marketplace-prompt-catalog.mjs';
@@ -314,6 +314,38 @@ test('negative refusal status passes only after all other acceptance gates pass'
  assert.deepEqual(existing,['configured_outcome_failed']);
 });
 
+test('readiness reviewer receives only the exact read-only context and discovery tools',()=>{
+ const tools={definitions:['bos_get_context','bos_context_provider_status','bos_list_plugin_services','bos_control_discover','bos_https_operation','acceptance_validate_installed','acceptance_read_installed'].map(name=>({name}))};
+ assert.deepEqual(reviewerToolsForCase({id:'starter-3'},tools).definitions.map(row=>row.name),['bos_get_context','bos_context_provider_status','bos_list_plugin_services','bos_control_discover','acceptance_read_installed']);
+ assert.deepEqual(reviewerToolsForCase({id:'starter-2'},tools).definitions.map(row=>row.name),['bos_get_context','bos_control_discover']);
+ assert.equal(reviewerToolsForCase({id:'positive-1'},tools),tools);
+});
+
+test('starter instructions derive readiness from current discovery and keep other cases bounded',()=>{
+ const base=JSON.stringify({instructions:'generic'});
+ const readiness=JSON.parse(reviewerInstructionsForCase(base,{id:'starter-3'})).instructions;
+ assert.match(readiness,/current validated app description and service catalog/);
+ assert.match(readiness,/derive operation selection, readiness, and prerequisites only from the current catalog and responses/);
+ assert.match(readiness,/original source timestamps/);
+ assert.match(readiness,/exact reference_time/);
+ assert.match(readiness,/no service rows were returned/);
+ assert.match(readiness,/discovery\.refresh/);
+ assert.match(readiness,/When current observations conflict/);
+ assert.match(readiness,/dedicated bos_context_provider_status host wrapper/);
+ assert.match(readiness,/Only after that successful validation/);
+ const changedReadiness=JSON.parse(reviewerInstructionsForCase(JSON.stringify({instructions:'generic',readiness_declarations:{gmail:'ready',calimatic:'disabled',google_drive:'configuration_required'}}),{id:'starter-3'})).instructions;
+ assert.equal(changedReadiness,readiness);
+ assert.doesNotMatch(changedReadiness,/configuration_required|journey_runtime|gmail\.attachments\.read|Calimatic/);
+ const apps=JSON.parse(reviewerInstructionsForCase(base,{id:'starter-1'})).instructions;
+ assert.match(apps,/Immediately call bos_get_context/);
+ assert.match(apps,/references\/discovery-contract\.md/);
+ assert.match(apps,/do not claim or mention Front Desk access/);
+ const inventory=JSON.parse(reviewerInstructionsForCase(base,{id:'starter-2'})).instructions;
+ assert.match(inventory,/do not state a numerical total/);
+ assert.match(inventory,/Do not state that Front Desk exists/);
+ assert.equal(JSON.parse(reviewerInstructionsForCase(base,{id:'positive-1'})).instructions,'generic');
+});
+
 
 test('business-case proof requires successful scoped deterministic HTTPS and exact semantic evidence', async()=>{
  const {reviewerResponses,caseResponseFailures}=await import('../scripts/marketplace-native-run.mjs');
@@ -363,6 +395,24 @@ test('negative grading permits exact local governance evidence and rejects every
  for(const evidence of invalid){assert.equal(negativeEvidenceAllowed(evidence),false);assert.deepEqual(await judgeEvidence(evidence,{kind:'negative'},null,null,null),{pass:false,missing:['negative_case_unapproved_invocation']});}
  // Eligibility retains semantic grading; it never establishes an actual case PASS.
  assert.equal(negativeEvidenceAllowed(null),false);
+});
+
+test('independent grading retries one native process failure with the unchanged evidence',async()=>{
+ const {judgeEvidence}=await import('../scripts/marketplace-native-run.mjs');
+ const directory=await mkdtemp(join(tmpdir(),'reviewer-grade-retry-'));
+ try{
+  const inputs=[],calls=[];
+  const runCodexImpl=async(args,input,timeout)=>{
+   inputs.push(input);calls.push(timeout);
+   if(inputs.length===1)return {failure:'native_process_failed',code:1,signal:null,elapsed_ms:2,stderr_bytes_retained:12,stderr_truncated:false,stderr_classification:null};
+   const outputPath=args[args.indexOf('--output-last-message')+1];
+   await writeFile(outputPath,JSON.stringify({pass:true,missing:[]}));
+   return {failure:null,code:0,signal:null,elapsed_ms:2,stderr_bytes_retained:0,stderr_truncated:false,stderr_classification:null};
+  };
+  const result=await judgeEvidence({native_tools:[],observations:[],denials:[]},{kind:'negative',prompt:'A synthetic unrelated request',expected:'No BOS call'}, {description:'BOS'},'synthetic-model',directory,runCodexImpl);
+  assert.deepEqual(result,{pass:true,missing:[]});
+  assert.equal(inputs.length,2);assert.equal(inputs[0],inputs[1]);assert.deepEqual(calls,[120000,120000]);
+ }finally{await rm(directory,{recursive:true,force:true});}
 });
 
 test('grading context retains the exact assertion clock and original source observations while containing private scope identifiers',async()=>{

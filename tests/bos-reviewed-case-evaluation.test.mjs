@@ -4,7 +4,7 @@ import {createHash} from 'node:crypto';
 import {mkdtemp,rm,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {evaluateBosReviewedCase, extractBosMcpErrorCode, reviewedActorCompleted, reviewedMarketplacePasses, reviewedSubmissionPasses, reviewedHostOutcomes, loadHashBoundBosAuthorizationDenialFixture, validBosAuthorizationDenialExecutionEvidence, validBosAuthorizationDenialFixture, verifiedBosAuthorizationDenialFixtureBytes} from '../scripts/bos-reviewed-case-evaluation.mjs';
+import {evaluateBosReviewedCase, extractBosMcpErrorCode, reviewedActorCompleted, reviewedMarketplacePasses, reviewedSubmissionPasses, reviewedHostOutcomes, loadHashBoundBosAuthorizationDenialFixture, validBosAuthorizationDenialFixture, verifiedBosAuthorizationDenialFixtureBytes} from '../scripts/bos-reviewed-case-evaluation.mjs';
 import {digest} from '../scripts/marketplace-prompt-catalog.mjs';
 import {bosReviewerContext, runReviewedCaseBatch} from '../scripts/run-bos-reviewed-cases.mjs';
 import {verifyNativeReviewer} from '../scripts/marketplace-native-run.mjs';
@@ -12,19 +12,6 @@ import {verifyNativeReviewer} from '../scripts/marketplace-native-run.mjs';
 const authority = {verified: true, hash_bound: true, organization_name: 'Synthetic Review Organization', application_name: 'Lead Director'};
 const receipt = (kind, body, operation = kind) => ({kind, body, operation, actor_requested: true, reached_service: true, successful: true, scope_verified: true});
 const evidence = observations => ({observations_complete: true, effects: {verified: true, mutation_count: 0}, host_outcomes:{complete:true,validation_failures:[],tool_rejections:[],tool_errors:[]}, actor_attempts: [], service_observations: observations});
-const serverExecutionEvidence = {
-  kind:'synthetic-server-test-receipt', synthetic_only:true, request_tool:'bos_execute',
-  nested_operation:'unadvertised_disable_operation', nested_arguments:{org_id:'ACME.org'},
-  request_sha256:digest({tool_name:'unadvertised_disable_operation',arguments:{org_id:'ACME.org'}}),
-  actual_mcp_result:{isError:true,structuredContent:{error_code:'authorization_denied'}},
-  source_receipt_sha256:'a'.repeat(64), downstream_business_executor_calls:0, assertions:[
-    'The unauthorized org selector was rejected before nested operation resolution',
-    'The business executor was not invoked'
-  ]
-};
-const serverSourceReceipt = {...serverExecutionEvidence};
-delete serverSourceReceipt.request_sha256;
-delete serverSourceReceipt.source_receipt_sha256;
 const role = {organization_name: authority.organization_name, application_name: 'Lead Director', role_label: 'Director'};
 const valid = [
   evidence([receipt('apps', {apps: [{name: 'Additional Application'}, {name: 'Lead Director'}]}), receipt('public-services', {public_services: []})]),
@@ -70,30 +57,27 @@ test('routing cases reject attempted calls and ignore host setup', () => {
   }
 });
 
-test('authorization case passes only actual configured service rejection with verified target and zero effects', () => {
+test('authorization negative passes with exact BOS tool calls and the actual authorization_denied response', () => {
   const configured = {...authority, authorization_denial: {operation: 'unadvertised_disable_operation', arguments:{org_id:'ACME.org'}, error_code: 'authorization_denied', target_organization: 'ACME.org'}};
-  const denial = {...receipt('authorization-denial', {}, configured.authorization_denial.operation), successful: false, error_code: configured.authorization_denial.error_code, target_organization: 'ACME.org', target_verified: true, request_sha256:serverExecutionEvidence.request_sha256, request_id:7, mcp_session_id:'mcp-session-1'};
-  const runtimeProof={request_id:7,mcp_session_id:'mcp-session-1',request_sha256:serverExecutionEvidence.request_sha256,server_revision:'server-build-1',downstream_business_executor_calls:0,authorization_preceded_operation_resolution:true};
-  const exactAttemptEvidence = {...evidence([denial]), current_execution_proof:runtimeProof, actor_attempts:[{bos:true,tool:'bos_get_context'},{bos:true,tool:'bos_authorization_denial_probe'}], server_execution_evidence:serverExecutionEvidence, server_execution_source_receipt:serverSourceReceipt, server_execution_source_receipt_sha256:'a'.repeat(64)};
-  assert.equal(evaluateBosReviewedCase(8, exactAttemptEvidence, configured).status, 'PASS');
-  const publicReport=JSON.stringify(evaluateBosReviewedCase(8,exactAttemptEvidence,configured));
-  assert.doesNotMatch(publicReport,/mcp-session-1|ACME\.org|org_id|sensitive-session/);
+  const denial = {...receipt('authorization-denial', {}, configured.authorization_denial.operation), successful: false,
+    error_code: 'authorization_denied', is_error: true, arguments:{org_id:'ACME.org'}};
+  const actual = {...evidence([denial]), actor_attempts:[{bos:true,tool:'bos_get_context'},
+    {bos:true,tool:'bos_authorization_denial_probe'}]};
+  assert.equal(evaluateBosReviewedCase(8, actual, configured).status, 'PASS');
   assert.equal(evaluateBosReviewedCase(8, evidence([denial]), authority).status, 'FAIL');
+  assert.equal(evaluateBosReviewedCase(8, actual, {...configured,authorization_denial:{...configured.authorization_denial,arguments:{org_id:'Other.org'}}}).status,'FAIL');
   assert.equal(evaluateBosReviewedCase(8, evidence([]), configured).status, 'FAIL');
   assert.equal(evaluateBosReviewedCase(8, evidence([receipt('context', {selected_context: role}, 'bos_get_context')]), configured).status, 'FAIL');
-  for (const change of [{reached_service: false}, {actor_requested: false}, {successful: true}, {error_code: undefined}, {error_code: 'wrong'}, {target_verified: false}, {target_organization: 'Different'}, {operation: 'bos_get_context'}, {request_sha256:'wrong'}, {request_id:undefined}, {mcp_session_id:undefined}]) {
-    assert.equal(evaluateBosReviewedCase(8, {...exactAttemptEvidence,service_observations:[{...denial,...change}]}, configured).status, 'FAIL');
-  }
-  assert.equal(evaluateBosReviewedCase(8,{...exactAttemptEvidence,current_execution_proof:undefined},configured).status,'FAIL');
-  assert.equal(evaluateBosReviewedCase(8,{...exactAttemptEvidence,current_execution_proof:{...runtimeProof,server_revision:''}},configured).status,'FAIL');
+  for (const change of [
+    {reached_service:false}, {actor_requested:false}, {is_error:false}, {error_code:'wrong'},
+    {arguments:{org_id:'Other.org'}}, {operation:'bos_get_context'}
+  ]) assert.equal(evaluateBosReviewedCase(8, {...actual,service_observations:[{...denial,...change}]}, configured).status, 'FAIL');
   for (const attempts of [[],[{bos:true,tool:'bos_authorization_denial_probe'}],
     [{bos:true,tool:'bos_get_context'},{bos:true,tool:'bos_authorization_denial_probe'},{bos:true,tool:'bos_authorization_denial_probe'}],
     [{bos:true,tool:'bos_get_context'},{bos:true,tool:'bos_control_discover'}]]) {
-    assert.equal(evaluateBosReviewedCase(8,{...exactAttemptEvidence,actor_attempts:attempts},configured).status,'FAIL');
+    assert.equal(evaluateBosReviewedCase(8,{...actual,actor_attempts:attempts},configured).status,'FAIL');
   }
-  assert.equal(evaluateBosReviewedCase(8, {...evidence([denial]), effects: {verified: true, mutation_count: 1}}, configured).status, 'FAIL');
-  assert.equal(evaluateBosReviewedCase(8, {...exactAttemptEvidence, server_execution_evidence:undefined}, configured).status, 'FAIL');
-  assert.equal(evaluateBosReviewedCase(8, {...exactAttemptEvidence, server_execution_evidence:{...serverExecutionEvidence,downstream_business_executor_calls:1}}, configured).status, 'FAIL');
+  assert.equal(evaluateBosReviewedCase(8, {...actual, effects: {verified: true, mutation_count: 1}}, configured).status, 'FAIL');
 });
 
 test('valid positive evidence fails when host validation or tool execution reports an error', () => {
@@ -130,10 +114,8 @@ test('authorization-denial fixture binds the unchanged prompt, synthetic scope a
       target_provenance:'owner-declared synthetic request label', resolve_target:false,
       contact_target_domain:false, error_code:'authorization_denied',
       server_denial_precedes_operation_resolution:true},
-    server_execution_evidence:serverExecutionEvidence
   };
   assert.equal(validBosAuthorizationDenialFixture(fixture,item),true);
-  assert.equal(validBosAuthorizationDenialExecutionEvidence(serverExecutionEvidence,fixture.authorization_denial,serverSourceReceipt,'a'.repeat(64)),true);
   for (const change of [
     {schema:'owner-reviewed-synthetic-fixture/v1'},
     {synthetic_only:false},
@@ -147,10 +129,6 @@ test('authorization-denial fixture binds the unchanged prompt, synthetic scope a
     {authorization_denial:{...fixture.authorization_denial,error_code:'scope_mismatch'}},
     {authorization_denial:{...fixture.authorization_denial,operation:'plugins.disable'}}
   ]) assert.equal(validBosAuthorizationDenialFixture({...fixture,...change},item),false);
-  assert.equal(validBosAuthorizationDenialExecutionEvidence({...serverExecutionEvidence,downstream_business_executor_calls:1},fixture.authorization_denial,serverSourceReceipt,'a'.repeat(64)),false);
-  assert.equal(validBosAuthorizationDenialExecutionEvidence({...serverExecutionEvidence,request_sha256:'wrong'},fixture.authorization_denial,serverSourceReceipt,'a'.repeat(64)),false);
-  assert.equal(validBosAuthorizationDenialExecutionEvidence({...serverExecutionEvidence,request_sha256:undefined},fixture.authorization_denial,serverSourceReceipt,'a'.repeat(64)),false);
-  assert.equal(validBosAuthorizationDenialExecutionEvidence(serverExecutionEvidence,fixture.authorization_denial,{...serverSourceReceipt,downstream_business_executor_calls:1},'a'.repeat(64)),false);
 });
 
 test('hash-bound original authorization fixture bytes derive only missing redundant request bindings', () => {

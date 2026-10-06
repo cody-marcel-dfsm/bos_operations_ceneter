@@ -76,7 +76,7 @@ export function reviewerObservationFailures(observations) {
 
 const dynamicTools = new Set(['acceptance_guard_probe','acceptance_guard_status','acceptance_read_document',
   'acceptance_project_contract_facts','acceptance_compare_schemas','acceptance_read_installed',
-  'acceptance_validate_installed','bos_get_context','bos_list_context_tools','bos_list_resources',
+  'acceptance_validate_installed','bos_get_context','bos_list_context_tools','bos_list_plugin_services','bos_list_resources',
   'bos_read_resource','bos_control_discover','bos_https_describe','bos_https_operation']);
 const observedTools = new Set([...dynamicTools,'guard.status','read.installed','validate.installed',
   'project.contract.facts','compare.schemas','bos.get.context','bos.list.context.tools','bos.execute',

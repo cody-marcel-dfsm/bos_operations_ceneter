@@ -8,7 +8,7 @@ import {trustedUrl} from './marketplace-reviewer-session.mjs';
 
 import {reviewerFailureCode,reviewerErrorDiagnostic,reviewerDiagnosticControl} from './marketplace-reviewer-diagnostics.mjs';
 
-const controls=new Set(['app.describe','plugins.list','service.describe','api.contract.get','discovery.refresh']);
+const controls=new Set(['app.describe','plugins.list','service.describe','api.contract.get','discovery.refresh','bos_get_context']);
 export function reviewerDiscoveryDocument(value,state,resourceUri) {
   let document=body(value);
   let extracted=false;
@@ -72,7 +72,9 @@ const definitions=[
   spec('acceptance_read_installed','Read a verified published installed skill or reference. Copy the exact product/path pair from the offered skill index. If product is omitted, the host accepts only a path unique to one verified installed product. Each Markdown response offers verified references with product provenance and explicit unavailable-reference status. A returned reference_id binds its exact published product and file. Never invent a filename, product, or reference path.',{product:{type:'string'},path:{type:'string'},reference_id:{type:'string'}},[]),
   spec('acceptance_validate_installed','Validate an actual discovered document with the host-bound verified published validator; no validator path is needed. Supply its returned document_id; the host retains its exact original bytes. Use app-describe for the app.describe resource and operation-describe for the complete HTTPS Describe response (the parent document). Individual HTTPS operation contacts are covered by that parent validation; they are not legacy api-contract envelopes. Use api-contract only for the actual legacy api.contract.get response, and service-journey for a service journey description. Other supported modes are contact, service, graph, plugins and discovery-refresh.',{path:{type:'string',enum:[discoveryValidatorPath]},mode:{type:'string',enum:installedValidatorModes},document_id:{type:'string'}},['mode','document_id']),
   spec('bos_get_context','Discover and select the exact marketplace reviewer scope; the test host retains its private selector.'),
+  spec('bos_context_provider_status','Execute the separately advertised app-level bos_get_context operation after reviewer identity and app-tool discovery. This is distinct from the reviewer identity preflight; the host injects the selected context privately.'),
   spec('bos_list_context_tools','Discover tools for the selected reviewer scope.'),
+  spec('bos_list_plugin_services','Read the server-evaluated BOS Plugin Console for the selected reviewer context. The host supplies the verified context privately; provide no authority selectors.'),
   spec('bos_authorization_denial_probe','For the owner-approved BOS negative case only, send its single hash-bound unauthorized-selector probe to the BOS service. The test host fixes the operation and arguments; no target lookup or mutation is performed.'),
   spec('bos_list_resources','List only BOS discovery resources advertised for the exact selected reviewer context. The host removes resources from other contexts before returning the list.'),
   spec('bos_read_resource','Read an advertised BOS discovery resource. Copy the exact returned uri string, including any host-presented private placeholder. Preserve spelling and encoding; the host resolves its retained original reference.',{uri:{type:'string'}},['uri']),
@@ -168,12 +170,24 @@ export async function createReviewerTools({session,state,release}) {
       if(response?.isError&&control)Object.assign(state.observations.at(-1),failureDiagnostic);
       if(state.handle!==previousHandle)clearReferences();
       const exposed=expose(response,event.tool_input?.uri,event.tool_input?.tool_name==='api.contract.get'?'api-contract':undefined);
+      let publishedValidation;
+      if(event.tool_name==='read_mcp_resource'&&!response?.isError){
+        const document=documents.get(exposed.document_id);
+        if(document?.application&&document?.describe){
+          state.observed_document_digests??=[];
+          state.observed_document_digests=[...new Set([...state.observed_document_digests,...documentDigests(document)])];
+          const validation=await installed.call('validate_installed',{path:discoveryValidatorPath,mode:'app-describe',document});
+          observe({tool_name:'mcp__Acceptance__validate_installed',tool_input:{path:discoveryValidatorPath,mode:'app-describe',document:sanitized(document)},tool_response:validation},state);
+          if(validation.valid===true)state.validated_contracts['app-describe']=digest(document);
+          publishedValidation={valid:validation.valid===true,mode:'app-describe',document_id:exposed.document_id,release_commit:bos.release_commit};
+        }
+      }
       if(event.tool_name==='mcp__BOS__bos_get_context'){
         authorizedContextSource=null;
         if(!response?.isError)bindAuthorizedContext(documents.get(exposed.document_id));
       }
       let identity={};if(!response?.isError&&authorizedContextSource){try{identity={authorized_context:reportingContext()};}catch{}}
-      return response?.isError?{isError:true,...exposed,...failureDiagnostic}:{...identity,...exposed};
+      return response?.isError?{isError:true,...exposed,...failureDiagnostic}:{...identity,...exposed,...(publishedValidation?{published_validation:publishedValidation}:{})};
     }catch(error){
       if(!control)throw error;
       const failure=new Error(reviewerFailureCode(error));
@@ -249,11 +263,19 @@ export async function createReviewerTools({session,state,release}) {
       }
       state.pre_calls=(state.pre_calls??0)+1;const denied=permission(event,state);
       if(denied){state.denials.push({tool:name,reason:denied});return {isError:true,reason:denied};}
-      const result=await installed.call(short,event.tool_input);observe({...event,tool_response:result},state);if(short==='validate_installed'&&result.valid===true)trustedSchemaDocuments.add(args.document_id);return result;
+      const result=await installed.call(short,event.tool_input);observe({...event,tool_response:result},state);if(short==='validate_installed'&&result.valid===true){trustedSchemaDocuments.add(args.document_id);if(args.mode==='app-describe')state.validated_contracts['app-describe']=digest(documents.get(args.document_id));}return result;
     }
     if(name==='bos_get_context')return guarded({tool_name:'mcp__BOS__bos_get_context',tool_input:{}},async()=>{
       const response=await mcp('bos.get_context',{});return response;
     });
+    if(name==='bos_context_provider_status'){
+      const descriptor=state.tools?.find(row=>row.name==='bos_get_context'||row.name==='bos.get.context');
+      if(!descriptor)throw new Error('reviewer_tool_not_advertised');
+      const args={};if(!ajv.compile(descriptor.inputSchema)(args))throw new Error('reviewer_input_invalid');
+      return guarded({tool_name:'mcp__BOS__bos_execute',tool_input:{context_handle:state.handle,tool_name:descriptor.name,arguments:args}},()=>mcp('bos.execute',{context_handle:state.handle,tool_name:descriptor.name,arguments:args}));
+    }
+    if(name==='bos_list_plugin_services')return guarded({tool_name:'mcp__BOS__bos_execute',tool_input:{context_handle:state.handle,tool_name:'plugins.list',arguments:{}}},async()=>
+      mcp('bos.execute',{context_handle:state.handle,tool_name:'plugins.list',arguments:{}}));
     if(name==='bos_authorization_denial_probe'){
       const denial=state.authorization_denial;
       if(state.case_id!=='negative-3'||state.kind!=='authorization-denial'||!state.canary||!state.handle||
@@ -351,6 +373,7 @@ export async function createReviewerTools({session,state,release}) {
           denial?.operation==='unadvertised_disable_operation'&&denial?.error_code==='authorization_denied'&&
           denial?.input_sha256===digest({org_id:'ACME.org'})&&result.structuredContent?.error_code==='authorization_denied';
         state.host_tool_outcomes.push({tool:name,kind:expectedCanary?'expected_guard_canary':expectedAuthorizationDenial?'expected_service_denial':'tool_error'});
+        if(expectedAuthorizationDenial)return {...result,isError:false,expected_denial:true};
       } else state.host_tool_outcomes.push({tool:name,kind:'completed'});
       return result;
     }catch(error){

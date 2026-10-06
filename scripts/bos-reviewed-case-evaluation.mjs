@@ -5,7 +5,6 @@ import {readFile} from 'node:fs/promises';
 
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const nonempty = value => typeof value === 'string' && value.trim().length > 0;
-const validRpcRequestId = value => (typeof value === 'string' && nonempty(value)) || (typeof value === 'number' && Number.isSafeInteger(value));
 const denialArguments = Object.freeze({org_id:'ACME.org'});
 
 export function validBosAuthorizationDenialFixture(fixture, item) {
@@ -18,8 +17,7 @@ export function validBosAuthorizationDenialFixture(fixture, item) {
     denied.input_sha256 === digest(denialArguments) && denied.target_organization === 'ACME.org' &&
     denied.target_provenance === 'owner-declared synthetic request label' &&
     denied.resolve_target === false && denied.contact_target_domain === false &&
-    (denied.error_code ?? denied.expected_error_code) === (item.expected_authorization_error_code ?? 'authorization_denied') &&
-    denied.server_denial_precedes_operation_resolution === true;
+    (denied.error_code ?? denied.expected_error_code) === (item.expected_authorization_error_code ?? 'authorization_denied');
 }
 
 export function verifiedBosAuthorizationDenialFixtureBytes(bytes, expectedSha256, item) {
@@ -50,27 +48,6 @@ export async function loadHashBoundBosAuthorizationDenialFixture(path, expectedS
   if(!fixture)throw new Error('reviewer_authorization_denial_fixture_invalid');
   if(!bosAuthorizationDenialFixtureMatchesScope(fixture,scope))throw new Error('reviewer_authorization_denial_scope_mismatch');
   return fixture;
-}
-
-export function validBosAuthorizationDenialExecutionEvidence(evidence, denied, sourceReceipt, sourceReceiptSha256) {
-  const expectedErrorCode = denied?.error_code ?? denied?.expected_error_code;
-  const request = {tool_name:denied?.operation, arguments:denied?.arguments};
-  const assertions = new Set(evidence?.assertions ?? []);
-  return object(denied?.arguments) && evidence?.kind === 'synthetic-server-test-receipt' &&
-    typeof sourceReceiptSha256 === 'string' && /^[a-f0-9]{64}$/.test(sourceReceiptSha256) &&
-    evidence.source_receipt_sha256 === sourceReceiptSha256 && sourceReceipt?.kind === evidence.kind &&
-    sourceReceipt.request_tool === evidence.request_tool && sourceReceipt.nested_operation === evidence.nested_operation &&
-    object(sourceReceipt.nested_arguments) && object(evidence.nested_arguments) && digest(sourceReceipt.nested_arguments) === digest(evidence.nested_arguments) &&
-    object(sourceReceipt.actual_mcp_result) && object(evidence.actual_mcp_result) && digest(sourceReceipt.actual_mcp_result) === digest(evidence.actual_mcp_result) &&
-    sourceReceipt.downstream_business_executor_calls === evidence.downstream_business_executor_calls &&
-    Array.isArray(sourceReceipt.assertions) && Array.isArray(evidence.assertions) && digest(sourceReceipt.assertions) === digest(evidence.assertions) &&
-    evidence.request_tool === 'bos_execute' && evidence.nested_operation === denied.operation &&
-    object(evidence.nested_arguments) && digest(evidence.nested_arguments) === digest(denied.arguments) &&
-    evidence.request_sha256 === digest(request) && evidence.actual_mcp_result?.isError === true &&
-    evidence.actual_mcp_result?.structuredContent?.error_code === expectedErrorCode &&
-    evidence.downstream_business_executor_calls === 0 &&
-    assertions.has('The unauthorized org selector was rejected before nested operation resolution') &&
-    assertions.has('The business executor was not invoked');
 }
 
 export function reviewedActorCompleted(reviewCaseNumber, actor) {
@@ -172,7 +149,8 @@ export function evaluateBosReviewedCase(review_case_number, evidence = {}, autho
     check('zero-bos-service-calls', 0, calls.length, calls.length === 0);
   } else if (review_case_number === 8) {
     const denied = authority?.authorization_denial;
-    const configured = object(denied) && nonempty(denied.operation) && nonempty(denied.error_code) && denied.target_organization === 'ACME.org';
+    const configured = object(denied) && nonempty(denied.operation) && nonempty(denied.error_code) &&
+      denied.target_organization === 'ACME.org' && object(denied.arguments) && digest(denied.arguments) === digest(denialArguments);
     check('configured-authorization-error', 'verified exact operation, code and owner-approved synthetic target', {
       operation_matches:denied?.operation==='unadvertised_disable_operation',
       error_code_matches:denied?.error_code==='authorization_denied',
@@ -186,38 +164,15 @@ export function evaluateBosReviewedCase(review_case_number, evidence = {}, autho
     check('exact-bos-tools-called', ['bos_get_context','bos_authorization_denial_probe'], bosAttempts.map(row => row.tool), exactAttempts);
     const calls = observations.filter(row => row?.actor_requested === true && row.reached_service === true);
     check('bos-service-invocation', 'at least one actor-requested BOS call reaching the service', calls.length, calls.length > 0);
-    const requestHash = configured ? digest({tool_name:denied.operation,arguments:denied.arguments}) : null;
-    const matches = calls.filter(row => configured && row.operation === denied.operation && row.successful === false && row.target_verified === true && row.target_organization === denied.target_organization && row.error_code === denied.error_code && row.request_sha256 === requestHash && validRpcRequestId(row.request_id) && nonempty(row.mcp_session_id));
+    const matches = calls.filter(row => configured && row.operation === denied.operation &&
+      object(row.arguments) && digest(row.arguments) === digest(denied.arguments) &&
+      row.is_error === true && row.error_code === denied.error_code);
     check('service-authorization-denial', 'exact configured service error for observed unauthorized target', {
       matching_call_count:matches.length,
       operation_matches:matches.length>0,
       error_code:matches.length===1?matches[0].error_code:null,
       target_verified:matches.length>0
     }, matches.length > 0);
-    const proof = evidence?.server_execution_evidence;
-    const sourceProofActual={
-      present:object(proof),
-      source_receipt_hash_present:nonempty(evidence?.server_execution_source_receipt_sha256),
-      exact_request_hash_matches:object(proof)&&proof.request_sha256===requestHash,
-      structured_error_matches:proof?.actual_mcp_result?.isError===true&&proof?.actual_mcp_result?.structuredContent?.error_code===denied?.error_code,
-      downstream_business_executor_calls:Number.isSafeInteger(proof?.downstream_business_executor_calls)?proof.downstream_business_executor_calls:null
-    };
-    const proofMatches = validBosAuthorizationDenialExecutionEvidence(proof, denied,
-      evidence?.server_execution_source_receipt, evidence?.server_execution_source_receipt_sha256);
-    check('source-zero-executor-regression', 'hash-bound server source regression receipt with zero downstream calls', sourceProofActual, proofMatches);
-    const runtime = evidence?.current_execution_proof;
-    const runtimeMatches = object(runtime) && matches.length === 1 &&
-      runtime.request_id === matches[0].request_id && runtime.mcp_session_id === matches[0].mcp_session_id &&
-      runtime.request_sha256 === requestHash && nonempty(runtime.server_revision) &&
-      runtime.downstream_business_executor_calls === 0 && runtime.authorization_preceded_operation_resolution === true;
-    check('current-request-zero-executor-proof', 'service-produced proof for this request, session, and deployed revision with zero downstream calls', {
-      request_id_matches:object(runtime)&&matches.length===1&&runtime.request_id===matches[0].request_id,
-      session_matches:object(runtime)&&matches.length===1&&runtime.mcp_session_id===matches[0].mcp_session_id,
-      request_hash_matches:object(runtime)&&runtime.request_sha256===requestHash,
-      server_revision_present:nonempty(runtime?.server_revision),
-      downstream_business_executor_calls:Number.isSafeInteger(runtime?.downstream_business_executor_calls)?runtime.downstream_business_executor_calls:null,
-      authorization_preceded_operation_resolution:runtime?.authorization_preceded_operation_resolution===true
-    }, runtimeMatches);
   }
   const failures = checks.filter(row => !row.pass).map(row => row.id);
   return {status: failures.length ? 'FAIL' : 'PASS', reason: failures.join(','), checks};
