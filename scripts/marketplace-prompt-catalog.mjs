@@ -27,6 +27,7 @@ export async function loadPromptCatalog(root, product) {
     if (!policy.cases[item.id]) throw new Error('Missing configured case policy');
     Object.assign(item, policy.cases[item.id]);
   }
-  const catalog = {product, version: manifest.version, description: manifest.long_description, cases};
+  const catalog = {product, version: manifest.version, description: manifest.long_description, cases,
+    ...(policy.execution_profile ? {execution_profile:policy.execution_profile} : {})};
   return {...catalog, configuration_sha256: digest(catalog)};
 }

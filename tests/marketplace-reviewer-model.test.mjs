@@ -30,6 +30,27 @@ function host({servers=[],unexpected=false,failure,failureMethod='error',stall=f
   return {messages,get argv(){return argv;},get killCount(){return killCount;},spawnImpl:(command,args)=>{assert.equal(command,'codex');argv=args;return child;}};
 }
 const tool={type:'function',name:'test_capability',description:'test',inputSchema:{type:'object'}};
+test('optional attempt callback records known and rejected unknown capabilities before lookup without arguments',async()=>{
+  for(const name of ['test_capability','bos_unknown_operation']) {
+    const fake=host({toolName:name,toolArguments:{token:'private-payload'}}),attempts=[];let calls=0;
+    const result=await runReviewerModel({prompt:'exact',directory:'/tmp',serverInventory:[],spawnImpl:fake.spawnImpl,
+      onToolRequest:async receipt=>{assert.equal(calls,0);attempts.push(receipt);},
+      tools:{definitions:[tool],call:async()=>{calls++;return {};}}});
+    assert.deepEqual(attempts,[{server:'reviewer-test-host',tool:name,host_rejected:name!==tool.name}]);
+    assert.doesNotMatch(JSON.stringify(attempts),/private-payload|token|arguments/);
+    assert.equal(calls,name===tool.name?1:0);
+    assert.equal(result.nativeTools.length,name===tool.name?1:0);
+    assert.equal(result.result.status,'completed');
+    if(name!==tool.name)assert.equal(fake.messages.find(row=>row.id==='tool-request').result.success,false);
+  }
+});
+test('unknown requests preserve legacy rejection behavior when callback is omitted',async()=>{
+  const fake=host({toolName:'bos_unknown_operation'});let calls=0;
+  const result=await runReviewerModel({prompt:'exact',directory:'/tmp',serverInventory:[],spawnImpl:fake.spawnImpl,
+    tools:{definitions:[tool],call:async()=>{calls++;return {};}}});
+  assert.equal(calls,0);assert.deepEqual(result.nativeTools,[]);
+  assert.equal(fake.messages.find(row=>row.id==='tool-request').result.success,false);
+});
 test('isolated host forwards the exact prompt and configured description, and executes dynamic functions',async()=>{
   const fake=host(),prompt='Use this exact configured prompt.\nKeep punctuation!',description='Configured product description';let calls=0;
   const result=await runReviewerModel({prompt,instructions:description,directory:'/tmp',serverInventory:[{name:'saved',transport:{url:'https://example.invalid/mcp'}}],spawnImpl:fake.spawnImpl,tools:{definitions:[tool],call:async(name,args)=>{assert.equal(name,tool.name);assert.deepEqual(args,{query:'business'});calls++;return {count:1};}}});

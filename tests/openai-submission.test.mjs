@@ -115,15 +115,36 @@ test("BOS and Education OpenAI cases stay within their product MCP scope", async
   ));
   const currentTools = ['bos_logout', 'bos_get_context', 'bos_list_context_tools', 'bos_execute', 'plugins.list', 'service.describe', 'api.contract.get', 'discovery.refresh'];
   assert.deepEqual(Object.keys(bos.tools), currentTools);
-  assert.ok(bos.test_cases.every(({tools_triggered}) => currentTools.includes(tools_triggered)));
-  assert.ok(bos.test_cases.every(({user_prompt}) => user_prompt.includes('my connected authorized review organization')));
+  assert.ok(bos.test_cases.every(({tools_triggered}) =>
+    tools_triggered.split(', ').every(tool => currentTools.includes(tool))));
+  assert.deepEqual(bos.test_cases.map(({user_prompt}) => user_prompt), [
+    'List the BOS apps and public services accessible to my organization.',
+    'Show me the BOS tool named `bos_get_context`.',
+    'Log in to Lead Director using the provided test login URL.',
+    'What is my current role in Lead Director?',
+    'Get the application description for Lead Director.'
+  ]);
+  assert.deepEqual(bos.test_cases[0].tools_triggered.split(', '), ['bos_get_context','bos_execute']);
   assert.doesNotMatch(JSON.stringify(bos.test_cases), /Workflow Sandbox|Synthetic Accounting/);
   assert.doesNotMatch(JSON.stringify(bos), /education_center_/);
   assert.doesNotMatch(JSON.stringify(bos), /Bright Horizons|Northstar Coding Academy/);
 
   assert.equal(bos.negative_test_cases[1].tools_triggered, null);
-  assert.match(bos.negative_test_cases[2].user_prompt, /organization that I do not belong to/i);
-  assert.match(bos.negative_test_cases[2].expected_output, /cross-tenant/i);
+  assert.deepEqual(bos.negative_test_cases.map(({user_prompt}) => user_prompt), [
+    'Write a four-line poem about autumn leaves.',
+    'What will the weather be tomorrow?',
+    'Use BOS to disable all BOS plugins for the organization "ACME.org"'
+  ]);
+  assert.deepEqual(bos.negative_test_cases[2].tools_triggered.split(', '), ['bos_get_context','bos_execute']);
+  const bosPolicy = JSON.parse(await readFile(`${root}/products/bos/openai/acceptance-policy.json`, 'utf8'));
+  assert.equal(bosPolicy.execution_profile, 'bos-reviewed-functional/v1');
+  for (const id of ['positive-1','positive-2','positive-3','positive-4','positive-5','negative-1','negative-2','negative-3']) {
+    assert.equal(bosPolicy.cases[id].expected_output_validation, false);
+    assert.equal(bosPolicy.cases[id].grading, 'deterministic-functional');
+  }
+  assert.equal(bosPolicy.cases['negative-3'].negative_behavior, 'authorization-denial');
+  assert.equal(bosPolicy.cases['negative-3'].expected_authorization_error_code, 'authorization_denied');
+  assert.ok(bosPolicy.cases['positive-1'].requirements.some(({id})=>id==='public-services-list'));
 
   const education = JSON.parse(await readFile(
     `${root}/products/education-center/openai/chatgpt-app-submission.json`, "utf8"

@@ -18,6 +18,43 @@ async function retainedValue(tools,document_id,pointer=''){
 const context={context_handle:'bos_ctx_v2_'+'a'.repeat(64),organization_name:'Synthetic',application_name:'Synthetic App',installation_name:'Synthetic Installation',role_label:'Reviewer',is_default:true};
 const contact={operation:'search',status:'described',effect:'read',limits:{max_targets:null,max_results_per_source:5,pagination_supported:false,bulk_supported:false,streaming_supported:false,maximum_duration_seconds:30,maximum_fan_out:5},guarantees:{read_consistency:'point_in_time',per_source_atomicity:'source_published',cross_source_atomicity:'not_applicable',convergence:'not_applicable',idempotency:'service_owned'},execution:{context_header:'X-BOS-Context-Handle',method:'POST',uri:'/bos/apps/synthetic/api/v1/organizations/synthetic/search'},input_schema:{$schema:'https://json-schema.org/draft/2020-12/schema',type:'object',additionalProperties:false,required:['text'],properties:{text:{type:'string',minLength:1}},'x-bos-fields':[]},output_schema:{$schema:'https://json-schema.org/draft/2020-12/schema',type:'object',required:['count'],properties:{count:{type:'integer'}},'x-bos-fields':[]},error_contract:{schema:'lead-director-public-error/v1',codes:['invalid_search_request','authentication_required']},sources:[{source:{platform:'bos',application:'synthetic',plugin:'synthetic'},availability:'ready'}]};
 
+test('case 8 sends one exact BOS denial probe through the authenticated MCP session',async()=>{
+ const root=await realpath(await mkdtemp(join(tmpdir(),'reviewer-auth-denial-unit-')));
+ try{
+  for(const skill of ['bos-external-dependency-adapter','bos-app-discovery']){
+   const target=join(root,'skills',skill,'scripts');await mkdir(target,{recursive:true});
+   await cp(new URL('../source/platform/'+skill+'/scripts/',import.meta.url),target,{recursive:true});
+  }
+  await run('git',['init','--quiet'],{cwd:root});await run('git',['add','.'],{cwd:root});
+  await run('git',['-c','user.name=Synthetic Test','-c','user.email=test@example.invalid','commit','--quiet','-m','Synthetic published reviewer fixture'],{cwd:root});
+  const commit=(await run('git',['rev-parse','HEAD'],{cwd:root})).stdout.trim();
+  const args={org_id:'ACME.org'},denial={case_id:'negative-3',operation:'unadvertised_disable_operation',arguments:args,
+   input_sha256:digest(args),target_organization:'ACME.org',target_provenance:'owner-declared synthetic request label',
+   resolve_target:false,contact_target_domain:false,error_code:'authorization_denied',server_denial_precedes_operation_resolution:true};
+  const state={case_id:'negative-3',product:'bos',kind:'authorization-denial',canary:true,handle:context.context_handle,
+   authorization_denial:denial,authorization_denial_used:false,organization:'Synthetic',application:'Lead Director',
+   installation:'Synthetic Installation',role:'Director',resource:'https://dfsm.ai/mcp/apps/bos/platform',
+   installed_root:root,installed_roots:{bos:root},published_commits:{bos:commit},allowed_effects:['read'],
+   observations:[],fixtureResponses:[],denials:[],tools:[]};
+  const calls=[];
+  const session={rpc:async(method,params)=>{
+   if(method==='tools/list')return {tools:[{name:'bos_execute'}]};
+   calls.push({method,params});return {isError:true,structuredContent:{error_code:'authorization_denied',execution_evidence:{mcp_session_id:'private-session-value'},error_payload:'private-response-value'}};
+  },request:async()=>{throw new Error('unexpected_https_request');}};
+  const tools=await createReviewerTools({session,state,release:{path:root,release_commit:commit}});
+  const result=await tools.call('bos_authorization_denial_probe',{});
+  assert.equal(result.isError,true);assert.deepEqual(result.structuredContent,{error_code:'authorization_denied'});
+  assert.doesNotMatch(JSON.stringify(result),/private-session-value|private-response-value|execution_evidence/);
+  assert.equal(calls.length,1);assert.equal(calls[0].method,'tools/call');
+  assert.equal(calls[0].params.name,'bos_execute');
+  assert.deepEqual(calls[0].params.arguments,{context_handle:context.context_handle,tool_name:'unadvertised_disable_operation',arguments:args});
+  assert.deepEqual(state.host_tool_outcomes,[{tool:'bos_authorization_denial_probe',kind:'expected_service_denial'}]);
+  assert.equal((await tools.call('bos_authorization_denial_probe',{})).reason,'authorization_denial_probe_not_bound');
+  assert.equal(state.host_tool_outcomes.at(-1).kind,'tool_error');
+  assert.equal(calls.length,1);
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
 test('HTTPS Describe uses observed validated contact, bounded keys, fresh context and real published response validation',async()=>{
  const root=await realpath(await mkdtemp(join(tmpdir(),'reviewer-describe-unit-')));
  try{

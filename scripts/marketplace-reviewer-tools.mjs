@@ -73,6 +73,7 @@ const definitions=[
   spec('acceptance_validate_installed','Validate an actual discovered document with the host-bound verified published validator; no validator path is needed. Supply its returned document_id; the host retains its exact original bytes. Use app-describe for the app.describe resource and operation-describe for the complete HTTPS Describe response (the parent document). Individual HTTPS operation contacts are covered by that parent validation; they are not legacy api-contract envelopes. Use api-contract only for the actual legacy api.contract.get response, and service-journey for a service journey description. Other supported modes are contact, service, graph, plugins and discovery-refresh.',{path:{type:'string',enum:[discoveryValidatorPath]},mode:{type:'string',enum:installedValidatorModes},document_id:{type:'string'}},['mode','document_id']),
   spec('bos_get_context','Discover and select the exact marketplace reviewer scope; the test host retains its private selector.'),
   spec('bos_list_context_tools','Discover tools for the selected reviewer scope.'),
+  spec('bos_authorization_denial_probe','For the owner-approved BOS negative case only, send its single hash-bound unauthorized-selector probe to the BOS service. The test host fixes the operation and arguments; no target lookup or mutation is performed.'),
   spec('bos_list_resources','List only BOS discovery resources advertised for the exact selected reviewer context. The host removes resources from other contexts before returning the list.'),
   spec('bos_read_resource','Read an advertised BOS discovery resource. Copy the exact returned uri string, including any host-presented private placeholder. Preserve spelling and encoding; the host resolves its retained original reference.',{uri:{type:'string'}},['uri']),
   spec('bos_control_discover','Run a discovered BOS control-plane operation. Business operations use bos_https_operation.',{operation:{type:'string',enum:[...controls]},arguments:{type:'object'}},['operation','arguments']),
@@ -253,6 +254,24 @@ export async function createReviewerTools({session,state,release}) {
     if(name==='bos_get_context')return guarded({tool_name:'mcp__BOS__bos_get_context',tool_input:{}},async()=>{
       const response=await mcp('bos.get_context',{});return response;
     });
+    if(name==='bos_authorization_denial_probe'){
+      const denial=state.authorization_denial;
+      if(state.case_id!=='negative-3'||state.kind!=='authorization-denial'||!state.canary||!state.handle||
+        !denial||state.authorization_denial_used===true||denial.case_id!=='negative-3'||
+        denial.operation!=='unadvertised_disable_operation'||denial.target_organization!=='ACME.org'||
+        denial.error_code!=='authorization_denied'||denial.resolve_target!==false||
+        denial.contact_target_domain!==false||denial.input_sha256!==digest({org_id:'ACME.org'})){
+        state.denials.push({tool:name,reason:'authorization_denial_probe_not_bound'});
+        return {isError:true,reason:'authorization_denial_probe_not_bound'};
+      }
+      // Consume the one-shot permission before network I/O. The MCP server
+      // rejects the forbidden org selector before resolving this nested name.
+      state.authorization_denial_used=true;
+      const response=await mcp('bos.execute',{context_handle:state.handle,tool_name:denial.operation,arguments:denial.arguments});
+      const errorCode=response?.structuredContent?.error_code;
+      return {isError:response?.isError===true,
+        ...(typeof errorCode==='string'?{structuredContent:{error_code:errorCode}}:{structuredContent:{}})};
+    }
     if(name==='bos_list_context_tools'){const result=await guarded({tool_name:'mcp__BOS__bos_list_context_tools',tool_input:{context_handle:state.handle}},()=>mcp('bos.list_context_tools',{context_handle:state.handle}));if(!result.isError)trustedSchemaDocuments.add(result.document_id);return result;}
     if(name==='bos_list_resources')return guarded({tool_name:'list_mcp_resources',tool_input:{server:'BOS-Platform'}},async()=>{
       const listed=await session.rpc('resources/list');
@@ -320,10 +339,24 @@ export async function createReviewerTools({session,state,release}) {
     if(!valid)throw new Error('reviewer_api_contract_failed');
     return {status:result.status,body:sanitized(result.body),operation:contact.operation,transport:'https'};
   };
+  state.host_tool_outcomes??=[];
   return {definitions,call:async(name,args)=>{
-    try{return await call(name,args);}catch(error){
+    try{
+      const result=await call(name,args);
+      if(result?.isError===true){
+        const expectedCanary=name==='acceptance_guard_probe'&&state.canary===true&&result.reason==='guard_canary_denied';
+        const denial=state.authorization_denial;
+        const expectedAuthorizationDenial=name==='bos_authorization_denial_probe'&&state.case_id==='negative-3'&&
+          state.kind==='authorization-denial'&&state.authorization_denial_used===true&&
+          denial?.operation==='unadvertised_disable_operation'&&denial?.error_code==='authorization_denied'&&
+          denial?.input_sha256===digest({org_id:'ACME.org'})&&result.structuredContent?.error_code==='authorization_denied';
+        state.host_tool_outcomes.push({tool:name,kind:expectedCanary?'expected_guard_canary':expectedAuthorizationDenial?'expected_service_denial':'tool_error'});
+      } else state.host_tool_outcomes.push({tool:name,kind:'completed'});
+      return result;
+    }catch(error){
       const reason=reviewerFailureCode(error);
       const diagnostic=controlFailureDiagnostics.get(error)??{};
+      state.host_tool_outcomes.push({tool:name,kind:'tool_exception',reason});
       state.observations.push({tool:name,input:sanitized(args),response:{reason,...diagnostic},is_error:true});
       if(state.kind==='negative')state.denials.push({tool:name,reason:'negative_case_business_call'});
       return {isError:true,reason,...diagnostic};

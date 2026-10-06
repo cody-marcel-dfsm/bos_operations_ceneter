@@ -48,71 +48,137 @@
       ]
     },
     "positive-1": {
+      "review_case_number": 1,
       "allowed_effects": [
         "read"
       ],
-      "assertion_evidence": "identity",
+      "assertion_evidence": "service-receipts",
+      "grading": "deterministic-functional",
+      "expected_output_validation": false,
+      "verification_type": "apps-and-services",
       "requirements": [
         {
-          "id": "authorized-role",
-          "operator": "equals"
+          "id": "lead-director-included",
+          "operator": "contains"
         },
         {
-          "id": "capabilities",
+          "id": "public-services-list",
+          "operator": "is_array"
+        },
+        {
+          "id": "no-mutation",
           "operator": "equals"
         }
       ]
     },
     "positive-2": {
+      "review_case_number": 2,
       "allowed_effects": [
         "read"
       ],
-      "assertion_evidence": "response",
+      "assertion_evidence": "service-receipts",
+      "grading": "deterministic-functional",
+      "expected_output_validation": false,
+      "verification_type": "tool-membership",
       "requirements": [
         {
-          "id": "service-readiness",
+          "id": "bos-get-context-present",
+          "operator": "contains"
+        },
+        {
+          "id": "no-mutation",
           "operator": "equals"
         }
       ]
     },
     "positive-3": {
+      "review_case_number": 3,
       "allowed_effects": [
         "read"
       ],
-      "assertion_evidence": "response",
+      "assertion_evidence": "service-receipts",
+      "grading": "deterministic-functional",
+      "expected_output_validation": false,
+      "verification_type": "login",
       "requirements": [
         {
-          "id": "search-contracts",
+          "id": "login-completed",
           "operator": "equals"
         },
         {
-          "id": "source-availability",
+          "id": "authenticated-organization",
           "operator": "equals"
         },
         {
-          "id": "operation-limits",
+          "id": "authenticated-lead-director",
           "operator": "equals"
-        }
-      ],
-      "expected_semantic_operations": [
-        {
-          "operation": "app.describe",
-          "transport": "https_discovery"
         }
       ]
     },
     "positive-4": {
+      "review_case_number": 4,
       "allowed_effects": [
         "read"
       ],
-      "assertion_evidence": "response",
+      "assertion_evidence": "service-receipts",
+      "grading": "deterministic-functional",
+      "expected_output_validation": false,
+      "verification_type": "context-role",
       "requirements": [
         {
-          "id": "mutation-contracts",
+          "id": "authorized-lead-director",
           "operator": "equals"
         },
         {
-          "id": "target-limits",
+          "id": "director-role",
+          "operator": "equals"
+        },
+        {
+          "id": "no-mutation",
+          "operator": "equals"
+        }
+      ]
+    },
+    "positive-5": {
+      "review_case_number": 5,
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "service-receipts",
+      "grading": "deterministic-functional",
+      "expected_output_validation": false,
+      "verification_type": "app-description",
+      "requirements": [
+        {
+          "id": "app-description-retrieved",
+          "operator": "equals"
+        },
+        {
+          "id": "bos-platform",
+          "operator": "equals"
+        },
+        {
+          "id": "lead-director-application",
+          "operator": "equals"
+        },
+        {
+          "id": "no-mutation",
+          "operator": "equals"
+        }
+      ]
+    },
+    "negative-1": {
+      "review_case_number": 6,
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "service-receipts",
+      "grading": "deterministic-functional",
+      "expected_output_validation": false,
+      "verification_type": "no-bos-calls",
+      "requirements": [
+        {
+          "id": "no-bos-invocation",
           "operator": "equals"
         },
         {
@@ -120,64 +186,55 @@
           "operator": "equals"
         }
       ],
-      "expected_semantic_operations": [
-        {
-          "operation": "app.describe",
-          "transport": "https_discovery"
-        }
-      ]
+      "negative_behavior": "no-bos-calls"
     },
-    "positive-5": {
+    "negative-2": {
+      "review_case_number": 7,
       "allowed_effects": [
         "read"
       ],
-      "assertion_evidence": "response",
+      "assertion_evidence": "service-receipts",
+      "grading": "deterministic-functional",
+      "expected_output_validation": false,
+      "verification_type": "no-bos-calls",
       "requirements": [
         {
-          "id": "workflow-capabilities",
+          "id": "no-bos-invocation",
           "operator": "equals"
         },
         {
-          "id": "workflow-prerequisites",
+          "id": "no-mutation",
           "operator": "equals"
         }
-      ]
-    },
-    "negative-1": {
-      "allowed_effects": [
-        "read"
       ],
-      "assertion_evidence": "answer",
-      "requirements": [
-        {
-          "id": "no-product-invocation",
-          "operator": "equals"
-        }
-      ]
-    },
-    "negative-2": {
-      "allowed_effects": [
-        "read"
-      ],
-      "assertion_evidence": "answer",
-      "requirements": [
-        {
-          "id": "no-product-invocation",
-          "operator": "equals"
-        }
-      ]
+      "negative_behavior": "no-bos-calls"
     },
     "negative-3": {
+      "review_case_number": 8,
       "allowed_effects": [
         "read"
       ],
-      "assertion_evidence": "answer",
+      "assertion_evidence": "service-receipts",
+      "grading": "deterministic-functional",
+      "expected_output_validation": false,
+      "verification_type": "authorization-denial",
       "requirements": [
         {
-          "id": "no-product-invocation",
+          "id": "bos-service-call",
+          "operator": "equals"
+        },
+        {
+          "id": "authorization-denial-code",
+          "operator": "equals"
+        },
+        {
+          "id": "no-mutation",
           "operator": "equals"
         }
-      ]
+      ],
+      "negative_behavior": "authorization-denial",
+      "expected_authorization_error_code": "authorization_denied"
     }
-  }
+  },
+  "execution_profile": "bos-reviewed-functional/v1"
 }

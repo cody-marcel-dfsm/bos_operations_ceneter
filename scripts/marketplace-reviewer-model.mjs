@@ -5,7 +5,7 @@ import {createInterface} from 'node:readline';
 
 // Dynamic functions execute in this maintainer host. The isolated LLM has no
 // configured MCP connection, shell, browser, filesystem or credential access.
-export async function runReviewerModel({prompt,model,directory,instructions,tools,timeout=300000,spawnImpl=spawn,serverInventory}) {
+export async function runReviewerModel({prompt,model,directory,instructions,tools,timeout=300000,spawnImpl=spawn,serverInventory,onToolRequest}) {
   const inventory=serverInventory??JSON.parse((await promisify(execFile)('codex',['mcp','list','--json'])).stdout);
   const disabled=inventory.flatMap(row=>{
     if(!/^[A-Za-z0-9_-]+$/.test(row.name))throw new Error('reviewer_saved_connection_not_isolated');
@@ -36,7 +36,11 @@ export async function runReviewerModel({prompt,model,directory,instructions,tool
     if(message.method==='item/tool/call'&&message.id!==undefined){
       handling=handling.then(async()=>{
         const params=message.params;
-        if(params.threadId!==threadId||!tools.definitions.some(tool=>tool.name===params.tool)){
+        // Optional host-owned attempt ledger includes capabilities rejected before execution.
+        // Arguments are deliberately omitted to keep private payloads out of this receipt.
+        const accepted=params.threadId===threadId&&tools.definitions.some(tool=>tool.name===params.tool);
+        if(onToolRequest)await onToolRequest({server:typeof params.tool==='string'&&params.tool.startsWith('acceptance_')?'Acceptance':'reviewer-test-host',tool:params.tool,host_rejected:!accepted});
+        if(!accepted){
           send({jsonrpc:'2.0',id:message.id,result:{success:false,contentItems:[{type:'inputText',text:'Unknown test capability'}]}});return;
         }
         nativeTools.push({server:params.tool.startsWith('acceptance_')?'Acceptance':'reviewer-test-host',tool:params.tool});

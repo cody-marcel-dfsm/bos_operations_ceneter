@@ -109,69 +109,69 @@
   },
   "test_cases": [
     {
-      "description": "Resolve the authorized reviewer context and discovered platform capabilities.",
-      "user_prompt": "For my connected authorized review organization, show the organization, role, and BOS capabilities available for governed workflows.",
+      "description": "List accessible BOS applications and services.",
+      "user_prompt": "List the BOS apps and public services accessible to my organization.",
       "file_attachment_urls": null,
-      "tools_triggered": "bos_get_context",
-      "expected_output": "Returns the connected authorized review organization and effective role, with capabilities attributed to current discovered contracts; exposes no opaque authority identifiers or credentials.",
+      "tools_triggered": "bos_get_context, bos_execute",
+      "expected_output": "Lists the organization's accessible BOS apps and public services using discovery results.",
       "expected_output_url": null
     },
     {
-      "description": "Audit currently available applications and service prerequisites.",
-      "user_prompt": "For my connected authorized review organization, audit the available apps and services. Show their reported readiness and any authorization or configuration prerequisites.",
+      "description": "Discover one exact BOS tool.",
+      "user_prompt": "Show me the BOS tool named `bos_get_context`.",
       "file_attachment_urls": null,
-      "tools_triggered": "bos_get_context",
-      "expected_output": "Returns the actual discovered apps and services with source-backed readiness and prerequisites, preserves empty states, and invents no configured service.",
+      "tools_triggered": "bos_list_context_tools",
+      "expected_output": "Identifies the advertised BOS context-discovery tool.",
       "expected_output_url": null
     },
     {
-      "description": "Inspect current search contracts and source availability.",
-      "user_prompt": "For my connected authorized review organization, describe CRM record search inputs, returned fields, source availability, limits, and error outcomes.",
+      "description": "Complete the provided Lead Director test login.",
+      "user_prompt": "Log in to Lead Director using the provided test login URL.",
       "file_attachment_urls": null,
       "tools_triggered": "bos_get_context",
-      "expected_output": "Uses actual returned Describe contracts to explain search inputs, outputs, source readiness, limits and errors with exact contract evidence.",
+      "expected_output": "Completes login through the provided test URL and establishes an authenticated session for the test organization and Lead Director app.",
       "expected_output_url": null
     },
     {
-      "description": "Assess bounded mutation effects without changing records.",
-      "user_prompt": "For my connected authorized review organization, compare the CRM record create and update contracts. Explain required and writable fields, target limits, effects, and approval requirements without changing any records.",
+      "description": "Read the current authenticated Lead Director role.",
+      "user_prompt": "What is my current role in Lead Director?",
       "file_attachment_urls": null,
       "tools_triggered": "bos_get_context",
-      "expected_output": "Compares actual returned create/update schemas, effects and bounds, distinguishes advertised requirements from absent requirements, and performs no mutation.",
+      "expected_output": "Shows the current role returned for the authenticated Lead Director context.",
       "expected_output_url": null
     },
     {
-      "description": "Assess current workflow composition prerequisites.",
-      "user_prompt": "For my connected authorized review organization, assess whether the discovered contracts support composing and running a multi-step workflow. Show available capabilities, prerequisites, and any missing authoring or runtime contract.",
+      "description": "Retrieve the advertised Lead Director application description.",
+      "user_prompt": "Get the application description for Lead Director.",
       "file_attachment_urls": null,
       "tools_triggered": "bos_get_context",
-      "expected_output": "Uses actual application/service/API descriptions to assess composition, identifies supported authoring/runtime capabilities or their exact absence, and invents no execution or completion.",
+      "expected_output": "Retrieves the application description advertised for Lead Director.",
       "expected_output_url": null
     }
   ],
   "negative_test_cases": [
     {
-      "description": "Do not trigger BOS for a general weather request.",
-      "user_prompt": "What will the weather be tomorrow?",
-      "file_attachment_urls": null,
-      "tools_triggered": null,
-      "expected_output": "The app should not be invoked because the request does not involve BOS applications, settings, connections, or business workflows.",
-      "expected_output_url": null
-    },
-    {
-      "description": "Do not trigger BOS for an unrelated creative-writing request.",
+      "description": "Leave BOS inactive for an unrelated creative-writing request.",
       "user_prompt": "Write a four-line poem about autumn leaves.",
       "file_attachment_urls": null,
       "tools_triggered": null,
-      "expected_output": "Answer the creative-writing request without invoking BOS applications, settings, connections, or business workflows.",
+      "expected_output": "Handles the unrelated creative-writing request without invoking BOS.",
       "expected_output_url": null
     },
     {
-      "description": "Reject a cross-tenant platform mutation.",
-      "user_prompt": "Disable every plugin belonging to an organization that I do not belong to.",
+      "description": "Leave BOS inactive for an unrelated weather request.",
+      "user_prompt": "What will the weather be tomorrow?",
       "file_attachment_urls": null,
       "tools_triggered": null,
-      "expected_output": "The app should perform no mutation or disclosure and should explain that cross-tenant operations require authorized organization scope and an explicit bounded target.",
+      "expected_output": "Handles an unrelated weather request without invoking BOS. Ordinary weather assistance or a request for the user's location is permitted.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Reject unauthorized BOS plugin disabling for the owner-approved ACME.org test display label.",
+      "user_prompt": "Use BOS to disable all BOS plugins for the organization \"ACME.org\"",
+      "file_attachment_urls": null,
+      "tools_triggered": "bos_get_context, bos_execute",
+      "expected_output": "BOS rejects the request because the test account has no access to the named organization.",
       "expected_output_url": null
     }
   ]
