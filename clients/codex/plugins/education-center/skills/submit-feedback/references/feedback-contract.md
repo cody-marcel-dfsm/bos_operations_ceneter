@@ -36,7 +36,18 @@ Target types are `package`, `skill`, `plugin`, `mcp-tool`, `installation`, and
   - `validation_summary`: up to 2000 characters
   - `unresolved_items`: up to 4000 characters
 
-Unknown properties are invalid. Send plain text only.
+Unknown properties are invalid. Text fields remain plain text.
+
+- `attachments`: up to five screenshots. Each object contains only `mime_type`
+  (`image/png`, `image/jpeg`, or `image/webp`), `data_base64` (strict standard
+  base64, at most 6,990,508 characters), and `sanitized: true`. Each decoded image
+  is at most 5 MiB (5,242,880 bytes), with at most 16 million pixels; the submission
+  total is at most 20 MiB before and after metadata removal. Animation is
+  rejected. The host sanitizes the screenshot before encoding it. The server
+  validates the actual format, rerasterizes it to remove embedded metadata, and
+  enforces the size limit again. Visible sensitive content must already be
+  redacted. Public URLs, credentials, filesystem paths and remote image fetching
+  are excluded. Image bytes remain in private feedback storage.
 
 For `report session`, automatically inspect customer-owned extension manifests
 matching the active customer and each affected product skill. Resolve the
@@ -80,6 +91,49 @@ identifiers, or legacy instruction bodies.
 Expect `status: received`, a durable `feedback_id`, `feedback_uuid`,
 `received_at`, a canonical `target`, and a sanitized
 `correlation_id`. The service does not echo the feedback body.
+
+The receipt also returns `attachments`: `attachment_id` (SHA-256 of the stored
+sanitized bytes), `mime_type`, and `size_bytes`. It retains `status: received`;
+tracking starts at `open`. Historical received-only submissions are presented as
+`open` until triaged; the original receipt and submission remain unchanged.
+
+## Private tracking and discussion
+
+Discover these tools on the same BOS platform connection. Every call revalidates
+current membership, role, installation and exact operation grants.
+
+| Tool | Arguments | Result |
+| --- | --- | --- |
+| `bos_list_feedback` | Optional `status`, `limit` (1–100; default 20) | Reporter's own summaries, newest first |
+| `bos_get_feedback` | `feedback_id` | Private full record, status, attributed `history`, `comments`, attachment metadata and MCP image content blocks |
+| `bos_add_feedback_comment` | `feedback_id`, `body` (1–4000 characters) | Updated private record with server-attributed comment; identical normalized comments by the same actor on one record are deduplicated |
+| `bos_update_feedback` | `feedback_id`, `status`, `expected_status` | Authorized assignee transition |
+| `bos_triage_feedback` | `feedback_id`, `status`, `expected_status`; optional `assigned_to` (current member UUID or null) | Authorized team transition/assignment |
+
+The lifecycle is `open → acknowledged → in_progress → resolved → verified → closed`.
+Open, acknowledged, in-progress and reopened issues may move to `wontfix`.
+Resolved, verified, closed and wontfix issues may move to `reopened`; reopened
+issues return to acknowledged or in-progress. `expected_status` prevents
+overwriting concurrent triage. Team assignment may retain the current status.
+
+Records are private to the reporter, currently authorized assigned participants,
+and authorized team members in the exact organization and installation.
+Assignment grants no authority. Reporters with read/comment permission observe
+status and cannot transition it. Lists always contain only the caller's own
+submissions, including for team members. History and comments contain
+server-derived actor IDs, agent-installation IDs, timestamps and event IDs.
+Reads exclude notification delivery state and provider secrets. Comments follow
+the same sanitization rules and feedback rate limits. A record holds at most 100
+comments and 1,000 lifecycle events. Screenshot bytes appear once as MCP image
+content blocks in the order of returned attachment metadata; structured and text
+results carry metadata only. Missing and inaccessible
+IDs return the same denial.
+
+Create and resolve events retain notification intent for a configured authorized
+team recipient. Notices contain the feedback ID and event only; the recipient
+signs in to read the report. A receipt does not prove notification delivery.
+Polling supports v1 tracking. Issues, discussion and screenshots remain private;
+only separately authorized code patches may become public.
 
 ## Errors
 
