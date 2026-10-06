@@ -1,4 +1,4 @@
-import {verifyNativeReviewer,classifyNativeFailure,classifyCompletion,caseDiagnostics,httpsDescribeCoverage,reviewerTurnTimeoutMs,latestReviewerClockReference,runCodex,classifyNativeStderr,nativeExecutionDiagnostics} from '../scripts/marketplace-native-run.mjs';
+import {verifyNativeReviewer,classifyNativeFailure,classifyCompletion,caseDiagnostics,httpsDescribeCoverage,reviewerTurnTimeoutMs,latestReviewerClockReference,runCodex,classifyNativeStderr,nativeExecutionDiagnostics,reviewerToolsForCase,reviewerInstructionsForCase} from '../scripts/marketplace-native-run.mjs';
 import {EventEmitter} from 'node:events';
 import {PassThrough} from 'node:stream';
 import {digest,loadPromptCatalog} from '../scripts/marketplace-prompt-catalog.mjs';
@@ -10,6 +10,64 @@ import {installedPath,observedDocument,documentDigests,createInstalledAcceptance
 import {mkdtemp,mkdir,writeFile,rm,symlink,realpath} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
+import {reviewerErrorDiagnostic,reviewerErrorMetadata,reviewerModelDiagnostics} from '../scripts/marketplace-reviewer-diagnostics.mjs';
+import {failedNativeCaseReceipt,partialCaseDiagnostics} from '../scripts/marketplace-native-run.mjs';
+
+test('fixed error classifications preserve known transport codes and withhold unknown error material',()=>{
+ for(const [error,category,code] of [
+  [{name:'TimeoutError',message:'Bearer private-token'},'request_timeout_or_abort',undefined],
+  [{code:-32602,message:'https://private.invalid'},'jsonrpc_error',-32602],
+  [{cause:{code:'ECONNRESET'},message:'private-context'},'network_error','ECONNRESET'],
+  [{code:'reviewer_mcp_response_invalid'},'reviewer_error','reviewer_mcp_response_invalid'],
+  [{name:'SyntaxError',message:'private-json'},'response_parse_error',undefined],
+  [{name:'private-name',code:'private-code',message:'private-token'},'unrecognized_error',undefined]
+ ]){
+  const result=reviewerErrorDiagnostic(error);assert.equal(result.error_category,category);assert.equal(result.error_code,code);
+  assert.doesNotMatch(JSON.stringify(result),/private|Bearer/);
+  assert.deepEqual(reviewerErrorMetadata({...result,raw:error}),result);
+ }
+ assert.deepEqual(reviewerErrorMetadata({error_category:'private-category',error_code:'private-code',error_code_present:true}),{error_category:'unrecognized_error',error_code_present:true});
+});
+
+test('partial timeout receipts retain safe observation coverage and remain ungraded failures',()=>{
+ const model=reviewerModelDiagnostics({phase:'tool_handler',elapsed_ms:300000,phase_elapsed_ms:42,phase_durations:{turn_running:299958,private_phase:3},pending_tool:'bos_control_discover',pending_control_operation:'api.contract.get',pending_tool_elapsed_ms:42,completed_tool_calls:4,raw:'private-token'});
+ const error=Object.assign(new Error('reviewer_model_timeout'),{reviewer_diagnostics:model});
+ const state={context_handle:'private-context',observations:[
+  {tool:'app.describe',transport:'https-discovery',input:{operations:['create']},response:{operations:[{operation:'create'}]}},
+  {tool:'validate.installed',validation_origin:'host_https_describe',response:{valid:true}},
+  {tool:'bos.execute',input:{tool_name:'api.contract.get',arguments:{token:'private-token'}},is_error:true,response:{reason:'reviewer_tool_failed',error_diagnostic:{error_category:'network_error',error_code_present:true,error_code:'ECONNRESET'}}},
+  {tool:'private-tool',is_error:true,response:{reason:'private-error',error_diagnostic:{error_category:'private-category'}}}
+ ]};
+ const receipt=failedNativeCaseReceipt({id:'synthetic-case'},null,true,error,300042,state);
+ assert.equal(receipt.status,'FAIL');assert.equal(receipt.reason,'reviewer_model_timeout');
+ const d=receipt.diagnostics;assert.equal(d.partial,true);assert.equal(d.grading_attempted,false);assert.equal(d.observed_count,4);assert.equal(d.failed_observation_count,2);
+ assert.equal(d.known_tool_counts['unrecognized_tool'],1);assert.deepEqual(d.model_execution,model);
+ assert.deepEqual(d.failed_steps[0],{tool:'bos.execute',reason:'reviewer_tool_failed',control_operation:'api.contract.get',error_diagnostic:{error_category:'network_error',error_code_present:true,error_code:'ECONNRESET'}});
+ assert.equal(d.https_describe_coverage.successful_parent_validations,1);
+ assert.doesNotMatch(JSON.stringify(receipt),/private-context|private-token|private-tool|private-error|private-category|private_phase/);
+ assert.equal(partialCaseDiagnostics({observations:[]},error).observed_count,0);
+ assert.equal(partialCaseDiagnostics({observations:[],grading_attempted:true},error).grading_attempted,true);
+ const many=Array.from({length:40},(_,index)=>({operation:'public_operation_'+index}));
+ const bounded=partialCaseDiagnostics({observations:[{tool:'app.describe',transport:'https-discovery',input:{operations:many.map(row=>row.operation)},response:{operations:many}}]},error).https_describe_coverage;
+ assert.equal(bounded.requested_operations.length,32);assert.equal(bounded.returned_operations.length,32);
+ assert.equal(bounded.operation_names_truncated,true);assert.equal(bounded.requested_operation_count,40);assert.equal(bounded.returned_operation_count,40);
+});
+
+test('diagnostic selection rejects unknown controls and malformed model metadata',()=>{
+ const failed=caseDiagnostics({}, {},[{tool:'bos.execute',input:{tool_name:'private-control'},is_error:true,response:{reason:'reviewer_tool_failed'}}]);
+ assert.equal(Object.hasOwn(failed.failed_steps[0],'control_operation'),false);
+ const d=reviewerModelDiagnostics({phase:'private-phase',elapsed_ms:-1,phase_durations:{private_phase:1,initialize:'private-duration'},pending_tool:'private-tool',pending_control_operation:'private-control',completed_tool_calls:Infinity});
+ assert.equal(d.phase,'unrecognized_phase');assert.equal(d.elapsed_ms,0);assert.equal(d.pending_tool,'unrecognized_tool');assert.equal(d.completed_tool_calls,0);
+ assert.doesNotMatch(JSON.stringify(d),/private-/);
+ const raw={isError:true,content:[{type:'text',text:'private-upstream-text'}]};
+ const diagnostic=reviewerErrorDiagnostic({code:-32602});
+ const observed={tool:'bos.execute',input:{tool_name:'service.describe'},is_error:true,response:raw,
+  control_operation:'service.describe',error_diagnostic:diagnostic};
+ const result=caseDiagnostics({}, {},[observed]);
+ assert.deepEqual(result.failed_steps[0],{tool:'bos.execute',reason:'reviewer_tool_failed',control_operation:'service.describe',error_diagnostic:diagnostic});
+ assert.strictEqual(observed.response,raw);
+ assert.doesNotMatch(JSON.stringify(result),/private-upstream-text/);
+});
 
 function nativeProcessFixture({stderr=[],stdout=[],code=1,signal=null,waitForKill=false}={}) {
  return ()=>{
@@ -256,6 +314,38 @@ test('negative refusal status passes only after all other acceptance gates pass'
  assert.deepEqual(existing,['configured_outcome_failed']);
 });
 
+test('readiness reviewer receives only the exact read-only context and discovery tools',()=>{
+ const tools={definitions:['bos_get_context','bos_context_provider_status','bos_list_plugin_services','bos_control_discover','bos_https_operation','acceptance_validate_installed','acceptance_read_installed'].map(name=>({name}))};
+ assert.deepEqual(reviewerToolsForCase({id:'starter-3'},tools).definitions.map(row=>row.name),['bos_get_context','bos_context_provider_status','bos_list_plugin_services','bos_control_discover','acceptance_read_installed']);
+ assert.deepEqual(reviewerToolsForCase({id:'starter-2'},tools).definitions.map(row=>row.name),['bos_get_context','bos_control_discover']);
+ assert.equal(reviewerToolsForCase({id:'positive-1'},tools),tools);
+});
+
+test('starter instructions derive readiness from current discovery and keep other cases bounded',()=>{
+ const base=JSON.stringify({instructions:'generic'});
+ const readiness=JSON.parse(reviewerInstructionsForCase(base,{id:'starter-3'})).instructions;
+ assert.match(readiness,/current validated app description and service catalog/);
+ assert.match(readiness,/derive operation selection, readiness, and prerequisites only from the current catalog and responses/);
+ assert.match(readiness,/original source timestamps/);
+ assert.match(readiness,/exact reference_time/);
+ assert.match(readiness,/no service rows were returned/);
+ assert.match(readiness,/discovery\.refresh/);
+ assert.match(readiness,/When current observations conflict/);
+ assert.match(readiness,/dedicated bos_context_provider_status host wrapper/);
+ assert.match(readiness,/Only after that successful validation/);
+ const changedReadiness=JSON.parse(reviewerInstructionsForCase(JSON.stringify({instructions:'generic',readiness_declarations:{gmail:'ready',calimatic:'disabled',google_drive:'configuration_required'}}),{id:'starter-3'})).instructions;
+ assert.equal(changedReadiness,readiness);
+ assert.doesNotMatch(changedReadiness,/configuration_required|journey_runtime|gmail\.attachments\.read|Calimatic/);
+ const apps=JSON.parse(reviewerInstructionsForCase(base,{id:'starter-1'})).instructions;
+ assert.match(apps,/Immediately call bos_get_context/);
+ assert.match(apps,/references\/discovery-contract\.md/);
+ assert.match(apps,/do not claim or mention Front Desk access/);
+ const inventory=JSON.parse(reviewerInstructionsForCase(base,{id:'starter-2'})).instructions;
+ assert.match(inventory,/do not state a numerical total/);
+ assert.match(inventory,/Do not state that Front Desk exists/);
+ assert.equal(JSON.parse(reviewerInstructionsForCase(base,{id:'positive-1'})).instructions,'generic');
+});
+
 
 test('business-case proof requires successful scoped deterministic HTTPS and exact semantic evidence', async()=>{
  const {reviewerResponses,caseResponseFailures}=await import('../scripts/marketplace-native-run.mjs');
@@ -305,6 +395,24 @@ test('negative grading permits exact local governance evidence and rejects every
  for(const evidence of invalid){assert.equal(negativeEvidenceAllowed(evidence),false);assert.deepEqual(await judgeEvidence(evidence,{kind:'negative'},null,null,null),{pass:false,missing:['negative_case_unapproved_invocation']});}
  // Eligibility retains semantic grading; it never establishes an actual case PASS.
  assert.equal(negativeEvidenceAllowed(null),false);
+});
+
+test('independent grading retries one native process failure with the unchanged evidence',async()=>{
+ const {judgeEvidence}=await import('../scripts/marketplace-native-run.mjs');
+ const directory=await mkdtemp(join(tmpdir(),'reviewer-grade-retry-'));
+ try{
+  const inputs=[],calls=[];
+  const runCodexImpl=async(args,input,timeout)=>{
+   inputs.push(input);calls.push(timeout);
+   if(inputs.length===1)return {failure:'native_process_failed',code:1,signal:null,elapsed_ms:2,stderr_bytes_retained:12,stderr_truncated:false,stderr_classification:null};
+   const outputPath=args[args.indexOf('--output-last-message')+1];
+   await writeFile(outputPath,JSON.stringify({pass:true,missing:[]}));
+   return {failure:null,code:0,signal:null,elapsed_ms:2,stderr_bytes_retained:0,stderr_truncated:false,stderr_classification:null};
+  };
+  const result=await judgeEvidence({native_tools:[],observations:[],denials:[]},{kind:'negative',prompt:'A synthetic unrelated request',expected:'No BOS call'}, {description:'BOS'},'synthetic-model',directory,runCodexImpl);
+  assert.deepEqual(result,{pass:true,missing:[]});
+  assert.equal(inputs.length,2);assert.equal(inputs[0],inputs[1]);assert.deepEqual(calls,[120000,120000]);
+ }finally{await rm(directory,{recursive:true,force:true});}
 });
 
 test('grading context retains the exact assertion clock and original source observations while containing private scope identifiers',async()=>{

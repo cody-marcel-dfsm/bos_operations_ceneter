@@ -18,6 +18,43 @@ async function retainedValue(tools,document_id,pointer=''){
 const context={context_handle:'bos_ctx_v2_'+'a'.repeat(64),organization_name:'Synthetic',application_name:'Synthetic App',installation_name:'Synthetic Installation',role_label:'Reviewer',is_default:true};
 const contact={operation:'search',status:'described',effect:'read',limits:{max_targets:null,max_results_per_source:5,pagination_supported:false,bulk_supported:false,streaming_supported:false,maximum_duration_seconds:30,maximum_fan_out:5},guarantees:{read_consistency:'point_in_time',per_source_atomicity:'source_published',cross_source_atomicity:'not_applicable',convergence:'not_applicable',idempotency:'service_owned'},execution:{context_header:'X-BOS-Context-Handle',method:'POST',uri:'/bos/apps/synthetic/api/v1/organizations/synthetic/search'},input_schema:{$schema:'https://json-schema.org/draft/2020-12/schema',type:'object',additionalProperties:false,required:['text'],properties:{text:{type:'string',minLength:1}},'x-bos-fields':[]},output_schema:{$schema:'https://json-schema.org/draft/2020-12/schema',type:'object',required:['count'],properties:{count:{type:'integer'}},'x-bos-fields':[]},error_contract:{schema:'lead-director-public-error/v1',codes:['invalid_search_request','authentication_required']},sources:[{source:{platform:'bos',application:'synthetic',plugin:'synthetic'},availability:'ready'}]};
 
+test('case 8 sends one exact BOS denial probe through the authenticated MCP session',async()=>{
+ const root=await realpath(await mkdtemp(join(tmpdir(),'reviewer-auth-denial-unit-')));
+ try{
+  for(const skill of ['bos-external-dependency-adapter','bos-app-discovery']){
+   const target=join(root,'skills',skill,'scripts');await mkdir(target,{recursive:true});
+   await cp(new URL('../source/platform/'+skill+'/scripts/',import.meta.url),target,{recursive:true});
+  }
+  await run('git',['init','--quiet'],{cwd:root});await run('git',['add','.'],{cwd:root});
+  await run('git',['-c','user.name=Synthetic Test','-c','user.email=test@example.invalid','commit','--quiet','-m','Synthetic published reviewer fixture'],{cwd:root});
+  const commit=(await run('git',['rev-parse','HEAD'],{cwd:root})).stdout.trim();
+  const args={org_id:'ACME.org'},denial={case_id:'negative-3',operation:'unadvertised_disable_operation',arguments:args,
+   input_sha256:digest(args),target_organization:'ACME.org',target_provenance:'owner-declared synthetic request label',
+   resolve_target:false,contact_target_domain:false,error_code:'authorization_denied',server_denial_precedes_operation_resolution:true};
+  const state={case_id:'negative-3',product:'bos',kind:'authorization-denial',canary:true,handle:context.context_handle,
+   authorization_denial:denial,authorization_denial_used:false,organization:'Synthetic',application:'Lead Director',
+   installation:'Synthetic Installation',role:'Director',resource:'https://dfsm.ai/mcp/apps/bos/platform',
+   installed_root:root,installed_roots:{bos:root},published_commits:{bos:commit},allowed_effects:['read'],
+   observations:[],fixtureResponses:[],denials:[],tools:[]};
+  const calls=[];
+  const session={rpc:async(method,params)=>{
+   if(method==='tools/list')return {tools:[{name:'bos_execute'}]};
+   calls.push({method,params});return {isError:true,structuredContent:{error_code:'authorization_denied',execution_evidence:{mcp_session_id:'private-session-value'},error_payload:'private-response-value'}};
+  },request:async()=>{throw new Error('unexpected_https_request');}};
+  const tools=await createReviewerTools({session,state,release:{path:root,release_commit:commit}});
+  const result=await tools.call('bos_authorization_denial_probe',{});
+  assert.equal(result.isError,false);assert.equal(result.expected_denial,true);assert.deepEqual(result.structuredContent,{error_code:'authorization_denied'});
+  assert.doesNotMatch(JSON.stringify(result),/private-session-value|private-response-value|execution_evidence/);
+  assert.equal(calls.length,1);assert.equal(calls[0].method,'tools/call');
+  assert.equal(calls[0].params.name,'bos_execute');
+  assert.deepEqual(calls[0].params.arguments,{context_handle:context.context_handle,tool_name:'unadvertised_disable_operation',arguments:args});
+  assert.deepEqual(state.host_tool_outcomes,[{tool:'bos_authorization_denial_probe',kind:'expected_service_denial'}]);
+  assert.equal((await tools.call('bos_authorization_denial_probe',{})).reason,'authorization_denial_probe_not_bound');
+  assert.equal(state.host_tool_outcomes.at(-1).kind,'tool_error');
+  assert.equal(calls.length,1);
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
 test('HTTPS Describe uses observed validated contact, bounded keys, fresh context and real published response validation',async()=>{
  const root=await realpath(await mkdtemp(join(tmpdir(),'reviewer-describe-unit-')));
  try{
@@ -71,28 +108,30 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   assert.doesNotMatch(JSON.stringify(listedResources.document),/bos_ctx_v2_b{64}/);
   const listedRead=await tools.call('bos_read_resource',{uri:listedResources.document.resources[0].uri});
   assert.equal(listedRead.document_id,observed.document_id);
+  assert.deepEqual(listedRead.published_validation,{valid:true,mode:'app-describe',document_id:observed.document_id,release_commit:commit});
+  assert.equal(state.validated_contracts['app-describe'],digest(app));
   const args={document_id:observed.document_id,operations:['search']};
-  assert.equal((await tools.call('bos_https_describe',args)).isError,true);assert.equal(requests,0);
+  const result=await tools.call('bos_https_describe',args);
+  assert.equal(result.isError,undefined);assert.equal(requests,1);
   const invalidMode=await tools.call('acceptance_validate_installed',{path:'skills/bos-app-discovery/scripts/validate-discovery.mjs',mode:'invented-mode',document_id:observed.document_id});
   assert.deepEqual(invalidMode,{isError:true,reason:'reviewer_validator_mode_unsupported'});
-  assert.equal(requests,0);
-  assert.equal(state.validated_contracts['app-describe'],undefined);
+  assert.equal(requests,1);
+  assert.equal(state.validated_contracts['app-describe'],digest(app));
   assert.deepEqual(await tools.call('acceptance_validate_installed',{path:'skills/other/validator.mjs',mode:'app-describe',document_id:observed.document_id}),{isError:true,reason:'reviewer_tool_failed'});
   const checked=await tools.call('acceptance_validate_installed',{mode:'app-describe',document_id:observed.document_id});
   assert.equal(checked.valid,true);
   for(const keys of [[],['search','search'],['unadvertised'],Array(6).fill('search')]){
    assert.equal((await tools.call('bos_https_describe',{...args,operations:keys})).isError,true);
   }
-  assert.equal((await tools.call('bos_https_describe',{...args,document_id:'invented'})).isError,true);assert.equal(requests,0);
+  assert.equal((await tools.call('bos_https_describe',{...args,document_id:'invented'})).isError,true);assert.equal(requests,1);
   const originalUri=app.describe.uri;
   for(const invalid of [originalUri.replace('synthetic','{organization}'),'https://foreign.test/describe','http://dfsm.ai/describe',originalUri+'?org_id=foreign',originalUri+'#fragment']){
    app.describe.uri=invalid;const changed=await tools.call('bos_read_resource',{uri});
    state.validated_contracts['app-describe']=digest(app);
    assert.equal((await tools.call('bos_https_describe',{...args,document_id:changed.document_id})).isError,true);
   }
-  assert.equal(requests,0);app.describe.uri=originalUri;state.validated_contracts['app-describe']=digest(app);
+  assert.equal(requests,1);app.describe.uri=originalUri;state.validated_contracts['app-describe']=digest(app);state.failed_validations={};
   const validationState=structuredClone({validated:state.validated_contracts,failed:state.failed_validations});
-  const result=await tools.call('bos_https_describe',args);
   assert.deepEqual(result.published_validation,{valid:true,mode:'operation-describe',document_id:result.document_id,release_commit:commit});
   assert.deepEqual(state.fixtureResponses,[{operation:'app.describe',transport:'https_discovery',successful:true,body:response}]);
   const receipt=state.observations.findLast(row=>row.validation_origin==='host_https_describe');
@@ -102,7 +141,11 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   assert.equal((await tools.call('acceptance_project_contract_facts',{document_ids:[observed.document_id]})).isError,true);
   assert.equal((await tools.call('acceptance_project_contract_facts',{document_ids:[result.advertised_https_contacts[0].document_id]})).isError,true);
   assert.equal((await tools.call('acceptance_project_contract_facts',{document_ids:[result.document_id],scope:{role:'Invented'}})).isError,true);
+  state.validated_contracts['app-describe']=digest(app);state.failed_validations={};
+  state.observations=state.observations.filter(row=>row.tool!=='validate.installed'||(!row.is_error&&row.response?.valid!==false));
+  assert.equal(state.canary,true);assert.equal(state.kind,'positive');assert.ok(state.handle);assert.ok(state.allowed_effects.includes('read'));assert.deepEqual(state.failed_validations,{});assert.equal(state.observations.some(row=>row.tool==='validate.installed'&&(row.is_error||row.response?.valid===false)),false);
   const projected=await tools.call('acceptance_project_contract_facts',{document_ids:[result.document_id]});
+  assert.equal(projected.isError,undefined,JSON.stringify(projected));
   const fullProjection=await retainedValue(tools,projected.document_id);
   assert.equal(projected.isError,undefined);assert.equal(projected.view,'derived_contract_facts');
   assert.deepEqual(projected.authorized_context,{kind:'authorized_context_observation',organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,provenance:{operation:'bos.get.context',document_id:projected.authorized_context.provenance.document_id}});
@@ -308,15 +351,17 @@ test('test host uses the verified adapter, fresh reviewer context and advertised
     await run('git',['init','--quiet'],{cwd:root});await run('git',['add','.'],{cwd:root});
     await run('git',['-c','user.name=Synthetic Test','-c','user.email=test@example.invalid','-c','core.hooksPath=/dev/null','commit','--quiet','-m','synthetic published adapter fixture'],{cwd:root});
     const commit=(await run('git',['rev-parse','HEAD'],{cwd:root})).stdout.trim();
-    const state={product:'bos',installed_root:root,installed_roots:{bos:root},published_commits:{bos:commit},organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,resource:'https://dfsm.ai/mcp/apps/bos/platform',canary:true,kind:'positive',handle:context.context_handle,observations:[],denials:[],allowed_effects:['read'],tools:[{name:'app.describe',annotations:{readOnlyHint:true},_meta:{'bos/effect':'read'},inputSchema:{type:'object'}}],validated_contracts:{'app-describe':'already-validated'},failed_validations:{}};
-    let current=context,requests=0,contextReads=0;
+    const state={product:'bos',installed_root:root,installed_roots:{bos:root},published_commits:{bos:commit},organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,resource:'https://dfsm.ai/mcp/apps/bos/platform',canary:true,kind:'positive',handle:context.context_handle,observations:[],denials:[],allowed_effects:['read'],tools:[{name:'app.describe',annotations:{readOnlyHint:true},_meta:{'bos/effect':'read'},inputSchema:{type:'object'}},{name:'bos_get_context',annotations:{readOnlyHint:true},_meta:{'bos/effect':'read'},inputSchema:{type:'object',properties:{}}}],validated_contracts:{'app-describe':'already-validated'},failed_validations:{}};
+    let current=context,requests=0,contextReads=0,appContextReads=0;
     const session={rpc:async(method,params)=>{
       if(method==='tools/list')return {tools:[{name:'bos.get_context'},{name:'bos.execute'}]};
       if(params.name==='bos.get_context'){contextReads++;return {structuredContent:{contract_version:'bos-identity-mcp/v2',contexts:[current]}};}
-      assert.equal(params.name,'bos.execute');assert.equal(params.arguments.tool_name,'app.describe');return {structuredContent:{contract_version:'bos-identity-mcp/v2',context:current,result:{operations:[contact]}}};
+      assert.equal(params.name,'bos.execute');if(params.arguments.tool_name==='bos_get_context'){appContextReads++;return {structuredContent:{contract_version:'bos-identity-mcp/v2',context:current,result:{provider_status:'ready',capabilities:['calendar','drive']}}};}assert.equal(params.arguments.tool_name,'app.describe');return {structuredContent:{contract_version:'bos-identity-mcp/v2',context:current,result:{operations:[contact]}}};
     },request:async(url,options)=>{requests++;assert.equal(url,'https://dfsm.ai'+contact.execution.uri);assert.equal(options.headers['X-BOS-Context-Handle'],context.context_handle);assert.deepEqual(JSON.parse(options.body),{text:'synthetic'});return new Response(JSON.stringify({count:2}),{headers:{'content-type':'application/json'}});}};
     const tools=await createReviewerTools({session,state,release:{path:root,release_commit:commit}});
     await tools.call('bos_get_context',{});
+    const appContext=await tools.call('bos_context_provider_status',{});
+    assert.equal(appContext.document.provider_status,'ready');assert.equal(appContextReads,1);
     const described=await tools.call('bos_control_discover',{operation:'app.describe',arguments:{}});
     const contactId=described.advertised_https_contacts[0].contact_id;
     const result=await tools.call('bos_https_operation',{contact_id:contactId,payload:{text:'synthetic'}});
@@ -415,6 +460,46 @@ test('actual retained API contracts validate with canonical wrapper and exact ob
  }finally{await rm(root,{recursive:true,force:true});}
 });
 
+
+test('scoped control failure diagnostics retain fixed categories and preserve guards and raw observations',async()=>{
+ const root=await realpath(await mkdtemp(join(tmpdir(),'reviewer-control-diagnostic-')));
+ try{
+  const target=join(root,'skills/bos-external-dependency-adapter/scripts');await mkdir(target,{recursive:true});
+  await cp(new URL('../source/platform/bos-external-dependency-adapter/scripts/',import.meta.url),target,{recursive:true});
+  await run('git',['init','--quiet'],{cwd:root});await run('git',['add','.'],{cwd:root});
+  await run('git',['-c','user.name=Synthetic Test','-c','user.email=test@example.invalid','commit','--quiet','-m','Synthetic control diagnostics fixture'],{cwd:root});
+  const commit=(await run('git',['rev-parse','HEAD'],{cwd:root})).stdout.trim();
+  const state={product:'bos',installed_root:root,organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,resource:'https://dfsm.ai/mcp/apps/bos/platform',canary:true,kind:'positive',handle:context.context_handle,observations:[],denials:[],allowed_effects:['read'],tools:[{name:'api.contract.get',annotations:{readOnlyHint:true},_meta:{'bos/effect':'read'},inputSchema:{type:'object'}}],validated_contracts:{},failed_validations:{}};
+  let upstreamError=null,requests=0;
+  let raw={isError:true,structuredContent:{error:{code:-32602,message:'Bearer synthetic-secret',access_token:'synthetic-secret'}}};
+  const session={rpc:async(method)=>{if(method==='tools/list')return {tools:[{name:'bos.execute'}]};requests++;if(upstreamError)throw upstreamError;return raw;}};
+  const tools=await createReviewerTools({session,state,release:{path:root,release_commit:commit}});
+  const discover=()=>tools.call('bos_control_discover',{operation:'api.contract.get',arguments:{operation:'synthetic.operation'}});
+  const failed=await discover();assert.equal(failed.isError,true);assert.equal(failed.authorized_context,undefined);
+  assert.deepEqual(failed.error_diagnostic,{error_category:'jsonrpc_error',error_code_present:true,error_code:-32602});assert.equal(failed.control_operation,'api.contract.get');
+  const observation=state.observations.at(-1);assert.equal(observation.is_error,true);
+  assert.deepEqual(observation.response,{error:{code:-32602,message:'[credential]'}});
+  assert.deepEqual(observation.error_diagnostic,failed.error_diagnostic);
+  assert.doesNotMatch(JSON.stringify(failed.error_diagnostic),/synthetic-secret|Bearer|access_token|arguments|message/);
+  upstreamError=Object.assign(new Error('Bearer synthetic-secret'),{code:'synthetic-private-code',cause:{code:'ECONNRESET',message:'synthetic-secret'},control_diagnostic:{control_operation:'synthetic-secret',error_diagnostic:{error_code:'synthetic-secret'}}});
+  const transport=await discover();assert.equal(transport.reason,'reviewer_tool_failed');assert.equal(transport.isError,true);
+  assert.deepEqual(transport.error_diagnostic,{error_category:'network_error',error_code_present:true,error_code:'ECONNRESET'});
+  assert.deepEqual(state.observations.at(-1).response,{reason:'reviewer_tool_failed',control_operation:'api.contract.get',error_diagnostic:transport.error_diagnostic});
+  assert.doesNotMatch(JSON.stringify(transport),/synthetic-secret|synthetic-private-code|Bearer|arguments|cause|message/);
+  upstreamError=Object.assign(new Error('synthetic-secret'),{code:'reviewer_session_expired'});
+  const known=await discover();assert.equal(known.reason,'reviewer_session_expired');assert.equal(known.error_diagnostic.error_code,'reviewer_session_expired');
+  upstreamError=Object.assign(new Error('synthetic-secret'),{code:'synthetic-private-code'});
+  assert.deepEqual((await discover()).error_diagnostic,{error_category:'unrecognized_error',error_code_present:true});
+  upstreamError=null;raw={structuredContent:'Bearer synthetic-secret'};
+  const malformed=await discover();assert.equal(malformed.isError,true);assert.equal(malformed.reason,'reviewer_document_invalid');
+  assert.equal(malformed.control_operation,'api.contract.get');assert.deepEqual(malformed.error_diagnostic,{error_category:'unrecognized_error',error_code_present:false});
+  assert.equal(state.observations.at(-2).response,'[credential]');
+  assert.deepEqual(state.observations.at(-1).response,{reason:'reviewer_document_invalid',control_operation:'api.contract.get',error_diagnostic:malformed.error_diagnostic});
+  assert.doesNotMatch(JSON.stringify(malformed),/synthetic-secret|Bearer|arguments|message/);
+  const before=requests;state.canary=false;const denied=await discover();assert.equal(denied.isError,true);assert.equal(denied.error_diagnostic,undefined);assert.equal(requests,before);
+  const invalid=await tools.call('bos_control_discover',{operation:'synthetic-private-operation',arguments:{}});assert.equal(invalid.reason,'reviewer_mcp_business_call_forbidden');assert.equal(invalid.error_diagnostic,undefined);assert.equal(invalid.control_operation,undefined);
+ }finally{await rm(root,{recursive:true,force:true});}
+});
 
 test('installed Markdown references are verified, provenance-bound and contained in published skills',async()=>{
  const root=await realpath(await mkdtemp(join(tmpdir(),'reviewer-installed-references-')));

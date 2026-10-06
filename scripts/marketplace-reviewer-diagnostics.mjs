@@ -74,6 +74,49 @@ export function reviewerObservationFailures(observations) {
   return [...new Set(observations.filter(row => row.is_error || row.response?.valid === false).map(row => row.response?.valid === false ? "reviewer_validation_failed" : reviewerFailureCode({code: row.response?.reason})))];
 }
 
+const dynamicTools = new Set(['acceptance_guard_probe','acceptance_guard_status','acceptance_read_document',
+  'acceptance_project_contract_facts','acceptance_compare_schemas','acceptance_read_installed',
+  'acceptance_validate_installed','bos_get_context','bos_list_context_tools','bos_list_plugin_services','bos_list_resources',
+  'bos_read_resource','bos_control_discover','bos_https_describe','bos_https_operation']);
+const observedTools = new Set([...dynamicTools,'guard.status','read.installed','validate.installed',
+  'project.contract.facts','compare.schemas','bos.get.context','bos.list.context.tools','bos.execute',
+  'resources.list','resources.read','app.describe','plugins.list','service.describe','api.contract.get','discovery.refresh']);
+const controls = new Set(['app.describe','plugins.list','service.describe','api.contract.get','discovery.refresh']);
+export const reviewerDiagnosticTool = (name, dynamic = false) =>
+  (dynamic ? dynamicTools : observedTools).has(name) ? name : 'unrecognized_tool';
+export const reviewerDiagnosticControl = name => controls.has(name) ? name : null;
+const phases = new Set(['initialize','server_inventory','thread_start','turn_start','turn_running','tool_handler','output_parse']);
+const bounded = value => Number.isSafeInteger(value) && value >= 0 && value <= 86400000 ? value : 0;
+export function reviewerModelDiagnostics(value = {}) {
+  return {phase: phases.has(value.phase) ? value.phase : 'unrecognized_phase',
+    elapsed_ms: bounded(value.elapsed_ms), phase_elapsed_ms: bounded(value.phase_elapsed_ms),
+    phase_durations: Object.fromEntries([...phases].filter(key => Object.hasOwn(value.phase_durations ?? {}, key))
+      .map(key => [key, bounded(value.phase_durations[key])])),
+    pending_tool: value.pending_tool == null ? null : reviewerDiagnosticTool(value.pending_tool, true),
+    pending_tool_elapsed_ms: bounded(value.pending_tool_elapsed_ms),
+    ...(reviewerDiagnosticControl(value.pending_control_operation) ? {pending_control_operation: value.pending_control_operation} : {}),
+    completed_tool_calls: bounded(value.completed_tool_calls)};
+}
+export function reviewerErrorDiagnostic(error) {
+  const code = error?.code, causeCode = error?.cause?.code;
+  const present = code !== undefined && code !== null;
+  if (failureCodes.has(code)) return {error_category: 'reviewer_error', error_code_present: true, error_code: code};
+  if ([-32700,-32600,-32601,-32602,-32603].includes(code)) return {error_category: 'jsonrpc_error', error_code_present: true, error_code: code};
+  if (error?.name === 'TimeoutError' || error?.name === 'AbortError') return {error_category: 'request_timeout_or_abort', error_code_present: present};
+  if (['ECONNRESET','ECONNREFUSED','ETIMEDOUT','EHOSTUNREACH','ENETUNREACH','EAI_AGAIN','ENOTFOUND'].includes(causeCode ?? code)) {
+    return {error_category: 'network_error', error_code_present: true, error_code: causeCode ?? code};
+  }
+  if (error?.name === 'SyntaxError') return {error_category: 'response_parse_error', error_code_present: present};
+  return {error_category: 'unrecognized_error', error_code_present: present};
+}
+export function reviewerErrorMetadata(value = {}) {
+  const categories = new Set(['reviewer_error','jsonrpc_error','request_timeout_or_abort','network_error','response_parse_error','unrecognized_error']);
+  const code = reviewerErrorDiagnostic({code: value.error_code});
+  return {error_category: categories.has(value.error_category) ? value.error_category : 'unrecognized_error',
+    error_code_present: value.error_code_present === true,
+    ...(Object.hasOwn(code,'error_code') ? {error_code: code.error_code} : {})};
+}
+
 // Inspect upstream error notifications only; expose a fixed category, never their text.
 export function reviewerModelNotificationFailure(notification, fallback = "reviewer_model_failed") {
   const failure = notification?.error ?? notification?.params?.error ?? notification?.params?.turn?.error;
