@@ -44,7 +44,7 @@ Upgrading replaces the former `platform` identifier. Hosts may require native
 sign-in again when a connection identifier changes; valid-session continuity
 has not been verified for this migration.
 
-Current desktop marketplace release: `0.4.181`. If `0.4.180` is installed,
+Current desktop marketplace release: `0.4.182`. If `0.4.181` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -415,6 +415,20 @@ Run:
 ```bash
 npm run release:check
 ```
+
+To update an existing legacy OpenAI BOS listing, export its required internal
+package name from an exact accepted commit already published on `origin/main`:
+
+```bash
+node scripts/build-marketplace-update.mjs "$PUBLISHED_COMMIT" "$LEGACY_LISTING_NAME"
+```
+
+Supply the listing name through private runtime configuration. The exporter
+preserves the released version and every other package byte and file mode,
+verifies deterministic archive parity, and keeps the output under private
+`Vault/tmp/marketplace-update/`. Reviewer credentials belong in the portal's
+review details. Upload, MCP connection, scans, and submission are separate
+steps after release validation and publication.
 
 Publish a release through a release branch and merged pull request. That merge
 provides Claude's documented organization-marketplace synchronization trigger
