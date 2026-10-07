@@ -44,7 +44,7 @@ Upgrading replaces the former `platform` identifier. Hosts may require native
 sign-in again when a connection identifier changes; valid-session continuity
 has not been verified for this migration.
 
-Current desktop marketplace release: `0.4.183`. If `0.4.182` is installed,
+Current desktop marketplace release: `0.4.184`. If `0.4.183` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -429,6 +429,20 @@ verifies deterministic archive parity, and keeps the output under private
 `Vault/tmp/marketplace-update/`. Reviewer credentials belong in the portal's
 review details. Upload, MCP connection, scans, and submission are separate
 steps after release validation and publication.
+
+For a legacy listing whose original ZIP has no MCP declaration and whose MCP
+app is already associated separately in the dashboard, the owner-approved
+marketplace-only option is:
+
+```bash
+node scripts/build-marketplace-update.mjs "$PUBLISHED_COMMIT" "$LEGACY_LISTING_NAME" --preserve-existing-mcp
+```
+
+This omits only the manifest's MCP declaration in addition to the required
+name change. All other files retain release parity. Never install this export
+as a standalone client package. Verify upload acceptance, the retained
+dashboard association, native login and authorized discovery before claiming
+that the existing connection works.
 
 Publish a release through a release branch and merged pull request. That merge
 provides Claude's documented organization-marketplace synchronization trigger
