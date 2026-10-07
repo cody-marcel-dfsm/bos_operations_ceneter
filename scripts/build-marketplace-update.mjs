@@ -10,7 +10,13 @@ const prefix = "clients/codex/plugins/bos/";
 const manifestPath = ".codex-plugin/plugin.json";
 const stableVersion = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
-export function createMarketplaceUpdate(releasedEntries, legacyName) {
+export function createMarketplaceUpdate(releasedEntries, legacyName, options = {}) {
+  if (!options || typeof options !== "object" || Array.isArray(options) ||
+      Object.keys(options).some(key => key !== "preserveExistingMcp") ||
+      (Object.hasOwn(options, "preserveExistingMcp") && typeof options.preserveExistingMcp !== "boolean")) {
+    throw new Error("Invalid marketplace update options");
+  }
+  const preserveExistingMcp = Object.hasOwn(options, "preserveExistingMcp") && options.preserveExistingMcp;
   if (typeof legacyName !== "string" || legacyName.length !== 36 || !/^app-[a-f0-9]{32}$/.test(legacyName)) {
     throw new Error("Supply the existing legacy listing package name");
   }
@@ -37,6 +43,18 @@ export function createMarketplaceUpdate(releasedEntries, legacyName) {
   if ([...original.matchAll(nameToken)].length !== 1) throw new Error("Ambiguous canonical BOS name");
   manifestEntry.content = Buffer.from(original.replace(nameToken, token => token.replace(/"bos"$/, JSON.stringify(legacyName))));
   const expectedManifest = { ...manifest, name: legacyName };
+  if (preserveExistingMcp) {
+    // Marketplace metadata update only: test retention of the host's existing
+    // legacy association. Never install this export as a standalone client.
+    const declaration = /,\n  "mcpServers": "\.\/\.mcp\.json"\n(?=})/g;
+    const text = manifestEntry.content.toString("utf8");
+    if (manifest.mcpServers !== "./.mcp.json" || Object.hasOwn(manifest, "apps") ||
+        [...text.matchAll(declaration)].length !== 1) {
+      throw new Error("Expected the canonical final MCP declaration for a legacy metadata update");
+    }
+    manifestEntry.content = Buffer.from(text.replace(declaration, "\n"));
+    delete expectedManifest.mcpServers;
+  }
   if (JSON.stringify(JSON.parse(manifestEntry.content)) !== JSON.stringify(expectedManifest)) {
     throw new Error("Unexpected marketplace manifest transformation");
   }
@@ -49,7 +67,7 @@ export function createMarketplaceUpdate(releasedEntries, legacyName) {
       throw new Error(`Marketplace ZIP parity failure: ${entry.path}`);
     }
   }
-  return { archive, version: manifest.version, entryCount: actual.size,
+  return { archive, version: manifest.version, entryCount: actual.size, preserveExistingMcp,
     sha256: createHash("sha256").update(archive).digest("hex") };
 }
 
@@ -70,12 +88,16 @@ export function readPublishedBosEntries(revision) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  if (process.argv.length !== 4) throw new Error("Usage: node scripts/build-marketplace-update.mjs <published-commit> <legacy-listing-name>");
-  const result = createMarketplaceUpdate(readPublishedBosEntries(process.argv[2]), process.argv[3]);
+  if (![4, 5].includes(process.argv.length) || (process.argv.length === 5 && process.argv[4] !== "--preserve-existing-mcp")) {
+    throw new Error("Usage: node scripts/build-marketplace-update.mjs <published-commit> <legacy-listing-name> [--preserve-existing-mcp]");
+  }
+  const result = createMarketplaceUpdate(readPublishedBosEntries(process.argv[2]), process.argv[3], {
+    preserveExistingMcp: process.argv[4] === "--preserve-existing-mcp"
+  });
   const directory = resolve(root, "Vault/tmp/marketplace-update");
   await mkdir(directory, { recursive: true });
-  const output = resolve(directory, `bos-${result.version}-marketplace-update.zip`);
+  const output = resolve(directory, `bos-${result.version}-marketplace-${result.preserveExistingMcp ? "existing-mcp-" : ""}update.zip`);
   await writeFile(output, result.archive);
   console.log(JSON.stringify({ output, sourceCommit: process.argv[2], version: result.version,
-    entryCount: result.entryCount, sha256: result.sha256 }));
+    entryCount: result.entryCount, sha256: result.sha256, preserveExistingMcp: result.preserveExistingMcp }));
 }
