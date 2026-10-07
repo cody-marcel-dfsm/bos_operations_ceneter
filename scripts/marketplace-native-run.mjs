@@ -8,7 +8,7 @@ import {tmpdir} from 'node:os';
 import {createHash} from 'node:crypto';
 import {digest} from './marketplace-prompt-catalog.mjs';
 import {sanitized} from './marketplace-native-hook.mjs';
-import {openReviewerSession} from './marketplace-reviewer-session.mjs';
+import {openReviewerSession,trustedUrl} from './marketplace-reviewer-session.mjs';
 import {createReviewerTools} from './marketplace-reviewer-tools.mjs';
 import {verifyReviewerScope} from './marketplace-reviewer-scope.mjs';
 import {runReviewerModel} from './marketplace-reviewer-model.mjs';
@@ -22,6 +22,11 @@ export function reviewerTurnTimeoutMs(item) {
  const timeout = item?.reviewer_timeout_ms ?? 300000;
  if (!Number.isInteger(timeout) || !reviewerTimeouts.has(timeout)) throw new Error('reviewer_turn_timeout_invalid');
  return timeout;
+}
+export function expectedOperationsObserved(expectedOperations, calls) {
+ const expected=Array.isArray(expectedOperations)?expectedOperations:[expectedOperations];
+ return expected.length>0&&expected.every(name=>typeof name==='string'&&name.trim()&&calls.some(row=>
+  row.tool?.replaceAll('_','.')===name.replaceAll('_','.')||row.input?.tool_name?.replaceAll('_','.')===name.replaceAll('_','.')));
 }
 export function classifyNativeFailure(event) {
  if(!['error','turn.failed'].includes(event?.type))return null;
@@ -159,8 +164,8 @@ export function classifyCompletion(kind,status,reasons) {
  if(kind!=='negative'&&status!=='completed')failures.push('product_prerequisite');
  return {status:failures.length?'FAIL':'PASS',reason:failures.join(',')};
 }
-export function reviewerResponses(calls) {
- return calls.map(row=>({operation:row.transport?row.tool:(row.input?.tool_name??row.tool),body:row.response?.body??row.response,transport:row.transport==='https'?'deterministic_https':row.transport==='https-discovery'?'https_discovery':'mcp_discovery',successful:!row.is_error&&row.scope_verified===true}));
+export function reviewerResponses(calls,resource) {
+ return calls.map(row=>{const operation=row.transport?row.tool:(row.input?.tool_name??row.tool);return {operation,body:row.response?.body??row.response,transport:row.transport==='https'?'deterministic_https':row.transport==='https-discovery'?'https_discovery':'mcp_discovery',is_error:row.is_error===true,scope_verified:row.scope_verified===true,secure_configuration_action_validated:expectedErrorObservation({expected_error_operations:[operation]},row,resource),successful:!row.is_error&&row.scope_verified===true};});
 }
 export function reviewerToolsForCase(item, tools) {
  if(item?.id==='starter-3'){
@@ -182,9 +187,25 @@ export function reviewerInstructionsForCase(baseInstructions, item) {
 }
 export function caseResponseFailures(item,responses) {
  const failures=[];
+ const expectedErrors=Array.isArray(item.expected_error_operations)?item.expected_error_operations:[];
+ if(expectedErrors.some(operation=>{
+  const matching=responses.filter(row=>row.operation===operation&&row.transport==='deterministic_https');
+  return matching.length!==1||matching[0].is_error!==true||matching[0].scope_verified!==true||matching[0].secure_configuration_action_validated!==true;
+ }))failures.push('expected_error_response_missing');
+ if(responses.some(row=>row.is_error===true&&!expectedErrors.includes(row.operation)))failures.push('unexpected_error_response');
  if(item.requires_business_https&&!responses.some(row=>row.transport==='deterministic_https'&&row.successful))failures.push('advertised_https_api_response_missing');
  if(item.expected_semantic_operations&&!item.expected_semantic_operations.every(expected=>responses.some(row=>row.operation===expected.operation&&row.transport===expected.transport&&row.successful)))failures.push('expected_semantic_operation_missing');
  return failures;
+}
+export function expectedErrorObservation(item,row,resource) {
+ const operation=row?.tool;
+ const body=row?.response?.body;
+ const authorizations=body?.result?.error?.required_authorizations;
+ const configurationRequired=body?.result?.error?.status==='authorization_required'&&Array.isArray(authorizations)&&authorizations.some(value=>{
+  if(value?.authorization_kind!=='api_key'||value.status!=='configuration_required'||typeof value.authorization_url!=='string'||typeof resource!=='string')return false;
+  try{trustedUrl(value.authorization_url,new URL(resource).origin);return true;}catch{return false;}
+ });
+ return row?.is_error===true&&row.scope_verified===true&&row.transport==='https'&&configurationRequired&&Array.isArray(item?.expected_error_operations)&&item.expected_error_operations.includes(operation);
 }
 export function failedNativeCaseReceipt(base, session, bindingVerified, error, elapsedMs, state) {
  const evidence={};
@@ -221,7 +242,7 @@ export async function nativeCase(catalog,item,config,release,model) {
   await verifyPackageOwnedBinding(release.entries,bos.plugin_id,binding);
   bindingVerified=true;
   if(item.kind!=='negative')preferences=await readReviewerPreferences(catalog.product,bos);
-  state={case_id:item.id,application:config.review_application,installation:config.review_installation,organization:config.review_organization,role:config.review_role??'Director',kind:item.kind,product:catalog.product,resource:binding.url,installed_root:release.path,published_commits:{[catalog.product]:release.release_commit,bos:bos.release_commit},installed_roots:{[catalog.product]:release.path,bos:bos.path},allowed_effects:(item.allowed_effects??['read']).filter(effect=>(authority.allowed_effects??['read']).includes(effect)),effect_binding:authority.effect_bindings?.[item.id],observations:[],fixtureResponses:[],denials:[],pre_calls:0};
+  state={case_id:item.id,application:config.review_application,installation:config.review_installation,organization:config.review_organization,role:config.review_role??'Director',kind:item.kind,product:catalog.product,resource:binding.url,installed_root:release.path,published_commits:{[catalog.product]:release.release_commit,bos:bos.release_commit},installed_roots:{[catalog.product]:release.path,bos:bos.path},allowed_effects:(item.allowed_effects??['read']).filter(effect=>(authority.allowed_effects??['read']).includes(effect)),effect_binding:authority.effect_bindings?.[item.id],expected_error_operations:item.expected_error_operations??[],observations:[],fixtureResponses:[],denials:[],pre_calls:0};
   session=await openReviewerSession({reviewerUrl:config.reviewer_login_url,resource:binding.url});
   scopeVerified=await verifyReviewerScope(session,state,value=>{scopeEvidence=value;});
   const tools=await createReviewerTools({session,state,release});
@@ -236,13 +257,14 @@ export async function nativeCase(catalog,item,config,release,model) {
   if(state.denials.some(row=>row.reason!=='guard_canary_denied'))reasons.push('guard_rejected_tool_attempt');
   if(guardRequired&&!guard)reasons.push('guard_unverified');
   if(!state.handle&&item.kind!=='negative')reasons.push('reviewer_scope_unverified');
-  if(observed.some(row=>row.is_error||row.response?.valid===false))reasons.push('contract_or_api_failure',...reviewerObservationFailures(observed));
+  const unexpectedFailures=observed.filter(row=>row.response?.valid===false||(row.is_error&&!expectedErrorObservation(item,row,state.resource)));
+  if(unexpectedFailures.length)reasons.push('contract_or_api_failure',...reviewerObservationFailures(unexpectedFailures));
   if(item.kind!=='negative'&&!calls.length)reasons.push('missing_live_execution');
-  if(item.expected_operation){const expected=Array.isArray(item.expected_operation)?item.expected_operation:[item.expected_operation];if(!expected.every(name=>calls.some(row=>row.tool?.replaceAll('_','.')===name.replaceAll('_','.')||row.input?.tool_name?.replaceAll('_','.')===name.replaceAll('_','.'))))reasons.push('expected_operation_missing');}
+  if(item.expected_operation&&!expectedOperationsObserved(item.expected_operation,calls))reasons.push('expected_operation_missing');
   if(item.kind!=='negative'&&!state.validated_contracts?.['app-describe'])reasons.push('unvalidated_app_description');
   if(item.kind==='negative'&&nativeTools.some(row=>row.server!=='Acceptance'))reasons.push('negative_native_invocation');
   if(catalog.product==='my-crm'&&item.kind!=='negative'&&!observed.some(row=>row.transport==='https'&&!row.is_error))reasons.push('advertised_https_api_response_missing');
-  const projectedResponses=reviewerResponses(calls).filter(row=>!(row.operation==='app.describe'&&row.transport==='https_discovery'));
+  const projectedResponses=reviewerResponses(calls,state.resource).filter(row=>!(row.operation==='app.describe'&&row.transport==='https_discovery'));
   const responses=[...projectedResponses,...state.fixtureResponses];
   reasons.push(...caseResponseFailures(item,responses));
   const completedAt=new Date().toISOString();

@@ -9,10 +9,23 @@ export function body(value) {
  if (Array.isArray(value?.content)) {for (const row of value.content) {if(row.type==='text') {const result=body(row.text); if(typeof result==='object') return result;}}}
  return value;
 }
-export function sanitized(value) {
+export function sanitized(value, trustedOrigin) {
  if(typeof value==='string') return value.replace(/bos_ctx_v2_[a-f0-9]{64}/giu,'[context]').replace(/Bearer\s+\S+/giu,'[credential]').replace(/context_handle=[^&\s]+/giu,'context_handle=[context]');
- if(Array.isArray(value)) return value.map(sanitized);
- if(value && typeof value==='object') return Object.fromEntries(Object.entries(value).filter(([key])=>!/(?:token|secret|password|credential|authorization|cookie|context_handle|context_id|org_id|organization_id|tenant_id|user_id|role_id|installation_id|installed_app_id)/iu.test(key)).map(([key,v])=>[key,sanitized(v)]));
+ if(Array.isArray(value)) return value.map(row=>sanitized(row,trustedOrigin));
+ if(value && typeof value==='object') return Object.fromEntries(Object.entries(value).flatMap(([key,v])=>{
+  if(key==='required_authorizations'&&Array.isArray(v))return [[key,v.map(row=>{
+   if(!row||typeof row!=='object'||Array.isArray(row))return {};
+   const safe={};
+   if(['oauth','api_key'].includes(row.authorization_kind))safe.authorization_kind=row.authorization_kind;
+   if(typeof row.status==='string'&&/^[a-z][a-z0-9_]{0,63}$/.test(row.status))safe.status=row.status;
+   if(typeof row.authorization_url==='string'){
+    try{const url=new URL(row.authorization_url);if(url.protocol==='https:'&&(!trustedOrigin||url.origin===trustedOrigin)&&!url.username&&!url.password&&!url.hash)safe.authorization_url=`${url.origin}${url.pathname}${url.search?'?[query redacted]':''}`;}catch{}
+   }
+   return safe;
+  })]];
+  if(/(?:token|secret|password|credential|authorization|cookie|context_handle|context_id|org_id|organization_id|tenant_id|user_id|role_id|installation_id|installed_app_id)/iu.test(key))return [];
+  return [[key,sanitized(v,trustedOrigin)]];
+ }));
  return value;
 }
 const nameOf = event => event.tool_name?.split('__').at(-1)?.replaceAll('_','.');

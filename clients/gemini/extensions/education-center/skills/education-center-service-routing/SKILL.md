@@ -274,11 +274,22 @@ continuing the domain workflow. Gmail opens the provider OAuth consent path.
 Calimatic opens the short-lived BOS credential page that asks for the portal
 URL and API key. Never replace either path with dashboard navigation, written
 setup steps, or a request for the customer to return and confirm completion.
-When the BOS context is already authenticated, a Calimatic recovery page that
-asks for BOS platform MCP sign-in is `provider_recovery_identity_boundary`.
-Never click, follow, launch, or restart product authentication from that page. Preserve and poll
-the existing provider transaction once, then report the server-owned defect if
-the Calimatic credential form remains absent.
+Apply this same recovery when a Calimatic operation itself returns a structured
+`required_authorizations` entry with `authorization_kind: api_key` and
+`status: configuration_required`, even when readiness did not report
+`recovery_required` first. Preserve the pending query and delegate its exact
+server-returned secure configuration action to `bos-mcp-client`. Preserve the
+authenticated BOS session and existing one-time provider recovery guard. If an
+already-authenticated BOS context receives a provider recovery action asking
+for BOS platform MCP sign-in, stop and report
+`provider_recovery_identity_boundary`; never click, follow, launch, or restart
+product sign-in. Poll the existing provider transaction only once. Never ask the
+customer to paste the key into chat, return enrollment rows from the
+blocked query, or silently switch to another source. Resume the original query only
+after BOS confirms provider setup; if setup cannot complete in the active
+turn, report that Calimatic API-key configuration is required and provide the
+secure server-returned next action. If the Calimatic credential form remains
+absent, report the server-owned defect.
 
 ## Domain routes
 

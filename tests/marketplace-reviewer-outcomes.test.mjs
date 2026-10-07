@@ -2,6 +2,7 @@ import {syntheticOperationDescribe,syntheticApiContract} from './helpers/synthet
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {reviewerOutcomeDiagnostics,reviewerOutcomeMatches} from '../scripts/marketplace-reviewer-outcomes.mjs';
+import {sanitized} from '../scripts/marketplace-native-hook.mjs';
 const context={product:'bos',case_id:'positive-1',execution_started_at:'2026-10-03T20:00:00Z'};
 const selector={operation:'search',transport:'deterministic_https'};
 const fact={requirement:'records',operator:'equals',response:selector,path:'/count',value:2};
@@ -40,6 +41,52 @@ test('fixture assertions bind product/case, successful unique semantic response 
  assert.equal(reviewerOutcomeMatches(undefined,evidence,[],context),false);
  assert.equal(matches([{operator:'contains',evidence:'answer',path:'',value:'success'}],{answer:'success'}),false);
  assert.equal(matches([{operator:'min_length',response:selector,path:'/items',value:1}],{responses:[response({items:[1]})]}),false);
+});
+test('Education Center discovery assertion requires the exact advertised student-search tool',()=>{
+ const assertion={schema:'marketplace-case-assertions/v1',product:'education-center',case_id:'positive-6',rules:[{
+  requirement:'student-search-tool',operator:'contains',response:{operation:'bos.list.context.tools',transport:'mcp_discovery'},path:'/tools',project_paths:['/name'],value:'education_center_search_students'
+ }]};
+ const requirements=[{id:'student-search-tool',operator:'contains'}];
+ const list=names=>({responses:[{...response({contract_version:'bos-identity-mcp/v2',tools:names.map(name=>({name,description:'Advertised tool',inputSchema:{type:'object'}})),resources:[{uri:'bos://education-center',name:'Education Center'}]}),operation:'bos.list.context.tools',transport:'mcp_discovery'}]});
+ const binding={product:'education-center',case_id:'positive-6'};
+ assert.equal(reviewerOutcomeMatches(assertion,list(['education_center_search_students']),requirements,binding),true);
+ assert.equal(reviewerOutcomeMatches(assertion,list(['bos_get_context']),requirements,binding),false);
+ assert.equal(reviewerOutcomeMatches(assertion,list(['education_center_list_students']),requirements,binding),false);
+ assert.equal(reviewerOutcomeMatches(assertion,{responses:[]},requirements,binding),false);
+});
+test('an expected Calimatic configuration error can be checked without exact prose, code, or URL matching',()=>{
+ const operation='education_center_list_enrollments';
+ const selector={operation,transport:'deterministic_https',is_error:true};
+ const requirementIds=[
+  {id:'exact-enrollment-operation',operator:'equals'},
+  {id:'calimatic-api-key-configuration-required',operator:'equals'},
+  {id:'secure-configuration-link-present',operator:'present'},
+  {id:'no-enrollment-rows',operator:'absent'}
+ ];
+ const rules=[
+  {requirement:'exact-enrollment-operation',operator:'equals',response:selector,path:'/result/error/status',value:'authorization_required'},
+  {requirement:'calimatic-api-key-configuration-required',operator:'equals',response:selector,path:'/result/error/required_authorizations/0/authorization_kind',value:'api_key'},
+  {requirement:'calimatic-api-key-configuration-required',operator:'equals',response:selector,path:'/result/error/required_authorizations/0/status',value:'configuration_required'},
+  {requirement:'secure-configuration-link-present',operator:'present',response:selector,path:'/result/error/required_authorizations/0/authorization_url'},
+  {requirement:'no-enrollment-rows',operator:'absent',response:selector,path:'/result/enrollments'}
+ ];
+ const fixture=envelope(rules);fixture.product='education-center';fixture.case_id='positive-3';
+ const observed={responses:[{operation,transport:'deterministic_https',successful:false,is_error:true,scope_verified:true,http_status:401,body:sanitized({result:{error:{status:'authorization_required',required_authorizations:[{authorization_kind:'api_key',status:'configuration_required',authorization_url:'https://dfsm.ai/api/v1/mcp/provider-recovery?[query redacted]'}]}}})}]};
+ const binding={product:'education-center',case_id:'positive-3'};
+ assert.equal(reviewerOutcomeMatches(fixture,observed,requirementIds,binding),true);
+ for(const mutate of [
+  data=>{data.responses[0].operation='education_center_search_students';},
+  data=>{data.responses[0].is_error=false;},
+  data=>{data.responses[0].scope_verified=false;},
+  data=>{data.responses[0].transport='mcp_discovery';},
+  data=>{delete data.responses[0].body.result.error.required_authorizations[0].authorization_url;},
+  data=>{data.responses[0].body.result.error.required_authorizations[0].authorization_kind='oauth';},
+  data=>{data.responses[0].body.result.error.required_authorizations[0].status='ready';},
+  data=>{data.responses[0].body.result.enrollments=[];}
+ ]){const changed=structuredClone(observed);mutate(changed);assert.equal(reviewerOutcomeMatches(fixture,changed,requirementIds,binding),false);}
+ const invalidPointerFixture=structuredClone(fixture);invalidPointerFixture.rules[4].path='/__proto__';
+ assert.equal(reviewerOutcomeMatches(invalidPointerFixture,observed,requirementIds,binding),false);
+ assert.equal(reviewerOutcomeMatches(fixture,observed,requirementIds,{...binding,case_id:'positive-2'}),false);
 });
 test('bounded array projections compare independently selected actual identities',()=>{
  const other={operation:'calendar_search_events',transport:'deterministic_https'};
