@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.182",
+  "version": "0.4.183",
   "release_status": "active",
   "display_name": "BOS Platform",
   "description": "Run deterministic workflows",

@@ -111,7 +111,12 @@ resources or tools alone never establish that the connection is disabled.
 A successful context call immediately resumes the original operation.
 
 Use this skill for every client-side BOS-family operation. BOS owns one
-host-managed OAuth connection to its platform resource. Install BOS before
+BOS-managed OAuth connection to its platform resource. Native hosts own their
+existing OAuth lifecycle. An explicitly configured standalone runtime can use
+the opt-in [device authentication profile](references/standalone-device-authentication.md)
+when it provides secure credential storage and a direct-user verification
+surface. Read that profile before standalone authentication; preserve native
+flows and the credential-free dependent-product handoff. Install BOS before
 using dependent products. Claude and Codex both load the BOS package's own
 `mcpServers`-declared `.mcp.json` and use the host's native authentication
 action on that binding directly. Copilot and Gemini use the BOS package's
@@ -281,6 +286,11 @@ requested outcome.
 
 ## Connection ownership
 
+The following native-host recovery actions remain the default. For an explicitly
+configured standalone device runtime, apply the device profile's user-owned
+verification and protocol polling instead of native Connect/Sign in. Skills
+receive no device code or token and automate no browser or CLI login.
+
 BOS owns the shared connection lifecycle. The dependent product retains and
 resumes its pending operation after BOS reports authentication readiness.
 
@@ -425,13 +435,15 @@ and inspect its sanitized result before producing a final answer.
    call the operation with its declared business arguments and let BOS authorize
    the organization, installation, role, plugin, capability, tool, and provider
    at `tools/call` time.
-5. Use the native BOS connection authentication action. The host manages OAuth
-   and normal refresh automatically. A revoked grant requires fresh native
-   consent; never restore it administratively or reuse another audience's token.
+5. Use the configured BOS connection authentication profile. Native hosts use
+   their native action; explicitly configured standalone runtimes apply the
+   device profile. The selected trusted runtime manages OAuth
+   and normal refresh automatically. A revoked grant requires fresh user
+   consent through that profile; never restore it administratively or reuse another audience's token.
    Dependent products use the installed BOS connection and never add a login.
    Keep tokens, authorization codes, bearer values, and grant metadata out of
    chat, tool arguments, package files, and logs. Resume the original request
-   after native authentication succeeds and live discovery is refreshed.
+   after authentication succeeds and live discovery is refreshed.
 6. When a domain call returns `provider_authorization_required`, preserve its original
    operation ID and activate the returned secure authorization path immediately
    in the active request. Use the host's native URL-mode elicitation when it is

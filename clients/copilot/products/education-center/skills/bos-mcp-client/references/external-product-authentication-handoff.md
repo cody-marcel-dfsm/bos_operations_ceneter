@@ -26,6 +26,12 @@ Neither caller nor BOS skill receives, copies, persists, or transfers an access
 token, refresh token, authorization code, provider credential, or reusable
 authority.
 
+Native hosts retain their existing lifecycle. The explicitly configured
+[standalone device profile](standalone-device-authentication.md) supplies the
+trusted runtime transport for that same BOS connection. Its private protocol
+polling and credential store remain outside this handoff; dependent callers and
+skills receive only typed readiness and no new login or token lifecycle.
+
 ## Delegation request
 
 The caller supplies only:
