@@ -1,10 +1,18 @@
 # BOS Operations Center Packages
 
-BOS Operations Center is the canonical source, package generator, validator,
-and release system for portable BOS skills and remote MCP client adapters.
-Claude Cowork/Desktop, ChatGPT/Codex Desktop, and the Gemini client install
-native packages and authorize BOS through host-managed OAuth 2.1. The single
-Gemini extension supports both Gemini CLI and Google Antigravity 2.0 Desktop.
+## Give AI agents controlled execution over your services — without giving up your infrastructure.
+
+BOS is a service gateway. Companies give AI agents controlled execution of complex workflows through permissioned state machines, with their roles, rules, and approval gates. Your service infrastructure, authoritative business state and data stores, and private implementation IP stay outside the agent host. Authorized inputs and results, public skills, and permitted scoped caches can reach the agent.
+
+BOS is for companies bringing AI into business operations, operations teams that need governed workflow execution, and builders exposing services through supported public contracts. This repository supplies the client skills that help an AI workspace discover capabilities, plan work, and present evidence. BOS Service retains execution authority, state, transitions, and recovery. MCP provides authenticated discovery; deterministic HTTPS APIs execute sanctioned operations.
+
+### Education Operation Center
+
+Education Operation Center helps directors and adult staff at education centers coordinate instructor scheduling, family scheduling, and class scheduling; handle partner relationship interactions and invoicing; and access enrollment information and statuses. It requires BOS and uses its authenticated connection. Trial reconciliation, camp capacity planning, reviewed family communications, and invoice exceptions are supporting examples. Customer-facing school branding comes from the customer's own settings.
+
+Available workflows depend on authorized discovery, configuration, and provider readiness. Custom ad hoc workflows require the supported authoring and runtime contracts. Discovery and installation confer no business authority; every execution follows server-enforced scope and applicable approvals. Requests, prepared drafts, approved actions, and completed execution remain distinct.
+
+BOS is pre-launch with invite-only access. [Request an invite](https://dfsm.ai/apps/bos/#request-invite) to discuss your workflow. Invitees and existing users can follow the installation instructions below; requesting an invite creates no automatic access.
 
 ## Choose your environment
 
@@ -44,7 +52,7 @@ Upgrading replaces the former `platform` identifier. Hosts may require native
 sign-in again when a connection identifier changes; valid-session continuity
 has not been verified for this migration.
 
-Current desktop marketplace release: `0.4.186`. If `0.4.185` is installed,
+Current desktop marketplace release: `0.4.187`. If `0.4.186` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -257,6 +265,14 @@ Provider authorization is separate from BOS connection authorization:
   resumes the blocked request once.
 
 ## Local plugin development
+
+Build clients for the BOS service gateway: help customers discover supported workflows and keep execution, authoritative state, and permissioning with BOS. Integrate through published contracts; independent plugins retain their domain expertise and release ownership.
+
+BOS Operations Center is the canonical source, package generator, validator,
+and release system for portable BOS skills and remote MCP client adapters.
+Claude Cowork/Desktop, ChatGPT/Codex Desktop, and the Gemini client install
+native packages and authorize BOS through host-managed OAuth 2.1. The single
+Gemini extension supports both Gemini CLI and Google Antigravity 2.0 Desktop.
 
 Use this environment when changing canonical sources or testing an unreleased
 checkout. It is distinct from customer installation.
