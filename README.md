@@ -8,7 +8,7 @@ BOS is for companies bringing AI into business operations, operations teams that
 
 ### Education Operation Center
 
-Education Operation Center helps directors and adult staff at education centers coordinate instructor scheduling, family scheduling, and class scheduling; handle partner relationship interactions and invoicing; and access enrollment information and statuses. It requires BOS and uses its authenticated connection. Trial reconciliation, camp capacity planning, reviewed family communications, and invoice exceptions are supporting examples. Customer-facing school branding comes from the customer's own settings.
+Education Operation Center helps directors and adult staff at education centers coordinate instructor scheduling, family scheduling, and class scheduling; handle partner relationship interactions and invoicing; and access enrollment information and statuses. It requires BOS plus independently distributed My CRM for generic CRM records and customer journeys. Education Operation Center retains education expertise; My CRM supplies CRM expertise through BOS's existing authenticated connection. Trial reconciliation, camp capacity planning, reviewed family communications, and invoice exceptions are supporting examples. Customer-facing school branding comes from the customer's own settings.
 
 Available workflows depend on authorized discovery, configuration, and provider readiness. Custom ad hoc workflows require the supported authoring and runtime contracts. Discovery and installation confer no business authority; every execution follows server-enforced scope and applicable approvals. Requests, prepared drafts, approved actions, and completed execution remain distinct.
 
@@ -32,7 +32,13 @@ authorization remains a separate BOS-hosted workflow.
 
 ## Install
 
-The private Git marketplace is the normal pre-publication installation and
+### Required independent CRM product
+
+Education Operation Center declares My CRM as a required independent product dependency for generic CRM records and customer journeys. Install and verify its separately distributed package using the [published My CRM installation and verification guidance](https://github.com/cody-marcel-dfsm/mycrm#validate). Both use BOS's existing connection; no additional BOS login or connection is required. Complete installation verification checks My CRM's required skills and advertised operations. Missing or disabled My CRM blocks dependent CRM work; focused education workflows remain owned by Education Operation Center.
+
+The linked guide documents Codex installation. This release has not established My CRM installation and verification in Claude, Copilot, Gemini, or Antigravity. Verify a supported My CRM distribution for your host before using dependent CRM workflows; this repository's education packages alone do not establish that dependency's availability.
+
+The Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Complete BOS
 consent when the host presents **Connect**, **Sign in**, or **Authenticate**.
 The package-owned BOS MCP declaration supplies the resource. Its
@@ -52,7 +58,7 @@ Upgrading replaces the former `platform` identifier. Hosts may require native
 sign-in again when a connection identifier changes; valid-session continuity
 has not been verified for this migration.
 
-Current desktop marketplace release: `0.4.187`. If `0.4.186` is installed,
+Current desktop marketplace release: `0.4.188`. If `0.4.187` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -189,7 +195,7 @@ resulting grant across tasks.
 - **Claude installed plugin:** After the BOS marketplace update check completes,
   open the installed plugin and select **Update**. Claude replaces the installed
   cached version in place; uninstalling and reinstalling is unnecessary.
-- **Private ChatGPT/Codex Git marketplace:** Run
+- **Custom ChatGPT/Codex Git marketplace:** Run
   `codex plugin marketplace upgrade bos-education-center`, update or reinstall
   the affected plugin, and start a new task. OpenAI tracks the resulting Git
   snapshot; the pull-request history is not an OpenAI update trigger.
