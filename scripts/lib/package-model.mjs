@@ -60,6 +60,9 @@ export function validateProduct(manifest, path = "product.json") {
     "description",
     "long_description",
     "website_url",
+    "support_url",
+    "privacy_policy_url",
+    "terms_of_service_url",
     "brand_color",
     "composer_icon",
     "logo",
@@ -121,6 +124,17 @@ export function validateProduct(manifest, path = "product.json") {
       !/^https:\/\/[^\s]+$/.test(manifest.website_url))
   ) {
     failures.push(`${path}: website_url must be an absolute HTTPS URL`);
+  }
+  for (const field of ["support_url", "privacy_policy_url", "terms_of_service_url"]) {
+    const value = manifest[field];
+    if (value !== undefined) {
+      let url;
+      try { url = new URL(value); } catch {}
+      if (typeof value !== "string" || !/^https:\/\/[^\s]+$/.test(value) ||
+          !url || url.protocol !== "https:" || url.username || url.password) {
+        failures.push(`${path}: ${field} must be an absolute credential-free HTTPS URL`);
+      }
+    }
   }
   if (
     manifest.brand_color !== undefined &&
@@ -788,6 +802,13 @@ export function pluginManifest(product) {
   if (product.website_url) {
     manifest.homepage = product.website_url;
     manifest.interface.websiteURL = product.website_url;
+  }
+  for (const [source, target] of [
+    ["support_url", "supportURL"],
+    ["privacy_policy_url", "privacyPolicyURL"],
+    ["terms_of_service_url", "termsOfServiceURL"]
+  ]) {
+    if (product[source]) manifest.interface[target] = product[source];
   }
   if (product.brand_color) manifest.interface.brandColor = product.brand_color;
   if (product.composer_icon) {

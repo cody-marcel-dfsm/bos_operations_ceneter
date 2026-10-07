@@ -167,3 +167,21 @@ test("OpenAI submission paths reject temporary or escaping locations", async () 
     ));
   }
 });
+
+
+test("BOS public marketplace listing supplies bounded subtitle and publisher URLs", async () => {
+  const manifest = JSON.parse(await readFile(`${root}/clients/codex/plugins/bos/.codex-plugin/plugin.json`, "utf8"));
+  assert.ok(manifest.interface.shortDescription.length <= 30);
+  for (const field of ["websiteURL", "supportURL", "privacyPolicyURL", "termsOfServiceURL"]) {
+    const url = new URL(manifest.interface[field]);
+    assert.equal(url.protocol, "https:");
+    assert.equal(url.hostname, "dfsm.ai");
+    assert.equal(url.username + url.password, "");
+  }
+  for (const field of ["support_url", "privacy_policy_url", "terms_of_service_url"]) {
+    const base = (await listProducts()).find(({manifest}) => manifest.name === "bos").manifest;
+    for (const value of ["http://dfsm.ai", "https://user:secret@example.test", "https://dfsm.ai/ bad", 123]) {
+      assert.ok(validateProduct({...base, [field]: value}).some(error => error.includes(field)));
+    }
+  }
+});

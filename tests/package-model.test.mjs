@@ -1665,8 +1665,8 @@ test("BOS marketplace metadata explains the platform and links to its website", 
   )?.manifest;
   assert(bos);
   assert.equal(bos.display_name, "BOS Platform");
-  assert.ok(bos.description.length <= 80);
-  assert.match(bos.description, /deterministic workflows.*federated agentic (?:service )?mesh/i);
+  assert.ok(bos.description.length <= 30);
+  assert.match(bos.description, /deterministic workflows/i);
   assert.match(bos.long_description, /owns the authenticated BOS platform MCP connection/);
   assert.match(bos.long_description, /required foundation for dependent products/);
   assert.match(bos.long_description, /agentic mesh of federated services/);
