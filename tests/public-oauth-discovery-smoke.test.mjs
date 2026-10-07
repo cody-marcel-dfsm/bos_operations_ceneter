@@ -65,3 +65,15 @@ test("comparison ignores timestamps and correlation but detects metadata changes
   assert.equal(compareDiscoveryReports(previous, current).changed, true);
   assert.throws(() => compareDiscoveryReports(previous, { ...current, resource: `${origin}/other` }), /matching/);
 });
+
+test("public documentation references are retained safely without OAuth queries", async () => {
+  const responses = fixtures();
+  responses[1].body.resource_documentation = `${origin}/apps/bos/oauth-client-example.html`;
+  responses[2].body.service_documentation = `${origin}/apps/bos/oauth-client-example.html`;
+  const {report} = await run(responses);
+  assert.equal(report.requests[1].metadata.resource_documentation, `${origin}/apps/bos/oauth-client-example.html`);
+  assert.equal(report.requests[2].metadata.service_documentation, `${origin}/apps/bos/oauth-client-example.html`);
+  const unsafe = fixtures();
+  unsafe[2].body.service_documentation = `${origin}/guide?state=synthetic-private-state`;
+  assert.doesNotMatch(JSON.stringify((await run(unsafe)).report), /synthetic-private-state/);
+});

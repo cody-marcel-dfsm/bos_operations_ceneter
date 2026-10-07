@@ -37,7 +37,7 @@ function discoveryFinding(code, message, path = "mcp-resource-get") {
 }
 
 export async function probeBosOAuthDiscovery({
-  requireDeviceGrant = false,
+  requireDocumentation = false,
   resourceUrl = CANONICAL_RESOURCE_URL,
   oauthTarget = CANONICAL_OAUTH_TARGET,
   fetchImpl = fetch,
@@ -211,19 +211,27 @@ export async function probeBosOAuthDiscovery({
     }
   }
 
-  if (requireDeviceGrant && authorizationServerMetadata) {
-    const deviceGrant = "urn:ietf:params:oauth:grant-type:device_code";
-    const expectedDevice = new URL("/api/v1/mcp/oauth/device/authorize", expectedIssuer).href;
-    if (resourceUrl !== CANONICAL_RESOURCE_URL ||
-        (!Array.isArray(authorizationServerMetadata.grant_types_supported) || !authorizationServerMetadata.grant_types_supported.includes(deviceGrant)) ||
-        authorizationServerMetadata.device_authorization_endpoint !== expectedDevice ||
-        !validIssuerEndpoint(authorizationServerMetadata.token_endpoint, expectedIssuer) ||
-        !validIssuerEndpoint(authorizationServerMetadata.registration_endpoint, expectedIssuer) ||
-        (!Array.isArray(authorizationServerMetadata.token_endpoint_auth_methods_supported) || !authorizationServerMetadata.token_endpoint_auth_methods_supported.includes("none"))) {
-      result.violations.push(discoveryFinding("oauth_device_metadata",
-        "The opt-in standalone profile requires the sealed BOS platform resource, device grant, canonical device endpoint and issuer-bound public-client token/registration metadata.",
+  if (requireDocumentation) {
+    const documentation = "https://dfsm.ai/apps/bos/oauth-client-example.html";
+    if (protectedResourceMetadata?.resource_documentation !== documentation ||
+        authorizationServerMetadata?.service_documentation !== documentation) {
+      result.violations.push(discoveryFinding("oauth_documentation",
+        "BOS OAuth discovery must reference the public service-owned client example.",
+        "oauth-documentation"));
+    } else {
+      result.resource_documentation = documentation;
+      result.service_documentation = documentation;
+    }
+    if (!Array.isArray(authorizationServerMetadata?.code_challenge_methods_supported) ||
+        !authorizationServerMetadata.code_challenge_methods_supported.includes("S256") ||
+        !Array.isArray(authorizationServerMetadata?.grant_types_supported) ||
+        !authorizationServerMetadata.grant_types_supported.includes("authorization_code") ||
+        !validIssuerEndpoint(authorizationServerMetadata?.token_endpoint, expectedIssuer) ||
+        !validIssuerEndpoint(authorizationServerMetadata?.registration_endpoint, expectedIssuer)) {
+      result.violations.push(discoveryFinding("oauth_standard_metadata",
+        "BOS OAuth discovery must advertise authorization code, S256 and issuer-bound token/registration endpoints.",
         "authorization-server-metadata"));
-    } else result.device_grant = "advertised";
+    }
   }
 
   result.status = result.violations.length ? "failed" : "passed";

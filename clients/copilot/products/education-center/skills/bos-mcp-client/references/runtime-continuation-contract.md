@@ -11,10 +11,9 @@ on BOS, use
 with contract ID `bos.authentication-handoff/v1`. The caller delegates only the
 exact protected resource, structured condition, and optional host-native
 correlation. BOS coordinates the host authentication lifecycle and returns a
-typed readiness result. The BOS connection remains owned by the configured trusted runtime: native host
-by default, or the explicitly configured
-[standalone device profile](standalone-device-authentication.md). OAuth protocol
-polling in that profile does not authorize business-operation retries.
+typed readiness result. The BOS connection remains owned by the configured host's standard OAuth
+lifecycle with required PKCE; see the [public OAuth client guide](oauth-client-guide.md).
+Authentication recovery creates no business-operation retry authority.
 
 The caller retains its semantic request and owns live discovery, approval,
 cache, semantic continuation, and presentation. None of that state enters the

@@ -3,7 +3,7 @@ import { promisify } from "node:util";
 
 const execute = promisify(execFile);
 const fields = ["resource", "authorization_servers", "scopes_supported", "issuer",
-  "authorization_endpoint", "token_endpoint", "registration_endpoint", "device_authorization_endpoint",
+  "authorization_endpoint", "token_endpoint", "registration_endpoint", "service_documentation", "resource_documentation",
   "response_types_supported", "grant_types_supported",
   "token_endpoint_auth_methods_supported", "code_challenge_methods_supported",
   "authorization_response_iss_parameter_supported"];
@@ -20,7 +20,7 @@ function metadata(value) {
   const result = {};
   for (const key of fields) {
     const item = value?.[key];
-    if (["resource", "issuer"].includes(key) || key.endsWith("_endpoint")) {
+    if (["resource", "issuer"].includes(key) || key.endsWith("_endpoint") || key.endsWith("_documentation")) {
       if (typeof item === "string") {
         try { result[key] = publicUrl(item); } catch { result[key] = "[invalid public URL]"; }
       }

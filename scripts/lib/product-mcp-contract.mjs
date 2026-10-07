@@ -43,12 +43,20 @@ export function inspectOAuthAuthorizeTarget(authorizeUrl, resourceUrl, oauth) {
     ));
   }
   const resources = actual.searchParams.getAll("resource");
-  if (resources.length !== 1 || resources[0] !== resourceUrl) {
+  if (!(resources.length === 0 && resourceUrl === "https://dfsm.ai/mcp/apps/bos/platform") &&
+      (resources.length !== 1 || resources[0] !== resourceUrl)) {
     findings.push(finding(
       "oauth_resource_target",
       "oauth-authorize-url",
-      `OAuth resource must equal ${resourceUrl}.`
+      `Explicit OAuth resource must equal ${resourceUrl}; omission defaults only to BOS Platform.`
     ));
+  }
+  const challenges = actual.searchParams.getAll("code_challenge");
+  const methods = actual.searchParams.getAll("code_challenge_method");
+  if (challenges.length !== 1 || !/^[A-Za-z0-9_-]{43}$/.test(challenges[0]) ||
+      methods.length !== 1 || methods[0] !== "S256") {
+    findings.push(finding("oauth_pkce_required", "oauth-authorize-url",
+      "OAuth authorization requires one S256 PKCE challenge."));
   }
   return findings;
 }

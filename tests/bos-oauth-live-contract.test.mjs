@@ -270,6 +270,8 @@ test("protocol diagnostics bound the final serialized event after oversized summ
 function authorizeUrl() {
   const authorize = new URL(CANONICAL_AUTHORIZATION_ENDPOINT);
   authorize.searchParams.set("resource", resource);
+  authorize.searchParams.set("code_challenge", "A".repeat(43));
+  authorize.searchParams.set("code_challenge_method", "S256");
   return authorize.href;
 }
 
@@ -929,23 +931,50 @@ test("BOS OAuth live contract rejects a provider contract other than product Goo
   );
 });
 
-test("opt-in device discovery requires device metadata while native discovery remains unchanged", async () => {
+test("standard documentation discovery validates the public guide and S256 metadata", async () => {
+  const guide = "https://dfsm.ai/apps/bos/oauth-client-example.html";
   const base = {issuer: CANONICAL_OAUTH_TARGET.authorization_server_issuer,
-    authorization_endpoint: CANONICAL_OAUTH_TARGET.authorization_endpoint};
-  const request = metadata => async url => {
+    authorization_endpoint: CANONICAL_OAUTH_TARGET.authorization_endpoint,
+    token_endpoint: "https://dfsm.ai/api/v1/mcp/oauth/token",
+    registration_endpoint: "https://dfsm.ai/api/v1/mcp/oauth/register",
+    grant_types_supported: ["authorization_code", "refresh_token"],
+    code_challenge_methods_supported: ["S256"], service_documentation: guide};
+  const request = (metadata, resourceGuide = guide) => async url => {
     if (url === resource) return new Response(JSON.stringify({detail: {error: "authentication_required"}}),
       {status: 401, headers: {"www-authenticate": expectedBosResourceChallenge(resource)}});
-    if (url.includes("oauth-protected-resource")) return Response.json({resource, authorization_servers: [base.issuer]});
+    if (url.includes("oauth-protected-resource")) return Response.json({resource, authorization_servers: [base.issuer], resource_documentation: resourceGuide});
     return Response.json(metadata);
   };
-  assert.equal((await probeBosOAuthDiscovery({fetchImpl: request(base)})).status, "passed");
-  assert.equal((await probeBosOAuthDiscovery({fetchImpl: request(base), requireDeviceGrant: true})).status, "failed");
-  const deviceMetadata = {...base, grant_types_supported: ["urn:ietf:params:oauth:grant-type:device_code", "refresh_token"],
-    device_authorization_endpoint: `${base.issuer}/api/v1/mcp/oauth/device/authorize`,
-    token_endpoint: `${base.issuer}/api/v1/mcp/oauth/token`, registration_endpoint: `${base.issuer}/api/v1/mcp/oauth/register`,
-    token_endpoint_auth_methods_supported: ["none"]};
-  assert.equal((await probeBosOAuthDiscovery({fetchImpl: request(deviceMetadata), requireDeviceGrant: true})).device_grant, "advertised");
-  const rejected = await probeBosOAuthDiscovery({fetchImpl: request({...deviceMetadata, token_endpoint: "https://example.invalid/token"}), requireDeviceGrant: true});
-  assert.equal(rejected.status, "failed");
-  assert.doesNotMatch(JSON.stringify(rejected), /example\.invalid/);
+  const passed = await probeBosOAuthDiscovery({fetchImpl: request(base), requireDocumentation: true});
+  assert.equal(passed.status, "passed"); assert.equal(passed.service_documentation, guide);
+  for (const changed of [{...base, service_documentation: undefined}, {...base, service_documentation: "https://example.invalid/guide?secret=value"}, {...base, code_challenge_methods_supported: ["plain"]}, {...base, code_challenge_methods_supported: "S256"}, {...base, grant_types_supported: {}}, {...base, token_endpoint: "https://example.invalid/token"}]) {
+    const failed = await probeBosOAuthDiscovery({fetchImpl: request(changed), requireDocumentation: true});
+    assert.equal(failed.status, "failed"); assert.doesNotMatch(JSON.stringify(failed), /secret=value/);
+  }
+  assert.equal((await probeBosOAuthDiscovery({fetchImpl: request(base, "https://example.invalid/guide"), requireDocumentation: true})).status, "failed");
+});
+
+for (const omitted of [true, false]) {
+  test(`authorize live gate forwards standard S256 request (${omitted ? "default" : "explicit"} resource)`, async () => {
+    const url = new URL(authorizeUrl());
+    if (omitted) url.searchParams.delete("resource");
+    const google = new URL(CANONICAL_IDENTITY_PROVIDER_AUTHORIZATION_ENDPOINT);
+    google.searchParams.set("prompt", CANONICAL_OAUTH_TARGET.provider_account_selection_prompt);
+    let requested;
+    const result = await probeBosOAuthAuthorize({authorizeUrl: url.href, fetchImpl: async (target, init) => {
+      requested = target;
+      assert.equal(init.redirect, "manual");
+      return new Response(null, {status: 303, headers: {location: google.href}});
+    }});
+    assert.equal(result.status, "passed"); assert.equal(requested, url.href);
+    assert.equal(new URL(requested).searchParams.has("resource"), !omitted);
+  });
+}
+
+test("authorize live gate rejects missing PKCE before network", async () => {
+  const url = new URL(authorizeUrl()); url.searchParams.delete("code_challenge");
+  let calls = 0;
+  const result = await probeBosOAuthAuthorize({authorizeUrl: url.href, fetchImpl: async () => {calls++; throw new Error();}});
+  assert.deepEqual(result.violations.map(item => item.code), ["oauth_pkce_required"]);
+  assert.equal(calls, 0);
 });
