@@ -37,6 +37,7 @@ function discoveryFinding(code, message, path = "mcp-resource-get") {
 }
 
 export async function probeBosOAuthDiscovery({
+  requireDeviceGrant = false,
   resourceUrl = CANONICAL_RESOURCE_URL,
   oauthTarget = CANONICAL_OAUTH_TARGET,
   fetchImpl = fetch,
@@ -208,6 +209,21 @@ export async function probeBosOAuthDiscovery({
         "authorization-server-metadata"
       ));
     }
+  }
+
+  if (requireDeviceGrant && authorizationServerMetadata) {
+    const deviceGrant = "urn:ietf:params:oauth:grant-type:device_code";
+    const expectedDevice = new URL("/api/v1/mcp/oauth/device/authorize", expectedIssuer).href;
+    if (resourceUrl !== CANONICAL_RESOURCE_URL ||
+        (!Array.isArray(authorizationServerMetadata.grant_types_supported) || !authorizationServerMetadata.grant_types_supported.includes(deviceGrant)) ||
+        authorizationServerMetadata.device_authorization_endpoint !== expectedDevice ||
+        !validIssuerEndpoint(authorizationServerMetadata.token_endpoint, expectedIssuer) ||
+        !validIssuerEndpoint(authorizationServerMetadata.registration_endpoint, expectedIssuer) ||
+        (!Array.isArray(authorizationServerMetadata.token_endpoint_auth_methods_supported) || !authorizationServerMetadata.token_endpoint_auth_methods_supported.includes("none"))) {
+      result.violations.push(discoveryFinding("oauth_device_metadata",
+        "The opt-in standalone profile requires the sealed BOS platform resource, device grant, canonical device endpoint and issuer-bound public-client token/registration metadata.",
+        "authorization-server-metadata"));
+    } else result.device_grant = "advertised";
   }
 
   result.status = result.violations.length ? "failed" : "passed";

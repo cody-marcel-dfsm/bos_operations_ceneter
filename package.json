@@ -1,6 +1,6 @@
 {
   "name": "bos-operations-center",
-  "version": "0.4.182",
+  "version": "0.4.183",
   "private": false,
   "description": "Cross-client source repository for Education Center Agent Skills.",
   "author": "Infinite State Machines LLC",
@@ -53,9 +53,10 @@
     "dev:link:codex": "node scripts/link-codex-development.mjs",
     "release": "npm run release:check",
     "test": "node --test tests/*.test.mjs",
-    "test:authentication": "node --test tests/bos-oauth-live-contract.test.mjs tests/codex-login-surface-contract.test.mjs tests/codex-request-time-login-surface.test.mjs tests/external-authentication-handoff.test.mjs tests/external-dependency-adapter.test.mjs tests/product-mcp-contract.test.mjs tests/codex-runtime-verification.test.mjs tests/installer.test.mjs",
+    "test:authentication": "node --test tests/bos-oauth-live-contract.test.mjs tests/codex-login-surface-contract.test.mjs tests/codex-request-time-login-surface.test.mjs tests/external-authentication-handoff.test.mjs tests/external-dependency-adapter.test.mjs tests/product-mcp-contract.test.mjs tests/codex-runtime-verification.test.mjs tests/installer.test.mjs tests/standalone-device-auth.test.mjs tests/standalone-device-acceptance.test.mjs",
     "release:check": "npm run build && npm run check && npm run check:privacy && npm run contract:check && npm test",
-    "acceptance:marketplace": "node scripts/run-marketplace-prompts.mjs"
+    "acceptance:marketplace": "node scripts/run-marketplace-prompts.mjs",
+    "contract:oauth-device-live": "node scripts/verify-bos-device-oauth-live.mjs"
   },
   "engines": {
     "node": ">=20"

@@ -928,3 +928,24 @@ test("BOS OAuth live contract rejects a provider contract other than product Goo
     ["oauth_provider_contract"]
   );
 });
+
+test("opt-in device discovery requires device metadata while native discovery remains unchanged", async () => {
+  const base = {issuer: CANONICAL_OAUTH_TARGET.authorization_server_issuer,
+    authorization_endpoint: CANONICAL_OAUTH_TARGET.authorization_endpoint};
+  const request = metadata => async url => {
+    if (url === resource) return new Response(JSON.stringify({detail: {error: "authentication_required"}}),
+      {status: 401, headers: {"www-authenticate": expectedBosResourceChallenge(resource)}});
+    if (url.includes("oauth-protected-resource")) return Response.json({resource, authorization_servers: [base.issuer]});
+    return Response.json(metadata);
+  };
+  assert.equal((await probeBosOAuthDiscovery({fetchImpl: request(base)})).status, "passed");
+  assert.equal((await probeBosOAuthDiscovery({fetchImpl: request(base), requireDeviceGrant: true})).status, "failed");
+  const deviceMetadata = {...base, grant_types_supported: ["urn:ietf:params:oauth:grant-type:device_code", "refresh_token"],
+    device_authorization_endpoint: `${base.issuer}/api/v1/mcp/oauth/device/authorize`,
+    token_endpoint: `${base.issuer}/api/v1/mcp/oauth/token`, registration_endpoint: `${base.issuer}/api/v1/mcp/oauth/register`,
+    token_endpoint_auth_methods_supported: ["none"]};
+  assert.equal((await probeBosOAuthDiscovery({fetchImpl: request(deviceMetadata), requireDeviceGrant: true})).device_grant, "advertised");
+  const rejected = await probeBosOAuthDiscovery({fetchImpl: request({...deviceMetadata, token_endpoint: "https://example.invalid/token"}), requireDeviceGrant: true});
+  assert.equal(rejected.status, "failed");
+  assert.doesNotMatch(JSON.stringify(rejected), /example\.invalid/);
+});

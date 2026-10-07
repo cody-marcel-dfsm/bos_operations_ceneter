@@ -12,6 +12,7 @@ const args = process.argv.slice(2);
 let resourceUrl = CANONICAL_RESOURCE_URL;
 let format = "json";
 let smoke = false;
+let requireDeviceGrant = false;
 let compare;
 
 for (let index = 0; index < args.length; index += 1) {
@@ -22,6 +23,8 @@ for (let index = 0; index < args.length; index += 1) {
   } else if (argument === "--format") {
     format = args[index + 1] ?? "";
     index += 1;
+  } else if (argument === "--device") {
+    requireDeviceGrant = true;
   } else if (argument === "--smoke") {
     smoke = true;
   } else if (argument === "--compare") {
@@ -37,9 +40,11 @@ if (!new Set(["json", "text"]).has(format)) {
   throw new Error("--format must be json or text");
 }
 
+if (requireDeviceGrant && smoke) throw new Error("--device requires strict discovery mode");
 if (compare && !smoke) throw new Error("--compare requires --smoke");
 const result = smoke ? await probePublicOAuthDiscovery({ resourceUrl }) : await probeBosOAuthDiscovery({
   resourceUrl,
+  requireDeviceGrant,
   debug: process.env.BOS_HTTP_DEBUG !== "0"
 });
 if (compare) result.comparison = compareDiscoveryReports(JSON.parse(await readFile(compare, "utf8")), result);
