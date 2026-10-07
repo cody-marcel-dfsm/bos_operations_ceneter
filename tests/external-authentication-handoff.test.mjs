@@ -184,6 +184,10 @@ test("generated packages preserve the corrected generic handoff exactly", async 
     assert.doesNotMatch(generatedClient, /caller owns[^.]*retry|caller owns[^.]*reconciliation/i, productRoot);
     assert.equal(generatedContract, contract, productRoot);
     assert.equal(generatedSchema, schemaText, productRoot);
+    assert.match(await read(`${generatedRoot}/references/oauth-client-guide.md`), /S256 PKCE/, productRoot);
+    for (const removed of ["scripts/standalone-device-auth.mjs", "references/standalone-device-authentication.md"]) {
+      await assert.rejects(read(`${generatedRoot}/${removed}`), {code: "ENOENT"}, productRoot);
+    }
   }
 });
 

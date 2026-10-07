@@ -535,6 +535,8 @@ test("OAuth evidence is checked against the selected product resource", async ()
   const contract = await readJson(`${root}/contracts/product-mcp-connections.v1.json`);
   const education = contract.products.find(({ name }) => name === "education-center");
   const authorize = new URL(education.oauth.authorization_endpoint);
+  authorize.searchParams.set("code_challenge", "A".repeat(43));
+  authorize.searchParams.set("code_challenge_method", "S256");
   authorize.searchParams.set("resource", education.resource_url);
   assert.deepEqual(inspectOAuthAuthorizeTarget(
     authorize.href,
@@ -565,6 +567,8 @@ test("product MCP contract CLI returns machine-readable evidence", async () => {
 test("product-specific OAuth CLI rejects another product resource", async () => {
   const bos = await readJson(`${root}/products/bos/product.json`);
   const authorize = new URL(bos.oauth.authorization_endpoint);
+  authorize.searchParams.set("code_challenge", "A".repeat(43));
+  authorize.searchParams.set("code_challenge_method", "S256");
   authorize.searchParams.set("resource", "https://dfsm.ai/mcp/apps/leaddirector/education-center");
   await assert.rejects(
     execFileAsync(
@@ -584,4 +588,29 @@ test("product-specific OAuth CLI rejects another product resource", async () => 
       return true;
     }
   );
+});
+
+test("standard authorize accepts BOS default omission and exact resource with required S256", async () => {
+  const bos = await readJson(`${root}/products/bos/product.json`);
+  const url = new URL(bos.oauth.authorization_endpoint);
+  url.searchParams.set("code_challenge", "A".repeat(43));
+  url.searchParams.set("code_challenge_method", "S256");
+  const inspect = () => inspectOAuthAuthorizeTarget(url.href, bos.mcp_resource_url, bos.oauth).map(value => value.code);
+  assert.deepEqual(inspect(), []);
+  url.searchParams.set("resource", bos.mcp_resource_url);
+  assert.deepEqual(inspect(), []);
+  url.searchParams.append("resource", bos.mcp_resource_url);
+  assert.deepEqual(inspect(), ["oauth_resource_target"]);
+  url.searchParams.set("resource", "https://example.invalid/mcp");
+  assert.deepEqual(inspect(), ["oauth_resource_target"]);
+  url.searchParams.delete("resource");
+  assert.deepEqual(inspectOAuthAuthorizeTarget(url.href, "https://dfsm.ai/mcp/apps/other/application", bos.oauth).map(value => value.code), ["oauth_resource_target"]);
+  for (const patch of ["missing", "plain", "short", "duplicate"]) {
+    const candidate = new URL(url);
+    if (patch === "missing") candidate.searchParams.delete("code_challenge");
+    if (patch === "plain") candidate.searchParams.set("code_challenge_method", "plain");
+    if (patch === "short") candidate.searchParams.set("code_challenge", "short");
+    if (patch === "duplicate") candidate.searchParams.append("code_challenge", "A".repeat(43));
+    assert.deepEqual(inspectOAuthAuthorizeTarget(candidate.href, bos.mcp_resource_url, bos.oauth).map(value => value.code), ["oauth_pkce_required"]);
+  }
 });
