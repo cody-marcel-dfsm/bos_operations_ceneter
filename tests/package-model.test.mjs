@@ -1666,10 +1666,12 @@ test("BOS marketplace metadata explains the platform and links to its website", 
   assert(bos);
   assert.equal(bos.display_name, "BOS Platform");
   assert.ok(bos.description.length <= 30);
-  assert.match(bos.description, /deterministic workflows/i);
+  assert.match(bos.description, /controlled AI workflows/i);
   assert.match(bos.long_description, /owns the authenticated BOS platform MCP connection/);
   assert.match(bos.long_description, /required foundation for dependent products/);
-  assert.match(bos.long_description, /agentic mesh of federated services/);
+  assert.match(bos.long_description, /service gateway/);
+  assert.match(bos.long_description, /authoritative business state and data stores/);
+  assert.match(bos.long_description, /Authorized inputs and results/);
   assert.match(bos.long_description, /server-authorized organization, application, installation, and role selection per operation/);
   assert.doesNotMatch(bos.long_description, /static (?:registry|operation|tool|schema|catalog)/i);
   assert.match(bos.long_description, /server-enforced scope, evidence, and approvals/);
@@ -1698,9 +1700,12 @@ test("Education Operation Center marketplace metadata presents specific cross-sy
   assert(education);
   assert.equal(education.display_name, "Education Operation Center");
   assert.ok(education.description.length <= 80);
-  assert.match(education.description, /email, calendars, billing, and enrollment/i);
-  assert.match(education.long_description, /Acme Learning Center/);
-  assert.match(education.long_description, /Acme\.com partnership invoices/);
+  assert.match(education.description, /scheduling, partners, invoicing, and enrollment/i);
+  for (const area of ["instructor scheduling", "family scheduling", "class scheduling", "partner relationship interactions", "invoicing", "enrollment information and statuses"]) {
+    assert.ok(education.long_description.includes(area), area);
+  }
+  assert.match(education.long_description, /synthetic example, Example Learning Center/);
+  assert.match(education.long_description, /example\.test partnership invoices/);
   assert.doesNotMatch(education.long_description, /Bright Horizons|Northstar Coding Academy/);
   assert.match(education.long_description, /payment records in its configured accounting system/);
   assert.match(education.long_description, /source-linked exception ledger/);

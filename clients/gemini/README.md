@@ -1,5 +1,10 @@
 # BOS Operations Center Gemini Client
 
+BOS is a service gateway for controlled AI workflow execution, with service authority,
+business state, and private implementation IP outside the agent host. Education Operation
+Center adds scheduling, partner interactions, invoicing, and enrollment expertise through BOS.
+Access is invite-only: [Request an invite](https://dfsm.ai/apps/bos/#request-invite).
+
 One generated Gemini extension umbrella supports both Gemini CLI and Google
 Antigravity 2.0 Desktop. Each product directory contains shared skills plus the
 native manifest and MCP format required by each Google surface.

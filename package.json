@@ -1,8 +1,8 @@
 {
   "name": "bos-operations-center",
-  "version": "0.4.186",
+  "version": "0.4.187",
   "private": false,
-  "description": "Cross-client source repository for Education Center Agent Skills.",
+  "description": "BOS service-gateway client skills and Education Operation Center packages.",
   "author": "Infinite State Machines LLC",
   "license": "Apache-2.0",
   "type": "module",

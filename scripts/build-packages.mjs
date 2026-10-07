@@ -69,7 +69,7 @@ const marketplace = {
 };
 const claudeMarketplace = {
   name: "bos-education-center",
-  description: "Verified BOS and childhood education franchise operations plugins from Infinite State Machines LLC.",
+  description: "Controlled AI workflows through BOS and education operations expertise from Infinite State Machines LLC.",
   owner: { name: "Infinite State Machines LLC" },
   plugins: []
 };
@@ -170,7 +170,9 @@ for (const { product, skills } of resolved) {
         [
           `# ${product.display_name}`,
           "",
-          "This plugin is a childhood education franchise-in-a-box operating system for",
+          productLongDescription(product),
+          "",
+          "This plugin supports operations for",
           "authenticated adult education center staff. Students and minors are data subjects;",
           "they are never intended",
           "users or operators of this plugin.",
@@ -319,6 +321,8 @@ for (const { product, skills } of resolved) {
       [
         `# ${product.display_name} for Gemini`,
         "",
+        productLongDescription(product),
+        "",
         "This one Gemini extension supports Gemini CLI and Google Antigravity 2.0 Desktop.",
         "Both surfaces load the same packaged skills and fixed BOS product identity.",
         "",
@@ -412,6 +416,11 @@ await writeFile(
   [
     "# BOS Operations Center Copilot Packages",
     "",
+    "BOS is a service gateway for controlled AI workflow execution, with service authority,",
+    "business state, and private implementation IP outside the agent host. Education Operation",
+    "Center adds scheduling, partner interactions, invoicing, and enrollment expertise through BOS.",
+    "Access is invite-only: [Request an invite](https://dfsm.ai/apps/bos/#request-invite).",
+    "",
     "Select a product under `products/<product>/skills` and install those",
     "skills into the target repository's `.agents/skills` directory. Install the BOS",
     "product once for the shared `.github/mcp.json` connection. Subservice products",
@@ -425,6 +434,11 @@ await writeFile(
   join(stagedClients, "gemini", "README.md"),
   [
     "# BOS Operations Center Gemini Client",
+    "",
+    "BOS is a service gateway for controlled AI workflow execution, with service authority,",
+    "business state, and private implementation IP outside the agent host. Education Operation",
+    "Center adds scheduling, partner interactions, invoicing, and enrollment expertise through BOS.",
+    "Access is invite-only: [Request an invite](https://dfsm.ai/apps/bos/#request-invite).",
     "",
     "One generated Gemini extension umbrella supports both Gemini CLI and Google",
     "Antigravity 2.0 Desktop. Each product directory contains shared skills plus the",
