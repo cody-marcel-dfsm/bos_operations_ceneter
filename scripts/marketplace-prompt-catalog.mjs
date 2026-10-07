@@ -19,7 +19,8 @@ export async function loadPromptCatalog(root, product) {
   if (manifest.default_prompts.length !== 3) throw new Error('Expected three configured starters');
   const cases = [
     ...manifest.default_prompts.map((prompt, i) => ({id: `starter-${i + 1}`, kind: 'starter', prompt, expected: 'Fulfill the configured prompt using current discovered contracts; report genuine missing prerequisites.'})),
-    ...submission.test_cases.map((item, i) => ({id: `positive-${i + 1}`, kind: 'positive', prompt: item.user_prompt, expected: item.expected_output, expected_operation: item.tools_triggered})),
+    ...submission.test_cases.map((item, i) => ({id: `positive-${i + 1}`, kind: 'positive', prompt: item.user_prompt, expected: item.expected_output,
+      expected_operation: item.tools_triggered.includes(',') ? item.tools_triggered.split(',').map(name => name.trim()) : item.tools_triggered})),
     ...submission.negative_test_cases.map((item, i) => ({id: `negative-${i + 1}`, kind: 'negative', prompt: item.user_prompt, expected: item.expected_output}))
   ];
   for (const item of cases) {

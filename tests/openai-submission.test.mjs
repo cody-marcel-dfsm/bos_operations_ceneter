@@ -53,7 +53,7 @@ test("every active Codex product owns permanent OpenAI submission source", async
     assert.ok(submission.app_info.subtitle.length <= 30, product.name);
     assert.equal(submission.app_info.description, product.long_description, product.name);
     assert.equal(submission.app_info.category, "PRODUCTIVITY", product.name);
-    assert.equal(submission.test_cases.length, 5, product.name);
+    assert.equal(submission.test_cases.length, product.name === "education-center" ? 6 : 5, product.name);
     assert.equal(submission.negative_test_cases.length, 3, product.name);
   }
 });
@@ -150,11 +150,30 @@ test("BOS and Education OpenAI cases stay within their product MCP scope", async
     `${root}/products/education-center/openai/chatgpt-app-submission.json`, "utf8"
   ));
   assert.deepEqual(Object.keys(education.tools), currentTools);
-  assert.ok(education.test_cases.every(({tools_triggered}) => currentTools.includes(tools_triggered)));
+  assert.ok(education.test_cases.every(({tools_triggered}) =>
+    tools_triggered.split(', ').every(tool => currentTools.includes(tool))));
   assert.match(education.test_cases[3].user_prompt, /whether capacity/);
   assert.match(education.test_cases[4].user_prompt, /missing or incomplete guardian contact fields/);
+  assert.equal(education.test_cases[2].user_prompt, 'List enrollments from September 14 through September 20, 2026, and group them by class.');
+  assert.match(education.test_cases[2].description, /Calimatic is not configured/);
+  assert.deepEqual(education.test_cases[2].tools_triggered.split(', '), ['bos_get_context', 'bos_list_context_tools', 'bos_execute']);
+  assert.match(education.test_cases[2].expected_output, /configure the Calimatic API key through BOS's secure configuration flow/);
+  assert.match(education.test_cases[2].expected_output, /returns no enrollment rows/);
+  assert.match(education.test_cases[2].expected_output, /API key stays out of chat/);
+  assert.match(education.test_cases[5].user_prompt, /BOS Describe/);
+  assert.deepEqual(education.test_cases[5].tools_triggered.split(', '), ['bos_get_context', 'bos_list_context_tools']);
+  assert.match(education.test_cases[5].expected_output, /education_center_search_students/);
   const policy = JSON.parse(await readFile(`${root}/products/education-center/openai/acceptance-policy.json`, 'utf8'));
-  assert.ok([2, 3, 4, 5].every(id => policy.cases[`positive-${id}`].requires_business_https));
+  assert.ok([2, 4, 5].every(id => policy.cases[`positive-${id}`].requires_business_https));
+  assert.deepEqual(policy.cases['positive-3'].requirements, [
+    {id:'exact-enrollment-operation', operator:'equals'},
+    {id:'calimatic-api-key-configuration-required', operator:'equals'},
+    {id:'secure-configuration-link-present', operator:'present'},
+    {id:'no-enrollment-rows', operator:'absent'}
+  ]);
+  assert.deepEqual(policy.cases['positive-3'].expected_error_operations, ['education_center_list_enrollments']);
+  assert.equal(policy.cases['positive-3'].requires_business_https, undefined);
+  assert.deepEqual(policy.cases['positive-6'].requirements, [{id:'student-search-tool', operator:'contains'}]);
 
 });
 

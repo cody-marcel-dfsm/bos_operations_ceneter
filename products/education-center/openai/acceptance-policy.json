@@ -80,25 +80,27 @@
         "read"
       ],
       "assertion_evidence": "response",
+      "expected_error_operations": [
+        "education_center_list_enrollments"
+      ],
       "requirements": [
         {
-          "id": "class-grouping",
+          "id": "exact-enrollment-operation",
           "operator": "equals"
         },
         {
-          "id": "enrollment-dates",
+          "id": "calimatic-api-key-configuration-required",
           "operator": "equals"
         },
         {
-          "id": "status",
-          "operator": "equals"
+          "id": "secure-configuration-link-present",
+          "operator": "present"
         },
         {
-          "id": "source-attribution",
-          "operator": "equals"
+          "id": "no-enrollment-rows",
+          "operator": "absent"
         }
-      ],
-      "requires_business_https": true
+      ]
     },
     "positive-4": {
       "allowed_effects": [
@@ -141,6 +143,18 @@
         }
       ],
       "requires_business_https": true
+    },
+    "positive-6": {
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "response",
+      "requirements": [
+        {
+          "id": "student-search-tool",
+          "operator": "contains"
+        }
+      ]
     },
     "negative-1": {
       "allowed_effects": [

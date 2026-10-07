@@ -15,6 +15,7 @@ function at(value, path) {
 }
 const record = value => value && typeof value === 'object' && !Array.isArray(value);
 const publicName = value => typeof value === 'string' && value.trim().length > 0;
+const validPointer = value => typeof value === 'string' && value.startsWith('/') && value.length <= 512 && !/~(?:[^01]|$)/.test(value) && !value.slice(1).split('/').some(part => ['__proto__','prototype','constructor'].includes(part.replaceAll('~1','/').replaceAll('~0','~')));
 function identityMetadata(body, operation) {
   if (!record(body) || body.contract_version !== 'bos-identity-mcp/v2') return false;
   if (operation === 'bos.get.context') return Array.isArray(body.contexts) && body.contexts.length > 0 && body.contexts.every(row => record(row) && ['organization_name', 'application_name', 'installation_name', 'role_label'].every(key => publicName(row[key])));
@@ -23,16 +24,19 @@ function identityMetadata(body, operation) {
 function responseSelection(evidence, selector, operator) {
   if (!selector || typeof selector !== 'object' || Array.isArray(selector) || typeof selector.operation !== 'string' || !selector.operation || !transports.has(selector.transport) || !Array.isArray(evidence.responses ?? [])) return undefined;
   const consistent = Object.hasOwn(selector, 'consistent_metadata');
+  const expectedError = selector.is_error === true;
+  if (Object.hasOwn(selector, 'is_error') && !expectedError) return undefined;
   if (consistent && (selector.consistent_metadata !== true || operator !== 'equals')) return undefined;
   const keys = Object.keys(selector).filter(key => key !== 'consistent_metadata').sort().join(',');
   const described = keys === 'described_operation,operation,transport';
   const apiContract = keys === 'api_contract_operation,operation,transport';
-  if (keys !== 'operation,transport' && !described && !apiContract) return undefined;
+  const selectedError = keys === 'is_error,operation,transport' && expectedError;
+  if (keys !== 'operation,transport' && !described && !apiContract && !selectedError) return undefined;
   if (described && (selector.operation !== 'app.describe' || selector.transport !== 'https_discovery' || typeof selector.described_operation !== 'string' || !/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u.test(selector.described_operation))) return undefined;
   if (apiContract && (selector.operation !== 'api.contract.get' || selector.transport !== 'mcp_discovery' || typeof selector.api_contract_operation !== 'string' || !/^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$/u.test(selector.api_contract_operation))) return undefined;
   const identity = selector.transport === 'mcp_discovery' && ['bos.get.context', 'bos.list.context.tools'].includes(selector.operation);
   if (consistent && !described && !identity) return undefined;
-  const matches = (evidence.responses ?? []).map((row, index) => ({row, index})).filter(({row}) => row?.operation === selector.operation && row.transport === selector.transport && row.successful === true);
+  const matches = (evidence.responses ?? []).map((row, index) => ({row, index})).filter(({row}) => row?.operation === selector.operation && row.transport === selector.transport && (expectedError ? row.is_error === true && row.scope_verified === true : row.successful === true));
   if (!described && !apiContract) {
     if (consistent ? !matches.length || !matches.every(({row}) => identityMetadata(row.body, selector.operation) && isDeepStrictEqual(row.body, matches[0].row.body)) : matches.length !== 1) return undefined;
     return {body: matches[0].row.body, origin: `/responses/${matches[0].index}/body`};
@@ -68,6 +72,9 @@ function selected(evidence, rule, other = false) {
   const prefix = other ? 'other_' : '';
   const base = rule[prefix + 'response'] ? responseSelection(evidence, rule[prefix + 'response'], rule.operator)?.body : rule[prefix + 'evidence'] === 'answer' ? evidence.answer : rule[prefix + 'evidence'] === 'effects' ? {prohibited_effects: evidence.prohibited_effects} : undefined;
   return projected(at(base, rule[prefix + 'path']), rule[prefix + 'project_paths']);
+}
+function selectedResponsePathExists(evidence, rule) {
+  return Boolean(rule.response && responseSelection(evidence, rule.response, rule.operator));
 }
 function selectedLocations(evidence, rule, other = false) {
   const prefix = other ? 'other_' : '', selector = rule[prefix + 'response'];
@@ -112,10 +119,13 @@ function timestamp(value) {
 const safeRequirementId = value => typeof value === 'string' && /^[a-z][a-z0-9-]{0,63}$/.test(value);
 
 function matchesRule(rule, evidence, binding) {
+  if (rule.operator === 'absent') return validPointer(rule.path) && selectedResponsePathExists(evidence, rule) && at(responseSelection(evidence, rule.response, rule.operator).body, rule.path) === undefined;
   const value = selected(evidence, rule);
   if (value === undefined || value === null) return false;
+  if (rule.operator === 'present') return typeof value === 'string' ? value.trim().length > 0 : Array.isArray(value) ? value.length > 0 : typeof value === 'object' ? Object.keys(value).length > 0 : true;
   if (rule.operator === 'equals') return rule.value !== undefined && rule.value !== null && isDeepStrictEqual(value, rule.value);
-  if (rule.operator === 'contains') return typeof value === 'string' && typeof rule.value === 'string' && rule.value.length > 0 && value.includes(rule.value);
+  if (rule.operator === 'contains') return typeof rule.value === 'string' && rule.value.length > 0 &&
+    (typeof value === 'string' ? value.includes(rule.value) : Array.isArray(value) && value.includes(rule.value));
   if (rule.operator === 'same_values') {
     const other = selected(evidence, rule, true);
     if (!Array.isArray(value) || !Array.isArray(other) || !value.length || !value.every(row => row !== undefined && row !== null) || !other.every(row => row !== undefined && row !== null)) return false;
@@ -153,7 +163,9 @@ export function reviewerOutcomeDiagnostics(assertion, evidence, requirements = [
   const ruleKeys = new Set(['requirement', 'operator', 'response', 'path', 'project_paths', 'value', 'evidence', 'other_response', 'other_path', 'other_project_paths', 'other_evidence', 'distinct_by_path']);
   if (!Array.isArray(rules) || !rules.every(rule => rule && typeof rule === 'object' && !Array.isArray(rule) && Object.keys(rule).every(key => ruleKeys.has(key)))) return fail('assertion_rules_invalid');
   if (rules.some(rule => rule.other_response && Object.hasOwn(rule.other_response, 'consistent_metadata'))) return fail('assertion_rules_invalid');
-  if (!rules.length || rules.length > 64 || !rules.some(rule => rule.response && rule.operator === 'equals' && rule.value !== undefined && rule.value !== null)) return fail('assertion_rules_invalid');
+  if (!rules.length || rules.length > 64 || !rules.some(rule => rule.response && (
+    rule.operator === 'equals' && rule.value !== undefined && rule.value !== null ||
+    rule.operator === 'contains' && typeof rule.value === 'string' && rule.value.length > 0))) return fail('assertion_rules_invalid');
   const coversPrompt = requirements.every(required => rules.some(rule => rule.requirement === required.id && rule.operator === required.operator && (required.minimum === undefined || (typeof rule.value === 'number' && rule.value >= required.minimum)) && (required.operator !== 'timestamp_age' || (rule.value?.maximum_age_ms <= required.maximum_age_ms && rule.value?.future_skew_ms <= required.future_skew_ms))));
   if (!coversPrompt) return fail('prompt_requirements_uncovered');
   const allowedIds = new Set(promptIds);

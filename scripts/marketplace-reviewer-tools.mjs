@@ -357,9 +357,20 @@ export async function createReviewerTools({session,state,release}) {
     if(contact.effect!=='read'&&!(state.effect_binding?.operation===contact.operation&&state.effect_binding.effect===contact.effect&&state.effect_binding.input_sha256===digest(args.payload??{})))throw new Error('reviewer_effect_not_approved');
     const result=Object.hasOwn(args,'payload')?await adapter.invokeDiscoveredOperation(contact,args.payload):await adapter.invokeDiscoveredOperation(contact);
     const valid=result.status>=200&&result.status<300&&ajv.compile(contact.output_schema)(result.body);
-    state.observations.push({tool:contact.operation,input:sanitized(args.payload??{}),response:sanitized(result),scope_verified:true,is_error:!valid,transport:'https',contact_sha256:digest(contact)});
-    if(!valid)throw new Error('reviewer_api_contract_failed');
-    return {status:result.status,body:sanitized(result.body),operation:contact.operation,transport:'https'};
+    const bosOrigin=new URL(state.resource).origin;
+    const authorizations=result.body?.result?.error?.required_authorizations;
+    const configurationRequired=result.body?.result?.error?.status==='authorization_required'&&Array.isArray(authorizations)&&authorizations.some(value=>value?.authorization_kind==='api_key'&&value.status==='configuration_required');
+    const configurationActions=configurationRequired?authorizations.filter(value=>value?.authorization_kind==='api_key'&&value.status==='configuration_required'):[];
+    const configurationActionValid=configurationActions.some(value=>{
+      if(typeof value.authorization_url!=='string')return false;
+      try{trustedUrl(value.authorization_url,bosOrigin);return true;}catch{return false;}
+    });
+    const expectedConfigurationError=configurationRequired&&configurationActionValid&&state.expected_error_operations?.includes(contact.operation);
+    const safeResult=sanitized(result,bosOrigin);
+    state.observations.push({tool:contact.operation,input:sanitized(args.payload??{}),response:safeResult,scope_verified:true,is_error:!valid||configurationRequired,transport:'https',contact_sha256:digest(contact)});
+    if((!valid&&!expectedConfigurationError)||(configurationRequired&&!configurationActionValid))throw new Error('reviewer_api_contract_failed');
+    if(expectedConfigurationError)return {isError:true,status:result.status,body:sanitized(result.body,bosOrigin),operation:contact.operation,transport:'https'};
+    return {status:result.status,body:sanitized(result.body,bosOrigin),operation:contact.operation,transport:'https'};
   };
   state.host_tool_outcomes??=[];
   return {definitions,call:async(name,args)=>{

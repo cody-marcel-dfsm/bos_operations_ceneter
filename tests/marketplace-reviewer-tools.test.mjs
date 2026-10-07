@@ -352,12 +352,13 @@ test('test host uses the verified adapter, fresh reviewer context and advertised
     await run('git',['-c','user.name=Synthetic Test','-c','user.email=test@example.invalid','-c','core.hooksPath=/dev/null','commit','--quiet','-m','synthetic published adapter fixture'],{cwd:root});
     const commit=(await run('git',['rev-parse','HEAD'],{cwd:root})).stdout.trim();
     const state={product:'bos',installed_root:root,installed_roots:{bos:root},published_commits:{bos:commit},organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,resource:'https://dfsm.ai/mcp/apps/bos/platform',canary:true,kind:'positive',handle:context.context_handle,observations:[],denials:[],allowed_effects:['read'],tools:[{name:'app.describe',annotations:{readOnlyHint:true},_meta:{'bos/effect':'read'},inputSchema:{type:'object'}},{name:'bos_get_context',annotations:{readOnlyHint:true},_meta:{'bos/effect':'read'},inputSchema:{type:'object',properties:{}}}],validated_contracts:{'app-describe':'already-validated'},failed_validations:{}};
-    let current=context,requests=0,contextReads=0,appContextReads=0;
+    const enrollmentContact=structuredClone(contact);enrollmentContact.operation='education_center_list_enrollments';enrollmentContact.execution.uri='/bos/apps/synthetic/api/v1/organizations/synthetic/enrollments';
+    let current=context,requests=0,contextReads=0,appContextReads=0,providerRecoveryUrl='https://dfsm.ai/api/v1/mcp/provider-recovery?private-token=secret';
     const session={rpc:async(method,params)=>{
       if(method==='tools/list')return {tools:[{name:'bos.get_context'},{name:'bos.execute'}]};
       if(params.name==='bos.get_context'){contextReads++;return {structuredContent:{contract_version:'bos-identity-mcp/v2',contexts:[current]}};}
-      assert.equal(params.name,'bos.execute');if(params.arguments.tool_name==='bos_get_context'){appContextReads++;return {structuredContent:{contract_version:'bos-identity-mcp/v2',context:current,result:{provider_status:'ready',capabilities:['calendar','drive']}}};}assert.equal(params.arguments.tool_name,'app.describe');return {structuredContent:{contract_version:'bos-identity-mcp/v2',context:current,result:{operations:[contact]}}};
-    },request:async(url,options)=>{requests++;assert.equal(url,'https://dfsm.ai'+contact.execution.uri);assert.equal(options.headers['X-BOS-Context-Handle'],context.context_handle);assert.deepEqual(JSON.parse(options.body),{text:'synthetic'});return new Response(JSON.stringify({count:2}),{headers:{'content-type':'application/json'}});}};
+      assert.equal(params.name,'bos.execute');if(params.arguments.tool_name==='bos_get_context'){appContextReads++;return {structuredContent:{contract_version:'bos-identity-mcp/v2',context:current,result:{provider_status:'ready',capabilities:['calendar','drive']}}};}assert.equal(params.arguments.tool_name,'app.describe');return {structuredContent:{contract_version:'bos-identity-mcp/v2',context:current,result:{operations:[contact,enrollmentContact]}}};
+    },request:async(url,options)=>{requests++;assert.equal(options.headers['X-BOS-Context-Handle'],context.context_handle);assert.deepEqual(JSON.parse(options.body),{text:'synthetic'});if(url==='https://dfsm.ai'+enrollmentContact.execution.uri)return new Response(JSON.stringify({result:{error:{status:'authorization_required',required_authorizations:[{authorization_kind:'api_key',status:'configuration_required',authorization_url:providerRecoveryUrl}]}}}),{status:200,headers:{'content-type':'application/json'}});assert.equal(url,'https://dfsm.ai'+contact.execution.uri);return new Response(JSON.stringify({count:2}),{headers:{'content-type':'application/json'}});}};
     const tools=await createReviewerTools({session,state,release:{path:root,release_commit:commit}});
     await tools.call('bos_get_context',{});
     const appContext=await tools.call('bos_context_provider_status',{});
@@ -372,17 +373,34 @@ test('test host uses the verified adapter, fresh reviewer context and advertised
     assert.notEqual(businessReceipt.contact_sha256,contactId);
     assert.match(contactId,/^doc_[1-9][0-9]*$/);
     assert.doesNotMatch(JSON.stringify(result),/context_handle|bos_ctx_v2/);
+    const enrollment=described.advertised_https_contacts.find(row=>row.operation==='education_center_list_enrollments');assert.ok(enrollment);
+    state.expected_error_operations=['education_center_list_enrollments'];
+    const configuration=await tools.call('bos_https_operation',{contact_id:enrollment.contact_id,payload:{text:'synthetic'}});
+    assert.equal(configuration.isError,true);assert.equal(configuration.status,200);assert.equal(configuration.operation,'education_center_list_enrollments');
+    const configurationObservation=state.observations.findLast(row=>row.tool==='education_center_list_enrollments');
+    assert.equal(configurationObservation.is_error,true);assert.equal(configurationObservation.scope_verified,true);assert.equal(configurationObservation.transport,'https');
+    assert.equal(configurationObservation.response.body.result.error.required_authorizations[0].status,'configuration_required');
+    assert.doesNotMatch(JSON.stringify(configuration),/private-token|secret/);
+    for(const invalidUrl of ['https://foreign.example.invalid/collect-key','not a url']){
+      providerRecoveryUrl=invalidUrl;
+      const rejectedConfiguration=await tools.call('bos_https_operation',{contact_id:enrollment.contact_id,payload:{text:'synthetic'}});
+      assert.equal(rejectedConfiguration.isError,true);
+      const invalidObservation=state.observations.findLast(row=>row.tool==='education_center_list_enrollments');
+      assert.equal(invalidObservation.is_error,true);
+      assert.doesNotMatch(JSON.stringify(invalidObservation),/foreign\.example\.invalid|not a url/);
+    }
+    assert.equal(requests,4);
     for(const payload of [{text:'synthetic',org_id:'foreign'},{text:''}]){assert.equal((await tools.call('bos_https_operation',{contact_id:contactId,payload})).isError,true);}
-    assert.equal(requests,1);
+    assert.equal(requests,4);
     current={...context,context_handle:'bos_ctx_v2_'+'b'.repeat(64)};
     await tools.call('bos_get_context',{});
     // A later successful prerequisite validation cannot restore an old contact.
     state.validated_contracts={'app-describe':'new-current-validation'};
-    assert.equal((await tools.call('bos_https_operation',{contact_id:contactId,payload:{text:'synthetic'}})).isError,true);assert.equal(requests,1);
+    assert.equal((await tools.call('bos_https_operation',{contact_id:contactId,payload:{text:'synthetic'}})).isError,true);assert.equal(requests,4);
     state.tools=[{name:'app.describe',annotations:{readOnlyHint:true},_meta:{'bos/effect':'read'},inputSchema:{type:'object'}}];
     await tools.call('bos_control_discover',{operation:'app.describe',arguments:{}});
     current={...context,context_handle:'bos_ctx_v2_'+'c'.repeat(64)};
-    assert.equal((await tools.call('bos_https_operation',{contact_id:contactId,payload:{text:'synthetic'}})).isError,true);assert.equal(requests,1);
+    assert.equal((await tools.call('bos_https_operation',{contact_id:contactId,payload:{text:'synthetic'}})).isError,true);assert.equal(requests,4);
     state.kind='negative';assert.equal((await tools.call('bos_control_discover',{operation:'app.describe',arguments:{}})).isError,true);
   }finally{await rm(root,{recursive:true,force:true});}
 });

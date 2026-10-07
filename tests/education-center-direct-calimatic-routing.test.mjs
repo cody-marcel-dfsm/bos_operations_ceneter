@@ -36,6 +36,8 @@ test("Education Center service routing preserves BOS scope while honoring eviden
   assert.match(skill, /never changes BOS tenant, role, organization, or mutation authority/i);
   assert.match(skill, /org_id.*app_code.*installed_app_id.*delegated_role_id/is);
   assert.match(skill, /Calimatic[\s\S]*short-lived BOS credential page[\s\S]*portal[\s\S]*API key/i);
+  assert.match(skill, /Calimatic operation itself returns a structured[\s\S]*authorization_kind: api_key[\s\S]*status: configuration_required/i);
+  assert.match(skill, /Never ask the\s+customer to paste the key into chat[\s\S]*silently switch to another source[\s\S]*Resume the original query only\s+after BOS confirms provider setup/i);
   assert.match(skill, /Never replace either path with dashboard navigation/i);
 });
 

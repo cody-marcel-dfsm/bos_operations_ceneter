@@ -179,6 +179,11 @@ test('canary fails closed and observed identity binds the exact selected role',(
  observe({tool_name:'mcp__BOS_Platform__bos_get_context',tool_response:{contexts:[{organization_name:'Other',role_label:'Reviewer',context_handle:'wrong'},{organization_name:'Synthetic',role_label:'Reviewer',application_name:'Synthetic App',installation_name:'Synthetic Installation',context_handle:'right'}]}},state);
  assert.equal(state.handle,'right');assert.doesNotMatch(JSON.stringify(state.observations),/context_handle/);
  assert.deepEqual(sanitized({access_token:'secret',value:'safe'}),{value:'safe'});
+ const providerResult=sanitized({result:{error:{recovery_token:'secret-token',required_authorizations:[{authorization_kind:'api_key',status:'configuration_required',authorization_url:'https://dfsm.ai/api/v1/mcp/provider-recovery?dependency_token=private'}]}}},'https://dfsm.ai');
+ assert.deepEqual(providerResult,{result:{error:{required_authorizations:[{authorization_kind:'api_key',status:'configuration_required',authorization_url:'https://dfsm.ai/api/v1/mcp/provider-recovery?[query redacted]'}]}}});
+ assert.doesNotMatch(JSON.stringify(providerResult),/private|secret-token|dependency_token/);
+ const foreignProviderResult=sanitized({result:{error:{required_authorizations:[{authorization_kind:'api_key',status:'configuration_required',authorization_url:'https://foreign.example.invalid/collect-key'}]}}},'https://dfsm.ai');
+ assert.deepEqual(foreignProviderResult,{result:{error:{required_authorizations:[{authorization_kind:'api_key',status:'configuration_required'}]}}});
 });
 test('published installed resources reject traversal and symlink escapes',async()=>{
  const dir=await mkdtemp(join(tmpdir(),'native-resource-test-'));
@@ -354,6 +359,29 @@ test('business-case proof requires successful scoped deterministic HTTPS and exa
  assert.deepEqual(caseResponseFailures(item,reviewerResponses([observed])),[]);
  for(const changed of [{transport:undefined},{transport:'https-discovery'},{scope_verified:false},{is_error:true},{tool:'search'}])assert.ok(caseResponseFailures(item,reviewerResponses([{...observed,...changed}])).length>0);
  assert.equal(reviewerResponses([{tool:'bos.execute',input:{tool_name:'plugins.list'},scope_verified:true,response:{plugins:[]}}])[0].operation,'plugins.list');
+});
+
+test('the expected Calimatic setup error is allowed only for its exact operation',async()=>{
+ const {reviewerResponses,caseResponseFailures,expectedErrorObservation}=await import('../scripts/marketplace-native-run.mjs');
+ const item={expected_error_operations:['education_center_list_enrollments']};
+ const providerError={status:'authorization_required',required_authorizations:[{authorization_kind:'api_key',status:'configuration_required',authorization_url:'https://dfsm.ai/api/v1/mcp/provider-recovery?[query redacted]'}]};
+ const expected={tool:'education_center_list_enrollments',transport:'https',scope_verified:true,is_error:true,response:{status:401,body:{result:{error:providerError}}}};
+ const resource='https://dfsm.ai/mcp/apps/education-center/platform';
+ const other={...expected,tool:'education_center_search_students'};
+ assert.equal(expectedErrorObservation(item,expected,resource),true);
+ assert.equal(expectedErrorObservation(item,other,resource),false);
+ assert.deepEqual(caseResponseFailures(item,reviewerResponses([expected],resource)),[]);
+ assert.equal(expectedErrorObservation(item,{...expected,scope_verified:false},resource),false);
+ assert.equal(expectedErrorObservation(item,{...expected,response:{status:401,body:{result:{error:{status:'authorization_required'}}}}},resource),false);
+ for(const authorization_url of ['https://foreign.example.invalid/collect-key','http://dfsm.ai/api/v1/mcp/provider-recovery','not a url']) {
+  const invalid={...expected,response:{status:401,body:{result:{error:{...providerError,required_authorizations:[{...providerError.required_authorizations[0],authorization_url}]}}}}};
+  assert.equal(expectedErrorObservation(item,invalid,resource),false,authorization_url);
+  assert.ok(caseResponseFailures(item,reviewerResponses([invalid],resource)).includes('expected_error_response_missing'));
+ }
+ assert.ok(caseResponseFailures(item,reviewerResponses([other],resource)).includes('expected_error_response_missing'));
+ assert.ok(caseResponseFailures(item,reviewerResponses([expected,expected],resource)).includes('expected_error_response_missing'));
+ assert.ok(caseResponseFailures(item,reviewerResponses([expected,{...expected,is_error:false,response:{rows:[{student:'Synthetic'}]}}],resource)).includes('expected_error_response_missing'));
+ assert.ok(caseResponseFailures(item,reviewerResponses([expected,{...expected,tool:'education_center_search_students'}],resource)).includes('unexpected_error_response'));
 });
 
 test('failed native receipts retain only completed session and binding proofs with closed diagnostics',async()=>{
