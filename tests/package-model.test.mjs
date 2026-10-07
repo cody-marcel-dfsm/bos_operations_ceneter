@@ -1709,7 +1709,8 @@ test("Education Operation Center marketplace metadata presents specific cross-sy
   assert.doesNotMatch(education.long_description, /Bright Horizons|Northstar Coding Academy/);
   assert.match(education.long_description, /payment records in its configured accounting system/);
   assert.match(education.long_description, /source-linked exception ledger/);
-  assert.doesNotMatch(education.long_description, /My CRM/);
+  assert.match(education.long_description, /requires BOS plus independently distributed My CRM/);
+  assert.match(education.long_description, /both through BOS's existing authenticated connection/);
   assert.match(education.long_description, /deterministic workflow/);
   assert.match(education.long_description, /preserving human judgment, approvals/);
   assert.deepEqual(education.default_prompts, [
