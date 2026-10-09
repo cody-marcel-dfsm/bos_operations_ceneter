@@ -10,6 +10,7 @@ import {reviewerToolsForCase} from '../scripts/marketplace-native-run.mjs';
 import {syntheticAppDescribe,syntheticOperationDescribe,syntheticApiContract} from './helpers/synthetic-bos-discovery-service.mjs';
 import {digest} from '../scripts/marketplace-prompt-catalog.mjs';
 import {documentDigests,observedDocument,installedValidatorModes,createInstalledAcceptance} from '../scripts/marketplace-native-resources.mjs';
+import {sanitized} from '../scripts/marketplace-native-hook.mjs';
 
 const run=promisify(execFile);
 
@@ -208,6 +209,8 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   const commit=(await run('git',['rev-parse','HEAD'],{cwd:root})).stdout.trim();
   const uri='bos://apps/lead-director/app.describe',app=syntheticAppDescribe();
   app.describe.uri='/bos/apps/lead-director/api/v1/organizations/synthetic/describe';
+  for(const key of ['schema_uri','reference_uri','examples_uri'])app.bosl[key]+='?context_handle='+context.context_handle;
+  assert.notEqual(JSON.stringify(app),JSON.stringify(sanitized(app)));
   const state={product:'bos',installed_root:root,installed_roots:{bos:root},published_commits:{bos:commit},organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,resource:'https://dfsm.ai/mcp/apps/bos/platform',canary:true,kind:'positive',handle:context.context_handle,resources:[uri,'bos://apps/lead-director/non-description-resource'],observations:[],fixtureResponses:[],denials:[],allowed_effects:['read'],validated_contracts:{},failed_validations:{}};
   const describeResponse=()=>{const value=syntheticOperationDescribe();value.operations=value.operations.slice(0,1);return value;};
   let current=context,requests=0,response=describeResponse(),nativeSchema={type:'object',required:[],properties:{query:{type:'string'}}},identityFailed=false,failResourceRead=false;
@@ -254,6 +257,10 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   assert.equal(listedRead.document_id,observed.document_id);
   assert.deepEqual(listedRead.published_validation,{valid:true,mode:'app-describe',document_id:observed.document_id,release_commit:commit});
   assert.equal(state.validated_contracts['app-describe'],digest(app));
+  const automaticValidation=state.observations.findLast(row=>row.tool==='validate.installed'&&row.input.mode==='app-describe');
+  assert.equal(automaticValidation.response.valid,true);assert.equal(automaticValidation.is_error,false);
+  assert.doesNotMatch(JSON.stringify(automaticValidation.input.document),/bos_ctx_v2_[a-f0-9]{64}/);
+  assert.equal(Object.values(state.failed_validations).some(Boolean),false);
   const args={document_id:observed.document_id,operations:['search']};
   const result=await tools.call('bos_https_describe',args);
   assert.equal(result.isError,undefined);assert.equal(requests,1);

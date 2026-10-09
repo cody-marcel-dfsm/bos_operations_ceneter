@@ -233,7 +233,8 @@ export async function createReviewerTools({session,state,release}) {
           state.observed_document_digests??=[];
           state.observed_document_digests=[...new Set([...state.observed_document_digests,...documentDigests(document)])];
           const validation=await installed.call('validate_installed',{path:discoveryValidatorPath,mode:'app-describe',document});
-          observe({tool_name:'mcp__Acceptance__validate_installed',tool_input:{path:discoveryValidatorPath,mode:'app-describe',document:sanitized(document)},tool_response:validation},state);
+          // Provenance is checked against the exact observed bytes before observe() sanitizes its retained copy.
+          observe({tool_name:'mcp__Acceptance__validate_installed',tool_input:{path:discoveryValidatorPath,mode:'app-describe',document},tool_response:validation},state);
           if(validation.valid===true)state.validated_contracts['app-describe']=digest(document);
           publishedValidation={valid:validation.valid===true,mode:'app-describe',document_id:exposed.document_id,release_commit:bos.release_commit};
         }
