@@ -19,6 +19,7 @@ export function parseMarketplaceSelection(args) {
  }
  return {selected,options:{concurrency}};
 }
+export function marketplaceAcceptanceStatus(report) { return report?.publication_status??report?.status; }
 async function main(){
  const [product,command,configPath,...args]=process.argv.slice(2);
  const load=()=>loadPromptCatalog(root,product);
@@ -31,6 +32,6 @@ async function main(){
  const report=catalog.product==='bos'&&catalog.execution_profile==='bos-reviewed-functional/v1'
   ? await (await import('./run-bos-reviewed-cases.mjs')).runReviewedBosCatalog(catalog,config,stdout.trim(),{...options,selected})
   : await runNativeCatalog(load,config,installedRelease,stdout.trim(),selected,undefined,options);
- console.log(JSON.stringify(report,null,2));if(report.status!=='PASS')process.exitCode=1;
+ console.log(JSON.stringify(report,null,2));if(marketplaceAcceptanceStatus(report)!=='PASS')process.exitCode=1;
 }
 if(process.argv[1]===fileURLToPath(import.meta.url))main().catch(()=>{console.error('Marketplace integration failed: configuration or native prerequisite unavailable');process.exitCode=1;});

@@ -20,6 +20,17 @@ and `{}` are bodies and are invalid. A non-lifecycle operation whose schema is
 a closed empty object receives exactly `{}`. For a declared lifecycle payload,
 send only fields accepted by that schema.
 
+Registration contract v2 success has exactly `compiled: true`, `identity`, and
+`actions: {start: <returned action>}`. Invoke that exact signed bodyless POST
+`actions.start` through the context-binding adapter to begin execution.
+Registration itself performs no journey work. A compile failure has no action;
+correct its public findings before resubmitting. The runtime interpreter returns
+`invoke_action` for successful v2 registration and `correct_bosl` for compile failure.
+Registration contract v1 retains register-and-start and returns its authoritative
+lifecycle envelope directly. Follow that envelope without replaying start; cached
+v1 contracts remain compatible. Registration version and authentication identity
+version are separate contracts.
+
 The service owns progress:
 
 - `not_started`: invoke the returned bodyless `start`;

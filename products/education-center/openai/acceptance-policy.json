@@ -86,6 +86,89 @@
           "operator": "equals"
         }
       ]
+    },
+    "positive-4": {
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "service-receipts",
+      "grading": "deterministic-functional",
+      "expected_output_validation": false,
+      "metadata_only": true,
+      "metadata_tool_name": "education_center_get_camp_roster_report",
+      "requirements": [
+        {
+          "id": "camp-roster-required-input-fields",
+          "operator": "equals"
+        }
+      ]
+    },
+    "positive-5": {
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "service-receipts",
+      "grading": "deterministic-functional",
+      "expected_output_validation": false,
+      "metadata_only": true,
+      "metadata_tool_name": "education_center_search_students",
+      "requirements": [
+        {
+          "id": "student-search-no-required-input-fields",
+          "operator": "equals"
+        }
+      ]
+    },
+    "negative-1": {
+      "review_case_number": 6,
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "service-receipts",
+      "grading": "deterministic-functional",
+      "expected_output_validation": false,
+      "verification_type": "no-bos-calls",
+      "requirements": [
+        {
+          "id": "no-bos-capability-change",
+          "operator": "equals"
+        }
+      ],
+      "negative_behavior": "no-bos-calls"
+    },
+    "negative-2": {
+      "review_case_number": 7,
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "service-receipts",
+      "grading": "deterministic-functional",
+      "expected_output_validation": false,
+      "verification_type": "no-bos-calls",
+      "requirements": [
+        {
+          "id": "no-bos-tool-metadata-change",
+          "operator": "equals"
+        }
+      ],
+      "negative_behavior": "no-bos-calls"
+    },
+    "negative-3": {
+      "review_case_number": 8,
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "service-receipts",
+      "grading": "deterministic-functional",
+      "expected_output_validation": false,
+      "verification_type": "no-bos-calls",
+      "requirements": [
+        {
+          "id": "no-bos-invocation-for-unrelated-request",
+          "operator": "equals"
+        }
+      ],
+      "negative_behavior": "no-bos-calls"
     }
   }
 }

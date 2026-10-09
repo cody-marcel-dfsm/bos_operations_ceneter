@@ -1,7 +1,7 @@
 import {isDeepStrictEqual} from 'node:util';
 import {validateOperationDescription, validateApiContractResponse} from '../source/platform/bos-app-discovery/scripts/validate-discovery.mjs';
 
-const transports = new Set(['deterministic_https', 'https_discovery', 'mcp_discovery']);
+const transports = new Set(['deterministic_https', 'https_discovery', 'mcp_discovery', 'mcp_business']);
 const stable = value => JSON.stringify(value, (_, row) => row && typeof row === 'object' && !Array.isArray(row) ? Object.fromEntries(Object.keys(row).sort().map(key => [key, row[key]])) : row);
 function at(value, path) {
   if (path === '') return value;
@@ -30,13 +30,21 @@ function responseSelection(evidence, selector, operator) {
   const keys = Object.keys(selector).filter(key => key !== 'consistent_metadata').sort().join(',');
   const described = keys === 'described_operation,operation,transport';
   const apiContract = keys === 'api_contract_operation,operation,transport';
+  const toolSchema = keys === 'operation,tool_name,transport';
   const selectedError = keys === 'is_error,operation,transport' && expectedError;
-  if (keys !== 'operation,transport' && !described && !apiContract && !selectedError) return undefined;
+  if (keys !== 'operation,transport' && !described && !apiContract && !toolSchema && !selectedError) return undefined;
+  if (toolSchema && (selector.operation !== 'bos.list.context.tools' || selector.transport !== 'mcp_discovery' || typeof selector.tool_name !== 'string' || !/^[a-z][a-z0-9_]{0,127}$/u.test(selector.tool_name))) return undefined;
   if (described && (selector.operation !== 'app.describe' || selector.transport !== 'https_discovery' || typeof selector.described_operation !== 'string' || !/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u.test(selector.described_operation))) return undefined;
   if (apiContract && (selector.operation !== 'api.contract.get' || selector.transport !== 'mcp_discovery' || typeof selector.api_contract_operation !== 'string' || !/^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$/u.test(selector.api_contract_operation))) return undefined;
   const identity = selector.transport === 'mcp_discovery' && ['bos.get.context', 'bos.list.context.tools'].includes(selector.operation);
   if (consistent && !described && !identity) return undefined;
   const matches = (evidence.responses ?? []).map((row, index) => ({row, index})).filter(({row}) => row?.operation === selector.operation && row.transport === selector.transport && (expectedError ? row.is_error === true && row.scope_verified === true : row.successful === true));
+  if (toolSchema) {
+    if (matches.length !== 1 || !identityMetadata(matches[0].row.body, selector.operation)) return undefined;
+    const selectedTools = matches[0].row.body.tools.map((body, toolIndex) => ({body, toolIndex})).filter(({body}) => body.name === selector.tool_name);
+    if (selectedTools.length !== 1) return undefined;
+    return {body: selectedTools[0].body, origin: `/responses/${matches[0].index}/body/tools/${selectedTools[0].toolIndex}`};
+  }
   if (!described && !apiContract) {
     if (consistent ? !matches.length || !matches.every(({row}) => identityMetadata(row.body, selector.operation) && isDeepStrictEqual(row.body, matches[0].row.body)) : matches.length !== 1) return undefined;
     return {body: matches[0].row.body, origin: `/responses/${matches[0].index}/body`};

@@ -26,7 +26,10 @@ client authority or execution state.
    or unavailable, stop before registration and report that exact server
    release dependency. Never substitute a provider, plugin source, or generic
    storage operation.
-5. Register raw BOSL, invoke the bodyless start, and display the exact sanitized
+5. Register raw BOSL with the fresh version-matched contract. For registration v2,
+   validate `compiled: true`, `identity`, and `actions.start`, then invoke that
+   returned bodyless start. For registration v1, interpret the returned legacy
+   register-and-start lifecycle envelope directly. Display the exact sanitized
    category, recipient count, subject, and complete emitted message returned by
    the review instruction.
 6. After exact approval, invoke only the returned `complete`, `step`, and state

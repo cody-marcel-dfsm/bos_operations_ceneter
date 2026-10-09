@@ -2,11 +2,38 @@ import {randomBytes, createHash} from 'node:crypto';
 import {createServer} from 'node:http';
 
 export class ReviewerSessionError extends Error {
-  constructor(code) { super(code); this.name='ReviewerSessionError'; this.code=code; }
+  constructor(code, diagnostic) { super(code); this.name='ReviewerSessionError'; this.code=code; if(diagnostic)this.diagnostic=diagnostic; }
 }
-const fail=code=>{throw new ReviewerSessionError(code);};
+const fail=(code,diagnostic)=>{throw new ReviewerSessionError(code,diagnostic);};
 const secret=()=>randomBytes(32).toString('base64url');
 const decode=value=>value.replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'");
+function resourceReadDiagnostic(method,resource,stage,details={}) {
+  if(method!=='resources/read')return undefined;
+  let resourceName='unknown';
+  try {if(new URL(resource).pathname.split('/').filter(Boolean).at(-1)==='app.describe')resourceName='app.describe';}catch{}
+  return {operation:method,resource:resourceName,stage,...details};
+}
+function safeRpcErrorCode(value) {
+  return [-32700,-32600,-32601,-32602,-32603].includes(value)?value:undefined;
+}
+function rpcErrorCategory(message) {
+  if(typeof message!=='string')return undefined;
+  if(/method.*(?:not found|unsupported)|unknown method/i.test(message))return 'unsupported_method';
+  if(/unknown resource|resource.*(?:not found|missing)|(?:not found|missing).*resource/i.test(message))return 'resource_not_found';
+  if(/unauthori[sz]ed|forbidden|permission/i.test(message))return 'authorization';
+  if(/invalid.*(?:uri|resource)|malformed.*(?:uri|resource)/i.test(message))return 'invalid_resource';
+  if(/session.*(?:expired|invalid)|invalid session/i.test(message))return 'session';
+  return 'unclassified';
+}
+function mediaType(response) {
+  const value=response.headers.get('content-type')?.split(';',1)[0]?.trim().toLowerCase();
+  return ['application/json','text/event-stream','text/plain'].includes(value)?value:'unknown';
+}
+function transportErrorCategory(error) {
+  if(error?.name==='TimeoutError'||error?.name==='AbortError')return 'timeout_or_abort';
+  if(['ECONNRESET','ECONNREFUSED','ETIMEDOUT','EHOSTUNREACH','ENETUNREACH','EAI_AGAIN','ENOTFOUND'].includes(error?.cause?.code??error?.code))return 'network_error';
+  return 'transport_error';
+}
 export function trustedUrl(value, origin) {
   let url;try{url=new URL(value);}catch{fail('reviewer_url_invalid');}
   if(url.protocol!=='https:'||url.origin!==origin||url.username||url.password||url.hash)fail('reviewer_origin_mismatch');
@@ -117,12 +144,18 @@ export async function openReviewerSession({reviewerUrl,resource,fetchImpl=fetch}
     const rpc=async(method,params={})=>{
       const headers={'content-type':'application/json',accept:'application/json, text/event-stream','mcp-protocol-version':negotiatedProtocol};
       if(sessionId)headers['mcp-session-id']=sessionId;
-      const id=++rpcId;const response=await authorized(resource,{method:'POST',headers,body:JSON.stringify({jsonrpc:'2.0',id,method,params})});
-      if(!response.ok)fail('reviewer_mcp_request_failed');
+      const id=++rpcId;let response;
+      try {response=await authorized(resource,{method:'POST',headers,body:JSON.stringify({jsonrpc:'2.0',id,method,params})});}
+      catch(error){if(method==='resources/read')fail('reviewer_mcp_request_failed',resourceReadDiagnostic(method,params.uri,'transport_error',{transport_error_category:transportErrorCategory(error)}));throw error;}
+      if(!response.ok){await response.body?.cancel();fail('reviewer_mcp_request_failed',resourceReadDiagnostic(method,params.uri,'http_response',{http_status:response.status,content_type:mediaType(response)}));}
       const nextSession=response.headers.get('mcp-session-id');if(nextSession)sessionId=nextSession;
-      const text=await response.text();let envelope;
-      try{envelope=JSON.parse(text);}catch{const rows=text.split(/\r?\n/).filter(row=>row.startsWith('data:')).map(row=>{try{return JSON.parse(row.slice(5).trim());}catch{return null;}});envelope=rows.find(row=>row?.id===id);}
-      if(envelope?.id!==id||envelope.error||!Object.hasOwn(envelope,'result'))fail('reviewer_mcp_response_invalid');return envelope.result;
+      let text;
+      try {text=await response.text();}
+      catch(error){if(method==='resources/read')fail('reviewer_mcp_response_invalid',resourceReadDiagnostic(method,params.uri,'body_read_error',{http_status:response.status,content_type:mediaType(response),transport_error_category:transportErrorCategory(error)}));throw error;}
+      let envelope,responseFormat='json';
+      try{envelope=JSON.parse(text);}catch{responseFormat='sse';const rows=text.split(/\r?\n/).filter(row=>row.startsWith('data:')).map(row=>{try{return JSON.parse(row.slice(5).trim());}catch{return null;}});envelope=rows.find(row=>row?.id===id);}
+      const diagnostic=resourceReadDiagnostic(method,params.uri,'jsonrpc_response',{http_status:response.status,content_type:mediaType(response),response_bytes:Buffer.byteLength(text),response_format:responseFormat,request_id_matches:envelope?.id===id,jsonrpc_error_present:!!envelope?.error,result_present:!!envelope&&Object.hasOwn(envelope,'result'),...(envelope?.error&&safeRpcErrorCode(envelope.error.code)!==undefined?{jsonrpc_error_code:safeRpcErrorCode(envelope.error.code)}:{}),...(envelope?.error?.message?{jsonrpc_error_category:rpcErrorCategory(envelope.error.message)}:{})});
+      if(envelope?.id!==id||envelope.error||!Object.hasOwn(envelope,'result'))fail('reviewer_mcp_response_invalid',diagnostic);return envelope.result;
     };
     const negotiation=await rpc('initialize',{protocolVersion:requestedProtocol,capabilities:{},clientInfo:{name:'marketplace-reviewer-test',version:'1'}});
     if(negotiation.protocolVersion!==requestedProtocol)fail('reviewer_mcp_protocol_unsupported');

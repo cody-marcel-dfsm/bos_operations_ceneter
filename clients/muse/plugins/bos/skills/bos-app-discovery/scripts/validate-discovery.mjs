@@ -97,7 +97,7 @@ const leadDirectorAppDescribe = Object.freeze({
 const operationIdPattern = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u;
 const semanticOperationPattern = /^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$/u;
 const semanticVersionPattern = /^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/u;
-const leadDirectorBoslUriPattern = /^bos:\/\/apps\/lead-director\/bosl\/([a-f0-9]{32})\/(schema|reference|examples)$/u;
+const leadDirectorBoslUriPattern = /^bos:\/\/apps\/lead-director\/bosl\/([a-f0-9]{32})\/(schema|reference|examples)(?:\?context_handle=(bos_ctx_v2_[a-f0-9]{64}))?$/u;
 const sha256Pattern = /^[a-f0-9]{64}$/u;
 const bosContextHeader = "X-BOS-Context-Handle";
 
@@ -383,15 +383,22 @@ function validateBoslDescriptor(bosl, label) {
     ["examples_uri", "examples"]
   ]);
   let partition;
+  let qualifier;
   for (const [field, expectedKind] of expectedKinds) {
     requireString(bosl[field], `${label}.${field}`);
     const match = leadDirectorBoslUriPattern.exec(bosl[field]);
     if (!match || match[2] !== expectedKind) {
       throw new Error(`${label}.${field} must be a partitioned Lead Director BOSL ${expectedKind} URI`);
     }
-    partition ??= match[1];
+    if (partition === undefined) {
+      partition = match[1];
+      qualifier = match[3];
+    }
     if (match[1] !== partition) {
       throw new Error(`${label} BOSL resource URIs must use one shared partition`);
+    }
+    if (match[3] !== qualifier) {
+      throw new Error(`${label} BOSL resource URIs must use one identical context qualifier`);
     }
   }
   requireString(bosl.descriptor_etag, `${label}.descriptor_etag`);
@@ -904,8 +911,8 @@ export function validateJourneyRegistrationContractResponse(response, expected =
   const fields = new Set(["operation", "contract_version", "title", "description", "input_schema", "output_schema", "limits", "guarantees", "execution", "public_errors", "ttlMs", "cacheScope"]);
   requireExactKeys(response, fields, label);
   for (const field of fields) if (!Object.hasOwn(response, field)) throw new Error(`${label}.${field} is required`);
-  if (response.operation !== "lead-director.journeys.register" ||
-      response.contract_version !== "lead-director-journey-registration/v1") {
+  const version = /^lead-director-journey-registration\/(v[12])$/u.exec(response.contract_version)?.[1];
+  if (response.operation !== "lead-director.journeys.register" || !version) {
     throw new Error(`${label} must declare the exact published operation and version`);
   }
   if ((expected.operation !== undefined && expected.operation !== response.operation) || expected.source !== undefined) {
@@ -928,6 +935,45 @@ export function validateJourneyRegistrationContractResponse(response, expected =
       response.output_schema.oneOf.some(branch => branch.type !== "object" || branch.additionalProperties !== false)) {
     throw new Error(`${label}.output_schema must declare closed object response variants`);
   }
+  const signature = branch => JSON.stringify([
+    branch.properties?.status?.const ?? branch.properties?.compiled?.const ?? null,
+    [...(branch.required ?? [])].sort()
+  ]);
+  const variants = [
+    ["awaiting_client", ["identity", "status", "current_step", "instruction"]],
+    ["step_completed", ["identity", "status", "action"]],
+    ["failure_caught", ["identity", "status", "error", "action"]],
+    ["in_progress", ["identity", "status", "current_node", "retry_after_seconds", "action"]],
+    ["client_action_required", ["identity", "status", "current_step", "error", "resolution"]],
+    ["completed", ["identity", "status", "outcome"]],
+    ["failed", ["identity", "status", "error", "failed_at", "expires_at", "receipt"]],
+    ["expired", ["identity", "status", "error", "expired_at"]],
+    [false, ["compiled", "error", "errors"]],
+    [null, ["error", "retry_after_seconds", "policy", "resolution"]],
+    [null, ["identity", "error", "policy", "resolution"]],
+    [null, ["error"]]
+  ];
+  if (version === "v2") variants.push([true, ["compiled", "identity", "actions"]], ["not_started", ["identity", "status", "action"]]);
+  const expectedVariants = new Set(variants.map(([state, fields]) => JSON.stringify([state, fields.sort()])));
+  const branches = response.output_schema.oneOf;
+  if (branches.length !== expectedVariants.size || new Set(branches.map(signature)).size !== expectedVariants.size ||
+      branches.some(branch => !expectedVariants.has(signature(branch)) ||
+        JSON.stringify(Object.keys(branch.properties ?? {}).sort()) !== JSON.stringify([...(branch.required ?? [])].sort()))) {
+    throw new Error(`${label}.output_schema must match the exact ${version} response variants`);
+  }
+  if (version === "v2") {
+    const actions = branches.find(branch => branch.properties?.compiled?.const === true).properties.actions;
+    const start = actions?.properties?.start;
+    if (actions?.type !== "object" || actions.additionalProperties !== false ||
+        JSON.stringify(actions.required) !== '["start"]' || Object.keys(actions.properties ?? {}).join() !== "start" ||
+        start?.type !== "object" || start.additionalProperties !== false ||
+        JSON.stringify([...(start.required ?? [])].sort()) !== '["href","method","payload_schema","verb"]' ||
+        JSON.stringify(Object.keys(start.properties ?? {}).sort()) !== '["href","method","payload_schema","verb"]' ||
+        start.properties.verb.const !== "start" || start.properties.method.const !== "POST" ||
+        start.properties.payload_schema.type !== "null" || start.properties.href.type !== "string" || start.properties.href.pattern !== "^/") {
+      throw new Error(`${label}.output_schema must preserve the exact bodyless POST actions.start schema`);
+    }
+  }
   const limitFields = new Set(["document_bytes", "string_bytes", "nesting_depth", "nodes", "transitions", "predicates", "node_visits", "total_visits", "operation_retries", "operation_duration_seconds", "execution_duration_seconds", "fan_out", "created_per_user_per_hour", "active_per_user", "active_per_application_organization", "execution_ttl_hours", "metadata_retention_days"]);
   requireObject(response.limits, `${label}.limits`);
   requireExactKeys(response.limits, limitFields, `${label}.limits`);
@@ -940,11 +986,11 @@ export function validateJourneyRegistrationContractResponse(response, expected =
   requireObject(response.execution, `${label}.execution`);
   requireExactKeys(response.execution, new Set(["method", "uri", "transport", "context_header"]), `${label}.execution`);
   if (response.execution.method !== "POST" || typeof response.execution.uri !== "string" ||
-      !/^\/bos\/apps\/lead-director\/api\/v1\/organizations\/[A-Za-z0-9][A-Za-z0-9._~-]{0,127}\/journeys\/register$/u.test(response.execution.uri)) {
+      !new RegExp(`^/bos/apps/lead-director/api/${version}/organizations/[A-Za-z0-9][A-Za-z0-9._~-]{0,127}/journeys/register$`, "u").test(response.execution.uri)) {
     throw new Error(`${label}.execution must use the exact safe registration POST route`);
   }
   const expanded = Object.hasOwn(response.execution, "transport") || Object.hasOwn(response.execution, "context_header");
-  if (expanded && (response.execution.transport !== "https" || response.execution.context_header !== bosContextHeader)) {
+  if ((expanded || version === "v2") && (response.execution.transport !== "https" || response.execution.context_header !== bosContextHeader)) {
     throw new Error(`${label}.execution must declare HTTPS and the current context header together`);
   }
   if (!Array.isArray(response.public_errors) || response.public_errors.length === 0) throw new Error(`${label}.public_errors must be non-empty`);

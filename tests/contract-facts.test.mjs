@@ -7,11 +7,21 @@ import {syntheticOperationDescribe, syntheticApiContract} from './helpers/synthe
 
 const scope = {organization: 'Synthetic organization', application: 'Synthetic application', installation: 'Synthetic installation', role: 'Reviewer'};
 const registration = () => JSON.parse(readFileSync(new URL('./fixtures/journey-registration-contract.json', import.meta.url), 'utf8'));
+const registrationV2 = () => JSON.parse(readFileSync(new URL('./fixtures/journey-registration-contract-v2.json', import.meta.url), 'utf8'));
 const parent = (...operations) => ({...syntheticOperationDescribe(), operations});
 const operation = name => ({...structuredClone(syntheticOperationDescribe().operations[0]), operation: name});
 const entry = (document, kind = 'operation-describe', labels = scope) => ({kind, document, scope: labels});
 const execution = row => Object.fromEntries(row.execution.filter(fact => fact.declared).map(fact => [fact.field, fact.value]));
 const limits = row => Object.fromEntries(row.limits.map(fact => [fact.field, fact.value]));
+
+test('registration projections preserve separately advertised v1 and v2 versions', () => {
+  const documents = [registration(), registrationV2()];
+  const result = projectContractFacts({documents: documents.map(raw => entry(raw, 'api-contract'))});
+  assert.deepEqual(result.operations.map(row => row.contract_version), documents.map(raw => raw.contract_version));
+  assert.equal(result.operations.length, 2);
+  assert.deepEqual(documents[0], registration());
+  assert.deepEqual(documents[1], registrationV2());
+});
 
 test('projects every registration limit and safe execution field without mutating observed contracts', () => {
   const raw = registration();

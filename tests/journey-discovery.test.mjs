@@ -261,6 +261,43 @@ test("app.describe accepts authenticated BOSL resource links without authority d
   );
 });
 
+test("app.describe preserves exact BOSL resource links with one shared context qualifier", () => {
+  const qualifier = `?context_handle=bos_ctx_v2_${"a".repeat(64)}`;
+  const bosl = Object.fromEntries(Object.entries(appDescribe.bosl).map(([key, value]) =>
+    [key, key.endsWith("_uri") ? value + qualifier : value]
+  ));
+  const qualified = {...appDescribe, bosl};
+  assert.equal(validateAppDescribe(qualified), qualified);
+  assert.deepEqual(qualified.bosl, bosl);
+  for (const suffix of [
+    "?context_handle=bos_ctx_v2_short",
+    `?context_handle=bos_ctx_v2_${"A".repeat(64)}`,
+    qualifier + "&extra=value",
+    qualifier + qualifier.replace("?", "&"),
+    qualifier + "#fragment",
+    "?foreign=value",
+    "#fragment"
+  ]) {
+    assert.throws(() => validateAppDescribe({...qualified, bosl: {
+      ...bosl, schema_uri: appDescribe.bosl.schema_uri + suffix
+    }}), /partitioned Lead Director BOSL schema URI/);
+  }
+  for (const reference_uri of [
+    appDescribe.bosl.reference_uri,
+    appDescribe.bosl.reference_uri + `?context_handle=bos_ctx_v2_${"b".repeat(64)}`
+  ]) {
+    assert.throws(() => validateAppDescribe({...qualified, bosl: {...bosl, reference_uri}}),
+      /identical context qualifier/);
+  }
+  assert.throws(() => validateAppDescribe({...appDescribe, bosl: {
+    ...appDescribe.bosl, reference_uri: bosl.reference_uri
+  }}), /identical context qualifier/);
+  assert.throws(() => validateAppDescribe({...qualified, bosl: {
+    ...bosl,
+    reference_uri: `bos://apps/lead-director/bosl/${"c".repeat(32)}/reference${qualifier}`
+  }}), /shared partition/);
+});
+
 test("URL-backed synthetic BOS discovery satisfies every BOC consumer contract", () => {
   assert.equal(validateAppDescribe(appDescribe), appDescribe);
   assert.deepEqual(appDescribe.describe.operations, [

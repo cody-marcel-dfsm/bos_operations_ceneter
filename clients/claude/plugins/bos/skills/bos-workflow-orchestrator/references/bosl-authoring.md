@@ -48,6 +48,19 @@ identifier, execution identifier, authority selector, or idempotency key. A
 compile failure changes no definition. Correct its stable public findings and
 resubmit only when the user still wants the journey.
 
+For `lead-director-journey-registration/v2`, successful registration returns exactly `compiled: true`, the customer-defined
+`identity`, and `actions.start`. Registration compiles and installs the definition;
+execution begins only when the returned signed bodyless POST start action is
+invoked. Validate this response with `validateRegistrationResponse` and use
+`interpretJourneyResponse` to obtain that exact action. Correct a compile failure
+before resubmitting; it returns no lifecycle action.
+
+For `lead-director-journey-registration/v1`, registration retains its published
+register-and-start behavior. Interpret its returned authoritative lifecycle
+envelope directly; invoke only the exact action it returns. Bind each discovered
+registration version to its exact matching route and schema, and refresh
+discovery rather than constructing a different version route.
+
 For identity-v2, the BOS transport adapter attaches the current fresh opaque
 handle under the registration contract's discovered
 `execution.context_header`. The header name must be

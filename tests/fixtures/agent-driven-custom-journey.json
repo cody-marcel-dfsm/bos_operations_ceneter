@@ -98,11 +98,13 @@
   "registration": {
     "compiled": true,
     "identity": "meeting-follow-up:gcal-event-fall-enrollment-planning",
-    "action": {
-      "verb": "start",
-      "method": "POST",
-      "href": "/bos/apps/lead-director/api/v1/organizations/example/journeys/meeting-follow-up%3Agcal-event-fall-enrollment-planning/start?capability=opaque-start",
-      "payload_schema": null
+    "actions": {
+      "start": {
+        "verb": "start",
+        "method": "POST",
+        "href": "/bos/apps/lead-director/api/v1/organizations/example/journeys/meeting-follow-up%3Agcal-event-fall-enrollment-planning/start?capability=opaque-start",
+        "payload_schema": null
+      }
     }
   },
   "start": {

@@ -8,6 +8,40 @@ import {validateApiContractResponse} from '../source/platform/bos-app-discovery/
 // URL-discovered metadata with a synthetic organization address; no sibling code.
 const registration=JSON.parse(await readFile(new URL('./fixtures/journey-registration-contract.json',import.meta.url),'utf8'));
 const clone=()=>structuredClone(registration);
+const registrationV2=JSON.parse(await readFile(new URL('./fixtures/journey-registration-contract-v2.json',import.meta.url),'utf8'));
+
+test('fresh advertised v1 and v2 registration validate with matching route and response schemas',()=>{
+ for(const contract of [registration,registrationV2]){
+  const original=JSON.stringify(contract);
+  assert.equal(validateApiContractResponse(contract,{operation:'lead-director.journeys.register'}),contract);
+  assert.equal(JSON.stringify(contract),original);
+  const script=fileURLToPath(new URL('../source/platform/bos-app-discovery/scripts/validate-discovery.mjs',import.meta.url));
+  const result=spawnSync(process.execPath,[script,'api-contract'],{input:JSON.stringify({response:contract}),encoding:'utf8'});
+  assert.equal(result.status,0,result.stderr);
+ }
+});
+test('registration rejects crosswired versions, response variants and widened start authority',()=>{
+ for(const base of [registration,registrationV2]){
+  const other=base===registration?registrationV2:registration;
+  for(const field of ['contract_version','output_schema','execution']){
+   const value=structuredClone(base);value[field]=structuredClone(other[field]);
+   assert.throws(()=>validateApiContractResponse(value),/version|route|response variants/);
+  }
+  const unknown=structuredClone(base);unknown.contract_version='lead-director-journey-registration/v3';
+  assert.throws(()=>validateApiContractResponse(unknown),/version/);
+ }
+ for(const mutate of [
+  v=>{v.output_schema.oneOf[0].properties.actions.required=[];},
+  v=>{v.output_schema.oneOf[0].properties.actions.properties.stop={type:'object'};},
+  v=>{v.output_schema.oneOf[0].properties.actions.properties.start.properties.method.const='GET';},
+  v=>{v.output_schema.oneOf[0].properties.actions.properties.start.properties.payload_schema.type='object';},
+  v=>{v.output_schema.oneOf[0].properties.actions.properties.start.additionalProperties=true;},
+  v=>{v.output_schema.oneOf[0].properties.actions.properties.start.properties.href.pattern='^https:';},
+  v=>{v.output_schema.oneOf.push(structuredClone(v.output_schema.oneOf[0]));},
+  v=>{v.output_schema.oneOf[0].properties.extra={type:'string'};},
+  v=>{delete v.execution.transport;delete v.execution.context_header;}
+ ]){const value=structuredClone(registrationV2);mutate(value);assert.throws(()=>validateApiContractResponse(value));}
+});
 
 test('published registration subtype validates through the existing entry and CLI',()=>{
  const expected={operation:'lead-director.journeys.register'},original=JSON.stringify(registration);

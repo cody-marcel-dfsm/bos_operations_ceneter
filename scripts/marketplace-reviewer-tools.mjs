@@ -9,6 +9,57 @@ import {trustedUrl} from './marketplace-reviewer-session.mjs';
 import {reviewerFailureCode,reviewerErrorDiagnostic,reviewerDiagnosticControl} from './marketplace-reviewer-diagnostics.mjs';
 
 const controls=new Set(['app.describe','plugins.list','service.describe','api.contract.get','discovery.refresh','bos_get_context']);
+const resourceStages=new Set(['transport_error','http_response','body_read_error','jsonrpc_response','mcp_result_error']);
+const resourceCategories=new Set(['resource_not_found','authorization','invalid_resource','session','unsupported_method','unclassified']);
+const resourceTransportErrors=new Set(['network_error','timeout_or_abort','transport_error']);
+function safeResourceReadDiagnostic(value={}) {
+  const status=value.http_status;
+  const category=resourceCategories.has(value.jsonrpc_error_category)?value.jsonrpc_error_category:undefined;
+  return {
+    operation:'resources/read',resource:value.resource==='app.describe'?'app.describe':'unknown',
+    stage:resourceStages.has(value.stage)?value.stage:'unknown',
+    ...(Number.isInteger(status)&&status>=100&&status<=599?{http_status:status}:{}),
+    ...(typeof value.content_type==='string'?{content_type:['application/json','text/event-stream','text/plain'].includes(value.content_type)?value.content_type:'unknown'}:{}),
+    ...(Number.isInteger(value.response_bytes)&&value.response_bytes>=0?{response_bytes:Math.min(value.response_bytes,10_000_000)}:{}),
+    ...(['json','sse'].includes(value.response_format)?{response_format:value.response_format}:{}),
+    ...(typeof value.request_id_matches==='boolean'?{request_id_matches:value.request_id_matches}:{}),
+    ...(typeof value.jsonrpc_error_present==='boolean'?{jsonrpc_error_present:value.jsonrpc_error_present}:{}),
+    ...(typeof value.result_present==='boolean'?{result_present:value.result_present}:{}),
+    ...(Number.isInteger(value.jsonrpc_error_code)&&[-32700,-32600,-32601,-32602,-32603].includes(value.jsonrpc_error_code)?{jsonrpc_error_code:value.jsonrpc_error_code}:{}),
+    ...(category?{jsonrpc_error_category:category}:{}),
+    ...(resourceTransportErrors.has(value.transport_error_category)?{transport_error_category:value.transport_error_category}:{}),
+    ...(Number.isInteger(value.content_count)&&value.content_count>=0?{content_count:Math.min(value.content_count,1000)}:{}),
+  };
+}
+function recordResourceReadDiagnostic(state,value) {
+  state.resource_read_diagnostics??=[];
+  if(state.resource_read_diagnostics.length<8)state.resource_read_diagnostics.push(safeResourceReadDiagnostic(value));
+}
+function observedResourceLabel(uri) {
+  try {return new URL(uri).pathname.split('/').filter(Boolean).at(-1)==='app.describe'?'app.describe':'unknown';}catch{return 'unknown';}
+}
+const positive3CampOperation='education_center_get_camp_roster_report';
+const positive3CalimaticAuthorizationResponse=(response,resource)=>{
+  if(response?.isError!==true)return null;
+  const payload=body(response),result=payload?.result,error=result?.error??result;
+  const code=error?.provider_error_code??error?.code??error?.error_code;
+  const authorizations=error?.required_authorizations??result?.required_authorizations;
+  if(code!=='provider_authorization_required'||error?.status!=='authorization_required'||!Array.isArray(authorizations))return null;
+  const origin=new URL(resource).origin;
+  const authorization=authorizations.find(value=>{
+    if(value?.authorization_kind!=='api_key'||value.status!=='configuration_required'||typeof value.authorization_url!=='string')return false;
+    try{
+      const url=new URL(value.authorization_url);
+      return url.protocol==='https:'&&url.origin===origin&&url.pathname==='/api/v1/mcp/provider-recovery'&&!url.username&&!url.password&&!url.hash;
+    }catch{return false;}
+  });
+  if(!authorization)return null;
+  return {contract_version:payload.contract_version,context:payload.context,result:{error:{
+    provider_error_code:'provider_authorization_required',status:'authorization_required',
+    message:'Calimatic is not authenticated. Configure its API key using the secure BOS configuration link included with this response.',
+    required_authorizations:[{authorization_kind:'api_key',status:'configuration_required',authorization_url:authorization.authorization_url}]
+  }}};
+};
 export function reviewerDiscoveryDocument(value,state,resourceUri) {
   let document=body(value);
   let extracted=false;
@@ -93,6 +144,11 @@ export async function createReviewerTools({session,state,release}) {
   const {createBosExternalDependencyAdapter}=await import(pathToFileURL(adapterPath).href);
   const offered=(await session.rpc('tools/list')).tools;
   if(!Array.isArray(offered))throw new Error('reviewer_discovery_tools_missing');
+  const caseDefinitions=state.product==='education-center'&&state.case_id==='positive-3'?definitions.map(tool=>tool.name==='bos_control_discover'?{
+    ...tool,
+    description:'Run discovered BOS control-plane operations. For Education Center positive-3 only, this host also permits the single approved read-only education_center_get_camp_roster_report request for the fixed reviewer date range after the class-operations skill is read and app.describe is validated.',
+    inputSchema:{...tool.inputSchema,properties:{...tool.inputSchema.properties,operation:{...tool.inputSchema.properties.operation,enum:[...controls,positive3CampOperation]}}}
+  }:tool):definitions;
   const documents=new Map(),contacts=new Map(),references=new Map(),trustedSchemaDocuments=new Set(),originalDocuments=new Map(),controlFailureDiagnostics=new WeakMap(),ajv=new Ajv({strict:false,validateFormats:false});
   let nextReference=0,authorizedContextSource=null;
   const clearReferences=()=>{documents.clear();contacts.clear();references.clear();trustedSchemaDocuments.clear();originalDocuments.clear();authorizedContextSource=null;};
@@ -315,11 +371,70 @@ export async function createReviewerTools({session,state,release}) {
     if(name==='bos_read_resource'){
       const matches=(state.resources??[]).filter(uri=>sanitized(uri)===args.uri);
       if(matches.length!==1)throw new Error('reviewer_resource_not_observed');
-      return guarded({tool_name:'read_mcp_resource',tool_input:{server:'BOS-Platform',uri:matches[0]}},()=>session.rpc('resources/read',{uri:matches[0]}));
+      const resourceLabel=observedResourceLabel(matches[0]);
+      try {
+        const result=await guarded({tool_name:'read_mcp_resource',tool_input:{server:'BOS-Platform',uri:matches[0]}},async()=>{
+          const value=await session.rpc('resources/read',{uri:matches[0]});
+          if(value?.isError===true){
+            const code=value.structuredContent?.error_code;
+            const diagnostic=safeResourceReadDiagnostic({operation:'resources/read',resource:resourceLabel,stage:'mcp_result_error',content_count:Array.isArray(value.content)?value.content.length:0});
+            recordResourceReadDiagnostic(state,diagnostic);
+            const failure=new Error('reviewer_mcp_resource_error');failure.code='reviewer_mcp_resource_error';failure.diagnostic=diagnostic;
+            if(typeof code==='string'&&['resource_not_found','authorization_denied','invalid_resource','session_expired'].includes(code))failure.safe_server_code=code;
+            throw failure;
+          }
+          return value;
+        });
+        return result;
+      } catch(error) {
+        const diagnostic=safeResourceReadDiagnostic({...error?.diagnostic,resource:resourceLabel});
+        if(error?.diagnostic)recordResourceReadDiagnostic(state,diagnostic);
+        const errorCode=reviewerFailureCode(error,'reviewer_mcp_resource_error');
+        const clientError={isError:true,error_code:errorCode,message:'BOS could not read the requested discovery resource.',diagnostic,...(typeof error?.safe_server_code==='string'?{server_error_code:error.safe_server_code}:{})};
+        state.observations.push({tool:'resources.read',input:{resource:resourceLabel},response:{error_code:errorCode,diagnostic},is_error:true});
+        return clientError;
+      }
     }
     if(name==='bos_control_discover'){
-      if(!controls.has(args.operation))throw new Error('reviewer_mcp_business_call_forbidden');
-      return guarded({tool_name:'mcp__BOS__bos_execute',tool_input:{context_handle:state.handle,tool_name:args.operation,arguments:args.arguments}},()=>mcp('bos.execute',{context_handle:state.handle,tool_name:args.operation,arguments:args.arguments}));
+      const campOperation=args.operation===positive3CampOperation;
+      if(!controls.has(args.operation)&&!(campOperation&&state.product==='education-center'&&state.case_id==='positive-3'))throw new Error('reviewer_mcp_business_call_forbidden');
+      if(campOperation){
+        const expectedArguments={query:{start_date:'2026-09-14',end_date:'2026-09-18'}};
+        const exactKeys=value=>value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).sort().join(',');
+        const guardIndex=state.observations.findIndex(row=>row.tool==='guard.status'&&row.response?.ready===true);
+        const contextIndex=state.observations.findIndex(row=>row.tool==='bos.get.context'&&row.is_error!==true);
+        const toolsIndex=state.observations.findIndex(row=>row.tool==='bos.list.context.tools'&&row.is_error!==true);
+        const skillIndex=state.observations.findIndex(row=>row.tool==='read.installed'&&row.is_error!==true&&row.input?.product==='education-center'&&row.input?.path==='skills/education-center-class-operations/SKILL.md');
+        const descriptor=state.tools?.find(row=>row.name===positive3CampOperation);
+        const priorBusinessCall=state.education_positive3_call_consumed===true||state.observations.some(row=>row.tool==='bos.execute'&&!controls.has(row.input?.tool_name));
+        if(!state.canary||guardIndex<0)throw new Error('reviewer_camp_guard_not_ready');
+        if(!state.handle||!state.expected_error_operations?.includes(positive3CampOperation)||!state.allowed_effects?.includes('read'))throw new Error('reviewer_camp_context_not_discovered');
+        if(exactKeys(args)!=='arguments,operation'||exactKeys(args.arguments)!=='query'||exactKeys(args.arguments.query)!=='end_date,start_date'||digest(args.arguments)!==digest(expectedArguments))throw new Error('reviewer_camp_arguments_invalid');
+        if(skillIndex<guardIndex)throw new Error('reviewer_camp_skill_not_read');
+        if(contextIndex<skillIndex||contextIndex<guardIndex)throw new Error('reviewer_camp_context_not_discovered');
+        if(toolsIndex<contextIndex)throw new Error('reviewer_camp_tools_not_discovered');
+        if(!descriptor)throw new Error('reviewer_camp_operation_not_advertised');
+        if(!state.validated_contracts?.['app-describe']||Object.values(state.failed_validations??{}).some(Boolean))throw new Error('reviewer_published_prerequisite_required');
+        const declared=descriptor._meta?.['bos/effect'];
+        const effect=declared==='resource'&&/\.read$/.test(descriptor._meta?.['bos/capability']??'')?'read':declared;
+        if(effect!=='read'||descriptor.annotations?.readOnlyHint===false||descriptor.annotations?.destructiveHint===true)throw new Error('reviewer_effect_not_approved');
+        if(priorBusinessCall)throw new Error('reviewer_camp_operation_already_called');
+        if(!ajv.compile(descriptor.inputSchema)(args.arguments))throw new Error('reviewer_input_invalid');
+      }
+      const observationCount=state.observations.length;
+      if(campOperation){state.education_positive3_call_consumed=true;state.education_positive3_read_approval={operation:positive3CampOperation,effect:'read',input_sha256:digest(args.arguments),used:false};}
+      let result,secureConfigurationActionValidated=false;
+      try{
+        result=await guarded({tool_name:'mcp__BOS__bos_execute',tool_input:{context_handle:state.handle,tool_name:args.operation,arguments:args.arguments}},async()=>{
+          const response=await mcp('bos.execute',{context_handle:state.handle,tool_name:args.operation,arguments:args.arguments});
+          // This approved read may return live roster data if provider configuration changes.
+          // Keep that data out of both retained observations and the model response.
+          if(campOperation){const safeAuthorizationResponse=positive3CalimaticAuthorizationResponse(response,state.resource);secureConfigurationActionValidated=!!safeAuthorizationResponse;if(!safeAuthorizationResponse)return {isError:true,structuredContent:{error:{code:'expected_calimatic_configuration_response_missing'}}};return {isError:true,structuredContent:safeAuthorizationResponse};}
+          return response;
+        });
+      }finally{if(campOperation)delete state.education_positive3_read_approval;}
+      if(campOperation&&state.observations.length===observationCount+1){state.observations.at(-1).transport='mcp_business';state.observations.at(-1).secure_configuration_action_validated=secureConfigurationActionValidated;}
+      return result;
     }
     if(name==='bos_https_describe'){
       if(!state.canary||state.kind==='negative'||!state.handle||!state.allowed_effects?.includes('read'))throw new Error('reviewer_discovery_not_approved');
@@ -373,7 +488,7 @@ export async function createReviewerTools({session,state,release}) {
     return {status:result.status,body:sanitized(result.body,bosOrigin),operation:contact.operation,transport:'https'};
   };
   state.host_tool_outcomes??=[];
-  return {definitions,call:async(name,args)=>{
+  return {definitions:caseDefinitions,call:async(name,args)=>{
     try{
       const result=await call(name,args);
       if(result?.isError===true){
@@ -383,8 +498,17 @@ export async function createReviewerTools({session,state,release}) {
           state.kind==='authorization-denial'&&state.authorization_denial_used===true&&
           denial?.operation==='unadvertised_disable_operation'&&denial?.error_code==='authorization_denied'&&
           denial?.input_sha256===digest({org_id:'ACME.org'})&&result.structuredContent?.error_code==='authorization_denied';
-        state.host_tool_outcomes.push({tool:name,kind:expectedCanary?'expected_guard_canary':expectedAuthorizationDenial?'expected_service_denial':'tool_error'});
+        const latest=state.observations.at(-1),configurationError=result.document?.error;
+        const expectedCalimaticConfiguration=name==='bos_control_discover'&&state.product==='education-center'&&state.case_id==='positive-3'&&state.kind==='positive'&&
+          configurationError?.provider_error_code==='provider_authorization_required'&&
+          configurationError.status==='authorization_required'&&configurationError.required_authorizations?.some(value=>
+            value?.authorization_kind==='api_key'&&value.status==='configuration_required'&&
+            typeof value.authorization_url==='string'&&value.authorization_url.startsWith(new URL('/api/v1/mcp/provider-recovery',state.resource).origin+'/api/v1/mcp/provider-recovery'))===true&&
+          latest?.tool==='bos.execute'&&latest.input?.tool_name===positive3CampOperation&&latest.is_error===true&&
+          latest.scope_verified===true&&latest.secure_configuration_action_validated===true;
+        state.host_tool_outcomes.push({tool:name,kind:expectedCanary?'expected_guard_canary':expectedAuthorizationDenial?'expected_service_denial':expectedCalimaticConfiguration?'expected_provider_configuration':'tool_error'});
         if(expectedAuthorizationDenial)return {...result,isError:false,expected_denial:true};
+        if(expectedCalimaticConfiguration)return {...result,isError:false,expected_configuration:true};
       } else state.host_tool_outcomes.push({tool:name,kind:'completed'});
       return result;
     }catch(error){

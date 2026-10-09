@@ -1,0 +1,2065 @@
+{
+  "operation": "lead-director.journeys.register",
+  "contract_version": "lead-director-journey-registration/v2",
+  "title": "Register an Agent-Driven Custom Journey",
+  "description": "Compile, validate, and atomically upsert one user-scoped raw BOSL journey document; start execution only with the returned start action.",
+  "input_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://dfsm.ai/contracts/bosl/v1/schema",
+    "title": "BOSL V1 Journey Document",
+    "type": "object",
+    "required": [
+      "identity",
+      "name",
+      "inputs",
+      "entry",
+      "nodes"
+    ],
+    "properties": {
+      "identity": {
+        "type": "string",
+        "minLength": 1
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255
+      },
+      "inputs": {
+        "type": "object",
+        "maxProperties": 128
+      },
+      "entry": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128
+      },
+      "nodes": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 64,
+        "items": {
+          "type": "object",
+          "required": [
+            "code",
+            "type",
+            "inputs",
+            "outputs"
+          ],
+          "properties": {
+            "code": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,127}$"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "client",
+                "server"
+              ]
+            },
+            "operation": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 255
+            },
+            "instruction": {
+              "type": "object",
+              "required": [
+                "goal",
+                "message"
+              ],
+              "properties": {
+                "goal": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                "message": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4000
+                }
+              },
+              "additionalProperties": false
+            },
+            "inputs": {
+              "type": "object",
+              "maxProperties": 64,
+              "additionalProperties": {
+                "type": "object",
+                "oneOf": [
+                  {
+                    "required": [
+                      "value"
+                    ],
+                    "properties": {
+                      "value": {}
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "required": [
+                      "from"
+                    ],
+                    "properties": {
+                      "from": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "optional": {
+                        "type": "boolean",
+                        "const": true
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "outputs": {
+              "type": "object",
+              "maxProperties": 64,
+              "additionalProperties": {
+                "type": "object"
+              }
+            },
+            "next": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "transitions": {
+              "type": "object",
+              "required": [
+                "cases",
+                "default"
+              ],
+              "properties": {
+                "cases": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "when",
+                      "next"
+                    ],
+                    "properties": {
+                      "when": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "required": [
+                              "left",
+                              "op"
+                            ],
+                            "properties": {
+                              "left": {
+                                "type": "object",
+                                "oneOf": [
+                                  {
+                                    "required": [
+                                      "from"
+                                    ],
+                                    "properties": {
+                                      "from": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "required": [
+                                      "value"
+                                    ],
+                                    "properties": {
+                                      "value": {}
+                                    },
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              },
+                              "op": {
+                                "type": "string",
+                                "enum": [
+                                  "eq",
+                                  "neq",
+                                  "exists",
+                                  "not_exists",
+                                  "gt",
+                                  "gte",
+                                  "lt",
+                                  "lte"
+                                ]
+                              },
+                              "right": {
+                                "type": "object",
+                                "oneOf": [
+                                  {
+                                    "required": [
+                                      "from"
+                                    ],
+                                    "properties": {
+                                      "from": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "required": [
+                                      "value"
+                                    ],
+                                    "properties": {
+                                      "value": {}
+                                    },
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "required": [
+                              "all"
+                            ],
+                            "properties": {
+                              "all": {
+                                "type": "array",
+                                "minItems": 1,
+                                "items": {
+                                  "type": "object",
+                                  "required": [
+                                    "left",
+                                    "op"
+                                  ],
+                                  "properties": {
+                                    "left": {
+                                      "type": "object",
+                                      "oneOf": [
+                                        {
+                                          "required": [
+                                            "from"
+                                          ],
+                                          "properties": {
+                                            "from": {
+                                              "type": "string",
+                                              "minLength": 1
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "required": [
+                                            "value"
+                                          ],
+                                          "properties": {
+                                            "value": {}
+                                          },
+                                          "additionalProperties": false
+                                        }
+                                      ]
+                                    },
+                                    "op": {
+                                      "type": "string",
+                                      "enum": [
+                                        "eq",
+                                        "neq",
+                                        "exists",
+                                        "not_exists",
+                                        "gt",
+                                        "gte",
+                                        "lt",
+                                        "lte"
+                                      ]
+                                    },
+                                    "right": {
+                                      "type": "object",
+                                      "oneOf": [
+                                        {
+                                          "required": [
+                                            "from"
+                                          ],
+                                          "properties": {
+                                            "from": {
+                                              "type": "string",
+                                              "minLength": 1
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "required": [
+                                            "value"
+                                          ],
+                                          "properties": {
+                                            "value": {}
+                                          },
+                                          "additionalProperties": false
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "required": [
+                              "any"
+                            ],
+                            "properties": {
+                              "any": {
+                                "type": "array",
+                                "minItems": 1,
+                                "items": {
+                                  "type": "object",
+                                  "required": [
+                                    "left",
+                                    "op"
+                                  ],
+                                  "properties": {
+                                    "left": {
+                                      "type": "object",
+                                      "oneOf": [
+                                        {
+                                          "required": [
+                                            "from"
+                                          ],
+                                          "properties": {
+                                            "from": {
+                                              "type": "string",
+                                              "minLength": 1
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "required": [
+                                            "value"
+                                          ],
+                                          "properties": {
+                                            "value": {}
+                                          },
+                                          "additionalProperties": false
+                                        }
+                                      ]
+                                    },
+                                    "op": {
+                                      "type": "string",
+                                      "enum": [
+                                        "eq",
+                                        "neq",
+                                        "exists",
+                                        "not_exists",
+                                        "gt",
+                                        "gte",
+                                        "lt",
+                                        "lte"
+                                      ]
+                                    },
+                                    "right": {
+                                      "type": "object",
+                                      "oneOf": [
+                                        {
+                                          "required": [
+                                            "from"
+                                          ],
+                                          "properties": {
+                                            "from": {
+                                              "type": "string",
+                                              "minLength": 1
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "required": [
+                                            "value"
+                                          ],
+                                          "properties": {
+                                            "value": {}
+                                          },
+                                          "additionalProperties": false
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "next": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "default": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                }
+              },
+              "additionalProperties": false
+            },
+            "catch": {
+              "type": "object",
+              "required": [
+                "cases",
+                "default"
+              ],
+              "properties": {
+                "cases": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "when",
+                      "next"
+                    ],
+                    "properties": {
+                      "when": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "required": [
+                              "left",
+                              "op"
+                            ],
+                            "properties": {
+                              "left": {
+                                "type": "object",
+                                "oneOf": [
+                                  {
+                                    "required": [
+                                      "from"
+                                    ],
+                                    "properties": {
+                                      "from": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "required": [
+                                      "value"
+                                    ],
+                                    "properties": {
+                                      "value": {}
+                                    },
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              },
+                              "op": {
+                                "type": "string",
+                                "enum": [
+                                  "eq",
+                                  "neq",
+                                  "exists",
+                                  "not_exists",
+                                  "gt",
+                                  "gte",
+                                  "lt",
+                                  "lte"
+                                ]
+                              },
+                              "right": {
+                                "type": "object",
+                                "oneOf": [
+                                  {
+                                    "required": [
+                                      "from"
+                                    ],
+                                    "properties": {
+                                      "from": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "required": [
+                                      "value"
+                                    ],
+                                    "properties": {
+                                      "value": {}
+                                    },
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "required": [
+                              "all"
+                            ],
+                            "properties": {
+                              "all": {
+                                "type": "array",
+                                "minItems": 1,
+                                "items": {
+                                  "type": "object",
+                                  "required": [
+                                    "left",
+                                    "op"
+                                  ],
+                                  "properties": {
+                                    "left": {
+                                      "type": "object",
+                                      "oneOf": [
+                                        {
+                                          "required": [
+                                            "from"
+                                          ],
+                                          "properties": {
+                                            "from": {
+                                              "type": "string",
+                                              "minLength": 1
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "required": [
+                                            "value"
+                                          ],
+                                          "properties": {
+                                            "value": {}
+                                          },
+                                          "additionalProperties": false
+                                        }
+                                      ]
+                                    },
+                                    "op": {
+                                      "type": "string",
+                                      "enum": [
+                                        "eq",
+                                        "neq",
+                                        "exists",
+                                        "not_exists",
+                                        "gt",
+                                        "gte",
+                                        "lt",
+                                        "lte"
+                                      ]
+                                    },
+                                    "right": {
+                                      "type": "object",
+                                      "oneOf": [
+                                        {
+                                          "required": [
+                                            "from"
+                                          ],
+                                          "properties": {
+                                            "from": {
+                                              "type": "string",
+                                              "minLength": 1
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "required": [
+                                            "value"
+                                          ],
+                                          "properties": {
+                                            "value": {}
+                                          },
+                                          "additionalProperties": false
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "required": [
+                              "any"
+                            ],
+                            "properties": {
+                              "any": {
+                                "type": "array",
+                                "minItems": 1,
+                                "items": {
+                                  "type": "object",
+                                  "required": [
+                                    "left",
+                                    "op"
+                                  ],
+                                  "properties": {
+                                    "left": {
+                                      "type": "object",
+                                      "oneOf": [
+                                        {
+                                          "required": [
+                                            "from"
+                                          ],
+                                          "properties": {
+                                            "from": {
+                                              "type": "string",
+                                              "minLength": 1
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "required": [
+                                            "value"
+                                          ],
+                                          "properties": {
+                                            "value": {}
+                                          },
+                                          "additionalProperties": false
+                                        }
+                                      ]
+                                    },
+                                    "op": {
+                                      "type": "string",
+                                      "enum": [
+                                        "eq",
+                                        "neq",
+                                        "exists",
+                                        "not_exists",
+                                        "gt",
+                                        "gte",
+                                        "lt",
+                                        "lte"
+                                      ]
+                                    },
+                                    "right": {
+                                      "type": "object",
+                                      "oneOf": [
+                                        {
+                                          "required": [
+                                            "from"
+                                          ],
+                                          "properties": {
+                                            "from": {
+                                              "type": "string",
+                                              "minLength": 1
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "required": [
+                                            "value"
+                                          ],
+                                          "properties": {
+                                            "value": {}
+                                          },
+                                          "additionalProperties": false
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "next": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "default": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                }
+              },
+              "additionalProperties": false
+            },
+            "max_visits": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8
+            },
+            "terminal": {
+              "type": "boolean",
+              "const": true
+            }
+          },
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "type": {
+                    "const": "client"
+                  }
+                }
+              },
+              "then": {
+                "required": [
+                  "instruction"
+                ]
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "type": {
+                    "const": "server"
+                  },
+                  "terminal": {
+                    "not": {
+                      "const": true
+                    }
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              },
+              "then": {
+                "required": [
+                  "operation"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    "additionalProperties": false
+  },
+  "output_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "oneOf": [
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "compiled",
+          "identity",
+          "actions"
+        ],
+        "properties": {
+          "compiled": {
+            "const": true
+          },
+          "identity": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "actions": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "start"
+            ],
+            "properties": {
+              "start": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "verb",
+                  "method",
+                  "href",
+                  "payload_schema"
+                ],
+                "properties": {
+                  "verb": {
+                    "const": "start"
+                  },
+                  "method": {
+                    "const": "POST"
+                  },
+                  "href": {
+                    "type": "string",
+                    "pattern": "^/"
+                  },
+                  "payload_schema": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "identity",
+          "status",
+          "action"
+        ],
+        "properties": {
+          "identity": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "status": {
+            "const": "not_started"
+          },
+          "action": {
+            "type": "object",
+            "required": [
+              "verb",
+              "method",
+              "href",
+              "payload_schema"
+            ],
+            "properties": {
+              "verb": {
+                "enum": [
+                  "start",
+                  "complete",
+                  "step",
+                  "failed",
+                  "state"
+                ]
+              },
+              "method": {
+                "enum": [
+                  "GET",
+                  "POST"
+                ]
+              },
+              "href": {
+                "type": "string",
+                "pattern": "^/"
+              },
+              "payload_schema": {
+                "type": [
+                  "object",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      {
+        "type": "object",
+        "required": [
+          "identity",
+          "status",
+          "current_step",
+          "instruction"
+        ],
+        "properties": {
+          "identity": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "status": {
+            "const": "awaiting_client"
+          },
+          "current_step": {
+            "type": "object",
+            "required": [
+              "code",
+              "type"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "type": {
+                "const": "client"
+              }
+            },
+            "additionalProperties": false
+          },
+          "instruction": {
+            "type": "object",
+            "required": [
+              "goal",
+              "message",
+              "after_success",
+              "on_failure"
+            ],
+            "properties": {
+              "goal": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4000
+              },
+              "after_success": {
+                "type": "object",
+                "required": [
+                  "verb",
+                  "method",
+                  "href",
+                  "payload_schema"
+                ],
+                "properties": {
+                  "verb": {
+                    "enum": [
+                      "start",
+                      "complete",
+                      "step",
+                      "failed",
+                      "state"
+                    ]
+                  },
+                  "method": {
+                    "enum": [
+                      "GET",
+                      "POST"
+                    ]
+                  },
+                  "href": {
+                    "type": "string",
+                    "pattern": "^/"
+                  },
+                  "payload_schema": {
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "on_failure": {
+                "type": "object",
+                "required": [
+                  "verb",
+                  "method",
+                  "href",
+                  "payload_schema"
+                ],
+                "properties": {
+                  "verb": {
+                    "enum": [
+                      "start",
+                      "complete",
+                      "step",
+                      "failed",
+                      "state"
+                    ]
+                  },
+                  "method": {
+                    "enum": [
+                      "GET",
+                      "POST"
+                    ]
+                  },
+                  "href": {
+                    "type": "string",
+                    "pattern": "^/"
+                  },
+                  "payload_schema": {
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "maxProperties": 68,
+            "additionalProperties": {}
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "identity",
+          "status",
+          "action"
+        ],
+        "properties": {
+          "identity": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "status": {
+            "const": "step_completed"
+          },
+          "action": {
+            "type": "object",
+            "required": [
+              "verb",
+              "method",
+              "href",
+              "payload_schema"
+            ],
+            "properties": {
+              "verb": {
+                "enum": [
+                  "start",
+                  "complete",
+                  "step",
+                  "failed",
+                  "state"
+                ]
+              },
+              "method": {
+                "enum": [
+                  "GET",
+                  "POST"
+                ]
+              },
+              "href": {
+                "type": "string",
+                "pattern": "^/"
+              },
+              "payload_schema": {
+                "type": [
+                  "object",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "identity",
+          "status",
+          "error",
+          "action"
+        ],
+        "properties": {
+          "identity": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "status": {
+            "const": "failure_caught"
+          },
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "correlation_id",
+              "details"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "retryable": {
+                "type": "boolean"
+              },
+              "correlation_id": {
+                "type": "string",
+                "pattern": "^corr_[A-Za-z0-9_-]{1,128}$"
+              },
+              "details": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {
+                  "type": "object",
+                  "maxProperties": 32
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "action": {
+            "type": "object",
+            "required": [
+              "verb",
+              "method",
+              "href",
+              "payload_schema"
+            ],
+            "properties": {
+              "verb": {
+                "enum": [
+                  "start",
+                  "complete",
+                  "step",
+                  "failed",
+                  "state"
+                ]
+              },
+              "method": {
+                "enum": [
+                  "GET",
+                  "POST"
+                ]
+              },
+              "href": {
+                "type": "string",
+                "pattern": "^/"
+              },
+              "payload_schema": {
+                "type": [
+                  "object",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "identity",
+          "status",
+          "current_node",
+          "retry_after_seconds",
+          "action"
+        ],
+        "properties": {
+          "identity": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "status": {
+            "const": "in_progress"
+          },
+          "current_node": {
+            "type": "object",
+            "required": [
+              "code",
+              "type",
+              "operation"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "type": {
+                "const": "server"
+              },
+              "operation": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 255
+              }
+            },
+            "additionalProperties": false
+          },
+          "retry_after_seconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 900
+          },
+          "action": {
+            "type": "object",
+            "required": [
+              "verb",
+              "method",
+              "href",
+              "payload_schema"
+            ],
+            "properties": {
+              "verb": {
+                "enum": [
+                  "start",
+                  "complete",
+                  "step",
+                  "failed",
+                  "state"
+                ]
+              },
+              "method": {
+                "enum": [
+                  "GET",
+                  "POST"
+                ]
+              },
+              "href": {
+                "type": "string",
+                "pattern": "^/"
+              },
+              "payload_schema": {
+                "type": [
+                  "object",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "identity",
+          "status",
+          "current_step",
+          "error",
+          "resolution"
+        ],
+        "properties": {
+          "identity": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "status": {
+            "const": "client_action_required"
+          },
+          "current_step": {
+            "type": "object",
+            "required": [
+              "code",
+              "type",
+              "operation"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "type": {
+                "const": "server"
+              },
+              "operation": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 255
+              }
+            },
+            "additionalProperties": false
+          },
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "correlation_id",
+              "details"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "retryable": {
+                "type": "boolean"
+              },
+              "correlation_id": {
+                "type": "string",
+                "pattern": "^corr_[A-Za-z0-9_-]{1,128}$"
+              },
+              "details": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {
+                  "type": "object",
+                  "maxProperties": 32
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "resolution": {
+            "type": "object",
+            "required": [
+              "goal",
+              "instruction",
+              "requires_user_approval",
+              "after_success"
+            ],
+            "properties": {
+              "goal": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{0,127}$"
+              },
+              "instruction": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4000
+              },
+              "operation": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9_-]*(?:\\.[a-z0-9][a-z0-9_-]*)+$",
+                "maxLength": 255
+              },
+              "requires_user_approval": {
+                "type": "boolean"
+              },
+              "approval_scope": {
+                "type": "array",
+                "maxItems": 64,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_.-]{0,127}$"
+                }
+              },
+              "after_success": {
+                "type": "object",
+                "required": [
+                  "verb",
+                  "method",
+                  "href",
+                  "payload_schema"
+                ],
+                "properties": {
+                  "verb": {
+                    "enum": [
+                      "start",
+                      "complete",
+                      "step",
+                      "failed",
+                      "state"
+                    ]
+                  },
+                  "method": {
+                    "enum": [
+                      "GET",
+                      "POST"
+                    ]
+                  },
+                  "href": {
+                    "type": "string",
+                    "pattern": "^/"
+                  },
+                  "payload_schema": {
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "requires_user_approval": {
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "requires_user_approval"
+                  ]
+                },
+                "then": {
+                  "required": [
+                    "approval_scope"
+                  ],
+                  "properties": {
+                    "approval_scope": {
+                      "minItems": 1
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "identity",
+          "status",
+          "outcome"
+        ],
+        "properties": {
+          "identity": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "status": {
+            "const": "completed"
+          },
+          "outcome": {
+            "type": "object",
+            "maxProperties": 128,
+            "additionalProperties": {}
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "identity",
+          "status",
+          "error",
+          "failed_at",
+          "expires_at",
+          "receipt"
+        ],
+        "properties": {
+          "identity": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "status": {
+            "const": "failed"
+          },
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "correlation_id",
+              "details"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "retryable": {
+                "type": "boolean"
+              },
+              "correlation_id": {
+                "type": "string",
+                "pattern": "^corr_[A-Za-z0-9_-]{1,128}$"
+              },
+              "details": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {
+                  "type": "object",
+                  "maxProperties": 32
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "failed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "receipt": {
+            "type": "object",
+            "required": [
+              "outcome",
+              "recorded_at"
+            ],
+            "properties": {
+              "outcome": {
+                "enum": [
+                  "failed",
+                  "failed_before_effect",
+                  "stopped"
+                ]
+              },
+              "recorded_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "identity",
+          "status",
+          "error",
+          "expired_at"
+        ],
+        "properties": {
+          "identity": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "status": {
+            "const": "expired"
+          },
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "correlation_id",
+              "details"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "retryable": {
+                "type": "boolean"
+              },
+              "correlation_id": {
+                "type": "string",
+                "pattern": "^corr_[A-Za-z0-9_-]{1,128}$"
+              },
+              "details": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {
+                  "type": "object",
+                  "maxProperties": 32
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "expired_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "compiled",
+          "error",
+          "errors"
+        ],
+        "properties": {
+          "compiled": {
+            "const": false
+          },
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "correlation_id",
+              "details"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "retryable": {
+                "type": "boolean"
+              },
+              "correlation_id": {
+                "type": "string",
+                "pattern": "^corr_[A-Za-z0-9_-]{1,128}$"
+              },
+              "details": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {
+                  "type": "object",
+                  "maxProperties": 32
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "errors": {
+            "type": "array",
+            "maxItems": 128,
+            "items": {
+              "type": "object",
+              "required": [
+                "code",
+                "message"
+              ],
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "error",
+          "retry_after_seconds",
+          "policy",
+          "resolution"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "correlation_id",
+              "details"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "retryable": {
+                "type": "boolean"
+              },
+              "correlation_id": {
+                "type": "string",
+                "pattern": "^corr_[A-Za-z0-9_-]{1,128}$"
+              },
+              "details": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {
+                  "type": "object",
+                  "maxProperties": 32
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "retry_after_seconds": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "policy": {
+            "type": "object",
+            "required": [
+              "created_in_window",
+              "limit",
+              "window_seconds"
+            ],
+            "properties": {
+              "created_in_window": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "limit": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "window_seconds": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          "resolution": {
+            "type": "object",
+            "required": [
+              "goal",
+              "instruction"
+            ],
+            "properties": {
+              "goal": {
+                "const": "retry_journey_registration"
+              },
+              "instruction": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "identity",
+          "error",
+          "policy",
+          "resolution"
+        ],
+        "properties": {
+          "identity": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "correlation_id",
+              "details"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "retryable": {
+                "type": "boolean"
+              },
+              "correlation_id": {
+                "type": "string",
+                "pattern": "^corr_[A-Za-z0-9_-]{1,128}$"
+              },
+              "details": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {
+                  "type": "object",
+                  "maxProperties": 32
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "policy": {
+            "type": "object",
+            "required": [
+              "capacity_scope",
+              "active_count",
+              "limit"
+            ],
+            "properties": {
+              "capacity_scope": {
+                "enum": [
+                  "user",
+                  "application_organization"
+                ]
+              },
+              "active_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "limit": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          "resolution": {
+            "type": "object",
+            "required": [
+              "goal",
+              "instruction",
+              "stoppable_journeys"
+            ],
+            "properties": {
+              "goal": {
+                "const": "free_journey_capacity"
+              },
+              "instruction": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "stoppable_journeys": {
+                "type": "array",
+                "maxItems": 10,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "identity",
+                    "name",
+                    "expires_at",
+                    "action"
+                  ],
+                  "properties": {
+                    "identity": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 255
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 255
+                    },
+                    "expires_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "action": {
+                      "type": "object",
+                      "required": [
+                        "verb",
+                        "method",
+                        "href",
+                        "payload_schema"
+                      ],
+                      "properties": {
+                        "verb": {
+                          "enum": [
+                            "start",
+                            "complete",
+                            "step",
+                            "failed",
+                            "state"
+                          ]
+                        },
+                        "method": {
+                          "enum": [
+                            "GET",
+                            "POST"
+                          ]
+                        },
+                        "href": {
+                          "type": "string",
+                          "pattern": "^/"
+                        },
+                        "payload_schema": {
+                          "type": [
+                            "object",
+                            "null"
+                          ]
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "correlation_id",
+              "details"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "retryable": {
+                "type": "boolean"
+              },
+              "correlation_id": {
+                "type": "string",
+                "pattern": "^corr_[A-Za-z0-9_-]{1,128}$"
+              },
+              "details": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {
+                  "type": "object",
+                  "maxProperties": 32
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ]
+  },
+  "limits": {
+    "document_bytes": 262144,
+    "string_bytes": 16384,
+    "nesting_depth": 32,
+    "nodes": 64,
+    "transitions": 256,
+    "predicates": 128,
+    "node_visits": 8,
+    "total_visits": 256,
+    "operation_retries": 5,
+    "operation_duration_seconds": 900,
+    "execution_duration_seconds": 259200,
+    "fan_out": 100,
+    "created_per_user_per_hour": 3,
+    "active_per_user": 10,
+    "active_per_application_organization": 20,
+    "execution_ttl_hours": 72,
+    "metadata_retention_days": 7
+  },
+  "guarantees": {
+    "idempotent": true,
+    "server_owned_state": true,
+    "client_generated_keys": false
+  },
+  "execution": {
+    "transport": "https",
+    "method": "POST",
+    "uri": "/bos/apps/lead-director/api/v2/organizations/synthetic/journeys/register",
+    "context_header": "X-BOS-Context-Handle"
+  },
+  "public_errors": [
+    {
+      "code": "INVALID_REQUEST",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "INVALID_JOURNEY_REQUEST",
+      "http_status": 422,
+      "retryable": false
+    },
+    {
+      "code": "JOURNEY_COMPILE_FAILED",
+      "http_status": 422,
+      "retryable": false
+    },
+    {
+      "code": "JOURNEY_CREATION_RATE_LIMITED",
+      "http_status": 429,
+      "retryable": true
+    },
+    {
+      "code": "JOURNEY_ACTIVE_LIMIT_REACHED",
+      "http_status": 429,
+      "retryable": true
+    },
+    {
+      "code": "UNAUTHENTICATED",
+      "http_status": 401,
+      "retryable": false
+    },
+    {
+      "code": "FORBIDDEN",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "RATE_LIMITED",
+      "http_status": 429,
+      "retryable": true
+    },
+    {
+      "code": "OPERATION_NOT_AVAILABLE",
+      "http_status": 503,
+      "retryable": true
+    },
+    {
+      "code": "SERVICE_FAILURE",
+      "http_status": 500,
+      "retryable": false
+    }
+  ],
+  "ttlMs": 0,
+  "cacheScope": "private"
+}

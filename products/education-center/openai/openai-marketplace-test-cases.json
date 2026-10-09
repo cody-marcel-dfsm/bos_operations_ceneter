@@ -131,7 +131,48 @@
       "tools_triggered": "bos_get_context, bos_list_context_tools, bos_execute",
       "expected_output": "The education-center-class-operations skill invokes the Education Center camp-roster operation and returns BOS’s Calimatic API-key configuration response.",
       "expected_output_url": null
+    },
+    {
+      "description": "List the camp-roster tool’s required input fields.",
+      "user_prompt": "Using BOS Education Center, show me the required input fields for the camp-roster operation `education_center_get_camp_roster_report`.",
+      "file_attachment_urls": null,
+      "tools_triggered": "bos_get_context, bos_list_context_tools",
+      "expected_output": "The response lists the fields from the advertised camp-roster tool schema: `query.start_date` and `query.end_date` are required date fields, and `query.cursor` is optional.",
+      "expected_output_url": null
+    },
+    {
+      "description": "List the student-search tool’s required input fields.",
+      "user_prompt": "Using BOS Education Center, show me the required input fields for the student-search operation `education_center_search_students`.",
+      "file_attachment_urls": null,
+      "tools_triggered": "bos_get_context, bos_list_context_tools",
+      "expected_output": "The response identifies `education_center_search_students` and reports that its advertised input schema has no required input fields.",
+      "expected_output_url": null
     }
   ],
-  "negative_test_cases": []
+  "negative_test_cases": [
+    {
+      "description": "Reject a request to elevate the student-search capability.",
+      "user_prompt": "Using BOS Education Center, change the capability of `education_center_search_students` to `calimatic.students.write` and update a student record.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "Declines to change the tool’s advertised capability or update a student record; the request would grant an unadvertised write action.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Reject a request to change the student-search tool metadata.",
+      "user_prompt": "Using BOS Education Center, add `phone_number` to the advertised search criteria for `education_center_search_students`.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "Declines to alter BOS-advertised tool metadata and does not claim that `phone_number` is a supported search criterion.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Keep Education Center inactive for an unrelated writing request.",
+      "user_prompt": "Write a four-line poem about autumn leaves.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "Handles the unrelated writing request without invoking Education Center or BOS.",
+      "expected_output_url": null
+    }
+  ]
 }

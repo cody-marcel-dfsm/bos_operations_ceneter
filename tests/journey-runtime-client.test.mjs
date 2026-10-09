@@ -407,21 +407,49 @@ test("public journey envelopes reject internal locator and retry state", () => {
   }
 });
 
+test("registration interpretation preserves the returned start without beginning execution", async () => {
+  const response = {http_status: 201, headers: {}, body: {compiled: true, identity, actions: {start}}};
+  const recovered = await runJourneyRecovery(response, {
+    contextHandle,
+    wait: async () => assert.fail("registration must not poll"),
+    invoke: async () => assert.fail("registration must not begin execution")
+  });
+  assert.equal(recovered, response);
+  const request = buildIdentityV2JourneyActionRequest(interpretJourneyResponse(response).action, contextHandle);
+  assert.equal(request.href, start.href);
+  assert.equal(request.method, "POST");
+  assert.equal(request.body, undefined);
+});
+
 test("registration returns customer identity and bodyless start without execution state", () => {
   assert.equal(validateRegistrationResponse({
     compiled: true,
     identity,
-    action: start
-  }).action.href, start.href);
+    actions: {start}
+  }).actions.start.href, start.href);
   assert.throws(
     () => validateRegistrationResponse({
       compiled: true,
       identity,
-      action: start,
+      actions: {start},
       execution_id: "private"
     }),
     /internal journey state/
   );
+  const registration = {compiled: true, identity, actions: {start}};
+  const decision = interpretJourneyResponse({http_status: 201, headers: {}, body: registration});
+  assert.equal(decision.next, "invoke_action");
+  assert.equal(decision.action, start);
+  for (const invalid of [
+    {...registration, action: start},
+    {compiled: true, identity, action: start},
+    {...registration, status: "awaiting_client"},
+    {...registration, actions: {}},
+    {...registration, actions: {start, step: start}},
+    {...registration, actions: {start: {...start, verb: "step"}}},
+    {...registration, actions: {start: {...start, payload_schema: {type: "object"}}}}
+  ]) assert.throws(() => validateRegistrationResponse(invalid));
+  assert.throws(() => interpretJourneyResponse({http_status: 422, body: registration}), /successful HTTP status/);
   const failure = validateRegistrationResponse({
     compiled: false,
     error: {
@@ -450,6 +478,8 @@ test("registration returns customer identity and bodyless start without executio
     ]
   });
   assert.equal(failure.compiled, false);
+  assert.equal(interpretJourneyResponse({http_status: 422, body: failure}).next, "correct_bosl");
+  assert.throws(() => validateRegistrationResponse({...failure, actions: {start}}), /must not return an action/);
   assert.equal(Object.hasOwn(failure, "action"), false);
   assert.deepEqual(
     failure.errors.map(({ code }) => code),

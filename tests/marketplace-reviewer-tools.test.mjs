@@ -6,11 +6,66 @@ import {tmpdir} from 'node:os';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {createReviewerTools,reviewerDiscoveryDocument,readReviewerDocument} from '../scripts/marketplace-reviewer-tools.mjs';
+import {reviewerToolsForCase} from '../scripts/marketplace-native-run.mjs';
 import {syntheticAppDescribe,syntheticOperationDescribe,syntheticApiContract} from './helpers/synthetic-bos-discovery-service.mjs';
 import {digest} from '../scripts/marketplace-prompt-catalog.mjs';
 import {documentDigests,observedDocument,installedValidatorModes,createInstalledAcceptance} from '../scripts/marketplace-native-resources.mjs';
 
 const run=promisify(execFile);
+
+test('fresh native positive-3 reaches camp only through exposed published app discovery validation',async()=>{
+ const root=await realpath(await mkdtemp(join(tmpdir(),'reviewer-fresh-camp-')));
+ try{
+  for(const skill of ['bos-app-discovery','bos-external-dependency-adapter']){
+   const target=join(root,'skills',skill,'scripts');await mkdir(target,{recursive:true});
+   await cp(new URL('../source/platform/'+skill+'/scripts/',import.meta.url),target,{recursive:true});
+  }
+  const skillPath='skills/education-center-class-operations/SKILL.md';
+  await mkdir(join(root,'skills/education-center-class-operations'),{recursive:true});
+  await cp(new URL('../source/verticals/education-center/education-center-class-operations/SKILL.md',import.meta.url),join(root,skillPath));
+  await run('git',['init','--quiet'],{cwd:root});await run('git',['add','.'],{cwd:root});
+  await run('git',['-c','user.name=Synthetic Test','-c','user.email=test@example.invalid','commit','--quiet','-m','Synthetic published fresh-state fixture'],{cwd:root});
+  const commit=(await run('git',['rev-parse','HEAD'],{cwd:root})).stdout.trim();
+  const operation='education_center_get_camp_roster_report',uri='bos://apps/lead-director/app.describe';
+  const arguments_={query:{start_date:'2026-09-14',end_date:'2026-09-18'}};
+  const descriptor={name:operation,_meta:{'bos/effect':'read'},inputSchema:{type:'object',additionalProperties:false,required:['query'],properties:{query:{type:'object',additionalProperties:false,required:['start_date','end_date'],properties:{start_date:{type:'string'},end_date:{type:'string'}}}}}};
+  for(const validDiscovery of [false,true]){
+   // Same blank authority/observation state as nativeCase; no preloaded context or validation.
+   const state={case_id:'positive-3',product:'education-center',kind:'positive',organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,resource:'https://dfsm.ai/mcp/apps/bos/platform',installed_root:root,installed_roots:{bos:root,'education-center':root},published_commits:{bos:commit,'education-center':commit},allowed_effects:['read'],expected_error_operations:[operation],observations:[],fixtureResponses:[],denials:[],pre_calls:0};
+   const app=syntheticAppDescribe();if(!validDiscovery)app.bosl.schema_uri='https://foreign.example/schema';
+   let businessCalls=0;
+   const session={rpc:async(method,params)=>{
+    if(method==='tools/list')return {tools:[{name:'bos_get_context'},{name:'bos_list_context_tools'},{name:'bos.execute'}]};
+    if(method==='resources/list')return {context_handle:context.context_handle,resources:[{uri,name:'app.describe',mimeType:'application/json'}]};
+    if(method==='resources/read'){assert.equal(params.uri,uri);return {contents:[{uri,mimeType:'application/json',text:JSON.stringify(app)}]};}
+    if(params.name==='bos_get_context')return {structuredContent:{contract_version:'bos-identity-mcp/v2',contexts:[context]}};
+    if(params.name==='bos_list_context_tools')return {structuredContent:{context_handle:context.context_handle,tools:[descriptor]}};
+    assert.equal(params.name,'bos.execute');businessCalls++;assert.deepEqual(params.arguments,{context_handle:context.context_handle,tool_name:operation,arguments:arguments_});
+    return {isError:true,structuredContent:{contract_version:'bos-identity-mcp/v2',context,result:{error:{provider_error_code:'provider_authorization_required',status:'authorization_required',required_authorizations:[{authorization_kind:'api_key',status:'configuration_required',authorization_url:'https://dfsm.ai/api/v1/mcp/provider-recovery?token=synthetic-secret'}]}}}};
+   },request:async()=>{throw new Error('unexpected_https_business_request');}};
+   const tools=reviewerToolsForCase({product:'education-center',id:'positive-3'},await createReviewerTools({state,session,release:{path:root,release_commit:commit}}));
+   const invoke=(name,args={})=>{assert.ok(tools.definitions.some(tool=>tool.name===name),'case tool must be exposed: '+name);return tools.call(name,args);};
+   assert.equal((await invoke('acceptance_guard_probe')).reason,'guard_canary_denied');
+   assert.equal((await invoke('acceptance_guard_status')).ready,true);
+   await invoke('acceptance_read_installed',{product:'education-center',path:skillPath});
+   await invoke('bos_get_context');await invoke('bos_list_context_tools');
+   assert.equal((await invoke('bos_control_discover',{operation,arguments:arguments_})).reason,'reviewer_published_prerequisite_required');
+   assert.equal(businessCalls,0);
+   const resources=await invoke('bos_list_resources');assert.equal(resources.document.resources[0].uri,uri);
+   const observed=await invoke('bos_read_resource',{uri});
+   assert.equal(observed.published_validation.valid,validDiscovery);
+   const checked=await invoke('acceptance_validate_installed',{mode:'app-describe',document_id:observed.document_id});
+   assert.equal(checked.valid,validDiscovery);
+   const result=await invoke('bos_control_discover',{operation,arguments:arguments_});
+   if(validDiscovery){
+    assert.equal(state.validated_contracts['app-describe'],digest(app));
+    assert.equal(result.expected_configuration,true);assert.equal(businessCalls,1);
+    assert.doesNotMatch(JSON.stringify(result),/synthetic-secret/);
+    assert.equal((await invoke('bos_control_discover',{operation,arguments:arguments_})).reason,'reviewer_camp_operation_already_called');assert.equal(businessCalls,1);
+   }else{assert.equal(result.reason,'reviewer_published_prerequisite_required');assert.equal(businessCalls,0);}
+  }
+ }finally{await rm(root,{recursive:true,force:true});}
+});
 async function retainedValue(tools,document_id,pointer=''){
  let text='',offset=0;
  for(;;){const row=await tools.call('acceptance_read_document',{document_id,pointer,offset});assert.equal(row.found,true);assert.ok(Buffer.byteLength(JSON.stringify(row))<=8192);if(Object.hasOwn(row,'value'))return row.value;text+=row.text;if(row.complete)return JSON.parse(text);offset=row.next_offset;}
@@ -55,6 +110,92 @@ test('case 8 sends one exact BOS denial probe through the authenticated MCP sess
  }finally{await rm(root,{recursive:true,force:true});}
 });
 
+test('Education positive-3 permits one exact camp-roster read and masks any roster success',async()=>{
+ const root=await realpath(await mkdtemp(join(tmpdir(),'reviewer-education-positive3-')));
+ try{
+  const target=join(root,'skills/bos-external-dependency-adapter/scripts');await mkdir(target,{recursive:true});
+  await cp(new URL('../source/platform/bos-external-dependency-adapter/scripts/',import.meta.url),target,{recursive:true});
+  await run('git',['init','--quiet'],{cwd:root});await run('git',['add','.'],{cwd:root});
+  await run('git',['-c','user.name=Synthetic Test','-c','user.email=test@example.invalid','commit','--quiet','-m','Synthetic Education positive-3 fixture'],{cwd:root});
+  const commit=(await run('git',['rev-parse','HEAD'],{cwd:root})).stdout.trim();
+  const operation='education_center_get_camp_roster_report',resource='https://dfsm.ai/mcp/apps/bos/platform';
+  const descriptor={name:operation,_meta:{'bos/effect':'read'},inputSchema:{type:'object',additionalProperties:false,required:['query'],properties:{query:{type:'object',additionalProperties:false,required:['start_date','end_date'],properties:{start_date:{type:'string'},end_date:{type:'string'}}}}}};
+  const makeState=()=>({case_id:'positive-3',product:'education-center',kind:'positive',canary:true,handle:context.context_handle,
+   organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,
+   resource,installed_root:root,installed_roots:{bos:root},published_commits:{bos:commit},allowed_effects:['read'],expected_error_operations:[operation],
+   observations:[
+    {tool:'guard.status',response:{ready:true}},
+    {tool:'read.installed',is_error:false,input:{product:'education-center',path:'skills/education-center-class-operations/SKILL.md'}},
+    {tool:'bos.get.context',is_error:false},
+    {tool:'bos.list.context.tools',is_error:false}
+   ],fixtureResponses:[],denials:[],tools:[descriptor],validated_contracts:{'app-describe':'verified-synthetic'},failed_validations:{}});
+  const makeTools=async(state,response,calls)=>createReviewerTools({state,release:{path:root,release_commit:commit},session:{
+   rpc:async(method,params)=>{
+    if(method==='tools/list')return {tools:[{name:'bos.execute'}]};
+    calls.push({method,params});return typeof response==='function'?await response(method,params):response;
+   },request:async()=>{throw new Error('unexpected_https_request');}
+  }});
+  const arguments_={query:{start_date:'2026-09-14',end_date:'2026-09-18'}};
+  const expectedResponse={isError:true,structuredContent:{contract_version:'bos-identity-mcp/v2',context,
+   result:{error:{provider_error_code:'provider_authorization_required',status:'authorization_required',
+    required_authorizations:[{authorization_kind:'api_key',status:'configuration_required',authorization_url:'https://dfsm.ai/api/v1/mcp/provider-recovery?token=synthetic-secret'}]}}}};
+  for (const missing of ['effect','discovery']) {
+   const rejectedState=makeState();
+   if(missing==='effect')rejectedState.tools=[{...descriptor,_meta:{}}];
+   else rejectedState.validated_contracts={};
+   const rejectedCalls=[],rejectedTools=await makeTools(rejectedState,expectedResponse,rejectedCalls);
+   const rejected=await rejectedTools.call('bos_control_discover',{operation,arguments:arguments_});
+   assert.equal(rejected.isError,true);
+   assert.equal(rejected.reason,missing==='effect'?'reviewer_effect_not_approved':'reviewer_published_prerequisite_required');
+   assert.equal(rejectedCalls.length,0);
+  }
+  const state=makeState(),calls=[],tools=await makeTools(state,expectedResponse,calls);
+  const definition=tools.definitions.find(row=>row.name==='bos_control_discover');
+  assert.ok(definition.inputSchema.properties.operation.enum.includes(operation));
+  const result=await tools.call('bos_control_discover',{operation,arguments:arguments_});
+  assert.equal(result.isError,false);assert.equal(result.expected_configuration,true);assert.equal(result.document.error.provider_error_code,'provider_authorization_required');
+  assert.equal(result.document.error.required_authorizations[0].authorization_kind,'api_key');
+  assert.match(JSON.stringify(result.document),/\?\[query redacted\]/);assert.doesNotMatch(JSON.stringify(result),/synthetic-secret/);
+  assert.deepEqual(state.host_tool_outcomes,[{tool:'bos_control_discover',kind:'expected_provider_configuration'}]);
+  assert.equal(calls.length,1);assert.equal(calls[0].method,'tools/call');assert.equal(calls[0].params.name,'bos.execute');
+  assert.deepEqual(calls[0].params.arguments,{context_handle:context.context_handle,tool_name:operation,arguments:arguments_});
+  assert.equal(state.observations.at(-1).transport,'mcp_business');
+  const repeated=await tools.call('bos_control_discover',{operation,arguments:arguments_});
+  assert.equal(repeated.isError,true);assert.equal(repeated.reason,'reviewer_camp_operation_already_called');assert.equal(calls.length,1);
+  const before=calls.length;
+  const wrongDates=await tools.call('bos_control_discover',{operation,arguments:{query:{start_date:'2026-09-15',end_date:'2026-09-18'}}});
+  assert.equal(wrongDates.isError,true);assert.equal(wrongDates.reason,'reviewer_camp_arguments_invalid');
+  assert.equal(calls.length,before);
+
+  const privateRoster={isError:false,structuredContent:{contract_version:'bos-identity-mcp/v2',context,
+   result:{students:[{name:'Synthetic Private Student',family_email:'private@example.invalid'}]}}};
+  const privateState=makeState(),privateCalls=[],privateTools=await makeTools(privateState,privateRoster,privateCalls);
+  const masked=await privateTools.call('bos_control_discover',{operation,arguments:arguments_});
+  assert.equal(masked.isError,true);assert.equal(masked.document.error.code,'expected_calimatic_configuration_response_missing');
+  assert.doesNotMatch(JSON.stringify(masked),/Synthetic Private Student|private@example\.invalid/);
+  assert.doesNotMatch(JSON.stringify(privateState.observations),/Synthetic Private Student|private@example\.invalid/);
+  assert.equal(privateCalls.length,1);
+
+  const failedState=makeState(),failedCalls=[],failedTools=await makeTools(failedState,async()=>{throw Object.assign(new Error('private transport failure'),{code:'reviewer_mcp_request_failed'});},failedCalls);
+  const failed=await failedTools.call('bos_control_discover',{operation,arguments:arguments_});
+  assert.equal(failed.isError,true);assert.equal(failed.reason,'reviewer_mcp_request_failed');
+  assert.doesNotMatch(JSON.stringify(failed),/private transport failure/);
+  const retry=await failedTools.call('bos_control_discover',{operation,arguments:arguments_});
+  assert.equal(retry.isError,true);assert.equal(retry.reason,'reviewer_camp_operation_already_called');
+  assert.equal(failedCalls.length,1);assert.equal(failedState.education_positive3_call_consumed,true);
+
+  const writeState=makeState();writeState.tools[0]._meta={'bos/effect':'write'};
+  const writeCalls=[],writeTools=await makeTools(writeState,expectedResponse,writeCalls);
+  const writeDenied=await writeTools.call('bos_control_discover',{operation,arguments:arguments_});
+  assert.equal(writeDenied.reason,'reviewer_effect_not_approved');assert.equal(writeCalls.length,0);
+  const otherProductState=makeState();otherProductState.product='bos';
+  const otherProductCalls=[],otherProductTools=await makeTools(otherProductState,expectedResponse,otherProductCalls);
+  assert.equal(otherProductTools.definitions.find(row=>row.name==='bos_control_discover').inputSchema.properties.operation.enum.includes(operation),false);
+  const otherProductDenied=await otherProductTools.call('bos_control_discover',{operation,arguments:arguments_});
+  assert.equal(otherProductDenied.reason,'reviewer_mcp_business_call_forbidden');assert.equal(otherProductCalls.length,0);
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
 test('HTTPS Describe uses observed validated contact, bounded keys, fresh context and real published response validation',async()=>{
  const root=await realpath(await mkdtemp(join(tmpdir(),'reviewer-describe-unit-')));
  try{
@@ -67,12 +208,15 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   const commit=(await run('git',['rev-parse','HEAD'],{cwd:root})).stdout.trim();
   const uri='bos://apps/lead-director/app.describe',app=syntheticAppDescribe();
   app.describe.uri='/bos/apps/lead-director/api/v1/organizations/synthetic/describe';
-  const state={product:'bos',installed_root:root,installed_roots:{bos:root},published_commits:{bos:commit},organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,resource:'https://dfsm.ai/mcp/apps/bos/platform',canary:true,kind:'positive',handle:context.context_handle,resources:[uri],observations:[],fixtureResponses:[],denials:[],allowed_effects:['read'],validated_contracts:{},failed_validations:{}};
+  const state={product:'bos',installed_root:root,installed_roots:{bos:root},published_commits:{bos:commit},organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,resource:'https://dfsm.ai/mcp/apps/bos/platform',canary:true,kind:'positive',handle:context.context_handle,resources:[uri,'bos://apps/lead-director/non-description-resource'],observations:[],fixtureResponses:[],denials:[],allowed_effects:['read'],validated_contracts:{},failed_validations:{}};
   const describeResponse=()=>{const value=syntheticOperationDescribe();value.operations=value.operations.slice(0,1);return value;};
-  let current=context,requests=0,response=describeResponse(),nativeSchema={type:'object',required:[],properties:{query:{type:'string'}}},identityFailed=false;
+  let current=context,requests=0,response=describeResponse(),nativeSchema={type:'object',required:[],properties:{query:{type:'string'}}},identityFailed=false,failResourceRead=false;
   const session={rpc:async(method,params)=>{
    if(method==='tools/list')return {tools:[{name:'bos_get_context'},{name:'bos_list_context_tools'}]};
-   if(method==='resources/read')return {contents:[{uri:params.uri,mimeType:'application/json',text:JSON.stringify(app)}]};
+   if(method==='resources/read'){
+    if(failResourceRead){const error=new Error('private upstream text');error.code='reviewer_mcp_response_invalid';error.diagnostic={operation:'resources/read',resource:'synthetic_private_identifier',stage:'jsonrpc_response',http_status:502,content_type:'application/x-synthetic-private-token-7f3a91',response_bytes:98,response_format:'json',request_id_matches:false,jsonrpc_error_present:true,result_present:false,jsonrpc_error_code:'synthetic_private_token',jsonrpc_error_category:'unclassified',private_uri:'bos://private?token=secret',message:'private server text'};throw error;}
+    return {contents:[{uri:params.uri,mimeType:'application/json',text:JSON.stringify(app)}]};
+   }
    if(method==='resources/list')return {resources:[
     {uri:uri+'?context_handle='+current.context_handle,name:'app.describe',mimeType:'application/json'},
     {uri:uri+'?context_handle='+('bos_ctx_v2_'+'c'.repeat(64)),name:'app.describe',mimeType:'application/json'}
@@ -120,6 +264,14 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   assert.deepEqual(await tools.call('acceptance_validate_installed',{path:'skills/other/validator.mjs',mode:'app-describe',document_id:observed.document_id}),{isError:true,reason:'reviewer_tool_failed'});
   const checked=await tools.call('acceptance_validate_installed',{mode:'app-describe',document_id:observed.document_id});
   assert.equal(checked.valid,true);
+  failResourceRead=true;
+  const surfaced=await tools.call('bos_read_resource',{uri:listedResources.document.resources[0].uri});
+  assert.deepEqual(surfaced,{isError:true,error_code:'reviewer_mcp_response_invalid',message:'BOS could not read the requested discovery resource.',diagnostic:{operation:'resources/read',resource:'app.describe',stage:'jsonrpc_response',http_status:502,content_type:'unknown',response_bytes:98,response_format:'json',request_id_matches:false,jsonrpc_error_present:true,result_present:false,jsonrpc_error_category:'unclassified'}});
+  const surfacedOtherResource=await tools.call('bos_read_resource',{uri:'bos://apps/lead-director/non-description-resource'});
+  assert.deepEqual(surfacedOtherResource,{isError:true,error_code:'reviewer_mcp_response_invalid',message:'BOS could not read the requested discovery resource.',diagnostic:{operation:'resources/read',resource:'unknown',stage:'jsonrpc_response',http_status:502,content_type:'unknown',response_bytes:98,response_format:'json',request_id_matches:false,jsonrpc_error_present:true,result_present:false,jsonrpc_error_category:'unclassified'}});
+  assert.deepEqual(state.resource_read_diagnostics,[surfaced.diagnostic,surfacedOtherResource.diagnostic]);
+  assert.doesNotMatch(JSON.stringify(surfaced),/private|token=secret|private_uri/);
+  failResourceRead=false;
   for(const keys of [[],['search','search'],['unadvertised'],Array(6).fill('search')]){
    assert.equal((await tools.call('bos_https_describe',{...args,operations:keys})).isError,true);
   }

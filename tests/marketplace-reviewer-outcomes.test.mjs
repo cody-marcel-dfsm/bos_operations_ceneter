@@ -43,35 +43,103 @@ test('fixture assertions bind product/case, successful unique semantic response 
  assert.equal(matches([{operator:'min_length',response:selector,path:'/items',value:1}],{responses:[response({items:[1]})]}),false);
 });
 test('Education Center discovery assertion requires the exact advertised student-search tool',()=>{
- const assertion={schema:'marketplace-case-assertions/v1',product:'education-center',case_id:'positive-6',rules:[{
+ const assertion={schema:'marketplace-case-assertions/v1',product:'education-center',case_id:'positive-1',rules:[{
   requirement:'student-search-tool',operator:'contains',response:{operation:'bos.list.context.tools',transport:'mcp_discovery'},path:'/tools',project_paths:['/name'],value:'education_center_search_students'
  }]};
  const requirements=[{id:'student-search-tool',operator:'contains'}];
  const list=names=>({responses:[{...response({contract_version:'bos-identity-mcp/v2',tools:names.map(name=>({name,description:'Advertised tool',inputSchema:{type:'object'}})),resources:[{uri:'bos://education-center',name:'Education Center'}]}),operation:'bos.list.context.tools',transport:'mcp_discovery'}]});
- const binding={product:'education-center',case_id:'positive-6'};
+ const binding={product:'education-center',case_id:'positive-1'};
  assert.equal(reviewerOutcomeMatches(assertion,list(['education_center_search_students']),requirements,binding),true);
  assert.equal(reviewerOutcomeMatches(assertion,list(['bos_get_context']),requirements,binding),false);
  assert.equal(reviewerOutcomeMatches(assertion,list(['education_center_list_students']),requirements,binding),false);
  assert.equal(reviewerOutcomeMatches(assertion,{responses:[]},requirements,binding),false);
 });
-test('an expected Calimatic configuration error can be checked without exact prose, code, or URL matching',()=>{
- const operation='education_center_list_enrollments';
- const selector={operation,transport:'deterministic_https',is_error:true};
+test('Education Center metadata assertion selects one exact tool schema from live context discovery',()=>{
+ const tool='education_center_get_camp_roster_report';
+ const selected={operation:'bos.list.context.tools',transport:'mcp_discovery',tool_name:tool};
+ const assertion={schema:'marketplace-case-assertions/v1',product:'education-center',case_id:'positive-4',rules:[
+  {requirement:'camp-roster-required-input-fields',operator:'equals',response:selected,path:'/inputSchema/required',value:['query']},
+  {requirement:'camp-roster-required-input-fields',operator:'equals',response:selected,path:'/inputSchema/properties/query/required',value:['start_date','end_date']}
+ ]};
+ const requirements=[{id:'camp-roster-required-input-fields',operator:'equals'}];
+ const list=(name,required=['start_date','end_date'])=>({responses:[{...response({contract_version:'bos-identity-mcp/v2',tools:[{name,description:'Advertised tool',inputSchema:{type:'object',required:['query'],properties:{query:{type:'object',required,properties:{start_date:{type:'string',format:'date'},end_date:{type:'string',format:'date'}}}}}}],resources:[{uri:'bos://education-center',name:'Education Center'}]}),operation:'bos.list.context.tools',transport:'mcp_discovery'}]});
+ const binding={product:'education-center',case_id:'positive-4'};
+ assert.equal(reviewerOutcomeMatches(assertion,list(tool),requirements,binding),true);
+ assert.equal(reviewerOutcomeMatches(assertion,list('education_center_search_students'),requirements,binding),false);
+ assert.equal(reviewerOutcomeMatches(assertion,list(tool,['start_date']),requirements,binding),false);
+ assert.equal(reviewerOutcomeMatches(assertion,{responses:[...list(tool).responses,...list(tool).responses]},requirements,binding),false);
+});
+test('Education Center student-search metadata assertion binds the exact advertised schema',()=>{
+ const tool='education_center_search_students';
+ const selected={operation:'bos.list.context.tools',transport:'mcp_discovery',tool_name:tool};
+ const assertion={schema:'marketplace-case-assertions/v1',product:'education-center',case_id:'positive-5',rules:[
+  {requirement:'student-search-no-required-input-fields',operator:'equals',response:selected,path:'/name',value:tool},
+  {requirement:'student-search-no-required-input-fields',operator:'equals',response:selected,path:'/inputSchema/type',value:'object'},
+  {requirement:'student-search-no-required-input-fields',operator:'equals',response:selected,path:'/inputSchema/required',value:[]},
+  {requirement:'student-search-no-required-input-fields',operator:'equals',response:selected,path:'/inputSchema/properties/query/type',value:'object'}
+ ]};
+ const requirements=[{id:'student-search-no-required-input-fields',operator:'equals'}];
+ const list=(name,required=[])=>({responses:[{...response({contract_version:'bos-identity-mcp/v2',tools:[{name,description:'Advertised tool',inputSchema:{type:'object',required,properties:{query:{type:'object',additionalProperties:true}},additionalProperties:false}}],resources:[{uri:'bos://education-center',name:'Education Center'}]}),operation:'bos.list.context.tools',transport:'mcp_discovery'}]});
+ const binding={product:'education-center',case_id:'positive-5'};
+ assert.equal(reviewerOutcomeMatches(assertion,list(tool),requirements,binding),true);
+ assert.equal(reviewerOutcomeMatches(assertion,list(tool,['query']),requirements,binding),false);
+ assert.equal(reviewerOutcomeMatches(assertion,list('education_center_get_camp_roster_report'),requirements,binding),false);
+ assert.equal(reviewerOutcomeMatches(assertion,{responses:[]},requirements,binding),false);
+});
+test('Education Center capability assertion binds the exact student-search capability metadata',()=>{
+ const tool='education_center_search_students';
+ const selected={operation:'bos.list.context.tools',transport:'mcp_discovery',tool_name:tool};
+ const requirement='student-search-capability';
+ const assertion={schema:'marketplace-case-assertions/v1',product:'education-center',case_id:'positive-6',rules:[
+  {requirement,operator:'equals',response:selected,path:'/name',value:tool},
+  {requirement,operator:'equals',response:selected,path:'/_meta/bos~1capability',value:'calimatic.students.read'}
+ ]};
+ const requirements=[{id:requirement,operator:'equals'}];
+ const list=(capability='calimatic.students.read')=>({responses:[{...response({contract_version:'bos-identity-mcp/v2',tools:[{name:tool,description:'Advertised tool',_meta:{'bos/capability':capability},inputSchema:{type:'object'}}],resources:[{uri:'bos://education-center',name:'Education Center'}]}),operation:'bos.list.context.tools',transport:'mcp_discovery'}]});
+ const binding={product:'education-center',case_id:'positive-6'};
+ assert.equal(reviewerOutcomeMatches(assertion,list(),requirements,binding),true);
+ assert.equal(reviewerOutcomeMatches(assertion,list('calimatic.students.write'),requirements,binding),false);
+ assert.equal(reviewerOutcomeMatches(assertion,{responses:[]},requirements,binding),false);
+});
+test('Education Center search-criteria assertion binds the advertised description',()=>{
+ const tool='education_center_search_students';
+ const selected={operation:'bos.list.context.tools',transport:'mcp_discovery',tool_name:tool};
+ const requirement='student-search-description-criteria';
+ const assertion={schema:'marketplace-case-assertions/v1',product:'education-center',case_id:'positive-7',rules:[
+  {requirement,operator:'contains',response:selected,path:'/name',value:tool},
+  {requirement,operator:'contains',response:selected,path:'/description',value:'query'},
+  {requirement,operator:'contains',response:selected,path:'/description',value:'email'},
+  {requirement,operator:'contains',response:selected,path:'/description',value:'student_name'}
+ ]};
+ const requirements=[{id:requirement,operator:'contains'}];
+ const description='Search verified Calimatic student and family records by query, email, or student_name. Unknown filters are rejected.';
+ const list=(name=tool,text=description)=>({responses:[{...response({contract_version:'bos-identity-mcp/v2',tools:[{name,description:text,inputSchema:{type:'object'}}],resources:[{uri:'bos://education-center',name:'Education Center'}]}),operation:'bos.list.context.tools',transport:'mcp_discovery'}]});
+ const binding={product:'education-center',case_id:'positive-7'};
+ assert.equal(reviewerOutcomeMatches(assertion,list(),requirements,binding),true);
+ assert.equal(reviewerOutcomeMatches(assertion,list(tool,'Search verified Calimatic students.'),requirements,binding),false);
+ assert.equal(reviewerOutcomeMatches(assertion,list('education_center_get_camp_roster_report'),requirements,binding),false);
+ assert.equal(reviewerOutcomeMatches(assertion,{responses:[]},requirements,binding),false);
+});
+test('Education positive-3 accepts only the approved camp-roster MCP configuration response',()=>{
+ const operation='education_center_get_camp_roster_report';
+ const selector={operation,transport:'mcp_business',is_error:true};
  const requirementIds=[
   {id:'exact-enrollment-operation',operator:'equals'},
+  {id:'calimatic-error-code',operator:'equals'},
   {id:'calimatic-api-key-configuration-required',operator:'equals'},
-  {id:'secure-configuration-link-present',operator:'present'},
+  {id:'secure-configuration-link-present',operator:'equals'},
   {id:'no-enrollment-rows',operator:'absent'}
  ];
  const rules=[
   {requirement:'exact-enrollment-operation',operator:'equals',response:selector,path:'/result/error/status',value:'authorization_required'},
+  {requirement:'calimatic-error-code',operator:'equals',response:selector,path:'/result/error/provider_error_code',value:'provider_authorization_required'},
   {requirement:'calimatic-api-key-configuration-required',operator:'equals',response:selector,path:'/result/error/required_authorizations/0/authorization_kind',value:'api_key'},
   {requirement:'calimatic-api-key-configuration-required',operator:'equals',response:selector,path:'/result/error/required_authorizations/0/status',value:'configuration_required'},
-  {requirement:'secure-configuration-link-present',operator:'present',response:selector,path:'/result/error/required_authorizations/0/authorization_url'},
+  {requirement:'secure-configuration-link-present',operator:'equals',response:selector,path:'/result/error/secure_configuration_action_validated',value:true},
   {requirement:'no-enrollment-rows',operator:'absent',response:selector,path:'/result/enrollments'}
  ];
  const fixture=envelope(rules);fixture.product='education-center';fixture.case_id='positive-3';
- const observed={responses:[{operation,transport:'deterministic_https',successful:false,is_error:true,scope_verified:true,http_status:401,body:sanitized({result:{error:{status:'authorization_required',required_authorizations:[{authorization_kind:'api_key',status:'configuration_required',authorization_url:'https://dfsm.ai/api/v1/mcp/provider-recovery?[query redacted]'}]}}})}]};
+ const observed={responses:[{operation,transport:'mcp_business',successful:false,is_error:true,scope_verified:true,body:sanitized({result:{error:{provider_error_code:'provider_authorization_required',status:'authorization_required',secure_configuration_action_validated:true,required_authorizations:[{authorization_kind:'api_key',status:'configuration_required'}]}}})}]};
  const binding={product:'education-center',case_id:'positive-3'};
  assert.equal(reviewerOutcomeMatches(fixture,observed,requirementIds,binding),true);
  for(const mutate of [
@@ -79,7 +147,8 @@ test('an expected Calimatic configuration error can be checked without exact pro
   data=>{data.responses[0].is_error=false;},
   data=>{data.responses[0].scope_verified=false;},
   data=>{data.responses[0].transport='mcp_discovery';},
-  data=>{delete data.responses[0].body.result.error.required_authorizations[0].authorization_url;},
+  data=>{data.responses[0].body.result.error.provider_error_code='authorization_denied';},
+  data=>{data.responses[0].body.result.error.secure_configuration_action_validated=false;},
   data=>{data.responses[0].body.result.error.required_authorizations[0].authorization_kind='oauth';},
   data=>{data.responses[0].body.result.error.required_authorizations[0].status='ready';},
   data=>{data.responses[0].body.result.enrollments=[];}

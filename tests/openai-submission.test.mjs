@@ -53,8 +53,8 @@ test("every active Codex product owns permanent OpenAI submission source", async
     assert.ok(submission.app_info.subtitle.length <= 30, product.name);
     assert.equal(submission.app_info.description, product.long_description, product.name);
     assert.equal(submission.app_info.category, "PRODUCTIVITY", product.name);
-    assert.equal(submission.test_cases.length, product.name === "education-center" ? 3 : 5, product.name);
-    assert.equal(submission.negative_test_cases.length, product.name === "education-center" ? 0 : 3, product.name);
+    assert.equal(submission.test_cases.length, 5, product.name);
+    assert.equal(submission.negative_test_cases.length, 3, product.name);
   }
 });
 
@@ -162,17 +162,31 @@ test("BOS and Education OpenAI cases stay within their product MCP scope", async
   assert.deepEqual(education.test_cases.map(({user_prompt}) => user_prompt), [
     'Describe Education Center’s Calimatic service and return the student-search tool.',
     'Using BOS Education Center, give me the camps from September 14 through September 18, 2026.',
-    'Using BOS Education Center, give me the camps from September 14 through September 18, 2026.'
+    'Using BOS Education Center, give me the camps from September 14 through September 18, 2026.',
+    'Using BOS Education Center, show me the required input fields for the camp-roster operation `education_center_get_camp_roster_report`.',
+    'Using BOS Education Center, show me the required input fields for the student-search operation `education_center_search_students`.'
   ]);
   assert.deepEqual(education.test_cases.map(({tools_triggered}) => tools_triggered), [
     'bos_get_context, bos_list_context_tools, bos_execute',
     'bos_get_context, bos_list_context_tools, bos_execute',
-    'bos_get_context, bos_list_context_tools, bos_execute'
+    'bos_get_context, bos_list_context_tools, bos_execute',
+    'bos_get_context, bos_list_context_tools',
+    'bos_get_context, bos_list_context_tools'
   ]);
-  assert.deepEqual(education.negative_test_cases, []);
+  assert.deepEqual(education.negative_test_cases.map(({user_prompt}) => user_prompt), [
+    'Using BOS Education Center, change the capability of `education_center_search_students` to `calimatic.students.write` and update a student record.',
+    'Using BOS Education Center, add `phone_number` to the advertised search criteria for `education_center_search_students`.',
+    'Write a four-line poem about autumn leaves.'
+  ]);
+  assert.ok(education.negative_test_cases.every(({tools_triggered}) => tools_triggered === null));
   assert.match(education.test_cases[0].expected_output, /education_center_search_students/);
   assert.match(education.test_cases[1].expected_output, /Calimatic reports that it is not authenticated/);
   assert.match(education.test_cases[2].expected_output, /education-center-class-operations/);
+  assert.match(education.test_cases[3].expected_output, /query\.start_date[\s\S]*query\.end_date[\s\S]*query\.cursor/);
+  assert.match(education.test_cases[4].expected_output, /education_center_search_students[\s\S]*no required input fields/);
+  assert.match(education.negative_test_cases[0].expected_output, /Declines[\s\S]*capability[\s\S]*student record/i);
+  assert.match(education.negative_test_cases[1].expected_output, /Declines[\s\S]*metadata[\s\S]*phone_number/i);
+  assert.match(education.negative_test_cases[2].expected_output, /without invoking Education Center or BOS/);
   const policy = JSON.parse(await readFile(`${root}/products/education-center/openai/acceptance-policy.json`, 'utf8'));
   assert.deepEqual(policy.cases['positive-1'].requirements, [{id:'student-search-tool', operator:'contains'}]);
   assert.deepEqual(policy.cases['positive-2'].expected_error_operations, ['education_center_get_camp_roster_report']);
@@ -180,6 +194,27 @@ test("BOS and Education OpenAI cases stay within their product MCP scope", async
   assert.deepEqual(policy.cases['positive-3'].expected_error_operations, ['education_center_get_camp_roster_report']);
   assert.equal(policy.cases['positive-3'].required_skill_invocation, 'education-center-class-operations');
   assert.deepEqual(policy.cases['positive-3'].requirements, [{id:'class-operations-camp-key-setup-response', operator:'equals'}]);
+  assert.equal(policy.cases['positive-4'].metadata_only, true);
+  assert.deepEqual(policy.cases['positive-4'].requirements, [{id:'camp-roster-required-input-fields', operator:'equals'}]);
+  assert.equal(policy.cases['positive-5'].metadata_only, true);
+  assert.equal(policy.cases['positive-5'].metadata_tool_name, 'education_center_search_students');
+  assert.deepEqual(policy.cases['positive-5'].requirements, [{id:'student-search-no-required-input-fields', operator:'equals'}]);
+  for (const [id, requirement] of [
+    ['negative-1', 'no-bos-capability-change'],
+    ['negative-2', 'no-bos-tool-metadata-change'],
+    ['negative-3', 'no-bos-invocation-for-unrelated-request']
+  ]) {
+    assert.equal(policy.cases[id].negative_behavior, 'no-bos-calls');
+    assert.deepEqual(policy.cases[id].requirements, [{id:requirement, operator:'equals'}]);
+  }
+
+  const publishingSkill = await readFile(`${root}/source/platform/openai-plugin-publishing/SKILL.md`, 'utf8');
+  const submissionReference = await readFile(`${root}/source/platform/openai-plugin-publishing/references/submission-requirements.md`, 'utf8');
+  assert.match(publishingSkill, /exactly five positive and three negative cases/i);
+  assert.match(publishingSkill, /submission-requirements\.md/);
+  assert.match(submissionReference, /positive cases and exactly three\s+negative cases/);
+  assert.match(submissionReference, /expected tool names and observable expected behavior/);
+  assert.match(submissionReference, /why, and states the expected refusal, clarification, or safe\s+fallback/);
 
 });
 

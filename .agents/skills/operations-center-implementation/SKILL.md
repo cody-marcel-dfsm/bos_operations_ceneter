@@ -125,6 +125,26 @@ claiming its hypothesis is proven.
   Never repair an earlier hot-patch by directly rewriting client files again.
 
 
+## Staging marketplace acceptance identity
+
+Run each staging marketplace case only through its configured reviewer
+configuration and isolated reviewer session. The current user, ambient browser
+session, current BOS connection, or a link that merely opens the app is not the
+reviewer identity and cannot supply acceptance evidence. Do not run the product
+prompt manually under those identities as a substitute; that can exercise the
+wrong organization or account and does not prove the test-user case.
+
+Before running, locate the private reviewer configuration and its hashed,
+synthetic fixture authority. Verify that their reviewer URL, organization,
+application, installation, and role agree exactly with each other and with the
+case's intended staging scope. Require the harness to complete a fresh isolated
+reviewer login and confirm its live BOS context matches that scope. A reachable
+login page, cached plugin state, or an unrelated live BOS context is insufficient.
+If the configuration, login, or exact scope check is unavailable or mismatched,
+stop and report that the case could not be run; do not infer PASS or FAIL from a
+different identity. When the user asks to proceed case by case, run the next case
+only after the current case reports PASS.
+
 1. Read `AGENTS.md`, `Vault/docs/architecture.md`, and
    `Vault/docs/CONSTITUTION.md`.
 2. Run `python3 tools/vault_index.py sync --quiet` and query related designs,
