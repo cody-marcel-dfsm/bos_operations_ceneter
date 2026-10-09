@@ -43,12 +43,12 @@ test('fixture assertions bind product/case, successful unique semantic response 
  assert.equal(matches([{operator:'min_length',response:selector,path:'/items',value:1}],{responses:[response({items:[1]})]}),false);
 });
 test('Education Center discovery assertion requires the exact advertised student-search tool',()=>{
- const assertion={schema:'marketplace-case-assertions/v1',product:'education-center',case_id:'positive-6',rules:[{
+ const assertion={schema:'marketplace-case-assertions/v1',product:'education-center',case_id:'positive-1',rules:[{
   requirement:'student-search-tool',operator:'contains',response:{operation:'bos.list.context.tools',transport:'mcp_discovery'},path:'/tools',project_paths:['/name'],value:'education_center_search_students'
  }]};
  const requirements=[{id:'student-search-tool',operator:'contains'}];
  const list=names=>({responses:[{...response({contract_version:'bos-identity-mcp/v2',tools:names.map(name=>({name,description:'Advertised tool',inputSchema:{type:'object'}})),resources:[{uri:'bos://education-center',name:'Education Center'}]}),operation:'bos.list.context.tools',transport:'mcp_discovery'}]});
- const binding={product:'education-center',case_id:'positive-6'};
+ const binding={product:'education-center',case_id:'positive-1'};
  assert.equal(reviewerOutcomeMatches(assertion,list(['education_center_search_students']),requirements,binding),true);
  assert.equal(reviewerOutcomeMatches(assertion,list(['bos_get_context']),requirements,binding),false);
  assert.equal(reviewerOutcomeMatches(assertion,list(['education_center_list_students']),requirements,binding),false);
@@ -84,6 +84,21 @@ test('Education Center student-search metadata assertion binds the exact adverti
  assert.equal(reviewerOutcomeMatches(assertion,list(tool),requirements,binding),true);
  assert.equal(reviewerOutcomeMatches(assertion,list(tool,['query']),requirements,binding),false);
  assert.equal(reviewerOutcomeMatches(assertion,list('education_center_get_camp_roster_report'),requirements,binding),false);
+ assert.equal(reviewerOutcomeMatches(assertion,{responses:[]},requirements,binding),false);
+});
+test('Education Center capability assertion binds the exact student-search capability metadata',()=>{
+ const tool='education_center_search_students';
+ const selected={operation:'bos.list.context.tools',transport:'mcp_discovery',tool_name:tool};
+ const requirement='student-search-capability';
+ const assertion={schema:'marketplace-case-assertions/v1',product:'education-center',case_id:'positive-6',rules:[
+  {requirement,operator:'equals',response:selected,path:'/name',value:tool},
+  {requirement,operator:'equals',response:selected,path:'/_meta/bos~1capability',value:'calimatic.students.read'}
+ ]};
+ const requirements=[{id:requirement,operator:'equals'}];
+ const list=(capability='calimatic.students.read')=>({responses:[{...response({contract_version:'bos-identity-mcp/v2',tools:[{name:tool,description:'Advertised tool',_meta:{'bos/capability':capability},inputSchema:{type:'object'}}],resources:[{uri:'bos://education-center',name:'Education Center'}]}),operation:'bos.list.context.tools',transport:'mcp_discovery'}]});
+ const binding={product:'education-center',case_id:'positive-6'};
+ assert.equal(reviewerOutcomeMatches(assertion,list(),requirements,binding),true);
+ assert.equal(reviewerOutcomeMatches(assertion,list('calimatic.students.write'),requirements,binding),false);
  assert.equal(reviewerOutcomeMatches(assertion,{responses:[]},requirements,binding),false);
 });
 test('Education positive-3 accepts only the approved camp-roster MCP configuration response',()=>{

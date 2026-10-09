@@ -147,6 +147,14 @@
       "tools_triggered": "bos_get_context, bos_list_context_tools",
       "expected_output": "The response identifies `education_center_search_students` and reports that its advertised input schema has no required input fields.",
       "expected_output_url": null
+    },
+    {
+      "description": "Show the student-search tool’s declared capability.",
+      "user_prompt": "Using BOS Education Center, what capability does the advertised student-search tool `education_center_search_students` declare?",
+      "file_attachment_urls": null,
+      "tools_triggered": "bos_get_context, bos_list_context_tools",
+      "expected_output": "The response identifies `education_center_search_students` and its declared capability `calimatic.students.read` from BOS discovery metadata.",
+      "expected_output_url": null
     }
   ],
   "negative_test_cases": []

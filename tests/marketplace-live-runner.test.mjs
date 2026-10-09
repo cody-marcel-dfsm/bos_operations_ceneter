@@ -14,7 +14,7 @@ for(const product of ['bos','education-center'])test(product+' loads exact confi
  assert.deepEqual(catalog.cases.filter(row=>row.kind==='starter').map(row=>row.prompt),manifest.default_prompts);
  assert.deepEqual(catalog.cases.filter(row=>row.kind==='positive').map(row=>row.prompt),submission.test_cases.map(row=>row.user_prompt));
  assert.deepEqual(catalog.cases.filter(row=>row.kind==='negative').map(row=>row.prompt),submission.negative_test_cases.map(row=>row.user_prompt));
- assert.equal(catalog.cases.length,product==='education-center'?8:11);
+ assert.equal(catalog.cases.length,product==='education-center'?9:11);
 });
 
 test('case failures continue and changed configuration is reloaded before the next LLM request',async()=>{
@@ -45,12 +45,14 @@ test('Education marketplace cases preserve the approved prompts and exact operat
   'Using BOS Education Center, give me the camps from September 14 through September 18, 2026.',
   'Using BOS Education Center, give me the camps from September 14 through September 18, 2026.',
   'Using BOS Education Center, show me the required input fields for the camp-roster operation `education_center_get_camp_roster_report`.',
-  'Using BOS Education Center, show me the required input fields for the student-search operation `education_center_search_students`.'
+  'Using BOS Education Center, show me the required input fields for the student-search operation `education_center_search_students`.',
+  'Using BOS Education Center, what capability does the advertised student-search tool `education_center_search_students` declare?'
  ]);
  assert.deepEqual(cases.map(({expected_operation})=>expected_operation),[
   ['bos_get_context','bos_list_context_tools','bos_execute'],
   ['bos_get_context','bos_list_context_tools','bos_execute'],
   ['bos_get_context','bos_list_context_tools','bos_execute'],
+  ['bos_get_context','bos_list_context_tools'],
   ['bos_get_context','bos_list_context_tools'],
   ['bos_get_context','bos_list_context_tools']
  ]);
@@ -58,6 +60,9 @@ test('Education marketplace cases preserve the approved prompts and exact operat
  assert.equal(cases[3].metadata_only,true);
  assert.equal(cases[4].metadata_tool_name,'education_center_search_students');
  assert.equal(cases[4].metadata_only,true);
+ assert.equal(cases[5].requirements[0].id,'student-search-capability');
+ assert.equal(cases[5].metadata_tool_name,'education_center_search_students');
+ assert.equal(cases[5].metadata_only,true);
 });
 
 test('Education student-search discovery case requires the exact advertised tool',async()=>{

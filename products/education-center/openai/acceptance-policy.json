@@ -118,6 +118,23 @@
           "operator": "equals"
         }
       ]
+    },
+    "positive-6": {
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "service-receipts",
+      "grading": "deterministic-functional",
+      "expected_output_validation": false,
+      "metadata_only": true,
+      "metadata_tool_name": "education_center_search_students",
+      "metadata_fact": "capability",
+      "requirements": [
+        {
+          "id": "student-search-capability",
+          "operator": "equals"
+        }
+      ]
     }
   }
 }
