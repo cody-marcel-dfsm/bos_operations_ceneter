@@ -868,6 +868,9 @@ function validatePublicOperationError(error, label) {
 
 function validateOperationRecovery(recovery, label) {
   requireObject(recovery, label);
+  if (Object.keys(recovery).length === 1 && recovery.action === "configure_source") {
+    return;
+  }
   requireExactKeys(
     recovery,
     new Set([

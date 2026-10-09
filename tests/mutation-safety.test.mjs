@@ -16,7 +16,8 @@ test("mutation safety survives every product routing branch and client compositi
     codex: "clients/codex/plugins",
     claude: "clients/claude/plugins",
     copilot: "clients/copilot/products",
-    gemini: "clients/gemini/extensions"
+    gemini: "clients/gemini/extensions",
+    muse: "clients/muse/plugins"
   };
   for (const { manifest } of await listProducts()) {
     for (const skill of await resolveProductSkills(manifest)) {

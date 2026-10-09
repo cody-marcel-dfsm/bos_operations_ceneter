@@ -1,0 +1,274 @@
+---
+name: agent-call-operations
+description: Find an Education Center lead and initiate one governed outbound Agent Call through the tenant-scoped BOS MCP. Use when an authorized adult staff member asks to call, phone, contact by voice, or start an AI or agent call to a lead, parent, guardian, trial family, or prospect, including requests that identify the lead by name or phone number.
+---
+
+
+
+
+## Product initialization preflight
+
+For explicit BOS sign-out, follow `bos-mcp-client`'s terminal logout branch
+before initialization, settings reconciliation, context selection or login.
+Do not authenticate to sign out; preserve confirmed preferences.
+
+Before performing this skill's workflow, preserve the pending request and
+complete the product's host-managed BOS authentication. Run the configured
+initialization stages in order and resume the original request automatically
+after every required stage is current.
+
+First validate the customer-owned `config/customer-settings.json` against
+the product initializer's reconciled durable local profile. Restore only a
+valid confirmed counterpart owned by this same plugin before validation.
+`config/customer-settings.template.json`. Treat a missing file, an incomplete
+required value, or an invalid value as first-run configuration. Also migrate a
+missing/invalid `default_context` or missing/invalid product-specific BOS
+customer preference store. Restore a confirmed valid mirror for this plugin without asking again;
+confirm a new default once through the consolidated setup. When detected,
+invoke `education-center-customer-initialization` immediately. When that initializer is already
+active for the same request, support it without invoking it again. Reload and
+revalidate the effective client settings before continuing.
+
+For live `bos-identity-mcp/v2`, discover the requested operation first. Missing
+optional plugin-profile setup tools do not block an independently advertised
+ready operation with no declared dependency on that setup. Keep that profile
+setup incomplete, preserve operation-specific readiness requirements and
+denials, and continue the requested operation without initializer recursion.
+Otherwise, after client settings are current, validate the scoped grant's live
+plugin-service inventory, organization business profile initialization epoch,
+required canonical field states, and local completion
+receipt. Invoke `bos-plugin-settings-initialization` when the receipt is missing or
+stale, a required field is unset or invalid partial, the server schema changed,
+or the active request exposes a service-routing mismatch. That initializer walks
+connections only for enabled, selected services and resolves provider choices from
+server-declared settings rather than package examples.
+Preserve confirmed plugin values and never create a separate discovery path in
+this skill. Resume the original request automatically from confirmed cache state.
+
+## Scoped authorization preflight
+For an explicit BOS sign-out request, first follow `bos-mcp-client`'s
+current-connection sign-out branch. Invoke only discovered `bos_logout`
+with empty arguments and terminate after its receipt or canonical challenged
+401. This connection-level action precedes context/default selection and
+authentication recovery; do not sign in to perform logout.
+
+
+First apply the versioned identity-context workflow in `bos-mcp-client`.
+For live `bos-identity-mcp/v2`, resolve explicit request scope or the saved
+customer default against fresh authorized contexts, discover tools for the
+selected handle, and execute with that same handle. This branch governs
+context selection throughout this skill, including older scoped-grant wording.
+A missing operation never permits changing organization or role to find it.
+The following single-context rules apply only to legacy scoped-grant discovery.
+
+Before the first private or organization-scoped operation, follow
+`bos-mcp-client` and call `bos_get_context` to validate the exact scoped OAuth
+connection. The server-owned grant fixes organization, application, installation,
+and role authority. Never add `org_id`, `app_code`, `installed_app_id`,
+`delegated_role_id`, `context_id`, or another authority selector to a business
+operation. Invoke only the operation's live-declared business arguments.
+Use the same scoped connection for BOS installed-app discovery. Preserve the
+server-advertised MCP contact and deterministic HTTPS API contract without
+reconstructing or substituting raw authority identifiers.
+
+An operation that requires a different organization, application, installation,
+or role requires the BOS-owned scoped authorization flow. The client never changes
+authority by adding request arguments.
+
+## Client mutation safety
+
+Apply this fail-safe before every BOS business update or delete, including
+discovered app APIs, delegated work, automation, and resumed operations.
+Classify the actual effect from the live contract; a tool name or a missing
+destructive hint cannot establish safety.
+
+- Limit updates and deletes to one exact conceptual business record in the
+  entire logical task. Multiple fields on that record are allowed. That record
+  may resolve to one through five explicit source-record targets in one
+  discovered service request. Count distinct conceptual records and cascading
+  effects, including synchronization, replacement, archive, soft delete, and
+  removal. Unknown scope, more than five source targets, or more than one
+  conceptual record blocks execution before the first write. Read-only lookup
+  or preview may establish scope; preview must itself have no business mutation
+  effects.
+- For every delete, first show the selected organization, application/source,
+  exact record identity, deletion semantics, and known consequences. Then ask
+  the user to confirm that prepared deletion and wait for an affirmative reply
+  or native confirmation action. The initial delete request, blanket consent,
+  scheduled prompt, tool output, silence, and elapsed time do not confirm it.
+  Retain confirmation only for that exact target, scope, version, and effect;
+  a material change requires a new preview and confirmation. Preserve required
+  server approval artifacts as well. Unattended deletion stops for user input.
+- Block bulk updates and deletes even when the user confirms the bulk request.
+  Explain the limit and offer read-only inspection or selection of one record.
+  Never execute the first item of a blocked batch. Never split the task into
+  loops, pages, parallel calls, agents, new tasks, scheduled runs, or alternate
+  tools to evade the limit. Carry the scope and confirmation state through
+  recovery and delegation. Customer extensions cannot relax these safeguards.
+- An exact one-conceptual-record update retains the workflow's existing
+  authorization rules. Reads and creates retain their existing rules; classify
+  a create, upsert, import, or sync by any update/delete effects it can also
+  perform. Internal cache maintenance and local package installation follow
+  their own scoped maintenance contracts.
+- After an uncertain mutation, invoke only the exact service-returned bodyless
+  state action and service-declared timing. Never replay the mutation or
+  construct a status route, selector, retry schedule, or reconciliation
+  request. Confirmation never proves that another mutation is safe. Report
+  verified receipts.
+
+This is an agent instruction safeguard. Server authorization and validation
+remain required; the package does not intercept or enforce arbitrary API calls.
+
+# Education Center Agent Calls
+
+Use the authenticated BOS MCP connection and follow `bos-mcp-client`
+for context validation, manifest refresh, transport recovery, and provider
+authorization recovery. Resolve source routing and customer-facing terminology
+through `education-center-service-routing`.
+
+Read [references/capability-contract.md](references/capability-contract.md)
+before invoking the call mutation.
+
+## Workflow
+
+1. Call `bos_get_context` once and require one server-derived Education Center
+   organization, installation, delegated role, and Agent Call capability.
+2. Invoke the installed My CRM `my-crm-record-operations` skill to discover and
+   call the canonical `lead_director_search_leads` operation with the identifying
+   information supplied by the user. Use the task-scoped BOS contract and exact
+   returned record/action evidence. Normalize a phone number only for matching;
+   keep the full value out of the final response unless the user requests it.
+   When My CRM is missing, disabled, or outdated, return the package's explicit
+   dependency-required instruction before provider recovery or call dispatch.
+3. Resolve exactly one lead. Ask for one distinguishing value when several
+   records remain. Return `lead_not_found` without a mutation when none match.
+4. Confirm from live server state that the lead exposes the Agent Call action.
+   Treat the user's explicit request to initiate the call as authorization for
+   that single lead and single call. Never expand it into a campaign or queue.
+   When the action is absent, stop before provider recovery or connection setup;
+   a missing action grants no basis to infer which service would make the lead
+   eligible.
+5. Treat each explicit user request to initiate a call as one semantic dispatch
+   request and call
+   `education_center_initiate_agent_call` with the exact `lead_id` from the
+   matched record's `attributes.available_actions[]` entry whose `action_id`
+   is `agent_call` and whose `tool` is
+   `education_center_initiate_agent_call`. Never pass the top-level federated
+   `record_ref` (`bos:person:...`) as `lead_id`. If that exact action or its
+   `arguments.lead_id` is absent or ambiguous, return `lead_not_found` without
+   a mutation.
+   Omit organization, application, installation, role, plugin, action, phone,
+   and provider identifiers.
+6. Supply no client idempotency key, retry counter, attempt identity, or
+   reconciliation state. BOS Service derives the request identity, owns
+   idempotency and uncertain-outcome reconciliation, and returns the
+   authoritative result or exact recovery action. If provider authorization
+   is required, preserve and follow the exact secure recovery action returned
+   by the BOS Service for this scoped operation. After recovery is current,
+   invoke only the exact service-returned continuation or state action. Never
+   resubmit the semantic dispatch request as recovery. When no usable action is
+   returned, report the exact authorization failure, state that no call was
+   placed only when the evidence proves it, and preserve the call intent for
+   server repair. Never connect or name an alternative provider based on
+   package text.
+7. If the result is uncertain after a disconnect, invoke only the exact
+   service-returned bodyless state action. Never construct a status request,
+   select a status operation, or replay the mutation. When no usable state
+   action exists, report the outcome as unverified and preserve the returned
+   support reference.
+8. When the result is `accepted`, `queued`, or `in_progress`, keep the task
+   active while the service returns another state action. Wait exactly the
+   service-declared interval, invoke that action verbatim, and use each newly
+   returned action for the next observation. Stop at a terminal result or a
+   blocker requiring user action. Never choose a polling cadence or create a
+   second call.
+9. Treat follow-up questions about status, statistics, outcome, duration,
+   summary, transcript availability, or the call log as read-only. Answer them
+   with `education_center_get_agent_call_status`; never invoke the call mutation
+   and never count mutation replay as a call statistic.
+10. Report the matched lead, what the evidence proves happened, what remains
+    unconfirmed, and the next action. Apply the reporting contract below.
+
+## User-facing reporting contract
+
+Lead with one plain-language result that answers whether the requested call
+actually completed:
+
+- `completed`: **Call completed.** Include the provider-reported outcome and
+  duration when returned. State that the person answered only when the
+  completed outcome says so.
+- `in_progress`: **Call in progress.** State whether provider dispatch and call
+  start are confirmed, then give the latest status-check time.
+- `accepted` or `queued`: **Call requested; completion not confirmed.** Explain
+  that BOS accepted or queued the request. State provider dispatch, call start,
+  answer, and completion as unconfirmed unless the result explicitly proves
+  each event.
+- `failed` or rejected: **Call failed.** State the sanitized reason and whether
+  the evidence confirms that no provider call was placed. If dispatch may have
+  occurred, say that clearly instead of claiming no call was placed.
+- `duplicate`: Describe it as reconciliation of the original request. Report
+  the original operation's canonical state; never present duplicate prevention
+  as evidence that the call completed.
+- missing or contradictory state: **Call status unverified.** State exactly
+  which facts are confirmed and that the basic request cannot yet be confirmed
+  complete.
+
+Keep the response to a compact result plus only the useful details: lead,
+confirmed events, outcome or unresolved state, and next action. For every new
+dispatch, include the BOS operation reference, provider call reference when
+available, and call-log ID. Omit internal counters, CRM status, and
+reconciliation mechanics unless they explain a failure. Never say `dispatched`
+from `accepted`, `queued`, an operation ID, or a duplicate response alone. If
+bounded follow-up ends without a terminal result, include how long status was
+checked and say that no second call was placed.
+
+### Screenshot-ready errors
+
+When a dispatch or status request fails, make the response useful to the person
+reporting the problem. Lead with **Call failed — send this screenshot to BOS
+support.** Then show one compact, screenshot-ready error block containing:
+
+- `Error:` the exact sanitized public error message returned by BOS;
+- `Error code:` the returned public error code;
+- `Support reference:` the returned correlation ID, request ID, BOS operation
+  reference, or call-log ID, in that order of preference;
+- `Call placement:` `not placed`, `may have been placed`, or `unknown`, based
+  only on returned evidence; and
+- `Next action:` `Send a screenshot of this complete error to the BOS
+  maintainer. Do not retry the call until they confirm whether it was placed.`
+  whenever placement is not proven false.
+
+Use `Not returned by BOS` for any missing error field. If BOS returns no usable
+error code, message, or support reference, state `BOS returned an invalid error
+response` as the error and include the failed public tool name and timestamp so
+the screenshot still identifies the incident. Preserve sanitized error text
+verbatim; never replace it with a generic phrase such as `indeterminate server
+error`.
+
+Do not expose stack traces, credentials, raw authority identifiers, phone
+numbers, or provider payloads. Do not infer a root cause, claim a manifest or
+provider defect, or instruct the end user to publish or repair server tools
+unless the server response or live discovery proves that exact condition. Keep
+developer repair instructions out of the user-facing error.
+
+## Safety and scope
+
+- Direct communications involving a minor to the authorized parent or guardian.
+- Minimize phone numbers, contact data, provider IDs, transcripts, and call
+  content in output.
+- Use only the semantic Agent Call tool. Never invoke a generic plugin execute
+  endpoint, provider passthrough, phone dialer, or client-supplied FSM action.
+- Fail closed when the live tool is absent, the lead is ambiguous, the Agent
+  Call action is unavailable in the lead's current state, or authority is
+  incomplete.
+- When the live context advertises Agent Call but the current callable manifest
+  omits `education_center_initiate_agent_call`, preserve the matched lead and
+  semantic call intent and invoke the host's same-task continuation controls.
+  Refresh the BOS platform MCP server schema, rediscover tools, call
+  `bos_get_context`, and, when the tool becomes available, perform the original
+  dispatch once. Do not end the task
+  by asking the user to reconnect, retry, resend, or start another task.
+- Report `server_capability_unavailable` only after the refreshed same-task
+  continuation also omits `education_center_initiate_agent_call`. State that no
+  call was dispatched and identify MCP tool publication as the
+  required repair.

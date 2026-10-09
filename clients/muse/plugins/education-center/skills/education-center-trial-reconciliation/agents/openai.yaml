@@ -1,0 +1,4 @@
+interface:
+  display_name: "Education Center Trial Reconciliation"
+  short_description: "Reconcile trials and prepare accurate drafts"
+  default_prompt: "Use $education-center-trial-reconciliation to find every trial in the next seven days, identify confirmation or follow-up needs, and prepare drafts."

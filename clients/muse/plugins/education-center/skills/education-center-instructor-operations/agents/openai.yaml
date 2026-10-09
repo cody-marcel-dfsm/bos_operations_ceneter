@@ -1,0 +1,6 @@
+interface:
+  display_name: "Education Center Instructor Operations"
+  short_description: "Handle instructor lifecycle through BOS"
+  default_prompt: "Use $education-center-instructor-operations to handle an instructor hiring, onboarding, teaching, or offboarding request through BOS."
+policy:
+  allow_implicit_invocation: true

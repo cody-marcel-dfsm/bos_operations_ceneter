@@ -32,7 +32,8 @@
         "codex",
         "claude",
         "copilot",
-        "gemini"
+        "gemini",
+        "muse"
       ]
     },
     "application_name": {

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="240" viewBox="0 0 1200 240" role="img" aria-labelledby="title desc">
+  <title id="title">BOS connection journey</title>
+  <desc id="desc">Six steps: Install, Load, Register, Sign in, Discover, and Verify.</desc>
+  <rect width="1200" height="240" rx="32" fill="#F4F7FB"/>
+  <text x="60" y="60" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#14213D">Your BOS connection</text>
+  <path d="M120 132 H1080" stroke="#9FB3C8" stroke-width="10" stroke-linecap="round"/>
+  <g font-family="Arial, sans-serif" font-size="20" font-weight="700" text-anchor="middle" fill="#14213D">
+    <circle cx="120" cy="132" r="28" fill="#2563EB"/><text x="120" y="140" fill="#FFFFFF">1</text><text x="120" y="194">Install</text>
+    <circle cx="312" cy="132" r="28" fill="#2563EB"/><text x="312" y="140" fill="#FFFFFF">2</text><text x="312" y="194">Load</text>
+    <circle cx="504" cy="132" r="28" fill="#2563EB"/><text x="504" y="140" fill="#FFFFFF">3</text><text x="504" y="194">Register</text>
+    <circle cx="696" cy="132" r="28" fill="#2563EB"/><text x="696" y="140" fill="#FFFFFF">4</text><text x="696" y="194">Sign in</text>
+    <circle cx="888" cy="132" r="28" fill="#2563EB"/><text x="888" y="140" fill="#FFFFFF">5</text><text x="888" y="194">Discover</text>
+    <circle cx="1080" cy="132" r="28" fill="#16A34A"/><text x="1080" y="140" fill="#FFFFFF">6</text><text x="1080" y="194">Verify</text>
+  </g>
+</svg>

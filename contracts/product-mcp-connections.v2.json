@@ -186,7 +186,8 @@
         "clients/claude/plugins/bos/.mcp.json",
         "clients/codex/plugins/bos/.mcp.json",
         "clients/copilot/products/bos/.github/mcp.json",
-        "clients/gemini/extensions/bos/mcp_config.json"
+        "clients/gemini/extensions/bos/mcp_config.json",
+        "clients/muse/plugins/bos/muse-settings.template.json"
       ]
     }
   ]

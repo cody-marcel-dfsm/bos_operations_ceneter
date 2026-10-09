@@ -1,0 +1,4 @@
+interface:
+  display_name: "Education Center Service Routing"
+  short_description: "Route Education Center requests by service and preference"
+  default_prompt: "Use $education-center-service-routing to choose the requested provider through the exact tenant-scoped BOS capability."

@@ -598,7 +598,8 @@ export async function verifyProductMcpContract({
       codex: `clients/codex/plugins/${product.name}/.bos-product.json`,
       claude: `clients/claude/plugins/${product.name}/.bos-product.json`,
       copilot: `clients/copilot/products/${product.name}/.bos-product.json`,
-      gemini: `clients/gemini/extensions/${product.name}/.bos-product.json`
+      gemini: `clients/gemini/extensions/${product.name}/.bos-product.json`,
+      ...(product.clients?.includes("muse") ? {muse: `clients/muse/plugins/${product.name}/.bos-product.json`} : {})
     })) {
       const metadata = await readJson(join(root, metadataPath));
       if (metadata.client !== client || metadata.connection_owner !== product.name ||
@@ -683,14 +684,14 @@ async function verifyExternalFoundationPackage(repositoryRoot, packageRoot, meta
   }
   violations.push(...validateExternalHandoff(metadata, requirements, requirements.metadata_file));
   for (const field of findCredentialFields(metadata)) add("credential_material", `Metadata contains credential field ${field}.`);
-  for (const file of [".mcp.json", ".app.json", ".github/mcp.json", ".vscode/mcp.json", "mcp_config.json", "CONNECTORS.md"]) {
+  for (const file of [".mcp.json", ".app.json", ".github/mcp.json", ".vscode/mcp.json", "mcp_config.json", "CONNECTORS.md", "muse-settings.template.json"]) {
     if (await pathExists(join(packageRoot, file))) violations.push(finding("dependent_transport", file, "Dependent product declares its own connection artifact."));
   }
-  for (const file of [".codex-plugin/plugin.json", ".claude-plugin/plugin.json", "gemini-extension.json"]) {
+  for (const file of [".codex-plugin/plugin.json", ".claude-plugin/plugin.json", "gemini-extension.json", ".muse-plugin/plugin.json"]) {
     if (!await pathExists(join(packageRoot, file))) continue;
     const manifest = await readJson(join(packageRoot, file));
-    if ("mcpServers" in manifest || "apps" in manifest) violations.push(finding("dependent_transport", file, "Dependent product declares a host binding."));
+    if ("mcpServers" in manifest || "apps" in manifest || (manifest.capabilities?.mcpServers?.length ?? 0) > 0) violations.push(finding("dependent_transport", file, "Dependent product declares a host binding."));
   }
-  if (!["codex", "claude", "copilot", "gemini"].includes(metadata.client)) add("external_client", "Unsupported client.");
+  if (!["codex", "claude", "copilot", "gemini", "muse"].includes(metadata.client)) add("external_client", "Unsupported client.");
   return externalContractResult(requirements, metadata, violations);
 }

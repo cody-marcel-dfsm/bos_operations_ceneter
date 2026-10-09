@@ -472,7 +472,8 @@ test("every active client package carries the scoped authorization preflight", a
     codex: (name) => `${root}/clients/codex/plugins/${name}/skills`,
     claude: (name) => `${root}/clients/claude/plugins/${name}/skills`,
     copilot: (name) => `${root}/clients/copilot/products/${name}/skills`,
-    gemini: (name) => `${root}/clients/gemini/extensions/${name}/skills`
+    gemini: (name) => `${root}/clients/gemini/extensions/${name}/skills`,
+    muse: (name) => `${root}/clients/muse/plugins/${name}/skills`
   };
   for (const { manifest } of await listProducts()) {
     if (manifest.release_status !== "active") continue;
@@ -2290,7 +2291,7 @@ test("Claude distribution is a marketplace of self-contained plugins", async () 
 });
 
 test("generated clients use host-native BOS connections without local transport", async () => {
-  for (const client of ["codex", "claude", "copilot", "gemini"]) {
+  for (const client of ["codex", "claude", "copilot", "gemini", "muse"]) {
     const files = await walkFiles(`${root}/clients/${client}`);
     assert.equal(files.some((path) => /bos_mcp_broker\.py$/.test(path)), false);
     assert.equal(files.some((path) => /__pycache__|\.pyc$|\/bin\//.test(path)), false);
@@ -2457,7 +2458,8 @@ test("feedback contract uses the BOS app with service-owned request identity", a
     codex: `${root}/clients/codex/plugins`,
     claude: `${root}/clients/claude/plugins`,
     copilot: `${root}/clients/copilot/products`,
-    gemini: `${root}/clients/gemini/extensions`
+    gemini: `${root}/clients/gemini/extensions`,
+    muse: `${root}/clients/muse/plugins`
   };
   for (const {manifest} of products) {
     if (manifest.release_status === "disabled") continue;
@@ -2505,7 +2507,8 @@ test("every product and client ships tenant extension management metadata", asyn
     codex: (name) => `${root}/clients/codex/plugins/${name}`,
     claude: (name) => `${root}/clients/claude/plugins/${name}`,
     copilot: (name) => `${root}/clients/copilot/products/${name}`,
-    gemini: (name) => `${root}/clients/gemini/extensions/${name}`
+    gemini: (name) => `${root}/clients/gemini/extensions/${name}`,
+    muse: (name) => `${root}/clients/muse/plugins/${name}`
   };
   for (const { manifest } of products) {
     if (manifest.release_status === "disabled") {
@@ -2570,7 +2573,8 @@ test("generated feedback skill automatically discovers customer customizations",
         codex: `${root}/clients/codex/plugins/${manifest.name}`,
         claude: `${root}/clients/claude/plugins/${manifest.name}`,
         copilot: `${root}/clients/copilot/products/${manifest.name}`,
-        gemini: `${root}/clients/gemini/extensions/${manifest.name}`
+        gemini: `${root}/clients/gemini/extensions/${manifest.name}`,
+        muse: `${root}/clients/muse/plugins/${manifest.name}`
       };
       const feedbackRoot = `${roots[client]}/skills/submit-feedback`;
       const skill = await readFile(`${feedbackRoot}/SKILL.md`, "utf8");
@@ -2581,7 +2585,7 @@ test("generated feedback skill automatically discovers customer customizations",
 });
 
 test("generated clients exclude Python cache and bytecode files", async () => {
-  for (const client of ["codex", "claude", "copilot", "gemini"]) {
+  for (const client of ["codex", "claude", "copilot", "gemini", "muse"]) {
     const files = await walkFiles(`${root}/clients/${client}`);
     assert.equal(
       files.some(
@@ -2778,7 +2782,7 @@ test("desktop marketplace versions match the repository release", async () => {
   assert.equal(packageManifest.version, expectedVersion);
   assert.deepEqual(
     Object.keys(packageManifest.clients).sort(),
-    ["claude", "codex", "copilot", "gemini"]
+    ["claude", "codex", "copilot", "gemini", "muse"]
   );
   assert.equal(
     claudeMarketplace.plugins.every(({ version }) => version === undefined),
@@ -2903,7 +2907,8 @@ test("migrated BOS personal workflows are canonical and generated for every appl
     codex: "clients/codex/plugins",
     claude: "clients/claude/plugins",
     copilot: "clients/copilot/products",
-    gemini: "clients/gemini/extensions"
+    gemini: "clients/gemini/extensions",
+    muse: "clients/muse/plugins"
   };
   for (const [client, clientRoot] of Object.entries(clientRoots)) {
     for (const skill of bosSkills) {
@@ -3063,7 +3068,7 @@ test("BOS bootstraps callable tools before resource or UI diagnostics", async ()
 
 
 test("resource operation schemas supplement frozen callable envelopes without expanding authority", async () => {
-  for (const prefix of ["source/platform", ...["codex/plugins", "claude/plugins", "copilot/products", "gemini/extensions"].map(client => `clients/${client}/bos/skills`)]) {
+  for (const prefix of ["source/platform", ...["codex/plugins", "claude/plugins", "copilot/products", "gemini/extensions", "muse/plugins"].map(client => `clients/${client}/bos/skills`)]) {
     const guidance = await readFile(`${root}/${prefix}/bos-mcp-client/SKILL.md`, "utf8");
     const continuation = await readFile(`${root}/${prefix}/bos-mcp-client/references/runtime-continuation-contract.md`, "utf8");
     assert.match(guidance, /## Resource-owned operation schemas/);

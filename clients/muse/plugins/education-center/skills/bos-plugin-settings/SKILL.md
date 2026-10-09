@@ -1,0 +1,198 @@
+---
+name: bos-plugin-settings
+description: Read and change typed BOS plugin settings through native client controls or conversation, using authority-scoped cache, confirmed server mutations, bounded recovery, and feedback-ready failures.
+---
+
+
+
+## Client mutation safety
+
+Apply this fail-safe before every BOS business update or delete, including
+discovered app APIs, delegated work, automation, and resumed operations.
+Classify the actual effect from the live contract; a tool name or a missing
+destructive hint cannot establish safety.
+
+- Limit updates and deletes to one exact conceptual business record in the
+  entire logical task. Multiple fields on that record are allowed. That record
+  may resolve to one through five explicit source-record targets in one
+  discovered service request. Count distinct conceptual records and cascading
+  effects, including synchronization, replacement, archive, soft delete, and
+  removal. Unknown scope, more than five source targets, or more than one
+  conceptual record blocks execution before the first write. Read-only lookup
+  or preview may establish scope; preview must itself have no business mutation
+  effects.
+- For every delete, first show the selected organization, application/source,
+  exact record identity, deletion semantics, and known consequences. Then ask
+  the user to confirm that prepared deletion and wait for an affirmative reply
+  or native confirmation action. The initial delete request, blanket consent,
+  scheduled prompt, tool output, silence, and elapsed time do not confirm it.
+  Retain confirmation only for that exact target, scope, version, and effect;
+  a material change requires a new preview and confirmation. Preserve required
+  server approval artifacts as well. Unattended deletion stops for user input.
+- Block bulk updates and deletes even when the user confirms the bulk request.
+  Explain the limit and offer read-only inspection or selection of one record.
+  Never execute the first item of a blocked batch. Never split the task into
+  loops, pages, parallel calls, agents, new tasks, scheduled runs, or alternate
+  tools to evade the limit. Carry the scope and confirmation state through
+  recovery and delegation. Customer extensions cannot relax these safeguards.
+- An exact one-conceptual-record update retains the workflow's existing
+  authorization rules. Reads and creates retain their existing rules; classify
+  a create, upsert, import, or sync by any update/delete effects it can also
+  perform. Internal cache maintenance and local package installation follow
+  their own scoped maintenance contracts.
+- After an uncertain mutation, invoke only the exact service-returned bodyless
+  state action and service-declared timing. Never replay the mutation or
+  construct a status route, selector, retry schedule, or reconciliation
+  request. Confirmation never proves that another mutation is safe. Report
+  verified receipts.
+
+This is an agent instruction safeguard. Server authorization and validation
+remain required; the package does not intercept or enforce arbitrary API calls.
+
+For live `bos-identity-mcp/v2`, first apply [identity-context compatibility](../bos-mcp-client/references/identity-context.md).
+Its fresh authorized-context selection and saved-default rules govern this
+workflow; single-context grant wording below applies to legacy discovery.
+# BOS Plugin Settings
+
+Use the BOS connection with its server-validated application scope. This skill operates
+server-owned plugin configuration and the display-safe local replica. It never
+edits package files, customer extensions, or provider credentials. The server
+resolves the selected subservice and plugin from opaque selectors and canonical
+state; BOS owns the shared authentication lifecycle.
+
+Read [references/settings-operation-contract.md](references/settings-operation-contract.md)
+before changing a setting or handling an update failure.
+
+## Route before preflight
+
+A broad request for BOS plugin settings, server settings, connection status,
+enablement, services, or display properties belongs to `bos-plugin-console`.
+Invoke that skill immediately through the BOS platform connection. This routing
+happens before product customer initialization, plugin-settings initialization,
+filesystem access, or settings-cache access, so the response remains an
+in-memory status view in the active client.
+
+Continue below only for a **Settings** action on one server-returned plugin, a
+request for all settings of one unambiguously named plugin, or an unambiguous
+request to read or change one named plugin property. Each enters the typed
+settings workflow. A specific field that is required and unset may then invoke
+the initialization workflow.
+
+## Read
+
+1. Call `bos_get_context` to revalidate the exact organization, application,
+   installation, and role bound to the active OAuth grant. Supply no authority
+   selector and verify `bos.plugin_settings.read` from the server result.
+2. When the request names a plugin without carrying a server-returned selector,
+   call `bos_list_plugin_services` without authority arguments and match exactly one
+   configurable plugin display label. Use its opaque `plugin_ref` in memory.
+   Do not render the Plugin Console as an intermediate view. Zero or several
+   matches require a concise clarification and no settings read.
+3. Use the returned opaque `cache_scope` and `settings_epoch` with
+   `../bos-mcp-client/scripts/plugin-settings-cache.mjs`. Never derive cache
+   authority from client settings or request text.
+4. On a current cache hit, answer from its confirmed snapshot and render the
+   stored field definitions through the visible-value contract below.
+5. On a miss or stale entry, use cursor catch-up when the live tools support it;
+   otherwise call `bos_get_plugin_settings` with only the server-returned plugin
+   selector. Commit the complete validated snapshot with
+   `canonical_source: bos_read`, then answer from the committed cache entry.
+6. If a required field is `unset` or invalid `partial`, preserve the user's
+   request and invoke `bos-plugin-settings-initialization`. Resume the read from
+   confirmed cache state after initialization.
+
+Render the server's field order, labels, value types, controls, editability,
+reasons, revision, source, and sync time. A boolean renders as a toggle; a
+weekly schedule renders as an hours grid when the host supports it. A host
+without native controls renders the same structure in conversation.
+
+In Codex Agent Harness and every client with native component support, render a
+client-native settings table whose editable values use an inline control
+matching the server type, with **Apply** and **Discard** actions.
+Never ask the user to type a value when the native control can capture that
+field. Keep the interaction in memory: create no HTML or Markdown file, report
+file, UI bundle, renderer, localhost process, browser session, or separate UI
+service. The BOS connection remains the authenticated data and mutation
+transport; it is not the renderer.
+
+### Visible-value contract
+
+A successful read is complete only after the actual settings values are visible
+in the conversation or in a mounted interactive component. A generic tool card
+labeled **Structured output** does not count as rendering. A collapsed payload,
+raw JSON, schema, type name, or message saying that structured data is available
+also does not count. Never label the user-facing result **Structured output**.
+
+When the remote MCP App or a native component is actually mounted, show every
+field's readable label and current value inside it. Each editable value has an
+actual host control appropriate to its type, and **Apply** and **Discard** are
+clickable host actions. Merely printing those action names does not claim that
+they are controls.
+
+When an interactive component is unavailable, immediately render the complete
+snapshot in the assistant response:
+
+- Put one field on each labeled row and show its actual current value before
+  revision, source, sync time, constraints, or other metadata.
+- Render empty values as **Not configured**; booleans as **Enabled** or
+  **Disabled**; arrays as readable item lists; and objects as nested labeled
+  rows instead of raw JSON or `[object Object]`.
+- Render URLs as descriptive clickable Markdown links. Render display-safe
+  email addresses and phone numbers as `mailto:` and `tel:` links.
+- Render enums with their allowed labels, dates and times in the user's locale,
+  and weekly schedules as a seven-day hours table.
+- After the values, list only the actions currently allowed by the server. Give
+  each conversational action as a short exact request the user can send, such
+  as “Set Business Hours timezone to Etc/UTC.”
+
+## Change
+
+An unambiguous prompt naming the property and exact value authorizes that exact
+change. A component edit requires its **Apply** action. A sourced or inferred
+recommendation requires the user to confirm the displayed draft.
+
+1. Revalidate the scoped grant and refresh the live field schema. Validate the candidate against the
+   server-returned type and constraints.
+2. Call `bos_prepare_plugin_settings` with the plugin selector,
+   base revision, typed candidate, and sanitized evidence descriptors when
+   applicable.
+3. Bind the authorization to the returned exact diff and draft hash. Ask for
+   clarification when the target or normalized value remains ambiguous.
+4. Launch one parallel settings mutation worker when the harness supports
+   delegated agents. Give it the complete operational context listed in the
+   operation contract. The active agent executes the identical worker contract
+   when delegation is unavailable.
+5. The worker calls `bos_apply_plugin_settings` with the exact prepared draft
+   arguments advertised by the current schema. It supplies no client key,
+   attempt identity, retry counter, or reconciliation decision. BOS Service
+   owns idempotency and uncertain-outcome reconciliation and returns the
+   authoritative result or exact state action.
+6. Accept success only from `status: committed` in the authoritative operation
+   result, including a terminal result obtained from an exact returned state
+   action. Atomically commit the returned complete snapshot with
+   `canonical_source: bos_committed` or `bos_reconciled`.
+7. Refresh context when the result changes capabilities. Refresh tool discovery
+   only when the server reports a schema change, then render the confirmed
+   replacement values.
+
+On ordinary success say what changed and show the new confirmed values. When
+the server commits and local cache repair fails, report the committed server
+value and state that the next read will refresh the cache.
+
+## Failure
+
+Interpret the server's structured error envelope through the operation
+contract. For an uncertain mutation, follow only its exact returned state
+action and never replay the mutation. Keep the last confirmed cache snapshot
+after failed or indeterminate updates.
+
+For a terminal protocol, server-invariant, or repeated request-shape failure,
+return the sanitized code, support reference, attempts, recovery actions,
+operation state, and current confirmed value. Prepare a privacy-minimized bug
+draft and expose **Report this issue**. Invoke `submit-feedback` only after the
+user requests reporting; that skill obtains explicit confirmation before its
+mutation.
+
+Never include credentials, tokens, raw authority identifiers, raw MCP payloads,
+stack traces, website bodies, or unrelated customer records in progress,
+cache, or feedback.

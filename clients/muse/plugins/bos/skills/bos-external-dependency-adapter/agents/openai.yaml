@@ -1,0 +1,4 @@
+interface:
+  display_name: "BOS Dependency Adapter"
+  short_description: "Use the BOS connection from dependent products"
+  default_prompt: "Use $bos-external-dependency-adapter to invoke this BOS-returned action through the installed BOS connection."

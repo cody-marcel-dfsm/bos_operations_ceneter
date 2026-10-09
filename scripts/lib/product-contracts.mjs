@@ -181,7 +181,8 @@ export function productMcpConnectionsContract(products) {
         `clients/claude/plugins/${product.name}/.mcp.json`,
         `clients/codex/plugins/${product.name}/.mcp.json`,
         `clients/copilot/products/${product.name}/.github/mcp.json`,
-        `clients/gemini/extensions/${product.name}/mcp_config.json`
+        `clients/gemini/extensions/${product.name}/mcp_config.json`,
+        ...(product.clients?.includes("muse") ? [`clients/muse/plugins/${product.name}/muse-settings.template.json`] : [])
       ]
     }))
   };

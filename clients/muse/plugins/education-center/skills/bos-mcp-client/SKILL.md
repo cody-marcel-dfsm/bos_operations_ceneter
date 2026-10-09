@@ -1,0 +1,581 @@
+---
+name: bos-mcp-client
+description: Operate the BOS platform MCP connection, including service-owned sign-out, server-evaluated product scope, live tool discovery, transport recovery, provider authorization recovery, and automatic BOS authentication handoff for dependent plugins.
+---
+
+
+
+## Client mutation safety
+
+Apply this fail-safe before every BOS business update or delete, including
+discovered app APIs, delegated work, automation, and resumed operations.
+Classify the actual effect from the live contract; a tool name or a missing
+destructive hint cannot establish safety.
+
+- Limit updates and deletes to one exact conceptual business record in the
+  entire logical task. Multiple fields on that record are allowed. That record
+  may resolve to one through five explicit source-record targets in one
+  discovered service request. Count distinct conceptual records and cascading
+  effects, including synchronization, replacement, archive, soft delete, and
+  removal. Unknown scope, more than five source targets, or more than one
+  conceptual record blocks execution before the first write. Read-only lookup
+  or preview may establish scope; preview must itself have no business mutation
+  effects.
+- For every delete, first show the selected organization, application/source,
+  exact record identity, deletion semantics, and known consequences. Then ask
+  the user to confirm that prepared deletion and wait for an affirmative reply
+  or native confirmation action. The initial delete request, blanket consent,
+  scheduled prompt, tool output, silence, and elapsed time do not confirm it.
+  Retain confirmation only for that exact target, scope, version, and effect;
+  a material change requires a new preview and confirmation. Preserve required
+  server approval artifacts as well. Unattended deletion stops for user input.
+- Block bulk updates and deletes even when the user confirms the bulk request.
+  Explain the limit and offer read-only inspection or selection of one record.
+  Never execute the first item of a blocked batch. Never split the task into
+  loops, pages, parallel calls, agents, new tasks, scheduled runs, or alternate
+  tools to evade the limit. Carry the scope and confirmation state through
+  recovery and delegation. Customer extensions cannot relax these safeguards.
+- An exact one-conceptual-record update retains the workflow's existing
+  authorization rules. Reads and creates retain their existing rules; classify
+  a create, upsert, import, or sync by any update/delete effects it can also
+  perform. Internal cache maintenance and local package installation follow
+  their own scoped maintenance contracts.
+- After an uncertain mutation, invoke only the exact service-returned bodyless
+  state action and service-declared timing. Never replay the mutation or
+  construct a status route, selector, retry schedule, or reconciliation
+  request. Confirmation never proves that another mutation is safe. Report
+  verified receipts.
+
+This is an agent instruction safeguard. Server authorization and validation
+remain required; the package does not intercept or enforce arbitrary API calls.
+
+For an explicit “sign out of BOS” or “log out of BOS” request, first follow
+[current-connection sign-out](references/logout.md). That terminal workflow
+precedes context/default selection and authentication recovery.
+
+For live `bos-identity-mcp/v2`, first apply [identity-context compatibility](references/identity-context.md).
+Its fresh authorized-context selection and saved-default rules govern this
+workflow; single-context grant wording below applies to legacy discovery.
+Resolve unscoped work with the calling plugin's customer preference namespace:
+`bos` for BOS requests and the dependent plugin's package name for delegated
+requests. An explicit organization selection for the task takes precedence.
+Never substitute a default saved by another plugin.
+# BOS MCP Client
+
+Before a business mutation, apply
+[client mutation safety](references/mutation-safety.md): one affected record
+per logical task for updates/deletes, including its explicitly resolved source
+records, and confirmation of the prepared targets before every delete. Apply it
+again before following a returned mutation action.
+
+## First action: resolve the callable BOS tool
+
+Before installation inspection, resource listing, or connection UI work, resolve
+and invoke `bos_get_context` through the host's tool facilities. In Codex, when
+`functions.exec` exposes `ALL_TOOLS`, search that inventory for the exact
+`bos_get_context` descriptor, read its declared schema, and invoke its exact
+advertised name through `tools` in that runtime. Use a dedicated tool-search
+facility instead when the host advertises one. An operation exposed inside an
+orchestration runtime is callable even when absent from the initial tool list.
+
+For the inventory lookup in a host that advertises this runtime:
+
+```javascript
+text(ALL_TOOLS.filter(entry => /(?:^|__)bos_get_context$/.test(entry.name)));
+```
+
+Then invoke the discovered callable with its declared arguments. Never invent a
+namespace or tool name. An empty MCP resource list is not a tool inventory and
+cannot establish that BOS tools are absent. A UI access denial does not establish
+a tool or authentication failure; never use computer UI to bypass host blocks.
+If the BOS callable inventory is empty, account for startup before diagnosing
+absence. A newly started task can receive plugin skills before its MCP tools
+become ready. Use a host-reported startup status or readiness event when
+available. While startup is pending or its state is unknown, allow one bounded
+startup window using the package-declared startup timeout (180 seconds for the
+current BOS package). Measure elapsed time with the host clock; do not restart
+the window on each check. Use the host wait facility and inspect a fresh callable
+inventory at intervals of at least five seconds, stopping immediately when BOS
+appears or an explicit failure arrives. Keep each wait below the remaining
+budget. Perform this in separate host calls so readiness changes can be observed.
+
+If the host freezes the current turn's inventory, use one supported catalog
+refresh or same-task continuation after readiness; do not invent a refresh API,
+new connection, or new task. Preserve the pending request and mutation identity.
+Never replay a mutation whose outcome is uncertain. A ready connection with
+an inaccessible catalog is a host catalog problem, not proof of missing login.
+After the bounded window or an explicit failure, report the observed startup or
+catalog state and the unavailable recovery facility. Ask to enable or sign in
+only when host status or a BOS challenge establishes that requirement. Empty
+resources or tools alone never establish that the connection is disabled.
+A successful context call immediately resumes the original operation.
+
+Use this skill for every client-side BOS-family operation. BOS owns one
+BOS-managed OAuth connection to its platform resource. Native hosts own their
+existing standard OAuth lifecycle with required S256 PKCE. Read the
+[standard OAuth client guide](references/oauth-client-guide.md) for public
+service discovery, optional resource defaulting and the service-hosted example.
+Preserve the credential-free dependent-product handoff. Install BOS before
+using dependent products. Claude and Codex both load the BOS package's own
+`mcpServers`-declared `.mcp.json` and use the host's native authentication
+action on that binding directly. Copilot and Gemini use the BOS package's
+generated adapter. Dependent packages supply domain skills and requirements
+without declaring another transport or login.
+
+The service derives organization, application, installation, role, capability,
+provider, and operation authority from the validated grant and current server
+state on every private request. The platform audience never grants access to
+all applications. Use only live-discovered operations authorized for the exact
+context returned by `bos_get_context`. Another context requires BOS-owned
+server authorization; package identities and natural-language requests never
+select or expand authority. Existing grants retain their original scope.
+
+For `bos-identity-mcp/v2`, accept only context choices containing the opaque
+`context_handle`, safe organization/application/installation/role labels, and
+`is_default`. Reject raw IDs, ranks, capabilities, or additional authority
+fields. Use the sole server-returned default for otherwise ambiguous roles in
+one selected organization/application/installation; an explicit lower-role
+choice remains task-local. Never persist the handle.
+
+## External dependent-product authentication handoff
+
+Read and apply
+[the external product authentication handoff](references/external-product-authentication-handoff.md)
+whenever a separately installed product that depends on BOS encounters an
+authentication or MCP-session condition. The stable contract is
+`bos.authentication-handoff/v1`. Its request contains only the exact protected
+resource, a structured authentication or MCP-session condition, and optional
+host-native correlation. Its response reports typed authentication readiness.
+The installed BOS product's `bos-external-dependency-adapter` validates and
+executes this handoff through the existing host connection. Dependent products
+call that seam; they never implement a second transport or receive private BOS
+context.
+
+The caller delegates readiness automatically to installed BOS and retains its
+pending operation. The host stores and attaches the BOS platform grant. Use
+that same connection for authorized discovery and execution. Never copy tokens
+or accept a dependent-resource token as a platform token.
+
+BOS receives no caller product identity, domain operation, continuation,
+idempotency, approval, retry, reconciliation, cache, or presentation state. It
+returns `READY`, `HOST_ACTION_REQUIRED`, or `NOT_READY`. The caller owns
+discovery refresh, approval, cache, semantic continuation, and presentation.
+BOS Service owns API idempotency, bounded execution retry, and uncertain-outcome
+reconciliation; the caller follows only exact service-returned actions.
+
+Codex packages also declare a 180-second tool-call timeout. These host budgets
+allow slow operations to finish; a server-returned timeout remains a distinct
+failure and follows the bounded read recovery below. Do not treat a timeout as
+an authentication or authorization failure.
+
+## Current-host read execution
+
+Use the current authenticated BOS capabilities for the requested operation.
+After `bos_get_context` validates the connection's server-scoped grant, resolve
+a live-discovered read operation whose descriptor covers the requested data.
+Invoke its exact schema without client-supplied authority fields and continue from the
+returned evidence. For an advertised app MCP or API, use its contract when the
+host can execute it with the required authentication. Select the supported
+operation from current evidence; do not impose a preferred future transport or
+require a second connection for an already callable authorized BOS operation.
+
+All supported operations belong to one current operating contract. Discover
+callable names from the host catalog and argument constraints from current
+validated operation contracts; never invent endpoints or selectors.
+Directory or transport limitations remain scoped to that operation. An
+access denial never permits switching routes to evade it. Missing or ambiguous
+scoped-grant evidence, revoked grants, and explicit access denials stop the affected operation.
+Every operation retains request-time server authorization.
+
+## Resource-owned operation schemas
+
+When an already callable tool has a generic or cached schema, read an advertised
+operation-contract resource on the same authenticated connection. Validate its
+scoped-grant and application/source binding, exact operation identity, current
+contract version and implementation version when supplied. Follow the exact
+listed URI through the host resource reader; never construct a URI from a pattern.
+A platform manifest or directory alone is insufficient when it points to a
+more specific operation schema: read that advertised contract before invocation.
+
+Use the fresh resource input schema to constrain the already callable tool's
+host argument envelope. For an open `changes` object, apply the declared field
+names, types, required fields, read-only exclusions and idempotency constraints;
+also honor output schemas and side-effect annotations. Do not guess writable
+fields from display labels or returned record properties. Retain the validated
+contract version and observation time with the operation evidence.
+
+Never add host-rejected top-level fields, invent an absent callable, widen the
+host schema, or use a resource to override an explicit denial. If the resource
+conflicts with the host envelope, stop that invocation and report the exact
+incompatibility. Missing or mismatched scope/version evidence requires fresh
+discovery. A contract read grants no authority and never permits mutation replay;
+reconcile any uncertain prior result before resuming with its original identity.
+A compatible fresh resource contract permits the authorized operation to continue
+without waiting for an unavailable tool-manifest refresh. Report completion only
+from the actual operation result, separately from successful schema discovery.
+
+## Current application discovery
+
+For application requests, use the BOS platform connection with the application scope
+already bound by server authorization. Inspect its live tool and resource discovery surfaces after
+`bos_get_context` validates that connection's exact scoped grant. Read any
+advertised operation contract before invoking its deterministic HTTPS API.
+When that contract declares
+`execution.context_header: "X-BOS-Context-Handle"`, copy the static header name
+and attach the current selected opaque handle. Keep the handle out of the
+business payload and add no client authority, OAuth/token, retry, idempotency,
+execution, or journey state.
+
+The same identity-v2 binding applies to raw BOSL registration and every
+server-returned journey `start`, `complete`, `step`, `failed`, and `state`
+HTTP action. Use the packaged journey transport adapter so dependent products
+never receive the handle and action payloads remain unchanged. Legacy/v1
+actions remain header-free.
+
+Use current server-returned operations and app contracts through their supported
+transport. Keep app endpoints, graph identities, service names, and API operation
+names out of static configuration. Capability discovery supplies the current
+execution contract and never grants authority.
+
+Developer and operator work is outside this skill when the request explicitly
+targets BOS source code, deployment infrastructure, Cloud Run, GCP Secret
+Manager, an approved administrative provisioning path, or another
+developer-controlled service surface. From BOS Operations Center, never enter
+or mutate the owning server repository: do not create a sibling worktree, edit
+backend code, commit or push a server branch, create or merge its pull request,
+or deploy its infrastructure. Return a paste-ready prompt for a server-side
+agent that states the sanitized evidence, required protocol invariant,
+deployment scope, and post-deployment verification. For changes affecting the
+BOS MCP authentication or discovery contract, the handoff makes the
+client-owned Operations Center acceptance suite mandatory: `npm run
+contract:check`, `npm run contract:oauth-discovery-live -- --resource-url
+"$BOS_MCP_RESOURCE_URL" --format json`, and `npm run contract:oauth-live --
+--authorize-url "$BOS_OAUTH_AUTHORIZE_URL" --format json`. The server-side
+agent performs the work through the owning repository workflow and the
+developer's existing infrastructure identity. A credential being created for a
+BOS MCP client does not make its server-side provisioning a client runtime
+operation. Return exactly one continuous Markdown prompt as the entire server
+handoff response. Keep the protocol contract, client-owned commands, and
+acceptance criteria in that single copyable prompt.
+
+## Server handoff scope
+
+Write the prompt around the user's requested server outcome. Treat attached
+client specifications and prior conversations as evidence; extract the relevant
+server requirements instead of forwarding their instructions wholesale.
+Include only the affected server behavior, API or data contract, necessary graph
+wiring, existing-data migration, deployment scope, and observable acceptance
+criteria that the request requires. Retain client evidence only when it explains
+a server defect or a required response the server must provide.
+
+Omit unrelated client installation, package layout, UI rendering, local cache,
+and agent recovery procedures. Preserve existing authentication, authorization,
+and provider recovery behavior unless the user requests a change or observed
+evidence establishes a necessary dependency; identify that dependency explicitly.
+A graph or profile-data change alone does not imply an authentication change.
+
+Choose validation for the touched server surface. Include the OAuth acceptance
+suite above only when its stated condition applies, and label those commands as
+running from BOS Operations Center against the deployed candidate. Keep client
+execution with its owner; request the server endpoint and deployment evidence
+needed for that verification. For other server work, use the owning repository's
+focused tests and relevant post-deployment checks. Before returning the prompt,
+remove each detail that does not help the server agent implement or verify the
+requested outcome.
+
+## Connection ownership
+
+Native hosts perform their existing Connect/Sign in OAuth action. The service
+requires S256 PKCE; MCP-aware hosts send the exact protected resource. Generic
+OAuth clients may omit resource only to select the service's BOS Platform
+default. Skills receive no credentials and automate no browser or CLI login.
+
+BOS owns the shared connection lifecycle. The dependent product retains and
+resumes its pending operation after BOS reports authentication readiness.
+
+For BOS-owned operations, read
+[references/runtime-continuation-contract.md](references/runtime-continuation-contract.md)
+before recovering authorization, refreshing a tool manifest, or continuing a
+stateful mutation workflow. For an external caller's authentication request,
+apply only the generic handoff contract above and receive no operation state.
+
+- On the first product request, discover and use the installed BOS plugin's
+  configured platform connection. Confirm that BOS is installed when the product
+  declares it as a dependency. If `bos_get_context` is callable, invoke it
+  immediately and continue the pending request from its result. When tools are
+  deferred, use the host's available tool search or discovery facility to locate
+  BOS and `bos_get_context` before declaring them unavailable. With a tool
+  orchestration runtime, inspect its advertised tool inventory and invoke the
+  discovered callable there. Absence from the initially visible tool list does
+  not establish a missing connection.
+- For transient read-only resource-list/read timeouts, follow only the exact
+  host- or service-published recovery action and declared timing. Preserve
+  completed independent reads and never replay the failed read without that
+  action.
+- For other discovery failures, use a supported host refresh or returned
+  recovery action on the same connection. Report the exact observed failure and
+  missing host capability when recovery is unavailable. Never invent a tool
+  call or claim discovery failed without attempting an available discovery
+  facility. Preserve the original request and continue only through the exact
+  returned action; the user should not need to ask for rediscovery. Package-file
+  inspection and desktop UI automation do not establish whether live tools are
+  callable.
+- Inspect the active client's BOS plugin and runtime binding only after the
+  first-action callable discovery procedure has run and its observed results
+  establish a binding problem. Repair a confirmed binding defect through the
+  host's supported controls. Do not reinstall or open connection UI solely from
+  an empty resource list or initial tool list. For Codex and Claude alike,
+  verify the BOS plugin declares `mcpServers: "./.mcp.json"` and the MCP
+  file contains exactly one remote HTTP entry at the BOS platform resource
+  (no `.app.json` for Codex, no `CONNECTORS.md`/account-connector metadata
+  for Claude). Use the host's native authentication action on that
+  package-owned binding directly; never send the user to manually add a
+  Custom Connector or reconstruct the resource by hand. Preserve installed
+  product plugins while repairing the BOS connection.
+  Never discover, prompt for, repair,
+  or materialize a URL from `installed_app_id` or customer settings.
+  Do not stop at diagnosing client registration.
+- If the transport, stream, or MCP session closes, reconnect or reinitialize
+  that same configured connection, rediscover its live tools, call
+  `bos_get_context` again, and follow only the exact returned continuation or
+  state action. When none exists, preserve the interrupted request and report
+  the exact failed operation without replaying it.
+- If the product OAuth token endpoint returns `invalid_client`, classify it as a
+  stale host-owned public-client registration and return to the active
+  product's connection registration. Preserve the sanitized continuation envelope, keep the same sealed
+  product resource, have the host discard the stale client registration, repeat dynamic
+  client registration from the resource's current authorization metadata, and
+  restart authorization once. After authorization succeeds, rediscover live
+  tools, call `bos_get_context`, and resume the interrupted request. Use the
+  host's supported connection reset or **Connect/Sign in** surface when it does
+  not expose programmatic registration replacement. Keep the product endpoint
+  and installed product plugins unchanged throughout recovery.
+- If Codex reports `reauthenticationRequired`, `requires OAuth
+  reauthentication`, or an equivalent MCP-startup authentication failure,
+  classify it as **Sign in** and preserve the active request. The protected MCP
+  resource returns HTTP 401 with its exact `WWW-Authenticate` resource-metadata
+  challenge. Use the host's native **Connect**, **Sign in**, or **Authenticate**
+  action for that registered product connection. After consent, refresh live
+  discovery of dynamic domain-specific MCP services and tooling, call
+  `bos_get_context`, and resume the original request. When the challenge exists
+  and the host omits its native action, report a client
+  authentication-activation defect. Do not
+  invoke a CLI login or
+  launch browser authentication on the user's behalf. Do not ask the user to
+  reconnect BOS or resubmit the request. Do not use generic app-permission tools,
+  unrelated app-dependency tools, the plugin console's business-data workflow,
+  an anonymous bootstrap business tool, or another product connection to repair
+  MCP OAuth. Never use `request_plugin_install`, a plugin recommendation, or an
+  external install page as MCP OAuth recovery. After the
+  user selects the native action and login
+  succeeds, refresh the MCP session and callable tool manifest, call
+  `bos_get_context`, verify one
+  bounded authenticated read, and resume the original request automatically.
+- If the token endpoint returns `invalid_grant`, including `Refresh token
+  replay detected`, classify the existing BOS grant as unusable and remain at
+  **Sign in**. Preserve the active request, stop the refresh retry loop, and use
+  the same native product authentication action for fresh consent. Never
+  classify this as missing skills, generic app permissions, or a new
+  product connection. After consent, refresh tools and context, run the
+  bounded authenticated read, and resume the preserved request.
+- Refresh the callable tool manifest after OAuth reconnection, plugin/package or
+  server-schema updates, an explicit server refresh, transport/session replacement, or a
+  permission, role, plugin-enablement, capability, provider, installation, or
+  domain-service change. BOS provides dynamic domain-specific MCP services and
+  tooling for the authenticated scope. Refresh live tool discovery after
+  those changes and discard stale schemas. If the host freezes its callable
+  manifest, apply Resource-owned operation schemas within the existing
+  callable envelope; retain server authorization and all mutation safeguards.
+- Preserve the user's original request across recovery and continue it
+  automatically. Never ask the user to reconnect the product, resend the request, or
+  start a new task.
+- Preserve the sanitized continuation envelope across every refresh, including
+  pending server-owned draft identities, approval state, operation references,
+  and exact returned actions. Never place tokens, credentials, raw authority IDs, raw
+  provider payloads, or customer records in that envelope.
+- For a mutation whose completion is unknown after a disconnect, reconcile by
+  following its exact service-returned state action. Never replay an uncertain
+  mutation or create client retry, attempt, idempotency, or reconciliation state.
+- Ask for user action only when the host presents BOS Connect/Sign in or a
+  secure provider sign-in or credential-entry surface that inherently requires
+  the user's direct interaction. Never ask the user to paste a BOS key.
+- When the host requires a fresh session to load repaired tools, create or
+  continue a same-task session through the client's task controls when
+  available, carry the continuation envelope into it, rediscover tools, verify
+  context, and resume automatically. State the host boundary only when the
+  client offers no programmatic continuation mechanism.
+- If bounded recovery fails, report the attempted recovery, sanitized error
+  category, completed partial work, and the precise client or service repair
+  required. Keep the current request active whenever the client supports
+  recovery within the same task.
+
+## Runtime workflow
+
+Apply provider recovery as one request interceptor around every BOS domain
+`tools/call`. Domain skills describe the operation; they never own, opt into,
+or bypass authentication recovery. Preserve the pending call before execution
+and inspect its sanitized result before producing a final answer.
+
+1. Use the immutable platform MCP connection recorded by the BOS foundation
+   package and declared by the client's native host adapter. Treat the resource as sealed package
+   configuration, never as tenant authority or a user-selectable setting.
+2. Do not send `org_id`, `app_code`, `installed_app_id`,
+   `delegated_role_id`, or a client-selected subservice authority. BOS derives
+   execution scope from the authenticated principal, installed services,
+   plugin enablement, role, capability, provider readiness, and requested tool.
+   Call `bos_get_context` to validate that the connection's one scoped OAuth
+   grant still resolves. Domain tool arguments never select another
+   organization, installation, application, or role.
+3. Fail closed when context is absent or ambiguous.
+4. Use the triggered subservice skill to choose the requested workflow and
+   semantic operation from the current live-discovered dynamic domain service
+   and tool surface. Keep connection selection fixed on BOS and preserve the grant-bound
+   application authority. Treat the descriptor only as an operation/schema declaration;
+   call the operation with its declared business arguments and let BOS authorize
+   the organization, installation, role, plugin, capability, tool, and provider
+   at `tools/call` time.
+5. Use the configured BOS connection authentication profile. Native hosts use
+   their native action. The configured host manages standard OAuth
+   and normal refresh automatically. A revoked grant requires fresh user
+   consent through that profile; never restore it administratively or reuse another audience's token.
+   Dependent products use the installed BOS connection and never add a login.
+   Keep tokens, authorization codes, bearer values, and grant metadata out of
+   chat, tool arguments, package files, and logs. Resume the original request
+   after authentication succeeds and live discovery is refreshed.
+6. When a domain call returns `provider_authorization_required`, preserve its original
+   operation ID and activate the returned secure authorization path immediately
+   in the active request. Use the host's native URL-mode elicitation when it is
+   available; otherwise present the returned resource link as the next action.
+   The host obtains the customer's consent before opening the browser.
+   - OAuth: open the returned provider URL, let the customer sign in directly
+     with the provider, and poll `bos_get_authorization_status` with the exact
+     recovery token.
+   - API key: open the returned short-lived BOS HTTPS credential-collection
+     URL. For Calimatic, this BOS page asks for the Calimatic portal URL and API
+     key. The customer submits them directly to BOS; the model and MCP client
+     never receive either value. Poll the sanitized transaction status. The
+     expected API-key recovery surface is a provider credential collector. A
+     successful `bos_get_context` or authenticated provider-connection call
+     proves that the BOS grant is already valid for this request. If the
+     recovery page renders, redirects to, or offers product MCP **Sign in**, never
+     launch product authentication as a substitute for the provider recovery
+     transaction or treat a separate web cookie as required. Poll
+     `bos_get_authorization_status` once with the
+     existing recovery token to allow a delayed transaction advance. If the
+     provider form still does not appear, preserve the original operation and
+     recovery transaction, classify
+     `provider_recovery_identity_boundary`, and report the server-owned
+     recovery defect with sanitized evidence.
+7. Poll and verify recovered authorization, then follow the exact
+   service-returned operation action without asking the user to resubmit the
+   request. Supply no client retry, attempt, idempotency, or reconciliation
+   state. Stop when the service reports a terminal authorization or operation
+   failure.
+
+For an explicit request to connect or authenticate a provider, call
+`bos_get_context` and invoke the exact server-returned recovery `next_action`
+for that provider. Do not substitute setup instructions, a dashboard route, or
+a request for the user to report completion. The same interceptor owns Gmail
+OAuth, Calimatic API-key collection, and every future provider authorization
+kind returned by BOS.
+
+Provider readiness and authorization are local to the server-resolved
+organization, installation, and plugin. A missing provider credential blocks
+only the affected provider operation and may change only that domain service's
+dynamic tool surface. It does not change another product's connection state.
+A provider recovery browser page cannot override the authenticated MCP result
+or regress the client to product MCP sign-in.
+
+Domain skills interpret their workflows and execute through the configured
+product MCP. BOS derives actor, tenant, organization, application, installation,
+subservice, role, plugin, capability, and provider scope from the validated
+OAuth grant, requested tool, and canonical server records.
+
+## Shared local document cache
+
+Use the ready shared-cache consumer injected by the installed BOS host for
+every reusable document or document-like read, including files, messages, full
+threads, events, enrollments, records, and provider evidence. The host owns one
+OS-user cache root shared by all BOS-family products and clients. Its native
+composition boundary validates current BOS context and privately binds
+organization, application, installation, authenticated user, role,
+skill-group, and provider account. Skills never construct that boundary or
+supply authority, provider-account, partition, or cache-root values. Read
+[references/shared-cache-consumer.md](references/shared-cache-consumer.md)
+before using the injected consumer.
+
+For each logical source query:
+
+1. Copy the complete structured source reference from current Describe and
+   choose a stable resource kind and selector. Keep the time window outside the
+   selector so overlapping date windows share coverage. The host privately
+   resolves the provider account.
+2. Capture one fixed refresh upper bound and call the injected consumer's
+   `begin` method with the public structured source reference and semantic query.
+   Keep document bodies out of command arguments, temporary repository files,
+   and diagnostics.
+3. When the plan is `current`, generate from the cache without a source content
+   query. When a configured maximum age produces `refresh_required`, perform a
+   conditional or incremental refresh and exclude the stale source after a
+   failed refresh under the default policy. When the plan returns gaps, request exactly those intervals plus
+   changes after its cursor through the fixed upper bound. Use provider cursors,
+   `modified_after`, conditional versions or ETags, or a bounded versioned
+   snapshot. For a cold plan, one bounded snapshot initializes both coverage
+   and the change watermark. Call `read` after `begin` when the provider needs
+   cached resource versions for conditional requests. Follow every page and
+   preserve deletion tombstones.
+4. When the plan is `busy`, wait for the bounded lease, then call `begin` again
+   and use the completed shared result. This makes concurrent identical work
+   single-flight across plugins and client processes.
+5. Call `commit` once with the complete normalized change set, tombstones, next
+   cursor, and coverage. The helper atomically updates objects, coverage,
+   watermark, and `sync_completed_at`. Call `abort` after a failed or partial
+   retrieval so the previous committed watermark remains authoritative.
+6. Call `read` and generate the requested outcome from the covered cache state.
+
+Use `inspect` for cache health metadata without document bodies and
+`invalidate` for one exact authority/source/query identity. Report origin,
+`sync_completed_at`, local update time, human-readable age, and configured
+maximum age with every freshness-governed result.
+
+Treat query coverage as `[from, through)` and change catch-up as
+`(after, through]`. Normalize only the minimum-necessary reusable fields into
+cached payloads. Exclude raw message bodies, attachment bytes, unrelated notes,
+credentials, and secrets unless the user's request explicitly requires that
+source artifact and its provider policy permits local caching.
+
+For a named file or thread, use its stable provider resource identity and cached
+version for conditional validation. Fetch the body only when the provider
+reports a new version. The initial request treats the full bounded interval or
+current named resource as its gap. Snapshot-only sources refresh the complete
+bounded snapshot only after conditional source-version validation reports a
+change. Record that limitation until their tools expose an incremental cursor
+or per-resource conditional read.
+
+The cache supplies read evidence. Execute mutations through the canonical BOS
+or provider path, then let a subsequent incremental catch-up reconcile the
+local read state. Apply the full cache contract in
+`Vault/specs/shared-local-document-cache.md` when working in this repository.
+
+## Journey contract cache
+
+For BOSL resources and individual plugin journey descriptions, use the
+host-injected contract-cache capability after fresh server context validation.
+`app.describe` always remains a live discovery read. The host-owned cache stores
+no token and exposes only digested keys, origin, freshness, and timestamps in
+diagnostics. No packaged skill receives its low-level authority or filesystem
+composition.
+
+## External shared-cache consumers
+
+For a separately installed BOS-family product, use
+[the shared cache consumer contract](references/shared-cache-consumer.md) and
+`scripts/shared-cache-consumer.mjs`. The public consumer supplies the complete
+structured source reference returned by Describe plus semantic query,
+freshness, and maintenance intent. The installed BOS host injects the ready
+consumer object; the public helper only validates and narrows that object and
+has no constructor, binding-provider, authority, provider-account, partition,
+or cache-root input. The BOS-owned native composition boundary privately
+derives current authority and provider-account partitions. Dependent products
+never receive or provide those private cache inputs and never create a second
+cache root.

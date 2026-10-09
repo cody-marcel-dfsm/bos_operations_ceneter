@@ -1,0 +1,4 @@
+interface:
+  display_name: "Initialize BOS Plugin Settings"
+  short_description: "Research and configure required plugin settings"
+  default_prompt: "Use $bos-plugin-settings-initialization to initialize my required plugin settings."

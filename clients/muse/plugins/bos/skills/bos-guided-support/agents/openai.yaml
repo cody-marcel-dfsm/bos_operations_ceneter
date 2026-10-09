@@ -1,0 +1,4 @@
+interface:
+  display_name: "BOS Guided Support"
+  short_description: "Visual onboarding and connection help"
+  default_prompt: "Use $bos-guided-support to help me get BOS installed, connected, and verified."

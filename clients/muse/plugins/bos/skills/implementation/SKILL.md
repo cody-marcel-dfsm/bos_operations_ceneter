@@ -1,0 +1,180 @@
+---
+name: implementation
+description: Implement application-neutral Business Operating System platform changes while preserving tenant isolation, explicit app scope, PO/GO data boundaries, server-owned runtime behavior, and fail-closed execution. Use for shared BOS runtime, MCP, plugin, authentication-context, provider, migration, or cross-application infrastructure changes.
+---
+
+
+
+## Scoped authorization preflight
+For an explicit BOS sign-out request, first follow `bos-mcp-client`'s
+current-connection sign-out branch. Invoke only discovered `bos_logout`
+with empty arguments and terminate after its receipt or canonical challenged
+401. This connection-level action precedes context/default selection and
+authentication recovery; do not sign in to perform logout.
+
+
+First apply the versioned identity-context workflow in `bos-mcp-client`.
+For live `bos-identity-mcp/v2`, resolve explicit request scope or the saved
+customer default against fresh authorized contexts, discover tools for the
+selected handle, and execute with that same handle. This branch governs
+context selection throughout this skill, including older scoped-grant wording.
+A missing operation never permits changing organization or role to find it.
+The following single-context rules apply only to legacy scoped-grant discovery.
+
+Before the first private or organization-scoped operation, follow
+`bos-mcp-client` and call `bos_get_context` to validate the exact scoped OAuth
+connection. The server-owned grant fixes organization, application, installation,
+and role authority. Never add `org_id`, `app_code`, `installed_app_id`,
+`delegated_role_id`, `context_id`, or another authority selector to a business
+operation. Invoke only the operation's live-declared business arguments.
+Use the same scoped connection for BOS installed-app discovery. Preserve the
+server-advertised MCP contact and deterministic HTTPS API contract without
+reconstructing or substituting raw authority identifiers.
+
+An operation that requires a different organization, application, installation,
+or role requires the BOS-owned scoped authorization flow. The client never changes
+authority by adding request arguments.
+
+## Client mutation safety
+
+Apply this fail-safe before every BOS business update or delete, including
+discovered app APIs, delegated work, automation, and resumed operations.
+Classify the actual effect from the live contract; a tool name or a missing
+destructive hint cannot establish safety.
+
+- Limit updates and deletes to one exact conceptual business record in the
+  entire logical task. Multiple fields on that record are allowed. That record
+  may resolve to one through five explicit source-record targets in one
+  discovered service request. Count distinct conceptual records and cascading
+  effects, including synchronization, replacement, archive, soft delete, and
+  removal. Unknown scope, more than five source targets, or more than one
+  conceptual record blocks execution before the first write. Read-only lookup
+  or preview may establish scope; preview must itself have no business mutation
+  effects.
+- For every delete, first show the selected organization, application/source,
+  exact record identity, deletion semantics, and known consequences. Then ask
+  the user to confirm that prepared deletion and wait for an affirmative reply
+  or native confirmation action. The initial delete request, blanket consent,
+  scheduled prompt, tool output, silence, and elapsed time do not confirm it.
+  Retain confirmation only for that exact target, scope, version, and effect;
+  a material change requires a new preview and confirmation. Preserve required
+  server approval artifacts as well. Unattended deletion stops for user input.
+- Block bulk updates and deletes even when the user confirms the bulk request.
+  Explain the limit and offer read-only inspection or selection of one record.
+  Never execute the first item of a blocked batch. Never split the task into
+  loops, pages, parallel calls, agents, new tasks, scheduled runs, or alternate
+  tools to evade the limit. Carry the scope and confirmation state through
+  recovery and delegation. Customer extensions cannot relax these safeguards.
+- An exact one-conceptual-record update retains the workflow's existing
+  authorization rules. Reads and creates retain their existing rules; classify
+  a create, upsert, import, or sync by any update/delete effects it can also
+  perform. Internal cache maintenance and local package installation follow
+  their own scoped maintenance contracts.
+- After an uncertain mutation, invoke only the exact service-returned bodyless
+  state action and service-declared timing. Never replay the mutation or
+  construct a status route, selector, retry schedule, or reconciliation
+  request. Confirmation never proves that another mutation is safe. Report
+  verified receipts.
+
+This is an agent instruction safeguard. Server authorization and validation
+remain required; the package does not intercept or enforce arbitrary API calls.
+
+# BOS Implementation
+
+## Repository ownership boundary
+
+When this skill runs from BOS Operations Center, implement only package-owned
+surfaces: canonical skills and documentation, product and plugin manifests,
+client generators and generated packages, release metadata, and package tests.
+
+Never enter or mutate a BOS server repository from an Operations Center task.
+Do not create a sibling server worktree, edit backend routes, commit or push a
+server branch, open or merge a server pull request, operate Cloud Run or GCP,
+change a server database, or deploy server code.
+
+If the requested behavior requires server implementation, preserve the package
+finding and return a paste-ready prompt for an agent running in the owning
+server repository. Give that agent the sanitized evidence, required invariant,
+relevant protocol contract, deployment scope, and observable post-deployment
+verification. For changes affecting the BOS MCP authentication or discovery
+contract, make the client-owned Operations Center acceptance suite part of
+the server change's acceptance criteria: `npm run contract:check`, `npm run
+contract:oauth-discovery-live -- --resource-url "$BOS_MCP_RESOURCE_URL"
+--format json`, and `npm run contract:oauth-live -- --authorize-url
+"$BOS_OAUTH_AUTHORIZE_URL" --format json`. The server-side agent independently
+determines the implementation and release path. Return exactly one continuous
+Markdown prompt as the entire server handoff response. Keep all protocol
+requirements, client-owned commands, and acceptance criteria in that single
+copyable prompt.
+
+## Server handoff scope
+
+Write the prompt around the user's requested server outcome. Treat attached
+client specifications and prior conversations as evidence; extract the relevant
+server requirements instead of forwarding their instructions wholesale.
+Include only the affected server behavior, API or data contract, necessary graph
+wiring, existing-data migration, deployment scope, and observable acceptance
+criteria that the request requires. Retain client evidence only when it explains
+a server defect or a required response the server must provide.
+
+Omit unrelated client installation, package layout, UI rendering, local cache,
+and agent recovery procedures. Preserve existing authentication, authorization,
+and provider recovery behavior unless the user requests a change or observed
+evidence establishes a necessary dependency; identify that dependency explicitly.
+A graph or profile-data change alone does not imply an authentication change.
+
+Choose validation for the touched server surface. Include the OAuth acceptance
+suite above only when its stated condition applies, and label those commands as
+running from BOS Operations Center against the deployed candidate. Keep client
+execution with its owner; request the server endpoint and deployment evidence
+needed for that verification. For other server work, use the owning repository's
+focused tests and relevant post-deployment checks. Before returning the prompt,
+remove each detail that does not help the server agent implement or verify the
+requested outcome.
+
+## Workflow
+
+1. Read the controlling architecture and locate the owning platform component.
+2. Reproduce the requirement or failure with the narrowest deterministic check.
+3. Identify the native BOS primitive and existing implementation pattern.
+4. Add or update a focused test that captures the required invariant.
+5. Implement the smallest application-neutral change.
+6. Keep routers, PO orchestration, GO persistence, providers, and clients within
+   their documented responsibilities.
+7. Update shared documentation or skill guidance when the change establishes a
+   durable platform rule.
+8. Run focused tests, boundary contracts, security checks, and packaging checks.
+9. Review the actual diff against the architecture before handoff.
+
+## Required boundaries
+
+- Back every required file, marker, manifest field, boundary, and release
+  precondition with an automated test that exercises the real repository
+  shape. Fixture-only tests may supplement this coverage; they never replace
+  verification of required canonical files.
+- Implement every current product from its present contract and observable
+  user journey. Never defer a required connection, capability, or workflow to
+  an assumed future product, future package composition, or anticipated growth.
+- BOS owns the platform connection and authentication. Dependent products
+  declare BOS as a dependency, retain their domain skills and requirements,
+  and contain no second host transport or login. The server evaluates exact
+  organization, application, installation, role, capability and provider scope
+  for every request. Transport ownership never widens a grant.
+- Discover and execute authorized application operations through the BOS
+  connection using live server contracts and preserved scope.
+- Derive authority from authenticated context and canonical installed-app
+  records.
+- Treat request identifiers as selectors that require authorization.
+- Keep secrets in managed credential storage.
+- Keep provider side effects inside explicit tenant and installation scope.
+- Preserve idempotency for mutations and migrations.
+- Keep application-specific paths, terminology, tests, and release gates in
+  application specialization skills.
+
+Treat a passing implementation with an undeclared product dependency or a
+missing authorized BOS runtime capability as incomplete. Record the missing current capability
+explicitly and block release until its present owner implements it.
+
+Report changed files, validation results, migration effects, and remaining
+risks. Require independent architecture review when the owning repository
+defines one.

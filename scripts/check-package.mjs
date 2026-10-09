@@ -25,6 +25,7 @@ import {
 } from "./lib/product-contracts.mjs";
 
 import { checkSkillDependencies } from "./lib/skill-dependencies.mjs";
+import {validateMusePackage} from "./lib/muse-package.mjs";
 
 const forbiddenNames = new Set([
   ".env",
@@ -181,7 +182,7 @@ async function validateProducts() {
   }
   if (
     JSON.stringify(Object.keys(packageManifest.clients ?? {}).sort()) !==
-    JSON.stringify(["claude", "codex", "copilot", "gemini"])
+    JSON.stringify(["claude", "codex", "copilot", "gemini", "muse"])
   ) {
     failures.push("Package manifest must declare all supported clients");
   }
@@ -233,7 +234,8 @@ async function validateProducts() {
       codex: join(root, "clients", "codex", "plugins", manifest.name),
       claude: join(root, "clients", "claude", "plugins", manifest.name),
       copilot: join(root, "clients", "copilot", "products", manifest.name),
-      gemini: join(root, "clients", "gemini", "extensions", manifest.name)
+      gemini: join(root, "clients", "gemini", "extensions", manifest.name),
+      muse: join(root, "clients", "muse", "plugins", manifest.name)
     };
     if (manifest.release_status === "disabled") {
       for (const generatedRoot of Object.values(generatedRoots)) {
@@ -278,6 +280,10 @@ async function validateProducts() {
       ) {
         failures.push(`Generated named MCP route metadata drift: ${metadataPath}`);
       }
+    }
+    if (manifest.clients.includes("muse")) {
+      try { failures.push(...await validateMusePackage(manifest, skills, generatedRoots.muse)); }
+      catch (error) { failures.push(`Muse package validation: ${error.message}`); }
     }
     if (manifest.clients.includes("codex")) {
       const pluginRoot = generatedRoots.codex;

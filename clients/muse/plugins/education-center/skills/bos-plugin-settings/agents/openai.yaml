@@ -1,0 +1,4 @@
+interface:
+  display_name: "BOS Plugin Settings"
+  short_description: "Read and change typed BOS plugin settings"
+  default_prompt: "Use $bos-plugin-settings to show or update the requested plugin settings."

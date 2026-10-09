@@ -1,0 +1,54 @@
+{
+  "schema_version": "2",
+  "name": "bos",
+  "version": "0.4.190",
+  "client": "muse",
+  "application_name": "bos",
+  "mcp_group_name": "platform",
+  "mcp_server_name": "BOS-Platform",
+  "resource_url": "https://dfsm.ai/mcp/apps/bos/platform",
+  "oauth": {
+    "authorization_server_issuer": "https://dfsm.ai",
+    "authorization_endpoint": "https://dfsm.ai/api/v1/mcp/oauth/authorize",
+    "identity_provider": "google",
+    "identity_provider_authorization_endpoint": "https://accounts.google.com/o/oauth2/v2/auth",
+    "provider_account_selection_policy": "ALWAYS_SELECT_ACCOUNT",
+    "provider_account_selection_prompt": "select_account"
+  },
+  "connection_owner": "bos",
+  "dependency_products": [],
+  "authentication": "oauth_2_1",
+  "authorization_scope_policy": "ONE_ORGANIZATION_APPLICATION_INSTALLATION_ROLE_PER_GRANT",
+  "execution_context_compatibility": "bos.identity-context-compatibility/v1",
+  "authentication_handoff": {
+    "contract_id": "bos.authentication-handoff",
+    "contract_version": "1",
+    "authentication_manager": "bos",
+    "credential_lifecycle_owner": "host",
+    "authorization_enforcement_owner": "bos-service",
+    "delegation_policy": "AUTOMATIC",
+    "recognized_condition_categories": [
+      "MISSING_GRANT",
+      "EXPIRED_TOKEN",
+      "REVOKED_GRANT",
+      "INVALID_CLIENT",
+      "INVALID_GRANT",
+      "RESOURCE_MISMATCH",
+      "REAUTHENTICATION_REQUIRED",
+      "AUTHORIZATION_REQUIRED",
+      "MCP_WWW_AUTHENTICATE",
+      "MCP_SESSION_CLOSED",
+      "PROVIDER_AUTHORIZATION_REQUIRED"
+    ],
+    "readiness_result": {
+      "owner": "bos",
+      "statuses": [
+        "READY",
+        "HOST_ACTION_REQUIRED",
+        "NOT_READY"
+      ],
+      "representation": "AUTHENTICATION_READINESS_ONLY",
+      "authority_data": "EXCLUDED"
+    }
+  }
+}

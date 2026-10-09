@@ -1,0 +1,4 @@
+interface:
+  display_name: "BOS Plugin Console"
+  short_description: "View and control BOS plugin services"
+  default_prompt: "Use $bos-plugin-console to show my BOS plugin service status and available connection actions."

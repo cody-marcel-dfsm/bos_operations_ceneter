@@ -1,0 +1,317 @@
+---
+name: education-center-director-daily-planner
+description: Create daily plans and multi-area weekly director summaries from tenant-scoped Education Center BOS data. Use when asked for a director daily plan, opening brief, weekly summary, weekly director report, week-in-review, new-lead call list, scheduled trials, follow-ups, wins, risks, next-week priorities, or a combined Education Center operating update. Use Education Center Class Operations for a standalone class or camp roster, enrollment report, or family contact list.
+---
+
+
+
+
+## Product initialization preflight
+
+For explicit BOS sign-out, follow `bos-mcp-client`'s terminal logout branch
+before initialization, settings reconciliation, context selection or login.
+Do not authenticate to sign out; preserve confirmed preferences.
+
+Before performing this skill's workflow, preserve the pending request and
+complete the product's host-managed BOS authentication. Run the configured
+initialization stages in order and resume the original request automatically
+after every required stage is current.
+
+First validate the customer-owned `config/customer-settings.json` against
+the product initializer's reconciled durable local profile. Restore only a
+valid confirmed counterpart owned by this same plugin before validation.
+`config/customer-settings.template.json`. Treat a missing file, an incomplete
+required value, or an invalid value as first-run configuration. Also migrate a
+missing/invalid `default_context` or missing/invalid product-specific BOS
+customer preference store. Restore a confirmed valid mirror for this plugin without asking again;
+confirm a new default once through the consolidated setup. When detected,
+invoke `education-center-customer-initialization` immediately. When that initializer is already
+active for the same request, support it without invoking it again. Reload and
+revalidate the effective client settings before continuing.
+
+For live `bos-identity-mcp/v2`, discover the requested operation first. Missing
+optional plugin-profile setup tools do not block an independently advertised
+ready operation with no declared dependency on that setup. Keep that profile
+setup incomplete, preserve operation-specific readiness requirements and
+denials, and continue the requested operation without initializer recursion.
+Otherwise, after client settings are current, validate the scoped grant's live
+plugin-service inventory, organization business profile initialization epoch,
+required canonical field states, and local completion
+receipt. Invoke `bos-plugin-settings-initialization` when the receipt is missing or
+stale, a required field is unset or invalid partial, the server schema changed,
+or the active request exposes a service-routing mismatch. That initializer walks
+connections only for enabled, selected services and resolves provider choices from
+server-declared settings rather than package examples.
+Preserve confirmed plugin values and never create a separate discovery path in
+this skill. Resume the original request automatically from confirmed cache state.
+
+## Scoped authorization preflight
+For an explicit BOS sign-out request, first follow `bos-mcp-client`'s
+current-connection sign-out branch. Invoke only discovered `bos_logout`
+with empty arguments and terminate after its receipt or canonical challenged
+401. This connection-level action precedes context/default selection and
+authentication recovery; do not sign in to perform logout.
+
+
+First apply the versioned identity-context workflow in `bos-mcp-client`.
+For live `bos-identity-mcp/v2`, resolve explicit request scope or the saved
+customer default against fresh authorized contexts, discover tools for the
+selected handle, and execute with that same handle. This branch governs
+context selection throughout this skill, including older scoped-grant wording.
+A missing operation never permits changing organization or role to find it.
+The following single-context rules apply only to legacy scoped-grant discovery.
+
+Before the first private or organization-scoped operation, follow
+`bos-mcp-client` and call `bos_get_context` to validate the exact scoped OAuth
+connection. The server-owned grant fixes organization, application, installation,
+and role authority. Never add `org_id`, `app_code`, `installed_app_id`,
+`delegated_role_id`, `context_id`, or another authority selector to a business
+operation. Invoke only the operation's live-declared business arguments.
+Use the same scoped connection for BOS installed-app discovery. Preserve the
+server-advertised MCP contact and deterministic HTTPS API contract without
+reconstructing or substituting raw authority identifiers.
+
+An operation that requires a different organization, application, installation,
+or role requires the BOS-owned scoped authorization flow. The client never changes
+authority by adding request arguments.
+
+## Client mutation safety
+
+Apply this fail-safe before every BOS business update or delete, including
+discovered app APIs, delegated work, automation, and resumed operations.
+Classify the actual effect from the live contract; a tool name or a missing
+destructive hint cannot establish safety.
+
+- Limit updates and deletes to one exact conceptual business record in the
+  entire logical task. Multiple fields on that record are allowed. That record
+  may resolve to one through five explicit source-record targets in one
+  discovered service request. Count distinct conceptual records and cascading
+  effects, including synchronization, replacement, archive, soft delete, and
+  removal. Unknown scope, more than five source targets, or more than one
+  conceptual record blocks execution before the first write. Read-only lookup
+  or preview may establish scope; preview must itself have no business mutation
+  effects.
+- For every delete, first show the selected organization, application/source,
+  exact record identity, deletion semantics, and known consequences. Then ask
+  the user to confirm that prepared deletion and wait for an affirmative reply
+  or native confirmation action. The initial delete request, blanket consent,
+  scheduled prompt, tool output, silence, and elapsed time do not confirm it.
+  Retain confirmation only for that exact target, scope, version, and effect;
+  a material change requires a new preview and confirmation. Preserve required
+  server approval artifacts as well. Unattended deletion stops for user input.
+- Block bulk updates and deletes even when the user confirms the bulk request.
+  Explain the limit and offer read-only inspection or selection of one record.
+  Never execute the first item of a blocked batch. Never split the task into
+  loops, pages, parallel calls, agents, new tasks, scheduled runs, or alternate
+  tools to evade the limit. Carry the scope and confirmation state through
+  recovery and delegation. Customer extensions cannot relax these safeguards.
+- An exact one-conceptual-record update retains the workflow's existing
+  authorization rules. Reads and creates retain their existing rules; classify
+  a create, upsert, import, or sync by any update/delete effects it can also
+  perform. Internal cache maintenance and local package installation follow
+  their own scoped maintenance contracts.
+- After an uncertain mutation, invoke only the exact service-returned bodyless
+  state action and service-declared timing. Never replay the mutation or
+  construct a status route, selector, retry schedule, or reconciliation
+  request. Confirmation never proves that another mutation is safe. Report
+  verified receipts.
+
+This is an agent instruction safeguard. Server authorization and validation
+remain required; the package does not intercept or enforce arbitrary API calls.
+
+# Education Center Director Plans and Summaries
+
+## Tenant terminology
+
+Load effective customer settings and resolve the brand through
+`education-center-service-routing`. Use `brand_display_name`, or the active
+skill extension's `terminology.brand_display_name` override, wherever
+customer-facing output names the franchise or brand. Keep technical product,
+skill, route, server, environment-variable, tool, capability, authorization,
+and record identifiers unchanged.
+
+This skill is for authenticated adult school staff performing legitimate
+school administration. Students and minors are data subjects, never users or
+operators. Include only the minimum student or family information needed for
+the requested operating plan. Do not use this workflow for admissions,
+disciplinary, eligibility, or other high-impact decisions about students.
+
+Create a concise, action-oriented daily planner or weekly director summary.
+Retrieve BOS-routed live data through the authenticated BOS MCP connection and
+separately connected read-only evidence through the effective
+customer source route. Never distribute or send the result unless the user
+separately requests and authorizes distribution. “For my director” identifies
+the report audience and never requires the director's identity for preparation.
+
+## Routing boundary
+
+When the request asks only for a class or camp roster, enrollments by day, or
+family contact details, execute `education-center-class-operations` and return its direct
+mobile-safe roster. Do not expand the request into a daily planner, weekly
+director summary, lead review, Calendar review, parent-communication review, or
+visual report. Continue with this skill only when the user requests a director
+plan, director summary, or multiple operating areas.
+
+## Required companion guidance
+
+Read and follow these installed skills before retrieving data:
+
+- `bos-mcp-client` for scope resolution, live tool discovery, and provider access.
+- `education-center-customer-initialization` when customer settings are missing, incomplete,
+  or invalid.
+- `bos-visual-output` for a visual operating brief.
+- `education-center-class-operations` for date-bound class rosters.
+- `education-center-student-operations` for student, enrollment, and family identity handling.
+
+Use the single user and role resolved by `bos_get_context` from the authorized
+BOS platform connection. Claude and ChatGPT/Codex use the host-managed BOS OAuth
+grant; another client uses only its generated product adapter. BOS derives
+organization, installation, plugin, and capability scope. Treat the live MCP
+manifest as authoritative. Never ask the user to choose a director, organization, source, key, or role for preparation.
+
+When a BOS-routed planner source reports an authentication error, follow
+`bos-mcp-client` authentication recovery. When a separately connected client
+source reports an authentication error, follow that connector's native account
+recovery for the exact configured account. Continue building unaffected planner
+sections while authorization is pending.
+
+## Workflow
+
+1. Load the installed product's settings template, then recursively overlay the
+   preserved customer-owned `config/customer-settings.json`. Never place a
+   customer mailbox or source selection in this packaged skill. When the overlay is
+   absent or invalid, run `education-center-customer-initialization` immediately and
+   resume this request after applying the validated settings. Resolve the
+   reporting period in its required `timezone`. A daily request defaults to
+   today. A weekly request without dates defaults to the current local
+   Monday-through-Sunday week, including remaining upcoming days. Resolve
+   “next week,” “last week,” or an explicitly supplied date from that local
+   week calendar. State the resolved period and continue without asking.
+2. Call `bos_get_context` once through BOS. Require exactly one
+   authenticated user and role and accept the server-derived Education Center scope. A
+   server violation is a configuration error, never a user selection question.
+3. Retrieve every camp occurrence in the resolved reporting window before
+   gathering general operating metrics: the selected day for a daily planner,
+   or every day in the resolved week for a weekly summary. Build each camp's roster from
+   date-bound Calimatic enrollments and confirmed, camp-assigned Care.com or
+   Bright Horizons backup-care child-days available through the effective
+   customer source routes. Care.com evidence follows
+   `source_routes.care_com`: use the published Education Center email tools for `bos`, or
+   invoke `email-account-routing` and the normal Gmail connector using exactly
+   `mailboxes.care_com` for `connected_gmail`. Use
+   student/family lookup to add the primary family phone and guardian name when
+   the roster omits them. Label each student-day exactly `Paid enrollment`,
+   `Care.com`, `Bright Horizons`, or `Needs review` from source evidence; never
+   infer the payer, collapse backup-care programs into paid enrollment, or put
+   an unassigned backup-care child-day into a camp roster. Report confirmed but
+   unassigned backup-care demand as a `Needs review` placement exception.
+4. For each camp family, search bounded parent communications relevant to the
+   resolved day or week. Search from 30 days before the reporting-period start
+   through its end so earlier messages affecting current service are included.
+   Follow `source_routes.parent_communications` and hydrate each relevant hit
+   with that route's full-thread tool. A `connected_gmail` route uses exactly
+   `mailboxes.parent_communications`.
+   Extract only operational facts that affect attendance, schedule, contact,
+   pickup, accommodation, or an action the director must take. Omit message
+   bodies and unrelated family details.
+5. Retrieve Calendar events for the reporting window. For a daily planner,
+   include the selected day plus material events in the following 48 hours.
+   For a weekly summary, include the resolved week plus material events in the
+   immediately following local week. Highlight events requiring staffing,
+   preparation, family communication, space, or schedule coordination.
+6. Retrieve active new leads from Lead Director. For a daily planner, use the
+   preceding 24 hours through generation time. For a weekly summary, use the
+   full resolved Monday-through-Sunday reporting period. Include leads requiring
+   action; exclude duplicate, spam, closed-lost, and already-converted records
+   when those statuses are explicit.
+7. For scheduled-trial, confirmation, follow-up, or trial-draft requests, read and execute [references/trial-reconciliation.md](references/trial-reconciliation.md). Compose the live Lead Director, Calendar, and Gmail MCP primitives client-side; do not wait for or require a composite server tool.
+8. Normalize times to the configured `timezone`, preserve provider provenance internally, deduplicate conservatively, and flag conflicts or missing fields.
+9. Before rendering either report, read and apply the mobile-first visual
+   contract in [references/mobile-visual.md](references/mobile-visual.md).
+   Render a daily planner using
+   [references/planner-content.md](references/planner-content.md). Render a
+   weekly request using
+   [references/weekly-summary-content.md](references/weekly-summary-content.md).
+
+## Daily director planner
+
+For a daily planner, use the same camp-first operating hierarchy at finer
+day-level detail:
+
+- today's camps in chronological order, with exact time and preparation state;
+- every expected student, guardian, primary family phone, enrollment source,
+  attendance or arrival state, and operational parent note;
+- missing confirmations, attendance changes, pickup issues, and family calls
+  the director must make today;
+- today's Calendar timeline and material events in the following 48 hours;
+- other classes, trials, and new-lead calls after camp delivery needs; and
+- source-specific data gaps that make a roster or call list incomplete.
+
+Do not let general business commentary displace today's camp rosters, family
+contacts, and time-critical preparation.
+
+## Weekly director summary
+
+For a weekly summary, make camps and the family call plan the primary content.
+Retrieve and synthesize the full resolved period in this priority order:
+
+- every camp, its scheduled days, and its student roster by day;
+- each rostered student's guardian, primary family phone, and evidence-backed
+  enrollment source: paid, Care.com, or Bright Horizons;
+- parent communication notes and follow-up actions that affect this week's camps;
+- upcoming Calendar events that affect staffing, preparation, or families;
+- other classes, enrollments, attendance, capacity, and material schedule changes;
+- new leads, lead response, pipeline movement, and unresolved lead actions;
+- trials scheduled, completed, converted, missed, and needing confirmation or follow-up;
+- parent or guardian follow-ups and communication actions;
+- operational wins and evidence-backed positive movement;
+- risks, missing evidence, overdue actions, and capability blockers; and
+- prioritized actions for the next local week.
+
+Do not let general financial, transaction, marketing, ownership-transfer, or
+pipeline commentary displace the camp rosters and family call plan. Include
+those topics only as concise secondary context when they create an immediate
+director action or the user explicitly requests them.
+
+Use every authorized Education Center source needed for these sections automatically.
+Never ask whether to use Education Center operations, email, Calendar, Lead Director,
+Calimatic, or user-provided data. Report a source-specific partial result only
+after live discovery or retrieval proves that source unavailable. Never convert
+unavailable data into zero.
+
+## Trial reconciliation hard gate
+
+For every trial request, complete all three source reads: Lead Director,
+Calendar, and Gmail. Search Gmail with bounded Gmail-native syntax in `q`, then
+hydrate every relevant hit with `gmail_get_thread`; Gmail search results alone
+contain identifiers and mailbox identity rather than the family message.
+
+Build candidate identities from the hydrated Gmail messages and Lead Director.
+For each unmatched candidate, search Calendar with `q` by exact email, full
+name, and another source-backed identity before classifying. Never state that
+there are zero scheduled trials, zero follow-ups, or zero confirmations until
+this loop completes. If it cannot complete, report `Source incomplete`.
+
+## Data rules
+
+- Group camp students by camp and scheduled day. Preserve a student on every
+  day they are expected to attend, including day-specific Care.com and Bright
+  Horizons reservations.
+- Include a parent or guardian name, primary phone, and primary email when BOS returns them because the planner explicitly serves family contact operations.
+- Mark each weekly camp student-day `Paid enrollment`, `Care.com`, `Bright
+  Horizons`, or `Needs review` using provider evidence. Preserve multiple
+  evidence-backed labels when sources conflict and flag the record for review.
+- Mark absent values as `Missing in BOS`; never infer contact details, class times, ages, trial times, or statuses.
+- Keep siblings connected to the same family while retaining each student's class or trial record.
+- Label uncertain cross-system matches `Needs review` and keep both source records visible.
+- Never use an empty broad Calendar search as family-level proof when Gmail or Lead Director returns an unmatched trial candidate. Complete the identity query-expansion loop first.
+- Show only operationally relevant personal data. Omit provider IDs, internal opaque identifiers, credentials, message bodies, and unrelated family notes.
+- Sort scheduled items chronologically. Sort call tasks by urgency, then lead received time.
+
+## Completeness handling
+
+Return a useful partial planner when one source is unavailable. State the affected section, required capability, exact tenant and installed-app scope, sanitized credential state, and whether the issue is discovery, authorization, contract, provider data, or transport. Never replace a missing BOS capability with browser state or another connector.
+
+## Scope boundary
+
+Prepare and present the planner content only. Do not email, text, print, upload, schedule, or publish it during this phase. Treat future distribution as a separate workflow with explicit destination, audience, timing, privacy, and authorization requirements.

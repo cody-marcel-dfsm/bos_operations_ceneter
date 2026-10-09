@@ -1,0 +1,134 @@
+---
+name: meta-ads-conversion-optimization
+description: Diagnose, optimize, and report on Meta/Facebook/Instagram paid ads that are intended to drive leads, purchases, booked calls, trials, appointments, subscriptions, or other sales conversions. Use when evaluating Meta campaign performance, ad creative, audiences, offer economics, landing-page conversion, pixel/CAPI tracking, funnel attribution, ROAS/CAC, budget scaling, retargeting, or sales follow-up from paid social traffic.
+---
+
+
+
+## Scoped authorization preflight
+For an explicit BOS sign-out request, first follow `bos-mcp-client`'s
+current-connection sign-out branch. Invoke only discovered `bos_logout`
+with empty arguments and terminate after its receipt or canonical challenged
+401. This connection-level action precedes context/default selection and
+authentication recovery; do not sign in to perform logout.
+
+
+First apply the versioned identity-context workflow in `bos-mcp-client`.
+For live `bos-identity-mcp/v2`, resolve explicit request scope or the saved
+customer default against fresh authorized contexts, discover tools for the
+selected handle, and execute with that same handle. This branch governs
+context selection throughout this skill, including older scoped-grant wording.
+A missing operation never permits changing organization or role to find it.
+The following single-context rules apply only to legacy scoped-grant discovery.
+
+Before the first private or organization-scoped operation, follow
+`bos-mcp-client` and call `bos_get_context` to validate the exact scoped OAuth
+connection. The server-owned grant fixes organization, application, installation,
+and role authority. Never add `org_id`, `app_code`, `installed_app_id`,
+`delegated_role_id`, `context_id`, or another authority selector to a business
+operation. Invoke only the operation's live-declared business arguments.
+Use the same scoped connection for BOS installed-app discovery. Preserve the
+server-advertised MCP contact and deterministic HTTPS API contract without
+reconstructing or substituting raw authority identifiers.
+
+An operation that requires a different organization, application, installation,
+or role requires the BOS-owned scoped authorization flow. The client never changes
+authority by adding request arguments.
+
+## Client mutation safety
+
+Apply this fail-safe before every BOS business update or delete, including
+discovered app APIs, delegated work, automation, and resumed operations.
+Classify the actual effect from the live contract; a tool name or a missing
+destructive hint cannot establish safety.
+
+- Limit updates and deletes to one exact conceptual business record in the
+  entire logical task. Multiple fields on that record are allowed. That record
+  may resolve to one through five explicit source-record targets in one
+  discovered service request. Count distinct conceptual records and cascading
+  effects, including synchronization, replacement, archive, soft delete, and
+  removal. Unknown scope, more than five source targets, or more than one
+  conceptual record blocks execution before the first write. Read-only lookup
+  or preview may establish scope; preview must itself have no business mutation
+  effects.
+- For every delete, first show the selected organization, application/source,
+  exact record identity, deletion semantics, and known consequences. Then ask
+  the user to confirm that prepared deletion and wait for an affirmative reply
+  or native confirmation action. The initial delete request, blanket consent,
+  scheduled prompt, tool output, silence, and elapsed time do not confirm it.
+  Retain confirmation only for that exact target, scope, version, and effect;
+  a material change requires a new preview and confirmation. Preserve required
+  server approval artifacts as well. Unattended deletion stops for user input.
+- Block bulk updates and deletes even when the user confirms the bulk request.
+  Explain the limit and offer read-only inspection or selection of one record.
+  Never execute the first item of a blocked batch. Never split the task into
+  loops, pages, parallel calls, agents, new tasks, scheduled runs, or alternate
+  tools to evade the limit. Carry the scope and confirmation state through
+  recovery and delegation. Customer extensions cannot relax these safeguards.
+- An exact one-conceptual-record update retains the workflow's existing
+  authorization rules. Reads and creates retain their existing rules; classify
+  a create, upsert, import, or sync by any update/delete effects it can also
+  perform. Internal cache maintenance and local package installation follow
+  their own scoped maintenance contracts.
+- After an uncertain mutation, invoke only the exact service-returned bodyless
+  state action and service-declared timing. Never replay the mutation or
+  construct a status route, selector, retry schedule, or reconciliation
+  request. Confirmation never proves that another mutation is safe. Report
+  verified receipts.
+
+This is an agent instruction safeguard. Server authorization and validation
+remain required; the package does not intercept or enforce arbitrary API calls.
+
+# Meta Ads Conversion Optimization
+
+## Core Rule
+
+Treat Meta Ads performance as a full conversion system: ad promise, audience, click quality, landing-page experience, tracking integrity, conversion event quality, offer economics, and sales follow-up. Do not judge a campaign only by CTR, CPC, CPM, or Meta's reported conversion count.
+
+For detailed diagnostic rules, read `references/conversion-playbook.md` when the user asks for analysis, optimization, scaling, troubleshooting, or a campaign report.
+
+## Workflow
+
+1. Define the business objective and conversion event.
+   - Identify the intended outcome: purchase, qualified lead, booked call, trial, estimate request, checkout initiation, subscription, or offline sale.
+   - Identify the economic threshold: acceptable CAC, cost per lead, cost per booked call, ROAS, payback period, close rate, or average order value.
+   - If the objective is unclear, propose the most likely objective and mark the conclusion as provisional.
+
+2. Separate source metrics.
+   - Keep Meta delivery metrics, landing-page/funnel metrics, CRM/sales outcomes, payment data, and offline conversions separate until attribution is verified.
+   - Name the source, date range, timezone, campaign/ad set/ad, and conversion event for every metric.
+
+3. Check tracking before making performance claims.
+   - Confirm Meta Pixel and Conversions API event coverage, deduplication, event match quality, domain verification, Aggregated Event Measurement priority, UTM preservation, and conversion location.
+   - If tracking is unverified, label Meta conversion data as directional and avoid a hard performance conclusion.
+
+4. Diagnose the funnel in order.
+   - Impression to click: creative, offer, audience, placement, fatigue, CPM, CTR, CPC.
+   - Click to landing-page view: load speed, redirects, mobile experience, link quality, tracking loss, accidental clicks.
+   - Landing-page view to conversion: message match, above-the-fold clarity, CTA, form friction, proof, risk reversal, calendar/payment flow.
+   - Conversion to sale: lead quality, speed-to-lead, follow-up, qualification, close rate, AOV/LTV.
+
+5. Recommend the next highest-leverage action.
+   - State the action, evidence, recommendation, and expected outcome plainly.
+   - Prefer one primary recommendation plus one measurement step.
+   - Do not recommend scaling until tracking is credible and the conversion event has enough volume or clear economic evidence.
+
+## Reporting Shape
+
+Use this structure for normal chat responses:
+
+- `Bottom line`: one direct sentence.
+- `KPIs`: compact table or bullets for spend, impressions, clicks, CTR, CPC, landing page views, click-to-LPV rate, conversions, conversion rate, CPA/CAC, revenue/ROAS when available.
+- `What it means`: 2-4 bullets tied to the conversion objective.
+- `Recommendation`: one direct action.
+- `Next action`: one concrete measurement or execution step.
+- `Missing`: only sources or metrics that block a reliable conclusion.
+
+## Decision Rules
+
+- Strong CTR and weak conversions usually means the ad is earning curiosity while the page, offer, conversion flow, or lead quality is failing.
+- Strong click-to-landing-page-view loss usually means slow load, redirects, bad mobile experience, low-intent placements, tracking loss, or accidental clicks.
+- Low CTR and strong page conversion usually means the page/offer works but creative, audience, or hook needs improvement.
+- Low CPC is useful only when downstream lead quality and conversion economics hold.
+- Optimize for the deepest reliable event with enough signal. Use higher-funnel events only when purchase/lead volume is too low for stable delivery.
+- Evaluate Meta's learning phase, attribution setting, conversion window, and event volume before declaring a campaign failed.

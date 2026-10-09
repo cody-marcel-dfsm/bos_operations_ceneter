@@ -464,6 +464,34 @@ test("api.contract.get response preserves current contract and BOSL classificati
   );
 });
 
+test("api.contract.get accepts the exact published source-configuration recovery action", () => {
+  const configureSource = {
+    ...apiContractResponse,
+    recovery: {action: "configure_source"}
+  };
+  assert.equal(
+    validateApiContractResponse(configureSource, {
+      operation: configureSource.operation,
+      source: configureSource.source
+    }),
+    configureSource
+  );
+
+  for (const recovery of [
+    {action: "configure_other_source"},
+    {action: "configure_source", operation: "unadvertised.operation"},
+    {action: "configure_source", extra: true}
+  ]) {
+    assert.throws(
+      () => validateApiContractResponse({...apiContractResponse, recovery}, {
+        operation: apiContractResponse.operation,
+        source: apiContractResponse.source
+      }),
+      /recovery has undeclared field action/
+    );
+  }
+});
+
 test("identity-v2 HTTP execution requires the discovered static context header", () => {
   const expanded = {
     ...apiContractResponse,

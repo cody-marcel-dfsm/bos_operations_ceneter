@@ -13,7 +13,7 @@ import { basename, join, relative, resolve, sep } from "node:path";
 export const root = resolve(import.meta.dirname, "../..");
 const mutationSafety = readFileSync(join(root,
   "source/platform/bos-mcp-client/references/mutation-safety.md"), "utf8").trim();
-export const supportedClients = new Set(["codex", "claude", "copilot", "gemini"]);
+export const supportedClients = new Set(["codex", "claude", "copilot", "gemini", "muse"]);
 export const productNamePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const publicToolNamePattern = /^[a-z][a-z0-9_]*$/;
 export const productInitializationIndependentSkills = new Set([
@@ -743,7 +743,7 @@ export function injectProductInitializationPreflight(guidance, {
   return `${guidance.slice(0, frontmatter[0].length)}\n${preflight}\n${guidance.slice(frontmatter[0].length)}`;
 }
 
-function publicPackagePath(path) {
+export function publicPackagePath(path) {
   const parts = resolve(path).split(sep);
   const name = basename(path);
   return !parts.includes("__pycache__") && !name.endsWith(".pyc");

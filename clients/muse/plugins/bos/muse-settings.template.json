@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "mcpServers": {
+    "BOS-Platform": {
+      "type": "streamable-http",
+      "url": "https://dfsm.ai/mcp/apps/bos/platform"
+    }
+  }
+}

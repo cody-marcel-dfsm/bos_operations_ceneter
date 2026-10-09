@@ -1,0 +1,160 @@
+---
+name: landing-page-copywriting
+description: Write, revise, audit, or structure high-converting landing pages, sales pages, funnel pages, hero sections, offers, headlines, calls to action, benefit copy, proof, FAQs, and risk reversal. Use when Codex works on landing-page strategy or copy, offer clarity, conversion messaging, Life-Force 8 psychological desires, fifth-grade readability, plain-language persuasion, or matching page content to an audience's strongest desire.
+---
+
+
+
+## Scoped authorization preflight
+For an explicit BOS sign-out request, first follow `bos-mcp-client`'s
+current-connection sign-out branch. Invoke only discovered `bos_logout`
+with empty arguments and terminate after its receipt or canonical challenged
+401. This connection-level action precedes context/default selection and
+authentication recovery; do not sign in to perform logout.
+
+
+First apply the versioned identity-context workflow in `bos-mcp-client`.
+For live `bos-identity-mcp/v2`, resolve explicit request scope or the saved
+customer default against fresh authorized contexts, discover tools for the
+selected handle, and execute with that same handle. This branch governs
+context selection throughout this skill, including older scoped-grant wording.
+A missing operation never permits changing organization or role to find it.
+The following single-context rules apply only to legacy scoped-grant discovery.
+
+Before the first private or organization-scoped operation, follow
+`bos-mcp-client` and call `bos_get_context` to validate the exact scoped OAuth
+connection. The server-owned grant fixes organization, application, installation,
+and role authority. Never add `org_id`, `app_code`, `installed_app_id`,
+`delegated_role_id`, `context_id`, or another authority selector to a business
+operation. Invoke only the operation's live-declared business arguments.
+Use the same scoped connection for BOS installed-app discovery. Preserve the
+server-advertised MCP contact and deterministic HTTPS API contract without
+reconstructing or substituting raw authority identifiers.
+
+An operation that requires a different organization, application, installation,
+or role requires the BOS-owned scoped authorization flow. The client never changes
+authority by adding request arguments.
+
+## Client mutation safety
+
+Apply this fail-safe before every BOS business update or delete, including
+discovered app APIs, delegated work, automation, and resumed operations.
+Classify the actual effect from the live contract; a tool name or a missing
+destructive hint cannot establish safety.
+
+- Limit updates and deletes to one exact conceptual business record in the
+  entire logical task. Multiple fields on that record are allowed. That record
+  may resolve to one through five explicit source-record targets in one
+  discovered service request. Count distinct conceptual records and cascading
+  effects, including synchronization, replacement, archive, soft delete, and
+  removal. Unknown scope, more than five source targets, or more than one
+  conceptual record blocks execution before the first write. Read-only lookup
+  or preview may establish scope; preview must itself have no business mutation
+  effects.
+- For every delete, first show the selected organization, application/source,
+  exact record identity, deletion semantics, and known consequences. Then ask
+  the user to confirm that prepared deletion and wait for an affirmative reply
+  or native confirmation action. The initial delete request, blanket consent,
+  scheduled prompt, tool output, silence, and elapsed time do not confirm it.
+  Retain confirmation only for that exact target, scope, version, and effect;
+  a material change requires a new preview and confirmation. Preserve required
+  server approval artifacts as well. Unattended deletion stops for user input.
+- Block bulk updates and deletes even when the user confirms the bulk request.
+  Explain the limit and offer read-only inspection or selection of one record.
+  Never execute the first item of a blocked batch. Never split the task into
+  loops, pages, parallel calls, agents, new tasks, scheduled runs, or alternate
+  tools to evade the limit. Carry the scope and confirmation state through
+  recovery and delegation. Customer extensions cannot relax these safeguards.
+- An exact one-conceptual-record update retains the workflow's existing
+  authorization rules. Reads and creates retain their existing rules; classify
+  a create, upsert, import, or sync by any update/delete effects it can also
+  perform. Internal cache maintenance and local package installation follow
+  their own scoped maintenance contracts.
+- After an uncertain mutation, invoke only the exact service-returned bodyless
+  state action and service-declared timing. Never replay the mutation or
+  construct a status route, selector, retry schedule, or reconciliation
+  request. Confirmation never proves that another mutation is safe. Report
+  verified receipts.
+
+This is an agent instruction safeguard. Server authorization and validation
+remain required; the package does not intercept or enforce arbitrary API calls.
+
+# Landing Page Copywriting
+
+Write clear, specific pages that connect one audience, one problem, one offer, and one primary action.
+
+## Required inputs
+
+Establish these facts from the user's prompt and available source material:
+
+- audience and current situation
+- primary problem and desired outcome
+- offer, price or commitment when known, and delivery mechanism
+- credible proof
+- primary call to action
+- constraints, exclusions, and claims that require support
+
+Ask for a missing fact only when guessing would materially change the offer or create an unsupported claim. Otherwise, state a reasonable assumption and draft.
+
+When a canonical offer or campaign source exists, read it first and preserve its promise, qualifications, terms, and mechanism unless the user asks to change them.
+
+## Workflow
+
+1. Write a one-sentence message brief: `For [audience], this page offers [outcome] through [offer/mechanism], supported by [proof], with [CTA] as the next step.`
+2. Select one primary Life-Force 8 desire and up to two supporting desires. Read `references/life-force-8.md` when selecting or applying them.
+3. Turn the offer into a plain-language value statement: outcome, timeframe when supported, mechanism, price or effort, risk reversal, and next step.
+4. Build the page in decision order using `references/page-framework.md`.
+5. Draft the headline and hero first. Make the desired outcome clear within seconds.
+6. Add proof next to the claims it supports. Use real evidence only.
+7. Run `scripts/check_copy.py` on saved copy when practical. Revise until prose is near grade 5 and flagged jargon is removed or explained.
+8. Audit the final page with the quality gates below.
+
+## Copy rules
+
+- Target a Flesch-Kincaid grade level of 5.0 or lower. Accept up to 6.0 when required names or regulated terms raise the score.
+- Prefer short, familiar words, active voice, and sentences averaging 8–14 words.
+- Use one idea per sentence and short paragraphs of one to three sentences.
+- Remove technical jargon. Keep a necessary technical term only when accuracy requires it, then explain it immediately in everyday words.
+- Translate features into customer outcomes. State what changes in the visitor's life or work.
+- Make claims concrete and provable. Never invent results, reviews, scarcity, credentials, guarantees, or customer pain.
+- Use the customer's language from interviews, reviews, calls, search terms, or source materials when available.
+- Lead with the strongest desired outcome. Support emotion with clear facts, proof, and risk reduction.
+- Address fear without exaggeration, shame, or coercion. Respect visitor agency.
+- Use second person when natural. Keep the company out of the headline unless its identity is the value.
+- Give each section one job and each page one primary CTA.
+- Write button labels that describe the next step, such as `Book My Free Call` or `See Available Times`.
+- Preserve legal, medical, financial, safety, and platform-required qualifications.
+
+## Offer test
+
+Confirm a visitor can answer these questions quickly:
+
+1. Is this for me?
+2. What will I get?
+3. Why should I care now?
+4. How does it work?
+5. Why should I believe it?
+6. What will it cost me in money, time, or effort?
+7. What happens if it does not work?
+8. What do I do next?
+
+Strengthen the offer before polishing prose when any answer is missing.
+
+## Output
+
+For a full-page draft, provide paste-ready copy in page order with section labels, headlines, body copy, CTA labels, proof placeholders only where evidence is still needed, and brief implementation notes when useful.
+
+For an audit, lead with the conversion issue, cite the exact copy causing it, recommend replacement language, and finish with the revised section or page.
+
+## Quality gates
+
+- One clear audience, offer, primary desire, and CTA
+- Headline states a meaningful outcome in plain language
+- Hero explains the offer without scrolling or insider knowledge
+- Every major claim has nearby evidence or is softened to an honest statement
+- Benefits are specific; jargon and filler are absent
+- Reading level is grade 5 or lower, or a documented accuracy exception is present
+- CTA says what happens next
+- Objections, effort, risk, and expectations are answered
+- Desire appeal matches the real offer and customer evidence
+- Mobile scanning works through short sections, useful headings, and concise copy

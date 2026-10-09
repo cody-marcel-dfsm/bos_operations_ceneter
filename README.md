@@ -23,6 +23,7 @@ BOS is pre-launch with invite-only access. [Request an invite](https://dfsm.ai/a
 | Gemini customer | Use Gemini CLI or Antigravity 2.0 Desktop | [Gemini installation](#gemini-cli-and-antigravity-20-desktop) |
 | Local plugin development | Edit, regenerate, install, and test an unreleased checkout | [Local development](#local-plugin-development) |
 | Maintainer release validation | Regenerate client packages and run credential-free local checks | [Release validation](#release-validation) |
+| Muse Code | Install native BOS and Education Operation Center skill plugins | [Muse installation](#muse-code) |
 | GitHub Copilot | Use the repository client adapter | [Other clients](#other-clients) |
 
 Customer desktop installation does not use Codex Environment variables, setup
@@ -36,7 +37,7 @@ authorization remains a separate BOS-hosted workflow.
 
 Education Operation Center declares My CRM as a required independent product dependency for generic CRM records and customer journeys. Install and verify its separately distributed package using the [published My CRM installation and verification guidance](https://github.com/cody-marcel-dfsm/mycrm#validate). Both use BOS's existing connection; no additional BOS login or connection is required. Complete installation verification checks My CRM's required skills and advertised operations. Missing or disabled My CRM blocks dependent CRM work; focused education workflows remain owned by Education Operation Center.
 
-The linked guide documents Codex installation. This release has not established My CRM installation and verification in Claude, Copilot, Gemini, or Antigravity. Verify a supported My CRM distribution for your host before using dependent CRM workflows; this repository's education packages alone do not establish that dependency's availability.
+The linked guide documents Codex installation. My CRM also provides an independent [Muse Code package](https://github.com/cody-marcel-dfsm/mycrm#muse-code). Native Muse authentication and workflow acceptance require published-release verification. This release has not established My CRM installation and verification in Claude, Copilot, Gemini, or Antigravity. Verify a supported My CRM distribution for your host before using dependent CRM workflows; this repository's education packages alone do not establish that dependency's availability.
 
 The Git marketplace is the normal pre-publication installation and
 update channel. Installing a plugin grants no organization access. Complete BOS
@@ -58,7 +59,7 @@ Upgrading replaces the former `platform` identifier. Hosts may require native
 sign-in again when a connection identifier changes; valid-session continuity
 has not been verified for this migration.
 
-Current desktop marketplace release: `0.4.189`. If `0.4.188` is installed,
+Current desktop marketplace release: `0.4.190`. If `0.4.189` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -477,6 +478,27 @@ marketplace catalog intentionally omits duplicate version fields.
 The desktop host verifies live BOS access after installation through its
 host-managed OAuth connection. Repository release commands never accept or
 retrieve a reusable BOS access token.
+
+## Muse Code
+
+Install the native packages from a published BOS Operations Center release checkout:
+
+```bash
+muse plugins validate clients/muse/plugins/bos
+muse plugins validate clients/muse/plugins/education-center
+muse plugins install clients/muse/plugins/bos
+muse plugins install clients/muse/plugins/education-center
+```
+
+Merge `clients/muse/plugins/bos/muse-settings.template.json` into your Muse user settings at `$XDG_CONFIG_HOME/muse/settings.json`, or `~/.config/muse/settings.json` when unset. Preserve other settings and keep `schema_version: 1`. Configure exactly one `BOS-Platform` entry with the packaged resource URL; review any conflicting entry before replacing it. Remove duplicate BOS registrations through host controls. Muse’s native plugin MCP entries cannot use OAuth, so this connection belongs in user settings.
+
+Run `muse mcp login BOS-Platform` and complete BOS consent. Muse owns credentials, refresh, and token attachment. Start a new Muse process after changing connection settings, then check `/mcp` and `/skills`. On a missing or rejected grant, use the same native login action and refresh discovery before continuing the pending request.
+
+Install [My CRM’s independently distributed Muse package](https://github.com/cody-marcel-dfsm/mycrm#muse-code) for its eight CRM skills. Education Operation Center and My CRM reuse the single BOS connection. All product packages preserve the canonical logos described in [the branding standard](brand/README.md).
+
+To upgrade, sync the next published release, run `muse plugins update bos` and `muse plugins update education-center`, and start a new session. This repository’s package checks verify source composition and credential-free connection declarations. Native installation, login, discovery, recovery, and authenticated operations require separate published-release acceptance.
+
+Host references: [native manifests](https://meta-models.github.io/muse-code-sdk/next/guides/plugins/reference/manifest/), [OAuth MCP setup](https://meta-models.github.io/muse-code-sdk/next/guides/extend/mcp-servers/).
 
 ## Other clients
 

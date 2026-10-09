@@ -1,0 +1,81 @@
+# Plugin settings initialization contract
+
+## Trigger conditions
+
+Run or resume after first authenticated product installation, a changed server
+initialization epoch, a required unset or invalid partial field, invalidated
+confirmed cache, or an explicit repair request.
+
+## Ownership order
+
+1. The Agent Harness loads the product and completes BOS authentication.
+2. When declared, the product customer-settings initializer establishes local non-secret
+   source roles such as organization website, display name, location, and
+   timezone. Products
+   without a customer-settings initializer use current authorized context,
+   confirmed server settings and explicit user inputs for the live profile;
+   unresolved required inputs join this workflow's consolidated review. No
+   local overlay or second product is required.
+3. `bos_get_context` revalidates the one organization, application,
+   installation, and role already bound to the active OAuth grant. The client
+   supplies no organization, role, or context selector.
+4. BOS returns the canonical plugin-service connection inventory for that
+   scoped grant. The client preserves ready services and
+   walks actionable connections for enabled, selected services one at a time
+   through server-returned secure flows. Disabled, unselected, and inapplicable
+   services remain unchanged unless the user explicitly changes their canonical
+   configuration. An unresolved actionable connection pauses initialization
+   with `connection_required` and preserves the pending request.
+5. BOS returns the canonical plugin settings inventory, field states, schemas, and
+   allowlisted recommendation strategies.
+6. Client research workers resolve those strategies from the confirmed inputs
+   established in step 2 and public evidence.
+7. BOS validates prepared drafts.
+8. The Agent Harness collects one consolidated user authorization.
+9. Delegated mutation workers persist each independent plugin through BOS.
+10. The client commits confirmed snapshots and the completion receipt.
+11. The Agent Harness resumes the pending request.
+
+Together, steps 4 through 10 establish the organization's business profile.
+The service-owned settings profiles declare routing, automation,
+communications, terminology, schedules, and other configurable behavior. The
+client never carries a provider-to-operation map. A domain skill asks for a
+semantic operation, and BOS applies the grant-bound organization's current profile
+and service bindings.
+
+The server owns canonical completion. The local receipt is a fast client
+preflight bound to its opaque authority scope, server initialization epoch,
+plugin revisions, and schema versions.
+
+Connection readiness uses `bos_list_plugin_services` without an authority
+selector. The server derives scope from the active grant and owns row membership, order, labels,
+enablement, selection, applicability, connection state, and action
+availability. `connected` and
+`not_required` rows need no interaction. Each enabled `connection_required`
+row for a selected service exposes at most one current connection action; after
+user activation, the client starts that exact BOS-owned flow, polls its
+sanitized transaction, refreshes context and operation status, and replaces the
+inventory. The initializer does not connect a disabled, unselected, or
+inapplicable row, enumerate other organizations, batch authorization pages,
+infer provider requirements, or persist connection state locally.
+
+Required service-routing and communication preferences arrive through the
+server settings inventory. When several service choices are eligible, the
+consolidated review shows their server-returned labels and the current canonical
+selection. The client never chooses from package examples or provider-specific
+skill language.
+
+## Business Hours
+
+The Business Hours profile declares a weekly schedule type and source roles for
+the client website, organization display name, location display name, and IANA
+timezone. Client-settings initialization establishes the official
+location-specific website and records its location-match evidence. A generic
+brand homepage is unresolved when the organization represents a known franchise
+location. The research worker extracts structured data, an authoritative hours
+page, a location page, and visible site content in that order. Public search is
+a profile-controlled fallback.
+
+The review states that BOS has no confirmed value, shows all seven days,
+timezone, sources, freshness, confidence, conflicts, and the exact proposed
+schedule. User authorization precedes the server mutation.

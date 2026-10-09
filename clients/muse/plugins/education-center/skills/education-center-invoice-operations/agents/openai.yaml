@@ -1,0 +1,6 @@
+interface:
+  display_name: "Education Center Invoice Operations"
+  short_description: "Create BH invoices or reconcile invoice evidence"
+  default_prompt: "Use $education-center-invoice-operations to create the exact Bright Horizons reimbursement Excel report for last week from the distributed client template. Return a short summary and attach the workbook."
+policy:
+  allow_implicit_invocation: true

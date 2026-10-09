@@ -24,6 +24,7 @@ import {
   writeJson
 } from "./lib/package-model.mjs";
 import { createDeterministicZipFromDirectory } from "./lib/deterministic-zip.mjs";
+import {musePluginManifest, museSettingsTemplate} from "./lib/muse-package.mjs";
 import {
   codexLoginSurfaceContract,
   productMcpConnectionsContract,
@@ -75,6 +76,49 @@ const claudeMarketplace = {
 };
 
 for (const { product, skills } of resolved) {
+  if (product.clients.includes("muse")) {
+    const pluginRoot = join(stagedClients, "muse", "plugins", product.name);
+    await writeJson(join(pluginRoot, ".muse-plugin/plugin.json"), musePluginManifest(product, skills));
+    await writeJson(join(pluginRoot, ".bos-product.json"), {
+      schema_version: "2", name: product.name, version: product.version, client: "muse",
+      application_name: product.application_name,
+      mcp_group_name: product.mcp_group_name,
+      ...(ownsHostConnection(product) ? {
+        mcp_server_name: mcpServerName(product), resource_url: materializeMcpUrl(product), oauth: oauthTargetContract(product)
+      } : {}),
+      ...productRuntimeOwnershipMetadata(product)
+    });
+    await copyProductSkills(product, skills, join(pluginRoot, "skills"));
+    await copyProductAssets(product, pluginRoot);
+    await copySettingsTemplate(product, pluginRoot);
+    if (ownsHostConnection(product)) await writeJson(join(pluginRoot, "muse-settings.template.json"), museSettingsTemplate(product));
+    await writeFile(join(pluginRoot, "README.md"), [
+      `# ${product.display_name} for Muse Code`, "", `![${product.display_name}](${product.logo})`, "",
+      productLongDescription(product), "", "From a published release checkout, run:", "", "```bash",
+      `muse plugins validate clients/muse/plugins/${product.name}`,
+      `muse plugins install clients/muse/plugins/${product.name}`, "```", "",
+      ...(ownsHostConnection(product) ? [
+        "Merge the `mcpServers` entry from `muse-settings.template.json` into Muse's user `settings.json`.",
+        "Use `$XDG_CONFIG_HOME/muse/settings.json`, or `~/.config/muse/settings.json` when unset.",
+        "Keep `schema_version: 1`, preserve other settings and servers, and configure exactly one `BOS-Platform` entry.",
+        "If an existing BOS entry differs, review it before replacing it; remove duplicate BOS registrations through host controls.",
+        "Do not add this connection as a plugin MCP server or a project `.mcp.json`: Muse OAuth login uses user settings.",
+        "",
+        `Run \`muse mcp login ${mcpServerName(product)}\` and complete BOS consent. Muse owns token storage and refresh.`,
+        "Start a new Muse process after changing connection settings. Check `/mcp` and ask BOS to list your authorized contexts.",
+        "A missing or rejected grant uses the same native login action; retain the pending task and refresh discovery afterward."
+      ] : [
+        "Install BOS first and use its single authenticated connection. This plugin contains skills and no MCP binding.",
+        ...independentDependencyInstructions(product),
+        "Install My CRM's independent Muse package using https://github.com/cody-marcel-dfsm/mycrm#muse-code."
+      ]), "",
+      "Start a new session and check `/skills` for this product's skills.",
+      `For a later published release, sync the checkout, run \`muse plugins update ${product.name}\`, and start a new session.`,
+      "Native installation, login, discovery, and authenticated execution require separate published-release verification.",
+      "Muse native format: https://meta-models.github.io/muse-code-sdk/next/guides/plugins/reference/manifest/",
+      "Muse OAuth: https://meta-models.github.io/muse-code-sdk/next/guides/extend/mcp-servers/", ""
+    ].join("\n"));
+  }
   if (product.clients.includes("codex")) {
     const pluginRoot = join(
       stagedClients,
@@ -478,7 +522,16 @@ await writeFile(
   ].join("\n")
 );
 
-for (const client of ["codex", "claude", "copilot", "gemini"]) {
+await writeFile(join(stagedClients, "muse", "README.md"), [
+  "# BOS Operations Center for Muse Code", "",
+  "Install the BOS platform and Education Operation Center packages under `plugins/` from a published release.",
+  "Follow each product's README. BOS owns one native OAuth connection; Education Operation Center contributes skills.",
+  "Install My CRM independently from https://github.com/cody-marcel-dfsm/mycrm#muse-code for its eight CRM skills.",
+  "This repository does not copy or redistribute My CRM. All three products use the existing BOS connection.",
+  "The product logos reuse the canonical BOS plugin logo family defined in `brand/README.md`.", ""
+].join("\n"));
+
+for (const client of ["codex", "claude", "copilot", "gemini", "muse"]) {
   const target = join(root, "clients", client);
   const staged = join(stagedClients, client);
   const backup = join(stage, `${client}-previous`);
@@ -552,5 +605,5 @@ for (const { product } of resolved) {
 
 await rm(stage, { recursive: true, force: true });
 console.log(
-  `Generated ${resolved.length} active products for Codex, Claude, Copilot, and Gemini.`
+  `Generated ${resolved.length} active products for Codex, Claude, Copilot, Gemini, and Muse.`
 );
