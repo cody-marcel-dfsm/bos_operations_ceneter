@@ -140,8 +140,8 @@ high-impact decisions.
 Use the authenticated BOS MCP connection and follow the `bos-mcp-client`
 context workflow. BOS resolves the Education Center subservice for each tool. Preserve
 student identity and provider provenance across every source.
-Use `bos-visual-output` for enrollment cohorts, progress trends, class
-distribution, and cross-source reconciliation.
+Present enrollment cohorts, progress trends, class distribution, and
+cross-source reconciliation with source-backed visuals when useful.
 Use BOS for every domain whose effective customer route is `bos`. A configured
 `connected_gmail` route may supply Care.com correspondence evidence through the
 normal Gmail connector and exact customer mailbox; it grants no BOS authority
@@ -158,8 +158,8 @@ native account recovery for the exact configured mailbox.
   through the same BOS platform connection only as correspondence/source evidence.
 - Resolve the packaged settings defaults plus the preserved customer overlay.
   Follow `source_routes.care_com`: use published Education Center email evidence tools for
-  `bos`, or invoke `email-account-routing` and the normal Gmail connector for
-  `connected_gmail`. Select only the exact `mailboxes.care_com` account.
+  `bos`, or use the normal Gmail connector for `connected_gmail`. Select only
+  the exact `mailboxes.care_com` account.
 - Stop and report configuration required when the selected route is unavailable
   or a connected-Gmail route lacks `mailboxes.care_com`.
 - Use a bounded lookback of up to 180 days before the requested period through
@@ -176,28 +176,32 @@ native account recovery for the exact configured mailbox.
 
 ## Calimatic-first named-person results
 
-When Calimatic resolves a named-person lookup and the person is or may be a
-lead, use the verified identity evidence to attempt an authorized Lead Director
-match before presenting the final result. Invoke the installed My CRM
-`my-crm-customer-journey` skill for an
-exact match and continue through its current-state, goal, path, and graph
-contract in the same turn. A Calimatic student or family result is external
-evidence for that journey; it never proves Lead Director graph membership.
-When My CRM is missing, disabled, or outdated, return the package's explicit
-dependency-required instruction and preserve the verified Calimatic result
-without inventing CRM state or using an Education Center compatibility alias.
+Complete student/family lookup and enrollment-state comparison using the
+Education Center plugin's authorized Calimatic and Lead Director capabilities.
+For this focused workflow, use `education-center-service-routing` for customer
+settings and context only; this section governs named-person results and
+completes without a generic CRM journey workflow.
 
-Keep ambiguous Lead Director candidates separate and request the minimum
-disambiguating value. If there is no matching Lead Director record, preserve
-the verified Calimatic details and identify the missing Lead Director graph
-evidence. When an authorized Calimatic result supplies a verified current
-state, render a partial graph with at least one standalone current-state graph
-node labeled as Calimatic external evidence, including source freshness. That
-external evidence never establishes Lead Director graph membership; add no
-inferred transition, goal, or reachability. With no verified current state,
-report the limitation without inventing a node. A broad roster or enrollment
-report that does not request individual lead details does not require a
-per-person graph.
+When Calimatic resolves a named-person lookup, preserve the verified student or
+family details with provider provenance and source freshness. If the person is
+or may be a lead, discover the Lead Director lookup and state-read operations
+available to Education Center through the same BOS connection. Use only their
+advertised contracts and returned source selectors. Match stable provider IDs
+first, then normalized name plus another strong verified field; keep ambiguous
+candidates separate and request the minimum disambiguating value. Compare only
+verified Calimatic and Lead Director state, identifying each source and any
+discrepancy. A Calimatic result never proves Lead Director graph membership.
+
+Return the verified Calimatic result even when no matching Lead Director record
+is found or the required state-read capability is unavailable. State the precise
+limitation; preserve authorization denials and follow the existing BOS recovery
+contract for authentication failures. Never invent Lead Director state or infer
+graph membership, transitions, goals, paths, or reachability.
+
+For a person who is or may be a lead, state plainly: "Lead Director graph
+matching requires the CRM plugin." Complete this lookup without invoking
+another plugin's skills or making graph matching a prerequisite. Broad roster
+and enrollment reports retain their requested aggregate scope.
 
 ## Progress reports
 

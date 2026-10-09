@@ -85,6 +85,9 @@ async function runCase(catalog, item, config, release, model) {
   state.authorization_denial=denial;
   const evidence = {observations_complete:false, actor_attempts:[], service_observations:[],
     effects:{verified:false, mutation_count:0}};
+  if (number === 1 && Array.isArray(item.expected_public_services)) {
+    evidence.expected_public_services = item.expected_public_services;
+  }
   let session, actorActive = false, scope, actor;
   const wire = [];
   let failure = null, cleanup = false;

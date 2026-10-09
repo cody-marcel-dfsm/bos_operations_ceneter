@@ -1355,7 +1355,9 @@ test("camp and student evidence honor customer-owned Care.com source routing", a
     const guidance = await readFile(`${root}/${relativePath}`, "utf8");
     assert.match(guidance, /source_routes\.care_com/i);
     assert.match(guidance, /`education_center_search_email_evidence`/);
-    assert.match(guidance, /email-account-routing/i);
+    if (relativePath.includes("education-center-class-operations")) {
+      assert.match(guidance, /email-account-routing/i);
+    }
     assert.match(guidance, /normal Gmail connector/i);
     assert.match(guidance, /bounded lookback of up to 180 days/i);
     assert.match(guidance, /mailboxes\.care_com/i);
@@ -2985,36 +2987,55 @@ test("Education Center retains organization-described graph routing through My C
   assert.doesNotMatch(visual, /one record outside journey-position work/);
 });
 
-test("Calimatic-first named-person results still attempt Lead Director graph resolution", async () => {
+test("Calimatic-first student lookup completes within Education Center while generic routing retains CRM graph resolution", async () => {
   const routing = await readFile(
     `${root}/source/verticals/education-center/education-center-service-routing/SKILL.md`,
     "utf8"
   );
-  const students = await readFile(
-    `${root}/source/verticals/education-center/education-center-student-operations/SKILL.md`,
-    "utf8"
+  assert.match(
+    routing,
+    /Calimatic[\s\S]*named-person[\s\S]*Lead Director[\s\S]*crm-customer-journey/i
   );
-  for (const guidance of [routing, students]) {
-    assert.match(
-      guidance,
-      /Calimatic[\s\S]*named-person[\s\S]*Lead Director[\s\S]*crm-customer-journey/i
-    );
-    assert.match(
-      guidance,
-      /no matching Lead Director record[\s\S]*verified current\s+state[\s\S]*standalone[\s\S]*graph\s+node/i
-    );
-    assert.match(
-      guidance,
-      /external evidence[\s\S]*never[\s\S]*Lead Director (?:graph )?membership/i
-    );
-  }
+  assert.match(
+    routing,
+    /no matching Lead Director record[\s\S]*verified current\s+state[\s\S]*standalone[\s\S]*graph\s+node/i
+  );
+  assert.match(
+    routing,
+    /external evidence[\s\S]*never[\s\S]*Lead Director (?:graph )?membership/i
+  );
   assert.match(routing, /partial-evidence contract/i);
   assert.match(routing, /standalone current-state graph node/i);
-  assert.match(students, /dependency-required instruction/i);
-  assert.match(
-    students,
-    /broad[\s\S]*(?:roster|enrollment report)[\s\S]*does not require[\s\S]*per-person graph/i
-  );
+  const products = await listProducts();
+  const educationCenter = products.find(({manifest}) => manifest.name === "education-center").manifest;
+  const ownedSkills = new Set((await resolveProductSkills(educationCenter)).map(({name}) => name));
+  const knownSkills = new Set((await Promise.all(products.map(({manifest}) => resolveProductSkills(manifest))))
+    .flat().map(({name}) => name));
+  for (const skillRoot of [
+    "source/verticals/education-center",
+    "clients/codex/plugins/education-center/skills",
+    "clients/claude/plugins/education-center/skills",
+    "clients/copilot/products/education-center/skills",
+    "clients/copilot/skills",
+    "clients/gemini/extensions/education-center/skills"
+  ]) {
+    const students = await readFile(
+      `${root}/${skillRoot}/education-center-student-operations/SKILL.md`, "utf8"
+    );
+    assert.doesNotMatch(students, /my\s*-?\s*crm|crm-customer-journey|dependency-required instruction|bos-visual-output|email-account-routing/i);
+    for (const [, name] of students.matchAll(/`([^`\n]+)`/g)) {
+      if (knownSkills.has(name)) assert(ownedSkills.has(name), `${skillRoot}: ${name} is outside Education Center`);
+    }
+    assert.match(students, /settings and context only/i);
+    assert.match(students, /Lead Director lookup and state-read operations[\s\S]*available to Education Center/i);
+    assert.match(students, /Compare only[\s\S]*verified Calimatic and Lead Director state/i);
+    assert.match(students, /Return the verified Calimatic result[\s\S]*no matching Lead Director record[\s\S]*capability is unavailable/i);
+    assert.match(students, /Calimatic result never proves Lead Director graph membership/i);
+    assert.match(students, /Lead Director graph\s+matching requires the CRM plugin/i);
+    assert.match(students, /without invoking\s+another plugin's skills/i);
+    assert.match(students, /authorization denials[\s\S]*BOS recovery/i);
+    assert.match(students, /Broad roster[\s\S]*aggregate scope/i);
+  }
 });
 
 

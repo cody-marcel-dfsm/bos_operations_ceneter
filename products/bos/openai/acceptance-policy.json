@@ -56,6 +56,17 @@
       "grading": "deterministic-functional",
       "expected_output_validation": false,
       "verification_type": "apps-and-services",
+      "expected_public_services": [
+        {
+          "name": "Calimatic SIS",
+          "reference": {
+            "platform": "bos",
+            "application": "lead-director",
+            "plugin": "calimatic"
+          },
+          "readiness_status": "configuration_required"
+        }
+      ],
       "requirements": [
         {
           "id": "lead-director-included",
@@ -64,6 +75,10 @@
         {
           "id": "public-services-list",
           "operator": "is_array"
+        },
+        {
+          "id": "test-organization-public-services-match",
+          "operator": "equals"
         },
         {
           "id": "no-mutation",

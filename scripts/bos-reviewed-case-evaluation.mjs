@@ -126,7 +126,26 @@ export function evaluateBosReviewedCase(review_case_number, evidence = {}, autho
     const appRows = successful('apps');
     const serviceRows = successful('public-services');
     check('lead-director-included', 'Lead Director', appRows.flatMap(row => Array.isArray(row.body?.apps) ? row.body.apps.map(app => app?.name) : []), appRows.some(row => Array.isArray(row.body?.apps) && row.body.apps.some(app => app?.name === 'Lead Director')));
-    check('public-services-list', 'successful discovery returning an array', serviceRows.map(row => Array.isArray(row.body?.public_services)), serviceRows.some(row => Array.isArray(row.body?.public_services)));
+    const expected = evidence?.expected_public_services;
+    const normalize = rows => rows.map(plugin => ({
+      name: plugin?.name ?? null,
+      reference: object(plugin?.reference) ? {
+        platform: plugin.reference.platform ?? null,
+        application: plugin.reference.application ?? null,
+        plugin: plugin.reference.plugin ?? null
+      } : null,
+      readiness_status: plugin?.readiness?.status ?? null
+    })).sort((left, right) => JSON.stringify(left.reference).localeCompare(JSON.stringify(right.reference)));
+    const actualInventories = serviceRows.map(row => row.body?.public_services);
+    check('public-services-list', 'successful discovery returning an array', actualInventories.map(Array.isArray), actualInventories.length > 0 && actualInventories.every(Array.isArray));
+    const expectedIsValid = Array.isArray(expected) && expected.every(plugin =>
+      object(plugin) && nonempty(plugin.name) && object(plugin.reference) &&
+      ['platform', 'application', 'plugin'].every(field => nonempty(plugin.reference[field])) &&
+      nonempty(plugin.readiness_status));
+    const expectedNormalized = expectedIsValid ? normalize(expected.map(plugin => ({...plugin, readiness:{status:plugin.readiness_status}}))) : null;
+    const actualNormalized = actualInventories.map(rows => Array.isArray(rows) ? normalize(rows) : null);
+    check('test-organization-public-services-match', expectedNormalized, actualNormalized,
+      expectedIsValid && actualNormalized.length > 0 && actualNormalized.every(rows => JSON.stringify(rows) === JSON.stringify(expectedNormalized)));
   } else if (review_case_number === 2) {
     const names = successful('tool-catalog').flatMap(row => Array.isArray(row.body?.tools) ? row.body.tools.map(tool => tool?.name) : []);
     check('exact-context-tool', 'bos_get_context', names, names.includes('bos_get_context'));

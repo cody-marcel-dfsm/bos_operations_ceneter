@@ -424,7 +424,10 @@ function validateCompactJourney(journey, label) {
     label
   );
   requireString(journey.title, `${label}.title`);
-  requireStringArray(journey.inputs, `${label}.inputs`);
+  if (!Array.isArray(journey.inputs) ||
+      journey.inputs.some((input) => typeof input !== "string" || input.trim() === "")) {
+    throw new Error(`${label}.inputs must be an array of non-empty strings`);
+  }
   requireString(journey.success, `${label}.success`);
   if (!Array.isArray(journey.steps) || journey.steps.length === 0) {
     throw new Error(`${label}.steps must be a non-empty array`);

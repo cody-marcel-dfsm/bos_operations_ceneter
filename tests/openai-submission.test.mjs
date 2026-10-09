@@ -145,6 +145,13 @@ test("BOS and Education OpenAI cases stay within their product MCP scope", async
   assert.equal(bosPolicy.cases['negative-3'].negative_behavior, 'authorization-denial');
   assert.equal(bosPolicy.cases['negative-3'].expected_authorization_error_code, 'authorization_denied');
   assert.ok(bosPolicy.cases['positive-1'].requirements.some(({id})=>id==='public-services-list'));
+  assert.ok(bosPolicy.cases['positive-1'].requirements.some(({id})=>id==='test-organization-public-services-match'));
+  assert.deepEqual(bosPolicy.cases['positive-1'].expected_public_services, [{
+    name:'Calimatic SIS',
+    reference:{platform:'bos',application:'lead-director',plugin:'calimatic'},
+    readiness_status:'configuration_required'
+  }]);
+  assert.match(bos.test_cases[0].expected_output, /Calimatic SIS \(calimatic\)[\s\S]*configuration_required[\s\S]*empty list/i);
 
   const education = JSON.parse(await readFile(
     `${root}/products/education-center/openai/openai-marketplace-test-cases.json`, "utf8"

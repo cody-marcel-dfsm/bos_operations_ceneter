@@ -14,7 +14,8 @@ const receipt = (kind, body, operation = kind) => ({kind, body, operation, actor
 const evidence = observations => ({observations_complete: true, effects: {verified: true, mutation_count: 0}, host_outcomes:{complete:true,validation_failures:[],tool_rejections:[],tool_errors:[]}, actor_attempts: [], service_observations: observations});
 const role = {organization_name: authority.organization_name, application_name: 'Lead Director', role_label: 'Director'};
 const valid = [
-  evidence([receipt('apps', {apps: [{name: 'Additional Application'}, {name: 'Lead Director'}]}), receipt('public-services', {public_services: []})]),
+  {...evidence([receipt('apps', {apps: [{name: 'Additional Application'}, {name: 'Lead Director'}]}), receipt('public-services', {public_services: [{name:'Calimatic SIS',reference:{platform:'bos',application:'lead-director',plugin:'calimatic'},readiness:{status:'configuration_required'}}]})]),
+    expected_public_services:[{name:'Calimatic SIS',reference:{platform:'bos',application:'lead-director',plugin:'calimatic'},readiness_status:'configuration_required'}]},
   evidence([receipt('tool-catalog', {tools: [{name: 'extra'}, {name: 'bos_get_context'}]})]),
   {...evidence([]), login: {...role, verified: true, provided_url_used: true, authenticated: true}},
   evidence([receipt('context', {selected_context: role}, 'bos_get_context')]),
@@ -46,6 +47,20 @@ test('missing, wrong or unsuccessful functional evidence fails', () => {
   }
   assert.equal(evaluateBosReviewedCase(1, evidence([receipt('apps', {apps: [{name: 'Lead Director'}]}), receipt('public-services', {public_services: null})]), authority).status, 'FAIL');
   assert.equal(evaluateBosReviewedCase(3, {...valid[2], login: {...valid[2].login, organization_name: 'Wrong'}}, authority).status, 'FAIL');
+});
+
+test('public plugin inventory exactly matches the test organization and accepts a truly empty inventory', () => {
+  const apps=receipt('apps',{apps:[{name:'Lead Director'}]});
+  const expected=[{name:'Calimatic SIS',reference:{platform:'bos',application:'lead-director',plugin:'calimatic'},readiness_status:'configuration_required'}];
+  const observed=[{name:'Calimatic SIS',reference:{platform:'bos',application:'lead-director',plugin:'calimatic'},readiness:{status:'configuration_required'}}];
+  const check=(expected_public_services,public_services)=>evaluateBosReviewedCase(1,
+    {...evidence([apps,receipt('public-services',{public_services})]),expected_public_services},authority);
+  assert.equal(check(expected,observed).status,'PASS');
+  assert.equal(check([],[]).status,'PASS');
+  assert.equal(check([],observed).status,'FAIL');
+  assert.equal(check(expected,[]).status,'FAIL');
+  assert.equal(check(expected,[...observed,{name:'Unexpected',reference:{platform:'bos',application:'lead-director',plugin:'unexpected'},readiness:{status:'ready'}}]).status,'FAIL');
+  assert.equal(check([{...expected[0],readiness_status:'ready'}],observed).status,'FAIL');
 });
 
 test('routing cases reject attempted calls and ignore host setup', () => {

@@ -793,6 +793,39 @@ test("service.describe agrees with the compact journey and declares each server 
   );
 });
 
+test("compact journeys accept no declared inputs and match an empty detailed input object", () => {
+  const noInputPlugin = {
+    ...plugin,
+    journey: { ...plugin.journey, inputs: [] }
+  };
+  const pluginsResponse = {
+    application: { platform: "bos", application: "lead-director" },
+    plugins: [noInputPlugin],
+    ttlMs: 0,
+    cacheScope: "private"
+  };
+  assert.equal(validatePluginsList(pluginsResponse), pluginsResponse);
+
+  const noInputDescription = {
+    ...serviceDescription,
+    journey: { ...serviceDescription.journey, inputs: {} }
+  };
+  assert.equal(
+    validateServiceJourneyDescription(noInputDescription, noInputPlugin),
+    noInputDescription
+  );
+  assert.throws(
+    () => validatePluginsList({
+      ...pluginsResponse,
+      plugins: [{
+        ...noInputPlugin,
+        journey: { ...noInputPlugin.journey, inputs: [" "] }
+      }]
+    }),
+    /inputs must be an array of non-empty strings/
+  );
+});
+
 test("service.describe accepts an event-driven automation behavior graph", () => {
   const behaviorPlugin = {
     ...plugin,

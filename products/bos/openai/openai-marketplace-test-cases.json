@@ -113,7 +113,7 @@
       "user_prompt": "List the BOS apps and public services accessible to my organization.",
       "file_attachment_urls": null,
       "tools_triggered": "bos_get_context, bos_execute",
-      "expected_output": "Lists the organization's accessible BOS apps and public services using discovery results.",
+      "expected_output": "Lists Lead Director and the accessible plugin services returned for the authenticated test organization. For BOS Codex VM Acceptance Test as Director, the expected list contains Calimatic SIS (calimatic) with configuration_required readiness. If no accessible enabled plugin services are returned, reports an empty list.",
       "expected_output_url": null
     },
     {
