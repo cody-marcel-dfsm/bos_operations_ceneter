@@ -4,6 +4,23 @@ Private local architecture: `Vault/docs/architecture.md`
 Private local constitution: `Vault/docs/CONSTITUTION.md`
 Private knowledge root: `Vault/` (never tracked or published)
 
+## Canonical main checkout and project agent context
+
+- Work on `main` in `/Users/cody/Development/Projects/bos_operations_center`.
+  Run the project-specific implementation agent from this directory and use
+  this project's skills, validation commands, and Oracle approval process.
+- Preserve staged, unstaged, and untracked work. Fetch the configured remote
+  default branch before implementation or release, record the base commit,
+  and integrate newer remote changes semantically in this canonical checkout.
+- Do not create, switch to, or use Git worktrees for planning, implementation,
+  validation, review, or release. Inspect existing worktree sources solely to
+  recover changes into canonical `main`; preserve them until recovery is verified.
+- Validate the complete integrated candidate on `main`, including regression
+  checks and Oracle approval. Recheck remote divergence before publication.
+- Publish through the required reviewed release pull request by creating and
+  pushing its branch ref from canonical `main` without switching the checkout.
+  Preserve every exact Oracle tree and required GitHub check.
+
 ## BOS Product Family coordination
 
 - This repository participates in the BOS Product Family as the **BOS client

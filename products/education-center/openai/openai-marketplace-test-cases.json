@@ -131,6 +131,22 @@
       "tools_triggered": "bos_get_context, bos_list_context_tools, bos_execute",
       "expected_output": "The education-center-class-operations skill invokes the Education Center camp-roster operation and returns BOS’s Calimatic API-key configuration response.",
       "expected_output_url": null
+    },
+    {
+      "description": "List the camp-roster tool’s required input fields.",
+      "user_prompt": "Using BOS Education Center, show me the required input fields for the camp-roster operation `education_center_get_camp_roster_report`.",
+      "file_attachment_urls": null,
+      "tools_triggered": "bos_get_context, bos_list_context_tools",
+      "expected_output": "The response lists the fields from the advertised camp-roster tool schema: `query.start_date` and `query.end_date` are required date fields, and `query.cursor` is optional.",
+      "expected_output_url": null
+    },
+    {
+      "description": "List the student-search tool’s required input fields.",
+      "user_prompt": "Using BOS Education Center, show me the required input fields for the student-search operation `education_center_search_students`.",
+      "file_attachment_urls": null,
+      "tools_triggered": "bos_get_context, bos_list_context_tools",
+      "expected_output": "The response identifies `education_center_search_students` and reports that its advertised input schema has no required input fields.",
+      "expected_output_url": null
     }
   ],
   "negative_test_cases": []

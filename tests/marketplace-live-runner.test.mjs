@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {expectedOperationsObserved,runNativeCatalog} from '../scripts/marketplace-native-run.mjs';
 import {loadPromptCatalog} from '../scripts/marketplace-prompt-catalog.mjs';
-import {parseMarketplaceSelection} from '../scripts/run-marketplace-prompts.mjs';
+import {marketplaceAcceptanceStatus,parseMarketplaceSelection} from '../scripts/run-marketplace-prompts.mjs';
 const root=fileURLToPath(new URL('..',import.meta.url));
 for(const product of ['bos','education-center'])test(product+' loads exact configured description, starters and submitted cases',async()=>{
  const catalog=await loadPromptCatalog(root,product);
@@ -14,7 +14,7 @@ for(const product of ['bos','education-center'])test(product+' loads exact confi
  assert.deepEqual(catalog.cases.filter(row=>row.kind==='starter').map(row=>row.prompt),manifest.default_prompts);
  assert.deepEqual(catalog.cases.filter(row=>row.kind==='positive').map(row=>row.prompt),submission.test_cases.map(row=>row.user_prompt));
  assert.deepEqual(catalog.cases.filter(row=>row.kind==='negative').map(row=>row.prompt),submission.negative_test_cases.map(row=>row.user_prompt));
- assert.equal(catalog.cases.length,product==='education-center'?6:11);
+ assert.equal(catalog.cases.length,product==='education-center'?8:11);
 });
 
 test('case failures continue and changed configuration is reloaded before the next LLM request',async()=>{
@@ -37,20 +37,27 @@ test('throwing verifier and executor record neutral failures for every configure
  }
 });
 
-test('Education marketplace cases preserve the approved metadata and Calimatic prompts',async()=>{
+test('Education marketplace cases preserve the approved prompts and exact operations',async()=>{
  const catalog=await loadPromptCatalog(root,'education-center');
  const cases=catalog.cases.filter(row=>row.kind==='positive');
  assert.deepEqual(cases.map(({prompt})=>prompt),[
   'Describe Education Center’s Calimatic service and return the student-search tool.',
   'Using BOS Education Center, give me the camps from September 14 through September 18, 2026.',
-  'Using BOS Education Center, give me the camps from September 14 through September 18, 2026.'
+  'Using BOS Education Center, give me the camps from September 14 through September 18, 2026.',
+  'Using BOS Education Center, show me the required input fields for the camp-roster operation `education_center_get_camp_roster_report`.',
+  'Using BOS Education Center, show me the required input fields for the student-search operation `education_center_search_students`.'
  ]);
  assert.deepEqual(cases.map(({expected_operation})=>expected_operation),[
   ['bos_get_context','bos_list_context_tools','bos_execute'],
   ['bos_get_context','bos_list_context_tools','bos_execute'],
-  ['bos_get_context','bos_list_context_tools','bos_execute']
+  ['bos_get_context','bos_list_context_tools','bos_execute'],
+  ['bos_get_context','bos_list_context_tools'],
+  ['bos_get_context','bos_list_context_tools']
  ]);
  assert.equal(cases[2].required_skill_invocation,'education-center-class-operations');
+ assert.equal(cases[3].metadata_only,true);
+ assert.equal(cases[4].metadata_tool_name,'education_center_search_students');
+ assert.equal(cases[4].metadata_only,true);
 });
 
 test('Education student-search discovery case requires the exact advertised tool',async()=>{
@@ -79,7 +86,7 @@ test('bounded parallel cases dispatch once and preserve catalog order after out-
  gates.get('three').resolve();gates.get('two').resolve();await secondWave.promise;
  gates.get('five').resolve();gates.get('four').resolve();gates.get('one').resolve();
  const report=await run;assert.equal(peak,3);assert.equal(new Set(started).size,5);assert.equal(completed[0],'three');
- assert.deepEqual(report.cases.map(row=>row.id),catalog.cases.map(row=>row.id));assert.equal(report.status,'PASS');
+ assert.deepEqual(report.cases.map(row=>row.id),catalog.cases.map(row=>row.id));assert.equal(report.status,'PASS');assert.equal(report.coverage_complete,true);assert.equal(report.publication_status,'PASS');
 });
 
 test('parallel verifier and execution failures stay isolated and all remaining cases run',async()=>{
@@ -105,7 +112,7 @@ test('parallel queued dispatch reloads changed prompt and release while mixed re
  assert.deepEqual(verified,['current','current','current','changed']);assert.equal(report.status,'FAIL');
 });
 
-test('parallel dispatch records removed cases and selected subsets remain incomplete',async()=>{
+test('parallel dispatch records removed cases and selected subsets report scoped status separately from coverage',async()=>{
  let catalog=syntheticCatalog(['one','two','three','four','five']);const firstWave=deferred(),gate=deferred();const executed=[];
  const run=runNativeCatalog(async()=>catalog,{},async()=>({}),'configured-model',[],async(current,item)=>{
   executed.push(item.id);if(executed.length===3)firstWave.resolve();if(item.id!=='five')await gate.promise;return passing(current,item);
@@ -113,7 +120,7 @@ test('parallel dispatch records removed cases and selected subsets remain incomp
  await firstWave.promise;catalog={...catalog,cases:catalog.cases.filter(row=>row.id!=='four')};gate.resolve();
  const report=await run;assert.equal(report.cases[3].reason,'case_removed_during_run');assert.deepEqual(executed,['one','two','three','five']);assert.equal(report.status,'FAIL');
  const subset=await runNativeCatalog(async()=>catalog,{},async()=>({}),'configured-model',['one'],passing,{concurrency:3});
- assert.equal(subset.cases.length,1);assert.equal(subset.cases[0].status,'PASS');assert.equal(subset.status,'FAIL');
+ assert.equal(subset.cases.length,1);assert.equal(subset.cases[0].status,'PASS');assert.equal(subset.selected_cases_status,'PASS');assert.equal(subset.status,'INCOMPLETE');assert.equal(subset.coverage_complete,false);assert.equal(subset.publication_status,'INCOMPLETE');
 });
 
 test('invalid runner concurrency fails before catalog, release or execution calls',async()=>{
@@ -127,4 +134,10 @@ test('marketplace CLI preserves selected IDs and validates bounded concurrency',
  assert.deepEqual(parseMarketplaceSelection(['starter-1','positive-1']),{selected:['starter-1','positive-1'],options:{concurrency:1}});
  for(const args of [['--concurrency','3','starter-1'],['starter-1','--concurrency','3']])assert.deepEqual(parseMarketplaceSelection(args),{selected:['starter-1'],options:{concurrency:3}});
  for(const args of [['--concurrency'],['--concurrency','0'],['--concurrency','4'],['--concurrency','1.5'],['--concurrency','03'],['--concurrency','2','--concurrency','3'],['--unknown']])assert.throws(()=>parseMarketplaceSelection(args));
+});
+
+test('marketplace CLI rejects incomplete selected-case coverage for publication',()=>{
+ assert.equal(marketplaceAcceptanceStatus({status:'INCOMPLETE',selected_cases_status:'PASS',publication_status:'INCOMPLETE'}),'INCOMPLETE');
+ assert.equal(marketplaceAcceptanceStatus({status:'PASS',selected_cases_status:'PASS',coverage_complete:true,publication_status:'PASS'}),'PASS');
+ assert.equal(marketplaceAcceptanceStatus({status:'PASS'}),'PASS');
 });

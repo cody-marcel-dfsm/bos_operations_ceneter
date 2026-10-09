@@ -37,8 +37,8 @@ test("approved journey transcript validates and follows only returned actions", 
   validatePluginsList(fixture.plugins_list);
   const registration = validateRegistrationResponse(fixture.registration);
   assert.equal(
-    buildIdentityV2JourneyActionRequest(registration.action, contextHandle).href,
-    registration.action.href
+    buildIdentityV2JourneyActionRequest(registration.actions.start, contextHandle).href,
+    registration.actions.start.href
   );
 
   const start = interpretJourneyResponse(fixture.start);

@@ -1,0 +1,5 @@
+export const apiContractReviewerGuidance = [
+  "After guard preflight and fresh authorized-scope selection, every API contract comparison must follow this evidence order before drafting: read the exact advertised app.describe resource with bos_read_resource, validate it with acceptance_validate_installed mode app-describe, then call bos_https_describe with its returned document_id and the exact requested keys from describe.operations.",
+  "For create/update comparisons, request both exact keys in operations when advertised and within the declared batch maximum. The app-level app.describe resource and semantic app.describe operation are never operation-level HTTPS evidence. Examine the complete bos_https_describe parent response and its published_validation before writing; if the required call, description, or validation is missing, report the affected comparison as unresolved.",
+  "Use acceptance_compare_schemas only for an explicitly requested structural schema difference, with exact pointers from observed, validated documents. Never use it to establish required or optional fields, effects, bounds, limits, pagination, or errors."
+].join(" ");

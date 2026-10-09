@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.190",
+  "version": "0.4.191",
   "release_status": "active",
   "display_name": "BOS Platform",
   "description": "Controlled AI workflows",
@@ -45,6 +45,7 @@
     "platform/authentication-context-integrity",
     "platform/submit-feedback",
     "platform/manage-customer-extension",
+    "platform/openai-plugin-publishing",
     "capabilities/campaign-offer-marketing-sales",
     "capabilities/collision-call-audit-email",
     "capabilities/collision-repair-proposal-builder",

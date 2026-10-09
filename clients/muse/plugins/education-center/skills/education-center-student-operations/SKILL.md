@@ -150,9 +150,21 @@ For a BOS-routed Gmail, Drive, or Calimatic authentication error, follow
 `bos-mcp-client` recovery. For `connected_gmail`, use the Gmail connector's
 native account recovery for the exact configured mailbox.
 
+## Explicit application scope
+
+When the user explicitly names an application or source, treat that choice as
+part of the request and route to that application before applying domain-word
+defaults. For example, “in Lead Director” selects Lead Director even when the
+request describes a person as a child or student. Use only that application's
+currently advertised operations and returned fields. Do not silently switch
+to Calimatic or another source. If the named application does not return the
+requested record or fact, state that limitation and ask before consulting a
+different source. Apply the domain defaults below only when the user has not
+specified an application or source.
+
 ## Enrollment
 
-- Use Calimatic student and enrollment tools as the enrolled-student source.
+- When no source is named, use Calimatic student and enrollment tools as the enrolled-student source.
 - Use Lead Director for prospect and lead state.
 - Use published `education_center_search_email_evidence` and `education_center_get_email_thread`
   through the same BOS platform connection only as correspondence/source evidence.

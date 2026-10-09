@@ -3031,6 +3031,8 @@ test("Calimatic-first student lookup completes within Education Center while gen
     for (const [, name] of students.matchAll(/`([^`\n]+)`/g)) {
       if (knownSkills.has(name)) assert(ownedSkills.has(name), `${skillRoot}: ${name} is outside Education Center`);
     }
+    assert.match(students, /explicitly names an application or source[\s\S]*route to that application before applying domain-word/i);
+    assert.match(students, /When no source is named, use Calimatic student and enrollment tools/i);
     assert.match(students, /settings and context only/i);
     assert.match(students, /Lead Director lookup and state-read operations[\s\S]*available to Education Center/i);
     assert.match(students, /Compare only[\s\S]*verified Calimatic and Lead Director state/i);

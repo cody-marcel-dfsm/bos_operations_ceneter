@@ -1,3 +1,4 @@
+import {apiContractReviewerGuidance} from '../scripts/marketplace-reviewer-instructions.mjs';
 import {verifyNativeReviewer,classifyNativeFailure,classifyCompletion,caseDiagnostics,httpsDescribeCoverage,reviewerTurnTimeoutMs,latestReviewerClockReference,runCodex,classifyNativeStderr,nativeExecutionDiagnostics,reviewerToolsForCase,reviewerInstructionsForCase} from '../scripts/marketplace-native-run.mjs';
 import {EventEmitter} from 'node:events';
 import {PassThrough} from 'node:stream';
@@ -7,7 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {permission,observe,sanitized,selectReviewerContext} from '../scripts/marketplace-native-hook.mjs';
 import {installedPath,observedDocument,documentDigests,createInstalledAcceptance,installedValidatorModes} from '../scripts/marketplace-native-resources.mjs';
-import {mkdtemp,mkdir,writeFile,rm,symlink,realpath} from 'node:fs/promises';
+import {readFile,mkdtemp,mkdir,writeFile,rm,symlink,realpath} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {reviewerErrorDiagnostic,reviewerErrorMetadata,reviewerModelDiagnostics} from '../scripts/marketplace-reviewer-diagnostics.mjs';
@@ -171,6 +172,21 @@ test('scope and negative/effect checks run before dispatch',()=>{
  assert.equal(permission({tool_name:'mcp__BOS_Platform__bos_execute',tool_input:{context_handle:'selected',tool_name:'send',arguments:{}}},state),'undiscovered_operation');
  assert.equal(permission({tool_name:'mcp__BOS_Platform__bos_execute',tool_input:{context_handle:'selected',tool_name:'plugins.list',arguments:{}}},{...state,kind:'negative'}),'negative_case_business_call');
  assert.equal(permission({tool_name:'Bash',tool_input:{cmd:'curl example.invalid'}},state),'unapproved_tool');
+});
+test('Education positive-3 MCP approval cannot authorize another product with the same case ID',()=>{
+ const operation='education_center_get_camp_roster_report';
+ const arguments_={query:{start_date:'2026-09-14',end_date:'2026-09-18'}};
+ const descriptor={name:operation,_meta:{'bos/effect':'read'},inputSchema:{type:'object'}};
+ const state={product:'education-center',case_id:'positive-3',canary:true,handle:'selected',kind:'positive',allowed_effects:['read'],validated_contracts:{'app-describe':'verified-synthetic'},tools:[descriptor],education_positive3_read_approval:{operation,effect:'read',input_sha256:digest(arguments_),used:false}};
+ const event={tool_name:'mcp__BOS_Platform__bos_execute',tool_input:{context_handle:'selected',tool_name:operation,arguments:arguments_}};
+ assert.equal(permission(event,state),null);
+ const otherProduct={...state,product:'bos',education_positive3_read_approval:{...state.education_positive3_read_approval,used:false}};
+ assert.equal(permission(event,otherProduct),null);
+ assert.equal(otherProduct.education_positive3_read_approval.used,false);
+ const missingEffect={...state,tools:[{...descriptor,_meta:{}}],education_positive3_read_approval:{...state.education_positive3_read_approval,used:false}};
+ assert.equal(permission(event,missingEffect),'unapproved_effect');
+ const missingDiscovery={...state,validated_contracts:{},education_positive3_read_approval:{...state.education_positive3_read_approval,used:false}};
+ assert.equal(permission(event,missingDiscovery),'published_prerequisite_required');
 });
 test('canary fails closed and observed identity binds the exact selected role',()=>{
  const state={organization:'Synthetic',role:'Reviewer',application:'Synthetic App',installation:'Synthetic Installation',observations:[],denials:[]};
@@ -364,7 +380,7 @@ test('business-case proof requires successful scoped deterministic HTTPS and exa
 test('the expected Calimatic setup error is allowed only for its exact operation',async()=>{
  const {reviewerResponses,caseResponseFailures,expectedErrorObservation}=await import('../scripts/marketplace-native-run.mjs');
  const item={expected_error_operations:['education_center_list_enrollments']};
- const providerError={status:'authorization_required',required_authorizations:[{authorization_kind:'api_key',status:'configuration_required',authorization_url:'https://dfsm.ai/api/v1/mcp/provider-recovery?[query redacted]'}]};
+ const providerError={provider_error_code:'provider_authorization_required',status:'authorization_required',required_authorizations:[{authorization_kind:'api_key',status:'configuration_required',authorization_url:'https://dfsm.ai/api/v1/mcp/provider-recovery?[query redacted]'}]};
  const expected={tool:'education_center_list_enrollments',transport:'https',scope_verified:true,is_error:true,response:{status:401,body:{result:{error:providerError}}}};
  const resource='https://dfsm.ai/mcp/apps/education-center/platform';
  const other={...expected,tool:'education_center_search_students'};
@@ -465,4 +481,15 @@ test('grading clock uses the latest successful valid reviewer guard observation'
  assert.equal(latestReviewerClockReference([...observations,{tool:'guard.status',response:{ready:true,reference_time:'2026-10-03T12:03:00.000Z',reference_time_source:'untrusted'}}]),'2026-10-03T12:02:00.000Z');
  assert.equal(latestReviewerClockReference([{tool:'guard.status',response:{ready:true,reference_time:'2026-02-30T12:00:00.000Z',reference_time_source:'reviewer_host_utc_clock'}}]),undefined);
  assert.equal(latestReviewerClockReference([{tool:'guard.status',response:{ready:false,reference_time:'2026-10-03T12:00:00.000Z',reference_time_source:'reviewer_host_utc_clock'}}]),undefined);
+});
+
+test('reviewer instructions require validated HTTPS Describe before schema comparison helpers',async()=>{
+ const runner=await readFile(new URL('../scripts/marketplace-native-run.mjs',import.meta.url),'utf8');
+ const describeCall=apiContractReviewerGuidance.indexOf('call bos_https_describe');
+ const schemaHelper=apiContractReviewerGuidance.indexOf('Use acceptance_compare_schemas only');
+ assert.ok(describeCall>=0&&schemaHelper>describeCall);
+ assert.match(apiContractReviewerGuidance,/read the exact advertised app\.describe resource with bos_read_resource, validate it with acceptance_validate_installed mode app-describe, then call bos_https_describe/i);
+ assert.match(apiContractReviewerGuidance,/app-level app\.describe resource and semantic app\.describe operation are never operation-level HTTPS evidence/i);
+ assert.match(apiContractReviewerGuidance,/required or optional fields, effects, bounds, limits, pagination, or errors/i);
+ assert.ok(runner.indexOf('instructions:apiContractReviewerGuidance+')<runner.indexOf('acceptance_compare_schemas compares retained schema pointers'));
 });

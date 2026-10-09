@@ -187,7 +187,15 @@ the BOS adapter attaches the current fresh opaque handle under the discovered
 `X-BOS-Context-Handle` header without changing the raw document. The explain
 plan remains client-side.
 
-After registration, follow only complete actions returned by BOS. The
+For the advertised `lead-director-journey-registration/v2`, validate registration
+as exactly `compiled: true`, `identity`, and
+`actions.start`. Invoke the returned signed bodyless POST `actions.start` to begin
+execution; registration itself runs no journey work. For compile failure, correct
+the public findings before resubmitting. After start, follow only complete actions
+returned by BOS. With the advertised registration v1 contract, retain legacy
+register-and-start behavior and interpret its returned lifecycle envelope directly.
+Validate the version-matched route and schema from fresh discovery; the service
+owns rollout selection. The
 customer-defined text `identity` is the sole public locator. The service owns
 graph state, transition choice, server nodes, retries, receipts, reconciliation,
 expiry, and idempotency. This branch never uses `bos_resume_operation`, creates

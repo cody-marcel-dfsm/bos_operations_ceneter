@@ -503,10 +503,13 @@ export function validateRegistrationResponse(body) {
   }
   if (body.compiled) {
     rejectInternalState(body, "registration response");
+    requireExactKeys(body, new Set(["compiled", "identity", "actions"]), "registration response");
     requireString(body.identity, "registration response.identity");
-    validateActionEnvelope(body.action, { lifecycleOnly: true });
-    if (body.action.verb !== "start" || body.action.method !== "POST" ||
-        body.action.payload_schema !== null) {
+    requireObject(body.actions, "registration response.actions");
+    requireExactKeys(body.actions, new Set(["start"]), "registration response.actions");
+    validateActionEnvelope(body.actions.start, { lifecycleOnly: true });
+    if (body.actions.start.verb !== "start" || body.actions.start.method !== "POST" ||
+        body.actions.start.payload_schema !== null) {
       throw new Error("compiled registration must return a bodyless start action");
     }
     return body;
@@ -522,7 +525,7 @@ export function validateRegistrationResponse(body) {
     requireString(error.path, `registration response.errors[${index}].path`);
     requireSafeString(error.message, `registration response.errors[${index}].message`, 2048);
   }
-  if (Object.hasOwn(body, "action")) {
+  if (Object.hasOwn(body, "action") || Object.hasOwn(body, "actions")) {
     throw new Error("compile failure must not return an action");
   }
   return body;
@@ -594,6 +597,17 @@ export function interpretJourneyResponse(response) {
   }
   if (response.http_status === 404 && publicError?.code === "journey_not_found") {
     return { next: "terminal_not_found", error: publicError };
+  }
+
+  if (Object.hasOwn(response.body, "compiled")) {
+    const registration = validateRegistrationResponse(response.body);
+    if (registration.compiled) {
+      if (response.http_status < 200 || response.http_status > 299) {
+        throw new Error("compiled registration requires a successful HTTP status");
+      }
+      return { next: "invoke_action", action: registration.actions.start };
+    }
+    return { next: "correct_bosl", error: registration.error, errors: registration.errors };
   }
 
   const body = validateJourneyEnvelope(response.body);

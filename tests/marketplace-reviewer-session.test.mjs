@@ -36,7 +36,7 @@ function fixture(change={}) {
     }
     if(url.pathname==='/revoke'){assert.equal(headers.get('cookie'),null);return new Response('',{status:change.revokeStatus??200});}
     assert.equal(headers.get('authorization'),'Bearer private-reviewer-token');assert.equal(headers.get('cookie'),null);
-    if(url.href===resource){const req=JSON.parse(body);assert.equal(headers.get('mcp-protocol-version'),'2025-06-18');if(req.method==='initialize')assert.equal(req.params.protocolVersion,'2025-06-18');if(!req.id)return new Response(null,{status:202});return json({jsonrpc:'2.0',id:req.id,result:req.method==='initialize'?{protocolVersion:Object.hasOwn(change,'negotiatedProtocol')?change.negotiatedProtocol:'2025-06-18'}:{contexts:[]}});}
+    if(url.href===resource){const req=JSON.parse(body);assert.equal(headers.get('mcp-protocol-version'),'2025-06-18');if(req.method==='initialize')assert.equal(req.params.protocolVersion,'2025-06-18');if(!req.id)return new Response(null,{status:202});if(req.method==='resources/read'&&change.resourceReadHttpStatus)return new Response('private server response Bearer secret',{status:change.resourceReadHttpStatus,headers:{'content-type':'text/plain'}});if(req.method==='resources/read'&&change.resourceReadError)return json({jsonrpc:'2.0',id:change.resourceReadError.mismatch?req.id+1:req.id,error:{code:change.resourceReadError.code??-32602,message:change.resourceReadError.message??'private upstream text https://private.invalid/?token=secret'}});return json({jsonrpc:'2.0',id:req.id,result:req.method==='initialize'?{protocolVersion:Object.hasOwn(change,'negotiatedProtocol')?change.negotiatedProtocol:'2025-06-18'}:req.method==='resources/read'?{contents:[]}:{contexts:[]}});}
     if(url.pathname==='/api/read')return json({count:1});
     throw new Error('Unexpected transport');
   };
@@ -87,4 +87,41 @@ test('unsupported or missing negotiated MCP version stops before discovery and r
     assert.equal(f.calls.filter(row=>new URL(row.url).pathname==='/revoke').length,1);
     assert.equal(f.calls.filter(row=>new URL(row.url).pathname===new URL(resource).pathname).length,1);
   }
+});
+
+test('resource read errors retain bounded protocol diagnostics without exposing upstream text or URI query',async()=>{
+  for(const [change,expected] of [
+    [{resourceReadError:{code:-32602,message:'private upstream text https://private.invalid/?token=secret'}},{stage:'jsonrpc_response',jsonrpc_error_code:-32602,jsonrpc_error_category:'unclassified'}],
+    [{resourceReadError:{code:-32601,message:'Method not found'}},{stage:'jsonrpc_response',jsonrpc_error_code:-32601,jsonrpc_error_category:'unsupported_method'}],
+    [{resourceReadError:{code:'synthetic_private_token',message:'private upstream text https://private.invalid/?token=secret'}},{stage:'jsonrpc_response',jsonrpc_error_category:'unclassified',jsonrpc_error_code:undefined}],
+    [{resourceReadError:{mismatch:true,message:'private mismatch'}},{stage:'jsonrpc_response',request_id_matches:false,jsonrpc_error_present:true,result_present:false}],
+    [{resourceReadHttpStatus:502},{stage:'http_response',http_status:502,content_type:'text/plain'}],
+    [{resourceReadTransportError:true},{stage:'transport_error',transport_error_category:'network_error'}],
+  ]) {
+    const configured=fixture(change),original=configured.fetchImpl,active=await openReviewerSession({reviewerUrl,resource,fetchImpl:async(url,options)=>{
+      if(change.resourceReadTransportError&&String(url)===resource&&JSON.parse(options.body).method==='resources/read')throw Object.assign(new Error('private network response'),{code:'ECONNRESET'});
+      return original(url,options);
+    }});
+    try {
+      const uri='bos://apps/education-center/app.describe?context_handle=bos_ctx_v2_private&token=secret';
+      await assert.rejects(active.rpc('resources/read',{uri}),error=>{
+        assert.equal(error.code,change.resourceReadHttpStatus||change.resourceReadTransportError?'reviewer_mcp_request_failed':'reviewer_mcp_response_invalid');
+        assert.equal(error.diagnostic.operation,'resources/read');assert.equal(error.diagnostic.resource,'app.describe');
+        for(const [key,value] of Object.entries(expected))assert.equal(error.diagnostic[key],value);
+        assert.doesNotMatch(JSON.stringify(error),/private.invalid|token=secret|private upstream|bos_ctx_v2/);return true;
+      });
+    } finally {await active.close();}
+  }
+  const configured=fixture({resourceReadError:{code:'synthetic_private_token',message:'private upstream text'}}),original=configured.fetchImpl;
+  const active=await openReviewerSession({reviewerUrl,resource,fetchImpl:async(url,options)=>{
+    if(String(url)===resource&&JSON.parse(options.body).method==='resources/read')return new Response(JSON.stringify({jsonrpc:'2.0',id:2,error:{code:'synthetic_private_token',message:'private upstream text'}}),{headers:{'content-type':'application/x-synthetic-private-token-7f3a91'}});
+    return original(url,options);
+  }});
+  try {
+    await assert.rejects(active.rpc('resources/read',{uri:'bos://apps/synthetic-private-identifier?token=secret'}),error=>{
+      assert.equal(error.diagnostic.resource,'unknown');assert.equal(error.diagnostic.content_type,'unknown');
+      assert.equal(Object.hasOwn(error.diagnostic,'jsonrpc_error_code'),false);
+      assert.doesNotMatch(JSON.stringify(error),/synthetic_private|private-identifier|token=secret/);return true;
+    });
+  } finally {await active.close();}
 });
