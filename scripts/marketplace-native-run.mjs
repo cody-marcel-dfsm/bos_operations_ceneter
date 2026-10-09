@@ -233,8 +233,8 @@ export function reviewerInstructionsForCase(baseInstructions, item) {
  if(item?.product==='education-center'&&item.metadata_only){
   const operation=item.metadata_tool_name;
   if(typeof operation!=='string'||!/^education_center_[a-z0-9_]+$/.test(operation))throw new Error('education_metadata_tool_invalid');
-  const request=item.metadata_fact==='capability'?`report the exact capability declared in the tool's _meta.bos/capability field`:`report its required input fields from inputSchema, including nested fields`;
-  if(item.metadata_fact!==undefined&&!['capability'].includes(item.metadata_fact))throw new Error('education_metadata_fact_invalid');
+  const request=item.metadata_fact==='capability'?`report the exact capability declared in the tool's _meta.bos/capability field`:item.metadata_fact==='description_search_criteria'?`report the search criteria listed in the tool's description`:`report its required input fields from inputSchema, including nested fields`;
+  if(item.metadata_fact!==undefined&&!['capability','description_search_criteria'].includes(item.metadata_fact))throw new Error('education_metadata_fact_invalid');
   context.instructions=`First call acceptance_guard_probe and expect the deliberate denial, then call acceptance_guard_status and confirm ready. Call bos_get_context to confirm the exact reviewer context, then bos_list_context_tools. Do not call app.describe, API operations, or business operations. From the exact returned tool catalog, find ${operation} and ${request}. Do not infer fields or use prior knowledge.`;
  }
  if(item?.product==='education-center'&&item.id==='positive-3'){

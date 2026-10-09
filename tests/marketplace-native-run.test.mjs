@@ -123,6 +123,10 @@ test('Education metadata-only case exposes only identity and tool-catalog discov
  const capabilityInstructions=JSON.parse(reviewerInstructionsForCase(JSON.stringify({instructions:'original'}),capabilityItem)).instructions;
  assert.match(capabilityInstructions,/exact capability declared in the tool's _meta\.bos\/capability field/);
  assert.throws(()=>reviewerInstructionsForCase(JSON.stringify({instructions:'original'}),{...capabilityItem,metadata_fact:'unsupported'}),/education_metadata_fact_invalid/);
+ const descriptionItem={...studentItem,id:'positive-7',metadata_fact:'description_search_criteria'};
+ const descriptionInstructions=JSON.parse(reviewerInstructionsForCase(JSON.stringify({instructions:'original'}),descriptionItem)).instructions;
+ assert.match(descriptionInstructions,/search criteria listed in the tool's description/);
+ assert.throws(()=>reviewerInstructionsForCase(JSON.stringify({instructions:'original'}),{...descriptionItem,metadata_fact:'unsupported'}),/education_metadata_fact_invalid/);
 });
 
 test("required skill passes only when its exact published read precedes the configured API-key response", () => {

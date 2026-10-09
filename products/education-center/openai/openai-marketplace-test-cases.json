@@ -155,6 +155,14 @@
       "tools_triggered": "bos_get_context, bos_list_context_tools",
       "expected_output": "The response identifies `education_center_search_students` and its declared capability `calimatic.students.read` from BOS discovery metadata.",
       "expected_output_url": null
+    },
+    {
+      "description": "List the student-search tool’s advertised search criteria.",
+      "user_prompt": "Using BOS Education Center, what search criteria are listed in the description for `education_center_search_students`?",
+      "file_attachment_urls": null,
+      "tools_triggered": "bos_get_context, bos_list_context_tools",
+      "expected_output": "The response identifies `query`, `email`, and `student_name` as search criteria listed in the advertised student-search tool description.",
+      "expected_output_url": null
     }
   ],
   "negative_test_cases": []

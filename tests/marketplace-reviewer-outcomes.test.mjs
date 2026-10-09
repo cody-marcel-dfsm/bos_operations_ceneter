@@ -101,6 +101,25 @@ test('Education Center capability assertion binds the exact student-search capab
  assert.equal(reviewerOutcomeMatches(assertion,list('calimatic.students.write'),requirements,binding),false);
  assert.equal(reviewerOutcomeMatches(assertion,{responses:[]},requirements,binding),false);
 });
+test('Education Center search-criteria assertion binds the advertised description',()=>{
+ const tool='education_center_search_students';
+ const selected={operation:'bos.list.context.tools',transport:'mcp_discovery',tool_name:tool};
+ const requirement='student-search-description-criteria';
+ const assertion={schema:'marketplace-case-assertions/v1',product:'education-center',case_id:'positive-7',rules:[
+  {requirement,operator:'contains',response:selected,path:'/name',value:tool},
+  {requirement,operator:'contains',response:selected,path:'/description',value:'query'},
+  {requirement,operator:'contains',response:selected,path:'/description',value:'email'},
+  {requirement,operator:'contains',response:selected,path:'/description',value:'student_name'}
+ ]};
+ const requirements=[{id:requirement,operator:'contains'}];
+ const description='Search verified Calimatic student and family records by query, email, or student_name. Unknown filters are rejected.';
+ const list=(name=tool,text=description)=>({responses:[{...response({contract_version:'bos-identity-mcp/v2',tools:[{name,description:text,inputSchema:{type:'object'}}],resources:[{uri:'bos://education-center',name:'Education Center'}]}),operation:'bos.list.context.tools',transport:'mcp_discovery'}]});
+ const binding={product:'education-center',case_id:'positive-7'};
+ assert.equal(reviewerOutcomeMatches(assertion,list(),requirements,binding),true);
+ assert.equal(reviewerOutcomeMatches(assertion,list(tool,'Search verified Calimatic students.'),requirements,binding),false);
+ assert.equal(reviewerOutcomeMatches(assertion,list('education_center_get_camp_roster_report'),requirements,binding),false);
+ assert.equal(reviewerOutcomeMatches(assertion,{responses:[]},requirements,binding),false);
+});
 test('Education positive-3 accepts only the approved camp-roster MCP configuration response',()=>{
  const operation='education_center_get_camp_roster_report';
  const selector={operation,transport:'mcp_business',is_error:true};
