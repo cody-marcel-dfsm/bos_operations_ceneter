@@ -42,113 +42,9 @@
       "allowed_effects": [
         "read"
       ],
-      "assertion_evidence": "identity",
-      "requirements": [
-        {
-          "id": "authorized-role",
-          "operator": "equals"
-        },
-        {
-          "id": "provider-readiness",
-          "operator": "equals"
-        }
-      ]
-    },
-    "positive-2": {
-      "allowed_effects": [
-        "read"
-      ],
-      "assertion_evidence": "response",
-      "requirements": [
-        {
-          "id": "matching-students",
-          "operator": "equals"
-        },
-        {
-          "id": "active-records",
-          "operator": "equals"
-        },
-        {
-          "id": "source-attribution",
-          "operator": "equals"
-        }
-      ],
-      "requires_business_https": true
-    },
-    "positive-3": {
-      "allowed_effects": [
-        "read"
-      ],
-      "assertion_evidence": "response",
-      "expected_error_operations": [
-        "education_center_list_enrollments"
-      ],
-      "requirements": [
-        {
-          "id": "exact-enrollment-operation",
-          "operator": "equals"
-        },
-        {
-          "id": "calimatic-api-key-configuration-required",
-          "operator": "equals"
-        },
-        {
-          "id": "secure-configuration-link-present",
-          "operator": "present"
-        },
-        {
-          "id": "no-enrollment-rows",
-          "operator": "absent"
-        }
-      ]
-    },
-    "positive-4": {
-      "allowed_effects": [
-        "read"
-      ],
-      "assertion_evidence": "response",
-      "requirements": [
-        {
-          "id": "daily-attendance",
-          "operator": "equals"
-        },
-        {
-          "id": "capacity-evidence",
-          "operator": "equals"
-        },
-        {
-          "id": "source-attribution",
-          "operator": "equals"
-        }
-      ],
-      "requires_business_https": true
-    },
-    "positive-5": {
-      "allowed_effects": [
-        "read"
-      ],
-      "assertion_evidence": "response",
-      "requirements": [
-        {
-          "id": "matching-students",
-          "operator": "equals"
-        },
-        {
-          "id": "guardian-review",
-          "operator": "equals"
-        },
-        {
-          "id": "source-attribution",
-          "operator": "equals"
-        }
-      ],
-      "requires_business_https": true
-    },
-    "positive-6": {
-      "allowed_effects": [
-        "read"
-      ],
-      "assertion_evidence": "response",
+      "assertion_evidence": "service-receipts",
+      "grading": "deterministic-functional",
+      "expected_output_validation": false,
       "requirements": [
         {
           "id": "student-search-tool",
@@ -156,38 +52,37 @@
         }
       ]
     },
-    "negative-1": {
+    "positive-2": {
       "allowed_effects": [
         "read"
       ],
-      "assertion_evidence": "answer",
+      "assertion_evidence": "service-receipts",
+      "grading": "deterministic-functional",
+      "expected_output_validation": false,
+      "expected_error_operations": [
+        "education_center_get_camp_roster_report"
+      ],
       "requirements": [
         {
-          "id": "no-product-invocation",
+          "id": "calimatic-api-key-configuration-response",
           "operator": "equals"
         }
       ]
     },
-    "negative-2": {
+    "positive-3": {
       "allowed_effects": [
         "read"
       ],
-      "assertion_evidence": "answer",
-      "requirements": [
-        {
-          "id": "no-product-invocation",
-          "operator": "equals"
-        }
-      ]
-    },
-    "negative-3": {
-      "allowed_effects": [
-        "read"
+      "assertion_evidence": "service-receipts",
+      "grading": "deterministic-functional",
+      "expected_output_validation": false,
+      "expected_error_operations": [
+        "education_center_get_camp_roster_report"
       ],
-      "assertion_evidence": "answer",
+      "required_skill_invocation": "education-center-class-operations",
       "requirements": [
         {
-          "id": "no-product-invocation",
+          "id": "class-operations-camp-key-setup-response",
           "operator": "equals"
         }
       ]

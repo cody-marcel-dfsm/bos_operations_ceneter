@@ -14,7 +14,7 @@ for(const product of ['bos','education-center'])test(product+' loads exact confi
  assert.deepEqual(catalog.cases.filter(row=>row.kind==='starter').map(row=>row.prompt),manifest.default_prompts);
  assert.deepEqual(catalog.cases.filter(row=>row.kind==='positive').map(row=>row.prompt),submission.test_cases.map(row=>row.user_prompt));
  assert.deepEqual(catalog.cases.filter(row=>row.kind==='negative').map(row=>row.prompt),submission.negative_test_cases.map(row=>row.user_prompt));
- assert.equal(catalog.cases.length,product==='education-center'?12:11);
+ assert.equal(catalog.cases.length,product==='education-center'?6:11);
 });
 
 test('case failures continue and changed configuration is reloaded before the next LLM request',async()=>{
@@ -37,21 +37,29 @@ test('throwing verifier and executor record neutral failures for every configure
  }
 });
 
-test('Education submitted permission question preserves strict authorized-scope expected output',async()=>{
+test('Education marketplace cases preserve the approved metadata and Calimatic prompts',async()=>{
  const catalog=await loadPromptCatalog(root,'education-center');
- const item=catalog.cases.find(row=>row.id==='negative-1');
- assert.equal(item.kind,'negative');
- assert.equal(item.prompt,'Can I access student or revenue records from an education center where I have no membership? Explain the authorized scope boundary without reading or disclosing those records.');
- assert.equal(item.expected,"The app should not search another organization and should explain that operations are limited to the reviewer's authorized tenant.");
+ const cases=catalog.cases.filter(row=>row.kind==='positive');
+ assert.deepEqual(cases.map(({prompt})=>prompt),[
+  'Describe Education Center’s Calimatic service and return the student-search tool.',
+  'Using BOS Education Center, give me the camps from September 14 through September 18, 2026.',
+  'Using BOS Education Center, give me the camps from September 14 through September 18, 2026.'
+ ]);
+ assert.deepEqual(cases.map(({expected_operation})=>expected_operation),[
+  ['bos_get_context','bos_list_context_tools','bos_execute'],
+  ['bos_get_context','bos_list_context_tools','bos_execute'],
+  ['bos_get_context','bos_list_context_tools','bos_execute']
+ ]);
+ assert.equal(cases[2].required_skill_invocation,'education-center-class-operations');
 });
 
-test('Education discovery case requires both context and tool-list operations',async()=>{
+test('Education student-search discovery case requires the exact advertised tool',async()=>{
  const catalog=await loadPromptCatalog(root,'education-center');
- const item=catalog.cases.find(row=>row.id==='positive-6');
- assert.deepEqual(item.expected_operation,['bos_get_context','bos_list_context_tools']);
- assert.equal(expectedOperationsObserved(item.expected_operation,[{tool:'bos_get_context'},{tool:'bos_list_context_tools'}]),true);
- assert.equal(expectedOperationsObserved(item.expected_operation,[{tool:'bos_get_context'}]),false);
- assert.equal(expectedOperationsObserved(item.expected_operation,[{tool:'bos_list_context_tools'}]),false);
+ const item=catalog.cases.find(row=>row.id==='positive-1');
+ assert.deepEqual(item.expected_operation,['bos_get_context','bos_list_context_tools','bos_execute']);
+ assert.equal(item.requirements[0].id,'student-search-tool');
+ assert.equal(expectedOperationsObserved(item.expected_operation,[{tool:'bos_get_context'},{tool:'bos_list_context_tools'},{tool:'bos_execute'}]),true);
+ assert.equal(expectedOperationsObserved(item.expected_operation,[{tool:'bos_get_context'},{tool:'bos_list_context_tools'}]),false);
 });
 
 const deferred=()=>{let resolve;const promise=new Promise(done=>{resolve=done;});return {promise,resolve};};

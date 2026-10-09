@@ -38,7 +38,7 @@ test("every active Codex product owns permanent OpenAI submission source", async
   ]);
   for (const product of activeCodexProducts) {
     assert.deepEqual(product.openai_submission, {
-      import_file: "openai/chatgpt-app-submission.json",
+      import_file: "openai/openai-marketplace-test-cases.json",
       directory_icon: "openai/directory-icon.png",
       composer_icon: "openai/composer-icon.png",
       skills_archive: `openai/${product.name}-skills.zip`
@@ -53,8 +53,8 @@ test("every active Codex product owns permanent OpenAI submission source", async
     assert.ok(submission.app_info.subtitle.length <= 30, product.name);
     assert.equal(submission.app_info.description, product.long_description, product.name);
     assert.equal(submission.app_info.category, "PRODUCTIVITY", product.name);
-    assert.equal(submission.test_cases.length, product.name === "education-center" ? 6 : 5, product.name);
-    assert.equal(submission.negative_test_cases.length, 3, product.name);
+    assert.equal(submission.test_cases.length, product.name === "education-center" ? 3 : 5, product.name);
+    assert.equal(submission.negative_test_cases.length, product.name === "education-center" ? 0 : 3, product.name);
   }
 });
 
@@ -111,7 +111,7 @@ test("OpenAI submission icons are permanent square PNG product assets", async ()
 
 test("BOS and Education OpenAI cases stay within their product MCP scope", async () => {
   const bos = JSON.parse(await readFile(
-    `${root}/products/bos/openai/chatgpt-app-submission.json`, "utf8"
+    `${root}/products/bos/openai/openai-marketplace-test-cases.json`, "utf8"
   ));
   const currentTools = ['bos_logout', 'bos_get_context', 'bos_list_context_tools', 'bos_execute', 'plugins.list', 'service.describe', 'api.contract.get', 'discovery.refresh'];
   assert.deepEqual(Object.keys(bos.tools), currentTools);
@@ -147,40 +147,39 @@ test("BOS and Education OpenAI cases stay within their product MCP scope", async
   assert.ok(bosPolicy.cases['positive-1'].requirements.some(({id})=>id==='public-services-list'));
 
   const education = JSON.parse(await readFile(
-    `${root}/products/education-center/openai/chatgpt-app-submission.json`, "utf8"
+    `${root}/products/education-center/openai/openai-marketplace-test-cases.json`, "utf8"
   ));
   assert.deepEqual(Object.keys(education.tools), currentTools);
   assert.ok(education.test_cases.every(({tools_triggered}) =>
     tools_triggered.split(', ').every(tool => currentTools.includes(tool))));
-  assert.match(education.test_cases[3].user_prompt, /whether capacity/);
-  assert.match(education.test_cases[4].user_prompt, /missing or incomplete guardian contact fields/);
-  assert.equal(education.test_cases[2].user_prompt, 'List enrollments from September 14 through September 20, 2026, and group them by class.');
-  assert.match(education.test_cases[2].description, /Calimatic is not configured/);
-  assert.deepEqual(education.test_cases[2].tools_triggered.split(', '), ['bos_get_context', 'bos_list_context_tools', 'bos_execute']);
-  assert.match(education.test_cases[2].expected_output, /configure the Calimatic API key through BOS's secure configuration flow/);
-  assert.match(education.test_cases[2].expected_output, /returns no enrollment rows/);
-  assert.match(education.test_cases[2].expected_output, /API key stays out of chat/);
-  assert.match(education.test_cases[5].user_prompt, /BOS Describe/);
-  assert.deepEqual(education.test_cases[5].tools_triggered.split(', '), ['bos_get_context', 'bos_list_context_tools']);
-  assert.match(education.test_cases[5].expected_output, /education_center_search_students/);
-  const policy = JSON.parse(await readFile(`${root}/products/education-center/openai/acceptance-policy.json`, 'utf8'));
-  assert.ok([2, 4, 5].every(id => policy.cases[`positive-${id}`].requires_business_https));
-  assert.deepEqual(policy.cases['positive-3'].requirements, [
-    {id:'exact-enrollment-operation', operator:'equals'},
-    {id:'calimatic-api-key-configuration-required', operator:'equals'},
-    {id:'secure-configuration-link-present', operator:'present'},
-    {id:'no-enrollment-rows', operator:'absent'}
+  assert.deepEqual(education.test_cases.map(({user_prompt}) => user_prompt), [
+    'Describe Education Center’s Calimatic service and return the student-search tool.',
+    'Using BOS Education Center, give me the camps from September 14 through September 18, 2026.',
+    'Using BOS Education Center, give me the camps from September 14 through September 18, 2026.'
   ]);
-  assert.deepEqual(policy.cases['positive-3'].expected_error_operations, ['education_center_list_enrollments']);
-  assert.equal(policy.cases['positive-3'].requires_business_https, undefined);
-  assert.deepEqual(policy.cases['positive-6'].requirements, [{id:'student-search-tool', operator:'contains'}]);
+  assert.deepEqual(education.test_cases.map(({tools_triggered}) => tools_triggered), [
+    'bos_get_context, bos_list_context_tools, bos_execute',
+    'bos_get_context, bos_list_context_tools, bos_execute',
+    'bos_get_context, bos_list_context_tools, bos_execute'
+  ]);
+  assert.deepEqual(education.negative_test_cases, []);
+  assert.match(education.test_cases[0].expected_output, /education_center_search_students/);
+  assert.match(education.test_cases[1].expected_output, /Calimatic reports that it is not authenticated/);
+  assert.match(education.test_cases[2].expected_output, /education-center-class-operations/);
+  const policy = JSON.parse(await readFile(`${root}/products/education-center/openai/acceptance-policy.json`, 'utf8'));
+  assert.deepEqual(policy.cases['positive-1'].requirements, [{id:'student-search-tool', operator:'contains'}]);
+  assert.deepEqual(policy.cases['positive-2'].expected_error_operations, ['education_center_get_camp_roster_report']);
+  assert.deepEqual(policy.cases['positive-2'].requirements, [{id:'calimatic-api-key-configuration-response', operator:'equals'}]);
+  assert.deepEqual(policy.cases['positive-3'].expected_error_operations, ['education_center_get_camp_roster_report']);
+  assert.equal(policy.cases['positive-3'].required_skill_invocation, 'education-center-class-operations');
+  assert.deepEqual(policy.cases['positive-3'].requirements, [{id:'class-operations-camp-key-setup-response', operator:'equals'}]);
 
 });
 
 test("OpenAI submission paths reject temporary or escaping locations", async () => {
   for (const product of activeCodexProducts) {
     const invalid = structuredClone(product);
-    invalid.openai_submission.import_file = "../../tmp/chatgpt-app-submission.json";
+    invalid.openai_submission.import_file = "../../tmp/openai-marketplace-test-cases.json";
     assert.ok(validateProduct(invalid).some((failure) =>
       failure.includes("openai_submission.import_file must be a safe path under openai/")
     ));

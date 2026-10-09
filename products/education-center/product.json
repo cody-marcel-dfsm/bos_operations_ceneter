@@ -35,7 +35,7 @@
   "runtime": "bos",
   "application_name": "leaddirector",
   "openai_submission": {
-    "import_file": "openai/chatgpt-app-submission.json",
+    "import_file": "openai/openai-marketplace-test-cases.json",
     "directory_icon": "openai/directory-icon.png",
     "composer_icon": "openai/composer-icon.png",
     "skills_archive": "openai/education-center-skills.zip"

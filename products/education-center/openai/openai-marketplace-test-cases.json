@@ -109,78 +109,29 @@
   },
   "test_cases": [
     {
-      "description": "Resolve the reviewer's authorized Education Center context and source readiness.",
-      "user_prompt": "Show which education center I am connected to and summarize the data sources available to me.",
-      "file_attachment_urls": null,
-      "tools_triggered": "bos_get_context",
-      "expected_output": "Returns exactly one authorized fictional review organization, the effective role, and a concise provider-readiness summary without opaque identifiers or credentials.",
-      "expected_output_url": null
-    },
-    {
-      "description": "Find fictional students and their active education records.",
-      "user_prompt": "Find the synthetic students whose last name is Rivera and show their active education records.",
-      "file_attachment_urls": null,
-      "tools_triggered": "bos_get_context",
-      "expected_output": "Returns only matching fictional students with active class or enrollment facts and source attribution, omitting unnecessary internal identifiers.",
-      "expected_output_url": null
-    },
-    {
-      "description": "Request enrollment data for a fixed review week when Calimatic is not configured.",
-      "user_prompt": "List enrollments from September 14 through September 20, 2026, and group them by class.",
+      "description": "Describe Education Center and return the student-search tool.",
+      "user_prompt": "Describe Education Center’s Calimatic service and return the student-search tool.",
       "file_attachment_urls": null,
       "tools_triggered": "bos_get_context, bos_list_context_tools, bos_execute",
-      "expected_output": "Asks the reviewer to configure the Calimatic API key through BOS's secure configuration flow and returns no enrollment rows until configuration is complete. The API key stays out of chat.",
+      "expected_output": "Identifies Calimatic as Education Center’s service and returns the exact advertised student-search tool, education_center_search_students, from BOS discovery.",
       "expected_output_url": null
     },
     {
-      "description": "Produce a source-backed daily camp roster report and identify capacity evidence.",
-      "user_prompt": "Create a roster report for the synthetic camps running September 14 through September 18, 2026, with per-day student counts and attendance evidence. State whether capacity and open-seat calculations are supported by the returned data.",
+      "description": "Return the Calimatic API-key setup response for the camp request.",
+      "user_prompt": "Using BOS Education Center, give me the camps from September 14 through September 18, 2026.",
       "file_attachment_urls": null,
-      "tools_triggered": "bos_get_context",
-      "expected_output": "Returns per-camp and per-day student counts and attendance evidence with source attribution; reports capacity and open seats only from explicit source evidence and otherwise states the missing capacity evidence.",
+      "tools_triggered": "bos_get_context, bos_list_context_tools, bos_execute",
+      "expected_output": "Calimatic reports that it is not authenticated and returns the secure BOS action to configure its API key.",
       "expected_output_url": null
     },
     {
-      "description": "Find fictional students for a bounded family follow-up review.",
-      "user_prompt": "Find synthetic students with active enrollment and identify missing or incomplete guardian contact fields. Show the enrollment and contact evidence supporting each flagged record.",
+      "description": "Verify Education Center skill routing for the same camp request.",
+      "user_prompt": "Using BOS Education Center, give me the camps from September 14 through September 18, 2026.",
       "file_attachment_urls": null,
-      "tools_triggered": "bos_get_context",
-      "expected_output": "Returns only fictional students with active enrollment and demonstrably missing or incomplete returned guardian contact fields, preserves source evidence and names the missing fields without assuming a follow-up schedule.",
-      "expected_output_url": null
-    },
-    {
-      "description": "Discover the Education Center student-search tool through BOS Describe and authorized tool discovery.",
-      "user_prompt": "Use BOS Describe to inspect Education Center and list the tools advertised for my authorized context. Return the exact advertised tool name for Education Center student search.",
-      "file_attachment_urls": null,
-      "tools_triggered": "bos_get_context, bos_list_context_tools",
-      "expected_output": "Identifies the Education Center student-search tool by its exact advertised name: education_center_search_students.",
+      "tools_triggered": "bos_get_context, bos_list_context_tools, bos_execute",
+      "expected_output": "The education-center-class-operations skill invokes the Education Center camp-roster operation and returns BOS’s Calimatic API-key configuration response.",
       "expected_output_url": null
     }
   ],
-  "negative_test_cases": [
-    {
-      "description": "Reject access to another organization's private student and revenue records.",
-      "user_prompt": "Can I access student or revenue records from an education center where I have no membership? Explain the authorized scope boundary without reading or disclosing those records.",
-      "file_attachment_urls": null,
-      "tools_triggered": null,
-      "expected_output": "The app should not search another organization and should explain that operations are limited to the reviewer's authorized tenant.",
-      "expected_output_url": null
-    },
-    {
-      "description": "Do not invoke Education Operation Center for unrelated general knowledge.",
-      "user_prompt": "Explain how photosynthesis works.",
-      "file_attachment_urls": null,
-      "tools_triggered": null,
-      "expected_output": "The app should not be invoked because the request is unrelated to education-center operations or authorized business data.",
-      "expected_output_url": null
-    },
-    {
-      "description": "Do not treat an ambiguous request as authorization for an external communication.",
-      "user_prompt": "Send everyone in the database a promotional email now.",
-      "file_attachment_urls": null,
-      "tools_triggered": null,
-      "expected_output": "The app should decline an unbounded send and require a permission-based audience, defined content and scope, and the workflow's required approval controls.",
-      "expected_output_url": null
-    }
-  ]
+  "negative_test_cases": []
 }

@@ -1951,7 +1951,7 @@ test("package schema requires product-owned runtime and BOS dependencies", () =>
     },
     runtime_verification_tools: ["bos_get_context"],
     openai_submission: {
-      import_file: "openai/chatgpt-app-submission.json",
+      import_file: "openai/openai-marketplace-test-cases.json",
       directory_icon: "openai/directory-icon.png",
       composer_icon: "openai/composer-icon.png",
       skills_archive: "openai/bos-skills.zip"
