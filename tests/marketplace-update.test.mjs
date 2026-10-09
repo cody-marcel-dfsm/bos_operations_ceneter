@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { execFileSync } from "node:child_process";
-import { createMarketplaceUpdate, readPublishedBosEntries } from "../scripts/build-marketplace-update.mjs";
+import { createMarketplaceUpdate, readPublishedBosEntries, readPublishedProductEntries } from "../scripts/build-marketplace-update.mjs";
 import { readZipEntries } from "../scripts/lib/deterministic-zip.mjs";
 
 const legacyName = `app-${"a".repeat(32)}`;
@@ -11,6 +11,53 @@ const fixture = () => [
   { path: ".mcp.json", mode: 0o644, content: Buffer.from('{"mcpServers":{"synthetic":{"type":"http","url":"https://example.invalid/mcp","oauth_resource":"https://example.invalid/mcp"}}}\n') },
   { path: "skills/synthetic/run.mjs", mode: 0o755, content: Buffer.from("#!/usr/bin/env node\n") }
 ];
+
+const educationFixture = () => [
+  { path: ".codex-plugin/plugin.json", mode: 0o644, content: Buffer.from('{\n  "name": "education-center",\n  "version": "0.4.191"\n}\n') },
+  { path: ".bos-product.json", mode: 0o644, content: Buffer.from('{"name":"education-center","version":"0.4.191","connection_owner":"bos","dependency_products":["bos"]}\n') },
+  { path: "skills/synthetic/run.mjs", mode: 0o755, content: Buffer.from("#!/usr/bin/env node\n") }
+];
+
+test("Education marketplace identity mapping preserves its canonical identity, bytes and version", () => {
+  const entries = educationFixture();
+  const result = createMarketplaceUpdate(entries, legacyName, { product: "education-center" });
+  const actual = readZipEntries(result.archive);
+  assert.equal(result.version, "0.4.191");
+  assert.equal(actual.size, entries.length);
+  for (const entry of entries) {
+    const expected = entry.path === ".codex-plugin/plugin.json" ? Buffer.from(entry.content.toString().replace('"education-center"', JSON.stringify(legacyName))) : entry.content;
+    assert.deepEqual(actual.get(entry.path), { content: expected, mode: entry.mode });
+  }
+  assert.equal(JSON.parse(entries[0].content).name, "education-center");
+  assert.ok(createMarketplaceUpdate([...entries].reverse(), legacyName, { product: "education-center" }).archive.equals(result.archive));
+});
+
+test("Education export rejects mismatched products and independent connection declarations", () => {
+  assert.throws(() => createMarketplaceUpdate(educationFixture(), legacyName), /stable canonical/);
+  assert.throws(() => createMarketplaceUpdate(fixture(), legacyName, { product: "education-center" }), /stable canonical/);
+  assert.throws(() => createMarketplaceUpdate(educationFixture(), legacyName, { product: "education-center", preserveExistingMcp: true }), /BOS-only/);
+  assert.throws(() => readPublishedProductEntries("a".repeat(40), "../bos"), /Unsupported/);
+  for (const change of [
+    entries => entries.push({ path: ".mcp.json", mode: 0o644, content: Buffer.from("{}") }),
+    entries => { const manifest = JSON.parse(entries[0].content); manifest.mcpServers = "./.mcp.json"; entries[0].content = Buffer.from(JSON.stringify(manifest)); },
+    entries => { const metadata = JSON.parse(entries[1].content); metadata.connection_owner = "education-center"; entries[1].content = Buffer.from(JSON.stringify(metadata)); }
+  ]) {
+    const entries = educationFixture(); change(entries);
+    assert.throws(() => createMarketplaceUpdate(entries, legacyName, { product: "education-center" }), /BOS-owned/);
+  }
+});
+
+test("Education export retains accepted published-commit provenance and real package parity", () => {
+  const revision = execFileSync("git", ["rev-parse", "origin/main"], { encoding: "utf8" }).trim();
+  assert.throws(() => readPublishedProductEntries("main", "education-center"), /exact 40-character/);
+  assert.throws(() => readPublishedProductEntries("a".repeat(40), "education-center"), /Command failed/);
+  const entries = readPublishedProductEntries(revision, "education-center");
+  const actual = readZipEntries(createMarketplaceUpdate(entries, legacyName, { product: "education-center" }).archive);
+  assert.ok(entries.length > 3);
+  assert.equal(actual.size, entries.length);
+  for (const entry of entries.filter(entry => entry.path !== ".codex-plugin/plugin.json")) assert.deepEqual(actual.get(entry.path), { content: entry.content, mode: entry.mode });
+  assert.equal(actual.has(".mcp.json"), false);
+});
 
 test("marketplace update preserves release bytes, modes and version except the required name token", () => {
   const entries = fixture();
