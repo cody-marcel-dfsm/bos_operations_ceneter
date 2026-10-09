@@ -261,6 +261,15 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   assert.deepEqual(invalidMode,{isError:true,reason:'reviewer_validator_mode_unsupported'});
   assert.equal(requests,1);
   assert.equal(state.validated_contracts['app-describe'],digest(app));
+  delete state.validated_contracts['app-describe'];
+  assert.deepEqual(await tools.call('bos_https_describe',args),{isError:true,reason:'reviewer_app_description_validation_missing'});
+  state.validated_contracts['app-describe']='wrong-digest';
+  assert.deepEqual(await tools.call('bos_https_describe',args),{isError:true,reason:'reviewer_app_description_validation_mismatch'});
+  state.validated_contracts['app-describe']=digest(app);
+  state.failed_validations={'api-contract:synthetic':true};
+  assert.deepEqual(await tools.call('bos_https_describe',args),{isError:true,reason:'reviewer_prior_validation_failed'});
+  state.failed_validations={};
+  assert.equal(requests,1);
   assert.deepEqual(await tools.call('acceptance_validate_installed',{path:'skills/other/validator.mjs',mode:'app-describe',document_id:observed.document_id}),{isError:true,reason:'reviewer_tool_failed'});
   const checked=await tools.call('acceptance_validate_installed',{mode:'app-describe',document_id:observed.document_id});
   assert.equal(checked.valid,true);
@@ -275,7 +284,7 @@ test('HTTPS Describe uses observed validated contact, bounded keys, fresh contex
   for(const keys of [[],['search','search'],['unadvertised'],Array(6).fill('search')]){
    assert.equal((await tools.call('bos_https_describe',{...args,operations:keys})).isError,true);
   }
-  assert.equal((await tools.call('bos_https_describe',{...args,document_id:'invented'})).isError,true);assert.equal(requests,1);
+  assert.deepEqual(await tools.call('bos_https_describe',{...args,document_id:'invented'}),{isError:true,reason:'reviewer_document_not_observed'});assert.equal(requests,1);
   const originalUri=app.describe.uri;
   for(const invalid of [originalUri.replace('synthetic','{organization}'),'https://foreign.test/describe','http://dfsm.ai/describe',originalUri+'?org_id=foreign',originalUri+'#fragment']){
    app.describe.uri=invalid;const changed=await tools.call('bos_read_resource',{uri});

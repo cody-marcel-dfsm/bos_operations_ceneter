@@ -439,7 +439,11 @@ export async function createReviewerTools({session,state,release}) {
     if(name==='bos_https_describe'){
       if(!state.canary||state.kind==='negative'||!state.handle||!state.allowed_effects?.includes('read'))throw new Error('reviewer_discovery_not_approved');
       const app=documents.get(args.document_id),contact=app?.describe,keys=args.operations;
-      if(!app||state.validated_contracts?.['app-describe']!==digest(app)||Object.values(state.failed_validations??{}).some(Boolean))throw new Error('reviewer_app_description_unvalidated');
+      if(!app)throw new Error('reviewer_document_not_observed');
+      const validatedDescription=state.validated_contracts?.['app-describe'];
+      if(!validatedDescription)throw new Error('reviewer_app_description_validation_missing');
+      if(validatedDescription!==digest(app))throw new Error('reviewer_app_description_validation_mismatch');
+      if(Object.values(state.failed_validations??{}).some(Boolean))throw new Error('reviewer_prior_validation_failed');
       if(contact?.method!=='POST'||contact.max_operations!==5||!Array.isArray(contact.operations)||!Array.isArray(keys)||keys.length<1||keys.length>5||new Set(keys).size!==keys.length||keys.some(key=>typeof key!=='string'||!contact.operations.includes(key)))throw new Error('reviewer_describe_selection_invalid');
       if(typeof contact.uri!=='string'||/[{}]/.test(contact.uri)||/%(?:7b|7d)/i.test(contact.uri))throw new Error('reviewer_describe_contact_unresolved');
       const origin=new URL(state.resource).origin,url=trustedUrl(new URL(contact.uri,origin).href,origin);
