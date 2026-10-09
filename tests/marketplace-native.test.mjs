@@ -132,6 +132,9 @@ test('retained case diagnostics identify failures while removing credentials and
  assert.equal(diagnostic.evaluation_missing[0],'Missing contract provenance');
  assert.equal(diagnostic.evaluation_missing[1].length,2000);
  assert.deepEqual(diagnostic.failed_steps,[{tool:'bos_https_describe',reason:'reviewer_document_not_observed'},{tool:'validate.installed',reason:'reviewer_validation_failed'}]);
+ const validationModes=caseDiagnostics({}, {},[],undefined,undefined,undefined,{'app-describe:private-digest':true,'operation-describe:another-private-digest':true,'not-a-validator:private-digest':true,'api-contract:ignored-false':false});
+ assert.deepEqual(validationModes.failed_validation_modes,['app-describe','operation-describe']);
+ assert.doesNotMatch(JSON.stringify(validationModes),/private-digest|another-private/);
 });
 test('HTTPS Describe diagnostics retain public operation names and omit private document and scope data',()=>{
  const observed=[
