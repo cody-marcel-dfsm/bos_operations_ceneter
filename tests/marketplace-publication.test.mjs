@@ -12,14 +12,14 @@ async function generatedFixture(){
  const dir=await mkdtemp(join(tmpdir(),'generated-publication-')),pkg=join(dir,'dist/my-crm');
  const entries=[
   ['.codex-plugin/plugin.json','{"name":"my-crm","version":"1.0.0"}\n'],
-  ['examples/README.md','Public example\n'],['LICENSE','Public license\n'],['NOTICE','Public notice\n'],['README.md','Public readme\n'],
+  ['clients/codex/plugins/my-crm/.codex-plugin/plugin.json','{"name":"my-crm","version":"1.0.0"}\n'],['examples/README.md','Public example\n'],['LICENSE','Public license\n'],['NOTICE','Public notice\n'],['README.md','Public readme\n'],
   ['skills/example/SKILL.md','Public generated skill\n'],['src/client.mjs','export const value=1;\n']
  ];
  await run('git',['init','-q'],{cwd:dir});
  await writeFile(join(dir,'.gitignore'),'dist/\n');
  await writeFile(join(dir,'package.json'),'{"name":"my-crm","version":"1.0.0"}\n');
  for(const [name,bytes] of entries){
-  const source=['LICENSE','NOTICE','README.md'].includes(name)||name.startsWith('examples/')||name.startsWith('src/')?name:'plugins/my-crm/'+name;
+  const source=['LICENSE','NOTICE','README.md'].includes(name)||name.startsWith('examples/')||name.startsWith('src/')||name.startsWith('clients/')?name:'plugins/my-crm/'+name;
   await mkdir(join(dir,source,'..'),{recursive:true});await writeFile(join(dir,source),bytes);
   await mkdir(join(pkg,name,'..'),{recursive:true});await writeFile(join(pkg,name),bytes);
  }
@@ -38,6 +38,7 @@ test('existing generated release verifies against published objects and its exac
   assert.equal((await run('git',['ls-tree','-r','--name-only',f.commit,'--','dist/my-crm'],{cwd:f.dir})).stdout,'');
   assert.equal(await verifyPublishedPackage(f.pkg,f.commit),f.content);
   assert.equal((await readPublishedFile(f.pkg,f.commit,'skills/example/SKILL.md')).toString(),'Public generated skill\n');
+  assert.equal((await readPublishedFile(f.pkg,f.commit,'clients/codex/plugins/my-crm/.codex-plugin/plugin.json')).toString(),'{"name":"my-crm","version":"1.0.0"}\n');
   await writeFile(join(f.dir,'plugins/my-crm/skills/example/SKILL.md'),'Unpublished working tree\n');
   assert.equal(await verifyPublishedPackage(f.pkg,f.commit),f.content);
  }finally{await rm(f.dir,{recursive:true,force:true});}

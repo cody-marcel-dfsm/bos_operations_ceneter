@@ -8,7 +8,7 @@ const generatedRootFiles=new Set(['LICENSE','NOTICE','README.md']);
 const generatedReleasePath='dist/my-crm';
 function publishedPath(prefix,name){
  if(prefix!==generatedReleasePath)return prefix?prefix+'/'+name:name;
- return generatedRootFiles.has(name)||name.startsWith('examples/')||name.startsWith('src/')?name:'plugins/my-crm/'+name;
+ return generatedRootFiles.has(name)||name.startsWith('examples/')||name.startsWith('src/')||name.startsWith('clients/')?name:'plugins/my-crm/'+name;
 }
 function releaseOrder(a,b){
  const left=a.split('/'),right=b.split('/');
@@ -17,7 +17,7 @@ function releaseOrder(a,b){
 }
 async function verifyGeneratedRelease(base,gitRoot,commit){
  // Consume the published my-crm.release/v1 layout; execute no foreign builder.
- const records=(await run('git',['ls-tree','-r','-z',commit,'--','plugins/my-crm','examples','src',...generatedRootFiles],{cwd:gitRoot})).stdout.split('\0').filter(Boolean);
+ const records=(await run('git',['ls-tree','-r','-z',commit,'--','plugins/my-crm','examples','src','clients',...generatedRootFiles],{cwd:gitRoot})).stdout.split('\0').filter(Boolean);
  const sources=records.map(record=>{
   const match=/^(100644|100755) blob [a-f0-9]+\t(.+)$/.exec(record);
   if(!match)throw new Error('Unsupported published release entry');
