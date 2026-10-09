@@ -119,39 +119,56 @@
         }
       ]
     },
-    "positive-6": {
+    "negative-1": {
+      "review_case_number": 6,
       "allowed_effects": [
         "read"
       ],
       "assertion_evidence": "service-receipts",
       "grading": "deterministic-functional",
       "expected_output_validation": false,
-      "metadata_only": true,
-      "metadata_tool_name": "education_center_search_students",
-      "metadata_fact": "capability",
+      "verification_type": "no-bos-calls",
       "requirements": [
         {
-          "id": "student-search-capability",
+          "id": "no-bos-capability-change",
           "operator": "equals"
         }
-      ]
+      ],
+      "negative_behavior": "no-bos-calls"
     },
-    "positive-7": {
+    "negative-2": {
+      "review_case_number": 7,
       "allowed_effects": [
         "read"
       ],
       "assertion_evidence": "service-receipts",
       "grading": "deterministic-functional",
       "expected_output_validation": false,
-      "metadata_only": true,
-      "metadata_tool_name": "education_center_search_students",
-      "metadata_fact": "description_search_criteria",
+      "verification_type": "no-bos-calls",
       "requirements": [
         {
-          "id": "student-search-description-criteria",
-          "operator": "contains"
+          "id": "no-bos-tool-metadata-change",
+          "operator": "equals"
         }
-      ]
+      ],
+      "negative_behavior": "no-bos-calls"
+    },
+    "negative-3": {
+      "review_case_number": 8,
+      "allowed_effects": [
+        "read"
+      ],
+      "assertion_evidence": "service-receipts",
+      "grading": "deterministic-functional",
+      "expected_output_validation": false,
+      "verification_type": "no-bos-calls",
+      "requirements": [
+        {
+          "id": "no-bos-invocation-for-unrelated-request",
+          "operator": "equals"
+        }
+      ],
+      "negative_behavior": "no-bos-calls"
     }
   }
 }

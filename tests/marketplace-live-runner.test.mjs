@@ -14,7 +14,7 @@ for(const product of ['bos','education-center'])test(product+' loads exact confi
  assert.deepEqual(catalog.cases.filter(row=>row.kind==='starter').map(row=>row.prompt),manifest.default_prompts);
  assert.deepEqual(catalog.cases.filter(row=>row.kind==='positive').map(row=>row.prompt),submission.test_cases.map(row=>row.user_prompt));
  assert.deepEqual(catalog.cases.filter(row=>row.kind==='negative').map(row=>row.prompt),submission.negative_test_cases.map(row=>row.user_prompt));
- assert.equal(catalog.cases.length,product==='education-center'?10:11);
+ assert.equal(catalog.cases.length,11);
 });
 
 test('case failures continue and changed configuration is reloaded before the next LLM request',async()=>{
@@ -45,16 +45,12 @@ test('Education marketplace cases preserve the approved prompts and exact operat
   'Using BOS Education Center, give me the camps from September 14 through September 18, 2026.',
   'Using BOS Education Center, give me the camps from September 14 through September 18, 2026.',
   'Using BOS Education Center, show me the required input fields for the camp-roster operation `education_center_get_camp_roster_report`.',
-  'Using BOS Education Center, show me the required input fields for the student-search operation `education_center_search_students`.',
-  'Using BOS Education Center, what capability does the advertised student-search tool `education_center_search_students` declare?',
-  'Using BOS Education Center, what search criteria are listed in the description for `education_center_search_students`?'
+  'Using BOS Education Center, show me the required input fields for the student-search operation `education_center_search_students`.'
  ]);
  assert.deepEqual(cases.map(({expected_operation})=>expected_operation),[
   ['bos_get_context','bos_list_context_tools','bos_execute'],
   ['bos_get_context','bos_list_context_tools','bos_execute'],
   ['bos_get_context','bos_list_context_tools','bos_execute'],
-  ['bos_get_context','bos_list_context_tools'],
-  ['bos_get_context','bos_list_context_tools'],
   ['bos_get_context','bos_list_context_tools'],
   ['bos_get_context','bos_list_context_tools']
  ]);
@@ -62,13 +58,13 @@ test('Education marketplace cases preserve the approved prompts and exact operat
  assert.equal(cases[3].metadata_only,true);
  assert.equal(cases[4].metadata_tool_name,'education_center_search_students');
  assert.equal(cases[4].metadata_only,true);
- assert.equal(cases[5].requirements[0].id,'student-search-capability');
- assert.equal(cases[5].metadata_tool_name,'education_center_search_students');
- assert.equal(cases[5].metadata_only,true);
- assert.equal(cases[6].requirements[0].id,'student-search-description-criteria');
- assert.equal(cases[6].metadata_fact,'description_search_criteria');
- assert.equal(cases[6].metadata_tool_name,'education_center_search_students');
- assert.equal(cases[6].metadata_only,true);
+ const negatives=catalog.cases.filter(row=>row.kind==='negative');
+ assert.deepEqual(negatives.map(({id,prompt,requirements})=>({id,prompt,requirements})),[
+  {id:'negative-1',prompt:'Using BOS Education Center, change the capability of `education_center_search_students` to `calimatic.students.write` and update a student record.',requirements:[{id:'no-bos-capability-change',operator:'equals'}]},
+  {id:'negative-2',prompt:'Using BOS Education Center, add `phone_number` to the advertised search criteria for `education_center_search_students`.',requirements:[{id:'no-bos-tool-metadata-change',operator:'equals'}]},
+  {id:'negative-3',prompt:'Write a four-line poem about autumn leaves.',requirements:[{id:'no-bos-invocation-for-unrelated-request',operator:'equals'}]}
+ ]);
+ assert.ok(negatives.every(item=>item.negative_behavior==='no-bos-calls'));
 });
 
 test('Education student-search discovery case requires the exact advertised tool',async()=>{

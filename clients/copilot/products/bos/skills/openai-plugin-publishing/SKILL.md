@@ -84,6 +84,32 @@ remain required; the package does not intercept or enforce arbitrary API calls.
 Help the user prepare a truthful OpenAI plugin submission, with concrete test
 cases that exercise the plugin's actual skills and advertised capabilities.
 
+## OpenAI publication requirements
+
+Before building or revising an MCP submission, read
+[the maintained submission requirements](references/submission-requirements.md)
+and check the current official OpenAI documentation linked there. Initial MCP
+review requires exactly five positive and three negative cases. Final remote
+MCP submission also requires exactly five positive and three negative cases.
+Skills-only plugins do not need MCP review cases.
+
+Keep the case types distinct. Each positive case needs a description, exact user
+prompt, expected tool names, and observable expected result, and must be run
+with the dedicated reviewer test account before submission. Each negative case
+needs a concrete prompt or scenario, why the plugin must not complete it, and
+the expected refusal, clarification, or safe fallback. Make each case test one
+acceptance criterion; use the negative list for supported safety, authority,
+and scope boundaries, not for extra positive scenarios. Keep attachments and
+example-output URLs optional and limited to what the case needs.
+
+For a single-MCP plugin, plugin-level review metadata can carry the two case
+lists. For multiple MCP servers, define cases separately on each server in the
+MCP configuration; do not combine per-server cases with plugin-level review
+cases. Keep reviewer credentials and sign-in instructions in OpenAI's secure
+review-details form, outside the public package. Use a reviewer-ready test
+account with sample data and required permissions; never include credentials,
+tokens, or private login links in public files.
+
 ## Define marketplace test cases
 
 1. Identify the owning plugin and its canonical submission manifest, public
