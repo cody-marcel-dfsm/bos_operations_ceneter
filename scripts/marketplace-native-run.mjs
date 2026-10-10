@@ -160,6 +160,10 @@ export function httpsDescribeCoverage(observed=[]) {
 export function caseDiagnostics(result,judgment,observed,fixtureAssertions,item,resource,failedValidations={}) {
  const controlFailure=row=>{
   const operation=reviewerDiagnosticControl(row.input?.tool_name??row.input?.operation??row.control_operation??row.response?.control_operation);
+  if(row.tool==='bos_https_operation'){
+   const diagnostic=row.error_diagnostic??row.response?.error_diagnostic;
+   return diagnostic?{error_diagnostic:reviewerErrorMetadata(diagnostic)}:{};
+  }
   if(!['bos.execute','bos_control_discover'].includes(row.tool)||!operation)return {};
   const diagnostic=row.error_diagnostic??row.response?.error_diagnostic;
   return {control_operation:operation,...(diagnostic?{error_diagnostic:reviewerErrorMetadata(diagnostic)}:{})};
@@ -169,7 +173,7 @@ export function caseDiagnostics(result,judgment,observed,fixtureAssertions,item,
   const mode=installedValidatorModes.includes(row.input.mode)?row.input.mode:'unsupported';
   const original=row.input.document;
   const document=mode==='api-contract'?original?.response:mode==='service-journey'?original?.description:original;
-  return {validation_mode:mode,...(document&&typeof document==='object'&&!Array.isArray(document)?{document_is_json_schema:Object.hasOwn(document,'$schema')||(Object.hasOwn(document,'properties')&&['object','array','string','number','integer','boolean','null'].includes(document.type)),document_has_execution_contract:!!document.execution&&typeof document.execution==='object',document_has_operation_envelope:Array.isArray(document.operations)}:{})};
+  return {validation_mode:mode,...(document&&typeof document==='object'&&!Array.isArray(document)?{document_is_json_schema:Object.hasOwn(document,'$schema')||(Object.hasOwn(document,'properties')&&['object','array','string','number','integer','boolean','null'].includes(document.type)),document_has_execution_contract:!!document.execution&&typeof document.execution==='object',document_has_operation_envelope:Array.isArray(document.operations)}:{}),...(row.response?.diagnostic_metadata?{validation_diagnostic:row.response.diagnostic_metadata}:{})};
  };
  const describeCoverage=httpsDescribeCoverage(observed);
  const failedValidationModes=[...new Set(Object.entries(failedValidations??{}).filter(([,failed])=>failed===true).map(([key])=>key.split(':',1)[0]).filter(mode=>installedValidatorModes.includes(mode)))].sort();
@@ -231,6 +235,7 @@ export function reviewerToolsForCase(item, tools) {
 }
 export function reviewerInstructionsForCase(baseInstructions, item) {
  const context=JSON.parse(baseInstructions);
+ if(item?.product==='my-crm'&&item.id==='positive-1')context.instructions+=' For My CRM positive-1, the validated operation Describe contract defines execution.transport:null with a non-null HTTP method and URI as HTTP execution; execution.transport:"journey_runtime" is a distinct runtime mode. A null transport value alone does not mean an operation is unavailable. For the required calendar and CRM reads, use each exact advertised contact_id with bos_https_operation and its returned payload schema. Do not stop because HTTP execution declares transport:null; stop only when the validated execution declaration, readiness, or an actual operation response establishes that a required read is unavailable.';
  if(item?.product==='education-center'&&item.metadata_only){
   const operation=item.metadata_tool_name;
   if(typeof operation!=='string'||!/^education_center_[a-z0-9_]+$/.test(operation))throw new Error('education_metadata_tool_invalid');

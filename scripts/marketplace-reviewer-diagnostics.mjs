@@ -76,6 +76,30 @@ const failureCodes = new Set([
   "reviewer_url_invalid",
   "reviewer_validation_failed",
   "reviewer_validator_mode_unsupported",
+  "bos_dependency_scope_unavailable",
+  "bos_dependency_scope_changed",
+  "bos_dependency_review_required",
+  "bos_execution_context_unavailable",
+  "bos_dependency_transport_failed",
+  "bos_dependency_adapter_error",
+  "bos_request_validation_error",
+  "bos_discovered_request_schema_mismatch",
+  "bos_discovered_payload_schema_mismatch",
+  "bos_authentication_handoff_mismatch",
+  "bos_authentication_recovery_active",
+  "bos_authentication_recovery_failed",
+]);
+const dependencyAdapterErrors = new Map([
+  ["reviewer_api_contract_failed", "reviewer_api_contract_failed"],
+  ["reviewer_api_response_invalid", "reviewer_api_response_invalid"],
+  ["Trusted BOS execution scope is unavailable", "bos_dependency_scope_unavailable"],
+  ["BOS execution scope changed or is unverified; rediscover and re-preview", "bos_dependency_scope_changed"],
+  ["Trusted BOS execution review is required; prepare the exact intent for review", "bos_dependency_review_required"],
+  ["The current BOS execution context is unavailable", "bos_execution_context_unavailable"],
+  ["The BOS dependency transport failed", "bos_dependency_transport_failed"],
+  ["BOS authentication handoff result does not match its request", "bos_authentication_handoff_mismatch"],
+  ["BOS authentication recovery remains active", "bos_authentication_recovery_active"],
+  ["BOS authentication recovery did not restore the operation", "bos_authentication_recovery_failed"],
 ]);
 export function reviewerFailureCode(error, fallback = "reviewer_tool_failed") {
   for (const code of [error?.code, error?.message]) if (typeof code === "string" && failureCodes.has(code)) return code;
@@ -111,6 +135,12 @@ export function reviewerModelDiagnostics(value = {}) {
 export function reviewerErrorDiagnostic(error) {
   const code = error?.code, causeCode = error?.cause?.code;
   const present = code !== undefined && code !== null;
+  if(error?.message==='discovered operation request does not match the immutable public schema')return {error_category:'reviewer_error',error_code_present:true,error_code:'bos_discovered_request_schema_mismatch'};
+  if(error?.message==='returned action payload does not match payload_schema')return {error_category:'reviewer_error',error_code_present:true,error_code:'bos_discovered_payload_schema_mismatch'};
+  if(error?.name==='BosDependencyAdapterError')return {error_category:'reviewer_error',error_code_present:true,error_code:'bos_dependency_adapter_error'};
+  if(error?.name==='TypeError')return {error_category:'reviewer_error',error_code_present:true,error_code:'bos_request_validation_error'};
+  const adapterCode=dependencyAdapterErrors.get(error?.message);
+  if(adapterCode)return {error_category:'reviewer_error',error_code_present:true,error_code:adapterCode};
   if (failureCodes.has(code)) return {error_category: 'reviewer_error', error_code_present: true, error_code: code};
   if ([-32700,-32600,-32601,-32602,-32603].includes(code)) return {error_category: 'jsonrpc_error', error_code_present: true, error_code: code};
   if (error?.name === 'TimeoutError' || error?.name === 'AbortError') return {error_category: 'request_timeout_or_abort', error_code_present: present};
@@ -122,10 +152,23 @@ export function reviewerErrorDiagnostic(error) {
 }
 export function reviewerErrorMetadata(value = {}) {
   const categories = new Set(['reviewer_error','jsonrpc_error','request_timeout_or_abort','network_error','response_parse_error','unrecognized_error']);
+  const payloadSchemaStatuses=new Set(['valid','invalid','compile_error','unavailable']);
+  const allowedPayloadSchemaKeywords=new Set(['required','type','additionalProperties','enum','format','minimum','maximum','exclusiveMinimum','exclusiveMaximum','multipleOf','pattern','minLength','maxLength','minItems','maxItems','uniqueItems','oneOf','anyOf','allOf','const','false schema','propertyNames','contains','minContains','maxContains','dependentRequired','dependentSchemas','not','if','then','else']);
   const code = reviewerErrorDiagnostic({code: value.error_code});
+  const operation=typeof value.operation==='string'&&/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u.test(value.operation)?value.operation:undefined;
+  const method=['GET','POST','PUT','PATCH','DELETE'].includes(value.method)?value.method:undefined;
+  const payloadSchemaKeywords=Array.isArray(value.payload_schema_keywords)?[...new Set(value.payload_schema_keywords.filter(keyword=>allowedPayloadSchemaKeywords.has(keyword)))].slice(0,16):undefined;
+  const contentTypeCategories=new Set(['json','problem_json','event_stream','text','other','missing','invalid_json']);
   return {error_category: categories.has(value.error_category) ? value.error_category : 'unrecognized_error',
     error_code_present: value.error_code_present === true,
-    ...(Object.hasOwn(code,'error_code') ? {error_code: code.error_code} : {})};
+    ...(Object.hasOwn(code,'error_code') ? {error_code: code.error_code} : {}),
+    ...(operation?{operation}:{}),...(method?{method}:{}),...(typeof value.payload_supplied==='boolean'?{payload_supplied:value.payload_supplied}:{}),
+    ...(payloadSchemaStatuses.has(value.payload_schema_status)?{payload_schema_status:value.payload_schema_status}:{}),
+    ...(Number.isInteger(value.payload_schema_error_count)&&value.payload_schema_error_count>=0?{payload_schema_error_count:Math.min(value.payload_schema_error_count,32)}:{}),
+    ...(payloadSchemaKeywords?.length?{payload_schema_keywords:payloadSchemaKeywords}:{}),
+    ...(Number.isInteger(value.http_status)&&value.http_status>=100&&value.http_status<=599?{http_status:value.http_status}:{}),
+    ...(contentTypeCategories.has(value.content_type_category)?{content_type_category:value.content_type_category}:{}),
+    ...Object.fromEntries(['response_body_is_object','response_body_error_present','response_body_result_present','output_schema_valid'].flatMap(key=>typeof value[key]==='boolean'?[[key,value[key]]]:[]))};
 }
 
 // Inspect upstream error notifications only; expose a fixed category, never their text.

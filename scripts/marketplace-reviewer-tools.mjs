@@ -150,6 +150,7 @@ export async function createReviewerTools({session,state,release}) {
     inputSchema:{...tool.inputSchema,properties:{...tool.inputSchema.properties,operation:{...tool.inputSchema.properties.operation,enum:[...controls,positive3CampOperation]}}}
   }:tool):definitions;
   const documents=new Map(),contacts=new Map(),references=new Map(),trustedSchemaDocuments=new Set(),originalDocuments=new Map(),controlFailureDiagnostics=new WeakMap(),ajv=new Ajv({strict:false,validateFormats:false});
+  let activeBusinessContact=null,lastBusinessHttpMetadata=null;
   let nextReference=0,authorizedContextSource=null;
   const clearReferences=()=>{documents.clear();contacts.clear();references.clear();trustedSchemaDocuments.clear();originalDocuments.clear();authorizedContextSource=null;};
   const retainDocument=raw=>{
@@ -192,7 +193,16 @@ export async function createReviewerTools({session,state,release}) {
     contextProvider:{getCurrentContext:freshContext,getExecutionContextHeader:async()=> 'X-BOS-Context-Handle'},
     hostTransport:{getProtectedResource:async()=>state.resource,recoverAuthentication:async()=>{throw new Error('reviewer_reauthentication_required');},request:async request=>{
       const response=await session.request(new URL(request.href,state.resource).href,{method:request.method,headers:request.headers,body:request.body});
-      let responseBody;try{responseBody=await response.json();}catch{throw new Error('reviewer_api_response_invalid');}
+      const contentType=response.headers.get('content-type')??'';
+      const contentTypeCategory=/^application\/problem\+json(?:;|$)/i.test(contentType)?'problem_json':/^application\/(?:json|[a-z0-9.+-]+\+json)(?:;|$)/i.test(contentType)?'json':/^text\/event-stream(?:;|$)/i.test(contentType)?'event_stream':/^text\//i.test(contentType)?'text':contentType?'other':'missing';
+      let responseBody;try{responseBody=await response.json();}catch{
+        if(activeBusinessContact)lastBusinessHttpMetadata={reviewer_failure_code:'reviewer_api_response_invalid',http_status:response.status,content_type_category:contentTypeCategory,response_body_is_object:false,response_body_error_present:false,response_body_result_present:false,output_schema_valid:false};
+        throw new Error('reviewer_api_response_invalid');
+      }
+      if(activeBusinessContact){
+        let outputSchemaValid=false;try{outputSchemaValid=ajv.compile(activeBusinessContact.output_schema)(responseBody);}catch{}
+        lastBusinessHttpMetadata={http_status:response.status,content_type_category:contentTypeCategory,response_body_is_object:!!responseBody&&typeof responseBody==='object'&&!Array.isArray(responseBody),response_body_error_present:!!responseBody&&typeof responseBody==='object'&&Object.hasOwn(responseBody,'error'),response_body_result_present:!!responseBody&&typeof responseBody==='object'&&Object.hasOwn(responseBody,'result'),output_schema_valid:outputSchemaValid};
+      }
       return {status:response.status,headers:Object.fromEntries(response.headers),body:responseBody};
     }}
   });
@@ -253,6 +263,10 @@ export async function createReviewerTools({session,state,release}) {
     }
   };
   const call=async(name,args={})=>{
+    // Error receipts belong to one invocation. Clear transport observations
+    // before any validation can reject this call without reaching HTTP.
+    activeBusinessContact=null;
+    lastBusinessHttpMetadata=null;
     if(privateInput(args))throw new Error('reviewer_authority_argument');
     if(name==='acceptance_read_document'){
       if(!state.canary||!['positive','starter'].includes(state.kind)||!state.handle||!state.allowed_effects?.includes('read')){
@@ -475,7 +489,10 @@ export async function createReviewerTools({session,state,release}) {
     if(!state.validated_contracts?.['app-describe']||Object.values(state.failed_validations??{}).some(Boolean))throw new Error('reviewer_published_prerequisite_required');
     if(!state.allowed_effects?.includes(contact.effect))throw new Error('reviewer_effect_not_approved');
     if(contact.effect!=='read'&&!(state.effect_binding?.operation===contact.operation&&state.effect_binding.effect===contact.effect&&state.effect_binding.input_sha256===digest(args.payload??{})))throw new Error('reviewer_effect_not_approved');
-    const result=Object.hasOwn(args,'payload')?await adapter.invokeDiscoveredOperation(contact,args.payload):await adapter.invokeDiscoveredOperation(contact);
+    activeBusinessContact=contact;
+    let result;
+    try{result=Object.hasOwn(args,'payload')?await adapter.invokeDiscoveredOperation(contact,args.payload):await adapter.invokeDiscoveredOperation(contact);}
+    finally{activeBusinessContact=null;}
     const valid=result.status>=200&&result.status<300&&ajv.compile(contact.output_schema)(result.body);
     const bosOrigin=new URL(state.resource).origin;
     const authorizations=result.body?.result?.error?.required_authorizations;
@@ -517,8 +534,31 @@ export async function createReviewerTools({session,state,release}) {
       } else state.host_tool_outcomes.push({tool:name,kind:'completed'});
       return result;
     }catch(error){
-      const reason=reviewerFailureCode(error);
+      const responseFailureCode=name==='bos_https_operation'?lastBusinessHttpMetadata?.reviewer_failure_code:undefined;
+      const reason=reviewerFailureCode(responseFailureCode?{code:responseFailureCode}:error);
       const diagnostic=controlFailureDiagnostics.get(error)??{};
+      if(name==='bos_https_operation'){
+        const metadata=lastBusinessHttpMetadata?.reviewer_failure_code
+          ?{error_category:'reviewer_error',error_code_present:true,error_code:lastBusinessHttpMetadata.reviewer_failure_code}
+          :reviewerErrorDiagnostic(error);
+        if(metadata.error_category!=='unrecognized_error'||metadata.error_code_present){
+          const httpMetadata={...lastBusinessHttpMetadata};
+          delete httpMetadata.reviewer_failure_code;
+          const contact=contacts.get(args?.contact_id);
+          const operation=typeof contact?.operation==='string'&&/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u.test(contact.operation)?contact.operation:undefined;
+          const method=['GET','POST','PUT','PATCH','DELETE'].includes(contact?.execution?.method)?contact.execution.method:undefined;
+          let payloadSchemaStatus='unavailable',payloadSchemaErrorCount=0,payloadSchemaKeywords=[];
+          if(contact?.input_schema&&typeof contact.input_schema==='object'){
+            try{
+              const validate=ajv.compile(contact.input_schema),valid=validate(args?.payload);
+              payloadSchemaStatus=valid?'valid':'invalid';
+              payloadSchemaErrorCount=valid?0:(validate.errors??[]).length;
+              payloadSchemaKeywords=[...new Set((validate.errors??[]).map(row=>row.keyword))].slice(0,16);
+            }catch{payloadSchemaStatus='compile_error';}
+          }
+          diagnostic.error_diagnostic={...metadata,...(operation?{operation}:{}),...(method?{method}:{}),payload_supplied:Object.hasOwn(args??{},'payload'),payload_schema_status:payloadSchemaStatus,payload_schema_error_count:payloadSchemaErrorCount,...(payloadSchemaKeywords.length?{payload_schema_keywords:payloadSchemaKeywords}:{}),...httpMetadata};
+        }
+      }
       state.host_tool_outcomes.push({tool:name,kind:'tool_exception',reason});
       state.observations.push({tool:name,input:sanitized(args),response:{reason,...diagnostic},is_error:true});
       if(state.kind==='negative')state.denials.push({tool:name,reason:'negative_case_business_call'});

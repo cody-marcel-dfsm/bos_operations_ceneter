@@ -28,6 +28,48 @@ export function sanitized(value, trustedOrigin) {
  }));
  return value;
 }
+const validatorRoots = Object.freeze({
+ 'app-describe':'app.describe response',
+ 'operation-describe':'operation Describe response',
+ 'api-contract':'api.contract.get response',
+ 'plugins':'plugins.list response',
+ 'discovery-refresh':'discovery.refresh response',
+ service:'service.describe response',
+ graph:'service graph response',
+ contact:'app contact',
+ 'service-journey':'service journey response'
+});
+const validatorPathFields=new Set(['application','platform','plugins','ttlMs','cacheScope','reference','name','purpose','journey','title','inputs','steps','code','type','description','success','describe','capability','input','service','descriptor_etag','readiness','status','requirements','operation','recovery','additionalProperties','required','properties','items','schema','contract','source','operations','output_schema','input_schema','max_operations','method','uri','mcp_resource','contract_version','discovery_epoch','capability_families','required_scopes','bosl','examples','reference_uri','schema_uri','sources','response','request','execution','errors','limits','selectors','authentication','authorization','provider','kind','version','etag']);
+export function validationDiagnosticMetadata(mode,diagnostic){
+ const root=validatorRoots[mode];if(!root||typeof diagnostic!=='string')return null;
+ const line=diagnostic.split(/\r?\n/u).find(value=>/\bError:\s*/u.test(value))??diagnostic.split(/\r?\n/u)[0]??'';
+ const message=line.replace(/^.*?\bError:\s*/u,'');
+ const rules=[
+  [/\bhas undeclared field\b/u,'undeclared_field'],
+  [/\bexposes private discovery text\b/u,'private_text_rejected'],
+  [/\bexposes a raw authority or credential identifier\b/u,'sensitive_metadata_rejected'],
+  [/\bmust be an object\b/u,'object_required'],
+  [/\bmust be a non-empty string\b/u,'nonempty_string_required'],
+  [/\bmust be a non-empty array\b/u,'nonempty_array_required'],
+  [/\bmust be an array\b/u,'array_required'],
+  [/\bmust be a valid\b|\bis invalid\b/u,'invalid_value'],
+  [/\bmust match\b|\bmust belong\b|\bmust be the exact\b/u,'contract_mismatch']
+ ];
+ const rule_code=rules.find(([pattern])=>pattern.test(message))?.[1]??'validator_rule_failed';
+ const locationStart=message.startsWith(root)?root.length:-1;
+ let schema_location=root;
+ if(locationStart>=0){
+  let suffix=message.slice(locationStart);
+  while(suffix){
+   const field=suffix.match(/^\.([A-Za-z][A-Za-z0-9_]*)/u);
+   const index=suffix.match(/^\[(\d{1,6})\]/u);
+   if(field&&validatorPathFields.has(field[1])){schema_location+=field[0];suffix=suffix.slice(field[0].length);continue;}
+   if(index){schema_location+=index[0];suffix=suffix.slice(index[0].length);continue;}
+   break;
+  }
+ }
+ return {rule_code,schema_location};
+}
 const nameOf = event => event.tool_name?.split('__').at(-1)?.replaceAll('_','.');
 const selectors = value => value && typeof value==='object' && Object.entries(value).some(([key,v])=>/^(?:context_handle|context_id|org_id|organization_id|tenant_id|role_id|installed_app_id|authorization|access_token|refresh_token)$/iu.test(key)||selectors(v));
 export function permission(event, state) {
@@ -137,7 +179,12 @@ export function observe(event,state) {
  };
  if(contextBound||listed||nested)collect(response);
  if(!['guard.status','read.installed','validate.installed'].includes(name))state.observed_document_digests=[...new Set([...(state.observed_document_digests??[]),...documentDigests(response)])];
- state.observations.push({tool:name, input:sanitized(event.tool_input), response:sanitized(response), scope_verified:!!state.handle, is_error:event.tool_response?.isError===true});
+ let retainedResponse=sanitized(response);
+ if(name==='validate.installed'){
+  const metadata=response?.valid===true?null:validationDiagnosticMetadata(event.tool_input?.mode,response?.diagnostic);
+  retainedResponse={valid:response?.valid===true,...(metadata?{diagnostic_metadata:metadata}:{})};
+ }
+ state.observations.push({tool:name, input:sanitized(event.tool_input), response:retainedResponse, scope_verified:!!state.handle, is_error:event.tool_response?.isError===true});
 }
 async function main() {
  const file=process.argv[2];const state=JSON.parse(await readFile(file,'utf8'));
