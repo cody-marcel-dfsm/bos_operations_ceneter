@@ -25,7 +25,8 @@ const generatedRoots = [
   `${root}/clients/codex/plugins/bos/skills`,
   `${root}/clients/claude/plugins/bos/skills`,
   `${root}/clients/copilot/products/bos/skills`,
-  `${root}/clients/gemini/extensions/bos/skills`
+  `${root}/clients/gemini/extensions/bos/skills`,
+  `${root}/clients/muse/plugins/bos/skills`
 ];
 
 const educationCenterRoots = [
@@ -35,6 +36,45 @@ const educationCenterRoots = [
   `${root}/clients/copilot/skills`,
   `${root}/clients/gemini/extensions/education-center/skills`
 ];
+
+test("every generated BOS transport frames null-schema POST as empty JSON and GET without a body", async () => {
+  const contextHandle = `bos_ctx_v2_${"f".repeat(64)}`;
+  for (const generatedRoot of generatedRoots) {
+    const runtime = await import(pathToFileURL(join(generatedRoot, "bos-workflow-orchestrator", "scripts", "journey-runtime-client.mjs")));
+    const dependency = await import(pathToFileURL(join(generatedRoot, "bos-external-dependency-adapter", "scripts", "external-dependency-adapter.mjs")));
+    const requests = [];
+    const adapter = dependency.createBosExternalDependencyAdapter({
+      hostTransport: {
+        captureExecutionScope: async () => async () => true,
+        verifyExecutionIntent: async () => true,
+        getProtectedResource: async () => "https://dfsm.ai/mcp/apps/bos/platform",
+        recoverAuthentication: async () => ({status: "READY"}),
+        request: async (request) => {requests.push(structuredClone(request)); return {status: 200, body: {status: "completed"}};}
+      },
+      contextProvider: {
+        getExecutionContextHeader: async () => "X-BOS-Context-Handle",
+        getCurrentContext: async () => ({contract_version: "bos-identity-mcp/v2", context: {
+          context_handle: contextHandle, organization_name: "Example Organization",
+          application_name: "Lead Director", installation_name: "Primary", role_label: "Operator", is_default: true
+        }})
+      }
+    });
+    for (const verb of ["start", "complete", "step", "failed"]) {
+      const action = {verb, method: "POST", href: `/bos/journeys/example/${verb}`, payload_schema: null};
+      const expected = {method: "POST", href: action.href, headers: {"content-type": "application/json", "X-BOS-Context-Handle": contextHandle}, body: "{}"};
+      assert.deepEqual(runtime.buildIdentityV2JourneyActionRequest(action, contextHandle), expected, generatedRoot);
+      await adapter.invokeReturnedAction(action);
+      assert.deepEqual(requests.at(-1), expected, generatedRoot);
+      await assert.rejects(adapter.invokeReturnedAction(action, {}), /cannot receive a caller payload/);
+    }
+    const state = {verb: "state", method: "GET", href: "/bos/journeys/example", payload_schema: null};
+    const expected = {method: "GET", href: state.href, headers: {"X-BOS-Context-Handle": contextHandle}, body: undefined};
+    assert.deepEqual(runtime.buildIdentityV2JourneyActionRequest(state, contextHandle), expected, generatedRoot);
+    await adapter.invokeStateAction(state);
+    assert.deepEqual(requests.at(-1), expected, generatedRoot);
+    assert.equal(requests.length, 5, generatedRoot);
+  }
+});
 
 test("generated Codex adapter invokes the bounded Gmail attachment contract", async () => {
   const generatedAdapter = await import(pathToFileURL(join(

@@ -93,12 +93,13 @@ its individual operation contacts. The legacy `api-contract` mode validates
 the actual `api.contract.get` response envelope. An individual identity-v2
 operation contact retains its parent Describe provenance and validation.
 
-The `lead-director.journeys.register` API contract advertises
-`lead-director-journey-registration/v1` for legacy register-and-start or
-`lead-director-journey-registration/v2` for separate compile and explicit start.
-Bind the advertised version to its exact `/api/v1/` or `/api/v2/` registration
-route and corresponding closed response schema. Consume fresh discovery; the
-service owns version selection and rollout. Cached v1 contracts remain usable.
+The `lead-director.journeys.register` API contract advertises the sole
+`lead-director-journey-registration/v1` API with compile and explicit signed
+start. Bind it to the freshly discovered exact `/api/v1/` registration route
+and complete closed response schema. All implemented registration, start,
+lifecycle, limits, recovery, and transport improvements belong to API v1.
+Capability availability is reported separately and never selects an API version.
+Public API version changes require the human user's explicit request.
 Validate that application-owned
 registration subtype through `api-contract`, preserving its raw BOSL schemas,
 limits, guarantees, execution contact, public errors, and private freshness.

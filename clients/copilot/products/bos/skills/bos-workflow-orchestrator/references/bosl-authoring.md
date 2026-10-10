@@ -48,18 +48,19 @@ identifier, execution identifier, authority selector, or idempotency key. A
 compile failure changes no definition. Correct its stable public findings and
 resubmit only when the user still wants the journey.
 
-For `lead-director-journey-registration/v2`, successful registration returns exactly `compiled: true`, the customer-defined
+For `lead-director-journey-registration/v1`, successful registration returns exactly `compiled: true`, the customer-defined
 `identity`, and `actions.start`. Registration compiles and installs the definition;
-execution begins only when the returned signed bodyless POST start action is
-invoked. Validate this response with `validateRegistrationResponse` and use
+execution begins only when the returned signed POST start action is invoked
+without caller payload. The BOS transport serializes exactly `{}` with JSON
+content type. Validate this response with `validateRegistrationResponse` and use
 `interpretJourneyResponse` to obtain that exact action. Correct a compile failure
 before resubmitting; it returns no lifecycle action.
 
-For `lead-director-journey-registration/v1`, registration retains its published
-register-and-start behavior. Interpret its returned authoritative lifecycle
-envelope directly; invoke only the exact action it returns. Bind each discovered
-registration version to its exact matching route and schema, and refresh
-discovery rather than constructing a different version route.
+API v1 contains the complete compile/register, explicit signed start and
+lifecycle semantics. Registration performs no implicit start. Consume fresh
+v1 discovery and preserve saved authoritative lifecycle envelopes for replay.
+Capability availability is independent from API version, and version changes
+require the human user's explicit request.
 
 For identity-v2, the BOS transport adapter attaches the current fresh opaque
 handle under the registration contract's discovered

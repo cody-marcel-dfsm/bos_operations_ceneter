@@ -134,6 +134,26 @@ test("native result requires every approved BOC-JRN-017 row and exact contract a
   assert.throws(() => validateNativeAcceptance(falseSuccess, schema), /AC-10\/invalid_bosl has incorrect HTTP status/u);
 });
 
+test("native lifecycle acceptance requires successful empty-JSON framing for null-schema POST", async () => {
+  const schema = JSON.parse(await readFile(schemaPath, "utf8"));
+  const accepted = approvedNativeResult();
+  for (const id of ["AC-12", "AC-15"]) {
+    const row = accepted.checks.find((check) => check.id === id);
+    for (const observation of row.observations.filter((item) => item.case.endsWith("empty_object"))) {
+      assert.equal(observation.response.http_status, 200);
+      assert.equal(observation.request.body_shape, "closed_empty_object");
+    }
+  }
+  const zeroByte = structuredClone(accepted);
+  zeroByte.checks.find((check) => check.id === "AC-12").observations
+    .find((item) => item.case === "start").request.body_shape = "none";
+  assert.throws(() => validateNativeAcceptance(zeroByte, schema), /AC-12\/start has incorrect body/u);
+  const obsoleteRejection = structuredClone(accepted);
+  obsoleteRejection.checks.find((check) => check.id === "AC-12").observations
+    .find((item) => item.case === "start_empty_object").response.http_status = 422;
+  assert.throws(() => validateNativeAcceptance(obsoleteRejection, schema), /incorrect HTTP status/u);
+});
+
 test("multi-call rows preserve every exact source, method, body, status, and schema result", async () => {
   const schema = JSON.parse(await readFile(schemaPath, "utf8"));
   const approved = approvedNativeResult();
@@ -169,10 +189,10 @@ test("multi-call rows preserve every exact source, method, body, status, and sch
     })),
     [
       { case: "creation_rate_limit", source: "discovered_contract", method: "POST", body_shape: "raw_bosl", http_status: 429, schema_validated: true },
-      { case: "active_capacity_start", source: "returned_action", method: "POST", body_shape: "none", http_status: 409, schema_validated: true },
+      { case: "active_capacity_start", source: "returned_action", method: "POST", body_shape: "closed_empty_object", http_status: 409, schema_validated: true },
       { case: "stoppable_choice_state", source: "returned_action", method: "GET", body_shape: "none", http_status: 200, schema_validated: true },
       { case: "user_selected_stop", source: "returned_action", method: "POST", body_shape: "returned_schema", http_status: 200, schema_validated: true },
-      { case: "start_after_stop", source: "returned_action", method: "POST", body_shape: "none", http_status: 200, schema_validated: true }
+      { case: "start_after_stop", source: "returned_action", method: "POST", body_shape: "closed_empty_object", http_status: 200, schema_validated: true }
     ]
   );
   assert.deepEqual(

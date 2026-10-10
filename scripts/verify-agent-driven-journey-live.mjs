@@ -51,10 +51,10 @@ export const CHECK_REQUIREMENTS = Object.freeze({
   "AC-09": ["registration_operation_discovered", "raw_bosl_submitted", "compiled_true", "same_identity_replay_authoritative", "no_public_internal_ids"],
   "AC-10": ["compile_failed_422", "actionable_diagnostics", "prior_definition_unchanged", "no_start_action"],
   "AC-11": ["information_read_only", "not_started", "bodyless_start_action", "no_execution_identifier"],
-  "AC-12": ["body_omitted", "content_type_omitted", "invalid_bodies_no_effect", "server_nodes_executed", "review_instruction_complete", "no_attendee_list_returned"],
+  "AC-12": ["empty_json_sent", "json_content_type", "invalid_bodies_no_effect", "server_nodes_executed", "review_instruction_complete", "no_attendee_list_returned"],
   "AC-13": ["approval_payload_only", "step_completed", "bodyless_step_action", "replay_no_duplicate_approval"],
   "AC-14": ["bodyless_step_followed", "sanctioned_send_server_owned", "show_send_result_instruction", "sanitized_failures", "no_provider_execution_by_client"],
-  "AC-15": ["body_omitted", "step_completed", "bodyless_step_action", "invalid_bodies_no_effect"],
+  "AC-15": ["empty_json_sent", "step_completed", "bodyless_step_action", "invalid_bodies_no_effect"],
   "AC-16": ["terminal_completed", "category_preserved", "sanitized_counts", "successful_send_at_least_one"],
   "AC-17": ["in_progress_202", "retry_interval_honored", "state_read_no_advance", "active_state_authoritative"],
   "AC-18": ["lost_response_replayed_exact_action", "effect_not_duplicated", "successor_only_next_action"],
@@ -124,13 +124,13 @@ export const OBSERVATION_REQUIREMENTS = Object.freeze({
   "AC-08a": [
     observation("artifact_constraints", "discovered_contract", "POST", "semantic_input", 200, true,
       ["csv_safe_encoding", "one_mib_limit", "five_active_objects_limit", "seventy_two_hour_ttl", "ten_contact_limit"]),
-    observation("byte_limit", "returned_action", "POST", "none", 200, true,
+    observation("byte_limit", "returned_action", "POST", "closed_empty_object", 200, true,
       ["each_limit_fails_before_creation"]),
-    observation("active_object_limit", "returned_action", "POST", "none", 200, true,
+    observation("active_object_limit", "returned_action", "POST", "closed_empty_object", 200, true,
       ["each_limit_fails_before_creation"]),
-    observation("ttl_limit", "returned_action", "POST", "none", 200, true,
+    observation("ttl_limit", "returned_action", "POST", "closed_empty_object", 200, true,
       ["each_limit_fails_before_creation"]),
-    observation("contact_limit", "returned_action", "POST", "none", 200, true,
+    observation("contact_limit", "returned_action", "POST", "closed_empty_object", 200, true,
       ["each_limit_fails_before_creation"])
   ],
   "AC-09": [
@@ -148,10 +148,10 @@ export const OBSERVATION_REQUIREMENTS = Object.freeze({
   "AC-11": [observation("execution_information", "discovered_contract", "GET", "none", 200, true,
     ["information_read_only", "not_started", "bodyless_start_action", "no_execution_identifier"])],
   "AC-12": [
-    observation("start", "returned_action", "POST", "none", 200, true,
-      ["body_omitted", "content_type_omitted", "server_nodes_executed", "review_instruction_complete", "no_attendee_list_returned"]),
-    observation("start_empty_object", "returned_action", "POST", "closed_empty_object", 422, true,
-      ["invalid_bodies_no_effect"]),
+    observation("start", "returned_action", "POST", "closed_empty_object", 200, true,
+      ["empty_json_sent", "json_content_type", "server_nodes_executed", "review_instruction_complete", "no_attendee_list_returned"]),
+    observation("start_empty_object", "returned_action", "POST", "closed_empty_object", 200, true,
+      ["empty_json_sent", "json_content_type"]),
     observation("start_json_null", "returned_action", "POST", "json_null", 422, true,
       ["invalid_bodies_no_effect"]),
     observation("start_arbitrary_body", "returned_action", "POST", "returned_schema", 422, true,
@@ -163,39 +163,39 @@ export const OBSERVATION_REQUIREMENTS = Object.freeze({
     observation("review_complete_replay", "returned_action", "POST", "returned_schema", 200, true,
       ["replay_no_duplicate_approval"])
   ],
-  "AC-14": [observation("send_step", "returned_action", "POST", "none", 200, true,
+  "AC-14": [observation("send_step", "returned_action", "POST", "closed_empty_object", 200, true,
     ["bodyless_step_followed", "sanctioned_send_server_owned", "show_send_result_instruction", "sanitized_failures", "no_provider_execution_by_client"])],
   "AC-15": [
-    observation("result_complete", "returned_action", "POST", "none", 200, true,
-      ["body_omitted", "step_completed", "bodyless_step_action"]),
-    observation("result_complete_empty_object", "returned_action", "POST", "closed_empty_object", 422, true,
-      ["invalid_bodies_no_effect"]),
+    observation("result_complete", "returned_action", "POST", "closed_empty_object", 200, true,
+      ["empty_json_sent", "step_completed", "bodyless_step_action"]),
+    observation("result_complete_empty_object", "returned_action", "POST", "closed_empty_object", 200, true,
+      ["empty_json_sent", "step_completed"]),
     observation("result_complete_json_null", "returned_action", "POST", "json_null", 422, true,
       ["invalid_bodies_no_effect"]),
     observation("result_complete_arbitrary_body", "returned_action", "POST", "returned_schema", 422, true,
       ["invalid_bodies_no_effect"])
   ],
-  "AC-16": [observation("final_step", "returned_action", "POST", "none", 200, true,
+  "AC-16": [observation("final_step", "returned_action", "POST", "closed_empty_object", 200, true,
     ["terminal_completed", "category_preserved", "sanitized_counts", "successful_send_at_least_one"])],
   "AC-17": [
-    observation("start_in_progress", "returned_action", "POST", "none", 202, true,
+    observation("start_in_progress", "returned_action", "POST", "closed_empty_object", 202, true,
       ["in_progress_202", "retry_interval_honored"]),
     observation("start_state_read", "returned_action", "GET", "none", 200, true,
       ["state_read_no_advance", "active_state_authoritative"]),
-    observation("step_in_progress", "returned_action", "POST", "none", 202, true,
+    observation("step_in_progress", "returned_action", "POST", "closed_empty_object", 202, true,
       ["in_progress_202", "retry_interval_honored"]),
     observation("step_state_read", "returned_action", "GET", "none", 200, true,
       ["state_read_no_advance", "active_state_authoritative"])
   ],
   "AC-18": [
-    observation("start_initial", "returned_action", "POST", "none", 200, true, ["lost_response_replayed_exact_action"]),
-    observation("start_replay", "returned_action", "POST", "none", 200, true, ["effect_not_duplicated", "successor_only_next_action"]),
+    observation("start_initial", "returned_action", "POST", "closed_empty_object", 200, true, ["lost_response_replayed_exact_action"]),
+    observation("start_replay", "returned_action", "POST", "closed_empty_object", 200, true, ["effect_not_duplicated", "successor_only_next_action"]),
     observation("complete_initial", "returned_action", "POST", "returned_schema", 200, true, ["lost_response_replayed_exact_action"]),
     observation("complete_replay", "returned_action", "POST", "returned_schema", 200, true, ["effect_not_duplicated", "successor_only_next_action"]),
     observation("failed_initial", "returned_action", "POST", "returned_schema", 200, true, ["lost_response_replayed_exact_action"]),
     observation("failed_replay", "returned_action", "POST", "returned_schema", 200, true, ["effect_not_duplicated", "successor_only_next_action"]),
-    observation("step_initial", "returned_action", "POST", "none", 200, true, ["lost_response_replayed_exact_action"]),
-    observation("step_replay", "returned_action", "POST", "none", 200, true, ["effect_not_duplicated", "successor_only_next_action"])
+    observation("step_initial", "returned_action", "POST", "closed_empty_object", 200, true, ["lost_response_replayed_exact_action"]),
+    observation("step_replay", "returned_action", "POST", "closed_empty_object", 200, true, ["effect_not_duplicated", "successor_only_next_action"])
   ],
   "AC-19": [
     observation("replacement_registration", "discovered_contract", "POST", "raw_bosl", 200, true, ["replacement_definition_current"]),
@@ -204,32 +204,32 @@ export const OBSERVATION_REQUIREMENTS = Object.freeze({
     observation("replacement_identity_read", "discovered_contract", "GET", "none", 200, true, ["identity_read_reports_replacement"])
   ],
   "AC-20": [
-    observation("missing_template_instruction", "returned_action", "POST", "none", 200, true, ["missing_template_instruction_published"]),
+    observation("missing_template_instruction", "returned_action", "POST", "closed_empty_object", 200, true, ["missing_template_instruction_published"]),
     observation("template_recommendation_permission", "native_host", "HOST", "none", 0, false, ["template_recommended", "permission_obtained"]),
     observation("template_create", "discovered_contract", "POST", "semantic_input", 200, true, ["create_operation_discovered"]),
-    observation("preserved_step_resume", "returned_action", "POST", "none", 200, true, ["preserved_step_resumed"])
+    observation("preserved_step_resume", "returned_action", "POST", "closed_empty_object", 200, true, ["preserved_step_resumed"])
   ],
   "AC-21": [
     observation("template_refusal", "native_host", "HOST", "none", 0, false, ["refusal_no_mutation"]),
     observation("template_change", "native_host", "HOST", "none", 0, false, ["changed_proposal_requires_new_permission"])
   ],
   "AC-22": [
-    observation("partial_send_failure", "returned_action", "POST", "none", 200, true, ["partial_failure_sanitized", "failure_caught"]),
-    observation("recovery_rematerialize", "returned_action", "POST", "none", 200, true, ["proven_successes_excluded"]),
+    observation("partial_send_failure", "returned_action", "POST", "closed_empty_object", 200, true, ["partial_failure_sanitized", "failure_caught"]),
+    observation("recovery_rematerialize", "returned_action", "POST", "closed_empty_object", 200, true, ["proven_successes_excluded"]),
     observation("recovery_approval", "returned_action", "POST", "returned_schema", 200, true, ["fresh_approval_required"]),
-    observation("final_send_failure", "returned_action", "POST", "none", 200, true, ["final_failure_terminal"])
+    observation("final_send_failure", "returned_action", "POST", "closed_empty_object", 200, true, ["final_failure_terminal"])
   ],
   "AC-23": [
-    observation("uncertain_send", "returned_action", "POST", "none", 202, true, ["uncertain_send_nonterminal", "send_not_replayed"]),
+    observation("uncertain_send", "returned_action", "POST", "closed_empty_object", 202, true, ["uncertain_send_nonterminal", "send_not_replayed"]),
     observation("uncertain_state", "returned_action", "GET", "none", 200, true, ["state_actions_only", "server_reconciles"]),
     observation("reconciled_state", "returned_action", "GET", "none", 200, true, ["server_reconciles", "send_not_replayed"])
   ],
   "AC-24": [
     observation("creation_rate_limit", "discovered_contract", "POST", "raw_bosl", 429, true, ["retry_after_exact", "no_registration_retry_scheduled"]),
-    observation("active_capacity_start", "returned_action", "POST", "none", 409, true, ["current_user_choices_only", "no_automatic_stop"]),
+    observation("active_capacity_start", "returned_action", "POST", "closed_empty_object", 409, true, ["current_user_choices_only", "no_automatic_stop"]),
     observation("stoppable_choice_state", "returned_action", "GET", "none", 200, true, ["current_user_choices_only", "exact_state_action_followed"]),
     observation("user_selected_stop", "returned_action", "POST", "returned_schema", 200, true, ["failed_code_user_stopped"]),
-    observation("start_after_stop", "returned_action", "POST", "none", 200, true, ["original_start_repeated"])
+    observation("start_after_stop", "returned_action", "POST", "closed_empty_object", 200, true, ["original_start_repeated"])
   ],
   "AC-25": [
     observation("expired_during_retention", "returned_action", "GET", "none", 410, true, ["expired_410_during_retention", "no_resume_action", "no_client_retry"]),

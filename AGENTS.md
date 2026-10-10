@@ -168,6 +168,21 @@ and the client-owned discovery design for detailed governance and acceptance.
   cache. Canonical Vault sources and timestamped manifests remain private local
   evidence.
 
+## Public API version request gate
+
+Creating, bumping, replacing, or splitting a public API version requires the
+human user's explicit request for that exact version change. Owner approval,
+general fix or release authorization, Oracle guidance, inferred compatibility,
+and pre-existing implementation never substitute for that request. Every Oracle
+must reject an unrequested API version change. Correct behavior and preserve
+authorized improvements within the current API version; behavior corrections
+never imply a new API version or a feature rollback. Package and build release
+numbers and identity-envelope protocols are distinct from public API versions.
+An explicit request authorizes its exact scope through ordinary independent
+proposal and completed-tree review, with automatic continuation after approval.
+This request gate takes precedence over generic protected-change approval rules;
+authentication and authorization owner-approval requirements remain independent.
+
 ## Oracle approval-process contract
 
 - Before any repository mutation, the ordinary workflow submits a concise

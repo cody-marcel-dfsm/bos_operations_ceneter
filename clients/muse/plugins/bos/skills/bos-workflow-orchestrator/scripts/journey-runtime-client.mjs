@@ -192,7 +192,7 @@ export function validateActionEnvelope(action, { lifecycleOnly = false } = {}) {
       throw new Error(`${action.verb} action must use ${expectedMethod}`);
     }
     if (["start", "step", "state"].includes(action.verb) && action.payload_schema !== null) {
-      throw new Error(`${action.verb} action must be bodyless`);
+      throw new Error(`${action.verb} action must declare no payload schema`);
     }
   }
   return action;
@@ -219,12 +219,13 @@ export function buildActionRequest(action, payload) {
   validateActionEnvelope(action);
   const supplied = arguments.length >= 2;
   if (action.payload_schema === null) {
-    if (supplied) throw new Error("bodyless action must not include a body");
+    if (supplied) throw new Error("action without a payload schema must not include a caller payload");
+    const emptyJsonPost = action.method === "POST";
     return {
       method: action.method,
       href: action.href,
-      headers: {},
-      body: undefined
+      headers: emptyJsonPost ? { "content-type": "application/json" } : {},
+      body: emptyJsonPost ? "{}" : undefined
     };
   }
   if (!supplied) throw new Error("action requires a body declared by payload_schema");

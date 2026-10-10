@@ -212,9 +212,44 @@ def _vault_evidence(root: Path, paths: list[str]) -> Path:
     return path
 
 
+def _validate_api_version_assessment(assessment: Any, verdict: str, root: Path | None = None, evidence: dict | None = None) -> None:
+    fields = {"impact", "request_kind", "requested_change", "request_quote", "request_evidence"}
+    if not isinstance(assessment, dict) or set(assessment) != fields:
+        raise OracleApprovalError("Oracle lacks the exact API version assessment")
+    impact, kind = assessment["impact"], assessment["request_kind"]
+    if impact == "NONE":
+        if kind != "NOT_REQUIRED" or any(assessment[field] is not None for field in fields - {"impact", "request_kind"}):
+            raise OracleApprovalError("Unchanged API version requires NOT_REQUIRED and null request fields")
+        return
+    if impact != "CHANGE" or kind not in {"EXPLICIT_REQUEST", "APPROVAL_ONLY", "MISSING"}:
+        raise OracleApprovalError("Oracle API version request classification is invalid")
+    for field in fields - {"impact", "request_kind"}:
+        if assessment[field] is not None and (not isinstance(assessment[field], str) or not assessment[field].strip()):
+            raise OracleApprovalError("API version request fields must be nonempty text or null")
+    if verdict == "APPROVED" and kind != "EXPLICIT_REQUEST":
+        raise OracleApprovalError("API version change requires the human explicit request; approval can never substitute")
+    if kind != "EXPLICIT_REQUEST":
+        return
+    if any(not assessment[field] for field in fields - {"impact", "request_kind"}):
+        raise OracleApprovalError("API version change lacks exact requested scope, direct quote or request evidence")
+    request_path = Path(assessment["request_evidence"])
+    if not request_path.is_absolute():
+        raise OracleApprovalError("API version request evidence must be an absolute supplied evidence path")
+    if root is not None:
+        supplied = {(Path(name) if Path(name).is_absolute() else root / name).resolve() for name in (evidence or {})}
+        if request_path.resolve() not in supplied:
+            raise OracleApprovalError("API version request evidence was not supplied through --evidence")
+        try:
+            text = request_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            raise OracleApprovalError("API version request evidence is unavailable") from exc
+        if assessment["request_quote"] not in text:
+            raise OracleApprovalError("Direct API version request quote does not match supplied evidence")
+
+
 def _shape(receipt: dict[str, Any]) -> dict[str, Any]:
-    required = {"schema_version","issuer","verdict","base_commit","candidate_tree","changed_paths","authority_digests","authentication_impact","owner_approval_status","validation_evidence","owner_approval_evidence","review_digest","approval_id"}
-    if set(receipt) != required: raise OracleApprovalError("Oracle receipt fields do not match the v1 contract")
+    required = {"schema_version","issuer","verdict","base_commit","candidate_tree","changed_paths","authority_digests","authentication_impact","owner_approval_status","validation_evidence","owner_approval_evidence","review_digest","approval_id","api_version_assessment"}
+    if set(receipt) != required: raise OracleApprovalError("Oracle receipt fields do not match the current review contract")
     payload = {k: v for k, v in receipt.items() if k != "approval_id"}
     if receipt["approval_id"] != _sha(_canonical(payload)): raise OracleApprovalError("Oracle approval receipt ID is invalid")
     if payload["schema_version"] != SCHEMA_VERSION or payload["issuer"] != ISSUER or payload["verdict"] != "APPROVED": raise OracleApprovalError("Oracle receipt identity is invalid")
@@ -223,6 +258,7 @@ def _shape(receipt: dict[str, Any]) -> dict[str, Any]:
     if impact == "AUTHENTICATION" and not payload["owner_approval_evidence"]: raise OracleApprovalError("Authentication receipt lacks owner evidence bytes")
     if impact == "NONE" and status != "NOT_REQUIRED": raise OracleApprovalError("Non-authentication receipt has invalid owner status")
     if impact not in {"AUTHENTICATION", "NONE"}: raise OracleApprovalError("Oracle receipt lacks authentication classification")
+    _validate_api_version_assessment(payload["api_version_assessment"], payload["verdict"])
     return payload
 
 def _read_local(root: Path) -> tuple[dict[str, Any], bytes]:
@@ -240,6 +276,7 @@ def verify_staged(root: Path) -> tuple[dict[str, Any], bytes]:
     if payload["authority_digests"] != _authorities(root, tree): raise OracleApprovalError("Oracle authority binding is invalid")
     evidence = payload["validation_evidence"]
     if not isinstance(evidence, dict) or evidence != _files(root, list(evidence)): raise OracleApprovalError("Oracle validation evidence changed")
+    _validate_api_version_assessment(payload["api_version_assessment"], payload["verdict"], root, evidence)
     owner = payload["owner_approval_evidence"]
     if owner is not None and (not isinstance(owner, dict) or owner != _files(root, list(owner))): raise OracleApprovalError("Oracle owner evidence changed")
     for name in evidence:
@@ -259,7 +296,8 @@ def verify_staged(root: Path) -> tuple[dict[str, Any], bytes]:
 def _oracle(root: Path, tree: str, paths: list[str], evidence: dict[str,str], owner: dict[str,str] | None) -> dict[str,Any]:
     request = {"candidate_tree": tree, "changed_paths": paths, "validation_evidence": evidence, "owner_approval_evidence": owner}
     prompt = f"""You are the independent BOS Operations Center Oracle approval process.
-Read .agents/skills/oracle/SKILL.md completely and wear that approver skill. Read AGENTS.md and all required private Vault authority. Read the hash-bound oracle-inputs.json, candidate.diff and vault-query.json evidence as prepared navigation; inspect the full git diff --cached, canonical authorities, current issue history and all validation evidence read-only. Prepared retrieval never narrows review coverage. Only this process issues Oracle warnings and verdicts. Return JSON matching the supplied schema. Classify authentication_impact as AUTHENTICATION or NONE. An APPROVED authentication review requires owner_approval_status APPROVED. A REJECTED authentication review may report APPROVED, MISSING, or INVALID. A NONE review uses NOT_REQUIRED. Only APPROVED with no findings can issue a receipt.\n{json.dumps(request, indent=2, sort_keys=True)}"""
+Read .agents/skills/oracle/SKILL.md completely and wear that approver skill. Read AGENTS.md and all required private Vault authority. Read the hash-bound oracle-inputs.json, candidate.diff and vault-query.json evidence as prepared navigation; inspect the full git diff --cached, canonical authorities, current issue history and all validation evidence read-only. Prepared retrieval never narrows review coverage. Only this process issues Oracle warnings and verdicts. Creating, bumping, replacing, or splitting a public API version requires the human user's explicit request for that exact version change. Owner approval, general fix/release authorization, inferred compatibility, pre-existing implementation, and Oracle guidance never substitute. Correct behavior and preserve authorized improvements in the current API version; package/build patches and identity-envelope protocols are distinct. Independently classify api_version_assessment: NONE requires NOT_REQUIRED and all request fields null; CHANGE requires EXPLICIT_REQUEST for APPROVED, exact requested_change, verbatim direct-user request_quote, and an absolute request_evidence path supplied through --evidence containing that quote. Independently inspect human provenance, context, exact scope and refusals; an agent assertion or approval-only statement is insufficient. Reject unrequested API version changes. An exact explicit request authorizes continuation through ordinary independent review without repeated owner approval. Authentication classification and owner approval remain separate.
+Return JSON matching the supplied schema. Classify authentication_impact as AUTHENTICATION or NONE. An APPROVED authentication review requires owner_approval_status APPROVED. A REJECTED authentication review may report APPROVED, MISSING, or INVALID. A NONE review uses NOT_REQUIRED. Only APPROVED with no findings can issue a receipt.\n{json.dumps(request, indent=2, sort_keys=True)}"""
     return _review_process(root, prompt, "reviewer")
 
 def _proposal_oracle(root: Path, request: str, evidence: dict[str,str], owner: dict[str,str] | None) -> dict[str,Any]:
@@ -271,7 +309,8 @@ def _proposal_oracle(root: Path, request: str, evidence: dict[str,str], owner: d
     prompt = f"""You are the independent BOS Operations Center Oracle proposal-review process.
 Read .agents/skills/oracle/SKILL.md completely and wear that approver skill. Read AGENTS.md and all required private Vault authority. Review the proposed solution before implementation using current filesystem evidence. Operate read-only: do not edit, stage, commit, deploy, write an approval receipt, or treat this proposal verdict as completed-tree approval.
 
-Return JSON matching the supplied schema. Verify the stated problem and cause, classify authentication_impact as AUTHENTICATION or NONE, and reject architectural invention or a service/API-contract change presented as a client fix. Restoration of already-approved behavior may reuse exact existing owner approval; a genuinely new or changed authentication design, public API contract, or architecture requires exact owner approval and must be REJECTED with owner_approval_status MISSING or INVALID when that evidence is absent. An approved proposal allows the ordinary workflow to continue automatically within the user's existing task authorization; completed-tree Oracle review remains mandatory after implementation. Every finding must state concise Problem, Cause, and Recommended change sections with no more than three sentences each.
+Creating, bumping, replacing, or splitting a public API version requires the human user's explicit request for that exact version change. Owner approval, general fix/release authorization, inferred compatibility, pre-existing implementation, and Oracle guidance never substitute. Correct behavior and preserve authorized improvements in the current API version; package/build patches and identity-envelope protocols are distinct. Independently classify api_version_assessment: NONE requires NOT_REQUIRED and all request fields null; CHANGE requires EXPLICIT_REQUEST for APPROVED, exact requested_change, verbatim direct-user request_quote, and an absolute request_evidence path supplied through --evidence containing that quote. Independently inspect human provenance, context, exact scope and refusals; an agent assertion or approval-only statement is insufficient. Reject unrequested API version changes. An exact explicit request authorizes continuation through ordinary independent review without repeated owner approval. Authentication classification and owner approval remain separate.
+Return JSON matching the supplied schema. Verify the stated problem and cause, classify authentication_impact as AUTHENTICATION or NONE, and reject architectural invention or a service/API-contract change presented as a client fix. Restoration of already-approved behavior may reuse exact existing owner approval; outside the explicit API-version request gate, a genuinely new or changed authentication design, public API contract, or architecture requires exact owner approval and must be REJECTED with owner_approval_status MISSING or INVALID when that evidence is absent. An approved proposal allows the ordinary workflow to continue automatically within the user's existing task authorization; completed-tree Oracle review remains mandatory after implementation. Every finding must state concise Problem, Cause, and Recommended change sections with no more than three sentences each.
 {json.dumps(payload, indent=2, sort_keys=True)}"""
     return _review_process(root, prompt, "proposal_reviewer")
 
@@ -287,6 +326,7 @@ def review_proposal(root: Path, request: str, evidence_paths: Sequence[str], own
     _assert_binding(root, binding, evidence, owner)
     if review.get("verdict") not in {"APPROVED", "REJECTED"}:
         raise OracleApprovalError("Independent Oracle proposal review returned no verdict")
+    _validate_api_version_assessment(review.get("api_version_assessment"), review["verdict"], root, evidence)
     payload = {
         "schema_version": SCHEMA_VERSION,
         "issuer": ISSUER,
@@ -337,6 +377,7 @@ def verify_proposal(root: Path) -> dict:
         raise OracleApprovalError("Oracle proposal evidence changed")
     if owner is not None and (not isinstance(owner, dict) or owner != _files(root, list(owner))):
         raise OracleApprovalError("Oracle proposal owner evidence changed")
+    _validate_api_version_assessment(review.get("api_version_assessment"), review["verdict"], root, evidence)
     if impact == "AUTHENTICATION" and not owner:
         raise OracleApprovalError("Oracle proposal lacks owner evidence")
     return {"verdict": "APPROVED", "base_commit": record["base_commit"],
@@ -379,11 +420,12 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
     if review.get("verdict") != "APPROVED" or review.get("findings"):
         detail = "; ".join(str(item.get("message", "blocking finding")) for item in review.get("findings", []))
         raise OracleApprovalError("Independent Oracle rejected the candidate" + (f": {detail}" if detail else ""))
+    _validate_api_version_assessment(review.get("api_version_assessment"), review["verdict"], root, evidence)
     impact, status = review.get("authentication_impact"), review.get("owner_approval_status")
     if impact == "AUTHENTICATION" and status != "APPROVED": raise OracleApprovalError("Authentication candidate lacks owner approval")
     if impact == "AUTHENTICATION" and not owner: raise OracleApprovalError("Authentication candidate lacks owner evidence bytes")
     if impact == "NONE" and status != "NOT_REQUIRED": raise OracleApprovalError("Non-authentication candidate has invalid owner status")
-    payload = {"schema_version":SCHEMA_VERSION,"issuer":ISSUER,"verdict":"APPROVED","base_commit":base,"candidate_tree":tree,"changed_paths":paths,"authority_digests":authorities,"authentication_impact":impact,"owner_approval_status":status,"validation_evidence":evidence,"owner_approval_evidence":owner,"review_digest":_sha(_canonical(review))}
+    payload = {"schema_version":SCHEMA_VERSION,"issuer":ISSUER,"verdict":"APPROVED","base_commit":base,"candidate_tree":tree,"changed_paths":paths,"authority_digests":authorities,"authentication_impact":impact,"owner_approval_status":status,"validation_evidence":evidence,"owner_approval_evidence":owner,"review_digest":_sha(_canonical(review)),"api_version_assessment":review["api_version_assessment"]}
     receipt = dict(payload, approval_id=_sha(_canonical(payload)))
     path = receipt_path(root)
     _atomic_write(path, _pretty(receipt))

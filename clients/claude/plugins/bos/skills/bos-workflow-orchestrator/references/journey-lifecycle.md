@@ -15,32 +15,37 @@ product, and presentation never receive or store the handle. Registration uses
 the same current handle through its discovered deterministic HTTPS contract.
 Legacy/v1 actions remain header-free through `buildActionRequest`.
 
-For `payload_schema: null`, send no body and omit `Content-Type`. JSON `null`
-and `{}` are bodies and are invalid. A non-lifecycle operation whose schema is
-a closed empty object receives exactly `{}`. For a declared lifecycle payload,
-send only fields accepted by that schema.
+For `payload_schema: null`, supply no caller payload. The BOS transport sends
+POST actions as exactly `{}` with `Content-Type: application/json`; GET actions
+send no body and omit `Content-Type`. The service also accepts an empty POST
+body, while the client uses empty JSON to provide explicit request framing.
+JSON `null`, arrays, scalars, nonempty objects, and caller-supplied lifecycle
+payloads remain invalid. A non-lifecycle operation whose schema is a closed
+empty object receives exactly `{}`. For a declared lifecycle payload, send only
+fields accepted by that schema.
 
-Registration contract v2 success has exactly `compiled: true`, `identity`, and
-`actions: {start: <returned action>}`. Invoke that exact signed bodyless POST
+Registration API v1 success has exactly `compiled: true`, `identity`, and
+`actions: {start: <returned action>}`. Invoke that exact signed POST without
+caller payload
 `actions.start` through the context-binding adapter to begin execution.
 Registration itself performs no journey work. A compile failure has no action;
 correct its public findings before resubmitting. The runtime interpreter returns
-`invoke_action` for successful v2 registration and `correct_bosl` for compile failure.
-Registration contract v1 retains register-and-start and returns its authoritative
-lifecycle envelope directly. Follow that envelope without replaying start; cached
-v1 contracts remain compatible. Registration version and authentication identity
-version are separate contracts.
+`invoke_action` for successful v1 registration and `correct_bosl` for compile failure.
+API v1 includes all implemented lifecycle behavior and performs no implicit
+start during registration. Retained authoritative lifecycle envelopes remain
+interpretable for saved executions and replay. API versions, authentication
+identity protocols, and package release numbers are separate contracts.
 
 The service owns progress:
 
-- `not_started`: invoke the returned bodyless `start`;
+- `not_started`: invoke the returned `start` without caller payload;
 - `awaiting_client`: satisfy the current instruction, then use its exact
   `complete` or `failed` action;
 - `client_action_required`: validate the published public `error` and separate
   closed `resolution`, resolve only `resolution.goal` through current
   discovery, respect its approval scope, then invoke
   `resolution.after_success` verbatim;
-- `step_completed` and `failure_caught`: invoke the returned bodyless `step`;
+- `step_completed` and `failure_caught`: invoke the returned `step` without caller payload;
 - `in_progress`: wait the exact `retry_after_seconds`, invoke the sole exact returned `state` action
   as a bodyless GET, and continue until BOS returns an instruction or terminal
   result; and
@@ -58,7 +63,7 @@ no resume action. A later scoped not-found result supplies no deletion inference
 
 For active capacity, present only returned current-user stoppable choices,
 obtain the user's selection, read its exact state action, use the returned
-`failed` action with `user_stopped`, then repeat the original bodyless `start`.
+`failed` action with `user_stopped`, then repeat the original `start` without caller payload.
 Never stop work automatically. For creation rate limiting, verify HTTP
 `Retry-After` equals `retry_after_seconds`, show the local eligible time, and
 end the attempt. Only a later explicit user request can refresh discovery and
