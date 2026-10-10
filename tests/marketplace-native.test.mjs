@@ -121,7 +121,7 @@ test('only the configured full-inventory case receives the longer bounded review
  assert.equal(reviewerTurnTimeoutMs({}),300000);
  for(const value of [0,299999,600000,900001,'900000'])assert.throws(()=>reviewerTurnTimeoutMs({reviewer_timeout_ms:value}),/reviewer_turn_timeout_invalid/);
 });
-test('retained case diagnostics identify failures while removing credentials and private selectors',()=>{
+test('retained case diagnostics bound failure reasons while removing credentials and private selectors',()=>{
  const diagnostic=caseDiagnostics({reason:'Missing source for reader@example.invalid; Bearer credential-value; https://example.invalid/recover?dependency_token=private-value; bos_ctx_v2_'+ 'a'.repeat(64)+'; 00000000-0000-0000-0000-000000000001'}, {missing:['Missing contract provenance','x'.repeat(3000)]},[
   {tool:'bos_https_describe',is_error:true,response:{reason:'reviewer_document_not_observed'}},
   {tool:'validate.installed',response:{valid:false,diagnostic:'credential-value'}},
@@ -132,6 +132,16 @@ test('retained case diagnostics identify failures while removing credentials and
  assert.equal(diagnostic.evaluation_missing[0],'Missing contract provenance');
  assert.equal(diagnostic.evaluation_missing[1].length,2000);
  assert.deepEqual(diagnostic.failed_steps,[{tool:'bos_https_describe',reason:'reviewer_document_not_observed'},{tool:'validate.installed',reason:'reviewer_validation_failed'}]);
+ const validationModes=caseDiagnostics({}, {},[],undefined,undefined,undefined,{'app-describe:private-digest':true,'operation-describe:another-private-digest':true,'not-a-validator:private-digest':true,'api-contract:ignored-false':false});
+ assert.deepEqual(validationModes.failed_validation_modes,['app-describe','operation-describe']);
+ assert.doesNotMatch(JSON.stringify(validationModes),/private-digest|another-private/);
+});
+test('failed business reads retain only allowlisted reviewer error diagnostics',()=>{
+ const diagnostic=caseDiagnostics({}, {},[
+  {tool:'bos_https_operation',input:{contact_id:'doc_private',payload:{email:'person@example.invalid'}},is_error:true,response:{reason:'reviewer_tool_failed',error_diagnostic:{error_category:'network_error',error_code_present:true,error_code:'ECONNRESET'}}}
+ ]);
+ assert.deepEqual(diagnostic.failed_steps,[{tool:'bos_https_operation',reason:'reviewer_tool_failed',error_diagnostic:{error_category:'network_error',error_code_present:true,error_code:'ECONNRESET'}}]);
+ assert.doesNotMatch(JSON.stringify(diagnostic),/doc_private|person@example/);
 });
 test('HTTPS Describe diagnostics retain public operation names and omit private document and scope data',()=>{
  const observed=[
@@ -157,6 +167,15 @@ test('validator selection diagnostics retain only supported modes and boolean do
   {tool:'acceptance_validate_installed',reason:'reviewer_document_not_observed',validation_mode:'unsupported'}
  ]);
  assert.doesNotMatch(JSON.stringify(result),/private-/);
+});
+test('failed published-validator observations retain only bounded rule codes and canonical schema locations',()=>{
+ const state={observations:[],observed_document_digests:[],failed_validations:{},validated_contracts:{}};
+ const raw='Error: plugins.list response.plugins[1].readiness.requirements[0].requirements has undeclared field private_customer; value=Bearer private-token\n    at /private/customer/path';
+ observe({tool_name:'mcp__Acceptance__validate_installed',tool_input:{mode:'plugins',document:{plugins:[]}},tool_response:{valid:false,diagnostic:raw}},state);
+ assert.deepEqual(state.observations[0].response,{valid:false,diagnostic_metadata:{rule_code:'undeclared_field',schema_location:'plugins.list response.plugins[1].readiness.requirements[0].requirements'}});
+ assert.doesNotMatch(JSON.stringify(state),/private_customer|private-token|customer\/path|Bearer/);
+ const receipt=caseDiagnostics({}, {},state.observations);
+ assert.deepEqual(receipt.failed_steps,[{tool:'validate.installed',reason:'reviewer_validation_failed',validation_mode:'plugins',document_is_json_schema:false,document_has_execution_contract:false,document_has_operation_envelope:false,validation_diagnostic:{rule_code:'undeclared_field',schema_location:'plugins.list response.plugins[1].readiness.requirements[0].requirements'}}]);
 });
 test('actor scope proof contains only actual public preflight labels and a strict verification flag',async()=>{
  const {publicReviewerScope}=await import('../scripts/marketplace-native-run.mjs');
@@ -415,11 +434,19 @@ test('failed native receipts retain only completed session and binding proofs wi
 });
 
 test('aggregate diagnostics preserve bounded failure categories and reject arbitrary error strings',async()=>{
- const {reviewerObservationFailures,reviewerFailureCode}=await import('../scripts/marketplace-reviewer-diagnostics.mjs');
- assert.deepEqual(reviewerObservationFailures([{is_error:true,response:{reason:'reviewer_validator_mode_unsupported'}},{is_error:true,response:{reason:'reviewer_validator_mode_unsupported'}},{is_error:true,response:{reason:'token private secret'}},{response:{valid:false,diagnostic:'private secret'}}]),['reviewer_validator_mode_unsupported','reviewer_tool_failed','reviewer_validation_failed']);
+ const {reviewerObservationFailures,reviewerFailureCode,reviewerErrorDiagnostic,reviewerErrorMetadata}=await import('../scripts/marketplace-reviewer-diagnostics.mjs');
+ assert.deepEqual(reviewerObservationFailures([{is_error:true,response:{reason:'reviewer_validator_mode_unsupported'}},{is_error:true,response:{reason:'reviewer_validator_mode_unsupported'}},{is_error:true,response:{reason:'reviewer_app_description_validation_missing'}},{is_error:true,response:{reason:'reviewer_app_description_validation_mismatch'}},{is_error:true,response:{reason:'reviewer_prior_validation_failed'}},{is_error:true,response:{reason:'token private secret'}},{response:{valid:false,diagnostic:'private secret'}}]),['reviewer_validator_mode_unsupported','reviewer_app_description_validation_missing','reviewer_app_description_validation_mismatch','reviewer_prior_validation_failed','reviewer_tool_failed','reviewer_validation_failed']);
  assert.equal(reviewerFailureCode(new Error('reviewer_describe_response_invalid')),'reviewer_describe_response_invalid');
  assert.equal(reviewerFailureCode(new Error('reviewer_describe_response_invalid secret')),'reviewer_tool_failed');
  assert.equal(reviewerFailureCode({code:'reviewer_model_output_invalid'}),'reviewer_model_output_invalid');
+ assert.deepEqual(reviewerErrorDiagnostic(new Error('The BOS dependency transport failed')),{error_category:'reviewer_error',error_code_present:true,error_code:'bos_dependency_transport_failed'});
+ const adapterError=new Error('private adapter message');adapterError.name='BosDependencyAdapterError';
+ assert.deepEqual(reviewerErrorDiagnostic(adapterError),{error_category:'reviewer_error',error_code_present:true,error_code:'bos_dependency_adapter_error'});
+ assert.deepEqual(reviewerErrorDiagnostic(new TypeError('private schema value')),{error_category:'reviewer_error',error_code_present:true,error_code:'bos_request_validation_error'});
+ assert.deepEqual(reviewerErrorDiagnostic(new TypeError('discovered operation request does not match the immutable public schema')),{error_category:'reviewer_error',error_code_present:true,error_code:'bos_discovered_request_schema_mismatch'});
+ assert.deepEqual(reviewerErrorDiagnostic(new TypeError('returned action payload does not match payload_schema')),{error_category:'reviewer_error',error_code_present:true,error_code:'bos_discovered_payload_schema_mismatch'});
+ assert.deepEqual(reviewerErrorMetadata({error_category:'reviewer_error',error_code_present:true,error_code:'bos_discovered_request_schema_mismatch',operation:'calendar_search_events',method:'GET',payload_supplied:true,payload_schema_status:'invalid',payload_schema_error_count:2,payload_schema_keywords:['required','private-arbitrary','type'],http_status:422,content_type_category:'json',response_body_is_object:true,response_body_error_present:true,response_body_result_present:false,output_schema_valid:false,private_value:'do-not-retain'}),{error_category:'reviewer_error',error_code_present:true,error_code:'bos_discovered_request_schema_mismatch',operation:'calendar_search_events',method:'GET',payload_supplied:true,payload_schema_status:'invalid',payload_schema_error_count:2,payload_schema_keywords:['required','type'],http_status:422,content_type_category:'json',response_body_is_object:true,response_body_error_present:true,response_body_result_present:false,output_schema_valid:false});
+ assert.deepEqual(reviewerErrorDiagnostic(new Error('private arbitrary error')),{error_category:'unrecognized_error',error_code_present:false});
 });
 
 
@@ -492,4 +519,12 @@ test('reviewer instructions require validated HTTPS Describe before schema compa
  assert.match(apiContractReviewerGuidance,/app-level app\.describe resource and semantic app\.describe operation are never operation-level HTTPS evidence/i);
  assert.match(apiContractReviewerGuidance,/required or optional fields, effects, bounds, limits, pagination, or errors/i);
  assert.ok(runner.indexOf('instructions:apiContractReviewerGuidance+')<runner.indexOf('acceptance_compare_schemas compares retained schema pointers'));
+});
+
+test('My CRM positive-1 interprets null HTTP transport from its validated execution contract',()=>{
+ const context=JSON.parse(reviewerInstructionsForCase(JSON.stringify({product:'my-crm',instructions:'Base instructions'}),{product:'my-crm',id:'positive-1'}));
+ assert.match(context.instructions,/execution\.transport:null with a non-null HTTP method and URI as HTTP execution/);
+ assert.match(context.instructions,/use each exact advertised contact_id with bos_https_operation/);
+ const unrelated=JSON.parse(reviewerInstructionsForCase(JSON.stringify({product:'my-crm',instructions:'Base instructions'}),{product:'my-crm',id:'positive-2'}));
+ assert.doesNotMatch(unrelated.instructions,/transport:null/);
 });

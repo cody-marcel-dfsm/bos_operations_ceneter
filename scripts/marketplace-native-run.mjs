@@ -157,9 +157,13 @@ export function httpsDescribeCoverage(observed=[]) {
   failed_parent_validations:validations.filter(row=>row.response?.valid!==true||row.is_error).length
  };
 }
-export function caseDiagnostics(result,judgment,observed,fixtureAssertions,item,resource) {
+export function caseDiagnostics(result,judgment,observed,fixtureAssertions,item,resource,failedValidations={}) {
  const controlFailure=row=>{
   const operation=reviewerDiagnosticControl(row.input?.tool_name??row.input?.operation??row.control_operation??row.response?.control_operation);
+  if(row.tool==='bos_https_operation'){
+   const diagnostic=row.error_diagnostic??row.response?.error_diagnostic;
+   return diagnostic?{error_diagnostic:reviewerErrorMetadata(diagnostic)}:{};
+  }
   if(!['bos.execute','bos_control_discover'].includes(row.tool)||!operation)return {};
   const diagnostic=row.error_diagnostic??row.response?.error_diagnostic;
   return {control_operation:operation,...(diagnostic?{error_diagnostic:reviewerErrorMetadata(diagnostic)}:{})};
@@ -169,9 +173,10 @@ export function caseDiagnostics(result,judgment,observed,fixtureAssertions,item,
   const mode=installedValidatorModes.includes(row.input.mode)?row.input.mode:'unsupported';
   const original=row.input.document;
   const document=mode==='api-contract'?original?.response:mode==='service-journey'?original?.description:original;
-  return {validation_mode:mode,...(document&&typeof document==='object'&&!Array.isArray(document)?{document_is_json_schema:Object.hasOwn(document,'$schema')||(Object.hasOwn(document,'properties')&&['object','array','string','number','integer','boolean','null'].includes(document.type)),document_has_execution_contract:!!document.execution&&typeof document.execution==='object',document_has_operation_envelope:Array.isArray(document.operations)}:{})};
+  return {validation_mode:mode,...(document&&typeof document==='object'&&!Array.isArray(document)?{document_is_json_schema:Object.hasOwn(document,'$schema')||(Object.hasOwn(document,'properties')&&['object','array','string','number','integer','boolean','null'].includes(document.type)),document_has_execution_contract:!!document.execution&&typeof document.execution==='object',document_has_operation_envelope:Array.isArray(document.operations)}:{}),...(row.response?.diagnostic_metadata?{validation_diagnostic:row.response.diagnostic_metadata}:{})};
  };
  const describeCoverage=httpsDescribeCoverage(observed);
+ const failedValidationModes=[...new Set(Object.entries(failedValidations??{}).filter(([,failed])=>failed===true).map(([key])=>key.split(':',1)[0]).filter(mode=>installedValidatorModes.includes(mode)))].sort();
  const execution=judgment.execution_diagnostics;
  const evaluationExecution=execution?nativeExecutionDiagnostics({code:execution.exit_code,signal:execution.exit_signal,...Object.fromEntries(['elapsed_ms','stderr_bytes_retained','stderr_truncated','stderr_classification'].map(key=>[key,execution[key]]))}):undefined;
  const campResponses=item?.product==='education-center'&&item.id==='positive-3'?observed.filter(row=>row?.tool==='bos.execute'&&row.input?.tool_name==='education_center_get_camp_roster_report').map(row=>{
@@ -193,7 +198,7 @@ export function caseDiagnostics(result,judgment,observed,fixtureAssertions,item,
    recovery_route_matches:authorizationRows.some(value=>value.authorization_kind==='api_key'&&value.authorization_status==='configuration_required'&&value.secure_recovery_route_valid),
    expected_error_match:expectedErrorObservation(item,row,resource)};
  }):undefined;
- return {completion_reason:diagnosticText(result.reason),evaluation_missing:(judgment.missing??[]).slice(0,32).map(diagnosticText),failed_steps:observed.filter(row=>row.is_error||row.response?.valid===false).slice(0,32).map(row=>({tool:reviewerDiagnosticTool(row.tool),reason:item?.product==='education-center'&&item.id==='positive-3'&&expectedErrorObservation(item,row,resource)?'expected_provider_configuration':row.response?.valid===false?'reviewer_validation_failed':reviewerFailureCode({code:row.response?.reason}),...selection(row),...controlFailure(row)})),...(campResponses?.length?{camp_response:campResponses}:{}),...(evaluationExecution?{evaluation_execution:evaluationExecution}:{}),...(describeCoverage.requested_operations.length||describeCoverage.returned_operations.length||describeCoverage.successful_parent_validations||describeCoverage.failed_parent_validations?{https_describe_coverage:describeCoverage}:{}),...(fixtureAssertions?{fixture_assertions:fixtureAssertions}:{})};
+ return {completion_reason:diagnosticText(result.reason),evaluation_missing:(judgment.missing??[]).slice(0,32).map(diagnosticText),failed_steps:observed.filter(row=>row.is_error||row.response?.valid===false).slice(0,32).map(row=>({tool:reviewerDiagnosticTool(row.tool),reason:item?.product==='education-center'&&item.id==='positive-3'&&expectedErrorObservation(item,row,resource)?'expected_provider_configuration':row.response?.valid===false?'reviewer_validation_failed':reviewerFailureCode({code:row.response?.reason}),...selection(row),...controlFailure(row)})),...(failedValidationModes.length?{failed_validation_modes:failedValidationModes}:{}),...(campResponses?.length?{camp_response:campResponses}:{}),...(evaluationExecution?{evaluation_execution:evaluationExecution}:{}),...(describeCoverage.requested_operations.length||describeCoverage.returned_operations.length||describeCoverage.successful_parent_validations||describeCoverage.failed_parent_validations?{https_describe_coverage:describeCoverage}:{}),...(fixtureAssertions?{fixture_assertions:fixtureAssertions}:{})};
 }
 export function classifyCompletion(kind,status,reasons) {
  const failures=[...reasons];
@@ -230,6 +235,7 @@ export function reviewerToolsForCase(item, tools) {
 }
 export function reviewerInstructionsForCase(baseInstructions, item) {
  const context=JSON.parse(baseInstructions);
+ if(item?.product==='my-crm'&&item.id==='positive-1')context.instructions+=' For My CRM positive-1, the validated operation Describe contract defines execution.transport:null with a non-null HTTP method and URI as HTTP execution; execution.transport:"journey_runtime" is a distinct runtime mode. A null transport value alone does not mean an operation is unavailable. For the required calendar and CRM reads, use each exact advertised contact_id with bos_https_operation and its returned payload schema. Do not stop because HTTP execution declares transport:null; stop only when the validated execution declaration, readiness, or an actual operation response establishes that a required read is unavailable.';
  if(item?.product==='education-center'&&item.metadata_only){
   const operation=item.metadata_tool_name;
   if(typeof operation!=='string'||!/^education_center_[a-z0-9_]+$/.test(operation))throw new Error('education_metadata_tool_invalid');
@@ -297,7 +303,7 @@ export function failedNativeCaseReceipt(base, session, bindingVerified, error, e
 export function partialCaseDiagnostics(state, error) {
  const observed=Array.isArray(state?.observations)?state.observations:[];
  const counts={};for(const row of observed){const tool=reviewerDiagnosticTool(row.tool);counts[tool]=Math.min(100000,(counts[tool]??0)+1);}
- const diagnostics=caseDiagnostics({}, {},observed);
+ const diagnostics=caseDiagnostics({}, {},observed,undefined,undefined,undefined,state?.failed_validations);
  const coverage=diagnostics.https_describe_coverage;
  const boundedCoverage=coverage?{...coverage,
   requested_operations:coverage.requested_operations.slice(0,32),returned_operations:coverage.returned_operations.slice(0,32),
@@ -306,6 +312,7 @@ export function partialCaseDiagnostics(state, error) {
  return {partial:true,grading_attempted:state?.grading_attempted===true,observed_count:Math.min(100000,observed.length),
   failed_observation_count:Math.min(100000,observed.filter(row=>row.is_error||row.response?.valid===false).length),
   known_tool_counts:counts,failed_steps:diagnostics.failed_steps,
+  ...(diagnostics.failed_validation_modes?{failed_validation_modes:diagnostics.failed_validation_modes}:{}),
    ...(Array.isArray(state?.resource_read_diagnostics)&&state.resource_read_diagnostics.length?{resource_read_diagnostics:state.resource_read_diagnostics.slice(0,8)}:{}),
   ...(boundedCoverage?{https_describe_coverage:boundedCoverage}:{}),
   ...(error?.reviewer_diagnostics?{model_execution:reviewerModelDiagnostics(error.reviewer_diagnostics)}:{})};
@@ -366,7 +373,7 @@ export async function nativeCase(catalog,item,config,release,model) {
   const safeDenialReasons=new Set(['guard_canary_denied','guard_canary_required','negative_case_business_call','wrong_scope','reviewer_scope_required','undiscovered_resource','wrong_server','unapproved_tool','undiscovered_operation','contradictory_effect_metadata','unapproved_effect','invalid_input','unsupported_schema','published_prerequisite_failed','published_prerequisite_required','authority_argument','reviewer_mcp_business_call_forbidden','authorization_denial_probe_not_bound']);
   const completionStatus=caseCompletionStatus(scopedItem,result.status,responses,fixtureAssertions,observed,catalog.product,state.resource);
   const metadataObservation=scopedItem.metadata_only?buildMetadataObservation(scopedItem,result.answer,observed):undefined;
-  report={...base,...session.evidence,diagnostics:{...caseDiagnostics(result,judgment,observed,fixtureAssertions,scopedItem,state.resource),...(Array.isArray(state.resource_read_diagnostics)&&state.resource_read_diagnostics.length?{resource_read_diagnostics:state.resource_read_diagnostics.slice(0,8)}:{})},...(metadataObservation?{metadata_observation:metadataObservation}:{}),...classifyCompletion(item.kind,completionStatus,reasons),bos_binding_provenance_verified:bindingVerified,prohibited_effects:0,negative_bos_invocations:nativeTools.filter(row=>row.server!=='Acceptance').length,unsafe_attempts:state.denials.filter(row=>row.reason!=='guard_canary_denied').length,denied_attempts:state.denials.map(row=>({tool:reviewerDiagnosticTool(row.tool,true),reason:safeDenialReasons.has(row.reason)?row.reason:'unrecognized_denial'})),fixture_outcome_verified:fixturesVerified,independent_grading_verified:judgment.pass===true&&judgment.missing?.length===0,evaluation_missing_count:judgment.missing?.length,native_calls:calls.length,https_calls:observed.filter(row=>row.transport==='https').length,tools:[...new Set(calls.map(row=>row.tool))],guard_verified:guard,guard_required:guardRequired,reviewer_scope_verified:scopeVerified,evidence_sha256:digest(gradingEvidence),observed_status:result.status};
+  report={...base,...session.evidence,diagnostics:{...caseDiagnostics(result,judgment,observed,fixtureAssertions,scopedItem,state.resource,state.failed_validations),...(Array.isArray(state.resource_read_diagnostics)&&state.resource_read_diagnostics.length?{resource_read_diagnostics:state.resource_read_diagnostics.slice(0,8)}:{})},...(metadataObservation?{metadata_observation:metadataObservation}:{}),...classifyCompletion(item.kind,completionStatus,reasons),bos_binding_provenance_verified:bindingVerified,prohibited_effects:0,negative_bos_invocations:nativeTools.filter(row=>row.server!=='Acceptance').length,unsafe_attempts:state.denials.filter(row=>row.reason!=='guard_canary_denied').length,denied_attempts:state.denials.map(row=>({tool:reviewerDiagnosticTool(row.tool,true),reason:safeDenialReasons.has(row.reason)?row.reason:'unrecognized_denial'})),fixture_outcome_verified:fixturesVerified,independent_grading_verified:judgment.pass===true&&judgment.missing?.length===0,evaluation_missing_count:judgment.missing?.length,native_calls:calls.length,https_calls:observed.filter(row=>row.transport==='https').length,tools:[...new Set(calls.map(row=>row.tool))],guard_verified:guard,guard_required:guardRequired,reviewer_scope_verified:scopeVerified,evidence_sha256:digest(gradingEvidence),observed_status:result.status};
  }catch(error){report=failedNativeCaseReceipt(base,session,bindingVerified,error,Date.now()-caseStartedAt,state);}
  finally{
   if(session)try{await session.close();report.grant_cleanup_verified=true;}catch{report={...report,status:'FAIL',reason:'reviewer_grant_revocation_failed',grant_cleanup_verified:false};}
