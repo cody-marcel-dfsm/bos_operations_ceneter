@@ -52,6 +52,21 @@ Private knowledge root: `Vault/` (never tracked or published)
   credential lifecycle. Future authentication and authorization changes
   continue to require the owner approval process defined below.
 
+## Owner-approved feedback recommendation compatibility exception
+
+The owner-approved transport exception is limited to the read-only
+`feedback.recommendations.query` operation. Consume its exact freshly advertised
+`bos_list_context_tools` name through existing authenticated `bos_execute`, using
+the current BOS login, the selected primary installation, and exactly `{}`.
+Preserve current server authorization, permissions, ranking, restricted-grant
+ceilings, organization isolation, and sanitized results. Deterministic HTTPS
+remains the default for other new business operations; this exception grants no
+generic proxy, additional authority selector, credential access, or second login.
+The personal recommendation skill stays outside generated customer packages.
+Existing client execution supports this operation; this maintainer notice changes
+no package contents or release version. See private Constitution principle 15
+and the client-owned discovery design for detailed governance and acceptance.
+
 ## Customer installation routing
 
 - This repository owns customer installation instructions for BOS Operations
