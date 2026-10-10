@@ -59,15 +59,22 @@ const unsafeExecutionUris = [
   "/bos//private"
 ];
 
-test("bodyless actions omit both body and Content-Type", () => {
-  assert.deepEqual(buildActionRequest(start), {
-    method: "POST",
-    href: start.href,
-    headers: {},
-    body: undefined
+test("actions without a payload schema frame POST as empty JSON and keep GET body-free", () => {
+  for (const verb of ["start", "complete", "step", "failed"]) {
+    const action = {...start, verb};
+    assert.deepEqual(buildActionRequest(action), {
+      method: "POST",
+      href: action.href,
+      headers: {"content-type": "application/json"},
+      body: "{}"
+    });
+  }
+  assert.deepEqual(buildActionRequest(state), {
+    method: "GET", href: state.href, headers: {}, body: undefined
   });
-  assert.throws(() => buildActionRequest(start, {}), /must not include a body/);
-  assert.throws(() => buildActionRequest(start, null), /must not include a body/);
+  assert.throws(() => buildActionRequest(start, {}), /must not include a caller payload/);
+  assert.throws(() => buildActionRequest(start, null), /must not include a caller payload/);
+  assert.throws(() => buildActionRequest(start, {context_handle: contextHandle}), /must not include a caller payload/);
 });
 
 test("canonical percent-encoded journey identity is preserved by action and recovery builders", async () => {
@@ -119,8 +126,11 @@ test("identity-v2 binds every journey lifecycle action without changing its payl
     assert.deepEqual(buildIdentityV2JourneyActionRequest(action, contextHandle), {
       method: action.method,
       href: action.href,
-      headers: { "X-BOS-Context-Handle": contextHandle },
-      body: undefined
+      headers: {
+        ...(action.method === "POST" ? {"content-type": "application/json"} : {}),
+        "X-BOS-Context-Handle": contextHandle
+      },
+      body: action.method === "POST" ? "{}" : undefined
     });
   }
 
@@ -418,7 +428,8 @@ test("registration interpretation preserves the returned start without beginning
   const request = buildIdentityV2JourneyActionRequest(interpretJourneyResponse(response).action, contextHandle);
   assert.equal(request.href, start.href);
   assert.equal(request.method, "POST");
-  assert.equal(request.body, undefined);
+  assert.equal(request.body, "{}");
+  assert.equal(request.headers["content-type"], "application/json");
 });
 
 test("registration returns customer identity and bodyless start without execution state", () => {

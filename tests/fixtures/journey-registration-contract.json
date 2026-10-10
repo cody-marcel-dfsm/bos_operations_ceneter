@@ -1,8 +1,8 @@
 {
   "operation": "lead-director.journeys.register",
   "contract_version": "lead-director-journey-registration/v1",
-  "title": "Register and start an Agent-Driven Custom Journey",
-  "description": "Compile, validate, atomically upsert, and start one user-scoped raw BOSL journey document.",
+  "title": "Register an Agent-Driven Custom Journey",
+  "description": "Compile, validate, and atomically upsert one user-scoped raw BOSL journey document; start execution only with the returned start action.",
   "input_schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://dfsm.ai/contracts/bosl/v1/schema",
@@ -762,6 +762,115 @@
   "output_schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "oneOf": [
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "compiled",
+          "identity",
+          "actions"
+        ],
+        "properties": {
+          "compiled": {
+            "const": true
+          },
+          "identity": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "actions": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "start"
+            ],
+            "properties": {
+              "start": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "verb",
+                  "method",
+                  "href",
+                  "payload_schema"
+                ],
+                "properties": {
+                  "verb": {
+                    "const": "start"
+                  },
+                  "method": {
+                    "const": "POST"
+                  },
+                  "href": {
+                    "type": "string",
+                    "pattern": "^/"
+                  },
+                  "payload_schema": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "identity",
+          "status",
+          "action"
+        ],
+        "properties": {
+          "identity": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "status": {
+            "const": "not_started"
+          },
+          "action": {
+            "type": "object",
+            "required": [
+              "verb",
+              "method",
+              "href",
+              "payload_schema"
+            ],
+            "properties": {
+              "verb": {
+                "enum": [
+                  "start",
+                  "complete",
+                  "step",
+                  "failed",
+                  "state"
+                ]
+              },
+              "method": {
+                "enum": [
+                  "GET",
+                  "POST"
+                ]
+              },
+              "href": {
+                "type": "string",
+                "pattern": "^/"
+              },
+              "payload_schema": {
+                "type": [
+                  "object",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
       {
         "type": "object",
         "required": [

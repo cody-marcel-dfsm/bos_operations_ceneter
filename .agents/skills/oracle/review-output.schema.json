@@ -7,28 +7,113 @@
     "summary",
     "findings",
     "authentication_impact",
-    "owner_approval_status"
+    "owner_approval_status",
+    "api_version_assessment"
   ],
   "properties": {
-    "verdict": { "enum": ["APPROVED", "REJECTED"] },
-    "summary": { "type": "string", "minLength": 1 },
+    "verdict": {
+      "enum": [
+        "APPROVED",
+        "REJECTED"
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
     "findings": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["severity", "file", "line", "message"],
+        "required": [
+          "severity",
+          "file",
+          "line",
+          "message"
+        ],
         "properties": {
-          "severity": { "enum": ["critical", "high", "medium", "low"] },
-          "file": { "type": "string", "minLength": 1 },
-          "line": { "type": "integer", "minimum": 1 },
-          "message": { "type": "string", "minLength": 1 }
+          "severity": {
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "file": {
+            "type": "string",
+            "minLength": 1
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },
-    "authentication_impact": { "enum": ["AUTHENTICATION", "NONE"] },
+    "authentication_impact": {
+      "enum": [
+        "AUTHENTICATION",
+        "NONE"
+      ]
+    },
     "owner_approval_status": {
-      "enum": ["NOT_REQUIRED", "APPROVED", "MISSING", "INVALID"]
+      "enum": [
+        "NOT_REQUIRED",
+        "APPROVED",
+        "MISSING",
+        "INVALID"
+      ]
+    },
+    "api_version_assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "impact",
+        "request_kind",
+        "requested_change",
+        "request_quote",
+        "request_evidence"
+      ],
+      "properties": {
+        "impact": {
+          "enum": [
+            "NONE",
+            "CHANGE"
+          ]
+        },
+        "request_kind": {
+          "enum": [
+            "NOT_REQUIRED",
+            "EXPLICIT_REQUEST",
+            "APPROVAL_ONLY",
+            "MISSING"
+          ]
+        },
+        "requested_change": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "request_quote": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "request_evidence": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
     }
   }
 }

@@ -1260,6 +1260,27 @@ test("returned action seam covers start, complete, step, and failed while state 
   await assert.rejects(current.invokeStateAction(completeAction), /verb is invalid/);
 });
 
+test("null-schema POST actions use empty JSON through the existing authenticated transport", async () => {
+  const requests = [];
+  const current = adapter({
+    request: async (request) => {
+      requests.push(structuredClone(request));
+      assert.equal(request.body, "{}");
+      assert.equal(request.headers["content-type"], "application/json");
+      assert.equal(request.headers["X-BOS-Context-Handle"], handle("a"));
+      return {status: 200, body: {status: "step_completed"}};
+    }
+  });
+  for (const verb of ["start", "complete", "step", "failed"]) {
+    const action = {verb, method: "POST", href: `/bos/journeys/example/${verb}`, payload_schema: null};
+    assert.equal((await current.invokeReturnedAction(action)).status, 200);
+    for (const payload of [{}, null, {context_handle: handle("a")}]) {
+      await assert.rejects(current.invokeReturnedAction(action, payload), /cannot receive a caller payload/);
+    }
+  }
+  assert.equal(requests.length, 4);
+});
+
 test("legacy returned actions stay header-free", async () => {
   const requests = [];
   const current = adapter({

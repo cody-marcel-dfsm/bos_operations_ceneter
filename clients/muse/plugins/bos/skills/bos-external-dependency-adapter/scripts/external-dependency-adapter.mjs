@@ -254,7 +254,7 @@ function validateAction(value, { state = false } = {}) {
     throw new TypeError("returned action payload_schema must be an object or null");
   }
   if (["start", "step", "state"].includes(value.verb) && value.payload_schema !== null) {
-    throw new TypeError(`returned ${value.verb} action must be bodyless`);
+    throw new TypeError(`returned ${value.verb} action must declare no payload schema`);
   }
   rejectPrivateTransportData(value, "returned action");
   return structuredClone(value);
@@ -618,11 +618,12 @@ export function createBosExternalDependencyAdapter({
 
   const buildRequest = async (action, payloadSupplied, payload, state) => {
     const current = validateAction(action, { state });
-    if (current.payload_schema === null && payloadSupplied) throw new TypeError("bodyless returned action cannot receive a payload");
+    if (current.payload_schema === null && payloadSupplied) throw new TypeError("returned action without a payload schema cannot receive a caller payload");
     if (current.payload_schema !== null && !payloadSupplied) throw new TypeError("returned action payload is required");
     const currentPayload = current.payload_schema === null
       ? undefined
       : validatePayload(payload, current.payload_schema);
+    const sendsJson = current.method === "POST";
     let contextHandle;
     let contextHeader;
     try {
@@ -637,10 +638,12 @@ export function createBosExternalDependencyAdapter({
       method: current.method,
       href: current.href,
       headers: {
-        ...(current.payload_schema === null ? {} : { "content-type": "application/json" }),
+        ...(sendsJson ? { "content-type": "application/json" } : {}),
         ...(contextHandle === null ? {} : { [contextHeader]: contextHandle })
       },
-      body: current.payload_schema === null ? undefined : JSON.stringify(currentPayload)
+      body: current.payload_schema === null
+        ? (sendsJson ? "{}" : undefined)
+        : JSON.stringify(currentPayload)
     };
   };
 

@@ -77,6 +77,12 @@ host request. A legacy/v1 context causes no
 context header. The header and value never enter the returned action, payload,
 dependent-product cache, or public response.
 
+For `payload_schema: null`, omit the caller payload. The adapter internally
+frames POST actions as exactly `{}` with `Content-Type: application/json` and
+keeps GET actions body-free without `Content-Type`. It introduces no business
+fields, authority selectors, lifecycle state, or caller-provided empty object.
+Actions with a declared payload retain their exact schema-validated JSON body.
+
 If the first transport result is an authentication or MCP-session condition,
 the adapter performs one generic BOS authentication handoff, waits through one
 host-owned action when required, obtains a fresh context, and invokes the same

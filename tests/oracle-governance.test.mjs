@@ -61,7 +61,7 @@ test("proposal review records scope without issuing a commit-acceptance receipt"
   execFileSync("python3", ["-c", [
     "import tools.oracle_approval as o",
     "root=o.repository_root()",
-    "review=lambda *a:{'verdict':'APPROVED','summary':'bounded restoration','findings':[],'authentication_impact':'NONE','owner_approval_status':'NOT_REQUIRED'}",
+    "review=lambda *a:{'verdict':'APPROVED','summary':'bounded restoration','findings':[],'authentication_impact':'NONE','owner_approval_status':'NOT_REQUIRED','api_version_assessment':{'impact':'NONE','request_kind':'NOT_REQUIRED','requested_change':None,'request_quote':None,'request_evidence':None}}",
     "o.review_proposal(root,'Problem: broken\\nCause: regression\\nRecommended change: restore',[],None,review)",
   ].join("; ")], {cwd: workspace});
   assert.equal(existsSync(join(workspace, ".git", "oracle", "proposal.json")), true);
@@ -84,8 +84,8 @@ test("completed review refuses a rejected proposal record", () => {
   git("commit", "-qm", "initial");
   writeFileSync(join(workspace, "candidate.txt"), "changed\n");
   git("add", "candidate.txt");
-  execFileSync("python3", ["-c", "import tools.oracle_approval as o; o.review_proposal(o.repository_root(),'Problem: broken\\nCause: regression\\nRecommended change: restore',[],None,lambda *a:{'verdict':'REJECTED','summary':'outside scope','findings':[],'authentication_impact':'AUTHENTICATION','owner_approval_status':'MISSING'})"], {cwd: workspace});
-  const result = spawnSync("python3", ["-c", "import tools.oracle_approval as o; o.issue(o.repository_root(),[],None,lambda *a:{'verdict':'APPROVED','findings':[],'authentication_impact':'NONE','owner_approval_status':'NOT_REQUIRED'})"], {cwd: workspace, encoding: "utf8"});
+  execFileSync("python3", ["-c", "import tools.oracle_approval as o; o.review_proposal(o.repository_root(),'Problem: broken\\nCause: regression\\nRecommended change: restore',[],None,lambda *a:{'verdict':'REJECTED','summary':'outside scope','findings':[],'authentication_impact':'AUTHENTICATION','owner_approval_status':'MISSING','api_version_assessment':{'impact':'NONE','request_kind':'NOT_REQUIRED','requested_change':None,'request_quote':None,'request_evidence':None}})"], {cwd: workspace});
+  const result = spawnSync("python3", ["-c", "import tools.oracle_approval as o; o.issue(o.repository_root(),[],None,lambda *a:{'verdict':'APPROVED','findings':[],'authentication_impact':'NONE','owner_approval_status':'NOT_REQUIRED','api_version_assessment':{'impact':'NONE','request_kind':'NOT_REQUIRED','requested_change':None,'request_quote':None,'request_evidence':None}})"], {cwd: workspace, encoding: "utf8"});
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /approved proposal/i);
 });
@@ -108,10 +108,10 @@ test("Oracle receipt rejects stale state, forged trailers, and unstamped commits
   git("commit", "-qm", "initial");
   writeFileSync(join(workspace, "candidate.txt"), "approved\n");
   git("add", "candidate.txt");
-  execFileSync("python3", ["-c", "import tools.oracle_approval as o; o.review_proposal(o.repository_root(),'Problem: broken\\nCause: regression\\nRecommended change: restore',[],None,lambda *a:{'verdict':'APPROVED','summary':'bounded restoration','findings':[],'authentication_impact':'NONE','owner_approval_status':'NOT_REQUIRED'})"], {cwd: workspace});
-  const rejectedAuth = spawnSync("python3", ["-c", "import tools.oracle_approval as o; o.issue(o.repository_root(),[],None,lambda *a:{'verdict':'REJECTED','findings':[{'message':'owner approval missing'}],'authentication_impact':'AUTHENTICATION','owner_approval_status':'MISSING'})"], { cwd: workspace, encoding: "utf8" });
+  execFileSync("python3", ["-c", "import tools.oracle_approval as o; o.review_proposal(o.repository_root(),'Problem: broken\\nCause: regression\\nRecommended change: restore',[],None,lambda *a:{'verdict':'APPROVED','summary':'bounded restoration','findings':[],'authentication_impact':'NONE','owner_approval_status':'NOT_REQUIRED','api_version_assessment':{'impact':'NONE','request_kind':'NOT_REQUIRED','requested_change':None,'request_quote':None,'request_evidence':None}})"], {cwd: workspace});
+  const rejectedAuth = spawnSync("python3", ["-c", "import tools.oracle_approval as o; o.issue(o.repository_root(),[],None,lambda *a:{'verdict':'REJECTED','findings':[{'message':'owner approval missing'}],'authentication_impact':'AUTHENTICATION','owner_approval_status':'MISSING','api_version_assessment':{'impact':'NONE','request_kind':'NOT_REQUIRED','requested_change':None,'request_quote':None,'request_evidence':None}})"], { cwd: workspace, encoding: "utf8" });
   assert.notEqual(rejectedAuth.status, 0); assert.match(rejectedAuth.stderr, /rejected the candidate/i);
-  execFileSync("python3", ["-c", "import tools.oracle_approval as o; o.issue(o.repository_root(),[],None,lambda *a:{'verdict':'APPROVED','findings':[],'authentication_impact':'NONE','owner_approval_status':'NOT_REQUIRED'})"], { cwd: workspace });
+  execFileSync("python3", ["-c", "import tools.oracle_approval as o; o.issue(o.repository_root(),[],None,lambda *a:{'verdict':'APPROVED','findings':[],'authentication_impact':'NONE','owner_approval_status':'NOT_REQUIRED','api_version_assessment':{'impact':'NONE','request_kind':'NOT_REQUIRED','requested_change':None,'request_quote':None,'request_evidence':None}})"], { cwd: workspace });
   writeFileSync(join(workspace, "candidate.txt"), "stale\n"); git("add", "candidate.txt");
   const stale = spawnSync("python3", ["tools/oracle_approval.py", "verify-staged"], { cwd: workspace, encoding: "utf8" });
   assert.notEqual(stale.status, 0); assert.match(stale.stderr, /stale/i);

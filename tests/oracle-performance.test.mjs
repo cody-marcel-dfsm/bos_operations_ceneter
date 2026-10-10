@@ -130,7 +130,7 @@ import tempfile,subprocess,shutil
 from pathlib import Path
 from tools import oracle_approval as o
 repository=Path.cwd()
-review={'verdict':'APPROVED','findings':[],'authentication_impact':'NONE','owner_approval_status':'NOT_REQUIRED'}
+review={'verdict':'APPROVED','findings':[],'authentication_impact':'NONE','owner_approval_status':'NOT_REQUIRED','api_version_assessment':{'impact':'NONE','request_kind':'NOT_REQUIRED','requested_change':None,'request_quote':None,'request_evidence':None}}
 with tempfile.TemporaryDirectory() as directory:
     root=Path(directory)
     def git(*args): return subprocess.check_output(['git',*args],cwd=root,text=True).strip()
@@ -201,7 +201,7 @@ test("receipts retain actual structured reviewer process settings without pinnin
 import tempfile,subprocess,json,shutil
 from pathlib import Path
 from tools import oracle_approval as o
-repository=Path.cwd();approved={'verdict':'APPROVED','findings':[],'authentication_impact':'NONE','owner_approval_status':'NOT_REQUIRED'}
+repository=Path.cwd();approved={'verdict':'APPROVED','findings':[],'authentication_impact':'NONE','owner_approval_status':'NOT_REQUIRED','api_version_assessment':{'impact':'NONE','request_kind':'NOT_REQUIRED','requested_change':None,'request_quote':None,'request_evidence':None}}
 with tempfile.TemporaryDirectory() as directory:
     root=Path(directory)
     def git(*args):return subprocess.check_output(['git',*args],cwd=root,text=True).strip()
