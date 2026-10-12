@@ -62,6 +62,11 @@ requests. An explicit organization selection for the task takes precedence.
 Never substitute a default saved by another plugin.
 # BOS MCP Client
 
+For CRM lead/contact detail results, read the shared
+[record journey display contract](references/record-journey-display.md)
+before completing the response. Resume that domain presentation after context
+clarification or recovery using the verified lookup result.
+
 Before a business mutation, apply
 [client mutation safety](references/mutation-safety.md): one affected record
 per logical task for updates/deletes, including its explicitly resolved source

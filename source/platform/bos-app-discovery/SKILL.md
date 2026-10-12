@@ -3,6 +3,12 @@ name: bos-app-discovery
 description: Route requests through authenticated BOS app discovery, including finding skills and operations that can contribute to an ad hoc dynamic BOSL workflow. Use when app scope, service ownership, workflow composition, graph shape, or API contracts must be discovered at runtime.
 ---
 
+For CRM lead/contact detail requests, read the shared
+[record journey display contract](../bos-mcp-client/references/record-journey-display.md)
+and route the result into its installed domain-owned journey workflow. Preserve
+this completion rule after a workspace clarification. Discovery assessments
+retain their requested read-only reporting scope below.
+
 ## Match discovery to the requested assessment
 
 Use `bos-mcp-client`'s first-action and identity-context rules for every BOS
