@@ -79,6 +79,12 @@ destructive hint cannot establish safety.
 This is an agent instruction safeguard. Server authorization and validation
 remain required; the package does not intercept or enforce arbitrary API calls.
 
+For CRM lead/contact detail requests, read the shared
+[record journey display contract](../bos-mcp-client/references/record-journey-display.md)
+and route the result into its installed domain-owned journey workflow. Preserve
+this completion rule after a workspace clarification. Discovery assessments
+retain their requested read-only reporting scope below.
+
 ## Match discovery to the requested assessment
 
 Use `bos-mcp-client`'s first-action and identity-context rules for every BOS

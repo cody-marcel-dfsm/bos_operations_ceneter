@@ -9,6 +9,26 @@ const root = new URL("../", import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), "utf8");
 const privateVaultAvailable = existsSync(new URL("Vault/docs/architecture.md", root));
 
+test("both independent Oracle prompts require review of the recurring lead graph regression", () => {
+  const prompts = JSON.parse(execFileSync("python3", ["-c", [
+    "import json",
+    "from pathlib import Path",
+    "import tools.oracle_approval as o",
+    "prompts=[]",
+    "o._review_process=lambda root,prompt,prefix: prompts.append(prompt)",
+    "o._proposal_oracle(Path.cwd(),'restore record display',{},None)",
+    "o._oracle(Path.cwd(),'synthetic-tree',[],{},None)",
+    "print(json.dumps(prompts))"
+  ].join("; ")], {cwd: root, encoding: "utf8"}));
+  assert.equal(prompts.length, 2);
+  for (const prompt of prompts) {
+    assert.match(prompt, /Issue #0008/);
+    assert.match(prompt, /Issue #0026/);
+    assert.match(prompt, /tests\/lead-graph-regression\.test\.mjs/);
+    assert.match(prompt, /published-client acceptance/i);
+  }
+});
+
 test("ordinary agents call the Oracle utility and cannot act as approver", () => {
   const agents = read("AGENTS.md");
   const implementation = read(".agents/skills/operations-center-implementation/SKILL.md");

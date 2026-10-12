@@ -86,6 +86,11 @@ Preserve exact values, tenant scope, source status, privacy, and operational
 meaning. Use the installed `visualize` skill for inline interactive visuals and
 follow its complete rendering, accessibility, and theme contract.
 
+For CRM lead/contact detail results, apply the shared
+[record journey display contract](../bos-mcp-client/references/record-journey-display.md), including
+named lookups and single-field requests. Route to the installed domain journey
+skill and render its verified graph before profile fields.
+
 ## Delivery floor
 
 Return every operational record and requested field directly in the
@@ -116,9 +121,9 @@ When one of these conditions is present, deliver an actual chart, timeline,
 Mermaid diagram, map, image, or inline visualization. A Markdown table with
 emoji or status icons does not satisfy this requirement by itself.
 
-Use concise prose for a single fact or record,
-a short draft, an error, or a result whose visual would add decoration without
-information.
+Use concise prose for single facts, short drafts and errors according to the
+owning domain's presentation contract. Lead/contact details retain the graph
+completion rule above, including a one-record search result.
 
 ## Preferred forms
 
