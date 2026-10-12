@@ -26,6 +26,31 @@ test("both independent Oracle prompts require review of the recurring lead graph
     assert.match(prompt, /Issue #0026/);
     assert.match(prompt, /tests\/lead-graph-regression\.test\.mjs/);
     assert.match(prompt, /published-client acceptance/i);
+    assert.match(prompt, /plain-text node and edge labels/);
+    assert.match(prompt, /escaped HTML/);
+  }
+});
+
+test("both actual Oracle prompts permit normal-plan reviews and retain the additional-spending gate", () => {
+  const prompts = JSON.parse(execFileSync("python3", ["-c", [
+    "import json",
+    "from pathlib import Path",
+    "import tools.oracle_approval as o",
+    "prompts=[]",
+    "o._review_process=lambda root,prompt,prefix: prompts.append(prompt)",
+    "o._proposal_oracle(Path.cwd(),'covered normal-plan review',{},None)",
+    "o._oracle(Path.cwd(),'synthetic-tree',[],{},None)",
+    "print(json.dumps(prompts))"
+  ].join("; ")], {cwd: root, encoding: "utf8"}));
+  assert.equal(prompts.length, 2);
+  for (const raw of prompts) {
+    const prompt = raw.replace(/\s+/g, " ");
+    assert.ok(prompt.includes("proceed automatically without spending-approval questions or a separate $0 approval"));
+    assert.ok(prompt.includes("A missing per-review price does not create an approval gate for covered normal-plan usage"));
+    assert.ok(prompt.includes("Explicit owner spending approval remains required for additional monetary spending"));
+    assert.ok(prompt.includes("paid API calls or credits outside the normal plan"));
+    assert.ok(prompt.includes("unavailable included allowance authorizes no automatic paid fallback"));
+    assert.ok(prompt.includes("Independent proposal, completed-diff, authentication and public API-version review requirements remain in force"));
   }
 });
 

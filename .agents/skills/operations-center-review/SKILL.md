@@ -5,6 +5,10 @@ description: Review BOS Operations Center repository changes against its archite
 
 # Operations Center Review
 
+Covered normal-plan reviews proceed automatically without spending-approval
+questions or a separate $0 approval. Explicit approval remains required for
+additional monetary spending outside the owner's existing plan.
+
 Identify evidence that may require security-authority review without issuing an
 Oracle classification, warning, or verdict. The independent Oracle process owns
 authentication-impact classification and owner-approval decisions. Route the

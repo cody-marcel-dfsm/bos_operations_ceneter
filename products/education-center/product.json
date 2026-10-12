@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "education-center",
-  "version": "0.4.193",
+  "version": "0.4.194",
   "release_status": "active",
   "display_name": "Education Operation Center",
   "description": "Coordinate scheduling, partners, invoicing, and enrollment",
