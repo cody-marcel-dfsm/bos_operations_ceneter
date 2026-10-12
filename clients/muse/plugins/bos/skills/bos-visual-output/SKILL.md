@@ -83,8 +83,10 @@ remain required; the package does not intercept or enforce arbitrary API calls.
 
 Transform verified BOS results into the smallest useful visual composition.
 Preserve exact values, tenant scope, source status, privacy, and operational
-meaning. Use the installed `visualize` skill for inline interactive visuals and
-follow its complete rendering, accessibility, and theme contract.
+meaning. Use the active host's advertised inline visualization tools or installed
+`visualize` skill and follow its rendering, accessibility, and theme contract.
+For graphs, apply [host rendering selection](references/graph-rendering.md)
+before choosing a delivery format.
 
 For CRM lead/contact detail results, apply the shared
 [record journey display contract](../bos-mcp-client/references/record-journey-display.md), including

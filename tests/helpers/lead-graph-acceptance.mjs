@@ -19,6 +19,14 @@ export function verifyLeadGraphResponse(response, observation) {
       ? {status: "PARTIAL", reason: "NO_VERIFIED_STATE"}
       : fail("MISSING_STATE_EVIDENCE");
   }
+  if (observation.mermaid_renders === false) return fail("UNRENDERED_GRAPH");
+  const prose = response.replace(/```[\s\S]*?```/g, "");
+  if (!observation.technical_details && (observation.internal_identifiers ?? []).some(id => prose.includes(id))) {
+    return fail("INTERNAL_IDENTIFIER");
+  }
+  if (observation.view !== "full" && (observation.off_route_details ?? []).some(label => prose.includes(label))) {
+    return fail("NON_MINIMAL_RESPONSE");
+  }
   const diagrams = [...response.matchAll(/```mermaid\s*\n([\s\S]*?)```/g)];
   if (!diagrams.length) return fail("MISSING_GRAPH");
   // Treat each diagram independently: fragments in separate diagrams cannot
