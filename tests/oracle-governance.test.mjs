@@ -28,6 +28,9 @@ test("both independent Oracle prompts require review of the recurring lead graph
     assert.match(prompt, /published-client acceptance/i);
     assert.match(prompt, /plain-text node and edge labels/);
     assert.match(prompt, /escaped HTML/);
+    assert.match(prompt, /advertised native inline/);
+    assert.match(prompt, /unrendered Mermaid/);
+    assert.match(prompt, /internal identifiers/);
   }
 });
 

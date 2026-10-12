@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
+import {execFileSync, spawnSync} from "node:child_process";
 import test from "node:test";
 import {verifyLeadGraphResponse} from "./helpers/lead-graph-acceptance.mjs";
+import {planGraphRendering} from "../source/platform/bos-visual-output/scripts/plan-graph-rendering.mjs";
 
 const root = new URL("../", import.meta.url);
 const read = path => readFile(new URL(path, root), "utf8");
@@ -58,6 +60,61 @@ const observation = {
 const fullGraph = '```mermaid\nflowchart LR\ntrial["Current: Trial scheduled"]\nattended["Trial attended"]\ndecision["Enrollment decision"]\ngoal["Enrolled"]\ntrial --> attended\nattended --> decision\ndecision --> goal\n```\nSource: synthetic journey observation. Eligibility unverified.';
 const textOnly = "Found Synthetic Contact. Status: Trial scheduled. Verified with a live lookup.";
 
+test("Claude-shaped ASCII and unrendered Mermaid cannot complete graph delivery", () => {
+  const ascii = "```text\n[Trial scheduled] (current) --Advance--> [Enrolled] (positive goal)\n```";
+  assert.deepEqual(verifyLeadGraphResponse(ascii, observation), {status: "FAIL", reason: "MISSING_GRAPH"});
+  assert.deepEqual(verifyLeadGraphResponse(fullGraph, {...observation, mermaid_renders: false}),
+    {status: "FAIL", reason: "UNRENDERED_GRAPH"});
+  assert.deepEqual(verifyLeadGraphResponse(fullGraph, {...observation, mermaid_renders: true}), {status: "PASS"});
+});
+
+test("a compact graph stays readable when ordinary prose excludes internal IDs and off-route detail", () => {
+  const observed = {...observation, internal_identifiers: ["advance_to_example_goal"], off_route_details: ["Declined", "Nurture loop"]};
+  assert.deepEqual(verifyLeadGraphResponse(fullGraph + " Transition: advance_to_example_goal", observed),
+    {status: "FAIL", reason: "INTERNAL_IDENTIFIER"});
+  assert.deepEqual(verifyLeadGraphResponse(fullGraph + " Negative goal: Declined. Alternate: Nurture loop.", observed),
+    {status: "FAIL", reason: "NON_MINIMAL_RESPONSE"});
+  assert.deepEqual(verifyLeadGraphResponse(fullGraph, observed), {status: "PASS"});
+  assert.deepEqual(verifyLeadGraphResponse(fullGraph + " Transition: advance_to_example_goal", {...observed, technical_details: true}), {status: "PASS"});
+  assert.deepEqual(verifyLeadGraphResponse(fullGraph + " Negative goal: Declined.", {...observed, view: "full"}), {status: "PASS"});
+});
+
+test("advertised native tools take priority without an installed visualize skill", () => {
+  const capability = {inline: {render_tool: "host.visualize", guide_tool: "host.diagram_guide"}, mermaid_renders: false};
+  assert.deepEqual(planGraphRendering(capability), {status: "ready", kind: "native-inline",
+    render_tool: "host.visualize", guide_tool: "host.diagram_guide"});
+  assert.equal(planGraphRendering({...capability, mermaid_renders: true}).kind, "native-inline");
+  assert.equal(planGraphRendering({...capability, format: "text"}).status, "text");
+  assert.deepEqual(capability.inline, {render_tool: "host.visualize", guide_tool: "host.diagram_guide"});
+});
+
+test("a guide alone and unknown Mermaid support preserve incomplete rendering status", () => {
+  for (const capability of [{}, {mermaid_renders: false}, {inline: {guide_tool: "host.diagram_guide"}}]) {
+    assert.deepEqual(planGraphRendering(capability), {status: "unavailable", graph_required: true, reason: "NO_CONFIRMED_RENDERER"});
+  }
+  assert.deepEqual(planGraphRendering({mermaid_renders: true}), {status: "ready", kind: "mermaid"});
+  assert.throws(() => planGraphRendering({mermaid_renders: "true"}), /boolean/);
+  assert.throws(() => planGraphRendering({inline: {render_tool: " "}}), /nonempty/);
+});
+
+test("packaged delivery selectors preserve behavior and fail invalid capability input across hosts", async () => {
+  const relative = "bos-visual-output/scripts/plan-graph-rendering.mjs";
+  const canonical = await read(`source/platform/${relative}`);
+  const guide = await read("source/platform/bos-visual-output/references/graph-rendering.md");
+  for (const skillRoot of skillRoots) {
+    assert.equal(await read(`${skillRoot}/${relative}`), canonical);
+    assert.equal(await read(`${skillRoot}/bos-visual-output/references/graph-rendering.md`), guide);
+    const script = new URL(`${skillRoot}/${relative}`, root);
+    const result = JSON.parse(execFileSync(process.execPath, [script.pathname], {
+      input: JSON.stringify({inline: {render_tool: "host.visualize"}, mermaid_renders: false}), encoding: "utf8"
+    }));
+    assert.equal(result.kind, "native-inline");
+    const failed = spawnSync(process.execPath, [script.pathname], {input: "invalid JSON", encoding: "utf8"});
+    assert.equal(failed.status, 1);
+    assert.equal(failed.stdout, "");
+  }
+});
+
 test("an ordinary named lookup after a workspace selection rejects the reported text-only response shape", () => {
   assert.deepEqual(verifyLeadGraphResponse(textOnly, observation), {status: "FAIL", reason: "MISSING_GRAPH"});
   assert.deepEqual(verifyLeadGraphResponse(fullGraph, observation), {status: "PASS"});
@@ -94,6 +151,8 @@ test("explicit text and focused student lookup preserve owner-approved exception
   assert.deepEqual(verifyLeadGraphResponse(textOnly, {...observation, format: "text"}), {status: "EXEMPT"});
   assert.deepEqual(verifyLeadGraphResponse(textOnly, {...observation, scope: "student-lookup"}), {status: "EXEMPT"});
   assert.deepEqual(verifyLeadGraphResponse("No current state: record_not_found", {...observation, current: null, read_failure: "record_not_found"}),
+    {status: "PARTIAL", reason: "NO_VERIFIED_STATE"});
+  assert.deepEqual(verifyLeadGraphResponse("No current state: record_not_found", {...observation, current: null, read_failure: "record_not_found", mermaid_renders: false}),
     {status: "PARTIAL", reason: "NO_VERIFIED_STATE"});
   assert.equal(verifyLeadGraphResponse(textOnly, {...observation, current: null}).status, "FAIL");
 });

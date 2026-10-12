@@ -14,7 +14,12 @@ interpretation, goals, paths and provenance; BOS owns routing and visualization.
 If the required domain skill is unavailable, identify that dependency and keep
 verified requested fields visible. Installation creates no additional access.
 
-Lead with a compact native graph or Mermaid diagram showing one path from the
+Lead with a compact graph rendered by the active host's advertised inline
+visualization tools or installed visualization skill. Use Mermaid only when
+the active surface is known to render it; ASCII routes and unrendered code
+blocks leave graph delivery incomplete. Native visualization tools can be
+available without a separately installed skill of the same name.
+Show one path from the
 verified current node to the explicit or application-resolved positive goal,
 including every intermediate state and edge on that path. Use the domain's
 app-ranked route when supplied; otherwise choose a shortest verified structural
@@ -36,8 +41,11 @@ plain readable labels and existing current/goal markers. Keep negative branches,
 cycles, other reachable states
 and off-route approval loops out of this compact view. Render full topology or
 alternative branches when the user explicitly requests them. Put profile fields,
-source, freshness, ranking limitations and alternative-route notes below the
-graph. Compact presentation retains every necessary intermediate state.
+source, freshness and concise ranking limitations below the graph; alternative
+route explanations require an explicit request. Keep internal node, transition,
+record and provider identifiers out of visible labels and ordinary prose unless
+specifically requested.
+Compact presentation retains every necessary intermediate state.
 
 Read the currently advertised journey, graph, goal and path evidence needed by
 the domain workflow. A current-stage-only record, an empty actions array, or
