@@ -27,7 +27,13 @@ available verified path and the gap precisely.
 Keep only the selected route's states and edges in the default view. Put short
 action names on arrows and include required gates or blockers on their actual
 route. Use a clear blue current marker, a positive-goal marker, bold route labels
-and thick green arrows. Keep negative branches, cycles, other reachable states
+and thick green arrows. Keep node and arrow labels as plain text. Apply emphasis
+through native diagram font styling or Mermaid `style`/`classDef` properties such
+as `font-weight:bold`; apply arrow color and width through diagram styling. HTML
+formatting wrappers and escaped HTML tags in label strings are invalid: they can
+appear as literal text in the host. When font styling is unsupported, keep the
+plain readable labels and existing current/goal markers. Keep negative branches,
+cycles, other reachable states
 and off-route approval loops out of this compact view. Render full topology or
 alternative branches when the user explicitly requests them. Put profile fields,
 source, freshness, ranking limitations and alternative-route notes below the

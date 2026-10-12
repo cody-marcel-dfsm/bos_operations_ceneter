@@ -185,6 +185,12 @@ authentication and authorization owner-approval requirements remain independent.
 
 ## Oracle approval-process contract
 
+- Run Oracle reviews covered by the owner's normal plan automatically, without
+  spending-approval questions or a separate $0 approval. Missing per-review
+  prices create no approval gate for covered usage. Additional paid API/credit
+  funding, purchases and persistent billable costs retain explicit spending
+  approval; unavailable included allowance authorizes no automatic paid fallback.
+
 - Before any repository mutation, the ordinary workflow submits a concise
   **Problem**, **Cause**, and **Recommended change** proposal through `npm run
   oracle:proposal -- "<proposal>"`; each section contains no more than three

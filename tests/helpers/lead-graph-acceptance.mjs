@@ -2,6 +2,13 @@
 // supplies normalized, verified observations; this is not a service schema or
 // a proof that the model invoked a tool. Native interactive graphs need their
 // own rendered-surface evidence and cannot pass this Markdown-only check.
+function hasHtmlLabelMarkup(label) {
+  const decoded = label.replace(/&amp;/gi, "&")
+    .replace(/&(?:lt|#0*60|#x0*3c);/gi, "<")
+    .replace(/&(?:gt|#0*62|#x0*3e);/gi, ">");
+  return /<\s*\/?\s*[a-z][^>]*>/i.test(decoded);
+}
+
 export function verifyLeadGraphResponse(response, observation) {
   const fail = reason => ({status: "FAIL", reason});
   if (observation.scope === "student-lookup" || observation.format === "text") {
@@ -24,10 +31,13 @@ export function verifyLeadGraphResponse(response, observation) {
     const declaration = /\b([A-Za-z_][\w-]*)(?:\["([^"\n]+)"\]|\(\["([^"\n]+)"\]\)|\("([^"\n]+)"\))/g;
     for (const [, id, rectangle, stadium, rounded] of diagram.matchAll(declaration)) {
       const label = rectangle ?? stadium ?? rounded;
+      if (hasHtmlLabelMarkup(label)) return fail("HTML_LABEL_MARKUP");
       if (nodes.has(id) && nodes.get(id) !== label) return fail("CONFLICTING_NODE");
       nodes.set(id, label);
     }
     const topology = diagram.replace(declaration, (_, id) => id);
+    const arrowLabels = [...topology.matchAll(/(?:-->|==>)\|([^|\n]*)\|/g)];
+    if (arrowLabels.some(([, label]) => hasHtmlLabelMarkup(label))) return fail("HTML_LABEL_MARKUP");
     const edges = [...topology.matchAll(/\b([A-Za-z_][\w-]*)\s*(?:-->|==>)(?:\|[^|\n]*\|)?\s*([A-Za-z_][\w-]*)\b/g)]
       .map(([, from, to]) => [from, to]);
     const observedNodes = new Map(observation.nodes.map(node => [node.id, node.label]));
@@ -63,5 +73,6 @@ export function verifyLeadGraphResponse(response, observation) {
     }
     return {status: "PARTIAL"};
   });
-  return results.find(result => result.status !== "FAIL") ?? results[0];
+  return results.find(result => result.reason === "HTML_LABEL_MARKUP")
+    ?? results.find(result => result.status !== "FAIL") ?? results[0];
 }

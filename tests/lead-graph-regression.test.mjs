@@ -120,3 +120,28 @@ test("shortest structural route is the fallback and an app-ranked route retains 
   assert.deepEqual(verifyLeadGraphResponse(fullGraph, {...direct, ranked_path: observation.paths[0]}), {status: "PASS"});
   assert.equal(verifyLeadGraphResponse(fullGraph, {...direct, ranked_path: observation.paths[0], view: "shortest"}).status, "FAIL");
 });
+
+
+test("literal and escaped HTML in node or arrow labels reject the rendered response", () => {
+  const wrappers = [
+    ["<b>", "</b>"], ["<strong>", "</strong>"], ["<span>", "</span>"],
+    ["&lt;b&gt;", "&lt;/b&gt;"], ["&#60;b&#62;", "&#60;/b&#62;"],
+    ["&#x3c;b&#x3e;", "&#x3c;/b&#x3e;"], ["&amp;lt;b&amp;gt;", "&amp;lt;/b&amp;gt;"]
+  ];
+  for (const [open, close] of wrappers) {
+    const decorated = fullGraph.replace('Current: Trial scheduled', `${open}Current: Trial scheduled${close}`);
+    assert.deepEqual(verifyLeadGraphResponse(decorated, observation), {status: "FAIL", reason: "HTML_LABEL_MARKUP"});
+    const edge = fullGraph.replace("trial --> attended", `trial ==>|${open}Continue${close}| attended`);
+    assert.deepEqual(verifyLeadGraphResponse(edge, observation), {status: "FAIL", reason: "HTML_LABEL_MARKUP"});
+    assert.deepEqual(verifyLeadGraphResponse(`${fullGraph}\n${decorated}`, observation), {status: "FAIL", reason: "HTML_LABEL_MARKUP"});
+  }
+});
+
+test("plain labels retain native diagram styling and literal comparison conditions", () => {
+  const styled = fullGraph.replace("trial --> attended", "trial ==>|Continue when score < 8| attended")
+    .replace("decision --> goal\n", "decision ==> goal\nclassDef route font-weight:bold\nclass trial,attended,decision,goal route\nstyle trial fill:#005A9C,color:#fff\nstyle goal fill:#007F63,color:#fff\nlinkStyle default stroke:#007F63,stroke-width:3px\n");
+  assert.deepEqual(verifyLeadGraphResponse(styled, observation), {status: "PASS"});
+  const partial = '```mermaid\nflowchart LR\ntrial["Current: Trial scheduled"]\nstyle trial font-weight:bold,fill:#005A9C,color:#fff\n```\nPartial journey: topology_unavailable.';
+  const evidence = {...observation,nodes:[observation.nodes[0]],edges:[],paths:[],read_failure:"topology_unavailable"};
+  assert.deepEqual(verifyLeadGraphResponse(partial,evidence),{status:"PARTIAL"});
+});

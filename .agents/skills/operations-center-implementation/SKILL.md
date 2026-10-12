@@ -7,6 +7,10 @@ description: Implement BOS Operations Center repository changes using its archit
 
 ## Automated proposal gate
 
+Run required Oracle reviews covered by the owner's normal plan automatically,
+without spending-approval questions or a separate $0 approval. Preserve explicit
+approval for additional monetary spending outside that plan and any paid fallback.
+
 Before the first repository mutation, investigate current behavior and write
 the proposed correction under **Problem**, **Cause**, and **Recommended
 change**, with no more than three concise sentences under each heading. Submit

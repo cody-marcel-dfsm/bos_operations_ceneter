@@ -3,6 +3,21 @@ name: oracle
 description: Ground BOS Operations Center architecture guidance and repository reviews in this repository's canonical Vault. Use for architecture questions, implementation patterns, constitutional compliance, release readiness, or review of an actual BOS Operations Center diff. This is a repository-maintainer workflow and is never distributed in customer BOS plugins.
 ---
 
+## Covered normal-plan operations — owner clarification, 2026-10-12
+
+Operations covered by the owner's existing normal plan, including ordinary
+Codex model calls and Oracle reviews using included allowance, proceed
+automatically without spending-approval questions or a separate $0 approval.
+A missing per-review price creates no approval gate for covered normal-plan
+usage. Apply generic paid-review approval requirements to additional monetary
+spending outside that plan: extra paid API calls or credits, purchases,
+subscription changes, billable cloud work and persistent infrastructure costs.
+Unknown additional charges require a defined spending limit. Unavailable
+included allowance authorizes no automatic paid fallback. This direct owner
+clarification controls spending interpretation throughout these instructions;
+independent review, API-version and authentication approval gates remain in force.
+
+
 # Operations Center Oracle
 
 ## Release-only client delivery
