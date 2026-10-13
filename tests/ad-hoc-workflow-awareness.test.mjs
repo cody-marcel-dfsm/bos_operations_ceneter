@@ -84,3 +84,20 @@ test("generated client skills preserve ad hoc workflow awareness", async () => {
     }
   }
 });
+
+test("education routing delegates automation plugin explanations to the orchestrator with a visual", async () => {
+  const education = await text("source/verticals/education-center/education-center-service-routing/SKILL.md");
+  assert.match(education, /## Automation plugin explanations/);
+  assert.match(education, /Invoke the installed BOS\s+`bos-workflow-orchestrator`[\s\S]*described plugin journey\s+explanation/i);
+  assert.match(education, /never\s+substitutes another plugin, a local report, package text, or memory/i);
+  assert.match(education, /`bos-visual-output` native renderer selection/);
+  assert.match(education, /`not_reported` readiness means channel\s+enablement is unverified/);
+  assert.doesNotMatch(education, /Build one flowchart from the descriptor/i);
+});
+
+test("orchestrator automation explanations render through the native renderer selection", async () => {
+  const orchestrator = await text("source/platform/bos-workflow-orchestrator/SKILL.md");
+  assert.match(orchestrator, /Lead with an actual flowchart[\s\S]*`bos-visual-output` native renderer\s+selection/i);
+  assert.match(orchestrator, /native inline visualization tool takes priority[\s\S]*Mermaid is allowed only with established host rendering support/i);
+  assert.doesNotMatch(orchestrator, /Lead with an actual Mermaid flowchart/i);
+});

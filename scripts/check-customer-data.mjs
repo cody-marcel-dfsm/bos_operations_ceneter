@@ -12,7 +12,7 @@ const digestPath = join(root, "privacy", "customer-identifiers.sha256");
 const approvedBinaryPath = join(root, "privacy", "approved-binary-assets.sha256");
 const textExtensions = new Set([
   "", ".cjs", ".css", ".csv", ".html", ".js", ".json", ".jsonl", ".jsx",
-  ".lock", ".md", ".mjs", ".py", ".sh", ".sql", ".svg", ".toml", ".ts", ".tsx",
+  ".diff", ".lock", ".log", ".md", ".mjs", ".patch", ".py", ".sh", ".sql", ".svg", ".toml", ".ts", ".tsx",
   ".sha256", ".txt", ".yaml", ".yml"
 ]);
 const ignoredParts = new Set([".git", "node_modules", "vendor", "index"]);

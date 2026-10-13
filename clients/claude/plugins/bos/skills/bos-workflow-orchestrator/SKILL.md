@@ -124,11 +124,14 @@ outcomes, final failure outcomes, and bounded recovery. Domain skills may
 contribute terminology, goals, constraints, and presentation; BOS Operations
 Center owns the complete plan and composition.
 
-Lead with an actual Mermaid flowchart of the automation workflow from the
-plugin's perspective. Group technical steps into the meaningful interfaces a
-customer or staff member experiences, such as inbound lead capture, email or
-phone contact, calendar scheduling, approval, and outcomes, only when current
-Describe evidence names those interfaces or services. Preserve exact described
+Lead with an actual flowchart of the automation workflow from the plugin's
+perspective, rendered through the installed `bos-visual-output` native renderer
+selection: an advertised native inline visualization tool takes priority, and
+Mermaid is allowed only with established host rendering support. Group
+technical steps into the meaningful interfaces a customer or staff member
+experiences, such as inbound lead capture, email or phone contact, calendar
+scheduling, approval, and outcomes, only when current Describe evidence names
+those interfaces or services. Preserve exact described
 steps and ownership in concise labels or supporting detail. Follow the visual
 with the explain plan in plain language.
 
