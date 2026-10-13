@@ -76,3 +76,17 @@ test("privacy scanner includes untracked candidates and rejects unreviewed binar
     await rm(directory, {recursive: true, force: true});
   }
 });
+
+test("privacy scanner reads text logs and diffs instead of rejecting them as binaries", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "boc-privacy-text-"));
+  const candidates = ["workflow-output.log", "workflow-output.diff", "workflow-output.patch"]
+    .map((name) => join(directory, name));
+  try {
+    for (const candidate of candidates) await writeFile(candidate, "ok 1 - synthetic output\n");
+    const findings = (await privacyFailures({extraPaths: candidates}))
+      .filter((finding) => finding.includes("workflow-output"));
+    assert.deepEqual(findings, []);
+  } finally {
+    await rm(directory, {recursive: true, force: true});
+  }
+});

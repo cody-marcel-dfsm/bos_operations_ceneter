@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "name": "bos",
-  "version": "0.4.195",
+  "version": "0.4.196",
   "release_status": "active",
   "display_name": "BOS Platform",
   "description": "Controlled AI workflows",

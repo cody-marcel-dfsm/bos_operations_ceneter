@@ -127,6 +127,28 @@ environment variables, tool or capability names, authorization selectors, or
 persisted record identifiers. Return `source_not_available` and invoke
 `education-center-customer-initialization` when the brand remains unresolved.
 
+## Automation plugin explanations
+
+A request to explain, describe, or list the capabilities of an organization's
+automation or automated-outreach plugin ("tell me about the automation") is an
+explanation request, not a routed operation. Invoke the installed BOS
+`bos-workflow-orchestrator` and follow its described plugin journey
+explanation. It owns fresh `app.describe`, exact top-level plugin selection,
+the missing-plugin stop, and the read-only explain plan. This skill never
+substitutes another plugin, a local report, package text, or memory for that
+discovery, and never requests new BOS authorization when the connection is
+already authorized.
+
+Contribute only Education Center presentation. Lead with the plugin's workflow
+graph through the installed `bos-visual-output` native renderer selection,
+distinguish triggers, policy steps, and outreach outcomes, and give each entry
+branch a distinct legend entry. Follow the visual with brief prose on each
+branch and its policy checks, the capabilities `bos_list_context_tools`
+advertises for the selected context grouped by domain, readiness exactly as
+reported, and the role assessed. `not_reported` readiness means channel
+enablement is unverified; name any plugin reporting `configuration_required`.
+A text-only answer does not satisfy the request.
+
 ## Routing workflow
 
 1. Discover every domain marked `bos` through the installed BOS platform MCP
