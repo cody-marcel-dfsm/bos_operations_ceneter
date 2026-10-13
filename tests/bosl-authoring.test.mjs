@@ -187,6 +187,16 @@ test("published schema plus local graph checks accept bounded discovered BOSL", 
   assert.deepEqual(result.findings, []);
 });
 
+test("ordinary url inputs remain data while executable URL metadata stays forbidden", () => {
+  const businessData = structuredClone(graph);
+  businessData.inputs.url = "https://example.test/contact";
+  assert.equal(validateBoslDocument(businessData, { publishedSchema, operationContracts }).valid, true);
+
+  const executable = structuredClone(graph);
+  executable.inputs.callback_url = "https://example.test/execute";
+  assert.match(validateBoslDocument(executable, { publishedSchema, operationContracts }).findings.map(({code}) => code).join("\n"), /bosl_executable_metadata_forbidden/);
+});
+
 test("registration sends the raw document without client protocol metadata", () => {
   const registration = createRegistrationDocument(graph, {
     publishedSchema,

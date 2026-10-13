@@ -49,6 +49,18 @@ export function syntheticAppDescribe() {
         input: {operation: "lead-director.journeys.register"}
       }
     },
+    workflow_catalog: {
+      contract: {
+        capability: "api.contract.get",
+        input: {operation: "lead-director.journeys.workflows"}
+      }
+    },
+    workflow_control: {
+      contract: {
+        capability: "api.contract.get",
+        input: {operation: "lead-director.journeys.workflow-control"}
+      }
+    },
     bosl: {
       schema_uri: `bos://apps/lead-director/bosl/${"a".repeat(32)}/schema`,
       reference_uri: `bos://apps/lead-director/bosl/${"a".repeat(32)}/reference`,

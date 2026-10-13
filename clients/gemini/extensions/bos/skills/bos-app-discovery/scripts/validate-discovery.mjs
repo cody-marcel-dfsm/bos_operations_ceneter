@@ -295,7 +295,7 @@ export function validateAppDescribe(description) {
   rejectRawAuthority(description, "app.describe response");
   requireExactKeys(
     description,
-    new Set(["application", "describe", "bosl", "journey_registration"]),
+    new Set(["application", "describe", "bosl", "journey_registration", "workflow_catalog", "workflow_control"]),
     "app.describe response"
   );
   requireObject(description.application, "app.describe response.application");
@@ -367,7 +367,31 @@ export function validateAppDescribe(description) {
     }
   }
   validateBoslDescriptor(description.bosl, "app.describe response.bosl");
+  if(description.workflow_catalog!==undefined) validateWorkflowCatalogDiscovery(description.workflow_catalog);
+  if(description.workflow_control!==undefined) validateWorkflowControlDiscovery(description.workflow_control);
   return description;
+}
+
+export function validateWorkflowCatalogDiscovery(value) {
+  requireObject(value,"workflow catalog discovery");
+  requireExactKeys(value,new Set(["contract"]),"workflow catalog discovery");
+  requireObject(value.contract,"workflow catalog contract");
+  requireExactKeys(value.contract,new Set(["capability","input"]),"workflow catalog contract");
+  requireObject(value.contract.input,"workflow catalog input");
+  requireExactKeys(value.contract.input,new Set(["operation"]),"workflow catalog input");
+  if(value.contract.capability!=="api.contract.get" || value.contract.input.operation!=="lead-director.journeys.workflows") throw new Error("workflow catalog requires its exact discovered v1 contract link");
+  return value;
+}
+
+export function validateWorkflowControlDiscovery(value) {
+  requireObject(value,"workflow control discovery");
+  requireExactKeys(value,new Set(["contract"]),"workflow control discovery");
+  requireObject(value.contract,"workflow control contract");
+  requireExactKeys(value.contract,new Set(["capability","input"]),"workflow control contract");
+  requireObject(value.contract.input,"workflow control input");
+  requireExactKeys(value.contract.input,new Set(["operation"]),"workflow control input");
+  if(value.contract.capability!=="api.contract.get" || value.contract.input.operation!=="lead-director.journeys.workflow-control") throw new Error("workflow control requires its exact discovered v1 contract link");
+  return value;
 }
 
 function validateBoslDescriptor(bosl, label) {
@@ -582,11 +606,13 @@ export function validateDiscoveryRefresh(response) {
   rejectRawAuthority(response, "discovery.refresh response");
   requireExactKeys(
     response,
-    new Set(["application", "bosl", "plugins", "ttlMs", "cacheScope"]),
+    new Set(["application", "bosl", "plugins", "ttlMs", "cacheScope", "journey_registration", "workflow_catalog", "workflow_control"]),
     "discovery.refresh response"
   );
   validateApplication(response.application, "discovery.refresh response.application");
   validateBoslDescriptor(response.bosl, "discovery.refresh response.bosl");
+  if(response.workflow_catalog!==undefined) validateWorkflowCatalogDiscovery(response.workflow_catalog);
+  if(response.workflow_control!==undefined) validateWorkflowControlDiscovery(response.workflow_control);
   validateMcpPrivateMetadata(response, "discovery.refresh response");
   validatePluginsList({
     application: response.application,
@@ -921,14 +947,34 @@ export function validateJourneyRegistrationContractResponse(response, expected =
   requireString(response.title, `${label}.title`);
   requireString(response.description, `${label}.description`);
   validateContractObjectSchema(response.input_schema, `${label}.input_schema`);
-  const inputFields = ["identity", "name", "inputs", "entry", "nodes"];
+  const requiredInputFields = ["identity", "name", "inputs", "entry", "nodes"];
+  const optionalInputFields = ["bootstrap", "controls"];
+  const inputFields = [...requiredInputFields, ...optionalInputFields];
   requireObject(response.input_schema.properties, `${label}.input_schema.properties`);
   requireExactKeys(response.input_schema.properties, new Set(inputFields), `${label}.input_schema.properties`);
   if (response.input_schema.additionalProperties !== false ||
       !Array.isArray(response.input_schema.required) ||
-      response.input_schema.required.length !== inputFields.length ||
-      inputFields.some(field => !Object.hasOwn(response.input_schema.properties, field) || !response.input_schema.required.includes(field))) {
+      response.input_schema.required.length !== requiredInputFields.length ||
+      requiredInputFields.some(field => !Object.hasOwn(response.input_schema.properties, field) || !response.input_schema.required.includes(field)) ||
+      optionalInputFields.some(field => response.input_schema.required.includes(field))) {
     throw new Error(`${label}.input_schema must declare the complete raw BOSL object`);
+  }
+  for (const field of optionalInputFields) {
+    if (Object.hasOwn(response.input_schema.properties, field)) {
+      const schema = response.input_schema.properties[field];
+      const optionalShape = field === "bootstrap"
+        ? {properties:["callbacks","activate_on"],required:["callbacks"]}
+        : {properties:["actions"],required:["actions"]};
+      validateContractObjectSchema(schema, `${label}.input_schema.properties.${field}`);
+      requireObject(schema.properties, `${label}.input_schema.properties.${field}.properties`);
+      requireExactKeys(schema.properties, new Set(optionalShape.properties), `${label}.input_schema.properties.${field}.properties`);
+      if (schema.additionalProperties !== false ||
+          !Array.isArray(schema.required) ||
+          schema.required.length !== optionalShape.required.length ||
+          optionalShape.required.some(key => !schema.required.includes(key))) {
+        throw new Error(`${label}.input_schema.properties.${field} must preserve its closed v1 shape`);
+      }
+    }
   }
   validateEmbeddedSchema(response.output_schema, `${label}.output_schema`);
   if (!Array.isArray(response.output_schema.oneOf) || response.output_schema.oneOf.length === 0 ||
@@ -957,8 +1003,22 @@ export function validateJourneyRegistrationContractResponse(response, expected =
   const expectedVariants = new Set(variants.map(([state, fields]) => JSON.stringify([state, fields.sort()])));
   const branches = response.output_schema.oneOf;
   if (branches.length !== expectedVariants.size || new Set(branches.map(signature)).size !== expectedVariants.size ||
-      branches.some(branch => !expectedVariants.has(signature(branch)) ||
-        JSON.stringify(Object.keys(branch.properties ?? {}).sort()) !== JSON.stringify([...(branch.required ?? [])].sort()))) {
+      branches.some(branch => {
+        const branchSignature = signature(branch);
+        if (!expectedVariants.has(branchSignature)) return true;
+        const isCompiledSuccess = branch.properties?.compiled?.const === true;
+        const required = [...(branch.required ?? [])].sort();
+        const properties = Object.keys(branch.properties ?? {}).sort();
+        const expectedProperties = isCompiledSuccess && Object.hasOwn(branch.properties ?? {}, "callback_report")
+          ? [...required, "callback_report"].sort()
+          : required;
+        if (JSON.stringify(properties) !== JSON.stringify(expectedProperties)) return true;
+        if (!isCompiledSuccess || !Object.hasOwn(branch.properties ?? {}, "callback_report")) return false;
+        const report = branch.properties.callback_report;
+        return report?.type !== "object" || report.additionalProperties !== false ||
+          JSON.stringify([...(report.required ?? [])].sort()) !== '["as_of","callbacks","usage","waits"]' ||
+          JSON.stringify(Object.keys(report.properties ?? {}).sort()) !== '["as_of","callbacks","usage","waits"]';
+      })) {
     throw new Error(`${label}.output_schema must match the exact ${version} response variants`);
   }
   {
@@ -1007,10 +1067,85 @@ export function validateJourneyRegistrationContractResponse(response, expected =
   return response;
 }
 
+function validateJourneyWorkflowContractResponse(response, expected = {}) {
+  const label = "journey workflow contract";
+  requireObject(response, label);
+  rejectRawAuthority(response, label);
+  const operations = new Set([
+    "lead-director.journeys.workflows",
+    "lead-director.journeys.workflow-control"
+  ]);
+  if (!operations.has(response.operation) ||
+      (expected.operation !== undefined && response.operation !== expected.operation)) {
+    throw new Error(`${label}.operation must match a discovered workflow contract link`);
+  }
+  requireExactKeys(response, new Set([
+    "operation", "contract_version", "status", "title", "description",
+    "input_schema", "output_schema", "limits", "execution", "guarantees",
+    "public_errors", "ttlMs", "cacheScope"
+  ]), label);
+  if (response.contract_version !== "lead-director-journey-registration/v1") {
+    throw new Error(`${label} must remain within lead-director-journey-registration/v1`);
+  }
+  if (response.status !== "described") throw new Error(`${label}.status must be described`);
+  requireString(response.title, `${label}.title`);
+  requireString(response.description, `${label}.description`);
+  validateContractObjectSchema(response.input_schema, `${label}.input_schema`);
+  validateEmbeddedSchema(response.output_schema, `${label}.output_schema`);
+  if (response.operation === "lead-director.journeys.workflows" &&
+      response.output_schema.type !== "object") {
+    throw new Error(`${label}.output_schema must describe the workflow catalog`);
+  }
+  if (response.operation === "lead-director.journeys.workflow-control" &&
+      !Array.isArray(response.output_schema.oneOf)) {
+    throw new Error(`${label}.output_schema must describe returned workflow actions`);
+  }
+  requireExactKeys(response.limits, new Set(["maximum_duration_seconds", "maximum_fan_out"]), `${label}.limits`);
+  if (response.limits.maximum_duration_seconds !== 30 || response.limits.maximum_fan_out !== 1) {
+    throw new Error(`${label}.limits must preserve the journey v1 ceilings`);
+  }
+  requireExactKeys(response.execution, new Set(["transport", "method", "uri", "context_header"]), `${label}.execution`);
+  const catalog = response.operation === "lead-director.journeys.workflows";
+  const expectedMethod = catalog ? "GET" : "GET_OR_POST";
+  const expectedRoute = catalog
+    ? /^\/bos\/apps\/lead-director\/api\/v1\/organizations\/[A-Za-z0-9][A-Za-z0-9._~-]{0,127}\/journey-workflows$/u
+    : /^\/bos\/apps\/lead-director\/api\/v1\/organizations\/[A-Za-z0-9][A-Za-z0-9._~-]{0,127}\/journey-controls\/\{control\}$/u;
+  if (response.execution.transport !== "https" || response.execution.method !== expectedMethod ||
+      !expectedRoute.test(response.execution.uri) ||
+      response.execution.context_header !== "X-BOS-Context-Handle") {
+    throw new Error(`${label}.execution must remain on its discovered API v1 route`);
+  }
+  requireExactKeys(response.guarantees, new Set(["idempotent", "server_owned_state", "client_generated_keys"]), `${label}.guarantees`);
+  if (response.guarantees.idempotent !== true || response.guarantees.server_owned_state !== true ||
+      response.guarantees.client_generated_keys !== false) {
+    throw new Error(`${label}.guarantees must preserve service-owned journey state`);
+  }
+  if (!Array.isArray(response.public_errors)) throw new Error(`${label}.public_errors must be an array`);
+  const errors = new Set();
+  response.public_errors.forEach((error, index) => {
+    const errorLabel = `${label}.public_errors[${index}]`;
+    requireExactKeys(error, new Set(["code", "http_status", "retryable"]), errorLabel);
+    requireString(error.code, `${errorLabel}.code`);
+    if (errors.has(error.code) || !Number.isInteger(error.http_status) ||
+        error.http_status < 400 || error.http_status > 599 || typeof error.retryable !== "boolean") {
+      throw new Error(`${errorLabel} must contain a unique public error`);
+    }
+    errors.add(error.code);
+  });
+  if (response.ttlMs !== 0 || response.cacheScope !== "private") {
+    throw new Error(`${label} must remain fresh private discovery data`);
+  }
+  return response;
+}
+
 export function validateApiContractResponse(response, expected = {}) {
   const label = "api.contract.get response";
   requireObject(response, label);
   if (response.operation === "lead-director.journeys.register") return validateJourneyRegistrationContractResponse(response, expected);
+  if (response.operation === "lead-director.journeys.workflows" ||
+      response.operation === "lead-director.journeys.workflow-control") {
+    return validateJourneyWorkflowContractResponse(response, expected);
+  }
   rejectRawAuthority(response, label);
   requireExactKeys(
     response,

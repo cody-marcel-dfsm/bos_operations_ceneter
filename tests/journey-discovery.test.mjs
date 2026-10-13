@@ -217,6 +217,12 @@ test("app.describe accepts authenticated BOSL resource links without authority d
       input: {operation: "lead-director.journeys.register"}
     }
   });
+  assert.deepEqual(appDescribe.workflow_control, {
+    contract: {
+      capability: "api.contract.get",
+      input: {operation: "lead-director.journeys.workflow-control"}
+    }
+  });
   for (const journey_registration of [
     {contract: {capability: "other", input: {operation: "lead-director.journeys.register"}}},
     {contract: {capability: "api.contract.get", input: {operation: "other"}}},

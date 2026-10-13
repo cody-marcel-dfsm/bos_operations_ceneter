@@ -35,8 +35,8 @@ the complete document. `parseBoslDocument` and `serializeBoslDocument` provide
 the same contract for in-memory content. Never hand-edit fragments or bypass
 validation; registration still performs the authoritative server compile.
 
-Author the complete organization-seed JSON document with its actual seed
-values. Use only published `client` and `server` node shapes, reference classes,
+Author the complete raw journey JSON document with the authorized business
+inputs. Use only published `client` and `server` node shapes, reference classes,
 condition predicates, `catch`, `transitions`, required defaults, and
 `max_visits`. Run `scripts/bosl-authoring.mjs` against the fresh published
 schema and selected operation contracts. Local findings are authoring aids;
@@ -48,8 +48,10 @@ identifier, execution identifier, authority selector, or idempotency key. A
 compile failure changes no definition. Correct its stable public findings and
 resubmit only when the user still wants the journey.
 
-For `lead-director-journey-registration/v1`, successful registration returns exactly `compiled: true`, the customer-defined
-`identity`, and `actions.start`. Registration compiles and installs the definition;
+For `lead-director-journey-registration/v1`, successful registration returns `compiled: true`, the customer-defined
+`identity`, and `actions.start`. Callback submissions also return their discovered
+`callback_report`; show usage, limits and material adjustments before explicit
+start. Registration compiles and installs the definition;
 execution begins only when the returned signed POST start action is invoked
 without caller payload. The BOS transport serializes exactly `{}` with JSON
 content type. Validate this response with `validateRegistrationResponse` and use
@@ -61,6 +63,11 @@ lifecycle semantics. Registration performs no implicit start. Consume fresh
 v1 discovery and preserve saved authoritative lifecycle envelopes for replay.
 Capability availability is independent from API version, and version changes
 require the human user's explicit request.
+
+For bootstrap declarations and wait correlation, pass the freshly discovered
+event contracts separately as `callbackSources` to local authoring and explain
+helpers. [Callback journeys](callback-journeys.md) describes standing activation,
+role controls, usage reporting and private-run recovery within the same v1 API.
 
 For identity-v2, the BOS transport adapter attaches the current fresh opaque
 handle under the registration contract's discovered
