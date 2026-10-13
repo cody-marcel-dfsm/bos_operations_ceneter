@@ -970,11 +970,17 @@ test("active capacity exposes only returned stoppable choices and exact state ac
           name: "User-owned active journey",
           expires_at: "2026-09-22T12:00:00Z",
           action: state
+        }, {
+          identity: "permanent-callback-workflow",
+          name: "Permanent callback workflow",
+          expires_at: null,
+          action: state
         }]
       }
     }
   });
   assert.equal(result.next, "request_stop_selection");
-  assert.equal(result.choices.length, 1);
+  assert.equal(result.choices.length, 2);
   assert.equal(result.choices[0].action.href, state.href);
+  assert.equal(result.choices[1].expires_at, null);
 });

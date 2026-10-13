@@ -2,6 +2,8 @@
 
 import Ajv2020 from "./vendor/ajv2020.bundle.mjs";
 import {validateSafeBosExecutionUri} from "../../bos-external-dependency-adapter/scripts/safe-execution-uri.mjs";
+import {validateApiContractResponse} from "../../bos-app-discovery/scripts/validate-discovery.mjs";
+import {validateCallbackReport,validateCallbackUsage,validateStandingRegistration,validateWorkflowCatalog,validateWorkflowControlResponse,validateWorkflowAction} from "./callback-runtime-client.mjs";
 
 const lifecycleVerbs = new Set(["start", "complete", "step", "failed", "state"]);
 const journeyStatuses = new Set([
@@ -263,6 +265,11 @@ export function buildIdentityV2JourneyActionRequest(action, contextHandle, paylo
   return bindIdentityV2Context(request, contextHandle);
 }
 
+export function buildIdentityV2WorkflowActionRequest(action, contextHandle, payload) {
+  validateWorkflowAction(action);
+  return bindIdentityV2Context(arguments.length>=3 ? buildActionRequest(action,payload) : buildActionRequest(action),contextHandle);
+}
+
 export function buildDiscoveredOperationRequest(contract, contextHandle, payload) {
   requireObject(contract, "operation contract");
   requireString(contract.operation, "operation contract.operation");
@@ -302,6 +309,23 @@ export function buildDiscoveredOperationRequest(contract, contextHandle, payload
     contextHandle,
     contract.execution.context_header
   );
+}
+
+export function buildJourneyRegistrationRequest(contract, contextHandle, document) {
+  validateApiContractResponse(contract, {operation:"lead-director.journeys.register"});
+  const execution = contract.execution;
+  if (execution.method !== "POST" || execution.transport !== "https" ||
+      execution.context_header !== bosContextHeader) {
+    throw new Error("journey registration must use its discovered HTTPS API v1 route and context header");
+  }
+  validateHref(execution.uri, "journey registration URI");
+  validatePayload(document, contract.input_schema);
+  return bindIdentityV2Context({
+    method: "POST",
+    href: execution.uri,
+    headers: {"content-type":"application/json"},
+    body: JSON.stringify(document)
+  }, contextHandle, execution.context_header);
 }
 
 function validatePublicError(error, label = "error") {
@@ -463,6 +487,11 @@ export function validateJourneyEnvelope(body) {
     throw new Error(`${body.status} must return the step action`);
   }
   if (body.status === "in_progress") {
+    if (body.registration !== undefined) {
+      validateStandingRegistration(body.registration);
+      if (body.current_node !== undefined || body.action.verb!=="state" || !Number.isInteger(body.retry_after_seconds) || body.retry_after_seconds<1 || body.retry_after_seconds>900) throw new Error("standing registration lifecycle is invalid");
+      return body;
+    }
     requireObject(body.current_node, "journey response.current_node");
     requireString(body.current_node.code, "journey response.current_node.code");
     if (body.current_node.type !== "server") {
@@ -504,7 +533,8 @@ export function validateRegistrationResponse(body) {
   }
   if (body.compiled) {
     rejectInternalState(body, "registration response");
-    requireExactKeys(body, new Set(["compiled", "identity", "actions"]), "registration response");
+    requireExactKeys(body, new Set(["compiled", "identity", "actions", "callback_report"]), "registration response");
+    if (body.callback_report!==undefined) validateCallbackReport(body.callback_report);
     requireString(body.identity, "registration response.identity");
     requireObject(body.actions, "registration response.actions");
     requireExactKeys(body.actions, new Set(["start"]), "registration response.actions");
@@ -548,8 +578,27 @@ export function interpretJourneyResponse(response) {
     ? undefined
     : validatePublicError(response.body.error);
   rejectEnvelopeInternalState(response.body, publicError);
+  if (Object.hasOwn(response.body,"workflows")) {
+    if(response.http_status<200||response.http_status>299) throw new Error("workflow catalog requires a successful HTTP status");
+    return {next:"workflow_catalog",body:validateWorkflowCatalog(response.body)};
+  }
+  if (Object.hasOwn(response.body,"workflow_ref")) {
+    if(response.http_status<200||response.http_status>299) throw new Error("workflow control response requires a successful HTTP status");
+    const workflow=validateWorkflowControlResponse(response.body);
+    if(Object.keys(workflow.lifecycle).length===2) return {next:"workflow_view",body:workflow};
+    return {...interpretJourneyResponse({...response,body:workflow.lifecycle}),workflow};
+  }
+  const errorCode = publicError?.code?.toUpperCase();
+  if (errorCode?.startsWith("CALLBACK_")) {
+    if (response.http_status < 400 || response.http_status > 599) throw new Error("callback errors require an HTTP error status");
+    const usage = response.body.usage === undefined ? undefined : validateCallbackUsage(response.body.usage);
+    if (errorCode === "CALLBACK_LIMIT_REACHED" && usage === undefined) throw new Error("callback quota errors require current usage and limits");
+    if (usage === undefined && Object.hasOwn(response.body,"usage")) throw new Error("callback usage is invalid");
+    return {next:"callback_error",error:publicError,...(usage === undefined ? {} : {usage})};
+  }
+  if (errorCode === "WORKFLOW_OPERATION_EXPIRED") return {next:"refresh_workflow",error:publicError};
 
-  if (publicError?.code === "journey_creation_rate_limited") {
+  if (errorCode === "JOURNEY_CREATION_RATE_LIMITED") {
     const seconds = response.body.retry_after_seconds;
     if (!Number.isInteger(seconds) || seconds < 1) {
       throw new Error("creation rate limit requires retry_after_seconds");
@@ -564,7 +613,7 @@ export function interpretJourneyResponse(response) {
       error: publicError
     };
   }
-  if (publicError?.code === "journey_active_limit_reached") {
+  if (errorCode === "JOURNEY_ACTIVE_LIMIT_REACHED") {
     const resolution = requireObject(response.body.resolution, "active capacity resolution");
     requireExactKeys(
       resolution,
@@ -582,7 +631,9 @@ export function interpretJourneyResponse(response) {
       requireObject(journey, `stoppable_journeys[${index}]`);
       requireString(journey.identity, `stoppable_journeys[${index}].identity`);
       requireString(journey.name, `stoppable_journeys[${index}].name`);
-      requireString(journey.expires_at, `stoppable_journeys[${index}].expires_at`);
+      if (journey.expires_at !== null) {
+        requireString(journey.expires_at, `stoppable_journeys[${index}].expires_at`);
+      }
       validateActionEnvelope(journey.action, { lifecycleOnly: true });
       if (journey.action.verb !== "state") {
         throw new Error("stoppable journey must return its exact state action");
@@ -596,7 +647,7 @@ export function interpretJourneyResponse(response) {
       error: publicError
     };
   }
-  if (response.http_status === 404 && publicError?.code === "journey_not_found") {
+  if (response.http_status === 404 && errorCode === "JOURNEY_NOT_FOUND") {
     return { next: "terminal_not_found", error: publicError };
   }
 
@@ -606,7 +657,9 @@ export function interpretJourneyResponse(response) {
       if (response.http_status < 200 || response.http_status > 299) {
         throw new Error("compiled registration requires a successful HTTP status");
       }
-      return { next: "invoke_action", action: registration.actions.start };
+      return registration.callback_report===undefined
+        ? { next: "invoke_action", action: registration.actions.start }
+        : { next:"review_callback_grant", callback_report:registration.callback_report, action:registration.actions.start };
     }
     return { next: "correct_bosl", error: registration.error, errors: registration.errors };
   }
@@ -627,6 +680,7 @@ export function interpretJourneyResponse(response) {
     case "failure_caught":
       return { next: "invoke_action", action: body.action };
     case "in_progress":
+      if(body.registration!==undefined) return {next:"standing_workflow",registration:body.registration,action:body.action};
       return {
         next: "poll_state",
         retry_after_seconds: body.retry_after_seconds,

@@ -4,10 +4,40 @@ import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import test from 'node:test';
 import {validateApiContractResponse} from '../source/platform/bos-app-discovery/scripts/validate-discovery.mjs';
+import {buildJourneyRegistrationRequest} from '../source/platform/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs';
 
 // URL-discovered metadata with a synthetic organization address; no sibling code.
 const registration=JSON.parse(await readFile(new URL('./fixtures/journey-registration-contract.json',import.meta.url),'utf8'));
 const clone=()=>structuredClone(registration);
+const workflowContract=operation=>({
+ operation,
+ contract_version:'lead-director-journey-registration/v1',
+ status:'described',title:'Synthetic workflow contract',description:'Synthetic discovered operation.',
+ input_schema:{type:'object',properties:{},additionalProperties:false},
+ output_schema:operation==='lead-director.journeys.workflows'
+  ? {type:'object',required:['workflows','truncated'],properties:{workflows:{type:'array'},truncated:{type:'boolean'}},additionalProperties:false}
+  : {oneOf:[{type:'object',required:['workflow_ref'],properties:{workflow_ref:{type:'string'}},additionalProperties:false}]},
+ limits:{maximum_duration_seconds:30,maximum_fan_out:1},
+ execution:{transport:'https',method:operation==='lead-director.journeys.workflows'?'GET':'GET_OR_POST',
+  uri:operation==='lead-director.journeys.workflows'
+   ? '/bos/apps/lead-director/api/v1/organizations/synthetic-org/journey-workflows'
+   : '/bos/apps/lead-director/api/v1/organizations/synthetic-org/journey-controls/{control}',
+  context_header:'X-BOS-Context-Handle'},
+ guarantees:{idempotent:true,server_owned_state:true,client_generated_keys:false},
+ public_errors:[],ttlMs:0,cacheScope:'private'
+});
+
+test('workflow catalog and control stay within the existing journey v1 contract',()=>{
+ for(const operation of ['lead-director.journeys.workflows','lead-director.journeys.workflow-control']){
+  const response=workflowContract(operation),original=JSON.stringify(response);
+  assert.equal(validateApiContractResponse(response,{operation}),response);
+  assert.equal(JSON.stringify(response),original);
+  const version=structuredClone(response);version.contract_version=operation.endsWith('.workflows')?'lead-director-journey-workflows/v1':'lead-director-journey-workflow-control/v1';
+  assert.throws(()=>validateApiContractResponse(version),/journey-registration\/v1/);
+  const route=structuredClone(response);route.execution.uri=route.execution.uri.replace('/api/v1/','/api/v2/');
+  assert.throws(()=>validateApiContractResponse(route),/API v1 route/);
+ }
+});
 
 test('sole API v1 registration validates the complete compile/start and lifecycle schema',()=>{
  for(const contract of [registration]){
@@ -39,6 +69,50 @@ test('registration rejects API version changes, incomplete responses and widened
   v=>{v.output_schema.oneOf[0].properties.extra={type:'string'};},
   v=>{delete v.execution.transport;delete v.execution.context_header;}
  ]){const value=clone();mutate(value);assert.throws(()=>validateApiContractResponse(value));}
+});
+
+test('compiled registration reports callback usage and limits as an optional v1 response property',()=>{
+ const success=clone().output_schema.oneOf.find(branch=>branch.properties?.compiled?.const===true);
+ assert.deepEqual(success.required,['compiled','identity','actions']);
+ assert.deepEqual(Object.keys(success.properties).sort(),['actions','callback_report','compiled','identity']);
+ assert.equal(success.properties.callback_report.additionalProperties,false);
+ assert.deepEqual(success.properties.callback_report.required,['as_of','callbacks','waits','usage']);
+ assert.equal(validateApiContractResponse(registration,{operation:'lead-director.journeys.register'}),registration);
+
+ const required=clone();
+ required.output_schema.oneOf.find(branch=>branch.properties?.compiled?.const===true).required.push('callback_report');
+ assert.throws(()=>validateApiContractResponse(required),/response variants/);
+ const missing=clone();
+ delete missing.output_schema.oneOf.find(branch=>branch.properties?.compiled?.const===true).properties.callback_report;
+ assert.equal(validateApiContractResponse(missing,{operation:'lead-director.journeys.register'}),missing);
+ const callbackFree=clone();
+ delete callbackFree.input_schema.properties.bootstrap;
+ delete callbackFree.input_schema.properties.controls;
+ delete callbackFree.output_schema.oneOf.find(branch=>branch.properties?.compiled?.const===true).properties.callback_report;
+ assert.equal(validateApiContractResponse(callbackFree,{operation:'lead-director.journeys.register'}),callbackFree);
+ const widened=clone();
+ widened.output_schema.oneOf.find(branch=>branch.properties?.compiled?.const===true)
+  .properties.callback_report.additionalProperties=true;
+ assert.throws(()=>validateApiContractResponse(widened),/response variants/);
+});
+
+test('discovered v1 registration accepts callback bootstrap and role controls in the real request path',()=>{
+ const document={
+  identity:'gmail-lead-call',name:'Email lead callback',inputs:{},entry:'done',
+  bootstrap:{callbacks:[{code:'mail',source:'gmail.trigger',inputs:{},match:{left:{from:'$event.fields.subject'},op:'exists'}}],activate_on:'mail'},
+  controls:{actions:[{verb:'stop',roles:['director']}]},
+  nodes:[{code:'done',type:'server',inputs:{},outputs:{},terminal:true}]
+ };
+ const contextHandle='bos_ctx_v2_'+'c'.repeat(64);
+ assert.equal(validateApiContractResponse(registration,{operation:'lead-director.journeys.register'}),registration);
+ const request=buildJourneyRegistrationRequest(registration,contextHandle,document);
+ assert.equal(request.method,'POST');
+ assert.equal(request.href,registration.execution.uri);
+ assert.equal(request.headers['X-BOS-Context-Handle'],contextHandle);
+ assert.deepEqual(JSON.parse(request.body),document);
+ assert.throws(()=>buildJourneyRegistrationRequest(registration,contextHandle,{...document,unrecognized:true}),/payload/);
+ const widened=clone();widened.input_schema.properties.unsupported={type:'object'};
+ assert.throws(()=>validateApiContractResponse(widened,{operation:'lead-director.journeys.register'}),/undeclared field/);
 });
 
 test('published registration subtype validates through the existing entry and CLI',()=>{

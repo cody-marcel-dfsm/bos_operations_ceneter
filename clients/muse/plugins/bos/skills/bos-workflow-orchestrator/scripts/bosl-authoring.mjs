@@ -5,6 +5,7 @@ import { access, lstat, mkdir, open, readFile, rename, rm } from "node:fs/promis
 import { dirname, resolve } from "node:path";
 
 import Ajv2020 from "./vendor/ajv2020.bundle.mjs";
+import {validateCallbackAuthoring} from "./callback-authoring.mjs";
 
 const predicateOperators = new Set([
   "eq",
@@ -169,9 +170,9 @@ function normalizedSecurityKey(value) {
     .toLowerCase();
 }
 
-function validateSecurity(value, findings, path = "$") {
+function validateSecurity(value, findings, path = "$", document = value) {
   if (Array.isArray(value)) {
-    value.forEach((item, index) => validateSecurity(item, findings, `${path}[${index}]`));
+    value.forEach((item, index) => validateSecurity(item, findings, `${path}[${index}]`, document));
     return;
   }
   if (!isObject(value)) return;
@@ -187,7 +188,10 @@ function validateSecurity(value, findings, path = "$") {
         "BOSL cannot carry caller-selected authority or execution context."
       ));
     }
-    validateSecurity(child, findings, `${path}.${rawKey}`);
+    const governed = /^\$\.nodes\[([0-9]+)\]\.inputs$/u.exec(path);
+    const localCallback = key === "callback" && governed && document.nodes[Number(governed[1])]?.operation === "bosl.callbacks.await";
+    if(["handler","script","shell","sql","callback_url","implementation"].includes(key) && !localCallback) findings.push(finding("bosl_executable_metadata_forbidden",`${path}.${rawKey}`,"Use discovered semantic operations and declared callback literals."));
+    validateSecurity(child, findings, `${path}.${rawKey}`, document);
   }
 }
 
@@ -409,7 +413,7 @@ function operationIdentifier(operation) {
 
 export function validateBoslDocument(document, {
   publishedSchema,
-  operationContracts = []
+  operationContracts = [], callbackSources = []
 } = {}) {
   const findings = [];
   validateWithPublishedSchema(document, publishedSchema, findings);
@@ -579,6 +583,7 @@ export function validateBoslDocument(document, {
     }
   }
   validateBoundedCycles(nodesByCode, findings);
+  validateCallbackAuthoring(document,callbackSources,collectEdges,findings);
   return { valid: findings.length === 0, findings };
 }
 
@@ -592,7 +597,7 @@ export function createRegistrationDocument(document, options) {
   return structuredClone(document);
 }
 
-export function buildExplainPlan({ objective, document, operationContracts = [] }) {
+export function buildExplainPlan({ objective, document, operationContracts = [], callbackSources = [] }) {
   if (typeof objective !== "string" || !objective.trim()) {
     throw new Error("objective must be a non-empty string");
   }
@@ -614,6 +619,10 @@ export function buildExplainPlan({ objective, document, operationContracts = [] 
   }
   return {
     objective: objective.trim(),
+    ...(document.bootstrap ? {callbacks:document.bootstrap.callbacks.map(callback=>({code:callback.code,source:callback.source,
+      standing:document.bootstrap.activate_on===callback.code, deduplication:callback.dedupe_on??[],
+      descriptor:structuredClone(callbackSources.find(source=>(source.operation??source.semantic_operation_id)===callback.source)?.input_schema?.["x-bos-callback-source"]??null)})),
+      execution:document.nodes.some(node=>node.type==="client")?"interactive":"server",authority:"author"}:{}),
     steps: document.nodes.map((node) => {
       const operation = node.operation ? operations.get(node.operation) : undefined;
       const failureTargets = [];

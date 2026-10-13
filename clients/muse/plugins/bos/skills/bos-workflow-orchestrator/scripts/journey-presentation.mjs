@@ -225,6 +225,13 @@ export function buildJourneyGraphView(document, runtime = {}) {
     lines.push(`  ${ids.get(node.code)}["${safeLabel(node.code)} · ${node.type}${suffix}"]`);
     accessible.push(`${node.code} [${node.type}${suffix}]`);
   }
+  for(const [index,callback] of (document.bootstrap?.callbacks??[]).entries()) {
+    const id=`callback${index}`;
+    lines.push(`  ${id}["${safeLabel(callback.code)} · ${safeLabel(callback.source)} callback"]`);
+    accessible.unshift(`Bootstrap ${callback.code} from ${callback.source}`);
+    for(const node of document.nodes) if(node.operation==="bosl.callbacks.await" && node.inputs?.callback?.value===callback.code) lines.push(`  ${id} -.->|captured event| ${ids.get(node.code)}`);
+    if(document.bootstrap.activate_on===callback.code) {lines.push(`  ${id} -.->|fresh run| ${ids.get(document.entry)}`);accessible.unshift(`Standing activation on ${callback.code}`);}
+  }
   for (const node of document.nodes) {
     for (const edge of edgeTargets(node)) {
       if (!ids.has(edge.target)) continue;

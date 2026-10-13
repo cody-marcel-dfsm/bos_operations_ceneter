@@ -191,8 +191,9 @@ the BOS adapter attaches the current fresh opaque handle under the discovered
 plan remains client-side.
 
 For the advertised `lead-director-journey-registration/v1`, validate registration
-as exactly `compiled: true`, `identity`, and
-`actions.start`. Invoke the returned signed POST `actions.start` with no caller
+as `compiled: true`, `identity`, and `actions.start`; callback submissions also
+return their discovered `callback_report`. Show its usage, limits and material
+adjustments before invoking the explicit start. Invoke the returned signed POST `actions.start` with no caller
 payload; the BOS transport frames it as exactly `{}` with JSON content type to begin
 execution; registration itself runs no journey work. For compile failure, correct
 the public findings before resubmitting. After start, follow only complete actions
@@ -212,6 +213,12 @@ fresh opaque handle; keep the handle out of action payloads and dependent
 products. Legacy/v1 returned actions stay header-free. For reconnection
 recovery, invoke the sole exact returned `state` action and resume from its
 authoritative response.
+
+For callback bootstrap, standing workflows, organization-visible definitions,
+role-specific controls or callback waits, read
+[callback journeys](references/callback-journeys.md). Use the freshly discovered
+v1 callback source and wait contracts. The existing journey runtime owns all
+server progress, event capture and originating-author authority.
 
 ## Workflow
 
