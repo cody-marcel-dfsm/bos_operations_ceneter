@@ -11,3 +11,33 @@ test("source absence, unadvertised fields and bootstrap node references reject a
 });
 test("a bypass path prevents earlier-output correlation",()=>{const g=graph();g.entry="branch";g.nodes.push({code:"branch",transitions:{cases:[{next:"prepare"}],default:"wait"},outputs:{}});const findings=[];validateCallbackAuthoring(g,[source],edges,findings);assert.ok(findings.some(f=>f.message.includes("dominating")));});
 test("standing activation resolves a local bootstrap callback",()=>{const g=graph();g.bootstrap.activate_on="missing";const findings=[];validateCallbackAuthoring(g,[source],edges,findings);assert.ok(findings.some(f=>f.path==="$.bootstrap.activate_on"));});
+
+test("callback correlation compares schema type arrays semantically",()=>{
+  const descriptor=structuredClone(source);
+  descriptor.input_schema["x-bos-callback-source"].event_schema.properties.fields.properties.subject.type=["string","null"];
+  for(const type of [["null","string"],["string","null"]]) {
+    const g=graph();g.nodes[0].outputs.subject.type=type;
+    const findings=[];validateCallbackAuthoring(g,[descriptor],edges,findings);
+    assert.deepEqual(findings,[]);
+  }
+  for(const type of [["integer","null"],["string"],["boolean","null"]]) {
+    const g=graph();g.nodes[0].outputs.subject.type=type;
+    const findings=[];validateCallbackAuthoring(g,[descriptor],edges,findings);
+    assert.ok(findings.some(f=>f.message.includes("operand types differ")));
+  }
+});
+
+test("finite callback waits require a declared expiry catch and target",()=>{
+  const g=graph();g.nodes[1].inputs.ttl_seconds={value:10};
+  const check=()=>{const findings=[];validateCallbackAuthoring(g,[source],edges,findings);return findings;};
+  assert.ok(check().some(f=>f.path==="$.nodes.wait.catch"));
+  g.nodes[1].catch={cases:[{when:{left:{from:"$error.code"},op:"eq",right:{value:"CALLBACK_WAIT_EXPIRED"}},next:"done"}],default:"done"};
+  assert.deepEqual(check(),[]);
+  g.nodes[1].catch.cases[0].when.right.value="CALLBACK_UNAVAILABLE";
+  assert.ok(check().some(f=>f.path==="$.nodes.wait.catch"));
+  g.nodes[1].catch.cases[0].when.right.value="CALLBACK_WAIT_EXPIRED";
+  g.nodes[1].catch.cases[0].next="missing";
+  assert.ok(check().some(f=>f.path==="$.nodes.wait.catch"));
+  delete g.nodes[1].inputs.ttl_seconds;delete g.nodes[1].catch;
+  assert.deepEqual(check(),[]);
+});

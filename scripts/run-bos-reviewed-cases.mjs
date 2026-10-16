@@ -62,7 +62,7 @@ async function runCase(catalog, item, config, release, model) {
   const routing = item.negative_behavior === 'no-bos-calls';
   const bosRelease=release.dependency??release;
   const binding=JSON.parse(await readFile(join(bosRelease.path,'.mcp.json'),'utf8')).mcpServers?.['BOS-Platform'];
-  if(binding?.type!=='http'||binding.oauth_resource!==binding.url||binding.required!==false)throw new Error('published_bos_binding_invalid');
+  if(binding?.type!=='http'||Object.hasOwn(binding,'oauth_resource')||binding.required!==false)throw new Error('published_bos_binding_invalid');
   await verifyPackageOwnedBinding(release.entries,bosRelease.plugin_id,binding);
   const state = {case_id:item.id, product:'bos', kind:routing ? 'negative' :
     item.negative_behavior === 'authorization-denial' ? 'authorization-denial' : 'positive',

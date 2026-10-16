@@ -1,6 +1,6 @@
 {
   "name": "bos-operations-center",
-  "version": "0.4.197",
+  "version": "0.4.198",
   "private": false,
   "description": "BOS service-gateway client skills and Education Operation Center packages.",
   "author": "Infinite State Machines LLC",
@@ -10,6 +10,7 @@
     "prepare": "node scripts/install-git-hooks.mjs",
     "hooks:install": "node scripts/install-git-hooks.mjs",
     "oracle:review": "python3 tools/oracle_approval.py review",
+    "oracle:validate": "python3 tools/oracle_approval.py validate",
     "oracle:proposal": "python3 tools/oracle_approval.py proposal",
     "oracle:verify": "python3 tools/oracle_approval.py verify-commit HEAD",
     "version:next": "node scripts/bump-release-version.mjs",

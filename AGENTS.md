@@ -221,8 +221,28 @@ authentication and authorization owner-approval requirements remain independent.
   `operations-center-implementation` workflow and submit the completed actual
   diff plus focused validation evidence through `npm run oracle:review`.
 - A repository mutation is incomplete until Oracle returns the literal verdict
-  `APPROVED`. `REJECTED` blocks completion. Every correction invalidates the
-  prior verdict and requires a fresh review of the complete updated diff.
+  `APPROVED` for the complete current candidate. Every correction invalidates
+  the prior verdict and requires a fresh independent exact-tree verdict.
+  Evidence carries forward only through the review-series checks below.
+- The first completed assessment covers the full candidate and relevant
+  dependencies, consolidating all findings before returning them. Findings have
+  stable IDs, exact locations, root cause, reproduction, required behavior,
+  affected paths, a concrete repair and acceptance checks. Repair all open
+  findings together and account explicitly for each resolution.
+- `tools/oracle_approval.py` retains content-bound rounds in `.git/oracle/series/`
+  across in-scope repair proposals. Follow-up assessment checks the changes since
+  the preceding candidate, repairs and affected dependencies, with a complete
+  current-candidate consistency check and all approval gates. Reuse requires
+  unchanged source/dependency hashes, authorities, tool/configuration and
+  environment plus unchanged validation artifact bytes; record invalidation
+  reasons and rerun affected checks. A new finding in unchanged reviewed code is
+  a recorded missed finding with its coverage gap explained.
+- `INCOMPLETE` and `ERROR` describe unfinished assessments and infrastructure
+  failures; they establish no code defect and issue no receipt. Retain valid
+  checkpoints and resume unfinished coverage. After two failed repair rounds,
+  use the consolidated unresolved-finding repair plan before another repair.
+  A fresh complete-current-tree verdict remains mandatory after any mutation;
+  prior verdicts never carry forward with reused evidence.
 - Oracle reads durable issue history under `Vault/docs/issues/`. The
   implementation agent applies Oracle-required issue-history corrections and
   resubmits the complete candidate.
@@ -247,8 +267,8 @@ authentication and authorization owner-approval requirements remain independent.
   merge commit tree exactly equals that Oracle-approved pull-request tree.
   Update and reapprove the branch when the target branch would change the
   resulting tree; octopus merges and conflict-resolution rewrites are rejected.
-- Oracle findings identify exact files and lines and end with `APPROVED` or
-  `REJECTED`.
+- Oracle findings identify exact files and lines. Completed assessments return
+  `APPROVED` or `REJECTED`; unfinished runs return `INCOMPLETE` or `ERROR`.
 - Application repositories own their own local Oracle utilities, approver-only
   skills, architecture, and approval services. Those services remain owned by
   the application repository.

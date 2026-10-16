@@ -41,6 +41,46 @@ existing owner-approval evidence to the utility when it applies. Preserve that
 evidence through corrections, release, and verification until resolved. A
 corrected diff requires a fresh utility review, not renewed owner approval.
 
+## Review continuity
+
+Submit the full staged candidate and preserve its Oracle review series across
+repairs. Fix all consolidated open finding IDs together; provide the changed
+paths, resolution evidence and acceptance checks for each ID. Follow-up review
+checks the repair delta and affected dependencies while issuing a fresh verdict
+for the complete current tree. Reuse validation only when the recorded source,
+dependency, fixture, configuration, environment and evidence hashes still match;
+state the invalidation reason and rerun the affected checks otherwise.
+
+For reusable test evidence, stage the selected source/dependency inputs and run the focused command
+through `npm run oracle:validate -- --output
+Vault/tmp/<workflow>/validation.json --input <source-or-dependency-path> --
+<command>`. Repeat `--input` for the complete source/dependency/fixture/config
+closure; omission defaults to the entire candidate and canonical knowledge.
+Capture freezes/rechecks those exact staged/live inputs, controlling authority,
+reviewer policy, base and runtime/environment. Unrelated index/worktree movement
+preserves a focused result. Actual stdout/stderr survive a postcheck failure;
+failed custody never produces a verified witness. Completed review still stages
+and binds the complete candidate.
+The runner executes with its bounded recorded default environment. Declare each
+additional required inherited variable with `--env-input <NAME>` before `--`;
+values and absence are hashed, and undeclared variables are excluded. Explicit
+variable change, addition or removal invalidates its proof. The runner captures
+unchanged inputs/environment and command output hashes.
+Supply the resulting JSON through `--evidence`; an older artifact cannot be
+relabeled as a current passing run. Ordinary logs remain readable review evidence.
+Use the same launcher environment for validation and review so runtime and PATH
+proof matches; direct Python invocation is also supported for both commands.
+
+Read `INCOMPLETE` or `ERROR` as an unfinished assessment and retain its checkpoints.
+For `INCOMPLETE`, keep source unchanged and resume unfinished assessment; accumulate
+findings until the assessment is `COMPLETE`, then repair the full consolidated
+batch. Partial findings never start a repair round. Permit only minimal execution
+recovery when concrete evidence proves the same-candidate continuation impossible;
+retain that reason, prior candidate and checkpoint before resuming. After two failed repair rounds, reconcile the tool's unresolved
+finding ledger into one concrete repair plan before the next repair. A late
+finding in unchanged reviewed code must explain the missed coverage. Existing
+owner approval and public API version request gates remain in force.
+
 ## Request routing and completion
 
 Treat a reported mismatch between expected and observed repository behavior as
@@ -179,10 +219,28 @@ only after the current case reports PASS.
 11. Synchronize the Vault index after every Vault mutation.
 12. Stage the complete candidate, then call `npm run oracle:review --
     --evidence "<command and result>"` with each focused validation result.
-    Never load the Oracle skill directly. Resolve every rejection, restage the
-    complete candidate, and call the utility again until it returns `APPROVED`.
+    Never load the Oracle skill directly. Resolve the complete finding batch,
+    restage the complete candidate, and call the utility again until it returns
+    `APPROVED`. Carry forward proven unchanged evidence through the review
+    series and rerun affected validation; every candidate needs its own verdict.
     The `prepare-commit-msg` hook writes the exact utility-issued trailers.
     Never transcribe, edit, or construct Oracle trailers yourself.
 
 Report changed files, generated outputs, validation, issue-history updates,
 Oracle verdict, and remaining risks.
+
+For Oracle continuations, programmatically project pending paths, open finding IDs,
+verified validation summaries and the locations of exact input hashes from the
+retained review records. Use bounded source/evidence slices and keep full audit
+records separately. Checkpoint every fully assessed path/dependency and generated
+parity group so the next unchanged continuation advances from completed work.
+
+A failed aggregate retains its actual passing-case observations. Use those original
+case outputs with unchanged source/test/fixture/configuration and environment
+evidence to decide unaffected coverage; lack of a green native aggregate alone
+never justifies repeating unchanged passing cases. Preserve the FAILED record and
+each case's actual scope/status. Capture corrected cases with explicit `--input`
+source, test, fixture and configuration closures. A full-scope capture requires an
+initial-baseline need or a concrete affected-behavior/dependency justification.
+Supporting passing-case observations do not relabel a failed aggregate or invent
+a reusable native proof.

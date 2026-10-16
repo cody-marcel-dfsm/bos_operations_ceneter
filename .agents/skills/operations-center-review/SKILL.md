@@ -14,6 +14,32 @@ Oracle classification, warning, or verdict. The independent Oracle process owns
 authentication-impact classification and owner-approval decisions. Route the
 complete staged candidate to `npm run oracle:review` after this readiness pass.
 
+Complete the initial coverage scan before returning a consolidated finding batch.
+Supply stable IDs, exact locations, root cause, reproduction, required behavior,
+affected paths, concrete repairs and acceptance checks. Keep a coverage and
+finding ledger. On resubmission, inspect the repair delta and affected dependency
+closure; retain prior evidence only with unchanged source/dependency,
+configuration, fixture, environment and artifact hashes. State each invalidation
+and the affected rerun. Adding explicit owner authorization preserves unrelated
+eligible source observations; assess new auth paths and current permission gates.
+Replacement/removal of previously relied-on owner proof invalidates source reuse.
+Native tests depend on their selected inputs/configuration/environment/provenance;
+owner evidence changes invalidate them only through an actual declared input.
+Reusable validation uses the utility's `validate`
+command record, including captured source/configuration/environment and retained
+output hashes; check that its input list covers the affected dependency closure.
+Ordinary logs remain review evidence and gain reuse only with recorded proof.
+Explicitly account for every open finding; explain late
+discoveries in unchanged reviewed code as missed findings. Unfinished coverage
+is `INCOMPLETE`, and tool/runtime failure is `ERROR`; neither establishes a code
+defect or grants readiness. On `INCOMPLETE`, keep source unchanged, retain all
+checkpoints and resume unfinished assessment. Accumulate findings through
+`COMPLETE` before repairing the full consolidated batch. Allow only minimal
+execution recovery when concrete evidence proves continuation impossible; retain
+the reason, prior candidate and checkpoint. After two failed repair rounds, consolidate the
+unresolved findings into a concrete repair plan. Oracle alone issues the fresh
+complete-current-tree verdict required after every candidate mutation.
+
 Verify that the durable proposal record predates implementation, matches the
 implemented Problem/Cause/Recommended change scope, and came from
 `npm run oracle:proposal`. A proposal verdict never replaces completed-tree
@@ -87,4 +113,21 @@ agent behavior or a live product fix.
 
 Return `READINESS_PASS` only when no material finding remains. This result is
 advisory and cannot approve a repository mutation. A mutation after review
-requires a fresh readiness pass followed by a fresh Oracle utility review.
+requires a fresh readiness assessment using eligible recorded evidence, followed
+by a fresh Oracle utility verdict for the complete candidate.
+
+For Oracle continuations, programmatically project pending paths, open finding IDs,
+verified validation summaries and the locations of exact input hashes from the
+retained review records. Use bounded source/evidence slices and keep full audit
+records separately. Checkpoint every fully assessed path/dependency and generated
+parity group so the next unchanged continuation advances from completed work.
+
+A failed aggregate retains its actual passing-case observations. Use those original
+case outputs with unchanged source/test/fixture/configuration and environment
+evidence to decide unaffected coverage; lack of a green native aggregate alone
+never justifies repeating unchanged passing cases. Preserve the FAILED record and
+each case's actual scope/status. Capture corrected cases with explicit `--input`
+source, test, fixture and configuration closures. A full-scope capture requires an
+initial-baseline need or a concrete affected-behavior/dependency justification.
+Supporting passing-case observations do not relabel a failed aggregate or invent
+a reusable native proof.

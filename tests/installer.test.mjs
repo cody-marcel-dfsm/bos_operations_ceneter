@@ -132,7 +132,6 @@ test("Codex runtime installation binds the package-owned BOS MCP resource", asyn
     state: "host_managed",
     name: "BOS-Platform",
     url: resourceGroupUrl,
-    oauth_resource: resourceGroupUrl,
     required: false,
     startup_timeout_sec: 180,
     tool_timeout_sec: 180,
@@ -232,18 +231,20 @@ test("Codex OAuth installation rejects a session-blocking MCP server", async () 
   );
 });
 
-test("Codex OAuth installation rejects a mismatched OAuth resource", async () => {
-  const home = await temporaryHome();
-  await applyInstallationRaw({ home, product: "bos" });
-  const mcpPath = join(installedProduct(home, "bos"), ".mcp.json");
-  const mcp = JSON.parse(await readFile(mcpPath, "utf8"));
-  mcp.mcpServers["BOS-Platform"].oauth_resource = "https://example.com/mcp";
-  await chmod(mcpPath, 0o644);
-  await writeFile(mcpPath, JSON.stringify(mcp));
-  await assert.rejects(
-    verifyInstallationRaw({ home, product: "bos" }),
-    /Packaged Codex MCP binding is invalid/
-  );
+test("Codex OAuth installation rejects redundant and mismatched resource overrides", async () => {
+  for (const resource of [resourceGroupUrl, "https://example.com/mcp"]) {
+    const home = await temporaryHome();
+    await applyInstallationRaw({ home, product: "bos" });
+    const mcpPath = join(installedProduct(home, "bos"), ".mcp.json");
+    const mcp = JSON.parse(await readFile(mcpPath, "utf8"));
+    mcp.mcpServers["BOS-Platform"].oauth_resource = resource;
+    await chmod(mcpPath, 0o644);
+    await writeFile(mcpPath, JSON.stringify(mcp));
+    await assert.rejects(
+      verifyInstallationRaw({ home, product: "bos" }),
+      /Packaged Codex MCP binding is invalid/
+    );
+  }
 });
 
 test("Codex OAuth installation rejects an insufficient startup timeout", async () => {
@@ -1079,25 +1080,29 @@ test("stale package-owned files are removed while user files remain", async () =
 });
 
 
-test("managed BOS upgrade replaces the platform host key without changing its audience", async () => {
-  const home = await temporaryHome();
-  await applyInstallationRaw({home, product:"bos"});
-  const target = installedProduct(home, "bos");
-  const mcpPath = join(target, ".mcp.json");
-  const current = JSON.parse(await readFile(mcpPath, "utf8"));
-  const resource = current.mcpServers["BOS-Platform"].url;
-  await chmod(mcpPath, 0o644);
-  await writeFile(mcpPath, JSON.stringify({mcpServers:{platform:current.mcpServers["BOS-Platform"]}}));
-  const statePath = join(target, ".bos-package-state.json");
-  const state = JSON.parse(await readFile(statePath, "utf8"));
-  state.managed_hashes[".mcp.json"] = await hashFile(mcpPath);
-  await chmod(statePath, 0o644);
-  await writeFile(statePath, JSON.stringify(state));
-  await writeFile(join(target, "customer-note.txt"), "preserve me");
-  await applyInstallationRaw({home, product:"bos"});
-  const upgraded = JSON.parse(await readFile(mcpPath, "utf8"));
-  assert.deepEqual(Object.keys(upgraded.mcpServers), ["BOS-Platform"]);
-  assert.equal(upgraded.mcpServers["BOS-Platform"].url, resource);
-  assert.equal(upgraded.mcpServers["BOS-Platform"].oauth_resource, resource);
-  assert.equal(await readFile(join(target, "customer-note.txt"), "utf8"), "preserve me");
+test("managed BOS upgrade removes the retired resource override while preserving audience and customer files", async () => {
+  for (const legacyKey of ["platform", "BOS-Platform"]) {
+    const home = await temporaryHome();
+    await applyInstallationRaw({home, product:"bos"});
+    const target = installedProduct(home, "bos");
+    const mcpPath = join(target, ".mcp.json");
+    const current = JSON.parse(await readFile(mcpPath, "utf8"));
+    const resource = current.mcpServers["BOS-Platform"].url;
+    await chmod(mcpPath, 0o644);
+    await writeFile(mcpPath, JSON.stringify({mcpServers:{[legacyKey]:{
+      ...current.mcpServers["BOS-Platform"], oauth_resource:resource
+    }}}));
+    const statePath = join(target, ".bos-package-state.json");
+    const state = JSON.parse(await readFile(statePath, "utf8"));
+    state.managed_hashes[".mcp.json"] = await hashFile(mcpPath);
+    await chmod(statePath, 0o644);
+    await writeFile(statePath, JSON.stringify(state));
+    await writeFile(join(target, "customer-note.txt"), "preserve me");
+    await applyInstallationRaw({home, product:"bos"});
+    const upgraded = JSON.parse(await readFile(mcpPath, "utf8"));
+    assert.deepEqual(Object.keys(upgraded.mcpServers), ["BOS-Platform"]);
+    assert.equal(upgraded.mcpServers["BOS-Platform"].url, resource);
+    assert.equal(Object.hasOwn(upgraded.mcpServers["BOS-Platform"], "oauth_resource"), false);
+    assert.equal(await readFile(join(target, "customer-note.txt"), "utf8"), "preserve me");
+  }
 });

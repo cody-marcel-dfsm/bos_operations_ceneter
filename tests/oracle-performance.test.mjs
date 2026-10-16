@@ -1,9 +1,10 @@
+import { withOracleFixture } from "./oracle-fixture.mjs";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import test from "node:test";
 
 const root = new URL("../", import.meta.url).pathname;
-const python = (script) => execFileSync("python3", ["-c", script], { cwd: root, encoding: "utf8" });
+const python = (script) => execFileSync("python3", ["-c", withOracleFixture(script)], { cwd: root, encoding: "utf8" });
 
 test("pruned discovery retains every canonical path and byte hash", () => {
   python(`
@@ -216,9 +217,14 @@ with tempfile.TemporaryDirectory() as directory:
     def child(command,**kwargs):
         if command[0]!='codex':return original_run(command,**kwargs)
         assert '--ephemeral' in command and '--ignore-user-config' in command
-        assert command[command.index('--sandbox')+1]=='read-only'
+        assert any(item.startswith('developer_instructions=') and 'independent' in item for item in command)
+        assert command[command.index('--sandbox')+1]=='danger-full-access'
         assert kwargs['env']['CODEX_SELECTED_MODEL']=='actual-caller-model'
-        Path(command[command.index('--output-last-message')+1]).write_text(json.dumps(approved))
+        assert o.LOCAL_EXECUTION_POLICY in command[-1]
+        result=dict(approved,review_status='COMPLETE',coverage=[],validations=[],resolutions=[],limitations=[],repair_plan='')
+        context=o._RUN.get()/'review-context.json'
+        if context.is_file():result=_oracle_fixture_result(approved,json.loads(context.read_text()))
+        Path(command[command.index('--output-last-message')+1]).write_text(json.dumps(result))
         return subprocess.CompletedProcess(command,0,'retained stdout','retained stderr')
     o.subprocess.run=child;o.selected_model=lambda:'actual-caller-model'
     o.review_proposal(root,'Problem: repeated; Cause: setup; Recommended change: combined',[],None)
@@ -230,10 +236,51 @@ with tempfile.TemporaryDirectory() as directory:
     settings=[name for name in receipt['validation_evidence'] if Path(name).name=='model.json']
     assert len(settings)==1
     metadata=json.loads((root/settings[0]).read_text())
-    assert metadata['selected_model']=='actual-caller-model' and metadata['sandbox']=='read-only'
+    assert metadata['selected_model']=='actual-caller-model' and metadata['sandbox']=='danger-full-access'
     assert metadata['ephemeral'] and metadata['ignore_user_config']
     assert len(metadata['schema_sha256'])==64 and len(metadata['model_helper_sha256'])==64
     o.selected_model=lambda:'future-task-model'
+    o._environment_digest=lambda:'later-git-hook-launcher-environment'
     o.verify_staged(root)
+`);
+});
+
+test("durable telemetry preserves failures, logical verdicts and unstarted phases", () => {
+  python(`
+import tempfile,subprocess,json
+from pathlib import Path
+from tools import oracle_approval as o
+with tempfile.TemporaryDirectory() as directory:
+    root=Path(directory);subprocess.run(['git','init','-q',str(root)],check=True)
+    @o._serialized_review
+    def measured(root,scenario):
+        with o._phase('precheck_seconds'):
+            if scenario=='precheck':raise o.OracleApprovalError('synthetic precheck')
+        def child():
+            if scenario=='timeout':raise subprocess.TimeoutExpired('synthetic-child',1)
+            return {'verdict':scenario}
+        return o._timed('reviewer_seconds',child)
+    for scenario in ['APPROVED','REJECTED','precheck','timeout']:
+        try:result=measured(root,scenario)
+        except (o.OracleApprovalError,subprocess.TimeoutExpired):assert scenario in {'precheck','timeout'}
+        else:assert result['verdict']==scenario
+    records=[]
+    for run in (o.receipt_path(root).parent/'runs').iterdir():
+        timing=json.loads((run/'timings.json').read_text());outcome=json.loads((run/'outcome.json').read_text())
+        assert timing['total_seconds']>=timing['precheck_seconds']>=0
+        assert outcome['started_at']<=outcome['finished_at']
+        if outcome['error'] and outcome['error']['message']=='synthetic precheck':
+            assert 'reviewer_seconds' not in timing and not outcome['reviewer_invoked']
+        else:assert timing['reviewer_seconds']>=0 and outcome['reviewer_invoked']
+        records.append(outcome['outcome'])
+    assert sorted(records)==['APPROVED','ERROR','ERROR','REJECTED']
+    # The actual public issue precondition also records a failed precheck.
+    (root/'pending.txt').write_text('unstaged candidate')
+    try:o.issue(root,[],None)
+    except o.OracleApprovalError as exc:assert 'requires every' in str(exc)
+    else:raise AssertionError('pending source accepted')
+    run=next(run for run in (o.receipt_path(root).parent/'runs').iterdir() if run.name.startswith('issue-'))
+    timing=json.loads((run/'timings.json').read_text());outcome=json.loads((run/'outcome.json').read_text())
+    assert timing['precheck_seconds']>=0 and outcome['outcome']=='ERROR' and not outcome['reviewer_invoked']
 `);
 });

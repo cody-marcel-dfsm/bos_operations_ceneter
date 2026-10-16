@@ -3,6 +3,36 @@ import Ajv2020 from "./vendor/ajv2020.bundle.mjs";
 const reference = /^\$nodes\.([a-z][a-z0-9_]*)\.outputs\.(.+)$/u;
 const predicates = condition => condition?.all ?? condition?.any ?? [condition];
 function pathSchema(schema,path) {for(const key of path.split(".")) {schema=schema?.properties?.[key];if(!schema)return null;}return schema;}
+function schemaTypes(schema) {
+  const types=Array.isArray(schema.type)?schema.type:[schema.type];
+  return JSON.stringify([...new Set(types)].sort());
+}
+
+export function validateCallbackExpiryRecovery(document,waits,findings) {
+  const nodes=new Map(document.nodes.map(node=>[node.code,node]));
+  const expected=new Set(document.nodes.filter(node=>node.operation==="bosl.callbacks.await").map(node=>node.code));
+  const seen=new Set();
+  for(const wait of waits) {
+    if(seen.has(wait.code)) {
+      findings.push({code:"bosl_callback_invalid",path:`$.nodes.${wait.code}`,message:"Callback grant wait rows must be unique."});
+      continue;
+    }
+    seen.add(wait.code);
+    const node=nodes.get(wait.code);
+    if(!node || node.operation!=="bosl.callbacks.await") {
+      findings.push({code:"bosl_callback_invalid",path:`$.nodes.${wait.code}`,message:"Callback grant must refer to a submitted wait node."});
+      continue;
+    }
+    expected.delete(wait.code);
+    const ttl=wait.granted.ttl_seconds;
+    if(Number.isFinite(ttl) && ttl>0 && !(node.catch?.cases??[]).some(branch=>
+      branch.when?.op==="eq" && branch.when.left?.from==="$error.code"
+      && branch.when.right?.value==="CALLBACK_WAIT_EXPIRED" && nodes.has(branch.next))) {
+      findings.push({code:"bosl_callback_invalid",path:`$.nodes.${node.code}.catch`,message:"A finite callback wait requires a declared CALLBACK_WAIT_EXPIRED catch case and target."});
+    }
+  }
+  for(const code of expected) findings.push({code:"bosl_callback_invalid",path:`$.nodes.${code}`,message:"Callback grant is missing a submitted wait node."});
+}
 
 export function validateCallbackAuthoring(document,callbackSources,edges,findings) {
   const issue=(path,message)=>findings.push({code:"bosl_callback_invalid",path,message});
@@ -38,7 +68,7 @@ export function validateCallbackAuthoring(document,callbackSources,edges,finding
       }
       if(schemas.length===2) {
         const [left,right]=schemas;
-        if(left && right && left.type!==right.type)issue(path,"Callback correlation operand types differ.");
+        if(left && right && schemaTypes(left)!==schemaTypes(right))issue(path,"Callback correlation operand types differ.");
         const ajv=new Ajv2020({strict:false});
         if(left && !right && !ajv.validate(left,values[1]))issue(path,"Callback literal type is incompatible.");
         if(right && !left && !ajv.validate(right,values[0]))issue(path,"Callback literal type is incompatible.");
@@ -68,5 +98,11 @@ export function validateCallbackAuthoring(document,callbackSources,edges,finding
   const dominators=new Map([...all].map(code=>[code,code===document.entry?new Set([code]):new Set(all)]));
   let changed=true;
   while(changed) {changed=false;for(const code of all) {if(code===document.entry)continue;const parents=[...previous.get(code)];const common=parents.length?[...dominators.get(parents[0])].filter(member=>parents.every(parent=>dominators.get(parent).has(member))):[];const next=new Set([code,...common]);if(next.size!==dominators.get(code).size || [...next].some(member=>!dominators.get(code).has(member))) {dominators.set(code,next);changed=true;}}}
-  for(const node of waits) {const code=node.inputs?.callback?.value;const descriptor=sources.get(code);if(!descriptor)issue(`$.nodes.${node.code}.inputs.callback`,"Wait requires a declared callback literal.");else if(node.inputs.match)validateMatch(node.inputs.match.value,descriptor,`$.nodes.${node.code}.inputs.match`,node.code,dominators);}
+  for(const node of waits) {
+    const code=node.inputs?.callback?.value;
+    const descriptor=sources.get(code);
+    if(!descriptor)issue(`$.nodes.${node.code}.inputs.callback`,"Wait requires a declared callback literal.");
+    else if(node.inputs.match)validateMatch(node.inputs.match.value,descriptor,`$.nodes.${node.code}.inputs.match`,node.code,dominators);
+  }
+  validateCallbackExpiryRecovery(document,waits.map(node=>({code:node.code,granted:{ttl_seconds:node.inputs?.ttl_seconds?.value}})),findings);
 }

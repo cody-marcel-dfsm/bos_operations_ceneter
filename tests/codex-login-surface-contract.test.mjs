@@ -4,16 +4,36 @@ import { access, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { readJson, root } from "../scripts/lib/package-model.mjs";
+import { codexPluginMcpManifest, readJson, root } from "../scripts/lib/package-model.mjs";
+import { inspectOAuthAuthorizeTarget } from "../scripts/lib/product-mcp-contract.mjs";
 import { verifyCodexLoginEvidence } from "../scripts/verify-codex-login-evidence.mjs";
 
 const pluginRoot = join(root, "clients", "codex", "plugins", "bos");
 const product = await readJson(join(root, "products", "bos", "product.json"));
 
+test("Codex native URL construction preserves exactly one discovered BOS resource", () => {
+  const server = codexPluginMcpManifest(product).mcpServers["BOS-Platform"];
+  const sdkUrl = new URL(product.oauth.authorization_endpoint);
+  sdkUrl.searchParams.set("code_challenge", "A".repeat(43));
+  sdkUrl.searchParams.set("code_challenge_method", "S256");
+  sdkUrl.searchParams.set("resource", product.mcp_resource_url);
+  // Codex 0.160.0 perform_oauth_login.rs appends an optional configured override
+  // to the SDK URL, which already carries its discovered resource indicator.
+  if (server.oauth_resource) sdkUrl.searchParams.append("resource", server.oauth_resource);
+  assert.deepEqual(sdkUrl.searchParams.getAll("resource"), [product.mcp_resource_url]);
+  assert.deepEqual(inspectOAuthAuthorizeTarget(sdkUrl.href, product.mcp_resource_url, product.oauth), []);
+  for (const resource of [product.mcp_resource_url, "https://example.invalid/mcp"]) {
+    const invalid = new URL(sdkUrl);
+    invalid.searchParams.append("resource", resource);
+    assert.ok(inspectOAuthAuthorizeTarget(invalid.href, product.mcp_resource_url, product.oauth)
+      .some(({ code }) => code === "oauth_resource_target"));
+  }
+});
+
 test("generated contracts require durable product-owned OAuth resources", async () => {
   const login = await readJson(join(root, "contracts", "codex-login-surface.v1.json"));
   const connection = await readJson(join(root, "contracts", "product-mcp-connections.v1.json"));
-  assert.equal(login.package_binding_acceptance.oauth_resource_must_equal_resource_url, true);
+  assert.equal(login.package_binding_acceptance.oauth_resource_must_be_omitted, true);
   assert.equal(login.package_binding_acceptance.server_required, false);
   assert.equal(login.package_binding_acceptance.authenticated_business_execution_required, true);
   assert.equal(login.package_binding_acceptance.rejected_refresh_token_behavior, "HOST_REAUTHENTICATION_ACTION");
@@ -34,7 +54,6 @@ test("BOS Codex package derives authentication from its bundled MCP resource", a
       "BOS-Platform": {
         type: "http",
         url: "https://dfsm.ai/mcp/apps/bos/platform",
-        oauth_resource: "https://dfsm.ai/mcp/apps/bos/platform",
         required: false,
         startup_timeout_sec: 180,
         tool_timeout_sec: 180

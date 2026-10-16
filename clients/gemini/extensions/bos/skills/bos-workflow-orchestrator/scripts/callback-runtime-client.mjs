@@ -1,5 +1,6 @@
 // Consumer-owned callback v1 validation. Contracts are discovered from BOS URLs.
 import {validateActionEnvelope, validateJourneyEnvelope} from "./journey-runtime-client.mjs";
+import {validateCallbackExpiryRecovery} from "./callback-authoring.mjs";
 
 function object(value, keys, required = keys) {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("callback contract requires an object");
@@ -52,6 +53,9 @@ export function validateCallbackUsage(usage) {
     if (item.visibility === "restricted" && (item.used !== null || item.remaining !== null)) throw new Error("restricted callback usage must be redacted");
     if (item.visibility === "visible" && item.used === null) throw new Error("visible usage requires a count");
     if (item.limit === null && item.remaining !== null) throw new Error("unlimited usage has no finite remaining count");
+    if (item.visibility === "visible") {
+      if (item.limit !== null && item.remaining !== Math.max(0,item.limit-item.used)) throw new Error("finite usage remaining does not match the limit and used count");
+    }
   }
   return usage;
 }
@@ -134,9 +138,47 @@ export function validateWorkflowControlResponse(body) {
 
 export function presentCallbackReport(report) {
   validateCallbackReport(report);
-  return {usage:report.usage.map(item=>({resource:item.resource, used:item.visibility==="restricted"?"Restricted":item.used,
-    limit:item.limit===null?"Unlimited":item.limit, remaining:item.remaining})),
-    waits:report.waits.map(wait=>({step:wait.code,lifetime:wait.granted.ttl_seconds===null?"Permanent":`${wait.granted.ttl_seconds} seconds`})),
-    adjustments:[...report.callbacks,...report.waits].flatMap(item=>item.adjustments.map(adjustment=>({code:item.code,...adjustment}))),
-    downgrade_disclosure:"A downgrade clears pending workflow queues and disables registrations. Re-upload and explicitly start workflows after the reset."};
+  return {usage:report.usage.map(item=>({resource:item.resource,scope:item.scope,visibility:item.visibility,
+    used:item.visibility==="restricted"?"Restricted":item.used,limit:item.limit===null?"Unlimited":item.limit,
+    remaining:item.remaining,reserved_by_submission:item.reserved_by_submission})),
+    callbacks:report.callbacks.map(callback=>({code:callback.code,source:callback.source,
+      requested:{...callback.requested},granted:{...callback.granted}})),
+    waits:report.waits.map(wait=>({step:wait.code,callback:wait.callback,requested:{...wait.requested},
+      granted:{...wait.granted},lifetime:wait.granted.ttl_seconds===null?"Permanent":`${wait.granted.ttl_seconds} seconds`})),
+    adjustments:[...report.callbacks,...report.waits].flatMap(item=>item.adjustments.map(adjustment=>({code:item.code,...adjustment})))};
+}
+
+export function reviewCallbackGrant(document,report) {
+  validateCallbackReport(report);
+  if(!document || !Array.isArray(document.nodes)) throw new Error("Callback grant review requires the submitted document.");
+  const declarations=document.bootstrap?.callbacks??[];
+  if(!Array.isArray(declarations)) throw new Error("Submitted callbacks require an array.");
+  const expected=new Map();
+  for(const declaration of declarations) {
+    if(expected.has(declaration.code)) throw new Error("Submitted callback codes must be unique.");
+    expected.set(declaration.code,declaration);
+  }
+  for(const callback of report.callbacks) {
+    const declaration=expected.get(callback.code);
+    if(!declaration || callback.source!==declaration.source) throw new Error("Callback grant must match a submitted callback source.");
+    expected.delete(callback.code);
+    const requested={queue:declaration.dead_letter?.queue,max_attempts:declaration.retry?.max_attempts,
+      max_delay_seconds:declaration.retry?.max_delay_seconds,retention_seconds:declaration.dead_letter?.retention_seconds};
+    for(const [field,value] of Object.entries(requested)) {
+      if(value!==undefined && callback.requested[field]!==value) throw new Error(`Callback grant requested ${field} differs from the submitted term.`);
+    }
+  }
+  if(expected.size) throw new Error("Callback grant is missing a submitted callback.");
+  const findings=[];
+  validateCallbackExpiryRecovery(document,report.waits,findings);
+  if(findings.length) throw new Error(findings.map(finding=>`${finding.path}: ${finding.message}`).join("; "));
+  const nodes=new Map(document.nodes.map(node=>[node.code,node]));
+  for(const wait of report.waits) {
+    const inputs=nodes.get(wait.code).inputs;
+    if(wait.callback!==inputs?.callback?.value) throw new Error("Callback grant wait must match its submitted callback binding.");
+    if(inputs?.ttl_seconds && Object.hasOwn(inputs.ttl_seconds,"value") && wait.requested.ttl_seconds!==inputs.ttl_seconds.value) {
+      throw new Error("Callback grant requested TTL differs from the submitted term.");
+    }
+  }
+  return presentCallbackReport(report);
 }

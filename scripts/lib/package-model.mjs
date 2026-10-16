@@ -825,12 +825,13 @@ export function mcpServerName(product) {
 
 export function codexPluginMcpManifest(product) {
   if (!ownsHostConnection(product)) return { mcpServers: {} };
+  // Native OAuth discovers this resource's audience. An explicit override is
+  // appended by Codex 0.160.0 to an SDK URL that already contains the resource.
   return {
     mcpServers: {
       [mcpServerName(product)]: {
         type: "http",
         url: materializeMcpUrl(product),
-        oauth_resource: materializeMcpUrl(product),
         required: false,
         startup_timeout_sec: product.codex_mcp_startup_timeout_sec,
         tool_timeout_sec: product.codex_mcp_tool_timeout_sec

@@ -13,7 +13,9 @@ outputs from an earlier node that dominates every path into the wait. Use
 normal `next`/`transitions` for success and `catch` for the declared expiry or
 unavailable-source error. Each canonical event is captured once per run;
 downstream nodes reuse its returned reference. Later waits can capture fresh
-events. Repeated delivery and completion preserve settled outcomes.
+events. Repeated delivery and completion preserve settled outcomes. An explicit
+finite wait requires a `catch.cases` branch comparing `$error.code` with
+`CALLBACK_WAIT_EXPIRED` and targeting a declared recovery node.
 
 Use `bootstrap.activate_on` only when discovery advertises standing activation.
 Registration compiles and reserves capacity; the returned explicit start
@@ -22,16 +24,33 @@ under the author's original grant and current permissions. Fully server-owned
 graphs can progress unattended through the existing service worker. A graph
 with client nodes returns interactive work through the existing client lifecycle.
 
-Read and present the submission's `callback_report` with
-`callback-runtime-client.mjs`. Show organization usage and limits, requested and
+Before offering or invoking explicit Start, call
+`interpretJourneyResponse(response, {registrationRequest})` with the original
+request returned by `buildJourneyRegistrationRequest`. Retain that request
+through the compile response; the helper privately binds its unchanged serialized
+document to the response identity and checks the complete callback/source rows,
+wait-to-callback bindings and explicitly requested delivery/TTL terms. It returns
+`presentation` and the original signed Start only after grant review succeeds.
+`reviewCallbackGrant(submittedDocument, response.callback_report)` validates
+one report row per submitted callback and wait and checks expiry recovery for every finite
+granted TTL, including a profile default when local TTL was omitted. Correct and
+resubmit a missing expiry branch before starting. An explicitly granted `null`
+wait remains permanent. Show organization usage and limits, requested and
 granted wait/delivery terms and material adjustments. Permanent logical waits
 use `null` lifetime while delivery attempts and payload retention remain finite.
 Treat restricted usage as restricted; show unlimited limits as unlimited.
+The presentation retains every returned usage scope and submission reservation,
+plus requested/granted queue, attempts, delay, retention and TTL even when they
+are unchanged. Empty usage remains valid where the discovered contract permits it.
 Paid workflows may stay active permanently according to the current organization
 profile. The owner-approved downgrade direction is to clear pending queues,
 disable registrations and require re-upload and explicit start. Its background
 timing and handling for already-started effects remain separate BOS decisions.
 Describe only downgrade behavior that the current published BOS contract reports.
+The callback report supplies no downgrade-reset readiness; its presentation
+helper makes no reset-availability claim. Paid assignment, reset scheduling and
+already-started-effect handling remain with the service's independently adopted
+contracts.
 
 Use the exact `app.describe.workflow_catalog.contract` link to discover the
 catalog GET contract. Organization members can inspect the safe workflow

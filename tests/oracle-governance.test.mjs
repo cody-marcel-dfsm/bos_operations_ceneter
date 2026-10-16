@@ -1,5 +1,9 @@
+import { copyOracleModules, withOracleFixture } from "./oracle-fixture.mjs";
 import assert from "node:assert/strict";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync as nativeExecFileSync, spawnSync as nativeSpawnSync } from "node:child_process";
+const fixtureArgs = (file,args) => file === "python3" && args[0] === "-c" ? ["-c", withOracleFixture(args[1]), ...args.slice(2)] : args;
+const execFileSync = (file,args,options) => nativeExecFileSync(file,fixtureArgs(file,args),options);
+const spawnSync = (file,args,options) => nativeSpawnSync(file,fixtureArgs(file,args),options);
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -102,8 +106,7 @@ test("proposal review records scope without issuing a commit-acceptance receipt"
   git("config", "user.name", "Oracle Test");
   writeFileSync(join(workspace, "AGENTS.md"), "governed\n");
   writeFileSync(join(workspace, ".gitignore"), "__pycache__/\n*.pyc\n");
-  writeFileSync(join(workspace, "tools", "oracle_approval.py"), read("tools/oracle_approval.py"));
-  writeFileSync(join(workspace, "tools", "codex_child_model.py"), read("tools/codex_child_model.py"));
+  copyOracleModules(workspace);
   git("add", ".");
   git("commit", "-qm", "initial");
   execFileSync("python3", ["-c", [
@@ -125,8 +128,7 @@ test("completed review refuses a rejected proposal record", () => {
   git("config", "user.name", "Oracle Test");
   writeFileSync(join(workspace, "AGENTS.md"), "governed\n");
   writeFileSync(join(workspace, ".gitignore"), "__pycache__/\n*.pyc\n");
-  writeFileSync(join(workspace, "tools", "oracle_approval.py"), read("tools/oracle_approval.py"));
-  writeFileSync(join(workspace, "tools", "codex_child_model.py"), read("tools/codex_child_model.py"));
+  copyOracleModules(workspace);
   writeFileSync(join(workspace, "candidate.txt"), "initial\n");
   git("add", ".");
   git("commit", "-qm", "initial");
@@ -149,8 +151,7 @@ test("Oracle receipt rejects stale state, forged trailers, and unstamped commits
   writeFileSync(join(workspace, "AGENTS.md"), "governed\n");
   writeFileSync(join(workspace, ".agents", "skills", "oracle", "SKILL.md"), "oracle\n");
   writeFileSync(join(workspace, ".gitignore"), "__pycache__/\n*.pyc\n");
-  writeFileSync(join(workspace, "tools", "oracle_approval.py"), read("tools/oracle_approval.py"));
-  writeFileSync(join(workspace, "tools", "codex_child_model.py"), read("tools/codex_child_model.py"));
+  copyOracleModules(workspace);
   writeFileSync(join(workspace, "candidate.txt"), "initial\n");
   git("add", ".");
   git("commit", "-qm", "initial");
