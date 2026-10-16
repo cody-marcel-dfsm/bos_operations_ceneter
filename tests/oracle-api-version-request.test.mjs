@@ -1,3 +1,4 @@
+import { withOracleFixture } from "./oracle-fixture.mjs";
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
@@ -44,7 +45,7 @@ with tempfile.TemporaryDirectory() as directory:
  request.write_text('Human: I approve the release.\n')
  rejects(requested)
 `;
- execFileSync('python3',['-c',script],{cwd:root,stdio:'pipe'});
+ execFileSync('python3',['-c',withOracleFixture(script)],{cwd:root,stdio:'pipe'});
 });
 
 test('proposal and completed receipt enforce independent request evidence through commit verification',()=>{
@@ -84,5 +85,5 @@ with tempfile.TemporaryDirectory() as directory:
  except o.OracleApprovalError:pass
  else:raise AssertionError('altered request evidence accepted at commit')
 `;
- execFileSync('python3',['-c',script],{cwd:root,stdio:'pipe'});
+ execFileSync('python3',['-c',withOracleFixture(script)],{cwd:root,stdio:'pipe'});
 });

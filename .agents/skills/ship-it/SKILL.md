@@ -216,12 +216,18 @@ Run the repository-local Oracle remediation loop before committing:
 
 1. Use `operations-center-review` on the complete release diff and validation
    evidence and require `READINESS_PASS`.
-2. Run `npm run release:check` and preserve exact machine-readable evidence with
-   the command, exit code, and Node test totals (`tests`, `pass`, `fail`,
-   `skipped`, and `duration_ms`) under private `Vault/tmp/oracle-review/`.
-   Stage the complete release candidate, then call `npm run oracle:review --
-   --evidence "<path-to-validation-evidence>"` for that exact evidence file and
-   each other relevant validation evidence file. The
+2. Stage the complete release candidate and capture the required baseline using
+   `npm run oracle:validate -- --output Vault/tmp/oracle-review/release-check.json
+   -- npm run release:check`. Keep the native record and retained stdout/stderr
+   unchanged; they preserve the command, exit code, input/environment bindings
+   and observed Node totals (`tests`, `pass`, `fail`, `skipped`, `duration_ms`).
+   Recorder options follow the first `--`; the final `--` separates the command.
+   For repair checks, repeat `--input <source-or-dependency-path>` before that
+   final separator to declare the exact source/fixture/configuration closure,
+   then run the affected command. Preserve the baseline release gates and carry
+   eligible native proof across repairs. Call `npm run oracle:review --
+   --evidence Vault/tmp/oracle-review/release-check.json` and supply every other
+   relevant unchanged native validation record through `--evidence`. The
    utility alone loads the approver-only Oracle skill.
    The utility prepares and hash-binds the required synchronized Vault query
    evidence before launching the isolated read-only approver.
@@ -229,9 +235,21 @@ Run the repository-local Oracle remediation loop before committing:
    `prepare-commit-msg` hook derives the three exact commit trailers from the
    verified local receipt; the shipping agent never writes Oracle trailers or
    loads the Oracle skill. No Git-note publication step exists.
-4. Resolve every rejection with `operations-center-implementation`, rerun all
-   affected validation, refresh the Vault index, restage the complete candidate,
-   and call the utility for a fresh complete Oracle review.
+4. Resolve the consolidated finding batch with
+   `operations-center-implementation`, retaining stable IDs and resolution
+   evidence in the same review series. Rerun affected validation and carry
+   forward results only with unchanged source, dependency, fixture,
+   configuration, environment and artifact hashes. Refresh the Vault index,
+   restage the complete candidate and call the utility for a fresh exact-tree
+   verdict; follow-up review focuses on repairs and affected dependencies using
+   verified prior coverage. Explain new findings in unchanged reviewed code as
+   missed coverage. `INCOMPLETE` and `ERROR` retain checkpoints and grant no
+   approval. On `INCOMPLETE`, keep source unchanged and resume unfinished
+   assessment; accumulate findings until `COMPLETE`, then repair the full
+   consolidated batch. Permit only minimal execution recovery when concrete
+   evidence proves continuation impossible, retaining the reason, prior candidate
+   and checkpoint. After two failed repair rounds, use
+   the consolidated unresolved-finding repair plan before the next repair.
 5. Continue until the literal verdict is `APPROVED`. Any mutation after approval
    invalidates that verdict and returns the release to this review loop.
 6. A GitHub merge commit is valid only when its resulting tree is byte-for-byte
@@ -300,3 +318,19 @@ After GitHub records the pull request as merged:
 ## Report
 
 After a successful merge and cleanup, report the previous and new release versions, pull-request URL and number, release commit, merge commit, source and default branches, remote destination, included file count, generated packages, validation/build results, and confirmation that the workspace is on a clean, current default branch with the merged local release branch removed. State which publication path was actually triggered: Claude organization sync, independent Claude marketplace availability, or neither. State that independent Claude account refresh, official Anthropic publication, Codex Git marketplace refresh, and public ChatGPT/Codex directory publication remain separate host-owned actions. If stopped, state the blocking evidence and leave the repository unchanged beyond clearly scoped fixes made before the blocker was known.
+
+For Oracle continuations, programmatically project pending paths, open finding IDs,
+verified validation summaries and the locations of exact input hashes from the
+retained review records. Use bounded source/evidence slices and keep full audit
+records separately. Checkpoint every fully assessed path/dependency and generated
+parity group so the next unchanged continuation advances from completed work.
+
+A failed aggregate retains its actual passing-case observations. Use those original
+case outputs with unchanged source/test/fixture/configuration and environment
+evidence to decide unaffected coverage; lack of a green native aggregate alone
+never justifies repeating unchanged passing cases. Preserve the FAILED record and
+each case's actual scope/status. Capture corrected cases with explicit `--input`
+source, test, fixture and configuration closures. A full-scope capture requires an
+initial-baseline need or a concrete affected-behavior/dependency justification.
+Supporting passing-case observations do not relabel a failed aggregate or invent
+a reusable native proof.

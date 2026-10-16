@@ -8,13 +8,21 @@
     "findings",
     "authentication_impact",
     "owner_approval_status",
-    "api_version_assessment"
+    "api_version_assessment",
+    "review_status",
+    "coverage",
+    "resolutions",
+    "validations",
+    "limitations",
+    "repair_plan"
   ],
   "properties": {
     "verdict": {
       "enum": [
         "APPROVED",
-        "REJECTED"
+        "REJECTED",
+        "INCOMPLETE",
+        "ERROR"
       ]
     },
     "summary": {
@@ -30,7 +38,16 @@
           "severity",
           "file",
           "line",
-          "message"
+          "message",
+          "id",
+          "root_cause",
+          "reproduction",
+          "required_behavior",
+          "recommendation",
+          "affected_paths",
+          "acceptance_checks",
+          "origin",
+          "origin_reason"
         ],
         "properties": {
           "severity": {
@@ -50,6 +67,52 @@
             "minimum": 1
           },
           "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^F[0-9]{3,}$"
+          },
+          "root_cause": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reproduction": {
+            "type": "string",
+            "minLength": 1
+          },
+          "required_behavior": {
+            "type": "string",
+            "minLength": 1
+          },
+          "recommendation": {
+            "type": "string",
+            "minLength": 1
+          },
+          "affected_paths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "acceptance_checks": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "origin": {
+            "enum": [
+              "INITIAL",
+              "REPAIR",
+              "MISSED",
+              "REOPENED"
+            ]
+          },
+          "origin_reason": {
             "type": "string",
             "minLength": 1
           }
@@ -114,6 +177,179 @@
           ]
         }
       }
+    },
+    "review_status": {
+      "enum": [
+        "COMPLETE",
+        "INCOMPLETE",
+        "ERROR"
+      ]
+    },
+    "coverage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "status",
+          "inputs",
+          "reason"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "REVIEWED",
+              "CARRIED_FORWARD",
+              "UNREVIEWED"
+            ]
+          },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path",
+                "digest"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "digest": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "resolutions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "explanation",
+          "inputs"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "explanation": {
+            "type": "string",
+            "minLength": 1
+          },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path",
+                "digest"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "digest": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "validations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "evidence_path",
+          "status",
+          "inputs",
+          "environment_digest",
+          "reason"
+        ],
+        "properties": {
+          "evidence_path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "VERIFIED",
+              "REUSED",
+              "INVALIDATED"
+            ]
+          },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path",
+                "digest"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "digest": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "environment_digest": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "repair_plan": {
+      "type": "string"
     }
   }
 }

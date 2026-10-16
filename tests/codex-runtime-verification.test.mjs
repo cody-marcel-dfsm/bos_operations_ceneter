@@ -21,7 +21,6 @@ test("Codex runtime verifier requires the package-owned MCP binding", async () =
     mcpServers: { "BOS-Platform": {
       type: "http",
       url: "https://dfsm.ai/mcp/apps/bos/platform",
-      oauth_resource: "https://dfsm.ai/mcp/apps/bos/platform",
       required: false,
       startup_timeout_sec: 180,
       tool_timeout_sec: 180
@@ -69,12 +68,23 @@ test("Codex runtime verifier requires the package-owned MCP binding", async () =
   assert.equal(report.ok, true, JSON.stringify(report.failures));
   assert.equal(report.mcp_binding.state, "current");
   assert.equal(report.mcp_binding.server.url, "https://dfsm.ai/mcp/apps/bos/platform");
-  assert.equal(report.mcp_binding.server.oauth_resource, "https://dfsm.ai/mcp/apps/bos/platform");
+  assert.equal(Object.hasOwn(report.mcp_binding.server, "oauth_resource"), false);
   assert.equal(report.mcp_binding.server.required, false);
   assert.equal(report.mcp_binding.server.startup_timeout_sec, 180);
   assert.deepEqual(report.independent_products, [{ name: "my-crm", version: "0.2.26", state: "ready" }]);
   assert.equal(report.live_tool_surface.semantics, "operation_schema_only");
   assert.equal(report.live_tool_surface.authorization_source, "tools_call_server_result");
+  const mcpPath = join(source, ".mcp.json");
+  const currentBinding = await readJson(mcpPath);
+  for (const resource of ["https://dfsm.ai/mcp/apps/bos/platform", "https://example.invalid/mcp"]) {
+    await writeFile(mcpPath, JSON.stringify({mcpServers: {"BOS-Platform": {
+      ...currentBinding.mcpServers["BOS-Platform"], oauth_resource: resource
+    }}}));
+    const overridden = await inspectCodexRuntime({home, runCommand, catalogPath: catalog});
+    assert.equal(overridden.ok, false);
+    assert.equal(overridden.mcp_binding.state, "invalid");
+  }
+  await writeFile(mcpPath, JSON.stringify(currentBinding));
   nativeServers.push({...nativeServers[0], name:"platform"});
   const duplicate = await inspectCodexRuntime({home, runCommand, catalogPath: catalog});
   assert.equal(duplicate.ok, false);

@@ -328,7 +328,7 @@ export async function nativeCase(catalog,item,config,release,model) {
   const authority=JSON.parse(await readFile(config.fixture_authority_file,'utf8'));
   const bos=release.dependency??release;
   const binding=JSON.parse(await readFile(join(bos.path,'.mcp.json'),'utf8')).mcpServers?.['BOS-Platform'];
-  if(binding?.type!=='http'||binding.oauth_resource!==binding.url||binding.required!==false)throw new Error('published_bos_binding_invalid');
+  if(binding?.type!=='http'||Object.hasOwn(binding,'oauth_resource')||binding.required!==false)throw new Error('published_bos_binding_invalid');
   await verifyPackageOwnedBinding(release.entries,bos.plugin_id,binding);
   bindingVerified=true;
   if(item.kind!=='negative')preferences=await readReviewerPreferences(catalog.product,bos);

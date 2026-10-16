@@ -1,23 +1,122 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {createServer} from "node:http";
-import {validateCallbackReport,validateStandingRegistration,validateWorkflowCatalog,validateWorkflowControlResponse,presentCallbackReport} from "../source/platform/bos-workflow-orchestrator/scripts/callback-runtime-client.mjs";
-import {interpretJourneyResponse,buildIdentityV2WorkflowActionRequest} from "../source/platform/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs";
+import {readFile} from "node:fs/promises";
+import {validateCallbackReport,validateStandingRegistration,validateWorkflowCatalog,validateWorkflowControlResponse,presentCallbackReport,reviewCallbackGrant} from "../source/platform/bos-workflow-orchestrator/scripts/callback-runtime-client.mjs";
+import {interpretJourneyResponse,buildIdentityV2WorkflowActionRequest,buildJourneyRegistrationRequest} from "../source/platform/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs";
 import {validateWorkflowCatalogDiscovery,validateWorkflowControlDiscovery} from "../source/platform/bos-app-discovery/scripts/validate-discovery.mjs";
 import {buildJourneyGraphView} from "../source/platform/bos-workflow-orchestrator/scripts/journey-presentation.mjs";
 
 function report() {return {as_of:"2026-10-13T00:00:00Z",callbacks:[{code:"mail",source:"gmail.trigger",requested:{queue:"journey",max_attempts:5,max_delay_seconds:300,retention_seconds:604800},granted:{queue:"journey",max_attempts:3,max_delay_seconds:300,retention_seconds:604800},adjustments:[{field:"max_attempts",requested:5,granted:3,reason:"PROFILE_LIMIT"}]}],waits:[{code:"wait",callback:"mail",requested:{ttl_seconds:null},granted:{ttl_seconds:null},adjustments:[]}],usage:[{resource:"definitions",scope:"organization",visibility:"visible",used:2,limit:null,remaining:null,reserved_by_submission:1},{resource:"callbacks",scope:"execution",visibility:"visible",used:1,limit:5,remaining:4,reserved_by_submission:1}]};}
 function action(verb="state",schema=null) {return {verb,method:verb==="state"?"GET":"POST",href:"/bos/apps/example/api/v1/organizations/demo/journey-controls/ctrl_independent_fixture",payload_schema:schema};}
+const registration=JSON.parse(await readFile(new URL("./fixtures/journey-registration-contract.json",import.meta.url),"utf8"));
+function submitted() {return {identity:"email journey",name:"Email journey",inputs:{},entry:"wait",
+  bootstrap:{callbacks:[{code:"mail",source:"gmail.trigger",inputs:{},match:{}}]},
+  nodes:[{code:"wait",type:"server",operation:"bosl.callbacks.await",inputs:{callback:{value:"mail"},ttl_seconds:{value:null}},outputs:{},next:"done"},
+    {code:"done",type:"server",inputs:{},outputs:{},terminal:true}]};}
+function receipt(callback_report=report()) {return {compiled:true,identity:"email journey",actions:{start:{...action("start"),href:"/bos/apps/example/api/v1/organizations/demo/journeys/email%20journey/start?capability=synthetic"}},callback_report};}
+function request(document=submitted()) {return buildJourneyRegistrationRequest(registration,"bos_ctx_v2_"+"a".repeat(64),document);}
 
 test("callback registration presents its negotiated grant before explicit start",()=>{
-  const body={compiled:true,identity:"email journey",actions:{start:{...action("start"),href:"/bos/apps/example/api/v1/organizations/demo/journeys/email%20journey/start?capability=synthetic"}},callback_report:report()};
-  assert.equal(interpretJourneyResponse({http_status:200,body}).next,"review_callback_grant");
-  const presented=presentCallbackReport(body.callback_report);
+  const body=receipt();
+  const decision=interpretJourneyResponse({http_status:200,body},{registrationRequest:request()});
+  assert.equal(decision.next,"review_callback_grant");assert.equal(decision.identity,"email journey");
+  const presented=decision.presentation;
   assert.equal(presented.usage[0].limit,"Unlimited");assert.equal(presented.waits[0].lifetime,"Permanent");assert.equal(presented.adjustments[0].granted,3);
   assert.equal(presented.usage[1].remaining,4);
 });
 test("restricted counts and finite physical limits are enforced",()=>{
   for(const mutation of [r=>r.usage[0].visibility="restricted",r=>r.callbacks[0].granted.max_attempts=6,r=>r.waits[0].execution_id="private",r=>r.usage[0].remaining=2]) {const r=report();mutation(r);assert.throws(()=>validateCallbackReport(r));}
+});
+
+test("visible callback usage preserves finite and unlimited accounting invariants",()=>{
+  const valid={resource:"registrations",scope:"organization",visibility:"visible",used:4,limit:5,remaining:1,reserved_by_submission:1};
+  for(const update of [{used:null},{remaining:null},{remaining:50},{remaining:0},{reserved_by_submission:null}]) {
+    const r=report();r.usage=[{...valid,...update}];assert.throws(()=>validateCallbackReport(r));
+  }
+  for(const usage of [valid,{...valid,used:0,remaining:5},{...valid,used:7,remaining:0},{...valid,limit:null,remaining:null},{...valid,visibility:"restricted",used:null,remaining:null}]) {
+    const r=report();r.usage=[usage];assert.doesNotThrow(()=>validateCallbackReport(r));
+  }
+});
+
+test("callback grants do not publish downgrade reset readiness",()=>{
+  assert.equal(Object.hasOwn(presentCallbackReport(report()),"downgrade_disclosure"),false);
+});
+
+test("grant review requires complete wait rows and finite profile expiry recovery before start",()=>{
+  const document=submitted();delete document.nodes[0].inputs.ttl_seconds;
+  const permanent=report();assert.doesNotThrow(()=>reviewCallbackGrant(document,permanent));
+  const finite=report();finite.waits[0].granted.ttl_seconds=10;
+  assert.throws(()=>reviewCallbackGrant(document,finite),/CALLBACK_WAIT_EXPIRED/);
+  document.nodes[0].catch={cases:[{when:{left:{from:"$error.code"},op:"eq",right:{value:"CALLBACK_WAIT_EXPIRED"}},next:"done"}],default:"done"};
+  assert.doesNotThrow(()=>reviewCallbackGrant(document,finite));
+  for(const waits of [[],[finite.waits[0],finite.waits[0]],[{...finite.waits[0],code:"unknown"}]]) {
+    assert.throws(()=>reviewCallbackGrant(document,{...finite,waits}),/missing|unique|submitted wait/);
+  }
+});
+
+test("registration review binds the response to the original serialized submission",()=>{
+  const document=submitted(),original=request(document),body=receipt();
+  document.identity="later draft";document.bootstrap.callbacks[0].source="later.plugin.trigger";
+  assert.equal(interpretJourneyResponse({http_status:200,body},{registrationRequest:original}).identity,"email journey");
+  assert.throws(()=>interpretJourneyResponse({http_status:200,body}),/original builder request/);
+  assert.throws(()=>interpretJourneyResponse({http_status:200,body},{registrationRequest:{...original}}),/unchanged original/);
+  assert.throws(()=>interpretJourneyResponse({http_status:200,body:{...body,identity:"different workflow"}},{registrationRequest:original}),/identity differs/);
+  const missing={...body};delete missing.callback_report;
+  assert.throws(()=>interpretJourneyResponse({http_status:200,body:missing},{registrationRequest:original}),/requires its callback grant report/);
+  assert.equal(Object.isFrozen(original),true);
+  assert.throws(()=>{original.body=JSON.stringify(document);},TypeError);
+  assert.equal(interpretJourneyResponse({http_status:200,body},{registrationRequest:original}).identity,"email journey");
+});
+
+test("callback grant review reconciles complete declarations, sources and wait mapping",()=>{
+  for(const change of [
+    r=>r.callbacks=[],
+    r=>r.callbacks[0].source="different.plugin.trigger",
+    r=>r.callbacks.push({...structuredClone(r.callbacks[0]),code:"unsubmitted"}),
+    r=>{r.callbacks.push({...structuredClone(r.callbacks[0]),code:"other"});r.waits[0].callback="other";},
+  ]) {
+    const r=report();change(r);assert.throws(()=>reviewCallbackGrant(submitted(),r));
+  }
+  const document=submitted();document.bootstrap.callbacks.push({code:"second",source:"fixture.inventory.trigger",inputs:{},match:{}});
+  assert.throws(()=>reviewCallbackGrant(document,report()),/missing a submitted callback/);
+  const complete=report();complete.callbacks.push({...structuredClone(complete.callbacks[0]),code:"second",source:"fixture.inventory.trigger"});
+  assert.doesNotThrow(()=>reviewCallbackGrant(document,complete));
+  complete.waits[0].callback="second";
+  assert.throws(()=>reviewCallbackGrant(document,complete),/submitted callback binding/);
+});
+
+test("explicit requested TTL and delivery terms match the serialized authored values",()=>{
+  const document=submitted();document.nodes[0].inputs.ttl_seconds.value=60;
+  document.nodes[0].catch={cases:[{when:{op:"eq",left:{from:"$error.code"},right:{value:"CALLBACK_WAIT_EXPIRED"}},next:"done"}]};
+  document.bootstrap.callbacks[0].retry={max_attempts:4,max_delay_seconds:120};
+  document.bootstrap.callbacks[0].dead_letter={queue:"journey",retention_seconds:3600};
+  const r=report();r.waits[0].requested.ttl_seconds=r.waits[0].granted.ttl_seconds=60;
+  r.callbacks[0].requested={queue:"journey",max_attempts:4,max_delay_seconds:120,retention_seconds:3600};
+  r.callbacks[0].granted={...r.callbacks[0].requested,max_attempts:3};
+  r.callbacks[0].adjustments=[{field:"max_attempts",requested:4,granted:3,reason:"PROFILE_LIMIT"}];
+  assert.doesNotThrow(()=>reviewCallbackGrant(document,r));
+  for(const mutate of [x=>x.waits[0].requested.ttl_seconds=10,x=>x.callbacks[0].requested.max_attempts=5,
+    x=>x.callbacks[0].requested.max_delay_seconds=300,x=>x.callbacks[0].requested.retention_seconds=604800]) {
+    const wrong=structuredClone(r);mutate(wrong);assert.throws(()=>reviewCallbackGrant(document,wrong),/submitted term/);
+  }
+  document.nodes[0].inputs.ttl_seconds.value=null;
+  assert.throws(()=>reviewCallbackGrant(document,r),/submitted term/);
+  delete document.nodes[0].inputs.ttl_seconds;delete document.bootstrap.callbacks[0].retry;delete document.bootstrap.callbacks[0].dead_letter;
+  assert.doesNotThrow(()=>reviewCallbackGrant(document,r));
+});
+
+test("grant presentation keeps unchanged delivery terms, TTL requests and every returned usage field",()=>{
+  const r=report();r.callbacks[0].granted={...r.callbacks[0].requested};r.callbacks[0].adjustments=[];
+  r.usage.push({resource:"pending_events",scope:"source",visibility:"restricted",used:null,limit:5,remaining:null,reserved_by_submission:0});
+  const presented=reviewCallbackGrant(submitted(),r);
+  assert.deepEqual(presented.callbacks[0],{code:"mail",source:"gmail.trigger",requested:r.callbacks[0].requested,granted:r.callbacks[0].granted});
+  assert.deepEqual(presented.waits[0],{step:"wait",callback:"mail",requested:{ttl_seconds:null},granted:{ttl_seconds:null},lifetime:"Permanent"});
+  assert.equal(presented.usage[0].scope,"organization");assert.equal(presented.usage[0].reserved_by_submission,1);
+  assert.deepEqual(presented.usage[2],{resource:"pending_events",scope:"source",visibility:"restricted",used:"Restricted",limit:5,remaining:null,reserved_by_submission:0});
+  const emptyUsage=structuredClone(r);emptyUsage.usage=[];
+  assert.doesNotThrow(()=>reviewCallbackGrant(submitted(),emptyUsage));
+  presented.callbacks[0].requested.max_attempts=1;assert.equal(r.callbacks[0].requested.max_attempts,5);
 });
 test("standing pages keep private run selections and require truncation continuation",()=>{
   const registration={callback:"mail",active_since:"2026-10-13T00:00:00Z",expires_at:null,admission_status:"active",run_counts:{completed:30},runs:[{status:"completed",action:action()}],runs_truncated:true,next_page:action()};

@@ -322,12 +322,12 @@ async function validateProducts() {
             name !== mcpServerName(manifest) ||
             server?.type !== "http" ||
             server?.url !== materializeMcpUrl(manifest) ||
-            server?.oauth_resource !== materializeMcpUrl(manifest) ||
+            Object.hasOwn(server ?? {}, "oauth_resource") ||
             server?.required !== false ||
             server?.startup_timeout_sec !== manifest.codex_mcp_startup_timeout_sec ||
             server?.tool_timeout_sec !== manifest.codex_mcp_tool_timeout_sec ||
             JSON.stringify(Object.keys(server ?? {}).sort()) !==
-              JSON.stringify(["oauth_resource", "required", "startup_timeout_sec", "tool_timeout_sec", "type", "url"])
+              JSON.stringify(["required", "startup_timeout_sec", "tool_timeout_sec", "type", "url"])
           ) {
             failures.push(`Generated Codex MCP declaration drift: ${runtimePath}`);
           }

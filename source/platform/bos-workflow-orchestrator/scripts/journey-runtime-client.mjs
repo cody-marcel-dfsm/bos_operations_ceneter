@@ -3,7 +3,7 @@
 import Ajv2020 from "./vendor/ajv2020.bundle.mjs";
 import {validateSafeBosExecutionUri} from "../../bos-external-dependency-adapter/scripts/safe-execution-uri.mjs";
 import {validateApiContractResponse} from "../../bos-app-discovery/scripts/validate-discovery.mjs";
-import {validateCallbackReport,validateCallbackUsage,validateStandingRegistration,validateWorkflowCatalog,validateWorkflowControlResponse,validateWorkflowAction} from "./callback-runtime-client.mjs";
+import {validateCallbackReport,validateCallbackUsage,validateStandingRegistration,validateWorkflowCatalog,validateWorkflowControlResponse,validateWorkflowAction,reviewCallbackGrant} from "./callback-runtime-client.mjs";
 
 const lifecycleVerbs = new Set(["start", "complete", "step", "failed", "state"]);
 const journeyStatuses = new Set([
@@ -70,6 +70,9 @@ const forbiddenPublicKeys = new Set([
 const actionFields = new Set(["verb", "method", "href", "payload_schema"]);
 const bosContextHandlePattern = /^bos_ctx_v2_[a-f0-9]{64}$/u;
 const bosContextHeader = "X-BOS-Context-Handle";
+// Retain the exact serialized submission only for this local request's lifetime.
+// It adds no wire field, public locator or persisted execution state.
+const registrationSubmissions = new WeakMap();
 
 function requireObject(value, label) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -320,12 +323,14 @@ export function buildJourneyRegistrationRequest(contract, contextHandle, documen
   }
   validateHref(execution.uri, "journey registration URI");
   validatePayload(document, contract.input_schema);
-  return bindIdentityV2Context({
+  const request=bindIdentityV2Context({
     method: "POST",
     href: execution.uri,
     headers: {"content-type":"application/json"},
     body: JSON.stringify(document)
   }, contextHandle, execution.context_header);
+  registrationSubmissions.set(request,request.body);
+  return Object.freeze(request);
 }
 
 function validatePublicError(error, label = "error") {
@@ -568,7 +573,7 @@ function headerValue(headers, name) {
   return entry?.[1];
 }
 
-export function interpretJourneyResponse(response) {
+export function interpretJourneyResponse(response, {registrationRequest} = {}) {
   requireObject(response, "HTTP response");
   if (!Number.isInteger(response.http_status)) {
     throw new Error("HTTP response.http_status must be an integer");
@@ -657,9 +662,21 @@ export function interpretJourneyResponse(response) {
       if (response.http_status < 200 || response.http_status > 299) {
         throw new Error("compiled registration requires a successful HTTP status");
       }
-      return registration.callback_report===undefined
-        ? { next: "invoke_action", action: registration.actions.start }
-        : { next:"review_callback_grant", callback_report:registration.callback_report, action:registration.actions.start };
+      let submitted;
+      if(registrationRequest!==undefined) {
+        const serialized=registrationSubmissions.get(registrationRequest);
+        if(serialized===undefined || registrationRequest.body!==serialized) throw new Error("Registration review requires the unchanged original builder request.");
+        submitted=JSON.parse(serialized);
+        if(registration.identity!==submitted.identity) throw new Error("Registration response identity differs from the submitted document.");
+        if(submitted.bootstrap?.callbacks?.length && registration.callback_report===undefined) throw new Error("Callback submission requires its callback grant report before Start.");
+      }
+      if(registration.callback_report!==undefined) {
+        if(submitted===undefined) throw new Error("Callback registration review requires its original builder request.");
+        const presentation=reviewCallbackGrant(submitted,registration.callback_report);
+        return {next:"review_callback_grant",identity:registration.identity,callback_report:registration.callback_report,
+          presentation,action:registration.actions.start};
+      }
+      return { next: "invoke_action", action: registration.actions.start };
     }
     return { next: "correct_bosl", error: registration.error, errors: registration.errors };
   }

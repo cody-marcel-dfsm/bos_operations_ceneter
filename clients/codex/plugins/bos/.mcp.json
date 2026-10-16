@@ -3,7 +3,6 @@
     "BOS-Platform": {
       "type": "http",
       "url": "https://dfsm.ai/mcp/apps/bos/platform",
-      "oauth_resource": "https://dfsm.ai/mcp/apps/bos/platform",
       "required": false,
       "startup_timeout_sec": 180,
       "tool_timeout_sec": 180

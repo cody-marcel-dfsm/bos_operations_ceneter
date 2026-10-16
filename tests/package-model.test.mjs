@@ -1867,7 +1867,6 @@ test("BOS OAuth targets and generated product metadata derive from product.json"
       "BOS-Platform": {
         type: "http",
         url: canonicalBosProduct.mcp_resource_url,
-        oauth_resource: canonicalBosProduct.mcp_resource_url,
         required: false,
         startup_timeout_sec: canonicalBosProduct.codex_mcp_startup_timeout_sec,
         tool_timeout_sec: canonicalBosProduct.codex_mcp_tool_timeout_sec
@@ -2147,7 +2146,6 @@ test("disabled products are absent while active runtime products remain scoped",
       "BOS-Platform": {
         type: "http",
         url: canonicalBosProduct.mcp_resource_url,
-        oauth_resource: canonicalBosProduct.mcp_resource_url,
         required: false,
         startup_timeout_sec: canonicalBosProduct.codex_mcp_startup_timeout_sec,
         tool_timeout_sec: canonicalBosProduct.codex_mcp_tool_timeout_sec
@@ -2187,7 +2185,7 @@ test("BOS owns OAuth and Education Center delegates through its dependency", asy
   assert.equal(metadata.application_name, "bos");
   assert.equal(metadata.mcp_group_name, "platform");
   assert.equal(metadata.resource_url, codexMcp.mcpServers["BOS-Platform"].url);
-  assert.equal(metadata.resource_url, codexMcp.mcpServers["BOS-Platform"].oauth_resource);
+  assert.equal(Object.hasOwn(codexMcp.mcpServers["BOS-Platform"], "oauth_resource"), false);
   assert.equal(codexMcp.mcpServers["BOS-Platform"].required, false);
   assert.equal(
     codexMcp.mcpServers["BOS-Platform"].startup_timeout_sec,

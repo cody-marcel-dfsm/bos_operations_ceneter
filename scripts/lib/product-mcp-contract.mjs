@@ -577,7 +577,7 @@ export async function verifyProductMcpContract({
         const [name, server] = entries[0] ?? [];
         if (entries.length !== 1 || name !== mcpServerName(product) ||
             server?.type !== "http" || server?.url !== product.mcp_resource_url ||
-            server?.oauth_resource !== product.mcp_resource_url || server?.required !== false ||
+            Object.hasOwn(server ?? {}, "oauth_resource") || server?.required !== false ||
             server?.startup_timeout_sec !== product.codex_mcp_startup_timeout_sec ||
             server?.tool_timeout_sec !== product.codex_mcp_tool_timeout_sec) {
           violations.push(finding("codex_mcp_binding", artifact, "Codex MCP binding differs from the product manifest."));
