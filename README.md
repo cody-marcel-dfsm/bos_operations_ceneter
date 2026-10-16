@@ -59,7 +59,7 @@ Upgrading replaces the former `platform` identifier. Hosts may require native
 sign-in again when a connection identifier changes; valid-session continuity
 has not been verified for this migration.
 
-Current desktop marketplace release: `0.4.199`. If `0.4.198` is installed,
+Current desktop marketplace release: `0.4.200`. If `0.4.199` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -423,6 +423,57 @@ Every repository mutation then receives a repository-local Oracle review of the
 complete actual diff and focused validation evidence. `REJECTED` blocks
 completion; every correction requires a fresh review until the verdict is
 `APPROVED`.
+
+### Maintainer notification transport acceptance
+
+The deterministic notification transport case has two modes. Keep its inputs and
+receipts in the private Vault. Neither mode establishes native Muse idle wake.
+
+Validate a candidate owner's bounded public synthetic wire transcript with the
+current reviewed client parser:
+
+```bash
+npm run acceptance:notifications -- --transcript "$PRIVATE_WIRE_JSON" --evidence-out "$NEW_PRIVATE_RECEIPT_JSON"
+```
+
+The transcript uses `bos-journey-notification-wire-observation/v1`, one
+`mcp-client-only-hello-world` identity, the full discovered notification descriptor,
+two raw SSE streams, the first ready cursor as `resume_cursor`, and a sanitized
+HTTP 200 `awaiting_client` state observation. It retains the source/revision/image
+tuple and actual public state GET hrefs. Limit the file to 512 KiB, each stream to
+eight raw strings and eight parsed frames, and each raw string to 64 KiB. Keep
+headers, credentials, context handles and signed lifecycle actions out. A PASS
+proves independent validation of supplied wire bytes and replay consistency;
+deployment provenance and the state HTTP observation remain supplied evidence.
+
+After the reviewed client release is published and installed through supported
+controls, run the authenticated reviewer mode against the existing packaged BOS
+resource:
+
+```bash
+npm run acceptance:notifications -- --reviewer-config "$PRIVATE_REVIEWER_CONFIG" --bosl-file "$PRIVATE_CLIENT_ONLY_BOSL" --source-revision "$SERVICE_SOURCE_COMMIT" --server-revision "$SERVICE_REVISION" --image-digest "$SERVICE_IMAGE_DIGEST" --evidence-out "$NEW_PRIVATE_RECEIPT_JSON"
+```
+
+Use the configured synthetic reviewer identity and its existing hashed authority.
+The authority must allow `read` and `write`, and bind
+`effect_bindings.notification-transport` to operation
+`lead-director.journeys.register`, effect `write`, and the SHA-256 of the exact
+`JSON.stringify` BOSL object. The object must contain one terminal client node
+with empty journey/node inputs and outputs; it permits no server/provider step.
+The case verifies the published package and current reviewer scope, discovers its
+contracts, registers that document, observes ready before Start, validates a
+change and opaque-cursor replay, refetches current state, and completes the
+returned client lifecycle. It revokes the isolated reviewer grant and records
+partial cleanup explicitly. The definition remains registered. Active work is
+bounded to 90 seconds, 64 request-budget units, two streams and eight lifecycle
+actions; unavailable prerequisites return INCOMPLETE. Receipt paths must be new
+files under this checkout's private `Vault/tmp`.
+
+Released 0.4.199 rejects the event-stream descriptor and full-contract projections.
+Publish and install reviewed 0.4.200 before enabling customer notification
+discovery/readiness. Candidate-only captured-wire acceptance can precede service
+promotion. Actual deployed execution and host-specific wake each retain their
+own acceptance evidence.
 
 ## Release validation
 

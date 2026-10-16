@@ -520,6 +520,28 @@ export class BosDependencyAdapterError extends Error {
   }
 }
 
+// Internal disposition only; retain no credential-bearing host exception or cause.
+export class BosNotificationTransportError extends BosDependencyAdapterError {
+  constructor(kind) {
+    if (!["cancelled", "transient"].includes(kind)) throw new TypeError("Unknown notification transport disposition");
+    super(kind === "cancelled" ? "Notification monitoring stopped" : "The notification connection was interrupted");
+    this.name = "BosNotificationTransportError";
+    this.kind = kind;
+  }
+}
+
+const notificationTransportFailure = (error, signal) => {
+  if (error instanceof BosDependencyAdapterError) return error;
+  if (signal?.aborted || error?.name === "AbortError") return new BosNotificationTransportError("cancelled");
+  const transient = new Set(["ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "EHOSTUNREACH", "ENETUNREACH", "EPIPE",
+    "UND_ERR_SOCKET", "UND_ERR_CONNECT_TIMEOUT", "UND_ERR_HEADERS_TIMEOUT", "UND_ERR_BODY_TIMEOUT"]);
+  if (transient.has(error?.code) || transient.has(error?.cause?.code) || error?.name === "NetworkError" ||
+      (error instanceof TypeError && /^(?:fetch failed|Failed to fetch|NetworkError when attempting to fetch resource\.)$/u.test(error.message))) {
+    return new BosNotificationTransportError("transient");
+  }
+  return new BosDependencyAdapterError("The notification transport failed");
+};
+
 class BosTransportThrown extends Error {
   constructor(cause) {
     super("The BOS host transport threw", {cause});
@@ -743,6 +765,9 @@ export function createBosExternalDependencyAdapter({
       ? structuredSnapshot(payload, "discovered operation payload")
       : payload;
     const described = validateDiscoveredOperation(pinnedContact, payloadSupplied, pinnedPayload).contact;
+    if (described.execution.response?.body === "event_stream") {
+      throw new TypeError("Use the capability-detected incremental notification stream method");
+    }
     const binaryResponse = described.execution.response;
     const binaryContract = binaryResponse?.body === "binary"
       ? {
@@ -787,7 +812,111 @@ export function createBosExternalDependencyAdapter({
     return outcome.response;
   };
 
+  const getNotificationCapabilities = async () => {
+    const methods = ["getNotificationCapabilities", "openAuthenticatedEventStream", "scheduleTaskWake",
+      "captureExecutionScope", "verifyExecutionIntent"];
+    if (methods.some(method => typeof hostTransport[method] !== "function")) {
+      return {authenticatedEventStream: false, durableTaskWake: false};
+    }
+    const capabilities = await hostTransport.getNotificationCapabilities();
+    return {authenticatedEventStream: capabilities?.authenticatedEventStream === true,
+      durableTaskWake: capabilities?.durableTaskWake === true};
+  };
+  const openNotificationStream = async (contact, {identities, cursor, signal} = {}) => {
+    const current = validateDiscoveredOperation(structuredSnapshot(contact, "notification contact"), false).contact;
+    const descriptor = current.execution.response;
+    if (current.operation !== "journeys.notifications.subscribe" || current.effect !== "read" ||
+        current.execution.method !== "GET" || descriptor?.body !== "event_stream" ||
+        current.sources.some(source => source.availability !== "ready")) {
+      throw new TypeError("A ready discovered notification stream is required");
+    }
+    if (!Array.isArray(identities) || identities.length < 1 || identities.length > descriptor.limits.max_identities ||
+        new Set(identities).size !== identities.length || identities.some(identity => typeof identity !== "string" ||
+          !identity || identity.normalize("NFC") !== identity || new TextEncoder().encode(identity).length > 255 || /[\p{Cc}\p{Cf}]/u.test(identity))) {
+      throw new TypeError("An explicit bounded notification watch list is required");
+    }
+    validatePayload({identity: identities}, current.input_schema);
+    if (cursor !== undefined && (typeof cursor !== "string" || !/^[A-Za-z0-9_-]{1,512}$/u.test(cursor))) {
+      throw new TypeError("A bounded opaque notification cursor is required");
+    }
+    if (current.execution.uri.includes("?") || descriptor.reconnect.initial_delay_ms > descriptor.reconnect.max_delay_ms) {
+      throw new TypeError("The notification execution descriptor is unsupported");
+    }
+    const capabilities = await getNotificationCapabilities();
+    if (!capabilities.authenticatedEventStream || !capabilities.durableTaskWake) {
+      throw new BosDependencyAdapterError("Live notifications are unavailable in this host; retain current-state reads");
+    }
+    const scopeCheck = await captureExecutionScope();
+    const attempt = async () => {
+      await assertExecutionScope(scopeCheck);
+      const request = await buildDiscoveredRequest(current, false);
+      request.href += "?" + identities.map(identity => `identity=${encodeURIComponent(identity)}`).join("&");
+      request.headers.accept = "text/event-stream";
+      request.headers["cache-control"] = "no-cache";
+      if (cursor !== undefined) request.headers["Last-Event-ID"] = cursor;
+      await assertExecutionScope(scopeCheck);
+      if (signal?.aborted) throw new BosNotificationTransportError("cancelled");
+      let reply;
+      try { reply = await hostTransport.openAuthenticatedEventStream({...request, signal}); }
+      catch (error) { if (!authenticationCondition(error)) throw notificationTransportFailure(error, signal); reply = error; }
+      await assertExecutionScope(scopeCheck);
+      const condition = authenticationCondition(reply);
+      if (condition) return {condition, resource: reply.resource};
+      if (reply.status !== 200) return {response: publicResponse(reply)};
+      const contentType = headerValue(reply.headers ?? {}, "content-type");
+      if (typeof contentType !== "string" || contentType.split(";", 1)[0].trim().toLowerCase() !== "text/event-stream" ||
+          typeof reply.chunks?.[Symbol.asyncIterator] !== "function") {
+        throw new BosDependencyAdapterError("The host did not return an incremental event stream");
+      }
+      const chunks = (async function* () {
+        try {
+          for await (const chunk of reply.chunks) {
+            await assertExecutionScope(scopeCheck);
+            if (signal?.aborted) throw new BosNotificationTransportError("cancelled");
+            if (!(chunk instanceof Uint8Array)) throw new BosDependencyAdapterError("Notification transport must return bytes");
+            yield chunk;
+          }
+        } catch (error) {
+          if (authenticationCondition(error)) throw new BosDependencyAdapterError("BOS notification authority ended");
+          throw notificationTransportFailure(error, signal);
+        }
+      })();
+      return {response: {status: 200, chunks}};
+    };
+    let outcome = await attempt();
+    if (outcome.condition) {
+      // Explicit host logout/revocation remains terminal; expiry uses existing bounded recovery.
+      if (outcome.condition === "REVOKED_GRANT") {
+        throw new BosDependencyAdapterError("BOS notification authority ended");
+      }
+      await completeAuthenticationRecovery({resource: outcome.resource, condition: outcome.condition});
+      await assertExecutionScope(scopeCheck);
+      outcome = await attempt();
+      if (outcome.condition) throw new BosDependencyAdapterError("BOS notification authentication remains unavailable");
+    }
+    return outcome.response;
+  };
+  const scheduleNotificationWake = async (binding) => {
+    const snapshot = structuredSnapshot(binding, "notification task binding");
+    requireObject(snapshot, "notification task binding");
+    requireExactKeys(snapshot, ["taskRef", "pendingWorkRef"], [], "notification task binding");
+    requireSafeString(snapshot.taskRef, "taskRef");
+    requireSafeString(snapshot.pendingWorkRef, "pendingWorkRef");
+    const capabilities = await getNotificationCapabilities();
+    if (!capabilities.durableTaskWake) return {accepted: false};
+    const scopeCheck = await captureExecutionScope();
+    await assertExecutionScope(scopeCheck);
+    await verifyExecutionIntent({operation: "journeys.notifications.wake", ...snapshot});
+    await assertExecutionScope(scopeCheck);
+    const result = await hostTransport.scheduleTaskWake(snapshot);
+    await assertExecutionScope(scopeCheck);
+    return {accepted: result?.accepted === true};
+  };
+
   return Object.freeze({
+    getNotificationCapabilities,
+    openNotificationStream,
+    scheduleNotificationWake,
     captureExecutionScope,
     verifyExecutionIntent,
     recoverAuthentication,

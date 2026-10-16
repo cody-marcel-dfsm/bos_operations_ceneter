@@ -333,7 +333,7 @@ export function buildJourneyRegistrationRequest(contract, contextHandle, documen
   return Object.freeze(request);
 }
 
-function validatePublicError(error, label = "error") {
+export function validatePublicError(error, label = "error") {
   requireObject(error, label);
   requireExactKeys(
     error,

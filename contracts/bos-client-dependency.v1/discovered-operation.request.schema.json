@@ -240,69 +240,169 @@
               "type": "null"
             },
             "response": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "body",
-                "content_type",
-                "headers"
-              ],
-              "properties": {
-                "body": {
-                  "const": "binary"
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "body",
+                    "content_type",
+                    "headers"
+                  ],
+                  "properties": {
+                    "body": {
+                      "const": "binary"
+                    },
+                    "content_type": {
+                      "const": "provider"
+                    },
+                    "headers": {
+                      "type": "array",
+                      "minItems": 6,
+                      "maxItems": 6,
+                      "uniqueItems": true,
+                      "items": {
+                        "enum": [
+                          "Content-Disposition",
+                          "Content-Length",
+                          "Content-Type",
+                          "Digest",
+                          "X-Content-SHA256",
+                          "X-Correlation-ID"
+                        ]
+                      },
+                      "allOf": [
+                        {
+                          "contains": {
+                            "const": "Content-Disposition"
+                          }
+                        },
+                        {
+                          "contains": {
+                            "const": "Content-Length"
+                          }
+                        },
+                        {
+                          "contains": {
+                            "const": "Content-Type"
+                          }
+                        },
+                        {
+                          "contains": {
+                            "const": "Digest"
+                          }
+                        },
+                        {
+                          "contains": {
+                            "const": "X-Content-SHA256"
+                          }
+                        },
+                        {
+                          "contains": {
+                            "const": "X-Correlation-ID"
+                          }
+                        }
+                      ]
+                    }
+                  }
                 },
-                "content_type": {
-                  "const": "provider"
-                },
-                "headers": {
-                  "type": "array",
-                  "minItems": 6,
-                  "maxItems": 6,
-                  "uniqueItems": true,
-                  "items": {
-                    "enum": [
-                      "Content-Disposition",
-                      "Content-Length",
-                      "Content-Type",
-                      "Digest",
-                      "X-Content-SHA256",
-                      "X-Correlation-ID"
-                    ]
-                  },
-                  "allOf": [
-                    {
-                      "contains": {
-                        "const": "Content-Disposition"
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "body",
+                    "content_type",
+                    "query_encoding",
+                    "resume_header",
+                    "limits",
+                    "reconnect"
+                  ],
+                  "properties": {
+                    "body": {
+                      "const": "event_stream"
+                    },
+                    "content_type": {
+                      "const": "text/event-stream"
+                    },
+                    "query_encoding": {
+                      "const": "repeated"
+                    },
+                    "resume_header": {
+                      "const": "Last-Event-ID"
+                    },
+                    "limits": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "max_identities",
+                        "max_streams",
+                        "replay_retention_seconds",
+                        "replay_max_events",
+                        "max_event_bytes",
+                        "keepalive_seconds",
+                        "max_connection_seconds"
+                      ],
+                      "properties": {
+                        "max_identities": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "max_streams": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 3
+                        },
+                        "replay_retention_seconds": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 86400
+                        },
+                        "replay_max_events": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 10000
+                        },
+                        "max_event_bytes": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 65536
+                        },
+                        "keepalive_seconds": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 15
+                        },
+                        "max_connection_seconds": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 600
+                        }
                       }
                     },
-                    {
-                      "contains": {
-                        "const": "Content-Length"
-                      }
-                    },
-                    {
-                      "contains": {
-                        "const": "Content-Type"
-                      }
-                    },
-                    {
-                      "contains": {
-                        "const": "Digest"
-                      }
-                    },
-                    {
-                      "contains": {
-                        "const": "X-Content-SHA256"
-                      }
-                    },
-                    {
-                      "contains": {
-                        "const": "X-Correlation-ID"
+                    "reconnect": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "initial_delay_ms",
+                        "max_delay_ms"
+                      ],
+                      "properties": {
+                        "initial_delay_ms": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 30000
+                        },
+                        "max_delay_ms": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 30000
+                        }
                       }
                     }
-                  ]
+                  }
                 }
-              }
+              ]
             }
           }
         },

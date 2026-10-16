@@ -7,6 +7,26 @@ literal or journey-input bindings. The first source is the configured Gmail
 inbox; readiness and eligible match/deduplication fields come from its current
 contract. Author no provider URL, handler, executable code or authority selector.
 
+Before upload or Start, obtain the source's full current `api.contract.get`
+response and matching read-only `service.describe` contact. Call
+`checkCallbackSourceReadiness({adapter, sourceContract, contact})` from
+`scripts/callback-source-readiness.mjs` through the existing BOS adapter. Keep
+the pending graph and original registration request in memory; the source read
+receives neither. A declared source and an available limits profile do not
+establish a configured provider watch.
+
+On `configure_source`, follow the source's returned recovery descriptor through
+the existing discovered plugin-settings/provider-consent workflow. Preserve
+the selected context and request. Refresh discovery and repeat the source GET
+after configuration or reconnection, then resume the pending authoring when it
+reports ready. If setup/recovery is unavailable, report that exact missing
+capability and retain the pending intent. Never invent a setup POST, select
+another mailbox/actor or create a listener. A source read reporting failure
+does not establish a production policy failure, or permission to start.
+
+Read [the failure model](journey-failure-model.md) when choosing error, expiry,
+parked-work or irreversible-effect recovery behavior.
+
 Ordinary nodes may execute before a server-owned `bosl.callbacks.await` node.
 Its callback is a local literal. Optional narrowing correlation may use typed
 outputs from an earlier node that dominates every path into the wait. Use
