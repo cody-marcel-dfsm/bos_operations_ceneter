@@ -4,6 +4,11 @@ Private local architecture: `Vault/docs/architecture.md`
 Private local constitution: `Vault/docs/CONSTITUTION.md`
 Private knowledge root: `Vault/` (never tracked or published)
 
+Private callback authoring design: `Vault/docs/design/bosl-callback-authoring.md`
+Private callback implementation tasks: `Vault/docs/implementation/bosl-callback-implementation.md`
+Private notification client design: `Vault/docs/design/journey-notifications-client.md`
+Private notification implementation tasks: `Vault/docs/implementation/journey-notifications-implementation.md`
+
 ## Canonical main checkout and project agent context
 
 - Work on `main` in `/Users/cody/Development/Projects/bos_operations_center`.
