@@ -1,6 +1,6 @@
 {
   "name": "bos-operations-center",
-  "version": "0.4.199",
+  "version": "0.4.200",
   "private": false,
   "description": "BOS service-gateway client skills and Education Operation Center packages.",
   "author": "Infinite State Machines LLC",
@@ -33,6 +33,7 @@
     "acceptance:codex-login": "node scripts/verify-codex-login-evidence.mjs",
     "acceptance:codex-request-time-login": "node --test acceptance/codex-request-time-login-surface.acceptance.mjs",
     "acceptance:agent-journey-live": "node scripts/verify-agent-driven-journey-live.mjs",
+    "acceptance:notifications": "node scripts/verify-notification-transport.mjs",
     "acceptance:post-release": "npm run contract:oauth-discovery-live -- --format json && npm run contract:oauth-login-trigger-live -- --format json && npm run acceptance:codex-login -- --json && npm run acceptance:codex-request-time-login",
     "inventory": "node scripts/inventory-skills.mjs",
     "install:inspect": "node scripts/install-package.mjs inspect",

@@ -9,7 +9,7 @@
     {
       "id": "external_dependency_adapter",
       "path": "skills/bos-external-dependency-adapter/scripts/external-dependency-adapter.mjs",
-      "sha256": "643eb98727acac3f62662134b69ae5c5860b319c23448782ad3c0f152741edca"
+      "sha256": "27083d7617b12de264738d9879ed10ccd9b0e73b5e421e69b982078945732bdf"
     },
     {
       "id": "external_dependency_schema_runtime",
@@ -19,7 +19,7 @@
     {
       "id": "external_dependency_discovered_operation_schema",
       "path": "skills/bos-external-dependency-adapter/scripts/discovered-operation-request.schema.mjs",
-      "sha256": "b262895e526f3a8480a432543f91f63d9740071e3df386e76601f36d9f644031"
+      "sha256": "244c0692c71af175b3921feff91ba8d877deec5c436a882b419ec14eed9d6a59"
     },
     {
       "id": "external_dependency_safe_execution_uri",
@@ -46,7 +46,7 @@
     {
       "path": "discovered-operation.request.schema.json",
       "media_type": "application/schema+json",
-      "sha256": "6e4b4eb10ae04b585067e2f8725f83e9975bc231575901b66a7821ed6150329c"
+      "sha256": "face5c7525745c57ae3c19e8ee951c01ea611d0703a688851666722d3daa2bf1"
     },
     {
       "path": "discovered-operation.response.example.json",
@@ -79,5 +79,5 @@
       "sha256": "046c4dd184af18af526ed64bd37a75dd316397b3d1437886eb7f57deb5e99d2d"
     }
   ],
-  "bundle_sha256": "14e18d6d89253d05ae54c6a07d3ab078f1673c70585f52e35fa7d3ff2f4c1c3e"
+  "bundle_sha256": "89d55c63691828014f64b41640a81a3625bcd7123c7d3b0c4f3d66b06fed5723"
 }

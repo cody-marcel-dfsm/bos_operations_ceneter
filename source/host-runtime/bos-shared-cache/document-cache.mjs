@@ -470,7 +470,7 @@ async function renewAuthorityMutationLock(path, lock) {
   lock.expires_at = expiresAt;
 }
 
-async function withAuthorityMutationLock(path, operation, options = {}) {
+export async function withAuthorityMutationLock(path, operation, options = {}) {
   const lock = await acquireAuthorityMutationLock(path, options);
   const heartbeatMs = options.mutationLockHeartbeatMs ??
     Math.max(10, Math.floor(lock.leaseMs / 3));

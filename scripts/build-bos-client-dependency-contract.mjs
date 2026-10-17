@@ -200,6 +200,24 @@ const describedOperation = {
     }
   }
 };
+// Independently owned consumer descriptor for the existing v1 notification stream.
+const streamBounds = {max_identities: 100, max_streams: 3, replay_retention_seconds: 86400,
+  replay_max_events: 10000, max_event_bytes: 65536, keepalive_seconds: 15, max_connection_seconds: 600};
+const binaryResponse = describedOperation.properties.execution.properties.response;
+describedOperation.properties.execution.properties.response = {oneOf: [binaryResponse, {
+  type: "object", additionalProperties: false,
+  required: ["body", "content_type", "query_encoding", "resume_header", "limits", "reconnect"],
+  properties: {
+    body: {const: "event_stream"}, content_type: {const: "text/event-stream"},
+    query_encoding: {const: "repeated"}, resume_header: {const: "Last-Event-ID"},
+    limits: {type: "object", additionalProperties: false, required: Object.keys(streamBounds),
+      properties: Object.fromEntries(Object.entries(streamBounds).map(([key, maximum]) =>
+        [key, {type: "integer", minimum: 1, maximum}]))},
+    reconnect: {type: "object", additionalProperties: false, required: ["initial_delay_ms", "max_delay_ms"],
+      properties: {initial_delay_ms: {type: "integer", minimum: 1, maximum: 30000},
+        max_delay_ms: {type: "integer", minimum: 1, maximum: 30000}}}
+  }
+}]};
 const discoveredOperationSchema = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
   $id: "bos://contracts/client-dependency/v1/discovered-operation-request",

@@ -144,6 +144,10 @@ role-specific controls or callback waits, read
 v1 callback source and wait contracts. The existing journey runtime owns all
 server progress, event capture and originating-author authority.
 
+When planning failure handling, retries, parked waits or irreversible steps,
+read [the journey failure model](references/journey-failure-model.md). Use the
+discovered lifecycle and preserve receipt-based recovery and effect approvals.
+
 ## Workflow
 
 1. Preserve the user's objective and requested outcome. Use `bos-mcp-client` to
@@ -188,3 +192,8 @@ route switching.
 
 Keep credentials, tokens, raw authority identifiers, provider payloads, and
 customer records out of plans, continuation envelopes, logs, and summaries.
+
+For requested outbound journey observations, read
+[journey notifications](references/journey-notifications.md). Use the existing
+host's advertised notification and durable wake capabilities, then refetch
+current state. Preserve ordinary state-read recovery when either is unavailable.

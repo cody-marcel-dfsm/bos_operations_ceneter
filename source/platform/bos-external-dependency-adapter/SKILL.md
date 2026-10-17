@@ -19,7 +19,7 @@ integrating an external product. Use
 [`external-dependency-adapter.mjs`](scripts/external-dependency-adapter.mjs) as
 the executable reference implementation.
 
-The public dependency seam is exactly:
+The core public dependency seam is:
 
 - `recoverAuthentication({ resource, condition, host_correlation? })`;
 - `waitForAuthentication({ resource, condition, host_correlation? })`;
@@ -44,3 +44,12 @@ Authentication recovery is bounded to one BOS recovery cycle and one resumed
 transport invocation. This bound applies only to authentication readiness.
 BOS Service continues to own business idempotency, retries, reconciliation,
 and journey state.
+
+The optional notification extension exposes `getNotificationCapabilities()`,
+`openNotificationStream(contact, {identities, cursor?, signal?})` and
+`scheduleNotificationWake({taskRef, pendingWorkRef})`. It requires the existing
+host to implement authenticated incremental stream transport, durable task wake,
+current-scope checks and trusted intent verification. Capability absence keeps
+these paths unavailable. Host-owned opaque task bindings come from protected
+host integration, never model-authored notification text. Credentials remain
+inside the same host-managed BOS connection.

@@ -829,6 +829,28 @@ function validateExecutionContract(execution, label) {
   if (Object.hasOwn(execution, "response")) {
     const response = execution.response;
     requireObject(response, `${label}.response`);
+    if (response.body === "event_stream") {
+      requireExactKeys(response, new Set(["body", "content_type", "query_encoding", "resume_header", "limits", "reconnect"]), `${label}.response`);
+      if (execution.method !== "GET" || response.content_type !== "text/event-stream" ||
+          response.query_encoding !== "repeated" || response.resume_header !== "Last-Event-ID") {
+        throw new Error(`${label}.response must declare the supported bodyless event stream`);
+      }
+      const bounds = {max_identities: 100, max_streams: 3, replay_retention_seconds: 86400,
+        replay_max_events: 10000, max_event_bytes: 65536, keepalive_seconds: 15, max_connection_seconds: 600};
+      requireObject(response.limits, `${label}.response.limits`);
+      requireExactKeys(response.limits, new Set(Object.keys(bounds)), `${label}.response.limits`);
+      for (const [key, maximum] of Object.entries(bounds)) {
+        if (!Number.isSafeInteger(response.limits[key]) || response.limits[key] < 1 || response.limits[key] > maximum) {
+          throw new Error(`${label}.response.limits.${key} exceeds the supported physical bound`);
+        }
+      }
+      requireObject(response.reconnect, `${label}.response.reconnect`);
+      requireExactKeys(response.reconnect, new Set(["initial_delay_ms", "max_delay_ms"]), `${label}.response.reconnect`);
+      if (!Number.isSafeInteger(response.reconnect.initial_delay_ms) || response.reconnect.initial_delay_ms < 1 ||
+          !Number.isSafeInteger(response.reconnect.max_delay_ms) || response.reconnect.max_delay_ms < response.reconnect.initial_delay_ms ||
+          response.reconnect.max_delay_ms > 30000) throw new Error(`${label}.response.reconnect is unsupported`);
+      return;
+    }
     requireExactKeys(
       response,
       new Set(["body", "content_type", "headers"]),
