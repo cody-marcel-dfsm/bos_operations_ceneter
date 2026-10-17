@@ -534,11 +534,67 @@ function validateApplication(reference, label) {
   }
 }
 
+const canonicalReadinessStatuses = new Set([
+  "ready", "not_reported", "authorization_required", "configuration_required", "temporarily_unavailable"
+]);
+const actionableReadinessStatuses = new Set([
+  "authorization_required", "configuration_required", "temporarily_unavailable"
+]);
+
+function validateReadinessRecovery(recovery, label) {
+  requireObject(recovery, label);
+  requireExactKeys(recovery, new Set([
+    "goal", "instruction", "operation", "requires_user_approval", "approval_scope"
+  ]), label);
+  for (const [field, maximum] of [["goal", 255], ["instruction", 2000]]) {
+    const value = recovery[field];
+    if (typeof value !== "string" || [...value].length < 1 || [...value].length > maximum) {
+      throw new Error(`${label}.${field} must be a string from 1 through ${maximum} characters`);
+    }
+  }
+  if (Object.hasOwn(recovery, "operation") && recovery.operation !== null &&
+      (typeof recovery.operation !== "string" || !semanticOperationPattern.test(recovery.operation))) {
+    throw new Error(`${label}.operation must be null or a semantic operation`);
+  }
+  if (typeof recovery.requires_user_approval !== "boolean") {
+    throw new Error(`${label}.requires_user_approval must be boolean`);
+  }
+  if (Object.hasOwn(recovery, "approval_scope") &&
+      (!Array.isArray(recovery.approval_scope) || recovery.approval_scope.some(item => typeof item !== "string"))) {
+    throw new Error(`${label}.approval_scope must be an array of strings`);
+  }
+}
+
 function validateReadiness(readiness, label) {
   requireObject(readiness, label);
   requireExactKeys(readiness, new Set(["status", "requirements"]), label);
+  if (canonicalReadinessStatuses.has(readiness.status)) {
+    // Apply published omission defaults for validation only. Preserve the literal
+    // observation, including not_reported and absent recovery/default fields.
+    const requirements = Object.hasOwn(readiness, "requirements") ? readiness.requirements : [];
+    if (!Array.isArray(requirements)) {
+      throw new Error(`${label}.requirements must be an array`);
+    }
+    if (actionableReadinessStatuses.has(readiness.status) !== (requirements.length > 0)) {
+      throw new Error(`${label} readiness and requirements disagree`);
+    }
+    requirements.forEach((requirement, index) => {
+      const requirementLabel = `${label}.requirements[${index}]`;
+      requireObject(requirement, requirementLabel);
+      requireExactKeys(requirement, new Set(["operation", "status", "requirements", "recovery"]), requirementLabel);
+      if (typeof requirement.operation !== "string" || !semanticOperationPattern.test(requirement.operation)) {
+        throw new Error(`${requirementLabel}.operation must be a semantic operation`);
+      }
+      if (!actionableReadinessStatuses.has(requirement.status)) {
+        throw new Error(`${requirementLabel}.status is invalid`);
+      }
+      requireObject(requirement.requirements, `${requirementLabel}.requirements`);
+      validateReadinessRecovery(requirement.recovery, `${requirementLabel}.recovery`);
+    });
+    return;
+  }
+  // Retain the previously accepted alias shapes for older service observations.
   if (!new Set([
-    "ready",
     "provider_authorization_required",
     "source_not_available",
     "source_temporarily_unavailable"
