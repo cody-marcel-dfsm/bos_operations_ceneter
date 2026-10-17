@@ -15,14 +15,14 @@ import {validateBoslDocument} from "../../source/platform/bos-workflow-orchestra
 import {buildJourneyRegistrationRequest, buildIdentityV2JourneyActionRequest, validateRegistrationResponse,
   validateJourneyEnvelope} from "../../source/platform/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs";
 import {createNotificationProtocol, parseNotificationSse} from "../../source/platform/bos-workflow-orchestrator/scripts/journey-notifications.mjs";
-import {readBoundedJson, syntheticIdentity, sealedResource} from "../verify-notification-transport.mjs";
+import {readBoundedJson, syntheticIdentity, sealedResource, validateNotificationContractFacts} from "../verify-notification-transport.mjs";
 
 const root = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const requireCase = (value, code) => {if (!value) {const error = new Error(code); error.acceptance_code = code; throw error;}};
 const exact = (value, keys) => value && typeof value === "object" && !Array.isArray(value) &&
   Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
 const terminal = new Set(["completed", "failed", "expired"]);
-const sourceFiles = ["bos-app-discovery/scripts/validate-discovery.mjs", "bos-workflow-orchestrator/scripts/bosl-authoring.mjs",
+const sourceFiles = ["bos-app-discovery/scripts/validate-discovery.mjs", "bos-app-discovery/scripts/project-contract-facts.mjs", "bos-workflow-orchestrator/scripts/bosl-authoring.mjs",
   "bos-workflow-orchestrator/scripts/journey-runtime-client.mjs", "bos-workflow-orchestrator/scripts/journey-notifications.mjs"];
 
 export function requireClientOnlyFixture(document) {
@@ -152,6 +152,7 @@ export async function runLiveNotificationAcceptance(options, dependencies = {}) 
     if (!resources.some(row => row.uri === app.bosl.schema_uri)) resources.push({uri: app.bosl.schema_uri});
     const registration = await contract(app.journey_registration.contract.input);
     const descriptor = await contract({operation: "journeys.notifications.subscribe"});
+    validateNotificationContractFacts(descriptor);
     const protocol = createNotificationProtocol(descriptor, [syntheticIdentity]);
     const publishedSchema = await read(app.bosl.schema_uri);
     requireCase(validateBoslDocument(document, {publishedSchema, operationContracts: [], callbackSources: []}).valid, "published_bosl_schema_rejected");
@@ -229,7 +230,7 @@ export async function runLiveNotificationAcceptance(options, dependencies = {}) 
     phase = "authoritative_state_refetch_unavailable";
     await action(replayProtocol.stateAction(syntheticIdentity));
     requireCase(latest.status === "awaiting_client" && latest.current_step.code === document.entry, "authoritative_client_state_required");
-    report.checks = {...report.checks, discovered_descriptor: true, ready: true, committed_change: true, replay_stable: true,
+    report.checks = {...report.checks, discovered_descriptor: true, contract_facts_projection: true, ready: true, committed_change: true, replay_stable: true,
       authoritative_state_refetch: true};
     phase = "client_execution_cleanup_unavailable";
     await action(latest.instruction.after_success, latest.instruction.after_success.payload_schema === null ? undefined : {});

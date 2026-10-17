@@ -4,6 +4,7 @@ import {resolve, relative, dirname} from "node:path";
 import {fileURLToPath} from "node:url";
 import {createHash} from "node:crypto";
 import {parseNotificationSse, createNotificationProtocol} from "../source/platform/bos-workflow-orchestrator/scripts/journey-notifications.mjs";
+import {projectContractFacts} from "../source/platform/bos-app-discovery/scripts/project-contract-facts.mjs";
 
 export const wireContract = "bos-journey-notification-wire-observation/v1";
 export const syntheticIdentity = "mcp-client-only-hello-world";
@@ -14,6 +15,12 @@ const sha = bytes => createHash("sha256").update(bytes).digest("hex");
 const exact = (value, keys) => value && typeof value === "object" && !Array.isArray(value) &&
   Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
 const requireCase = (value, code) => {if (!value) throw new Error(code);};
+
+export function validateNotificationContractFacts(descriptor) {
+  // Descriptive synthetic labels exercise declaration projection, never authority.
+  projectContractFacts({documents: [{kind: "api-contract", document: descriptor,
+    scope: {organization: "Synthetic wire observation", application: "Notification transport", installation: "Captured test", role: "Reviewer"}}]});
+}
 
 function provenance(input) {
   requireCase(/^[a-f0-9]{40}$/u.test(input.source_revision) && /^[a-z][a-z0-9-]{0,127}$/u.test(input.server_revision) &&
@@ -48,6 +55,7 @@ export async function validateNotificationWireTranscript(input) {
     "source_revision", "server_revision", "image_digest"]) && input.contract === wireContract && input.identity === syntheticIdentity,
   "invalid_wire_transcript");
   provenance(input);
+  validateNotificationContractFacts(input.descriptor);
   requireCase(Array.isArray(input.streams) && input.streams.length === 2, "two_wire_streams_required");
   const first = await frames(input.streams[0], createNotificationProtocol(input.descriptor, [input.identity]));
   requireCase(input.resume_cursor === first[0].id, "resume_cursor_must_match_baseline");
@@ -62,7 +70,7 @@ export async function validateNotificationWireTranscript(input) {
     evidence_scope: "independent_client_validation_of_candidate_server_wire", source_revision: input.source_revision,
     server_revision: input.server_revision, image_digest: input.image_digest,
     checks: {ready: true, committed_change: true, resume_cursor_matches_baseline: true, replay_stable: true,
-      sanitized_state_refetch: true, frame_schema_valid: true}, frame_count: first.length + replay.length,
+      sanitized_state_refetch: true, frame_schema_valid: true, contract_facts_projection: true}, frame_count: first.length + replay.length,
     boc_native_authentication_proven: false, native_host_wake_proven: false,
     limitations: ["Deployment provenance and the state HTTP observation were supplied by the candidate owner.",
       "Only the sanitized state observation is independently checked; the original state envelope and network request are not present.",
