@@ -304,7 +304,8 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
     assert.match(reportingGuidance, /same typed row from[\s\S]*successful scoped[\s\S]*discovery\s+wrappers?/i);
     assert.match(reportingGuidance, /`summaries\.execution_groups`[\s\S]*every public operation and actual API-contract or\s+registration operation/i);
     assert.match(reportingGuidance, /method, transport,[\s\S]*context-header tuple/i);
-    assert.match(reportingGuidance, /response body, content type, and\s+every response header name/i);
+    assert.match(reportingGuidance, /every declared response field:[\s\S]*binary header\s+names[\s\S]*event-stream query encoding, resume header, limits and reconnect\s+bounds/i);
+    assert.match(reportingGuidance, /body(?:\/| and )content type/i);
     assert.match(reportingGuidance, /null transport[\s\S]*independently\s+declared method[\s\S]*context.header/i);
     assert.match(reportingGuidance, /`summaries\.error_groups`[\s\S]*general public errors[\s\S]*operation-specific or source-specific\s+errors[\s\S]*declared HTTP status[\s\S]*retryability value/i);
     assert.match(reportingGuidance, /source observations[\s\S]*declaration pointers/i);
@@ -312,7 +313,10 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
     assert.match(reportingGuidance, /Print original-source field provenance in the final execution and error\s+ledgers for every group observation/i);
     assert.match(reportingGuidance, /`document_index` through `source_documents`[\s\S]*original `document_id`[\s\S]*`pointer` prefix/i);
     assert.match(reportingGuidance, /prefix plus `execution_pointer` plus `\/`[\s\S]*RFC 6901 escaped `field`/i);
-    assert.match(reportingGuidance, /`response_pointer`[\s\S]*`\/body`[\s\S]*`\/content_type`[\s\S]*`\/headers`[\s\S]*actual\s+source array index/i);
+    assert.match(reportingGuidance, /`response_pointer`[\s\S]*actually declared\s+child path/i);
+    assert.match(reportingGuidance, /binary[\s\S]*(?:actual source array indexes|`\/headers` array indexes)/i);
+    assert.match(reportingGuidance, /`\/query_encoding`[\s\S]*`\/resume_header`[\s\S]*`\/limits`[\s\S]*`\/reconnect`[\s\S]*original nested keys/i);
+    assert.match(reportingGuidance, /absent headers[\s\S]*observed response object/i);
     assert.match(reportingGuidance, /`errors_pointer`[\s\S]*exact observed child\s+paths[\s\S]*HTTP status[\s\S]*retryability/i);
     assert.match(reportingGuidance, /explicit null retains[\s\S]*real field pointer[\s\S]*absent field[\s\S]*without inventing a missing\s+field pointer or response pointer/i);
   }
