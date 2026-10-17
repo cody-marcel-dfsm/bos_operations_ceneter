@@ -113,8 +113,9 @@ report: include every declared field and literal value, including document and
 lifecycle bounds. Preserve declared nulls and absent fields separately. Report
 every `summaries.execution_groups` entry with its complete method, transport,
 and context-header tuple for every public operation and actual API-contract or
-registration operation. Include each declared response body, content type, and
-every response header name. Group identical tuples only when every member
+registration operation. Include every declared response field: binary header
+names, or event-stream query encoding, resume header, limits and reconnect
+bounds alongside body and content type. Group identical tuples only when every member
 operation and its source are listed; a null transport retains its independently
 declared method and context header. Account for every `summaries.error_groups`
 entry, including general public errors and operation-specific or source-specific
@@ -131,9 +132,11 @@ that original `document_id`; use its exact returned `pointer` prefix, or the
 empty prefix for a direct document. For each declared execution field, print
 the prefix plus `execution_pointer` plus `/` and its RFC 6901 escaped `field`
 alongside the literal method, transport, or context-header value. For a declared
-response, print the prefix plus `response_pointer` and its exact `/body`,
-`/content_type`, and `/headers` paths; attribute each header name to its actual
-source array index after inspecting that original response. For every error
+response, print the prefix plus `response_pointer` and each actually declared
+child path. Attribute binary header names to their actual source array indexes;
+retain event-stream `/query_encoding`, `/resume_header`, `/limits` and
+`/reconnect` children with their original nested keys. Report absent headers
+under the observed response object. For every error
 entry, print the prefix plus `errors_pointer` and the exact observed child
 paths for its code, HTTP status, and retryability declarations. Use the
 original array indexes and object keys, escaping `~` as `~0` and `/` as `~1`.

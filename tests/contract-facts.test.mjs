@@ -4,6 +4,7 @@ import {spawnSync} from 'node:child_process';
 import test from 'node:test';
 import {projectContractFacts} from '../source/platform/bos-app-discovery/scripts/project-contract-facts.mjs';
 import {syntheticOperationDescribe, syntheticApiContract} from './helpers/synthetic-bos-discovery-service.mjs';
+import {notificationFixture} from './helpers/synthetic-notifications.mjs';
 
 const scope = {organization: 'Synthetic organization', application: 'Synthetic application', installation: 'Synthetic installation', role: 'Reviewer'};
 const registration = () => JSON.parse(readFileSync(new URL('./fixtures/journey-registration-contract.json', import.meta.url), 'utf8'));
@@ -235,6 +236,67 @@ test('binary response declarations retain public header names and literal order 
   const invalid = structuredClone(raw);
   invalid.execution.response.headers[0] = 'Authorization';
   assert.throws(() => projectContractFacts({documents: [entry(parent(invalid))]}));
+});
+
+test('event-stream API and full Describe projection preserve exact response facts and provenance without invented headers', () => {
+  const {contract, contact} = notificationFixture();
+  const documents = [entry(contract, 'api-contract'), entry(parent(contact))], before = structuredClone(documents);
+  const result = projectContractFacts({documents});
+  assert.deepEqual(documents, before);
+  for (const [index, summary] of result.summaries.entries()) {
+    const response = index === 0 ? contract.execution.response : contact.execution.response;
+    assert.deepEqual(result.operations[index].execution_response, {
+      pointer: (index === 0 ? '' : '/operations/0') + '/execution/response', value: response});
+    assert.deepEqual(summary.execution_groups[0].response, {declared: true, value: response});
+    assert.equal(Object.hasOwn(summary.execution_groups[0].response.value, 'headers'), false);
+    assert.equal(summary.execution_groups[0].observations[0].response_pointer,
+      (index === 0 ? '' : '/operations/0') + '/execution/response');
+    assert.equal(summary.conflicting_operations, 0);
+  }
+});
+
+test('event-stream comparison groups permutations while preserving literal response order and effective-bound conflicts', () => {
+  for (const kind of ['api-contract', 'operation-describe']) {
+    const raw = kind === 'api-contract' ? notificationFixture().contract : notificationFixture().contact;
+    const reordered = structuredClone(raw), reverse = value => Object.fromEntries(Object.entries(value).reverse());
+    reordered.execution.response.limits = reverse(reordered.execution.response.limits);
+    reordered.execution.response.reconnect = reverse(reordered.execution.response.reconnect);
+    reordered.execution.response = reverse(reordered.execution.response);
+    const observe = value => entry(kind === 'api-contract' ? value : parent(value), kind);
+    const request = {documents: [observe(raw), observe(reordered)]}, before = structuredClone(request);
+    const result = projectContractFacts(request);
+    assert.deepEqual(request, before);
+    assert.equal(result.summaries[0].conflicting_operations, 0);
+    assert.equal(result.summaries[0].duplicate_observations, 1);
+    assert.equal(result.summaries[0].execution_groups.length, 1);
+    assert.deepEqual(Object.keys(result.operations[1].execution_response.value), Object.keys(reordered.execution.response));
+    const conflicting = structuredClone(raw); conflicting.execution.response.limits.max_streams--;
+    const conflict = projectContractFacts({documents: [observe(raw), observe(conflicting)]});
+    assert.equal(conflict.summaries[0].conflicting_operations, 1);
+    assert.equal(conflict.summaries[0].execution_groups.length, 2);
+  }
+});
+
+test('projection keeps stream/binary validation strict instead of synthesizing missing or undeclared headers', () => {
+  for (const kind of ['api-contract', 'operation-describe']) {
+    const raw = kind === 'api-contract' ? notificationFixture().contract : notificationFixture().contact;
+    const observe = value => entry(kind === 'api-contract' ? value : parent(value), kind);
+    raw.execution.response.headers = [];
+    assert.throws(() => projectContractFacts({documents: [observe(raw)]}), /undeclared field headers/);
+    delete raw.execution.response.headers;
+    raw.execution.response.resume_header = 'X-Other-Cursor';
+    assert.throws(() => projectContractFacts({documents: [observe(raw)]}));
+  }
+  const binary = operation('binary_missing_headers'); binary.execution.response = {body: 'binary', content_type: 'provider'};
+  assert.throws(() => projectContractFacts({documents: [entry(parent(binary))]}));
+});
+
+test('CLI accepts full notification projection through the packaged entrypoint', () => {
+  const script = new URL('../source/platform/bos-app-discovery/scripts/project-contract-facts.mjs', import.meta.url);
+  const {contract, contact} = notificationFixture(), request = {documents: [entry(contract, 'api-contract'), entry(parent(contact))]};
+  const run = spawnSync(process.execPath, [script.pathname], {input: JSON.stringify(request), encoding: 'utf8'});
+  assert.equal(run.status, 0, run.stderr);
+  assert.deepEqual(JSON.parse(run.stdout), projectContractFacts(request));
 });
 
 test('exact error groups retain registration statuses and retryability plus separately declared source errors', () => {

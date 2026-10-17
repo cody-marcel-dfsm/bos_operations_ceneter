@@ -107,6 +107,13 @@ function withoutProvenance(value) {
     !['document_index', 'observed_at', 'metadata_version'].includes(key))
     .map(([key, item]) => [key, withoutProvenance(item)]));
 }
+function normalizedExecutionResponse(value) {
+  const normalized = copy(value);
+  // Binary headers form a set; event-stream declarations have no headers field.
+  // Normalize comparisons while keeping each returned fact's literal shape/order.
+  if (Array.isArray(normalized.headers)) normalized.headers.sort();
+  return normalized;
+}
 function declarationFingerprint(row) {
   const facts = withoutProvenance(row);
   const normalize = value => {
@@ -118,9 +125,7 @@ function declarationFingerprint(row) {
     return value;
   };
   normalize(facts);
-  // The validator defines binary response header names as an exact set.
-  // Preserve their returned order in fact rows, normalize only comparison.
-  if (facts.execution_response) facts.execution_response.value.headers.sort();
+  if (facts.execution_response) facts.execution_response.value = normalizedExecutionResponse(facts.execution_response.value);
   // Source row sequence is preserved: no source correspondence or precedence
   // equivalence is inferred. Normalize only each source's unordered declarations.
   if (facts.sources) facts.sources = facts.sources.map(normalize);
@@ -146,7 +151,7 @@ function declarationGroups(rows) {
     const response = row.execution_response
       ? {declared: true, value: copy(row.execution_response.value)} : {declared: false};
     const normalizedResponse = copy(response);
-    if (normalizedResponse.declared) normalizedResponse.value.headers.sort();
+    if (normalizedResponse.declared) normalizedResponse.value = normalizedExecutionResponse(normalizedResponse.value);
     add(executions, stable([row.source ?? null, declarations, normalizedResponse]),
       {...source, declarations, response}, {...observation, execution_pointer: row.pointer + '/execution',
         ...(row.execution_response ? {response_pointer: row.execution_response.pointer} : {})});

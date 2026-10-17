@@ -144,7 +144,8 @@ establishes no additional source evidence or validation.
 Use `summaries.execution_groups` as a complete reporting ledger: account for
 every public operation and actual API-contract or registration operation with
 its full presence-aware method, transport, and context-header tuple. Include
-each declared response body, content type, and every response header name.
+every declared response field: body/content type, binary header names, or
+event-stream query encoding, resume header, limits and reconnect bounds.
 An explicitly null transport leaves independently declared method and
 context-header values intact; preserve null and absent fields separately.
 Grouped rows list every member operation and retain contract kind, scope,
@@ -171,9 +172,11 @@ for a direct document. A declared execution field's final reference is that
 prefix plus `execution_pointer` plus `/` and the RFC 6901 escaped `field`;
 print it alongside the literal method, transport, or context-header value.
 A declared response's final reference is the prefix plus `response_pointer`;
-print its exact `/body`, `/content_type`, and `/headers` paths and each header
-name's actual source array index. Inspect the original response to preserve
-its actual header ordering for each observation. An error entry's final
+print each actually declared child path, including `/body`, `/content_type`,
+binary `/headers` array indexes, or stream `/query_encoding`, `/resume_header`,
+`/limits` and `/reconnect` with their original nested keys. Preserve the original
+header ordering for each binary observation and report absent headers under the
+observed response object. An error entry's final
 reference is the prefix plus `errors_pointer` and its exact observed child
 paths for code, HTTP status, and retryability. Preserve actual array indexes
 and object keys, escaping `~` as `~0` and `/` as `~1`. An explicit null retains

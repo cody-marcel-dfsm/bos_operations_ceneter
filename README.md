@@ -59,7 +59,7 @@ Upgrading replaces the former `platform` identifier. Hosts may require native
 sign-in again when a connection identifier changes; valid-session continuity
 has not been verified for this migration.
 
-Current desktop marketplace release: `0.4.200`. If `0.4.199` is installed,
+Current desktop marketplace release: `0.4.201`. If `0.4.200` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -443,7 +443,8 @@ HTTP 200 `awaiting_client` state observation. It retains the source/revision/ima
 tuple and actual public state GET hrefs. Limit the file to 512 KiB, each stream to
 eight raw strings and eight parsed frames, and each raw string to 64 KiB. Keep
 headers, credentials, context handles and signed lifecycle actions out. A PASS
-proves independent validation of supplied wire bytes and replay consistency;
+proves independent validation of supplied wire bytes, contract-facts projection
+and replay consistency;
 deployment provenance and the state HTTP observation remain supplied evidence.
 
 After the reviewed client release is published and installed through supported
@@ -469,8 +470,9 @@ bounded to 90 seconds, 64 request-budget units, two streams and eight lifecycle
 actions; unavailable prerequisites return INCOMPLETE. Receipt paths must be new
 files under this checkout's private `Vault/tmp`.
 
-Released 0.4.199 rejects the event-stream descriptor and full-contract projections.
-Publish and install reviewed 0.4.200 before enabling customer notification
+Released 0.4.199 rejects the event-stream descriptor; 0.4.200 accepts the
+descriptor but its full-contract projection assumes binary response headers.
+Publish and install reviewed 0.4.201 before enabling customer notification
 discovery/readiness. Candidate-only captured-wire acceptance can precede service
 promotion. Actual deployed execution and host-specific wake each retain their
 own acceptance evidence.

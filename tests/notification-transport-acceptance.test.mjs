@@ -24,6 +24,7 @@ test("captured candidate wire passes the existing parser and full discovered fra
   assert.equal(receipt.status, "PASS"); assert.equal(receipt.frame_count, 4);
   assert.equal(receipt.mode, "captured_wire"); assert.equal(receipt.boc_native_authentication_proven, false);
   assert.equal(receipt.native_host_wake_proven, false);
+  assert.equal(receipt.checks.contract_facts_projection, true);
   assert.equal(JSON.stringify(receipt).includes("state_action"), false);
 });
 
@@ -132,6 +133,7 @@ test("bounded reviewer runner discovers, watches before Start, replays, refetche
   const value = await liveFixture(t); assert.equal(value.result.status, "PASS", JSON.stringify(value.result));
   assert.equal(value.closed, 1); assert.equal(value.completed, true);
   assert.equal(value.result.checks.authoritative_state_refetch, true);
+  assert.equal(value.result.checks.contract_facts_projection, true);
   assert.equal(value.requests.filter(row => row.href.includes("/journey-notifications")).length, 2);
   assert.equal(JSON.stringify(value.result).includes("bos_ctx"), false);
   assert.equal(JSON.stringify(value.result).includes("capability="), false);
