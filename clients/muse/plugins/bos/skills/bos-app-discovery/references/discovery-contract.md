@@ -274,11 +274,28 @@ replace a response observation timestamp or establish provider connectivity.
 For Agent-Driven Custom Journeys, fresh `app.describe` also publishes one scoped
 application reference and exact authenticated BOSL schema, language-reference,
 and conformance-example resource URIs plus an opaque descriptor token.
-`plugins.list` publishes accessible plugin journeys as structured
-`{platform, application, plugin}` references, compact client/server steps,
-purpose, separate readiness, a descriptor token, and the complete input for
-independent `service.describe`. Detailed Describe must agree with the compact
-steps and publishes exactly one of `journey` or `behavior`. An executable
+`plugins.list` publishes installed plugins as structured
+`{platform, application, plugin}` references, purpose, separate readiness, a
+descriptor token, and the complete input for independent `service.describe`.
+The additive `catalog` object has exactly `enabled` (boolean), `configuration`
+(`configured`, `unconfigured`, `not_reported`) and `presentation`
+(`catalog_only`, `journey`, `behavior`). Retain disabled, unconfigured and
+operation-free plugins in inventory. Configuration describes declared-settings
+completeness; provider authorization and source readiness remain independent.
+`not_reported` supplies no configuration or readiness assessment.
+
+For `catalog_only`, the compact entry omits `journey`; detailed Describe omits
+both graph properties and requires `queries: []`. Explicit null graphs and
+undeclared action links are invalid. Disabled entries require `catalog_only`.
+Show the returned identity, purpose and separate status values; invent no
+graph, operation or setup action. List and Describe require identical catalog
+values and descriptor tokens; refresh a stale descriptor before proceeding.
+Legacy v1 pairs may omit catalog only on both observations and retain their
+existing graph requirements. Catalog presence grants no execution authority.
+
+Journey/behavior entries retain compact client/server steps. Detailed Describe
+must agree with those steps and publish the exact graph selected by catalog
+presentation, or exactly one graph for a legacy pair. An executable
 `journey` declares every server step's semantic operation,
 schemas, effect, approval, limits, public failures, receipts, and recovery. An
 event-driven plugin may instead publish `behavior`: its trigger, ordered

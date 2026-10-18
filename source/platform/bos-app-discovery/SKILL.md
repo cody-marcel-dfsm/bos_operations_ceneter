@@ -277,6 +277,13 @@ examples URI through the same authenticated BOS connection. Then call
 copy the selected plugin's complete `service.describe` input verbatim, and
 validate compact/detailed journey agreement. Follow each returned
 operation-contract link through current discovery with the link's exact input.
+Retain every returned installed plugin, including disabled, unconfigured and
+`catalog_only` entries. Present its separate enablement, declared configuration
+and readiness values. A `catalog_only` entry has no compact or detailed graph
+and its detailed `queries` is empty; it remains an informational plugin entry.
+Require matching catalog values and descriptor tokens across list and Describe.
+Existing v1 observations without catalog retain their graph validation. Catalog
+visibility supplies no operation, execution permission or provider readiness.
 Read and validate the advertised journey-registration contract before assessing
 compiler/runtime feasibility, limits, required inputs, or prerequisites.
 

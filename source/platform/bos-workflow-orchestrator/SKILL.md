@@ -35,6 +35,11 @@ provider dependency, campaign operation, record-lifecycle graph, or similarly
 named nested capability is never a substitute. If the requested plugin is
 absent, report that exact discovery defect and stop the explanation path.
 Treat provider readiness as separate from the workflow's described behavior.
+For a validated `catalog_only` plugin, present its returned purpose, enablement,
+configuration and readiness, and state that discovery publishes no workflow
+graph for it. Keep the plugin visible. A separately discovered operation retains
+its own execution contract and authority checks; catalog visibility supplies no
+executable workflow.
 
 Build the explain plan from the detailed Describe response. When Describe
 returns `behavior`, treat its `entry`, ordered states, branch successors,
@@ -75,7 +80,8 @@ selected plugin's Describe contract declares them.
 
 An explanation is read-only. Do not author, register, start, or advance BOSL
 when the user only asks to explain the installed workflow. If the selected
-plugin lacks both a behavior graph and a journey, identify that exact missing
+plugin lacks both a behavior graph and a journey outside the declared
+`catalog_only` presentation, identify that exact missing
 Describe dependency. Do not select a different plugin to produce a plausible
 graph and do not invent a workflow from generic CRM behavior.
 

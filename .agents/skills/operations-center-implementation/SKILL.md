@@ -56,7 +56,7 @@ through `npm run oracle:validate -- --output
 Vault/tmp/<workflow>/validation.json --input <source-or-dependency-path> --
 <command>`. Repeat `--input` for the complete source/dependency/fixture/config
 closure; omission defaults to the entire candidate and canonical knowledge.
-Capture freezes/rechecks those exact staged/live inputs, controlling authority,
+Capture records/rechecks those exact staged/live inputs, controlling authority,
 reviewer policy, base and runtime/environment. Unrelated index/worktree movement
 preserves a focused result. Actual stdout/stderr survive a postcheck failure;
 failed custody never produces a verified witness. Completed review still stages
@@ -72,11 +72,14 @@ Use the same launcher environment for validation and review so runtime and PATH
 proof matches; direct Python invocation is also supported for both commands.
 
 Read `INCOMPLETE` or `ERROR` as an unfinished assessment and retain its checkpoints.
-For `INCOMPLETE`, keep source unchanged and resume unfinished assessment; accumulate
-findings until the assessment is `COMPLETE`, then repair the full consolidated
-batch. Partial findings never start a repair round. Permit only minimal execution
-recovery when concrete evidence proves the same-candidate continuation impossible;
-retain that reason, prior candidate and checkpoint before resuming. After two failed repair rounds, reconcile the tool's unresolved
+Source work continues during review and after `INCOMPLETE`; review creates no
+source/file/line lock or work pause. Include every current implementation and
+author's changes. Resume from actual content and dependency differences, retaining
+valid verified coverage and original raw observations with their actual statuses.
+Input movement preserves the execution error and unadopted assessment for an
+independent applicability decision on the next current candidate; it grants no
+approval. Accumulate partial findings into the consolidated assessment and repair
+the known batch together. After two failed repair rounds, reconcile the tool's unresolved
 finding ledger into one concrete repair plan before the next repair. A late
 finding in unchanged reviewed code must explain the missed coverage. Existing
 owner approval and public API version request gates remain in force.
@@ -233,7 +236,7 @@ For Oracle continuations, programmatically project pending paths, open finding I
 verified validation summaries and the locations of exact input hashes from the
 retained review records. Use bounded source/evidence slices and keep full audit
 records separately. Checkpoint every fully assessed path/dependency and generated
-parity group so the next unchanged continuation advances from completed work.
+parity group so the next continuation advances from applicable completed work.
 
 A failed aggregate retains its actual passing-case observations. Use those original
 case outputs with unchanged source/test/fixture/configuration and environment

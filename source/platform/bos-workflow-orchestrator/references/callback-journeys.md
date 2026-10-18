@@ -62,15 +62,54 @@ Treat restricted usage as restricted; show unlimited limits as unlimited.
 The presentation retains every returned usage scope and submission reservation,
 plus requested/granted queue, attempts, delay, retention and TTL even when they
 are unchanged. Empty usage remains valid where the discovered contract permits it.
-Paid workflows may stay active permanently according to the current organization
-profile. The owner-approved downgrade direction is to clear pending queues,
-disable registrations and require re-upload and explicit start. Its background
-timing and handling for already-started effects remain separate BOS decisions.
-Describe only downgrade behavior that the current published BOS contract reports.
-The callback report supplies no downgrade-reset readiness; its presentation
-helper makes no reset-availability claim. Paid assignment, reset scheduling and
-already-started-effect handling remain with the service's independently adopted
-contracts.
+
+## Reservation renewal and policy recovery
+
+An expired provisional capacity reservation preserves the uploaded definition
+and its logical expiry. An explicit current returned Start reacquires full
+capacity before provider preparation under current source/author checks and
+unchanged effective public terms. Preserve that definition and returned action;
+reservation expiry alone requires no re-upload. A private catalog revision with
+the same effective public terms retains the grant. The client supplies no
+revision selector, tier assignment, quota accounting or guessed reservation time.
+Refresh an expired opaque control through its existing catalog/state recovery;
+control expiry and actual terminal journey expiry retain their own rules.
+
+Rejected Start may return HTTP409 `CALLBACK_LIMIT_REACHED` with only the public
+error and no usage, identity or action. Show counts only when actually returned;
+never fabricate zero or unlimited capacity. HTTP409 `CALLBACK_POLICY_CHANGED`
+requires fresh policy review, complete journey resubmission/current grant review
+and a fresh explicit Start when the user still wants that changed effect.
+Use that exact code; add no shorthand alias. HTTP503
+`CALLBACK_POLICY_UNAVAILABLE` preserves pending intent and follows current
+discovered recovery; retryable does not supply a successor action or a numeric
+retry budget. Policy values remain service-discovered.
+
+## Profile reset and uncertain effects
+
+Paid permanence depends on the current organization profile. Profile changes
+retire old callback bindings while preserving already-settled lifecycle receipts:
+completed or failed outcomes keep their existing terminal history and retention.
+Keep the actual returned status, outcome/error and receipt; a downgrade supplies
+no reason to relabel settled work as `CALLBACK_PROFILE_RESET`.
+
+A confirmed reset fences pending old-generation work immediately. Its ordinary
+state/Start can return HTTP200 `status: failed` with `CALLBACK_PROFILE_RESET`,
+the retained receipt and no continuation action. Its error's retryable flag does
+not revive that terminal lifecycle. A later Paid upgrade never restores the old
+generation; new work requires complete upload and explicit Start under current
+terms.
+
+An already-claimed uncertain effect in pending work can remain HTTP202
+`in_progress`. Observe
+only its returned read-only state action under the ordinary retry timing while
+BOS reconciles the original attempt. Preserve the confirmed or uncertain receipt;
+dispatch no new effect, retry attempt or successor because a profile changed.
+Once the original result or absence is known, consume the terminal reset failure.
+The client creates no reset schedule, midnight rule or cancellation policy.
+The submission callback report proves no completed reset or reset readiness;
+its presentation helper supplies no such claim. Follow actual returned lifecycle
+and discovered service behavior throughout.
 
 Use the exact `app.describe.workflow_catalog.contract` link to discover the
 catalog GET contract. Organization members can inspect the safe workflow

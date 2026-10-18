@@ -594,10 +594,15 @@ export function interpretJourneyResponse(response, {registrationRequest} = {}) {
     return {...interpretJourneyResponse({...response,body:workflow.lifecycle}),workflow};
   }
   const errorCode = publicError?.code?.toUpperCase();
-  if (errorCode?.startsWith("CALLBACK_")) {
+  // Callback errors also occur inside ordinary failed/failure-caught lifecycle
+  // envelopes. Their status, terminal rules and actions use the same validator
+  // as every other lifecycle response below.
+  if (errorCode?.startsWith("CALLBACK_") && !Object.hasOwn(response.body, "status")) {
     if (response.http_status < 400 || response.http_status > 599) throw new Error("callback errors require an HTTP error status");
     const usage = response.body.usage === undefined ? undefined : validateCallbackUsage(response.body.usage);
-    if (errorCode === "CALLBACK_LIMIT_REACHED" && usage === undefined) throw new Error("callback quota errors require current usage and limits");
+    if (errorCode === "CALLBACK_LIMIT_REACHED" && usage === undefined && response.http_status !== 409) {
+      throw new Error("callback quota errors require current usage and limits");
+    }
     if (usage === undefined && Object.hasOwn(response.body,"usage")) throw new Error("callback usage is invalid");
     return {next:"callback_error",error:publicError,...(usage === undefined ? {} : {usage})};
   }

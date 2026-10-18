@@ -54,7 +54,7 @@ import tempfile,subprocess
 from pathlib import Path
 from tools import oracle_approval as o
 with tempfile.TemporaryDirectory() as directory:
- root=Path(directory)
+ root=Path(directory).resolve()
  def git(*args):return subprocess.check_output(['git',*args],cwd=root,text=True).strip()
  git('init','-q');git('config','user.email','review@example.invalid');git('config','user.name','Synthetic Reviewer')
  for name,text in {'AGENTS.md':'governed','.agents/skills/oracle/SKILL.md':'synthetic authority','candidate.txt':'base','.gitignore':'Vault/\n__pycache__/\n'}.items():

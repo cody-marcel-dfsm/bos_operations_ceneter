@@ -122,6 +122,636 @@ class ReviewSeries(unittest.TestCase):
         return {"id": identity, "explanation": "Checked the concrete repair and acceptance conditions",
                 "inputs": self.inputs(context, "source.py", "dependency.py")}
 
+    def test_complete_retains_omitted_eligible_coverage_but_honors_unreviewed(self):
+        self.submit()
+        def omitted(context):
+            result = self.result(context)
+            result["coverage"] = []
+            return result
+        self.submit(omitted)
+        latest = o._read_rounds(o._series_directory(self.root, self.base))[-1]
+        self.assertEqual({item["path"] for item in latest["verified_coverage"]}, {"source.py", "peer.py"})
+        self.submit(lambda c: dict(omitted(c), coverage=[{
+            "path": "source.py", "status": "UNREVIEWED", "inputs": [],
+            "reason": "A newly discovered semantic dependency requires assessment"}]), error=o.OracleReviewIncomplete)
+
+    def test_source_movement_retains_unadopted_raw_assessment_and_both_deltas(self):
+        def drift(context):
+            result = self.result(context)
+            self.change("peer.py", "another implementation arrived")
+            return result
+        self.submit(drift, error=o.OracleApprovalError)
+        latest = o._read_rounds(o._series_directory(self.root, self.base))[-1]
+        self.assertEqual(latest["outcome"], "ERROR")
+        raw = latest["raw_assessment"]
+        self.assertEqual(raw["reported_verdict"], "APPROVED")
+        self.assertEqual(raw["reported_review_status"], "COMPLETE")
+        self.assertEqual(len(raw["assessment"]["coverage"]), 2)
+        self.assertEqual(latest["verified_coverage"], [])
+        def current(context):
+            self.assertEqual(context["attempt_delta"]["paths"], ["peer.py"])
+            self.assertEqual(context["cumulative_pending_since_verified"], ["peer.py", "source.py"])
+            self.assertEqual(context["reusable_coverage"], [])
+            observed = {item["path"]: item for item in context["unadopted_assessments"][-1]["observations"]}
+            self.assertTrue(observed["source.py"]["input_binding_valid"])
+            self.assertEqual(observed["source.py"]["changed_inputs"], [])
+            self.assertEqual(observed["peer.py"]["changed_inputs"], ["peer.py"])
+            return self.result(context)  # Fresh independent current entries, no automatic adoption.
+        self.submit(current)
+        o.verify_staged(self.root)
+
+    def test_raw_invalid_bindings_remain_untrusted_and_do_not_create_findings(self):
+        def drift(context):
+            result = self.result(context, findings=[self.finding()])
+            result["coverage"][0]["inputs"][0]["digest"] = "sha256:" + "a" * 64
+            self.change("peer.py", "concurrent source")
+            return result
+        self.submit(drift, error=o.OracleApprovalError)
+        def current(context):
+            self.assertEqual(context["prior_findings"], {})
+            raw = context["unadopted_assessments"][-1]
+            self.assertEqual(raw["reported_verdict"], "REJECTED")
+            self.assertEqual(raw["finding_ids"], ["F001"])
+            self.assertFalse(all(item["input_binding_valid"] for item in raw["observations"]))
+            self.assertEqual(context["reusable_coverage"], [])
+            return self.result(context, findings=[self.finding()])
+        self.submit(current, error=o.OracleCandidateRejected)
+
+    def test_raw_ignored_absence_requires_current_disposition_and_reuses_eligible_proof(self):
+        name = "Vault/tmp/ignored-observed-source.md"
+        path = self.root / name
+        path.write_text("unmanifested original source")
+
+        def drift(context):
+            self.assertNotIn(name, context["input_hashes"])
+            result = self.result(context, findings=[self.finding("F901", name)])
+            result["coverage"].append({"path": name, "status": "UNREVIEWED", "inputs": [],
+                                       "reason": "Raw unfinished owner-local source"})
+            self.change("peer.py", "another implementation")
+            return result
+
+        self.submit(drift, error=o.OracleApprovalError)
+        path.unlink()
+
+        def current(context):
+            self.assertIn(name, context["required_coverage_paths"])
+            self.assertIsNone(context["input_hashes"][name])
+            self.assertEqual(context["raw_source_bindings"][name], {"exists": False})
+            self.assertEqual(context["prior_findings"], {})
+            raw = context["unadopted_assessments"][-1]
+            self.assertEqual(raw["finding_ids"], ["F901"])
+            self.assertEqual(raw["finding_references"][0]["file"], name)
+            self.assertEqual(next(x for x in context["path_dispositions"] if x["path"] == name)["disposition"], "REMOVED")
+            return self.result(context)
+
+        self.submit(current)
+        o.verify_staged(self.root)
+        self.submit(lambda c: dict(self.result(c), coverage=[item for item in self.result(c)["coverage"]
+                                                           if item["path"] != name]))
+        latest = o._read_rounds(o._series_directory(self.root, self.base))[-1]
+        self.assertIn(name, {item["path"] for item in latest["verified_coverage"]})
+        self.submit(lambda c: dict(self.result(c), coverage=[dict(item, status="UNREVIEWED", inputs=[])
+                    if item["path"] == name else item for item in self.result(c)["coverage"]]),
+                    error=o.OracleReviewIncomplete)
+
+    def test_raw_ignored_live_mode_rename_and_receipt_custody(self):
+        name = "Vault/tmp/ignored-live-source.md"
+        path = self.root / name
+        path.write_text("live source")
+
+        def drift(context):
+            result = self.result(context, findings=[self.finding("F902", name)])
+            self.change("peer.py", "concurrent source")
+            return result
+
+        self.submit(drift, error=o.OracleApprovalError)
+        self.submit()
+        context = self.contexts[-1]
+        self.assertTrue(context["input_hashes"][name].startswith("fs-sha256:"))
+        self.assertEqual(context["raw_source_bindings"][name]["kind"], "file")
+        o.verify_staged(self.root)
+        path.chmod(0o755)
+        with self.assertRaisesRegex(o.OracleApprovalError, "Observed raw source changed"):
+            o.verify_staged(self.root)
+        self.submit()
+        self.assertIn(name, {item["path"] for item in self.contexts[-1]["invalidated_coverage"]})
+        path.rename(path.with_name("renamed-source.md"))
+        with self.assertRaisesRegex(o.OracleApprovalError, "Observed raw source changed"):
+            o.verify_staged(self.root)
+        self.submit()
+        self.assertIsNone(self.contexts[-1]["input_hashes"][name])
+
+    def test_raw_absence_rechecked_after_review_before_publication_and_at_receipt(self):
+        name = "Vault/tmp/late-observed-source.md"
+        path = self.root / name
+
+        def drift(context):
+            result = self.result(context, findings=[self.finding("F903", name)])
+            self.change("peer.py", "concurrent source")
+            return result
+
+        self.submit(drift, error=o.OracleApprovalError)
+        for boundary in ("review", "publication"):
+            with self.subTest(boundary=boundary):
+                path.unlink(missing_ok=True)
+                if boundary == "review":
+                    def move(context):
+                        result = self.result(context)
+                        path.write_text("arrived during assessment")
+                        return result
+                    self.submit(move, error=o.OracleApprovalError)
+                else:
+                    original = o._prepare_round
+                    def move(*args, **kwargs):
+                        result = original(*args, **kwargs)
+                        if args[3] == "APPROVED":
+                            path.write_text("arrived before publication")
+                        return result
+                    with patch.object(o, "_prepare_round", side_effect=move):
+                        self.submit(error=o.OracleApprovalError)
+                self.assertTrue(path.is_file())
+                latest = o._read_rounds(o._series_directory(self.root, self.base))[-1]
+                self.assertEqual(latest["outcome"], "ERROR")
+                self.assertNotIn(name, {item["path"] for item in latest["verified_coverage"]})
+                self.assertEqual(latest["raw_assessment"]["reported_review_status"], "COMPLETE")
+                self.assertEqual(latest["finding_ledger"], {})
+        path.unlink()
+        self.submit()
+        path.write_text("arrived after approval")
+        with self.assertRaisesRegex(o.OracleApprovalError, "Observed raw source changed"):
+            o.verify_staged(self.root)
+
+    def test_raw_source_reference_safety_preserves_ids_without_external_reads(self):
+        outside = self.root.parent / (self.root.name + "-external-source")
+        outside.write_text("external sentinel")
+        self.addCleanup(lambda: outside.unlink(missing_ok=True))
+        link = self.root / "Vault/tmp/escape-link"
+        link.symlink_to(outside)
+        values = ["../escape", str(outside), ".git/config", "Vault/tmp/escape-link", "@proposal/scope", "bad\nname"]
+        for value in values:
+            with self.subTest(value=value):
+                self.assertIsNone(o._owner_source_name(self.root, value)[0])
+        self.assertEqual(o._owner_source_name(self.root, str(self.root / "Vault/tmp/safe-source.md")),
+                         ("Vault/tmp/safe-source.md", None))
+        parent = self.root / "Vault/tmp/file-parent"
+        parent.write_text("regular parent")
+        self.assertEqual(o._owner_source_fact(self.root, "Vault/tmp/file-parent/absent.md"), {"exists": False})
+
+        def drift(context):
+            result = self.result(context, findings=[self.finding("F904", str(outside))])
+            result["coverage"].append({"path": ".git/config", "status": "UNREVIEWED", "inputs": [],
+                                       "reason": "Untrusted raw reference"})
+            self.change("peer.py", "concurrent source")
+            return result
+        self.submit(drift, error=o.OracleApprovalError)
+        self.submit()
+        context = self.contexts[-1]
+        self.assertEqual(context["unadopted_assessments"][-1]["finding_ids"], ["F904"])
+        self.assertEqual(context["prior_findings"], {})
+        self.assertNotIn(str(outside), context["input_hashes"])
+        self.assertNotIn(".git/config", context["input_hashes"])
+        self.assertTrue(context["rejected_raw_source_references"])
+
+    def test_previously_bound_raw_source_escape_errors_without_poisoning_unknown_claims(self):
+        name = "Vault/tmp/trusted-original-source.md"
+        path = self.root / name
+        path.write_text("legitimate owner source")
+        outside = self.root.parent / (self.root.name + "-escaped-source")
+        outside.write_text("external sentinel")
+        self.addCleanup(lambda: outside.unlink(missing_ok=True))
+
+        def drift(context):
+            result = self.result(context, findings=[self.finding("F906", name)])
+            self.change("peer.py", "concurrent source")
+            return result
+        self.submit(drift, error=o.OracleApprovalError)
+        self.submit()
+        path.unlink()
+        path.symlink_to(outside)
+        self.submit(error=o.OracleSourceBindingError)
+        self.assertEqual(outside.read_text(), "external sentinel")
+        path.unlink()
+        self.submit()
+        self.assertIsNone(self.contexts[-1]["input_hashes"][name])
+        self.assertEqual(self.contexts[-1]["prior_findings"], {})
+
+    def test_raw_walk_rejects_external_return_before_reading_external_link(self):
+        with tempfile.TemporaryDirectory() as directory:
+            outside = Path(directory)
+            target = self.root / "Vault/tmp/safe-return"
+            target.mkdir(); (target / "source.md").write_text("synthetic owner source")
+            (outside / "return").symlink_to(target)
+            alias = self.root / "Vault/tmp/return-alias"
+            alias.symlink_to(outside / "return")
+            original = os.readlink
+            def readlink(path, *args, **kwargs):
+                if Path(path).is_absolute() and Path(path).is_relative_to(outside):
+                    self.fail("Resolver traversed an outside-owner link")
+                return original(path, *args, **kwargs)
+            with patch.object(o.os, "readlink", side_effect=readlink):
+                self.assertIsNone(o._owner_source_name(self.root, "Vault/tmp/return-alias/source.md")[0])
+
+    def test_raw_walk_rejects_git_hops_cycles_and_excessive_links(self):
+        target = self.root / "Vault/tmp/safe-return"
+        target.mkdir(); (target / "source.md").write_text("synthetic source")
+        (self.root / ".git/return-link").symlink_to(target)
+        (self.root / "Vault/tmp/store-alias").symlink_to(self.root / ".git/return-link")
+        (self.root / "Vault/tmp/cycle-a").symlink_to("cycle-b")
+        (self.root / "Vault/tmp/cycle-b").symlink_to("cycle-a")
+        for index in range(65):
+            (self.root / f"Vault/tmp/chain-{index}").symlink_to(
+                f"chain-{index + 1}" if index < 64 else "safe-return")
+        for name in ("store-alias/source.md", "cycle-a/source.md", "chain-0/source.md"):
+            with self.subTest(name=name):
+                self.assertIsNone(o._owner_source_name(self.root, "Vault/tmp/" + name)[0])
+
+    def test_safe_raw_chain_retarget_binds_equal_content_and_link_identity(self):
+        parent = self.root / "Vault/tmp/chain"
+        parent.mkdir()
+        for name in ("first", "second"):
+            (parent / name).mkdir(); (parent / name / "source.md").write_text("same source")
+        (parent / "middle").symlink_to("first")
+        (parent / "alias").symlink_to("middle")
+        name = "Vault/tmp/chain/alias/source.md"
+        self.assertEqual(o._owner_source_name(self.root, name), (name, None))
+        fact = o._owner_source_fact(self.root, name)
+        self.assertEqual(len(fact["links"]), 2)
+        o._assert_raw_sources(self.root, {"raw_source_bindings": {name: fact}})
+        (parent / "middle").unlink(); (parent / "middle").symlink_to("second")
+        self.assertEqual(fact["sha256"], o._owner_source_fact(self.root, name)["sha256"])
+        with self.assertRaises(o.OracleSourceBindingError):
+            o._assert_raw_sources(self.root, {"raw_source_bindings": {name: fact}})
+
+    def test_safe_raw_absence_retains_existing_link_custody(self):
+        parent = self.root / "Vault/tmp/absent-chain"
+        parent.mkdir(); (parent / "first").mkdir(); (parent / "second").mkdir()
+        (parent / "alias").symlink_to("first")
+        name = "Vault/tmp/absent-chain/alias/missing.md"
+        fact = o._owner_source_fact(self.root, name)
+        self.assertFalse(fact["exists"])
+        self.assertEqual(len(fact["links"]), 1)
+        o._assert_raw_sources(self.root, {"raw_source_bindings": {name: fact}})
+        (parent / "alias").unlink(); (parent / "alias").symlink_to("second")
+        with self.assertRaises(o.OracleSourceBindingError):
+            o._assert_raw_sources(self.root, {"raw_source_bindings": {name: fact}})
+        (parent / "second/missing.md").write_text("new source")
+        with self.assertRaises(o.OracleSourceBindingError):
+            o._assert_raw_sources(self.root, {"raw_source_bindings": {name: fact}})
+
+    def test_terminal_raw_symlink_binds_current_safe_target(self):
+        target = self.root / "Vault/tmp/linked-source.md"
+        target.write_text("first source")
+        (self.root / "Vault/tmp/source-alias").symlink_to(target.name)
+        name = "Vault/tmp/source-alias"
+        fact = o._owner_source_fact(self.root, name)
+        self.assertEqual(fact["kind"], "symlink")
+        self.assertEqual(fact["target"]["sha256"], o._sha(b"first source"))
+        target.write_text("changed source")
+        with self.assertRaises(o.OracleSourceBindingError):
+            o._assert_raw_sources(self.root, {"raw_source_bindings": {name: fact}})
+
+    def test_unknown_raw_return_preserves_id_as_excluded_without_poisoning(self):
+        with tempfile.TemporaryDirectory() as directory:
+            target = self.root / "Vault/tmp/own-return"
+            target.mkdir(); (target / "source.md").write_text("own source")
+            outside = Path(directory); (outside / "return").symlink_to(target)
+            (self.root / "Vault/tmp/unknown-return").symlink_to(outside / "return")
+            name = "Vault/tmp/unknown-return/source.md"
+            def drift(context):
+                result = self.result(context, findings=[self.finding("F910", name)])
+                self.change("peer.py", "concurrent source")
+                return result
+            self.submit(drift, error=o.OracleApprovalError)
+            self.submit()
+            context = self.contexts[-1]
+            self.assertNotIn(name, context["input_hashes"])
+            self.assertNotIn(name, context["required_coverage_paths"])
+            self.assertEqual(context["prior_findings"], {})
+            self.assertEqual(context["unadopted_assessments"][-1]["finding_ids"], ["F910"])
+            self.assertTrue(any(item["reference"] == name for item in context["rejected_raw_source_references"]))
+
+    def test_bound_raw_return_is_error_during_current_preparation(self):
+        parent = self.root / "Vault/tmp/bound-return"
+        parent.mkdir(); (parent / "source.md").write_text("own source")
+        name = "Vault/tmp/bound-return/source.md"
+        def drift(context):
+            result = self.result(context, findings=[self.finding("F911", name)])
+            self.change("peer.py", "concurrent source")
+            return result
+        self.submit(drift, error=o.OracleApprovalError)
+        self.submit()
+        parent.rename(parent.with_name("bound-return-saved"))
+        with tempfile.TemporaryDirectory() as directory:
+            outside = Path(directory); (outside / "return").symlink_to(parent.with_name("bound-return-saved"))
+            parent.symlink_to(outside / "return")
+            self.submit(error=o.OracleSourceBindingError)
+
+    def test_raw_chain_rechecked_at_review_publication_and_receipt(self):
+        parent = self.root / "Vault/tmp/late-chain"
+        parent.mkdir()
+        for name in ("first", "second"):
+            (parent / name).mkdir(); (parent / name / "source.md").write_text("same source")
+        alias = parent / "alias"; alias.symlink_to("first")
+        name = "Vault/tmp/late-chain/alias/source.md"
+        def drift(context):
+            result = self.result(context, findings=[self.finding("F912", name)])
+            self.change("peer.py", "concurrent source")
+            return result
+        self.submit(drift, error=o.OracleApprovalError)
+        def retarget():
+            alias.unlink(); alias.symlink_to("second")
+        for boundary in ("review", "publication"):
+            with self.subTest(boundary=boundary):
+                alias.unlink(); alias.symlink_to("first")
+                if boundary == "review":
+                    def move(context):
+                        result = self.result(context); retarget(); return result
+                    self.submit(move, error=o.OracleSourceBindingError)
+                else:
+                    original = o._prepare_round
+                    def move(*args, **kwargs):
+                        result = original(*args, **kwargs)
+                        if args[3] == "APPROVED": retarget()
+                        return result
+                    with patch.object(o, "_prepare_round", side_effect=move):
+                        self.submit(error=o.OracleSourceBindingError)
+                latest = o._read_rounds(o._series_directory(self.root, self.base))[-1]
+                self.assertEqual(latest["outcome"], "ERROR")
+                self.assertEqual(latest["raw_assessment"]["reported_review_status"], "COMPLETE")
+                self.assertNotIn(name, {item["path"] for item in latest["verified_coverage"]})
+        alias.unlink(); alias.symlink_to("first")
+        self.submit(); retarget()
+        with self.assertRaises(o.OracleSourceBindingError):
+            o.verify_staged(self.root)
+
+    def test_raw_walk_denies_directory_swap_before_target_read(self):
+        parent = self.root / "guarded"
+        parent.mkdir(); (parent / "source.md").write_text("owner source")
+        with tempfile.TemporaryDirectory() as directory:
+            outside = Path(directory); (outside / "source.md").write_text("outside sentinel")
+            original = os.open; moved = []
+            def swap(path, flags, *args, **kwargs):
+                if os.fspath(path) == "guarded" and kwargs.get("dir_fd") is not None and not moved:
+                    parent.rename(self.root / "guarded-saved")
+                    parent.symlink_to(outside); moved.append(True)
+                return original(path, flags, *args, **kwargs)
+            with patch.object(o.os, "open", side_effect=swap):
+                with self.assertRaises(o.OracleApprovalError):
+                    o._owner_source_fact(self.root, "guarded/source.md")
+            self.assertTrue(moved)
+
+    def test_historical_context_keeps_old_facts_while_current_round_owns_receipt_checks(self):
+        name = "Vault/tmp/owner-local-current-source.md"
+        source = self.root / name
+        source.write_text("old source")
+        def raw(context):
+            result = self.result(context, findings=[self.finding("F907", name)])
+            self.change("peer.py", "concurrent source")
+            return result
+        self.submit(raw, error=o.OracleApprovalError)
+        self.submit()
+        previous = o._read_rounds(o._series_directory(self.root, self.base))[-1]
+        historical = Path(previous["context_file"])
+        old_bytes = historical.read_bytes()
+        source.write_text("new independently reviewed source")
+        self.submit(evidence_paths=[str(self.evidence), str(historical)])
+        self.assertEqual(previous["candidate_tree"], self.git("write-tree"))
+        self.assertEqual(historical.read_bytes(), old_bytes)
+        o.verify_staged(self.root)
+        source.write_text("changed after current assessment")
+        with self.assertRaises(o.OracleSourceBindingError):
+            o.verify_staged(self.root)
+        source.write_text("new independently reviewed source")
+        historical.write_bytes(old_bytes + b" ")
+        with self.assertRaisesRegex(o.OracleApprovalError, "evidence changed"):
+            o.verify_staged(self.root)
+
+    def test_historical_preparation_keeps_old_facts_and_current_native_provenance_is_required(self):
+        document = self.root / "Vault/docs/own-synthetic-design.md"
+        document.parent.mkdir(parents=True)
+        document.write_text("original synthetic requirement")
+        vault = self.root / "Vault/tmp/synthetic-vault-query.json"
+        vault.write_text('{"kind":"synthetic-vault-evidence"}')
+        def reviewer(root, *args):
+            run = o._RUN.get()
+            context = json.loads((run / "review-context.json").read_bytes())
+            self.contexts.append(context)
+            o._atomic_write(run / "model.json", b"{}\n")
+            return self.result(context)
+        with patch.object(o, "_oracle", reviewer), patch.object(o, "_vault_evidence", return_value=vault):
+            o.issue(self.root, [str(self.evidence)], None, reviewer=reviewer)
+            previous = o._read_rounds(o._series_directory(self.root, self.base))[-1]
+            historical = Path(previous["context_file"]).parent / "oracle-inputs.json"
+            old_bytes = historical.read_bytes()
+            document.write_text("new independently reviewed requirement")
+            o.issue(self.root, [str(self.evidence), str(historical)], None, reviewer=reviewer)
+        self.assertEqual(previous["candidate_tree"], self.git("write-tree"))
+        self.assertEqual(historical.read_bytes(), old_bytes)
+        o.verify_staged(self.root)
+        document.write_text("changed after current assessment")
+        with self.assertRaises(o.OracleApprovalError):
+            o.verify_staged(self.root)
+        document.write_text("new independently reviewed requirement")
+        latest = o._read_rounds(o._series_directory(self.root, self.base))[-1]
+        preparation = Path(latest["context_file"]).parent / "oracle-inputs.json"
+        preparation_bytes = preparation.read_bytes()
+        preparation.write_bytes(preparation_bytes + b" ")
+        with self.assertRaisesRegex(o.OracleApprovalError, "evidence changed"):
+            o.verify_staged(self.root)
+        preparation.write_bytes(preparation_bytes)
+        round_path = o._series_directory(self.root, self.base) / f"round-{latest['round']:04d}.json"
+        latest["context_sha256"] = "tampered"
+        round_path.write_bytes(o._pretty(latest))
+        with self.assertRaises(o.OracleApprovalError):
+            o.verify_staged(self.root)
+
+    def test_selection_explains_dependency_criteria_and_verified_reuse(self):
+        self.submit()
+        self.change("dependency.py", "changed consumed behavior")
+        self.submit()
+        context = self.contexts[-1]
+        selected = {item["path"]: item for item in context["path_dispositions"]}
+        self.assertEqual(selected["source.py"]["disposition"], "DEPENDENCY_CHANGED")
+        self.assertEqual(selected["peer.py"]["disposition"], "REUSABLE_VERIFIED")
+        self.assertEqual(context["attempt_delta"]["paths"], ["dependency.py"])
+        self.assertEqual(context["cumulative_pending_since_verified"], ["dependency.py", "source.py"])
+        self.environment.return_value = "environment-B"
+        self.record_check()
+        self.submit()
+        selected = {item["path"]: item for item in self.contexts[-1]["path_dispositions"]}
+        self.assertEqual(selected["peer.py"]["disposition"], "CRITERIA_APPLICABILITY")
+        self.assertIn("environment_digest", selected["peer.py"]["reasons"])
+
+    def test_binding_error_outcome_preserves_reported_incomplete_separately(self):
+        def emitted(context, **kwargs):
+            result = self.result(context, **kwargs)
+            (o._RUN.get() / "result.json").write_text(json.dumps(result))
+            return result
+        def interrupted(context):
+            result = emitted(context, status="INCOMPLETE")
+            self.change("peer.py", "another implementation arrived during incomplete assessment")
+            return result
+        self.submit(interrupted, error=o.OracleApprovalError)
+        latest = o._read_rounds(o._series_directory(self.root, self.base))[-1]
+        public = json.loads((Path(latest["context_file"]).parent / "outcome.json").read_bytes())
+        self.assertEqual(latest["outcome"], "ERROR")
+        self.assertEqual(public["outcome"], "ERROR")
+        self.assertEqual(public["reviewer_review_status"], "INCOMPLETE")
+        self.assertEqual(public["reviewer_verdict"], "INCOMPLETE")
+        self.assertEqual(latest["raw_assessment"]["reported_review_status"], "INCOMPLETE")
+        self.assertEqual(latest["verified_coverage"], [])
+        self.submit(lambda c: emitted(c, status="INCOMPLETE"), error=o.OracleReviewIncomplete)
+        latest = o._read_rounds(o._series_directory(self.root, self.base))[-1]
+        public = json.loads((Path(latest["context_file"]).parent / "outcome.json").read_bytes())
+        self.assertEqual(public["outcome"], "INCOMPLETE")
+        self.submit(lambda c: emitted(c, findings=[self.finding(origin="MISSED")]),
+                    error=o.OracleCandidateRejected)
+        latest = o._read_rounds(o._series_directory(self.root, self.base))[-1]
+        public = json.loads((Path(latest["context_file"]).parent / "outcome.json").read_bytes())
+        self.assertEqual(public["outcome"], "REJECTED")
+        self.assertEqual(public["reviewer_review_status"], "COMPLETE")
+
+    def test_native_last_message_survives_transport_and_diagnostic_exceptions(self):
+        selected = patch.object(o, "selected_model", return_value="synthetic-model")
+        selected.start()
+        self.addCleanup(selected.stop)
+        self.change(".agents/skills/oracle/review-output.schema.json", "{}")
+        self.propose()
+        self.record_check()
+        actual_run, actual_write = o.subprocess.run, o._atomic_write
+        for failure in ["transport", "process_exit", "diagnostic"]:
+            with self.subTest(failure=failure):
+                def interrupted(context):
+                    result = self.result(context)
+                    def run(command, *args, **kwargs):
+                        if command[0] != "codex":
+                            return actual_run(command, *args, **kwargs)
+                        output = Path(command[command.index("--output-last-message") + 1])
+                        output.write_text(json.dumps(result))
+                        if failure == "transport":
+                            raise OSError("synthetic transport after last message")
+                        return subprocess.CompletedProcess(command, 3 if failure == "process_exit" else 0,
+                                                           stdout="synthetic process diagnostic", stderr="")
+                    def write(path, raw):
+                        if failure == "diagnostic" and path.name == "stdout.log":
+                            raise OSError("synthetic diagnostic publication failure")
+                        return actual_write(path, raw)
+                    with patch.object(o.subprocess, "run", side_effect=run), \
+                            patch.object(o, "_atomic_write", side_effect=write):
+                        return o._review_process(self.root, "synthetic review request", "reviewer")
+                self.submit(interrupted, error=o.OracleApprovalError if failure == "process_exit" else OSError)
+                latest = o._read_rounds(o._series_directory(self.root, self.base))[-1]
+                self.assertEqual(latest["outcome"], "ERROR")
+                self.assertEqual(latest["verified_coverage"], [])
+                raw = latest["raw_assessment"]
+                self.assertEqual(raw["reported_review_status"], "COMPLETE")
+                self.assertEqual(raw["reported_verdict"], "APPROVED")
+                self.assertEqual(raw["result_sha256"], o._sha(Path(raw["result_file"]).read_bytes()))
+        def current(context):
+            self.assertEqual(len(context["unadopted_assessments"]), 3)
+            self.assertEqual(context["reusable_coverage"], [])
+            self.assertTrue(all(item["actual_outcome"] == "ERROR" for item in context["unadopted_assessments"]))
+            return self.result(context)
+        self.submit(current)
+        o.verify_staged(self.root)
+
+    def test_publication_rechecks_new_and_carried_witness_outputs_and_environment(self):
+        field = "BOC_FINAL_WITNESS_INPUT"
+        for origin in ["new", "carried"]:
+            for drift in ["output", "environment"]:
+                with self.subTest(origin=origin, drift=drift), patch.dict(os.environ, {field: "before"}):
+                    self.record_check(environment_keys=(field,))
+                    if origin == "carried":
+                        self.submit()  # Utility carries the eligible witness even when omitted.
+                    actual = o._prepare_round
+                    def movement(*args, **kwargs):
+                        result = actual(*args, **kwargs)
+                        if args[3] == "APPROVED":
+                            if drift == "environment":
+                                os.environ[field] = "after"
+                            else:
+                                self.evidence.with_suffix(".stdout.log").write_text("changed original native output")
+                        return result
+                    with patch.object(o, "_prepare_round", side_effect=movement):
+                        self.submit(error=o.OracleApprovalError)
+                    self.assertFalse(o.receipt_path(self.root).exists())
+                    latest = o._read_rounds(o._series_directory(self.root, self.base))[-1]
+                    self.assertEqual(latest["outcome"], "ERROR")
+
+    def test_selection_tracks_new_mode_type_and_deleted_current_paths(self):
+        self.submit()
+        path = self.root / "peer.py"
+        path.chmod(0o755); self.git("add", "peer.py")
+        self.submit()
+        item = next(x for x in self.contexts[-1]["path_dispositions"] if x["path"] == "peer.py")
+        self.assertEqual(item["current_fact"]["mode"], "100755")
+        self.assertEqual(item["previous_attempt_fact"]["mode"], "100644")
+        self.assertEqual(item["disposition"], "CONTENT_CHANGED")
+        path.unlink(); path.symlink_to("dependency.py"); self.git("add", "peer.py")
+        self.submit()
+        item = next(x for x in self.contexts[-1]["path_dispositions"] if x["path"] == "peer.py")
+        self.assertEqual(item["current_fact"]["type"], "symlink")
+        path.unlink(); self.git("add", "-u", "peer.py")
+        self.change("other.py", "a different implementation")
+        self.submit()
+        selected = {x["path"]: x for x in self.contexts[-1]["path_dispositions"]}
+        self.assertEqual(selected["peer.py"]["disposition"], "REMOVED")
+        self.assertFalse(selected["peer.py"]["current_fact"]["exists"])
+        self.assertEqual(selected["other.py"]["disposition"], "NEW")
+
+    def test_malformed_proposal_preserves_previous_valid_active_records(self):
+        self.submit()
+        original_proposal = o.proposal_path(self.root).read_bytes()
+        original_receipt = o.receipt_path(self.root).read_bytes()
+        invalid = {"verdict": "APPROVED", "findings": [], "authentication_impact": "NONE",
+                   "owner_approval_status": "APPROVED", "api_version_assessment": self.assessment()}
+        with self.assertRaisesRegex(o.OracleApprovalError, "classification"):
+            o.review_proposal(self.root, "new request", [], None, lambda *args: invalid)
+        self.assertEqual(o.proposal_path(self.root).read_bytes(), original_proposal)
+        self.assertEqual(o.receipt_path(self.root).read_bytes(), original_receipt)
+        self.assertEqual(o.verify_proposal(self.root)["verdict"], "APPROVED")
+        o.verify_staged(self.root)
+
+    def test_proposal_binding_error_keeps_prior_state_without_approving_new_scope(self):
+        self.submit()
+        original_proposal = o.proposal_path(self.root).read_bytes()
+        original_receipt = o.receipt_path(self.root).read_bytes()
+        def drift(*args):
+            self.change("peer.py", "concurrent implementation")
+            return {"verdict": "APPROVED", "findings": [], "authentication_impact": "NONE",
+                    "owner_approval_status": "NOT_REQUIRED", "api_version_assessment": self.assessment()}
+        with self.assertRaisesRegex(o.OracleApprovalError, "changed"):
+            o.review_proposal(self.root, "new request", [], None, drift)
+        self.assertEqual(o.proposal_path(self.root).read_bytes(), original_proposal)
+        self.assertEqual(o.receipt_path(self.root).read_bytes(), original_receipt)
+        self.assertNotEqual(o.verify_proposal(self.root)["proposal_sha256"], o._sha(b"new request"))
+        with self.assertRaises(o.OracleApprovalError):
+            o.verify_staged(self.root)  # Prior receipt never approves concurrent new source.
+
+    def test_proposal_publication_and_final_metadata_error_restore_prior_state(self):
+        for target in ["publication", "outcome"]:
+            with self.subTest(target=target):
+                self.submit()
+                original_proposal = o.proposal_path(self.root).read_bytes()
+                original_receipt = o.receipt_path(self.root).read_bytes()
+                actual_write = o._atomic_write
+                failed = False
+                def fail_once(path, raw):
+                    nonlocal failed
+                    selected = path == o.proposal_path(self.root) if target == "publication" else path.name == "outcome.json"
+                    if selected and not failed:
+                        failed = True
+                        actual_write(path, raw)
+                        raise OSError("synthetic post-publication metadata failure")
+                    return actual_write(path, raw)
+                result = {"verdict": "APPROVED", "findings": [], "authentication_impact": "NONE",
+                          "owner_approval_status": "NOT_REQUIRED", "api_version_assessment": self.assessment()}
+                with patch.object(o, "_atomic_write", side_effect=fail_once), self.assertRaises(OSError):
+                    o.review_proposal(self.root, "different request", [], None, lambda *args: result)
+                self.assertEqual(o.proposal_path(self.root).read_bytes(), original_proposal)
+                self.assertEqual(o.receipt_path(self.root).read_bytes(), original_receipt)
+                o.verify_staged(self.root)
+
     def test_repair_delta_tracks_findings_new_defects_and_exact_receipt(self):
         self.submit(lambda c: self.result(c, findings=[self.finding()]), error=o.OracleCandidateRejected)
         self.change("source.py", "repair introduced defect B")
@@ -424,7 +1054,8 @@ class ReviewSeries(unittest.TestCase):
         self.submit(unproven, error=o.OracleApprovalError)
         def uncovered(context):
             result = self.result(context, findings=[self.finding()])
-            result["coverage"] = []
+            result["coverage"] = [{"path": "source.py", "status": "UNREVIEWED", "inputs": [],
+                                   "reason": "Current source requires an additional branch assessment"}]
             return result
         self.submit(uncovered, error=o.OracleReviewIncomplete)
 
@@ -643,9 +1274,10 @@ class ReviewSeries(unittest.TestCase):
         self.assertEqual(self.contexts[-1]["validation_invalidations"][name]["evidence_sha256"], o._sha(original))
 
     def test_unrelated_design_edits_preserve_narrow_observations(self):
-        self.submit()
         architecture = self.root / "Vault/docs/architecture.md"
         architecture.parent.mkdir(parents=True, exist_ok=True)
+        self.record_check()
+        self.submit()
         architecture.write_text("Unrelated project progress and design navigation")
         self.submit()
         context = self.contexts[-1]
@@ -1362,6 +1994,725 @@ class ReviewSeries(unittest.TestCase):
         self.assertEqual(original, self.git("hash-object", str(path)))
         with self.assertRaises(o.OracleApprovalError):
             o._validation_record(self.root, str(self.evidence), record["inputs"], record["environment_digest"])
+
+    def native_route_fixture(self, *, executable=False):
+        middle = self.root / "Vault/tmp/native-middle"
+        middle.mkdir(exist_ok=True)
+        target = middle / "input"
+        target.write_text("#!/bin/sh\nexit 0\n" if executable else "selected native bytes")
+        target.chmod(0o755 if executable else 0o600)
+        alias = self.root / "native-input"
+        alias.unlink(missing_ok=True)
+        alias.symlink_to("Vault/tmp/native-middle/input")
+        self.git("add", "native-input")
+        return middle, alias
+
+    def native_external_return(self, middle):
+        saved = middle.with_name(middle.name + "-saved")
+        middle.rename(saved)
+        external = tempfile.TemporaryDirectory()
+        self.addCleanup(external.cleanup)
+        returning = Path(external.name) / "return"
+        returning.symlink_to(saved, target_is_directory=True)
+        middle.symlink_to(returning, target_is_directory=True)
+
+    def test_native_input_reentry_is_rejected_before_and_after_capture(self):
+        middle, alias = self.native_route_fixture()
+        record = o.record_validation(self.root, [sys.executable, "-c", "pass"], ["native-input"], self.evidence)
+        self.native_external_return(middle)
+        with self.assertRaises(o.OracleApprovalError):
+            o._validation_record(self.root, str(self.evidence), record["inputs"], record["environment_digest"])
+        with self.assertRaises(o.OracleApprovalError):
+            o.record_validation(self.root, [sys.executable, "-c", "pass"], ["native-input"], self.evidence)
+
+    def test_native_safe_same_byte_retarget_invalidates_original_witness(self):
+        middle, alias = self.native_route_fixture()
+        record = o.record_validation(self.root, [sys.executable, "-c", "pass"], ["native-input"], self.evidence)
+        saved = middle.with_name("same-byte-target")
+        middle.rename(saved); middle.symlink_to(saved, target_is_directory=True)
+        with self.assertRaises(o.OracleApprovalError):
+            o._validation_record(self.root, str(self.evidence), record["inputs"], record["environment_digest"])
+        fresh = o.record_validation(self.root, [sys.executable, "-c", "pass"], ["native-input"], self.evidence)
+        o._validation_record(self.root, str(self.evidence), fresh["inputs"], fresh["environment_digest"])
+
+    def test_native_executable_reentry_and_mode_are_bound(self):
+        middle, alias = self.native_route_fixture(executable=True)
+        record = o.record_validation(self.root, [str(alias)], ["source.py"], self.evidence)
+        self.assertGreaterEqual(len(record["execution_custody"]), 2)  # Script plus real interpreter.
+        self.native_external_return(middle)
+        with self.assertRaises(o.OracleApprovalError):
+            o._validation_record(self.root, str(self.evidence), record["inputs"], record["environment_digest"])
+
+    def test_native_output_mode_and_relocation_reject_equal_bytes(self):
+        for movement in ("mode", "symlink"):
+            with self.subTest(movement=movement):
+                record = self.record_check()
+                output = self.evidence.with_suffix(".stdout.log")
+                if movement == "mode":
+                    output.chmod(0o644)
+                else:
+                    saved = output.with_name("same-output")
+                    output.rename(saved); output.symlink_to(saved)
+                with self.assertRaises(o.OracleApprovalError):
+                    o._validation_record(self.root, str(self.evidence), record["inputs"], record["environment_digest"])
+                output.unlink()
+
+    def test_native_record_route_rejects_before_json_parsing(self):
+        record = self.record_check()
+        middle = self.root / "Vault/tmp/record-middle"
+        middle.mkdir(); (middle / "record.json").write_bytes(self.evidence.read_bytes())
+        self.native_external_return(middle)
+        with patch.object(o.json, "loads", side_effect=AssertionError("unsafe content was parsed")):
+            with self.assertRaises(o.OracleApprovalError):
+                o._validation_record(self.root, str(middle / "record.json"), record["inputs"], record["environment_digest"])
+
+    def test_native_record_mode_and_lexical_location_are_bound(self):
+        record = self.record_check()
+        self.evidence.chmod(0o644)
+        with self.assertRaises(o.OracleApprovalError):
+            o._validation_record(self.root, str(self.evidence), record["inputs"], record["environment_digest"])
+        self.evidence.chmod(0o600)
+        alias = self.evidence.with_name("record-alias.json"); alias.symlink_to(self.evidence)
+        with self.assertRaises(o.OracleApprovalError):
+            o._validation_record(self.root, str(alias), record["inputs"], record["environment_digest"])
+
+    def test_native_capture_late_input_and_executable_reentry_retains_outputs(self):
+        for closure in ("input", "executable"):
+            with self.subTest(closure=closure):
+                middle, alias = self.native_route_fixture(executable=closure == "executable")
+                command = [str(alias)] if closure == "executable" else [sys.executable, "-c", "print('observed')"]
+                original = o.subprocess.run
+                def movement(arguments, **options):
+                    result = original(arguments, **options)
+                    if arguments == command:
+                        self.native_external_return(middle)
+                    return result
+                with patch.object(o.subprocess, "run", side_effect=movement):
+                    with self.assertRaises(o.OracleApprovalError):
+                        o.record_validation(self.root, command, ["native-input"] if closure == "input" else ["source.py"],
+                                            self.evidence)
+                self.assertFalse(self.evidence.exists())
+                self.assertTrue(self.evidence.with_suffix(".stdout.log").exists())
+                # Restore this owned temporary fixture before the next independent subcase.
+                middle.unlink(); middle.with_name(middle.name + "-saved").rename(middle)
+
+    def test_native_publication_and_receipt_recheck_selected_middle_custody(self):
+        middle, alias = self.native_route_fixture()
+        record = o.record_validation(self.root, [sys.executable, "-c", "pass"], ["native-input"], self.evidence)
+        self.submit()
+        self.native_external_return(middle)
+        with self.assertRaises(o.OracleApprovalError):
+            o.verify_staged(self.root)
+        # A carried supporting witness cannot become eligible through a new caller omission.
+        self.submit(evidence_paths=[])
+        self.assertFalse(self.contexts[-1]["current_validations"])
+        self.assertFalse(self.contexts[-1]["reusable_validations"])
+
+    def test_native_final_publication_rechecks_new_witness_route(self):
+        middle, alias = self.native_route_fixture()
+        o.record_validation(self.root, [sys.executable, "-c", "pass"], ["native-input"], self.evidence)
+        actual = o._prepare_round
+        def late(*args, **kwargs):
+            result = actual(*args, **kwargs)
+            if args[3] == "APPROVED":
+                self.native_external_return(middle)
+            return result
+        with patch.object(o, "_prepare_round", side_effect=late):
+            self.submit(error=o.OracleApprovalError)
+
+    def test_native_explicit_external_execution_and_declared_input_are_supported(self):
+        paths = self.declare_parent()
+        record = o.record_validation(self.root, [sys.executable, "-c", "pass"], [str(paths[1])], self.evidence)
+        o._validation_record(self.root, str(self.evidence), record["inputs"], record["environment_digest"])
+        self.assertTrue(Path(record["execution_custody"][0]["resolved"]).is_absolute())
+
+    def test_native_missing_legacy_custody_keeps_original_observation_without_eligibility(self):
+        record = self.record_check()
+        del record["provenance_policy"]
+        record["record_sha256"] = o._sha(o._canonical({k: v for k, v in record.items() if k != "record_sha256"}))
+        self.evidence.write_bytes(o._pretty(record)); original = self.evidence.read_bytes()
+        self.submit()
+        self.assertFalse(self.contexts[-1]["current_validations"])
+        self.assertTrue(self.contexts[-1]["invalid_current_validations"])
+        self.assertEqual(original, self.evidence.read_bytes())
+        self.assertEqual(json.loads(original)["exit_code"], 0)
+
+    def test_evidence_dual_aliases_keep_lexical_custody_and_detect_safe_retarget(self):
+        target = self.root / "Vault/tmp/evidence-data"; target.write_text("same bytes")
+        first = target.with_name("evidence-first"); second = target.with_name("evidence-second")
+        first.symlink_to(target); second.symlink_to(target)
+        names = [str(first), str(second)]
+        files = o._files(self.root, names)
+        self.assertEqual(set(files), {str(p.relative_to(self.root)) for p in (first, second)})
+        binding = o._input_binding(self.root, files, None)
+        other = target.with_name("evidence-data-copy"); other.write_bytes(target.read_bytes())
+        second.unlink(); second.symlink_to(other)
+        self.assertEqual(files, o._files(self.root, names))
+        with self.assertRaises(o.OracleApprovalError):
+            o._assert_binding(self.root, binding, files, None)
+
+    def test_native_private_output_parent_reentry_never_writes_external_target(self):
+        directory = self.root / "Vault/tmp/parent-route"
+        directory.mkdir()
+        external = tempfile.TemporaryDirectory(); self.addCleanup(external.cleanup)
+        directory.rmdir(); directory.symlink_to(external.name, target_is_directory=True)
+        with self.assertRaises(o.OracleApprovalError):
+            o.record_validation(self.root, [sys.executable, "-c", "pass"], ["source.py"], directory / "record.json")
+        self.assertEqual(list(Path(external.name).iterdir()), [])
+
+    def test_native_capture_rechecks_unselected_executable_mode(self):
+        executable = self.root / "Vault/tmp/native-executable"
+        executable.write_text("#!/bin/sh\nexit 0\n"); executable.chmod(0o755)
+        command = [str(executable)]
+        original = o.subprocess.run
+        def drift(arguments, **options):
+            completed = original(arguments, **options)
+            if arguments == command:
+                executable.chmod(0o744)
+            return completed
+        with patch.object(o.subprocess, "run", side_effect=drift):
+            with self.assertRaises(o.OracleApprovalError):
+                o.record_validation(self.root, command, ["source.py"], self.evidence)
+        self.assertFalse(self.evidence.exists())
+        self.assertTrue(self.evidence.with_suffix(".stdout.log").exists())
+
+    def test_native_retained_round_reentry_is_rejected_before_parsing(self):
+        self.submit()
+        directory = o._series_directory(self.root, self.base)
+        saved = directory.with_name(directory.name + "-saved")
+        directory.rename(saved)
+        external = tempfile.TemporaryDirectory(); self.addCleanup(external.cleanup)
+        returning = Path(external.name) / "return"; returning.symlink_to(saved, target_is_directory=True)
+        directory.symlink_to(returning, target_is_directory=True)
+        with patch.object(o.json, "loads", side_effect=AssertionError("unsafe history was parsed")):
+            with self.assertRaises(o.OracleApprovalError):
+                o._read_rounds(directory)
+
+    def assert_managed_return_rejected(self, path, action):
+        saved = path.with_name(path.name + "-custody-saved")
+        is_directory = path.is_dir()
+        path.rename(saved)
+        external = tempfile.TemporaryDirectory()
+        try:
+            returning = Path(external.name) / "return"
+            returning.symlink_to(saved, target_is_directory=is_directory)
+            path.symlink_to(returning, target_is_directory=is_directory)
+            with self.assertRaises(o.OracleApprovalError):
+                action()
+        finally:
+            path.unlink()
+            saved.rename(path)
+            external.cleanup()
+
+    def metadata_route(self, path, external, route):
+        """Keep the original managed directory/file for exact restoration."""
+        saved = path.with_name(path.name + '-metadata-saved')
+        path.rename(saved)
+        destination = external / path.name
+        if route == 'return':
+            destination.symlink_to(saved, target_is_directory=saved.is_dir())
+        elif saved.is_dir():
+            destination.mkdir()
+        else:
+            destination.write_bytes(b'outside sentinel')
+        path.symlink_to(destination, target_is_directory=saved.is_dir())
+        self.addCleanup(lambda: (path.unlink(), saved.rename(path)))
+        return destination, saved
+
+    def test_metadata_directory_and_lock_admission_precede_mutation(self):
+        for target in ('directory', 'runs', 'lock'):
+            for route in ('escape', 'return'):
+                with self.subTest(target=target, route=route), tempfile.TemporaryDirectory() as outside:
+                    directory = o.receipt_path(self.root).parent
+                    path = directory if target == 'directory' else directory / ('runs' if target == 'runs' else 'review.lock')
+                    destination, saved = self.metadata_route(path, Path(outside), route)
+                    before = {str(item.relative_to(saved)): item.read_bytes() for item in saved.rglob('*')
+                              if item.is_file()} if saved.is_dir() else saved.read_bytes()
+                    called = []
+                    def review_proposal(root):
+                        called.append(True)
+                        return {'verdict': 'APPROVED'}
+                    real_flock = o.fcntl.flock
+                    with patch.object(o.fcntl, 'flock', wraps=real_flock) as lock:
+                        with self.assertRaises(o.OracleApprovalError):
+                            o._serialized_review(review_proposal)(self.root)
+                        if target != 'runs':
+                            lock.assert_not_called()
+                    self.assertEqual(called, [])
+                    after = {str(item.relative_to(saved)): item.read_bytes() for item in saved.rglob('*')
+                             if item.is_file()} if saved.is_dir() else saved.read_bytes()
+                    self.assertEqual(after, before)
+                    if route == 'escape':
+                        if destination.is_dir():
+                            self.assertEqual(list(destination.iterdir()), [])
+                        else:
+                            self.assertEqual(destination.read_bytes(), b'outside sentinel')
+                    self.assertIsNone(o._METADATA_ROOT.get())
+                    path.unlink(); saved.rename(path)
+                    self._cleanups.pop()
+
+    def test_metadata_special_lock_is_rejected_before_open_or_flock(self):
+        path = o.receipt_path(self.root).parent / 'review.lock'
+        saved = path.with_name('review.lock-saved'); path.rename(saved)
+        try:
+            for kind in ('directory', 'fifo'):
+                with self.subTest(kind=kind):
+                    path.mkdir() if kind == 'directory' else os.mkfifo(path)
+                    try:
+                        def review_proposal(root):
+                            self.fail('nonregular lock admitted the review')
+                        with patch.object(o.fcntl, 'flock') as lock:
+                            with self.assertRaises(o.OracleApprovalError):
+                                o._serialized_review(review_proposal)(self.root)
+                            lock.assert_not_called()
+                    finally:
+                        path.rmdir() if kind == 'directory' else path.unlink()
+        finally:
+            saved.rename(path)
+
+    def test_private_directory_creation_preserves_literal_parent_requirements(self):
+        for namespace, create in (('.git/oracle', o._metadata_directory), ('Vault/tmp', o._private_witness_parent)):
+            base = self.root / namespace / 'literal-admission'; base.mkdir()
+            for kind in ('missing', 'file', 'broken-link'):
+                with self.subTest(namespace=namespace, kind=kind):
+                    first = base / kind
+                    if kind == 'file':
+                        first.write_bytes(b'owned regular file')
+                    elif kind == 'broken-link':
+                        first.symlink_to('absent-link-target')
+                    before = {path.name for path in base.iterdir()}
+                    with self.assertRaises(o.OracleApprovalError):
+                        create(self.root, first / '..' / 'must-not-exist')
+                    self.assertEqual({path.name for path in base.iterdir()}, before)
+            (base / 'container/child').mkdir(parents=True)
+            (base / 'alias').symlink_to('container/child')
+            create(self.root, base / 'alias/../new-directory')
+            self.assertTrue((base / 'container/new-directory').is_dir())
+            self.assertFalse((base / 'new-directory').exists())
+
+    def test_metadata_regular_lock_contention_preserves_active_records(self):
+        directory = o.receipt_path(self.root).parent
+        before = o.proposal_path(self.root).read_bytes()
+        runs = set((directory / 'runs').iterdir())
+        with (directory / 'review.lock').open('a+') as held:
+            o.fcntl.flock(held.fileno(), o.fcntl.LOCK_EX | o.fcntl.LOCK_NB)
+            def review_proposal(root):
+                self.fail('a second review acquired the active lock')
+            with self.assertRaisesRegex(o.OracleApprovalError, 'Another Oracle review'):
+                o._serialized_review(review_proposal)(self.root)
+        self.assertEqual(o.proposal_path(self.root).read_bytes(), before)
+        self.assertEqual(set((directory / 'runs').iterdir()), runs)
+        self.assertIsNone(o._METADATA_ROOT.get())
+
+    def test_late_metadata_writes_and_removals_reject_reentry(self):
+        for target in ('run', 'approval', 'proposal', 'round', 'remove'):
+            for route in ('escape', 'return'):
+                with self.subTest(target=target, route=route), tempfile.TemporaryDirectory() as outside:
+                    restored = []
+                    def review_proposal(root):
+                        directory = o.receipt_path(root).parent
+                        destination, saved = self.metadata_route(directory, Path(outside), route)
+                        restored.extend((directory, destination, saved))
+                        (destination / 'approval.json').write_bytes(b'outside sentinel')
+                        paths = {'run': o._RUN.get() / 'late-outcome.json', 'approval': o.receipt_path(root),
+                                 'proposal': o.proposal_path(root), 'round': directory / 'series/new/round-0001.json'}
+                        if target == 'remove':
+                            o._record_error(root, {'base_commit': self.base, 'round': 1}, {}, RuntimeError('synthetic'))
+                        else:
+                            o._atomic_write(paths[target], b'late private metadata')
+                    try:
+                        with self.assertRaises(o.OracleApprovalError):
+                            o._serialized_review(review_proposal)(self.root)
+                        directory, destination, saved = restored
+                        self.assertEqual((destination / 'approval.json').read_bytes(), b'outside sentinel')
+                        if route == 'escape':
+                            self.assertEqual({item.name for item in destination.iterdir()}, {'approval.json'})
+                        self.assertIsNone(o._METADATA_ROOT.get())
+                    finally:
+                        if restored:
+                            restored[0].unlink(); restored[2].rename(restored[0]); self._cleanups.pop()
+
+    def test_metadata_publication_uses_the_admitted_directory_descriptor(self):
+        actual = o.os.replace
+        restored = []
+        with tempfile.TemporaryDirectory() as outside:
+            def review_proposal(root):
+                path = o._RUN.get() / 'anchored.json'
+                def moved(source, destination, **options):
+                    directory, saved = path.parent, path.parent.with_name(path.parent.name + '-admitted')
+                    directory.rename(saved); directory.symlink_to(outside, target_is_directory=True)
+                    restored.extend((directory, saved))
+                    return actual(source, destination, **options)
+                with patch.object(o.os, 'replace', side_effect=moved):
+                    o._atomic_write(path, b'admitted owned bytes')
+                self.assertEqual((restored[1] / path.name).read_bytes(), b'admitted owned bytes')
+                self.assertEqual(list(Path(outside).iterdir()), [])
+                restored[0].unlink(); restored[1].rename(restored[0]); restored.clear()
+                return {'verdict': 'APPROVED'}
+            try:
+                lexical_root = self.root / '..' / self.root.name
+                self.assertEqual(o._serialized_review(review_proposal)(lexical_root)['verdict'], 'APPROVED')
+                self.assertIsNone(o._METADATA_ROOT.get())
+            finally:
+                if restored:
+                    restored[0].unlink(); restored[1].rename(restored[0])
+
+    def test_late_managed_history_readers_reject_reentry_before_body(self):
+        self.submit()
+        records = o._read_rounds(o._series_directory(self.root, self.base))
+        context, record = self.contexts[-1], records[-1]
+        context_path = Path(record["context_file"])
+        round_path = o._series_directory(self.root, self.base) / "round-0001.json"
+        receipt = o.receipt_path(self.root).read_bytes()
+        cases = [
+            (context_path, lambda: o._path_dispositions(self.root, context, records)),
+            (round_path, lambda: o._record_error(self.root, context, record["review"],
+                OSError("synthetic publication failure"), published_round=(round_path, record))),
+            (context_path, lambda: o._revoke_published_review(self.root, context_path.parent,
+                OSError("synthetic final metadata failure"))),
+        ]
+        for path, action in cases:
+            with self.subTest(path=path.name, consumer=action):
+                o.receipt_path(self.root).write_bytes(receipt)
+                actual_read = Path.read_bytes
+                def read(current):
+                    if current == path:
+                        raise AssertionError("Managed body consumed before route custody")
+                    return actual_read(current)
+                with patch.object(Path, "read_bytes", read):
+                    self.assert_managed_return_rejected(path, action)
+        o.receipt_path(self.root).write_bytes(receipt)
+        o.verify_staged(self.root)
+
+    def test_receipt_preparation_reentry_is_rejected_after_initial_evidence_check(self):
+        receipt = self.submit()
+        records = o._read_rounds(o._series_directory(self.root, self.base))
+        context_path = Path(records[-1]["context_file"])
+        preparation_path = context_path.parent / "oracle-inputs.json"
+        preparation = {"kind": "oracle-preparation-v1", "input_binding": o._input_binding(self.root, {}, None),
+                       "candidate_diff": {}, "vault_evidence": {}}
+        preparation_path.write_bytes(o._pretty(preparation))
+        receipt["validation_evidence"][str(preparation_path.relative_to(self.root))] = o._sha(o._pretty(preparation))
+        receipt["approval_id"] = o._sha(o._canonical({key: value for key, value in receipt.items() if key != "approval_id"}))
+        raw = o._pretty(receipt)
+        o._verify_receipt(self.root, receipt, raw)
+        actual = o._receipt_current_context
+        def late(root, payload, pending):
+            result = actual(root, payload, pending)
+            self.native_external_return(preparation_path)
+            return result
+        actual_read = Path.read_bytes
+        def read(current):
+            if current == preparation_path:
+                raise AssertionError("Late preparation body consumed before route custody")
+            return actual_read(current)
+        with patch.object(o, "_receipt_current_context", side_effect=late), patch.object(Path, "read_bytes", read):
+            with self.assertRaises(o.OracleApprovalError):
+                o._verify_receipt(self.root, receipt, raw)
+
+    def test_failed_proposal_restoration_checks_managed_routes_before_content(self):
+        self.submit()
+        run = Path(o._read_rounds(o._series_directory(self.root, self.base))[-1]["context_file"]).parent
+        original = {path: path.read_bytes() for path in (o.proposal_path(self.root), o.receipt_path(self.root))}
+        prospective = run / "prospective-proposal.json"
+        prospective.write_bytes(original[o.proposal_path(self.root)])
+        o._restore_failed_proposal(self.root, run, original)
+        for path in [prospective, *original]:
+            with self.subTest(path=path.name):
+                actual_read = Path.read_bytes
+                def read(current):
+                    if current == path:
+                        raise AssertionError("Proposal custody body consumed before route check")
+                    return actual_read(current)
+                with patch.object(Path, "read_bytes", read):
+                    self.assert_managed_return_rejected(path, lambda: o._restore_failed_proposal(self.root, run, original))
+        self.assertEqual({path: path.read_bytes() for path in original}, original)
+        o.verify_staged(self.root)
+
+    def test_native_result_reentry_preserves_error_without_unchecked_raw_bytes(self):
+        selected = patch.object(o, "selected_model", return_value="synthetic-model")
+        selected.start(); self.addCleanup(selected.stop)
+        self.change(".agents/skills/oracle/review-output.schema.json", "{}")
+        self.propose(); self.record_check()
+        actual_run = o.subprocess.run
+        def reviewer(context):
+            result = self.result(context)
+            def run(command, *args, **kwargs):
+                if command[0] != "codex":
+                    return actual_run(command, *args, **kwargs)
+                output = Path(command[command.index("--output-last-message") + 1])
+                output.write_text(json.dumps(result))
+                self.native_external_return(output)
+                return subprocess.CompletedProcess(command, 0, stdout="synthetic diagnostic", stderr="")
+            with patch.object(o.subprocess, "run", side_effect=run):
+                return o._review_process(self.root, "synthetic request", "reviewer")
+        self.submit(reviewer, error=o.OracleApprovalError)
+        latest = o._read_rounds(o._series_directory(self.root, self.base))[-1]
+        self.assertEqual(latest["outcome"], "ERROR")
+        self.assertEqual(latest["verified_coverage"], [])
+        self.assertNotIn("raw_assessment", latest)
+        self.assertFalse(o.receipt_path(self.root).exists())
+
+    def test_native_relative_path_selection_uses_execution_cwd_and_retains_hops(self):
+        directory = self.root / "bin"; directory.mkdir()
+        executable = directory / "owned-check"
+        executable.write_text("#!/bin/sh\nexit 0\n"); executable.chmod(0o755)
+        self.git("add", "bin/owned-check")
+        with patch.dict(os.environ, {"PATH": "bin:/usr/bin:/bin"}):
+            record = o.record_validation(self.root, ["owned-check"], ["source.py"], self.evidence)
+            self.assertEqual(record["exit_code"], 0)
+            self.assertEqual(record["execution_custody"][0]["resolved"], "bin/owned-check")
+            o._validation_record(self.root, str(self.evidence), record["inputs"], record["environment_digest"])
+            self.native_external_return(directory)
+            with self.assertRaises(o.OracleApprovalError):
+                o._validation_record(self.root, str(self.evidence), record["inputs"], record["environment_digest"])
+
+    def test_native_selected_input_ancestor_directory_mode_is_bound(self):
+        middle, alias = self.native_route_fixture(); middle.chmod(0o700)
+        record = o.record_validation(self.root, [sys.executable, "-c", "pass"], ["native-input"], self.evidence)
+        middle.chmod(0o755)
+        with self.assertRaises(o.OracleApprovalError):
+            o._validation_record(self.root, str(self.evidence), record["inputs"], record["environment_digest"])
+
+    def test_native_parent_components_are_walked_before_lexical_normalization(self):
+        directory = self.root / "nested/deep"; directory.mkdir(parents=True)
+        (self.root / "nested/value").write_text("actual requested bytes")
+        (self.root / "value").write_text("different normalized bytes")
+        alias = self.root / "alias"; alias.symlink_to("nested/deep", target_is_directory=True)
+        requested = alias / "../value"
+        fact, raw = o._custody_read(self.root, requested)
+        self.assertEqual(raw, requested.read_bytes())
+        self.assertEqual(fact["path"], "alias/../value")
+        self.assertEqual(fact["sha256"], o._sha(requested.read_bytes()))
+        self.assertEqual(fact["source"]["resolved_path"], "nested/value")
+
+    def test_native_resolved_executable_index_mode_is_bound_without_content_change(self):
+        executable = self.root / "tracked-check"
+        executable.write_text("#!/bin/sh\nexit 0\n"); executable.chmod(0o755)
+        self.git("add", "tracked-check")
+        alias = self.root / "Vault/tmp/check-alias"; alias.symlink_to(executable)
+        record = o.record_validation(self.root, [str(alias)], ["source.py"], self.evidence)
+        self.git("update-index", "--chmod=-x", "tracked-check")
+        self.assertTrue(executable.stat().st_mode & 0o111)
+        with self.assertRaises(o.OracleApprovalError):
+            o._validation_record(self.root, str(self.evidence), record["inputs"], record["environment_digest"])
+
+    def test_native_governing_module_reentry_is_rejected_before_content(self):
+        directory = self.root / "tools"
+        self.native_external_return(directory)
+        with self.assertRaises(o.OracleApprovalError):
+            o._review_policy_digest(self.root)
+
+    def test_native_both_launches_forward_exact_selected_effort_and_metadata(self):
+        schema = self.root / ".agents/skills/oracle/review-output.schema.json"
+        schema.write_text('{}')
+        for kind in ('proposal', 'review'):
+            with self.subTest(kind=kind):
+                run = self.root / ('Vault/tmp/launch-' + kind); run.mkdir()
+                token = o._RUN.set(run); calls = []
+                def execute(command, **options):
+                    calls.append((command, options))
+                    Path(command[command.index('--output-last-message') + 1]).write_text(
+                        json.dumps({'verdict': 'INCOMPLETE', 'review_status': 'INCOMPLETE'}))
+                    return subprocess.CompletedProcess(command, 0, '', '')
+                try:
+                    with patch.object(o, 'selected_model', return_value='gpt-6.1-sol'), \
+                            patch.object(o, 'selected_reasoning_effort', return_value='xhigh'), \
+                            patch.object(o.subprocess, 'run', side_effect=execute):
+                        if kind == 'proposal':
+                            o._proposal_oracle(self.root, 'Synthetic proposal', {}, None)
+                        else:
+                            o._oracle(self.root, 'synthetic-tree', ['source.py'], {}, None)
+                    command, options = calls[0]
+                    self.assertIn('model_reasoning_effort="xhigh"', command)
+                    self.assertEqual(options['env']['CODEX_SELECTED_REASONING_EFFORT'], 'xhigh')
+                    self.assertEqual(options['env']['CODEX_SELECTED_MODEL'], 'gpt-6.1-sol')
+                    metadata = json.loads((run / 'model.json').read_text())
+                    self.assertEqual(metadata['reasoning_effort'], 'xhigh')
+                    self.assertEqual(metadata['selected_model'], 'gpt-6.1-sol')
+                    self.assertTrue(metadata['ignore_user_config'])
+                finally:
+                    o._RUN.reset(token)
+
+    def test_native_effort_settings_drift_is_bound_without_changing_accepted_hook_environment(self):
+        with patch.object(o, 'selected_model', return_value='gpt-6.1-sol'), \
+                patch.object(o, 'selected_reasoning_effort', return_value='xhigh') as effort:
+            binding = o._input_binding(self.root, {}, None)
+            self.assertEqual(binding['reviewer_settings'], {'model': 'gpt-6.1-sol', 'reasoning_effort': 'xhigh'})
+            effort.return_value = 'high'
+            with self.assertRaises(o.OracleApprovalError):
+                o._assert_binding(self.root, binding, {}, None)
+            o._assert_binding(self.root, binding, {}, None, check_environment=False)
+
+    def test_native_unspecified_effort_adds_no_override_or_inherited_hint(self):
+        schema = self.root / ".agents/skills/oracle/review-output.schema.json"; schema.write_text('{}')
+        run = self.root / 'Vault/tmp/unspecified-effort'; run.mkdir(); token = o._RUN.set(run)
+        calls = []
+        def execute(command, **options):
+            calls.append((command, options))
+            Path(command[command.index('--output-last-message') + 1]).write_text('{"verdict":"INCOMPLETE"}')
+            return subprocess.CompletedProcess(command, 0, '', '')
+        try:
+            with patch.object(o, 'selected_model', return_value='gpt-6.1-sol'), \
+                    patch.object(o, 'selected_reasoning_effort', return_value=None), \
+                    patch.dict(os.environ, {'CODEX_SELECTED_REASONING_EFFORT': 'stale-hint'}), \
+                    patch.object(o.subprocess, 'run', side_effect=execute):
+                o._review_process(self.root, 'Synthetic settings', 'reviewer')
+            command, options = calls[0]
+            self.assertFalse(any('model_reasoning_effort=' in argument for argument in command))
+            self.assertNotIn('CODEX_SELECTED_REASONING_EFFORT', options['env'])
+            self.assertIsNone(json.loads((run / 'model.json').read_text())['reasoning_effort'])
+        finally:
+            o._RUN.reset(token)
+
+    def test_unknown_and_bound_raw_nonregular_source_types(self):
+        for kind in ('directory', 'fifo'):
+            for linked in (False, True):
+                for trusted in (False, True):
+                    with self.subTest(kind=kind, linked=linked, trusted=trusted):
+                        stem = f'type-{kind}-{linked}-{trusted}'
+                        target = self.root / 'Vault/tmp' / stem
+                        alias = target.with_name(stem + '-alias')
+                        if linked:
+                            alias.symlink_to(target.name)
+                        source = alias if linked else target
+                        name = str(source.relative_to(self.root))
+                        old = {}
+                        if trusted:
+                            target.write_text('previous regular source')
+                            fact = o._owner_source_fact(self.root, name)
+                            old[name] = 'fs-sha256:' + fact['mode'] + ':' + fact['kind'] + ':' + o._sha(o._canonical(fact))
+                            target.unlink()
+                        if kind == 'directory':
+                            target.mkdir()
+                        else:
+                            os.mkfifo(target, 0o600)
+                        context = self.root / 'Vault/tmp/type-context.json'
+                        context.write_text(json.dumps({'input_hashes': old}))
+                        record = {'round': 1, 'context_file': str(context), 'raw_assessment': {
+                            'assessment': {'findings': [self.finding('TYPE-OBS-001', name)]}}}
+                        inputs = {}
+                        if trusted:
+                            with self.assertRaises(o.OracleSourceBindingError):
+                                o._raw_source_closure(self.root, [record], inputs)
+                        else:
+                            references, bindings, rejected = o._raw_source_closure(self.root, [record], inputs)
+                            self.assertEqual((references, bindings, inputs), ({}, {}, {}))
+                            self.assertEqual({item['finding_id'] for item in rejected}, {'TYPE-OBS-001'})
+                            self.assertEqual({item['status'] for item in rejected}, {'UNAVAILABLE'})
+
+    def test_raw_nonregular_race_rechecks_type_before_source_binding(self):
+        for trusted in (False, True):
+            target = self.root / f'Vault/tmp/type-race-{trusted}'
+            target.write_text('regular before inspection')
+            name = str(target.relative_to(self.root))
+            fact = o._owner_source_fact(self.root, name)
+            old = {name: 'fs-sha256:' + fact['mode'] + ':' + fact['kind'] + ':' + o._sha(o._canonical(fact))} if trusted else {}
+            context = self.root / 'Vault/tmp/race-context.json'
+            context.write_text(json.dumps({'input_hashes': old}))
+            record = {'round': 1, 'context_file': str(context), 'raw_assessment': {'assessment': {
+                'findings': [dict(self.finding('TYPE-RACE-001', name), affected_paths=[])]}}}
+            original = o._owner_source_name
+            def replace_after_check(*args):
+                result = original(*args)
+                target.unlink(); target.mkdir()
+                return result
+            with patch.object(o, '_owner_source_name', side_effect=replace_after_check):
+                if trusted:
+                    with self.assertRaises(o.OracleSourceBindingError):
+                        o._raw_source_closure(self.root, [record], {})
+                else:
+                    references, bindings, rejected = o._raw_source_closure(self.root, [record], {})
+                    self.assertEqual((references, bindings), ({}, {}))
+                    self.assertEqual(rejected[0]['finding_id'], 'TYPE-RACE-001')
+                    self.assertEqual(rejected[0]['status'], 'UNAVAILABLE')
+
+    def test_terminal_directory_selectors_reject_before_content_and_execution(self):
+        regular = self.root / 'Vault/tmp/terminal-regular'
+        regular.write_text('#!/bin/sh\nexit 0\n'); regular.chmod(0o700)
+        name = str(regular.relative_to(self.root))
+        for suffix in ('/', '/.'):
+            for selector in (name + suffix, str(regular) + suffix):
+                with self.subTest(selector=selector):
+                    with self.assertRaises(NotADirectoryError):
+                        os.open(os.path.join(str(self.root), selector), os.O_RDONLY | os.O_NONBLOCK)
+                    with patch.object(o.os, 'fdopen', side_effect=AssertionError('invalid target content read')):
+                        with self.assertRaises(o.OracleApprovalError):
+                            o._custody_read(self.root, selector)
+                        with self.assertRaises(o.OracleApprovalError):
+                            o._files(self.root, [selector])
+                        with self.assertRaises(o.OracleApprovalError):
+                            o._execution_custody(self.root, [selector], dict(os.environ))
+                    self.assertTrue(o._custody_name(self.root, selector).endswith(suffix))
+                    raw_name, error = o._owner_source_name(self.root, selector)
+                    self.assertIsNone(error)
+                    self.assertFalse(o._owner_source_fact(self.root, raw_name)['exists'])
+            alias = regular.with_name('terminal-alias-' + str(len(suffix)))
+            alias.symlink_to(regular.name + suffix)
+            with patch.object(o.os, 'fdopen', side_effect=AssertionError('invalid linked target content read')):
+                with self.assertRaises(o.OracleApprovalError):
+                    o._custody_read(self.root, alias)
+        directory = self.root / 'Vault/tmp/terminal-directory'; directory.mkdir()
+        (directory / 'valid').write_text('valid through an actual directory')
+        fact, raw = o._custody_read(self.root, 'Vault/tmp/terminal-directory/./valid')
+        self.assertEqual(raw, b'valid through an actual directory')
+        self.assertEqual(fact['path'], 'Vault/tmp/terminal-directory/./valid')
+        repeated_root = str(self.root) + '//Vault/tmp/terminal-directory/valid'
+        fact, raw = o._custody_read(self.root, repeated_root)
+        self.assertEqual(raw, b'valid through an actual directory')
+        self.assertEqual(fact['path'], 'Vault/tmp/terminal-directory/valid')
+        self.assertEqual(o._owner_source_name(self.root, repeated_root), (fact['path'], None))
+
+    def test_prepared_settings_drift_blocks_both_normal_launch_paths(self):
+        for kind in ('proposal', 'review'):
+            with self.subTest(kind=kind), patch.object(o, 'selected_model', return_value='gpt-6.1-sol'), \
+                    patch.object(o, 'selected_reasoning_effort', return_value='xhigh') as effort:
+                self.propose()
+                original_run = subprocess.run
+                def execute(command, **options):
+                    if command[0] == 'codex':
+                        raise AssertionError('unbound reviewer was launched')
+                    return original_run(command, **options)
+                def drift_before_launch(*args):
+                    effort.return_value = 'low'
+                    return (o._proposal_oracle if kind == 'proposal' else o._oracle)(*args)
+                with patch.object(o.subprocess, 'run', side_effect=execute):
+                    with self.assertRaisesRegex(o.OracleApprovalError, 'before launch'):
+                        if kind == 'proposal':
+                            o.review_proposal(self.root, 'Synthetic prelaunch race', [], None, drift_before_launch)
+                        else:
+                            o.issue(self.root, [str(self.evidence)], None, drift_before_launch)
+                self.assertIsNone(o._PREPARED_SETTINGS.get())
+                self.assertFalse(o.receipt_path(self.root).exists())
+
+    def test_selected_settings_drift_keeps_actual_error_and_raw_observation(self):
+        with patch.object(o, 'selected_model', return_value='gpt-6.1-sol'), \
+                patch.object(o, 'selected_reasoning_effort', return_value='xhigh') as effort:
+            self.propose()
+            def drift(context):
+                result = self.result(context)
+                effort.return_value = 'low'
+                return result
+            self.submit(drift, error=o.OracleApprovalError)
+            latest = o._read_rounds(o._series_directory(self.root, self.base))[-1]
+            self.assertEqual(latest['outcome'], 'ERROR')
+            self.assertEqual(latest['raw_assessment']['reported_review_status'], 'COMPLETE')
+            self.assertIsNone(o._PREPARED_SETTINGS.get())
+
+    def test_native_absent_empty_and_empty_directory_path_match_runtime(self):
+        local = self.root / 'sh'; local.write_text('#!/bin/sh\nprintf local\n'); local.chmod(0o700)
+        for environment, expected in (({}, 'system'), ({'PATH': ''}, 'local')):
+            result = subprocess.run(['sh', '-c', 'printf system'], cwd=self.root, env=environment,
+                                    capture_output=True, text=True)
+            self.assertEqual((result.returncode, result.stdout), (0, expected))
+            selected = o._execution_custody(self.root, ['sh'], environment)[0]['resolved']
+            self.assertEqual(selected == 'sh', expected == 'local')
+        empty = self.root / 'empty-search-directory'; empty.mkdir()
+        environment = {'PATH': str(empty)}
+        with self.assertRaises(FileNotFoundError):
+            subprocess.run(['sh'], cwd=self.root, env=environment)
+        with self.assertRaises(o.OracleApprovalError):
+            o._execution_custody(self.root, ['sh'], environment)
 
     def test_bounded_environment_cli_accepts_explicit_variable_names(self):
         name, secret = "ORACLE_CLI_SECRET", "fixture-cli-sensitive-value"
