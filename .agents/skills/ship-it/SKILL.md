@@ -5,6 +5,12 @@ description: Create the next repository release version, review and validate all
 
 # Ship It
 
+## Controlling review and publication placement — October 18, 2026
+
+Complete independent technical proposal/review and commit checks without human deployment permission. Missing permission is not a technical finding. Existing human-approval wording below applies only to an actual protected deployment/publication effect: concrete credential-trust, permission-authority, tenant-isolation or incompatible-public-contract behavior. Authentication labels, filenames and ordinary compatible corrections create no gate. Keep the explicit public API version request and cost controls.
+
+Use `python3 tools/publication_admission.py plan --release-ref <resolved-ref>` to inspect the exact publication. Source review pushes use its `push` command and require no deployment permission; PR creation/review remain available. Actual distributed-plugin main promotion uses its `merge --pr <number> --release-ref <resolved-ref>` command after required checks. When its exact protected effect lacks scoped human authority, finish all technical work and pause only that actual publication effect; use its `authorize --owner-evidence <direct-human-evidence> --release-ref <resolved-ref>` command to assess later evidence separately, then supply the resulting `--authorization <record>` to merge. Use repeatable `--effect-id <current-effect>` when supplied evidence covers selected missing scopes; omitted selection assesses all remaining scopes. Repeat `--authorization` for cumulative exact-effect decisions; `authorize` requests only effects still missing valid authority. Preserve every rejected/stale attempt alongside later valid evidence. Preserve the original technical receipt, full effective range and current effect dispositions. Never hot-patch installations.
+
 ## Model inheritance
 
 Spawn native agents without a model override so they inherit the current task's
@@ -280,7 +286,7 @@ Run the repository-local Oracle remediation loop before committing:
 
 ## Publish through a pull request
 
-1. Push the release branch to its configured upstream under the invocation's
+1. Run `python3 tools/publication_admission.py push --release-ref <resolved-ref>` to push the review branch under the invocation's
    existing authorization. When no upstream exists, set one only when the
    release branch and a single intended remote are unambiguous. Push the full
    evolving, reviewed release payload without pausing for confirmation. Never
@@ -291,7 +297,7 @@ Run the repository-local Oracle remediation loop before committing:
    different destination.
 2. Open a pull request from the release branch to the resolved default branch. The title must identify the new release version, and the body must summarize generated clients and validation evidence.
 3. Wait for all required pull-request checks. Fix in-scope failures on the release branch, rerun affected local validation, push the correction, and wait again.
-4. Merge the pull request under the invocation's existing authorization only
+4. Run `python3 tools/publication_admission.py merge --pr <number> --release-ref <resolved-ref>` to merge under the invocation's existing authorization only
    after every required check passes and the repository reports that it is
    mergeable. Use a repository-supported merge method; GitHub must record the
    pull request as merged. Merge without asking a question, and do not bypass

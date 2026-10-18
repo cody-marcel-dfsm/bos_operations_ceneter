@@ -94,7 +94,7 @@ class ReviewSeries(unittest.TestCase):
                 "limitations": [] if status == "COMPLETE" else ["Synthetic unfinished peer coverage"],
                 "repair_plan": context["repair_plan"] or "Verify all synthetic acceptance checks",
                 "authentication_impact": "NONE", "owner_approval_status": "NOT_REQUIRED",
-                "api_version_assessment": self.assessment()}
+                "api_version_assessment": self.assessment(), "protected_effects": {"active": [], "dispositions": []}}
 
     @staticmethod
     def finding(identity="F001", path="source.py", origin="INITIAL"):
@@ -704,7 +704,7 @@ class ReviewSeries(unittest.TestCase):
         original_proposal = o.proposal_path(self.root).read_bytes()
         original_receipt = o.receipt_path(self.root).read_bytes()
         invalid = {"verdict": "APPROVED", "findings": [], "authentication_impact": "NONE",
-                   "owner_approval_status": "APPROVED", "api_version_assessment": self.assessment()}
+                   "owner_approval_status": "UNKNOWN", "api_version_assessment": self.assessment()}
         with self.assertRaisesRegex(o.OracleApprovalError, "classification"):
             o.review_proposal(self.root, "new request", [], None, lambda *args: invalid)
         self.assertEqual(o.proposal_path(self.root).read_bytes(), original_proposal)
@@ -1030,7 +1030,7 @@ class ReviewSeries(unittest.TestCase):
 
         def failed_gate(context):
             result = self.result(context)
-            result.update(authentication_impact="AUTHENTICATION", owner_approval_status="MISSING")
+            result.update(authentication_impact="AUTHENTICATION", owner_approval_status="UNKNOWN")
             return result
 
         self.submit(failed_gate, error=o.OracleApprovalError)
@@ -1666,7 +1666,7 @@ class ReviewSeries(unittest.TestCase):
         variants = [
             source.replace("Reviewer process configuration:", "Additional reviewer policy:"),
             source.replace('"reviewer_role": "independent-oracle-approver"', '"reviewer_role": "changed-role"'),
-            source.replace('str(root / ".agents/skills/oracle/review-output.schema.json"),', 'str(root / "changed-schema.json"),'),
+            source.replace('str(schema_path),', 'str(root / "changed-schema.json"),'),
             source.replace("Return JSON matching the supplied schema.", "Use a different output contract."),
             source.replace('"--sandbox", "danger-full-access"', '"--sandbox", "read-only"'),
             source.replace("cmd, cwd=root", 'cmd[:-1] + ["changed prompt"], cwd=root'),
@@ -1706,7 +1706,7 @@ class ReviewSeries(unittest.TestCase):
             "unpacked alias": source.replace(insert, '    alias, other = metadata, None\n    alias.clear()\n' + insert),
             "opaque transformation": source.replace(insert, '    transform(metadata)\n' + insert),
             "local schema construction": source.replace(insert, '    type_value = "object"\n    metadata = {"type": type_value}\n' + insert),
-            "default policy": source.replace('def _review_process(root: Path, prompt: str, prefix: str)', 'def _review_process(root: Path, prompt: str, prefix: str = REVIEWER_ROLE)'),
+            "default policy": source.replace('def _review_process(root: Path, prompt: str, prefix: str,', 'def _review_process(root: Path, prompt: str, prefix: str = REVIEWER_ROLE,'),
             "conditional mutation": source.replace(insert, '    if enabled:\n        metadata = {"reviewer_role": "changed"}\n' + insert),
             "exception mutation": source.replace(insert, '    try:\n        metadata = {}\n    except ChangedException:\n        pass\n' + insert),
             "match mutation": source.replace(insert, '    match setting:\n        case "changed":\n            metadata = {}\n' + insert),
@@ -1851,7 +1851,8 @@ class ReviewSeries(unittest.TestCase):
                 self.assertEqual(len(settings), 1)
                 developer = json.loads(settings[0].split("=", 1)[1])
                 self.assertEqual(developer, "\n\n".join((o.REVIEWER_ROLE, o.NORMAL_PLAN_REVIEW_POLICY,
-                                                         o.LOCAL_EXECUTION_POLICY, o.REVIEW_SERIES_POLICY)))
+                                                         o.LOCAL_EXECUTION_POLICY, o.REVIEW_SERIES_POLICY,
+                                                         o.DEPLOYMENT_PLACEMENT_POLICY)))
                 for clause in ("actual source/control delta first", "sealed original observations",
                                "aggregate FAILED or ERROR", "strictly native-ineligible",
                                "Before every validation or diagnostic command", "Historical evidence supplies no current approval"):
@@ -2809,11 +2810,9 @@ class ReviewSeries(unittest.TestCase):
         self.assertTrue(latest["verified_validations"])
         return latest
 
-    def test_final_authentication_and_api_gates_record_error_before_approval(self):
+    def test_final_classification_and_api_gates_record_error_before_approval(self):
         assessments = [
-            {"authentication_impact": "AUTHENTICATION", "owner_approval_status": "MISSING"},
-            {"authentication_impact": "AUTHENTICATION", "owner_approval_status": "APPROVED"},
-            {"authentication_impact": "NONE", "owner_approval_status": "APPROVED"},
+            {"authentication_impact": "AUTHENTICATION", "owner_approval_status": "UNKNOWN"},
             {"authentication_impact": "UNKNOWN", "owner_approval_status": "NOT_REQUIRED"},
         ]
         for kind in ["MISSING", "APPROVAL_ONLY", "EXPLICIT_REQUEST"]:
@@ -2837,7 +2836,7 @@ class ReviewSeries(unittest.TestCase):
         self.record_check()
         def invalid(context):
             result = self.result(context, resolutions=[self.resolve(context, "F001")])
-            return dict(result, authentication_impact="AUTHENTICATION", owner_approval_status="MISSING")
+            return dict(result, authentication_impact="AUTHENTICATION", owner_approval_status="UNKNOWN")
         self.submit(invalid, error=o.OracleApprovalError)
         latest = self.assert_error_disposition()
         self.assertEqual(latest["finding_ledger"]["F001"]["state"], "RESOLVED")

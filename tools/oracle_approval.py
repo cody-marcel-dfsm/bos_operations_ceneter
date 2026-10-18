@@ -39,6 +39,30 @@ repository-owned indexing, semantic queries, tests and generated diagnostic/cach
 writes are permitted. Preserve independent approval, all content bindings and
 spending controls. This direction supersedes older read-only sandbox requirements.
 """
+DEPLOYMENT_PLACEMENT_POLICY = """Controlling owner direction, 2026-10-18:
+Technical proposals, completed reviews, commits and review-only source pushes
+never require human deployment permission. Complete the independent technical
+assessment and reject actual defects, custody failures and unrequested public
+API versions. Missing deployment authority is not a technical defect. This
+direction supersedes earlier permission placement in the approver skill and
+other authorities; ordinary agents still never load or act as the approver.
+Classify concrete protected publication effects separately: credential-trust,
+permission-authority, tenant-isolation, or incompatible-public-contract changes.
+Authentication impact, labels, filenames and ordinary compatible corrections
+alone create no protected effect. Review the complete effective publication
+baseline-to-candidate range, including earlier unpublished commits. Keep stable
+effect IDs; removing an earlier active effect requires current source-bound
+SUPERSEDED or REVERTED evidence. Technical APPROVED may carry MISSING or INVALID
+owner status. That legacy status never grants publication authority. Only actual
+product publication/deployment checks exact scoped authority, separately from
+the immutable technical receipt. Later human evidence never rewrites that receipt.
+When private historical receipts are unavailable, state their exact commit/tree
+identities and independently assess the complete configured fetched published
+baseline-to-candidate diff and effects. Seal this current full-range recovery
+assessment; never invent historical decisions or block technical review for
+missing deployment history. Missing published baseline limits publication until
+fetch and a current full-range assessment; technical work remains available.
+"""
 LEAD_GRAPH_REVIEW = """For changes affecting CRM record lookup routing, skill composition, or graph presentation, explicitly inspect the recurring graph-omission history in Vault/docs/issues/ISSUE_HISTORY.md, Issue #0008, and the October 8 focused student-workflow exception in Issue #0026. Trace the shared source/platform/bos-mcp-client/references/record-journey-display.md contract through each applicable canonical and generated entrypoint. Require focused tests/lead-graph-regression.test.mjs evidence: a successful named lead/contact lookup retains its graph completion rule after a workspace clarification; available topology includes the current node and every intermediate node and edge to a resolved goal; the default view contains one compact preferred route, with a shortest structural fallback and full topology only on explicit request; a partial graph cites the exact missing read and preserves verified state without invented topology. Preserve app-ranking provenance, explicit shortest/text/full-graph requests, and focused student lookup/state-comparison scope. Reject a source candidate that removes this rule, crowds the default with off-route branches and loops, suppresses verified topology because actions/history are empty, or weakens these regressions. Require plain-text node and edge labels with diagram-native emphasis; reject added literal or escaped HTML formatting in labels and require the corresponding response regression cases. Require advertised native inline visualization tools to take priority over Mermaid, allow Mermaid only with established host rendering support, and reject ASCII routes or unrendered Mermaid as graph completion. Keep internal identifiers and unsolicited off-route explanations out of normal graph delivery. Require delivery-selector regressions against the Claude Code raw-code failure shape and generated-script behavior. Distinguish deterministic source/response-contract checks from observed published-client acceptance: synthetic responses and passing prose/reference checks cannot establish native prompt success. Keep the recurring incident open until version-bound published-client output proves both automatic graph completion and compact path presentation; normal source readiness may proceed with that acceptance explicitly pending."""
 
 class OracleApprovalError(RuntimeError): pass
@@ -107,9 +131,9 @@ optional discovery. Coverage dependencies must be actual input identities from
 the current context; the context itself cannot be self-binding evidence.
 Proposal review applies the same bounded evidence, complete assessment and
 protected-change rules; completed-path coverage bookkeeping applies only to
-completed-candidate review. Every current owner, authentication, public-version,
-coverage, native-validation eligibility and exact-candidate approval gate remains
-mandatory. Historical evidence supplies no current approval.
+completed-candidate review. Every current technical classification, public-version request, coverage,
+native-validation eligibility and exact-candidate approval gate remains mandatory;
+specific protected-publication authority is checked only at its actual effect. Historical evidence supplies no current approval.
 Source work continues during and between assessments. Impose no source/file/line
 lock, checkout freeze or work pause; include changes from every implementation.
 Use path_dispositions, attempt_delta and cumulative_pending_since_verified to
@@ -396,6 +420,100 @@ def _review_settings_binding() -> dict:
         return {"configuration_error": {"type": type(exc).__name__, "message": str(exc)}}
 
 
+PROTECTED_EFFECT_KINDS = {"credential-trust", "permission-authority", "tenant-isolation", "incompatible-public-contract"}
+PUBLICATION_REMOTE = "https://github.com/cody-marcel-dfsm/bos_operations_ceneter.git"
+
+
+def _technical_archive(root: Path, digest: str) -> Path:
+    if not re.fullmatch(r"[0-9a-f]{64}", digest):
+        raise OracleApprovalError("Invalid technical receipt digest")
+    return receipt_path(root).parent / "receipts" / (digest + ".json")
+
+
+def _publication_scope(root: Path, tree: str) -> dict:
+    """The effective distributed source range, independent of the last commit."""
+    base = _git(root, "rev-parse", "HEAD").strip()
+    remote_url, target = None, None
+    probe = subprocess.run(["git", "rev-parse", "--verify", "refs/remotes/origin/main^{commit}"],
+                           cwd=root, capture_output=True, text=True)
+    if probe.returncode == 0:
+        base = probe.stdout.strip()
+        remote_url = _git(root, "remote", "get-url", "origin").strip()
+        target = "refs/heads/main"
+        if subprocess.run(["git", "merge-base", "--is-ancestor", base, "HEAD"], cwd=root,
+                          capture_output=True).returncode:
+            raise OracleApprovalError("Integrate the publication baseline before technical review")
+    prior, history_limitations = [], []
+    for commit in _git(root, "rev-list", "--reverse", base + "..HEAD").splitlines():
+        message = _git(root, "show", "-s", "--format=%B", commit)
+        try:
+            digest = _trailers(message)[TRAILER_KEYS[2]]
+        except OracleApprovalError:
+            continue  # The complete current range still requires independent coverage.
+        path = _technical_archive(root, digest)
+        fact, raw = _custody_read(root, path, allow_absent=True)
+        if fact["source"].get("links"):
+            raise OracleApprovalError("Archived technical receipt has an invalid linked route")
+        if not fact["source"].get("exists"):
+            history_limitations.append({"commit": commit, "tree": _git(root, "show", "-s", "--format=%T", commit).strip(), "receipt_sha256": digest,
+                                        "reason": "Private historical receipt unavailable; complete current range requires independent technical assessment"})
+            continue
+        if _sha(raw) != digest:
+            raise OracleApprovalError("Archived technical receipt changed")
+        receipt = json.loads(raw)
+        _shape(receipt)
+        if receipt["candidate_tree"] != _git(root, "show", "-s", "--format=%T", commit).strip():
+            raise OracleApprovalError("Archived effect receipt belongs to another source")
+        for effect in receipt.get("protected_effects", {}).get("active", []):
+            item = {"origin": digest, "effect": effect}
+            if item not in prior:
+                prior.append(item)
+    return {"baseline_commit": base, "candidate_tree": tree, "remote_url": remote_url,
+            "target_ref": target, "range_paths": _paths(root, base, tree),
+            "range_sha256": _sha(_git_bytes(root, "diff", "--binary", "--full-index", base, tree)),
+            "prior_effects": prior, "history_limitations": history_limitations}
+
+
+def _protected_effects(review: dict, scope: dict, context: dict | None = None, *, native: bool = True) -> dict:
+    value = review.get("protected_effects")
+    if value is None and not native:
+        value = {"active": [], "dispositions": []}  # Explicitly synthetic/legacy test reviewers.
+    if not isinstance(value, dict) or set(value) != {"active", "dispositions"}:
+        raise OracleApprovalError("Technical review lacks explicit protected-effect assessment")
+    if not isinstance(value["active"], list) or not isinstance(value["dispositions"], list):
+        raise OracleApprovalError("Invalid protected-effect assessment")
+    identities = set()
+    for effect in value["active"]:
+        if (not isinstance(effect, dict) or set(effect) != {"id", "kind", "boundary", "description", "paths", "inputs"}
+                or not re.fullmatch(r"[a-z][a-z0-9-]{0,95}", effect.get("id", ""))
+                or effect["id"] in identities or effect["kind"] not in PROTECTED_EFFECT_KINDS
+                or not all(isinstance(effect[key], str) and effect[key].strip() for key in ("boundary", "description"))
+                or not isinstance(effect["paths"], list) or not effect["paths"]
+                or not set(effect["paths"]).issubset(scope["range_paths"])):
+            raise OracleApprovalError("Invalid concrete protected publication effect")
+        identities.add(effect["id"])
+        if context is not None:
+            _checked_inputs(effect["inputs"], context)
+            if not set(effect["paths"]).issubset({item["path"] for item in effect["inputs"]}):
+                raise OracleApprovalError("Protected effect lacks its consumed source bindings")
+    dispositions = {}
+    for item in value["dispositions"]:
+        if (not isinstance(item, dict) or set(item) != {"origin", "id", "status", "reason", "inputs"}
+                or item["status"] not in {"SUPERSEDED", "REVERTED"} or not item["reason"].strip()
+                or (item["origin"], item["id"]) in dispositions):
+            raise OracleApprovalError("Invalid protected-effect disposition")
+        if context is not None:
+            _checked_inputs(item["inputs"], context)
+        dispositions[item["origin"], item["id"]] = item
+    prior_keys = {(item["origin"], item["effect"]["id"]) for item in scope["prior_effects"]}
+    if not set(dispositions).issubset(prior_keys):
+        raise OracleApprovalError("Protected-effect disposition has no original assessment")
+    for origin, identity in prior_keys:
+        if identity not in identities and (origin, identity) not in dispositions:
+            raise OracleApprovalError("Earlier protected effect lacks current independent disposition")
+    return value
+
+
 def _input_binding(root: Path, evidence: dict, owner: dict | None) -> dict:
     untracked = [name for name in _git(root, "ls-files", "--others", "--exclude-standard").splitlines()
                  if not name.startswith("Vault/")]
@@ -408,6 +526,7 @@ def _input_binding(root: Path, evidence: dict, owner: dict | None) -> dict:
             "vault_source_hashes": sources, "tool_digests": _files(root, tools),
             "environment_digest": _environment_digest(),
             "reviewer_settings": _review_settings_binding(),
+            "publication_scope": _publication_scope(root, _tree(root)),
             "validation_evidence": _files(root, list(evidence)),
             "owner_approval_evidence": _files(root, list(owner)) if owner is not None else None,
             "route_custody": _custody_files(root, [*evidence, *(owner or {}), *tools, *untracked, *sources,
@@ -424,11 +543,12 @@ def _assert_binding(root: Path, expected: dict, evidence: dict, owner: dict | No
 
 
 @_metadata_owner
-def _review_process(root: Path, prompt: str, prefix: str) -> dict:
+def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path | None = None) -> dict:
     run = _RUN.get()
     if run is None:
         raise OracleApprovalError("Independent Oracle must run under the review lock")
     output = run / "result.json"
+    schema_path = schema_path or root / ".agents/skills/oracle/review-output.schema.json"
     try:
         model, effort = selected_model(), selected_reasoning_effort()
     except (RuntimeError, ValueError) as exc:
@@ -440,13 +560,14 @@ def _review_process(root: Path, prompt: str, prefix: str) -> dict:
     if expected_settings is not None and expected_settings != {"model": model, "reasoning_effort": effort}:
         raise OracleApprovalError("Selected Oracle model/effort changed before launch")
     developer_instructions = "\n\n".join((REVIEWER_ROLE, NORMAL_PLAN_REVIEW_POLICY,
-                                         LOCAL_EXECUTION_POLICY, REVIEW_SERIES_POLICY))
+                                         LOCAL_EXECUTION_POLICY, REVIEW_SERIES_POLICY,
+                                         DEPLOYMENT_PLACEMENT_POLICY))
     metadata = {"selected_model": model, "reasoning_effort": effort,
                 "sandbox": "danger-full-access", "ephemeral": True,
                 "ignore_user_config": True,
                 "reviewer_role": "independent-oracle-approver",
                 "developer_instructions_sha256": _sha(developer_instructions.encode()),
-                "schema_sha256": _custody_read(root, root / ".agents/skills/oracle/review-output.schema.json")[0]["sha256"],
+                "schema_sha256": _custody_read(root, schema_path)[0]["sha256"],
                 "model_helper_sha256": _custody_read(root, root / "tools/codex_child_model.py")[0]["sha256"]}
     _atomic_write(run / "model.json", _pretty(metadata))
     prompt += "\nReviewer process configuration:\n" + json.dumps(metadata, sort_keys=True)
@@ -454,7 +575,7 @@ def _review_process(root: Path, prompt: str, prefix: str) -> dict:
     cmd = ["codex", "exec", "--ephemeral", "--ignore-user-config", "--model", model,
            "-c", "developer_instructions=" + json.dumps(developer_instructions),
            "--sandbox", "danger-full-access", "--cd", str(root), "--output-schema",
-           str(root / ".agents/skills/oracle/review-output.schema.json"),
+           str(schema_path),
            "--output-last-message", str(output), prompt]
     environment = {**os.environ, "CODEX_SELECTED_MODEL": model}
     if effort is not None:
@@ -718,7 +839,7 @@ def _validation_environment(extra_keys: Sequence[str] = ()) -> tuple[dict, dict,
     return effective, fingerprints, extras
 
 
-REVIEW_POLICY_MODULES = ("tools/oracle_approval.py", "tools/codex_child_model.py", "tools/vault_index.py")
+REVIEW_POLICY_MODULES = ("tools/oracle_approval.py", "tools/codex_child_model.py", "tools/vault_index.py", "tools/publication_admission.py")
 
 
 def _review_policy_sources(root: Path, tree: str | None = None) -> dict:
@@ -993,7 +1114,7 @@ def _owner_source_lexical_name(root: Path, value) -> tuple[str | None, str | Non
             return None, "outside owner root"
         value = value[len(prefix):].lstrip(os.sep)
     path = Path(value)
-    if not path.parts or path.parts[0] == "@proposal" or ".git" in path.parts:
+    if not path.parts or path.parts[0] in {"@proposal", "@publication"} or ".git" in path.parts:
         return None, "reserved source reference"
     return value, None
 
@@ -1057,7 +1178,12 @@ def _owner_source_walk(root: Path, name: str, *, content: bool, allow_git: bool 
             resolved = "/".join([*parts, piece, *pending])
             try:
                 before = os.stat(piece, dir_fd=descriptors[-1], follow_symlinks=False)
-            except (FileNotFoundError, NotADirectoryError):
+            except FileNotFoundError:
+                fact = {"exists": False}
+                break
+            except NotADirectoryError:
+                if custody:
+                    raise OracleApprovalError("Oracle evidence has a non-directory ancestor: " + name)
                 fact = {"exists": False}
                 break
             if stat.S_ISLNK(before.st_mode):
@@ -1091,6 +1217,8 @@ def _owner_source_walk(root: Path, name: str, *, content: bool, allow_git: bool 
                                     "kind": "directory"})
             if pending:
                 if not stat.S_ISDIR(before.st_mode):
+                    if custody:
+                        raise OracleApprovalError("Oracle evidence has a non-directory ancestor: " + name)
                     fact = {"exists": False}
                     break
                 child = os.open(piece, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=descriptors[-1])
@@ -1278,6 +1406,10 @@ def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence:
     proposal = json.loads(_custody_read(root, str(proposal_path(root)))[1])
     proposal_scope = {"sha256": proposal["proposal_sha256"], "proposal": proposal["proposal"]}
     inputs["@proposal/scope"] = "sha256:" + proposal_scope["sha256"]
+    publication_scope = binding["publication_scope"]
+    if publication_scope["target_ref"] is not None:
+        inputs["@publication/scope"] = "sha256:" + _sha(_canonical(publication_scope))
+        paths = sorted(set(paths) | set(publication_scope["range_paths"]) | {"@publication/scope"})
     for name in paths:
         inputs.setdefault(name, None)  # Deleted paths are explicit review inputs.
     guards = {key: binding[key] for key in ("authority_digests", "owner_approval_evidence")}
@@ -1368,6 +1500,7 @@ def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence:
                "repair_plan": synthesis if failed_repairs >= 2 else "",
                "prior_rounds": [{key: item[key] for key in ("round", "candidate_tree", "outcome", "record_sha256")}
                                 for item in rounds]}
+    context["publication_scope"] = publication_scope
     context["unadopted_assessments"] = _raw_assessment_navigation(root, rounds, inputs, guards)
     context["path_dispositions"] = _path_dispositions(root, context, rounds)
     context["attempt_delta"] = {"from_candidate": previous["candidate_tree"] if previous else None,
@@ -1476,7 +1609,7 @@ def record_validation(root: Path, command: Sequence[str], input_paths: Sequence[
 
 
 def _validation_record(root: Path, name: str, inputs: list, environment_digest: str, *,
-                       check_environment: bool = True) -> dict:
+                       check_environment: bool = True, expected_base: str | None = None) -> dict:
     try:
         path = Path(name) if Path(name).is_absolute() else root / name
         record_fact, raw = _custody_read(root, name)
@@ -1509,7 +1642,7 @@ def _validation_record(root: Path, name: str, inputs: list, environment_digest: 
                  and record["record_sha256"] == _sha(_canonical(payload)) and record["exit_code"] == 0
                  and record["inputs"] == inputs and selected == {item["path"]: item["digest"] for item in inputs}
                  and record["live_inputs"] == live
-                 and record["base_commit"] == _git(root, "rev-parse", "HEAD").strip()
+                 and record["base_commit"] == (expected_base if expected_base is not None else _git(root, "rev-parse", "HEAD").strip())
                  and record["environment_digest"] == environment_digest
                  and record["authority_digests"] == _controlling_authorities(_live_authorities(root))
                  and record["output_hashes"] == _files(root, list(record["output_hashes"]))
@@ -1877,14 +2010,12 @@ def _validate_api_version_assessment(assessment: Any, verdict: str, root: Path |
 
 def _shape(receipt: dict[str, Any]) -> dict[str, Any]:
     required = {"schema_version","issuer","verdict","base_commit","candidate_tree","changed_paths","authority_digests","authentication_impact","owner_approval_status","validation_evidence","owner_approval_evidence","review_digest","approval_id","api_version_assessment"}
-    if set(receipt) != required: raise OracleApprovalError("Oracle receipt fields do not match the current review contract")
+    if set(receipt) not in (required, required | {"publication_scope", "protected_effects"}): raise OracleApprovalError("Oracle receipt fields do not match the current review contract")
     payload = {k: v for k, v in receipt.items() if k != "approval_id"}
     if receipt["approval_id"] != _sha(_canonical(payload)): raise OracleApprovalError("Oracle approval receipt ID is invalid")
     if payload["schema_version"] != SCHEMA_VERSION or payload["issuer"] != ISSUER or payload["verdict"] != "APPROVED": raise OracleApprovalError("Oracle receipt identity is invalid")
     impact, status = payload["authentication_impact"], payload["owner_approval_status"]
-    if impact == "AUTHENTICATION" and status != "APPROVED": raise OracleApprovalError("Authentication receipt lacks approved owner evidence")
-    if impact == "AUTHENTICATION" and not payload["owner_approval_evidence"]: raise OracleApprovalError("Authentication receipt lacks owner evidence bytes")
-    if impact == "NONE" and status != "NOT_REQUIRED": raise OracleApprovalError("Non-authentication receipt has invalid owner status")
+    if status not in {"NOT_REQUIRED", "APPROVED", "MISSING", "INVALID"}: raise OracleApprovalError("Oracle receipt has invalid legacy owner status")
     if impact not in {"AUTHENTICATION", "NONE"}: raise OracleApprovalError("Oracle receipt lacks authentication classification")
     _validate_api_version_assessment(payload["api_version_assessment"], payload["verdict"])
     return payload
@@ -1895,7 +2026,7 @@ def _read_local(root: Path) -> tuple[dict[str, Any], bytes]:
     if not isinstance(receipt, dict) or raw != _pretty(receipt): raise OracleApprovalError("Oracle receipt is not canonical pretty JSON")
     return receipt, raw
 
-def _receipt_current_context(root: Path, payload: dict, pending_evidence: dict[str, bytes]) -> tuple[dict, Path]:
+def _receipt_current_context(root: Path, payload: dict, pending_evidence: dict[str, bytes], *, validation_base: str | None = None) -> tuple[dict, Path]:
     """Select live manifests through the managed native round, preserving history."""
     directory = _series_directory(root, payload["base_commit"])
     records = _read_rounds(directory)
@@ -1945,7 +2076,7 @@ def _receipt_current_context(root: Path, payload: dict, pending_evidence: dict[s
         raise OracleApprovalError("Oracle current review context binding is invalid")
     for proof in record["verified_validations"]:
         _validation_record(root, proof["evidence_path"], proof["inputs"], proof["environment_digest"],
-                           check_environment=False)
+                           check_environment=False, **({"expected_base": validation_base} if validation_base is not None else {}))
     return context, path
 
 
@@ -1966,6 +2097,10 @@ def _verify_receipt(root: Path, receipt: dict, raw: bytes, *, pending_evidence: 
     actual_evidence.update({name: _sha(value) for name, value in pending_evidence.items()})
     if evidence != actual_evidence:
         raise OracleApprovalError("Oracle validation evidence changed")
+    if "publication_scope" in payload:
+        if payload["publication_scope"] != _publication_scope(root, tree):
+            raise OracleApprovalError("Oracle publication source range changed")
+        _protected_effects({"protected_effects": payload["protected_effects"]}, payload["publication_scope"])
     context, context_path = _receipt_current_context(root, payload, pending_evidence)
     _assert_raw_sources(root, context)
     _validate_api_version_assessment(payload["api_version_assessment"], payload["verdict"], root, evidence)
@@ -2001,13 +2136,14 @@ def _oracle(root: Path, tree: str, paths: list[str], evidence: dict[str,str], ow
     if _RUN.get() and (_RUN.get() / "review-context.json").is_file():
         request["review_context"] = str(_RUN.get() / "review-context.json")
     prompt = f"""You are the independent BOS Operations Center Oracle approval process.
-Read .agents/skills/oracle/SKILL.md completely and wear that approver skill. Use the hash-bound oracle-inputs.json, candidate.diff and vault-query.json as navigation. On initial assessment inspect the complete candidate, applicable AGENTS.md/private Vault authorities, issue history and relevant validation evidence. On follow-up or resume inspect actual deltas first and apply the trusted execution policy to affected dependencies, open findings, unfinished coverage and sealed unchanged observations. Prepared retrieval never narrows required coverage. Only this process issues Oracle warnings and verdicts. Creating, bumping, replacing, or splitting a public API version requires the human user's explicit request for that exact version change. Owner approval, general fix/release authorization, inferred compatibility, pre-existing implementation, and Oracle guidance never substitute. Correct behavior and preserve authorized improvements in the current API version; package/build patches and identity-envelope protocols are distinct. Independently classify api_version_assessment: NONE requires NOT_REQUIRED and all request fields null; CHANGE requires EXPLICIT_REQUEST for APPROVED, exact requested_change, verbatim direct-user request_quote, and an absolute request_evidence path supplied through --evidence containing that quote. Independently inspect human provenance, context, exact scope and refusals; an agent assertion or approval-only statement is insufficient. Reject unrequested API version changes. An exact explicit request authorizes continuation through ordinary independent review without repeated owner approval. Authentication classification and owner approval remain separate.
+Read .agents/skills/oracle/SKILL.md completely and wear that approver skill. Use the hash-bound oracle-inputs.json, candidate.diff and vault-query.json as navigation. On initial assessment inspect the complete candidate, applicable AGENTS.md/private Vault authorities, issue history and relevant validation evidence. On follow-up or resume inspect actual deltas first and apply the trusted execution policy to affected dependencies, open findings, unfinished coverage and sealed unchanged observations. Prepared retrieval never narrows required coverage. Only this process issues Oracle warnings and verdicts. Creating, bumping, replacing, or splitting a public API version requires the human user's explicit request for that exact version change. Owner approval, general fix/release authorization, inferred compatibility, pre-existing implementation, and Oracle guidance never substitute. Correct behavior and preserve authorized improvements in the current API version; package/build patches and identity-envelope protocols are distinct. Independently classify api_version_assessment: NONE requires NOT_REQUIRED and all request fields null; CHANGE requires EXPLICIT_REQUEST for APPROVED, exact requested_change, verbatim direct-user request_quote, and an absolute request_evidence path supplied through --evidence containing that quote. Independently inspect human provenance, context, exact scope and refusals; an agent assertion or approval-only statement is insufficient. Reject unrequested API version changes. An exact explicit request authorizes continuation through ordinary independent review without repeated owner approval. Authentication classification does not grant publication authority.
 {LEAD_GRAPH_REVIEW}
 {NORMAL_PLAN_REVIEW_POLICY}
 {LOCAL_EXECUTION_POLICY}
 {REVIEW_SERIES_POLICY}
+{DEPLOYMENT_PLACEMENT_POLICY}
 The structured review-context.json can be large: inspect its metadata/coverage with selective JSON reads, and select input_hashes only for relevant source/dependency paths. Inspect prior_native_assessment before rereading unchanged owner/authentication/public-API evidence: it projects the latest nonempty native classification, its immutable origin and factual candidate/guard comparisons, skipping ERROR records. It is historical evidence; independently assess current scope, changed inputs and all current gates before issuing a fresh verdict. Cover required_coverage_paths, including reverted repairs, removed files and pending unassessed changes retained through ERROR/INCOMPLETE. A repair finding affecting both changed and unchanged paths is REPAIR when changed behavior causes it. MISSED applies when the affected behavior, dependencies and requirements remained unchanged. Scope changes are explicit in proposal_scope/previous_proposal_scope and the @proposal/scope input; explain new requirements in origin_reason, reassess affected coverage and include that input in requirement-dependent coverage. Preserve unrelated verified coverage. COMPLETE uses limitations=[]; put nonblocking scope boundaries in summary. Validation VERIFIED or REUSED requires an oracle-validation-record-v1 produced by this utility's validate command, whose exact inputs, environment and retained outputs prove the result. Legacy prose/log evidence remains reviewable and cannot acquire reusable validation status by assertion.
-Return JSON matching the supplied schema. Classify authentication_impact as AUTHENTICATION or NONE. An APPROVED authentication review requires owner_approval_status APPROVED. A REJECTED authentication review may report APPROVED, MISSING, or INVALID. A NONE review uses NOT_REQUIRED. Only APPROVED with no findings can issue a receipt.\n{json.dumps(request, indent=2, sort_keys=True)}"""
+Return JSON matching the supplied schema. Classify authentication_impact as AUTHENTICATION or NONE. Technical approval never requires human deployment permission. Any review may report the applicable NOT_REQUIRED, APPROVED, MISSING or INVALID legacy owner status; this field grants no publication authority. Return protected_effects with active concrete effects and independently source-bound dispositions for the complete publication_scope. A missing permission is not a finding. Only APPROVED with no findings can issue a receipt.\n{json.dumps(request, indent=2, sort_keys=True)}"""
     return _review_process(root, prompt, "reviewer")
 
 def _proposal_oracle(root: Path, request: str, evidence: dict[str,str], owner: dict[str,str] | None) -> dict[str,Any]:
@@ -2019,12 +2155,12 @@ def _proposal_oracle(root: Path, request: str, evidence: dict[str,str], owner: d
     prompt = f"""You are the independent BOS Operations Center Oracle proposal-review process.
 Read .agents/skills/oracle/SKILL.md completely and wear that approver skill. Read AGENTS.md and all required private Vault authority. Review the proposed solution before implementation using current filesystem evidence. Operate read-only: do not edit, stage, commit, deploy, write an approval receipt, or treat this proposal verdict as completed-tree approval.
 
-Creating, bumping, replacing, or splitting a public API version requires the human user's explicit request for that exact version change. Owner approval, general fix/release authorization, inferred compatibility, pre-existing implementation, and Oracle guidance never substitute. Correct behavior and preserve authorized improvements in the current API version; package/build patches and identity-envelope protocols are distinct. Independently classify api_version_assessment: NONE requires NOT_REQUIRED and all request fields null; CHANGE requires EXPLICIT_REQUEST for APPROVED, exact requested_change, verbatim direct-user request_quote, and an absolute request_evidence path supplied through --evidence containing that quote. Independently inspect human provenance, context, exact scope and refusals; an agent assertion or approval-only statement is insufficient. Reject unrequested API version changes. An exact explicit request authorizes continuation through ordinary independent review without repeated owner approval. Authentication classification and owner approval remain separate.
+Creating, bumping, replacing, or splitting a public API version requires the human user's explicit request for that exact version change. Owner approval, general fix/release authorization, inferred compatibility, pre-existing implementation, and Oracle guidance never substitute. Correct behavior and preserve authorized improvements in the current API version; package/build patches and identity-envelope protocols are distinct. Independently classify api_version_assessment: NONE requires NOT_REQUIRED and all request fields null; CHANGE requires EXPLICIT_REQUEST for APPROVED, exact requested_change, verbatim direct-user request_quote, and an absolute request_evidence path supplied through --evidence containing that quote. Independently inspect human provenance, context, exact scope and refusals; an agent assertion or approval-only statement is insufficient. Reject unrequested API version changes. An exact explicit request authorizes continuation through ordinary independent review without repeated owner approval. Authentication classification does not grant publication authority.
 {LEAD_GRAPH_REVIEW}
 {NORMAL_PLAN_REVIEW_POLICY}
 {LOCAL_EXECUTION_POLICY}
 Assess the complete proposal and consolidate every finding. Use review_status COMPLETE only when the proposal assessment is finished. Use INCOMPLETE or ERROR with limitations when assessment cannot finish; such outcomes never approve. For a proposal, coverage, validations and resolutions may be empty and repair_plan may be empty. Every finding still needs the schema's actionable detail and stable F001-style ID.
-Return JSON matching the supplied schema. Verify the stated problem and cause, classify authentication_impact as AUTHENTICATION or NONE (NONE uses owner_approval_status NOT_REQUIRED), and reject architectural invention or a service/API-contract change presented as a client fix. Restoration of already-approved behavior may reuse exact existing owner approval; outside the explicit API-version request gate, a genuinely new or changed authentication design, public API contract, or architecture requires exact owner approval and must be REJECTED with owner_approval_status MISSING or INVALID when that evidence is absent. An approved proposal allows the ordinary workflow to continue automatically within the user's existing task authorization; completed-tree Oracle review remains mandatory after implementation. Every finding must state concise Problem, Cause, and Recommended change sections with no more than three sentences each.
+Return JSON matching the supplied schema. Verify the stated problem and cause, classify authentication_impact as AUTHENTICATION or NONE (NONE uses owner_approval_status NOT_REQUIRED), and reject architectural invention or a service/API-contract change presented as a client fix. Restoration of already-approved behavior may reuse exact existing owner approval; outside the explicit API-version request gate, missing human deployment permission never rejects a technical proposal. Identify any concrete protected publication effect separately; actual publication checks its scoped authority later. Return protected_effects with planned active effects and any applicable dispositions. An approved proposal allows the ordinary workflow to continue automatically within the user's existing task authorization; completed-tree Oracle review remains mandatory after implementation. Every finding must state concise Problem, Cause, and Recommended change sections with no more than three sentences each.
 {json.dumps(payload, indent=2, sort_keys=True)}"""
     return _review_process(root, prompt, "proposal_reviewer")
 
@@ -2052,13 +2188,10 @@ def review_proposal(root: Path, request: str, evidence_paths: Sequence[str], own
     if review.get("verdict") not in {"APPROVED", "REJECTED"}:
         raise OracleApprovalError("Independent Oracle proposal review returned no verdict")
     if review["verdict"] == "APPROVED":
-        if (review.get("authentication_impact"), review.get("owner_approval_status")) not in {
-                ("NONE", "NOT_REQUIRED"), ("AUTHENTICATION", "APPROVED")}:
+        if review.get("authentication_impact") not in {"NONE", "AUTHENTICATION"} or review.get("owner_approval_status") not in {"NOT_REQUIRED", "APPROVED", "MISSING", "INVALID"}:
             raise OracleApprovalError("Oracle proposal approval classification is invalid")
         if not isinstance(review.get("findings"), list) or review["findings"]:
             raise OracleApprovalError("Oracle approved proposal contains findings or lacks a finding list")
-        if review["authentication_impact"] == "AUTHENTICATION" and not owner:
-            raise OracleApprovalError("Oracle proposal lacks owner evidence")
     _validate_api_version_assessment(review.get("api_version_assessment"), review["verdict"], root, evidence)
     payload = {
         "schema_version": SCHEMA_VERSION,
@@ -2102,7 +2235,7 @@ def verify_proposal(root: Path) -> dict:
     if review.get("verdict") != "APPROVED" or review.get("findings"):
         raise OracleApprovalError("Oracle review requires an approved proposal")
     impact, status = review.get("authentication_impact"), review.get("owner_approval_status")
-    if (impact, status) not in {("NONE", "NOT_REQUIRED"), ("AUTHENTICATION", "APPROVED")}:
+    if impact not in {"NONE", "AUTHENTICATION"} or status not in {"NOT_REQUIRED", "APPROVED", "MISSING", "INVALID"}:
         raise OracleApprovalError("Oracle proposal approval classification is invalid")
     if _controlling_authorities(record.get("authority_digests", {})) != _controlling_authorities(_live_authorities(root)):
         raise OracleApprovalError("Oracle proposal authority changed")
@@ -2112,8 +2245,6 @@ def verify_proposal(root: Path) -> dict:
     if owner is not None and (not isinstance(owner, dict) or owner != _files(root, list(owner))):
         raise OracleApprovalError("Oracle proposal owner evidence changed")
     _validate_api_version_assessment(review.get("api_version_assessment"), review["verdict"], root, evidence)
-    if impact == "AUTHENTICATION" and not owner:
-        raise OracleApprovalError("Oracle proposal lacks owner evidence")
     return {"verdict": "APPROVED", "base_commit": record["base_commit"],
             "proposal_sha256": record["proposal_sha256"]}
 
@@ -2133,16 +2264,18 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
         evidence, owner = _files(root, complete_evidence), (_files(root, [owner_path]) if owner_path else None)
     with _phase("preparation_seconds"):
         binding = _input_binding(root, evidence, owner)
+        assessment_paths = sorted(set(paths) | set(binding["publication_scope"]["range_paths"]))
         authorities = _authorities(root, tree)
         if reviewer is _oracle:
-            vault = _vault_evidence(root, paths)
+            vault = _vault_evidence(root, assessment_paths)
             _assert_binding(root, binding, evidence, owner)
             run = _RUN.get()
             diff = run / "candidate.diff"
-            _atomic_write(diff, _git_bytes(root, "diff", "--cached", "--binary", "--full-index"))
+            _atomic_write(diff, _git_bytes(root, "diff", "--binary", "--full-index",
+                                          binding["publication_scope"]["baseline_commit"], tree))
             preparation = run / "oracle-inputs.json"
             _atomic_write(preparation, _pretty({"kind": "oracle-preparation-v1", "input_binding": binding,
-                                               "changed_paths": paths, "candidate_diff": _files(root, [str(diff)]),
+                                               "changed_paths": assessment_paths, "candidate_diff": _files(root, [str(diff)]),
                                                "vault_evidence": _files(root, [str(vault)])}))
             complete_evidence += [str(vault), str(diff), str(preparation)]
             evidence = _files(root, complete_evidence)
@@ -2165,7 +2298,7 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
     try:
         selected_token = _PREPARED_SETTINGS.set(review_binding["reviewer_settings"])
         try:
-            review = reviewer(root,tree,paths,evidence,owner)
+            review = reviewer(root,tree,assessment_paths,evidence,owner)
         finally:
             _PREPARED_SETTINGS.reset(selected_token)
         _timed("postcheck_seconds", lambda: _assert_binding(root, review_binding, evidence, owner))
@@ -2178,12 +2311,9 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
         if outcome == "APPROVED":
             _validate_api_version_assessment(review.get("api_version_assessment"), "APPROVED", root, evidence)
             impact, status = review.get("authentication_impact"), review.get("owner_approval_status")
-            if impact == "AUTHENTICATION" and status != "APPROVED":
-                raise OracleApprovalError("Authentication candidate lacks owner approval")
-            if impact == "AUTHENTICATION" and not owner:
-                raise OracleApprovalError("Authentication candidate lacks owner evidence bytes")
-            if impact == "NONE" and status != "NOT_REQUIRED":
-                raise OracleApprovalError("Non-authentication candidate has invalid owner status")
+            if status not in {"NOT_REQUIRED", "APPROVED", "MISSING", "INVALID"}:
+                raise OracleApprovalError("Oracle candidate has invalid legacy owner status")
+            effects = _protected_effects(review, binding["publication_scope"], context, native=reviewer is _oracle)
             if impact not in {"NONE", "AUTHENTICATION"}:
                 raise OracleApprovalError("Oracle candidate lacks authentication classification")
             prepared_approval = _prepare_round(root, context, review, "APPROVED", coverage=coverage, validations=validations, ledger=ledger)
@@ -2191,7 +2321,7 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
             round_name = str(round_path.relative_to(root)) if round_path.is_relative_to(root) else str(round_path)
             round_raw = _pretty(round_record)
             evidence[round_name] = _sha(round_raw)
-            payload = {"schema_version":SCHEMA_VERSION,"issuer":ISSUER,"verdict":"APPROVED","base_commit":base,"candidate_tree":tree,"changed_paths":paths,"authority_digests":authorities,"authentication_impact":impact,"owner_approval_status":status,"validation_evidence":evidence,"owner_approval_evidence":owner,"review_digest":_sha(_canonical(review)),"api_version_assessment":review["api_version_assessment"]}
+            payload = {"schema_version":SCHEMA_VERSION,"issuer":ISSUER,"verdict":"APPROVED","base_commit":base,"candidate_tree":tree,"changed_paths":paths,"authority_digests":authorities,"authentication_impact":impact,"owner_approval_status":status,"validation_evidence":evidence,"owner_approval_evidence":owner,"review_digest":_sha(_canonical(review)),"api_version_assessment":review["api_version_assessment"],"publication_scope":binding["publication_scope"],"protected_effects":effects}
             receipt = dict(payload, approval_id=_sha(_canonical(payload)))
             receipt_raw = _pretty(receipt)
             # Verify every gate and actual custody before publishing approval;
@@ -2206,6 +2336,10 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
             # Until the required round is published, this receipt fails custody.
             _atomic_write(receipt_path(root), receipt_raw)
             _atomic_write(round_path, round_raw)
+            archive = _technical_archive(root, _sha(receipt_raw))
+            if archive.exists() and _custody_read(root, archive)[1] != receipt_raw:
+                raise OracleApprovalError("Immutable technical receipt archive conflict")
+            _atomic_write(archive, receipt_raw)
             return receipt
         round_path = _record_round(root, context, review, outcome, coverage=coverage, validations=validations, ledger=ledger)
     except BaseException as exc:

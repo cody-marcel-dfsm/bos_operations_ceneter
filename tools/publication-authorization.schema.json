@@ -1,0 +1,40 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "verdict": {
+      "enum": [
+        "APPROVED",
+        "REJECTED",
+        "INCOMPLETE",
+        "ERROR"
+      ]
+    },
+    "review_status": {
+      "enum": [
+        "COMPLETE",
+        "INCOMPLETE",
+        "ERROR"
+      ]
+    },
+    "summary": {
+      "type": "string"
+    },
+    "plan_sha256": {
+      "type": "string"
+    },
+    "authorized_effect_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "verdict",
+    "review_status",
+    "summary",
+    "plan_sha256",
+    "authorized_effect_ids"
+  ]
+}

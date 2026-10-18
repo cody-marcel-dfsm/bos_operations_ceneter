@@ -18,7 +18,7 @@ def _oracle_fixture_result(result, context):
                              acceptance_checks=["synthetic acceptance"], origin="INITIAL",
                              origin_reason="synthetic reviewer fixture"))
     open_ids = [key for key, item in context["prior_findings"].items() if item["state"] == "OPEN"]
-    return dict(result, review_status="COMPLETE", findings=findings,
+    return dict(result, protected_effects=result.get("protected_effects", {"active": [], "dispositions": []}), review_status="COMPLETE", findings=findings,
                 coverage=[{"path": path, "status": "REVIEWED", "inputs": inputs(path),
                            "reason": "synthetic test assessment"} for path in paths],
                 resolutions=[{"id": key, "explanation": "synthetic resolution", "inputs": inputs(paths[0])}

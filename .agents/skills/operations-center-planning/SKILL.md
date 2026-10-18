@@ -5,6 +5,12 @@ description: Plan BOS Operations Center changes using current Vault architecture
 
 # Operations Center Planning
 
+## Controlling review and publication placement — October 18, 2026
+
+Complete independent technical proposal/review and commit checks without human deployment permission. Missing permission is not a technical finding. Existing human-approval wording below applies only to an actual protected deployment/publication effect: concrete credential-trust, permission-authority, tenant-isolation or incompatible-public-contract behavior. Authentication labels, filenames and ordinary compatible corrections create no gate. Keep the explicit public API version request and cost controls.
+
+Use `python3 tools/publication_admission.py plan --release-ref <resolved-ref>` to inspect the exact publication. Source review pushes use its `push` command and require no deployment permission; PR creation/review remain available. Actual distributed-plugin main promotion uses its `merge --pr <number> --release-ref <resolved-ref>` command after required checks. When its exact protected effect lacks scoped human authority, finish all technical work and pause only that actual publication effect; use its `authorize --owner-evidence <direct-human-evidence> --release-ref <resolved-ref>` command to assess later evidence separately, then supply the resulting `--authorization <record>` to merge. Preserve the original technical receipt, full effective range and current effect dispositions. Never hot-patch installations.
+
 ## Scope and continuation
 
 Use the user's requested deliverable to choose planning scope. A report of
@@ -23,10 +29,7 @@ Ground each material proposal in current evidence and format it as **Problem**,
 **Cause**, and **Recommended change**, with no more than three concise sentences
 under each heading. Submit it through `npm run oracle:proposal -- "<proposal>"`
 before persistence or implementation. Continue automatically after `APPROVED`;
-when Oracle classifies a genuinely new authentication design, public API
-contract, or architecture without exact owner approval, present that exact
-finding to the user and stop until approval is supplied and the proposal is
-resubmitted.
+technical review completes without human deployment permission. Classify concrete protected publication effects separately and handle missing scoped authority only at that actual publication boundary. Preserve the exact public API version request requirement.
 
 Proposal approval is scope approval, not a completed-tree receipt. Material
 proposal changes require another proposal review, and every resulting mutation

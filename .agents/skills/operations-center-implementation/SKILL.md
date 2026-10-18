@@ -5,6 +5,12 @@ description: Implement BOS Operations Center repository changes using its archit
 
 # Operations Center Implementation
 
+## Controlling review and publication placement — October 18, 2026
+
+Complete independent technical proposal/review and commit checks without human deployment permission. Missing permission is not a technical finding. Existing human-approval wording below applies only to an actual protected deployment/publication effect: concrete credential-trust, permission-authority, tenant-isolation or incompatible-public-contract behavior. Authentication labels, filenames and ordinary compatible corrections create no gate. Keep the explicit public API version request and cost controls.
+
+Use `python3 tools/publication_admission.py plan --release-ref <resolved-ref>` to inspect the exact publication. Source review pushes use its `push` command and require no deployment permission; PR creation/review remain available. Actual distributed-plugin main promotion uses its `merge --pr <number> --release-ref <resolved-ref>` command after required checks. When its exact protected effect lacks scoped human authority, finish all technical work and pause only that actual publication effect; use its `authorize --owner-evidence <direct-human-evidence> --release-ref <resolved-ref>` command to assess later evidence separately, then supply the resulting `--authorization <record>` to merge. Preserve the original technical receipt, full effective range and current effect dispositions. Never hot-patch installations.
+
 ## Automated proposal gate
 
 Run required Oracle reviews covered by the owner's normal plan automatically,
@@ -19,27 +25,15 @@ authorized task automatically only after the independent Oracle returns
 `APPROVED`. A material change to the proposed cause, ownership boundary, public
 contract, or correction requires a fresh proposal review.
 
-The proposal Oracle classifies architecture, public API-contract,
-authentication, and authorization impact before implementation. When it flags
-a genuinely new protected change without exact owner approval, present its
-three-part finding to the user and stop; after approval, resubmit the proposal
-with the approval evidence and continue automatically. A bounded restoration
-of already-approved behavior reuses the existing scoped approval and creates
-no additional user checkpoint. Repair client behavior against the implemented
-service contract unless an approved proposal changes that contract.
+The proposal Oracle independently classifies the technical change and any concrete protected publication effect. Continue the authorized correction after technical APPROVED without a human review-permission gate. Preserve the exact public API version request rule. Missing authority for a protected effect is handled only at actual publication, after the complete technical result is reviewable.
 
 For a Projects-level relationship or shared public-contract question, obtain
 Projects Oracle proposal approval first and repository-local proposal approval
 second. Neither scope substitutes for the other.
 
-## Authentication approval continuity
+## Authentication impact and publication authority
 
-Submit the complete candidate through `npm run oracle:review`; the utility
-binds the latest durable proposal-review record into its evidence, and Oracle alone
-classifies authentication impact and emits any owner-approval warning. Supply
-existing owner-approval evidence to the utility when it applies. Preserve that
-evidence through corrections, release, and verification until resolved. A
-corrected diff requires a fresh utility review, not renewed owner approval.
+Submit the complete candidate through `npm run oracle:review`. Oracle independently records technical authentication impact and concrete protected publication effects; missing deployment authority never rejects the technical assessment. Preserve existing exact human effect scope for actual publication and keep later authority separate from the immutable technical receipt. Corrected source requires fresh technical review; unchanged scoped human permission requires no repeated user approval.
 
 ## Review continuity
 
@@ -81,8 +75,7 @@ independent applicability decision on the next current candidate; it grants no
 approval. Accumulate partial findings into the consolidated assessment and repair
 the known batch together. After two failed repair rounds, reconcile the tool's unresolved
 finding ledger into one concrete repair plan before the next repair. A late
-finding in unchanged reviewed code must explain the missed coverage. Existing
-owner approval and public API version request gates remain in force.
+finding in unchanged reviewed code must explain the missed coverage. Exact protected-publication authority and the public API version request remain in force.
 
 ## Request routing and completion
 

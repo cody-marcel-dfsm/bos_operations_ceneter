@@ -2722,7 +2722,7 @@ test("ship-it publishes releases through a merged pull request", async () => {
   assert.match(workflow, /Resolve the release ref name[\s\S]*before changing version metadata/);
   assert.match(workflow, /create that branch ref at the final approved release commit without switching the checkout/);
   assert.match(workflow, /open a pull request/i);
-  assert.match(workflow, /merge the pull request/i);
+  assert.match(workflow, /tools\/publication_admission\.py merge --pr <number> --release-ref <resolved-ref>/);
   assert.match(workflow, /Claude organization marketplace/i);
   assert.match(workflow, /publisher cannot force a refresh/i);
   assert.match(workflow, /official Anthropic marketplace/i);
