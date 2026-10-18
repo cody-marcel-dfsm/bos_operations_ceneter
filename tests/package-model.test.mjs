@@ -2718,7 +2718,9 @@ test("ship-it publishes releases through a merged pull request", async () => {
     "utf8"
   );
   assert.match(workflow, /Never push a release commit directly to the default branch/i);
-  assert.match(workflow, /create a release branch/i);
+  assert.match(workflow, /Work on canonical main throughout implementation, validation, review and commit/);
+  assert.match(workflow, /Resolve the release ref name[\s\S]*before changing version metadata/);
+  assert.match(workflow, /create that branch ref at the final approved release commit without switching the checkout/);
   assert.match(workflow, /open a pull request/i);
   assert.match(workflow, /merge the pull request/i);
   assert.match(workflow, /Claude organization marketplace/i);
@@ -2730,7 +2732,7 @@ test("ship-it publishes releases through a merged pull request", async () => {
     workflow.indexOf("## Create the release branch") <
       workflow.indexOf("## Create the release version"),
     true,
-    "release branch creation must precede the version bump"
+    "release-ref planning must precede the version bump"
   );
 });
 

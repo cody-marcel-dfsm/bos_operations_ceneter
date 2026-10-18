@@ -478,6 +478,23 @@ function validateCompactJourney(journey, label) {
   }
 }
 
+function validatePluginCatalog(catalog, label) {
+  requireObject(catalog, label);
+  requireExactKeys(catalog, new Set(["enabled", "configuration", "presentation"]), label);
+  if (typeof catalog.enabled !== "boolean") {
+    throw new Error(`${label}.enabled must be boolean`);
+  }
+  if (!["configured", "unconfigured", "not_reported"].includes(catalog.configuration)) {
+    throw new Error(`${label}.configuration is invalid`);
+  }
+  if (!["catalog_only", "journey", "behavior"].includes(catalog.presentation)) {
+    throw new Error(`${label}.presentation is invalid`);
+  }
+  if (!catalog.enabled && catalog.presentation !== "catalog_only") {
+    throw new Error(`${label} disabled plugin requires catalog_only presentation`);
+  }
+}
+
 function validatePluginItem(plugin, index) {
   const label = `plugins.list response.plugins[${index}]`;
   requireObject(plugin, label);
@@ -488,6 +505,7 @@ function validatePluginItem(plugin, index) {
       "reference",
       "name",
       "purpose",
+      "catalog",
       "journey",
       "describe",
       "descriptor_etag",
@@ -498,7 +516,16 @@ function validatePluginItem(plugin, index) {
   validateServiceReference(plugin.reference, `${label}.reference`);
   requireString(plugin.name, `${label}.name`);
   requireString(plugin.purpose, `${label}.purpose`);
-  validateCompactJourney(plugin.journey, `${label}.journey`);
+  if (Object.hasOwn(plugin, "catalog")) {
+    validatePluginCatalog(plugin.catalog, `${label}.catalog`);
+  }
+  if (plugin.catalog?.presentation === "catalog_only") {
+    if (Object.hasOwn(plugin, "journey")) {
+      throw new Error(`${label} catalog_only must omit journey`);
+    }
+  } else {
+    validateCompactJourney(plugin.journey, `${label}.journey`);
+  }
   requireObject(plugin.describe, `${label}.describe`);
   requireExactKeys(
     plugin.describe,
@@ -506,6 +533,9 @@ function validatePluginItem(plugin, index) {
     `${label}.describe`
   );
   requireString(plugin.describe.capability, `${label}.describe.capability`);
+  if (plugin.describe.capability !== "service.describe") {
+    throw new Error(`${label}.describe.capability must be service.describe`);
+  }
   requireObject(plugin.describe.input, `${label}.describe.input`);
   requireExactKeys(
     plugin.describe.input,
@@ -1703,6 +1733,7 @@ function validateDetailedBehavior(behavior, compactJourney) {
 }
 
 export function validateServiceJourneyDescription(description, compactPlugin) {
+  validatePluginItem(compactPlugin, 0);
   requireObject(description, "service.describe response");
   rejectRawAuthority(description, "service.describe response");
   requireExactKeys(
@@ -1711,6 +1742,7 @@ export function validateServiceJourneyDescription(description, compactPlugin) {
       "reference",
       "name",
       "purpose",
+      "catalog",
       "descriptor_etag",
       "journey",
       "behavior",
@@ -1734,18 +1766,40 @@ export function validateServiceJourneyDescription(description, compactPlugin) {
     throw new Error("service.describe response must match the selected plugins.list descriptor");
   }
   validateMcpPrivateMetadata(description, "service.describe response");
+  const hasCatalog = Object.hasOwn(description, "catalog");
+  if (hasCatalog !== Object.hasOwn(compactPlugin, "catalog")) {
+    throw new Error("service.describe response catalog presence must match plugins.list");
+  }
+  if (hasCatalog) {
+    validatePluginCatalog(description.catalog, "service.describe response.catalog");
+    if (!sameJson(description.catalog, compactPlugin.catalog)) {
+      throw new Error("service.describe response catalog must match plugins.list");
+    }
+  }
+  const presentation = description.catalog?.presentation;
   const hasBehavior = description.behavior !== undefined;
   const hasJourney = description.journey !== undefined;
-  if (hasBehavior === hasJourney) {
-    throw new Error("service.describe response requires exactly one journey or behavior");
-  }
-  if (hasBehavior) {
-    validateDetailedBehavior(description.behavior, compactPlugin.journey);
+  if (presentation === "catalog_only") {
+    if (Object.hasOwn(description, "journey") || Object.hasOwn(description, "behavior")) {
+      throw new Error("service.describe response catalog_only must omit journey and behavior");
+    }
   } else {
-    validateDetailedJourney(description.journey, compactPlugin.journey);
+    if (hasBehavior === hasJourney ||
+        (presentation === "journey" && !hasJourney) ||
+        (presentation === "behavior" && !hasBehavior)) {
+      throw new Error("service.describe response requires exactly one journey or behavior matching catalog presentation");
+    }
+    if (hasBehavior) {
+      validateDetailedBehavior(description.behavior, compactPlugin.journey);
+    } else {
+      validateDetailedJourney(description.journey, compactPlugin.journey);
+    }
   }
   if (!Array.isArray(description.queries)) {
     throw new Error("service.describe response.queries must be an array");
+  }
+  if (presentation === "catalog_only" && description.queries.length !== 0) {
+    throw new Error("service.describe response catalog_only requires empty queries");
   }
   description.queries.forEach((query, index) => {
     const label = `service.describe response.queries[${index}]`;

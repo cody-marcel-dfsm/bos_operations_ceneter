@@ -173,9 +173,9 @@ requested outcome.
    form. Ask no question about the already-authorized push or merge.
 4. Review the entire pending change set. Inspect untracked files before staging. Treat every existing change as user-owned and in scope for this invocation.
 5. Block the shipment and report exact findings when the changes expose credentials or private data, contain a material correctness or security defect, include an obviously accidental large artifact, or conflict with repository instructions. Never discard or rewrite the user's work while resolving a blocker.
-6. If a dirty checkout is behind the remote default branch, preserve all of
-   its original work intact and prepare the release in a suitable current-base
-   checkout. Account for every amended file while reconciling its intended
+6. If canonical main is behind the remote default branch, preserve all of
+   its original work intact and integrate the newer remote in that same checkout.
+   Account for every amended file while reconciling its intended
    behavior with current code; retain newer remote safeguards and stop when
    an overlap cannot be resolved safely. Re-fetch before final Oracle review
    and publication; if the remote base moved, integrate it and repeat affected
@@ -184,8 +184,8 @@ requested outcome.
 ## Create the release branch
 
 1. Never push a release commit directly to the default branch. A merged release pull request provides an auditable release boundary and supplies Claude's organization-marketplace trigger when that distribution path is configured.
-2. When the current branch is the default branch, create a release branch named `codex/release-v<next-version>` before changing version metadata. Preserve the complete current worktree when creating the branch.
-3. When the current branch is already a non-default working branch, use it as the release branch when its upstream and intended default-branch target are unambiguous.
+2. Work on canonical main throughout implementation, validation, review and commit. Resolve the release ref name `codex/release-v<next-version>` before changing version metadata, then create that branch ref at the final approved release commit without switching the checkout.
+3. If the checkout is on another branch, preserve all work and reconcile that state with the controlling canonical-main requirement before implementation or release. Existing branch names supply no authority for branch switching or a new worktree.
 4. Stop if the release branch already exists locally or remotely and cannot be identified as the current release safely. Never delete, reset, or overwrite an existing branch.
 
 ## Create the release version
@@ -244,9 +244,11 @@ Run the repository-local Oracle remediation loop before committing:
    verdict; follow-up review focuses on repairs and affected dependencies using
    verified prior coverage. Explain new findings in unchanged reviewed code as
    missed coverage. `INCOMPLETE` and `ERROR` retain checkpoints and grant no
-   approval. On `INCOMPLETE`, keep source unchanged and resume unfinished
-   assessment; accumulate findings until `COMPLETE`, then repair the full
-   consolidated batch. Permit only minimal execution recovery when concrete
+   approval. Resume unfinished assessment while authorized source work continues;
+   compare current content, modes, dependencies and criteria, retaining applicable
+   observations and actual native outcomes when inputs move. Include changes
+   from every implementation and accumulate established findings for one
+   consolidated repair batch. Permit execution recovery when concrete
    evidence proves continuation impossible, retaining the reason, prior candidate
    and checkpoint. After two failed repair rounds, use
    the consolidated unresolved-finding repair plan before the next repair.
@@ -310,7 +312,7 @@ Push existing unpushed commits with the release commit only when they are part o
 
 After GitHub records the pull request as merged:
 
-1. Switch the current workspace to the resolved default branch and fast-forward it from its configured remote. Never leave the workspace checked out on the merged release branch.
+1. Keep the canonical workspace on main and fast-forward it from its configured remote after the release pull request merges. Create no implementation worktree or branch-switching cleanup step.
 2. Verify the local default branch and its remote-tracking branch resolve to the same commit and that the worktree is clean.
 3. Verify the release branch used by this invocation is an ancestor of the updated default branch, then delete that local release branch with the safe merged-branch deletion command. Delete only the release branch used by this invocation; preserve unrelated user branches.
 4. Report a failed release cleanup when the workspace cannot return to the default branch, the branches differ, the worktree is dirty, or the merged local release branch remains. Do not call the release complete until these invariants hold.

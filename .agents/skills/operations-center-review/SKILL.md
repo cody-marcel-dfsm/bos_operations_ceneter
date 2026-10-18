@@ -32,11 +32,14 @@ Ordinary logs remain review evidence and gain reuse only with recorded proof.
 Explicitly account for every open finding; explain late
 discoveries in unchanged reviewed code as missed findings. Unfinished coverage
 is `INCOMPLETE`, and tool/runtime failure is `ERROR`; neither establishes a code
-defect or grants readiness. On `INCOMPLETE`, keep source unchanged, retain all
-checkpoints and resume unfinished assessment. Accumulate findings through
-`COMPLETE` before repairing the full consolidated batch. Allow only minimal
-execution recovery when concrete evidence proves continuation impossible; retain
-the reason, prior candidate and checkpoint. After two failed repair rounds, consolidate the
+defect or grants readiness. Source work continues without review-imposed source,
+file or line locks, freezes or work pauses. Include all current changes regardless
+of author. Compare actual content, mode/type, consumed dependencies and criteria;
+reuse applicable verified coverage and assess new, changed, affected or unfinished
+paths. Preserve input-movement errors and raw assessments as unadopted observations
+with their original statuses; independently assess applicability on the next
+candidate. Accumulate findings through `COMPLETE` for a consolidated repair batch.
+After two failed repair rounds, consolidate the
 unresolved findings into a concrete repair plan. Oracle alone issues the fresh
 complete-current-tree verdict required after every candidate mutation.
 
@@ -120,7 +123,7 @@ For Oracle continuations, programmatically project pending paths, open finding I
 verified validation summaries and the locations of exact input hashes from the
 retained review records. Use bounded source/evidence slices and keep full audit
 records separately. Checkpoint every fully assessed path/dependency and generated
-parity group so the next unchanged continuation advances from completed work.
+parity group so the next continuation advances from applicable completed work.
 
 A failed aggregate retains its actual passing-case observations. Use those original
 case outputs with unchanged source/test/fixture/configuration and environment

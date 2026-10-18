@@ -8,6 +8,22 @@ them from an installation ID or customer setting. Execution scope never
 appears in the request body and the client never falls back to an unnamed endpoint.
 BOS derives the authorized tenant and installation from the validated grant.
 
+## Current capability discovery
+
+Read the exact signed `bos-feedback-contract` resource advertised by the current
+authenticated context catalog or resource listing. Follow its HTTPS Describe
+contact and copy the authorized operation schemas, effects, limits and exact
+POST contacts. Preserve the existing bearer/context boundary; business bodies
+contain no actor, organization or execution-context selectors.
+
+The six currently advertised native feedback tools retain their compatibility
+role. Extended replies, video and reporter completion depend on actual current
+schemas, independent of package version. Keep images and flat comments usable
+on an older producer. Offer no unsupported fields or guessed routes.
+`feedback.resolve` exists only through its discovered HTTPS contact, with no
+native `bos_execute` equivalent. A compatible consumer may publish before that
+capability is deployed; use begins after the producer advertises it.
+
 ## Required fields
 
 - `category`: `bug`, `enhancement`, `usability`, `documentation`,
@@ -38,16 +54,19 @@ Target types are `package`, `skill`, `plugin`, `mcp-tool`, `installation`, and
 
 Unknown properties are invalid. Text fields remain plain text.
 
-- `attachments`: up to five screenshots. Each object contains only `mime_type`
-  (`image/png`, `image/jpeg`, or `image/webp`), `data_base64` (strict standard
+- `attachments`: up to five sanitized media files. Each object contains only `mime_type`
+  (`image/png`, `image/jpeg`, `image/webp`, and, when declared, `video/mp4` or
+  `video/webm`), `data_base64` (strict standard
   base64, at most 6,990,508 characters), and `sanitized: true`. Each decoded image
   is at most 5 MiB (5,242,880 bytes), with at most 16 million pixels; the submission
-  total is at most 20 MiB before and after metadata removal. Animation is
-  rejected. The host sanitizes the screenshot before encoding it. The server
-  validates the actual format, rerasterizes it to remove embedded metadata, and
-  enforces the size limit again. Visible sensitive content must already be
-  redacted. Public URLs, credentials, filesystem paths and remote image fetching
-  are excluded. Image bytes remain in private feedback storage.
+  total is at most 20 MiB before and after processing. Images retain the
+  16-million-pixel limit and animated images are rejected. Accepted video is
+  bounded to 30 seconds, 900 decoded frames and 1280×720 in either orientation;
+  the service normalizes it to silent, metadata-stripped H264 MP4.
+  The client visibly removes sensitive pixels before encoding and asserting
+  `sanitized: true`. Server rasterization, audio removal and metadata stripping
+  preserve visible content requiring sanitization. Public URLs, credentials,
+  filesystem paths and remote fetching are excluded. Media remains private.
 
 For `report session`, automatically inspect customer-owned extension manifests
 matching the active customer and each affected product skill. Resolve the
@@ -106,33 +125,77 @@ current membership, role, installation and exact operation grants.
 | --- | --- | --- |
 | `bos_list_feedback` | Optional `status`, `limit` (1–100; default 20) | Reporter's own summaries, newest first |
 | `bos_get_feedback` | `feedback_id` | Private full record, status, attributed `history`, `comments`, attachment metadata and MCP image content blocks |
-| `bos_add_feedback_comment` | `feedback_id`, `body` (1–4000 characters) | Updated private record with server-attributed comment; identical normalized comments by the same actor on one record are deduplicated |
+| `bos_add_feedback_comment` | `feedback_id`, `body` (1–4000 characters); declared optional `parent_comment_id` | Updated private record with server-attributed comment/reply; identical normalized body, parent and actor on one record are deduplicated |
 | `bos_update_feedback` | `feedback_id`, `status`, `expected_status` | Authorized assignee transition |
 | `bos_triage_feedback` | `feedback_id`, `status`, `expected_status`; optional `assigned_to` (current member UUID or null) | Authorized team transition/assignment |
+| Discovered HTTPS `feedback.resolve` | Only `feedback_id`, `expected_status` | Canonical reporter completion from any tracked state; closes atomically and records `resolution: reporter_confirmed` on the closure history event |
 
-The lifecycle is `open → acknowledged → in_progress → resolved → verified → closed`.
-Open, acknowledged, in-progress and reopened issues may move to `wontfix`.
-Resolved, verified, closed and wontfix issues may move to `reopened`; reopened
-issues return to acknowledged or in-progress. `expected_status` prevents
-overwriting concurrent triage. Team assignment may retain the current status.
+The ordinary transitions are:
+
+| Current state | Allowed next state |
+| --- | --- |
+| open | acknowledged, wontfix |
+| acknowledged | in_progress, wontfix |
+| in_progress | resolved, wontfix |
+| resolved | verified, reopened |
+| verified | closed, reopened |
+| closed or wontfix | reopened |
+| reopened | acknowledged, in_progress, wontfix |
+
+Same-state triage requires an explicit changed assignment under current team
+authority. Read fresh uncached detail before update, triage or reporter
+completion and use its status as `expected_status`. Assignment also requires an
+active member and grants no authority. Implementation update requires current
+update/read permission and permitted assignee/team participation.
+
+`verified` is an implementation state, independent of reporter satisfaction.
+Only the canonical reporter may use `feedback.resolve`, even when an assignee
+or team member can implement or triage. Supply no resolution, actor or context
+field in its business body. Ordinary closure supplies no reporter-confirmation
+proof; an explicitly requested reporter completion is still valid from closed.
+The service owns idempotent replay of an already reporter-completed closure,
+including a previously valid expected_status, without another completion event.
+
+HTTPS success wraps detail at `result`, with `result.feedback_id`,
+`result.status`, history, comments and existing metadata; full bytes appear once
+at top-level `media[{attachment_id,mime_type,data_base64}]`. There is no current
+`result.resolution` field. History entries require `event_id`, `actor_id`,
+`occurred_at`, and target `status`; optional fields include
+`agent_installation_id`, `assigned_to`, and `resolution`. History has no sequence
+or ordering guarantee. A `closed` history entry marked `reporter_confirmed`
+proves that historical event; never infer current closure provenance from an
+old event after reopening or ordinary reclosing. An actual successful current
+`feedback.resolve` response is the reporter-completion receipt.
+
+Replies select a UUID parent from the same record's fresh comments; replies can
+receive replies. Returned comments contain `event_id`, `actor_id`,
+`occurred_at`, `body`, server `author_type: reporter|service`, and optional
+`agent_installation_id` and `parent_comment_id`. Preserve inert plain text and
+returned attribution. Identical body/actor under a different parent is a
+distinct reply. Current schema availability governs the optional parent field.
 
 Records are private to the reporter, currently authorized assigned participants,
-and authorized team members in the exact organization and installation.
-Assignment grants no authority. Reporters with read/comment permission observe
-status and cannot transition it. Lists always contain only the caller's own
+and authorized same-installation triage participants, with each current
+operation's permissions also required.
+Assignment grants no authority. Read/comment participation alone permits no
+ordinary implementation transition; the canonical reporter's separately
+discovered completion operation retains its own rules. Lists contain only the caller's own
 submissions, including for team members. History and comments contain
 server-derived actor IDs, agent-installation IDs, timestamps and event IDs.
 Reads exclude notification delivery state and provider secrets. Comments follow
 the same sanitization rules and feedback rate limits. A record holds at most 100
-comments and 1,000 lifecycle events. Screenshot bytes appear once as MCP image
-content blocks in the order of returned attachment metadata; structured and text
-results carry metadata only. Missing and inaccessible
+comments and 1,000 lifecycle events. Native MCP image bytes appear once as image
+blocks, and video as an embedded resource blob; structured/text receipts carry
+metadata only. HTTPS media bytes belong only to the top-level media array.
+Match returned attachment metadata, display unknown formats as safe metadata,
+and keep bytes/data URLs/public links out of logs. Missing and inaccessible
 IDs return the same denial.
 
 Create and resolve events retain notification intent for a configured authorized
 team recipient. Notices contain the feedback ID and event only; the recipient
 signs in to read the report. A receipt does not prove notification delivery.
-Polling supports v1 tracking. Issues, discussion and screenshots remain private;
+There is no feedback push subscription. Polling supports v1 tracking when
+requested. Issues, discussion and media remain private;
 only separately authorized code patches may become public.
 
 ## Errors
@@ -145,7 +208,15 @@ only separately authorized code patches may become public.
 - `rate_limited`: report retry time.
 - `service_unavailable`: follow an exact returned state
   action when supplied; otherwise report the temporary service failure.
-- `conflict`: stop and report the service-owned conflict.
+- `conflict`: refresh the current record and reconsider the requested change.
+
+For HTTP 409 with `error.code: conflict`, perform a fresh detail read and
+reconsider the requested change using current history/discussion/status.
+`error.reason: feedback_status_conflict` is diagnostic text, never a second
+machine code. An uncertain mutation also requires observation before another
+write decision. A 403 missing/inaccessible response preserves the service's
+concealed record boundary. Honor actual Retry-After/retry_after on rate limits;
+dependency unavailability supplies no retry permission.
 
 Consume only the exact string in the BOS response's `error.code`. Do not infer
 a classification from HTTP status, inspect a secondary reason as an alias, or

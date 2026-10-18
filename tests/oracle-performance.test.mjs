@@ -133,7 +133,7 @@ from tools import oracle_approval as o
 repository=Path.cwd()
 review={'verdict':'APPROVED','findings':[],'authentication_impact':'NONE','owner_approval_status':'NOT_REQUIRED','api_version_assessment':{'impact':'NONE','request_kind':'NOT_REQUIRED','requested_change':None,'request_quote':None,'request_evidence':None}}
 with tempfile.TemporaryDirectory() as directory:
-    root=Path(directory)
+    root=Path(directory).resolve()
     def git(*args): return subprocess.check_output(['git',*args],cwd=root,text=True).strip()
     git('init','-q');git('config','user.name','Synthetic Reviewer');git('config','user.email','review@example.invalid')
     for name,text in {'AGENTS.md':'governed','.agents/skills/oracle/SKILL.md':'synthetic authority',
@@ -204,7 +204,7 @@ from pathlib import Path
 from tools import oracle_approval as o
 repository=Path.cwd();approved={'verdict':'APPROVED','findings':[],'authentication_impact':'NONE','owner_approval_status':'NOT_REQUIRED','api_version_assessment':{'impact':'NONE','request_kind':'NOT_REQUIRED','requested_change':None,'request_quote':None,'request_evidence':None}}
 with tempfile.TemporaryDirectory() as directory:
-    root=Path(directory)
+    root=Path(directory).resolve()
     def git(*args):return subprocess.check_output(['git',*args],cwd=root,text=True).strip()
     git('init','-q');git('config','user.name','Synthetic Reviewer');git('config','user.email','review@example.invalid')
     for name,text in {'AGENTS.md':'governed','.agents/skills/oracle/SKILL.md':'synthetic authority',

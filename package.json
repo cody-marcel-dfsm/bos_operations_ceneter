@@ -1,6 +1,6 @@
 {
   "name": "bos-operations-center",
-  "version": "0.4.202",
+  "version": "0.4.203",
   "private": false,
   "description": "BOS service-gateway client skills and Education Operation Center packages.",
   "author": "Infinite State Machines LLC",
@@ -45,6 +45,7 @@
     "install:verify:gemini-runtime": "node scripts/verify-gemini-runtime.mjs",
     "install:verify:antigravity-runtime": "node scripts/verify-antigravity-runtime.mjs",
     "install:verify:copilot-runtime": "node scripts/verify-copilot-runtime.mjs",
+    "install:notification-host": "node scripts/install-notification-host.mjs",
     "install:claude": "node scripts/install-claude-local.mjs",
     "clean-install:codex": "node scripts/clean-install-codex.mjs",
     "clean-install:claude": "node scripts/clean-install-claude.mjs",

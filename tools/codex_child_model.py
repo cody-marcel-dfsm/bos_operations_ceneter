@@ -44,3 +44,40 @@ def selected_model() -> str:
         if isinstance(model, str) and model.strip():
             return model.strip()
     raise RuntimeError("No Codex task or configured model; refusing to start a child model")
+
+
+def selected_reasoning_effort() -> str | None:
+    """Forward an explicit caller selection; leave an unspecified effort unset."""
+    def checked(value):
+        if value is None:
+            return None
+        if not isinstance(value, str) or not value.strip():
+            raise RuntimeError("Selected Codex reasoning effort must be a non-empty string")
+        return value.strip()
+
+    home = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
+    thread = os.environ.get("CODEX_THREAD_ID")
+    if thread:
+        if not all(character.isalnum() or character == "-" for character in thread):
+            raise RuntimeError("Invalid CODEX_THREAD_ID; refusing to select child reasoning effort")
+        sessions = sorted((home / "sessions").rglob(f"*{thread}.jsonl"),
+                          key=lambda path: path.stat().st_mtime, reverse=True)
+        if sessions:
+            context = None
+            with sessions[0].open(encoding="utf-8") as session:
+                for line in session:
+                    if '"turn_context"' in line:
+                        event = json.loads(line)
+                        if event.get("type") == "turn_context":
+                            context = event.get("payload", {})
+            if context is None:
+                raise RuntimeError("Active Codex task has no turn context for reasoning effort")
+            return checked(context.get("effort"))
+    if "CODEX_SELECTED_REASONING_EFFORT" in os.environ:
+        return checked(os.environ["CODEX_SELECTED_REASONING_EFFORT"])
+    if not thread:
+        config = home / "config.toml"
+        if config.is_file():
+            with config.open("rb") as source:
+                return checked(tomllib.load(source).get("model_reasoning_effort"))
+    return None
