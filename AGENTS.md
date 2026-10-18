@@ -54,8 +54,8 @@ Private notification implementation tasks: `Vault/docs/implementation/journey-no
   explicitly resolved. The owner-approved authentication topology is one
   BOS-managed connection for every accessible MCP; dependent products such as
   My CRM delegate authentication to BOS and declare no second login or
-  credential lifecycle. Future authentication and authorization changes
-  continue to require the owner approval process defined below.
+  credential lifecycle. Deployment of specifically protected authentication and authorization effects
+  follows the publication-authority process defined below.
 
 ## Owner-approved feedback recommendation compatibility exception
 
@@ -186,7 +186,7 @@ numbers and identity-envelope protocols are distinct from public API versions.
 An explicit request authorizes its exact scope through ordinary independent
 proposal and completed-tree review, with automatic continuation after approval.
 This request gate takes precedence over generic protected-change approval rules;
-authentication and authorization owner-approval requirements remain independent.
+specific protected-publication authority remains independent.
 
 ## Oracle approval-process contract
 
@@ -196,27 +196,9 @@ authentication and authorization owner-approval requirements remain independent.
   funding, purchases and persistent billable costs retain explicit spending
   approval; unavailable included allowance authorizes no automatic paid fallback.
 
-- Before any repository mutation, the ordinary workflow submits a concise
-  **Problem**, **Cause**, and **Recommended change** proposal through `npm run
-  oracle:proposal -- "<proposal>"`; each section contains no more than three
-  sentences. The isolated Oracle verifies the cause and ownership boundary,
-  classifies authentication, public API-contract, and architecture impact, and
-  either approves automatic continuation or flags the exact protected change
-  requiring owner approval. Restoration of already-approved behavior reuses
-  its scoped approval; a material proposal change requires fresh proposal
-  review. Proposal review writes a separate durable proposal record, never a
-  commit-acceptance receipt, and completed-tree Oracle review remains mandatory.
-
-- The Oracle process explicitly flags every authentication-affecting
-  alteration, including indirect changes in manifests, transports, tests, and
-  instructions. The implementation agent supplies existing approval evidence;
-  Oracle alone classifies the change and requests owner approval when required.
-  Record the owner's approved scope and request approval exactly once for that
-  alteration.
-  Approval persists through all in-scope fixes, reviews, releases, deployments,
-  and verification until resolved. Only a materially different alteration
-  outside that scope requires new approval. Fresh Oracle review of corrected
-  diffs remains mandatory and does not invalidate owner approval.
+- Before repository mutation, submit the concise Problem, Cause and Recommended change proposal through `npm run oracle:proposal`. Independent proposal and completed technical reviews finish without human deployment permission. They reject technical defects, custody failures and unrequested public API versions. Authentication labels, filenames and ordinary compatible corrections create no human gate.
+- The reviewer separately identifies concrete credential-trust, permission-authority, tenant-isolation or incompatible-public-contract effects over the complete effective publication source range. Missing authority for such an effect leaves technical review, commits, review-only pushes and PR review available. Only actual distributed-plugin publication/deployment checks matching scoped human authority.
+- Main promotion uses `python3 tools/publication_admission.py` after the current native technical decision. The workflow binds the original immutable technical receipt, complete effective baseline-to-candidate source, exact effects and destination; earlier effective protected changes survive later ordinary commits. Current independently source-bound SUPERSEDED/REVERTED evidence can retire an effect. Late direct-human evidence is assessed separately and never rewrites technical approval. Preserve exact existing scoped authority through in-scope repairs and preserve all cost controls.
 
 - `.agents/skills/oracle` is approver-only instruction material loaded by
   `tools/oracle_approval.py`. An implementation, planning, review, or release

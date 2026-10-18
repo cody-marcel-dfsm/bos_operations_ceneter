@@ -73,6 +73,76 @@ export function customerDataFindings(text, path, blockedDigests) {
   return [...new Set(findings)];
 }
 
+// Exact provider identity verified through the existing native GitHub client.
+// Only these typed metadata slots are normalized; every other field is scanned.
+export function verifiedGithubMetadataText(text, identities) {
+  let row, ranges, tokens;
+  try {
+    row = JSON.parse(text);
+    tokens = [...text.matchAll(/"(?:\\[\s\S]|[^"\\])*"|true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}\[\]:,]/gu)];
+    let index = 0;
+    ranges = new Map();
+    function value(path) {
+      const token = tokens[index++];
+      if (token[0] === "{") {
+        const keys = new Set();
+        while (tokens[index][0] !== "}") {
+          const key = JSON.parse(tokens[index++][0]);
+          if (keys.has(key)) throw new Error("duplicate JSON member");
+          keys.add(key);
+          index += 1; // colon; JSON.parse already validated the grammar.
+          value([...path, key]);
+          if (tokens[index][0] !== ",") break;
+          index += 1;
+        }
+        index += 1;
+      } else if (token[0] === "[") {
+        let item = 0;
+        while (tokens[index][0] !== "]") {
+          value([...path, item++]);
+          if (tokens[index][0] !== ",") break;
+          index += 1;
+        }
+        index += 1;
+      } else {
+        ranges.set(JSON.stringify(path), [token.index, token.index + token[0].length]);
+      }
+    }
+    value([]);
+  } catch {
+    // Inspect decoded original string tokens as well as raw text, including
+    // every overwritten member. Parsing an object alone would lose those values.
+    return tokens ? text + "\n" + tokens.filter(token => token[0].startsWith('"'))
+      .map(token => JSON.parse(token[0])).join("\n") : text;
+  }
+  const repository = "cody-marcel-dfsm/bos_operations_ceneter";
+  const identity = identities?.repository === repository && identities.pull_requests?.[String(row?.number)];
+  if (!identity || !Number.isSafeInteger(row.id) || row.id <= 0 || typeof row.node_id !== "string" ||
+      sha256(String(row.id)) !== identity.id_sha256 || sha256(row.node_id) !== identity.node_id_sha256 ||
+      row.url !== `https://api.github.com/repos/${repository}/pulls/${row.number}` ||
+      row.html_url !== `https://github.com/${repository}/pull/${row.number}`) return text;
+  const normalized = structuredClone(row);
+  normalized.id = "verified-own-github-pull-request-id";
+  const replacements = [{path: ["id"], value: normalized.id}];
+  for (const branch of ["head", "base"]) {
+    const repo = normalized[branch]?.repo;
+    if (repo?.full_name === repository && repo.ssh_url === `${["git", "github.com"].join("@")}:${repository}.git`) {
+      repo.ssh_url = "verified-own-github-repository-ssh-url";
+      replacements.push({path: [branch, "repo", "ssh_url"], value: repo.ssh_url});
+    }
+  }
+  // Preserve every original nonmetadata byte, including numeric lexemes. The
+  // additional decoded view retains checks of escaped strings without replacing
+  // inspection of the original representation.
+  let original = text;
+  const spans = replacements.map(({path, value}) => ({range: ranges.get(JSON.stringify(path)), value}));
+  if (spans.some(({range}) => !range)) return text;
+  for (const {range: [start, end], value} of spans.sort((a, b) => b.range[0] - a.range[0])) {
+    original = original.slice(0, start) + JSON.stringify(value) + original.slice(end);
+  }
+  return original + "\n" + JSON.stringify(normalized);
+}
+
 async function walk(directory) {
   const paths = [];
   for (const entry of await readdir(directory, {withFileTypes: true})) {
@@ -115,6 +185,7 @@ export async function privacyFailures({extraPaths = []} = {}) {
   const approvedBinaryDigests = new Set(
     (await readFile(approvedBinaryPath, "utf8")).split(/\s+/u).filter(Boolean)
   );
+  const githubIdentities = JSON.parse(await readFile(join(root, "privacy", "owned-github-pr-identities.json"), "utf8"));
   const candidates = new Set([...await trackedFiles(), ...extraPaths.map((path) => resolve(path))]);
   const vault = join(root, "Vault");
   try {
@@ -143,7 +214,7 @@ export async function privacyFailures({extraPaths = []} = {}) {
     }
     let body;
     try { body = await readFile(path, "utf8"); } catch { continue; }
-    findings.push(...customerDataFindings(body, relative(root, path), blockedDigests));
+    findings.push(...customerDataFindings(verifiedGithubMetadataText(body, githubIdentities), relative(root, path), blockedDigests));
   }
   return [...new Set(findings)].sort();
 }

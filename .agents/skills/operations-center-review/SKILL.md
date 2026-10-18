@@ -11,7 +11,7 @@ additional monetary spending outside the owner's existing plan.
 
 Identify evidence that may require security-authority review without issuing an
 Oracle classification, warning, or verdict. The independent Oracle process owns
-authentication-impact classification and owner-approval decisions. Route the
+authentication-impact classification and concrete protected-publication assessment. Route the
 complete staged candidate to `npm run oracle:review` after this readiness pass.
 
 Complete the initial coverage scan before returning a consolidated finding batch.
@@ -47,8 +47,13 @@ Verify that the durable proposal record predates implementation, matches the
 implemented Problem/Cause/Recommended change scope, and came from
 `npm run oracle:proposal`. A proposal verdict never replaces completed-tree
 review. Reject a material implementation divergence until the revised proposal
-receives fresh Oracle approval; user escalation is required only when Oracle
-flags an unapproved protected change.
+receives fresh Oracle technical approval. Missing deployment permission never stops the assessment; actual protected publication checks exact scoped authority separately.
+
+## Controlling review and publication placement — October 18, 2026
+
+Complete independent technical proposal/review and commit checks without human deployment permission. Missing permission is not a technical finding. Existing human-approval wording below applies only to an actual protected deployment/publication effect: concrete credential-trust, permission-authority, tenant-isolation or incompatible-public-contract behavior. Authentication labels, filenames and ordinary compatible corrections create no gate. Keep the explicit public API version request and cost controls.
+
+Use `python3 tools/publication_admission.py plan --release-ref <resolved-ref>` to inspect the exact publication. Source review pushes use its `push` command and require no deployment permission; PR creation/review remain available. Actual distributed-plugin main promotion uses its `merge --pr <number> --release-ref <resolved-ref>` command after required checks. When its exact protected effect lacks scoped human authority, finish all technical work and pause only that actual publication effect; use its `authorize --owner-evidence <direct-human-evidence> --release-ref <resolved-ref>` command to assess later evidence separately, then supply the resulting `--authorization <record>` to merge. Preserve the original technical receipt, full effective range and current effect dispositions. Never hot-patch installations.
 
 ## Request fulfillment review
 

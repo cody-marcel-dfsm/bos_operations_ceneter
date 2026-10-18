@@ -1,6 +1,6 @@
 {
   "name": "bos-operations-center",
-  "version": "0.4.203",
+  "version": "0.4.204",
   "private": false,
   "description": "BOS service-gateway client skills and Education Operation Center packages.",
   "author": "Infinite State Machines LLC",
@@ -58,7 +58,11 @@
     "test": "node --test tests/*.test.mjs",
     "test:authentication": "node --test tests/bos-oauth-live-contract.test.mjs tests/codex-login-surface-contract.test.mjs tests/codex-request-time-login-surface.test.mjs tests/external-authentication-handoff.test.mjs tests/external-dependency-adapter.test.mjs tests/product-mcp-contract.test.mjs tests/codex-runtime-verification.test.mjs tests/installer.test.mjs",
     "release:check": "npm run build && npm run check && npm run check:privacy && npm run contract:check && npm test",
-    "acceptance:marketplace": "node scripts/run-marketplace-prompts.mjs"
+    "acceptance:marketplace": "node scripts/run-marketplace-prompts.mjs",
+    "release:plan": "python3 tools/publication_admission.py plan",
+    "release:push": "python3 tools/publication_admission.py push",
+    "release:authorize": "python3 tools/publication_admission.py authorize",
+    "release:merge": "python3 tools/publication_admission.py merge"
   },
   "engines": {
     "node": ">=20"

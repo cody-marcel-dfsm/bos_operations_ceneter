@@ -88,7 +88,7 @@ test("ordinary agents call the Oracle utility and cannot act as approver", () =>
   assert.match(oracleUtility, /"--ignore-user-config"/i);
   assert.match(oracleUtility, /vault_index\.py", "evidence", VAULT_QUERY/i);
   assert.match(oracleUtility, /vault-query\.json/i);
-  assert.match(oracleUtility, /A REJECTED authentication review may report APPROVED, MISSING, or INVALID/i);
+  assert.match(oracleUtility, /Technical approval never requires human deployment permission/i);
   assert.match(oracleUtility, /proposal-review/);
   assert.match(oracleUtility, /prior proposal review/i);
   assert.deepEqual(oracleSchema.properties.owner_approval_status.enum, ["NOT_REQUIRED", "APPROVED", "MISSING", "INVALID"]);

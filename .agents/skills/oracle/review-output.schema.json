@@ -14,7 +14,8 @@
     "resolutions",
     "validations",
     "limitations",
-    "repair_plan"
+    "repair_plan",
+    "protected_effects"
   ],
   "properties": {
     "verdict": {
@@ -350,6 +351,131 @@
     },
     "repair_plan": {
       "type": "string"
+    },
+    "protected_effects": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "active": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "credential-trust",
+                  "permission-authority",
+                  "tenant-isolation",
+                  "incompatible-public-contract"
+                ]
+              },
+              "boundary": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "inputs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "digest": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "digest"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "boundary",
+              "description",
+              "paths",
+              "inputs"
+            ]
+          }
+        },
+        "dispositions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "origin": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "SUPERSEDED",
+                  "REVERTED"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              },
+              "inputs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "digest": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "digest"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "origin",
+              "id",
+              "status",
+              "reason",
+              "inputs"
+            ]
+          }
+        }
+      },
+      "required": [
+        "active",
+        "dispositions"
+      ]
     }
   }
 }
