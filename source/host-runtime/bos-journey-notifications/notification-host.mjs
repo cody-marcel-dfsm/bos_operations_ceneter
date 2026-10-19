@@ -51,14 +51,19 @@ export async function createNotificationHost({root, credentialPath, origin, cont
   // The digest is process-local comparison state. It never becomes a partition key or receipt.
   const credentialHash = hash(secret), credentialIdentity = initial.identity;
   const recordPath = join(root, `${registrationRef}.json`);
-  let retired = false, protocol = null, runActive = false, activeReader = false, workerLeaseUntil = 0;
+  let retired = false, retirement = null, protocol = null, runActive = false, activeReader = false, workerLeaseUntil = 0;
   const tickets = new Map();
   const timer = setTimeout(() => { void retire().catch(() => {}); }, lifetimeMs); timer.unref();
   const publicBinding = Object.freeze({registrationRef, generation, taskRef: binding.taskRef, pendingWorkRef: binding.pendingWorkRef});
-  async function retire() {
-    if (retired) return;
-    retired = true; controller.abort(); secret = ""; tickets.clear();
-    await atomicPrivateJson(recordPath, {version: 1, ...publicBinding, queuePartition, status: "retired"});
+  function retire() {
+    if (retirement) return retirement;
+    retired = true; secret = ""; tickets.clear();
+    // Every rejecting guard and shutdown caller observes the same durable
+    // transition. Publish the promise before abort listeners can re-enter.
+    retirement = Promise.resolve().then(() => atomicPrivateJson(recordPath,
+      {version: 1, ...publicBinding, queuePartition, status: "retired"}));
+    controller.abort();
+    return retirement;
   }
   const guard = async () => {
     try {

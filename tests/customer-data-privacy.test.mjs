@@ -6,14 +6,75 @@ import test from "node:test";
 
 import {
   customerDataFindings,
+  isProposedTextArtifact,
   isWatcherProcessMetadata,
   normalizeSensitiveText,
-  privacyFailures,
+  fixturePrivacyFailures,
   root,
   sha256,
-  verifiedGithubMetadataText
+  verifiedGithubMetadataText,
+  verifiedNativeProbeMetadataText,
+  verifiedSyntheticSourceFixtureText
 } from "../scripts/check-customer-data.mjs";
 import {syntheticIdentity} from "../scripts/lib/synthetic-fixtures.mjs";
+
+test("proposed text drafts require a known source type and valid control-free UTF-8", () => {
+  for (const path of ["workflow.md.proposed", "client.mjs.proposed", "record.json.proposed"]) {
+    assert.equal(isProposedTextArtifact(path, Buffer.from("Synthetic text.\n")), true);
+  }
+  for (const [path, bytes] of [["image.png.proposed", Buffer.from("text")], ["unknown.proposed", Buffer.from("text")],
+    ["client.mjs.proposed", Buffer.from([0xff])], ["workflow.md.proposed", Buffer.from("hidden\0bytes")]]) {
+    assert.equal(isProposedTextArtifact(path, bytes), false);
+  }
+  const external = ["person", "production-domain.invalidated"].join("@");
+  assert(customerDataFindings(external, "workflow.md.proposed", new Set()).some(item => item.includes("email")));
+  const phrase = "synthetic blocked draft identity";
+  assert(customerDataFindings(phrase, "client.mjs.proposed", new Set([sha256(normalizeSensitiveText(phrase))]))
+    .some(item => item.includes("identifier digest")));
+});
+
+test("verified own native argv normalization preserves every nonmetadata value and denies forged custody", () => {
+  const setting = ["plugins.synthetic", "synthetic-marketplace.enabled=false"].join("@");
+  const raw = JSON.stringify(["app-server", "-c", setting]);
+  const identity = {argv_sha256: sha256(raw), namespaceVerified: true};
+  const scan = (text, proof = identity, blocked = new Set()) => customerDataFindings(
+    verifiedNativeProbeMetadataText(text, proof), "own-native-probe.json", blocked);
+  assert.deepEqual(scan(raw), []);
+  assert(scan(raw, {...identity, namespaceVerified: false}).some(item => item.includes("email")));
+  assert(scan(raw, {...identity, argv_sha256: "f".repeat(64)}).some(item => item.includes("email")));
+  assert(scan(JSON.stringify(["app-server", setting]), {argv_sha256: sha256(JSON.stringify(["app-server", setting])), namespaceVerified: true})
+    .some(item => item.includes("email")), "only the actual -c typed slot can normalize");
+  const external = ["person", "production-domain.invalidated"].join("@");
+  const phone = ["202", "867", "5309"].join("");
+  for (const extra of [external, phone, "synthetic secret deny phrase"]) {
+    const text = JSON.stringify(["app-server", "-c", setting, extra]);
+    const blocked = new Set([sha256(normalizeSensitiveText(extra))]);
+    assert(scan(text, {argv_sha256: sha256(text), namespaceVerified: true}, blocked).length > 0);
+  }
+  const escaped = JSON.stringify(["app-server", "-c", setting, external]).replace("person@", "person\\u0040");
+  assert(scan(escaped).some(item => item.includes("email")), "forged bytes retain decoded values and all original lexemes");
+  const duplicate = `{"body":${JSON.stringify(external)},"body":""}`;
+  assert(scan(duplicate, {argv_sha256: sha256(duplicate), namespaceVerified: true}).some(item => item.includes("email")));
+});
+
+test("retained synthetic PID diff recognition requires exact custody and the original typed source slot", () => {
+  const source_path = "tests/native-callback-continuation.test.mjs";
+  const pid = 2 ** 31 - 2;
+  const line = `+  await writeFile(join(f.root, f.registration, "mutation.guard"), JSON.stringify({pid: ${pid}, token: randomUUID()}), {mode: 0o600});`;
+  const text = `diff --git a/${source_path} b/${source_path}\n${line}\n`;
+  const identity = {source_path, artifact_sha256: sha256(text), sourceFixtureVerified: true};
+  const scan = (raw, proof = identity) => customerDataFindings(verifiedSyntheticSourceFixtureText(raw, proof), "retained.diff", new Set());
+  assert.deepEqual(scan(text), []);
+  assert(scan(text, {...identity, sourceFixtureVerified: false}).some(item => item.includes("phone")));
+  assert(scan(text, {...identity, artifact_sha256: "f".repeat(64)}).some(item => item.includes("phone")));
+  assert(scan(text, {...identity, source_path: "tests/foreign.test.mjs"}).some(item => item.includes("phone")));
+  for (const raw of [text + `+const customer = "${pid}";\n`, text.replace("mutation.guard", "customer.payload")]) {
+    assert(scan(raw, {...identity, artifact_sha256: sha256(raw)}).some(item => item.includes("phone")));
+  }
+  const external = ["person", "production-domain.invalidated"].join("@");
+  const raw = text + `+const customer = "${external}";\n`;
+  assert(scan(raw, {...identity, artifact_sha256: sha256(raw)}).some(item => item.includes("email")));
+});
 
 test("privacy scanner narrowly recognizes bounded ASCII watcher process metadata", () => {
   const path = join(root, "Vault", "tmp", "vault-index", "watcher.pid");
@@ -132,7 +193,7 @@ test("privacy scanner includes untracked candidates and rejects unreviewed binar
   const candidate = join(directory, "customer-screenshot.png");
   await writeFile(candidate, Buffer.from("unreviewed-binary-fixture"));
   try {
-    const findings = (await privacyFailures({extraPaths: [candidate]}))
+    const findings = (await fixturePrivacyFailures([candidate]))
       .filter((finding) => finding.includes("customer-screenshot"));
     assert.equal(findings.length, 1);
     assert.match(findings[0], /customer-screenshot\.png: unreviewed binary publication artifact$/u);
@@ -147,10 +208,24 @@ test("privacy scanner reads text logs and diffs instead of rejecting them as bin
     .map((name) => join(directory, name));
   try {
     for (const candidate of candidates) await writeFile(candidate, "ok 1 - synthetic output\n");
-    const findings = (await privacyFailures({extraPaths: candidates}))
+    const findings = (await fixturePrivacyFailures(candidates))
       .filter((finding) => finding.includes("workflow-output"));
     assert.deepEqual(findings, []);
   } finally {
     await rm(directory, {recursive: true, force: true});
   }
+});
+
+
+test("fixture privacy scope requires explicit paths and retains customer and binary rejection", async () => {
+  await assert.rejects(fixturePrivacyFailures([]), /nonempty bounded/);
+  const directory = await mkdtemp(join(tmpdir(), "boc-privacy-fixtures-"));
+  const text = join(directory, "synthetic.md.proposed"), binary = join(directory, "synthetic.mjs.proposed");
+  try {
+    await writeFile(text, ["person", "production-domain.invalidated"].join("@"));
+    await writeFile(binary, Buffer.from([0xff, 0]));
+    const findings = await fixturePrivacyFailures([text, binary]);
+    assert(findings.some(item => item.includes("email")));
+    assert(findings.some(item => item.includes("unreviewed binary")));
+  } finally { await rm(directory, {recursive: true, force: true}); }
 });

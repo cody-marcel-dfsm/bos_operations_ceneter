@@ -4,6 +4,8 @@ import {mkdtemp, realpath, writeFile, readFile, readdir, chmod, symlink, rename,
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {setTimeout as delay} from "node:timers/promises";
+import fsPromises from "node:fs/promises";
+import {syncBuiltinESMExports} from "node:module";
 import {createNotificationHost} from "../source/host-runtime/bos-journey-notifications/notification-host.mjs";
 import {createCompanionBridge, callCompanion, acquireCompanionLease, readCompanionControl} from "../source/host-runtime/bos-journey-notifications/muse-companion-host.mjs";
 import {NotificationHostError, protectedRead, atomicPrivateJson} from "../source/host-runtime/bos-journey-notifications/protected-files.mjs";
@@ -66,7 +68,14 @@ test("task, source and credential replacement retire a generation and retain que
     if (kind === "task") f.retireTask();
     if (kind === "source") f.retireSource();
     if (kind === "content") await writeFile(f.credential, "synthetic-replacement");
-    if (kind === "inode") { await rename(f.credential, f.credential + ".old"); await writeFile(f.credential, secret + "\n", {mode: 0o600}); }
+    if (kind === "inode") {
+      const before = await fsPromises.lstat(f.credential, {bigint: true});
+      await rename(f.credential, f.credential + ".old"); await writeFile(f.credential, secret + "\n", {mode: 0o600});
+      const after = await fsPromises.lstat(f.credential, {bigint: true});
+      const custody = info => Object.fromEntries(["dev", "ino", "ctimeNs", "birthtimeNs"].map(key => [key, `0x${info[key].toString(16)}`]));
+      t.diagnostic(JSON.stringify({before: custody(before), after: custody(after)}));
+      assert.notEqual(before.ino, after.ino, "the old inode remains allocated at the renamed path");
+    }
     if (kind === "mode") await chmod(f.credential, 0o644);
     await assert.rejects(f.host.assertCurrent(), NotificationHostError);
     const record = JSON.parse(await readFile(join(f.root, `${f.host.binding.registrationRef}.json`), "utf8"));
@@ -74,6 +83,45 @@ test("task, source and credential replacement retire a generation and retain que
     const partitions = await readdir(join(f.root, "queue")); assert.equal(partitions.length, 1);
     assert.ok((await readFile(join(f.root, "queue", partitions[0], "pending.json"), "utf8")).includes("synthetic-journey"));
   });
+});
+test("concurrent retirement callers await one durable record and retain pending work", async t => {
+  const f = await fixture(t); await f.start();
+  const recordPath = join(f.root, `${f.host.binding.registrationRef}.json`);
+  const queueDirectory = join(f.root, "queue", (await readdir(join(f.root, "queue")))[0]);
+  const pendingPath = join(queueDirectory, "pending.json");
+  const pendingBefore = await readFile(pendingPath, "utf8");
+  const original = fsPromises.rename;
+  let release;
+  let writes = 0;
+  const gate = new Promise(done => { release = done; });
+  fsPromises.rename = async (from, to) => {
+    if (to === recordPath && JSON.parse(await readFile(from, "utf8")).status === "retired") {
+      writes++; await gate;
+    }
+    return original(from, to);
+  };
+  syncBuiltinESMExports();
+  let first, second, guarded;
+  try {
+    first = f.host.retire();
+    await until(() => writes === 1);
+    let secondSettled = false, guardSettled = false;
+    second = f.host.retire().then(() => { secondSettled = true; });
+    guarded = assert.rejects(f.host.assertCurrent(), NotificationHostError).then(() => { guardSettled = true; });
+    await delay(20);
+    assert.equal(JSON.parse(await readFile(recordPath, "utf8")).status, "active");
+    assert.equal(secondSettled, false, "concurrent retire waits for durable retirement");
+    assert.equal(guardSettled, false, "a rejecting guard waits for durable retirement");
+    release();
+    await Promise.all([first, second, guarded]);
+    assert.equal(writes, 1);
+    assert.equal(JSON.parse(await readFile(recordPath, "utf8")).status, "retired");
+    assert.equal(await readFile(pendingPath, "utf8"), pendingBefore);
+  } finally {
+    release();
+    await Promise.allSettled([first, second, guarded].filter(Boolean));
+    fsPromises.rename = original; syncBuiltinESMExports();
+  }
 });
 test("private file reading refuses symlinks, unsafe modes and duplicate creation", async t => {
   const f = await fixture(t), link = join(f.root, "link"); await symlink(f.credential, link);

@@ -20,6 +20,86 @@ const emailPattern = /\b[A-Z0-9._%+-]+@([A-Z0-9.-]+\.[A-Z]{2,})\b/giu;
 const formattedNanpPattern = /(?<![\dA-Z])(?:\+?1[-.\s]?)?\(?([2-9]\d{2})\)?[-.\s](\d{3})[-.\s](\d{4})(?!\d)/giu;
 const compactNanpPattern = /(?<![\dA-Z])(?:\+?1)?([2-9]\d{2})(\d{3})(\d{4})(?![\dA-Z])/giu;
 
+export function isProposedTextArtifact(path, body) {
+  if (extname(path).toLowerCase() !== ".proposed") return false;
+  const sourceExtension = extname(path.slice(0, -".proposed".length)).toLowerCase();
+  if (!sourceExtension || !textExtensions.has(sourceExtension)) return false;
+  try {
+    const text = new TextDecoder("utf-8", {fatal: true}).decode(body);
+    return !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(text);
+  } catch { return false; }
+}
+
+// A retained own CLI probe contains public -c plugin enablement keys whose
+// marketplace.enabled suffix resembles an email domain. Normalize only those
+// typed slots after exact artifact and independently retained namespace custody.
+export function verifiedNativeProbeMetadataText(text, identity) {
+  if (!identity) return text;
+  const tokens = [...text.matchAll(/"(?:\\[\s\S]|[^"\\])*"/gu)];
+  let unverified = text;
+  try { unverified += "\n" + tokens.map(token => JSON.parse(token[0])).join("\n"); } catch {}
+  if (identity.namespaceVerified !== true || sha256(text) !== identity.argv_sha256) return unverified;
+  let args;
+  try { args = JSON.parse(text); } catch { return unverified; }
+  if (!Array.isArray(args) || args.some(value => typeof value !== "string")) return unverified;
+  if (tokens.length !== args.length) return unverified;
+  const normalized = [...args], spans = [];
+  for (let index = 1; index < args.length; index++) {
+    if (args[index - 1] === "-c" &&
+        /^plugins\.[a-z0-9][a-z0-9_-]{0,127}@[a-z0-9][a-z0-9_-]{0,127}\.enabled=false$/u.test(args[index])) {
+      normalized[index] = "verified-own-native-plugin-isolation-setting";
+      spans.push({start: tokens[index].index, end: tokens[index].index + tokens[index][0].length, value: normalized[index]});
+    }
+  }
+  let original = text;
+  for (const {start, end, value} of spans.reverse()) original = original.slice(0, start) + JSON.stringify(value) + original.slice(end);
+  return original + "\n" + JSON.stringify(normalized);
+}
+
+async function ownNativeProbeIdentity(path, registry) {
+  const identity = registry.probes?.find(item => resolve(root, item.path) === path);
+  if (!identity) return null;
+  try {
+    const bytes = await readFile(resolve(root, identity.namespace_path));
+    if (sha256(bytes) !== identity.namespace_sha256) return {...identity, namespaceVerified: false};
+    const namespace = JSON.parse(bytes);
+    if (namespace.args_file_sha256 !== identity.argv_sha256 || namespace.uses_ordinary_default_home !== true ||
+        namespace.bos_metadata_identical !== true || namespace.credentials_read_or_exported !== false ||
+        namespace.probe_auth_home_override !== false || namespace.probe_ignore_user_config !== false || namespace.probe_profile_override !== false) return {...identity, namespaceVerified: false};
+    return {...identity, namespaceVerified: true};
+  } catch { return {...identity, namespaceVerified: false}; }
+}
+
+export function verifiedSyntheticSourceFixtureText(text, identity) {
+  if (identity?.sourceFixtureVerified !== true || sha256(text) !== identity.artifact_sha256 ||
+      identity.source_path !== "tests/native-callback-continuation.test.mjs") return text;
+  const header = `diff --git a/${identity.source_path} b/${identity.source_path}`;
+  let selected = false;
+  return text.split("\n").map(line => {
+    if (line.startsWith("diff --git ")) selected = line === header;
+    if (!selected) return line;
+    const match = /^\+  await writeFile\(join\(f\.root, f\.registration, "mutation\.guard"\), JSON\.stringify\(\{pid: ([0-9]+), token: randomUUID\(\)\}\), \{mode: 0o600\}\);$/u.exec(line);
+    if (!match || Number(match[1]) !== 2 ** 31 - 2) return line;
+    return line.replace(`pid: ${match[1]},`, "pid: synthetic-dead-process-id,");
+  }).join("\n");
+}
+
+export async function ownSourceFixtureIdentity(path, registry) {
+  const identity = registry.synthetic_source_fixtures?.find(item => resolve(root, item.path) === path);
+  if (!identity) return null;
+  try {
+    const handoffBytes = await readFile(resolve(root, identity.handoff_path));
+    const nativeBytes = await readFile(resolve(root, identity.native_validation_path));
+    if (sha256(handoffBytes) !== identity.handoff_sha256 || sha256(nativeBytes) !== identity.native_validation_sha256) return null;
+    const handoff = JSON.parse(handoffBytes), native = JSON.parse(nativeBytes);
+    if (resolve(handoff.native_current_diff.path) !== path || handoff.native_current_diff.sha256 !== identity.artifact_sha256 ||
+        native.kind !== "oracle-validation-record-v1" || native.exit_code !== 0 || native.candidate_tree !== handoff.candidate_tree ||
+        JSON.stringify(native.command) !== JSON.stringify(["node", "--test", identity.source_path]) ||
+        native.live_inputs?.[identity.source_path]?.sha256 !== handoff.changed_source_paths?.[resolve(root, identity.source_path)]?.sha256) return null;
+    return {...identity, sourceFixtureVerified: true};
+  } catch { return null; }
+}
+
 export function normalizeSensitiveText(value) {
   return (value.toLowerCase().match(/[a-z0-9]+/gu) ?? []).join(" ");
 }
@@ -181,11 +261,6 @@ async function scanZip(path, blockedDigests, approvedBinaryDigests) {
 }
 
 export async function privacyFailures({extraPaths = []} = {}) {
-  const blockedDigests = new Set((await readFile(digestPath, "utf8")).split(/\s+/u).filter(Boolean));
-  const approvedBinaryDigests = new Set(
-    (await readFile(approvedBinaryPath, "utf8")).split(/\s+/u).filter(Boolean)
-  );
-  const githubIdentities = JSON.parse(await readFile(join(root, "privacy", "owned-github-pr-identities.json"), "utf8"));
   const candidates = new Set([...await trackedFiles(), ...extraPaths.map((path) => resolve(path))]);
   const vault = join(root, "Vault");
   try {
@@ -193,6 +268,26 @@ export async function privacyFailures({extraPaths = []} = {}) {
       for (const path of await walk(vault)) candidates.add(path);
     }
   } catch {}
+  return scanPrivacyCandidates(candidates);
+}
+
+// Unit fixtures exercise the same complete per-file policy without repeating
+// collection of the entire repository/Vault. The production CLI always uses
+// privacyFailures above and retains its complete source/evidence gate.
+export async function fixturePrivacyFailures(paths) {
+  if (!Array.isArray(paths) || paths.length < 1 || paths.length > 100 || paths.some(path => typeof path !== "string" || !path)) {
+    throw new Error("Provide a nonempty bounded set of explicit privacy fixture paths.");
+  }
+  return scanPrivacyCandidates(new Set(paths.map(path => resolve(path))));
+}
+
+async function scanPrivacyCandidates(candidates) {
+  const blockedDigests = new Set((await readFile(digestPath, "utf8")).split(/\s+/u).filter(Boolean));
+  const approvedBinaryDigests = new Set(
+    (await readFile(approvedBinaryPath, "utf8")).split(/\s+/u).filter(Boolean)
+  );
+  const githubIdentities = JSON.parse(await readFile(join(root, "privacy", "owned-github-pr-identities.json"), "utf8"));
+  const nativeProbeIdentities = JSON.parse(await readFile(join(root, "privacy", "owned-native-probe-identities.json"), "utf8"));
   const findings = [];
   for (const path of [...candidates].sort()) {
     if (path.includes(`${join(root, "Vault", "index")}/`)) continue;
@@ -207,6 +302,10 @@ export async function privacyFailures({extraPaths = []} = {}) {
         findings.push(...customerDataFindings(body.toString("utf8"), relative(root, path), blockedDigests));
         continue;
       }
+      if (isProposedTextArtifact(path, body)) {
+        findings.push(...customerDataFindings(body.toString("utf8"), relative(root, path), blockedDigests));
+        continue;
+      }
       if (!approvedBinaryDigests.has(sha256(body))) {
         findings.push(`${relative(root, path)}: unreviewed binary publication artifact`);
       }
@@ -214,7 +313,9 @@ export async function privacyFailures({extraPaths = []} = {}) {
     }
     let body;
     try { body = await readFile(path, "utf8"); } catch { continue; }
-    findings.push(...customerDataFindings(verifiedGithubMetadataText(body, githubIdentities), relative(root, path), blockedDigests));
+    const nativeText = verifiedNativeProbeMetadataText(body, await ownNativeProbeIdentity(path, nativeProbeIdentities));
+    const sourceText = verifiedSyntheticSourceFixtureText(nativeText, await ownSourceFixtureIdentity(path, nativeProbeIdentities));
+    findings.push(...customerDataFindings(verifiedGithubMetadataText(sourceText, githubIdentities), relative(root, path), blockedDigests));
   }
   return [...new Set(findings)].sort();
 }

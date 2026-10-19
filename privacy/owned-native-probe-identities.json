@@ -1,0 +1,21 @@
+{
+  "probes": [
+    {
+      "path": "Vault/tmp/native-callback-continuation-20261018/isolated-native-probe-argv.private.json",
+      "argv_sha256": "bbe84ea038fd322bf472c086eda27e4c70d597581e58c9737c0d6f5fa7b79682",
+      "namespace_path": "Vault/tmp/native-callback-continuation-20261018/isolated-native-auth-namespace-10.json",
+      "namespace_sha256": "f3bb17b2d3aaa1124f63172c1d44a0251bd67787cfcc998f67331a866037f63c"
+    }
+  ],
+  "synthetic_source_fixtures": [
+    {
+      "path": "Vault/tmp/native-callback-continuation-20261018/current-complete-candidate-21.diff",
+      "artifact_sha256": "21b66505b23e7705638b29f171b061fe2b98ee9e93d8120d0d485dfed3d3bb9d",
+      "source_path": "tests/native-callback-continuation.test.mjs",
+      "handoff_path": "Vault/tmp/native-callback-continuation-20261018/source-ready-handoff-21.json",
+      "handoff_sha256": "fd184af8110b45300c186fc97718efd5a3e3d71dfb674602310da404f0e2148c",
+      "native_validation_path": "Vault/tmp/native-callback-continuation-20261018/native-focused-18.json",
+      "native_validation_sha256": "106466a710c9140302f63bac7d5009adf4163eac6432fafeab1a4e8de4c9bf12"
+    }
+  ]
+}
