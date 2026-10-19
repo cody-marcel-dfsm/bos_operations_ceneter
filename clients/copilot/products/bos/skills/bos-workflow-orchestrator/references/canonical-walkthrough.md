@@ -16,7 +16,9 @@ client authority or execution state.
 3. Invoke that event's exact read action with `{}` only when its discovered
    closed empty-object schema requires it. Use its declared attendee fields;
    do not search CRM for those attendees.
-4. Read fresh BOSL resources, plugin journeys, and detailed service contracts.
+4. Follow the [current BOSL authoring contract](bosl-authoring.md), using its
+   inline path when the host cannot read resources. Read the required plugin
+   journeys and detailed service contracts.
    Author the complete raw graph with actual seed data, a searchable category,
    server-owned audience materialization, automation-template resolution,
    campaign preparation, client review, sanctioned send, result display,

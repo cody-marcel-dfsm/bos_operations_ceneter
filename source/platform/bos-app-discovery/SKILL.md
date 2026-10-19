@@ -271,8 +271,14 @@ For Agent-Driven Custom Journey authoring, obtain a fresh application
 description through current advertised discovery and validate its BOSL resource
 links with `scripts/validate-discovery.mjs`. Use the identity-v2 resource
 selection and validation rules above; legacy discovery calls its advertised
-`app.describe` with `{}`. Read each exact advertised schema, reference, and
-examples URI through the same authenticated BOS connection. Then call
+`app.describe` with `{}`. When the host supports resource reads, read each exact
+advertised schema, reference, and examples URI through the same authenticated
+BOS connection. A host without resource reads follows the exact
+`journey_registration.contract` capability and input, validates the full
+returned contract, and uses its complete `input_schema` and actually advertised
+examples through the shared [inline authoring path](../bos-workflow-orchestrator/references/bosl-authoring.md).
+Retain specific missing grammar, example, operation or source evidence; never
+guess fields or routes or probe with malformed registration documents. Then call
 `plugins.list` with `{}`, preserve readiness separately from accessibility,
 copy the selected plugin's complete `service.describe` input verbatim, and
 validate compact/detailed journey agreement. Follow each returned
@@ -298,7 +304,9 @@ Read additional advertised BOSL schema, reference, or examples resources when
 those observations leave required grammar or feasibility evidence missing.
 Preserve that missing evidence explicitly. A read-only assessment ends with
 evidence and performs no registration or journey execution. Actual authoring
-retains the full resource and contract prerequisites above.
+uses the shared authoring path above, preserves current operation and source
+readiness and callback grant review, and follows explicit returned Start only
+after valid registration.
 Validate a complete identity-v2 HTTPS Describe response with
 `scripts/validate-discovery.mjs operation-describe`, covering its returned
 contacts. Validate an actual legacy `api.contract.get` response with

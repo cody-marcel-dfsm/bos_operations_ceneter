@@ -318,8 +318,14 @@ errors. Use the actual service catalog and relevant operation contracts for
 source capabilities and readiness. Read additional advertised BOSL schema,
 reference, and examples resources only when needed to resolve missing grammar
 or feasibility evidence; identify unresolved evidence explicitly. Return the
-assessment without registering or executing a journey. Actual authoring
-continues to require the advertised BOSL resources and operation contracts.
+assessment without registering or executing a journey. Actual authoring follows
+the [shared authoring contract](../../bos-workflow-orchestrator/references/bosl-authoring.md):
+read advertised resources when the host supports them; otherwise validate the
+exact linked registration contract and consume its complete `input_schema` and
+examples only where advertised. Preserve specific missing grammar or examples,
+current operation/source validation, readiness, callback grant review, and
+explicit returned Start. Missing evidence never authorizes guessed fields,
+routes or malformed registration probes.
 
 Follow every `api.contract.get` link with its exact returned input. An operation
 identifier returned by HTTP Describe is a selector for that HTTP contract; it

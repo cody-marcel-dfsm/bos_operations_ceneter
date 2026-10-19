@@ -234,7 +234,7 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
   assert.match(sourceGuidance, /Keep app\/service lists, identity summaries, readiness checks, and tool\/workflow\s+availability lists within their requested facts/i);
   assert.match(sourceGuidance, /complete contract audit\s+requires an explicit detailed or comprehensive request/i);
   assert.match(sourceGuidance, /\*\*Tools and workflows:\*\*[\s\S]*`journey_registration\.contract`[\s\S]*exact `capability` and `input`[\s\S]*validate the actual response with `api-contract`/i);
-  assert.match(sourceGuidance, /For a read-only assessment of journey feasibility[\s\S]*raw BOSL input\/output schemas[\s\S]*Read additional advertised BOSL schema, reference, or examples resources when[\s\S]*required grammar or feasibility evidence missing[\s\S]*Actual authoring\s+retains the full resource and contract prerequisites/i);
+  assert.match(sourceGuidance, /For a read-only assessment of journey feasibility[\s\S]*raw BOSL input\/output schemas[\s\S]*Read additional advertised BOSL schema, reference, or examples resources when[\s\S]*required grammar or feasibility evidence missing/i);
   assert.match(sourceGuidance, /separate\s+rows for each native operation \(including each alias\), each described public\s+operation, and each schema-comparison result/i);
   assert.match(sourceGuidance, /one entry for every submitted pair and result/i);
   assert.match(sourceGuidance, /only through its exact advertised\s+contract reference; similar names or schemas do not establish a counterpart/i);
@@ -332,7 +332,7 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
     assert.match(clientGuidance, /Keep app\/service lists, identity summaries, readiness checks, and tool\/workflow\s+availability lists within their requested facts/i);
     assert.match(clientGuidance, /complete contract audit\s+requires an explicit detailed or comprehensive request/i);
     assert.match(clientGuidance, /\*\*Tools and workflows:\*\*[\s\S]*`journey_registration\.contract`[\s\S]*exact `capability` and `input`[\s\S]*validate the actual response with `api-contract`/i);
-    assert.match(clientGuidance, /For a read-only assessment of journey feasibility[\s\S]*raw BOSL input\/output schemas[\s\S]*Actual authoring\s+retains the full resource and contract prerequisites/i);
+    assert.match(clientGuidance, /For a read-only assessment of journey feasibility[\s\S]*raw BOSL input\/output schemas/i);
     let previousStepOffset = -1;
     for (const step of inventorySteps) {
       const stepOffset = clientGuidance.indexOf(step);

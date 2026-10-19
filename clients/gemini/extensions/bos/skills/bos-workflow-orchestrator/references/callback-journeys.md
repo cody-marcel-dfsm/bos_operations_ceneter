@@ -1,7 +1,15 @@
 # Callback journeys within API v1
 
 Discover the current BOSL schema and the installed plugin's event descriptor
-before authoring callbacks. Bootstrap declares named callbacks with a source,
+before authoring callbacks. A host without resource reads follows the
+[inline authoring path](bosl-authoring.md) through the exact existing
+registration contract link. Use a freshly advertised complete callback example
+and validate it with that contract's schema and current source/operation
+contracts; preserve its published binding and predicate shapes. Resolve a
+missing schema or a public compile finding before resubmission. A sequence of
+guessed HTTP422 payloads establishes no registered or Started journey.
+
+Bootstrap declares named callbacks with a source,
 its typed business inputs and a bounded match predicate. Source inputs use
 literal or journey-input bindings. The first source is the configured Gmail
 inbox; readiness and eligible match/deduplication fields come from its current
