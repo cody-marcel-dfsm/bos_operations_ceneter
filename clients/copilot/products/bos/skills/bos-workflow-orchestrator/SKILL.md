@@ -91,13 +91,13 @@ that actually completed.
 BOS owns platform authentication and the shared host-managed connection.
 Dependent products own their domain skills and requirements. Use the BOS
 connection to discover and execute server-authorized operations with their
-exact schemas and advertised API contracts. Preserve the grant-bound
-application, organization, installation and role for every step.
+exact schemas and advertised API contracts. Preserve each operation's selected,
+server-authorized application, organization, installation and role for every step.
 
 Keep all routing application-neutral. Select applications, plugins, services,
 and operations only from the current authenticated context and live discovery.
 Pass only live-declared business arguments. Every call remains subject to
-request-time server authorization from the connection's scoped grant.
+request-time server authorization of the identity and selected operation context.
 
 ## Described plugin journey explanations
 
@@ -238,7 +238,7 @@ discovered lifecycle and preserve receipt-based recovery and effect approvals.
 ## Workflow
 
 1. Preserve the user's objective and requested outcome. Use `bos-mcp-client` to
-   resolve and call `bos_get_context`, then validate its exact scoped grant.
+   resolve and call `bos_get_context`, then match and validate the requested/default context.
 2. Use current live tool and resource discovery on the BOS
    connection to identify the minimum services needed for the objective. Classify
    each dependency as ready, disabled, disconnected, awaiting authorization,

@@ -163,11 +163,13 @@ Read and follow these installed skills before retrieving data:
 - `education-center-class-operations` for date-bound class rosters.
 - `education-center-student-operations` for student, enrollment, and family identity handling.
 
-Use the single user and role resolved by `bos_get_context` from the authorized
-BOS platform connection. Claude and ChatGPT/Codex use the host-managed BOS OAuth
-grant; another client uses only its generated product adapter. BOS derives
-organization, installation, plugin, and capability scope. Treat the live MCP
-manifest as authoritative. Never ask the user to choose a director, organization, source, key, or role for preparation.
+Use `bos-mcp-client` to match the requested context or this plugin's confirmed
+default against fresh authorized contexts. Clarify only unresolved safe
+organization, installation or eligible-role labels. Reuse the same authenticated
+BOS connection: OAuth in GPT/Claude or one private identity key in Muse. Treat
+the selected context's live manifest and current permissions as authoritative.
+Preparing a director report requires no director identity, credential, raw
+authority identifier or separate BOS login.
 
 When a BOS-routed planner source reports an authentication error, follow
 `bos-mcp-client` authentication recovery. When a separately connected client
@@ -187,9 +189,11 @@ sections while authorization is pending.
    Monday-through-Sunday week, including remaining upcoming days. Resolve
    “next week,” “last week,” or an explicitly supplied date from that local
    week calendar. State the resolved period and continue without asking.
-2. Call `bos_get_context` once through BOS. Require exactly one
-   authenticated user and role and accept the server-derived Education Center scope. A
-   server violation is a configuration error, never a user selection question.
+2. Call `bos_get_context` through the same authenticated BOS connection and
+   match the requested or confirmed default Education Center context. Clarify
+   unresolved safe organization/installation/eligible-role choices. Require one
+   selected, currently authorized context before retrieving business data;
+   multiple available contexts are normal and need no new login or key.
 3. Retrieve every camp occurrence in the resolved reporting window before
    gathering general operating metrics: the selected day for a daily planner,
    or every day in the resolved week for a weekly summary. Build each camp's roster from

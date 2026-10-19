@@ -252,8 +252,8 @@ async function validateProducts() {
         continue;
       }
       const metadata = await readJson(metadataPath);
-      const expectedAuthentication = productRuntimeOwnershipMetadata(manifest).authentication;
-      const expectedOwnership = productRuntimeOwnershipMetadata(manifest);
+      const expectedAuthentication = productRuntimeOwnershipMetadata(manifest, "bos", client).authentication;
+      const expectedOwnership = productRuntimeOwnershipMetadata(manifest, "bos", client);
       if (
         metadata.connection_owner !== manifest.connection_owner ||
         JSON.stringify(metadata.dependency_products) !==

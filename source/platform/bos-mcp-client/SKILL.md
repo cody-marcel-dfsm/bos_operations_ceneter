@@ -71,8 +71,11 @@ resources or tools alone never establish that the connection is disabled.
 A successful context call immediately resumes the original operation.
 
 Use this skill for every client-side BOS-family operation. BOS owns one
-BOS-managed OAuth connection to its platform resource. Native hosts own their
-existing standard OAuth lifecycle with required S256 PKCE. Read the
+host-managed identity connection to its platform resource. GPT/Claude and other
+OAuth-capable hosts own their standard OAuth lifecycle with required S256 PKCE.
+Muse currently uses one user-issued BOS identity API key in its private host
+credential configuration. Both proofs use the same authorized context discovery
+and per-operation permission checks, with no extra BOS login for context changes. Read the
 [standard OAuth client guide](references/oauth-client-guide.md) for public
 service discovery, optional resource defaulting and the service-hosted example.
 Preserve the credential-free dependent-product handoff. Install BOS before
@@ -83,8 +86,8 @@ generated adapter. Dependent packages supply domain skills and requirements
 without declaring another transport or login.
 
 The service derives organization, application, installation, role, capability,
-provider, and operation authority from the validated grant and current server
-state on every private request. The platform audience never grants access to
+provider, and operation authority from validated identity proof and current
+selected-context authorization on every private request. The platform audience never grants access to
 all applications. Use only live-discovered operations authorized for the exact
 context returned by `bos_get_context`. Another context requires BOS-owned
 server authorization; package identities and natural-language requests never
@@ -131,7 +134,8 @@ an authentication or authorization failure.
 ## Current-host read execution
 
 Use the current authenticated BOS capabilities for the requested operation.
-After `bos_get_context` validates the connection's server-scoped grant, resolve
+After `bos_get_context` validates the identity and the requested/default context
+has been matched to a fresh authorized choice, resolve
 a live-discovered read operation whose descriptor covers the requested data.
 Invoke its exact schema without client-supplied authority fields and continue from the
 returned evidence. For an advertised app MCP or API, use its contract when the
@@ -144,14 +148,14 @@ callable names from the host catalog and argument constraints from current
 validated operation contracts; never invent endpoints or selectors.
 Directory or transport limitations remain scoped to that operation. An
 access denial never permits switching routes to evade it. Missing or ambiguous
-scoped-grant evidence, revoked grants, and explicit access denials stop the affected operation.
+selected-context authority evidence, revoked credentials, and explicit access denials stop the affected operation.
 Every operation retains request-time server authorization.
 
 ## Resource-owned operation schemas
 
 When an already callable tool has a generic or cached schema, read an advertised
 operation-contract resource on the same authenticated connection. Validate its
-scoped-grant and application/source binding, exact operation identity, current
+selected-context authority and application/source binding, exact operation identity, current
 contract version and implementation version when supplied. Follow the exact
 listed URI through the host resource reader; never construct a URI from a pattern.
 A platform manifest or directory alone is insufficient when it points to a
@@ -176,9 +180,10 @@ from the actual operation result, separately from successful schema discovery.
 
 ## Current application discovery
 
-For application requests, use the BOS platform connection with the application scope
-already bound by server authorization. Inspect its live tool and resource discovery surfaces after
-`bos_get_context` validates that connection's exact scoped grant. Read any
+For application requests, use the same BOS identity connection and its fresh
+server-authorized application contexts. Inspect live tool and resource discovery after
+`bos_get_context` validates the identity and returns its current authorized
+contexts. Select the requested/default app context through the same connection. Read any
 advertised operation contract before invoking its deterministic HTTPS API.
 When that contract declares
 `execution.context_header: "X-BOS-Context-Handle"`, copy the static header name
@@ -245,7 +250,9 @@ requested outcome.
 
 ## Connection ownership
 
-Native hosts perform their existing Connect/Sign in OAuth action. The service
+OAuth-capable hosts perform their existing Connect/Sign in action. Muse uses
+one existing identity API key in private host credential configuration; apply
+its key-specific recovery and receive no key in chat. The OAuth service
 requires S256 PKCE; MCP-aware hosts send the exact protected resource. Generic
 OAuth clients may omit resource only to select the service's BOS Platform
 default. Skills receive no credentials and automate no browser or CLI login.
@@ -383,21 +390,27 @@ and inspect its sanitized result before producing a final answer.
    `delegated_role_id`, or a client-selected subservice authority. BOS derives
    execution scope from the authenticated principal, installed services,
    plugin enablement, role, capability, provider readiness, and requested tool.
-   Call `bos_get_context` to validate that the connection's one scoped OAuth
-   grant still resolves. Domain tool arguments never select another
-   organization, installation, application, or role.
-3. Fail closed when context is absent or ambiguous.
+   Call `bos_get_context` to validate the authenticated identity and select a
+   fresh authorized context using explicit request labels or the calling
+   plugin's confirmed defaults. The same OAuth login or identity key covers
+   each authorized context. Domain business arguments never create authority;
+   legacy restricted grants retain their exact original limits.
+3. Clarify an unresolved choice among valid contexts using safe labels. Fail
+   closed for invalid discovery or denied authority. A valid identity with zero
+   business contexts remains signed in and returns its empty access result.
 4. Use the triggered subservice skill to choose the requested workflow and
    semantic operation from the current live-discovered dynamic domain service
-   and tool surface. Keep connection selection fixed on BOS and preserve the grant-bound
-   application authority. Treat the descriptor only as an operation/schema declaration;
+   and tool surface. Keep connection selection fixed on BOS and preserve the selected
+   context's application authority. Treat the descriptor only as an operation/schema declaration;
    call the operation with its declared business arguments and let BOS authorize
    the organization, installation, role, plugin, capability, tool, and provider
    at `tools/call` time.
 5. Use the configured BOS connection authentication profile. Native hosts use
    their native action. The configured host manages standard OAuth
-   and normal refresh automatically. A revoked grant requires fresh user
-   consent through that profile; never restore it administratively or reuse another audience's token.
+   and normal refresh automatically on OAuth-capable hosts. Muse uses its
+   existing private identity-key configuration and key-specific recovery. A revoked
+   OAuth grant requires fresh user consent; a revoked key remains revoked. Never
+   restore revoked authority administratively or reuse another audience's token.
    Dependent products use the installed BOS connection and never add a login.
    Keep tokens, authorization codes, bearer values, and grant metadata out of
    chat, tool arguments, package files, and logs. Resume the original request
@@ -448,8 +461,8 @@ or regress the client to product MCP sign-in.
 
 Domain skills interpret their workflows and execute through the configured
 product MCP. BOS derives actor, tenant, organization, application, installation,
-subservice, role, plugin, capability, and provider scope from the validated
-OAuth grant, requested tool, and canonical server records.
+subservice, role, plugin, capability and provider scope from validated OAuth or
+identity-key proof, the selected operation context and current canonical records.
 
 ## Shared local document cache
 

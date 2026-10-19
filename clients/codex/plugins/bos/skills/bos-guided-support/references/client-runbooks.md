@@ -1,5 +1,17 @@
 # BOS client runbooks
 
+## Muse identity-key connection
+
+Muse currently uses a user-issued BOS identity API key. Configure that existing
+key directly in Muse's private credential configuration for the one BOS platform
+connection. Keep keys out of chat, plugin packages, screenshots and logs. Use
+that same authenticated connection to discover authorized apps/organizations,
+select the requested or confirmed default context and continue the pending task.
+OAuth login/refresh commands in other host runbooks apply to those hosts. A
+rejected or expired Muse key follows its existing key-recovery path; changing an
+authorized organization or app alone needs no new key or login.
+
+
 The repository's generated package and current installation instructions are
 the authority for BOS-specific names, routes, and versions. Vendor documents
 are the authority for current host controls. Check both before giving exact UI

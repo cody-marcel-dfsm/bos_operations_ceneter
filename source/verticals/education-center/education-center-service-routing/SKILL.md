@@ -152,7 +152,8 @@ A text-only answer does not satisfy the request.
 ## Routing workflow
 
 1. Discover every domain marked `bos` through the installed BOS platform MCP
-   connection and its host-managed BOS OAuth grant. Invoke the selected
+   identity connection: host-managed OAuth or Muse's private identity API key.
+   Invoke the selected
    application operation through the exact advertised deterministic HTTPS API
    and the BOS dependency adapter. The adapter owns identity-v2 transport
    context; Education Center never receives or forwards it.
@@ -161,8 +162,10 @@ A text-only answer does not satisfy the request.
    authorized operation set for each request.
 2. Identify the requested operation and any provider preference stated by the
    user.
-3. Call `bos_get_context` once and accept the exact organization, application,
-   installation, role, and capability scope for the requested operation.
+3. Use `bos-mcp-client` and fresh `bos_get_context` results to match the explicit
+   request or this plugin's confirmed default to an authorized organization/app/
+   installation/eligible-role context. Clarify unresolved safe-label choices;
+   reuse the same connection. The server revalidates current operation permissions.
 4. Use the effective `source_routes` value for the requested domain. A
    task-specific user instruction may select another configured connector for
    that task; it never changes BOS authority.

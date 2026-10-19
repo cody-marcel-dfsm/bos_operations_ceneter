@@ -47,7 +47,11 @@ export function resolveContext(
   );
   if (!matches.length) return { status: explicit ? "requested_context_unavailable" : "default_context_unavailable" };
   if (matches.length !== 1) {
-    const defaultsForSelection = selected.role_label?.trim()
+    const tupleFields = ["organization_name", "application_name", "installation_name"];
+    const sameTuple = matches.every(context => tupleFields.every(key =>
+      normalize(context[key]) === normalize(matches[0][key])));
+    const distinctRoles = new Set(matches.map(context => normalize(context.role_label))).size === matches.length;
+    const defaultsForSelection = selected.role_label?.trim() || !sameTuple || !distinctRoles
       ? []
       : matches.filter(context => context.is_default);
     if (defaultsForSelection.length === 1) {

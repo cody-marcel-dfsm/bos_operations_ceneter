@@ -412,7 +412,7 @@ contributions for the current objective.
 ## Current-host read execution
 
 Use the current authenticated BOS capabilities for the requested operation.
-After `bos_get_context` revalidates the connection's scoped grant, resolve a
+After `bos_get_context` validates the identity and requested/default context, resolve a
 live-discovered read operation whose descriptor covers the requested data.
 Invoke its exact schema without client-supplied authority fields and continue from the
 returned evidence. For an advertised app MCP or API, use its contract when the
@@ -525,7 +525,7 @@ each required business operation's own fail-closed gate.
 
 ## Execute BOS resource discovery
 
-After `bos_get_context` revalidates the scoped grant, perform resource discovery
+After `bos_get_context` revalidates the selected context, perform resource discovery
 through the existing authenticated BOS connection in the same request. Context
 alone does not inspect the app directory. Do not gate BOS resource discovery on dynamic MCP attachment
 or authenticated API invocation capabilities needed at later steps.

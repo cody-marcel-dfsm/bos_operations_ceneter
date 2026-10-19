@@ -1,5 +1,17 @@
 # Generic protected-resource authentication delegation
 
+## Host authentication method
+
+The same BOS identity connection supports current authorized organizations, apps,
+installations and assigned roles. GPT/Claude use host-managed OAuth; Muse currently
+uses a user-issued identity API key held privately by the host. This handoff
+reports readiness for the host's supported method and transfers no credential.
+Safe requested/default context selection happens through BOS after readiness
+and requires no additional BOS login or key. OAuth-specific discovery, consent
+and refresh steps below apply to OAuth-capable hosts; the existing key lifecycle
+applies to Muse. The readiness-only request/result schemas remain unchanged.
+
+
 Normative contract ID: `bos.authentication-handoff/v1`.
 The machine-readable request and readiness-result contract is
 [external-product-authentication-handoff.v1.schema.json](external-product-authentication-handoff.v1.schema.json).

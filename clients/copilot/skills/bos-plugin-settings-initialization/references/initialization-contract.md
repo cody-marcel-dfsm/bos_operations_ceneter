@@ -16,11 +16,13 @@ confirmed cache, or an explicit repair request.
    confirmed server settings and explicit user inputs for the live profile;
    unresolved required inputs join this workflow's consolidated review. No
    local overlay or second product is required.
-3. `bos_get_context` revalidates the one organization, application,
-   installation, and role already bound to the active OAuth grant. The client
-   supplies no organization, role, or context selector.
-4. BOS returns the canonical plugin-service connection inventory for that
-   scoped grant. The client preserves ready services and
+3. `bos_get_context` validates the identity proof and returns current authorized
+   contexts. Match the explicit request or this plugin's confirmed default;
+   clarify unresolved safe organization/app/installation/eligible-role labels.
+   Reuse the same OAuth login or identity key and keep raw authority identifiers
+   out of business arguments.
+4. Discover the canonical plugin-service connection inventory through the selected
+   context's advertised contract and fresh handle. The client preserves ready services and
    walks actionable connections for enabled, selected services one at a time
    through server-returned secure flows. Disabled, unselected, and inapplicable
    services remain unchanged unless the user explicitly changes their canonical
@@ -40,15 +42,17 @@ Together, steps 4 through 10 establish the organization's business profile.
 The service-owned settings profiles declare routing, automation,
 communications, terminology, schedules, and other configurable behavior. The
 client never carries a provider-to-operation map. A domain skill asks for a
-semantic operation, and BOS applies the grant-bound organization's current profile
+semantic operation, and BOS applies the selected, server-authorized organization's current profile
 and service bindings.
 
 The server owns canonical completion. The local receipt is a fast client
 preflight bound to its opaque authority scope, server initialization epoch,
 plugin revisions, and schema versions.
 
-Connection readiness uses `bos_list_plugin_services` without an authority
-selector. The server derives scope from the active grant and owns row membership, order, labels,
+Connection readiness uses the selected context's advertised inventory contract.
+Legacy direct discovery retains its declared `bos_list_plugin_services` argument
+shape and restricted-grant scope. The server validates current selected-context
+authority and owns row membership, order, labels,
 enablement, selection, applicability, connection state, and action
 availability. `connected` and
 `not_required` rows need no interaction. Each enabled `connection_required`

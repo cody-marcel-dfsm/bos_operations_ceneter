@@ -1,5 +1,21 @@
 # BOS Operations Center Packages
 
+## One BOS login across your authorized organizations and apps
+
+One BOS identity login gives the agent access to the organizations, applications,
+installations and eligible assigned roles that identity is currently authorized
+to use. GPT and Claude authenticate that identity through OAuth; Muse currently
+uses one user-issued BOS identity API key. Both methods use the same discovery,
+context-selection and per-operation authorization rules. The agent matches an
+explicit requested context or the calling plugin's confirmed defaults against
+fresh authorized choices, asks for clarification when necessary, and reuses the
+same connection when the context changes. Each operation independently checks
+current membership, role, capability, plugin consent and provider policy.
+Separate BOS identities retain their own logins, credentials and
+authority. Provider consent stays with its provider. Existing restricted grants
+and integration keys retain their original limits and migration rules.
+
+
 ## Give AI agents controlled execution over your services — without giving up your infrastructure.
 
 BOS is a service gateway. Companies give AI agents controlled execution of complex workflows through permissioned state machines, with their roles, rules, and approval gates. Your service infrastructure, authoritative business state and data stores, and private implementation IP stay outside the agent host. Authorized inputs and results, public skills, and permitted scoped caches can reach the agent.
@@ -26,10 +42,11 @@ BOS is pre-launch with invite-only access. [Request an invite](https://dfsm.ai/a
 | Muse Code | Install native BOS and Education Operation Center skill plugins | [Muse installation](#muse-code) |
 | GitHub Copilot | Use the repository client adapter | [Other clients](#other-clients) |
 
-Customer desktop installation does not use Codex Environment variables, setup
-scripts, API-key prompts, cloud-secret names, or operating-system-specific
-launchers. The desktop host owns the BOS OAuth grant. Underlying provider
-authorization remains a separate BOS-hosted workflow.
+OAuth-capable desktop hosts own BOS consent, token storage and refresh. Muse
+currently uses one existing user-issued identity API key in private host
+configuration, as described below. Both methods share current authorized
+discovery and operation permissions. Package files and conversations receive
+no credential. Provider authorization remains a separate BOS-hosted workflow.
 
 ## Install
 
@@ -40,8 +57,9 @@ Education Operation Center declares My CRM as a required independent product dep
 The linked guide documents Codex installation. My CRM also provides an independent [Muse Code package](https://github.com/cody-marcel-dfsm/mycrm#muse-code). Native Muse authentication and workflow acceptance require published-release verification. This release has not established My CRM installation and verification in Claude, Copilot, Gemini, or Antigravity. Verify a supported My CRM distribution for your host before using dependent CRM workflows; this repository's education packages alone do not establish that dependency's availability.
 
 The Git marketplace is the normal pre-publication installation and
-update channel. Installing a plugin grants no organization access. Complete BOS
-consent when the host presents **Connect**, **Sign in**, or **Authenticate**.
+update channel. Installing a plugin grants no organization access. On
+OAuth-capable hosts, complete BOS consent through **Connect**, **Sign in**, or
+**Authenticate**. Muse uses the private identity-key configuration below.
 The package-owned BOS MCP declaration supplies the resource. Its
 protected-resource challenge
 then identifies a signed-out runtime connection and activates OAuth. The
@@ -59,7 +77,7 @@ Upgrading replaces the former `platform` identifier. Hosts may require native
 sign-in again when a connection identifier changes; valid-session continuity
 has not been verified for this migration.
 
-Current desktop marketplace release: `0.4.206`. If `0.4.205` is installed,
+Current desktop marketplace release: `0.4.207`. If `0.4.206` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -247,12 +265,13 @@ The desktop host authorizes one immutable BOS resource:
 https://dfsm.ai/mcp/apps/bos/platform
 ```
 
-BOS maps the validated OAuth grant to canonical actor, tenant, organization,
-application, installation, actor role, plugin execution role, capabilities,
-and provider credential states. Client prompts, customer settings, and tool
-arguments never supply those authority dimensions.
+BOS validates OAuth or identity-key proof, then discovers current authorized
+organization/application/installation/assigned-role contexts. The BOS client
+matches explicit requests or confirmed plugin defaults to safe returned labels
+and fresh handles. Every operation revalidates the selected context, permissions,
+consent and provider state. Business arguments carry no raw authority selector.
 
-An absent or invalid BOS grant is an authentication error. It must never be
+An absent or invalid BOS identity credential is an authentication error. It must never be
 reported as unavailable business data.
 
 ### Provider authorization
@@ -545,13 +564,13 @@ muse plugins install clients/muse/plugins/education-center
 
 Merge `clients/muse/plugins/bos/muse-settings.template.json` into your Muse user settings at `$XDG_CONFIG_HOME/muse/settings.json`, or `~/.config/muse/settings.json` when unset. Preserve other settings and keep `schema_version: 1`. Configure exactly one `BOS-Platform` entry with the packaged resource URL; review any conflicting entry before replacing it. Remove duplicate BOS registrations through host controls. Muse’s native plugin MCP entries cannot use OAuth, so this connection belongs in user settings.
 
-Run `muse mcp login BOS-Platform` and complete BOS consent. Muse owns credentials, refresh, and token attachment. Start a new Muse process after changing connection settings, then check `/mcp` and `/skills`. On a missing or rejected grant, use the same native login action and refresh discovery before continuing the pending request.
+Configure the user's existing BOS identity API key directly in Muse's private credential configuration for the single BOS-Platform connection. Muse currently uses that key for the same authorized organization/app/role discovery and operations available through OAuth. Keep the key out of chat and plugin packages. Start a new Muse process after changing connection settings, then check `/mcp` and `/skills`. A missing, expired or revoked key uses Muse's supported key recovery; choosing another authorized organization or app reuses the same key.
 
 Install [My CRM’s independently distributed Muse package](https://github.com/cody-marcel-dfsm/mycrm#muse-code) for its eight CRM skills. Education Operation Center and My CRM reuse the single BOS connection. All product packages preserve the canonical logos described in [the branding standard](brand/README.md).
 
 To upgrade, sync the next published release, run `muse plugins update bos` and `muse plugins update education-center`, and start a new session. This repository’s package checks verify source composition and credential-free connection declarations. Native installation, login, discovery, recovery, and authenticated operations require separate published-release acceptance.
 
-Host references: [native manifests](https://meta-models.github.io/muse-code-sdk/next/guides/plugins/reference/manifest/), [OAuth MCP setup](https://meta-models.github.io/muse-code-sdk/next/guides/extend/mcp-servers/).
+Host references: [native manifests](https://meta-models.github.io/muse-code-sdk/next/guides/plugins/reference/manifest/), [MCP configuration](https://meta-models.github.io/muse-code-sdk/next/guides/extend/mcp-servers/).
 
 ## Other clients
 

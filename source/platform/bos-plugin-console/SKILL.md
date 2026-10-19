@@ -1,6 +1,6 @@
 ---
 name: bos-plugin-console
-description: Show and manage BOS plugin, connection, enablement, server-settings summary, and display-property status. When a signed-out request needs BOS data, use the protected resource's OAuth challenge to present the active client's native login action, preserve the request through consent, and resume it afterward. Never substitute manual sign-in guidance or local inventory.
+description: Show and manage BOS plugin, connection, enablement, server-settings summary, and display-property status. When a signed-out request needs BOS data, use bos-mcp-client's host-supported identity recovery, preserve the pending request, and resume it afterward. Never substitute local inventory for authenticated results.
 ---
 
 
@@ -20,9 +20,10 @@ workflow; single-context grant wording below applies to legacy discovery.
 Render the BOS Plugin Console directly in the active client's content window.
 The interaction is memory-only: never create a report file, execute a packaged
 renderer, start a local renderer or service, or persist the returned snapshot.
-The console uses only the organization, application, installation, and role
-already bound to the active product grant. It performs no client-side authority
-selection and creates no console state.
+Use the requested or confirmed default context from fresh server-authorized
+organization/application/installation/eligible-role choices. The server validates
+that selected context and its current permissions for every operation. Business
+arguments carry no raw authority selector. The console creates no local state.
 
 Treat broad requests such as “show the server settings for the BOS plugins,”
 “show plugin settings,” or “which BOS services are connected?” as console
@@ -36,7 +37,10 @@ inventory and opens the settings surface directly. It does not render the
 console as an intermediate step.
 
 When BOS business data is unavailable because the customer is signed out, use
-the protected MCP resource's HTTP 401 `WWW-Authenticate` resource-metadata
+`bos-mcp-client` recovery for the current host and preserve the pending request.
+On OAuth-capable hosts, use the protected resource's OAuth challenge to present
+the native login action, preserve the request through consent, and resume it afterward.
+Use the protected MCP resource's HTTP 401 `WWW-Authenticate` resource-metadata
 challenge. Let the active client render its native **Sign in**, **Connect**, or
 **Authenticate** action for that registered connection. Never replace that
 resource-level OAuth challenge with a plugin-install recommendation, external
@@ -46,15 +50,21 @@ domain-specific MCP services and tooling after consent, call
 `bos_get_context`, and continue this same request. Never ask the customer to
 repeat the prompt.
 
+Muse uses its existing identity API key in private host credential configuration
+and its key-specific recovery. Receive no key in chat or package files. Changing
+an authorized organization or app alone requires no new BOS login or key.
+
 ## Display
 
 1. Use the BOS platform connection already present in the client. Never directly inspect the local filesystem
    or invoke command-line plugin inventory.
-2. Call `bos_get_context` once to revalidate that the OAuth grant binds exactly
-   one organization, application, installation, and role. Supply no authority
-   selector and stop on any missing or ambiguous scope.
-3. Call `bos_list_plugin_services` without organization, role, or context
-   arguments. The server derives the exact inventory from the validated grant.
+2. Call `bos_get_context` once to validate the identity and resolve the requested
+   or confirmed default context from fresh authorized choices. Clarify unresolved
+   safe-label choices. Multiple valid contexts are normal; switching among them
+   reuses the same BOS login/key. Reject invalid discovery or denied authority.
+3. Invoke the selected context's advertised plugin-service inventory operation
+   through its exact current contract. Legacy direct tools keep their declared
+   argument shape. The server derives and revalidates the selected inventory.
 4. Treat inability to load the live console as a live-console failure. Never
    substitute a prior-task response, typed-settings cache, last-confirmed
    settings table, local plugin inventory, or multi-organization summary. A
@@ -105,8 +115,10 @@ A row with a valid connection action displays **Connect**. Selecting it calls
 `bos_begin_plugin_service_connection` with the latest `plugin_ref` and
 `service_ref` from that same response.
 
-- For a missing grant, activate the BOS platform connection's host-native
-  **Connect**, **Sign in**, or **Authenticate** action.
+- For missing BOS identity proof, follow `bos-mcp-client` recovery for the host:
+  native **Connect**, **Sign in**, or **Authenticate** on OAuth-capable hosts;
+  Muse's private identity-key configuration and key-specific recovery. Preserve
+  the pending request and receive no key in chat.
 - For a provider grant, use the BOS-returned URL elicitation or resource link.
   The customer signs in or enters a credential only on the provider or
   BOS-hosted secure page. Validate that the opened surface matches the returned

@@ -106,7 +106,7 @@ An unambiguous prompt naming the property and exact value authorizes that exact
 change. A component edit requires its **Apply** action. A sourced or inferred
 recommendation requires the user to confirm the displayed draft.
 
-1. Revalidate the scoped grant and refresh the live field schema. Validate the candidate against the
+1. Revalidate the selected operation context and refresh the live field schema. Validate the candidate against the
    server-returned type and constraints.
 2. Call `bos_prepare_plugin_settings` with the plugin selector,
    base revision, typed candidate, and sanitized evidence descriptors when

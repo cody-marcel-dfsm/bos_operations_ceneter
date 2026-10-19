@@ -105,6 +105,7 @@
       "const": "bos_dependency"
     },
     "authorization_scope_policy": {
+      "description": "Legacy restricted-grant policy literal. Current identity connections use bos.identity-context-compatibility/v1 for server-authorized contexts per operation through one OAuth login or identity API key.",
       "const": "ONE_ORGANIZATION_APPLICATION_INSTALLATION_ROLE_PER_GRANT"
     },
     "authentication_handoff": {

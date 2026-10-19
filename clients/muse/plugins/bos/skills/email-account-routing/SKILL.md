@@ -92,7 +92,7 @@ business purpose alone never does.
 2. If the user explicitly names a separately connected mailbox, use that
    connector only after its authenticated identity matches the request.
 3. Route every BOS-managed mailbox through the active product connection whose
-   scoped grant owns its provider credential.
+   selected operation context owns its scoped provider credential.
 4. Keep source and destination mailboxes independent in cross-business work.
    Retrieve through the source owner and draft, send, archive, label, or mutate
    through the destination owner.

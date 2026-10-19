@@ -35,6 +35,11 @@ export function museSettingsTemplate(product) {
 export async function validateMusePackage(product, skills, directory = join(root, "clients/muse/plugins", product.name)) {
   const findings = [];
   const expected = musePluginManifest(product, skills);
+  const metadata = await readJson(join(directory, ".bos-product.json"));
+  const expectedAuthentication = ownsHostConnection(product) ? "identity_api_key" : "bos_dependency";
+  if (metadata.authentication !== expectedAuthentication || "oauth" in metadata) {
+    findings.push("Muse authentication metadata drift");
+  }
   const manifest = await readJson(join(directory, ".muse-plugin/plugin.json"));
   if (stableJson(manifest) !== stableJson(expected)) findings.push("Muse native manifest drift");
   const allowed = new Set([".muse-plugin/plugin.json", ".bos-product.json", "README.md"]);

@@ -5,6 +5,9 @@ import {
   ownsHostConnection
 } from "./package-model.mjs";
 
+// Legacy serialized field retained for existing package contracts. Current
+// identity discovery uses bos.identity-context-compatibility/v1 and selects
+// server-authorized contexts per operation through one login or identity key.
 export const authorizationScopePolicy =
   "ONE_ORGANIZATION_APPLICATION_INSTALLATION_ROLE_PER_GRANT";
 
@@ -71,7 +74,8 @@ export function externalProductDependencyContract(
 
 export function productRuntimeOwnershipMetadata(
   product,
-  foundationProduct = "bos"
+  foundationProduct = "bos",
+  client = null
 ) {
   const independentProductDependencies =
     product.independent_product_dependencies ?? [];
@@ -84,7 +88,9 @@ export function productRuntimeOwnershipMetadata(
     ...(independentProductDependencies.length > 0 ? {
       independent_product_dependencies: independentProductDependencies
     } : {}),
-    authentication: product.runtime ? (ownsHostConnection(product) ? "oauth_2_1" : "bos_dependency") : "none",
+    authentication: product.runtime
+      ? (ownsHostConnection(product) ? (client === "muse" ? "identity_api_key" : "oauth_2_1") : "bos_dependency")
+      : "none",
     ...(product.runtime ? {
       authorization_scope_policy: authorizationScopePolicy,
       execution_context_compatibility: "bos.identity-context-compatibility/v1",

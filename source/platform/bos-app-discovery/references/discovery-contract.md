@@ -357,18 +357,20 @@ installed applications.
 
 The client validates the machine-readable contract before each unfamiliar
 operation. APIs use bounded HTTPS JSON schemas, stable operation identifiers,
-the authenticated scoped grant, explicit side-effect classes, typed errors,
+the authenticated identity and selected context, explicit side-effect classes, typed errors,
 pagination where needed, observation timestamps, freshness, provenance, and
 correlation references. Every mutation is service-idempotent; the client
 supplies no idempotency key, attempt identity, retry counter, reconciliation
 decision, or execution state. Read-only planning stays separate from
 transition execution.
 
-Every call uses a short-lived audience-bound bearer through a host credential
-boundary and revalidates actor, organization, app installation,
-role, operation, plugin, and provider requirements. A context issued for another
-organization, installation, role, app, or audience fails closed at the grant
-boundary. Discovery never expands API authority.
+Every call uses valid audience-bound identity proof through the host credential
+boundary and revalidates actor, selected organization/app installation/eligible
+role, operation, plugin and provider requirements. OAuth tokens retain their
+short expiry; identity keys follow their own expiry/revocation lifecycle. A
+stale, wrong-identity or mismatched operation-context handle fails closed.
+Selecting another authorized context reuses the same connection and never
+expands current authority. Legacy restricted grants retain their exact ceilings.
 
 ## Client state
 
@@ -389,7 +391,7 @@ The target workflow requires two host capabilities after BOS discovery:
 
 1. attach or query an MCP resource returned dynamically for the active request;
 2. invoke a discovered HTTPS API with host-managed audience-bound
-   authentication through the current grant-bound app contact.
+   authentication through the current selected-context app contact.
 
 Identity-v2 HTTP execution contracts publish the static
 `execution.context_header` value `X-BOS-Context-Handle`. Copy that name and

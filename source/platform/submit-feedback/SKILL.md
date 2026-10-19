@@ -24,17 +24,19 @@ first submission in a task.
 
 ## Resolve BOS scope
 
-1. Call `bos_get_context` once.
-2. Validate and use the exact organization, application, installation, and role
-   already bound to the active product grant. Perform no client-side authority
-   selection.
+1. Use `bos-mcp-client` to call `bos_get_context` and match the explicit request
+   or this plugin's confirmed default against fresh authorized contexts.
+2. Use one selected organization/application/installation/eligible-role context.
+   Clarify unresolved safe-label choices; multiple valid choices are normal and
+   reuse the same OAuth login or identity key.
 3. Submit through the BOS platform connection. Use the active
    package or subservice as the feedback target and preserve its product scope.
 4. Do not send execution-scope fields. The authenticated server derives
    `org_id`, `app_code`, `installed_app_id`, and `delegated_role_id`.
-5. Fail closed and run the existing context/authentication recovery flow when
-   execution scope is missing, invalid, unauthorized, or ambiguous. Never
-   retry feedback through another product or unnamed endpoint.
+5. Stop on invalid discovery or denied current authority. Clarify ambiguous
+   authorized choices without executing or changing defaults. Use authentication
+   recovery only for rejected identity proof. Never retry feedback through
+   another product or unnamed endpoint.
 6. Follow `bos-mcp-client` for the local authentication flow. Never request or accept
    a BOS credential in chat.
 

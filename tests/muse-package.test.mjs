@@ -41,10 +41,14 @@ test("Muse BOS settings declare exactly one unchanged host-managed connection", 
     mcpServers: {"BOS-Platform": {type: "streamable-http", url: "https://dfsm.ai/mcp/apps/bos/platform"}}
   });
   assert.deepEqual(actual, museSettingsTemplate(product));
+  const metadata = await readJson(join(root, "clients/muse/plugins/bos/.bos-product.json"));
+  assert.equal(metadata.authentication, "identity_api_key");
+  assert.equal("oauth" in metadata, false);
   const education = await readJson(join(root, "products/education-center/product.json"));
   assert.throws(() => museSettingsTemplate(education), /Only the connection owner/);
   const readme = await readFile(join(root, "clients/muse/plugins/bos/README.md"), "utf8");
-  assert.match(readme, /muse mcp login BOS-Platform/);
+  assert.match(readme, /existing BOS identity API key/);
+  assert.doesNotMatch(readme, /muse mcp login/);
   assert.match(readme, /preserve other settings and servers/);
 });
 
@@ -61,6 +65,10 @@ test("Muse checks reject skill drift, duplicate connections and dependent transp
   await writeFile(join(directory, "muse-settings.template.json"), JSON.stringify(settings));
   assert.ok((await validateMusePackage(product, skills, directory)).includes("Muse BOS settings binding drift"));
   await writeFile(join(directory, "muse-settings.template.json"), JSON.stringify(museSettingsTemplate(product)));
+  const bosMetadata = await readJson(join(directory, ".bos-product.json"));
+  await writeFile(join(directory, ".bos-product.json"), JSON.stringify({...bosMetadata, authentication: "oauth_2_1"}));
+  assert.ok((await validateMusePackage(product, skills, directory)).includes("Muse authentication metadata drift"));
+  await writeFile(join(directory, ".bos-product.json"), JSON.stringify(bosMetadata));
   await writeFile(join(directory, "skills/bos-mcp-client/SKILL.md"), "changed guidance");
   assert.ok((await validateMusePackage(product, skills, directory)).some((finding) => finding.startsWith("Muse skill source drift")));
   await rm(directory, {recursive: true});

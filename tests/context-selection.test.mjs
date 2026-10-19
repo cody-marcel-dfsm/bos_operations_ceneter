@@ -218,3 +218,29 @@ test('legacy current role code is converted only in memory and rematched as a sa
     assert.equal(await readFile(path, 'utf8'), original);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+
+test('a role default never selects among unresolved organizations, apps or installations', () => {
+  const cases = [
+    { contexts: [context('North'), context('South', 'Staff', 'Main', false)], options: {} },
+    { contexts: [context('North'), context('North', 'Staff', 'Other', false)], options: { request: { organization_name: 'North' } } },
+    { contexts: [context('North'), { ...context('North', 'Director', 'Main', false), application_name: 'Other App' }], options: {} }
+  ];
+  for (const {contexts, options} of cases) {
+    assert.equal(resolveContext({...discovery, contexts}, options).status, 'context_ambiguous');
+  }
+});
+
+test('duplicate labels remain ambiguous even with exactly one role default', () => {
+  const first = context('North');
+  const duplicate = {...first, context_handle: `bos_ctx_v2_${'a'.repeat(64)}`, is_default: false};
+  assert.equal(resolveContext({...discovery, contexts: [first, duplicate]}).status, 'context_ambiguous');
+  assert.equal(resolveContext({...discovery, contexts: [first, {...duplicate, role_label: ' STAFF '}]}).status, 'context_ambiguous');
+});
+
+test('one resolved tuple uses its sole role default and preserves explicit role intent', () => {
+  const contexts = [context('North'), context('North', 'Director', 'Main', false)];
+  const result = {...discovery, contexts};
+  assert.equal(resolveContext(result, {applicationName: 'Lead Director', request: {organization_name: 'North'}}).context.role_label, 'Staff');
+  assert.equal(resolveContext(result, {applicationName: 'Lead Director', request: {organization_name: 'North', role_label: 'Director'}}).context.role_label, 'Director');
+});

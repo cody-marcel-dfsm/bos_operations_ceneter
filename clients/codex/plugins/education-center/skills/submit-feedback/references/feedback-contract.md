@@ -2,11 +2,14 @@
 
 Use `bos_submit_feedback` through the package's static
 `POST /mcp/apps/bos/platform` connection with the
-existing host-managed, resource-scoped BOS OAuth grant. Both route segments
-are immutable human-readable package configuration; the client never derives
-them from an installation ID or customer setting. Execution scope never
-appears in the request body and the client never falls back to an unnamed endpoint.
-BOS derives the authorized tenant and installation from the validated grant.
+host-supported BOS identity proof: OAuth or Muse's private identity API key.
+Both use current selected-context authorization. Both route segments are immutable
+human-readable package configuration; the client never derives them from an
+installation ID or customer setting. Use the current advertised context boundary
+and preserve each operation's argument shape, including legacy direct tools.
+Execution authority fields never appear in the business request body; the client
+never falls back to an unnamed endpoint. BOS validates the identity and current
+selected organization, installation, eligible role, permissions and consent.
 
 ## Current capability discovery
 
