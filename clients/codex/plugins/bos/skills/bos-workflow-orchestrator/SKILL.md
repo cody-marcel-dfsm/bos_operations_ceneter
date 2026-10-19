@@ -275,7 +275,12 @@ route switching.
 Keep credentials, tokens, raw authority identifiers, provider payloads, and
 customer records out of plans, continuation envelopes, logs, and summaries.
 
-For requested outbound journey observations, read
-[journey notifications](references/journey-notifications.md). Use the existing
-host's advertised notification and durable wake capabilities, then refetch
-current state. Preserve ordinary state-read recovery when either is unavailable.
+For requested callback monitoring, follow-up or continuation in Codex or Claude,
+read [native callback continuation](references/native-callback-continuation.md).
+Use the actual current BOS native tools with the packaged protected queue helper
+and finite current-conversation scheduling or active held reads. Begin with an
+authenticated scoped cursor before arming a successor. Preserve pending work and
+report exact unavailable host capabilities. For an existing incremental SSE host
+adapter, read [journey notifications](references/journey-notifications.md).
+Refetch authoritative state before delivering hints; signed lifecycle actions
+retain their existing transport and authority.

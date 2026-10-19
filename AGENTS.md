@@ -8,6 +8,8 @@ Private callback authoring design: `Vault/docs/design/bosl-callback-authoring.md
 Private callback implementation tasks: `Vault/docs/implementation/bosl-callback-implementation.md`
 Private notification client design: `Vault/docs/design/journey-notifications-client.md`
 Private notification implementation tasks: `Vault/docs/implementation/journey-notifications-implementation.md`
+Private native continuation design: `Vault/docs/design/native-callback-continuation.md`
+Private native continuation tasks: `Vault/docs/implementation/native-callback-continuation.md`
 
 ## Canonical main checkout and project agent context
 
@@ -71,6 +73,24 @@ The personal recommendation skill stays outside generated customer packages.
 Existing client execution supports this operation; this maintainer notice changes
 no package contents or release version. See private Constitution principle 15
 and the client-owned discovery design for detailed governance and acceptance.
+
+## Native callback observation — approved scoped compatibility exception
+
+For the requested callback-continuation scope, consume exactly the freshly
+advertised `journeys.notifications.read` and `journeys.state.read` through
+existing authenticated `bos_execute` and its fresh selected authorized context.
+BOS Service owns their closed schemas, original author/source pins, current
+authorization, committed journal/replay and canonical state semantics. BOC owns
+closed consumption, protected queue/cursor persistence, verified current-task
+and registration-generation continuation, state refetch and terminal retirement.
+Active held reads and finite scheduled same-conversation observation disclose
+their latency and lifetime; immediate event-triggered wake requires actual host
+support and native evidence. This exact exception adds no generic proxy, token
+export, second login, alternate state store, provider/source or mutation authority,
+new API/protocol version, persistent server worker or unbounded scheduled work.
+Existing deterministic HTTPS/SSE and lifecycle mutation boundaries remain in
+force. Scope admission requires current actual native tools and discovery;
+package parity, source tests and captured frames supply no native wake proof.
 
 ## Customer installation routing
 

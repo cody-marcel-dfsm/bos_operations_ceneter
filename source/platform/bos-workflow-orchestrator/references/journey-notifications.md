@@ -1,5 +1,11 @@
 # Observe committed journey changes
 
+For the packaged Codex/Claude current-conversation flow, use
+[native callback continuation](native-callback-continuation.md). It composes the
+fresh native read descriptors, protected queue helper and finite native scheduler
+or active held read. The stream adapter below is a separate capability-detected
+incremental host path; its source fixtures establish no idle native wake.
+
 Discover `journeys.notifications.subscribe` through the current plugin query
 catalog, then obtain its current `api.contract.get` descriptor. Open a stream
 only when the service reports readiness and the existing BOS host adapter
