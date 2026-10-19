@@ -1,10 +1,42 @@
 # BOSL authoring contract
 
-Use fresh authenticated application discovery for every authoring task. Call
-the semantic equivalent of `app.describe` with `{}` and validate its scoped
-application reference, BOSL schema, language-reference, conformance-example
-resource URIs, and opaque descriptor token. Read each exact URI through the
-same BOS connection. The linked resources share the one published language.
+Use `bos-mcp-client` to obtain fresh `bos_get_context` and
+`bos_list_context_tools` for the selected authorized context. Resolve the
+semantic equivalent of `app.describe` from that catalog, call it with `{}`,
+and validate its scoped application reference, BOSL resource URIs, descriptor
+token and registration contract link. When the host exposes resource reads,
+read the exact schema, language-reference and examples URIs through that same
+BOS connection. The linked resources share the one published language.
+
+## Authoring when the host cannot read resources
+
+Follow `app.describe.journey_registration.contract` using its exact advertised
+`capability` and `input`. Validate that full registration contract through the
+packaged `api-contract` validator. Use its complete `input_schema` as
+`publishedSchema` for the local authoring helpers. When actually advertised,
+`input_schema.examples` supplies complete source-derived journey documents;
+validate the selected example against that same schema and the current
+operation/source contracts before adapting its authorized business inputs.
+
+The registration schema may also advertise explanatory native-read argument
+copies under `input_schema.$defs['journeys.notifications.read']` and
+`input_schema.$defs['journeys.state.read']`, with a `$comment` identifying their
+purpose. Those unreferenced definitions and their standard `examples`
+annotations describe arguments; they introduce no BOSL business fields. For
+native reads, the actual fresh native descriptor's `inputSchema` remains
+authoritative. Use only documentation actually present in the current contract.
+
+Preserve source readiness, callback grant review and explicit returned Start.
+For a controlled no-send observation, use the advertised harmless observation
+example when present and complete its instructions truthfully; other examples
+may require actual user confirmation. Missing grammar or examples is a specific
+discovery limitation: retain the objective and report the missing material.
+Resolve schema findings before submission. After HTTP422, inspect the public
+findings and current schema before a corrected attempt; use only supported
+fields and routes. Resource-list visibility alone supplies no evidence that a
+resource was read.
+
+## Compose and register the document
 
 Call `plugins.list` with `{}`. Shortlist accessible plugin journeys from their
 purpose and compact steps, while treating readiness as a separate status. Copy

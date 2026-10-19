@@ -110,9 +110,14 @@ multi-step journey, use the dedicated Agent-Driven Custom Journey branch. Read:
 - [the canonical walkthrough](references/canonical-walkthrough.md) only when
   the recent-meeting campaign sequence or its acceptance fixture is relevant.
 
-Start with fresh `app.describe`, then read its exact BOSL schema, language
-reference, and examples resource URIs. Use `plugins.list` and copy each required
-`service.describe` input exactly. Keep accessibility and readiness separate.
+Start with fresh `bos_get_context` and `bos_list_context_tools` for the selected
+context, then resolve `app.describe` from that catalog. Read its exact BOSL
+schema, language reference, and examples through the host resource reader when
+available. For a host without resource reads, follow the existing registration
+contract link and the [inline authoring path](references/bosl-authoring.md);
+consume complete schemas and examples only where freshly advertised. Use
+`plugins.list` and copy each required `service.describe` input exactly. Keep
+accessibility and readiness separate.
 Build a concise explain plan from the discovered contracts, author raw BOSL,
 run the packaged local structural checks, and submit that same JSON document to
 the discovered registration operation. For identity-v2 deterministic HTTP,

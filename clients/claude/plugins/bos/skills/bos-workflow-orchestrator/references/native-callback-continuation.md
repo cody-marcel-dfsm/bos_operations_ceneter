@@ -44,6 +44,13 @@ scope; actual native delivery and idle wake require observed host evidence.
    wrapper or `bos/context` metadata. Require the two exact descriptors with
    `annotations.readOnlyHint:true`, `destructiveHint:false`, input/output schemas
    and their existing identity contract metadata. Preserve schemas in memory.
+   Use those actual native `inputSchema` values for required identities and
+   bounded waits. When the existing registration contract advertises matching
+   explanatory argument schemas/examples under its `input_schema.$defs`, read
+   them through the [inline authoring path](bosl-authoring.md); they supply no
+   additional accepted arguments. The helper's `plan` supplies this
+   registration's exact watched identities and committed cursor. Copy neither
+   an example identity nor an invented cursor into a native observation.
 3. Resolve this currently installed skill's
    `scripts/native-callback-continuation.mjs`. Run its `create --client codex`
    or `create --client claude` command with the finite policy and identities as
@@ -67,6 +74,11 @@ scope; actual native delivery and idle wake require observed host evidence.
 No schedule may be armed until this initial actual scoped read has persisted its
 server-authenticated authority/watch-bound cursor. The helper's flags explicitly
 describe local state; they supply no native authentication or wake proof.
+For a controlled no-send diagnostic, registration, its service-returned Start,
+the actual changed held read, authoritative state and replay from the delivered
+cursor each require their own observed result. Schema/examples validation and
+captured-contract checks establish their source scope; actual native delivery
+and finite same-conversation firing remain separately evidenced.
 
 ## Deliver authoritative observations
 
