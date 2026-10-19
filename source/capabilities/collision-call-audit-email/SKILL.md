@@ -1,6 +1,9 @@
 ---
 name: collision-call-audit-email
 description: Turn collision-repair prospect calls, transcripts, CRM evidence, public research, and audit artifacts into evidence-controlled profiles and personalized follow-up email drafts.
+metadata:
+  version: "1.0.0"
+  requires: "{}"
 ---
 
 # Collision Call Audit Email

@@ -1,6 +1,9 @@
 ---
 name: video-ad-briefing
 description: Turn an offer, audience, assets, and campaign goal into a reviewable production brief for a short-form video advertisement.
+metadata:
+  version: "1.0.0"
+  requires: "{}"
 ---
 
 # Video Ad Briefing

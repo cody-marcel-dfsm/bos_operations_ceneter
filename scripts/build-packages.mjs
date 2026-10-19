@@ -25,6 +25,7 @@ import {
 } from "./lib/package-model.mjs";
 import { createDeterministicZipFromDirectory } from "./lib/deterministic-zip.mjs";
 import {musePluginManifest, museSettingsTemplate} from "./lib/muse-package.mjs";
+import { buildSkillManifest, checkSkillReleaseHistory, skillManifestFile } from "./lib/skill-release.mjs";
 import {
   codexLoginSurfaceContract,
   productMcpConnectionsContract,
@@ -38,6 +39,8 @@ const failures = products.flatMap(({ path, manifest }) =>
   validateProduct(manifest, path)
 );
 if (failures.length) throw new Error(failures.join("\n"));
+const skillManifest = await buildSkillManifest();
+await checkSkillReleaseHistory(skillManifest);
 
 const resolved = [];
 for (const { manifest } of products) {
@@ -607,6 +610,7 @@ for (const { product } of resolved) {
   await writeFile(join(root, "products", product.name, archivePath), archive);
 }
 
+await writeJson(join(root, skillManifestFile), skillManifest);
 await rm(stage, { recursive: true, force: true });
 console.log(
   `Generated ${resolved.length} active products for Codex, Claude, Copilot, Gemini, and Muse.`

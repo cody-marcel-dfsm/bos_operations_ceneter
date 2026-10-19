@@ -9,6 +9,10 @@ import {
 
 test("publication safety rejects Vault and unclassified top-level paths", () => {
   assert.deepEqual(validatePublicationPaths(["package-lock.json"]), []);
+  assert.deepEqual(validatePublicationPaths(["skill-release-manifest.json"]), []);
+  assert.deepEqual(validatePublicationPaths(["skill-release-manifest.json.backup"]), [
+    "Path is outside the public allowlist: skill-release-manifest.json.backup",
+  ]);
   assert.deepEqual(validatePublicationPaths(["package-lock.json.backup"]), [
     "Path is outside the public allowlist: package-lock.json.backup",
   ]);

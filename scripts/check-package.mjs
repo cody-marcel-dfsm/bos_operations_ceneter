@@ -25,6 +25,7 @@ import {
 } from "./lib/product-contracts.mjs";
 
 import { checkSkillDependencies } from "./lib/skill-dependencies.mjs";
+import { buildSkillManifest, checkSkillReleaseHistory, skillManifestFile } from "./lib/skill-release.mjs";
 import {validateMusePackage} from "./lib/muse-package.mjs";
 
 const forbiddenNames = new Set([
@@ -171,6 +172,11 @@ function validateSkillContent(content, path) {
 }
 
 async function validateProducts() {
+  try {
+    const expected = await buildSkillManifest();
+    if (await readFile(join(root, skillManifestFile), "utf8") !== stableJson(expected)) failures.push("Skill release manifest is stale; run npm run build:packages");
+    await checkSkillReleaseHistory(expected);
+  } catch (error) { failures.push(error.message); }
   const [repositoryPackage, packageManifest] = await Promise.all([
     readJson(join(root, "package.json")),
     readJson(join(root, "package-manifest.json"))
@@ -180,6 +186,7 @@ async function validateProducts() {
       `Package manifest version ${packageManifest.version} does not match repository release ${repositoryPackage.version}`
     );
   }
+  if (packageManifest.skill_release_manifest !== `./${skillManifestFile}`) failures.push("Package manifest must identify the canonical skill release manifest");
   if (
     JSON.stringify(Object.keys(packageManifest.clients ?? {}).sort()) !==
     JSON.stringify(["claude", "codex", "copilot", "gemini", "muse"])

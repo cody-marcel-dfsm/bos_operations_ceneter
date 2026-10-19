@@ -3,9 +3,15 @@ import { homedir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import { codexProductRoot } from "./lib/codex-layout.mjs";
 import { pathExists, root, stableJson, walkFiles } from "./lib/package-model.mjs";
+import { readSkillMetadata } from "./lib/skill-metadata.mjs";
 
 function parseSkill(content) {
+  let versioned = { version: null, requires: null };
+  if (/^metadata:/m.test(content)) {
+    try { versioned = readSkillMetadata(content); } catch { /* Legacy/unrelated installed metadata remains explicitly unversioned. */ }
+  }
   return {
+    ...versioned,
     name: content.match(/^name:\s*["']?([^"'\n]+)["']?\s*$/m)?.[1]?.trim(),
     description: content
       .match(/^description:\s*["']?([^"'\n]+)["']?\s*$/m)?.[1]

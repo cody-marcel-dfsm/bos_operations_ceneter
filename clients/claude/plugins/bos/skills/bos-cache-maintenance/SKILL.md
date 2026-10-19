@@ -1,6 +1,9 @@
 ---
 name: bos-cache-maintenance
 description: Inspect, refresh, invalidate, and maintain authority-scoped BOS query caches and cached MCP source maps. Use automatically before federated or expensive source reads and when a user asks about cache health, freshness, refresh, or clearing cached data.
+metadata:
+  version: "1.0.0"
+  requires: "{\"bos-mcp-client\":\"1.0.0\"}"
 ---
 
 
