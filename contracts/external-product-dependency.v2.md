@@ -1,5 +1,17 @@
 # BOS-owned connection dependency contract v2
 
+## Current identity interpretation
+
+One BOS identity login (OAuth in GPT/Claude) or identity API key (Muse) supports
+current authorized app/org/installation/assigned-role contexts. Resolve explicit
+requests or confirmed plugin defaults through BOS and authorize each operation.
+The retained `authorization_scope_policy` literal below describes legacy
+restricted-grant serialization; the existing identity-context compatibility
+contract governs current identity connections. Credential lifecycles and
+restricted-grant migration remain distinct. This clarification changes no
+contract version, raw-authority boundary or dependent-product transport.
+
+
 A dependent product retains its application skills and runtime requirements and
 uses the installed BOS foundation's connection. BOS alone declares the platform
 MCP resource and native OAuth action. The host owns token storage and refresh.

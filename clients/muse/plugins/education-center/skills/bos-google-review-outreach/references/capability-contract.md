@@ -7,12 +7,13 @@ Discover the live schemas. Expected semantic tools:
 | `education_center_review_outreach_run` | BOS scope, dates, optional `class_type`, `client_run_key` | Query Calimatic, resolve/create/enroll leads, pin Drive manifest/templates, create/resume campaigns |
 | `education_center_review_campaigns_list` | BOS scope, optional states and limit | Return latest state per campaign |
 | `education_center_review_campaign_approve` | BOS scope and campaign ID | Release an awaiting-approval campaign to communication 1 |
-| `education_center_review_campaign_advance` | Current scoped OAuth grant and campaign ID | Execute exactly the next legal server-selected communication step |
+| `education_center_review_campaign_advance` | Selected authorized context and campaign ID | Execute exactly the next legal server-selected communication step |
 | `reputation_search_profiles` | BOS scope and bounded query | Return verified profile and provider-issued write-review URL |
 | `reputation_search_reviews` | BOS scope and profile ID | Return recent public reviews and ratings |
 
-All calls require the validated resource-scoped OAuth grant and current plugin
-capability grant.
+All calls require valid BOS identity proof, current selected-context authority
+and the current plugin capability grant. OAuth and identity API keys use the same
+operation authorization; legacy restricted grants retain their original ceilings.
 The server derives `run_as_role` from installed-app FSM metadata.
 
 The eligible audience is limited to existing families with server-returned

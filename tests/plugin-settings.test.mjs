@@ -85,7 +85,7 @@ test("plugin settings skills encode cache-first reads and delegated resilient mu
   assert.match(operationContract, /client does not create or manage an[\s\S]*attempt counter[\s\S]*retry schedule[\s\S]*reconciliation decision[\s\S]*execution state/i);
   assert.match(initialization, /after host-managed BOS authentication/i);
   assert.match(initialization, /customer\/client-settings initializer/i);
-  assert.match(initialization, /OAuth grant binds exactly one[\s\S]*organization[\s\S]*application[\s\S]*installation[\s\S]*role/i);
+  assert.match(initialization, /requested[\s\S]*confirmed default organization\/app\/installation\/role[\s\S]*fresh authorized[\s\S]*contexts/i);
   assert.doesNotMatch(initialization, /client-preferences\.mjs|Default BOS organization|context_id/i);
   assert.match(initialization, /bos_list_plugin_services/);
   assert.match(initialization, /every server-returned plugin-service row/i);

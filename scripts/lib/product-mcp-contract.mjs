@@ -613,7 +613,7 @@ export async function verifyProductMcpContract({
           metadata.application_name !== product.application_name ||
           metadata.mcp_group_name !== product.mcp_group_name ||
           metadata.mcp_server_name !== mcpServerName(product) ||
-          metadata.authentication !== "oauth_2_1" ||
+          metadata.authentication !== (client === "muse" ? "identity_api_key" : "oauth_2_1") ||
           metadata.authorization_scope_policy !== authorizationScopePolicy ||
           JSON.stringify(metadata.authentication_handoff) !== JSON.stringify(
             authenticationHandoffContract(contract.foundation_product)

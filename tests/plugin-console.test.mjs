@@ -40,7 +40,7 @@ test("BOS Plugin Console is an instructions-only in-memory client feature", asyn
   assert.match(guidance, /never create a report file/i);
   assert.match(guidance, /start a local renderer or service/i);
   assert.match(guidance, /never directly inspect the local filesystem/i);
-  assert.match(guidance, /no client-side authority[\s\S]*selection/i);
+  assert.match(guidance, /Business[\s\S]*arguments carry no raw authority selector/i);
   assert.match(
     guidance,
     /protected resource's OAuth challenge[\s\S]*native login action[\s\S]*preserve the request[\s\S]*resume it afterward/i
@@ -67,8 +67,8 @@ test("BOS Plugin Console is an instructions-only in-memory client feature", asyn
     guidance,
     /manual navigation[\s\S]*Never ask[\s\S]*repeat\s+the\s+prompt/i
   );
-  assert.match(guidance, /grant binds exactly[\s\S]*one organization[\s\S]*application[\s\S]*installation[\s\S]*role/i);
-  assert.match(guidance, /bos_list_plugin_services[\s\S]*without organization, role, or context/i);
+  assert.match(guidance, /requested[\s\S]*confirmed default context[\s\S]*server-authorized[\s\S]*organization\/application\/installation\/eligible-role/i);
+  assert.match(guidance, /selected context's advertised plugin-service inventory[\s\S]*Legacy direct tools keep their declared[\s\S]*argument shape/i);
   assert.doesNotMatch(guidance, /client-preferences\.mjs|default_organization_label|context_id/i);
   assert.match(
     guidance,
@@ -76,20 +76,20 @@ test("BOS Plugin Console is an instructions-only in-memory client feature", asyn
   );
 });
 
-test("Plugin Console uses only the server-scoped grant", async () => {
+test("Plugin Console resolves requested or default context with current server authority", async () => {
   const guidance = await readFile(
     `${root}/source/platform/bos-plugin-console/SKILL.md`,
     "utf8"
   );
   assert.match(
     guidance,
-    /OAuth grant binds exactly[\s\S]*one organization[\s\S]*application[\s\S]*installation[\s\S]*role/i
+    /resolve the requested[\s\S]*confirmed default context from fresh authorized choices/i
   );
   assert.match(
     guidance,
-    /server derives the exact inventory from the validated grant/i
+    /server derives and revalidates the selected inventory/i
   );
-  assert.doesNotMatch(guidance, /explicitly named organization|selected organization|default role|context_id/i);
+  assert.doesNotMatch(guidance, /context_id|org_id|role_id/i);
 });
 
 test("BOS distributes the in-memory Plugin Console to every supported client", async () => {

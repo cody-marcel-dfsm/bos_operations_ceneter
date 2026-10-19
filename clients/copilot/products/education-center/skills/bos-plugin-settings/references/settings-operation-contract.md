@@ -5,7 +5,7 @@
 Give the worker the complete operational context required for one update:
 
 - exact prompt authorization or widget Apply event;
-- BOS connection and server-validated scoped-grant status;
+- BOS identity connection and current server-validated selected-context status;
 - current confirmed snapshot, field schema, revision, and cursor;
 - exact prepared draft reference and hash;
 - the exact prepared draft reference and public approval evidence required by
@@ -38,7 +38,7 @@ recovery action, current revision, or schema fingerprint.
 | Stale revision | Refresh. Rebase only when the target is unchanged and the authorized change set remains identical; otherwise return the conflict for user review. |
 | Correctable client request shape | Rebuild from the live field schema as a corrected semantic request. |
 | Business validation | Stop and return field guidance. |
-| Capability denial | Revalidate the scoped grant and return the authoritative denial. |
+| Capability denial | Revalidate the selected context's current authority and return its authoritative denial. |
 | Server invariant or malformed result | Stop and return a feedback-ready bug result. |
 
 Use only service-returned retry timing and actions. On an unknown mutation

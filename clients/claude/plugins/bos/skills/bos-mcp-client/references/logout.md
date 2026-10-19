@@ -46,7 +46,9 @@ logout as unconfirmed and discard reusable authority state conservatively.
 Host-local CLI logout cannot establish service grant revocation.
 
 When the user next asks for protected BOS work, make the ordinary protected
-request. Its server OAuth challenge drives the host's native authentication
-action; preserve and resume that new task after consent using fresh discovery.
+request. On OAuth-capable hosts, its server OAuth challenge drives the native
+authentication action. Muse uses private identity-key configuration and its
+key-specific recovery; revoked keys remain revoked. Preserve and resume the new
+task after successful authentication using fresh authorized discovery.
 Do not claim a host sign-out button exists without observing it. A skill
 sign-out request uses the published service operation independently of that UI.

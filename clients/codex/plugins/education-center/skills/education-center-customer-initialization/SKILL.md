@@ -157,8 +157,10 @@ customer-owned values. A failed plugin-store write leaves setup incomplete.
 ## User elicitation
 
 Complete authentication before asking any customer-settings question. Verify
-the installed BOS platform connection and finish its host-managed
-Connect/Sign in flow when required. After authentication, run context discovery
+the installed BOS platform connection and use `bos-mcp-client` recovery when
+required: native OAuth Connect/Sign in on OAuth-capable hosts, or Muse's existing
+identity key in private host configuration and key-specific recovery. Receive no
+credential in chat. After authentication, run context discovery
 and derivation, then present the recommendation. Never combine an
 authentication prompt with the settings questionnaire. If the host requires
 the user's direct sign-in interaction, ask only for that action, resume the

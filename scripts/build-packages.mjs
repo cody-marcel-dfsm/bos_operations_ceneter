@@ -84,9 +84,9 @@ for (const { product, skills } of resolved) {
       application_name: product.application_name,
       mcp_group_name: product.mcp_group_name,
       ...(ownsHostConnection(product) ? {
-        mcp_server_name: mcpServerName(product), resource_url: materializeMcpUrl(product), oauth: oauthTargetContract(product)
+        mcp_server_name: mcpServerName(product), resource_url: materializeMcpUrl(product)
       } : {}),
-      ...productRuntimeOwnershipMetadata(product)
+      ...productRuntimeOwnershipMetadata(product, "bos", "muse")
     });
     await copyProductSkills(product, skills, join(pluginRoot, "skills"));
     await copyProductAssets(product, pluginRoot);
@@ -102,11 +102,11 @@ for (const { product, skills } of resolved) {
         "Use `$XDG_CONFIG_HOME/muse/settings.json`, or `~/.config/muse/settings.json` when unset.",
         "Keep `schema_version: 1`, preserve other settings and servers, and configure exactly one `BOS-Platform` entry.",
         "If an existing BOS entry differs, review it before replacing it; remove duplicate BOS registrations through host controls.",
-        "Do not add this connection as a plugin MCP server or a project `.mcp.json`: Muse OAuth login uses user settings.",
+        "Do not add this connection as a plugin MCP server or a project `.mcp.json`: Muse's BOS identity-key connection uses private user settings.",
         "",
-        `Run \`muse mcp login ${mcpServerName(product)}\` and complete BOS consent. Muse owns token storage and refresh.`,
+        `Configure the user's existing BOS identity API key directly in Muse's private credential configuration for this connection. Keep it out of chat and package files.`,
         "Start a new Muse process after changing connection settings. Check `/mcp` and ask BOS to list your authorized contexts.",
-        "A missing or rejected grant uses the same native login action; retain the pending task and refresh discovery afterward."
+        "A missing, expired or revoked key follows Muse's supported key recovery. Switching authorized apps or organizations uses the same key; preserve the pending task and refresh discovery."
       ] : [
         "Install BOS first and use its single authenticated connection. This plugin contains skills and no MCP binding.",
         ...independentDependencyInstructions(product),
@@ -116,7 +116,7 @@ for (const { product, skills } of resolved) {
       `For a later published release, sync the checkout, run \`muse plugins update ${product.name}\`, and start a new session.`,
       "Native installation, login, discovery, and authenticated execution require separate published-release verification.",
       "Muse native format: https://meta-models.github.io/muse-code-sdk/next/guides/plugins/reference/manifest/",
-      "Muse OAuth: https://meta-models.github.io/muse-code-sdk/next/guides/extend/mcp-servers/", ""
+      "Muse MCP configuration: https://meta-models.github.io/muse-code-sdk/next/guides/extend/mcp-servers/", ""
     ].join("\n"));
   }
   if (product.clients.includes("codex")) {

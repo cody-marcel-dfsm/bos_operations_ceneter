@@ -127,8 +127,9 @@ BOS platform MCP operations. On the BOS connection, omit
 them from the authenticated installation.
 Use `bos-visual-output` for campaign, cohort, rating, and completion reporting.
 
-The host-managed BOS OAuth grant authenticates the user. BOS derives and
-revalidates organization, app, installation, role, plugin, capability,
+Host-supported OAuth or Muse's private identity API key authenticates the BOS
+identity. Match the requested/default authorized context through `bos-mcp-client`.
+BOS derives and revalidates organization, app, installation, role, plugin, capability,
 operation, and provider scope. The Automated Outreach workflow owns no separate
 credential and bypasses no authentication. Each selected service resolves its
 own automated credential from the authorized installed-app scope.

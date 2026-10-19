@@ -107,21 +107,26 @@ configuration as distinct validated dimensions.
 ## Invariants
 
 - User role authorizes the actor; plugin `run_as_role` governs execution.
-- The scoped OAuth grant fixes organization, application, installation, and
-  role authority; business request values never select authority.
+- One OAuth identity login or identity API key authenticates the BOS user.
+  Current server-authorized contexts expose that identity's eligible organizations,
+  applications, installations and assigned roles. Explicit requests or confirmed
+  plugin defaults select one fresh context per operation; business request values
+  never create authority. Legacy restricted grants retain their original limits.
 - Customer configuration supplies context and never supplies authority.
 - Provider credentials remain scoped to their installed app and plugin.
-- Reconnect or reauthorization replaces the scoped grant and preserves
-  application configuration.
+- Selecting another authorized context reuses the same identity connection.
+  Genuine OAuth reauthorization or identity-key recovery preserves application
+  configuration and follows the existing credential-specific lifecycle.
 - BOS owns the host-managed platform connection and native authentication.
   Dependent products declare BOS as a dependency and supply application skills.
-  Every discovery and execution request revalidates the exact grant-bound
-  organization, application, installation, role, capability, and provider scope.
+  Every discovery and execution request revalidates the selected operation
+  organization, application, installation, role, capability and provider scope.
   Platform transport ownership grants no cross-application authority.
 - Use live-discovered operations and exact schemas on the BOS connection.
-  The client supplies no organization, installation, application, role, or
-  context selector. A different authority context requires BOS-owned server
-  authorization; existing grants remain unchanged.
+  The BOS client matches safe requested/default labels to fresh returned contexts
+  and uses the returned opaque handle at the advertised context boundary. Business
+  arguments carry no raw authority selector. Each context requires current server
+  authorization through the same identity connection; restricted grants keep their limits.
 - Background jobs carry the same validated scope as interactive operations.
 - The agent owns MCP transport and session recovery. On a closed stream or
   session, it reconnects the configured endpoint, rediscovers tools,
@@ -137,11 +142,11 @@ configuration as distinct validated dimensions.
   plugin itself and containing no `.app.json`. OAuth-capable GitHub Copilot
   and Gemini declare the same immutable resource URL through their own
   generated adapters. Every runtime host
-  uses its OAuth 2.1 MCP
-  authorization flow. The host discovers BOS
-  authorization metadata, launches consent, stores and refreshes the grant,
-  and attaches the resulting resource-scoped access token. The package never
-  asks for or stores a BOS API key. Dependent product packages declare their
+  uses its supported BOS identity proof. OAuth-capable hosts use OAuth 2.1
+  with discovery, consent, secure token storage and refresh. Muse currently uses
+  its user-issued identity API key in private host credential configuration,
+  with the same authorized app/org/role discovery. Package files and skill
+  conversations never collect, store or expose a BOS key. Dependent product packages declare their
   BOS requirement without another MCP authentication binding. Every
   secured call fails closed when authorization is
   absent, invalid, expired, revoked, or scoped to another resource.
@@ -151,9 +156,11 @@ configuration as distinct validated dimensions.
   package. For Claude and ChatGPT/Codex alike, package exactly one `.mcp.json`
   declaration for the product resource and no `.app.json`, and complete
   authorization through the plugin's own native action.
-  For every client, never add `bearer_token_env_var`, literal authorization
-  headers, or a plugin key field. The server derives actor, tenant, organization, installation,
-  role, plugin, and capability scope from the validated OAuth grant; client
+  In generated plugin packages, never add `bearer_token_env_var`, literal
+  authorization headers, a key value or a plugin key field. Muse's user-owned
+  private credential configuration remains outside generated package contents. The server derives actor, tenant, organization, installation,
+  role, plugin, and capability scope from validated identity proof and current
+  selected-context authorization; client
   prompts and tool arguments never supply those authority dimensions.
 - Before consent, the protected MCP resource returns only its HTTP 401
   `WWW-Authenticate` resource-metadata challenge. After a valid BOS token proves

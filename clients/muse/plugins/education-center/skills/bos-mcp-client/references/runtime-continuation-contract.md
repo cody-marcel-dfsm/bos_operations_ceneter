@@ -11,8 +11,11 @@ on BOS, use
 with contract ID `bos.authentication-handoff/v1`. The caller delegates only the
 exact protected resource, structured condition, and optional host-native
 correlation. BOS coordinates the host authentication lifecycle and returns a
-typed readiness result. The BOS connection remains owned by the configured host's standard OAuth
-lifecycle with required PKCE; see the [public OAuth client guide](oauth-client-guide.md).
+typed readiness result. The configured host owns supported identity authentication:
+OAuth with required PKCE on OAuth-capable hosts, or Muse's private user-issued
+identity API key with its own expiry/revocation and recovery lifecycle. Both use
+the same current authorized discovery and selected-context permission checks;
+see the [public OAuth client guide](oauth-client-guide.md) for OAuth clients.
 Authentication recovery creates no business-operation retry authority.
 
 The caller retains its semantic request and owns live discovery, approval,
@@ -48,7 +51,7 @@ observed failures.
 Refresh the callable manifest immediately after:
 
 - initial connection or task continuation;
-- OAuth connection or reconnection;
+- Successful OAuth connection/reconnection or Muse identity-key recovery;
 - Codex request-time or MCP-startup `reauthenticationRequired` recovery through
   the native authentication action owned by the resolved registered-app
   connection;

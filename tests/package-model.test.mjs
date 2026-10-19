@@ -203,7 +203,7 @@ test("BOS packages ship MCP-optional visual guided support on every client", asy
   }
 });
 
-test("BOS packages ship scoped-grant per-app discovery on every client", async () => {
+test("BOS packages ship identity-context per-app discovery on every client", async () => {
   const products = await listProducts();
   const bos = products.find(({ manifest }) => manifest.name === "bos");
   assert(bos, "bos product must exist");
@@ -289,7 +289,7 @@ test("BOS packages ship scoped-grant per-app discovery on every client", async (
   assert.match(contract, /Report an empty\s+input schema as a valid zero-input action[\s\S]*validation failure and recovery/i);
   assert.match(contract, /No observed counterpart[\s\S]*journey_runtime[\s\S]*unresolved rows/i);
   assert.match(contract, /audience-bound/i);
-  assert.match(contract, /another[\s\S]*fails closed at the grant[\s\S]*boundary/i);
+  assert.match(contract, /stale, wrong-identity or mismatched operation-context handle fails closed/i);
   await access(`${discovery.sourcePath}/scripts/validate-discovery.mjs`);
   await access(`${discovery.sourcePath}/scripts/project-contract-facts.mjs`);
   assert.match(sourceGuidance, /Use the projection's complete `execution` and `limits` rows[\s\S]*every declared field and literal value/i);
@@ -985,8 +985,8 @@ test("application runtime packages ship agent-owned MCP lifecycle recovery", asy
     assert.doesNotMatch(guidance, /call `bos_resume_operation`/i);
     assert.doesNotMatch(guidance, /unnamed endpoint as.*runtime connection/is);
     assert.match(guidance, /shared local document cache/i);
-    assert.match(guidance, /connection's one scoped OAuth\s+grant/i);
-    assert.match(guidance, /never select another[\s\S]*organization[\s\S]*role/i);
+    assert.match(guidance, /current authorized\s+contexts/i);
+    assert.match(guidance, /requested\/default app context through the same connection/i);
     assert.match(guidance, /request exactly those intervals plus\s+changes after its cursor/i);
     assert.match(guidance, /sync_completed_at/);
     await access(`${client.sourcePath}/scripts/shared-cache-consumer.mjs`);
@@ -1019,7 +1019,7 @@ test("Codex reauthentication exposes native user-controlled authentication", asy
   assert.match(client, /no\s+`\.app\.json`\s+for Codex/i);
   assert.match(client, /HTTP 401[\s\S]*WWW-Authenticate[\s\S]*resource-metadata/i);
   assert.match(client, /After consent[\s\S]*dynamic\s+domain-specific MCP services and tooling/i);
-  assert.match(client, /connection's one scoped OAuth\s+grant/i);
+  assert.match(client, /current authorized\s+contexts/i);
   assert.match(client, /call[\s\S]*`bos_get_context`[\s\S]*resume the original request/i);
   assert.match(client, /invalid_grant[\s\S]*Refresh token[\s\S]*replay detected/i);
   assert.match(client, /stop the refresh retry loop[\s\S]*fresh consent/i);
@@ -1056,7 +1056,7 @@ test("Codex reauthentication exposes native user-controlled authentication", asy
     assert.match(generated, /mcpServers: "\.\/\.mcp\.json"/i, path);
     assert.match(generated, /HTTP 401[\s\S]*WWW-Authenticate[\s\S]*resource-metadata/i, path);
     assert.match(generated, /After consent[\s\S]*dynamic\s+domain-specific MCP services and tooling/i, path);
-    assert.match(generated, /connection's one scoped OAuth\s+grant/i, path);
+    assert.match(generated, /current authorized\s+contexts/i, path);
     assert.doesNotMatch(generated, /codex mcp login/i, path);
     assert.match(generated, /Do not use\s+generic app-permission tools/i, path);
   }
@@ -1312,7 +1312,7 @@ test("camp enrollment reports render the accepted weekly image and deduped famil
   );
 });
 
-test("director skill handles weekly summaries without scope questions", async () => {
+test("director skill handles weekly summaries with requested or default context", async () => {
   const guidance = await readFile(
     `${root}/source/verticals/education-center/education-center-director-daily-planner/SKILL.md`,
     "utf8"
@@ -1321,8 +1321,8 @@ test("director skill handles weekly summaries without scope questions", async ()
   assert.match(guidance, /current local[\s\S]*Monday-through-Sunday/i);
   assert.doesNotMatch(guidance, /most recently completed[\s\S]*Monday-through-Sunday/i);
   assert.match(guidance, /“For my director” identifies\s+the report audience/i);
-  assert.match(guidance, /Never ask the\s+user to choose a director, organization, source, key, or role/i);
-  assert.match(guidance, /Require exactly one[\s\S]*authenticated user and role/i);
+  assert.match(guidance, /Clarify only unresolved safe[\s\S]*organization, installation or eligible-role labels/i);
+  assert.match(guidance, /Require one[\s\S]*selected, currently authorized context/i);
   assert.match(guidance, /Never ask whether to use Education Center operations, email, Calendar/i);
   assert.match(guidance, /every camp[\s\S]*student roster by day/i);
   assert.match(guidance, /primary family phone/i);
@@ -2425,8 +2425,9 @@ test("feedback contract uses the BOS app with service-owned request identity", a
     "utf8"
   );
   assert.match(skill, /Do not send execution-scope fields/);
-  assert.match(skill, /exact organization[\s\S]*already bound to the active product grant/i);
-  assert.match(skill, /Perform no client-side authority\s+selection/i);
+  assert.match(skill, /explicit request[\s\S]*confirmed default[\s\S]*fresh authorized contexts/i);
+  assert.match(skill, /Clarify unresolved safe-label choices/i);
+  assert.match(skill, /authentication[\s\S]*recovery only for rejected identity proof/i);
   assert.doesNotMatch(skill, /Select exactly one authorized scope/i);
   assert.match(skill, /Supply no client submission identity[\s\S]*BOS Service derives request identity/i);
   assert.match(skill, /follow only the exact service-returned state action/i);
@@ -2539,13 +2540,13 @@ test("every product and client ships tenant extension management metadata", asyn
           mcp_group_name: manifest.mcp_group_name,
           mcp_server_name: manifest.mcp_server_name ?? manifest.mcp_group_name,
           resource_url: manifest.mcp_resource_url,
-          oauth: manifest.oauth,
+          ...(client === "muse" ? {} : {oauth: manifest.oauth}),
           ...(client === "codex" ? {
             codex_mcp_startup_timeout_sec: manifest.codex_mcp_startup_timeout_sec,
             codex_mcp_tool_timeout_sec: manifest.codex_mcp_tool_timeout_sec
           } : {})
         } : {}),
-        ...productRuntimeOwnershipMetadata(manifest)
+        ...productRuntimeOwnershipMetadata(manifest, "bos", client)
       });
       const manager = await readFile(
         `${productRoot}/skills/manage-customer-extension/SKILL.md`,

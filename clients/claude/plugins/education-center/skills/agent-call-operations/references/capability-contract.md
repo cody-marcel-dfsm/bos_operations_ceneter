@@ -23,15 +23,16 @@ a provider call.
 
 The public schema excludes `org_id`, `app_code`, `installed_app_id`,
 `delegated_role_id`, `actor_role_id`, `plugin_id`, `action_id`, phone numbers,
-and provider identifiers. BOS derives execution authority from the OAuth grant
-and resolves the destination from the canonical lead record.
+and provider identifiers. BOS validates the OAuth identity or identity key and
+current selected-context authority, then resolves the destination from the
+canonical lead record.
 
 ## Server behavior
 
 The authenticated router dispatches to a dedicated PO operation. The PO must:
 
 1. resolve the exact installation, authenticated `actor_user_id`, and
-   server-selected actor role from the current OAuth context and membership;
+   eligible actor role from the current selected context and canonical membership;
 2. load the lead within that scope and reject cross-tenant selectors;
 3. verify the lead's current FSM state exposes the `agent_call` action;
 4. validate scoped `education-center-automated-outreach` and voice-provider
@@ -61,11 +62,13 @@ The server registers the canonical operation, maps it to the public tool name,
 adds it to the Education Center resource-group allowlist, and advertises it only
 when all of these are true:
 
-- the OAuth grant resolves exactly one Education Center installation and role;
+- the authenticated OAuth identity or identity key selects one currently
+  authorized Education Center installation and eligible assigned role for this call;
 - that installation enables the Education Center subservice and requested tool;
 - `education-center-automated-outreach` is installed and enabled; and
-- the authenticated actor's server-selected role and immutable OAuth ceiling
-  grant the requested capability.
+- the authenticated actor's selected eligible role, current capability and
+  consent authorize the operation. Legacy restricted OAuth grants additionally
+  retain their original immutable consent and role ceilings.
 
 Interactive MCP execution uses the authenticated actor and server-selected
 actor role. Metadata `run_as_role` applies only to autonomous callbacks and

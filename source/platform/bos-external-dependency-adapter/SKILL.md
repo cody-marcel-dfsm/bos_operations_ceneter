@@ -5,6 +5,16 @@ description: Provide the installed BOS product's authenticated dependency seam t
 
 # BOS External Dependency Adapter
 
+## Identity-wide connection
+
+Use one BOS identity connection across its current authorized organizations,
+apps, installations and assigned roles. GPT/Claude use OAuth; Muse currently uses
+a user-issued identity API key held privately by the host. Delegation returns
+readiness for that supported method. The existing BOS context-selection workflow
+resolves explicit requests or confirmed defaults without another BOS login/key.
+Keep credentials and opaque handles inside the BOS/host boundary.
+
+
 Use this BOS-owned adapter whenever a separately installed product delegates
 authentication recovery, invokes an operation advertised by Describe, or
 invokes a BOS-returned journey action. The adapter

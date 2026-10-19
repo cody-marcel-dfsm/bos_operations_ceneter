@@ -120,7 +120,9 @@ Distinguish these states in plain language:
 - **Installed:** package files exist.
 - **Loaded:** the current client session can see the skill/plugin.
 - **Registered:** the product's named remote resource appears in the client.
-- **BOS signed in:** the host holds a resource-scoped BOS OAuth grant.
+- **BOS signed in:** the host has authenticated one BOS identity through OAuth,
+  or through its user-issued identity key in Muse. The same identity supports
+  currently authorized organization/app/role choices without another BOS login.
 - **Discovered:** the authenticated scope's dynamic domain-specific MCP services
   and current tooling are loaded.
 - **Provider ready:** any separate Google, SendGrid, Calimatic, or other
@@ -129,8 +131,10 @@ Distinguish these states in plain language:
 Installation grants no organization access. Never request a BOS API key,
 access token, refresh token, authorization code, secret-manager name,
 installed-app ID, raw organization ID, or credential environment variable.
-Direct the user only to the host-managed **Connect**, **Sign in**,
-**Authenticate**, or BOS-hosted secure provider flow.
+On OAuth-capable hosts, use the host-managed **Connect**, **Sign in** or
+**Authenticate** action. Muse uses the existing identity key through private
+host credential configuration and its supported key recovery. Provider consent
+uses the BOS-hosted secure provider flow. Receive no credential in chat.
 
 ## Verify the outcome
 
@@ -138,7 +142,8 @@ Connection success requires evidence, not the absence of an error. Confirm:
 
 1. the exact root connection is registered and, on Codex, the required app
    binding renders the plugin-page authentication control;
-2. BOS OAuth completes;
+2. BOS identity authentication succeeds through the host's supported OAuth or
+   identity-key path;
 3. one canonical context resolves;
 4. the expected operation descriptor and schema are discoverable; and
 5. one safe, bounded, authenticated read succeeds.

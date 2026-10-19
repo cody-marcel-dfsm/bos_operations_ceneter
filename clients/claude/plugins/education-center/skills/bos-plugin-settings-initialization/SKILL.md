@@ -84,13 +84,13 @@ workflow; single-context grant wording below applies to legacy discovery.
 Run this common product-client stage after host-managed BOS authentication and
 the product's customer/client-settings initializer when the product declares
 one. BOS can run this workflow directly after authentication. It verifies every
-installed plugin service in the grant-bound organization and then initializes
+installed plugin service in the selected, server-authorized organization and then initializes
 server-owned, organization-scoped plugin
 configuration. It preserves healthy connections and confirmed settings and
 never treats local client values as authority.
 
 Treat the combined connection inventory and required canonical settings as the
-grant-bound organization's **organization business profile**. This profile holds
+selected, server-authorized organization's **organization business profile**. This profile holds
 the organization's display-safe operating preferences, semantic service
 routing, automation choices, communication preferences, and other
 server-declared plugin configuration. The BOS service owns the profile schema,
@@ -118,9 +118,11 @@ denials; never invent missing setup tools or recurse into this initializer.
    inputs for the source roles required by the live recommendation profile.
    Ask only for unresolved inputs needed by that profile; do not require a
    nonexistent local overlay, initializer, or another product installation.
-3. Call `bos_get_context` to revalidate that the OAuth grant binds exactly one
-   organization, application, installation, and role. Supply no organization,
-   role, or context selector. Stop on missing or ambiguous scoped-grant evidence.
+3. Call `bos_get_context` to validate the identity and match the requested or
+   confirmed default organization/app/installation/role against fresh authorized
+   contexts. Clarify unresolved safe-label choices. Keep this initialization in
+   its selected context through the same login/key; reject invalid or denied
+   authority. Supply no raw authority selector in business arguments.
 4. Verify `bos.plugins.read`,
    `bos.plugin_settings.read`, and `bos.plugin_settings.recommend`. Require
    `bos.plugins.connect` only when a server-returned connection action is used,
@@ -140,7 +142,7 @@ denials; never invent missing setup tools or recurse into this initializer.
 ## Connection readiness
 
 Treat the ordered `bos_list_plugin_services` response as the canonical
-connection inventory for the grant-bound organization. Never enumerate or
+connection inventory for the selected, server-authorized organization. Never enumerate or
 probe another organization from this grant. Show a compact checklist grouped by plugin and service, preserving the
 server's labels, connection-state vocabulary, action availability, and order.
 
@@ -153,8 +155,10 @@ server's labels, connection-state vocabulary, action availability, and order.
   exactly one **Connect** action. After the user selects it, call
   `bos_begin_plugin_service_connection` with the latest `plugin_ref` and
   `service_ref` from that same response.
-- For `bos_sign_in_required`, activate the current product connection's
-  host-native **Connect**, **Sign in**, or **Authenticate** action.
+- For `bos_sign_in_required`, use the current host-supported identity proof:
+  native **Connect**, **Sign in**, or **Authenticate** on OAuth-capable hosts;
+  existing identity key in Muse's private host configuration with key-specific
+  recovery. Preserve the pending request and receive no credential in chat.
 - Show disabled and `unavailable` rows with their server-returned status and
   available action. Never silently enable a plugin. Enablement requires the
   user's explicit toggle or request through `bos-plugin-console`, followed by
@@ -183,7 +187,7 @@ Preserve every confirmed canonical value. Select only required `unset`, invalid
 Treat every required server-declared routing, automation, and communication
 preference as part of the organization business profile. Resolve choices only
 from the live settings profile, its allowlisted recommendation plan, the
-grant-bound organization's service inventory, and explicit user corrections. When
+selected, server-authorized organization's service inventory, and explicit user corrections. When
 the profile offers several eligible services for one semantic operation, show
 the server-returned labels and current selection in the consolidated review.
 Never infer a provider from a package example, provider reputation, connection

@@ -10,8 +10,8 @@ reported stage only when later evidence contradicts it.
 |---|---|---|---|
 | Install | Marketplace/plugin/extension listing or package metadata | Install or update the named BOS product from its canonical distribution | Correct product and expected version are present |
 | Load | Skill list, plugin enabled state, or a new task/session | Enable the product and restart or start a new task as the client requires | Current session recognizes `bos-guided-support` and product skills |
-| Register | Client connection listing, package binding metadata, authentication control, and OAuth client status | Restore the client-native root binding; on Codex restore the package-owned `.mcp.json` BOS resource | Exact BOS resource is visible and the host-owned public client is accepted |
-| Sign in | Resolved registered-app connection state or OAuth result | Invoke the client's inline Connect/Sign in/Authenticate flow | Valid resource-scoped BOS OAuth grant is accepted |
+| Register | Client connection listing and package binding metadata; OAuth client status on OAuth-capable hosts | Restore the supported host binding; on Codex restore the package-owned `.mcp.json` BOS resource; on Muse use the packaged resource in private host configuration | Exact BOS resource is registered for the host-supported identity proof |
+| Sign in | Current host-supported BOS identity proof | OAuth hosts: inline Connect/Sign in/Authenticate; Muse: existing identity key in private host configuration | Valid BOS identity proof is accepted through its own credential lifecycle |
 | Discover | Fresh live MCP tool manifest | Reconnect or refresh MCP/tool discovery | Current dynamic domain-specific services and tooling appear |
 | Verify | `bos_get_context` plus a bounded authenticated product read | Classify the returned server/provider error and recover that boundary | One canonical context and one read succeed |
 
@@ -27,12 +27,16 @@ reported stage only when later evidence contradicts it.
   request, keep the sealed product resource fixed, discard the stale host-owned
   public-client registration, repeat dynamic client registration from current
   authorization metadata, and restart product authorization once.
-- `authentication_required`, missing/expired/revoked/out-of-scope grant:
+- On OAuth-capable hosts, `authentication_required` or a missing/expired/revoked/out-of-scope grant:
   **Sign in**. Use the protected MCP resource's HTTP 401 `WWW-Authenticate`
   resource-metadata challenge and the host's native authentication action.
   Preserve the request through consent, then refresh live
   discovery of dynamic domain-specific MCP services and tooling, call
   `bos_get_context`, and resume.
+- Muse missing/expired/revoked identity key: **Sign in**. Preserve the request,
+  use Muse's private host credential configuration and supported key recovery,
+  then refresh discovery and resume. Receive no key in chat or package files.
+  Selecting another authorized organization/app requires no replacement key.
 - OAuth token endpoint `invalid_grant`, including `Refresh token replay
   detected`: **Sign in**. The current grant is unusable. Stop the refresh retry
   loop, preserve the pending request, and obtain fresh consent through the
@@ -60,8 +64,14 @@ reported stage only when later evidence contradicts it.
   for the owning server repair.
 - Empty business records after an authenticated read are a valid data result.
   They are never evidence that installation or authentication failed.
-- Multiple or ambiguous BOS contexts fail closed and require BOS-side account or
-  installation repair. Never let the user choose a raw tenant or installation ID.
+- Multiple authorized BOS contexts are a normal multi-organization account. Use
+  the `bos-mcp-client` identity-context rules: match explicit safe labels or the
+  calling plugin's confirmed default against fresh choices; ask for the needed
+  organization, application, installation or role label when still ambiguous.
+  Select the fresh returned handle through the same authenticated connection.
+  Context selection requires no additional BOS login, key or reconnect. Invalid
+  discovery and genuine access failures retain their existing error/recovery
+  paths. Never ask for raw tenant, installation or role IDs.
 
 ## Conversation loop
 

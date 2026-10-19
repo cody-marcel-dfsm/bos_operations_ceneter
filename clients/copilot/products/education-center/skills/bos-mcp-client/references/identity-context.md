@@ -1,5 +1,26 @@
 # BOS identity context compatibility — v1
 
+## One BOS identity; OAuth and identity-key parity
+
+One BOS identity login gives the agent access to the organizations, applications,
+installations and eligible assigned roles that identity is currently authorized
+to use. GPT and Claude authenticate that identity through OAuth; Muse currently
+uses one user-issued BOS identity API key. Both methods use the same discovery,
+context-selection and per-operation authorization rules. The agent matches an
+explicit requested context or the calling plugin's confirmed defaults against
+fresh authorized choices, asks for clarification when necessary, and reuses the
+same connection when the context changes. Each operation independently checks
+current membership, role, capability, plugin consent and provider policy.
+Separate BOS identities retain their own logins, credentials and
+authority. Provider consent stays with its provider. Existing restricted grants
+and integration keys retain their original limits and migration rules.
+
+Multiple valid returned contexts are normal. Apply the selection rules below to
+safe labels and fresh handles. An unresolved choice requires clarification;
+malformed or denied authority retains its existing fail-closed behavior.
+Credentials remain with the host; no skill reads or transfers them.
+
+
 This versioned compatibility branch applies only when live `bos_get_context`
 returns `contract_version: bos-identity-mcp/v2` and the host exposes
 `bos_list_context_tools` and `bos_execute`. It takes precedence over legacy

@@ -19,4 +19,4 @@ Start a new session and check `/skills` for this product's skills.
 For a later published release, sync the checkout, run `muse plugins update education-center`, and start a new session.
 Native installation, login, discovery, and authenticated execution require separate published-release verification.
 Muse native format: https://meta-models.github.io/muse-code-sdk/next/guides/plugins/reference/manifest/
-Muse OAuth: https://meta-models.github.io/muse-code-sdk/next/guides/extend/mcp-servers/
+Muse MCP configuration: https://meta-models.github.io/muse-code-sdk/next/guides/extend/mcp-servers/
