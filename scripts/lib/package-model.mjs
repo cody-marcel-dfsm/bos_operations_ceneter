@@ -9,6 +9,7 @@ import {
   writeFile
 } from "node:fs/promises";
 import { basename, join, relative, resolve, sep } from "node:path";
+import { readSkillMetadata, skillReferences, writeSkillMetadata } from "./skill-metadata.mjs";
 
 export const root = resolve(import.meta.dirname, "../..");
 const mutationSafety = readFileSync(join(root,
@@ -529,13 +530,12 @@ export async function resolveSkill(include, base = root) {
   }
   const skillFile = join(sourcePath, "SKILL.md");
   const content = await readFile(skillFile, "utf8");
-  const match = content.match(/^---\s*\n[\s\S]*?^name:\s*["']?([^"'\n]+)["']?\s*$/m);
-  if (!match) throw new Error(`Missing skill name: ${skillFile}`);
+  const metadata = readSkillMetadata(content, skillFile);
   return {
     include,
     sourcePath,
     skillFile,
-    name: match[1].trim()
+    ...metadata
   };
 }
 
@@ -575,6 +575,22 @@ export async function copyProductSkills(product, skills, target) {
 }
 
 export function transformProductSkillGuidance(product, skillName, guidance) {
+  const transformed = applyProductSkillGuidance(product, skillName, guidance);
+  // Existing synthetic guidance fixtures may omit package metadata. Canonical
+  // skills always carry it and retain exact product-specific preflight pins.
+  if (!/^metadata:/m.test(guidance)) return transformed;
+  const metadata = readSkillMetadata(guidance);
+  const names = new Set(["bos-mcp-client", product.settings_initializer, product.plugin_settings_initializer].filter(Boolean));
+  const requires = { ...metadata.requires };
+  for (const name of skillReferences(transformed, names)) {
+    if (name === skillName) continue;
+    const include = product.includes?.find(value => value.endsWith(`/${name}`)) ?? (name === "bos-mcp-client" ? "platform/bos-mcp-client" : null);
+    if (include) requires[name] = readSkillMetadata(readFileSync(join(root, "source", include, "SKILL.md"), "utf8")).version;
+  }
+  return writeSkillMetadata(transformed, { version: metadata.version, requires });
+}
+
+function applyProductSkillGuidance(product, skillName, guidance) {
   guidance = injectMutationSafety(guidance);
   if (skillName === product.settings_initializer) return guidance;
   if (productInitializationIndependentSkills.has(skillName)) return guidance;

@@ -2,6 +2,9 @@
 
 name: bos-guided-support
 description: Guide non-expert BOS users through installation, onboarding, connection, OAuth, tool discovery, provider authorization, updates, and everyday "How do I do this with BOS?" questions. Use when a user is getting started, seems stuck or hesitant, reports a BOS/plugin/MCP error, asks what to click or do next, shares a screenshot, needs visual step-by-step help, or needs to verify that BOS works. Operate without MCP when necessary and use MCP as additional evidence when available.
+metadata:
+  version: "1.0.0"
+  requires: "{\"bos-mcp-client\":\"1.0.0\"}"
 ---
 
 # BOS Guided Support

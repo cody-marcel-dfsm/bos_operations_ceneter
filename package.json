@@ -1,6 +1,6 @@
 {
   "name": "bos-operations-center",
-  "version": "0.4.207",
+  "version": "0.4.209",
   "private": false,
   "description": "BOS service-gateway client skills and Education Operation Center packages.",
   "author": "Infinite State Machines LLC",
@@ -62,7 +62,9 @@
     "release:plan": "python3 tools/publication_admission.py plan",
     "release:push": "python3 tools/publication_admission.py push",
     "release:authorize": "python3 tools/publication_admission.py authorize",
-    "release:merge": "python3 tools/publication_admission.py merge"
+    "release:merge": "python3 tools/publication_admission.py merge",
+    "skill:version": "node scripts/bump-skill-version.mjs",
+    "skill:import": "node scripts/import-skill.mjs"
   },
   "engines": {
     "node": ">=20"

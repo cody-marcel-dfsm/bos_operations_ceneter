@@ -28,6 +28,7 @@ export const allowedTopLevelPaths = new Set([
   "products",
   "privacy",
   "scripts",
+  "skill-release-manifest.json",
   "source",
   "tests",
   "tools",

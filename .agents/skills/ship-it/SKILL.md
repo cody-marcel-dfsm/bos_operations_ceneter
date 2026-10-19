@@ -202,7 +202,9 @@ requested outcome.
 4. Treat generated client manifests, marketplaces, and manifest-owned OpenAI
    skill-snapshot ZIPs as outputs of the canonical package build. Do not
    hand-edit generated copies. Do not create ad-hoc release ZIPs, tarballs,
-   customer archives, or release-manifest artifacts.
+   customer archives, or ad-hoc release-manifest artifacts. The owner-requested
+   `skill-release-manifest.json` is a canonical build output: preserve its exact
+   skill versions, requirements, whole-file inventories and repository release.
 5. If the worktree is clean, the new version itself is the release change. Do not skip the release or create an empty commit.
 
 ## Validate and build

@@ -77,7 +77,7 @@ Upgrading replaces the former `platform` identifier. Hosts may require native
 sign-in again when a connection identifier changes; valid-session continuity
 has not been verified for this migration.
 
-Current desktop marketplace release: `0.4.207`. If `0.4.206` is installed,
+Current desktop marketplace release: `0.4.209`. If `0.4.208` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
 
 ### ChatGPT/Codex Desktop
@@ -496,13 +496,84 @@ discovery/readiness. Candidate-only captured-wire acceptance can precede service
 promotion. Actual deployed execution and host-specific wake each retain their
 own acceptance evidence.
 
+## Versioned skill sources
+
+Each canonical skill carries its own semantic version and exact inter-skill
+requirements in portable Agent Skills frontmatter:
+
+```yaml
+metadata:
+  version: "1.0.0"
+  requires: "{\"bos-mcp-client\":\"1.0.0\"}"
+```
+
+`metadata.requires` is a JSON object encoded as a string because the
+[Agent Skills specification](https://agentskills.io/specification) defines
+metadata values as strings. An empty requirement set is `"{}"`. Read the
+skill's frontmatter to identify its version. Package release numbers remain
+independent of skill versions and public API versions.
+
+`skill-release-manifest.json` maps every canonical skill/version to the exact
+repository release, source directory, complete supporting-file hashes and
+executable modes. Per-product effective guidance hashes also bind the existing
+generated preflights. Product generation adds its own exact preflight dependency
+pins while preserving canonical source requirements and all supporting files.
+The five native clients continue to install through their published packages.
+
+To change a skill, bump it before rebuilding:
+
+```bash
+npm run skill:version -- bos-cache-maintenance patch
+npm run build:packages
+npm run check
+```
+
+The version command also bumps affected reverse dependents and updates their
+exact pins, including generated preflight dependencies. Build/check compare all
+earlier committed skill identities even when CI is checking an already
+committed candidate. Removal and reintroduction preserve version floors and
+effective guidance identities. A changed body, support file, executable mode or effective
+generated guidance requires a strictly newer skill version; unchanged versions
+can be reused across repository releases. Complete Git history is required.
+
+For a reviewed source import into another repository, run the published tool
+from that destination's canonical `main` checkout. Supply the publisher's full
+40-character release commit, matching repository release and exact skill version:
+
+```bash
+node /path/to/published-client/scripts/import-skill.mjs \
+  --repository https://github.com/cody-marcel-dfsm/bos_operations_ceneter.git \
+  --commit FULL_RELEASE_COMMIT_SHA \
+  --release EXACT_REPOSITORY_RELEASE \
+  --skill bos-cache-maintenance@EXACT_SKILL_VERSION \
+  --target source/imports/bos-cache-maintenance
+```
+
+The importer reads bare Git objects, verifies the complete transitive dependency
+closure and every file/mode before materializing source, and retains the immutable
+commit/release/version pins in `.skill-import.json`. Exact dependency cycles
+terminate deterministically. Conflicting pins, symlinks, unsafe paths, missing,
+extra or changed files fail before destination writes. Imports are bounded to
+100 skills, 1,000 files and 100 MiB, with a three-minute overall deadline.
+An existing canonical skill name outside the import's own target is a conflict,
+including an identical dependency; each source directory retains its references
+and supporting files. Existing authored changes are preserved; tool-owned
+unchanged imports can receive newer skill versions
+with rollback on replacement failure. Imported source then follows the consumer's
+own review, build and release process. The tool writes only repository `source/`
+content; installed skills and plugin caches retain their supported release path.
+Each publisher retains its own source and release ownership; this introduces no
+sibling source/build dependency, registry, service or public API version.
+
 ## Release validation
 
 Release validation is credential-free and local. It regenerates canonical
 client packages, checks generated parity and credential containment, and runs
 the complete test suite. It deterministically regenerates each active
 product's manifest-owned OpenAI skill-snapshot ZIP. It creates no ad-hoc
-release ZIPs, tarballs, customer archives, or release manifests and performs no
+release ZIPs, tarballs, customer archives or other ad-hoc release artifacts.
+Its one requested skill release
+manifest is the canonical `skill-release-manifest.json`; validation performs no
 live MCP call.
 
 Run:
@@ -648,6 +719,7 @@ the BOS runtime plugin is unavailable on those two hosts.
 | `products/bos/product.json` | Sole BOS product, connector identity, and MCP resource authority |
 | `products/` | Versioned product composition manifests |
 | `clients/` | Generated client packages |
+| `skill-release-manifest.json` | Generated exact skill versions, requirements, release and file inventory |
 | `.agents/skills/` | Repository-maintainer skills excluded from customer products |
 | `clients/codex/.agents/plugins/marketplace.json` | Generated Codex marketplace |
 | `clients/claude/.claude-plugin/marketplace.json` | Generated Claude marketplace |

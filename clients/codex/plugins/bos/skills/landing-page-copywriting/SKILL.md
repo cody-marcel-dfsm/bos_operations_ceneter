@@ -1,6 +1,9 @@
 ---
 name: landing-page-copywriting
 description: Write, revise, audit, or structure high-converting landing pages, sales pages, funnel pages, hero sections, offers, headlines, calls to action, benefit copy, proof, FAQs, and risk reversal. Use when Codex works on landing-page strategy or copy, offer clarity, conversion messaging, Life-Force 8 psychological desires, fifth-grade readability, plain-language persuasion, or matching page content to an audience's strongest desire.
+metadata:
+  version: "1.0.0"
+  requires: "{\"bos-mcp-client\":\"1.0.0\"}"
 ---
 
 

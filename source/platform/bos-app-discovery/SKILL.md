@@ -1,6 +1,9 @@
 ---
 name: bos-app-discovery
 description: Route requests through authenticated BOS app discovery, including finding skills and operations that can contribute to an ad hoc dynamic BOSL workflow. Use when app scope, service ownership, workflow composition, graph shape, or API contracts must be discovered at runtime.
+metadata:
+  version: "1.0.0"
+  requires: "{\"bos-mcp-client\":\"1.0.0\"}"
 ---
 
 For CRM lead/contact detail requests, read the shared
