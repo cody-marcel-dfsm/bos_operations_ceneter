@@ -10,16 +10,24 @@ from pathlib import Path
 
 try:
     from . import oracle_approval as o
+    from . import shipment_state as shipment
+    from . import publication_status as public_status
 except ImportError:
     import oracle_approval as o
+    import shipment_state as shipment
+    import publication_status as public_status
 
 
 def _source_receipt(root: Path, commit: str) -> tuple[dict, bytes]:
-    o.verify_commit(root, commit)
-    message = o._git(root, "show", "-s", "--format=%B", commit)
-    digest = o._trailers(message)[o.TRAILER_KEYS[2]]
-    path = o._technical_archive(root, digest)
-    raw = o._custody_read(root, path)[1]
+    if shipment.checkpoint_path(root).exists():
+        receipt, raw = shipment.validated_receipt(root, commit)
+        digest = o._sha(raw)
+    else:
+        # Historical releases retain their original accepted-state transport.
+        o.verify_commit(root, commit)
+        message = o._git(root, "show", "-s", "--format=%B", commit)
+        digest = o._trailers(message)[o.TRAILER_KEYS[2]]
+        raw = o._custody_read(root, o._technical_archive(root, digest))[1]
     if o._sha(raw) != digest:
         raise o.OracleApprovalError("Publication technical receipt digest changed")
     receipt = json.loads(raw)
@@ -59,6 +67,8 @@ def plan(root: Path, candidate: str, release_ref: str, operation: str, *, refres
             or o._git(root, "rev-parse", "HEAD").strip() != commit
             or o._git(root, "status", "--porcelain=v1", "--untracked-files=all").strip()):
         raise o.OracleApprovalError("Publication requires the complete clean canonical-main candidate")
+    if shipment.selection(root)["state"] == "NO_CHANGES":
+        return {"kind": "boc-publication-plan-v1", "state": "NO_CHANGES", "candidate_commit": commit}
     receipt, raw = _source_receipt(root, commit)
     current = o._publication_scope(root, receipt["candidate_tree"])
     if current["target_ref"] is None:
@@ -157,6 +167,8 @@ def _check_authorization(root: Path, selected: dict, authorization) -> None:
 @o._serialized_review
 def authorize(root: Path, candidate: str, release_ref: str, owner_path: str, *, authorization=None, effect_ids=None) -> dict:
     selected = plan(root, candidate, release_ref, "main-promotion")
+    if selected.get("state") == "NO_CHANGES":
+        return selected
     covered, observations = _covered_authorizations(root, selected, authorization)
     active = {row["id"] for row in selected["protected_effects"]["active"]}
     chosen = active if effect_ids is None else set(effect_ids)
@@ -201,6 +213,8 @@ def authorize(root: Path, candidate: str, release_ref: str, owner_path: str, *, 
 def publish(root: Path, candidate: str, release_ref: str, operation: str, *, pr: str | None = None,
             authorization=None, execute=subprocess.run, refresh: bool = True) -> dict:
     selected = plan(root, candidate, release_ref, operation, refresh=refresh)
+    if selected.get("state") == "NO_CHANGES":
+        return selected
     _check_authorization(root, selected, authorization)
     if operation == "review-push":
         command = ["git", "push", "--set-upstream", "origin",
@@ -225,6 +239,19 @@ def publish(root: Path, candidate: str, release_ref: str, operation: str, *, pr:
         command = ["gh", "pr", "merge", pr, "--repo", "cody-marcel-dfsm/bos_operations_ceneter",
                    "--merge", "--match-head-commit", selected["candidate_commit"]]
     execute(command, cwd=root, check=True)
+    if operation == "review-push":
+        public_status.publish_status(root, selected, execute=execute)
+    else:
+        confirmed = execute(["gh", "pr", "view", pr, "--repo", public_status.REPOSITORY,
+                             "--json", "state,headRefOid,mergeCommit"],
+                            cwd=root, capture_output=True, text=True, check=True)
+        merged = json.loads(confirmed.stdout)
+        merge_commit = (merged.get("mergeCommit") or {}).get("oid")
+        if (merged.get("state") != "MERGED" or merged.get("headRefOid") != selected["candidate_commit"]
+                or not isinstance(merge_commit, str) or not re.fullmatch(r"[0-9a-f]{40}", merge_commit)):
+            raise o.OracleApprovalError("Publication merge completion is unconfirmed; retain pending delivery")
+        if shipment.checkpoint_path(root).exists():
+            shipment.record_released(root, selected["candidate_commit"], merge_commit)
     return selected
 
 

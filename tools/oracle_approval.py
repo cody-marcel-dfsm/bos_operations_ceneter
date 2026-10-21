@@ -90,7 +90,9 @@ uncovered behavior remain available. Omitted validation entries never erase
 wrapper-verified proof; explicit invalidation must explain the actual gap.
 """
 REVIEW_SERIES_POLICY = """Trusted assessment execution policy:
-For completed-candidate review, complete the first assessment across all changed paths,
+Read governing instructions and review criteria first, before changes or results.
+Reuse loaded unchanged authority context. For completed-candidate review, complete
+one thorough pass per new commit/range across all changed paths,
 relevant entry points, dependencies, failure paths and applicable authorities
 before returning consolidated findings. Record unreviewed coverage explicitly;
 an early blocker is no reason to stop scanning independent areas. Findings need
@@ -98,7 +100,7 @@ stable IDs, exact location, root cause, reproduction, required behavior,
 recommendation, affected paths and acceptance checks so repairs can be made in
 one batch. Preserve unresolved finding IDs and account for every one through an
 open finding or hash-bound resolution evidence. Never treat omitted findings as
-resolved. On follow-up or resume, inspect the actual source/control delta first,
+resolved. On follow-up or resume, confirm governing criteria first, then new commits,
 then affected dependencies, unresolved findings and unfinished coverage. A global
 mechanical guard invalidation alone requires no blanket source rescan or test
 rerun. Independently compare current criteria, source hashes and dependencies to
@@ -839,7 +841,8 @@ def _validation_environment(extra_keys: Sequence[str] = ()) -> tuple[dict, dict,
     return effective, fingerprints, extras
 
 
-REVIEW_POLICY_MODULES = ("tools/oracle_approval.py", "tools/codex_child_model.py", "tools/vault_index.py", "tools/publication_admission.py")
+REVIEW_POLICY_MODULES = ("tools/oracle_approval.py", "tools/codex_child_model.py", "tools/vault_index.py",
+                         "tools/publication_admission.py", "tools/shipment_state.py", "tools/publication_status.py")
 
 
 def _review_policy_sources(root: Path, tree: str | None = None) -> dict:
@@ -943,6 +946,19 @@ def _environment_digest() -> str:
 
 
 def _series_directory(root: Path, base: str) -> Path:
+    # Repair commits move HEAD while the same sealed proposal owns the lifecycle.
+    try:
+        raw = _custody_read(root, proposal_path(root))[1]
+        proposal = json.loads(raw)
+        body = {key: value for key, value in proposal.items() if key != "proposal_review_id"}
+        if (raw == _pretty(proposal) and proposal["proposal_review_id"] == _sha(_canonical(body))
+                and proposal["review"]["verdict"] == "APPROVED"
+                and not proposal["review"].get("findings")
+                and subprocess.run(["git", "merge-base", "--is-ancestor", proposal["base_commit"], base],
+                                   cwd=root, capture_output=True).returncode == 0):
+            base = proposal["base_commit"]
+    except (OSError, ValueError, KeyError, TypeError, OracleApprovalError):
+        pass
     identity = _sha(_canonical({"repository": str(root.resolve()), "base_commit": base}))[:24]
     return receipt_path(root).parent / "series" / identity
 
@@ -1642,7 +1658,9 @@ def _validation_record(root: Path, name: str, inputs: list, environment_digest: 
                  and record["record_sha256"] == _sha(_canonical(payload)) and record["exit_code"] == 0
                  and record["inputs"] == inputs and selected == {item["path"]: item["digest"] for item in inputs}
                  and record["live_inputs"] == live
-                 and record["base_commit"] == (expected_base if expected_base is not None else _git(root, "rev-parse", "HEAD").strip())
+                 and subprocess.run(["git", "merge-base", "--is-ancestor", record["base_commit"],
+                                     expected_base if expected_base is not None else _git(root, "rev-parse", "HEAD").strip()],
+                                    cwd=root, capture_output=True).returncode == 0
                  and record["environment_digest"] == environment_digest
                  and record["authority_digests"] == _controlling_authorities(_live_authorities(root))
                  and record["output_hashes"] == _files(root, list(record["output_hashes"]))
@@ -2136,7 +2154,7 @@ def _oracle(root: Path, tree: str, paths: list[str], evidence: dict[str,str], ow
     if _RUN.get() and (_RUN.get() / "review-context.json").is_file():
         request["review_context"] = str(_RUN.get() / "review-context.json")
     prompt = f"""You are the independent BOS Operations Center Oracle approval process.
-Read .agents/skills/oracle/SKILL.md completely and wear that approver skill. Use the hash-bound oracle-inputs.json, candidate.diff and vault-query.json as navigation. On initial assessment inspect the complete candidate, applicable AGENTS.md/private Vault authorities, issue history and relevant validation evidence. On follow-up or resume inspect actual deltas first and apply the trusted execution policy to affected dependencies, open findings, unfinished coverage and sealed unchanged observations. Prepared retrieval never narrows required coverage. Only this process issues Oracle warnings and verdicts. Creating, bumping, replacing, or splitting a public API version requires the human user's explicit request for that exact version change. Owner approval, general fix/release authorization, inferred compatibility, pre-existing implementation, and Oracle guidance never substitute. Correct behavior and preserve authorized improvements in the current API version; package/build patches and identity-envelope protocols are distinct. Independently classify api_version_assessment: NONE requires NOT_REQUIRED and all request fields null; CHANGE requires EXPLICIT_REQUEST for APPROVED, exact requested_change, verbatim direct-user request_quote, and an absolute request_evidence path supplied through --evidence containing that quote. Independently inspect human provenance, context, exact scope and refusals; an agent assertion or approval-only statement is insufficient. Reject unrequested API version changes. An exact explicit request authorizes continuation through ordinary independent review without repeated owner approval. Authentication classification does not grant publication authority.
+Read .agents/skills/oracle/SKILL.md completely and wear that approver skill. Use the hash-bound oracle-inputs.json, candidate.diff and vault-query.json as navigation. Read applicable AGENTS.md/private Vault authorities and governing criteria first, before interpreting changes or validation results. On initial assessment make one complete pass over the commits being validated, issue history and relevant validation evidence. On follow-up or resume confirm changed criteria, then inspect new commits and apply the trusted execution policy to affected dependencies, open findings, unfinished coverage and sealed unchanged observations. Prepared retrieval never narrows required coverage. Only this process issues Oracle warnings and verdicts. Creating, bumping, replacing, or splitting a public API version requires the human user's explicit request for that exact version change. Owner approval, general fix/release authorization, inferred compatibility, pre-existing implementation, and Oracle guidance never substitute. Correct behavior and preserve authorized improvements in the current API version; package/build patches and identity-envelope protocols are distinct. Independently classify api_version_assessment: NONE requires NOT_REQUIRED and all request fields null; CHANGE requires EXPLICIT_REQUEST for APPROVED, exact requested_change, verbatim direct-user request_quote, and an absolute request_evidence path supplied through --evidence containing that quote. Independently inspect human provenance, context, exact scope and refusals; an agent assertion or approval-only statement is insufficient. Reject unrequested API version changes. An exact explicit request authorizes continuation through ordinary independent review without repeated owner approval. Authentication classification does not grant publication authority.
 {LEAD_GRAPH_REVIEW}
 {NORMAL_PLAN_REVIEW_POLICY}
 {LOCAL_EXECUTION_POLICY}
@@ -2227,7 +2245,9 @@ def verify_proposal(root: Path) -> dict:
         raise OracleApprovalError("Oracle proposal review record binding is invalid")
     if (record.get("schema_version") != SCHEMA_VERSION or record.get("issuer") != ISSUER
             or record.get("kind") != "proposal-review"
-            or record.get("base_commit") != _git(root, "rev-parse", "HEAD").strip()):
+            or subprocess.run(["git", "merge-base", "--is-ancestor", record.get("base_commit", ""),
+                               _git(root, "rev-parse", "HEAD").strip()], cwd=root,
+                              capture_output=True).returncode != 0):
         raise OracleApprovalError("Oracle proposal review is not bound to this base")
     if record.get("proposal_sha256") != _sha(record.get("proposal", "").encode()):
         raise OracleApprovalError("Oracle proposal content binding is invalid")
@@ -2237,8 +2257,9 @@ def verify_proposal(root: Path) -> dict:
     impact, status = review.get("authentication_impact"), review.get("owner_approval_status")
     if impact not in {"NONE", "AUTHENTICATION"} or status not in {"NOT_REQUIRED", "APPROVED", "MISSING", "INVALID"}:
         raise OracleApprovalError("Oracle proposal approval classification is invalid")
-    if _controlling_authorities(record.get("authority_digests", {})) != _controlling_authorities(_live_authorities(root)):
-        raise OracleApprovalError("Oracle proposal authority changed")
+    # A prior proposal remains supporting scope/history after authority changes.
+    # Completed review binds current authorities and independently reassesses
+    # affected criteria; this proposal never grants candidate approval.
     evidence, owner = record.get("evidence"), record.get("owner_approval_evidence")
     if not isinstance(evidence, dict) or evidence != _files(root, list(evidence)):
         raise OracleApprovalError("Oracle proposal evidence changed")
@@ -2256,7 +2277,8 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
         if pending: raise OracleApprovalError("Oracle review requires every non-Vault change staged: " + ", ".join(sorted(pending)))
         if subprocess.run(["git","diff","--cached","--check"], cwd=root).returncode: raise OracleApprovalError("Staged diff failed git diff --check")
         base, tree = _git(root,"rev-parse","HEAD").strip(), _tree(root); paths = _paths(root,base,tree)
-        if not paths: raise OracleApprovalError("Oracle cannot approve an empty candidate")
+        if not paths and not _publication_scope(root, tree)["range_paths"]:
+            raise OracleApprovalError("Oracle cannot approve an empty candidate")
         _metadata_remove(root, receipt_path(root))
         verify_proposal(root)
         proposal = proposal_path(root)
@@ -2421,7 +2443,20 @@ def main(argv: Sequence[str] | None = None) -> int:
             command = args.command[1:] if args.command[:1] == ["--"] else args.command
             result = record_validation(root, command, args.input, args.output, environment_keys=args.env_input)
             print(json.dumps(result, indent=2, sort_keys=True)); return 0 if result["exit_code"] == 0 else 1
-        elif args.cmd=="review": receipt=issue(root,args.evidence,args.owner_approval); print(f"APPROVED {receipt['candidate_tree']}")
+        elif args.cmd=="review":
+            if __package__:
+                from . import shipment_state as shipment
+            else:
+                import shipment_state as shipment
+            if not _git(root, "status", "--porcelain=v1", "--untracked-files=all").strip():
+                selected = shipment.selection(root)
+                if selected["state"] in {"NO_CHANGES", "DELIVER"}:
+                    print(json.dumps(selected, sort_keys=True))
+                    return 0
+            receipt = issue(root,args.evidence,args.owner_approval)
+            if not _git(root, "status", "--porcelain=v1", "--untracked-files=all").strip():
+                shipment.record_validated(root)
+            print(f"APPROVED {receipt['candidate_tree']}")
         elif args.cmd=="proposal":
             request = args.request or sys.stdin.read().strip()
             result = review_proposal(root,request,args.evidence,args.owner_approval)

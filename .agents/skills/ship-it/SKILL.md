@@ -1,9 +1,67 @@
 ---
 name: ship-it
-description: Create the next repository release version, review and validate all current work, regenerate client packages, commit everything, and merge it through a release pull request. Use when the user says “ship it,” “send it,” or asks to release and publish the current work.
+description: Ship changed committed work through four phases with reusable validation and an exact-commit release checkpoint; skip unchanged delivered candidates. Use when the user says “ship it,” “send it,” or asks to release and publish the current work.
 ---
 
 # Ship It
+
+## Four phases — controlling owner workflow, October 21, 2026
+
+Keep the original user-instruction timestamp as the release clock. Record one
+contiguous duration for each phase, including tool and coordination time. Bootstrap
+must finish in less than 120 seconds; validation has the 180-second lifecycle SLA
+and the complete release has the original 300-second SLA. Retain original clocks
+across retries. Record breaches and complete authorized work with intact evidence.
+
+1. **Bootstrap.** Read governing instructions and applicable authority once,
+   before interpreting validation results or changes. Reuse current loaded
+   context. Use the coordinator's one complete family inventory when supplied;
+   perform no second inventory. Run `python3 tools/shipment_state.py status`.
+   `NO_CHANGES` ends this member immediately with zero test, model-review, build,
+   version-bump or publication work. A clean tree can still have unvalidated
+   committed work: `VALIDATE` selects it. `DELIVER` resumes the existing exact
+   validated candidate's authorized delivery and skips steps 2 and 3. Missing or
+   stale checkpoints grant no approval. Resolve `INTEGRATE` against the fetched
+   published baseline in canonical main while preserving all authored work.
+2. **Prepare.** Commit all authored work with direct Git commands. Use no Git-only
+   agent or guardian, and require no approval or Oracle trailer to commit. Prepare
+   the release version and canonical package outputs before the final preparation
+   commit so validation and delivery use the same SHA. `npm run version:next`
+   skips unchanged candidates and an already prepared version. Preserve private
+   Vault material, source integrity and secrets. Commit repairs directly too.
+3. **Validate.** The Projects coordinator launches this entire member-local
+   lifecycle concurrently with every other family member that has unvalidated
+   commits. It includes applicable lint/tests, independent review, all repairs,
+   direct repair commits, affected revalidation and the successful checkpoint;
+   it is never serialized as one member's complete lifecycle after another's.
+   Confirm governing instructions first. Make one complete assessment per new
+   commit/range through real production entrypoints, construction, consumers,
+   publication and recovery paths, then return all established findings together.
+   Retain unchanged content-bound coverage and test results across repair commits
+   and instruction changes; examine only new, missing and affected files/criteria.
+   Retain sealed original observations when native eligibility changes and assess
+   their current applicability without blanket rereads or test runs. Capture
+   affected tests with `npm run oracle:validate -- --output
+   Vault/tmp/<workflow>/validation.json --input <path> -- <command>` and supply
+   each record to `npm run oracle:review -- --evidence <record>`. Commit all repairs
+   and continue the same review series until complete. The native review command
+   atomically advances `.git/oracle/shipment-state.json:last_validated_commit`
+   only after the clean exact commit has complete independent native approval.
+   `INCOMPLETE`, `ERROR`, failed tests and unresolved findings retain checkpoints.
+4. **Deploy.** Reuse the exact validated SHA, original release instruction and
+   described effects. Recheck remote freshness and receipt custody, then use
+   `tools/publication_admission.py` for review push and protected main promotion.
+   Review push transports the verified exact-SHA/tree receipt digest through the
+   trusted publisher's `oracle/native-approval` GitHub status; CI independently
+   checks that status and the exact PR merge tree, with a bounded race wait.
+   Reuse valid test/build evidence. A new commit returns only that member to
+   affected validation. Confirm successful merge before recording the distinct
+   `last_released_commit`; a failed delivery leaves the validated candidate pending.
+   Repeating a delivered candidate returns `NO_CHANGES`. Preserve package,
+   authentication, API-version, permission, privacy and cost-control gates.
+
+This workflow controls older staged-before-commit and trailer instructions below.
+Technical review governs release readiness; authored commits remain independent.
 
 ## Controlling review and publication placement — October 18, 2026
 
@@ -53,7 +111,7 @@ different model during release recovery.
   Never repair an earlier hot-patch by directly rewriting client files again.
 
 
-Complete the current repository's release loop. A successful invocation creates a new version even when the pending source change did not edit version metadata. A merged version-bump pull request is the publication event used by Claude organization marketplace GitHub sync when an owner has enabled **Sync automatically**. Independently added Claude marketplaces and official marketplace submissions have separate host-owned publication lifecycles.
+Complete the current repository's release loop. An invocation prepares a release version only when committed or authored changes remain to deliver. A merged version-bump pull request is the publication event used by Claude organization marketplace GitHub sync when an owner has enabled **Sync automatically**. Independently added Claude marketplaces and official marketplace submissions have separate host-owned publication lifecycles.
 
 ## Invocation authorization: execute without questions
 
@@ -205,86 +263,27 @@ requested outcome.
    customer archives, or ad-hoc release-manifest artifacts. The owner-requested
    `skill-release-manifest.json` is a canonical build output: preserve its exact
    skill versions, requirements, whole-file inventories and repository release.
-5. If the worktree is clean, the new version itself is the release change. Do not skip the release or create an empty commit.
+5. A clean already delivered candidate returns `NO_CHANGES`; create a version only for actual work. Reuse an existing prepared version and resume its pending delivery.
 
-## Validate and build
+## Validate committed candidates
 
-Regenerate versioned client packages after the bump. Run the strongest
-repository-defined credential-free local checks that are practical for the
-complete release diff, including focused tests plus canonical package
-validation. Do not invoke a live MCP release smoke or require a release OAuth
-access token. Apply any repository-required review skill or approval contract
-to the actual diff and evidence. GPT screenshots are post-release verification
-and never block the source release or pull-request merge. Preserve the explicit
-post-release acceptance command. When screenshot evidence is supplied, Oracle
-must inspect it and author the hash-bound review receipt; file presence,
-dimensions, or a PNG signature never complete client verification.
+Follow step 3 above on the complete committed candidate. `operations-center-review`
+returns `READINESS_PASS` or actionable `READINESS_FAIL`; the independent native
+Oracle remains authoritative. Capture the initial credential-free release baseline
+with `npm run oracle:validate -- --output Vault/tmp/<workflow>/release-check.json
+-- npm run release:check` when no valid baseline exists. Use exact `--input` closures
+for repairs, retain valid baseline and passing-case observations, and run only
+affected checks. `npm run oracle:review -- --evidence <native-record>` seals a
+fresh exact-commit receipt after complete independent approval. Source work
+continues through `INCOMPLETE` and `ERROR` with retained checkpoints. Commit every
+repair directly and resume that same series. Do not amend approval into a commit.
 
-Run the repository-local Oracle remediation loop before committing:
-
-1. Use `operations-center-review` on the complete release diff and validation
-   evidence and require `READINESS_PASS`.
-2. Stage the complete release candidate and capture the required baseline using
-   `npm run oracle:validate -- --output Vault/tmp/oracle-review/release-check.json
-   -- npm run release:check`. Keep the native record and retained stdout/stderr
-   unchanged; they preserve the command, exit code, input/environment bindings
-   and observed Node totals (`tests`, `pass`, `fail`, `skipped`, `duration_ms`).
-   Recorder options follow the first `--`; the final `--` separates the command.
-   For repair checks, repeat `--input <source-or-dependency-path>` before that
-   final separator to declare the exact source/fixture/configuration closure,
-   then run the affected command. Preserve the baseline release gates and carry
-   eligible native proof across repairs. Call `npm run oracle:review --
-   --evidence Vault/tmp/oracle-review/release-check.json` and supply every other
-   relevant unchanged native validation record through `--evidence`. The
-   utility alone loads the approver-only Oracle skill.
-   The utility prepares and hash-binds the required synchronized Vault query
-   evidence before launching the isolated read-only approver.
-3. Require the utility's literal verdict `APPROVED`. The
-   `prepare-commit-msg` hook derives the three exact commit trailers from the
-   verified local receipt; the shipping agent never writes Oracle trailers or
-   loads the Oracle skill. No Git-note publication step exists.
-4. Resolve the consolidated finding batch with
-   `operations-center-implementation`, retaining stable IDs and resolution
-   evidence in the same review series. Rerun affected validation and carry
-   forward results only with unchanged source, dependency, fixture,
-   configuration, environment and artifact hashes. Refresh the Vault index,
-   restage the complete candidate and call the utility for a fresh exact-tree
-   verdict; follow-up review focuses on repairs and affected dependencies using
-   verified prior coverage. Explain new findings in unchanged reviewed code as
-   missed coverage. `INCOMPLETE` and `ERROR` retain checkpoints and grant no
-   approval. Resume unfinished assessment while authorized source work continues;
-   compare current content, modes, dependencies and criteria, retaining applicable
-   observations and actual native outcomes when inputs move. Include changes
-   from every implementation and accumulate established findings for one
-   consolidated repair batch. Permit execution recovery when concrete
-   evidence proves continuation impossible, retaining the reason, prior candidate
-   and checkpoint. After two failed repair rounds, use
-   the consolidated unresolved-finding repair plan before the next repair.
-5. Continue until the literal verdict is `APPROVED`. Any mutation after approval
-   invalidates that verdict and returns the release to this review loop.
-6. A GitHub merge commit is valid only when its resulting tree is byte-for-byte
-   the Oracle-approved pull-request tree. If the target branch changes the
-   merge result, update the release branch, rerun validation, and obtain a fresh
-   Oracle receipt before merging.
-
-- Fix failures caused by the pending changes when the correction is clearly within their scope, then rerun affected checks.
-- Stop without committing or pushing when a required check still fails, a required external gate is unavailable, or a safe correction would materially change intent.
-- Record commands and outcomes for the final report.
-
-## Commit everything
-
-1. The complete candidate was staged before Oracle review. Verify that the
-   index still represents that exact candidate and that no unstaged or untracked
-   non-Vault files remain. Never stage private `Vault/` material.
-2. Infer a concise commit message from the complete diff and the repository's
-   recent commit style. Do not include or edit `Oracle-Verdict`,
-   `Oracle-Reviewed-Tree`, or `Oracle-Receipt-SHA256`; the
-   `prepare-commit-msg` hook owns them. Do not amend, squash, rebase, skip
-   hooks, or create an empty commit.
-3. Create one commit containing the complete staged change set. Hooks must
-   verify the local receipt and trailers. If any hook changes files, the Oracle
-   receipt is invalid: inspect, validate, restage, and rerun the utility before
-   retrying the commit.
+GPT screenshots remain post-release verification and never block source release.
+Retain the explicit post-release acceptance command. When screenshot evidence is
+supplied, require an Oracle-authored hash-bound observation of the native action;
+file presence, dimensions or a PNG signature supplies no native acceptance.
+A GitHub merge must preserve the exact approved pull-request tree. New remote
+source requires integration and affected validation before publication.
 
 ## Publish through a pull request
 
@@ -298,7 +297,7 @@ Run the repository-local Oracle remediation loop before committing:
    is an unresolved target blocker rather than a reason to seek approval for a
    different destination.
 2. Open a pull request from the release branch to the resolved default branch. The title must identify the new release version, and the body must summarize generated clients and validation evidence.
-3. Wait for all required pull-request checks. Fix in-scope failures on the release branch, rerun affected local validation, push the correction, and wait again.
+3. Wait for all required pull-request checks. Fix and commit in-scope failures in canonical main, rerun affected validation, update the release ref at the new validated SHA, push the correction, and wait again.
 4. Run `python3 tools/publication_admission.py merge --pr <number> --release-ref <resolved-ref>` to merge under the invocation's existing authorization only
    after every required check passes and the repository reports that it is
    mergeable. Use a repository-supported merge method; GitHub must record the

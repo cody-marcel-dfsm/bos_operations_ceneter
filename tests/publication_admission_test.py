@@ -47,12 +47,23 @@ class PublicationAdmission(unittest.TestCase):
         return receipt
 
     def execute(self, command, **kwargs):
-        self.commands.append(command)
         if command[:3] == ["gh", "pr", "view"]:
+            if command[-1] == "state,headRefOid,mergeCommit":
+                return subprocess.CompletedProcess(command, 0, json.dumps({"state": "MERGED",
+                    "headRefOid": self.fixture.git("rev-parse", "HEAD"),
+                    "mergeCommit": {"oid": "a" * 40}}), "")
             value = {"headRefOid": self.fixture.git("rev-parse", "HEAD"), "baseRefOid": self.fixture.base,
                      "headRefName": self.ref, "baseRefName": "main", "mergeStateStatus": "CLEAN",
                      "statusCheckRollup": [{"conclusion": "SUCCESS"}]}
             return subprocess.CompletedProcess(command, 0, json.dumps(value), "")
+        if command[:4] == ["gh", "api", "--method", "POST"]:
+            selected = publication.plan(self.root, "HEAD", self.ref, "review-push", refresh=False)
+            row = {"context": publication.public_status.CONTEXT, "state": "success",
+                   "creator": {"login": publication.public_status.PUBLISHER},
+                   "description": publication.public_status._description(selected["candidate_tree"], selected["technical_receipt_sha256"]),
+                   "target_url": publication.public_status._target(selected["candidate_commit"])}
+            return subprocess.CompletedProcess(command, 0, json.dumps(row), "")
+        self.commands.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
     def test_authentication_technical_review_commit_and_review_push_need_no_deployment_permission(self):

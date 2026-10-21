@@ -1,4 +1,5 @@
 import { readFile, readdir, writeFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -146,6 +147,20 @@ export async function bumpReleaseVersion({ root = scriptRoot, requested = "patch
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const selected = JSON.parse(execFileSync("python3", ["tools/shipment_state.py", "status"],
+    { cwd: scriptRoot, encoding: "utf8" }));
+  if (["NO_CHANGES", "DELIVER"].includes(selected.state)) {
+    console.log(selected.state);
+    process.exit(0);
+  }
+  if (selected.state === "INTEGRATE") throw new Error(selected.reason);
+  const published = JSON.parse(execFileSync("git", ["show", "refs/remotes/origin/main:package.json"],
+    { cwd: scriptRoot, encoding: "utf8" }));
+  const current = await readJson(join(scriptRoot, "package.json"));
+  if (published.version !== current.version) {
+    console.log(`Release ${current.version} is already prepared.`);
+    process.exit(0);
+  }
   const result = await bumpReleaseVersion({ requested: process.argv[2] ?? "patch" });
   console.log(`Bumped release ${result.previous} -> ${result.version} for ${result.activeProducts.join(", ")}.`);
 }
