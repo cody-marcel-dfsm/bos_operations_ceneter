@@ -460,11 +460,53 @@ def _committed_receipts(root: Path, commit: str) -> list[tuple[dict, bytes]]:
                     and match["review"].get("review_status") == "COMPLETE"
                     and _sha(_canonical(match["review"])) == receipt["review_digest"]
                     and match["review"].get("protected_effects") == receipt.get("protected_effects")):
+                if any(row["round"] > match["round"] and row["base_commit"] == commit
+                       and row["candidate_tree"] == tree and row["outcome"] != "APPROVED"
+                       for row in rounds):
+                    break  # A later exact-candidate failure cannot revive approval.
                 selected.append((receipt, raw))
                 break
         else:
             raise OracleApprovalError("Archived committed receipt lacks native decision provenance")
     return selected
+
+
+def _committed_effect_history(root: Path, commit: str) -> tuple[list, list]:
+    """Retain known native effects even when their private receipt is absent.
+
+    This registry supplies conservative history only; it never verifies approval.
+    """
+    prior, limitations = [], []
+    directory = receipt_path(root).parent / "committed-history" / commit
+    for path in sorted(directory.glob("*.json")):
+        raw = _custody_read(root, path)[1]
+        record = json.loads(raw)
+        body = {key: value for key, value in record.items() if key != "history_sha256"}
+        round_path = root / record.get("round_file", "")
+        if (raw != _pretty(record) or set(record) != {"kind", "commit", "tree", "receipt_sha256", "round_file", "round_sha256", "history_sha256"}
+                or record["kind"] != "oracle-committed-history-v1" or record["commit"] != commit
+                or record["tree"] != _git(root, "show", "-s", "--format=%T", commit).strip()
+                or record["receipt_sha256"] != path.stem or not re.fullmatch(r"[0-9a-f]{64}", path.stem)
+                or record["history_sha256"] != _sha(_canonical(body))
+                or round_path.parent.parent != receipt_path(root).parent / "series"):
+            raise OracleApprovalError("Committed effect history custody changed")
+        rounds = _read_rounds(round_path.parent)
+        match = next((row for row in rounds if _sha(_pretty(row)) == record["round_sha256"]
+                      and round_path.name == f"round-{row['round']:04d}.json"), None)
+        if (not match or match["outcome"] != "APPROVED" or match["base_commit"] != commit
+                or match["candidate_tree"] != record["tree"] or match["review"].get("review_status") != "COMPLETE"):
+            raise OracleApprovalError("Committed effect history lacks its sealed native origin")
+        for effect in match["review"].get("protected_effects", {}).get("active", []):
+            prior.append({"origin": path.stem, "effect": effect})
+        fact, receipt_raw = _custody_read(root, _technical_archive(root, path.stem), allow_absent=True)
+        if fact["source"].get("links"):
+            raise OracleApprovalError("Archived technical receipt has an invalid linked route")
+        if not fact["source"].get("exists"):
+            limitations.append({"commit": commit, "tree": record["tree"], "receipt_sha256": path.stem,
+                                "reason": "Private receipt unavailable; sealed native effect history retained and current complete range requires independent assessment"})
+        elif _sha(receipt_raw) != path.stem:
+            raise OracleApprovalError("Archived technical receipt changed")
+    return prior, limitations
 
 
 def _proposal_origin(root: Path, proposal: dict, candidate: str) -> str:
@@ -498,6 +540,9 @@ def _publication_scope(root: Path, tree: str) -> dict:
             pass
     prior, history_limitations = [], []
     for commit in _git(root, "rev-list", "--reverse", base + "..HEAD").splitlines():
+        retained, unavailable = _committed_effect_history(root, commit)
+        prior.extend(item for item in retained if item not in prior)
+        history_limitations.extend(item for item in unavailable if item not in history_limitations)
         committed = _committed_receipts(root, commit)
         for receipt, raw in committed:
             for effect in receipt.get("protected_effects", {}).get("active", []):
@@ -2448,6 +2493,15 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
             if archive.exists() and _custody_read(root, archive)[1] != receipt_raw:
                 raise OracleApprovalError("Immutable technical receipt archive conflict")
             _atomic_write(archive, receipt_raw)
+            if tree == _git(root, "rev-parse", base + "^{tree}").strip():
+                history = {"kind": "oracle-committed-history-v1", "commit": base, "tree": tree,
+                           "receipt_sha256": _sha(receipt_raw), "round_file": str(round_path.relative_to(root)),
+                           "round_sha256": _sha(round_raw)}
+                history = dict(history, history_sha256=_sha(_canonical(history)))
+                history_path = receipt_path(root).parent / "committed-history" / base / (_sha(receipt_raw) + ".json")
+                if history_path.exists() and _custody_read(root, history_path)[1] != _pretty(history):
+                    raise OracleApprovalError("Immutable committed effect history conflict")
+                _atomic_write(history_path, _pretty(history))
             return receipt
         round_path = _record_round(root, context, review, outcome, coverage=coverage, validations=validations, ledger=ledger)
     except BaseException as exc:

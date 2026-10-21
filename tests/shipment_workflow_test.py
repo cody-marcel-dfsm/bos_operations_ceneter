@@ -173,6 +173,7 @@ class ShipmentWorkflow(unittest.TestCase):
         self.commit()
         self.fixture.git("update-ref", "-d", "refs/remotes/origin/main")
         self.fixture.submit()
+        shipment.record_validated(self.root)
         self.assertIn("source.py", self.fixture.contexts[-1]["required_coverage_paths"])
         self.assertIn("peer.py", self.fixture.contexts[-1]["required_coverage_paths"])
         with self.assertRaisesRegex(o.OracleApprovalError, "baseline UNAVAILABLE"):
@@ -213,6 +214,31 @@ class ShipmentWorkflow(unittest.TestCase):
             "console.log(product);}", commit], cwd=self.root, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.splitlines(), ["bos", "education-center"])
+
+    def test_missing_native_receipt_retains_known_protected_effect_history(self):
+        self.commit()
+        def protected(context):
+            result = self.fixture.result(context)
+            result["protected_effects"]["active"] = [{"id": "retained-native-effect", "kind": "tenant-isolation",
+                "boundary": "synthetic tenant boundary", "description": "Changed tenant selection", "paths": ["source.py"],
+                "inputs": self.fixture.inputs(context, "source.py")}]
+            return result
+        receipt = self.fixture.submit(protected)
+        origin = o._sha(o._pretty(receipt))
+        o._technical_archive(self.root, origin).unlink()
+        self.fixture.change("peer.py", "ordinary peer correction")
+        self.commit()
+        self.fixture.submit(error=o.OracleApprovalError)
+        scope = self.fixture.contexts[-1]["publication_scope"]
+        self.assertEqual(scope["prior_effects"][0]["origin"], origin)
+        self.assertEqual(scope["history_limitations"][0]["receipt_sha256"], origin)
+
+    def test_native_verification_does_not_revive_an_exact_candidate_after_failure(self):
+        commit = self.validate()
+        self.fixture.submit(lambda c: self.fixture.result(c, findings=[self.fixture.finding()]),
+                            error=o.OracleCandidateRejected)
+        with self.assertRaisesRegex(o.OracleApprovalError, "no verified native approval"):
+            o.verify_commit(self.root, commit)
 
     def test_changed_instructions_retain_observations_and_require_current_missing_coverage(self):
         self.validate()
