@@ -193,6 +193,9 @@ finally:o._FOLLOW_COMMITS.reset(token)
 
 class CommittedCatchup(unittest.TestCase):
     def setUp(self):
+        settings=patch.object(o,'_review_settings_binding',return_value={
+            'model':'synthetic-model','reasoning_effort':'low'})
+        settings.start();self.addCleanup(settings.stop)
         self.fixture=fixtures.ReviewSeries('runTest');self.fixture.setUp()
         self.addCleanup(self.fixture.doCleanups)
         self.root=self.fixture.root
