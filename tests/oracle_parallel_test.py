@@ -233,6 +233,15 @@ output.with_name('probe.json').write_text(json.dumps({'pid':os.getpid(),'started
         self.assertLess(max(item['started'] for item in probes), min(item['finished'] for item in probes))
         print(json.dumps({'actual_child_process_overlap': probes}, sort_keys=True))
 
+    def test_settings_drift_is_rejected_before_any_cohort_preparation_or_launch(self):
+        binding = copy.deepcopy(self.binding)
+        binding['reviewer_settings']['reasoning_effort'] = 'low'
+        with patch.object(o, '_input_binding', return_value=binding), patch.object(o, '_review_process') as child:
+            with self.assertRaisesRegex(o.OracleApprovalError, 'before launch'):
+                o._oracle(self.root, self.context['candidate_tree'], self.paths, {}, None)
+        child.assert_not_called()
+        self.assertFalse((self.run / 'cohorts').exists())
+
     def test_child_execution_failure_and_final_context_movement_fail_closed(self):
         for mode in ('child-failure', 'context-moved'):
             with self.subTest(mode=mode):

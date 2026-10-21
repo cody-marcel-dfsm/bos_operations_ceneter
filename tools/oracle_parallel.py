@@ -223,6 +223,9 @@ def review(o, root, tree, paths, evidence, owner):
     context_path = run / "review-context.json"
     context = json.loads(o._custody_read(root, context_path)[1])
     binding = o._input_binding(root, evidence, owner)
+    prepared_settings = o._PREPARED_SETTINGS.get()
+    if prepared_settings is not None and binding["reviewer_settings"] != prepared_settings:
+        raise o.OracleApprovalError("Selected Oracle model/effort changed before launch")
     if context["candidate_tree"] != tree or context["base_commit"] != binding["base_commit"]:
         raise o.OracleApprovalError("Parallel candidate differs from prepared native context")
     digest = lambda value: o._sha(o._canonical(value))
