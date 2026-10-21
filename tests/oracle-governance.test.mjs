@@ -193,7 +193,7 @@ test("Oracle receipt rejects stale state, forged trailers, and unstamped commits
   writeFileSync(join(workspace, "unstamped.txt"), "unstamped\n"); git("add", "unstamped.txt");
   git("commit", "-qm", "test: unstamped");
   const unstamped = spawnSync("python3", ["tools/oracle_approval.py", "verify-commit", "HEAD"], { cwd: workspace, encoding: "utf8" });
-  assert.notEqual(unstamped.status, 0); assert.match(unstamped.stderr, /invalid Oracle-Verdict trailer/i);
+  assert.notEqual(unstamped.status, 0); assert.match(unstamped.stderr, /no verified native approval/i);
 });
 
 test("Oracle owns indexed active and resolved issue history", {

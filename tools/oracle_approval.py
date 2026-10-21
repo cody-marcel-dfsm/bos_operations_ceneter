@@ -437,7 +437,11 @@ def _committed_receipts(root: Path, commit: str) -> list[tuple[dict, bytes]]:
     tree = _git(root, "show", "-s", "--format=%T", commit).strip()
     selected = []
     for path in sorted((receipt_path(root).parent / "receipts").glob("*.json")):
-        raw = _custody_read(root, path)[1]
+        fact, raw = _custody_read(root, path, allow_absent=True)
+        if fact["source"].get("links"):
+            raise OracleApprovalError("Archived technical receipt has an invalid linked route")
+        if not fact["source"].get("exists"):
+            continue
         receipt = json.loads(raw)
         if receipt.get("base_commit") != commit or receipt.get("candidate_tree") != tree:
             continue
@@ -1476,9 +1480,10 @@ def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence:
     proposal_scope = {"sha256": proposal["proposal_sha256"], "proposal": proposal["proposal"]}
     inputs["@proposal/scope"] = "sha256:" + proposal_scope["sha256"]
     publication_scope = binding["publication_scope"]
+    paths = sorted(set(paths) | set(publication_scope["range_paths"]))
     if publication_scope["target_ref"] is not None:
         inputs["@publication/scope"] = "sha256:" + _sha(_canonical(publication_scope))
-        paths = sorted(set(paths) | set(publication_scope["range_paths"]) | {"@publication/scope"})
+        paths = sorted(set(paths) | {"@publication/scope"})
     for name in paths:
         inputs.setdefault(name, None)  # Deleted paths are explicit review inputs.
     guards = {key: binding[key] for key in ("authority_digests", "owner_approval_evidence")}
@@ -2501,11 +2506,18 @@ def verify_commit(root: Path, commit: str) -> None:
             return
         # A published fresh clone uses the existing trusted exact-SHA transport;
         # local approved candidates above remain entirely credential-free.
+        baseline = subprocess.run(["git", "merge-base", "--is-ancestor", commit, "refs/remotes/origin/main"],
+                                  cwd=root, capture_output=True)
+        if baseline.returncode:
+            raise OracleApprovalError("Commit has no verified native approval or valid Oracle-Verdict trailer")
         if __package__:
             from . import publication_status
         else:
             import publication_status
-        publication_status.verify_publication(root, commit, wait_seconds=0)
+        try:
+            publication_status.verify_publication(root, commit, wait_seconds=0)
+        except (OSError, ValueError, subprocess.CalledProcessError) as exc:
+            raise OracleApprovalError("Published commit native approval verification failed") from exc
         return
     trailers = _trailers(message)
     if trailers[TRAILER_KEYS[0]] != "APPROVED" or trailers[TRAILER_KEYS[1]] != tree: raise OracleApprovalError("Commit Oracle accepted-state trailers are invalid")

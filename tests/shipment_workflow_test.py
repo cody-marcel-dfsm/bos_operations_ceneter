@@ -133,6 +133,18 @@ class ShipmentWorkflow(unittest.TestCase):
         self.commit()
         self.fixture.submit(error=o.OracleApprovalError)
         self.assertEqual(self.fixture.contexts[-1]["publication_scope"]["prior_effects"][0]["origin"], o._sha(o._pretty(first)))
+        self.fixture.change("source.py", "base")
+        self.commit("revert protected source")
+        def reverted(context):
+            result = self.fixture.result(context)
+            result["protected_effects"]["dispositions"] = [{"origin": o._sha(o._pretty(first)),
+                "id": "synthetic-credential-boundary", "status": "REVERTED",
+                "reason": "Current independently inspected source equals the published baseline",
+                "inputs": self.fixture.inputs(context, "source.py", "@publication/scope")}]
+            return result
+        self.fixture.submit(reverted)
+        shipment.record_validated(self.root)
+        self.assertFalse(publication.plan(self.root, "HEAD", self.ref, "main-promotion", refresh=False)["human_authority_required"])
 
     def test_source_only_approval_requires_release_preparation_and_lower_or_inconsistent_is_rejected(self):
         self.fixture.release_metadata("0.0.0")
@@ -146,6 +158,16 @@ class ShipmentWorkflow(unittest.TestCase):
         self.fixture.git("add", ".")
         self.commit()
         self.assertEqual(shipment.selection(self.root)["state"], "PREPARE")
+        self.fixture.release_metadata("0.0.1")
+        self.fixture.git("add", ".")
+        baseline = self.commit("new published release identity")
+        self.fixture.git("update-ref", "refs/remotes/origin/main", baseline)
+        self.fixture.release_metadata("0.0.0")
+        self.fixture.git("add", ".")
+        self.commit("invalid lower version")
+        selected = shipment.selection(self.root)
+        self.assertEqual(selected["state"], "PREPARE")
+        self.assertIn("greater", selected["reason"])
 
     def test_committed_candidate_without_published_baseline_reaches_complete_technical_range(self):
         self.commit()
@@ -166,6 +188,31 @@ class ShipmentWorkflow(unittest.TestCase):
                                     "-p", self.fixture.base, "-p", commit, "-m", "changed merge")
         with self.assertRaisesRegex(o.OracleApprovalError, "tree differs"):
             o.verify_commit(self.root, changed)
+
+    def test_marketplace_export_reads_both_products_from_trailer_free_published_commit(self):
+        owner = Path(__file__).resolve().parents[1]
+        for name in ("scripts/build-marketplace-update.mjs", "scripts/lib/deterministic-zip.mjs"):
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes((owner / name).read_bytes())
+        for product in ("bos", "education-center"):
+            path = self.root / f"clients/codex/plugins/{product}/.bos-product.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps({"name": product, "version": "0.0.1", "client": "codex"}))
+            path = self.root / f"clients/codex/plugins/{product}/.codex-plugin/plugin.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps({"name": product, "version": "0.0.1"}))
+        self.fixture.git("add", ".")
+        commit = self.validate()
+        self.fixture.git("update-ref", "refs/remotes/origin/main", commit)
+        result = subprocess.run(["node", "--input-type=module", "-e",
+            "import {readPublishedProductEntries} from './scripts/build-marketplace-update.mjs';"
+            "for(const product of ['bos','education-center']) {"
+            "const entries=readPublishedProductEntries(process.argv[1],product);"
+            "if(!entries.some(entry=>entry.path==='.codex-plugin/plugin.json')) throw Error(product);"
+            "console.log(product);}", commit], cwd=self.root, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.splitlines(), ["bos", "education-center"])
 
     def test_changed_instructions_retain_observations_and_require_current_missing_coverage(self):
         self.validate()
