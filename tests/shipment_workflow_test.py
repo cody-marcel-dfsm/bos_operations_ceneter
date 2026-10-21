@@ -219,6 +219,16 @@ class ShipmentWorkflow(unittest.TestCase):
             "console.log(product);}", commit], cwd=self.root, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.splitlines(), ["bos", "education-center"])
+        self.fixture.submit(lambda c: self.fixture.result(c, findings=[self.fixture.finding(origin="MISSED")]),
+                            error=o.OracleCandidateRejected)
+        result = subprocess.run(["node", "--input-type=module", "-e",
+            "import {readPublishedProductEntries} from './scripts/build-marketplace-update.mjs';"
+            "for(const product of ['bos','education-center']) {"
+            "try {readPublishedProductEntries(process.argv[1],product);throw Error('rejected commit exported');}"
+            "catch(error) {if(!String(error.stderr).includes('known later native exact-candidate failure')) throw error;}"
+            "console.log(product);}", commit], cwd=self.root, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.splitlines(), ["bos", "education-center"])
 
     def test_missing_native_receipt_retains_known_protected_effect_history(self):
         self.commit()
@@ -242,8 +252,20 @@ class ShipmentWorkflow(unittest.TestCase):
         commit = self.validate()
         self.fixture.submit(lambda c: self.fixture.result(c, findings=[self.fixture.finding(origin="MISSED")]),
                             error=o.OracleCandidateRejected)
-        with self.assertRaisesRegex(o.OracleApprovalError, "no verified native approval"):
+        tree = self.fixture.git("rev-parse", commit + "^{tree}")
+        merged = self.fixture.git("commit-tree", tree, "-p", self.fixture.base, "-p", commit, "-m", "published exact merge")
+        self.fixture.git("update-ref", "refs/remotes/origin/main", merged)
+        with patch.object(status, "verify_publication", side_effect=AssertionError("Known rejection must not fall back")):
+            for candidate in (commit, merged):
+                with self.assertRaisesRegex(o.OracleApprovalError, "known later native exact-candidate failure"):
+                    o.verify_commit(self.root, candidate)
+
+    def test_published_status_recovery_requires_genuinely_absent_native_history(self):
+        commit = self.commit()
+        self.fixture.git("update-ref", "refs/remotes/origin/main", commit)
+        with patch.object(status, "verify_publication", return_value={"candidate_commit": commit}) as verify:
             o.verify_commit(self.root, commit)
+            verify.assert_called_once_with(self.root, commit, wait_seconds=0)
 
     def test_corrupt_lifecycle_origin_refuses_series_reset_and_preserves_history(self):
         commit = self.validate()

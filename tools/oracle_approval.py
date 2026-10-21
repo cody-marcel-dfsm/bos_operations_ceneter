@@ -91,7 +91,13 @@ wrapper-verified proof; explicit invalidation must explain the actual gap.
 """
 REVIEW_SERIES_POLICY = """Trusted assessment execution policy:
 Read governing instructions and review criteria first, before changes or results.
-Reuse loaded unchanged authority context. For completed-candidate review, complete
+Read governing/document/source/diff/context bodies once per content identity and
+reuse unchanged loaded bodies throughout this lifecycle. After governing criteria,
+inspect bounded candidate changes, then retained validation results. Query compact
+plan/context fields and bounded targeted slices. Avoid concatenating entire large
+artifacts; choose output limits and batch sizes that prevent truncation and
+repeated reads. Expand inspection only for a changed input or unresolved behavior.
+For completed-candidate review, complete
 one thorough pass per new commit/range across all changed paths,
 relevant entry points, dependencies, failure paths and applicable authorities
 before returning consolidated findings. Record unreviewed coverage explicitly;
@@ -2599,6 +2605,13 @@ def verify_commit(root: Path, commit: str) -> None:
         if tree != approved_tree: raise OracleApprovalError("Merge commit tree differs from the Oracle-approved pull-request tree")
         return
     if not any(re.search(rf"(?m)^{re.escape(key)}:", message) for key in TRAILER_KEYS):
+        # Absence of private history permits published-status recovery. Known
+        # later failure in the preserved lifecycle must never take that route.
+        directory = _series_directory(root, _git(root, "rev-parse", "HEAD").strip())
+        decisions = [row for row in _read_rounds(directory)
+                     if row["base_commit"] == commit and row["candidate_tree"] == tree]
+        if decisions and decisions[-1]["outcome"] != "APPROVED":
+            raise OracleApprovalError("Commit has a known later native exact-candidate failure")
         if _committed_receipts(root, commit):
             return
         # A published fresh clone uses the existing trusted exact-SHA transport;

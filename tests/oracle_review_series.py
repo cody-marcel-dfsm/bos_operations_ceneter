@@ -1866,7 +1866,10 @@ class ReviewSeries(unittest.TestCase):
                 self.assertEqual(developer, "\n\n".join((o.REVIEWER_ROLE, o.NORMAL_PLAN_REVIEW_POLICY,
                                                          o.LOCAL_EXECUTION_POLICY, o.REVIEW_SERIES_POLICY,
                                                          o.DEPLOYMENT_PLACEMENT_POLICY)))
-                for clause in ("actual source/control delta first", "sealed original observations",
+                for clause in ("Read governing instructions and review criteria first", "once per content identity",
+                               "bounded candidate changes, then retained validation results", "Query compact",
+                               "Avoid concatenating entire large", "batch sizes that prevent truncation",
+                               "sealed original observations",
                                "aggregate FAILED or ERROR", "strictly native-ineligible",
                                "Before every validation or diagnostic command", "Historical evidence supplies no current approval"):
                     self.assertIn(clause, developer)
@@ -1882,8 +1885,8 @@ class ReviewSeries(unittest.TestCase):
             self.assertEqual(completed["verdict"], "APPROVED")
             self.assertEqual(proposal["verdict"], "APPROVED")
             self.assertEqual(len(launches), 2)
-            self.assertIn("On initial assessment inspect the complete candidate", launches[0])
-            self.assertIn("On follow-up or resume inspect actual deltas first", launches[0])
+            self.assertIn("On initial assessment make one complete pass over the commits being validated", launches[0])
+            self.assertIn("On follow-up or resume confirm changed criteria, then inspect new commits", launches[0])
             self.assertNotIn("inspect the full git diff --cached", launches[0])
         finally:
             o._RUN.reset(token)

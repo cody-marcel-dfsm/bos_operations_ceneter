@@ -9,7 +9,13 @@ description: Review BOS Operations Center repository changes against its archite
 
 Commit authored work and repairs directly with Git before independent validation;
 approval and trailers never gate commits. Read governing instructions before
-changes or results, reusing current loaded authority. Assess each new commit/range
+changes or results. Read governing/document/source/diff/context bodies once per
+content identity and reuse unchanged loaded bodies throughout this lifecycle.
+After governing criteria, inspect bounded candidate changes and validation
+results. Query compact plan/context fields and bounded targeted slices. Avoid
+concatenating entire large artifacts; choose output limits and batch sizes that
+prevent truncation and repeated reads. Expand inspection only for a changed input
+or unresolved behavior. Assess each new commit/range
 once, consolidate all findings, repair together, commit and validate only new,
 missing or affected paths and criteria. Retain unchanged coverage, test evidence
 and sealed observations across commits and instruction movement. Current approval

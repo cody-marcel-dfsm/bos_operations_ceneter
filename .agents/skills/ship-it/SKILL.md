@@ -13,6 +13,13 @@ must finish in less than 120 seconds; validation has the 180-second lifecycle SL
 and the complete release has the original 300-second SLA. Retain original clocks
 across retries. Record breaches and complete authorized work with intact evidence.
 
+Read governing instructions first, then bounded candidate changes and validation
+results. Read governing/document/source/diff/context bodies once per content
+identity and reuse unchanged loaded bodies throughout this workflow. Query compact
+plan/context fields and bounded targeted slices. Avoid concatenating entire large
+artifacts; choose output limits and batch sizes that prevent truncation and
+repeated reads. Expand inspection only for a changed input or unresolved behavior.
+
 1. **Bootstrap.** Read governing instructions and applicable authority once,
    before interpreting validation results or changes. Reuse current loaded
    context. Use the coordinator's one complete family inventory when supplied;
