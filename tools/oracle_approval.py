@@ -1275,7 +1275,8 @@ def _raw_assessment_origins(root: Path, rounds: list[dict]):
                     or packet.get("packet_sha256") != _sha(_canonical(packet_body))
                     or plan.get("context_sha256") != record["context_sha256"]
                     or packet.get("parent_context_sha256") != record["context_sha256"]
-                    or route(packet["parent_context"]) != route(record["context_file"])
+                    or route(packet["parent_context"]) != (run / 'review-context.json'
+                        if Path(record['context_file']).name == 'unadopted-review-context.json' else route(record['context_file']))
                     or plan.get("candidate_commit") != record["base_commit"]
                     or plan.get("candidate_tree") != record["candidate_tree"]
                     or any(envelope.get(key) != plan.get(key) or packet.get(key) != plan.get(key) for key in identities)
@@ -2098,6 +2099,18 @@ def _validate_completed_review(root: Path, review: dict, context: dict, evidence
 
 def _prepare_round(root: Path, context: dict, review: dict, outcome: str, *, coverage=None, validations=None, ledger=None,
                    context_file: Path | None = None, raw_assessment: dict | None = None) -> tuple[Path, dict]:
+    if context_file is None:
+        original_context = _RUN.get() / 'review-context.json'
+        expected_context = _pretty(context)
+        try:
+            unchanged = _custody_read(root, original_context)[1] == expected_context
+        except (OSError, ValueError, OracleApprovalError):
+            unchanged = False
+        if not unchanged:
+            context_file = _RUN.get() / 'unadopted-review-context.json'
+            if context_file.exists() and _custody_read(root, context_file)[1] != expected_context:
+                raise OracleApprovalError('Original review context archive conflicts with its sealed input')
+            _atomic_write(context_file, expected_context)
     payload = {key: context[key] for key in ("series_id", "round", "mode", "base_commit", "candidate_tree", "guards", "previous_record_sha256")}
     verified_coverage = coverage if coverage is not None else context["reusable_coverage"]
     if validations is None:

@@ -7,6 +7,11 @@
   "compatibility": "package-versioned-public-seam",
   "executable_files": [
     {
+      "id": "external_dependency_binary_response",
+      "path": "skills/bos-external-dependency-adapter/scripts/binary-response.mjs",
+      "sha256": "0dae9e7f78ac28ed2ee42883ca47d1672d73bfef951cd89960e6bc1134bc4021"
+    },
+    {
       "id": "external_dependency_adapter",
       "path": "skills/bos-external-dependency-adapter/scripts/external-dependency-adapter.mjs",
       "sha256": "95617d29f88c281aad5e520ba5203dd388715c3cdbe50b48f489c8d81a4079cd"
@@ -79,5 +84,5 @@
       "sha256": "046c4dd184af18af526ed64bd37a75dd316397b3d1437886eb7f57deb5e99d2d"
     }
   ],
-  "bundle_sha256": "a2c944b05ea7251196d1c7d230e5a2ece0159bebb84fdcc86e7fd144af99e449"
+  "bundle_sha256": "f01797b45fc4a6c110bcec8b774715413c88fed4f239ae72e13ed480962f6aa0"
 }

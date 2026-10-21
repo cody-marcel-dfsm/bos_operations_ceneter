@@ -2965,8 +2965,9 @@ class ReviewSeries(unittest.TestCase):
             if cohort['id'] == parallel.AREAS[1]:
                 manifest = json.loads(Path(packet['prepared_source']['manifest']).read_text())
                 altered = {'page': Path(manifest['pages'][0]['path']), 'context': run/'cohort-context.json',
-                           'schema': schema_path}[target]
-                altered.write_bytes(altered.read_bytes() + b' ')
+                           'schema': schema_path, 'plan': run.parent.parent/'cohort-plan.json',
+                           'parent_context': Path(packet['parent_context'])}[target]
+                altered.write_bytes(b'{' if target in {'plan', 'parent_context'} else altered.read_bytes() + b' ')
                 if transport:
                     raise OSError('Synthetic transport failed after original rejected final response')
             return result
@@ -2980,7 +2981,8 @@ class ReviewSeries(unittest.TestCase):
         self.assertEqual(raw['assessment']['findings'][0]['id'], 'F2099')
         self.assertIn('integrity failed', raw['prepared_integrity_error'])
         self.assertNotIn('source.py', {item['path'] for item in first['verified_coverage']})
-        self.assertTrue(first['verified_coverage'])
+        if target not in {'plan', 'parent_context'}:
+            self.assertTrue(first['verified_coverage'])
         if target == 'context':
             self.assertEqual(Path(raw['cohort_context_file']).name, 'unadopted-context.json')
         self.submit(); resumed = self.contexts[-1]
@@ -3004,6 +3006,12 @@ class ReviewSeries(unittest.TestCase):
 
     def test_prepared_schema_failure_retains_rejected_response_without_coverage(self):
         self.prepared_integrity_response(target='schema')
+
+    def test_malformed_shared_plan_retains_rejected_response_and_original_assignment(self):
+        self.prepared_integrity_response(target='plan')
+
+    def test_malformed_shared_parent_context_retains_sealed_original_for_navigation(self):
+        self.prepared_integrity_response(target='parent_context')
 
     def assert_error_disposition(self):
         latest = o._read_rounds(o._series_directory(self.root, self.base))[-1]

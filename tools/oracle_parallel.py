@@ -406,7 +406,24 @@ def review(o, root, tree, paths, evidence, owner):
                                                       original_packets[cohort['id']], failure))
                 except (OSError, ValueError, KeyError, TypeError, o.OracleApprovalError) as recovery:
                     failures.append(cohort["id"] + ": final output remains unavailable/unbound: " + str(recovery))
-    seal_manifest_current = o._custody_read(root, seals_path)[1] == seals_raw
+    # Publish safely assigned observations before any fallible shared preparation
+    # read. This ERROR checkpoint grants no coverage or approval.
+    pending_unadopted = {item['cohort_id']: item for item in unadopted}
+    for cohort, child in jobs:
+        if cohort['id'] in envelopes and cohort['id'] not in pending_unadopted:
+            try:
+                pending_unadopted[cohort['id']] = _unadopted_result(
+                    o, root, child, plan_path, plan, cohort, context, original_packets[cohort['id']],
+                    'Shared preparation reconciliation pending; original output remains unadopted')
+            except (OSError, ValueError, KeyError, TypeError, o.OracleApprovalError) as recovery:
+                failures.append(cohort['id'] + ': final output remains unavailable/unbound: ' + str(recovery))
+    checkpoint = aggregate(o, plan, context, {}, [*failures, 'Shared preparation reconciliation pending'], root=root)
+    checkpoint['unadopted_cohort_assessments'] = list(pending_unadopted.values())
+    o._atomic_write(run / 'result.json', o._pretty(checkpoint))
+    try:
+        seal_manifest_current = o._custody_read(root, seals_path)[1] == seals_raw
+    except (OSError, ValueError, o.OracleApprovalError):
+        seal_manifest_current = False
     for cohort, child in jobs:
         expected = prepared_seals[cohort['id']]
         try:
@@ -430,8 +447,18 @@ def review(o, root, tree, paths, evidence, owner):
             o._atomic_write(child / 'prepared-source-error.json', o._pretty({
                 'cohort_id': cohort['id'], 'original_seal': expected,
                 'eligibility': 'NONE', 'reason': 'Prepared material changed; no coverage from this cohort is admitted'}))
-    if json.loads(o._custody_read(root, plan_path)[1]) != plan or digest(json.loads(o._custody_read(root, context_path)[1])) != plan["context_sha256"]:
-        failures.append("Prepared partition plan or source context changed during assessment")
+    try:
+        shared_current = (json.loads(o._custody_read(root, plan_path)[1]) == plan and
+                          digest(json.loads(o._custody_read(root, context_path)[1])) == plan['context_sha256'])
+    except (OSError, ValueError, TypeError, o.OracleApprovalError):
+        shared_current = False
+    if not shared_current:
+        reason = 'Shared preparation integrity failed; prepared partition plan or source context changed during assessment'
+        failures.append(reason)
+        envelopes.clear()
+        unadopted = list(pending_unadopted.values())
+        for retained in unadopted:
+            retained['prepared_integrity_error'] = reason
     result = aggregate(o, plan, context, envelopes, failures, root=root)
     if unadopted:
         result["unadopted_cohort_assessments"] = unadopted

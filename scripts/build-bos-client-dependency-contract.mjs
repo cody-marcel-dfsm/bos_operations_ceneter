@@ -18,6 +18,11 @@ const discoveredOperationRuntimeSchemaPath = join(
 const check = process.argv.includes("--check");
 const executableDefinitions = [
   {
+    id: "external_dependency_binary_response",
+    source_path: "source/platform/bos-external-dependency-adapter/scripts/binary-response.mjs",
+    path: "skills/bos-external-dependency-adapter/scripts/binary-response.mjs"
+  },
+  {
     id: "external_dependency_adapter",
     source_path: "source/platform/bos-external-dependency-adapter/scripts/external-dependency-adapter.mjs",
     path: "skills/bos-external-dependency-adapter/scripts/external-dependency-adapter.mjs"
