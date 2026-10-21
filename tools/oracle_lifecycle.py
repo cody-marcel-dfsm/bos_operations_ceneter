@@ -259,7 +259,17 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False):
         previous = controller.claim()
         if previous:
             controller.close()
-            return _follow(o, root, previous, kind, series, evidence)
+            result = _follow(o, root, previous, kind, series, evidence)
+            if follow_commits and kind == "issue":
+                if (o._git(root, "rev-parse", "HEAD").strip() != result.get("base_commit")
+                        or o._git(root, "status", "--porcelain=v1", "--untracked-files=all").strip()):
+                    return run(o, root, kind, attempt, args, kwargs, follow_commits=True)
+                if o.__package__:
+                    from . import shipment_state
+                else:
+                    import shipment_state
+                shipment_state.validated_receipt(root)
+            return result
         token = o._CONTROLLER.set(controller)
         try:
             while True:
@@ -286,9 +296,16 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False):
                         if o._git(root, "rev-parse", "HEAD").strip() != before:
                             continue
                     break
-                except o.OracleSourceBindingError:
-                    if not follow_commits or kind != "issue":
+                except o.OracleApprovalError as exc:
+                    moved = o._git(root, "rev-parse", "HEAD").strip() != before
+                    dirty = bool(o._git(root, "status", "--porcelain=v1", "--untracked-files=all").strip())
+                    if (not follow_commits or kind != "issue"
+                            or not (isinstance(exc, o.OracleSourceBindingError) or moved or dirty)):
                         raise
+                    _publish(o, root, controller.directory / ("movement-" + uuid.uuid4().hex + ".json"),
+                             {"controller_id": controller.identity["controller_id"], "candidate_commit": before,
+                              "error_type": type(exc).__name__, "error": str(exc),
+                              "observed_commit": o._git(root, "rev-parse", "HEAD").strip()})
                     controller.progress = {"state": "REVIEW_IN_PROGRESS", "attempt": None,
                                            "reason": "Retained movement outcome; awaiting committed current candidate"}
                     while o._git(root, "status", "--porcelain=v1", "--untracked-files=all").strip():
