@@ -137,7 +137,7 @@ def _wait_orphan(o, root, identity):
         time.sleep(.1)
     if _terminal(o, root, identity) is None:
         _finish(o, root, identity, {"status": "ERROR", "error_type": "OracleApprovalError",
-                                  "error": "Native parent exited; registered reviewer groups ended; original evidence retained"})
+                                  "error": "Native controller process exited before its outcome; original evidence retained"})
     return _RETRY
 
 
@@ -241,8 +241,19 @@ def _publish(o, root, path, value):
     if path.exists():
         if o._custody_read(root, path)[1] != raw:
             raise o.OracleApprovalError("Immutable controller record changed")
-    else:
-        o._atomic_write(path, raw)
+        return o._sha(raw)
+    temporary = path.parent / (".publish-" + uuid.uuid4().hex)
+    o._atomic_write(temporary, raw)
+    directory = o._private_directory_fd(root, path.parent, (".git", "oracle"))
+    try:
+        try:
+            os.link(temporary.name, path.name, src_dir_fd=directory, dst_dir_fd=directory, follow_symlinks=False)
+        except FileExistsError:
+            if o._custody_read(root, path)[1] != raw:
+                raise o.OracleApprovalError("Immutable controller record changed")
+    finally:
+        os.unlink(temporary.name, dir_fd=directory)
+        os.close(directory)
     return o._sha(raw)
 
 
@@ -454,7 +465,7 @@ class Controller:
             return previous
         if previous and not _terminal(o, root, previous):
             _finish(o, root, previous, {"status": "ERROR", "error_type": "OracleApprovalError",
-                                      "error": "Native controller process exited before its outcome"})
+                                      "error": "Native controller process exited before its outcome; original evidence retained"})
         self.identity["previous_sha256"] = o._sha(o._pretty(previous)) if previous else None
         identity_path = self.directory / "identity.json"
         _publish(o, root, identity_path, self.identity)

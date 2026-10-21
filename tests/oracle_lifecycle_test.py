@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from unittest.mock import patch
@@ -250,6 +251,26 @@ except o.OracleApprovalError as e:print(str(e),file=sys.stderr);sys.exit(2)
                 'owner_evidence':request['owner_evidence'],'requested_effect_ids':['effect-b']}
         with self.assertRaisesRegex(o.OracleApprovalError,'scope'):
             publication._authorization_result(self.root,request,forged)
+
+    def test_concurrent_immutable_result_publication_preserves_one_winner(self):
+        barrier=threading.Barrier(2);actual=o._atomic_write;results=[]
+        def prepared(path,raw):
+            actual(path,raw)
+            if path.name.startswith('.publish-'):barrier.wait(timeout=5)
+        def publish(value):
+            token=o._METADATA_ROOT.set(self.root)
+            try:
+                lifecycle._publish(o,self.root,self.root/'.git/oracle/result.json',{'winner':value})
+                results.append(('published',value))
+            except o.OracleApprovalError:results.append(('retained',value))
+            finally:o._METADATA_ROOT.reset(token)
+        with patch.object(o,'_atomic_write',side_effect=prepared):
+            threads=[threading.Thread(target=publish,args=(value,)) for value in ['a','b']]
+            for thread in threads:thread.start()
+            for thread in threads:thread.join(timeout=6)
+        self.assertEqual(sorted(kind for kind,_ in results),['published','retained'])
+        winner=next(value for kind,value in results if kind=='published')
+        self.assertEqual(json.loads((self.root/'.git/oracle/result.json').read_text()),{'winner':winner})
 
     def test_reviewer_registration_failure_closes_gate_and_cleans_process_group(self):
         token=o._METADATA_ROOT.set(self.root)

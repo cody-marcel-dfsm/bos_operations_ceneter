@@ -102,7 +102,7 @@ def _authorization_effects(root: Path, selected: dict, authorization: Path) -> s
     record = json.loads(raw)
     required = {"kind", "plan", "requested_effect_ids", "verdict", "review_status", "owner_evidence",
                 "native_result", "native_evidence", "authorization_sha256"}
-    if not isinstance(record, dict) or set(record) != required:
+    if not isinstance(record, dict) or set(record) not in (required, required | {"authorization_request_sha256"}):
         raise o.OracleApprovalError("Publication authorization record has invalid fields")
     payload = {key: value for key, value in record.items() if key != "authorization_sha256"}
     requested = record.get("requested_effect_ids")
@@ -122,6 +122,15 @@ def _authorization_effects(root: Path, selected: dict, authorization: Path) -> s
     if (result_path.name != "result.json" or result_path.parent.parent != o.receipt_path(root).parent / "runs"
             or not re.fullmatch(r"authorize-[0-9a-f]{32}", result_path.parent.name)):
         raise o.OracleApprovalError("Publication authority is outside the native authorization run")
+    if "authorization_request_sha256" in record:
+        request_path = result_path.parent / "authorization-request.json"
+        if o._custody_name(root, request_path) not in evidence:
+            raise o.OracleApprovalError("Publication authorization request lacks its original input proof")
+        request = json.loads(o._custody_read(root, request_path)[1])
+        if (record["authorization_request_sha256"] != o._sha(o._canonical(request))
+                or request.get("plan") != selected or request.get("owner_evidence") != record["owner_evidence"]
+                or request.get("requested_effect_ids") != requested):
+            raise o.OracleApprovalError("Publication authorization request has a different plan/effect/evidence scope")
     result = json.loads(o._custody_read(root, result_path)[1])
     process = json.loads(o._custody_read(root, result_path.parent / "process.json")[1])
     model = json.loads(o._custody_read(root, result_path.parent / "model.json")[1])
@@ -219,10 +228,12 @@ def authorize(root: Path, candidate: str, release_ref: str, owner_path: str, *, 
     original = o._custody_read(root, o._technical_archive(root, selected["technical_receipt_sha256"]))[1]
     request = {"plan": selected, "requested_effect_ids": requested, "owner_evidence": owner}
     o._atomic_write(o._RUN.get() / "authorization-inputs.json", o._pretty(request))
+    o._atomic_write(o._RUN.get() / "authorization-request.json", o._pretty(request_binding))
     prompt = """Independently assess genuine direct-human deployment authority for this exact protected product publication. The original technical review is complete and immutable. Do not repeat or alter it. Verify the supplied owner's human provenance, exact concrete effect/boundary, refusals, destination and scope. A filename, AUTHENTICATION label, generic release instruction or an agent assertion alone supplies no protected deployment permission. Existing exact scoped authority persists through in-scope corrections; versions/hashes alone create no new protected effect. Assess only requested_effect_ids. Existing exact authority retains its scope without repeated human permission; this request grants no authority for unrequested effects, which may remain missing. Approve only all requested current effect IDs under the exact plan hash. Missing or mismatched authority rejects this publication authorization, never the technical review. Keep normal spending and public API version request gates unchanged. Return the supplied closed authorization JSON schema.\n""" + json.dumps(request, sort_keys=True)
     result = o._review_process(root, prompt, "authorization_reviewer",
                               schema_path=root / "tools/publication-authorization.schema.json")
-    if plan(root, candidate, release_ref, "main-promotion") != selected or owner != o._files(root, [owner_path]):
+    if (_authorization_request(root, candidate, release_ref, owner_path, authorization=authorization, effect_ids=effect_ids) != request_binding
+            or plan(root, candidate, release_ref, "main-promotion") != selected or owner != o._files(root, [owner_path])):
         raise o.OracleApprovalError("Publication authorization inputs changed")
     if o._custody_read(root, o._technical_archive(root, selected["technical_receipt_sha256"]))[1] != original:
         raise o.OracleApprovalError("Original technical receipt changed during authority assessment")
@@ -232,7 +243,7 @@ def authorize(root: Path, candidate: str, release_ref: str, owner_path: str, *, 
                "requested_effect_ids": requested, "verdict": result["verdict"],
                "review_status": result["review_status"], "owner_evidence": owner,
                "native_result": str(run / "result.json"),
-               "native_evidence": o._files(root, [str(run / name) for name in ("result.json", "process.json", "model.json", "request.txt", "authorization-inputs.json")])}
+               "native_evidence": o._files(root, [str(run / name) for name in ("result.json", "process.json", "model.json", "request.txt", "authorization-inputs.json", "authorization-request.json")])}
     record = dict(payload, authorization_sha256=o._sha(o._canonical(payload)))
     path = o.receipt_path(root).parent / "publication" / (record["authorization_sha256"] + ".json")
     # Every completed attempt has a separate immutable content-addressed record;
