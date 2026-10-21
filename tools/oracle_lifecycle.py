@@ -206,6 +206,46 @@ class Controller:
     def __init__(self, o, root, kind, series):
         self.o, self.root = o, root
         parent = o.receipt_path(root).parent
+        resume = os.environ.pop("BOC_NATIVE_CONTROLLER_RELOAD", None)
+        inherited_fd = os.environ.pop("BOC_NATIVE_CONTROLLER_FD", None)
+        inherited_token = os.environ.pop("BOC_NATIVE_CONTROLLER_TOKEN", None)
+        self.resumed = resume is not None
+        self.resumed_evidence = []
+        if self.resumed:
+            state = _read(o, root, Path(resume))
+            self.identity, _ = _last(o, root)
+            if (not self.identity or state.get("controller_id") != self.identity["controller_id"]
+                    or self.identity["pid"] != os.getpid()
+                    or self.identity["process_identity"] != process_identity(os.getpid())
+                    or self.identity["review_kind"] != kind or self.identity["series_id"] != series
+                    or self.identity["owner_token"] != inherited_token
+                    or state.get("owner_identity_sha256") != o._sha(o._pretty(self.identity))
+                    or self.identity["reviewer_settings"] != o._review_settings_binding()
+                    or _terminal(o, root, self.identity)):
+                raise o.OracleApprovalError("Native producer reload lost its original process/owner identity")
+            self.directory = Path(self.identity["directory"])
+            if Path(resume).parent != self.directory:
+                raise o.OracleApprovalError("Native producer reload left its original owner directory")
+            self.endpoint = Path(self.identity["endpoint"])
+            self.socket = socket.socket(fileno=int(inherited_fd))
+            self.socket.set_inheritable(False)
+            if (self.socket.getsockname() != str(self.endpoint)
+                    or self.socket.getsockopt(socket.SOL_SOCKET, socket.SO_ACCEPTCONN) != 1):
+                raise o.OracleApprovalError("Native producer reload has a foreign observation socket")
+            if o._files(root, list(state["evidence"])) != state["evidence"]:
+                raise o.OracleApprovalError("Native producer reload evidence custody changed")
+            self.resumed_evidence = list(state["evidence"])
+        else:
+            self._create(parent, kind, series)
+        self.socket.settimeout(.2)
+        self.pending = queue.Queue()
+        self.stop = threading.Event()
+        self.progress = {"state": "REVIEW_IN_PROGRESS", "attempt": None}
+        self.producer_paths = [name for name in o.REVIEW_POLICY_MODULES if (root / name).is_file()]
+        self.producer = o._files(root, self.producer_paths)
+
+    def _create(self, parent, kind, series):
+        o, root = self.o, self.root
         self.directory = o._metadata_run(root, parent / "controllers", "controller-")
         self.endpoint = parent / ("s-" + uuid.uuid4().hex[:16])
         self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -216,17 +256,40 @@ class Controller:
         self.identity = {"kind": "boc-review-controller-v1", "root": str(root),
                          "controller_id": self.directory.name, "directory": str(self.directory),
                          "endpoint": str(self.endpoint), "pid": os.getpid(),
+                         "owner_token": uuid.uuid4().hex,
                          "process_identity": process_identity(os.getpid()), "review_kind": kind,
                          "series_id": series, "reviewer_settings": o._review_settings_binding(),
                          "started_at": o.datetime.now(o.timezone.utc).isoformat(),
                          "original_review_started_at": os.environ.get("ORACLE_REVIEW_STARTED_AT"),
                          "original_release_started_at": os.environ.get("SHIP_IT_STARTED_AT")}
-        self.pending = queue.Queue()
-        self.stop = threading.Event()
-        self.progress = {"state": "REVIEW_IN_PROGRESS", "attempt": None}
+
+    def reload(self, evidence):
+        self.stop.set()
+        self.thread.join(2)
+        if self.thread.is_alive():
+            raise self.o.OracleApprovalError("Native producer observation thread did not quiesce")
+        evidence = list(dict.fromkeys([*evidence, *self.evidence()]))
+        state = {"controller_id": self.identity["controller_id"],
+                 "owner_identity_sha256": self.o._sha(self.o._pretty(self.identity)),
+                 "evidence": self.o._files(self.root, evidence),
+                 "previous_producer": self.producer,
+                 "current_producer": self.o._files(self.root, self.producer_paths)}
+        path = self.directory / ("reload-" + uuid.uuid4().hex + ".json")
+        _publish(self.o, self.root, path, state)
+        self.socket.set_inheritable(True)
+        environment = dict(os.environ, BOC_NATIVE_CONTROLLER_RELOAD=str(path),
+                           BOC_NATIVE_CONTROLLER_FD=str(self.socket.fileno()),
+                           BOC_NATIVE_CONTROLLER_TOKEN=self.identity["owner_token"])
+        # exec preserves kernel process birth, the elected owner and listener.
+        os.execve(os.sys.executable, [os.sys.executable, str(self.root / "tools/oracle_approval.py"),
+                                     *os.sys.argv[1:]], environment)
 
     def claim(self):
         o, root = self.o, self.root
+        if self.resumed:
+            self.thread = threading.Thread(target=self.serve, daemon=True)
+            self.thread.start()
+            return None
         previous, count = _last(o, root)
         if previous and not _terminal(o, root, previous) and process_identity(previous["pid"]) == previous["process_identity"]:
             return previous
@@ -337,7 +400,7 @@ def _follow(o, root, identity, kind, series, evidence):
 
 
 def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False):
-    predecessor = legacy_active(o, root)
+    predecessor = None if "BOC_NATIVE_CONTROLLER_RELOAD" in os.environ else legacy_active(o, root)
     if predecessor:
         historical = _follow_legacy(o, root, predecessor, kind)
         if historical is not None:
@@ -369,9 +432,12 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False):
             return result
         token = o._CONTROLLER.set(controller)
         try:
+            evidence = list(dict.fromkeys([*evidence, *controller.resumed_evidence]))
             while True:
                 before = _head(o, root) if kind == "issue" else None
                 evidence = list(dict.fromkeys([*evidence, *controller.evidence()]))
+                if follow_commits and kind == "issue" and o._files(root, controller.producer_paths) != controller.producer:
+                    controller.reload(evidence)
                 call_args, call_kwargs = args, dict(kwargs)
                 if kind == "issue":
                     if args:

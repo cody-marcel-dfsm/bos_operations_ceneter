@@ -150,6 +150,46 @@ with (directory/'review.lock').open('a+') as held:
         self.assertEqual(len(outcomes),1)
         self.assertEqual(json.loads(outcomes[0].read_text())['outcome'],'APPROVED')
 
+    def test_producer_commit_reexecs_same_process_owner_and_evidence(self):
+        tool=self.root/'tools/oracle_approval.py';tool.parent.mkdir()
+        tool.write_text('''VERSION = 'before'
+from pathlib import Path
+import json,os,subprocess,sys
+from tools import oracle_approval as o
+from tools import shipment_state
+root=Path.cwd()
+o._series_directory=lambda root,base:root/'.git/oracle/series/synthetic-series'
+shipment_state.record_validated=lambda root:{'last_validated_commit':o._git(root,'rev-parse','HEAD').strip()}
+@o._serialized_review
+def issue(root,evidence,owner):
+ controller=o._CONTROLLER.get()
+ with (root/'.git/oracle/producer-turns').open('a') as f:
+  f.write(json.dumps({'pid':os.getpid(),'controller':controller.identity['controller_id'],
+   'version':VERSION,'evidence':evidence})+'\\n')
+ if VERSION=='before':
+  proof=root/'.git/oracle/new-evidence.txt';proof.write_text('bound observer evidence')
+  controller.pending.put({'operation':'attach','evidence':o._files(root,[str(proof)])})
+  path=Path(__file__);path.write_text(path.read_text().replace("VERSION = 'before'","VERSION = 'after'",1))
+  subprocess.run(['git','add','tools/oracle_approval.py'],check=True)
+  subprocess.run(['git','commit','-qm','concurrent producer correction'],check=True)
+  raise o.OracleSourceBindingError('Synthetic producer committed during review')
+ return {'verdict':'APPROVED','base_commit':o._git(root,'rev-parse','HEAD').strip()}
+token=o._FOLLOW_COMMITS.set(True)
+try:print(json.dumps(issue(root,[],None)),flush=True)
+finally:o._FOLLOW_COMMITS.reset(token)
+''')
+        subprocess.run(['git','add','.'],cwd=self.root,check=True)
+        subprocess.run(['git','commit','-qm','prepared producer'],cwd=self.root,check=True)
+        child=subprocess.Popen([sys.executable,str(tool),'review'],cwd=self.root,env=self.env,
+                               stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+        self.children.append(child);self.finish(child)
+        turns=[json.loads(x) for x in (self.root/'.git/oracle/producer-turns').read_text().splitlines()]
+        self.assertEqual([x['version'] for x in turns],['before','after'])
+        self.assertEqual({x['pid'] for x in turns},{child.pid})
+        self.assertEqual(len({x['controller'] for x in turns}),1)
+        self.assertIn(str(self.root/'.git/oracle/new-evidence.txt'),turns[1]['evidence'])
+        self.assertEqual(len(list((self.root/'.git/oracle/controllers/admissions').iterdir())),1)
+
 
 class CommittedCatchup(unittest.TestCase):
     def setUp(self):
