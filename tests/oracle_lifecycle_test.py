@@ -251,6 +251,43 @@ except o.OracleApprovalError as e:print(str(e),file=sys.stderr);sys.exit(2)
         with self.assertRaisesRegex(o.OracleApprovalError,'scope'):
             publication._authorization_result(self.root,request,forged)
 
+    def test_reviewer_registration_failure_closes_gate_and_cleans_process_group(self):
+        token=o._METADATA_ROOT.set(self.root)
+        controller=lifecycle.Controller(o,self.root,'issue','registration-failure');controller.claim()
+        try:
+            run=o._metadata_run(self.root,self.root/'.git/oracle/runs','issue-')
+            for name in ['model.json','request.txt']:o._atomic_write(run/name,b'Synthetic invocation identity')
+            marker=self.root/'reviewer-executed';observed=[];publish=lifecycle._publish
+            def failed_registration(module,root,path,value):
+                if path.parent.name=='children' and o.re.fullmatch(r'reviewer-[0-9a-f]{32}\.json',path.name):
+                    observed.append(value);raise OSError('Synthetic registration publication failure')
+                return publish(module,root,path,value)
+            with patch.object(lifecycle,'_publish',side_effect=failed_registration):
+                with self.assertRaisesRegex(OSError,'registration publication'):
+                    lifecycle.reviewer_process(o,self.root,run,[sys.executable,'-c',
+                        'from pathlib import Path;Path('+repr(str(marker))+').write_text("executed")'],self.env,controller)
+            self.assertFalse(marker.exists(),'An unregistered reviewer must remain behind its execution gate')
+            self.assertEqual(lifecycle._reviewer_group(observed[0]),[])
+            failed=list((controller.directory/'children').glob('*.failure.json'))
+            self.assertEqual(len(failed),1)
+            self.assertEqual(json.loads(failed[0].read_text())['error_type'],'OSError')
+        finally:
+            controller.close();o._METADATA_ROOT.reset(token)
+
+    def test_live_unavailable_listener_retains_error_without_replacing_owner(self):
+        with patch.object(o,'_review_settings_binding',return_value={'model':'synthetic'}):
+            token=o._METADATA_ROOT.set(self.root)
+            controller=lifecycle.Controller(o,self.root,'issue','unavailable');controller.claim()
+            try:
+                with patch.object(lifecycle,'_request',side_effect=ConnectionRefusedError('Still live')):
+                    with self.assertRaisesRegex(o.OracleApprovalError,'observation failed'):lifecycle.active(o,self.root)
+                    with self.assertRaisesRegex(o.OracleApprovalError,'not observable'):
+                        lifecycle._follow(o,self.root,controller.identity,'issue','unavailable',[])
+                self.assertFalse((controller.directory/'terminal.json').exists())
+                self.assertEqual(len(list((self.root/'.git/oracle/controllers/admissions').iterdir())),1)
+            finally:
+                controller.close();o._METADATA_ROOT.reset(token)
+
     def test_orphan_reviewer_blocks_duplicate_admission_until_its_group_ends(self):
         schema=self.root/'.agents/skills/oracle/review-output.schema.json'
         schema.parent.mkdir(parents=True);schema.write_text('{}')
