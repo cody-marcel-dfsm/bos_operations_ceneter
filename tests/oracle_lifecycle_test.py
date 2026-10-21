@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools import oracle_approval as o
 from tools import oracle_lifecycle as lifecycle
 from tools import shipment_state
+from tools import publication_admission as publication
 import oracle_review_series as fixtures
 
 
@@ -149,6 +150,106 @@ with (directory/'review.lock').open('a+') as held:
         outcomes=list((self.root/'.git/oracle/legacy-observations').glob('*/observed-outcome.json'))
         self.assertEqual(len(outcomes),1)
         self.assertEqual(json.loads(outcomes[0].read_text())['outcome'],'APPROVED')
+
+    def test_attachment_completion_race_preserves_each_sealed_outcome(self):
+        for outcome,exception in [('APPROVED',None),('REJECTED',o.OracleCandidateRejected),
+                                  ('INCOMPLETE',o.OracleReviewIncomplete),('ERROR',o.OracleApprovalError)]:
+            with self.subTest(outcome=outcome), patch.object(o,'_review_settings_binding',return_value={'model':'synthetic'}):
+                token=o._METADATA_ROOT.set(self.root)
+                try:
+                    controller=lifecycle.Controller(o,self.root,'issue','completion-race');controller.claim()
+                    def finish(*args):
+                        if exception is None:
+                            path=controller.directory/'native-result.json'
+                            digest=lifecycle._publish(o,self.root,path,{'verdict':'APPROVED','identity':outcome})
+                            lifecycle._finish(o,self.root,controller.identity,{'status':outcome,'result_path':str(path),'result_sha256':digest})
+                        else:
+                            lifecycle._finish(o,self.root,controller.identity,{'status':outcome,'error_type':exception.__name__,'error':'retained '+outcome})
+                        controller.close()
+                        raise ConnectionRefusedError('Owner completed after discovery')
+                    with patch.object(lifecycle,'_request',side_effect=finish):
+                        if exception:
+                            with self.assertRaisesRegex(exception,'retained '+outcome):
+                                lifecycle._follow(o,self.root,controller.identity,'issue','completion-race',[])
+                        else:
+                            self.assertEqual(lifecycle._follow(o,self.root,controller.identity,'issue','completion-race',[])['identity'],outcome)
+                finally:
+                    controller.close();o._METADATA_ROOT.reset(token)
+
+    def test_active_completion_race_reselects_and_terminal_tampering_denies(self):
+        with patch.object(o,'_review_settings_binding',return_value={'model':'synthetic'}):
+            token=o._METADATA_ROOT.set(self.root)
+            try:
+                controller=lifecycle.Controller(o,self.root,'issue','completion-race');controller.claim()
+                def finish(*args):
+                    path=controller.directory/'native-result.json'
+                    digest=lifecycle._publish(o,self.root,path,{'verdict':'APPROVED'})
+                    lifecycle._finish(o,self.root,controller.identity,{'status':'APPROVED','result_path':str(path),'result_sha256':digest})
+                    controller.close();raise ConnectionRefusedError('Completed')
+                with patch.object(lifecycle,'_request',side_effect=finish):self.assertIsNone(lifecycle.active(o,self.root))
+                (controller.directory/'native-result.json').write_text('{}')
+                with self.assertRaisesRegex(o.OracleApprovalError,'result changed'):
+                    lifecycle._follow(o,self.root,controller.identity,'issue','completion-race',[])
+                with self.assertRaisesRegex(o.OracleApprovalError,'Incompatible'):
+                    lifecycle._follow(o,self.root,controller.identity,'authorize','foreign',[])
+            finally:
+                controller.close();o._METADATA_ROOT.reset(token)
+
+    def test_scoped_publication_authorizations_share_only_identical_requests(self):
+        directory=self.root/'.git/oracle';directory.mkdir()
+        for name in ['owner-a','owner-b','prior-a','prior-b','technical']:(directory/name).write_text('synthetic '+name)
+        script=r"""
+from pathlib import Path
+import json,sys,time
+from tools import oracle_approval as o
+from tools import publication_admission as p
+root=Path(sys.argv[1]);candidate,ref,owner,effect,prior=sys.argv[2:]
+def plan(*args):
+ value={'candidate_commit':candidate,'release_ref':ref,'technical_receipt_sha256':'a'*64,
+        'protected_effects':{'active':[{'id':'effect-a'},{'id':'effect-b'}]}}
+ return dict(value,plan_sha256=o._sha(o._canonical(value)))
+p.plan=plan;p._covered_authorizations=lambda *args:(set(),[])
+o._technical_archive=lambda *args:root/'.git/oracle/technical'
+def reviewer(root,prompt,prefix,**kwargs):
+ with (root/'.git/oracle/authorization-calls').open('a') as f:f.write(candidate+'\n')
+ (root/'.git/oracle/authorization-entered').write_text('entered')
+ end=time.monotonic()+10
+ while not (root/'.git/oracle/release-authorization').exists() and time.monotonic()<end:time.sleep(.02)
+ request=json.loads((o._RUN.get()/'authorization-inputs.json').read_text())
+ result={'verdict':'APPROVED','review_status':'COMPLETE','plan_sha256':request['plan']['plan_sha256'],
+         'authorized_effect_ids':request['requested_effect_ids'],'summary':'synthetic scoped decision'}
+ for name,value in {'result.json':result,'process.json':{'exit_code':0},'model.json':{'synthetic':True}}.items():
+  o._atomic_write(o._RUN.get()/name,o._pretty(value))
+ o._atomic_write(o._RUN.get()/'request.txt',b'Synthetic authority fixture')
+ return result
+o._review_process=reviewer
+try:print(json.dumps(p.authorize(root,candidate,ref,str(root/'.git/oracle'/owner),
+ authorization=[root/'.git/oracle'/prior],effect_ids=[effect])),flush=True)
+except o.OracleApprovalError as e:print(str(e),file=sys.stderr);sys.exit(2)
+"""
+        def start(values):
+            child=subprocess.Popen([sys.executable,'-c',script,str(self.root),*values],env=self.env,
+                                   stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+            self.children.append(child);return child
+        original=['candidate-a','release/a','owner-a','effect-a','prior-a']
+        owner=start(original);deadline=time.monotonic()+5
+        while not (directory/'authorization-entered').exists():
+            if time.monotonic()>deadline:self.fail('Scoped owner did not enter')
+            time.sleep(.02)
+        for index,value in enumerate(['candidate-b','release/b','owner-b','effect-b','prior-b']):
+            changed=list(original);changed[index]=value
+            child=start(changed);stdout,stderr=child.communicate(timeout=5)
+            self.assertEqual(child.returncode,2,(changed,stdout,stderr))
+            self.assertIn('Incompatible',stderr)
+        same=start(original);time.sleep(.2)
+        (directory/'release-authorization').write_text('release')
+        self.assertEqual(self.finish(owner),self.finish(same))
+        self.assertEqual(len((directory/'authorization-calls').read_text().splitlines()),1)
+        request={'plan':{'candidate_commit':'a'},'owner_evidence':{'owner':'digest'},'requested_effect_ids':['effect-a']}
+        forged={'authorization_request_sha256':o._sha(o._canonical(request)),'plan':request['plan'],
+                'owner_evidence':request['owner_evidence'],'requested_effect_ids':['effect-b']}
+        with self.assertRaisesRegex(o.OracleApprovalError,'scope'):
+            publication._authorization_result(self.root,request,forged)
 
     def test_orphan_reviewer_blocks_duplicate_admission_until_its_group_ends(self):
         schema=self.root/'.agents/skills/oracle/review-output.schema.json'
