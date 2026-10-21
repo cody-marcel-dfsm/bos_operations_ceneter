@@ -95,6 +95,13 @@ export function isCpuProfileTextArtifact(path, body) {
   } catch { return false; }
 }
 
+export function cpuProfilePrivacyText(text) {
+  // Keep original bytes/number lexemes and decode every original string token,
+  // including overwritten duplicate members that JSON.parse would discard.
+  return text + "\n" + [...text.matchAll(/"(?:\\[\s\S]|[^"\\])*"/gu)]
+    .map(token => JSON.parse(token[0])).join("\n");
+}
+
 export function isProposedTextArtifact(path, body) {
   if (extname(path).toLowerCase() !== ".proposed") return false;
   const sourceExtension = extname(path.slice(0, -".proposed".length)).toLowerCase();
@@ -368,8 +375,11 @@ async function scanPrivacyCandidates(candidates) {
         findings.push(...customerDataFindings(body.toString("utf8"), relative(root, path), blockedDigests));
         continue;
       }
-      if (isProposedTextArtifact(path, body) || isCpuProfileTextArtifact(path, body)) {
-        findings.push(...customerDataFindings(body.toString("utf8"), relative(root, path), blockedDigests));
+      const proposedText = isProposedTextArtifact(path, body);
+      const cpuProfileText = isCpuProfileTextArtifact(path, body);
+      if (proposedText || cpuProfileText) {
+        const text = body.toString("utf8");
+        findings.push(...customerDataFindings(cpuProfileText ? cpuProfilePrivacyText(text) : text, relative(root, path), blockedDigests));
         continue;
       }
       if (!approvedBinaryDigests.has(sha256(body))) {

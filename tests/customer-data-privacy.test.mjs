@@ -8,6 +8,7 @@ import {
   customerDataFindings,
   isProposedTextArtifact,
   isCpuProfileTextArtifact,
+  cpuProfilePrivacyText,
   isWatcherProcessMetadata,
   normalizeSensitiveText,
   fixturePrivacyFailures,
@@ -91,6 +92,30 @@ test("native CPU profiles receive complete text checks while malformed or opaque
     const result = await fixturePrivacyFailures([path, opaque]);
     assert(result.some(item => item.includes("fixture.cpuprofile: non-synthetic email")));
     assert(result.some(item => item.includes("opaque.cpuprofile: unreviewed binary")));
+  } finally { await rm(directory, {recursive: true, force: true}); }
+});
+
+test("CPU profile privacy retains escaped and overwritten strings plus original numeric lexemes", async () => {
+  const profile = {startTime: 1, endTime: 2, nodes: [{id: 1, callFrame: {functionName: "synthetic", url: "fixture.mjs"}}], samples: [1], timeDeltas: [1]};
+  const raw = JSON.stringify(profile).replace('"startTime":1', '"startTime":1e+000');
+  assert(cpuProfilePrivacyText(raw).startsWith(raw + "\n"));
+  assert(customerDataFindings(cpuProfilePrivacyText(raw), "fixture.cpuprofile", new Set([sha256("starttime 1e 000")]))
+    .some(value => value.includes("identifier digest")));
+  const directory = await mkdtemp(join(tmpdir(), "boc-profile-strings-"));
+  const paths = ["escaped", "overwritten", "safe"].map(name => join(directory, name + ".cpuprofile"));
+  const address = ["person", "production-domain.invalidated"].join("@").replace("@", "\\u0040");
+  const encoded = raw.replace('"functionName":"synthetic"', `"functionName":"${address}"`);
+  const overwritten = raw.replace('"functionName":"synthetic"', `"functionName":"${address}","functionName":"synthetic"`);
+  const safe = raw.replace('"functionName":"synthetic"', `"functionName":"${["fixture", "example.invalid"].join("@").replace("@", "\\u0040")}"`);
+  const phrase = raw.replace('"functionName":"synthetic"', '"functionName":"synthetic\\u0020blocked\\u0020fixture"');
+  assert(customerDataFindings(cpuProfilePrivacyText(phrase), "fixture.cpuprofile", new Set([sha256("synthetic blocked fixture")]))
+    .some(value => value.includes("identifier digest")));
+  try {
+    for (const [index, text] of [encoded, overwritten, safe].entries()) await writeFile(paths[index], text);
+    const result = await fixturePrivacyFailures(paths);
+    assert(result.some(value => value.includes("escaped.cpuprofile: non-synthetic email")));
+    assert(result.some(value => value.includes("overwritten.cpuprofile: non-synthetic email")));
+    assert(result.every(value => !value.includes("safe.cpuprofile:")));
   } finally { await rm(directory, {recursive: true, force: true}); }
 });
 
