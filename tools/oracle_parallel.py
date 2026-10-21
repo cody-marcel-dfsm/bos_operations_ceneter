@@ -250,9 +250,8 @@ def review(o, root, tree, paths, evidence, owner):
     if json.loads(o._custody_read(root, plan_path)[1]) != plan or digest(json.loads(o._custody_read(root, context_path)[1])) != plan["context_sha256"]:
         failures.append("Prepared partition plan or source context changed during assessment")
     result = aggregate(o, plan, context, envelopes, failures)
-    artifacts = {str(path): o._custody_read(root, path)[0]["sha256"] for _, child in jobs
-                 for path in child.iterdir() if path.is_file()}
-    artifacts[str(plan_path)] = o._custody_read(root, plan_path)[0]["sha256"]
+    artifacts = o._files(root, [str(path) for _, child in jobs for path in child.iterdir() if path.is_file()])
+    artifacts.update(o._files(root, [str(plan_path)]))
     spans = [json.loads(o._custody_read(root, child / "cohort-timing.json")[1]) for _, child in jobs]
     events = sorted([(span["started_offset_seconds"], 1) for span in spans] +
                     [(span["finished_offset_seconds"], -1) for span in spans])

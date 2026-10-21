@@ -26,6 +26,9 @@ class ParallelReview(unittest.TestCase):
         schema = self.root / '.agents/skills/oracle/review-output.schema.json'
         schema.parent.mkdir(parents=True)
         schema.write_bytes((Path(__file__).resolve().parents[1] / '.agents/skills/oracle/review-output.schema.json').read_bytes())
+        helper = self.root / 'tools/codex_child_model.py'
+        helper.parent.mkdir(parents=True)
+        helper.write_bytes((Path(__file__).resolve().parents[1] / 'tools/codex_child_model.py').read_bytes())
         self.paths = ['@proposal/scope', 'source.py', 'tests/source_test.py', 'unchanged.py']
         self.context = {'base_commit': 'a' * 40, 'candidate_tree': 'b' * 40,
             'required_coverage_paths': self.paths, 'input_hashes': {p: 'bound-' + p for p in self.paths},
@@ -103,6 +106,7 @@ class ParallelReview(unittest.TestCase):
         self.assertEqual(len({path for _, path in launches}), 3)
         self.assertEqual(o._RUN.get(), self.run)
         manifest = json.loads((self.run / 'cohort-evidence.json').read_text())
+        self.assertEqual(manifest['artifacts'], o._files(self.root, list(manifest['artifacts'])))
         measured = manifest['measurement']
         self.assertEqual(measured['max_observed_concurrency'], 3)
         spans = measured['cohorts']
@@ -209,7 +213,7 @@ output.with_name('probe.json').write_text(json.dumps({'pid':os.getpid(),'started
     def test_child_execution_failure_and_final_context_movement_fail_closed(self):
         for mode in ('child-failure', 'context-moved'):
             with self.subTest(mode=mode):
-                target = self.root / mode
+                target = self.run.parent / mode
                 target.mkdir()
                 (target / 'review-context.json').write_bytes(o._pretty(self.context))
                 token = o._RUN.set(target)
