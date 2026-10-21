@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import queue
+import shlex
 import socket
 import stat
 import subprocess
@@ -22,6 +23,89 @@ def process_identity(pid):
     result = subprocess.run(["ps", "-p", str(pid), "-o", "lstart=,comm="],
                             capture_output=True, text=True)
     return result.stdout.strip() if result.returncode == 0 else None
+
+
+def _head(o, root):
+    result = subprocess.run(["git", "rev-parse", "--verify", "HEAD"], cwd=root,
+                            capture_output=True, text=True)
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
+def legacy_active(o, root):
+    """Observe only a native predecessor holding its old admission descriptor.
+
+    New starters never open that descriptor, so they cannot be mistaken for a
+    predecessor. argv is inspected only for the Python CLI phase, never emitted.
+    """
+    path = o.receipt_path(root).parent / "review.lock"
+    if not path.exists():
+        return None
+    o._custody_read(root, path)
+    found = subprocess.run(["lsof", "-t", str(path)], capture_output=True, text=True)
+    for value in found.stdout.splitlines():
+        if not value.isdecimal() or int(value) == os.getpid():
+            continue
+        pid = int(value)
+        birth = process_identity(pid)
+        cwd = subprocess.run(["lsof", "-a", "-p", value, "-d", "cwd", "-Fn"],
+                             capture_output=True, text=True)
+        if "n" + str(root) not in cwd.stdout.splitlines() or not birth:
+            continue
+        command = subprocess.run(["ps", "-p", value, "-o", "command="], capture_output=True, text=True)
+        argv = shlex.split(command.stdout)
+        if (len(argv) < 3 or (root / argv[1]).resolve() != root / "tools/oracle_approval.py"
+                or argv[2] not in {"review", "proposal"}):
+            continue
+        born = subprocess.run(["ps", "-p", value, "-o", "lstart="], capture_output=True, text=True)
+        birth_seconds = o.datetime.strptime(born.stdout.strip(), "%a %b %d %H:%M:%S %Y").astimezone().timestamp()
+        phase = "issue" if argv[2] == "review" else "review_proposal"
+        runs = o.receipt_path(root).parent / "runs"
+        candidates = [p for p in runs.iterdir() if p.name.startswith(phase + "-")
+                      and p.stat().st_ctime >= birth_seconds - 1 and not (p / "outcome.json").exists()]
+        if len(candidates) != 1:
+            raise o.OracleApprovalError("Legacy native owner has ambiguous invocation custody")
+        run = candidates[0]
+        model = run / "model.json"
+        request = run / "request.txt"
+        if not model.is_file() or not request.is_file():
+            raise o.OracleApprovalError("Legacy native owner preparation is not yet observable")
+        return {"state": "REVIEW_IN_PROGRESS", "attempt": str(run), "legacy": True,
+                "identity": {"root": str(root), "review_kind": phase, "pid": pid,
+                             "process_identity": birth, "invocation_sha256": o._sha(command.stdout.encode()),
+                             "request_sha256": o._custody_read(root, request)[0]["sha256"],
+                             "model_sha256": o._custody_read(root, model)[0]["sha256"]}}
+    return None
+
+
+def _follow_legacy(o, root, record, kind):
+    identity = record["identity"]
+    if identity["review_kind"] != kind:
+        raise o.OracleApprovalError("A different native review phase is still running; original owner retained")
+    path = o._metadata_run(root, o.receipt_path(root).parent / "legacy-observations", "observation-")
+    _publish(o, root, path / "identity.json", record)
+    while process_identity(identity["pid"]) == identity["process_identity"]:
+        time.sleep(.2)
+    run = Path(record["attempt"])
+    outcome = _read(o, root, run / "outcome.json") if (run / "outcome.json").exists() else {
+        "outcome": "ERROR", "error": {"message": "Legacy native process exited without a terminal outcome"}}
+    _publish(o, root, path / "observed-outcome.json", outcome)
+    if kind == "issue" and outcome["outcome"] == "APPROVED":
+        try:
+            if o.__package__:
+                from . import shipment_state
+            else:
+                import shipment_state
+            return shipment_state.validated_receipt(root)[0]
+        except o.OracleApprovalError:
+            pass  # Genuine historical success remains supporting after movement.
+    context = run / "review-context.json"
+    if context.exists():
+        prior = _read(o, root, context)
+        if (prior.get("base_commit") == o._git(root, "rev-parse", "HEAD").strip()
+                and outcome["outcome"] != "APPROVED"):
+            exception = {"REJECTED": o.OracleCandidateRejected, "INCOMPLETE": o.OracleReviewIncomplete}.get(outcome["outcome"], o.OracleApprovalError)
+            raise exception("Observed original native " + outcome["outcome"] + "; evidence retained at " + str(run))
+    return None
 
 
 def _read(o, root, path):
@@ -71,9 +155,17 @@ def _terminal(o, root, identity):
     if not path.exists():
         return None
     result = _read(o, root, path)
-    if result.get("controller_id") != identity["controller_id"]:
+    payload = {k: v for k, v in result.items() if k != "terminal_sha256"}
+    if (result.get("controller_id") != identity["controller_id"]
+            or result.get("terminal_sha256") != o._sha(o._canonical(payload))):
         raise o.OracleApprovalError("Controller outcome has foreign identity")
     return result
+
+
+def _finish(o, root, identity, value):
+    payload = dict(value, controller_id=identity["controller_id"])
+    return _publish(o, root, Path(identity["directory"]) / "terminal.json",
+                    dict(payload, terminal_sha256=o._sha(o._canonical(payload))))
 
 
 def _request(o, root, identity, request):
@@ -101,7 +193,7 @@ def _request(o, root, identity, request):
 def active(o, root):
     identity, _ = _last(o, root)
     if not identity or _terminal(o, root, identity):
-        return None
+        return legacy_active(o, root)
     if process_identity(identity["pid"]) != identity["process_identity"]:
         return None
     try:
@@ -139,9 +231,8 @@ class Controller:
         if previous and not _terminal(o, root, previous) and process_identity(previous["pid"]) == previous["process_identity"]:
             return previous
         if previous and not _terminal(o, root, previous):
-            _publish(o, root, Path(previous["directory"]) / "terminal.json",
-                     {"controller_id": previous["controller_id"], "status": "ERROR",
-                      "error_type": "OracleApprovalError", "error": "Native controller process exited before its outcome"})
+            _finish(o, root, previous, {"status": "ERROR", "error_type": "OracleApprovalError",
+                                      "error": "Native controller process exited before its outcome"})
         self.identity["previous_sha256"] = o._sha(o._pretty(previous)) if previous else None
         identity_path = self.directory / "identity.json"
         _publish(o, root, identity_path, self.identity)
@@ -231,7 +322,7 @@ def _follow(o, root, identity, kind, series, evidence):
     while True:
         terminal = _terminal(o, root, identity)
         if terminal:
-            if terminal["status"] == "APPROVED":
+            if "result_path" in terminal:
                 path = Path(terminal["result_path"])
                 raw = o._custody_read(root, path)[1]
                 if o._sha(raw) != terminal["result_sha256"]:
@@ -246,8 +337,14 @@ def _follow(o, root, identity, kind, series, evidence):
 
 
 def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False):
+    predecessor = legacy_active(o, root)
+    if predecessor:
+        historical = _follow_legacy(o, root, predecessor, kind)
+        if historical is not None:
+            return historical
     if kind == "issue":
-        series = o._series_directory(root, o._git(root, "rev-parse", "HEAD").strip()).name
+        head = _head(o, root)
+        series = o._series_directory(root, head).name if head else "unborn"
         evidence = list(args[0] if args else kwargs.get("evidence_paths", []))
     elif kind == "review_proposal" and (args or "request" in kwargs):
         series = o._sha((args[0] if args else kwargs["request"]).encode())
@@ -273,7 +370,7 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False):
         token = o._CONTROLLER.set(controller)
         try:
             while True:
-                before = o._git(root, "rev-parse", "HEAD").strip() if kind == "issue" else None
+                before = _head(o, root) if kind == "issue" else None
                 evidence = list(dict.fromkeys([*evidence, *controller.evidence()]))
                 call_args, call_kwargs = args, dict(kwargs)
                 if kind == "issue":
@@ -315,14 +412,15 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False):
                         raise
             result_path = controller.directory / "native-result.json"
             digest = _publish(o, root, result_path, result)
-            _publish(o, root, controller.directory / "terminal.json",
-                     {"controller_id": controller.identity["controller_id"], "status": "APPROVED",
-                      "result_path": str(result_path), "result_sha256": digest})
+            status = result.get("review_status")
+            status = status if status and status != "COMPLETE" else result.get("verdict", "COMPLETED")
+            _finish(o, root, controller.identity,
+                    {"status": status, "result_path": str(result_path), "result_sha256": digest})
             return result
         except BaseException as exc:
-            _publish(o, root, controller.directory / "terminal.json",
-                     {"controller_id": controller.identity["controller_id"], "status": "ERROR",
-                      "error_type": type(exc).__name__, "error": str(exc)})
+            status = "REJECTED" if isinstance(exc, o.OracleCandidateRejected) else "INCOMPLETE" if isinstance(exc, o.OracleReviewIncomplete) else "ERROR"
+            _finish(o, root, controller.identity,
+                    {"status": status, "error_type": type(exc).__name__, "error": str(exc)})
             raise
         finally:
             o._CONTROLLER.reset(token)

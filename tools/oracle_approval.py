@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Issue and verify tree-bound Operations Center approvals."""
 from __future__ import annotations
-import argparse, ast, hashlib, json, os, re, stat, subprocess, sys, fcntl, time, platform, shutil, shlex
+import argparse, ast, hashlib, json, os, re, stat, subprocess, sys, time, platform, shutil, shlex
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from contextvars import ContextVar
@@ -231,31 +231,6 @@ def _metadata_remove(root: Path, path: Path) -> None:
     _private_witness_write(root, path, None)
 
 
-@contextmanager
-def _metadata_lock(root: Path, path: Path):
-    _metadata_directory(root, path.parent)
-    directory = _private_directory_fd(root, path.parent, (".git", "oracle"))
-    descriptor = None
-    try:
-        try:
-            before = os.stat(path.name, dir_fd=directory, follow_symlinks=False)
-            if not stat.S_ISREG(before.st_mode):
-                raise OracleApprovalError("Oracle review lock is not a regular file")
-        except FileNotFoundError:
-            before = None
-        descriptor = os.open(path.name, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK,
-                             0o600, dir_fd=directory)
-        current = os.fstat(descriptor)
-        if not stat.S_ISREG(current.st_mode) or before is not None and \
-                (before.st_dev, before.st_ino, before.st_mode) != (current.st_dev, current.st_ino, current.st_mode):
-            raise OracleApprovalError("Oracle review lock changed during admission")
-        with os.fdopen(descriptor, "a+") as lock:
-            descriptor = None
-            yield lock
-    finally:
-        if descriptor is not None:
-            os.close(descriptor)
-        os.close(directory)
 
 
 def _metadata_run(root: Path, directory: Path, prefix: str) -> Path:
