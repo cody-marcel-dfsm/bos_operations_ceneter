@@ -46,7 +46,9 @@ def _reviewer_group(record):
             continue
         birth = " ".join(fields[2:7])
         if pid == record["pid"] and birth != record["process_birth"]:
-            raise ValueError("Registered reviewer PID belongs to a different process birth")
+            # A reused leader PID identifies a later OS group. Its lifetime is
+            # outside this registration; never observe or terminate that group.
+            return []
         if not fields[7].startswith("Z"):
             members.append({"pid": pid, "process_birth": birth})
     return members
