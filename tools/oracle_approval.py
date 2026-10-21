@@ -158,6 +158,8 @@ UNREVIEWED dispositions override reuse. Tests remain distinct from source review
 """
 
 _RUN = ContextVar("oracle_run", default=None)
+_CONTROLLER = ContextVar("oracle_controller", default=None)
+_FOLLOW_COMMITS = ContextVar("oracle_follow_commits", default=False)
 _PREPARED_SETTINGS = ContextVar("oracle_prepared_settings", default=None)
 _METADATA_ROOT = ContextVar("oracle_metadata_root", default=None)
 LIVE_AUTHORITIES = (*AUTHORITY_PATHS, ".agents/skills/oracle/review-output.schema.json",
@@ -294,88 +296,100 @@ def _timed(phase: str, call):
         return call()
 
 
-def _serialized_review(function):
+def _review_attempt(function):
     @wraps(function)
     @_metadata_owner
     def wrapped(root: Path, *args, **kwargs):
         directory = receipt_path(root).parent
-        with _metadata_lock(root, directory / "review.lock") as lock:
+        runs = directory / "runs"
+        run = _metadata_run(root, runs, function.__name__ + "-")
+        token = _RUN.set(run)
+        controller = _CONTROLLER.get()
+        if controller is not None:
+            controller.progress = {"state": "REVIEW_IN_PROGRESS", "attempt": str(run)}
+        started_at = datetime.now(timezone.utc).isoformat()
+        result, failure = None, None
+        proposal_before = None
+        try:
+            if function.__name__ == "review_proposal":
+                proposal_before = {path: _custody_read(root, path)[1] if path.is_file() else None
+                                   for path in (proposal_path(root), receipt_path(root))}
+                for path, raw in proposal_before.items():
+                    if raw is not None:
+                        _atomic_write(run / ("previous-" + path.name), raw)
+            result = _timed("total_seconds", lambda: function(root, *args, **kwargs))
+            return result
+        except BaseException as exc:
+            failure = exc
+            if function.__name__ == "issue":
+                _revoke_published_review(root, run, exc)
+            elif proposal_before is not None:
+                _restore_failed_proposal(root, run, proposal_before)
             try:
-                fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError as exc:
-                raise OracleApprovalError("Another Oracle review is active in this worktree") from exc
-            runs = directory / "runs"
-            run = _metadata_run(root, runs, function.__name__ + "-")
-            token = _RUN.set(run)
-            started_at = datetime.now(timezone.utc).isoformat()
-            result, failure = None, None
-            proposal_before = None
+                _atomic_write(run / "failure.json", _pretty({"error": str(exc)}))
+            except OSError:
+                pass
+            raise
+        finally:
             try:
-                if function.__name__ == "review_proposal":
-                    proposal_before = {path: _custody_read(root, path)[1] if path.is_file() else None
-                                       for path in (proposal_path(root), receipt_path(root))}
-                    for path, raw in proposal_before.items():
-                        if raw is not None:
-                            _atomic_write(run / ("previous-" + path.name), raw)
-                result = _timed("total_seconds", lambda: function(root, *args, **kwargs))
-                return result
-            except BaseException as exc:
-                failure = exc
-                if function.__name__ == "issue":
-                    _revoke_published_review(root, run, exc)
-                elif proposal_before is not None:
-                    _restore_failed_proposal(root, run, proposal_before)
-                try:
-                    _atomic_write(run / "failure.json", _pretty({"error": str(exc)}))
-                except OSError:
-                    pass
-                raise
+                timings = json.loads(_custody_read(root, run / "timings.json")[1]) if (run / "timings.json").exists() else {}
+                verdict = result.get("verdict") if isinstance(result, dict) else None
+                review_status = result.get("review_status") if isinstance(result, dict) else None
+                if verdict is None and (run / "result.json").exists():
+                    try:
+                        returned = json.loads(_custody_read(root, run / "result.json")[1])
+                        verdict = returned.get("verdict")
+                        review_status = returned.get("review_status")
+                    except (ValueError, AttributeError):
+                        pass
+                _atomic_write(run / "outcome.json", _pretty({
+                    "kind": function.__name__, "started_at": started_at,
+                    "finished_at": datetime.now(timezone.utc).isoformat(),
+                    "outcome": "INCOMPLETE" if isinstance(failure, OracleReviewIncomplete)
+                               else "REJECTED" if isinstance(failure, OracleCandidateRejected)
+                               else "ERROR" if failure is not None
+                               else "INCOMPLETE" if review_status == "INCOMPLETE"
+                               else "ERROR" if review_status == "ERROR"
+                               else "REJECTED" if verdict == "REJECTED" else verdict or "COMPLETED",
+                    "reviewer_verdict": verdict,
+                    "reviewer_review_status": review_status,
+                    "reviewer_invoked": any(key.endswith("reviewer_seconds") for key in timings),
+                    "error": {"name": type(failure).__name__, "message": str(failure)} if failure else None,
+                }))
+            except Exception as exc:
+                if failure is None:
+                    if function.__name__ == "issue":
+                        _revoke_published_review(root, run, exc)
+                    elif proposal_before is not None:
+                        _restore_failed_proposal(root, run, proposal_before)
+                    try:
+                        _atomic_write(run / "failure.json", _pretty({"error": str(exc)}))
+                        _atomic_write(run / "outcome.json", _pretty({
+                            "kind": function.__name__, "started_at": started_at,
+                            "finished_at": datetime.now(timezone.utc).isoformat(), "outcome": "ERROR",
+                            "reviewer_verdict": result.get("verdict") if isinstance(result, dict) else None,
+                            "reviewer_review_status": result.get("review_status") if isinstance(result, dict) else None,
+                            "error": {"name": type(exc).__name__, "message": str(exc)},
+                        }))
+                    except OSError:
+                        pass
+                    raise
             finally:
-                try:
-                    timings = json.loads(_custody_read(root, run / "timings.json")[1]) if (run / "timings.json").exists() else {}
-                    verdict = result.get("verdict") if isinstance(result, dict) else None
-                    review_status = result.get("review_status") if isinstance(result, dict) else None
-                    if verdict is None and (run / "result.json").exists():
-                        try:
-                            returned = json.loads(_custody_read(root, run / "result.json")[1])
-                            verdict = returned.get("verdict")
-                            review_status = returned.get("review_status")
-                        except (ValueError, AttributeError):
-                            pass
-                    _atomic_write(run / "outcome.json", _pretty({
-                        "kind": function.__name__, "started_at": started_at,
-                        "finished_at": datetime.now(timezone.utc).isoformat(),
-                        "outcome": "INCOMPLETE" if isinstance(failure, OracleReviewIncomplete)
-                                   else "REJECTED" if isinstance(failure, OracleCandidateRejected)
-                                   else "ERROR" if failure is not None
-                                   else "INCOMPLETE" if review_status == "INCOMPLETE"
-                                   else "ERROR" if review_status == "ERROR"
-                                   else "REJECTED" if verdict == "REJECTED" else verdict or "COMPLETED",
-                        "reviewer_verdict": verdict,
-                        "reviewer_review_status": review_status,
-                        "reviewer_invoked": any(key.endswith("reviewer_seconds") for key in timings),
-                        "error": {"name": type(failure).__name__, "message": str(failure)} if failure else None,
-                    }))
-                except Exception as exc:
-                    if failure is None:
-                        if function.__name__ == "issue":
-                            _revoke_published_review(root, run, exc)
-                        elif proposal_before is not None:
-                            _restore_failed_proposal(root, run, proposal_before)
-                        try:
-                            _atomic_write(run / "failure.json", _pretty({"error": str(exc)}))
-                            _atomic_write(run / "outcome.json", _pretty({
-                                "kind": function.__name__, "started_at": started_at,
-                                "finished_at": datetime.now(timezone.utc).isoformat(), "outcome": "ERROR",
-                                "reviewer_verdict": result.get("verdict") if isinstance(result, dict) else None,
-                                "reviewer_review_status": result.get("review_status") if isinstance(result, dict) else None,
-                                "error": {"name": type(exc).__name__, "message": str(exc)},
-                            }))
-                        except OSError:
-                            pass
-                        raise
-                finally:
-                    _RUN.reset(token)
+                _RUN.reset(token)
+    return wrapped
+
+
+def _serialized_review(function):
+    attempt = _review_attempt(function)
+    @wraps(function)
+    @_metadata_owner
+    def wrapped(root: Path, *args, **kwargs):
+        if __package__:
+            from . import oracle_lifecycle
+        else:
+            import oracle_lifecycle
+        return oracle_lifecycle.run(sys.modules[__name__], root, function.__name__, attempt,
+                                    args, kwargs, follow_commits=_FOLLOW_COMMITS.get())
     return wrapped
 
 
@@ -680,7 +694,7 @@ def _assert_binding(root: Path, expected: dict, evidence: dict, owner: dict | No
         actual = {key: value for key, value in actual.items() if key not in {"environment_digest", "reviewer_settings"}}
         expected = {key: value for key, value in expected.items() if key not in {"environment_digest", "reviewer_settings"}}
     if actual != expected:
-        raise OracleApprovalError("Oracle review inputs changed during preparation or review")
+        raise OracleSourceBindingError("Oracle review inputs changed during preparation or review")
 
 
 @_metadata_owner
@@ -688,7 +702,7 @@ def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path |
                     cohort_policy: str | None = None) -> dict:
     run = _RUN.get()
     if run is None:
-        raise OracleApprovalError("Independent Oracle must run under the review lock")
+        raise OracleApprovalError("Independent Oracle must run under a native controller attempt")
     output = run / "result.json"
     schema_path = schema_path or root / ".agents/skills/oracle/review-output.schema.json"
     try:
@@ -985,7 +999,7 @@ def _validation_environment(extra_keys: Sequence[str] = ()) -> tuple[dict, dict,
 
 REVIEW_POLICY_MODULES = ("tools/oracle_approval.py", "tools/codex_child_model.py", "tools/vault_index.py",
                          "tools/publication_admission.py", "tools/shipment_state.py", "tools/publication_status.py",
-                         "tools/oracle_parallel.py")
+                         "tools/oracle_parallel.py", "tools/oracle_lifecycle.py")
 
 
 def _review_policy_sources(root: Path, tree: str | None = None) -> dict:
@@ -2749,9 +2763,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if selected["state"] in {"NO_CHANGES", "DELIVER"}:
                     print(json.dumps(selected, sort_keys=True))
                     return 0
-            receipt = issue(root,args.evidence,args.owner_approval,proposal_record=args.proposal_record)
-            if not _git(root, "status", "--porcelain=v1", "--untracked-files=all").strip():
-                shipment.record_validated(root)
+            token = _FOLLOW_COMMITS.set(True)
+            try:
+                receipt = issue(root,args.evidence,args.owner_approval,proposal_record=args.proposal_record)
+            finally:
+                _FOLLOW_COMMITS.reset(token)
             print(f"APPROVED {receipt['candidate_tree']}")
         elif args.cmd=="proposal":
             request = args.request or sys.stdin.read().strip()

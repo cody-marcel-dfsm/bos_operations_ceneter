@@ -130,6 +130,14 @@ def release_preparation(root: Path, baseline: str, commit: str = "HEAD") -> dict
 def selection(root: Path) -> dict:
     commit = o._git(root, "rev-parse", "HEAD").strip()
     result = {"kind": "boc-shipment-selection-v1", "candidate_commit": commit}
+    if __package__:
+        from . import oracle_lifecycle
+    else:
+        import oracle_lifecycle
+    running = oracle_lifecycle.active(o, root)
+    if running and running["identity"]["review_kind"] == "issue":
+        return dict(result, state="REVIEW_IN_PROGRESS", controller=running,
+                    reason="Follow the verified live native parent controller")
     if o._git(root, "status", "--porcelain=v1", "--untracked-files=all").strip():
         return dict(result, state="PREPARE", reason="Uncommitted authored work requires preparation")
     try:
