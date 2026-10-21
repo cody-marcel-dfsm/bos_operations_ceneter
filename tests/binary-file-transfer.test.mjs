@@ -101,7 +101,7 @@ test('percent-encoded Unicode filenames preserve a full255-character basename wi
 
 test('binary views return an isolated file window without surrounding backing-buffer bytes',async()=>{
   const backing=Uint8Array.of(91,1,2,92);
-  for(const body of [backing.subarray(1,3),new DataView(backing.buffer,1,2),Buffer.from(backing.buffer,1,2),
+  for(const body of [backing.subarray(1,3),backing.subarray(1,1),new DataView(backing.buffer,1,0),new DataView(backing.buffer,1,2),Buffer.from(backing.buffer,1,2),
     new Uint16Array(backing.buffer,2,1),backing.buffer.slice(1,3)]){
     const visible=body instanceof ArrayBuffer?new Uint8Array(body):new Uint8Array(body.buffer,body.byteOffset,body.byteLength);
     const output=(await invoke(contact(),{status:200,headers:headers(visible),body})).body;

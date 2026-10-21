@@ -2975,7 +2975,8 @@ class ReviewSeries(unittest.TestCase):
             with self.assertRaises(o.OracleApprovalError):
                 o.issue(self.root, [str(self.evidence)], None, lambda *args: parallel.review(o, *args))
         rounds = o._read_rounds(o._series_directory(self.root, self.base)); first = rounds[-1]
-        raw = next(row for row in first['review']['unadopted_cohort_assessments'] if row['cohort_id'] == parallel.AREAS[1])
+        retained_review = first.get('raw_assessment', {}).get('assessment', first['review'])
+        raw = next(row for row in retained_review['unadopted_cohort_assessments'] if row['cohort_id'] == parallel.AREAS[1])
         self.assertEqual((first['outcome'], raw['actual_outcome'], raw['eligibility']), ('ERROR', 'ERROR', 'NONE'))
         self.assertEqual((raw['reported_review_status'], raw['reported_verdict']), ('COMPLETE', 'REJECTED'))
         self.assertEqual(raw['assessment']['findings'][0]['id'], 'F2099')
