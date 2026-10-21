@@ -141,6 +141,37 @@ class ParallelReview(unittest.TestCase):
             changed[second]['assessment']['validations'][0][field] = value
             self.assertEqual(parallel.aggregate(o, self.plan, self.context, changed, [])['verdict'], 'ERROR')
 
+    def test_invalidated_projection_uses_exact_original_record_and_keeps_raw_claims(self):
+        name = 'native.json'; original_inputs = [{'path': 'source.py', 'digest': 'bound-source.py'},
+                                               {'path': 'unchanged.py', 'digest': 'bound-unchanged.py'}]
+        raw = o._pretty({'kind': 'oracle-validation-record-v1', 'inputs': original_inputs,
+                         'environment_digest': 'original-environment'})
+        (self.root/name).write_bytes(raw)
+        self.context['input_hashes'][name] = 'sha256:' + o._sha(raw)
+        self.context['invalid_current_validations'] = [{'evidence_path': name, 'reason': 'Actual current environment differs'}]
+        responses = self.all_envelopes(); claims = []
+        for index, cohort in enumerate(self.plan['cohorts']):
+            inputs = [original_inputs, [], [{'path': name, 'digest': self.context['input_hashes'][name]}, original_inputs[0]]][index]
+            claim = {'evidence_path': name, 'status': 'INVALIDATED', 'inputs': inputs,
+                     'environment_digest': 'original-environment', 'reason': 'Original remains ineligible ' + str(index)}
+            responses[cohort['id']]['assessment']['validations'] = [claim]; claims.append(copy.deepcopy(claim))
+        result = parallel.aggregate(o, self.plan, self.context, responses, [], root=self.root)
+        self.assertEqual(result['verdict'], 'APPROVED')
+        self.assertEqual(result['validations'][0]['status'], 'INVALIDATED')
+        self.assertEqual(result['validations'][0]['inputs'], original_inputs)
+        self.assertEqual([responses[c['id']]['assessment']['validations'][0] for c in self.plan['cohorts']], claims)
+        self.assertEqual(len(result['validation_projection_origins']), 2)
+        self.assertTrue(all(row['eligibility'] == 'NONE' for row in result['validation_projection_origins']))
+        area = self.plan['cohorts'][1]['id']
+        for field, value in [('status', 'VERIFIED'), ('environment_digest', 'foreign-environment'),
+                             ('inputs', [{'path': 'source.py', 'digest': 'foreign-source'}]),
+                             ('evidence_sha256', 'foreign-proof')]:
+            changed = copy.deepcopy(responses); changed[area]['assessment']['validations'][0][field] = value
+            with self.subTest(field=field):
+                self.assertEqual(parallel.aggregate(o, self.plan, self.context, changed, [], root=self.root)['verdict'], 'ERROR')
+        (self.root/name).write_bytes(raw + b' ')
+        self.assertEqual(parallel.aggregate(o, self.plan, self.context, responses, [], root=self.root)['verdict'], 'ERROR')
+
     def test_missing_incomplete_failed_and_missing_integration_cohorts_never_approve(self):
         identity = self.plan['cohorts'][1]['id']
         responses = self.all_envelopes(); del responses[identity]

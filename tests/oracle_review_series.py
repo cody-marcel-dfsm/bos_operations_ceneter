@@ -2944,6 +2944,67 @@ class ReviewSeries(unittest.TestCase):
         with self.assertRaises(o.OracleApprovalError):
             o._raw_assessment_navigation(self.root, rounds, resumed['input_hashes'], resumed['guards'])
 
+    def prepared_integrity_response(self, *, transport=False, target='page'):
+        schema = (Path(__file__).resolve().parents[1] / '.agents/skills/oracle/review-output.schema.json').read_bytes()
+        self.change('.agents/skills/oracle/review-output.schema.json', schema.decode())
+        def child(root, prompt, prefix, *, schema_path, cohort_policy):
+            run = o._RUN.get(); packet = json.loads((run/'cohort-context.json').read_text())
+            context = json.loads(Path(packet['parent_context']).read_text()); cohort = packet['cohort']
+            assessment = self.result(context)
+            assessment['coverage'] = [item for item in assessment['coverage'] if item['path'] in cohort['required_paths']]
+            assessment['validations'] = []
+            result = {key: packet[key] for key in ('plan_sha256', 'candidate_commit', 'candidate_tree', 'input_binding_sha256')}
+            result.update(cohort_id=cohort['id'], assessment=assessment, integration=[{
+                'concern': key, 'status': 'REVIEWED', 'inputs': self.inputs(context, '@proposal/scope'),
+                'reason': 'Traced native integration'} for key in cohort['integration_checks']])
+            settings = o._PREPARED_SETTINGS.get()
+            o._atomic_write(run/'model.json', o._pretty({'selected_model': settings['model'], 'reasoning_effort': settings['reasoning_effort']}))
+            if cohort['id'] == parallel.AREAS[1]:
+                assessment.update(verdict='REJECTED', findings=[self.finding('F2099')])
+            o._atomic_write(run/'result.json', o._pretty(result))
+            if cohort['id'] == parallel.AREAS[1]:
+                manifest = json.loads(Path(packet['prepared_source']['manifest']).read_text())
+                altered = {'page': Path(manifest['pages'][0]['path']), 'context': run/'cohort-context.json',
+                           'schema': schema_path}[target]
+                altered.write_bytes(altered.read_bytes() + b' ')
+                if transport:
+                    raise OSError('Synthetic transport failed after original rejected final response')
+            return result
+        with patch.object(o, '_review_process', side_effect=child):
+            with self.assertRaises(o.OracleApprovalError):
+                o.issue(self.root, [str(self.evidence)], None, lambda *args: parallel.review(o, *args))
+        rounds = o._read_rounds(o._series_directory(self.root, self.base)); first = rounds[-1]
+        raw = next(row for row in first['review']['unadopted_cohort_assessments'] if row['cohort_id'] == parallel.AREAS[1])
+        self.assertEqual((first['outcome'], raw['actual_outcome'], raw['eligibility']), ('ERROR', 'ERROR', 'NONE'))
+        self.assertEqual((raw['reported_review_status'], raw['reported_verdict']), ('COMPLETE', 'REJECTED'))
+        self.assertEqual(raw['assessment']['findings'][0]['id'], 'F2099')
+        self.assertIn('integrity failed', raw['prepared_integrity_error'])
+        self.assertNotIn('source.py', {item['path'] for item in first['verified_coverage']})
+        self.assertTrue(first['verified_coverage'])
+        if target == 'context':
+            self.assertEqual(Path(raw['cohort_context_file']).name, 'unadopted-context.json')
+        self.submit(); resumed = self.contexts[-1]
+        observation = next(row for row in resumed['unadopted_assessments'] if row.get('cohort_id') == parallel.AREAS[1])
+        self.assertEqual(observation['finding_ids'], ['F2099']); self.assertEqual(observation['eligibility'], 'NONE')
+        self.assertIn('integrity failed', observation['prepared_integrity_error'])
+        self.assertNotIn('F2099', resumed['prior_findings'])
+        saved = Path(raw['cohort_context_file']).read_bytes()
+        Path(raw['cohort_context_file']).write_bytes(saved + b' ')
+        with self.assertRaises(o.OracleApprovalError):
+            o._raw_assessment_navigation(self.root, rounds, resumed['input_hashes'], resumed['guards'])
+
+    def test_prepared_page_failure_retains_rejected_response_and_next_context(self):
+        self.prepared_integrity_response()
+
+    def test_prepared_page_failure_after_transport_retains_original_finding(self):
+        self.prepared_integrity_response(transport=True)
+
+    def test_prepared_context_failure_retains_sealed_original_assignment(self):
+        self.prepared_integrity_response(target='context')
+
+    def test_prepared_schema_failure_retains_rejected_response_without_coverage(self):
+        self.prepared_integrity_response(target='schema')
+
     def assert_error_disposition(self):
         latest = o._read_rounds(o._series_directory(self.root, self.base))[-1]
         telemetry = json.loads((Path(latest["context_file"]).parent / "outcome.json").read_text())

@@ -203,7 +203,34 @@ def _unadopted_result(o, root, child, plan_path, plan, cohort, context, original
             'provenance_custody': o._custody_files(root, [child / 'result.json', context_file, original_plan])}
 
 
-def aggregate(o, plan, context, envelopes, failures):
+def _invalidated_projection(o, root, context, item):
+    """Canonicalize source-list omissions only for the exact registered invalid execution."""
+    name = item.get('evidence_path')
+    if (root is None or item.get('status') != 'INVALIDATED' or not item.get('reason')
+            or name not in {row['evidence_path'] for row in context.get('invalid_current_validations', [])}):
+        return item
+    expected = context['input_hashes'].get(name)
+    try:
+        fact, raw = o._custody_read(root, name)
+        record = json.loads(raw)
+        if (expected != 'sha256:' + fact['sha256'] or record.get('kind') != 'oracle-validation-record-v1'
+                or item.get('environment_digest') != record['environment_digest']):
+            return item
+        original = {entry['path']: entry['digest'] for entry in record['inputs']}
+        original[name] = expected
+        declared = item.get('inputs')
+        if (not isinstance(declared, list) or any(not isinstance(entry, dict)
+                or set(entry) != {'path', 'digest'} or original.get(entry['path']) != entry['digest']
+                for entry in declared) or len({entry['path'] for entry in declared}) != len(declared)):
+            return item
+        # Keep original raw claims in the child artifacts. This projection only
+        # describes an already INVALIDATED record and supplies no eligibility.
+        return dict(item, inputs=record['inputs'])
+    except (OSError, ValueError, KeyError, TypeError, o.OracleApprovalError):
+        return item
+
+
+def aggregate(o, plan, context, envelopes, failures, *, root=None):
     assessments, by_cohort, errors = [], {}, list(failures)
     for cohort in plan["cohorts"]:
         try:
@@ -255,8 +282,16 @@ def aggregate(o, plan, context, envelopes, failures):
                                   " requires crosscutting reconciliation with the complete assessment")
     for field, identity in (("coverage", "path"), ("validations", "evidence_path"), ("findings", "id"), ("resolutions", "id")):
         unique = {}
-        for assessment in assessments:
+        for cohort_id, assessment in by_cohort.items():
             for item in assessment[field]:
+                if field == 'validations':
+                    projected = _invalidated_projection(o, root, context, item)
+                    if projected != item:
+                        result.setdefault('validation_projection_origins', []).append({
+                            'cohort_id': cohort_id, 'original_claim': copy.deepcopy(item),
+                            'canonical_claim': copy.deepcopy(projected), 'eligibility': 'NONE',
+                            'record_sha256': context['input_hashes'][item['evidence_path']]})
+                    item = projected
                 key = item.get(identity)
                 if key in unique and unique[key] != item:
                     prior = unique[key]
@@ -397,7 +432,7 @@ def review(o, root, tree, paths, evidence, owner):
                 'eligibility': 'NONE', 'reason': 'Prepared material changed; no coverage from this cohort is admitted'}))
     if json.loads(o._custody_read(root, plan_path)[1]) != plan or digest(json.loads(o._custody_read(root, context_path)[1])) != plan["context_sha256"]:
         failures.append("Prepared partition plan or source context changed during assessment")
-    result = aggregate(o, plan, context, envelopes, failures)
+    result = aggregate(o, plan, context, envelopes, failures, root=root)
     if unadopted:
         result["unadopted_cohort_assessments"] = unadopted
     artifacts = o._files(root, [str(path) for _, child in jobs for path in child.iterdir() if path.is_file()])
