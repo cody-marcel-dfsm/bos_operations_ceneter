@@ -219,6 +219,7 @@ class Controller:
                     or self.identity["process_identity"] != process_identity(os.getpid())
                     or self.identity["review_kind"] != kind or self.identity["series_id"] != series
                     or self.identity["owner_token"] != inherited_token
+                    or self.identity["listener_fd"] != int(inherited_fd)
                     or state.get("owner_identity_sha256") != o._sha(o._pretty(self.identity))
                     or self.identity["reviewer_settings"] != o._review_settings_binding()
                     or _terminal(o, root, self.identity)):
@@ -230,8 +231,9 @@ class Controller:
             self.socket = socket.socket(fileno=int(inherited_fd))
             self.socket.set_inheritable(False)
             if (self.socket.getsockname() != str(self.endpoint)
-                    or self.socket.getsockopt(socket.SOL_SOCKET, socket.SO_ACCEPTCONN) != 1):
+                    or self.socket.getsockopt(socket.SOL_SOCKET, socket.SO_TYPE) != socket.SOCK_STREAM):
                 raise o.OracleApprovalError("Native producer reload has a foreign observation socket")
+            self.socket.listen(16)
             if o._files(root, list(state["evidence"])) != state["evidence"]:
                 raise o.OracleApprovalError("Native producer reload evidence custody changed")
             self.resumed_evidence = list(state["evidence"])
@@ -256,6 +258,7 @@ class Controller:
         self.identity = {"kind": "boc-review-controller-v1", "root": str(root),
                          "controller_id": self.directory.name, "directory": str(self.directory),
                          "endpoint": str(self.endpoint), "pid": os.getpid(),
+                         "listener_fd": self.socket.fileno(),
                          "owner_token": uuid.uuid4().hex,
                          "process_identity": process_identity(os.getpid()), "review_kind": kind,
                          "series_id": series, "reviewer_settings": o._review_settings_binding(),
