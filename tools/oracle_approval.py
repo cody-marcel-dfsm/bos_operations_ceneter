@@ -1219,9 +1219,10 @@ def _raw_assessment_origins(root: Path, rounds: list[dict]):
                                           ("context", context_file, child["cohort_context_sha256"]),
                                           ("plan", plan_file, child["plan_file_sha256"])):
                 fact, content = _custody_read(root, path)
-                if fact["sha256"] != expected:
-                    raise OracleApprovalError("Unadopted cohort original " + label + " changed")
-                provenance[_custody_name(root, path)] = expected
+                name = _custody_name(root, path)
+                if fact["sha256"] != expected or child.get("provenance_custody", {}).get(name) != fact:
+                    raise OracleApprovalError("Unadopted cohort original " + label + " content/custody changed")
+                provenance[name] = expected
                 values[label] = json.loads(content)
             envelope, packet, plan = values["result"], values["context"], values["plan"]
             plan_body = {key: value for key, value in plan.items() if key != "plan_sha256"}

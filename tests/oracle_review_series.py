@@ -2820,14 +2820,17 @@ class ReviewSeries(unittest.TestCase):
             self.record_check()
             self.submit()
 
-    def test_explicit_consumed_parent_command_remains_a_validation_dependency(self):
+    def test_explicit_consumed_parent_command_evidence_remains_bound(self):
         paths = self.declare_parent()
-        record_path = self.root / 'Vault/tmp/consumed-coordinator.json'
-        record = o.record_validation(self.root, [sys.executable, '-c', 'pass'], [str(paths[2])], record_path)
-        self.assertNotIn(str(paths[2]), record['authority_digests'])
+        evidence = o._files(self.root, [str(paths[2])])
+        binding = o._input_binding(self.root, evidence, None)
+        inputs = o._candidate_inputs(self.root, self.git('write-tree'), evidence)
+        self.assertEqual(inputs[str(paths[2])], 'sha256:' + o._sha(paths[2].read_bytes()))
+        self.assertNotIn(str(paths[2]), binding['authority_digests'])
+        o._assert_binding(self.root, binding, evidence, None)
         paths[2].write_text('changed actually consumed coordinator')
         with self.assertRaises(o.OracleApprovalError):
-            o._validation_record(self.root, str(record_path), record['inputs'], record['environment_digest'])
+            o._assert_binding(self.root, binding, evidence, None)
 
     def test_exact_immutable_proposal_survives_unrelated_latest_pointer(self):
         original = o.proposal_path(self.root).read_bytes()
@@ -2899,8 +2902,14 @@ class ReviewSeries(unittest.TestCase):
         with self.assertRaises(o.OracleApprovalError):
             o._raw_assessment_navigation(self.root, rounds, resumed['input_hashes'], resumed['guards'])
         Path(raw['result_file']).write_bytes(original)
+        original_mode = Path(raw['result_file']).stat().st_mode & 0o777
+        Path(raw['result_file']).chmod(original_mode ^ 0o100)
+        with self.assertRaises(o.OracleApprovalError):
+            o._raw_assessment_navigation(self.root, rounds, resumed['input_hashes'], resumed['guards'])
+        Path(raw['result_file']).chmod(original_mode)
+        identical = Path(raw['result_file']).with_name('same-final-bytes.json'); identical.write_bytes(original)
         Path(raw['result_file']).unlink()
-        Path(raw['result_file']).symlink_to(self.root / 'source.py')
+        Path(raw['result_file']).symlink_to(identical)
         with self.assertRaises(o.OracleApprovalError):
             o._raw_assessment_navigation(self.root, rounds, resumed['input_hashes'], resumed['guards'])
 

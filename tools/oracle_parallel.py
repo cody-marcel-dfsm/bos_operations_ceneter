@@ -307,7 +307,8 @@ def review(o, root, tree, paths, evidence, owner):
                         "assessment": envelope["assessment"], "result_file": str(child / "result.json"),
                         "result_sha256": o._sha(raw), "cohort_context_file": str(child / "cohort-context.json"),
                         "cohort_context_sha256": o._custody_read(root, child / "cohort-context.json")[0]["sha256"],
-                        "plan_file": str(plan_path), "plan_file_sha256": o._custody_read(root, plan_path)[0]["sha256"]})
+                        "plan_file": str(plan_path), "plan_file_sha256": o._custody_read(root, plan_path)[0]["sha256"],
+                        "provenance_custody": o._custody_files(root, [child / "result.json", child / "cohort-context.json", plan_path])})
                 except (OSError, ValueError, KeyError, TypeError, o.OracleApprovalError) as recovery:
                     failures.append(cohort["id"] + ": final output remains unavailable/unbound: " + str(recovery))
     if json.loads(o._custody_read(root, plan_path)[1]) != plan or digest(json.loads(o._custody_read(root, context_path)[1])) != plan["context_sha256"]:
