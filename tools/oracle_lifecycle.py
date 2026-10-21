@@ -138,12 +138,18 @@ def _last(o, root):
                 or record.get("previous_sha256") != previous):
             raise o.OracleApprovalError("Controller admission identity changed")
         identifier = record.get("controller_id", "")
+        endpoint = record.get("endpoint")
+        endpoint_valid = (isinstance(endpoint, dict) and endpoint.get("host") == "127.0.0.1"
+                          and isinstance(endpoint.get("port"), int) and 0 < endpoint["port"] < 65536
+                          and bool(record.get("owner_token")))
+        if isinstance(endpoint, str):
+            endpoint_valid = (Path(endpoint).parent == o.receipt_path(root).parent
+                              and bool(o.re.fullmatch(r"s-[0-9a-f]{16}", Path(endpoint).name)))
         if (not o.re.fullmatch(r"controller-[0-9a-f]{32}", identifier)
                 or record.get("directory") != str(directory.parent / identifier)
                 or not isinstance(record.get("pid"), int) or record["pid"] <= 0
                 or not record.get("process_identity")
-                or Path(record.get("endpoint", "")).parent != o.receipt_path(root).parent
-                or not o.re.fullmatch(r"s-[0-9a-f]{16}", Path(record["endpoint"]).name)
+                or not endpoint_valid
                 or o._custody_read(root, Path(record["directory"]) / "identity.json")[1] != raw):
             raise o.OracleApprovalError("Controller process or original invocation custody changed")
         previous = o._sha(raw)
@@ -157,7 +163,8 @@ def _terminal(o, root, identity):
     result = _read(o, root, path)
     payload = {k: v for k, v in result.items() if k != "terminal_sha256"}
     if (result.get("controller_id") != identity["controller_id"]
-            or result.get("terminal_sha256") != o._sha(o._canonical(payload))):
+            or ((identity.get("terminal_seal") or "terminal_sha256" in result)
+                and result.get("terminal_sha256") != o._sha(o._canonical(payload)))):
         raise o.OracleApprovalError("Controller outcome has foreign identity")
     return result
 
@@ -169,15 +176,21 @@ def _finish(o, root, identity, value):
 
 
 def _request(o, root, identity, request):
-    endpoint = Path(identity["endpoint"])
-    o._metadata_directory(root, endpoint.parent)
-    info = endpoint.lstat()
-    if not stat.S_ISSOCK(info.st_mode) or info.st_uid != os.getuid():
-        raise o.OracleApprovalError("Controller observation endpoint is foreign")
-    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+    endpoint = identity["endpoint"]
+    if isinstance(endpoint, str):
+        path = Path(endpoint)
+        o._metadata_directory(root, path.parent)
+        info = path.lstat()
+        if not stat.S_ISSOCK(info.st_mode) or info.st_uid != os.getuid():
+            raise o.OracleApprovalError("Controller observation endpoint is foreign")
+        family, address = socket.AF_UNIX, endpoint
+    else:
+        family, address = socket.AF_INET, (endpoint["host"], endpoint["port"])
+    with socket.socket(family, socket.SOCK_STREAM) as client:
         client.settimeout(2)
-        client.connect(str(endpoint))
-        client.sendall(o._canonical(dict(request, controller_id=identity["controller_id"])) + b"\n")
+        client.connect(address)
+        client.sendall(o._canonical(dict(request, controller_id=identity["controller_id"],
+                                        owner_token=identity.get("owner_token"))) + b"\n")
         raw = b""
         while not raw.endswith(b"\n") and len(raw) <= 131072:
             block = client.recv(8192)
@@ -219,7 +232,7 @@ class Controller:
                     or self.identity["process_identity"] != process_identity(os.getpid())
                     or self.identity["review_kind"] != kind or self.identity["series_id"] != series
                     or self.identity["owner_token"] != inherited_token
-                    or self.identity["listener_fd"] != int(inherited_fd)
+                    or self.identity.get("listener_fd", int(inherited_fd)) != int(inherited_fd)
                     or state.get("owner_identity_sha256") != o._sha(o._pretty(self.identity))
                     or self.identity["reviewer_settings"] != o._review_settings_binding()
                     or _terminal(o, root, self.identity)):
@@ -227,10 +240,11 @@ class Controller:
             self.directory = Path(self.identity["directory"])
             if Path(resume).parent != self.directory:
                 raise o.OracleApprovalError("Native producer reload left its original owner directory")
-            self.endpoint = Path(self.identity["endpoint"])
+            endpoint = self.identity["endpoint"]
+            self.endpoint = endpoint if isinstance(endpoint, str) else (endpoint["host"], endpoint["port"])
             self.socket = socket.socket(fileno=int(inherited_fd))
             self.socket.set_inheritable(False)
-            if (self.socket.getsockname() != str(self.endpoint)
+            if (self.socket.getsockname() != self.endpoint
                     or self.socket.getsockopt(socket.SOL_SOCKET, socket.SO_TYPE) != socket.SOCK_STREAM):
                 raise o.OracleApprovalError("Native producer reload has a foreign observation socket")
             self.socket.listen(16)
@@ -249,17 +263,19 @@ class Controller:
     def _create(self, parent, kind, series):
         o, root = self.o, self.root
         self.directory = o._metadata_run(root, parent / "controllers", "controller-")
-        self.endpoint = parent / ("s-" + uuid.uuid4().hex[:16])
-        self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.socket.bind(str(self.endpoint))
-        os.chmod(self.endpoint, 0o600)
+        # Kernel-assigned loopback endpoints avoid pathname mutation/cleanup
+        # races. Every request proves the private process-bound owner token.
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.bind(("127.0.0.1", 0))
+        self.endpoint = self.socket.getsockname()
         self.socket.listen(16)
         self.socket.settimeout(.2)
         self.identity = {"kind": "boc-review-controller-v1", "root": str(root),
                          "controller_id": self.directory.name, "directory": str(self.directory),
-                         "endpoint": str(self.endpoint), "pid": os.getpid(),
+                         "endpoint": {"host": self.endpoint[0], "port": self.endpoint[1]}, "pid": os.getpid(),
                          "listener_fd": self.socket.fileno(),
                          "owner_token": uuid.uuid4().hex,
+                         "terminal_seal": True,
                          "process_identity": process_identity(os.getpid()), "review_kind": kind,
                          "series_id": series, "reviewer_settings": o._review_settings_binding(),
                          "started_at": o.datetime.now(o.timezone.utc).isoformat(),
@@ -335,7 +351,8 @@ class Controller:
                             break
                         raw += block
                     request = json.loads(raw)
-                    if request.get("controller_id") != self.identity["controller_id"]:
+                    if (request.get("controller_id") != self.identity["controller_id"]
+                            or request.get("owner_token") != self.identity["owner_token"]):
                         raise ValueError("Foreign controller request")
                     if request.get("operation") == "attach":
                         if (request.get("review_kind") != self.identity["review_kind"]
@@ -349,7 +366,7 @@ class Controller:
                     elif request.get("operation") != "observe":
                         raise ValueError("Unsupported controller observation")
                     response = dict(self.progress, controller_id=self.identity["controller_id"],
-                                    identity=self.identity)
+                                    identity={k: v for k, v in self.identity.items() if k != "owner_token"})
                 except Exception as exc:
                     response = {"controller_id": self.identity["controller_id"], "error": str(exc)}
                 try:
@@ -371,11 +388,13 @@ class Controller:
             paths.extend(proof)
 
     def close(self):
+        if getattr(self, "closed", False):
+            return
+        self.closed = True
         self.stop.set()
         self.socket.close()
         if hasattr(self, "thread"):
             self.thread.join(1.2)
-        self.endpoint.unlink(missing_ok=True)
 
 
 def _follow(o, root, identity, kind, series, evidence):
