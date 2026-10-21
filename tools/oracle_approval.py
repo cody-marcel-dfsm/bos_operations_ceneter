@@ -751,7 +751,10 @@ def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path |
     else:
         completed = _timed(prefix + "_seconds", lambda: subprocess.run(
             cmd, cwd=root, capture_output=True, text=True, env=environment))
-    _atomic_write(run / "process.json", _pretty({"exit_code": completed.returncode}))
+    process_record = {"exit_code": completed.returncode}
+    if hasattr(completed, "native_registration"):
+        process_record["native_registration"] = completed.native_registration
+    _atomic_write(run / "process.json", _pretty(process_record))
     _atomic_write(run / "stdout.log", completed.stdout.encode())
     _atomic_write(run / "stderr.log", completed.stderr.encode())
     if completed.returncode:

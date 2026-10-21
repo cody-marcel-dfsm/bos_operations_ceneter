@@ -167,7 +167,12 @@ def _check_authorization(root: Path, selected: dict, authorization) -> None:
 
 def _authorization_request(root: Path, candidate: str, release_ref: str, owner_path: str, *, authorization=None, effect_ids=None) -> dict:
     selected = plan(root, candidate, release_ref, "main-promotion")
-    prior = o._files(root, [str(path) for path in _authorization_paths(authorization)])
+    if selected.get("state") == "NO_CHANGES":
+        return {"candidate_input": candidate, "release_ref_input": release_ref, "plan": selected,
+                "owner_evidence": None, "prior_authorizations": [],
+                "selected_effect_ids": None if effect_ids is None else sorted(set(effect_ids)),
+                "requested_effect_ids": []}
+    prior = o._custody_files(root, [str(path) for path in _authorization_paths(authorization)], allow_absent=True)
     owner = o._files(root, [owner_path])
     covered, _ = _covered_authorizations(root, selected, authorization) if selected.get("state") != "NO_CHANGES" else (set(), [])
     active = {row["id"] for row in selected.get("protected_effects", {}).get("active", [])}

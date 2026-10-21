@@ -103,12 +103,18 @@ def reviewer_process(o, root, run, command, environment, controller):
         record = dict(payload, record_sha256=o._sha(o._canonical(payload)))
         _publish(o, root, path, record)
         stdout, stderr = process.communicate(input=token + "\n")
+        _active_children(o, root, controller.identity)
         _publish(o, root, path.with_suffix(".outcome.json"),
                  {"record_sha256": record["record_sha256"], "exit_code": process.returncode})
-        return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+        completed = subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+        completed.native_registration = {"path": str(path), "sha256": o._custody_read(root, path)[0]["sha256"]}
+        return completed
     except BaseException as exc:
-        if process.poll() is None:
-            os.killpg(process.pid, signal.SIGTERM)
+        try:
+            if process.poll() is None or ("record" in locals() and _reviewer_group(record)):
+                os.killpg(process.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
         try:
             stdout, stderr = process.communicate(timeout=2)
         except subprocess.TimeoutExpired:
@@ -334,6 +340,12 @@ def active(o, root):
         return _request(o, root, identity, {"operation": "observe"})
     except (OSError, ValueError) as exc:
         if _terminal(o, root, identity):
+            return None
+        if not _alive(identity):
+            children = _active_children(o, root, identity)
+            if children:
+                return {"state": "REVIEW_IN_PROGRESS", "identity": {k: v for k, v in identity.items() if k != "owner_token"},
+                        "orphaned_children": children, "attempt": None}
             return None
         raise o.OracleApprovalError("Live controller observation failed; original owner retained") from exc
 
@@ -562,6 +574,8 @@ def _follow(o, root, identity, kind, series, evidence):
         complete, result = _completed_result(o, root, identity)
         if complete:
             return result
+        if not _alive(identity):
+            return _wait_orphan(o, root, identity)
         raise o.OracleApprovalError("Live native owner is not observable; original invocation retained") from exc
     if response.get("error"):
         raise o.OracleApprovalError(response["error"])
