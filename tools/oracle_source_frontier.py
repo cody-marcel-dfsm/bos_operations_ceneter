@@ -106,7 +106,7 @@ def snapshot(o, root, context, paths):
                 if item and item[0] in {'100644', '100755'} and item[1] == 'blob':
                     ids.append(item[2])
         result['bodies'], result['omitted'] = _objects(root, ids)
-        result['git_calls'] += 2 if ids else 0
+        result['git_calls'] += (1 + bool(result['bodies'])) if ids else 0
     except (subprocess.CalledProcessError, ValueError) as exc:
         raise o.OracleApprovalError('Immutable source-frontier preparation failed: ' + str(exc)) from exc
     return result
@@ -301,12 +301,16 @@ def prepare(o, root, context, plan, cohort, child, snap):
     seal = o._files(root, [str(path), *[page['path'] for page in pages]])
     inline = []; size = 0
     for page in pages:
-        if size + page['bytes'] > MAX_INLINE_BYTES:
-            break
         body = o._custody_read(root, page['path'])[1]
         if _hash(body) != page['sha256']:
             raise o.OracleApprovalError('Prepared source page changed before delivery')
-        inline.append(body.decode('utf-8')); size += len(body)
+        decoded = json.loads(body)
+        header = dict(page, **{key: value for key, value in decoded.items() if key != 'body'})
+        fragment = json.dumps(header, sort_keys=True) + '\n' + decoded['body'] + '\n'
+        amount = len(fragment.encode('utf-8'))
+        if size + amount > MAX_INLINE_BYTES:
+            break
+        inline.append(fragment); size += amount
     return {'manifest': str(path), 'manifest_sha256': _hash(encoded), 'prepared_pages': len(pages),
             'inline_pages': len(inline), 'inline_bytes': size, 'prepared_bytes': total,
             'required_paths': list(cohort['required_paths']), 'preparation_only': True}, seal, '\n'.join(inline)

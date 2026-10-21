@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools import oracle_approval as o
 from tools import oracle_parallel as parallel
 from tools import oracle_source_frontier as frontier
-from oracle_parallel_test import ParallelReview
+import oracle_parallel_test as fixture_module
 
 
 BEFORE = '''def marker(fn):
@@ -54,7 +54,7 @@ class SourceFrontier(unittest.TestCase):
         self.context = {'base_commit': self.git('rev-parse', 'HEAD'), 'candidate_tree': self.tree,
                         'previous_candidate_tree': self.before, 'input_hashes': inputs,
                         'guards': {'authority_digests': {'AGENTS.md': 'authority-hash'}},
-                        'publication_scope': {'baseline_commit': self.before}}
+                        'publication_scope': {'baseline_commit': self.before, 'range_sha256': 'range', 'range_paths': ['source.py']}}
         self.plan = {'plan_sha256': 'plan-hash', 'context_sha256': 'context-hash'}
         self.child = self.root/'.git/oracle/runs/fixture'; self.child.mkdir(parents=True)
         self.owner = o._METADATA_ROOT.set(self.root); self.addCleanup(o._METADATA_ROOT.reset,self.owner)
@@ -128,7 +128,8 @@ class SourceFrontier(unittest.TestCase):
                 with self.assertRaises(o.OracleApprovalError):frontier.snapshot(o,self.root,self.context,['source.py'])
 
     def test_actual_parallel_prompt_delivers_exact_source_and_rejects_forged_pages(self):
-        fixture=ParallelReview('runTest');fixture.setUp();self.addCleanup(fixture.doCleanups)
+        fixture=fixture_module.ParallelReview('runTest');fixture.setUp();self.addCleanup(fixture.doCleanups)
+        owner=o._METADATA_ROOT.set(self.root);self.addCleanup(o._METADATA_ROOT.reset,owner)
         # Keep the real Git source fixture while reusing the native envelope constructor.
         fixture.root=self.root;fixture.run=self.child
         fixture.context.update(self.context,required_coverage_paths=['source.py'],reusable_coverage=[],
