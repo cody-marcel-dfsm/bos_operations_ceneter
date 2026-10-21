@@ -2,7 +2,7 @@
 name: manage-customer-extension
 description: Create, inspect, validate, or update a customer-owned extension of an installed packaged skill. Use when a user asks to update, customize, override, specialize, or change a skill for their tenant, organization, location, or customer while preserving package upgrades and BOS authority boundaries.
 metadata:
-  version: "1.0.2"
+  version: "1.0.3"
   requires: "{}"
 ---
 

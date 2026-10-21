@@ -9,7 +9,7 @@
     {
       "id": "external_dependency_adapter",
       "path": "skills/bos-external-dependency-adapter/scripts/external-dependency-adapter.mjs",
-      "sha256": "1c76a1e904e3e1c482558dee25bcb3b773fad989cecc9c248d7ea1fc60df281a"
+      "sha256": "95617d29f88c281aad5e520ba5203dd388715c3cdbe50b48f489c8d81a4079cd"
     },
     {
       "id": "external_dependency_schema_runtime",
@@ -79,5 +79,5 @@
       "sha256": "046c4dd184af18af526ed64bd37a75dd316397b3d1437886eb7f57deb5e99d2d"
     }
   ],
-  "bundle_sha256": "86fdede8e5114a2c84187fcab7273b288c4d5d4f87bfb5581cb139d616bf0a4c"
+  "bundle_sha256": "a2c944b05ea7251196d1c7d230e5a2ece0159bebb84fdcc86e7fd144af99e449"
 }

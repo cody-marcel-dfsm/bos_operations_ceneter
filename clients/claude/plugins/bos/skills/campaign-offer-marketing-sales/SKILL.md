@@ -2,8 +2,8 @@
 name: campaign-offer-marketing-sales
 description: Build and revise campaign offers, qualification, funnels, VSLs, ads, hooks, applications, setter and closer scripts, GHL copy, and sales assets while preserving the active tenant's canonical offer.
 metadata:
-  version: "1.0.2"
-  requires: "{\"bos-mcp-client\":\"1.0.2\",\"landing-page-copywriting\":\"1.0.2\",\"meta-ads-conversion-optimization\":\"1.0.2\"}"
+  version: "1.0.3"
+  requires: "{\"bos-mcp-client\":\"1.0.3\",\"landing-page-copywriting\":\"1.0.3\",\"meta-ads-conversion-optimization\":\"1.0.3\"}"
 ---
 
 

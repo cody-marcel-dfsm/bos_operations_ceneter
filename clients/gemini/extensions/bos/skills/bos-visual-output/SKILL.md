@@ -2,8 +2,8 @@
 name: bos-visual-output
 description: Present BOS operational results as polished visual-first briefs using charts, timelines, diagrams, maps, images, status markers, and compact tables when they materially improve comprehension. Use with BOS MCP results, reconciliation, rosters, schedules, pipelines, capacity, campaigns, invoices, attribution, reviews, performance summaries, daily planners, and executive operating reports.
 metadata:
-  version: "1.0.2"
-  requires: "{\"bos-mcp-client\":\"1.0.2\"}"
+  version: "1.0.3"
+  requires: "{\"bos-mcp-client\":\"1.0.3\"}"
 ---
 
 

@@ -2,8 +2,8 @@
 name: agent-call-operations
 description: Find an Education Center lead and initiate one governed outbound Agent Call through the tenant-scoped BOS MCP. Use when an authorized adult staff member asks to call, phone, contact by voice, or start an AI or agent call to a lead, parent, guardian, trial family, or prospect, including requests that identify the lead by name or phone number.
 metadata:
-  version: "1.0.2"
-  requires: "{\"bos-mcp-client\":\"1.0.2\",\"education-center-service-routing\":\"1.0.2\"}"
+  version: "1.0.3"
+  requires: "{\"bos-mcp-client\":\"1.0.3\",\"education-center-service-routing\":\"1.0.3\"}"
 ---
 
 # Education Center Agent Calls

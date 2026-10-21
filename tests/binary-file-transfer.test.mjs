@@ -99,6 +99,21 @@ test('percent-encoded Unicode filenames preserve a full255-character basename wi
   await assert.rejects(invoke(contact(),{status:200,headers:{...incoming,'X-Correlation-ID':'x'.repeat(1025)},body:bytes}),/bounded printable string/);
 });
 
+test('binary views return an isolated file window without surrounding backing-buffer bytes',async()=>{
+  const backing=Uint8Array.of(91,1,2,92);
+  for(const body of [backing.subarray(1,3),new DataView(backing.buffer,1,2),Buffer.from(backing.buffer,1,2),
+    new Uint16Array(backing.buffer,2,1),backing.buffer.slice(1,3)]){
+    const visible=body instanceof ArrayBuffer?new Uint8Array(body):new Uint8Array(body.buffer,body.byteOffset,body.byteLength);
+    const output=(await invoke(contact(),{status:200,headers:headers(visible),body})).body;
+    const bytes=output instanceof ArrayBuffer?new Uint8Array(output):new Uint8Array(output.buffer,output.byteOffset,output.byteLength);
+    assert.deepEqual(bytes,visible);
+    assert.equal(output instanceof ArrayBuffer?output.byteLength:output.buffer.byteLength,body.byteLength);
+    assert.notEqual(output instanceof ArrayBuffer?output:output.buffer,backing.buffer);
+    if(body instanceof DataView)assert.ok(output instanceof DataView);
+    if(body instanceof Uint16Array)assert.ok(output instanceof Uint16Array);
+  }
+});
+
 test('streamed opaque download, ordinary local save and discovered durable upload preserve bytes and Unicode extension',async()=>{
   for(const bytes of [new Uint8Array(),Uint8Array.of(0,255,128,13,10,123,34,0)]){
     let uploaded;

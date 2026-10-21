@@ -2,8 +2,8 @@
 name: local-school-market-research
 description: Research local education markets around schools, districts, colleges, and universities for program launches, feeder programs, partnerships, outreach campaigns, and contact-list building. Use when Codex is asked to understand a local market for middle school, high school, college, university, CTE, STEM, robotics, computer science, AI, engineering, workforce, dual-enrollment, enrichment, club, camp, or pathway programs; compare institutions; identify likely partners; build target contact lists; or summarize local school/program demand and outreach opportunities.
 metadata:
-  version: "1.0.2"
-  requires: "{\"bos-mcp-client\":\"1.0.2\",\"bos-plugin-settings-initialization\":\"1.0.2\",\"education-center-customer-initialization\":\"1.0.2\",\"marketing-analysis\":\"1.0.2\"}"
+  version: "1.0.3"
+  requires: "{\"bos-mcp-client\":\"1.0.3\",\"bos-plugin-settings-initialization\":\"1.0.3\",\"education-center-customer-initialization\":\"1.0.3\",\"marketing-analysis\":\"1.0.3\"}"
 ---
 
 

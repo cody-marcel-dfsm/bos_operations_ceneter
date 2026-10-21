@@ -467,6 +467,17 @@ function rejectPublicResponseData(
   }
 }
 
+function cloneBinaryBody(body) {
+  if (body instanceof ArrayBuffer) return body.slice(0);
+  const bytes = new Uint8Array(body.buffer, body.byteOffset, body.byteLength).slice();
+  // Copy the file window only. In particular a pooled Buffer must not expose
+  // unrelated bytes through the returned view's .buffer.
+  const Type = [DataView, Uint8Array, Uint8ClampedArray, Int8Array, Uint16Array, Int16Array,
+    Uint32Array, Int32Array, Float32Array, Float64Array, BigInt64Array, BigUint64Array]
+    .find(candidate => body instanceof candidate) ?? Uint8Array;
+  return new Type(bytes.buffer);
+}
+
 function publicResponse(value, {binaryContract = null} = {}) {
   requireObject(value, "BOS transport response");
   if (!Number.isInteger(value.status) || value.status < 100 || value.status > 599) {
@@ -504,7 +515,7 @@ function publicResponse(value, {binaryContract = null} = {}) {
   }
   return {
     status: value.status,
-    body: structuredClone(value.body),
+    body: binaryBody ? cloneBinaryBody(value.body) : structuredClone(value.body),
     ...(Object.keys(headers).length ? { headers } : {})
   };
 }
