@@ -2382,6 +2382,15 @@ def verify_staged(root: Path) -> tuple[dict[str, Any], bytes]:
 
 
 def _oracle(root: Path, tree: str, paths: list[str], evidence: dict[str,str], owner: dict[str,str] | None) -> dict[str,Any]:
+    # Configuration failures precede area preparation and reviewer timing. The
+    # native attempt retains their structured failure without launching a cohort.
+    try:
+        selected_model(), selected_reasoning_effort()
+    except (RuntimeError, ValueError) as exc:
+        raise OracleApprovalError(
+            f"Independent Oracle model resolution failed ({type(exc).__name__}): {exc}; "
+            f"diagnostics retained at {_RUN.get()}"
+        ) from exc
     if _RUN.get() and (_RUN.get() / "review-context.json").is_file():
         if __package__:
             from . import oracle_parallel

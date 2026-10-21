@@ -472,6 +472,7 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False):
             evidence = list(dict.fromkeys([*evidence, *controller.resumed_evidence]))
             while True:
                 before = _head(o, root) if kind == "issue" else None
+                before_status = o._git(root, "status", "--porcelain=v1", "--untracked-files=all") if follow_commits and kind == "issue" else None
                 evidence = list(dict.fromkeys([*evidence, *controller.evidence()]))
                 if follow_commits and kind == "issue" and o._files(root, controller.producer_paths) != controller.producer:
                     controller.reload(evidence)
@@ -500,8 +501,9 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False):
                     if not follow_commits or kind != "issue":
                         raise
                     moved = o._git(root, "rev-parse", "HEAD").strip() != before
-                    dirty = bool(o._git(root, "status", "--porcelain=v1", "--untracked-files=all").strip())
-                    if not (isinstance(exc, o.OracleSourceBindingError) or moved or dirty):
+                    current_status = o._git(root, "status", "--porcelain=v1", "--untracked-files=all")
+                    newly_dirty = bool(current_status.strip()) and current_status != before_status
+                    if not (isinstance(exc, o.OracleSourceBindingError) or moved or newly_dirty):
                         raise
                     _publish(o, root, controller.directory / ("movement-" + uuid.uuid4().hex + ".json"),
                              {"controller_id": controller.identity["controller_id"], "candidate_commit": before,
