@@ -2,6 +2,8 @@
 from pathlib import Path
 import copy
 import json
+import os
+import subprocess
 import sys
 import tempfile
 import threading
@@ -162,6 +164,75 @@ class ParallelReview(unittest.TestCase):
                        registered_validation_evidence={}, validation_invalidations={}, guards={'environment_digest': 'env'})
         with self.assertRaises(o.OracleApprovalError):
             o._validate_completed_review(self.root, complete, context, {})
+
+    def test_actual_isolated_child_processes_overlap_without_a_model_service(self):
+        probe = self.root / 'reviewer_probe.py'
+        probe.write_text('''import json,os,sys,time
+from pathlib import Path
+args=sys.argv[1:]
+output=Path(args[args.index('--output-last-message')+1])
+packet=json.loads(output.with_name('cohort-context.json').read_text())
+developer=json.loads(next(value.split('=',1)[1] for value in args if value.startswith('developer_instructions=')))
+assert 'trusted independent, read-only Oracle cohort' in developer
+assert os.environ['CODEX_SELECTED_MODEL']=='inherited-model'
+assert os.environ['CODEX_SELECTED_REASONING_EFFORT']=='high'
+started=time.time(); time.sleep(.18)
+cohort=packet['cohort']; hashes=packet['input_hashes']
+inputs=lambda p:[{'path':p,'digest':hashes[p]}]
+assessment={'verdict':'APPROVED','review_status':'COMPLETE','summary':'Probe assigned scope',
+'findings':[],'resolutions':[],'validations':[],'limitations':[],'repair_plan':'',
+'coverage':[{'path':p,'status':'REVIEWED','inputs':inputs(p),'reason':'Probe exact identity'} for p in cohort['required_paths']],
+'authentication_impact':'NONE','owner_approval_status':'NOT_REQUIRED',
+'api_version_assessment':{'impact':'NONE','request_kind':'NOT_REQUIRED','requested_change':None,'request_quote':None,'request_evidence':None},
+'protected_effects':{'active':[],'dispositions':[]}}
+result={key:packet[key] for key in ('plan_sha256','candidate_commit','candidate_tree','input_binding_sha256')}
+result.update(cohort_id=cohort['id'],assessment=assessment,integration=[{'concern':key,'status':'REVIEWED',
+'inputs':inputs('@proposal/scope'),'reason':'Probe full integration concern'} for key in cohort['integration_checks']])
+output.write_text(json.dumps(result))
+output.with_name('probe.json').write_text(json.dumps({'pid':os.getpid(),'started':started,'finished':time.time()}))
+''')
+        original_run = subprocess.run
+        def launch(command, **options):
+            self.assertEqual(command[0], 'codex')
+            return original_run([sys.executable, str(probe), *command[1:]], **options)
+        with patch.object(o, '_input_binding', return_value=self.binding), \
+             patch.object(o, 'selected_model', return_value='inherited-model'), \
+             patch.object(o, 'selected_reasoning_effort', return_value='high'), \
+             patch.object(o.subprocess, 'run', side_effect=launch):
+            result = o._oracle(self.root, self.context['candidate_tree'], self.paths, {}, None)
+        self.assertEqual(result['verdict'], 'APPROVED')
+        probes = [json.loads(path.read_text()) for path in (self.run / 'cohorts').glob('*/probe.json')]
+        self.assertEqual(len({item['pid'] for item in probes}), 3)
+        self.assertLess(max(item['started'] for item in probes), min(item['finished'] for item in probes))
+        print(json.dumps({'actual_child_process_overlap': probes}, sort_keys=True))
+
+    def test_child_execution_failure_and_final_context_movement_fail_closed(self):
+        for mode in ('child-failure', 'context-moved'):
+            with self.subTest(mode=mode):
+                target = self.root / mode
+                target.mkdir()
+                (target / 'review-context.json').write_bytes(o._pretty(self.context))
+                token = o._RUN.set(target)
+                def child(root, prompt, prefix, *, schema_path, cohort_policy):
+                    run = o._RUN.get(); cohort = json.loads((run / 'cohort-context.json').read_text())['cohort']
+                    if cohort['id'] == parallel.AREAS[1]:
+                        if mode == 'child-failure':
+                            raise RuntimeError('Actual isolated process execution failed')
+                        moved = copy.deepcopy(self.context); moved['input_hashes']['source.py'] = 'changed'
+                        o._atomic_write(target / 'review-context.json', o._pretty(moved))
+                    o._atomic_write(run / 'model.json', o._pretty({'selected_model':'inherited-model','reasoning_effort':'high'}))
+                    value = self.envelope(cohort)
+                    o._atomic_write(run / 'result.json', o._pretty(value))
+                    return value
+                try:
+                    with patch.object(o, '_input_binding', return_value=self.binding), patch.object(o, '_review_process', side_effect=child):
+                        result = o._oracle(self.root, self.context['candidate_tree'], self.paths, {}, None)
+                    self.assertEqual((result['review_status'], result['verdict']), ('ERROR', 'ERROR'))
+                    self.assertTrue(result['limitations'])
+                    self.assertTrue((target / 'cohort-evidence.json').exists())
+                    self.assertTrue(list((target / 'cohorts').glob('*/result.json')))
+                finally:
+                    o._RUN.reset(token)
 
 
 if __name__ == '__main__':
