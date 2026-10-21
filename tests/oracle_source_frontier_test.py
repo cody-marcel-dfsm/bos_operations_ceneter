@@ -117,7 +117,8 @@ class SourceFrontier(unittest.TestCase):
         with patch.object(frontier,'_git',side_effect=observe):
             start=time.monotonic();snap=frontier.snapshot(o,self.root,self.context,['source.py',*[f'peer-{i}.py' for i in range(20)]])
         self.assertEqual(len(counts),4);self.assertEqual(snap['git_calls'],4)
-        self.assertGreaterEqual(time.monotonic()-start,0)
+        elapsed=time.monotonic()-start
+        print(json.dumps({'source_frontier_batch_measurement':{'assigned_paths':21,'git_commands':len(counts),'seconds':elapsed}}))
         for mode in ['truncate','alter']:
             def corrupt(root,args,data=None):
                 raw=actual(root,args,data)
@@ -140,16 +141,28 @@ class SourceFrontier(unittest.TestCase):
         o._atomic_write(self.child/'review-context.json',o._pretty(fixture.context))
         schema=self.root/'.agents/skills/oracle/review-output.schema.json';schema.parent.mkdir(parents=True)
         schema.write_bytes((Path(__file__).resolve().parents[1]/'.agents/skills/oracle/review-output.schema.json').read_bytes())
-        seen=[];tamper=[False]
+        seen=[];tamper=[False];delivered=[]
         def consume(root,prompt,prefix,**kwargs):
             run=o._RUN.get();packet=json.loads((run/'cohort-context.json').read_text());cohort=packet['cohort']
             if 'source.py' in cohort['required_paths']:
                 self.assertIn('return self.helper(value) + 1',prompt)
                 self.assertIn('@marker',prompt);self.assertTrue(packet['prepared_source']['inline_pages'])
+                delivered.append({'cohort':cohort['id'],'prompt_bytes':len(prompt.encode()),'inline_pages':packet['prepared_source']['inline_pages'],'source_navigation_commands':0})
                 if tamper[0]:
                     manifest=json.loads(Path(packet['prepared_source']['manifest']).read_text())
                     page=Path(manifest['pages'][0]['path']);data=json.loads(page.read_text());data['body']='forged source'
                     data['body_sha256']=hashlib.sha256(data['body'].encode()).hexdigest();o._atomic_write(page,o._pretty(data))
+                    forged_sha=hashlib.sha256(page.read_bytes()).hexdigest()
+                    for reference in manifest['pages']:
+                        if reference['path']==str(page):reference['sha256']=forged_sha
+                    for entry in manifest['entries']:
+                        for unit in entry['units']:
+                            for reference in unit['pages']:
+                                if reference['path']==str(page):reference['sha256']=forged_sha
+                    manifest_path=Path(packet['prepared_source']['manifest']);o._atomic_write(manifest_path,o._pretty(manifest))
+                    packet['prepared_source']['manifest_sha256']=hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+                    packet['packet_sha256']=fixture.digest({k:v for k,v in packet.items() if k!='packet_sha256'})
+                    o._atomic_write(run/'cohort-context.json',o._pretty(packet))
             seen.append(cohort['id']);envelope=fixture.envelope(cohort)
             for name,value in {'model.json':{'selected_model':'inherited-model','reasoning_effort':'high'},
                                'process.json':{'exit_code':0},'result.json':envelope}.items():o._atomic_write(run/name,o._pretty(value))
@@ -165,6 +178,7 @@ class SourceFrontier(unittest.TestCase):
             self.assertEqual(result['review_status'],'ERROR')
             self.assertNotIn('source.py',{p['path'] for p in result['coverage']})
             self.assertTrue(list(self.child.glob('cohorts/*/prepared-source-error.json')))
+            print(json.dumps({'native_frontier_delivery':delivered,'forged_page_manifest_and_context':'ERROR/no source coverage admitted'}))
         finally:o._RUN.reset(token)
 
 
