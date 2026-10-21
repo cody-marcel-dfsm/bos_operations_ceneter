@@ -974,7 +974,7 @@ def _candidate_inputs(root: Path, tree: str, evidence: dict) -> dict:
         inputs[os.fsdecode(name)] = f"git-{algorithm}:{mode}:{kind}:{oid}"
     for name, digest in {**_vault_sources(root), **evidence, **_declared_parent_authorities(root)}.items():
         inputs.setdefault(name, "sha256:" + digest if digest is not None else None)
-    consumed = None
+    consumed_names = set()
     for name in evidence:
         if Path(name).suffix != '.json':
             continue
@@ -984,11 +984,11 @@ def _candidate_inputs(root: Path, tree: str, evidence: dict) -> dict:
             continue
         if not isinstance(record, dict) or record.get('kind') != 'oracle-validation-record-v1':
             continue
-        if consumed is None:
-            consumed = _declared_parent_execution_inputs(root, [item.get('path') for item in record.get('inputs', []) if isinstance(item, dict)])
         for item in record.get('inputs', []):
-            if isinstance(item, dict) and item.get('path') in consumed:
-                inputs[item['path']] = consumed[item['path']]
+            if isinstance(item, dict) and isinstance(item.get('path'), str):
+                consumed_names.add(item['path'])
+    if consumed_names:
+        inputs.update(_declared_parent_execution_inputs(root, sorted(consumed_names)))
     return inputs
 
 
