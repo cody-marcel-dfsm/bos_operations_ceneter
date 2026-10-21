@@ -150,6 +150,52 @@ with (directory/'review.lock').open('a+') as held:
         self.assertEqual(len(outcomes),1)
         self.assertEqual(json.loads(outcomes[0].read_text())['outcome'],'APPROVED')
 
+    def test_orphan_reviewer_blocks_duplicate_admission_until_its_group_ends(self):
+        schema=self.root/'.agents/skills/oracle/review-output.schema.json'
+        schema.parent.mkdir(parents=True);schema.write_text('{}')
+        helper=self.root/'tools/codex_child_model.py'
+        helper.parent.mkdir();helper.write_text('synthetic model helper')
+        binary=self.root/'bin/codex';binary.parent.mkdir()
+        binary.write_text('#!'+sys.executable+'\n'+r"""
+import os,sys,time,json
+from pathlib import Path
+root=Path.cwd();(root/'.git/oracle/reviewer-pid').write_text(str(os.getpid()))
+end=time.monotonic()+12
+while not (root/'.git/oracle/release-reviewer').exists() and time.monotonic()<end:time.sleep(.02)
+Path(sys.argv[sys.argv.index('--output-last-message')+1]).write_text('{"verdict":"APPROVED"}')
+""")
+        binary.chmod(0o755)
+        env=dict(self.env,PATH=str(binary.parent)+os.pathsep+self.env['PATH'])
+        script=CHILD.replace('time.sleep(1)', "o._review_process(root,'Synthetic no-network reviewer fixture','reviewer')")
+        owner=subprocess.Popen([sys.executable,'-c',script,str(self.root),'normal'],env=env,
+                               stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+        self.children.append(owner)
+        marker=self.root/'.git/oracle/reviewer-pid';deadline=time.monotonic()+5
+        while not marker.exists():
+            if time.monotonic()>deadline:self.fail('Synthetic native reviewer did not start')
+            time.sleep(.02)
+        reviewer=int(marker.read_text());birth=lifecycle.process_identity(reviewer)
+        try:
+            owner.terminate();owner.wait(timeout=5)
+            follower=self.start();time.sleep(.5)
+            self.assertEqual(len((self.root/'.git/oracle/invocations').read_text().splitlines()),1,
+                             'A reviewer OS child still runs for the interrupted native owner')
+            selected=lifecycle.active(o,self.root)
+            self.assertTrue(selected['orphaned_children'])
+            (self.root/'.git/oracle/release-reviewer').write_text('release')
+            self.finish(follower)
+            records=sorted((self.root/'.git/oracle/controllers/admissions').iterdir())
+            first=json.loads(records[0].read_text())
+            terminal=json.loads((Path(first['directory'])/'terminal.json').read_text())
+            self.assertEqual(terminal['status'],'ERROR')
+            self.assertEqual(len(records),2)
+        finally:
+            (self.root/'.git/oracle/release-reviewer').write_text('release')
+            owner.communicate(timeout=5)
+            if lifecycle.process_identity(reviewer)==birth:
+                try:os.kill(reviewer,__import__('signal').SIGTERM)
+                except ProcessLookupError:pass
+
     def test_producer_commit_reexecs_same_process_owner_and_evidence(self):
         tool=self.root/'tools/oracle_approval.py';tool.parent.mkdir()
         tool.write_text('''VERSION = 'before'
