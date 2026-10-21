@@ -112,7 +112,7 @@ def output_schema(base, plan, cohort):
     return {"type": "object", "additionalProperties": False, "required": list(fields), "properties": fields}
 
 
-def _checked(o, envelope, plan, cohort, context):
+def _assigned_result(o, envelope, plan, cohort):
     expected = {"plan_sha256": plan["plan_sha256"], "cohort_id": cohort["id"],
                 "candidate_commit": plan["candidate_commit"], "candidate_tree": plan["candidate_tree"],
                 "input_binding_sha256": plan["input_binding_sha256"]}
@@ -125,6 +125,11 @@ def _checked(o, envelope, plan, cohort, context):
     for key in ("coverage", "validations", "findings", "resolutions", "limitations"):
         if not isinstance(assessment.get(key), list):
             raise o.OracleApprovalError("Cohort lacks structured " + key)
+    return assessment
+
+
+def _checked(o, envelope, plan, cohort, context):
+    assessment = _assigned_result(o, envelope, plan, cohort)
     status = assessment["review_status"]
     if status == "COMPLETE" and assessment["limitations"]:
         raise o.OracleReviewIncomplete("Cohort reports unfinished limitations despite COMPLETE")
@@ -216,7 +221,18 @@ def aggregate(o, plan, context, envelopes, failures):
             for item in assessment[field]:
                 key = item.get(identity)
                 if key in unique and unique[key] != item:
-                    errors.append("Contradictory independent " + field + " for " + str(key))
+                    prior = unique[key]
+                    if field == 'validations' and ({k: v for k, v in prior.items() if k != 'reason'}
+                            == {k: v for k, v in item.items() if k != 'reason'}):
+                        # Explanations supplement one identical bound execution.
+                        # A different status, source, environment or proof stays
+                        # a contradiction and cannot become passing evidence.
+                        prior = copy.deepcopy(prior)
+                        prior['reason'] = '\n'.join(sorted(set(prior.get('reason', '').split('\n')
+                                                            + item.get('reason', '').split('\n'))))
+                        unique[key] = prior
+                    else:
+                        errors.append("Contradictory independent " + field + " for " + str(key))
                 else:
                     unique[key] = item
         result[field] = list(unique.values())
@@ -297,11 +313,14 @@ def review(o, root, tree, paths, evidence, owner):
                 try:
                     raw = o._custody_read(root, child / "result.json")[1]
                     envelope = json.loads(raw)
+                    _assigned_result(o, envelope, plan, cohort)
+                    admission_error = None
                     try:
                         _checked(o, envelope, plan, cohort, context)
-                    except o.OracleReviewIncomplete:
-                        pass  # Valid unfinished reports remain unadopted facts.
+                    except (o.OracleReviewIncomplete, o.OracleApprovalError) as error:
+                        admission_error = type(error).__name__ + ': ' + str(error)
                     unadopted.append({"cohort_id": cohort["id"], "actual_outcome": "ERROR", "reason": failure,
+                        "admission_error": admission_error,
                         "reported_review_status": envelope["assessment"]["review_status"],
                         "reported_verdict": envelope["assessment"].get("verdict"),
                         "assessment": envelope["assessment"], "result_file": str(child / "result.json"),

@@ -125,6 +125,22 @@ class ParallelReview(unittest.TestCase):
         responses[identity]['assessment']['coverage'][0]['inputs'][0]['digest'] = 'stale'
         self.assertEqual(parallel.aggregate(o, self.plan, self.context, responses, [])['verdict'], 'ERROR')
 
+    def test_identical_validation_proof_preserves_distinct_explanations(self):
+        responses = self.all_envelopes()
+        first, second = [cohort['id'] for cohort in self.plan['cohorts'][:2]]
+        proof = {'evidence_path': 'native.json', 'status': 'INVALIDATED',
+                 'inputs': [], 'environment_digest': 'same-environment', 'reason': 'First explicit observation'}
+        responses[first]['assessment']['validations'] = [proof]
+        responses[second]['assessment']['validations'] = [dict(proof, reason='Additional closure observation')]
+        result = parallel.aggregate(o, self.plan, self.context, responses, [])
+        self.assertEqual(result['verdict'], 'APPROVED')
+        self.assertEqual(set(result['validations'][0]['reason'].split('\n')),
+                         {'First explicit observation', 'Additional closure observation'})
+        for field, value in [('status', 'VERIFIED'), ('environment_digest', 'different')]:
+            changed = copy.deepcopy(responses)
+            changed[second]['assessment']['validations'][0][field] = value
+            self.assertEqual(parallel.aggregate(o, self.plan, self.context, changed, [])['verdict'], 'ERROR')
+
     def test_missing_incomplete_failed_and_missing_integration_cohorts_never_approve(self):
         identity = self.plan['cohorts'][1]['id']
         responses = self.all_envelopes(); del responses[identity]

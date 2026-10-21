@@ -189,6 +189,22 @@ def _declared_parent_authorities(root: Path, instructions: str | None = None) ->
     return values
 
 
+def _declared_parent_execution_inputs(root: Path, selected: Sequence[str]) -> dict:
+    """Admit the exact declared coordinator executable only when consumed."""
+    local = root / 'AGENTS.md'
+    instructions = _custody_read(root, local)[1].decode() if local.is_file() else ''
+    families = re.findall(r'(/[^\s`"<>]+/Vault/docs/architecture/bos-product-family\.md)', instructions)
+    result = {}
+    for name in families:
+        command = Path(os.path.abspath(name)).parents[3] / 'tools/projects_oracle.py'
+        if str(command) in instructions and str(command) in selected:
+            try:
+                result[str(command)] = 'sha256:' + _custody_read(root, command)[0]['sha256']
+            except OSError:
+                pass
+    return result
+
+
 def _controlling_authorities(values: dict) -> dict:
     return {**{name: values.get(name) for name in CONTROLLING_AUTHORITIES},
             **{name: digest for name, digest in values.items() if Path(name).is_absolute()}}
@@ -958,6 +974,21 @@ def _candidate_inputs(root: Path, tree: str, evidence: dict) -> dict:
         inputs[os.fsdecode(name)] = f"git-{algorithm}:{mode}:{kind}:{oid}"
     for name, digest in {**_vault_sources(root), **evidence, **_declared_parent_authorities(root)}.items():
         inputs.setdefault(name, "sha256:" + digest if digest is not None else None)
+    consumed = None
+    for name in evidence:
+        if Path(name).suffix != '.json':
+            continue
+        try:
+            record = json.loads(_custody_read(root, name)[1])
+        except (OSError, ValueError):
+            continue
+        if not isinstance(record, dict) or record.get('kind') != 'oracle-validation-record-v1':
+            continue
+        if consumed is None:
+            consumed = _declared_parent_execution_inputs(root, [item.get('path') for item in record.get('inputs', []) if isinstance(item, dict)])
+        for item in record.get('inputs', []):
+            if isinstance(item, dict) and item.get('path') in consumed:
+                inputs[item['path']] = consumed[item['path']]
     return inputs
 
 
@@ -1737,6 +1768,7 @@ def _checked_inputs(entries: Any, context: dict, *, required_path: str | None = 
 def _validation_capture_inputs(root: Path, selected: Sequence[str]) -> tuple[dict, dict]:
     """Inspect only the declared execution closure, including live file bytes."""
     inputs = _candidate_inputs(root, _tree(root), {})
+    inputs.update(_declared_parent_execution_inputs(root, selected))
     if not selected or any(name not in inputs for name in selected):
         raise OracleApprovalError("Validation inputs must name existing candidate or canonical knowledge paths")
     tracked = [name for name in selected if isinstance(inputs[name], str) and inputs[name].startswith("git-")]
@@ -1771,6 +1803,7 @@ def record_validation(root: Path, command: Sequence[str], input_paths: Sequence[
     inputs = _candidate_inputs(root, binding["candidate_tree"], {})
     selected = sorted(set(input_paths)) if input_paths else sorted(inputs)
     selected_inputs, live_inputs = _validation_capture_inputs(root, selected)
+    inputs.update(_declared_parent_execution_inputs(root, selected))
     if selected_inputs != {name: inputs[name] for name in selected}:
         raise OracleApprovalError("Selected validation inputs changed during preparation")
     authority = _controlling_authorities(binding["authority_digests"])

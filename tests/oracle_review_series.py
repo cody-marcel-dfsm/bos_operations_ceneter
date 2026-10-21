@@ -2831,6 +2831,19 @@ class ReviewSeries(unittest.TestCase):
         with self.assertRaises(o.OracleApprovalError):
             o._assert_binding(self.root, binding, evidence, None)
 
+    def test_explicit_parent_command_native_capture_and_reuse_are_bound(self):
+        paths = self.declare_parent()
+        output = self.root / 'Vault/tmp/native-parent-check.json'
+        o.record_validation(self.root, [sys.executable, '-c', 'pass'], [str(paths[2])], output)
+        record = json.loads(output.read_text())
+        proof = record['inputs']
+        current = o._candidate_inputs(self.root, self.git('write-tree'), o._files(self.root, [str(output)]))
+        self.assertIn(str(paths[2]), current)
+        o._validation_record(self.root, str(output), proof, record['environment_digest'])
+        paths[2].write_text('changed consumed parent executable')
+        with self.assertRaises(o.OracleApprovalError):
+            o._validation_record(self.root, str(output), proof, record['environment_digest'])
+
     def test_exact_immutable_proposal_survives_unrelated_latest_pointer(self):
         original = o.proposal_path(self.root).read_bytes()
         selected = o._archive_proposal(self.root, original)
@@ -2869,6 +2882,7 @@ class ReviewSeries(unittest.TestCase):
             if cohort['id'] == parallel.AREAS[1]:
                 assessment.update(review_status='INCOMPLETE', verdict='INCOMPLETE', limitations=['Required consumer unfinished'],
                                   findings=[self.finding('F2099')])
+                assessment['coverage'][0]['inputs'][0]['digest'] = 'stale original claim'
                 o._atomic_write(run / 'result.json', o._pretty(result))
                 raise o.OracleApprovalError('Transport failed after original final message')
             o._atomic_write(run / 'result.json', o._pretty(result))
@@ -2882,6 +2896,7 @@ class ReviewSeries(unittest.TestCase):
         raw = first['review']['unadopted_cohort_assessments'][0]
         self.assertEqual((raw['actual_outcome'], raw['reported_review_status']), ('ERROR', 'INCOMPLETE'))
         self.assertEqual(raw['assessment']['findings'][0]['id'], 'F2099')
+        self.assertIn('stale', raw['admission_error'])
         self.assertNotIn('source.py', {item['path'] for item in first['verified_coverage']})
         self.assertTrue(first['verified_coverage'])
         self.submit()
