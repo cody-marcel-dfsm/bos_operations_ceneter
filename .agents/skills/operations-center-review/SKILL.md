@@ -26,6 +26,15 @@ candidate returns `NO_CHANGES` with no review, tests, build, version or publicat
 The exact validated SHA is released; `last_released_commit` advances only after
 confirmed successful delivery. Source changes continue without locks or freezes.
 
+The native review itself runs bounded independent area assessments concurrently:
+crosscutting integration, implementation/consumers, and verification/recovery.
+Immutable assignments bind one exact commit/tree and input snapshot. Isolated
+trusted reviewers inherit the selected model/effort, reuse assigned evidence and
+report all findings together. The native controller retains each raw result and
+measured overlap, fails closed on missing/incomplete/error/conflicting cohorts,
+and checks complete coverage, unresolved findings and latest source custody
+before one aggregate receipt. It performs no serial final model review.
+
 Covered normal-plan reviews proceed automatically without spending-approval
 questions or a separate $0 approval. Explicit approval remains required for
 additional monetary spending outside the owner's existing plan.

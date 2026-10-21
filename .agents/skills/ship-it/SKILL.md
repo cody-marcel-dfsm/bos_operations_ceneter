@@ -41,6 +41,14 @@ repeated reads. Expand inspection only for a changed input or unresolved behavio
    commits. It includes applicable lint/tests, independent review, all repairs,
    direct repair commits, affected revalidation and the successful checkpoint;
    it is never serialized as one member's complete lifecycle after another's.
+   The native Oracle also executes independent review areas concurrently, with
+   up to three isolated cohorts for crosscutting integration, implementation and
+   consumers, and verification/recovery. Each cohort binds the same exact
+   commit/tree and immutable partition plan, inherits the selected model/effort,
+   and receives only assigned scope plus necessary shared authorities/proof
+   references. Native aggregation requires all assigned coverage and integration
+   criteria, reconciles findings and classifications, preserves partial work,
+   and applies the existing whole-candidate gates without a serial final model.
    Confirm governing instructions first. Make one complete assessment per new
    commit/range through real production entrypoints, construction, consumers,
    publication and recovery paths, then return all established findings together.

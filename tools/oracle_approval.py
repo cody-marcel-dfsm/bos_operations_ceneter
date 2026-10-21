@@ -683,7 +683,8 @@ def _assert_binding(root: Path, expected: dict, evidence: dict, owner: dict | No
 
 
 @_metadata_owner
-def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path | None = None) -> dict:
+def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path | None = None,
+                    cohort_policy: str | None = None) -> dict:
     run = _RUN.get()
     if run is None:
         raise OracleApprovalError("Independent Oracle must run under the review lock")
@@ -702,6 +703,8 @@ def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path |
     developer_instructions = "\n\n".join((REVIEWER_ROLE, NORMAL_PLAN_REVIEW_POLICY,
                                          LOCAL_EXECUTION_POLICY, REVIEW_SERIES_POLICY,
                                          DEPLOYMENT_PLACEMENT_POLICY))
+    if cohort_policy is not None:
+        developer_instructions += "\n\n" + cohort_policy
     metadata = {"selected_model": model, "reasoning_effort": effort,
                 "sandbox": "danger-full-access", "ephemeral": True,
                 "ignore_user_config": True,
@@ -980,7 +983,8 @@ def _validation_environment(extra_keys: Sequence[str] = ()) -> tuple[dict, dict,
 
 
 REVIEW_POLICY_MODULES = ("tools/oracle_approval.py", "tools/codex_child_model.py", "tools/vault_index.py",
-                         "tools/publication_admission.py", "tools/shipment_state.py", "tools/publication_status.py")
+                         "tools/publication_admission.py", "tools/shipment_state.py", "tools/publication_status.py",
+                         "tools/oracle_parallel.py")
 
 
 def _review_policy_sources(root: Path, tree: str | None = None) -> dict:
@@ -2297,6 +2301,13 @@ def verify_staged(root: Path) -> tuple[dict[str, Any], bytes]:
 
 
 def _oracle(root: Path, tree: str, paths: list[str], evidence: dict[str,str], owner: dict[str,str] | None) -> dict[str,Any]:
+    if _RUN.get() and (_RUN.get() / "review-context.json").is_file():
+        if __package__:
+            from . import oracle_parallel
+        else:
+            import oracle_parallel
+        return _timed("reviewer_seconds", lambda: oracle_parallel.review(
+            sys.modules[__name__], root, tree, paths, evidence, owner))
     request = {"candidate_tree": tree, "changed_paths": paths, "validation_evidence": evidence, "owner_approval_evidence": owner}
     if _RUN.get() and (_RUN.get() / "review-context.json").is_file():
         request["review_context"] = str(_RUN.get() / "review-context.json")
@@ -2510,6 +2521,18 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
         if reviewer is _oracle:
             # Selected process settings are part of exact approval custody.
             evidence.update(_files(root, [str(_RUN.get() / "model.json")]))
+            parallel = _RUN.get() / "cohort-evidence.json"
+            if parallel.exists():
+                raw = _custody_read(root, parallel)[1]
+                cohort = json.loads(raw)
+                payload = {key: value for key, value in cohort.items() if key != "evidence_sha256"}
+                if (cohort.get("kind") != "boc-parallel-review-evidence-v1"
+                        or cohort.get("evidence_sha256") != _sha(_canonical(payload))
+                        or cohort.get("candidate_commit") != base or cohort.get("candidate_tree") != tree
+                        or cohort.get("artifacts") != _files(root, list(cohort.get("artifacts", {})))):
+                    raise OracleApprovalError("Independent cohort evidence changed before native admission")
+                evidence.update(cohort["artifacts"])
+                evidence[str(parallel)] = _sha(raw)
         if outcome == "APPROVED":
             _validate_api_version_assessment(review.get("api_version_assessment"), "APPROVED", root, evidence)
             impact, status = review.get("authentication_impact"), review.get("owner_approval_status")
