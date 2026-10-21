@@ -219,8 +219,10 @@ class ShipmentWorkflow(unittest.TestCase):
             "console.log(product);}", commit], cwd=self.root, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.splitlines(), ["bos", "education-center"])
+        self.fixture.git("update-ref", "refs/remotes/origin/main", self.fixture.base)
         self.fixture.submit(lambda c: self.fixture.result(c, findings=[self.fixture.finding(origin="MISSED")]),
                             error=o.OracleCandidateRejected)
+        self.fixture.git("update-ref", "refs/remotes/origin/main", commit)
         result = subprocess.run(["node", "--input-type=module", "-e",
             "import {readPublishedProductEntries} from './scripts/build-marketplace-update.mjs';"
             "for(const product of ['bos','education-center']) {"
