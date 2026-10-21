@@ -7,6 +7,7 @@ import test from "node:test";
 import {
   customerDataFindings,
   isProposedTextArtifact,
+  isCpuProfileTextArtifact,
   isWatcherProcessMetadata,
   normalizeSensitiveText,
   fixturePrivacyFailures,
@@ -17,6 +18,95 @@ import {
   verifiedSyntheticSourceFixtureText
 } from "../scripts/check-customer-data.mjs";
 import {syntheticIdentity} from "../scripts/lib/synthetic-fixtures.mjs";
+import {createDeterministicZip} from "../scripts/lib/deterministic-zip.mjs";
+
+function originalDigestMatch(text, path, blocked) {
+  const words = normalizeSensitiveText(`${path} ${text}`).split(" ").filter(Boolean);
+  for (let size = 1; size <= 8; size += 1) {
+    for (let index = 0; index + size <= words.length; index += 1) {
+      if (blocked.has(sha256(words.slice(index, index + size).join(" ")))) return true;
+    }
+  }
+  return false;
+}
+
+test("digest memoization equals the original matcher across path and short or empty line boundaries", () => {
+  const words = ["synthetic", "alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta"];
+  for (let length = 1; length <= 8; length += 1) {
+    const phrase = words.slice(0, length);
+    const blocked = new Set([sha256(phrase.join(" "))]);
+    for (let split = 0; split <= length; split += 1) {
+      const text = `${phrase.slice(0, split).join("\n\n")}\n${phrase.slice(split).join("\n")}`;
+      for (const path of ["fixture.md", "prefix synthetic"]) {
+        const actual = customerDataFindings(text, path, blocked).some(item => item.endsWith("identifier digest"));
+        assert.equal(actual, originalDigestMatch(text, path, blocked), `${length}/${split}/${path}`);
+        assert.equal(customerDataFindings(text, path, blocked).some(item => item.endsWith("identifier digest")), actual);
+      }
+    }
+  }
+  const acrossPath = new Set([sha256("synthetic path final body beginning")]);
+  assert.equal(customerDataFindings("body\n\n beginning", "synthetic/path/final", acrossPath).length, 1);
+  const nineWords = "one two three four five six seven eight nine";
+  assert.deepEqual(customerDataFindings(nineWords, "fixture.md", new Set([sha256(nineWords)])), []);
+});
+
+test("digest memoization tracks exact policy mutation and preserves finding order and attribution", () => {
+  const phrase = "synthetic blocked fixture";
+  const blocked = new Set([sha256("unrelated synthetic identity")]);
+  assert.deepEqual(customerDataFindings(phrase, "first.md", blocked), []);
+  blocked.add(sha256(phrase));
+  const address = ["person", "production-domain.invalidated"].join("@");
+  const phone = ["202", "867", "5309"].join("-");
+  for (const path of ["first.md", "second.md"]) {
+    assert.deepEqual(customerDataFindings(`${address}\n${phone}\n${phrase}`, path, blocked), [
+      `${path}: non-synthetic email address`, `${path}: non-fictional phone number`, `${path}: prohibited customer identifier digest`
+    ]);
+  }
+  blocked.delete(sha256(phrase));
+  assert.deepEqual(customerDataFindings(phrase, "first.md", blocked), []);
+});
+
+test("digest cache eviction and oversized windows preserve detection", () => {
+  const blocked = new Set([sha256("synthetic blocked fixture")]);
+  const manyLines = Array.from({length: 33000}, (_, index) => `syntheticvalue${index}`).join("\n");
+  assert.deepEqual(customerDataFindings(manyLines, "fixture.md", blocked), []);
+  const wideLines = Array.from({length: 600}, (_, index) => `synthetic${index}${"x".repeat(1100)}`).join("\n");
+  assert.deepEqual(customerDataFindings(wideLines, "fixture.md", blocked), []);
+  assert.deepEqual(customerDataFindings(`${"x".repeat(17000)}\nsynthetic\nblocked\nfixture`, "fixture.md", blocked),
+    ["fixture.md: prohibited customer identifier digest"]);
+});
+
+test("native CPU profiles receive complete text checks while malformed or opaque profiles remain blocked", async () => {
+  const profile = {startTime: 1, endTime: 2, nodes: [{id: 1, callFrame: {functionName: "synthetic", url: "fixture.mjs"}}], samples: [1], timeDeltas: [1]};
+  assert.equal(isCpuProfileTextArtifact("fixture.cpuprofile", Buffer.from(JSON.stringify(profile))), true);
+  for (const bytes of [Buffer.from([0xff]), Buffer.from("hidden\0bytes"), Buffer.from("{}"), Buffer.from("not a profile")]) {
+    assert.equal(isCpuProfileTextArtifact("fixture.cpuprofile", bytes), false);
+  }
+  const directory = await mkdtemp(join(tmpdir(), "boc-privacy-cpu-"));
+  const path = join(directory, "fixture.cpuprofile"), opaque = join(directory, "opaque.cpuprofile");
+  profile.nodes[0].callFrame.functionName = ["person", "production-domain.invalidated"].join("@");
+  try {
+    await writeFile(path, JSON.stringify(profile));
+    await writeFile(opaque, Buffer.from([0xff]));
+    const result = await fixturePrivacyFailures([path, opaque]);
+    assert(result.some(item => item.includes("fixture.cpuprofile: non-synthetic email")));
+    assert(result.some(item => item.includes("opaque.cpuprofile: unreviewed binary")));
+  } finally { await rm(directory, {recursive: true, force: true}); }
+});
+
+test("privacy archive collection retains text and opaque binary admission", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "boc-privacy-archive-"));
+  const path = join(directory, "fixture.zip");
+  try {
+    await writeFile(path, createDeterministicZip([
+      {path: "retained.log", mode: 0o644, content: Buffer.from(["person", "production-domain.invalidated"].join("@"))},
+      {path: "opaque.png", mode: 0o644, content: Buffer.from("unapproved synthetic binary")}
+    ]));
+    const result = await fixturePrivacyFailures([path]);
+    assert(result.some(item => item.includes("fixture.zip!retained.log: non-synthetic email")));
+    assert(result.some(item => item.includes("fixture.zip!opaque.png: unreviewed binary")));
+  } finally { await rm(directory, {recursive: true, force: true}); }
+});
 
 test("proposed text drafts require a known source type and valid control-free UTF-8", () => {
   for (const path of ["workflow.md.proposed", "client.mjs.proposed", "record.json.proposed"]) {

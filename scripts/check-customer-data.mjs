@@ -19,6 +19,81 @@ const ignoredParts = new Set([".git", "node_modules", "vendor", "index"]);
 const emailPattern = /\b[A-Z0-9._%+-]+@([A-Z0-9.-]+\.[A-Z]{2,})\b/giu;
 const formattedNanpPattern = /(?<![\dA-Z])(?:\+?1[-.\s]?)?\(?([2-9]\d{2})\)?[-.\s](\d{3})[-.\s](\d{4})(?!\d)/giu;
 const compactNanpPattern = /(?<![\dA-Z])(?:\+?1)?([2-9]\d{2})(\d{3})(\d{4})(?![\dA-Z])/giu;
+const digestWindowCaches = new WeakMap();
+const maxDigestCacheEntries = 32768;
+const maxDigestCacheCharacters = 4 * 1024 * 1024;
+const maxDigestWindowCharacters = 16384;
+
+function digestMatcher(blockedDigests) {
+  const identity = JSON.stringify([...blockedDigests].sort());
+  let matcher = digestWindowCaches.get(blockedDigests);
+  if (!matcher || matcher.identity !== identity) {
+    matcher = {identity, digests: new Set(blockedDigests), windows: new Map(), characters: 0};
+    digestWindowCaches.set(blockedDigests, matcher);
+  }
+  return matcher;
+}
+
+function blockedWordWindow(words, matcher) {
+  const key = words.join(" ");
+  const cached = matcher.windows.get(key);
+  if (cached !== undefined) return cached;
+  let found = false;
+  for (let size = 1; size <= 8 && !found; size += 1) {
+    for (let index = 0; index + size <= words.length; index += 1) {
+      if (matcher.digests.has(sha256(words.slice(index, index + size).join(" ")))) {
+        found = true;
+        break;
+      }
+    }
+  }
+  if (key.length <= maxDigestWindowCharacters) {
+    while (matcher.windows.size >= maxDigestCacheEntries || matcher.characters + key.length > maxDigestCacheCharacters) {
+      const oldest = matcher.windows.keys().next().value;
+      matcher.characters -= oldest.length;
+      matcher.windows.delete(oldest);
+    }
+    matcher.windows.set(key, found);
+    matcher.characters += key.length;
+  }
+  return found;
+}
+
+function hasBlockedDigest(text, path, blockedDigests) {
+  if (blockedDigests.size === 0) return false;
+  const matcher = digestMatcher(blockedDigests);
+  let previous = [];
+  for (const line of `${path} ${text}`.split("\n")) {
+    const words = normalizeSensitiveText(line).split(" ").filter(Boolean);
+    if (!words.length) continue;
+    const window = previous.concat(words);
+    if (blockedWordWindow(window, matcher)) return true;
+    // Every one-to-eight-word phrase crossing any number of short/empty lines
+    // is included in the next exact window. The path/body boundary is identical.
+    previous = window.slice(-7);
+  }
+  return false;
+}
+
+// Read native V8 CPU profiles as their validated JSON text, preserving every
+// original field for the same customer-data checks. Other opaque files retain
+// the exact approved-binary requirement.
+export function isCpuProfileTextArtifact(path, body) {
+  if (extname(path).toLowerCase() !== ".cpuprofile") return false;
+  try {
+    const text = new TextDecoder("utf-8", {fatal: true}).decode(body);
+    if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(text)) return false;
+    const profile = JSON.parse(text);
+    return profile !== null && typeof profile === "object" && !Array.isArray(profile) &&
+      Number.isFinite(profile.startTime) && Number.isFinite(profile.endTime) && profile.endTime >= profile.startTime &&
+      Array.isArray(profile.nodes) && profile.nodes.length > 0 && profile.nodes.every(node =>
+        Number.isSafeInteger(node.id) && node.id > 0 && node.callFrame !== null && typeof node.callFrame === "object" &&
+        typeof node.callFrame.functionName === "string" && typeof node.callFrame.url === "string") &&
+      Array.isArray(profile.samples) && Array.isArray(profile.timeDeltas) && profile.samples.length === profile.timeDeltas.length &&
+      profile.samples.every(value => Number.isSafeInteger(value) && value > 0) &&
+      profile.timeDeltas.every(value => Number.isFinite(value) && value >= 0);
+  } catch { return false; }
+}
 
 export function isProposedTextArtifact(path, body) {
   if (extname(path).toLowerCase() !== ".proposed") return false;
@@ -140,16 +215,7 @@ export function customerDataFindings(text, path, blockedDigests) {
       }
     }
   }
-  const normalized = normalizeSensitiveText(`${path} ${text}`);
-  const words = normalized.split(" ").filter(Boolean);
-  for (let size = 1; size <= 8; size += 1) {
-    for (let index = 0; index + size <= words.length; index += 1) {
-      if (blockedDigests.has(sha256(words.slice(index, index + size).join(" ")))) {
-        findings.push(`${path}: prohibited customer identifier digest`);
-        return [...new Set(findings)];
-      }
-    }
-  }
+  if (hasBlockedDigest(text, path, blockedDigests)) findings.push(`${path}: prohibited customer identifier digest`);
   return [...new Set(findings)];
 }
 
@@ -302,7 +368,7 @@ async function scanPrivacyCandidates(candidates) {
         findings.push(...customerDataFindings(body.toString("utf8"), relative(root, path), blockedDigests));
         continue;
       }
-      if (isProposedTextArtifact(path, body)) {
+      if (isProposedTextArtifact(path, body) || isCpuProfileTextArtifact(path, body)) {
         findings.push(...customerDataFindings(body.toString("utf8"), relative(root, path), blockedDigests));
         continue;
       }
