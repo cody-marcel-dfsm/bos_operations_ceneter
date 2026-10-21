@@ -57,6 +57,13 @@ test("unchanged delivered checkout runs no release build and creates no version"
   assert.equal(await readFile(join(root, "package.json"), "utf8"), original);
   assert.equal(await pathExists(join(root, "unexpected-build")), false);
   assert.equal(git("status", "--porcelain=v1", "--untracked-files=all"), "");
+  git("update-ref", "-d", "refs/remotes/origin/main");
+  for (const command of [["node", ["scripts/bump-release-version.mjs"]], ["npm", ["run", "release"]]]) {
+    assert.throws(() => execFileSync(command[0], command[1], { cwd: root, encoding: "utf8", stdio: "pipe" }),
+      /baseline UNAVAILABLE/);
+  }
+  assert.equal(await readFile(join(root, "package.json"), "utf8"), original);
+  assert.equal(await pathExists(join(root, "unexpected-build")), false);
 });
 
 test("real repository contains every release-required version and documentation marker", async () => {

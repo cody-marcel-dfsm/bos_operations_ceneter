@@ -4,13 +4,18 @@ import test from "node:test";
 import { isolatedTestCohort } from "./helpers/isolated-test-cohort.mjs";
 
 const root = new URL("../", import.meta.url);
-const methods = JSON.parse(execFileSync("python3", ["-c", `
-import json,sys,unittest
+const discovery = JSON.parse(execFileSync("python3", ["-c", `
+import ast,json,sys,unittest
+from pathlib import Path
 sys.path.insert(0,"tests")
 from shipment_workflow_test import ShipmentWorkflow
-print(json.dumps(unittest.TestLoader().getTestCaseNames(ShipmentWorkflow)))
+module=ast.parse(Path("tests/shipment_workflow_test.py").read_text())
+case=next(node for node in module.body if isinstance(node,ast.ClassDef) and node.name=="ShipmentWorkflow")
+print(json.dumps({"callable":unittest.TestLoader().getTestCaseNames(ShipmentWorkflow), "declared":[node.name for node in case.body if isinstance(node,ast.FunctionDef) and node.name.startswith("test_")]}))
 `], { cwd: root, encoding: "utf8", stdio: "pipe" }));
+const methods = discovery.callable;
 assert.ok(methods.length > 0);
+assert.deepEqual(methods, [...discovery.declared].sort());
 const cohort = isolatedTestCohort(methods.map(method => ({ name: method, command: "python3",
   args: ["tests/shipment_workflow_test.py", `ShipmentWorkflow.${method}`], cwd: root })), { concurrency: 4 });
 for (const signal of ["SIGINT", "SIGTERM"]) {
