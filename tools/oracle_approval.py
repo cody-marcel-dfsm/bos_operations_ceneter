@@ -1027,7 +1027,7 @@ def _validation_environment(extra_keys: Sequence[str] = ()) -> tuple[dict, dict,
 
 REVIEW_POLICY_MODULES = ("tools/oracle_approval.py", "tools/codex_child_model.py", "tools/vault_index.py",
                          "tools/publication_admission.py", "tools/shipment_state.py", "tools/publication_status.py",
-                         "tools/oracle_parallel.py", "tools/oracle_lifecycle.py")
+                         "tools/oracle_parallel.py", "tools/oracle_source_frontier.py", "tools/oracle_lifecycle.py")
 
 
 def _review_policy_sources(root: Path, tree: str | None = None) -> dict:

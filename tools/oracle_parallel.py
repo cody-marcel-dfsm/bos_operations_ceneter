@@ -59,7 +59,7 @@ def partition(context, binding, digest):
     return dict(plan, plan_sha256=digest(plan))
 
 
-def packet(context, plan, cohort, parent_context, digest):
+def packet(context, plan, cohort, parent_context, digest, prepared_source=None):
     assigned = set(cohort["required_paths"])
     selected = set(assigned)
     shared = set(context.get("guards", {}).get("authority_digests", {}))
@@ -94,6 +94,8 @@ def packet(context, plan, cohort, parent_context, digest):
              "publication_scope": context["publication_scope"] if cohort["id"] == AREAS[0] else {
                  "range_sha256": context["publication_scope"]["range_sha256"]},
              "finding_disposition_owner": AREAS[0]}
+    if prepared_source is not None:
+        value['prepared_source'] = prepared_source
     return dict(value, packet_sha256=digest(value))
 
 
@@ -264,13 +266,26 @@ def review(o, root, tree, paths, evidence, owner):
     plan_path = run / "cohort-plan.json"
     o._atomic_write(plan_path, o._pretty(plan))
     schema = json.loads(o._custody_read(root, root / ".agents/skills/oracle/review-output.schema.json")[1])
-    jobs = []
+    if __package__:
+        from . import oracle_source_frontier as frontier
+    else:
+        import oracle_source_frontier as frontier
+    with o._phase("source_frontier_seconds"):
+        source_snapshot = frontier.snapshot(o, root, context, plan["required_paths"])
+    jobs, prepared_seals, source_prompts = [], {}, {}
     for cohort in plan["cohorts"]:
         child = o._metadata_run(root, run / "cohorts", cohort["id"] + "-")
-        child_context = packet(context, plan, cohort, context_path, digest)
+        prepared, source_seal, source_prompt = frontier.prepare(o, root, context, plan, cohort, child, source_snapshot)
+        child_context = packet(context, plan, cohort, context_path, digest, prepared)
         o._atomic_write(child / "cohort-context.json", o._pretty(child_context))
         o._atomic_write(child / "output.schema.json", o._pretty(output_schema(schema, plan, cohort)))
+        source_seal.update(o._files(root, [str(child / "cohort-context.json"), str(child / "output.schema.json")]))
+        prepared_seals[cohort['id']] = source_seal
+        source_prompts[cohort['id']] = source_prompt
         jobs.append((cohort, child))
+    seals_path = run / "prepared-source-seals.json"
+    seals_raw = o._pretty(prepared_seals)
+    o._atomic_write(seals_path, seals_raw)
     started = time.monotonic()
 
     def worker(cohort, child):
@@ -287,6 +302,10 @@ def review(o, root, tree, paths, evidence, owner):
                       "candidate/publication range and disposition every open prior finding. Other cohorts assess only "
                       "their assigned production/verification area; report local positive effects and use local absence defaults, following current "
                       "governing criteria. No serial final model or new reviewer is permitted.")
+            prompt += ("\nMechanically prepared immutable source pages follow. They provide navigation, grant no coverage or approval, "
+                       "and preserve mandatory governing-original reads. Complete unit/page and original-source locators, budget gaps "
+                       "and unresolved construction dependencies remain in source-frontier.json. Read remaining pages only as needed.\n"
+                       + source_prompts[cohort['id']])
             envelope = o._review_process(root, prompt, "reviewer", schema_path=child / "output.schema.json",
                                          cohort_policy=COHORT_POLICY)
             return envelope
@@ -330,13 +349,27 @@ def review(o, root, tree, paths, evidence, owner):
                         "provenance_custody": o._custody_files(root, [child / "result.json", child / "cohort-context.json", plan_path])})
                 except (OSError, ValueError, KeyError, TypeError, o.OracleApprovalError) as recovery:
                     failures.append(cohort["id"] + ": final output remains unavailable/unbound: " + str(recovery))
+    seal_manifest_current = o._custody_read(root, seals_path)[1] == seals_raw
+    for cohort, child in jobs:
+        expected = prepared_seals[cohort['id']]
+        try:
+            unchanged = seal_manifest_current and o._files(root, list(expected)) == expected
+        except (OSError, ValueError, o.OracleApprovalError):
+            unchanged = False
+        if not unchanged:
+            failures.append(cohort['id'] + ': prepared source/context/schema integrity failed; raw output remains unadopted')
+            envelopes.pop(cohort['id'], None)
+            unadopted = [item for item in unadopted if item['cohort_id'] != cohort['id']]
+            o._atomic_write(child / 'prepared-source-error.json', o._pretty({
+                'cohort_id': cohort['id'], 'original_seal': expected,
+                'eligibility': 'NONE', 'reason': 'Prepared material changed; no coverage from this cohort is admitted'}))
     if json.loads(o._custody_read(root, plan_path)[1]) != plan or digest(json.loads(o._custody_read(root, context_path)[1])) != plan["context_sha256"]:
         failures.append("Prepared partition plan or source context changed during assessment")
     result = aggregate(o, plan, context, envelopes, failures)
     if unadopted:
         result["unadopted_cohort_assessments"] = unadopted
     artifacts = o._files(root, [str(path) for _, child in jobs for path in child.iterdir() if path.is_file()])
-    artifacts.update(o._files(root, [str(plan_path)]))
+    artifacts.update(o._files(root, [str(plan_path), str(seals_path)]))
     spans = [json.loads(o._custody_read(root, child / "cohort-timing.json")[1]) for _, child in jobs]
     events = sorted([(span["started_offset_seconds"], 1) for span in spans] +
                     [(span["finished_offset_seconds"], -1) for span in spans])
