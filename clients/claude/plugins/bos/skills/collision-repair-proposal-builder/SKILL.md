@@ -2,8 +2,8 @@
 name: collision-repair-proposal-builder
 description: Build and revise collision-repair automation offers, scripts, onboarding questionnaires, proposals, contract-style scope, payment sections, PDFs, and prospect demo sites using the active tenant's verified offer and systems.
 metadata:
-  version: "1.0.0"
-  requires: "{\"bos-mcp-client\":\"1.0.0\",\"corporate-counsel\":\"1.0.0\"}"
+  version: "1.0.1"
+  requires: "{\"bos-mcp-client\":\"1.0.1\",\"corporate-counsel\":\"1.0.1\"}"
 ---
 
 

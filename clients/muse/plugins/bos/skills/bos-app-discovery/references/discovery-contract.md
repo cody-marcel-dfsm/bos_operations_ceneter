@@ -306,6 +306,13 @@ visible with sanitized recovery guidance.
 Every operation limit includes integer `maximum_duration_seconds` from 1 through
 900 and integer `maximum_fan_out` from 1 through 100. Missing or out-of-range
 values make the service description invalid; the client never supplies defaults.
+Original-file binary discovery may additionally declare matching
+`maximum_file_bytes` and `maximum_attachment_bytes` through 20 MiB and
+`maximum_preparation_seconds` through 45. The explicit
+`provider_md5_if_available` response variant retains its complete header list,
+requires the filename, length, MIME type and correlation headers, and permits
+`Content-MD5` to be absent on a response. Preserve that integrity declaration in
+contract facts; the existing six-header SHA-256 variant retains its requirements.
 The corresponding deterministic operation Describe response repeats those
 exact fields for every ready operation. Validate it with
 `validate-discovery.mjs operation-describe` before planning or invocation.
