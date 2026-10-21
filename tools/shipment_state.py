@@ -92,7 +92,11 @@ def selection(root: Path) -> dict:
     result = {"kind": "boc-shipment-selection-v1", "candidate_commit": commit}
     if o._git(root, "status", "--porcelain=v1", "--untracked-files=all").strip():
         return dict(result, state="PREPARE", reason="Uncommitted authored work requires preparation")
-    baseline = o._git(root, "rev-parse", "refs/remotes/origin/main^{commit}").strip()
+    try:
+        baseline = o._git(root, "rev-parse", "refs/remotes/origin/main^{commit}").strip()
+    except o.OracleApprovalError:
+        return dict(result, state="BASELINE_UNAVAILABLE",
+                    reason="Publication baseline UNAVAILABLE: fetch origin/main before delivery")
     result["published_baseline"] = baseline
     if _ancestor(root, commit, baseline):
         return dict(result, state="NO_CHANGES", reason="Candidate already belongs to published main")

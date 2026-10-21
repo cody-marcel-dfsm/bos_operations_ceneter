@@ -153,7 +153,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     console.log(selected.state);
     process.exit(0);
   }
-  if (selected.state === "INTEGRATE") throw new Error(selected.reason);
+  if (["INTEGRATE", "BASELINE_UNAVAILABLE"].includes(selected.state)) throw new Error(selected.reason);
   const published = JSON.parse(execFileSync("git", ["show", "refs/remotes/origin/main:package.json"],
     { cwd: scriptRoot, encoding: "utf8" }));
   const current = await readJson(join(scriptRoot, "package.json"));
