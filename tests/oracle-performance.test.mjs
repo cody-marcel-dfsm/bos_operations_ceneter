@@ -190,6 +190,7 @@ test("receipts retain actual structured reviewer process settings without pinnin
 import tempfile,subprocess,json,shutil
 from pathlib import Path
 from tools import oracle_approval as o
+from tools import oracle_lifecycle as lifecycle
 repository=Path.cwd();approved={'verdict':'APPROVED','findings':[],'authentication_impact':'NONE','owner_approval_status':'NOT_REQUIRED','api_version_assessment':{'impact':'NONE','request_kind':'NOT_REQUIRED','requested_change':None,'request_quote':None,'request_evidence':None}}
 with tempfile.TemporaryDirectory() as directory:
     root=Path(directory).resolve()
@@ -202,7 +203,11 @@ with tempfile.TemporaryDirectory() as directory:
     (root/'.agents/skills/oracle/review-output.schema.json').write_bytes((repository/'.agents/skills/oracle/review-output.schema.json').read_bytes())
     (root/'tools').mkdir();shutil.copy(repository/'tools/codex_child_model.py',root/'tools/codex_child_model.py')
     git('add','.');git('commit','-qm','base')
-    original_run=subprocess.run
+    original_run=subprocess.run;original_popen=subprocess.Popen;reviewer_launches=[]
+    def guarded(command,*args,**kwargs):
+        assert not any(Path(str(arg)).name=='codex' for arg in command),'Unexpected actual reviewer launch'
+        return original_popen(command,*args,**kwargs)
+    subprocess.Popen=guarded
     def child(command,**kwargs):
         if command[0]!='codex':return original_run(command,**kwargs)
         assert '--ephemeral' in command and '--ignore-user-config' in command
@@ -225,6 +230,11 @@ with tempfile.TemporaryDirectory() as directory:
                 for name in packet['cohort']['integration_checks']])
         Path(command[command.index('--output-last-message')+1]).write_text(json.dumps(result))
         return subprocess.CompletedProcess(command,0,'retained stdout','retained stderr')
+    def managed(owner,root,run,command,environment,controller):
+        assert controller is not None
+        reviewer_launches.append(command)
+        return child(command,cwd=root,capture_output=True,text=True,env=environment)
+    lifecycle.reviewer_process=managed
     o.subprocess.run=child;o.selected_model=lambda:'actual-caller-model'
     o.review_proposal(root,'Problem: repeated; Cause: setup; Recommended change: combined',[],None)
     candidate=root/'candidate.txt';candidate.write_text('candidate');git('add','candidate.txt')
@@ -242,6 +252,7 @@ with tempfile.TemporaryDirectory() as directory:
     o.selected_model=lambda:'future-task-model'
     o._environment_digest=lambda:'later-git-hook-launcher-environment'
     o.verify_staged(root)
+    assert reviewer_launches,'Expected current managed reviewer seam to be exercised'
 `);
 });
 

@@ -167,6 +167,42 @@ def _checked(o, envelope, plan, cohort, context):
     return assessment
 
 
+def _unadopted_result(o, root, child, plan_path, plan, cohort, context, original_packet, reason):
+    """Retain a safely assigned native response without adopting any of its claims."""
+    raw = o._custody_read(root, child / 'result.json')[1]
+    envelope = json.loads(raw)
+    _assigned_result(o, envelope, plan, cohort)
+    admission_error = None
+    try:
+        _checked(o, envelope, plan, cohort, context)
+    except (o.OracleReviewIncomplete, o.OracleApprovalError) as error:
+        admission_error = type(error).__name__ + ': ' + str(error)
+    # Preparation may itself have changed. Preserve the controller's original
+    # assignment bytes, rather than relabeling altered preparation as original.
+    provenance_paths = []
+    for path, expected, archive in (
+            (child / 'cohort-context.json', original_packet, child / 'unadopted-context.json'),
+            (plan_path, o._pretty(plan), child / 'unadopted-plan.json')):
+        try:
+            unchanged = o._custody_read(root, path)[1] == expected
+        except (OSError, ValueError, o.OracleApprovalError):
+            unchanged = False
+        if not unchanged:
+            o._atomic_write(archive, expected)
+            path = archive
+        provenance_paths.append(path)
+    context_file, original_plan = provenance_paths
+    return {'cohort_id': cohort['id'], 'actual_outcome': 'ERROR', 'eligibility': 'NONE',
+            'reason': reason, 'admission_error': admission_error,
+            'reported_review_status': envelope['assessment']['review_status'],
+            'reported_verdict': envelope['assessment'].get('verdict'),
+            'assessment': envelope['assessment'], 'result_file': str(child / 'result.json'),
+            'result_sha256': o._sha(raw), 'cohort_context_file': str(context_file),
+            'cohort_context_sha256': o._custody_read(root, context_file)[0]['sha256'],
+            'plan_file': str(original_plan), 'plan_file_sha256': o._custody_read(root, original_plan)[0]['sha256'],
+            'provenance_custody': o._custody_files(root, [child / 'result.json', context_file, original_plan])}
+
+
 def aggregate(o, plan, context, envelopes, failures):
     assessments, by_cohort, errors = [], {}, list(failures)
     for cohort in plan["cohorts"]:
@@ -272,12 +308,13 @@ def review(o, root, tree, paths, evidence, owner):
         import oracle_source_frontier as frontier
     with o._phase("source_frontier_seconds"):
         source_snapshot = frontier.snapshot(o, root, context, plan["required_paths"])
-    jobs, prepared_seals, source_prompts = [], {}, {}
+    jobs, prepared_seals, source_prompts, original_packets = [], {}, {}, {}
     for cohort in plan["cohorts"]:
         child = o._metadata_run(root, run / "cohorts", cohort["id"] + "-")
         prepared, source_seal, source_prompt = frontier.prepare(o, root, context, plan, cohort, child, source_snapshot)
         child_context = packet(context, plan, cohort, context_path, digest, prepared)
-        o._atomic_write(child / "cohort-context.json", o._pretty(child_context))
+        original_packets[cohort['id']] = o._pretty(child_context)
+        o._atomic_write(child / "cohort-context.json", original_packets[cohort['id']])
         o._atomic_write(child / "output.schema.json", o._pretty(output_schema(schema, plan, cohort)))
         source_seal.update(o._files(root, [str(child / "cohort-context.json"), str(child / "output.schema.json")]))
         prepared_seals[cohort['id']] = source_seal
@@ -330,23 +367,8 @@ def review(o, root, tree, paths, evidence, owner):
                 failures.append(failure)
                 child = next(path for item, path in jobs if item["id"] == cohort["id"])
                 try:
-                    raw = o._custody_read(root, child / "result.json")[1]
-                    envelope = json.loads(raw)
-                    _assigned_result(o, envelope, plan, cohort)
-                    admission_error = None
-                    try:
-                        _checked(o, envelope, plan, cohort, context)
-                    except (o.OracleReviewIncomplete, o.OracleApprovalError) as error:
-                        admission_error = type(error).__name__ + ': ' + str(error)
-                    unadopted.append({"cohort_id": cohort["id"], "actual_outcome": "ERROR", "reason": failure,
-                        "admission_error": admission_error,
-                        "reported_review_status": envelope["assessment"]["review_status"],
-                        "reported_verdict": envelope["assessment"].get("verdict"),
-                        "assessment": envelope["assessment"], "result_file": str(child / "result.json"),
-                        "result_sha256": o._sha(raw), "cohort_context_file": str(child / "cohort-context.json"),
-                        "cohort_context_sha256": o._custody_read(root, child / "cohort-context.json")[0]["sha256"],
-                        "plan_file": str(plan_path), "plan_file_sha256": o._custody_read(root, plan_path)[0]["sha256"],
-                        "provenance_custody": o._custody_files(root, [child / "result.json", child / "cohort-context.json", plan_path])})
+                    unadopted.append(_unadopted_result(o, root, child, plan_path, plan, cohort, context,
+                                                      original_packets[cohort['id']], failure))
                 except (OSError, ValueError, KeyError, TypeError, o.OracleApprovalError) as recovery:
                     failures.append(cohort["id"] + ": final output remains unavailable/unbound: " + str(recovery))
     seal_manifest_current = o._custody_read(root, seals_path)[1] == seals_raw
@@ -357,9 +379,19 @@ def review(o, root, tree, paths, evidence, owner):
         except (OSError, ValueError, o.OracleApprovalError):
             unchanged = False
         if not unchanged:
-            failures.append(cohort['id'] + ': prepared source/context/schema integrity failed; raw output remains unadopted')
+            reason = cohort['id'] + ': prepared source/context/schema integrity failed; raw output remains unadopted'
+            failures.append(reason)
+            retained = next((item for item in unadopted if item['cohort_id'] == cohort['id']), None)
+            if retained is None:
+                try:
+                    retained = _unadopted_result(o, root, child, plan_path, plan, cohort, context,
+                                                original_packets[cohort['id']], reason)
+                    unadopted.append(retained)
+                except (OSError, ValueError, KeyError, TypeError, o.OracleApprovalError) as recovery:
+                    failures.append(cohort['id'] + ': final output remains unavailable/unbound: ' + str(recovery))
+            if retained is not None:
+                retained['prepared_integrity_error'] = reason
             envelopes.pop(cohort['id'], None)
-            unadopted = [item for item in unadopted if item['cohort_id'] != cohort['id']]
             o._atomic_write(child / 'prepared-source-error.json', o._pretty({
                 'cohort_id': cohort['id'], 'original_seal': expected,
                 'eligibility': 'NONE', 'reason': 'Prepared material changed; no coverage from this cohort is admitted'}))

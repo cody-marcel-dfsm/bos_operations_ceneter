@@ -5,7 +5,7 @@ import ast
 import inspect
 import json
 import os
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 import subprocess
 import sys
 import tempfile
@@ -15,9 +15,26 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools import oracle_approval as o
 from tools import oracle_parallel as parallel
+from tools import oracle_lifecycle as lifecycle
 
 
 class ReviewSeries(unittest.TestCase):
+    @contextmanager
+    def synthetic_native_child(self, run):
+        """Exercise native result handling while forbidding real reviewer launches."""
+        original_popen = subprocess.Popen
+        def guarded(command, *args, **kwargs):
+            self.assertFalse(any(Path(str(arg)).name == 'codex' for arg in command),
+                             'Synthetic fixture attempted an actual Codex process')
+            return original_popen(command, *args, **kwargs)
+        def managed(o, root, metadata, command, environment, controller):
+            self.assertIsNotNone(controller)
+            return run(command, cwd=root, capture_output=True, text=True, env=environment)
+        with patch.object(lifecycle, 'reviewer_process', side_effect=managed), \
+                patch.object(subprocess, 'Popen', side_effect=guarded), \
+                patch.object(o.subprocess, 'run', side_effect=run):
+            yield
+
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
@@ -650,7 +667,7 @@ class ReviewSeries(unittest.TestCase):
                         if failure == "diagnostic" and path.name == "stdout.log":
                             raise OSError("synthetic diagnostic publication failure")
                         return actual_write(path, raw)
-                    with patch.object(o.subprocess, "run", side_effect=run), \
+                    with self.synthetic_native_child(run), \
                             patch.object(o, "_atomic_write", side_effect=write):
                         return o._review_process(self.root, "synthetic review request", "reviewer")
                 self.submit(interrupted, error=o.OracleApprovalError if failure == "process_exit" else OSError)
@@ -2461,7 +2478,7 @@ class ReviewSeries(unittest.TestCase):
                 output.write_text(json.dumps(result))
                 self.native_external_return(output)
                 return subprocess.CompletedProcess(command, 0, stdout="synthetic diagnostic", stderr="")
-            with patch.object(o.subprocess, "run", side_effect=run):
+            with self.synthetic_native_child(run):
                 return o._review_process(self.root, "synthetic request", "reviewer")
         self.submit(reviewer, error=o.OracleApprovalError)
         latest = o._read_rounds(o._series_directory(self.root, self.base))[-1]

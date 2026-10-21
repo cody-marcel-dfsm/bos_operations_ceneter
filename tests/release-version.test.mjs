@@ -36,8 +36,9 @@ test("unchanged delivered checkout runs no release build and creates no version"
   await mkdir(join(root, "scripts"));
   await mkdir(join(root, "tools"));
   await writeFile(join(root, ".gitignore"), "__pycache__/\n");
-  for (const path of ["scripts/bump-release-version.mjs", "scripts/release.mjs", "tools/shipment_state.py",
-    "tools/oracle_approval.py", "tools/codex_child_model.py"]) {
+  const nativeModules = (await readdir(join(repositoryRoot, "tools")))
+    .filter((name) => name.endsWith(".py")).map((name) => `tools/${name}`);
+  for (const path of ["scripts/bump-release-version.mjs", "scripts/release.mjs", ...nativeModules]) {
     await writeFile(join(root, path), await readFile(join(repositoryRoot, path)));
   }
   await writeJson(join(root, "package.json"), { type: "module", version: "0.4.27", scripts: {

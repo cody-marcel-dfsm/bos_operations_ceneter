@@ -1252,8 +1252,9 @@ def _raw_assessment_origins(root: Path, rounds: list[dict]):
             context_file = route(child["cohort_context_file"])
             plan_file = route(child["plan_file"])
             if (result_file.name != "result.json" or result_file.parent.parent != run / "cohorts"
-                    or context_file != result_file.parent / "cohort-context.json"
-                    or plan_file != run / "cohort-plan.json" or child.get("actual_outcome") != "ERROR"):
+                    or context_file not in {result_file.parent / "cohort-context.json", result_file.parent / "unadopted-context.json"}
+                    or plan_file not in {run / "cohort-plan.json", result_file.parent / "unadopted-plan.json"}
+                    or child.get("actual_outcome") != "ERROR"):
                 raise OracleApprovalError("Unadopted cohort provenance is outside its native run")
             provenance = {}
             values = {}
@@ -1343,7 +1344,9 @@ def _raw_assessment_navigation(root: Path, rounds: list[dict], inputs: dict, gua
                            "origin_record_sha256": record["record_sha256"],
                            "assessment_pointer": raw.get("assessment_pointer", "/raw_assessment/assessment"),
                            **({"cohort_id": raw["cohort_id"], "result_file": raw["result_file"],
-                               "result_sha256": raw["result_sha256"]} if raw.get("cohort_id") else {}),
+                               "result_sha256": raw["result_sha256"], "eligibility": "NONE",
+                               "reason": raw.get("reason"),
+                               "prepared_integrity_error": raw.get("prepared_integrity_error")} if raw.get("cohort_id") else {}),
                            "guard_changes": _observation_guard_changes(root, guards, record),
                            "finding_ids": [item["id"] for item in findings
                                            if isinstance(item, dict) and isinstance(item.get("id"), str)],
