@@ -512,7 +512,7 @@ def _committed_effect_history(root: Path, commit: str) -> tuple[list, list]:
 def _proposal_origin(root: Path, proposal: dict, candidate: str) -> str:
     origin = proposal.get("lifecycle_origin", proposal["base_commit"])
     path = receipt_path(root).parent / "lifecycle-origin.json"
-    if path.exists():
+    if os.path.lexists(path):
         raw = _custody_read(root, path)[1]
         record = json.loads(raw)
         body = {key: value for key, value in record.items() if key != "origin_sha256"}
@@ -1079,6 +1079,10 @@ def _environment_digest() -> str:
 
 def _series_directory(root: Path, base: str) -> Path:
     # Repair commits move HEAD while the same sealed proposal owns the lifecycle.
+    if os.path.lexists(receipt_path(root).parent / "lifecycle-origin.json"):
+        origin = _proposal_origin(root, {"base_commit": base}, base)
+        identity = _sha(_canonical({"repository": str(root.resolve()), "base_commit": origin}))[:24]
+        return receipt_path(root).parent / "series" / identity
     try:
         raw = _custody_read(root, proposal_path(root))[1]
         proposal = json.loads(raw)

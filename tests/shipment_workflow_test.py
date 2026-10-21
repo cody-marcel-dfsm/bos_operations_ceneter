@@ -245,6 +245,19 @@ class ShipmentWorkflow(unittest.TestCase):
         with self.assertRaisesRegex(o.OracleApprovalError, "no verified native approval"):
             o.verify_commit(self.root, commit)
 
+    def test_corrupt_lifecycle_origin_refuses_series_reset_and_preserves_history(self):
+        commit = self.validate()
+        directory = o._series_directory(self.root, commit)
+        rounds = {path.name: path.read_bytes() for path in directory.glob("round-*.json")}
+        origin = o.receipt_path(self.root).parent / "lifecycle-origin.json"
+        raw = origin.read_bytes()
+        origin.write_bytes(raw + b" ")
+        with self.assertRaisesRegex(o.OracleApprovalError, "lifecycle origin custody"):
+            o._series_directory(self.root, commit)
+        self.assertEqual(rounds, {path.name: path.read_bytes() for path in directory.glob("round-*.json")})
+        origin.write_bytes(raw)
+        self.assertEqual(o._series_directory(self.root, commit), directory)
+
     def test_changed_instructions_retain_observations_and_require_current_missing_coverage(self):
         self.validate()
         self.fixture.change("AGENTS.md", "synthetic governance with current changed criteria")
