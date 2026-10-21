@@ -24,6 +24,11 @@ repeated reads. Expand inspection only for a changed input or unresolved behavio
    before interpreting validation results or changes. Reuse current loaded
    context. Use the coordinator's one complete family inventory when supplied;
    perform no second inventory. Run `python3 tools/shipment_state.py status`.
+   `REVIEW_IN_PROGRESS` follows the verified native parent with `npm run
+   oracle:review`; that invocation observes its existing parallel areas and exact
+   outcome. Keep normal commits available: the owner retains original clocks and
+   evidence, follows new committed deltas, and reloads changed producer code under
+   the same process identity before continuing affected validation.
    `NO_CHANGES` ends this member immediately with zero test, model-review, build,
    version-bump or publication work. A clean tree can still have unvalidated
    committed work: `VALIDATE` selects it. `DELIVER` resumes the existing exact
