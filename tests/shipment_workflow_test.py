@@ -258,6 +258,20 @@ class ShipmentWorkflow(unittest.TestCase):
         origin.write_bytes(raw)
         self.assertEqual(o._series_directory(self.root, commit), directory)
 
+    def test_identical_refresh_preserves_current_approval_and_changed_scope_requires_current_decision(self):
+        commit = self.validate()
+        checkpoint = shipment.checkpoint_path(self.root).read_bytes()
+        self.fixture.propose()
+        self.assertEqual(shipment.selection(self.root)["state"], "DELIVER")
+        result = {"verdict": "APPROVED", "findings": [], "authentication_impact": "NONE",
+                  "owner_approval_status": "NOT_REQUIRED", "api_version_assessment": self.fixture.assessment()}
+        o.review_proposal(self.root, "Problem: changed requirement; Cause: changed criterion; Recommended change: assess it",
+                          [], None, lambda *args: result)
+        self.assertEqual(shipment.selection(self.root)["state"], "VALIDATE")
+        self.assertEqual(shipment.checkpoint_path(self.root).read_bytes(), checkpoint)
+        with self.assertRaisesRegex(o.OracleApprovalError, "proposal scope changed"):
+            publication._source_receipt(self.root, commit)
+
     def test_changed_instructions_retain_observations_and_require_current_missing_coverage(self):
         self.validate()
         self.fixture.change("AGENTS.md", "synthetic governance with current changed criteria")

@@ -2229,6 +2229,8 @@ def _receipt_current_context(root: Path, payload: dict, pending_evidence: dict[s
         raise OracleApprovalError("Oracle current review context provenance is malformed") from exc
     if not valid:
         raise OracleApprovalError("Oracle current review context binding is invalid")
+    if verify_proposal(root)["proposal_sha256"] != context["proposal_scope"]["sha256"]:
+        raise OracleApprovalError("Oracle approval proposal scope changed")
     for proof in record["verified_validations"]:
         _validation_record(root, proof["evidence_path"], proof["inputs"], proof["environment_digest"],
                            check_environment=False, **({"expected_base": validation_base} if validation_base is not None else {}))
