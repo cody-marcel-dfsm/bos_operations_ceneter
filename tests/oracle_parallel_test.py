@@ -153,6 +153,29 @@ class ParallelReview(unittest.TestCase):
                     responses[first]['assessment']['resolutions'] = [{'id': 'F001', 'explanation': 'Resolved'}]
                 self.assertEqual(parallel.aggregate(o, self.plan, self.context, responses, [])['verdict'], 'ERROR')
 
+    def test_global_protected_effect_and_missing_authority_survive_unaffected_specialists(self):
+        responses = self.all_envelopes()
+        global_assessment = responses[parallel.AREAS[0]]['assessment']
+        effect = {'id': 'trust-change', 'kind': 'credential-trust', 'boundary': 'current connection',
+                  'description': 'Concrete protected trust change', 'paths': ['source.py'],
+                  'inputs': [{'path': 'source.py', 'digest': self.context['input_hashes']['source.py']}]}
+        global_assessment.update(authentication_impact='AUTHENTICATION', owner_approval_status='MISSING',
+                                 protected_effects={'active': [effect], 'dispositions': []})
+        result = parallel.aggregate(o, self.plan, self.context, responses, [])
+        self.assertEqual((result['review_status'], result['verdict']), ('COMPLETE', 'APPROVED'))
+        self.assertEqual(result['authentication_impact'], 'AUTHENTICATION')
+        self.assertEqual(result['owner_approval_status'], 'MISSING')
+        self.assertEqual(result['protected_effects'], global_assessment['protected_effects'])
+        # Publication still receives the exact protected effect and missing
+        # authority. Technical approval never manufactures deployment permission.
+        responses[parallel.AREAS[1]]['assessment']['protected_effects']['active'] = [copy.deepcopy(effect)]
+        self.assertEqual(parallel.aggregate(o, self.plan, self.context, responses, [])['verdict'], 'APPROVED')
+        responses[parallel.AREAS[1]]['assessment']['protected_effects']['active'][0]['boundary'] = 'other trust boundary'
+        conflict = parallel.aggregate(o, self.plan, self.context, responses, [])
+        self.assertEqual(conflict['verdict'], 'ERROR')
+        self.assertEqual(conflict['protected_effects'], global_assessment['protected_effects'])
+        self.assertIn('crosscutting reconciliation', ' '.join(conflict['limitations']))
+
     def test_all_findings_are_consolidated_and_whole_candidate_native_gate_still_runs(self):
         responses = self.all_envelopes()
         for index, cohort in enumerate(self.plan['cohorts']):

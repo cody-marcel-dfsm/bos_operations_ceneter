@@ -24,7 +24,10 @@ exact current identity from the sealed parent context when actually consumed.
 Use compact area context and original proof pointers; open larger sealed records
 only for an unresolved fact. Do not repeat unchanged checks or reread whole history.
 Retain existing finding IDs. Only the crosscutting cohort dispositions prior
-findings and global integration criteria. Never write source, stage, commit,
+findings and global integration criteria. Specialists classify their assigned
+area only: empty/NONE/NOT_REQUIRED fields describe local absence, while positive
+effects must be reported precisely for native reconciliation against the complete
+crosscutting assessment. Never write source, stage, commit,
 publish a receipt, launch another review, or change proposal/review pointers.
 """
 
@@ -144,15 +147,18 @@ def _checked(o, envelope, plan, cohort, context):
 
 
 def aggregate(o, plan, context, envelopes, failures):
-    assessments, errors = [], list(failures)
+    assessments, by_cohort, errors = [], {}, list(failures)
     for cohort in plan["cohorts"]:
         try:
-            assessments.append(_checked(o, envelopes[cohort["id"]], plan, cohort, context))
+            assessment = _checked(o, envelopes[cohort["id"]], plan, cohort, context)
+            assessments.append(assessment)
+            by_cohort[cohort["id"]] = assessment
         except o.OracleReviewIncomplete as exc:
             partial = copy.deepcopy(envelopes[cohort["id"]]["assessment"])
             partial.update(review_status="INCOMPLETE", verdict="INCOMPLETE",
                            limitations=[*partial.get("limitations", []), str(exc)])
             assessments.append(partial)
+            by_cohort[cohort["id"]] = partial
         except (o.OracleApprovalError, KeyError, ValueError, TypeError) as exc:
             errors.append(cohort["id"] + ": " + str(exc))
     default_api = {"impact": "NONE", "request_kind": "NOT_REQUIRED", "requested_change": None,
@@ -162,12 +168,33 @@ def aggregate(o, plan, context, envelopes, failures):
               "repair_plan": "\n".join(item.get("repair_plan", "") for item in assessments if item.get("repair_plan")),
               "authentication_impact": "NONE", "owner_approval_status": "NOT_REQUIRED",
               "api_version_assessment": default_api, "protected_effects": {"active": [], "dispositions": []}}
-    for field in ("authentication_impact", "owner_approval_status", "api_version_assessment", "protected_effects"):
-        values = [item.get(field) for item in assessments]
-        if values:
-            result[field] = values[0]
-            if any(value != values[0] for value in values[1:]):
-                errors.append("Conflicting independent " + field + " classifications")
+    # The integration assignment alone assesses the complete publication scope.
+    # Local absence in a specialist area never erases a global effect or makes
+    # specialists repeat the whole candidate. Positive discoveries must already
+    # agree with the complete assessment, otherwise reconciliation is unfinished.
+    global_assessment = by_cohort.get(AREAS[0])
+    defaults = {"authentication_impact": "NONE", "owner_approval_status": "NOT_REQUIRED",
+                "api_version_assessment": default_api, "protected_effects": {"active": [], "dispositions": []}}
+    if global_assessment is None:
+        errors.append("Missing complete crosscutting classification")
+    else:
+        for field, default in defaults.items():
+            result[field] = copy.deepcopy(global_assessment.get(field))
+            for identity, specialist in by_cohort.items():
+                if identity == AREAS[0]:
+                    continue
+                value = specialist.get(field)
+                if value == default:
+                    continue
+                if field == "protected_effects" and isinstance(value, dict) and isinstance(result[field], dict):
+                    agrees = set(value) == {"active", "dispositions"} and all(
+                        isinstance(value[key], list) and all(item in result[field].get(key, []) for item in value[key])
+                        for key in ("active", "dispositions"))
+                else:
+                    agrees = value == result[field]
+                if not agrees:
+                    errors.append(identity + ": positive " + field +
+                                  " requires crosscutting reconciliation with the complete assessment")
     for field, identity in (("coverage", "path"), ("validations", "evidence_path"), ("findings", "id"), ("resolutions", "id")):
         unique = {}
         for assessment in assessments:
@@ -224,7 +251,7 @@ def review(o, root, tree, paths, evidence, owner):
                       "Use existing finding IDs; for new findings use prefix " + cohort["new_finding_prefix"] +
                       ". The crosscutting cohort must independently cover all six integration concerns over the complete "
                       "candidate/publication range and disposition every open prior finding. Other cohorts assess only "
-                      "their assigned production/verification area; classify actual effects consistently with current "
+                      "their assigned production/verification area; report local positive effects and use local absence defaults, following current "
                       "governing criteria. No serial final model or new reviewer is permitted.")
             envelope = o._review_process(root, prompt, "reviewer", schema_path=child / "output.schema.json",
                                          cohort_policy=COHORT_POLICY)
