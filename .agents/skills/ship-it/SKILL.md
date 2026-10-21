@@ -49,6 +49,16 @@ repeated reads. Expand inspection only for a changed input or unresolved behavio
    references. Native aggregation requires all assigned coverage and integration
    criteria, reconciles findings and classifications, preserves partial work,
    and applies the existing whole-candidate gates without a serial final model.
+
+   Retain the exact immutable approved proposal archive from the native proposal
+   attempt. Pass `python3 tools/oracle_approval.py review --proposal-record
+   <absolute archived proposal path>` with current evidence when another task has
+   advanced the latest proposal pointer. The native context and receipt bind that
+   original approved scope; later unrelated proposal bookkeeping adds no acceptance
+   criteria. Keep genuine shared implementation commitments and assess current
+   instructions and actual changed source. Parent AGENTS and family architecture
+   govern locally; a referenced coordinator command is bound only when consumed.
+
    Confirm governing instructions first. Make one complete assessment per new
    commit/range through real production entrypoints, construction, consumers,
    publication and recovery paths, then return all established findings together.

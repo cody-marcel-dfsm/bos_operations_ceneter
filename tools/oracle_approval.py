@@ -169,7 +169,8 @@ CONTROLLING_AUTHORITIES = (*AUTHORITY_PATHS, ".agents/skills/oracle/review-outpu
 
 def _declared_parent_authorities(root: Path, instructions: str | None = None) -> dict:
     # Ordinary local governance declares the family coordinator's canonical
-    # paths. Read/hash those exact interfaces; never execute or import them.
+    # governance. A referenced coordinator command is not a local authority;
+    # bind its bytes only when explicitly consumed as evidence/execution input.
     if instructions is None:
         local = root / "AGENTS.md"
         instructions = _custody_read(root, local)[1].decode() if local.is_file() else ""
@@ -178,7 +179,7 @@ def _declared_parent_authorities(root: Path, instructions: str | None = None) ->
     for declaration in declarations:
         family = Path(os.path.abspath(declaration))
         parent = family.parents[3]
-        for path in (parent / "AGENTS.md", family, parent / "tools/projects_oracle.py"):
+        for path in (parent / "AGENTS.md", family):
             try:
                 values[str(path)] = _custody_read(root, str(path))[0]["sha256"]
             except (OSError, OracleApprovalError):
@@ -1193,18 +1194,63 @@ def _raw_assessment_origins(root: Path, rounds: list[dict]):
     """Unadopted native output is evidence, never verified coverage or a verdict."""
     for record in rounds:
         raw = record.get("raw_assessment")
-        if not isinstance(raw, dict):
-            continue
-        assessment = raw.get("assessment")
+        assessment = raw.get("assessment") if isinstance(raw, dict) else record.get("review")
         if not isinstance(assessment, dict):
             continue
         original = json.loads(_custody_read(root, record["context_file"])[1])
-        yield record, raw, assessment, original
+        if isinstance(raw, dict):
+            yield record, raw, assessment, original
+        for index, child in enumerate(assessment.get("unadopted_cohort_assessments", [])):
+            # These are controller-authored references, not an adopted child
+            # verdict. Recheck every original byte and assignment on each use.
+            run = Path(os.path.abspath(record["context_file"])).parent
+            def route(value):
+                return Path(os.path.abspath(os.path.join(str(root), os.fspath(value))))
+            result_file = route(child["result_file"])
+            context_file = route(child["cohort_context_file"])
+            plan_file = route(child["plan_file"])
+            if (result_file.name != "result.json" or result_file.parent.parent != run / "cohorts"
+                    or context_file != result_file.parent / "cohort-context.json"
+                    or plan_file != run / "cohort-plan.json" or child.get("actual_outcome") != "ERROR"):
+                raise OracleApprovalError("Unadopted cohort provenance is outside its native run")
+            provenance = {}
+            values = {}
+            for label, path, expected in (("result", result_file, child["result_sha256"]),
+                                          ("context", context_file, child["cohort_context_sha256"]),
+                                          ("plan", plan_file, child["plan_file_sha256"])):
+                fact, content = _custody_read(root, path)
+                if fact["sha256"] != expected:
+                    raise OracleApprovalError("Unadopted cohort original " + label + " changed")
+                provenance[_custody_name(root, path)] = expected
+                values[label] = json.loads(content)
+            envelope, packet, plan = values["result"], values["context"], values["plan"]
+            plan_body = {key: value for key, value in plan.items() if key != "plan_sha256"}
+            packet_body = {key: value for key, value in packet.items() if key != "packet_sha256"}
+            identities = ("plan_sha256", "candidate_commit", "candidate_tree", "input_binding_sha256")
+            if (plan.get("plan_sha256") != _sha(_canonical(plan_body))
+                    or packet.get("packet_sha256") != _sha(_canonical(packet_body))
+                    or plan.get("context_sha256") != record["context_sha256"]
+                    or packet.get("parent_context_sha256") != record["context_sha256"]
+                    or route(packet["parent_context"]) != route(record["context_file"])
+                    or plan.get("candidate_commit") != record["base_commit"]
+                    or plan.get("candidate_tree") != record["candidate_tree"]
+                    or any(envelope.get(key) != plan.get(key) or packet.get(key) != plan.get(key) for key in identities)
+                    or envelope.get("cohort_id") != child["cohort_id"]
+                    or packet.get("cohort", {}).get("id") != child["cohort_id"]
+                    or packet["cohort"] not in plan.get("cohorts", [])
+                    or envelope.get("assessment") != child.get("assessment")
+                    or envelope["assessment"].get("review_status") != child.get("reported_review_status")
+                    or envelope["assessment"].get("verdict") != child.get("reported_verdict")):
+                raise OracleApprovalError("Unadopted cohort original assignment or candidate binding changed")
+            pointer = ("/raw_assessment/assessment" if isinstance(raw, dict) else "/review")
+            yield record, dict(child, provenance_files=provenance,
+                               assessment_pointer=pointer + "/unadopted_cohort_assessments/" + str(index) + "/assessment"), child["assessment"], original
 
 
 def _raw_assessment_files(root: Path, rounds: list[dict]) -> dict:
     retained = {}
-    for _, _, assessment, original in _raw_assessment_origins(root, rounds):
+    for _, raw, assessment, original in _raw_assessment_origins(root, rounds):
+        retained.update(raw.get("provenance_files", {}))
         for item in assessment.get("coverage", []) if isinstance(assessment.get("coverage"), list) else []:
             if not isinstance(item, dict):
                 continue
@@ -1252,7 +1298,9 @@ def _raw_assessment_navigation(root: Path, rounds: list[dict], inputs: dict, gua
                            "origin_context": record["context_file"],
                            "origin_context_sha256": record["context_sha256"],
                            "origin_record_sha256": record["record_sha256"],
-                           "assessment_pointer": "/raw_assessment/assessment",
+                           "assessment_pointer": raw.get("assessment_pointer", "/raw_assessment/assessment"),
+                           **({"cohort_id": raw["cohort_id"], "result_file": raw["result_file"],
+                               "result_sha256": raw["result_sha256"]} if raw.get("cohort_id") else {}),
                            "guard_changes": _observation_guard_changes(root, guards, record),
                            "finding_ids": [item["id"] for item in findings
                                            if isinstance(item, dict) and isinstance(item.get("id"), str)],
@@ -1545,7 +1593,8 @@ def _path_dispositions(root: Path, context: dict, rounds: list[dict]) -> list:
     return selected
 
 
-def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence: dict) -> dict:
+def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence: dict,
+                    proposal_record: Path | None = None) -> dict:
     directory = _series_directory(root, binding["base_commit"])
     rounds = _read_rounds(directory)
     previous = rounds[-1] if rounds else None
@@ -1565,7 +1614,9 @@ def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence:
     # Retained artifacts are actual inputs even when the caller omits them.
     # This also binds a later semantic invalidation to those exact bytes.
     inputs = _candidate_inputs(root, tree, {**known_evidence, **(binding.get("owner_approval_evidence") or {})})
-    proposal = json.loads(_custody_read(root, str(proposal_path(root)))[1])
+    selected_proposal = proposal_record or proposal_path(root)
+    proposal_raw = _custody_read(root, selected_proposal)[1]
+    proposal = json.loads(proposal_raw)
     proposal_scope = {"sha256": proposal["proposal_sha256"], "proposal": proposal["proposal"]}
     inputs["@proposal/scope"] = "sha256:" + proposal_scope["sha256"]
     publication_scope = binding["publication_scope"]
@@ -1645,6 +1696,7 @@ def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence:
                "required_coverage_paths": required_paths,
                "pending_from_prior": pending_from_prior,
                "proposal_scope": proposal_scope,
+               "proposal_record": {"path": str(selected_proposal), "sha256": _sha(proposal_raw)},
                "previous_proposal_scope": previous.get("proposal_scope") if previous else None,
                "scope_changed": bool(previous and previous.get("proposal_scope") != proposal_scope),
                "input_hashes": inputs, "prior_findings": ledger,
@@ -2239,7 +2291,10 @@ def _receipt_current_context(root: Path, payload: dict, pending_evidence: dict[s
         raise OracleApprovalError("Oracle current review context provenance is malformed") from exc
     if not valid:
         raise OracleApprovalError("Oracle current review context binding is invalid")
-    if verify_proposal(root)["proposal_sha256"] != context["proposal_scope"]["sha256"]:
+    selected_proposal = context.get("proposal_record")
+    if selected_proposal is not None and _custody_read(root, selected_proposal["path"])[0]["sha256"] != selected_proposal["sha256"]:
+        raise OracleApprovalError("Oracle sealed proposal custody changed")
+    if verify_proposal(root, selected_proposal["path"] if selected_proposal else None)["proposal_sha256"] != context["proposal_scope"]["sha256"]:
         raise OracleApprovalError("Oracle approval proposal scope changed")
     for proof in record["verified_validations"]:
         _validation_record(root, proof["evidence_path"], proof["inputs"], proof["environment_digest"],
@@ -2420,9 +2475,11 @@ def _archive_proposal(root: Path, raw: bytes) -> Path:
         _atomic_write(path, raw)
     return path
 
-def verify_proposal(root: Path) -> dict:
+def verify_proposal(root: Path, record_path: str | Path | None = None) -> dict:
     try:
-        raw = _custody_read(root, str(proposal_path(root)))[1]
+        raw = _custody_read(root, record_path or proposal_path(root))[1]
+        if record_path is not None and _custody_name(root, record_path) != _custody_name(root, receipt_path(root).parent / "proposals" / (_sha(raw) + ".json")):
+            raise OracleApprovalError("Selected proposal must be its immutable owner-local archive")
         record = json.loads(raw)
     except (OSError, json.JSONDecodeError) as exc:
         raise OracleApprovalError("Oracle review requires a prior proposal review") from exc
@@ -2460,7 +2517,8 @@ def verify_proposal(root: Path) -> dict:
 
 
 @_serialized_review
-def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, reviewer: Callable = _oracle) -> dict[str,Any]:
+def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, reviewer: Callable = _oracle,
+          *, proposal_record: str | Path | None = None) -> dict[str,Any]:
     with _phase("precheck_seconds"):
         pending = [p for p in (_git(root,"diff","--name-only").splitlines()+_git(root,"ls-files","--others","--exclude-standard").splitlines()) if not p.startswith("Vault/")]
         if pending: raise OracleApprovalError("Oracle review requires every non-Vault change staged: " + ", ".join(sorted(pending)))
@@ -2469,8 +2527,8 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
         if not paths and not _publication_scope(root, tree)["range_paths"]:
             raise OracleApprovalError("Oracle cannot approve an empty candidate")
         _metadata_remove(root, receipt_path(root))
-        verify_proposal(root)
-        proposal_raw = _custody_read(root, proposal_path(root))[1]
+        verify_proposal(root, proposal_record)
+        proposal_raw = _custody_read(root, proposal_record or proposal_path(root))[1]
         proposal = _archive_proposal(root, proposal_raw)
         origin_record = _record_lifecycle_origin(root, proposal_raw)
         complete_evidence = [*evidence_paths, str(proposal), str(origin_record)]
@@ -2492,7 +2550,7 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
                                                "vault_evidence": _files(root, [str(vault)])}))
             complete_evidence += [str(vault), str(diff), str(preparation)]
             evidence = _files(root, complete_evidence)
-        context = _review_context(root, tree, paths, binding, evidence)
+        context = _review_context(root, tree, paths, binding, evidence, proposal_record=proposal)
         registered_evidence = context["registered_validation_evidence"]
         if registered_evidence != _files(root, list(registered_evidence)):
             raise OracleApprovalError("Retained validation evidence changed during preparation")
@@ -2667,7 +2725,7 @@ def verify_range(root: Path, start: str, end: str) -> None:
 
 def main(argv: Sequence[str] | None = None) -> int:
     p=argparse.ArgumentParser(); sub=p.add_subparsers(dest="cmd",required=True)
-    review=sub.add_parser("review"); review.add_argument("--evidence",action="append",default=[]); review.add_argument("--owner-approval")
+    review=sub.add_parser("review"); review.add_argument("--evidence",action="append",default=[]); review.add_argument("--owner-approval"); review.add_argument("--proposal-record", type=Path)
     proposal=sub.add_parser("proposal"); proposal.add_argument("request",nargs="?"); proposal.add_argument("--evidence",action="append",default=[]); proposal.add_argument("--owner-approval")
     validation = sub.add_parser("validate"); validation.add_argument("--output", type=Path, required=True)
     validation.add_argument("--input", action="append", default=[])
@@ -2690,7 +2748,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if selected["state"] in {"NO_CHANGES", "DELIVER"}:
                     print(json.dumps(selected, sort_keys=True))
                     return 0
-            receipt = issue(root,args.evidence,args.owner_approval)
+            receipt = issue(root,args.evidence,args.owner_approval,proposal_record=args.proposal_record)
             if not _git(root, "status", "--porcelain=v1", "--untracked-files=all").strip():
                 shipment.record_validated(root)
             print(f"APPROVED {receipt['candidate_tree']}")

@@ -35,6 +35,16 @@ measured overlap, fails closed on missing/incomplete/error/conflicting cohorts,
 and checks complete coverage, unresolved findings and latest source custody
 before one aggregate receipt. It performs no serial final model review.
 
+Retain the exact immutable approved proposal archive from the native proposal
+attempt. Pass `python3 tools/oracle_approval.py review --proposal-record
+<absolute archived proposal path>` with current evidence when another task has
+advanced the latest proposal pointer. The native context and receipt bind that
+original approved scope; later unrelated proposal bookkeeping adds no acceptance
+criteria. Keep genuine shared implementation commitments and assess current
+instructions and actual changed source. Parent AGENTS and family architecture
+govern locally; a referenced coordinator command is bound only when consumed.
+
+
 Covered normal-plan reviews proceed automatically without spending-approval
 questions or a separate $0 approval. Explicit approval remains required for
 additional monetary spending outside the owner's existing plan.

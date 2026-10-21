@@ -153,6 +153,21 @@ class ParallelReview(unittest.TestCase):
                     responses[first]['assessment']['resolutions'] = [{'id': 'F001', 'explanation': 'Resolved'}]
                 self.assertEqual(parallel.aggregate(o, self.plan, self.context, responses, [])['verdict'], 'ERROR')
 
+    def test_complete_cohort_cannot_erase_unfinished_limitations_or_invalid_status(self):
+        identity = parallel.AREAS[1]
+        responses = self.all_envelopes()
+        responses[identity]['assessment']['limitations'] = ['Required production recovery remains unassessed']
+        result = parallel.aggregate(o, self.plan, self.context, responses, [])
+        self.assertEqual((result['review_status'], result['verdict']), ('INCOMPLETE', 'INCOMPLETE'))
+        self.assertIn(identity, ' '.join(result['limitations']))
+        self.assertIn('Required production recovery remains unassessed', ' '.join(result['limitations']))
+        self.assertEqual(responses[identity]['assessment']['review_status'], 'COMPLETE')
+        for fields in ({'review_status': 'INCOMPLETE', 'verdict': 'APPROVED', 'limitations': ['unfinished']},
+                       {'review_status': 'ERROR', 'verdict': 'ERROR', 'limitations': []}):
+            responses = self.all_envelopes(); responses[identity]['assessment'].update(fields)
+            self.assertEqual(parallel.aggregate(o, self.plan, self.context, responses, [])['verdict'], 'ERROR')
+        self.assertEqual(parallel.aggregate(o, self.plan, self.context, self.all_envelopes(), [])['verdict'], 'APPROVED')
+
     def test_global_protected_effect_and_missing_authority_survive_unaffected_specialists(self):
         responses = self.all_envelopes()
         global_assessment = responses[parallel.AREAS[0]]['assessment']

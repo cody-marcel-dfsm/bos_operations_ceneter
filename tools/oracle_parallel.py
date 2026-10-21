@@ -23,6 +23,7 @@ Report coverage only for assigned primary paths; dependency inputs may name any
 exact current identity from the sealed parent context when actually consumed.
 Use compact area context and original proof pointers; open larger sealed records
 only for an unresolved fact. Do not repeat unchanged checks or reread whole history.
+COMPLETE requires limitations=[]; put nonblocking area boundaries in summary.
 Retain existing finding IDs. Only the crosscutting cohort dispositions prior
 findings and global integration criteria. Specialists classify their assigned
 area only: empty/NONE/NOT_REQUIRED fields describe local absence, while positive
@@ -78,6 +79,12 @@ def packet(context, plan, cohort, parent_context, digest):
              "input_hashes": {p: value for p, value in context["input_hashes"].items() if p in selected},
              "prior_findings": relevant_findings,
              "path_dispositions": [item for item in context.get("path_dispositions", []) if item.get("path") in assigned],
+             "proposal_scope": context.get("proposal_scope"),
+             "previous_proposal_scope": context.get("previous_proposal_scope"), "scope_changed": context.get("scope_changed"),
+             "unadopted_assessments": [item for item in context.get("unadopted_assessments", [])
+                 if cohort["id"] == AREAS[0] or assigned &
+                 ({entry.get("path") for entry in item.get("observations", [])} |
+                  {entry.get("file") for entry in item.get("finding_references", [])})],
              "retained_proof_references": {key: context.get(key) for key in
                  ("prior_native_assessment", "prior_rounds", "retained_observation_evidence")},
              "validation_references": [{key: item.get(key) for key in
@@ -118,6 +125,13 @@ def _checked(o, envelope, plan, cohort, context):
     for key in ("coverage", "validations", "findings", "resolutions", "limitations"):
         if not isinstance(assessment.get(key), list):
             raise o.OracleApprovalError("Cohort lacks structured " + key)
+    status = assessment["review_status"]
+    if status == "COMPLETE" and assessment["limitations"]:
+        raise o.OracleReviewIncomplete("Cohort reports unfinished limitations despite COMPLETE")
+    if status != "COMPLETE" and (not assessment["limitations"] or assessment.get("verdict") != status):
+        raise o.OracleApprovalError("Unfinished cohort requires limitations and matching verdict")
+    if status == "COMPLETE" and assessment.get("verdict") not in {"APPROVED", "REJECTED"}:
+        raise o.OracleApprovalError("Complete cohort lacks an independent verdict")
     covered, seen = set(), set()
     for item in assessment["coverage"]:
         name = item.get("path")
@@ -156,7 +170,8 @@ def aggregate(o, plan, context, envelopes, failures):
         except o.OracleReviewIncomplete as exc:
             partial = copy.deepcopy(envelopes[cohort["id"]]["assessment"])
             partial.update(review_status="INCOMPLETE", verdict="INCOMPLETE",
-                           limitations=[*partial.get("limitations", []), str(exc)])
+                           limitations=[cohort["id"] + ": " + str(reason)
+                                        for reason in [*partial.get("limitations", []), str(exc)]])
             assessments.append(partial)
             by_cohort[cohort["id"]] = partial
         except (o.OracleApprovalError, KeyError, ValueError, TypeError) as exc:
@@ -268,7 +283,7 @@ def review(o, root, tree, paths, evidence, owner):
                 "finished_at": datetime.now(timezone.utc).isoformat(), "error": failure}))
             o._RUN.reset(token)
 
-    envelopes, failures = {}, []
+    envelopes, failures, unadopted = {}, [], []
     with ThreadPoolExecutor(max_workers=min(plan["max_workers"], len(jobs))) as executor:
         futures = {executor.submit(copy_context().run, worker, cohort, child): cohort for cohort, child in jobs}
         for future in as_completed(futures):
@@ -276,10 +291,30 @@ def review(o, root, tree, paths, evidence, owner):
             try:
                 envelopes[cohort["id"]] = future.result()
             except Exception as exc:
-                failures.append(cohort["id"] + ": " + type(exc).__name__ + ": " + str(exc))
+                failure = cohort["id"] + ": " + type(exc).__name__ + ": " + str(exc)
+                failures.append(failure)
+                child = next(path for item, path in jobs if item["id"] == cohort["id"])
+                try:
+                    raw = o._custody_read(root, child / "result.json")[1]
+                    envelope = json.loads(raw)
+                    try:
+                        _checked(o, envelope, plan, cohort, context)
+                    except o.OracleReviewIncomplete:
+                        pass  # Valid unfinished reports remain unadopted facts.
+                    unadopted.append({"cohort_id": cohort["id"], "actual_outcome": "ERROR", "reason": failure,
+                        "reported_review_status": envelope["assessment"]["review_status"],
+                        "reported_verdict": envelope["assessment"].get("verdict"),
+                        "assessment": envelope["assessment"], "result_file": str(child / "result.json"),
+                        "result_sha256": o._sha(raw), "cohort_context_file": str(child / "cohort-context.json"),
+                        "cohort_context_sha256": o._custody_read(root, child / "cohort-context.json")[0]["sha256"],
+                        "plan_file": str(plan_path), "plan_file_sha256": o._custody_read(root, plan_path)[0]["sha256"]})
+                except (OSError, ValueError, KeyError, TypeError, o.OracleApprovalError) as recovery:
+                    failures.append(cohort["id"] + ": final output remains unavailable/unbound: " + str(recovery))
     if json.loads(o._custody_read(root, plan_path)[1]) != plan or digest(json.loads(o._custody_read(root, context_path)[1])) != plan["context_sha256"]:
         failures.append("Prepared partition plan or source context changed during assessment")
     result = aggregate(o, plan, context, envelopes, failures)
+    if unadopted:
+        result["unadopted_cohort_assessments"] = unadopted
     artifacts = o._files(root, [str(path) for _, child in jobs for path in child.iterdir() if path.is_file()])
     artifacts.update(o._files(root, [str(plan_path)]))
     spans = [json.loads(o._custody_read(root, child / "cohort-timing.json")[1]) for _, child in jobs]
