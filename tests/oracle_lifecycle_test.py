@@ -127,7 +127,8 @@ with (directory/'review.lock').open('a+') as held:
  (run/'model.json').write_text('{"selected_model":"synthetic-model"}')
  (run/'request.txt').write_text('Synthetic legacy native invocation')
  (directory/'entered').write_text('entered')
- time.sleep(1)
+ deadline=time.monotonic()+8
+ while not (directory/'release-legacy').exists() and time.monotonic()<deadline:time.sleep(.02)
  (run/'outcome.json').write_text('{"outcome":"APPROVED"}')
 ''')
         owner=subprocess.Popen([sys.executable,str(tool),'review'],cwd=self.root,env=self.env,
@@ -137,8 +138,12 @@ with (directory/'review.lock').open('a+') as held:
         self.assertTrue(observation['legacy'])
         self.assertEqual(observation['identity']['pid'],owner.pid)
         follower=self.start()
-        time.sleep(.15)
+        deadline=time.monotonic()+5
+        while not list((self.root/'.git/oracle/legacy-observations').glob('*/identity.json')):
+            if time.monotonic()>deadline:self.fail('Legacy observer did not attach')
+            time.sleep(.02)
         self.assertFalse((self.root/'.git/oracle/invocations').exists())
+        (self.root/'.git/oracle/release-legacy').write_text('release')
         self.assertEqual(owner.communicate(timeout=5)[1],'')
         self.finish(follower)
         outcomes=list((self.root/'.git/oracle/legacy-observations').glob('*/observed-outcome.json'))
