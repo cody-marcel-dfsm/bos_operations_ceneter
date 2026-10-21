@@ -110,6 +110,41 @@ class Lifecycle(unittest.TestCase):
             lifecycle.active(o,self.root)
         self.finish(owner)
 
+    def test_process_birth_mismatch_is_not_a_live_owner(self):
+        owner=self.start();self.entered()
+        with patch.object(lifecycle,'process_identity',return_value='reused PID with a different birth'):
+            self.assertIsNone(lifecycle.active(o,self.root))
+        self.finish(owner)
+
+    def test_preexisting_native_cli_is_observed_before_any_new_parent(self):
+        tool=self.root/'tools/oracle_approval.py';tool.parent.mkdir()
+        tool.write_text('''from pathlib import Path
+import fcntl,json,time,os
+root=Path.cwd();directory=root/'.git/oracle';directory.mkdir()
+with (directory/'review.lock').open('a+') as held:
+ fcntl.flock(held,fcntl.LOCK_EX)
+ run=directory/'runs/issue-legacy';run.mkdir(parents=True)
+ (run/'model.json').write_text('{"selected_model":"synthetic-model"}')
+ (run/'request.txt').write_text('Synthetic legacy native invocation')
+ (directory/'entered').write_text('entered')
+ time.sleep(1)
+ (run/'outcome.json').write_text('{"outcome":"APPROVED"}')
+''')
+        owner=subprocess.Popen([sys.executable,str(tool),'review'],cwd=self.root,env=self.env,
+                               stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+        self.children.append(owner);self.entered()
+        observation=lifecycle.active(o,self.root)
+        self.assertTrue(observation['legacy'])
+        self.assertEqual(observation['identity']['pid'],owner.pid)
+        follower=self.start()
+        time.sleep(.15)
+        self.assertFalse((self.root/'.git/oracle/invocations').exists())
+        self.assertEqual(owner.communicate(timeout=5)[1],'')
+        self.finish(follower)
+        outcomes=list((self.root/'.git/oracle/legacy-observations').glob('*/observed-outcome.json'))
+        self.assertEqual(len(outcomes),1)
+        self.assertEqual(json.loads(outcomes[0].read_text())['outcome'],'APPROVED')
+
 
 class CommittedCatchup(unittest.TestCase):
     def setUp(self):
