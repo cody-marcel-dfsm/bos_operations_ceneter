@@ -2,8 +2,8 @@
 name: education-center-parent-communications
 description: Handle Education Center parent communication workflows through customer-configured evidence routes and the tenant-scoped BOS MCP. Use for business-hours calls, after-hours calls, email evidence, text messages, reviews, communication follow-up, transcript or outcome retrieval, response drafting, escalation, and missing communications capability diagnosis.
 metadata:
-  version: "1.0.1"
-  requires: "{\"bos-google-review-outreach\":\"1.0.1\",\"bos-mcp-client\":\"1.0.1\",\"bos-visual-output\":\"1.0.1\",\"education-center-service-routing\":\"1.0.1\",\"email-account-routing\":\"1.0.1\"}"
+  version: "1.0.2"
+  requires: "{\"bos-google-review-outreach\":\"1.0.2\",\"bos-mcp-client\":\"1.0.2\",\"bos-visual-output\":\"1.0.2\",\"education-center-service-routing\":\"1.0.2\",\"email-account-routing\":\"1.0.2\"}"
 ---
 
 # Education Center Parent Communications

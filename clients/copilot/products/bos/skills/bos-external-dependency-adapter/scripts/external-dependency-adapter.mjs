@@ -494,7 +494,8 @@ function publicResponse(value, {binaryContract = null} = {}) {
       if ((safeResponseHeaders.has(normalized) || (binaryBody && safeBinaryResponseHeaders.has(normalized) &&
           (normalized !== "content-md5" || binaryContract.optionalMd5))) &&
           typeof header === "string") {
-        headers[normalized] = requireSafeString(header, `BOS transport response.headers.${normalized}`, 1024);
+        const maximum = normalized === "content-disposition" && binaryContract?.optionalMd5 ? 4096 : 1024;
+        headers[normalized] = requireSafeString(header, `BOS transport response.headers.${normalized}`, maximum);
       }
     }
   }

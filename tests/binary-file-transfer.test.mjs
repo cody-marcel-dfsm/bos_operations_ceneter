@@ -87,6 +87,18 @@ test('MD5 is optional only for the explicit provider variant and verifies the ex
   await assert.rejects(invoke(legacy,{status:200,headers:legacyHeaders,body:bytes}),/missing described header Digest/);
 });
 
+test('percent-encoded Unicode filenames preserve a full255-character basename with bounded headers',async()=>{
+  const bytes=new Uint8Array();
+  const disposition="attachment; filename*=UTF-8''"+encodeURIComponent('漢'.repeat(250)+'.PPTX');
+  assert.ok(disposition.length>1024);
+  const incoming={...headers(bytes,false),'Content-Disposition':disposition};
+  assert.equal((await invoke(contact(),{status:200,headers:incoming,body:bytes})).headers['content-disposition'],disposition);
+  for(const value of ['x'.repeat(4097),disposition+'\r\nInjected: header']){
+    await assert.rejects(invoke(contact(),{status:200,headers:{...incoming,'Content-Disposition':value},body:bytes}),/bounded printable string/);
+  }
+  await assert.rejects(invoke(contact(),{status:200,headers:{...incoming,'X-Correlation-ID':'x'.repeat(1025)},body:bytes}),/bounded printable string/);
+});
+
 test('streamed opaque download, ordinary local save and discovered durable upload preserve bytes and Unicode extension',async()=>{
   for(const bytes of [new Uint8Array(),Uint8Array.of(0,255,128,13,10,123,34,0)]){
     let uploaded;

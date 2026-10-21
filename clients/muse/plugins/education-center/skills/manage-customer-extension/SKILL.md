@@ -2,8 +2,8 @@
 name: manage-customer-extension
 description: Create, inspect, validate, or update a customer-owned extension of an installed packaged skill. Use when a user asks to update, customize, override, specialize, or change a skill for their tenant, organization, location, or customer while preserving package upgrades and BOS authority boundaries.
 metadata:
-  version: "1.0.1"
-  requires: "{\"bos-mcp-client\":\"1.0.1\",\"bos-plugin-settings-initialization\":\"1.0.1\",\"education-center-customer-initialization\":\"1.0.1\"}"
+  version: "1.0.2"
+  requires: "{\"bos-mcp-client\":\"1.0.2\",\"bos-plugin-settings-initialization\":\"1.0.2\",\"education-center-customer-initialization\":\"1.0.2\"}"
 ---
 
 

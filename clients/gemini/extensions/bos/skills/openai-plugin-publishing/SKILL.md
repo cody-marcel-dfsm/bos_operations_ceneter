@@ -2,8 +2,8 @@
 name: openai-plugin-publishing
 description: Prepare OpenAI plugin submissions and create, review, and validate their marketplace test cases against the plugin's published behavior. Use when a user is preparing a BOS or dependent plugin for OpenAI publication.
 metadata:
-  version: "1.0.1"
-  requires: "{\"bos-mcp-client\":\"1.0.1\"}"
+  version: "1.0.2"
+  requires: "{\"bos-mcp-client\":\"1.0.2\"}"
 ---
 
 
