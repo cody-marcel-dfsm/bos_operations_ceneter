@@ -111,6 +111,25 @@ class SourceFrontier(unittest.TestCase):
         self.assertTrue(any(g.startswith('UNIT_ON_DEMAND') for g in reasons['source.py']))
         self.assertEqual(manifest['entries'][0]['originals']['after']['git_oid'],self.git('rev-parse','HEAD:source.py'))
 
+    def test_deleted_binary_and_symlink_inputs_retain_scope_without_following_external_source(self):
+        external=self.root.parent/(self.root.name+'-external')
+        external.write_text('EXTERNAL_SENTINEL_BODY');self.addCleanup(external.unlink)
+        (self.root/'source.py').unlink()
+        (self.root/'binary.py').write_bytes(b'\xff\x00')
+        (self.root/'link.py').symlink_to(external)
+        self.git('add','-A');self.git('commit','-qm','deleted and opaque inputs')
+        tree=self.git('rev-parse','HEAD^{tree}');self.context.update(candidate_tree=tree,base_commit=self.git('rev-parse','HEAD'))
+        entries=frontier._tree(self.root,tree)
+        self.context['input_hashes'].update({name:'git-sha1:'+':'.join(entries[name]) for name in ['binary.py','link.py']})
+        self.context['input_hashes']['source.py']=None
+        manifest,_,_,inline=self.prepare(['source.py','binary.py','link.py'])
+        by_path={entry['path']:entry for entry in manifest['entries']}
+        self.assertTrue(any(u['kind']=='complete-definition' and u['side']=='before' for u in by_path['source.py']['units']))
+        self.assertIsNone(by_path['source.py']['originals']['after']['git_oid'])
+        self.assertIn('after:NON_UTF8_BINARY_OR_LFS_ORIGINAL_REQUIRED',by_path['binary.py']['gaps'])
+        self.assertIn('after:NONREGULAR_GIT_INPUT',by_path['link.py']['gaps'])
+        self.assertNotIn('EXTERNAL_SENTINEL_BODY',inline)
+
     def test_git_batches_are_fixed_count_and_reject_truncated_or_modified_bodies(self):
         actual=frontier._git;counts=[]
         def observe(*args,**kwargs):counts.append(args[1]);return actual(*args,**kwargs)
