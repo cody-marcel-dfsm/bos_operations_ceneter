@@ -18,6 +18,8 @@ import threading
 import time
 import uuid
 
+_LIVE = {}
+
 
 def process_identity(pid):
     result = subprocess.run(["ps", "-p", str(pid), "-o", "lstart=,comm="],
@@ -29,6 +31,14 @@ def _head(o, root):
     result = subprocess.run(["git", "rev-parse", "--verify", "HEAD"], cwd=root,
                             capture_output=True, text=True)
     return result.stdout.strip() if result.returncode == 0 else None
+
+
+def _alive(identity):
+    if process_identity(identity["pid"]) != identity["process_identity"]:
+        return False
+    if identity["pid"] == os.getpid():
+        return identity["controller_id"] in _LIVE
+    return True
 
 
 def legacy_active(o, root):
@@ -207,7 +217,7 @@ def active(o, root):
     identity, _ = _last(o, root)
     if not identity or _terminal(o, root, identity):
         return legacy_active(o, root)
-    if process_identity(identity["pid"]) != identity["process_identity"]:
+    if not _alive(identity):
         return None
     try:
         return _request(o, root, identity, {"operation": "observe"})
@@ -259,6 +269,7 @@ class Controller:
         self.progress = {"state": "REVIEW_IN_PROGRESS", "attempt": None}
         self.producer_paths = [name for name in o.REVIEW_POLICY_MODULES if (root / name).is_file()]
         self.producer = o._files(root, self.producer_paths)
+        _LIVE[self.identity["controller_id"]] = self
 
     def _create(self, parent, kind, series):
         o, root = self.o, self.root
@@ -310,7 +321,7 @@ class Controller:
             self.thread.start()
             return None
         previous, count = _last(o, root)
-        if previous and not _terminal(o, root, previous) and process_identity(previous["pid"]) == previous["process_identity"]:
+        if previous and not _terminal(o, root, previous) and _alive(previous):
             return previous
         if previous and not _terminal(o, root, previous):
             _finish(o, root, previous, {"status": "ERROR", "error_type": "OracleApprovalError",
@@ -391,6 +402,7 @@ class Controller:
         if getattr(self, "closed", False):
             return
         self.closed = True
+        _LIVE.pop(self.identity["controller_id"], None)
         self.stop.set()
         self.socket.close()
         if hasattr(self, "thread"):
@@ -401,7 +413,10 @@ def _follow(o, root, identity, kind, series, evidence):
     request = {"operation": "attach", "review_kind": kind, "series_id": series,
                "reviewer_settings": o._review_settings_binding(), "evidence": o._files(root, evidence),
                "observer_pid": os.getpid(), "observer_process_identity": process_identity(os.getpid())}
-    response = _request(o, root, identity, request)
+    try:
+        response = _request(o, root, identity, request)
+    except (OSError, ValueError) as exc:
+        raise o.OracleApprovalError("Live native owner is not observable; original invocation retained") from exc
     if response.get("error"):
         raise o.OracleApprovalError(response["error"])
     while True:
