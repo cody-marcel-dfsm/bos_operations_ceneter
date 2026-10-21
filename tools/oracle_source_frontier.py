@@ -134,6 +134,7 @@ def _python_units(text, changed, affected):
     walk(tree.body)
     overlap = lambda node: affected or any(a <= node.end_lineno and b >= _start(node) for a, b in changed)
     selected = {name for name, (node, _) in functions.items() if overlap(node)}
+    direct = set(selected)
     chosen_classes = {name for name, (node, _, header) in classes.items()
                       if affected or any(a <= header[1] and b >= header[0] for a, b in changed)}
     unresolved = set(); queue = deque(sorted(selected)); seen = set()
@@ -179,6 +180,7 @@ def _python_units(text, changed, affected):
     units = []
     def unit(start, end, label, kind):
         units.append({'start_line': start, 'end_line': end, 'label': label, 'kind': kind,
+                      'selection': 'DIRECT' if label in direct or any(a <= end and b >= start for a,b in changed) else 'CONSTRUCTION',
                       'body': ''.join(lines[start - 1:end])})
     for a, b, label in construction:
         unit(a, b, label, 'construction')
@@ -238,7 +240,7 @@ def _entry(context, snap, path):
             entry['units'].append({'side': 'diff', 'label': 'assigned-unified-diff', 'kind': 'mechanical-diff',
                                    'start_line': None, 'end_line': None, 'body': diff})
     for side, text in texts.items():
-        if not text:
+        if not text or (side == 'before' and before == after):
             continue
         if path.endswith('.py'):
             try:
@@ -252,6 +254,16 @@ def _entry(context, snap, path):
             units = [{'start_line': 1, 'end_line': len(text.splitlines()), 'label': 'complete-source',
                       'kind': 'complete-text-fallback', 'body': text}]
         entry['units'].extend(dict(unit, side=side) for unit in units)
+    def priority(unit):
+        after = unit['side'] == 'after'
+        direct = unit.get('selection') == 'DIRECT'
+        if after and unit['kind'] == 'complete-definition' and direct:return 0
+        if after and unit['kind'] in {'class-header','complete-definition'}:return 1
+        if unit['side'] == 'diff':return 2
+        if unit['side'] == 'before' and unit['kind'] == 'complete-definition' and direct:return 3
+        if after:return 4
+        return 5
+    entry['units'].sort(key=priority)
     return entry
 
 
