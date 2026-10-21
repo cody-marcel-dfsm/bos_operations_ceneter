@@ -511,10 +511,40 @@ def _committed_effect_history(root: Path, commit: str) -> tuple[list, list]:
 
 def _proposal_origin(root: Path, proposal: dict, candidate: str) -> str:
     origin = proposal.get("lifecycle_origin", proposal["base_commit"])
+    path = receipt_path(root).parent / "lifecycle-origin.json"
+    if path.exists():
+        raw = _custody_read(root, path)[1]
+        record = json.loads(raw)
+        body = {key: value for key, value in record.items() if key != "origin_sha256"}
+        if (raw != _pretty(record) or set(record) != {"kind", "origin", "proposal_file", "proposal_sha256", "origin_sha256"}
+                or record["kind"] != "oracle-lifecycle-origin-v1"
+                or record["origin_sha256"] != _sha(_canonical(body))):
+            raise OracleApprovalError("Immutable lifecycle origin custody changed")
+        source = _custody_read(root, root / record["proposal_file"])[1]
+        original = json.loads(source)
+        original_body = {key: value for key, value in original.items() if key != "proposal_review_id"}
+        if (record["proposal_sha256"] != _sha(source) or source != _pretty(original)
+                or original.get("proposal_review_id") != _sha(_canonical(original_body))
+                or original.get("review", {}).get("verdict") != "APPROVED"
+                or record["origin"] != original.get("lifecycle_origin", original["base_commit"])):
+            raise OracleApprovalError("Lifecycle origin lacks its immutable approved proposal")
+        origin = record["origin"]
     if subprocess.run(["git", "merge-base", "--is-ancestor", origin, candidate],
                       cwd=root, capture_output=True).returncode:
         raise OracleApprovalError("Proposal lifecycle origin is outside the candidate history")
     return origin
+
+
+def _record_lifecycle_origin(root: Path, raw: bytes) -> Path:
+    proposal = json.loads(raw)
+    origin = _proposal_origin(root, proposal, _git(root, "rev-parse", "HEAD").strip())
+    path = receipt_path(root).parent / "lifecycle-origin.json"
+    if not path.exists():
+        archive = _archive_proposal(root, raw)
+        body = {"kind": "oracle-lifecycle-origin-v1", "origin": origin,
+                "proposal_file": str(archive.relative_to(root)), "proposal_sha256": _sha(raw)}
+        _atomic_write(path, _pretty(dict(body, origin_sha256=_sha(_canonical(body)))))
+    return path
 
 
 def _publication_scope(root: Path, tree: str) -> dict:
@@ -2342,12 +2372,17 @@ def review_proposal(root: Path, request: str, evidence_paths: Sequence[str], own
             raise OracleApprovalError("Previous proposal custody changed")
         _archive_proposal(root, previous_raw)
         if previous.get("review", {}).get("verdict") == "APPROVED":
+            _record_lifecycle_origin(root, previous_raw)
+            payload["lifecycle_origin"] = _proposal_origin(root, previous, payload["base_commit"])
+        elif (receipt_path(root).parent / "lifecycle-origin.json").exists():
             payload["lifecycle_origin"] = _proposal_origin(root, previous, payload["base_commit"])
     payload.setdefault("lifecycle_origin", payload["base_commit"])
     record = dict(payload, proposal_review_id=_sha(_canonical(payload)))
     path = proposal_path(root)
     _atomic_write(_RUN.get() / "prospective-proposal.json", _pretty(record))
     _archive_proposal(root, _pretty(record))
+    if review["verdict"] == "APPROVED":
+        _record_lifecycle_origin(root, _pretty(record))
     _atomic_write(path, _pretty(record))
     _metadata_remove(root, receipt_path(root))
     return review
@@ -2412,8 +2447,10 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
             raise OracleApprovalError("Oracle cannot approve an empty candidate")
         _metadata_remove(root, receipt_path(root))
         verify_proposal(root)
-        proposal = _archive_proposal(root, _custody_read(root, proposal_path(root))[1])
-        complete_evidence = [*evidence_paths, str(proposal)]
+        proposal_raw = _custody_read(root, proposal_path(root))[1]
+        proposal = _archive_proposal(root, proposal_raw)
+        origin_record = _record_lifecycle_origin(root, proposal_raw)
+        complete_evidence = [*evidence_paths, str(proposal), str(origin_record)]
         evidence, owner = _files(root, complete_evidence), (_files(root, [owner_path]) if owner_path else None)
     with _phase("preparation_seconds"):
         binding = _input_binding(root, evidence, owner)

@@ -115,6 +115,11 @@ class ShipmentWorkflow(unittest.TestCase):
         second = self.commit("repair before proposal refresh")
         self.fixture.propose()
         self.assertEqual(o._series_directory(self.root, second), directory)
+        rejected = {"verdict": "REJECTED", "findings": [], "authentication_impact": "NONE",
+                    "owner_approval_status": "NOT_REQUIRED", "api_version_assessment": self.fixture.assessment()}
+        o.review_proposal(self.root, "synthetic rejected refresh", [], None, lambda *args: rejected)
+        self.fixture.propose()
+        self.assertEqual(o._series_directory(self.root, second), directory)
         self.assertEqual((o.receipt_path(self.root).parent / "proposals" / (o._sha(old_proposal) + ".json")).read_bytes(), old_proposal)
         self.fixture.submit(error=o.OracleApprovalError)
         self.assertIn("F001", self.fixture.contexts[-1]["prior_findings"])
@@ -235,7 +240,7 @@ class ShipmentWorkflow(unittest.TestCase):
 
     def test_native_verification_does_not_revive_an_exact_candidate_after_failure(self):
         commit = self.validate()
-        self.fixture.submit(lambda c: self.fixture.result(c, findings=[self.fixture.finding()]),
+        self.fixture.submit(lambda c: self.fixture.result(c, findings=[self.fixture.finding(origin="MISSED")]),
                             error=o.OracleCandidateRejected)
         with self.assertRaisesRegex(o.OracleApprovalError, "no verified native approval"):
             o.verify_commit(self.root, commit)
