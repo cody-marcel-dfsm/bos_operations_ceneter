@@ -187,7 +187,7 @@ finally:o._FOLLOW_COMMITS.reset(token)
         self.assertEqual([x['version'] for x in turns],['before','after'])
         self.assertEqual({x['pid'] for x in turns},{child.pid})
         self.assertEqual(len({x['controller'] for x in turns}),1)
-        self.assertIn(str(self.root/'.git/oracle/new-evidence.txt'),turns[1]['evidence'])
+        self.assertIn('.git/oracle/new-evidence.txt',turns[1]['evidence'])
         self.assertEqual(len(list((self.root/'.git/oracle/controllers/admissions').iterdir())),1)
 
 

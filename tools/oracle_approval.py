@@ -2616,7 +2616,7 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
                         or cohort.get("artifacts") != _files(root, list(cohort.get("artifacts", {})))):
                     raise OracleApprovalError("Independent cohort evidence changed before native admission")
                 evidence.update(cohort["artifacts"])
-                evidence[str(parallel)] = _sha(raw)
+                evidence.update(_files(root, [str(parallel)]))
         if outcome == "APPROVED":
             _validate_api_version_assessment(review.get("api_version_assessment"), "APPROVED", root, evidence)
             impact, status = review.get("authentication_impact"), review.get("owner_approval_status")
