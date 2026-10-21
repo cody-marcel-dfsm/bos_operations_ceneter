@@ -370,7 +370,9 @@ def _review_attempt(function):
     return wrapped
 
 
-def _serialized_review(function):
+def _serialized_review(function=None, *, request_binding=None, result_validator=None):
+    if function is None:
+        return lambda selected: _serialized_review(selected, request_binding=request_binding, result_validator=result_validator)
     attempt = _review_attempt(function)
     @wraps(function)
     @_metadata_owner
@@ -379,8 +381,14 @@ def _serialized_review(function):
             from . import oracle_lifecycle
         else:
             import oracle_lifecycle
-        return oracle_lifecycle.run(sys.modules[__name__], root, function.__name__, attempt,
-                                    args, kwargs, follow_commits=_FOLLOW_COMMITS.get())
+        request = request_binding(root, *args, **kwargs) if request_binding else None
+        result = oracle_lifecycle.run(sys.modules[__name__], root, function.__name__, attempt,
+                                      args, kwargs, follow_commits=_FOLLOW_COMMITS.get(), request=request)
+        if result_validator:
+            if request_binding(root, *args, **kwargs) != request:
+                raise OracleApprovalError("Scoped native authorization request changed during observation")
+            result_validator(root, request, result)
+        return result
     return wrapped
 
 
@@ -732,9 +740,17 @@ def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path |
         environment["CODEX_SELECTED_REASONING_EFFORT"] = effort
     else:
         environment.pop("CODEX_SELECTED_REASONING_EFFORT", None)
-    completed = _timed(prefix + "_seconds", lambda: subprocess.run(
-        cmd, cwd=root, capture_output=True, text=True,
-        env=environment))
+    controller = _CONTROLLER.get()
+    if controller is not None:
+        if __package__:
+            from . import oracle_lifecycle
+        else:
+            import oracle_lifecycle
+        completed = _timed(prefix + "_seconds", lambda: oracle_lifecycle.reviewer_process(
+            sys.modules[__name__], root, run, cmd, environment, controller))
+    else:
+        completed = _timed(prefix + "_seconds", lambda: subprocess.run(
+            cmd, cwd=root, capture_output=True, text=True, env=environment))
     _atomic_write(run / "process.json", _pretty({"exit_code": completed.returncode}))
     _atomic_write(run / "stdout.log", completed.stdout.encode())
     _atomic_write(run / "stderr.log", completed.stderr.encode())

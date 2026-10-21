@@ -165,11 +165,40 @@ def _check_authorization(root: Path, selected: dict, authorization) -> None:
                                     + ", ".join(sorted(missing)) + (": " + detail if detail else ""))
 
 
-@o._serialized_review
-def authorize(root: Path, candidate: str, release_ref: str, owner_path: str, *, authorization=None, effect_ids=None) -> dict:
+def _authorization_request(root: Path, candidate: str, release_ref: str, owner_path: str, *, authorization=None, effect_ids=None) -> dict:
     selected = plan(root, candidate, release_ref, "main-promotion")
+    prior = o._files(root, [str(path) for path in _authorization_paths(authorization)])
+    owner = o._files(root, [owner_path])
+    covered, _ = _covered_authorizations(root, selected, authorization) if selected.get("state") != "NO_CHANGES" else (set(), [])
+    active = {row["id"] for row in selected.get("protected_effects", {}).get("active", [])}
+    chosen = active if effect_ids is None else set(effect_ids)
+    if not chosen.issubset(active):
+        raise o.OracleApprovalError("Publication authorization selects an unknown current effect")
+    return {"candidate_input": candidate, "release_ref_input": release_ref, "plan": selected,
+            "owner_evidence": owner, "prior_authorizations": prior,
+            "selected_effect_ids": None if effect_ids is None else sorted(chosen),
+            "requested_effect_ids": sorted(chosen - covered)}
+
+
+def _authorization_result(root: Path, request: dict, result: dict) -> None:
+    if result.get("authorization_request_sha256") != o._sha(o._canonical(request)):
+        raise o.OracleApprovalError("Observed publication authorization belongs to a different request")
+    if request["plan"].get("state") == "NO_CHANGES":
+        if {key: value for key, value in result.items() if key != "authorization_request_sha256"} != request["plan"]:
+            raise o.OracleApprovalError("Observed publication selection changed")
+    elif (result.get("requested_effect_ids") != request["requested_effect_ids"]
+          or result.get("plan") != request["plan"] or result.get("owner_evidence") != request["owner_evidence"]):
+        raise o.OracleApprovalError("Observed publication authority changed its plan/effect/evidence scope")
+
+
+@o._serialized_review(request_binding=_authorization_request, result_validator=_authorization_result)
+def authorize(root: Path, candidate: str, release_ref: str, owner_path: str, *, authorization=None, effect_ids=None) -> dict:
+    request_binding = _authorization_request(root, candidate, release_ref, owner_path,
+                                             authorization=authorization, effect_ids=effect_ids)
+    request_digest = o._sha(o._canonical(request_binding))
+    selected = request_binding["plan"]
     if selected.get("state") == "NO_CHANGES":
-        return selected
+        return dict(selected, authorization_request_sha256=request_digest)
     covered, observations = _covered_authorizations(root, selected, authorization)
     active = {row["id"] for row in selected["protected_effects"]["active"]}
     chosen = active if effect_ids is None else set(effect_ids)
@@ -178,6 +207,8 @@ def authorize(root: Path, candidate: str, release_ref: str, owner_path: str, *, 
     requested = sorted(chosen - covered)
     if not requested:
         return {"verdict": "APPROVED", "review_status": "COMPLETE", "requested_effect_ids": [],
+                "plan": selected, "owner_evidence": request_binding["owner_evidence"],
+                "authorization_request_sha256": request_digest,
                 "summary": "All selected current effects already have exact authority", "prior_attempts": observations}
     owner = o._files(root, [owner_path])
     original = o._custody_read(root, o._technical_archive(root, selected["technical_receipt_sha256"]))[1]
@@ -192,6 +223,7 @@ def authorize(root: Path, candidate: str, release_ref: str, owner_path: str, *, 
         raise o.OracleApprovalError("Original technical receipt changed during authority assessment")
     run = o._RUN.get()
     payload = {"kind": "boc-publication-authorization-v1", "plan": selected,
+               "authorization_request_sha256": request_digest,
                "requested_effect_ids": requested, "verdict": result["verdict"],
                "review_status": result["review_status"], "owner_evidence": owner,
                "native_result": str(run / "result.json"),

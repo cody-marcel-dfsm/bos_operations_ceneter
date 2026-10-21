@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import queue
+import signal
 import shlex
 import socket
 import stat
@@ -25,6 +26,111 @@ def process_identity(pid):
     result = subprocess.run(["ps", "-p", str(pid), "-o", "lstart=,comm="],
                             capture_output=True, text=True)
     return result.stdout.strip() if result.returncode == 0 else None
+
+
+def process_birth(pid):
+    result = subprocess.run(["ps", "-p", str(pid), "-o", "lstart="], capture_output=True, text=True)
+    return " ".join(result.stdout.split()) if result.returncode == 0 else None
+
+
+def _reviewer_group(record):
+    """The gated launch creates one new OS session before native execution."""
+    result = subprocess.run(["ps", "-ax", "-o", "pid=,pgid=,lstart=,stat="], capture_output=True, text=True)
+    members = []
+    for line in result.stdout.splitlines():
+        fields = line.split()
+        if len(fields) != 8 or not fields[0].isdigit() or not fields[1].isdigit():
+            continue
+        pid, group = int(fields[0]), int(fields[1])
+        if group != record["process_group"]:
+            continue
+        birth = " ".join(fields[2:7])
+        if pid == record["pid"] and birth != record["process_birth"]:
+            raise ValueError("Registered reviewer PID belongs to a different process birth")
+        if not fields[7].startswith("Z"):
+            members.append({"pid": pid, "process_birth": birth})
+    return members
+
+
+def _active_children(o, root, identity):
+    directory = Path(identity["directory"]) / "children"
+    if not directory.exists():
+        return []
+    o._metadata_directory(root, directory)
+    active = []
+    for path in sorted(p for p in directory.glob("reviewer-*.json")
+                       if o.re.fullmatch(r"reviewer-[0-9a-f]{32}\.json", p.name)):
+        raw = o._custody_read(root, path)[1]
+        record = json.loads(raw)
+        payload = {key: value for key, value in record.items() if key != "record_sha256"}
+        if (raw != o._pretty(record) or record.get("record_sha256") != o._sha(o._canonical(payload))
+                or record.get("root") != str(root) or record.get("controller_id") != identity["controller_id"]
+                or record.get("owner_identity_sha256") != o._sha(o._pretty(identity))
+                or record.get("process_group") != record.get("pid") or not record.get("process_birth")
+                or not isinstance(record.get("pid"), int) or record["pid"] <= 0
+                or record.get("evidence") != o._files(root, list(record.get("evidence", {})))):
+            raise o.OracleApprovalError("Registered native reviewer custody changed")
+        try:
+            members = _reviewer_group(record)
+        except ValueError as exc:
+            raise o.OracleApprovalError(str(exc)) from exc
+        if members:
+            active.append({"registration": str(path), "record_sha256": record["record_sha256"],
+                           "pid": record["pid"], "process_group": record["process_group"],
+                           "process_birth": record["process_birth"], "members": members})
+    return active
+
+
+def reviewer_process(o, root, run, command, environment, controller):
+    # The shell waits for its private stdin acknowledgement. Parent loss before
+    # immutable registration closes that pipe and cannot start a reviewer.
+    token = uuid.uuid4().hex
+    gate = 'IFS= read -r token || exit 70; [ "$token" = "$1" ] || exit 70; shift; exec "$@"'
+    process = subprocess.Popen(["/bin/sh", "-c", gate, "native-reviewer", token, *command],
+                               cwd=root, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, text=True, env=environment, start_new_session=True)
+    path = controller.directory / "children" / ("reviewer-" + uuid.uuid4().hex + ".json")
+    try:
+        birth = process_birth(process.pid)
+        if not birth or os.getpgid(process.pid) != process.pid:
+            raise o.OracleApprovalError("Native reviewer could not establish its own process group")
+        payload = {"kind": "boc-native-reviewer-process-v1", "root": str(root),
+                   "controller_id": controller.identity["controller_id"],
+                   "owner_identity_sha256": o._sha(o._pretty(controller.identity)),
+                   "pid": process.pid, "process_group": process.pid, "process_birth": birth,
+                   "run": str(run), "command_sha256": o._sha(o._canonical(command)),
+                   "evidence": o._files(root, [str(run / "model.json"), str(run / "request.txt")])}
+        record = dict(payload, record_sha256=o._sha(o._canonical(payload)))
+        _publish(o, root, path, record)
+        stdout, stderr = process.communicate(input=token + "\n")
+        _publish(o, root, path.with_suffix(".outcome.json"),
+                 {"record_sha256": record["record_sha256"], "exit_code": process.returncode})
+        return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+    except BaseException as exc:
+        if process.poll() is None:
+            os.killpg(process.pid, signal.SIGTERM)
+        try:
+            stdout, stderr = process.communicate(timeout=2)
+        except subprocess.TimeoutExpired:
+            os.killpg(process.pid, signal.SIGKILL)
+            stdout, stderr = process.communicate(timeout=2)
+        _publish(o, root, path.with_suffix(".failure.json"),
+                 {"error_type": type(exc).__name__, "error": str(exc), "exit_code": process.returncode})
+        o._atomic_write(run / "stdout.log", stdout.encode())
+        o._atomic_write(run / "stderr.log", stderr.encode())
+        raise
+
+
+_RETRY = object()
+
+
+def _wait_orphan(o, root, identity):
+    while _active_children(o, root, identity):
+        time.sleep(.1)
+    if _terminal(o, root, identity) is None:
+        _finish(o, root, identity, {"status": "ERROR", "error_type": "OracleApprovalError",
+                                  "error": "Native parent exited; registered reviewer groups ended; original evidence retained"})
+    return _RETRY
 
 
 def _head(o, root):
@@ -218,10 +324,17 @@ def active(o, root):
     if not identity or _terminal(o, root, identity):
         return legacy_active(o, root)
     if not _alive(identity):
+        children = _active_children(o, root, identity)
+        if children:
+            return {"state": "REVIEW_IN_PROGRESS", "identity": {k: v for k, v in identity.items() if k != "owner_token"},
+                    "orphaned_children": children, "attempt": None,
+                    "reason": "Observe the interrupted owner's live registered reviewer groups"}
         return None
     try:
         return _request(o, root, identity, {"operation": "observe"})
     except (OSError, ValueError) as exc:
+        if _terminal(o, root, identity):
+            return None
         raise o.OracleApprovalError("Live controller observation failed; original owner retained") from exc
 
 
@@ -323,6 +436,8 @@ class Controller:
         previous, count = _last(o, root)
         if previous and not _terminal(o, root, previous) and _alive(previous):
             return previous
+        if previous and _active_children(o, root, previous):
+            return previous
         if previous and not _terminal(o, root, previous):
             _finish(o, root, previous, {"status": "ERROR", "error_type": "OracleApprovalError",
                                       "error": "Native controller process exited before its outcome"})
@@ -409,34 +524,57 @@ class Controller:
             self.thread.join(1.2)
 
 
+def _completed_result(o, root, identity):
+    terminal = _terminal(o, root, identity)
+    if terminal is None:
+        return False, None
+    if "result_path" in terminal:
+        path = Path(terminal["result_path"])
+        if path != Path(identity["directory"]) / "native-result.json":
+            raise o.OracleApprovalError("Original native controller result is outside its owner")
+        raw = o._custody_read(root, path)[1]
+        if o._sha(raw) != terminal["result_sha256"]:
+            raise o.OracleApprovalError("Original native controller result changed")
+        result = json.loads(raw)
+        if raw != o._pretty(result):
+            raise o.OracleApprovalError("Original native controller result is not canonical")
+        return True, result
+    exception = {"OracleCandidateRejected": o.OracleCandidateRejected,
+                 "OracleReviewIncomplete": o.OracleReviewIncomplete}.get(terminal.get("error_type"), o.OracleApprovalError)
+    raise exception(terminal.get("error", "Native controller failed"))
+
+
 def _follow(o, root, identity, kind, series, evidence):
+    if (identity["review_kind"] != kind or identity["series_id"] != series
+            or identity["reviewer_settings"] != o._review_settings_binding()):
+        raise o.OracleApprovalError("Incompatible live native controller")
+    if not _alive(identity) and _active_children(o, root, identity):
+        return _wait_orphan(o, root, identity)
+    complete, result = _completed_result(o, root, identity)
+    if complete:
+        return result
     request = {"operation": "attach", "review_kind": kind, "series_id": series,
                "reviewer_settings": o._review_settings_binding(), "evidence": o._files(root, evidence),
                "observer_pid": os.getpid(), "observer_process_identity": process_identity(os.getpid())}
     try:
         response = _request(o, root, identity, request)
     except (OSError, ValueError) as exc:
+        complete, result = _completed_result(o, root, identity)
+        if complete:
+            return result
         raise o.OracleApprovalError("Live native owner is not observable; original invocation retained") from exc
     if response.get("error"):
         raise o.OracleApprovalError(response["error"])
     while True:
-        terminal = _terminal(o, root, identity)
-        if terminal:
-            if "result_path" in terminal:
-                path = Path(terminal["result_path"])
-                raw = o._custody_read(root, path)[1]
-                if o._sha(raw) != terminal["result_sha256"]:
-                    raise o.OracleApprovalError("Original native controller result changed")
-                return json.loads(raw)
-            exception = {"OracleCandidateRejected": o.OracleCandidateRejected,
-                         "OracleReviewIncomplete": o.OracleReviewIncomplete}.get(terminal.get("error_type"), o.OracleApprovalError)
-            raise exception(terminal.get("error", "Native controller failed"))
-        if process_identity(identity["pid"]) != identity["process_identity"]:
-            raise o.OracleApprovalError("Observed native controller process exited; original evidence retained")
+        complete, result = _completed_result(o, root, identity)
+        if complete:
+            return result
+        if not _alive(identity):
+            return _wait_orphan(o, root, identity)
         time.sleep(.1)
 
 
-def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False):
+def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False, request=None):
     predecessor = None if "BOC_NATIVE_CONTROLLER_RELOAD" in os.environ else legacy_active(o, root)
     if predecessor:
         historical = _follow_legacy(o, root, predecessor, kind)
@@ -450,17 +588,19 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False):
         series = o._sha((args[0] if args else kwargs["request"]).encode())
         evidence = list(args[1] if len(args) > 1 else kwargs.get("evidence_paths", []))
     else:
-        series, evidence = kind, []
+        series, evidence = (o._sha(o._canonical(request)) if request is not None else kind), []
     controller = Controller(o, root, kind, series)
     try:
         previous = controller.claim()
         if previous:
             controller.close()
             result = _follow(o, root, previous, kind, series, evidence)
+            if result is _RETRY:
+                return run(o, root, kind, attempt, args, kwargs, follow_commits=follow_commits, request=request)
             if follow_commits and kind == "issue":
                 if (o._git(root, "rev-parse", "HEAD").strip() != result.get("base_commit")
                         or o._git(root, "status", "--porcelain=v1", "--untracked-files=all").strip()):
-                    return run(o, root, kind, attempt, args, kwargs, follow_commits=True)
+                    return run(o, root, kind, attempt, args, kwargs, follow_commits=True, request=request)
                 if o.__package__:
                     from . import shipment_state
                 else:
