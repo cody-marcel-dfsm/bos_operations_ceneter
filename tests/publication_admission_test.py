@@ -19,6 +19,8 @@ class PublicationAdmission(unittest.TestCase):
         self.fixture.git("branch", "-M", "main")
         self.fixture.git("remote", "add", "origin", o.PUBLICATION_REMOTE)
         self.fixture.git("update-ref", "refs/remotes/origin/main", self.fixture.base)
+        self.fixture.release_metadata("0.0.1")
+        self.fixture.git("add", ".")
         self.ref = "codex/release-v0.0.1"
         self.commands = []
 

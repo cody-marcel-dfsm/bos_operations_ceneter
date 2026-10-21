@@ -24,6 +24,8 @@ class ShipmentWorkflow(unittest.TestCase):
         self.fixture.git("branch", "-M", "main")
         self.fixture.git("remote", "add", "origin", o.PUBLICATION_REMOTE)
         self.fixture.git("update-ref", "refs/remotes/origin/main", self.fixture.base)
+        self.fixture.release_metadata("0.0.1")
+        self.fixture.git("add", ".")
         self.ref = "codex/release-v0.0.1"
 
     def commit(self, message="committed candidate"):
@@ -102,6 +104,68 @@ class ShipmentWorkflow(unittest.TestCase):
         self.fixture.submit(current)
         shipment.record_validated(self.root)
         self.assertEqual(shipment.selection(self.root)["last_validated_commit"], second)
+
+    def test_identical_proposal_refresh_retains_series_findings_and_original_provenance(self):
+        first = self.commit()
+        self.fixture.submit(lambda c: self.fixture.result(c, findings=[self.fixture.finding()]),
+                            error=o.OracleCandidateRejected)
+        directory = o._series_directory(self.root, first)
+        old_proposal = o.proposal_path(self.root).read_bytes()
+        self.fixture.change("peer.py", "peer repair leaves source finding unresolved")
+        second = self.commit("repair before proposal refresh")
+        self.fixture.propose()
+        self.assertEqual(o._series_directory(self.root, second), directory)
+        self.assertEqual((o.receipt_path(self.root).parent / "proposals" / (o._sha(old_proposal) + ".json")).read_bytes(), old_proposal)
+        self.fixture.submit(error=o.OracleApprovalError)
+        self.assertIn("F001", self.fixture.contexts[-1]["prior_findings"])
+
+    def test_trailer_free_approved_effect_survives_ordinary_commit(self):
+        self.commit()
+        def protected(context):
+            result = self.fixture.result(context)
+            result["protected_effects"]["active"] = [{"id": "synthetic-credential-boundary", "kind": "credential-trust",
+                "boundary": "synthetic boundary", "description": "Changed credential selection", "paths": ["source.py"],
+                "inputs": self.fixture.inputs(context, "source.py")}]
+            return result
+        first = self.fixture.submit(protected)
+        shipment.record_validated(self.root)
+        self.fixture.change("peer.py", "ordinary peer repair")
+        self.commit()
+        self.fixture.submit(error=o.OracleApprovalError)
+        self.assertEqual(self.fixture.contexts[-1]["publication_scope"]["prior_effects"][0]["origin"], o._sha(o._pretty(first)))
+
+    def test_source_only_approval_requires_release_preparation_and_lower_or_inconsistent_is_rejected(self):
+        self.fixture.release_metadata("0.0.0")
+        self.fixture.git("add", ".")
+        self.commit()
+        self.fixture.submit()
+        shipment.record_validated(self.root)
+        self.assertEqual(shipment.selection(self.root)["state"], "PREPARE")
+        self.fixture.release_metadata("0.0.1")
+        self.fixture.change("clients/codex/plugins/bos/.bos-product.json", json.dumps({"name": "bos", "version": "0.0.0", "client": "codex"}))
+        self.fixture.git("add", ".")
+        self.commit()
+        self.assertEqual(shipment.selection(self.root)["state"], "PREPARE")
+
+    def test_committed_candidate_without_published_baseline_reaches_complete_technical_range(self):
+        self.commit()
+        self.fixture.git("update-ref", "-d", "refs/remotes/origin/main")
+        self.fixture.submit()
+        self.assertIn("source.py", self.fixture.contexts[-1]["required_coverage_paths"])
+        self.assertIn("peer.py", self.fixture.contexts[-1]["required_coverage_paths"])
+        with self.assertRaisesRegex(o.OracleApprovalError, "baseline UNAVAILABLE"):
+            publication.plan(self.root, "HEAD", self.ref, "main-promotion", refresh=False)
+
+    def test_trailer_free_verification_accepts_native_commit_and_exact_merge_but_rejects_changed_tree(self):
+        commit = self.validate()
+        o.verify_commit(self.root, commit)
+        tree = self.fixture.git("rev-parse", commit + "^{tree}")
+        merged = self.fixture.git("commit-tree", tree, "-p", self.fixture.base, "-p", commit, "-m", "synthetic merge")
+        o.verify_commit(self.root, merged)
+        changed = self.fixture.git("commit-tree", self.fixture.git("rev-parse", self.fixture.base + "^{tree}"),
+                                    "-p", self.fixture.base, "-p", commit, "-m", "changed merge")
+        with self.assertRaisesRegex(o.OracleApprovalError, "tree differs"):
+            o.verify_commit(self.root, changed)
 
     def test_changed_instructions_retain_observations_and_require_current_missing_coverage(self):
         self.validate()

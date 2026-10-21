@@ -87,6 +87,46 @@ def record_released(root: Path, commit: str, merge_commit: str) -> dict:
     return _save(root, record)
 
 
+def release_preparation(root: Path, baseline: str, commit: str = "HEAD") -> dict:
+    """Bind advancing canonical and generated release identities to committed source."""
+    inputs = {}
+    def read(name):
+        raw = o._git_bytes(root, "show", commit + ":" + name)
+        inputs[name] = o._sha(raw)
+        return json.loads(raw)
+    def version(value):
+        if not isinstance(value, str) or not o.re.fullmatch(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", value):
+            raise o.OracleApprovalError("Release version must be canonical x.y.z")
+        return tuple(map(int, value.split(".")))
+    current = read("package.json")["version"]
+    published = json.loads(o._git_bytes(root, "show", baseline + ":package.json"))["version"]
+    if version(current) <= version(published):
+        raise o.OracleApprovalError("Release preparation requires a version greater than the published version")
+    if read("package-manifest.json").get("version") != current or read("skill-release-manifest.json").get("release") != current:
+        raise o.OracleApprovalError("Release preparation has inconsistent canonical or generated versions")
+    names = o._git(root, "ls-tree", "-r", "--name-only", commit, "--", "products").splitlines()
+    active = []
+    for name in names:
+        if not name.endswith("/product.json"):
+            continue
+        product = read(name)
+        if product.get("release_status") == "active":
+            if product.get("version") != current:
+                raise o.OracleApprovalError("Active product release version is inconsistent")
+            active.append(product["name"])
+    if not active:
+        raise o.OracleApprovalError("Release preparation requires active generated products")
+    prefixes = {"codex": "clients/codex/plugins", "claude": "clients/claude/plugins",
+                "copilot": "clients/copilot/products", "gemini": "clients/gemini/extensions",
+                "muse": "clients/muse/plugins"}
+    for client, prefix in prefixes.items():
+        for product in active:
+            manifest = read(f"{prefix}/{product}/.bos-product.json")
+            if manifest.get("name") != product or manifest.get("client") != client or manifest.get("version") != current:
+                raise o.OracleApprovalError("Generated product release identity is inconsistent")
+    return {"version": current, "published_version": published, "inputs": inputs}
+
+
 def selection(root: Path) -> dict:
     commit = o._git(root, "rev-parse", "HEAD").strip()
     result = {"kind": "boc-shipment-selection-v1", "candidate_commit": commit}
@@ -102,6 +142,10 @@ def selection(root: Path) -> dict:
         return dict(result, state="NO_CHANGES", reason="Candidate already belongs to published main")
     if not _ancestor(root, baseline, commit):
         return dict(result, state="INTEGRATE", reason="Integrate the current published baseline")
+    try:
+        result["release_preparation"] = release_preparation(root, baseline, commit)
+    except (o.OracleApprovalError, OSError, ValueError, TypeError, KeyError) as exc:
+        return dict(result, state="PREPARE", reason=str(exc))
     try:
         record = _load(root)
         validated_receipt(root, commit)

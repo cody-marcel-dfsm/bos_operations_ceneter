@@ -158,6 +158,13 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     { cwd: scriptRoot, encoding: "utf8" }));
   const current = await readJson(join(scriptRoot, "package.json"));
   if (published.version !== current.version) {
+    // nextVersion validates strict advancement; a lower or malformed version
+    // cannot masquerade as an already prepared release.
+    nextVersion(published.version, current.version);
+    const consistent = JSON.parse(execFileSync("python3", ["-c",
+      "from pathlib import Path; import json; from tools.shipment_state import release_preparation; print(json.dumps(release_preparation(Path.cwd(), 'refs/remotes/origin/main')))"] ,
+    { cwd: scriptRoot, encoding: "utf8" }));
+    if (consistent.version !== current.version) throw new Error("Prepared release source changed");
     console.log(`Release ${current.version} is already prepared.`);
     process.exit(0);
   }

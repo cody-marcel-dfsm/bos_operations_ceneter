@@ -432,6 +432,45 @@ def _technical_archive(root: Path, digest: str) -> Path:
     return receipt_path(root).parent / "receipts" / (digest + ".json")
 
 
+def _committed_receipts(root: Path, commit: str) -> list[tuple[dict, bytes]]:
+    """Discover exact committed decisions through immutable native provenance."""
+    tree = _git(root, "show", "-s", "--format=%T", commit).strip()
+    selected = []
+    for path in sorted((receipt_path(root).parent / "receipts").glob("*.json")):
+        raw = _custody_read(root, path)[1]
+        receipt = json.loads(raw)
+        if receipt.get("base_commit") != commit or receipt.get("candidate_tree") != tree:
+            continue
+        _shape(receipt)
+        if raw != _pretty(receipt) or path.stem != _sha(raw):
+            raise OracleApprovalError("Archived committed receipt changed")
+        for name, digest in receipt["validation_evidence"].items():
+            round_path = Path(name) if Path(name).is_absolute() else root / name
+            series = receipt_path(root).parent / "series"
+            if round_path.parent.parent != series or not re.fullmatch(r"round-[0-9]{4}\.json", round_path.name):
+                continue
+            rounds = _read_rounds(round_path.parent)
+            match = next((row for row in rounds if row["round"] == int(round_path.stem[6:])), None)
+            if (match and digest == _sha(_pretty(match)) and match["outcome"] == "APPROVED"
+                    and match["base_commit"] == commit and match["candidate_tree"] == tree
+                    and match["review"].get("review_status") == "COMPLETE"
+                    and _sha(_canonical(match["review"])) == receipt["review_digest"]
+                    and match["review"].get("protected_effects") == receipt.get("protected_effects")):
+                selected.append((receipt, raw))
+                break
+        else:
+            raise OracleApprovalError("Archived committed receipt lacks native decision provenance")
+    return selected
+
+
+def _proposal_origin(root: Path, proposal: dict, candidate: str) -> str:
+    origin = proposal.get("lifecycle_origin", proposal["base_commit"])
+    if subprocess.run(["git", "merge-base", "--is-ancestor", origin, candidate],
+                      cwd=root, capture_output=True).returncode:
+        raise OracleApprovalError("Proposal lifecycle origin is outside the candidate history")
+    return origin
+
+
 def _publication_scope(root: Path, tree: str) -> dict:
     """The effective distributed source range, independent of the last commit."""
     base = _git(root, "rev-parse", "HEAD").strip()
@@ -445,8 +484,22 @@ def _publication_scope(root: Path, tree: str) -> dict:
         if subprocess.run(["git", "merge-base", "--is-ancestor", base, "HEAD"], cwd=root,
                           capture_output=True).returncode:
             raise OracleApprovalError("Integrate the publication baseline before technical review")
+    else:
+        # A sealed proposal establishes a technical range even before a fetched
+        # publication baseline is available. The absent destination still holds delivery.
+        try:
+            proposal = verify_proposal(root)
+            base = proposal["lifecycle_origin"]
+        except (OSError, ValueError, KeyError, OracleApprovalError):
+            pass
     prior, history_limitations = [], []
     for commit in _git(root, "rev-list", "--reverse", base + "..HEAD").splitlines():
+        committed = _committed_receipts(root, commit)
+        for receipt, raw in committed:
+            for effect in receipt.get("protected_effects", {}).get("active", []):
+                item = {"origin": _sha(raw), "effect": effect}
+                if item not in prior:
+                    prior.append(item)
         message = _git(root, "show", "-s", "--format=%B", commit)
         try:
             digest = _trailers(message)[TRAILER_KEYS[2]]
@@ -956,7 +1009,7 @@ def _series_directory(root: Path, base: str) -> Path:
                 and not proposal["review"].get("findings")
                 and subprocess.run(["git", "merge-base", "--is-ancestor", proposal["base_commit"], base],
                                    cwd=root, capture_output=True).returncode == 0):
-            base = proposal["base_commit"]
+            base = _proposal_origin(root, proposal, base)
     except (OSError, ValueError, KeyError, TypeError, OracleApprovalError):
         pass
     identity = _sha(_canonical({"repository": str(root.resolve()), "base_commit": base}))[:24]
@@ -2116,7 +2169,9 @@ def _verify_receipt(root: Path, receipt: dict, raw: bytes, *, pending_evidence: 
     if evidence != actual_evidence:
         raise OracleApprovalError("Oracle validation evidence changed")
     if "publication_scope" in payload:
-        if payload["publication_scope"] != _publication_scope(root, tree):
+        current_scope = _publication_scope(root, tree)
+        current_scope["prior_effects"] = [row for row in current_scope["prior_effects"] if row["origin"] != _sha(raw)]
+        if payload["publication_scope"] != current_scope:
             raise OracleApprovalError("Oracle publication source range changed")
         _protected_effects({"protected_effects": payload["protected_effects"]}, payload["publication_scope"])
     context, context_path = _receipt_current_context(root, payload, pending_evidence)
@@ -2225,12 +2280,37 @@ def review_proposal(root: Path, request: str, evidence_paths: Sequence[str], own
         "review_process": json.loads(_custody_read(root, _RUN.get() / "model.json")[1])
                           if (_RUN.get() / "model.json").is_file() else None,
     }
+    # Proposal refreshes remain in the same unfinished descendant lifecycle.
+    # Preserve the previous proposal bytes as evidence before replacing its pointer.
+    previous_path = proposal_path(root)
+    if previous_path.exists():
+        previous_raw = _custody_read(root, previous_path)[1]
+        previous = json.loads(previous_raw)
+        previous_body = {key: value for key, value in previous.items() if key != "proposal_review_id"}
+        if (previous_raw != _pretty(previous)
+                or previous.get("proposal_review_id") != _sha(_canonical(previous_body))):
+            raise OracleApprovalError("Previous proposal custody changed")
+        _archive_proposal(root, previous_raw)
+        if previous.get("review", {}).get("verdict") == "APPROVED":
+            payload["lifecycle_origin"] = _proposal_origin(root, previous, payload["base_commit"])
+    payload.setdefault("lifecycle_origin", payload["base_commit"])
     record = dict(payload, proposal_review_id=_sha(_canonical(payload)))
     path = proposal_path(root)
     _atomic_write(_RUN.get() / "prospective-proposal.json", _pretty(record))
+    _archive_proposal(root, _pretty(record))
     _atomic_write(path, _pretty(record))
     _metadata_remove(root, receipt_path(root))
     return review
+
+
+def _archive_proposal(root: Path, raw: bytes) -> Path:
+    path = receipt_path(root).parent / "proposals" / (_sha(raw) + ".json")
+    if path.exists():
+        if _custody_read(root, path)[1] != raw:
+            raise OracleApprovalError("Immutable proposal archive changed")
+    else:
+        _atomic_write(path, raw)
+    return path
 
 def verify_proposal(root: Path) -> dict:
     try:
@@ -2267,6 +2347,7 @@ def verify_proposal(root: Path) -> dict:
         raise OracleApprovalError("Oracle proposal owner evidence changed")
     _validate_api_version_assessment(review.get("api_version_assessment"), review["verdict"], root, evidence)
     return {"verdict": "APPROVED", "base_commit": record["base_commit"],
+            "lifecycle_origin": _proposal_origin(root, record, _git(root, "rev-parse", "HEAD").strip()),
             "proposal_sha256": record["proposal_sha256"]}
 
 
@@ -2281,7 +2362,7 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
             raise OracleApprovalError("Oracle cannot approve an empty candidate")
         _metadata_remove(root, receipt_path(root))
         verify_proposal(root)
-        proposal = proposal_path(root)
+        proposal = _archive_proposal(root, _custody_read(root, proposal_path(root))[1])
         complete_evidence = [*evidence_paths, str(proposal)]
         evidence, owner = _files(root, complete_evidence), (_files(root, [owner_path]) if owner_path else None)
     with _phase("preparation_seconds"):
@@ -2412,8 +2493,19 @@ def verify_commit(root: Path, commit: str) -> None:
     if len(parents) > 1:
         if len(parents) != 2: raise OracleApprovalError("Oracle accepts only two-parent GitHub merge commits")
         verify_commit(root, parents[1])
-        approved_tree = _trailers(_git(root,"show","-s","--format=%B",parents[1]))[TRAILER_KEYS[1]]
+        approved_tree = _git(root,"show","-s","--format=%T",parents[1]).strip()
         if tree != approved_tree: raise OracleApprovalError("Merge commit tree differs from the Oracle-approved pull-request tree")
+        return
+    if not any(re.search(rf"(?m)^{re.escape(key)}:", message) for key in TRAILER_KEYS):
+        if _committed_receipts(root, commit):
+            return
+        # A published fresh clone uses the existing trusted exact-SHA transport;
+        # local approved candidates above remain entirely credential-free.
+        if __package__:
+            from . import publication_status
+        else:
+            import publication_status
+        publication_status.verify_publication(root, commit, wait_seconds=0)
         return
     trailers = _trailers(message)
     if trailers[TRAILER_KEYS[0]] != "APPROVED" or trailers[TRAILER_KEYS[1]] != tree: raise OracleApprovalError("Commit Oracle accepted-state trailers are invalid")

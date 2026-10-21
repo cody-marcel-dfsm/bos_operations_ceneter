@@ -28,6 +28,7 @@ class ReviewSeries(unittest.TestCase):
                             ".gitignore": "Vault/\n__pycache__/\n", "source.py": "base", "peer.py": "base peer",
                             "dependency.py": "dependency", "config.json": "{}"}.items():
             path = self.root / name; path.parent.mkdir(parents=True, exist_ok=True); path.write_text(value)
+        self.release_metadata("0.0.0")
         for name in o.REVIEW_POLICY_MODULES:
             original = Path(inspect.getsourcefile(o._oracle)).parent / Path(name).name
             path = self.root / name
@@ -49,6 +50,18 @@ class ReviewSeries(unittest.TestCase):
 
     def git(self, *arguments):
         return subprocess.check_output(["git", *arguments], cwd=self.root, text=True).strip()
+
+    def release_metadata(self, version):
+        files = {"package.json": {"version": version}, "package-manifest.json": {"version": version},
+                 "skill-release-manifest.json": {"release": version},
+                 "products/bos/product.json": {"name": "bos", "version": version, "release_status": "active"}}
+        for client, prefix in {"codex": "plugins", "claude": "plugins", "copilot": "products",
+                               "gemini": "extensions", "muse": "plugins"}.items():
+            files[f"clients/{client}/{prefix}/bos/.bos-product.json"] = {"name": "bos", "version": version, "client": client}
+        for name, value in files.items():
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(value))
 
     def change(self, name, value):
         (self.root / name).write_text(value); self.git("add", name)

@@ -73,6 +73,7 @@ def plan(root: Path, candidate: str, release_ref: str, operation: str, *, refres
     current = o._publication_scope(root, receipt["candidate_tree"])
     if current["target_ref"] is None:
         raise o.OracleApprovalError("Publication baseline UNAVAILABLE: fetch origin/main and obtain a complete current range assessment")
+    shipment.release_preparation(root, current["baseline_commit"], commit)
     # The just-committed receipt itself is outside the earlier HEAD range; it
     # adds no earlier effect. Preserve every earlier effective origin exactly.
     current["prior_effects"] = [row for row in current["prior_effects"] if row["origin"] != o._sha(raw)]
