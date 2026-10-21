@@ -105,7 +105,7 @@ test('streamed opaque download, ordinary local save and discovered durable uploa
       const download=contact();download.execution.uri='/bos/apps/synthetic/api/v1/files/download';
       const upload=contact();upload.operation='synthetic_file_upload';upload.effect='write';delete upload.execution.response;
       upload.execution.uri='/bos/apps/synthetic/api/v1/files/upload';
-      upload.input_schema={type:'object',additionalProperties:false,required:['filename','content_base64'],
+      upload.input_schema={$schema:'https://json-schema.org/draft/2020-12/schema',type:'object',additionalProperties:false,required:['filename','content_base64'],
         properties:{filename:{type:'string'},content_base64:{type:'string'}},'x-bos-fields':[]};
       const current=adapter(async request=>{
         const reply=await fetch('http://127.0.0.1:'+server.address().port+request.href,{method:request.method,headers:request.headers,body:request.body});
