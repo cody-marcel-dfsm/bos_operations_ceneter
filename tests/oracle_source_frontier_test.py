@@ -83,6 +83,19 @@ class SourceFrontier(unittest.TestCase):
             self.assertEqual(hashlib.sha256(raw).hexdigest(),page['sha256'])
         self.assertLessEqual(reference['inline_bytes'],frontier.MAX_INLINE_BYTES)
 
+    def test_class_header_only_change_includes_unchanged_decorator_construction(self):
+        base=BEFORE+'\ndef class_only(cls):\n    return cls\n'
+        (self.root/'source.py').write_text(base);self.git('add','.');self.git('commit','-qm','class decorator dependency')
+        self.context['previous_candidate_tree']=self.git('rev-parse','HEAD^{tree}')
+        (self.root/'source.py').write_text(base.replace('@marker\nclass Example','@class_only\nclass Example'))
+        self.git('add','.');self.git('commit','-qm','class header only')
+        self.context.update(candidate_tree=self.git('rev-parse','HEAD^{tree}'),base_commit=self.git('rev-parse','HEAD'))
+        item=frontier._tree(self.root,self.context['candidate_tree'])['source.py']
+        self.context['input_hashes']['source.py']='git-sha1:'+':'.join(item)
+        manifest,_,_,_=self.prepare()
+        labels={(u['side'],u['label']) for u in manifest['entries'][0]['units']}
+        self.assertIn(('after','class_only'),labels);self.assertIn(('after','Example.__init__'),labels)
+
     def test_utf8_pages_reassemble_complete_large_definition_and_preserve_hashes(self):
         path=self.root/'source.py';text='def unicode_body():\n    return '+repr('é🚀'*18000)+'\n'
         path.write_text(text);self.git('add','.');self.git('commit','-qm','unicode source')

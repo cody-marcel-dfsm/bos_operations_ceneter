@@ -138,10 +138,18 @@ def _python_units(text, changed, affected):
     chosen_classes = {name for name, (node, _, header) in classes.items()
                       if affected or any(a <= header[1] and b >= header[0] for a, b in changed)}
     unresolved = set(); queue = deque(sorted(selected)); seen = set()
+    construction_seen = set()
     def constructors(name):
-        if name not in classes:
+        if name not in classes or name in construction_seen:
             return
-        chosen_classes.add(name)
+        construction_seen.add(name); chosen_classes.add(name)
+        class_node = classes[name][0]
+        for expression in [*class_node.decorator_list, *class_node.bases, *[item.value for item in class_node.keywords]]:
+            for item in ast.walk(expression):
+                if isinstance(item, ast.Name):
+                    if item.id in functions and item.id not in selected:
+                        selected.add(item.id); queue.append(item.id)
+                    if item.id in classes:constructors(item.id)
         for method in ('__new__', '__init__', '__post_init__'):
             target = name + '.' + method
             if target in functions and target not in selected:
