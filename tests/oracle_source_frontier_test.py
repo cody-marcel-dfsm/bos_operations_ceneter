@@ -134,6 +134,7 @@ class SourceFrontier(unittest.TestCase):
         fixture.root=self.root;fixture.run=self.child
         fixture.context.update(self.context,required_coverage_paths=['source.py'],reusable_coverage=[],
                                prior_findings={},reusable_validations=[],current_validations=[])
+        fixture.context['input_hashes']['@proposal/scope']='sha256:synthetic-proposal'
         fixture.binding.update(base_commit=self.context['base_commit'])
         fixture.plan=parallel.partition(fixture.context,fixture.binding,fixture.digest)
         o._atomic_write(self.child/'review-context.json',o._pretty(fixture.context))
@@ -157,7 +158,7 @@ class SourceFrontier(unittest.TestCase):
         try:
             with patch.object(o,'_input_binding',return_value=fixture.binding),patch.object(o,'_review_process',side_effect=consume):
                 result=parallel.review(o,self.root,self.context['candidate_tree'],['source.py'],{},None)
-            self.assertEqual(result['review_status'],'COMPLETE');self.assertEqual(len(seen),2)
+            self.assertEqual(result['review_status'],'COMPLETE',result['limitations']);self.assertEqual(len(seen),2)
             tamper[0]=True
             with patch.object(o,'_input_binding',return_value=fixture.binding),patch.object(o,'_review_process',side_effect=consume):
                 result=parallel.review(o,self.root,self.context['candidate_tree'],['source.py'],{},None)
