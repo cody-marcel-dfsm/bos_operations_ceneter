@@ -953,7 +953,10 @@ def _owned_private_parent(root: Path, path: Path, prefix: tuple[str, ...]) -> di
         if not fact.get("exists"):
             descriptor = _private_directory_fd(root, root.joinpath(*parts[:count - 1]), prefix, ancestor=True)
             try:
-                os.mkdir(parts[count - 1], 0o700, dir_fd=descriptor)
+                try:
+                    os.mkdir(parts[count - 1], 0o700, dir_fd=descriptor)
+                except FileExistsError:
+                    pass  # Concurrent native admission; the full route is rechecked below.
             finally:
                 os.close(descriptor)
     fact = _owner_source_walk(root, "/".join(parts), content=False, allow_git=True, custody=True)
