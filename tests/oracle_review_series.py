@@ -2237,12 +2237,12 @@ class ReviewSeries(unittest.TestCase):
         self.addCleanup(lambda: (path.unlink(), saved.rename(path)))
         return destination, saved
 
-    def test_metadata_directory_and_lock_admission_precede_mutation(self):
-        for target in ('directory', 'runs', 'lock'):
+    def test_metadata_directory_and_controller_admission_precede_mutation(self):
+        for target in ('directory', 'runs', 'controllers'):
             for route in ('escape', 'return'):
                 with self.subTest(target=target, route=route), tempfile.TemporaryDirectory() as outside:
                     directory = o.receipt_path(self.root).parent
-                    path = directory if target == 'directory' else directory / ('runs' if target == 'runs' else 'review.lock')
+                    path = directory if target == 'directory' else directory / ('runs' if target == 'runs' else 'controllers')
                     destination, saved = self.metadata_route(path, Path(outside), route)
                     before = {str(item.relative_to(saved)): item.read_bytes() for item in saved.rglob('*')
                               if item.is_file()} if saved.is_dir() else saved.read_bytes()
@@ -2250,12 +2250,8 @@ class ReviewSeries(unittest.TestCase):
                     def review_proposal(root):
                         called.append(True)
                         return {'verdict': 'APPROVED'}
-                    real_flock = o.fcntl.flock
-                    with patch.object(o.fcntl, 'flock', wraps=real_flock) as lock:
-                        with self.assertRaises(o.OracleApprovalError):
-                            o._serialized_review(review_proposal)(self.root)
-                        if target != 'runs':
-                            lock.assert_not_called()
+                    with self.assertRaises(o.OracleApprovalError):
+                        o._serialized_review(review_proposal)(self.root)
                     self.assertEqual(called, [])
                     after = {str(item.relative_to(saved)): item.read_bytes() for item in saved.rglob('*')
                              if item.is_file()} if saved.is_dir() else saved.read_bytes()
@@ -2269,20 +2265,19 @@ class ReviewSeries(unittest.TestCase):
                     path.unlink(); saved.rename(path)
                     self._cleanups.pop()
 
-    def test_metadata_special_lock_is_rejected_before_open_or_flock(self):
-        path = o.receipt_path(self.root).parent / 'review.lock'
-        saved = path.with_name('review.lock-saved'); path.rename(saved)
+    def test_metadata_special_admission_record_is_rejected_before_review(self):
+        directory = o.receipt_path(self.root).parent / 'controllers/admissions'
+        path = directory / '00000001.json'
+        saved = directory.parent / 'saved-admission.json'; path.rename(saved)
         try:
             for kind in ('directory', 'fifo'):
                 with self.subTest(kind=kind):
                     path.mkdir() if kind == 'directory' else os.mkfifo(path)
                     try:
                         def review_proposal(root):
-                            self.fail('nonregular lock admitted the review')
-                        with patch.object(o.fcntl, 'flock') as lock:
-                            with self.assertRaises(o.OracleApprovalError):
-                                o._serialized_review(review_proposal)(self.root)
-                            lock.assert_not_called()
+                            self.fail('nonregular controller record admitted the review')
+                        with self.assertRaises(o.OracleApprovalError):
+                            o._serialized_review(review_proposal)(self.root)
                     finally:
                         path.rmdir() if kind == 'directory' else path.unlink()
         finally:
@@ -2308,19 +2303,23 @@ class ReviewSeries(unittest.TestCase):
             self.assertTrue((base / 'container/new-directory').is_dir())
             self.assertFalse((base / 'new-directory').exists())
 
-    def test_metadata_regular_lock_contention_preserves_active_records(self):
-        directory = o.receipt_path(self.root).parent
-        before = o.proposal_path(self.root).read_bytes()
-        runs = set((directory / 'runs').iterdir())
-        with (directory / 'review.lock').open('a+') as held:
-            o.fcntl.flock(held.fileno(), o.fcntl.LOCK_EX | o.fcntl.LOCK_NB)
+    def test_controller_admission_cannot_rewrite_original_invocation(self):
+        directory = o.receipt_path(self.root).parent / 'controllers/admissions'
+        path = directory / '00000001.json'
+        original = path.read_bytes()
+        value = json.loads(original)
+        value['process_identity'] = 'replaced process identity'
+        path.unlink(); path.write_text(json.dumps(value))
+        try:
             def review_proposal(root):
-                self.fail('a second review acquired the active lock')
-            with self.assertRaisesRegex(o.OracleApprovalError, 'Another Oracle review'):
+                self.fail('a replaced original invocation admitted another review')
+            with self.assertRaisesRegex(o.OracleApprovalError, 'custody'):
                 o._serialized_review(review_proposal)(self.root)
-        self.assertEqual(o.proposal_path(self.root).read_bytes(), before)
-        self.assertEqual(set((directory / 'runs').iterdir()), runs)
-        self.assertIsNone(o._METADATA_ROOT.get())
+            self.assertIsNone(o._METADATA_ROOT.get())
+        finally:
+            path.unlink()
+            identity = self.root / '.git/oracle/controllers' / value['controller_id'] / 'identity.json'
+            os.link(identity, path)
 
     def test_late_metadata_writes_and_removals_reject_reentry(self):
         for target in ('run', 'approval', 'proposal', 'round', 'remove'):

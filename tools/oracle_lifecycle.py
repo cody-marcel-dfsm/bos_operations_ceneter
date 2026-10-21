@@ -249,7 +249,7 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False):
     if kind == "issue":
         series = o._series_directory(root, o._git(root, "rev-parse", "HEAD").strip()).name
         evidence = list(args[0] if args else kwargs.get("evidence_paths", []))
-    elif kind == "review_proposal":
+    elif kind == "review_proposal" and (args or "request" in kwargs):
         series = o._sha((args[0] if args else kwargs["request"]).encode())
         evidence = list(args[1] if len(args) > 1 else kwargs.get("evidence_paths", []))
     else:
@@ -273,7 +273,7 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False):
         token = o._CONTROLLER.set(controller)
         try:
             while True:
-                before = o._git(root, "rev-parse", "HEAD").strip()
+                before = o._git(root, "rev-parse", "HEAD").strip() if kind == "issue" else None
                 evidence = list(dict.fromkeys([*evidence, *controller.evidence()]))
                 call_args, call_kwargs = args, dict(kwargs)
                 if kind == "issue":
@@ -297,10 +297,11 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False):
                             continue
                     break
                 except o.OracleApprovalError as exc:
+                    if not follow_commits or kind != "issue":
+                        raise
                     moved = o._git(root, "rev-parse", "HEAD").strip() != before
                     dirty = bool(o._git(root, "status", "--porcelain=v1", "--untracked-files=all").strip())
-                    if (not follow_commits or kind != "issue"
-                            or not (isinstance(exc, o.OracleSourceBindingError) or moved or dirty)):
+                    if not (isinstance(exc, o.OracleSourceBindingError) or moved or dirty):
                         raise
                     _publish(o, root, controller.directory / ("movement-" + uuid.uuid4().hex + ".json"),
                              {"controller_id": controller.identity["controller_id"], "candidate_commit": before,

@@ -181,20 +181,9 @@ with tempfile.TemporaryDirectory() as directory:
 `);
 });
 
-test("same-worktree concurrent review is rejected without overwriting active state", () => {
-  python(`
-import tempfile,subprocess,fcntl
-from pathlib import Path
-from tools import oracle_approval as o
-with tempfile.TemporaryDirectory() as directory:
-    root=Path(directory);subprocess.run(['git','init','-q',str(root)],check=True)
-    state=o.receipt_path(root).parent;state.mkdir(parents=True)
-    lock=(state/'review.lock').open('a+');fcntl.flock(lock,fcntl.LOCK_EX)
-    script="from pathlib import Path;from tools import oracle_approval as o;\\ntry:o.review_proposal(Path(__import__('sys').argv[1]),'proposal',[],None,lambda *a:{})\\nexcept o.OracleApprovalError as exc:assert 'active' in str(exc)\\nelse:raise AssertionError('concurrent review accepted')"
-    result=subprocess.run(['python3','-c',script,str(root)],capture_output=True,text=True)
-    assert result.returncode==0,result.stderr
-    assert not o.proposal_path(root).exists()
-`);
+test("simultaneous callers follow one genuine native parent controller", () => {
+  execFileSync("python3", ["tests/oracle_lifecycle_test.py",
+    "Lifecycle.test_simultaneous_callers_share_one_real_parent"], { cwd: root, encoding: "utf8" });
 });
 
 test("receipts retain actual structured reviewer process settings without pinning future task models", () => {
