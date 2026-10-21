@@ -82,6 +82,7 @@ class SourceFrontier(unittest.TestCase):
             raw=Path(page['path']).read_bytes(); self.assertLessEqual(len(raw),frontier.MAX_PAGE_BYTES)
             self.assertEqual(hashlib.sha256(raw).hexdigest(),page['sha256'])
         self.assertLessEqual(reference['inline_bytes'],frontier.MAX_INLINE_BYTES)
+        self.assertEqual(reference['inline_bytes'],len(inline.encode('utf-8')))
 
     def test_class_header_only_change_includes_unchanged_decorator_construction(self):
         base=BEFORE+'\ndef class_only(cls):\n    return cls\n'

@@ -327,7 +327,7 @@ def prepare(o, root, context, plan, cohort, child, snap):
         decoded = json.loads(body)
         header = dict(page, **{key: value for key, value in decoded.items() if key != 'body'})
         fragment = json.dumps(header, sort_keys=True) + '\n' + decoded['body'] + '\n'
-        amount = len(fragment.encode('utf-8'))
+        amount = len(fragment.encode('utf-8')) + (1 if inline else 0)
         if size + amount > MAX_INLINE_BYTES:
             break
         inline.append(fragment); size += amount
