@@ -68,7 +68,7 @@ def _generation_proof(o, root, context, snap):
                    if entry['reads_body'] or entry['kind'] != 'directory' and
                    entry['path'].startswith(('source/', 'clients/'))):
                 continue
-        except (OSError, ValueError, KeyError, o.OracleApprovalError):
+        except (OSError, ValueError, KeyError, IndexError, TypeError, AttributeError, o.OracleApprovalError):
             continue
         return {key: proof[key] for key in ('evidence_path', 'evidence_sha256', 'environment_digest',
                                             'command', 'output_hashes')} | {
