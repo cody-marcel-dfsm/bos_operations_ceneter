@@ -314,6 +314,9 @@ test("malformed record recovery cannot consume later valid escaped values", asyn
     const nested = JSON.stringify(rows(address)[0]);
     assert(customerDataFindings(operationalPrivacyText(nested, {}), "nested-recovery.log", new Set())
       .some(value => value.includes("email")));
+    for (const text of rows("synthetic fixture value")) {
+      assert.deepEqual(customerDataFindings(operationalPrivacyText(text, {}), "safe-recovery.log", new Set([sha256(phrase)])), []);
+    }
   } finally {await rm(directory, {recursive: true, force: true});}
 });
 
