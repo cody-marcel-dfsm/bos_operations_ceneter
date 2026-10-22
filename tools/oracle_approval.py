@@ -697,7 +697,6 @@ def _assert_binding(root: Path, expected: dict, evidence: dict, owner: dict | No
         raise OracleSourceBindingError("Oracle review inputs changed during preparation or review")
 
 
-@_metadata_owner
 def _dispatch_budget(command: Sequence[str], context_raw: bytes, schema_raw: bytes, maximum: int) -> dict:
     envelope = {'kind': 'boc-native-review-launch-input-v1', 'argv': list(command),
                 'cohort_context_utf8': context_raw.decode('utf-8', errors='strict'),
@@ -710,6 +709,7 @@ def _dispatch_budget(command: Sequence[str], context_raw: bytes, schema_raw: byt
             'schema_sha256': _sha(schema_raw), 'schema_bytes': len(schema_raw)}
 
 
+@_metadata_owner
 def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path | None = None,
                     cohort_policy: str | None = None) -> dict:
     run = _RUN.get()
