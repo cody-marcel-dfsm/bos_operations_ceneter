@@ -366,15 +366,12 @@ export function operationalPrivacyText(text, identities) {
       seen.add(string); decoded.push(string); pending.push(string);
       return true;
     };
-    let recover = false;
-    for (const token of value.matchAll(/"(?:\\[\s\S]|[^"\\])*"/gu)) {
-      if (!admit(token[0])) recover = true;
-    }
-    if (recover) {
-      // An invalid/unterminated token can consume the opening quote of the
-      // following record. Revisit each unescaped quote with record-bounded
-      // candidates, retaining JSON.parse as the value validator. Adjacent quote
-      // spans overlap at most twice; successful normal decoding stays intact.
+    for (const token of value.matchAll(/"(?:\\[\s\S]|[^"\\])*"/gu)) admit(token[0]);
+    {
+      // A malformed prefix can shift quote pairing into valid unrelated tokens,
+      // without any JSON.parse failure. Revisit every unescaped quote using
+      // record-bounded candidates, retaining JSON.parse as the value validator.
+      // Adjacent quote spans overlap at most twice; normal decoding is retained.
       const candidate = /"(?:\\[^\r\n]|[^"\\\r\n])*"/uy;
       let backslashes = 0;
       for (let index = 0; index < value.length; index += 1) {

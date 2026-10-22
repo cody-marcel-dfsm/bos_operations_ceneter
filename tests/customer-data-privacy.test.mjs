@@ -290,13 +290,21 @@ test("malformed record recovery cannot consume later valid escaped values", asyn
   const encode = value => JSON.stringify(value).replaceAll("@", "\\u0040").replaceAll("2", "\\u0032").replaceAll(" ", "\\u0020");
   const rows = value => [
     `{"broken":"unterminated\n{"value":${encode(value)}}\n`,
+    `{"broken":"unterminated {"value":${encode(value)}}`,
+    `{"broken":"unterminated {"nested":{"value":${encode(value)},"value":""}}`,
+    ...[0, 1, 2, 3, 4].map(count => `{"broken":"prefix${"\\".repeat(count)}"tail {"value":${encode(value)}}`),
+    `{"first":"unterminated {"safe":true} {"second":"unterminated {"value":${encode(value)}}`,
     `{"broken":"escape\\\n{"value":${encode(value)}}\n`,
     `{"bad":"\\xZZ","value":${encode(value)}}\n`,
     `{"broken":"unterminated\r\n{"value":${encode(value)},"value":""}\r\n`,
     ...[1, 2, 3, 4].map(count => `{"broken":"prefix${"\\".repeat(count)}"tail\n{"value":${encode(value)}}\n`),
     `{"first":"unterminated\n{"safe":true}\n{"second":"unterminated\n{"value":${encode(value)}}\n{"last":"unterminated\n`,
     `{"broken":"unterminated\n{"nested":{"value":${encode(value)},"value":""}}\n`,
-    `{"broken":"unterminated\n{"value":${encode(value.slice(0, 3) + "\x1b[36;1m" + value.slice(3) + "\x1b[0m")}}\n`
+    `{"broken":"unterminated\n{"value":${encode(value.slice(0, 3) + "\x1b[36;1m" + value.slice(3) + "\x1b[0m")}}\n`,
+    ...["", "\n", "\r\n"].flatMap(boundary => [0, 1, 2, 3, 4].flatMap(count => [
+      `{"safe":"paired"} {"broken":"prefix${"\\".repeat(count)}"tail${boundary}{"value":${encode(value)}} {"safe":"neighbor"}`,
+      `{"broken":"dangling${boundary}{"nested":${JSON.stringify(JSON.stringify({value}))} } {"safe":"neighbor"}`
+    ]))
   ];
   const paths = [];
   try {
@@ -311,9 +319,18 @@ test("malformed record recovery cannot consume later valid escaped values", asyn
       assert(customerDataFindings(operationalPrivacyText(text, {}), "recovery.log", new Set([sha256(phrase)]))
         .some(value => value.includes(kind)));
     }
-    const nested = JSON.stringify(rows(address)[0]);
-    assert(customerDataFindings(operationalPrivacyText(nested, {}), "nested-recovery.log", new Set())
-      .some(value => value.includes("email")));
+    for (const text of rows(address)) {
+      assert(customerDataFindings(operationalPrivacyText(JSON.stringify(text), {}), "nested-recovery.log", new Set())
+        .some(value => value.includes("email")));
+    }
+    const archive = join(directory, "recovery.zip");
+    await writeFile(archive, createDeterministicZip(operationalSuffixes.flatMap(suffix => rows(address).map((text, index) => ({
+      path: `recovery-${index}${suffix}`, mode: 0o644, content: Buffer.from(text)
+    })))));
+    const archiveFindings = await fixturePrivacyFailures([archive]);
+    for (const suffix of operationalSuffixes) for (const [index] of rows(address).entries()) {
+      assert(archiveFindings.some(value => value.includes(`recovery.zip!recovery-${index}${suffix}: non-synthetic email`)));
+    }
     for (const text of rows("synthetic fixture value")) {
       assert.deepEqual(customerDataFindings(operationalPrivacyText(text, {}), "safe-recovery.log", new Set([sha256(phrase)])), []);
     }
