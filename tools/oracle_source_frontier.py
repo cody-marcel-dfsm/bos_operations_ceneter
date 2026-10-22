@@ -335,7 +335,7 @@ def prepare(o, root, context, plan, cohort, child, snap):
             unit = queue.popleft(); raw = unit.pop('body').encode('utf-8')
             unit['body_sha256'] = _hash(raw); unit['body_bytes'] = len(raw); unit['pages'] = []
             shareable = (parity is not None and entry['path'].startswith(('source/', 'clients/'))
-                         and entry['path'].endswith('.md') and unit['kind'] in {
+                         and unit['kind'] in {
                              'skill-metadata-change', 'unchanged-skill-body', 'complete-text-fallback'})
             key = (unit['kind'], unit['body_sha256'])
             if shareable:

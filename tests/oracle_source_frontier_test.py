@@ -126,6 +126,28 @@ class SourceFrontier(unittest.TestCase):
             text=''.join(json.loads(Path(p['path']).read_text())['body'] for p in header['pages'])
             self.assertIn('1.0.1',text);self.assertIn('1.0.2',text)
 
+    def test_generated_executable_copies_share_exact_complete_bodies_without_losing_paths(self):
+        skills,_=self.skill_fixture()
+        paths=[str(Path(name).parent/'scripts/worker.mjs') for name in skills]
+        before='export function run() { return 1; }\n'+'// Complete immutable source context.\n'*1000
+        for name in paths:
+            path=self.root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(before)
+        self.git('add','.');self.git('commit','-qm','executable copies before')
+        self.context['previous_candidate_tree']=self.git('rev-parse','HEAD^{tree}')
+        for name in paths:(self.root/name).write_text(before.replace('return 1','return 2'))
+        self.git('add','.');self.git('commit','-qm','executable copies after');self.refresh_context()
+        self.context['current_validations'][0]['inputs']=[{'path':name,'digest':value}
+            for name,value in sorted(self.context['input_hashes'].items()) if frontier.generation_input(name)]
+        manifest,reference,_,_=self.prepare(paths)
+        self.assertEqual([entry['path'] for entry in manifest['entries']],paths)
+        self.assertEqual(len(manifest['generated_parity_groups']),2)
+        for group in manifest['generated_parity_groups']:
+            self.assertEqual({member['path'] for member in group['members']},set(paths))
+            representative=group['representative']
+            source=''.join(json.loads(Path(page['path']).read_text())['body'] for page in representative['pages'])
+            self.assertEqual(source,before if representative['side']=='before' else before.replace('return 1','return 2'))
+        self.assertLess(reference['prepared_bytes'],100000)
+
     def test_body_generator_configuration_and_output_mode_changes_invalidate_grouping_proof(self):
         for change in ['semantic-body','generator','configuration','marketplace','scanner-input','output-mode']:
             with self.subTest(change=change):
