@@ -7,9 +7,14 @@
   "compatibility": "package-versioned-public-seam",
   "executable_files": [
     {
+      "id": "external_dependency_binary_response",
+      "path": "skills/bos-external-dependency-adapter/scripts/binary-response.mjs",
+      "sha256": "0dae9e7f78ac28ed2ee42883ca47d1672d73bfef951cd89960e6bc1134bc4021"
+    },
+    {
       "id": "external_dependency_adapter",
       "path": "skills/bos-external-dependency-adapter/scripts/external-dependency-adapter.mjs",
-      "sha256": "27083d7617b12de264738d9879ed10ccd9b0e73b5e421e69b982078945732bdf"
+      "sha256": "95617d29f88c281aad5e520ba5203dd388715c3cdbe50b48f489c8d81a4079cd"
     },
     {
       "id": "external_dependency_schema_runtime",
@@ -19,7 +24,7 @@
     {
       "id": "external_dependency_discovered_operation_schema",
       "path": "skills/bos-external-dependency-adapter/scripts/discovered-operation-request.schema.mjs",
-      "sha256": "244c0692c71af175b3921feff91ba8d877deec5c436a882b419ec14eed9d6a59"
+      "sha256": "a53753cea4790ca53554fc596e4861b5a0af712f09fef0ffaaa3d4ba145dc646"
     },
     {
       "id": "external_dependency_safe_execution_uri",
@@ -46,7 +51,7 @@
     {
       "path": "discovered-operation.request.schema.json",
       "media_type": "application/schema+json",
-      "sha256": "face5c7525745c57ae3c19e8ee951c01ea611d0703a688851666722d3daa2bf1"
+      "sha256": "66e96b72aaab2da38b00be76c16a7e5befd5a0dcd19d338eab887393e89a9cc8"
     },
     {
       "path": "discovered-operation.response.example.json",
@@ -79,5 +84,5 @@
       "sha256": "046c4dd184af18af526ed64bd37a75dd316397b3d1437886eb7f57deb5e99d2d"
     }
   ],
-  "bundle_sha256": "89d55c63691828014f64b41640a81a3625bcd7123c7d3b0c4f3d66b06fed5723"
+  "bundle_sha256": "f01797b45fc4a6c110bcec8b774715413c88fed4f239ae72e13ed480962f6aa0"
 }

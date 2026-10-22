@@ -19,6 +19,18 @@ An accessible-inventory or readiness assessment can complete with those facts;
 an organization-wide directory is needed for facts beyond that observed scope.
 Missing business-data or execution prerequisites still stop the affected task.
 
+Native tool names and counts describe only the native MCP catalog. Follow the
+current application/service descriptions and exact advertised operation-contract
+links to discover public operations, retaining advertised availability, provider
+readiness and actual host executability as separate facts. Shared identity-context
+execution selection governs each surface: a Describe operation key never becomes
+`bos_execute.tool_name`. Preserve existing native compatibility/resource delivery,
+complete method/URI/context bindings for compatible absent/null transport fields,
+and terminal denials. Require actual same-connection host-authenticated HTTP for
+described HTTPS execution; packaged adapters and acceptance-host helpers supply
+no proof of that native capability. Preserve completed discovery and identify the
+exact unavailable host operation when that facility is missing.
+
 Match the assessment to the requested facts. App/service lists use fresh
 context identities and the actual app-owned public-service catalog; identity
 and capability summaries use the selected context and native capability
@@ -306,6 +318,13 @@ visible with sanitized recovery guidance.
 Every operation limit includes integer `maximum_duration_seconds` from 1 through
 900 and integer `maximum_fan_out` from 1 through 100. Missing or out-of-range
 values make the service description invalid; the client never supplies defaults.
+Original-file binary discovery may additionally declare matching
+`maximum_file_bytes` and `maximum_attachment_bytes` through 20 MiB and
+`maximum_preparation_seconds` through 45. The explicit
+`provider_md5_if_available` response variant retains its complete header list,
+requires the filename, length, MIME type and correlation headers, and permits
+`Content-MD5` to be absent on a response. Preserve that integrity declaration in
+contract facts; the existing six-header SHA-256 variant retains its requirements.
 The corresponding deterministic operation Describe response repeats those
 exact fields for every ready operation. Validate it with
 `validate-discovery.mjs operation-describe` before planning or invocation.

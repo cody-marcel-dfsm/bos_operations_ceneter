@@ -2,8 +2,8 @@
 name: seo-improvement-loop
 description: Run recurring tenant-scoped SEO and Google Business Profile review measurement, diagnosis, proposal, reconciliation, and exit decisions through BOS MCP evidence.
 metadata:
-  version: "1.0.0"
-  requires: "{\"review\":\"1.0.0\"}"
+  version: "1.0.4"
+  requires: "{\"review\":\"1.0.4\"}"
 ---
 
 # SEO Improvement Loop

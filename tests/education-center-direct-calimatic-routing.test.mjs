@@ -44,7 +44,7 @@ test("Education Center service routing preserves BOS scope while honoring eviden
 test("BOS request interception distinguishes Gmail OAuth from Calimatic API-key recovery", () => {
   const client = read("source/platform/bos-mcp-client/SKILL.md");
 
-  assert.match(client, /request interceptor around every BOS domain[\s\S]*tools\/call/i);
+  assert.match(client, /request interceptor around every BOS domain[\s\S]*invocation on its discovered execution surface/i);
   assert.match(client, /OAuth:[\s\S]*provider URL/i);
   assert.match(client, /API key:[\s\S]*Calimatic[\s\S]*portal URL and API\s+key/i);
   assert.match(client, /model and MCP client[\s\S]*never receive either value/i);

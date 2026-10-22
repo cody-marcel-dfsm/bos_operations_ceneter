@@ -5,6 +5,19 @@ description: Plan BOS Operations Center changes using current Vault architecture
 
 # Operations Center Planning
 
+## Committed workflow — controlling owner direction, October 21, 2026
+
+Plan implementation around committed candidates: governing instructions first,
+one complete assessment per new commit/range, consolidated repairs, direct repair
+commits and only affected or missing revalidation. Preserve unchanged observations
+and passing tests across instruction and commit movement. Commits require no
+review verdict or Oracle trailer. The local `ship-it` skill owns bootstrap,
+prepare, validate and deploy, their original clocks and atomic exact-SHA checkpoint.
+The complete validation lifecycle runs concurrently across changed family members;
+unchanged delivered candidates return `NO_CHANGES` without release work. Keep
+`last_validated_commit` distinct from confirmed `last_released_commit`.
+
+
 ## Controlling review and publication placement — October 18, 2026
 
 Complete independent technical proposal/review and commit checks without human deployment permission. Missing permission is not a technical finding. Existing human-approval wording below applies only to an actual protected deployment/publication effect: concrete credential-trust, permission-authority, tenant-isolation or incompatible-public-contract behavior. Authentication labels, filenames and ordinary compatible corrections create no gate. Keep the explicit public API version request and cost controls.

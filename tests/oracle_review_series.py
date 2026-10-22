@@ -5,7 +5,7 @@ import ast
 import inspect
 import json
 import os
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 import subprocess
 import sys
 import tempfile
@@ -14,9 +14,33 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools import oracle_approval as o
+from tools import oracle_parallel as parallel
+from tools import oracle_lifecycle as lifecycle
 
 
 class ReviewSeries(unittest.TestCase):
+    def synthetic_reviewer_settings(self):
+        for name, value in (('selected_model', 'synthetic-model'), ('selected_reasoning_effort', None)):
+            setting = patch.object(o, name, return_value=value)
+            setting.start()
+            self.addCleanup(setting.stop)
+
+    @contextmanager
+    def synthetic_native_child(self, run):
+        """Exercise native result handling while forbidding real reviewer launches."""
+        original_popen = subprocess.Popen
+        def guarded(command, *args, **kwargs):
+            self.assertFalse(any(Path(str(arg)).name == 'codex' for arg in command),
+                             'Synthetic fixture attempted an actual Codex process')
+            return original_popen(command, *args, **kwargs)
+        def managed(o, root, metadata, command, environment, controller):
+            self.assertIsNotNone(controller)
+            return run(command, cwd=root, capture_output=True, text=True, env=environment)
+        with patch.object(lifecycle, 'reviewer_process', side_effect=managed), \
+                patch.object(subprocess, 'Popen', side_effect=guarded), \
+                patch.object(o.subprocess, 'run', side_effect=run):
+            yield
+
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
@@ -28,6 +52,7 @@ class ReviewSeries(unittest.TestCase):
                             ".gitignore": "Vault/\n__pycache__/\n", "source.py": "base", "peer.py": "base peer",
                             "dependency.py": "dependency", "config.json": "{}"}.items():
             path = self.root / name; path.parent.mkdir(parents=True, exist_ok=True); path.write_text(value)
+        self.release_metadata("0.0.0")
         for name in o.REVIEW_POLICY_MODULES:
             original = Path(inspect.getsourcefile(o._oracle)).parent / Path(name).name
             path = self.root / name
@@ -49,6 +74,18 @@ class ReviewSeries(unittest.TestCase):
 
     def git(self, *arguments):
         return subprocess.check_output(["git", *arguments], cwd=self.root, text=True).strip()
+
+    def release_metadata(self, version):
+        files = {"package.json": {"version": version}, "package-manifest.json": {"version": version},
+                 "skill-release-manifest.json": {"release": version},
+                 "products/bos/product.json": {"name": "bos", "version": version, "release_status": "active"}}
+        for client, prefix in {"codex": "plugins", "claude": "plugins", "copilot": "products",
+                               "gemini": "extensions", "muse": "plugins"}.items():
+            files[f"clients/{client}/{prefix}/bos/.bos-product.json"] = {"name": "bos", "version": version, "client": client}
+        for name, value in files.items():
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(value))
 
     def change(self, name, value):
         (self.root / name).write_text(value); self.git("add", name)
@@ -105,18 +142,18 @@ class ReviewSeries(unittest.TestCase):
                 "origin": origin, "origin_reason": "Synthetic initial defect" if origin != "MISSED" else
                 "The earlier scan omitted an existing failure branch in unchanged code"}
 
-    def submit(self, build=None, *, error=None, evidence_paths=None, owner_path=None):
+    def submit(self, build=None, *, error=None, evidence_paths=None, owner_path=None, proposal_record=None):
         def reviewer(*args):
             context = json.loads((o._RUN.get() / "review-context.json").read_text())
             self.contexts.append(context)
             return build(context) if build else self.result(context)
         if error:
             with self.assertRaises(error) as caught:
-                o.issue(self.root, [str(self.evidence)] if evidence_paths is None else evidence_paths, owner_path, reviewer)
+                o.issue(self.root, [str(self.evidence)] if evidence_paths is None else evidence_paths, owner_path, reviewer, proposal_record=proposal_record)
             self.last_error = caught.exception
             self.assertFalse(o.receipt_path(self.root).exists())
             return None
-        return o.issue(self.root, [str(self.evidence)] if evidence_paths is None else evidence_paths, owner_path, reviewer)
+        return o.issue(self.root, [str(self.evidence)] if evidence_paths is None else evidence_paths, owner_path, reviewer, proposal_record=proposal_record)
 
     def resolve(self, context, identity):
         return {"id": identity, "explanation": "Checked the concrete repair and acceptance conditions",
@@ -636,7 +673,7 @@ class ReviewSeries(unittest.TestCase):
                         if failure == "diagnostic" and path.name == "stdout.log":
                             raise OSError("synthetic diagnostic publication failure")
                         return actual_write(path, raw)
-                    with patch.object(o.subprocess, "run", side_effect=run), \
+                    with self.synthetic_native_child(run), \
                             patch.object(o, "_atomic_write", side_effect=write):
                         return o._review_process(self.root, "synthetic review request", "reviewer")
                 self.submit(interrupted, error=o.OracleApprovalError if failure == "process_exit" else OSError)
@@ -1853,7 +1890,10 @@ class ReviewSeries(unittest.TestCase):
                 self.assertEqual(developer, "\n\n".join((o.REVIEWER_ROLE, o.NORMAL_PLAN_REVIEW_POLICY,
                                                          o.LOCAL_EXECUTION_POLICY, o.REVIEW_SERIES_POLICY,
                                                          o.DEPLOYMENT_PLACEMENT_POLICY)))
-                for clause in ("actual source/control delta first", "sealed original observations",
+                for clause in ("Read governing instructions and review criteria first", "once per content identity",
+                               "bounded candidate changes, then retained validation results", "Query compact",
+                               "Avoid concatenating entire large", "batch sizes that prevent truncation",
+                               "sealed original observations",
                                "aggregate FAILED or ERROR", "strictly native-ineligible",
                                "Before every validation or diagnostic command", "Historical evidence supplies no current approval"):
                     self.assertIn(clause, developer)
@@ -1869,8 +1909,8 @@ class ReviewSeries(unittest.TestCase):
             self.assertEqual(completed["verdict"], "APPROVED")
             self.assertEqual(proposal["verdict"], "APPROVED")
             self.assertEqual(len(launches), 2)
-            self.assertIn("On initial assessment inspect the complete candidate", launches[0])
-            self.assertIn("On follow-up or resume inspect actual deltas first", launches[0])
+            self.assertIn("On initial assessment make one complete pass over the commits being validated", launches[0])
+            self.assertIn("On follow-up or resume confirm changed criteria, then inspect new commits", launches[0])
             self.assertNotIn("inspect the full git diff --cached", launches[0])
         finally:
             o._RUN.reset(token)
@@ -2220,12 +2260,12 @@ class ReviewSeries(unittest.TestCase):
         self.addCleanup(lambda: (path.unlink(), saved.rename(path)))
         return destination, saved
 
-    def test_metadata_directory_and_lock_admission_precede_mutation(self):
-        for target in ('directory', 'runs', 'lock'):
+    def test_metadata_directory_and_controller_admission_precede_mutation(self):
+        for target in ('directory', 'runs', 'controllers'):
             for route in ('escape', 'return'):
                 with self.subTest(target=target, route=route), tempfile.TemporaryDirectory() as outside:
                     directory = o.receipt_path(self.root).parent
-                    path = directory if target == 'directory' else directory / ('runs' if target == 'runs' else 'review.lock')
+                    path = directory if target == 'directory' else directory / ('runs' if target == 'runs' else 'controllers')
                     destination, saved = self.metadata_route(path, Path(outside), route)
                     before = {str(item.relative_to(saved)): item.read_bytes() for item in saved.rglob('*')
                               if item.is_file()} if saved.is_dir() else saved.read_bytes()
@@ -2233,12 +2273,8 @@ class ReviewSeries(unittest.TestCase):
                     def review_proposal(root):
                         called.append(True)
                         return {'verdict': 'APPROVED'}
-                    real_flock = o.fcntl.flock
-                    with patch.object(o.fcntl, 'flock', wraps=real_flock) as lock:
-                        with self.assertRaises(o.OracleApprovalError):
-                            o._serialized_review(review_proposal)(self.root)
-                        if target != 'runs':
-                            lock.assert_not_called()
+                    with self.assertRaises(o.OracleApprovalError):
+                        o._serialized_review(review_proposal)(self.root)
                     self.assertEqual(called, [])
                     after = {str(item.relative_to(saved)): item.read_bytes() for item in saved.rglob('*')
                              if item.is_file()} if saved.is_dir() else saved.read_bytes()
@@ -2252,20 +2288,19 @@ class ReviewSeries(unittest.TestCase):
                     path.unlink(); saved.rename(path)
                     self._cleanups.pop()
 
-    def test_metadata_special_lock_is_rejected_before_open_or_flock(self):
-        path = o.receipt_path(self.root).parent / 'review.lock'
-        saved = path.with_name('review.lock-saved'); path.rename(saved)
+    def test_metadata_special_admission_record_is_rejected_before_review(self):
+        directory = o.receipt_path(self.root).parent / 'controllers/admissions'
+        path = directory / '00000001.json'
+        saved = directory.parent / 'saved-admission.json'; path.rename(saved)
         try:
             for kind in ('directory', 'fifo'):
                 with self.subTest(kind=kind):
                     path.mkdir() if kind == 'directory' else os.mkfifo(path)
                     try:
                         def review_proposal(root):
-                            self.fail('nonregular lock admitted the review')
-                        with patch.object(o.fcntl, 'flock') as lock:
-                            with self.assertRaises(o.OracleApprovalError):
-                                o._serialized_review(review_proposal)(self.root)
-                            lock.assert_not_called()
+                            self.fail('nonregular controller record admitted the review')
+                        with self.assertRaises(o.OracleApprovalError):
+                            o._serialized_review(review_proposal)(self.root)
                     finally:
                         path.rmdir() if kind == 'directory' else path.unlink()
         finally:
@@ -2291,19 +2326,23 @@ class ReviewSeries(unittest.TestCase):
             self.assertTrue((base / 'container/new-directory').is_dir())
             self.assertFalse((base / 'new-directory').exists())
 
-    def test_metadata_regular_lock_contention_preserves_active_records(self):
-        directory = o.receipt_path(self.root).parent
-        before = o.proposal_path(self.root).read_bytes()
-        runs = set((directory / 'runs').iterdir())
-        with (directory / 'review.lock').open('a+') as held:
-            o.fcntl.flock(held.fileno(), o.fcntl.LOCK_EX | o.fcntl.LOCK_NB)
+    def test_controller_admission_cannot_rewrite_original_invocation(self):
+        directory = o.receipt_path(self.root).parent / 'controllers/admissions'
+        path = directory / '00000001.json'
+        original = path.read_bytes()
+        value = json.loads(original)
+        value['process_identity'] = 'replaced process identity'
+        path.unlink(); path.write_text(json.dumps(value))
+        try:
             def review_proposal(root):
-                self.fail('a second review acquired the active lock')
-            with self.assertRaisesRegex(o.OracleApprovalError, 'Another Oracle review'):
+                self.fail('a replaced original invocation admitted another review')
+            with self.assertRaisesRegex(o.OracleApprovalError, 'custody'):
                 o._serialized_review(review_proposal)(self.root)
-        self.assertEqual(o.proposal_path(self.root).read_bytes(), before)
-        self.assertEqual(set((directory / 'runs').iterdir()), runs)
-        self.assertIsNone(o._METADATA_ROOT.get())
+            self.assertIsNone(o._METADATA_ROOT.get())
+        finally:
+            path.unlink()
+            identity = self.root / '.git/oracle/controllers' / value['controller_id'] / 'identity.json'
+            os.link(identity, path)
 
     def test_late_metadata_writes_and_removals_reject_reentry(self):
         for target in ('run', 'approval', 'proposal', 'round', 'remove'):
@@ -2445,7 +2484,7 @@ class ReviewSeries(unittest.TestCase):
                 output.write_text(json.dumps(result))
                 self.native_external_return(output)
                 return subprocess.CompletedProcess(command, 0, stdout="synthetic diagnostic", stderr="")
-            with patch.object(o.subprocess, "run", side_effect=run):
+            with self.synthetic_native_child(run):
                 return o._review_process(self.root, "synthetic request", "reviewer")
         self.submit(reviewer, error=o.OracleApprovalError)
         latest = o._read_rounds(o._series_directory(self.root, self.base))[-1]
@@ -2745,13 +2784,16 @@ class ReviewSeries(unittest.TestCase):
         receipt = self.submit()
         context = self.contexts[-1]
         native = json.loads(self.evidence.read_text())
-        for path in paths:
+        for path in paths[:2]:
             name = str(path)
             digest = o._sha(path.read_bytes())
             self.assertEqual(context["input_hashes"][name], "sha256:" + digest)
             self.assertEqual(context["guards"]["authority_digests"][name], digest)
             self.assertEqual(receipt["authority_digests"][name], digest)
             self.assertEqual(native["authority_digests"][name], digest)
+        self.assertNotIn(str(paths[2]), context["input_hashes"])
+        self.assertNotIn(str(paths[2]), native["authority_digests"])
+        paths[2].write_text("unconsumed coordinator implementation changed")
         o.verify_staged(self.root)
         explicit = o.record_validation(self.root, [sys.executable, "-c", "pass"], [str(paths[1])],
                                         self.root / "Vault/tmp/parent-check.json")
@@ -2760,7 +2802,7 @@ class ReviewSeries(unittest.TestCase):
     def test_declared_parent_drift_during_review_is_error(self):
         paths = self.declare_parent()
         self.submit()
-        for path in paths:
+        for path in paths[:2]:
             original = path.read_bytes()
             def drift(context):
                 result = self.result(context)
@@ -2776,7 +2818,7 @@ class ReviewSeries(unittest.TestCase):
         paths = self.declare_parent()
         self.submit()
         self.assertTrue(self.contexts[-1]["invalidated_coverage"])
-        for path in paths:
+        for path in paths[:2]:
             original = path.read_bytes()
             path.write_text("new controlling parent input")
             with self.assertRaises(o.OracleApprovalError):
@@ -2799,6 +2841,186 @@ class ReviewSeries(unittest.TestCase):
             self.propose()
             self.record_check()
             self.submit()
+
+    def test_explicit_consumed_parent_command_evidence_remains_bound(self):
+        paths = self.declare_parent()
+        evidence = o._files(self.root, [str(paths[2])])
+        binding = o._input_binding(self.root, evidence, None)
+        inputs = o._candidate_inputs(self.root, self.git('write-tree'), evidence)
+        self.assertEqual(inputs[str(paths[2])], 'sha256:' + o._sha(paths[2].read_bytes()))
+        self.assertNotIn(str(paths[2]), binding['authority_digests'])
+        o._assert_binding(self.root, binding, evidence, None)
+        paths[2].write_text('changed actually consumed coordinator')
+        with self.assertRaises(o.OracleApprovalError):
+            o._assert_binding(self.root, binding, evidence, None)
+
+    def test_explicit_parent_command_native_capture_and_reuse_are_bound(self):
+        paths = self.declare_parent()
+        output = self.root / 'Vault/tmp/native-parent-check.json'
+        o.record_validation(self.root, [sys.executable, '-c', 'pass'], [str(paths[2])], output)
+        record = json.loads(output.read_text())
+        proof = record['inputs']
+        current = o._candidate_inputs(self.root, self.git('write-tree'), o._files(self.root, [str(output)]))
+        self.assertIn(str(paths[2]), current)
+        o._validation_record(self.root, str(output), proof, record['environment_digest'])
+        paths[2].write_text('changed consumed parent executable')
+        with self.assertRaises(o.OracleApprovalError):
+            o._validation_record(self.root, str(output), proof, record['environment_digest'])
+
+    def test_exact_immutable_proposal_survives_unrelated_latest_pointer(self):
+        original = o.proposal_path(self.root).read_bytes()
+        selected = o._archive_proposal(self.root, original)
+        outcome = {'verdict': 'APPROVED', 'findings': [], 'authentication_impact': 'NONE',
+                   'owner_approval_status': 'NOT_REQUIRED', 'api_version_assessment': self.assessment()}
+        o.review_proposal(self.root, 'Separate future live attachment task', [], None, lambda *args: outcome)
+        receipt = self.submit(proposal_record=selected)
+        context = self.contexts[-1]
+        self.assertEqual(context['proposal_scope']['sha256'], json.loads(original)['proposal_sha256'])
+        self.assertEqual(context['proposal_record'], {'path': str(selected), 'sha256': o._sha(original)})
+        self.assertNotEqual(o.verify_proposal(self.root)['proposal_sha256'], context['proposal_scope']['sha256'])
+        o.verify_staged(self.root)
+        self.assertEqual(receipt['candidate_tree'], self.git('write-tree'))
+        with self.assertRaisesRegex(o.OracleApprovalError, 'immutable'):
+            o.verify_proposal(self.root, o.proposal_path(self.root))
+        selected.write_bytes(original + b' ')
+        with self.assertRaises(o.OracleApprovalError):
+            o.verify_staged(self.root)
+
+    def test_failed_cohort_final_output_is_unadopted_in_next_context_and_bound(self):
+        self.synthetic_reviewer_settings()
+        schema = (Path(__file__).resolve().parents[1] / '.agents/skills/oracle/review-output.schema.json').read_text()
+        self.change('.agents/skills/oracle/review-output.schema.json', schema)
+        def child(root, prompt, prefix, *, schema_path, cohort_policy):
+            run = o._RUN.get(); packet = json.loads((run / 'cohort-context.json').read_text())
+            context = json.loads(Path(packet['parent_context']).read_text())
+            cohort = packet['cohort']; assessment = self.result(context)
+            assessment['coverage'] = [item for item in assessment['coverage'] if item['path'] in cohort['required_paths']]
+            assessment['validations'] = []
+            result = {key: packet[key] for key in ('plan_sha256', 'candidate_commit', 'candidate_tree', 'input_binding_sha256')}
+            result.update(cohort_id=cohort['id'], assessment=assessment,
+                          integration=[{'concern': key, 'status': 'REVIEWED',
+                                        'inputs': self.inputs(context, '@proposal/scope'), 'reason': 'Traced current boundary'}
+                                       for key in cohort['integration_checks']])
+            settings = o._PREPARED_SETTINGS.get()
+            o._atomic_write(run / 'model.json', o._pretty({'selected_model': settings['model'], 'reasoning_effort': settings['reasoning_effort']}))
+            if cohort['id'] == parallel.AREAS[1]:
+                assessment.update(review_status='INCOMPLETE', verdict='INCOMPLETE', limitations=['Required consumer unfinished'],
+                                  findings=[self.finding('F2099')])
+                assessment['coverage'][0]['inputs'][0]['digest'] = 'stale original claim'
+                o._atomic_write(run / 'result.json', o._pretty(result))
+                raise o.OracleApprovalError('Transport failed after original final message')
+            o._atomic_write(run / 'result.json', o._pretty(result))
+            return result
+        with patch.object(o, '_review_process', side_effect=child):
+            with self.assertRaises(o.OracleApprovalError):
+                o.issue(self.root, [str(self.evidence)], None, lambda *args: parallel.review(o, *args))
+        rounds = o._read_rounds(o._series_directory(self.root, self.base))
+        first = rounds[-1]
+        self.assertEqual(first['outcome'], 'ERROR')
+        raw = first['review']['unadopted_cohort_assessments'][0]
+        self.assertEqual((raw['actual_outcome'], raw['reported_review_status']), ('ERROR', 'INCOMPLETE'))
+        self.assertEqual(raw['assessment']['findings'][0]['id'], 'F2099')
+        self.assertIn('stale', raw['admission_error'])
+        self.assertNotIn('source.py', {item['path'] for item in first['verified_coverage']})
+        self.assertTrue(first['verified_coverage'])
+        self.submit()
+        resumed = self.contexts[-1]
+        observation = next(item for item in resumed['unadopted_assessments'] if item.get('cohort_id') == parallel.AREAS[1])
+        self.assertEqual(observation['finding_ids'], ['F2099'])
+        self.assertIn('UNADOPTED', observation['status'])
+        self.assertEqual(observation['actual_outcome'], 'ERROR')
+        self.assertEqual(observation['reported_review_status'], 'INCOMPLETE')
+        self.assertIn(o._custody_name(self.root, raw['result_file']), resumed['retained_observation_evidence'])
+        packet = parallel.packet(resumed, parallel.partition(resumed, {'reviewer_settings': {}}, lambda v: o._sha(o._canonical(v))),
+                                 {'id': parallel.AREAS[0], 'required_paths': [], 'integration_checks': []},
+                                 Path(first['context_file']), lambda v: o._sha(o._canonical(v)))
+        self.assertTrue(any('F2099' in item['finding_ids'] for item in packet['unadopted_assessments']))
+        original = Path(raw['result_file']).read_bytes()
+        Path(raw['result_file']).write_bytes(original + b' ')
+        with self.assertRaises(o.OracleApprovalError):
+            o._raw_assessment_navigation(self.root, rounds, resumed['input_hashes'], resumed['guards'])
+        Path(raw['result_file']).write_bytes(original)
+        original_mode = Path(raw['result_file']).stat().st_mode & 0o777
+        Path(raw['result_file']).chmod(original_mode ^ 0o100)
+        with self.assertRaises(o.OracleApprovalError):
+            o._raw_assessment_navigation(self.root, rounds, resumed['input_hashes'], resumed['guards'])
+        Path(raw['result_file']).chmod(original_mode)
+        identical = Path(raw['result_file']).with_name('same-final-bytes.json'); identical.write_bytes(original)
+        Path(raw['result_file']).unlink()
+        Path(raw['result_file']).symlink_to(identical)
+        with self.assertRaises(o.OracleApprovalError):
+            o._raw_assessment_navigation(self.root, rounds, resumed['input_hashes'], resumed['guards'])
+
+    def prepared_integrity_response(self, *, transport=False, target='page'):
+        self.synthetic_reviewer_settings()
+        schema = (Path(__file__).resolve().parents[1] / '.agents/skills/oracle/review-output.schema.json').read_bytes()
+        self.change('.agents/skills/oracle/review-output.schema.json', schema.decode())
+        def child(root, prompt, prefix, *, schema_path, cohort_policy):
+            run = o._RUN.get(); packet = json.loads((run/'cohort-context.json').read_text())
+            context = json.loads(Path(packet['parent_context']).read_text()); cohort = packet['cohort']
+            assessment = self.result(context)
+            assessment['coverage'] = [item for item in assessment['coverage'] if item['path'] in cohort['required_paths']]
+            assessment['validations'] = []
+            result = {key: packet[key] for key in ('plan_sha256', 'candidate_commit', 'candidate_tree', 'input_binding_sha256')}
+            result.update(cohort_id=cohort['id'], assessment=assessment, integration=[{
+                'concern': key, 'status': 'REVIEWED', 'inputs': self.inputs(context, '@proposal/scope'),
+                'reason': 'Traced native integration'} for key in cohort['integration_checks']])
+            settings = o._PREPARED_SETTINGS.get()
+            o._atomic_write(run/'model.json', o._pretty({'selected_model': settings['model'], 'reasoning_effort': settings['reasoning_effort']}))
+            if cohort['id'] == parallel.AREAS[1]:
+                assessment.update(verdict='REJECTED', findings=[self.finding('F2099')])
+            o._atomic_write(run/'result.json', o._pretty(result))
+            if cohort['id'] == parallel.AREAS[1]:
+                manifest = json.loads(Path(packet['prepared_source']['manifest']).read_text())
+                altered = {'page': Path(manifest['pages'][0]['path']), 'context': run/'cohort-context.json',
+                           'schema': schema_path, 'plan': run.parent.parent/'cohort-plan.json',
+                           'parent_context': Path(packet['parent_context'])}[target]
+                altered.write_bytes(b'{' if target in {'plan', 'parent_context'} else altered.read_bytes() + b' ')
+                if transport:
+                    raise OSError('Synthetic transport failed after original rejected final response')
+            return result
+        with patch.object(o, '_review_process', side_effect=child):
+            with self.assertRaises(o.OracleApprovalError):
+                o.issue(self.root, [str(self.evidence)], None, lambda *args: parallel.review(o, *args))
+        rounds = o._read_rounds(o._series_directory(self.root, self.base)); first = rounds[-1]
+        retained_review = first.get('raw_assessment', {}).get('assessment', first['review'])
+        raw = next(row for row in retained_review['unadopted_cohort_assessments'] if row['cohort_id'] == parallel.AREAS[1])
+        self.assertEqual((first['outcome'], raw['actual_outcome'], raw['eligibility']), ('ERROR', 'ERROR', 'NONE'))
+        self.assertEqual((raw['reported_review_status'], raw['reported_verdict']), ('COMPLETE', 'REJECTED'))
+        self.assertEqual(raw['assessment']['findings'][0]['id'], 'F2099')
+        self.assertIn('integrity failed', raw['prepared_integrity_error'])
+        self.assertNotIn('source.py', {item['path'] for item in first['verified_coverage']})
+        if target not in {'plan', 'parent_context'}:
+            self.assertTrue(first['verified_coverage'])
+        if target == 'context':
+            self.assertEqual(Path(raw['cohort_context_file']).name, 'unadopted-context.json')
+        self.submit(); resumed = self.contexts[-1]
+        observation = next(row for row in resumed['unadopted_assessments'] if row.get('cohort_id') == parallel.AREAS[1])
+        self.assertEqual(observation['finding_ids'], ['F2099']); self.assertEqual(observation['eligibility'], 'NONE')
+        self.assertIn('integrity failed', observation['prepared_integrity_error'])
+        self.assertNotIn('F2099', resumed['prior_findings'])
+        saved = Path(raw['cohort_context_file']).read_bytes()
+        Path(raw['cohort_context_file']).write_bytes(saved + b' ')
+        with self.assertRaises(o.OracleApprovalError):
+            o._raw_assessment_navigation(self.root, rounds, resumed['input_hashes'], resumed['guards'])
+
+    def test_prepared_page_failure_retains_rejected_response_and_next_context(self):
+        self.prepared_integrity_response()
+
+    def test_prepared_page_failure_after_transport_retains_original_finding(self):
+        self.prepared_integrity_response(transport=True)
+
+    def test_prepared_context_failure_retains_sealed_original_assignment(self):
+        self.prepared_integrity_response(target='context')
+
+    def test_prepared_schema_failure_retains_rejected_response_without_coverage(self):
+        self.prepared_integrity_response(target='schema')
+
+    def test_malformed_shared_plan_retains_rejected_response_and_original_assignment(self):
+        self.prepared_integrity_response(target='plan')
+
+    def test_malformed_shared_parent_context_retains_sealed_original_for_navigation(self):
+        self.prepared_integrity_response(target='parent_context')
 
     def assert_error_disposition(self):
         latest = o._read_rounds(o._series_directory(self.root, self.base))[-1]

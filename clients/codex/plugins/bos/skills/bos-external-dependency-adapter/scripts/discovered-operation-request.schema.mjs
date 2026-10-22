@@ -169,6 +169,16 @@ export default {
               "minimum": 1,
               "maximum": 26214400
             },
+            "maximum_file_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20971520
+            },
+            "maximum_preparation_seconds": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 45
+            },
             "maximum_duration_seconds": {
               "type": "integer",
               "minimum": 1
@@ -296,6 +306,69 @@ export default {
                         {
                           "contains": {
                             "const": "X-Content-SHA256"
+                          }
+                        },
+                        {
+                          "contains": {
+                            "const": "X-Correlation-ID"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "body",
+                    "content_type",
+                    "integrity",
+                    "headers"
+                  ],
+                  "properties": {
+                    "body": {
+                      "const": "binary"
+                    },
+                    "content_type": {
+                      "const": "provider"
+                    },
+                    "integrity": {
+                      "const": "provider_md5_if_available"
+                    },
+                    "headers": {
+                      "type": "array",
+                      "minItems": 5,
+                      "maxItems": 5,
+                      "uniqueItems": true,
+                      "items": {
+                        "enum": [
+                          "Content-Disposition",
+                          "Content-Length",
+                          "Content-Type",
+                          "Content-MD5",
+                          "X-Correlation-ID"
+                        ]
+                      },
+                      "allOf": [
+                        {
+                          "contains": {
+                            "const": "Content-Disposition"
+                          }
+                        },
+                        {
+                          "contains": {
+                            "const": "Content-Length"
+                          }
+                        },
+                        {
+                          "contains": {
+                            "const": "Content-Type"
+                          }
+                        },
+                        {
+                          "contains": {
+                            "const": "Content-MD5"
                           }
                         },
                         {

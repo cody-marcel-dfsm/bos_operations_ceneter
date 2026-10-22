@@ -2,8 +2,8 @@
 name: bos-external-dependency-adapter
 description: Provide the installed BOS product's authenticated dependency seam to external BOS-family plugins without giving those plugins tokens, context handles, authority selectors, or a second connection.
 metadata:
-  version: "1.0.0"
-  requires: "{\"bos-mcp-client\":\"1.0.0\"}"
+  version: "1.0.4"
+  requires: "{\"bos-mcp-client\":\"1.0.4\"}"
 ---
 
 
@@ -107,6 +107,9 @@ Read [the dependency adapter contract](references/dependency-adapter.md) before
 integrating an external product. Use
 [`external-dependency-adapter.mjs`](scripts/external-dependency-adapter.mjs) as
 the executable reference implementation.
+For byte responses, its exported `readDiscoveredHttpResponse` helper supplies
+bounded HTTP reading to the existing host transport; preserve the bytes and
+filename for local saving or a discovered upload.
 
 The core public dependency seam is:
 

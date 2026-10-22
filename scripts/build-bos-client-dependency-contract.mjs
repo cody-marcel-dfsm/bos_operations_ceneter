@@ -18,6 +18,11 @@ const discoveredOperationRuntimeSchemaPath = join(
 const check = process.argv.includes("--check");
 const executableDefinitions = [
   {
+    id: "external_dependency_binary_response",
+    source_path: "source/platform/bos-external-dependency-adapter/scripts/binary-response.mjs",
+    path: "skills/bos-external-dependency-adapter/scripts/binary-response.mjs"
+  },
+  {
     id: "external_dependency_adapter",
     source_path: "source/platform/bos-external-dependency-adapter/scripts/external-dependency-adapter.mjs",
     path: "skills/bos-external-dependency-adapter/scripts/external-dependency-adapter.mjs"
@@ -88,6 +93,8 @@ const limits = {
       minimum: 1,
       maximum: 25 * 1024 * 1024
     },
+    maximum_file_bytes: {type: "integer", minimum: 1, maximum: 20 * 1024 * 1024},
+    maximum_preparation_seconds: {type: "integer", minimum: 1, maximum: 45},
     maximum_duration_seconds: {type: "integer", minimum: 1},
     maximum_fan_out: {type: "integer", minimum: 1}
   }
@@ -204,7 +211,16 @@ const describedOperation = {
 const streamBounds = {max_identities: 100, max_streams: 3, replay_retention_seconds: 86400,
   replay_max_events: 10000, max_event_bytes: 65536, keepalive_seconds: 15, max_connection_seconds: 600};
 const binaryResponse = describedOperation.properties.execution.properties.response;
-describedOperation.properties.execution.properties.response = {oneOf: [binaryResponse, {
+const md5Headers = ["Content-Disposition", "Content-Length", "Content-Type", "Content-MD5", "X-Correlation-ID"];
+const providerMd5Response = {
+  type: "object", additionalProperties: false, required: ["body", "content_type", "integrity", "headers"],
+  properties: {
+    body: {const: "binary"}, content_type: {const: "provider"}, integrity: {const: "provider_md5_if_available"},
+    headers: {type: "array", minItems: 5, maxItems: 5, uniqueItems: true,
+      items: {enum: md5Headers}, allOf: md5Headers.map(header => ({contains: {const: header}}))}
+  }
+};
+describedOperation.properties.execution.properties.response = {oneOf: [binaryResponse, providerMd5Response, {
   type: "object", additionalProperties: false,
   required: ["body", "content_type", "query_encoding", "resume_header", "limits", "reconnect"],
   properties: {

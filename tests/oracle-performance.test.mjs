@@ -125,7 +125,7 @@ with tempfile.TemporaryDirectory() as directory:
 `);
 });
 
-test("proposal verification and completed review reject mutable authorities, evidence, tree and Vault", () => {
+test("proposal scope survives changed authority while current review rejects input movement", () => {
   python(`
 import tempfile,subprocess,shutil
 from pathlib import Path
@@ -145,9 +145,8 @@ with tempfile.TemporaryDirectory() as directory:
     o.review_proposal(root,'Problem: slow; Cause: repeated prep; Recommended change: coherent prep',[str(evidence)],None,lambda *a:review)
     assert o.verify_proposal(root)['verdict']=='APPROVED'
     authority.write_text('changed')
-    try:o.verify_proposal(root)
-    except o.OracleApprovalError as exc:assert 'authority' in str(exc)
-    else:raise AssertionError('changed proposal authority accepted')
+    # Proposal scope remains historical support; completed review binds current criteria.
+    assert o.verify_proposal(root)['verdict']=='APPROVED'
     authority.write_text('authority')
     candidate=root/'candidate.txt';candidate.write_text('candidate');git('add','candidate.txt')
     o.issue(root,[str(evidence)],None,lambda *a:review)
@@ -181,20 +180,9 @@ with tempfile.TemporaryDirectory() as directory:
 `);
 });
 
-test("same-worktree concurrent review is rejected without overwriting active state", () => {
-  python(`
-import tempfile,subprocess,fcntl
-from pathlib import Path
-from tools import oracle_approval as o
-with tempfile.TemporaryDirectory() as directory:
-    root=Path(directory);subprocess.run(['git','init','-q',str(root)],check=True)
-    state=o.receipt_path(root).parent;state.mkdir(parents=True)
-    lock=(state/'review.lock').open('a+');fcntl.flock(lock,fcntl.LOCK_EX)
-    script="from pathlib import Path;from tools import oracle_approval as o;\\ntry:o.review_proposal(Path(__import__('sys').argv[1]),'proposal',[],None,lambda *a:{})\\nexcept o.OracleApprovalError as exc:assert 'active' in str(exc)\\nelse:raise AssertionError('concurrent review accepted')"
-    result=subprocess.run(['python3','-c',script,str(root)],capture_output=True,text=True)
-    assert result.returncode==0,result.stderr
-    assert not o.proposal_path(root).exists()
-`);
+test("simultaneous callers follow one genuine native parent controller", () => {
+  execFileSync("python3", ["tests/oracle_lifecycle_test.py",
+    "Lifecycle.test_simultaneous_callers_share_one_real_parent"], { cwd: root, encoding: "utf8" });
 });
 
 test("receipts retain actual structured reviewer process settings without pinning future task models", () => {
@@ -202,6 +190,7 @@ test("receipts retain actual structured reviewer process settings without pinnin
 import tempfile,subprocess,json,shutil
 from pathlib import Path
 from tools import oracle_approval as o
+from tools import oracle_lifecycle as lifecycle
 repository=Path.cwd();approved={'verdict':'APPROVED','findings':[],'authentication_impact':'NONE','owner_approval_status':'NOT_REQUIRED','api_version_assessment':{'impact':'NONE','request_kind':'NOT_REQUIRED','requested_change':None,'request_quote':None,'request_evidence':None}}
 with tempfile.TemporaryDirectory() as directory:
     root=Path(directory).resolve()
@@ -211,21 +200,41 @@ with tempfile.TemporaryDirectory() as directory:
                       '.agents/skills/oracle/review-output.schema.json':'{}','candidate.txt':'base',
                       '.gitignore':'Vault/\\n__pycache__/\\n'}.items():
         path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(text)
+    (root/'.agents/skills/oracle/review-output.schema.json').write_bytes((repository/'.agents/skills/oracle/review-output.schema.json').read_bytes())
     (root/'tools').mkdir();shutil.copy(repository/'tools/codex_child_model.py',root/'tools/codex_child_model.py')
     git('add','.');git('commit','-qm','base')
-    original_run=subprocess.run
+    original_run=subprocess.run;original_popen=subprocess.Popen;reviewer_launches=[]
+    def guarded(command,*args,**kwargs):
+        assert not any(Path(str(arg)).name=='codex' for arg in command),'Unexpected actual reviewer launch'
+        return original_popen(command,*args,**kwargs)
+    subprocess.Popen=guarded
     def child(command,**kwargs):
         if command[0]!='codex':return original_run(command,**kwargs)
         assert '--ephemeral' in command and '--ignore-user-config' in command
         assert any(item.startswith('developer_instructions=') and 'independent' in item for item in command)
         assert command[command.index('--sandbox')+1]=='danger-full-access'
         assert kwargs['env']['CODEX_SELECTED_MODEL']=='actual-caller-model'
-        assert o.LOCAL_EXECUTION_POLICY in command[-1]
+        assert any(item.startswith('developer_instructions=') and o.LOCAL_EXECUTION_POLICY in json.loads(item.split('=',1)[1]) for item in command)
         result=dict(approved,review_status='COMPLETE',coverage=[],validations=[],resolutions=[],limitations=[],repair_plan='')
         context=o._RUN.get()/'review-context.json'
         if context.is_file():result=_oracle_fixture_result(approved,json.loads(context.read_text()))
+        cohort=o._RUN.get()/'cohort-context.json'
+        if cohort.is_file():
+            packet=json.loads(cohort.read_text());parent=json.loads(Path(packet['parent_context']).read_text())
+            assessment=_oracle_fixture_result(approved,parent)
+            assessment['coverage']=[row for row in assessment['coverage'] if row['path'] in packet['cohort']['required_paths']]
+            result={key:packet[key] for key in ('plan_sha256','candidate_commit','candidate_tree','input_binding_sha256')}
+            result.update(cohort_id=packet['cohort']['id'],assessment=assessment,integration=[{
+                'concern':name,'status':'REVIEWED','inputs':[{'path':parent['required_coverage_paths'][0],
+                'digest':parent['input_hashes'][parent['required_coverage_paths'][0]]}],'reason':'Synthetic integration trace'}
+                for name in packet['cohort']['integration_checks']])
         Path(command[command.index('--output-last-message')+1]).write_text(json.dumps(result))
         return subprocess.CompletedProcess(command,0,'retained stdout','retained stderr')
+    def managed(owner,root,run,command,environment,controller):
+        assert controller is not None
+        reviewer_launches.append(command)
+        return child(command,cwd=root,capture_output=True,text=True,env=environment)
+    lifecycle.reviewer_process=managed
     o.subprocess.run=child;o.selected_model=lambda:'actual-caller-model'
     o.review_proposal(root,'Problem: repeated; Cause: setup; Recommended change: combined',[],None)
     candidate=root/'candidate.txt';candidate.write_text('candidate');git('add','candidate.txt')
@@ -234,14 +243,16 @@ with tempfile.TemporaryDirectory() as directory:
     o._vault_evidence=vault
     receipt=o.issue(root,[],None)
     settings=[name for name in receipt['validation_evidence'] if Path(name).name=='model.json']
-    assert len(settings)==1
-    metadata=json.loads((root/settings[0]).read_text())
+    records=[json.loads((root/name).read_text()) for name in settings]
+    assert all(row['selected_model']=='actual-caller-model' for row in records)
+    metadata=next(row for row in records if row.get('aggregator')=='deterministic-owner-local')
     assert metadata['selected_model']=='actual-caller-model' and metadata['sandbox']=='danger-full-access'
     assert metadata['ephemeral'] and metadata['ignore_user_config']
     assert len(metadata['schema_sha256'])==64 and len(metadata['model_helper_sha256'])==64
     o.selected_model=lambda:'future-task-model'
     o._environment_digest=lambda:'later-git-hook-launcher-environment'
     o.verify_staged(root)
+    assert reviewer_launches,'Expected current managed reviewer seam to be exercised'
 `);
 });
 

@@ -2,8 +2,8 @@
 name: bos-workflow-orchestrator
 description: Explain, compose, or operate governed deterministic workflows across the user's installed BOS service mesh, including ad hoc dynamic workflows created for the current objective. Use for multi-step or cross-service outcomes, custom journeys, requests to explain an organization's automation plugin, dependency resolution, approvals, recovery, and completion verification.
 metadata:
-  version: "1.0.0"
-  requires: "{\"bos-mcp-client\":\"1.0.0\",\"bos-visual-output\":\"1.0.0\"}"
+  version: "1.0.4"
+  requires: "{\"bos-mcp-client\":\"1.0.4\",\"bos-visual-output\":\"1.0.4\"}"
 ---
 
 # BOS Workflow Orchestrator

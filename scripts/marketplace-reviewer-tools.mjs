@@ -141,7 +141,7 @@ export async function createReviewerTools({session,state,release}) {
   const adapterRelative='skills/bos-external-dependency-adapter/scripts/external-dependency-adapter.mjs';
   const adapterPath=await installedPath(bos.path,adapterRelative);
   await readPublishedFile(bos.path,bos.release_commit,adapterRelative);
-  const {createBosExternalDependencyAdapter}=await import(pathToFileURL(adapterPath).href);
+  const {createBosExternalDependencyAdapter,readDiscoveredHttpResponse}=await import(pathToFileURL(adapterPath).href);
   const offered=(await session.rpc('tools/list')).tools;
   if(!Array.isArray(offered))throw new Error('reviewer_discovery_tools_missing');
   const caseDefinitions=state.product==='education-center'&&state.case_id==='positive-3'?definitions.map(tool=>tool.name==='bos_control_discover'?{
@@ -195,6 +195,10 @@ export async function createReviewerTools({session,state,release}) {
       const response=await session.request(new URL(request.href,state.resource).href,{method:request.method,headers:request.headers,body:request.body});
       const contentType=response.headers.get('content-type')??'';
       const contentTypeCategory=/^application\/problem\+json(?:;|$)/i.test(contentType)?'problem_json':/^application\/(?:json|[a-z0-9.+-]+\+json)(?:;|$)/i.test(contentType)?'json':/^text\/event-stream(?:;|$)/i.test(contentType)?'event_stream':/^text\//i.test(contentType)?'text':contentType?'other':'missing';
+      if(activeBusinessContact?.execution.response?.body==='binary'&&response.status>=200&&response.status<300){
+        if(typeof readDiscoveredHttpResponse!=='function')throw new Error('reviewer_api_response_invalid');
+        return readDiscoveredHttpResponse(response,activeBusinessContact);
+      }
       let responseBody;try{responseBody=await response.json();}catch{
         if(activeBusinessContact)lastBusinessHttpMetadata={reviewer_failure_code:'reviewer_api_response_invalid',http_status:response.status,content_type_category:contentTypeCategory,response_body_is_object:false,response_body_error_present:false,response_body_result_present:false,output_schema_valid:false};
         throw new Error('reviewer_api_response_invalid');
@@ -493,6 +497,15 @@ export async function createReviewerTools({session,state,release}) {
     let result;
     try{result=Object.hasOwn(args,'payload')?await adapter.invokeDiscoveredOperation(contact,args.payload):await adapter.invokeDiscoveredOperation(contact);}
     finally{activeBusinessContact=null;}
+    if(contact.execution.response?.body==='binary'&&result.status>=200&&result.status<300&&
+        (result.body instanceof ArrayBuffer||ArrayBuffer.isView(result.body))){
+      // Retain bytes only on the immediate runtime result. JSON/model observations
+      // contain bounded metadata; callers can save the existing byte result locally.
+      const metadata={status:result.status,operation:contact.operation,transport:'https',
+        binary:{size_bytes:result.body.byteLength,headers:result.headers}};
+      state.observations.push({tool:contact.operation,input:sanitized(args.payload??{}),response:structuredClone(metadata),scope_verified:true,is_error:false,transport:'https',contact_sha256:digest(contact)});
+      return Object.defineProperty(metadata,'binaryResponse',{value:result});
+    }
     const valid=result.status>=200&&result.status<300&&ajv.compile(contact.output_schema)(result.body);
     const bosOrigin=new URL(state.resource).origin;
     const authorizations=result.body?.result?.error?.required_authorizations;

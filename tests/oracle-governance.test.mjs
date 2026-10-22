@@ -18,6 +18,8 @@ test("both independent Oracle prompts require review of the recurring lead graph
     "import json",
     "from pathlib import Path",
     "import tools.oracle_approval as o",
+    "o.selected_model=lambda:'synthetic-model'",
+    "o.selected_reasoning_effort=lambda:None",
     "prompts=[]",
     "o._review_process=lambda root,prompt,prefix: prompts.append(prompt)",
     "o._proposal_oracle(Path.cwd(),'restore record display',{},None)",
@@ -43,6 +45,8 @@ test("both actual Oracle prompts permit normal-plan reviews and retain the addit
     "import json",
     "from pathlib import Path",
     "import tools.oracle_approval as o",
+    "o.selected_model=lambda:'synthetic-model'",
+    "o.selected_reasoning_effort=lambda:None",
     "prompts=[]",
     "o._review_process=lambda root,prompt,prefix: prompts.append(prompt)",
     "o._proposal_oracle(Path.cwd(),'covered normal-plan review',{},None)",
@@ -80,11 +84,11 @@ test("ordinary agents call the Oracle utility and cannot act as approver", () =>
   assert.match(review, /READINESS_PASS.*READINESS_FAIL/is);
   assert.doesNotMatch(review, /End with exactly one verdict: `APPROVED`/i);
   assert.match(oracle, /`REJECTED` blocks completion/i);
-  assert.match(preCommit, /oracle_approval\.py.*verify-staged/s);
-  assert.match(prepareCommitMessage, /oracle_approval\.py.*apply-trailers/s);
-  assert.match(commitMessage, /oracle_approval\.py.*verify-message/s);
-  assert.match(workflow, /pull_request[\s\S]*verify-commit\s+"\$\{\{ github\.sha \}\}"/i);
-  assert.match(workflow, /else[\s\S]*verify-range/i);
+  assert.match(preCommit, /"git", "diff", "--cached", "--check"/);
+  assert.doesNotMatch(preCommit, /verify-staged/);
+  assert.doesNotMatch(prepareCommitMessage, /apply-trailers/);
+  assert.match(commitMessage, /remove manual approval trailers/);
+  assert.match(workflow, /tools\/publication_status\.py "\$\{\{ github\.sha \}\}"/);
   assert.match(oracleUtility, /"--ignore-user-config"/i);
   assert.match(oracleUtility, /vault_index\.py", "evidence", VAULT_QUERY/i);
   assert.match(oracleUtility, /vault-query\.json/i);
@@ -193,7 +197,7 @@ test("Oracle receipt rejects stale state, forged trailers, and unstamped commits
   writeFileSync(join(workspace, "unstamped.txt"), "unstamped\n"); git("add", "unstamped.txt");
   git("commit", "-qm", "test: unstamped");
   const unstamped = spawnSync("python3", ["tools/oracle_approval.py", "verify-commit", "HEAD"], { cwd: workspace, encoding: "utf8" });
-  assert.notEqual(unstamped.status, 0); assert.match(unstamped.stderr, /invalid Oracle-Verdict trailer/i);
+  assert.notEqual(unstamped.status, 0); assert.match(unstamped.stderr, /no verified native approval/i);
 });
 
 test("Oracle owns indexed active and resolved issue history", {

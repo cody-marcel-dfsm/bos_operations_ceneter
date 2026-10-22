@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  statuses: read
 
 jobs:
   verify-public-repository:
@@ -22,15 +23,11 @@ jobs:
           node-version: 20
       - run: npm ci
       - name: Verify commit-bound Oracle approval
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            # actions/checkout checks out GitHub's proposed merge commit for a
-            # pull request. Verify that exact resulting tree before merge.
-            python3 tools/oracle_approval.py verify-commit "${{ github.sha }}"
-          else
-            python3 tools/oracle_approval.py verify-range \
-              "${{ github.event.before }}" \
-              "${{ github.sha }}"
-          fi
+          # A PR merge retains its independently approved head tree. The bounded
+          # wait covers CI starting immediately after the review push.
+          python3 tools/publication_status.py "${{ github.sha }}"
       - run: npm run check:publication
       - run: npm run release:check

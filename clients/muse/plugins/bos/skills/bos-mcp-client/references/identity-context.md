@@ -103,28 +103,49 @@ plugin never inherits either historical BOS default.
    or unauthorized default produces `default_context_unavailable`; ask for an
    authorized replacement, without silent fallback or changing grants.
 4. Pass only the fresh returned `context_handle` to `bos_list_context_tools`.
-   Require its response to bind the same handle. Discover the requested operation
-   independently, including deletion. A top-level description mentioning CRUD
-   cannot establish that a specific operation is available in this context.
-5. Call `bos_execute` with that handle, the exact discovered `tool_name`, and
-   business `arguments` validated against the current operation schema. Keep
-   raw org/app/install/role IDs out of business arguments. Verify the returned
-   context matches the selected context before using the result. The server
-   reauthorizes every operation; discovery and preferences confer no authority.
-   For a discovered deterministic HTTPS operation, copy its published static
+   Require its response to bind the same handle. Native names and their count
+   describe that catalog only. Follow current `app.describe`, `service.describe`
+   and advertised operation-contract resources through the same authenticated
+   connection to discover the requested operation independently, including
+   deletion. Preserve advertised availability, provider readiness and host
+   executability separately. A top-level CRUD description supplies no specific
+   operation contract; an absent native name supplies no evidence that a
+   described HTTPS operation is absent.
+5. For a freshly advertised native discovery/control, compatibility or resource
+   delivery tool, call `bos_execute` with that handle, its exact `tool_name`, and
+   schema-validated `arguments`. The business-read compatibility exceptions
+   remain exactly `feedback.recommendations.query`, `journeys.notifications.read`
+   and `journeys.state.read`, with their existing scope and schemas. Preserve
+   existing native embedded-resource delivery. Never convert a Describe
+   operation key into `tool_name` or route another described business operation
+   through this dispatcher. Keep raw org/app/install/role IDs out of business
+   arguments and verify the returned context before using its result.
+6. For a discovered deterministic HTTPS operation, use its complete current
+   execution contract: method, URI, context binding and any declared transport.
+   Compatible contacts with absent or null `execution.transport` retain their
+   validated method, URI and context binding; report that field as unspecified.
+   Invoke through the existing BOS adapter only when the current host supplies
+   authenticated HTTP on the same BOS connection. Copy its published static
    `execution.context_header` and put the same selected opaque handle in that
    header. The required value is `X-BOS-Context-Handle`; never construct another
    header, put the handle in the business body, or add OAuth, token, retry,
-   idempotency, execution, or journey state.
-6. Apply step 5's deterministic HTTP binding to raw BOSL registration and to
-   every returned journey `start`, `complete`, `step`, `failed`, and `state`
-   action. Returned actions carry no context field; the BOS transport adapter
-   binds the fresh handle only while invoking them. Preserve header-free
-   behavior for legacy/v1 actions.
-7. Preserve the selected scope with approvals, versions, caches, server-owned
+   idempotency, execution, or journey state. When the required host capability
+   is absent, preserve completed discovery and report the exact unavailable
+   authenticated operation as `host_capability_unavailable`. A packaged adapter
+   or an acceptance-host helper establishes no native host capability. Keep
+   credentials inside the host; construct no alternate transport.
+7. Use an operation's declared `journey_runtime` through its current journey
+   contract. Apply step 6's deterministic HTTP binding to raw BOSL registration
+   and to every returned journey `start`, `complete`, `step`, `failed`, and
+   `state` action. Returned actions carry no context field; the BOS transport
+   adapter binds the fresh handle only while invoking them. Preserve
+   header-free behavior for legacy/v1 actions.
+8. Preserve the selected scope with approvals, versions, caches, server-owned
    operation references, and exact returned recovery actions. Refresh handles after context changes; never persist handles as
    defaults. Keep concurrent requests independent. A denial or missing operation
    never permits another role or organization as a workaround.
+   The server reauthorizes every operation; discovery and preferences confer
+   no authority.
 
 An unavailable optional plugin-profile setup surface leaves that setup
 incomplete. It does not block an independently advertised ready operation whose

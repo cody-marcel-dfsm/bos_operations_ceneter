@@ -5,6 +5,21 @@ description: Implement BOS Operations Center repository changes using its archit
 
 # Operations Center Implementation
 
+## Committed validation — controlling owner workflow, October 21, 2026
+
+Commit authored work and repairs directly with Git before independent validation;
+approval and trailers never gate commits. Read governing instructions before
+changes or results, reusing current loaded authority. Assess each new commit/range
+once, consolidate all findings, repair together, commit and validate only new,
+missing or affected paths and criteria. Retain unchanged coverage, test evidence
+and sealed observations across commits and instruction movement. Current approval
+still binds the entire exact candidate. `ship-it` owns the four phases and
+atomic `last_validated_commit` checkpoint; its complete validation lifecycle runs
+concurrently across selected changed family members. An unchanged delivered
+candidate returns `NO_CHANGES` with no review, tests, build, version or publication.
+The exact validated SHA is released; `last_released_commit` advances only after
+confirmed successful delivery. Source changes continue without locks or freezes.
+
 ## Controlling review and publication placement — October 18, 2026
 
 Complete independent technical proposal/review and commit checks without human deployment permission. Missing permission is not a technical finding. Existing human-approval wording below applies only to an actual protected deployment/publication effect: concrete credential-trust, permission-authority, tenant-isolation or incompatible-public-contract behavior. Authentication labels, filenames and ordinary compatible corrections create no gate. Keep the explicit public API version request and cost controls.

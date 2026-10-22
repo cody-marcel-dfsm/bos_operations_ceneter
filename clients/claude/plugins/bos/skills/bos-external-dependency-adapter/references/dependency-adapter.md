@@ -62,6 +62,33 @@ and returns a sanitized response. Legacy identity-v1 execution remains
 header-free. Authentication recovery uses the same single bounded BOS-owned
 cycle as returned actions.
 
+For a declared binary response, the existing transport result is
+`{status, headers, body}` with an `ArrayBuffer` or byte view. Keep those bytes
+inside the host/caller for ordinary local saving or a discovered durable upload;
+do not serialize them into model prose. Preserve the returned
+`Content-Disposition` filename and extension and the provider MIME type without
+parsing or converting the file. Native inline file presentation depends on the
+actual host interface and has separate acceptance evidence.
+
+The packaged `readDiscoveredHttpResponse(response, contact)` helper reads a
+fetch response incrementally under the discovered byte and duration bounds,
+cancels failed reads, rejects incomplete bodies, and returns the existing
+transport result. It reads successful declared binary bodies as bytes for every
+MIME type, including JSON and text. The authenticated host retains its existing
+request deadline; the helper's body deadline adds a bound after headers arrive.
+Ordinary responses and pre-header HTTP failures retain JSON handling.
+
+The original six-header binary descriptor keeps required `Digest` and
+`X-Content-SHA256`. A separate closed descriptor explicitly declares
+`integrity: "provider_md5_if_available"` and the supported headers
+`Content-Disposition`, `Content-Length`, `Content-Type`, `Content-MD5`, and
+`X-Correlation-ID`. Its four core headers remain required; `Content-MD5` may be
+absent. A present value must be standard base64 of the 16 MD5 bytes and match
+the received body. This variant uses a discovered `maximum_attachment_bytes`
+through 20 MiB, an optional equal `maximum_file_bytes`, a total duration through
+120 seconds, and an optional preparation bound through 45 seconds. Zero-byte
+files remain valid. No checksum is invented when the provider supplies none.
+
 The external caller supplies no route, context handle, authority selector,
 token, retry identity, or provider mapping. Journey-runtime operations use the
 returned-action methods.

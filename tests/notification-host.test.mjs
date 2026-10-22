@@ -56,7 +56,8 @@ test("an overlapping later hint survives the previous worker ticket", async t =>
   const f = await fixture(t); await f.start();
   const first = await f.host.readPending();
   f.chunks.push(encodeFrame(changed("synthetic-journey", "nc_second")));
-  await delay(50);
+  const [partition] = await readdir(join(f.root, "queue"));
+  await until(async () => JSON.parse(await readFile(join(f.root, "queue", partition, "pending.json"), "utf8")).cursor === "nc_second");
   assert.equal(await f.host.acknowledge(first.deliveries[0].ticket), false);
   assert.equal((await f.host.poll()).pending, true);
   const second = await f.host.readPending(); assert.equal(await f.host.acknowledge(second.deliveries[0].ticket), true);

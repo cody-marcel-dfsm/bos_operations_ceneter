@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Issue and verify tree-bound Operations Center approvals."""
 from __future__ import annotations
-import argparse, ast, hashlib, json, os, re, stat, subprocess, sys, fcntl, time, platform, shutil, shlex
+import argparse, ast, hashlib, json, os, re, stat, subprocess, sys, time, platform, shutil, shlex
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from contextvars import ContextVar
@@ -90,7 +90,15 @@ uncovered behavior remain available. Omitted validation entries never erase
 wrapper-verified proof; explicit invalidation must explain the actual gap.
 """
 REVIEW_SERIES_POLICY = """Trusted assessment execution policy:
-For completed-candidate review, complete the first assessment across all changed paths,
+Read governing instructions and review criteria first, before changes or results.
+Read governing/document/source/diff/context bodies once per content identity and
+reuse unchanged loaded bodies throughout this lifecycle. After governing criteria,
+inspect bounded candidate changes, then retained validation results. Query compact
+plan/context fields and bounded targeted slices. Avoid concatenating entire large
+artifacts; choose output limits and batch sizes that prevent truncation and
+repeated reads. Expand inspection only for a changed input or unresolved behavior.
+For completed-candidate review, complete
+one thorough pass per new commit/range across all changed paths,
 relevant entry points, dependencies, failure paths and applicable authorities
 before returning consolidated findings. Record unreviewed coverage explicitly;
 an early blocker is no reason to stop scanning independent areas. Findings need
@@ -98,7 +106,7 @@ stable IDs, exact location, root cause, reproduction, required behavior,
 recommendation, affected paths and acceptance checks so repairs can be made in
 one batch. Preserve unresolved finding IDs and account for every one through an
 open finding or hash-bound resolution evidence. Never treat omitted findings as
-resolved. On follow-up or resume, inspect the actual source/control delta first,
+resolved. On follow-up or resume, confirm governing criteria first, then new commits,
 then affected dependencies, unresolved findings and unfinished coverage. A global
 mechanical guard invalidation alone requires no blanket source rescan or test
 rerun. Independently compare current criteria, source hashes and dependencies to
@@ -150,6 +158,8 @@ UNREVIEWED dispositions override reuse. Tests remain distinct from source review
 """
 
 _RUN = ContextVar("oracle_run", default=None)
+_CONTROLLER = ContextVar("oracle_controller", default=None)
+_FOLLOW_COMMITS = ContextVar("oracle_follow_commits", default=False)
 _PREPARED_SETTINGS = ContextVar("oracle_prepared_settings", default=None)
 _METADATA_ROOT = ContextVar("oracle_metadata_root", default=None)
 LIVE_AUTHORITIES = (*AUTHORITY_PATHS, ".agents/skills/oracle/review-output.schema.json",
@@ -161,7 +171,8 @@ CONTROLLING_AUTHORITIES = (*AUTHORITY_PATHS, ".agents/skills/oracle/review-outpu
 
 def _declared_parent_authorities(root: Path, instructions: str | None = None) -> dict:
     # Ordinary local governance declares the family coordinator's canonical
-    # paths. Read/hash those exact interfaces; never execute or import them.
+    # governance. A referenced coordinator command is not a local authority;
+    # bind its bytes only when explicitly consumed as evidence/execution input.
     if instructions is None:
         local = root / "AGENTS.md"
         instructions = _custody_read(root, local)[1].decode() if local.is_file() else ""
@@ -170,12 +181,28 @@ def _declared_parent_authorities(root: Path, instructions: str | None = None) ->
     for declaration in declarations:
         family = Path(os.path.abspath(declaration))
         parent = family.parents[3]
-        for path in (parent / "AGENTS.md", family, parent / "tools/projects_oracle.py"):
+        for path in (parent / "AGENTS.md", family):
             try:
                 values[str(path)] = _custody_read(root, str(path))[0]["sha256"]
             except (OSError, OracleApprovalError):
                 values[str(path)] = None
     return values
+
+
+def _declared_parent_execution_inputs(root: Path, selected: Sequence[str]) -> dict:
+    """Admit the exact declared coordinator executable only when consumed."""
+    local = root / 'AGENTS.md'
+    instructions = _custody_read(root, local)[1].decode() if local.is_file() else ''
+    families = re.findall(r'(/[^\s`"<>]+/Vault/docs/architecture/bos-product-family\.md)', instructions)
+    result = {}
+    for name in families:
+        command = Path(os.path.abspath(name)).parents[3] / 'tools/projects_oracle.py'
+        if str(command) in instructions and str(command) in selected:
+            try:
+                result[str(command)] = 'sha256:' + _custody_read(root, command)[0]['sha256']
+            except OSError:
+                pass
+    return result
 
 
 def _controlling_authorities(values: dict) -> dict:
@@ -220,31 +247,6 @@ def _metadata_remove(root: Path, path: Path) -> None:
     _private_witness_write(root, path, None)
 
 
-@contextmanager
-def _metadata_lock(root: Path, path: Path):
-    _metadata_directory(root, path.parent)
-    directory = _private_directory_fd(root, path.parent, (".git", "oracle"))
-    descriptor = None
-    try:
-        try:
-            before = os.stat(path.name, dir_fd=directory, follow_symlinks=False)
-            if not stat.S_ISREG(before.st_mode):
-                raise OracleApprovalError("Oracle review lock is not a regular file")
-        except FileNotFoundError:
-            before = None
-        descriptor = os.open(path.name, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK,
-                             0o600, dir_fd=directory)
-        current = os.fstat(descriptor)
-        if not stat.S_ISREG(current.st_mode) or before is not None and \
-                (before.st_dev, before.st_ino, before.st_mode) != (current.st_dev, current.st_ino, current.st_mode):
-            raise OracleApprovalError("Oracle review lock changed during admission")
-        with os.fdopen(descriptor, "a+") as lock:
-            descriptor = None
-            yield lock
-    finally:
-        if descriptor is not None:
-            os.close(descriptor)
-        os.close(directory)
 
 
 def _metadata_run(root: Path, directory: Path, prefix: str) -> Path:
@@ -285,88 +287,108 @@ def _timed(phase: str, call):
         return call()
 
 
-def _serialized_review(function):
+def _review_attempt(function):
     @wraps(function)
     @_metadata_owner
     def wrapped(root: Path, *args, **kwargs):
         directory = receipt_path(root).parent
-        with _metadata_lock(root, directory / "review.lock") as lock:
+        runs = directory / "runs"
+        run = _metadata_run(root, runs, function.__name__ + "-")
+        token = _RUN.set(run)
+        controller = _CONTROLLER.get()
+        if controller is not None:
+            controller.progress = {"state": "REVIEW_IN_PROGRESS", "attempt": str(run)}
+        started_at = datetime.now(timezone.utc).isoformat()
+        result, failure = None, None
+        proposal_before = None
+        try:
+            if function.__name__ == "review_proposal":
+                proposal_before = {path: _custody_read(root, path)[1] if path.is_file() else None
+                                   for path in (proposal_path(root), receipt_path(root))}
+                for path, raw in proposal_before.items():
+                    if raw is not None:
+                        _atomic_write(run / ("previous-" + path.name), raw)
+            result = _timed("total_seconds", lambda: function(root, *args, **kwargs))
+            return result
+        except BaseException as exc:
+            failure = exc
+            if function.__name__ == "issue":
+                _revoke_published_review(root, run, exc)
+            elif proposal_before is not None:
+                _restore_failed_proposal(root, run, proposal_before)
             try:
-                fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError as exc:
-                raise OracleApprovalError("Another Oracle review is active in this worktree") from exc
-            runs = directory / "runs"
-            run = _metadata_run(root, runs, function.__name__ + "-")
-            token = _RUN.set(run)
-            started_at = datetime.now(timezone.utc).isoformat()
-            result, failure = None, None
-            proposal_before = None
+                _atomic_write(run / "failure.json", _pretty({"error": str(exc)}))
+            except OSError:
+                pass
+            raise
+        finally:
             try:
-                if function.__name__ == "review_proposal":
-                    proposal_before = {path: _custody_read(root, path)[1] if path.is_file() else None
-                                       for path in (proposal_path(root), receipt_path(root))}
-                    for path, raw in proposal_before.items():
-                        if raw is not None:
-                            _atomic_write(run / ("previous-" + path.name), raw)
-                result = _timed("total_seconds", lambda: function(root, *args, **kwargs))
-                return result
-            except BaseException as exc:
-                failure = exc
-                if function.__name__ == "issue":
-                    _revoke_published_review(root, run, exc)
-                elif proposal_before is not None:
-                    _restore_failed_proposal(root, run, proposal_before)
-                try:
-                    _atomic_write(run / "failure.json", _pretty({"error": str(exc)}))
-                except OSError:
-                    pass
-                raise
+                timings = json.loads(_custody_read(root, run / "timings.json")[1]) if (run / "timings.json").exists() else {}
+                verdict = result.get("verdict") if isinstance(result, dict) else None
+                review_status = result.get("review_status") if isinstance(result, dict) else None
+                if verdict is None and (run / "result.json").exists():
+                    try:
+                        returned = json.loads(_custody_read(root, run / "result.json")[1])
+                        verdict = returned.get("verdict")
+                        review_status = returned.get("review_status")
+                    except (ValueError, AttributeError):
+                        pass
+                _atomic_write(run / "outcome.json", _pretty({
+                    "kind": function.__name__, "started_at": started_at,
+                    "finished_at": datetime.now(timezone.utc).isoformat(),
+                    "outcome": "INCOMPLETE" if isinstance(failure, OracleReviewIncomplete)
+                               else "REJECTED" if isinstance(failure, OracleCandidateRejected)
+                               else "ERROR" if failure is not None
+                               else "INCOMPLETE" if review_status == "INCOMPLETE"
+                               else "ERROR" if review_status == "ERROR"
+                               else "REJECTED" if verdict == "REJECTED" else verdict or "COMPLETED",
+                    "reviewer_verdict": verdict,
+                    "reviewer_review_status": review_status,
+                    "reviewer_invoked": any(key.endswith("reviewer_seconds") for key in timings),
+                    "error": {"name": type(failure).__name__, "message": str(failure)} if failure else None,
+                }))
+            except Exception as exc:
+                if failure is None:
+                    if function.__name__ == "issue":
+                        _revoke_published_review(root, run, exc)
+                    elif proposal_before is not None:
+                        _restore_failed_proposal(root, run, proposal_before)
+                    try:
+                        _atomic_write(run / "failure.json", _pretty({"error": str(exc)}))
+                        _atomic_write(run / "outcome.json", _pretty({
+                            "kind": function.__name__, "started_at": started_at,
+                            "finished_at": datetime.now(timezone.utc).isoformat(), "outcome": "ERROR",
+                            "reviewer_verdict": result.get("verdict") if isinstance(result, dict) else None,
+                            "reviewer_review_status": result.get("review_status") if isinstance(result, dict) else None,
+                            "error": {"name": type(exc).__name__, "message": str(exc)},
+                        }))
+                    except OSError:
+                        pass
+                    raise
             finally:
-                try:
-                    timings = json.loads(_custody_read(root, run / "timings.json")[1]) if (run / "timings.json").exists() else {}
-                    verdict = result.get("verdict") if isinstance(result, dict) else None
-                    review_status = result.get("review_status") if isinstance(result, dict) else None
-                    if verdict is None and (run / "result.json").exists():
-                        try:
-                            returned = json.loads(_custody_read(root, run / "result.json")[1])
-                            verdict = returned.get("verdict")
-                            review_status = returned.get("review_status")
-                        except (ValueError, AttributeError):
-                            pass
-                    _atomic_write(run / "outcome.json", _pretty({
-                        "kind": function.__name__, "started_at": started_at,
-                        "finished_at": datetime.now(timezone.utc).isoformat(),
-                        "outcome": "INCOMPLETE" if isinstance(failure, OracleReviewIncomplete)
-                                   else "REJECTED" if isinstance(failure, OracleCandidateRejected)
-                                   else "ERROR" if failure is not None
-                                   else "INCOMPLETE" if review_status == "INCOMPLETE"
-                                   else "ERROR" if review_status == "ERROR"
-                                   else "REJECTED" if verdict == "REJECTED" else verdict or "COMPLETED",
-                        "reviewer_verdict": verdict,
-                        "reviewer_review_status": review_status,
-                        "reviewer_invoked": any(key.endswith("reviewer_seconds") for key in timings),
-                        "error": {"name": type(failure).__name__, "message": str(failure)} if failure else None,
-                    }))
-                except Exception as exc:
-                    if failure is None:
-                        if function.__name__ == "issue":
-                            _revoke_published_review(root, run, exc)
-                        elif proposal_before is not None:
-                            _restore_failed_proposal(root, run, proposal_before)
-                        try:
-                            _atomic_write(run / "failure.json", _pretty({"error": str(exc)}))
-                            _atomic_write(run / "outcome.json", _pretty({
-                                "kind": function.__name__, "started_at": started_at,
-                                "finished_at": datetime.now(timezone.utc).isoformat(), "outcome": "ERROR",
-                                "reviewer_verdict": result.get("verdict") if isinstance(result, dict) else None,
-                                "reviewer_review_status": result.get("review_status") if isinstance(result, dict) else None,
-                                "error": {"name": type(exc).__name__, "message": str(exc)},
-                            }))
-                        except OSError:
-                            pass
-                        raise
-                finally:
-                    _RUN.reset(token)
+                _RUN.reset(token)
+    return wrapped
+
+
+def _serialized_review(function=None, *, request_binding=None, result_validator=None):
+    if function is None:
+        return lambda selected: _serialized_review(selected, request_binding=request_binding, result_validator=result_validator)
+    attempt = _review_attempt(function)
+    @wraps(function)
+    @_metadata_owner
+    def wrapped(root: Path, *args, **kwargs):
+        if __package__:
+            from . import oracle_lifecycle
+        else:
+            import oracle_lifecycle
+        request = request_binding(root, *args, **kwargs) if request_binding else None
+        result = oracle_lifecycle.run(sys.modules[__name__], root, function.__name__, attempt,
+                                      args, kwargs, follow_commits=_FOLLOW_COMMITS.get(), request=request)
+        if result_validator:
+            if request_binding(root, *args, **kwargs) != request:
+                raise OracleApprovalError("Scoped native authorization request changed during observation")
+            result_validator(root, request, result)
+        return result
     return wrapped
 
 
@@ -430,6 +452,121 @@ def _technical_archive(root: Path, digest: str) -> Path:
     return receipt_path(root).parent / "receipts" / (digest + ".json")
 
 
+def _committed_receipts(root: Path, commit: str) -> list[tuple[dict, bytes]]:
+    """Discover exact committed decisions through immutable native provenance."""
+    tree = _git(root, "show", "-s", "--format=%T", commit).strip()
+    selected = []
+    for path in sorted((receipt_path(root).parent / "receipts").glob("*.json")):
+        fact, raw = _custody_read(root, path, allow_absent=True)
+        if fact["source"].get("links"):
+            raise OracleApprovalError("Archived technical receipt has an invalid linked route")
+        if not fact["source"].get("exists"):
+            continue
+        receipt = json.loads(raw)
+        if receipt.get("base_commit") != commit or receipt.get("candidate_tree") != tree:
+            continue
+        _shape(receipt)
+        if raw != _pretty(receipt) or path.stem != _sha(raw):
+            raise OracleApprovalError("Archived committed receipt changed")
+        for name, digest in receipt["validation_evidence"].items():
+            round_path = Path(name) if Path(name).is_absolute() else root / name
+            series = receipt_path(root).parent / "series"
+            if round_path.parent.parent != series or not re.fullmatch(r"round-[0-9]{4}\.json", round_path.name):
+                continue
+            rounds = _read_rounds(round_path.parent)
+            match = next((row for row in rounds if row["round"] == int(round_path.stem[6:])), None)
+            if (match and digest == _sha(_pretty(match)) and match["outcome"] == "APPROVED"
+                    and match["base_commit"] == commit and match["candidate_tree"] == tree
+                    and match["review"].get("review_status") == "COMPLETE"
+                    and _sha(_canonical(match["review"])) == receipt["review_digest"]
+                    and match["review"].get("protected_effects") == receipt.get("protected_effects")):
+                if any(row["round"] > match["round"] and row["base_commit"] == commit
+                       and row["candidate_tree"] == tree and row["outcome"] != "APPROVED"
+                       for row in rounds):
+                    break  # A later exact-candidate failure cannot revive approval.
+                selected.append((receipt, raw))
+                break
+        else:
+            raise OracleApprovalError("Archived committed receipt lacks native decision provenance")
+    return selected
+
+
+def _committed_effect_history(root: Path, commit: str) -> tuple[list, list]:
+    """Retain known native effects even when their private receipt is absent.
+
+    This registry supplies conservative history only; it never verifies approval.
+    """
+    prior, limitations = [], []
+    directory = receipt_path(root).parent / "committed-history" / commit
+    for path in sorted(directory.glob("*.json")):
+        raw = _custody_read(root, path)[1]
+        record = json.loads(raw)
+        body = {key: value for key, value in record.items() if key != "history_sha256"}
+        round_path = root / record.get("round_file", "")
+        if (raw != _pretty(record) or set(record) != {"kind", "commit", "tree", "receipt_sha256", "round_file", "round_sha256", "history_sha256"}
+                or record["kind"] != "oracle-committed-history-v1" or record["commit"] != commit
+                or record["tree"] != _git(root, "show", "-s", "--format=%T", commit).strip()
+                or record["receipt_sha256"] != path.stem or not re.fullmatch(r"[0-9a-f]{64}", path.stem)
+                or record["history_sha256"] != _sha(_canonical(body))
+                or round_path.parent.parent != receipt_path(root).parent / "series"):
+            raise OracleApprovalError("Committed effect history custody changed")
+        rounds = _read_rounds(round_path.parent)
+        match = next((row for row in rounds if _sha(_pretty(row)) == record["round_sha256"]
+                      and round_path.name == f"round-{row['round']:04d}.json"), None)
+        if (not match or match["outcome"] != "APPROVED" or match["base_commit"] != commit
+                or match["candidate_tree"] != record["tree"] or match["review"].get("review_status") != "COMPLETE"):
+            raise OracleApprovalError("Committed effect history lacks its sealed native origin")
+        for effect in match["review"].get("protected_effects", {}).get("active", []):
+            prior.append({"origin": path.stem, "effect": effect})
+        fact, receipt_raw = _custody_read(root, _technical_archive(root, path.stem), allow_absent=True)
+        if fact["source"].get("links"):
+            raise OracleApprovalError("Archived technical receipt has an invalid linked route")
+        if not fact["source"].get("exists"):
+            limitations.append({"commit": commit, "tree": record["tree"], "receipt_sha256": path.stem,
+                                "reason": "Private receipt unavailable; sealed native effect history retained and current complete range requires independent assessment"})
+        elif _sha(receipt_raw) != path.stem:
+            raise OracleApprovalError("Archived technical receipt changed")
+    return prior, limitations
+
+
+def _proposal_origin(root: Path, proposal: dict, candidate: str) -> str:
+    origin = proposal.get("lifecycle_origin", proposal["base_commit"])
+    path = receipt_path(root).parent / "lifecycle-origin.json"
+    if os.path.lexists(path):
+        raw = _custody_read(root, path)[1]
+        record = json.loads(raw)
+        body = {key: value for key, value in record.items() if key != "origin_sha256"}
+        if (raw != _pretty(record) or set(record) != {"kind", "origin", "proposal_file", "proposal_sha256", "origin_sha256"}
+                or record["kind"] != "oracle-lifecycle-origin-v1"
+                or record["origin_sha256"] != _sha(_canonical(body))):
+            raise OracleApprovalError("Immutable lifecycle origin custody changed")
+        source = _custody_read(root, root / record["proposal_file"])[1]
+        original = json.loads(source)
+        original_body = {key: value for key, value in original.items() if key != "proposal_review_id"}
+        if (record["proposal_sha256"] != _sha(source) or source != _pretty(original)
+                or original.get("proposal_review_id") != _sha(_canonical(original_body))
+                or original.get("review", {}).get("verdict") != "APPROVED"
+                or record["origin"] != original.get("lifecycle_origin", original["base_commit"])):
+            raise OracleApprovalError("Lifecycle origin lacks its immutable approved proposal")
+        origin = record["origin"]
+    if subprocess.run(["git", "merge-base", "--is-ancestor", origin, candidate],
+                      cwd=root, capture_output=True).returncode:
+        raise OracleApprovalError("Proposal lifecycle origin is outside the candidate history")
+    return origin
+
+
+def _record_lifecycle_origin(root: Path, raw: bytes) -> Path:
+    proposal = json.loads(raw)
+    origin = _proposal_origin(root, proposal, _git(root, "rev-parse", "HEAD").strip())
+    path = receipt_path(root).parent / "lifecycle-origin.json"
+    if not path.exists():
+        archive = _archive_proposal(root, raw)
+        body = {"kind": "oracle-lifecycle-origin-v1", "origin": origin,
+                "proposal_file": str(archive.relative_to(root)), "proposal_sha256": _sha(raw)}
+        _atomic_write(path, _pretty(dict(body, origin_sha256=_sha(_canonical(body)))))
+    return path
+
+
 def _publication_scope(root: Path, tree: str) -> dict:
     """The effective distributed source range, independent of the last commit."""
     base = _git(root, "rev-parse", "HEAD").strip()
@@ -443,8 +580,25 @@ def _publication_scope(root: Path, tree: str) -> dict:
         if subprocess.run(["git", "merge-base", "--is-ancestor", base, "HEAD"], cwd=root,
                           capture_output=True).returncode:
             raise OracleApprovalError("Integrate the publication baseline before technical review")
+    else:
+        # A sealed proposal establishes a technical range even before a fetched
+        # publication baseline is available. The absent destination still holds delivery.
+        try:
+            proposal = verify_proposal(root)
+            base = proposal["lifecycle_origin"]
+        except (OSError, ValueError, KeyError, OracleApprovalError):
+            pass
     prior, history_limitations = [], []
     for commit in _git(root, "rev-list", "--reverse", base + "..HEAD").splitlines():
+        retained, unavailable = _committed_effect_history(root, commit)
+        prior.extend(item for item in retained if item not in prior)
+        history_limitations.extend(item for item in unavailable if item not in history_limitations)
+        committed = _committed_receipts(root, commit)
+        for receipt, raw in committed:
+            for effect in receipt.get("protected_effects", {}).get("active", []):
+                item = {"origin": _sha(raw), "effect": effect}
+                if item not in prior:
+                    prior.append(item)
         message = _git(root, "show", "-s", "--format=%B", commit)
         try:
             digest = _trailers(message)[TRAILER_KEYS[2]]
@@ -539,14 +693,15 @@ def _assert_binding(root: Path, expected: dict, evidence: dict, owner: dict | No
         actual = {key: value for key, value in actual.items() if key not in {"environment_digest", "reviewer_settings"}}
         expected = {key: value for key, value in expected.items() if key not in {"environment_digest", "reviewer_settings"}}
     if actual != expected:
-        raise OracleApprovalError("Oracle review inputs changed during preparation or review")
+        raise OracleSourceBindingError("Oracle review inputs changed during preparation or review")
 
 
 @_metadata_owner
-def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path | None = None) -> dict:
+def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path | None = None,
+                    cohort_policy: str | None = None) -> dict:
     run = _RUN.get()
     if run is None:
-        raise OracleApprovalError("Independent Oracle must run under the review lock")
+        raise OracleApprovalError("Independent Oracle must run under a native controller attempt")
     output = run / "result.json"
     schema_path = schema_path or root / ".agents/skills/oracle/review-output.schema.json"
     try:
@@ -562,6 +717,8 @@ def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path |
     developer_instructions = "\n\n".join((REVIEWER_ROLE, NORMAL_PLAN_REVIEW_POLICY,
                                          LOCAL_EXECUTION_POLICY, REVIEW_SERIES_POLICY,
                                          DEPLOYMENT_PLACEMENT_POLICY))
+    if cohort_policy is not None:
+        developer_instructions += "\n\n" + cohort_policy
     metadata = {"selected_model": model, "reasoning_effort": effort,
                 "sandbox": "danger-full-access", "ephemeral": True,
                 "ignore_user_config": True,
@@ -583,10 +740,21 @@ def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path |
         environment["CODEX_SELECTED_REASONING_EFFORT"] = effort
     else:
         environment.pop("CODEX_SELECTED_REASONING_EFFORT", None)
-    completed = _timed(prefix + "_seconds", lambda: subprocess.run(
-        cmd, cwd=root, capture_output=True, text=True,
-        env=environment))
-    _atomic_write(run / "process.json", _pretty({"exit_code": completed.returncode}))
+    controller = _CONTROLLER.get()
+    if controller is not None:
+        if __package__:
+            from . import oracle_lifecycle
+        else:
+            import oracle_lifecycle
+        completed = _timed(prefix + "_seconds", lambda: oracle_lifecycle.reviewer_process(
+            sys.modules[__name__], root, run, cmd, environment, controller))
+    else:
+        completed = _timed(prefix + "_seconds", lambda: subprocess.run(
+            cmd, cwd=root, capture_output=True, text=True, env=environment))
+    process_record = {"exit_code": completed.returncode}
+    if hasattr(completed, "native_registration"):
+        process_record["native_registration"] = completed.native_registration
+    _atomic_write(run / "process.json", _pretty(process_record))
     _atomic_write(run / "stdout.log", completed.stdout.encode())
     _atomic_write(run / "stderr.log", completed.stderr.encode())
     if completed.returncode:
@@ -795,7 +963,10 @@ def _owned_private_parent(root: Path, path: Path, prefix: tuple[str, ...]) -> di
         if not fact.get("exists"):
             descriptor = _private_directory_fd(root, root.joinpath(*parts[:count - 1]), prefix, ancestor=True)
             try:
-                os.mkdir(parts[count - 1], 0o700, dir_fd=descriptor)
+                try:
+                    os.mkdir(parts[count - 1], 0o700, dir_fd=descriptor)
+                except FileExistsError:
+                    pass  # Concurrent native admission; the full route is rechecked below.
             finally:
                 os.close(descriptor)
     fact = _owner_source_walk(root, "/".join(parts), content=False, allow_git=True, custody=True)
@@ -822,6 +993,21 @@ def _candidate_inputs(root: Path, tree: str, evidence: dict) -> dict:
         inputs[os.fsdecode(name)] = f"git-{algorithm}:{mode}:{kind}:{oid}"
     for name, digest in {**_vault_sources(root), **evidence, **_declared_parent_authorities(root)}.items():
         inputs.setdefault(name, "sha256:" + digest if digest is not None else None)
+    consumed_names = set()
+    for name in evidence:
+        if Path(name).suffix != '.json':
+            continue
+        try:
+            record = json.loads(_custody_read(root, name)[1])
+        except (OSError, ValueError):
+            continue
+        if not isinstance(record, dict) or record.get('kind') != 'oracle-validation-record-v1':
+            continue
+        for item in record.get('inputs', []):
+            if isinstance(item, dict) and isinstance(item.get('path'), str):
+                consumed_names.add(item['path'])
+    if consumed_names:
+        inputs.update(_declared_parent_execution_inputs(root, sorted(consumed_names)))
     return inputs
 
 
@@ -839,7 +1025,9 @@ def _validation_environment(extra_keys: Sequence[str] = ()) -> tuple[dict, dict,
     return effective, fingerprints, extras
 
 
-REVIEW_POLICY_MODULES = ("tools/oracle_approval.py", "tools/codex_child_model.py", "tools/vault_index.py", "tools/publication_admission.py")
+REVIEW_POLICY_MODULES = ("tools/oracle_approval.py", "tools/codex_child_model.py", "tools/vault_index.py",
+                         "tools/publication_admission.py", "tools/shipment_state.py", "tools/publication_status.py",
+                         "tools/oracle_parallel.py", "tools/oracle_source_frontier.py", "tools/oracle_lifecycle.py")
 
 
 def _review_policy_sources(root: Path, tree: str | None = None) -> dict:
@@ -943,6 +1131,23 @@ def _environment_digest() -> str:
 
 
 def _series_directory(root: Path, base: str) -> Path:
+    # Repair commits move HEAD while the same sealed proposal owns the lifecycle.
+    if os.path.lexists(receipt_path(root).parent / "lifecycle-origin.json"):
+        origin = _proposal_origin(root, {"base_commit": base}, base)
+        identity = _sha(_canonical({"repository": str(root.resolve()), "base_commit": origin}))[:24]
+        return receipt_path(root).parent / "series" / identity
+    try:
+        raw = _custody_read(root, proposal_path(root))[1]
+        proposal = json.loads(raw)
+        body = {key: value for key, value in proposal.items() if key != "proposal_review_id"}
+        if (raw == _pretty(proposal) and proposal["proposal_review_id"] == _sha(_canonical(body))
+                and proposal["review"]["verdict"] == "APPROVED"
+                and not proposal["review"].get("findings")
+                and subprocess.run(["git", "merge-base", "--is-ancestor", proposal["base_commit"], base],
+                                   cwd=root, capture_output=True).returncode == 0):
+            base = _proposal_origin(root, proposal, base)
+    except (OSError, ValueError, KeyError, TypeError, OracleApprovalError):
+        pass
     identity = _sha(_canonical({"repository": str(root.resolve()), "base_commit": base}))[:24]
     return receipt_path(root).parent / "series" / identity
 
@@ -1031,18 +1236,66 @@ def _raw_assessment_origins(root: Path, rounds: list[dict]):
     """Unadopted native output is evidence, never verified coverage or a verdict."""
     for record in rounds:
         raw = record.get("raw_assessment")
-        if not isinstance(raw, dict):
-            continue
-        assessment = raw.get("assessment")
+        assessment = raw.get("assessment") if isinstance(raw, dict) else record.get("review")
         if not isinstance(assessment, dict):
             continue
         original = json.loads(_custody_read(root, record["context_file"])[1])
-        yield record, raw, assessment, original
+        if isinstance(raw, dict):
+            yield record, raw, assessment, original
+        for index, child in enumerate(assessment.get("unadopted_cohort_assessments", [])):
+            # These are controller-authored references, not an adopted child
+            # verdict. Recheck every original byte and assignment on each use.
+            run = Path(os.path.abspath(record["context_file"])).parent
+            def route(value):
+                return Path(os.path.abspath(os.path.join(str(root), os.fspath(value))))
+            result_file = route(child["result_file"])
+            context_file = route(child["cohort_context_file"])
+            plan_file = route(child["plan_file"])
+            if (result_file.name != "result.json" or result_file.parent.parent != run / "cohorts"
+                    or context_file not in {result_file.parent / "cohort-context.json", result_file.parent / "unadopted-context.json"}
+                    or plan_file not in {run / "cohort-plan.json", result_file.parent / "unadopted-plan.json"}
+                    or child.get("actual_outcome") != "ERROR"):
+                raise OracleApprovalError("Unadopted cohort provenance is outside its native run")
+            provenance = {}
+            values = {}
+            for label, path, expected in (("result", result_file, child["result_sha256"]),
+                                          ("context", context_file, child["cohort_context_sha256"]),
+                                          ("plan", plan_file, child["plan_file_sha256"])):
+                fact, content = _custody_read(root, path)
+                name = _custody_name(root, path)
+                if fact["sha256"] != expected or child.get("provenance_custody", {}).get(name) != fact:
+                    raise OracleApprovalError("Unadopted cohort original " + label + " content/custody changed")
+                provenance[name] = expected
+                values[label] = json.loads(content)
+            envelope, packet, plan = values["result"], values["context"], values["plan"]
+            plan_body = {key: value for key, value in plan.items() if key != "plan_sha256"}
+            packet_body = {key: value for key, value in packet.items() if key != "packet_sha256"}
+            identities = ("plan_sha256", "candidate_commit", "candidate_tree", "input_binding_sha256")
+            if (plan.get("plan_sha256") != _sha(_canonical(plan_body))
+                    or packet.get("packet_sha256") != _sha(_canonical(packet_body))
+                    or plan.get("context_sha256") != record["context_sha256"]
+                    or packet.get("parent_context_sha256") != record["context_sha256"]
+                    or route(packet["parent_context"]) != (run / 'review-context.json'
+                        if Path(record['context_file']).name == 'unadopted-review-context.json' else route(record['context_file']))
+                    or plan.get("candidate_commit") != record["base_commit"]
+                    or plan.get("candidate_tree") != record["candidate_tree"]
+                    or any(envelope.get(key) != plan.get(key) or packet.get(key) != plan.get(key) for key in identities)
+                    or envelope.get("cohort_id") != child["cohort_id"]
+                    or packet.get("cohort", {}).get("id") != child["cohort_id"]
+                    or packet["cohort"] not in plan.get("cohorts", [])
+                    or envelope.get("assessment") != child.get("assessment")
+                    or envelope["assessment"].get("review_status") != child.get("reported_review_status")
+                    or envelope["assessment"].get("verdict") != child.get("reported_verdict")):
+                raise OracleApprovalError("Unadopted cohort original assignment or candidate binding changed")
+            pointer = ("/raw_assessment/assessment" if isinstance(raw, dict) else "/review")
+            yield record, dict(child, provenance_files=provenance,
+                               assessment_pointer=pointer + "/unadopted_cohort_assessments/" + str(index) + "/assessment"), child["assessment"], original
 
 
 def _raw_assessment_files(root: Path, rounds: list[dict]) -> dict:
     retained = {}
-    for _, _, assessment, original in _raw_assessment_origins(root, rounds):
+    for _, raw, assessment, original in _raw_assessment_origins(root, rounds):
+        retained.update(raw.get("provenance_files", {}))
         for item in assessment.get("coverage", []) if isinstance(assessment.get("coverage"), list) else []:
             if not isinstance(item, dict):
                 continue
@@ -1090,7 +1343,11 @@ def _raw_assessment_navigation(root: Path, rounds: list[dict], inputs: dict, gua
                            "origin_context": record["context_file"],
                            "origin_context_sha256": record["context_sha256"],
                            "origin_record_sha256": record["record_sha256"],
-                           "assessment_pointer": "/raw_assessment/assessment",
+                           "assessment_pointer": raw.get("assessment_pointer", "/raw_assessment/assessment"),
+                           **({"cohort_id": raw["cohort_id"], "result_file": raw["result_file"],
+                               "result_sha256": raw["result_sha256"], "eligibility": "NONE",
+                               "reason": raw.get("reason"),
+                               "prepared_integrity_error": raw.get("prepared_integrity_error")} if raw.get("cohort_id") else {}),
                            "guard_changes": _observation_guard_changes(root, guards, record),
                            "finding_ids": [item["id"] for item in findings
                                            if isinstance(item, dict) and isinstance(item.get("id"), str)],
@@ -1383,7 +1640,8 @@ def _path_dispositions(root: Path, context: dict, rounds: list[dict]) -> list:
     return selected
 
 
-def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence: dict) -> dict:
+def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence: dict,
+                    proposal_record: Path | None = None) -> dict:
     directory = _series_directory(root, binding["base_commit"])
     rounds = _read_rounds(directory)
     previous = rounds[-1] if rounds else None
@@ -1403,13 +1661,16 @@ def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence:
     # Retained artifacts are actual inputs even when the caller omits them.
     # This also binds a later semantic invalidation to those exact bytes.
     inputs = _candidate_inputs(root, tree, {**known_evidence, **(binding.get("owner_approval_evidence") or {})})
-    proposal = json.loads(_custody_read(root, str(proposal_path(root)))[1])
+    selected_proposal = proposal_record or proposal_path(root)
+    proposal_raw = _custody_read(root, selected_proposal)[1]
+    proposal = json.loads(proposal_raw)
     proposal_scope = {"sha256": proposal["proposal_sha256"], "proposal": proposal["proposal"]}
     inputs["@proposal/scope"] = "sha256:" + proposal_scope["sha256"]
     publication_scope = binding["publication_scope"]
+    paths = sorted(set(paths) | set(publication_scope["range_paths"]))
     if publication_scope["target_ref"] is not None:
         inputs["@publication/scope"] = "sha256:" + _sha(_canonical(publication_scope))
-        paths = sorted(set(paths) | set(publication_scope["range_paths"]) | {"@publication/scope"})
+        paths = sorted(set(paths) | {"@publication/scope"})
     for name in paths:
         inputs.setdefault(name, None)  # Deleted paths are explicit review inputs.
     guards = {key: binding[key] for key in ("authority_digests", "owner_approval_evidence")}
@@ -1482,6 +1743,7 @@ def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence:
                "required_coverage_paths": required_paths,
                "pending_from_prior": pending_from_prior,
                "proposal_scope": proposal_scope,
+               "proposal_record": {"path": str(selected_proposal), "sha256": _sha(proposal_raw)},
                "previous_proposal_scope": previous.get("proposal_scope") if previous else None,
                "scope_changed": bool(previous and previous.get("proposal_scope") != proposal_scope),
                "input_hashes": inputs, "prior_findings": ledger,
@@ -1529,6 +1791,7 @@ def _checked_inputs(entries: Any, context: dict, *, required_path: str | None = 
 def _validation_capture_inputs(root: Path, selected: Sequence[str]) -> tuple[dict, dict]:
     """Inspect only the declared execution closure, including live file bytes."""
     inputs = _candidate_inputs(root, _tree(root), {})
+    inputs.update(_declared_parent_execution_inputs(root, selected))
     if not selected or any(name not in inputs for name in selected):
         raise OracleApprovalError("Validation inputs must name existing candidate or canonical knowledge paths")
     tracked = [name for name in selected if isinstance(inputs[name], str) and inputs[name].startswith("git-")]
@@ -1563,6 +1826,7 @@ def record_validation(root: Path, command: Sequence[str], input_paths: Sequence[
     inputs = _candidate_inputs(root, binding["candidate_tree"], {})
     selected = sorted(set(input_paths)) if input_paths else sorted(inputs)
     selected_inputs, live_inputs = _validation_capture_inputs(root, selected)
+    inputs.update(_declared_parent_execution_inputs(root, selected))
     if selected_inputs != {name: inputs[name] for name in selected}:
         raise OracleApprovalError("Selected validation inputs changed during preparation")
     authority = _controlling_authorities(binding["authority_digests"])
@@ -1642,7 +1906,9 @@ def _validation_record(root: Path, name: str, inputs: list, environment_digest: 
                  and record["record_sha256"] == _sha(_canonical(payload)) and record["exit_code"] == 0
                  and record["inputs"] == inputs and selected == {item["path"]: item["digest"] for item in inputs}
                  and record["live_inputs"] == live
-                 and record["base_commit"] == (expected_base if expected_base is not None else _git(root, "rev-parse", "HEAD").strip())
+                 and subprocess.run(["git", "merge-base", "--is-ancestor", record["base_commit"],
+                                     expected_base if expected_base is not None else _git(root, "rev-parse", "HEAD").strip()],
+                                    cwd=root, capture_output=True).returncode == 0
                  and record["environment_digest"] == environment_digest
                  and record["authority_digests"] == _controlling_authorities(_live_authorities(root))
                  and record["output_hashes"] == _files(root, list(record["output_hashes"]))
@@ -1833,6 +2099,18 @@ def _validate_completed_review(root: Path, review: dict, context: dict, evidence
 
 def _prepare_round(root: Path, context: dict, review: dict, outcome: str, *, coverage=None, validations=None, ledger=None,
                    context_file: Path | None = None, raw_assessment: dict | None = None) -> tuple[Path, dict]:
+    if context_file is None:
+        original_context = _RUN.get() / 'review-context.json'
+        expected_context = _pretty(context)
+        try:
+            unchanged = _custody_read(root, original_context)[1] == expected_context
+        except (OSError, ValueError, OracleApprovalError):
+            unchanged = False
+        if not unchanged:
+            context_file = _RUN.get() / 'unadopted-review-context.json'
+            if context_file.exists() and _custody_read(root, context_file)[1] != expected_context:
+                raise OracleApprovalError('Original review context archive conflicts with its sealed input')
+            _atomic_write(context_file, expected_context)
     payload = {key: context[key] for key in ("series_id", "round", "mode", "base_commit", "candidate_tree", "guards", "previous_record_sha256")}
     verified_coverage = coverage if coverage is not None else context["reusable_coverage"]
     if validations is None:
@@ -2074,6 +2352,11 @@ def _receipt_current_context(root: Path, payload: dict, pending_evidence: dict[s
         raise OracleApprovalError("Oracle current review context provenance is malformed") from exc
     if not valid:
         raise OracleApprovalError("Oracle current review context binding is invalid")
+    selected_proposal = context.get("proposal_record")
+    if selected_proposal is not None and _custody_read(root, selected_proposal["path"])[0]["sha256"] != selected_proposal["sha256"]:
+        raise OracleApprovalError("Oracle sealed proposal custody changed")
+    if verify_proposal(root, selected_proposal["path"] if selected_proposal else None)["proposal_sha256"] != context["proposal_scope"]["sha256"]:
+        raise OracleApprovalError("Oracle approval proposal scope changed")
     for proof in record["verified_validations"]:
         _validation_record(root, proof["evidence_path"], proof["inputs"], proof["environment_digest"],
                            check_environment=False, **({"expected_base": validation_base} if validation_base is not None else {}))
@@ -2098,7 +2381,9 @@ def _verify_receipt(root: Path, receipt: dict, raw: bytes, *, pending_evidence: 
     if evidence != actual_evidence:
         raise OracleApprovalError("Oracle validation evidence changed")
     if "publication_scope" in payload:
-        if payload["publication_scope"] != _publication_scope(root, tree):
+        current_scope = _publication_scope(root, tree)
+        current_scope["prior_effects"] = [row for row in current_scope["prior_effects"] if row["origin"] != _sha(raw)]
+        if payload["publication_scope"] != current_scope:
             raise OracleApprovalError("Oracle publication source range changed")
         _protected_effects({"protected_effects": payload["protected_effects"]}, payload["publication_scope"])
     context, context_path = _receipt_current_context(root, payload, pending_evidence)
@@ -2132,11 +2417,27 @@ def verify_staged(root: Path) -> tuple[dict[str, Any], bytes]:
 
 
 def _oracle(root: Path, tree: str, paths: list[str], evidence: dict[str,str], owner: dict[str,str] | None) -> dict[str,Any]:
+    # Configuration failures precede area preparation and reviewer timing. The
+    # native attempt retains their structured failure without launching a cohort.
+    try:
+        selected_model(), selected_reasoning_effort()
+    except (RuntimeError, ValueError) as exc:
+        raise OracleApprovalError(
+            f"Independent Oracle model resolution failed ({type(exc).__name__}): {exc}; "
+            f"diagnostics retained at {_RUN.get()}"
+        ) from exc
+    if _RUN.get() and (_RUN.get() / "review-context.json").is_file():
+        if __package__:
+            from . import oracle_parallel
+        else:
+            import oracle_parallel
+        return _timed("reviewer_seconds", lambda: oracle_parallel.review(
+            sys.modules[__name__], root, tree, paths, evidence, owner))
     request = {"candidate_tree": tree, "changed_paths": paths, "validation_evidence": evidence, "owner_approval_evidence": owner}
     if _RUN.get() and (_RUN.get() / "review-context.json").is_file():
         request["review_context"] = str(_RUN.get() / "review-context.json")
     prompt = f"""You are the independent BOS Operations Center Oracle approval process.
-Read .agents/skills/oracle/SKILL.md completely and wear that approver skill. Use the hash-bound oracle-inputs.json, candidate.diff and vault-query.json as navigation. On initial assessment inspect the complete candidate, applicable AGENTS.md/private Vault authorities, issue history and relevant validation evidence. On follow-up or resume inspect actual deltas first and apply the trusted execution policy to affected dependencies, open findings, unfinished coverage and sealed unchanged observations. Prepared retrieval never narrows required coverage. Only this process issues Oracle warnings and verdicts. Creating, bumping, replacing, or splitting a public API version requires the human user's explicit request for that exact version change. Owner approval, general fix/release authorization, inferred compatibility, pre-existing implementation, and Oracle guidance never substitute. Correct behavior and preserve authorized improvements in the current API version; package/build patches and identity-envelope protocols are distinct. Independently classify api_version_assessment: NONE requires NOT_REQUIRED and all request fields null; CHANGE requires EXPLICIT_REQUEST for APPROVED, exact requested_change, verbatim direct-user request_quote, and an absolute request_evidence path supplied through --evidence containing that quote. Independently inspect human provenance, context, exact scope and refusals; an agent assertion or approval-only statement is insufficient. Reject unrequested API version changes. An exact explicit request authorizes continuation through ordinary independent review without repeated owner approval. Authentication classification does not grant publication authority.
+Read .agents/skills/oracle/SKILL.md completely and wear that approver skill. Use the hash-bound oracle-inputs.json, candidate.diff and vault-query.json as navigation. Read applicable AGENTS.md/private Vault authorities and governing criteria first, before interpreting changes or validation results. On initial assessment make one complete pass over the commits being validated, issue history and relevant validation evidence. On follow-up or resume confirm changed criteria, then inspect new commits and apply the trusted execution policy to affected dependencies, open findings, unfinished coverage and sealed unchanged observations. Prepared retrieval never narrows required coverage. Only this process issues Oracle warnings and verdicts. Creating, bumping, replacing, or splitting a public API version requires the human user's explicit request for that exact version change. Owner approval, general fix/release authorization, inferred compatibility, pre-existing implementation, and Oracle guidance never substitute. Correct behavior and preserve authorized improvements in the current API version; package/build patches and identity-envelope protocols are distinct. Independently classify api_version_assessment: NONE requires NOT_REQUIRED and all request fields null; CHANGE requires EXPLICIT_REQUEST for APPROVED, exact requested_change, verbatim direct-user request_quote, and an absolute request_evidence path supplied through --evidence containing that quote. Independently inspect human provenance, context, exact scope and refusals; an agent assertion or approval-only statement is insufficient. Reject unrequested API version changes. An exact explicit request authorizes continuation through ordinary independent review without repeated owner approval. Authentication classification does not grant publication authority.
 {LEAD_GRAPH_REVIEW}
 {NORMAL_PLAN_REVIEW_POLICY}
 {LOCAL_EXECUTION_POLICY}
@@ -2207,16 +2508,48 @@ def review_proposal(root: Path, request: str, evidence_paths: Sequence[str], own
         "review_process": json.loads(_custody_read(root, _RUN.get() / "model.json")[1])
                           if (_RUN.get() / "model.json").is_file() else None,
     }
+    # Proposal refreshes remain in the same unfinished descendant lifecycle.
+    # Preserve the previous proposal bytes as evidence before replacing its pointer.
+    previous_path = proposal_path(root)
+    if previous_path.exists():
+        previous_raw = _custody_read(root, previous_path)[1]
+        previous = json.loads(previous_raw)
+        previous_body = {key: value for key, value in previous.items() if key != "proposal_review_id"}
+        if (previous_raw != _pretty(previous)
+                or previous.get("proposal_review_id") != _sha(_canonical(previous_body))):
+            raise OracleApprovalError("Previous proposal custody changed")
+        _archive_proposal(root, previous_raw)
+        if previous.get("review", {}).get("verdict") == "APPROVED":
+            _record_lifecycle_origin(root, previous_raw)
+            payload["lifecycle_origin"] = _proposal_origin(root, previous, payload["base_commit"])
+        elif (receipt_path(root).parent / "lifecycle-origin.json").exists():
+            payload["lifecycle_origin"] = _proposal_origin(root, previous, payload["base_commit"])
+    payload.setdefault("lifecycle_origin", payload["base_commit"])
     record = dict(payload, proposal_review_id=_sha(_canonical(payload)))
     path = proposal_path(root)
     _atomic_write(_RUN.get() / "prospective-proposal.json", _pretty(record))
+    _archive_proposal(root, _pretty(record))
+    if review["verdict"] == "APPROVED":
+        _record_lifecycle_origin(root, _pretty(record))
     _atomic_write(path, _pretty(record))
     _metadata_remove(root, receipt_path(root))
     return review
 
-def verify_proposal(root: Path) -> dict:
+
+def _archive_proposal(root: Path, raw: bytes) -> Path:
+    path = receipt_path(root).parent / "proposals" / (_sha(raw) + ".json")
+    if path.exists():
+        if _custody_read(root, path)[1] != raw:
+            raise OracleApprovalError("Immutable proposal archive changed")
+    else:
+        _atomic_write(path, raw)
+    return path
+
+def verify_proposal(root: Path, record_path: str | Path | None = None) -> dict:
     try:
-        raw = _custody_read(root, str(proposal_path(root)))[1]
+        raw = _custody_read(root, record_path or proposal_path(root))[1]
+        if record_path is not None and _custody_name(root, record_path) != _custody_name(root, receipt_path(root).parent / "proposals" / (_sha(raw) + ".json")):
+            raise OracleApprovalError("Selected proposal must be its immutable owner-local archive")
         record = json.loads(raw)
     except (OSError, json.JSONDecodeError) as exc:
         raise OracleApprovalError("Oracle review requires a prior proposal review") from exc
@@ -2227,7 +2560,9 @@ def verify_proposal(root: Path) -> dict:
         raise OracleApprovalError("Oracle proposal review record binding is invalid")
     if (record.get("schema_version") != SCHEMA_VERSION or record.get("issuer") != ISSUER
             or record.get("kind") != "proposal-review"
-            or record.get("base_commit") != _git(root, "rev-parse", "HEAD").strip()):
+            or subprocess.run(["git", "merge-base", "--is-ancestor", record.get("base_commit", ""),
+                               _git(root, "rev-parse", "HEAD").strip()], cwd=root,
+                              capture_output=True).returncode != 0):
         raise OracleApprovalError("Oracle proposal review is not bound to this base")
     if record.get("proposal_sha256") != _sha(record.get("proposal", "").encode()):
         raise OracleApprovalError("Oracle proposal content binding is invalid")
@@ -2237,8 +2572,9 @@ def verify_proposal(root: Path) -> dict:
     impact, status = review.get("authentication_impact"), review.get("owner_approval_status")
     if impact not in {"NONE", "AUTHENTICATION"} or status not in {"NOT_REQUIRED", "APPROVED", "MISSING", "INVALID"}:
         raise OracleApprovalError("Oracle proposal approval classification is invalid")
-    if _controlling_authorities(record.get("authority_digests", {})) != _controlling_authorities(_live_authorities(root)):
-        raise OracleApprovalError("Oracle proposal authority changed")
+    # A prior proposal remains supporting scope/history after authority changes.
+    # Completed review binds current authorities and independently reassesses
+    # affected criteria; this proposal never grants candidate approval.
     evidence, owner = record.get("evidence"), record.get("owner_approval_evidence")
     if not isinstance(evidence, dict) or evidence != _files(root, list(evidence)):
         raise OracleApprovalError("Oracle proposal evidence changed")
@@ -2246,21 +2582,26 @@ def verify_proposal(root: Path) -> dict:
         raise OracleApprovalError("Oracle proposal owner evidence changed")
     _validate_api_version_assessment(review.get("api_version_assessment"), review["verdict"], root, evidence)
     return {"verdict": "APPROVED", "base_commit": record["base_commit"],
+            "lifecycle_origin": _proposal_origin(root, record, _git(root, "rev-parse", "HEAD").strip()),
             "proposal_sha256": record["proposal_sha256"]}
 
 
 @_serialized_review
-def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, reviewer: Callable = _oracle) -> dict[str,Any]:
+def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, reviewer: Callable = _oracle,
+          *, proposal_record: str | Path | None = None) -> dict[str,Any]:
     with _phase("precheck_seconds"):
         pending = [p for p in (_git(root,"diff","--name-only").splitlines()+_git(root,"ls-files","--others","--exclude-standard").splitlines()) if not p.startswith("Vault/")]
         if pending: raise OracleApprovalError("Oracle review requires every non-Vault change staged: " + ", ".join(sorted(pending)))
         if subprocess.run(["git","diff","--cached","--check"], cwd=root).returncode: raise OracleApprovalError("Staged diff failed git diff --check")
         base, tree = _git(root,"rev-parse","HEAD").strip(), _tree(root); paths = _paths(root,base,tree)
-        if not paths: raise OracleApprovalError("Oracle cannot approve an empty candidate")
+        if not paths and not _publication_scope(root, tree)["range_paths"]:
+            raise OracleApprovalError("Oracle cannot approve an empty candidate")
         _metadata_remove(root, receipt_path(root))
-        verify_proposal(root)
-        proposal = proposal_path(root)
-        complete_evidence = [*evidence_paths, str(proposal)]
+        verify_proposal(root, proposal_record)
+        proposal_raw = _custody_read(root, proposal_record or proposal_path(root))[1]
+        proposal = _archive_proposal(root, proposal_raw)
+        origin_record = _record_lifecycle_origin(root, proposal_raw)
+        complete_evidence = [*evidence_paths, str(proposal), str(origin_record)]
         evidence, owner = _files(root, complete_evidence), (_files(root, [owner_path]) if owner_path else None)
     with _phase("preparation_seconds"):
         binding = _input_binding(root, evidence, owner)
@@ -2279,7 +2620,7 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
                                                "vault_evidence": _files(root, [str(vault)])}))
             complete_evidence += [str(vault), str(diff), str(preparation)]
             evidence = _files(root, complete_evidence)
-        context = _review_context(root, tree, paths, binding, evidence)
+        context = _review_context(root, tree, paths, binding, evidence, proposal_record=proposal)
         registered_evidence = context["registered_validation_evidence"]
         if registered_evidence != _files(root, list(registered_evidence)):
             raise OracleApprovalError("Retained validation evidence changed during preparation")
@@ -2308,6 +2649,18 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
         if reviewer is _oracle:
             # Selected process settings are part of exact approval custody.
             evidence.update(_files(root, [str(_RUN.get() / "model.json")]))
+            parallel = _RUN.get() / "cohort-evidence.json"
+            if parallel.exists():
+                raw = _custody_read(root, parallel)[1]
+                cohort = json.loads(raw)
+                payload = {key: value for key, value in cohort.items() if key != "evidence_sha256"}
+                if (cohort.get("kind") != "boc-parallel-review-evidence-v1"
+                        or cohort.get("evidence_sha256") != _sha(_canonical(payload))
+                        or cohort.get("candidate_commit") != base or cohort.get("candidate_tree") != tree
+                        or cohort.get("artifacts") != _files(root, list(cohort.get("artifacts", {})))):
+                    raise OracleApprovalError("Independent cohort evidence changed before native admission")
+                evidence.update(cohort["artifacts"])
+                evidence.update(_files(root, [str(parallel)]))
         if outcome == "APPROVED":
             _validate_api_version_assessment(review.get("api_version_assessment"), "APPROVED", root, evidence)
             impact, status = review.get("authentication_impact"), review.get("owner_approval_status")
@@ -2340,6 +2693,15 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
             if archive.exists() and _custody_read(root, archive)[1] != receipt_raw:
                 raise OracleApprovalError("Immutable technical receipt archive conflict")
             _atomic_write(archive, receipt_raw)
+            if tree == _git(root, "rev-parse", base + "^{tree}").strip():
+                history = {"kind": "oracle-committed-history-v1", "commit": base, "tree": tree,
+                           "receipt_sha256": _sha(receipt_raw), "round_file": str(round_path.relative_to(root)),
+                           "round_sha256": _sha(round_raw)}
+                history = dict(history, history_sha256=_sha(_canonical(history)))
+                history_path = receipt_path(root).parent / "committed-history" / base / (_sha(receipt_raw) + ".json")
+                if history_path.exists() and _custody_read(root, history_path)[1] != _pretty(history):
+                    raise OracleApprovalError("Immutable committed effect history conflict")
+                _atomic_write(history_path, _pretty(history))
             return receipt
         round_path = _record_round(root, context, review, outcome, coverage=coverage, validations=validations, ledger=ledger)
     except BaseException as exc:
@@ -2390,8 +2752,33 @@ def verify_commit(root: Path, commit: str) -> None:
     if len(parents) > 1:
         if len(parents) != 2: raise OracleApprovalError("Oracle accepts only two-parent GitHub merge commits")
         verify_commit(root, parents[1])
-        approved_tree = _trailers(_git(root,"show","-s","--format=%B",parents[1]))[TRAILER_KEYS[1]]
+        approved_tree = _git(root,"show","-s","--format=%T",parents[1]).strip()
         if tree != approved_tree: raise OracleApprovalError("Merge commit tree differs from the Oracle-approved pull-request tree")
+        return
+    if not any(re.search(rf"(?m)^{re.escape(key)}:", message) for key in TRAILER_KEYS):
+        # Absence of private history permits published-status recovery. Known
+        # later failure in the preserved lifecycle must never take that route.
+        directory = _series_directory(root, _git(root, "rev-parse", "HEAD").strip())
+        decisions = [row for row in _read_rounds(directory)
+                     if row["base_commit"] == commit and row["candidate_tree"] == tree]
+        if decisions and decisions[-1]["outcome"] != "APPROVED":
+            raise OracleApprovalError("Commit has a known later native exact-candidate failure")
+        if _committed_receipts(root, commit):
+            return
+        # A published fresh clone uses the existing trusted exact-SHA transport;
+        # local approved candidates above remain entirely credential-free.
+        baseline = subprocess.run(["git", "merge-base", "--is-ancestor", commit, "refs/remotes/origin/main"],
+                                  cwd=root, capture_output=True)
+        if baseline.returncode:
+            raise OracleApprovalError("Commit has no verified native approval or valid Oracle-Verdict trailer")
+        if __package__:
+            from . import publication_status
+        else:
+            import publication_status
+        try:
+            publication_status.verify_publication(root, commit, wait_seconds=0)
+        except (OSError, ValueError, subprocess.CalledProcessError) as exc:
+            raise OracleApprovalError("Published commit native approval verification failed") from exc
         return
     trailers = _trailers(message)
     if trailers[TRAILER_KEYS[0]] != "APPROVED" or trailers[TRAILER_KEYS[1]] != tree: raise OracleApprovalError("Commit Oracle accepted-state trailers are invalid")
@@ -2408,7 +2795,7 @@ def verify_range(root: Path, start: str, end: str) -> None:
 
 def main(argv: Sequence[str] | None = None) -> int:
     p=argparse.ArgumentParser(); sub=p.add_subparsers(dest="cmd",required=True)
-    review=sub.add_parser("review"); review.add_argument("--evidence",action="append",default=[]); review.add_argument("--owner-approval")
+    review=sub.add_parser("review"); review.add_argument("--evidence",action="append",default=[]); review.add_argument("--owner-approval"); review.add_argument("--proposal-record", type=Path)
     proposal=sub.add_parser("proposal"); proposal.add_argument("request",nargs="?"); proposal.add_argument("--evidence",action="append",default=[]); proposal.add_argument("--owner-approval")
     validation = sub.add_parser("validate"); validation.add_argument("--output", type=Path, required=True)
     validation.add_argument("--input", action="append", default=[])
@@ -2421,7 +2808,22 @@ def main(argv: Sequence[str] | None = None) -> int:
             command = args.command[1:] if args.command[:1] == ["--"] else args.command
             result = record_validation(root, command, args.input, args.output, environment_keys=args.env_input)
             print(json.dumps(result, indent=2, sort_keys=True)); return 0 if result["exit_code"] == 0 else 1
-        elif args.cmd=="review": receipt=issue(root,args.evidence,args.owner_approval); print(f"APPROVED {receipt['candidate_tree']}")
+        elif args.cmd=="review":
+            if __package__:
+                from . import shipment_state as shipment
+            else:
+                import shipment_state as shipment
+            if not _git(root, "status", "--porcelain=v1", "--untracked-files=all").strip():
+                selected = shipment.selection(root)
+                if selected["state"] in {"NO_CHANGES", "DELIVER"}:
+                    print(json.dumps(selected, sort_keys=True))
+                    return 0
+            token = _FOLLOW_COMMITS.set(True)
+            try:
+                receipt = issue(root,args.evidence,args.owner_approval,proposal_record=args.proposal_record)
+            finally:
+                _FOLLOW_COMMITS.reset(token)
+            print(f"APPROVED {receipt['candidate_tree']}")
         elif args.cmd=="proposal":
             request = args.request or sys.stdin.read().strip()
             result = review_proposal(root,request,args.evidence,args.owner_approval)

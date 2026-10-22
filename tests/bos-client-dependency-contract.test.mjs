@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { build } from "esbuild";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 import Ajv2020 from "ajv/dist/2020.js";
 import {
@@ -22,6 +25,9 @@ const contractRoot = join(root, "contracts", "bos-client-dependency.v1");
 
 const readJson = async (name) => JSON.parse(await readFile(join(contractRoot, name), "utf8"));
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
+const run = promisify(execFile);
+const sourcePath = path => path.replace(/^skills\/bos-external-dependency-adapter/u,
+  "source/platform/bos-external-dependency-adapter").replace(/^skills\/bos-mcp-client/u, "source/platform/bos-mcp-client");
 
 const cacheRequest = {
   authority: {
@@ -53,6 +59,7 @@ test("immutable BOS client dependency manifest binds contract and executable byt
   assert.equal(manifest.authentication_impact, "preserves-single-bos-connection");
   assert.deepEqual(manifest.executable_files.map(({ id }) => id).sort(), [
     "external_dependency_adapter",
+    "external_dependency_binary_response",
     "external_dependency_discovered_operation_schema",
     "external_dependency_safe_execution_uri",
     "external_dependency_schema_runtime",
@@ -87,6 +94,40 @@ test("immutable BOS client dependency manifest binds contract and executable byt
     ...manifest.executable_files.map(({ path, sha256: digest }) =>
       `executable\u0000${path}\u0000${digest}`)
   ].join("\n")), manifest.bundle_sha256);
+});
+
+test("public executable inventory covers recursively resolved local imports and re-exports", async () => {
+  const manifest = await readJson("manifest.json");
+  const sources = new Set(manifest.executable_files.map(entry => resolve(root, sourcePath(entry.path))));
+  const compiled = await build({entryPoints:[...sources], absWorkingDir:root, bundle:true,
+    platform:"node", format:"esm", write:false, metafile:true, outdir:"synthetic-output", logLevel:"silent"});
+  for (const input of Object.keys(compiled.metafile.inputs)) {
+    assert.ok(sources.has(resolve(root,input)), `Unbound transitive executable: ${input}`);
+  }
+});
+
+test("a helper-only change invalidates manifest verification and changes the bundle digest", async context => {
+  const fixture = await mkdtemp(join(tmpdir(),"bos-executable-manifest-"));
+  context.after(()=>rm(fixture,{recursive:true,force:true}));
+  await cp(contractRoot,join(fixture,"contracts/bos-client-dependency.v1"),{recursive:true});
+  await mkdir(join(fixture,"scripts"),{recursive:true});
+  await cp(join(root,"scripts/build-bos-client-dependency-contract.mjs"),join(fixture,"scripts/build-bos-client-dependency-contract.mjs"));
+  const manifest = await readJson("manifest.json");
+  for(const entry of manifest.executable_files){
+    const path=sourcePath(entry.path);await mkdir(dirname(join(fixture,path)),{recursive:true});
+    await cp(join(root,path),join(fixture,path));
+  }
+  const command=[join(fixture,"scripts/build-bos-client-dependency-contract.mjs")];
+  await run(process.execPath,command);
+  const original=JSON.parse(await readFile(join(fixture,"contracts/bos-client-dependency.v1/manifest.json"),"utf8"));
+  const helper=join(fixture,"source/platform/bos-external-dependency-adapter/scripts/binary-response.mjs");
+  await writeFile(helper,(await readFile(helper,"utf8"))+"\n// Synthetic helper-only delta.\n");
+  await assert.rejects(run(process.execPath,[...command,"--check"]),error=>error.code===1&&/manifest is stale/u.test(error.stderr));
+  await run(process.execPath,command);
+  const changed=JSON.parse(await readFile(join(fixture,"contracts/bos-client-dependency.v1/manifest.json"),"utf8"));
+  assert.notEqual(changed.bundle_sha256,original.bundle_sha256);
+  assert.notEqual(changed.executable_files.find(row=>row.id==='external_dependency_binary_response').sha256,
+    original.executable_files.find(row=>row.id==='external_dependency_binary_response').sha256);
 });
 
 test("published examples satisfy the request and response schemas", async () => {

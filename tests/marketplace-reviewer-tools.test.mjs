@@ -11,8 +11,49 @@ import {syntheticAppDescribe,syntheticOperationDescribe,syntheticApiContract} fr
 import {digest} from '../scripts/marketplace-prompt-catalog.mjs';
 import {documentDigests,observedDocument,installedValidatorModes,createInstalledAcceptance} from '../scripts/marketplace-native-resources.mjs';
 import {sanitized} from '../scripts/marketplace-native-hook.mjs';
+import {createHash} from 'node:crypto';
 
 const run=promisify(execFile);
+
+test('fetch host keeps declared file bytes on runtime result and only metadata in model observations',async()=>{
+ const root=await realpath(await mkdtemp(join(tmpdir(),'reviewer-binary-file-')));
+ try{
+  for(const skill of ['bos-app-discovery','bos-external-dependency-adapter']){
+   const target=join(root,'skills',skill,'scripts');await mkdir(target,{recursive:true});
+   await cp(new URL('../source/platform/'+skill+'/scripts/',import.meta.url),target,{recursive:true});
+  }
+  await run('git',['init','--quiet'],{cwd:root});await run('git',['add','.'],{cwd:root});
+  await run('git',['-c','user.name=Synthetic Test','-c','user.email=test@example.invalid','commit','--quiet','-m','Synthetic published byte-transfer fixture'],{cwd:root});
+  const commit=(await run('git',['rev-parse','HEAD'],{cwd:root})).stdout.trim();
+  const app=syntheticAppDescribe(),uri='bos://apps/lead-director/app.describe';
+  const parent=syntheticOperationDescribe();parent.operations=parent.operations.slice(0,1);
+  const operation=parent.operations[0];
+  operation.execution.response={body:'binary',content_type:'provider',integrity:'provider_md5_if_available',headers:['Content-Disposition','Content-Length','Content-Type','Content-MD5','X-Correlation-ID']};
+  Object.assign(operation.limits,{maximum_attachment_bytes:20971520,maximum_file_bytes:20971520,maximum_duration_seconds:120,maximum_preparation_seconds:45});
+  const state={product:'bos',installed_root:root,installed_roots:{bos:root},published_commits:{bos:commit},organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,resource:'https://dfsm.ai/mcp/apps/bos/platform',canary:true,kind:'positive',handle:context.context_handle,resources:[uri],observations:[],fixtureResponses:[],denials:[],allowed_effects:['read'],validated_contracts:{},failed_validations:{}};
+  const bytes=new TextEncoder().encode('{"opaque_secret":"synthetic-only-file-bytes"}\n');
+  let md5=true;
+  const session={rpc:async(method,params)=>{
+   if(method==='tools/list')return {tools:[{name:'bos_get_context'}]};
+   if(method==='resources/read')return {contents:[{uri,mimeType:'application/json',text:JSON.stringify(app)}]};
+   return {structuredContent:{contract_version:'bos-identity-mcp/v2',contexts:[context]}};
+  },request:async(url)=>url.endsWith('/describe')?new Response(JSON.stringify(parent),{headers:{'content-type':'application/json'}}):new Response(bytes,{headers:{'Content-Type':'application/json','Content-Length':String(bytes.length),'Content-Disposition':"attachment; filename*=UTF-8''r%C3%A9sum%C3%A9.custom",'X-Correlation-ID':'synthetic-download-1',...(md5?{'Content-MD5':createHash('md5').update(bytes).digest('base64')}:{})}})};
+  const tools=await createReviewerTools({state,session,release:{path:root,release_commit:commit}});
+  const observed=await tools.call('bos_read_resource',{uri});
+  assert.equal(observed.published_validation.valid,true);
+  const described=await tools.call('bos_https_describe',{document_id:observed.document_id,operations:['search']});
+  const contactId=described.advertised_https_contacts[0].contact_id;
+  for(md5 of [true,false]){
+   const result=await tools.call('bos_https_operation',{contact_id:contactId,payload:{text:'Synthetic file'}});
+   assert.equal(result.isError,undefined,JSON.stringify(result));
+   assert.deepEqual(result.binaryResponse.body,bytes);
+   assert.equal(result.binary.headers['content-disposition'],"attachment; filename*=UTF-8''r%C3%A9sum%C3%A9.custom");
+   assert.equal(result.binary.size_bytes,bytes.length);
+   assert.doesNotMatch(JSON.stringify(result),/opaque_secret|synthetic-only-file-bytes|binaryResponse/);
+   assert.doesNotMatch(JSON.stringify(state),/opaque_secret|synthetic-only-file-bytes|binaryResponse/);
+  }
+ }finally{await rm(root,{recursive:true,force:true});}
+});
 
 test('fresh native positive-3 reaches camp only through exposed published app discovery validation',async()=>{
  const root=await realpath(await mkdtemp(join(tmpdir(),'reviewer-fresh-camp-')));

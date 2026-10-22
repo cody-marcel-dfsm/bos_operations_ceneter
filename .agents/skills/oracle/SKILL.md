@@ -3,6 +3,26 @@ name: oracle
 description: Ground BOS Operations Center architecture guidance and repository reviews in this repository's canonical Vault. Use for architecture questions, implementation patterns, constitutional compliance, release readiness, or review of an actual BOS Operations Center diff. This is a repository-maintainer workflow and is never distributed in customer BOS plugins.
 ---
 
+## Controlling committed-review algorithm — October 21, 2026
+
+Read current governing instructions and review criteria first; reuse unchanged
+loaded authority before interpreting changes or validation results. Review each
+new commit or committed range in one complete pass, tracing production entrypoints,
+construction, consumers, publication and recovery, and return all established
+findings together. Follow-up assessment covers committed repairs, missing paths,
+affected dependencies and changed criteria. Retain sealed unchanged observations
+and valid tests across instruction changes and commit movement; independently
+assess current applicability without blanket rereads or reruns. Current complete
+approval binds the entire exact candidate. Commits require no review verdict or
+Oracle trailer. INCOMPLETE and ERROR preserve checkpoints and grant no approval.
+The native workflow atomically records last_validated_commit after success, and
+publication releases that exact SHA with separate confirmed last_released_commit.
+A delivered unchanged commit returns NO_CHANGES with no review/test/build/version
+or publication work. The complete Step 3 lifecycle runs in parallel with selected
+changed family members. This direction controls conflicting older workflow text;
+preserve every independent security, public API, privacy and publication gate.
+
+
 ## Covered normal-plan operations — owner clarification, 2026-10-12
 
 Operations covered by the owner's existing normal plan, including ordinary

@@ -1,0 +1,348 @@
+"""Immutable source preparation and actual native cohort delivery, without a model."""
+from pathlib import Path
+import hashlib
+import json
+import subprocess
+import sys
+import tempfile
+import time
+import unittest
+from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tools import oracle_approval as o
+from tools import oracle_parallel as parallel
+from tools import oracle_source_frontier as frontier
+import oracle_parallel_test as fixture_module
+
+
+BEFORE = '''def marker(fn):
+    return fn
+
+def factory(value):
+    return value
+
+@marker
+class Example:
+    CONFIG = "construction"
+    def __init__(self, value):
+        self.value = factory(value)
+    def helper(self, value):
+        return value + self.value
+    @marker
+    def changed(self, value):
+        return self.helper(value)
+'''
+AFTER = BEFORE.replace('return self.helper(value)', 'return self.helper(value) + 1')
+
+
+class SourceFrontier(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+        self.git('init', '-q'); self.git('config', 'user.name', 'Synthetic Reviewer')
+        self.git('config', 'user.email', 'review@example.invalid')
+        (self.root/'source.py').write_text(BEFORE)
+        (self.root/'AGENTS.md').write_text('Governing original must be read independently')
+        for i in range(20):(self.root/f'peer-{i}.py').write_text('def run():\n    return 1\n')
+        self.git('add', '.'); self.git('commit', '-qm', 'before')
+        self.before = self.git('rev-parse', 'HEAD^{tree}')
+        (self.root/'source.py').write_text(AFTER)
+        self.git('add', '.'); self.git('commit', '-qm', 'after'); self.git('branch', '-M', 'main')
+        self.tree = self.git('rev-parse', 'HEAD^{tree}')
+        inputs = {name: 'git-sha1:' + ':'.join(value) for name,value in frontier._tree(self.root,self.tree).items()}
+        self.context = {'base_commit': self.git('rev-parse', 'HEAD'), 'candidate_tree': self.tree,
+                        'previous_candidate_tree': self.before, 'input_hashes': inputs,
+                        'guards': {'authority_digests': {'AGENTS.md': 'authority-hash'}},
+                        'publication_scope': {'baseline_commit': self.before, 'range_sha256': 'range', 'range_paths': ['source.py']}}
+        self.plan = {'plan_sha256': 'plan-hash', 'context_sha256': 'context-hash'}
+        self.child = self.root/'.git/oracle/runs/fixture'; self.child.mkdir(parents=True)
+        self.owner = o._METADATA_ROOT.set(self.root); self.addCleanup(o._METADATA_ROOT.reset,self.owner)
+
+    def git(self,*args):
+        return subprocess.check_output(['git',*args],cwd=self.root,text=True).strip()
+
+    def prepare(self,paths=None):
+        paths = paths or ['source.py']; snapshot = frontier.snapshot(o,self.root,self.context,paths)
+        reference,seal,inline = frontier.prepare(o,self.root,self.context,self.plan,{'required_paths':paths},self.child,snapshot)
+        return json.loads(Path(reference['manifest']).read_text()),reference,seal,inline
+
+    def skill_fixture(self):
+        paths = ['source/platform/example/SKILL.md',
+                 'clients/codex/plugins/bos/skills/example/SKILL.md',
+                 'clients/claude/plugins/bos/skills/example/SKILL.md',
+                 'clients/muse/plugins/bos/skills/example/SKILL.md']
+        controls = ['scripts/check-package.mjs', 'scripts/lib/package-model.mjs', 'products/bos/product.json',
+                    '.agents/plugins/marketplace.json', 'tools/scanned-source.py']
+        before = '---\nname: example\nmetadata:\n  version: "1.0.1"\n---\n' + '# Rule\n' + 'Inspect current contracts.\n' * 1000
+        for name in paths + controls:
+            path = self.root / name; path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(before if name in paths else 'synthetic immutable generation input\n')
+        self.git('add', '.'); self.git('commit', '-qm', 'generation before')
+        self.context['previous_candidate_tree'] = self.git('rev-parse', 'HEAD^{tree}')
+        for name in paths:(self.root/name).write_text(before.replace('1.0.1', '1.0.2'))
+        self.git('add', '.'); self.git('commit', '-qm', 'metadata propagation')
+        self.refresh_context()
+        self.context['current_validations'] = [{
+            'command': ['node', 'scripts/check-package.mjs', '--review-inputs'], 'evidence_path': 'Vault/tmp/generation.json',
+            'evidence_sha256': 'a' * 64, 'environment_digest': 'synthetic-environment',
+            'output_hashes': {'Vault/tmp/generation.stdout.log': 'b' * 64},
+            'inputs': [{'path': name, 'digest': value} for name,value in sorted(self.context['input_hashes'].items())
+                       if frontier.generation_input(name)]}]
+        self.bind_checker_namespace()
+        return paths, controls
+
+    def bind_checker_namespace(self):
+        path=self.child/'generation.stdout.log'
+        path.write_text(json.dumps({'kind':'boc-package-checker-namespace-v1',
+                                    'entries':frontier._checker_namespace(self.root)})+'\n')
+        self.context['current_validations'][0]['output_hashes']={str(path):frontier._hash(path.read_bytes())}
+
+    def refresh_context(self):
+        self.context.update(candidate_tree=self.git('rev-parse', 'HEAD^{tree}'), base_commit=self.git('rev-parse', 'HEAD'))
+        self.context['input_hashes'] = {name: 'git-sha1:' + ':'.join(value)
+                                      for name,value in frontier._tree(self.root,self.context['candidate_tree']).items()}
+
+    def test_metadata_body_and_generated_parity_keep_all_identities_with_bounded_payload(self):
+        paths,_ = self.skill_fixture()
+        manifest,reference,seal,_ = self.prepare(paths)
+        self.assertEqual([entry['path'] for entry in manifest['entries']], paths)
+        self.assertFalse(manifest['grants_coverage'])
+        self.assertEqual(len(manifest['generated_parity_groups']), 2)
+        for entry in manifest['entries']:
+            self.assertEqual(entry['unchanged_body']['before_sha256'],entry['unchanged_body']['after_sha256'])
+            self.assertTrue(all(entry['originals'][side]['git_mode']=='100644' for side in ['before','after']))
+        for group in manifest['generated_parity_groups']:
+            self.assertEqual({member['path'] for member in group['members']},set(paths))
+            self.assertEqual(group['generation_proof']['evidence_sha256'],'a'*64)
+            self.assertEqual(group['group_sha256'],frontier._hash(json.dumps(
+                {key:value for key,value in group.items() if key!='group_sha256'},sort_keys=True).encode()))
+        self.assertLess(reference['prepared_bytes'],40000)
+        self.assertEqual(seal,o._files(self.root,list(seal)))
+        print(json.dumps({'generated_frontier_payload':{'paths':len(paths),'prepared_bytes':reference['prepared_bytes'],
+                                                        'pages':reference['prepared_pages']}}))
+
+    def test_missing_checker_proof_retains_ordinary_inspection_and_complete_metadata(self):
+        paths,_ = self.skill_fixture(); self.context['current_validations']=[]
+        manifest,_,_,_ = self.prepare(paths)
+        self.assertFalse(manifest['generated_parity_groups'])
+        for entry in manifest['entries']:
+            self.assertEqual([unit['kind'] for unit in entry['units']],['skill-metadata-change','unchanged-skill-body'])
+            self.assertTrue(all(unit['preparation']=='COMPLETE_PAGED' for unit in entry['units']))
+            header=entry['units'][0]
+            text=''.join(json.loads(Path(p['path']).read_text())['body'] for p in header['pages'])
+            self.assertIn('1.0.1',text);self.assertIn('1.0.2',text)
+
+    def test_generated_executable_copies_share_exact_complete_bodies_without_losing_paths(self):
+        skills,_=self.skill_fixture()
+        paths=[str(Path(name).parent/'scripts/worker.mjs') for name in skills]
+        before='export function run() { return 1; }\n'+'// Complete immutable source context.\n'*1000
+        for name in paths:
+            path=self.root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(before)
+        self.git('add','.');self.git('commit','-qm','executable copies before')
+        self.context['previous_candidate_tree']=self.git('rev-parse','HEAD^{tree}')
+        for name in paths:(self.root/name).write_text(before.replace('return 1','return 2'))
+        self.git('add','.');self.git('commit','-qm','executable copies after');self.refresh_context()
+        self.context['current_validations'][0]['inputs']=[{'path':name,'digest':value}
+            for name,value in sorted(self.context['input_hashes'].items()) if frontier.generation_input(name)]
+        self.bind_checker_namespace()
+        manifest,reference,_,_=self.prepare(paths)
+        self.assertEqual([entry['path'] for entry in manifest['entries']],paths)
+        self.assertEqual(len(manifest['generated_parity_groups']),2)
+        for group in manifest['generated_parity_groups']:
+            self.assertEqual({member['path'] for member in group['members']},set(paths))
+            representative=group['representative']
+            source=''.join(json.loads(Path(page['path']).read_text())['body'] for page in representative['pages'])
+            self.assertEqual(source,before if representative['side']=='before' else before.replace('return 1','return 2'))
+        self.assertLess(reference['prepared_bytes'],500000)
+
+    def test_checker_namespace_changes_and_undeclared_consumed_files_disable_grouping(self):
+        paths,_=self.skill_fixture()
+        metadata=self.root/'products/bos/.DS_Store';metadata.write_bytes(b'opaque synthetic metadata')
+        manifest,_,_,_=self.prepare(paths)
+        self.assertFalse(manifest['generated_parity_groups'])
+        self.bind_checker_namespace()
+        manifest,_,_,_=self.prepare(paths)
+        self.assertTrue(manifest['generated_parity_groups'])
+        metadata.unlink()
+        manifest,_,_,_=self.prepare(paths)
+        self.assertFalse(manifest['generated_parity_groups'])
+        unknown=self.root/'tools/ignored-input.py';unknown.write_text('synthetic consumed source\n')
+        self.bind_checker_namespace()
+        manifest,_,_,_=self.prepare(paths)
+        self.assertFalse(manifest['generated_parity_groups'])
+        unknown.unlink();asset=self.root/'source/platform/example/opaque.bin';asset.write_bytes(b'asset')
+        self.bind_checker_namespace()
+        manifest,_,_,_=self.prepare(paths)
+        self.assertFalse(manifest['generated_parity_groups'])
+        self.context['current_validations'][0]['output_hashes']={}
+        manifest,_,_,_=self.prepare(paths)
+        self.assertFalse(manifest['generated_parity_groups'])
+
+    def test_body_generator_configuration_and_output_mode_changes_invalidate_grouping_proof(self):
+        for change in ['semantic-body','generator','configuration','marketplace','scanner-input','output-mode']:
+            with self.subTest(change=change):
+                paths,controls=self.skill_fixture()
+                control={'generator':1,'configuration':2,'marketplace':3,'scanner-input':4}.get(change)
+                target=self.root/(paths[-1] if control is None else controls[control])
+                if change=='output-mode':target.chmod(0o755)
+                else:target.write_text(target.read_text()+'\nChanged current behavior.\n')
+                self.git('add','.');self.git('commit','-qm','invalidate generation proof');self.refresh_context()
+                manifest,_,_,_=self.prepare(paths)
+                self.assertFalse(manifest['generated_parity_groups'])
+                self.assertTrue(all(unit['preparation']!='IDENTICAL_BODY_REFERENCE'
+                                    for entry in manifest['entries'] for unit in entry['units']))
+                if change=='semantic-body':
+                    entry=manifest['entries'][-1]
+                    self.assertNotIn('unchanged_body',entry)
+                    self.assertEqual({unit['side'] for unit in entry['units']},{'diff','before','after'})
+
+    def test_changed_method_decorator_headers_constructor_and_dependencies_are_complete(self):
+        manifest,reference,seal,inline = self.prepare()
+        self.assertEqual(manifest['required_paths'],['source.py']); self.assertFalse(manifest['grants_coverage'])
+        units = manifest['entries'][0]['units']
+        labels = {(u['side'],u['label']) for u in units if u['kind']=='complete-definition'}
+        for label in ['Example.changed','Example.__init__','Example.helper','factory','marker']:
+            self.assertIn(('after',label),labels)
+        self.assertIn('@marker\n    def changed',inline)
+        self.assertIn('class Example:',inline); self.assertIn('assigned-unified-diff',inline)
+        self.assertEqual(seal,o._files(self.root,list(seal)))
+        self.assertEqual(manifest['snapshot_git_calls'],4)
+        for page in manifest['pages']:
+            raw=Path(page['path']).read_bytes(); self.assertLessEqual(len(raw),frontier.MAX_PAGE_BYTES)
+            self.assertEqual(hashlib.sha256(raw).hexdigest(),page['sha256'])
+        self.assertLessEqual(reference['inline_bytes'],frontier.MAX_INLINE_BYTES)
+        self.assertEqual(reference['inline_bytes'],len(inline.encode('utf-8')))
+
+    def test_class_header_only_change_includes_unchanged_decorator_construction(self):
+        base=BEFORE+'\ndef class_only(cls):\n    return cls\n'
+        (self.root/'source.py').write_text(base);self.git('add','.');self.git('commit','-qm','class decorator dependency')
+        self.context['previous_candidate_tree']=self.git('rev-parse','HEAD^{tree}')
+        (self.root/'source.py').write_text(base.replace('@marker\nclass Example','@class_only\nclass Example'))
+        self.git('add','.');self.git('commit','-qm','class header only')
+        self.context.update(candidate_tree=self.git('rev-parse','HEAD^{tree}'),base_commit=self.git('rev-parse','HEAD'))
+        item=frontier._tree(self.root,self.context['candidate_tree'])['source.py']
+        self.context['input_hashes']['source.py']='git-sha1:'+':'.join(item)
+        manifest,_,_,_=self.prepare()
+        labels={(u['side'],u['label']) for u in manifest['entries'][0]['units']}
+        self.assertIn(('after','class_only'),labels);self.assertIn(('after','Example.__init__'),labels)
+
+    def test_utf8_pages_reassemble_complete_large_definition_and_preserve_hashes(self):
+        path=self.root/'source.py';text='def unicode_body():\n    return '+repr('é🚀'*18000)+'\n'
+        path.write_text(text);self.git('add','.');self.git('commit','-qm','unicode source')
+        self.context['candidate_tree']=self.git('rev-parse','HEAD^{tree}')
+        self.context['base_commit']=self.git('rev-parse','HEAD')
+        item=frontier._tree(self.root,self.context['candidate_tree'])['source.py']
+        self.context['input_hashes']['source.py']='git-sha1:'+':'.join(item)
+        manifest,_,_,_=self.prepare()
+        unit=next(u for u in manifest['entries'][0]['units'] if u['side']=='after' and u['label']=='unicode_body')
+        self.assertEqual(unit['preparation'],'COMPLETE_PAGED')
+        bodies=[json.loads(Path(p['path']).read_bytes())['body'] for p in unit['pages']]
+        self.assertEqual(''.join(bodies),text)
+        self.assertEqual(hashlib.sha256(text.encode()).hexdigest(),unit['body_sha256'])
+        for p in manifest['pages']:self.assertLessEqual(Path(p['path']).stat().st_size,frontier.MAX_PAGE_BYTES)
+
+    def test_governing_virtual_unknown_and_budget_gaps_keep_all_assigned_paths(self):
+        paths=['source.py','AGENTS.md','@proposal/scope','unknown.py']
+        self.context['input_hashes'].update({'@proposal/scope':'sha256:scope','unknown.py':'sha256:unknown'})
+        with patch.object(frontier,'MAX_FRONTIER_BYTES',64):manifest,_,_,inline=self.prepare(paths)
+        self.assertEqual([e['path'] for e in manifest['entries']],paths)
+        self.assertFalse(inline)
+        reasons={entry['path']:entry['gaps'] for entry in manifest['entries']}
+        self.assertIn('GOVERNING_OR_PRIVATE_ORIGINAL_READ_REQUIRED',reasons['AGENTS.md'])
+        self.assertIn('VIRTUAL_NATIVE_CONTEXT_INPUT',reasons['@proposal/scope'])
+        self.assertIn('UNKNOWN_OR_NON_GIT_SOURCE',reasons['unknown.py'])
+        self.assertTrue(any(g.startswith('UNIT_ON_DEMAND') for g in reasons['source.py']))
+        self.assertEqual(manifest['entries'][0]['originals']['after']['git_oid'],self.git('rev-parse','HEAD:source.py'))
+
+    def test_deleted_binary_and_symlink_inputs_retain_scope_without_following_external_source(self):
+        external=self.root.parent/(self.root.name+'-external')
+        external.write_text('EXTERNAL_SENTINEL_BODY');self.addCleanup(external.unlink)
+        (self.root/'source.py').unlink()
+        (self.root/'binary.py').write_bytes(b'\xff\x00')
+        (self.root/'link.py').symlink_to(external)
+        self.git('add','-A');self.git('commit','-qm','deleted and opaque inputs')
+        tree=self.git('rev-parse','HEAD^{tree}');self.context.update(candidate_tree=tree,base_commit=self.git('rev-parse','HEAD'))
+        entries=frontier._tree(self.root,tree)
+        self.context['input_hashes'].update({name:'git-sha1:'+':'.join(entries[name]) for name in ['binary.py','link.py']})
+        self.context['input_hashes']['source.py']=None
+        manifest,_,_,inline=self.prepare(['source.py','binary.py','link.py'])
+        by_path={entry['path']:entry for entry in manifest['entries']}
+        self.assertTrue(any(u['kind']=='complete-definition' and u['side']=='before' for u in by_path['source.py']['units']))
+        self.assertIsNone(by_path['source.py']['originals']['after']['git_oid'])
+        self.assertIn('after:NON_UTF8_BINARY_OR_LFS_ORIGINAL_REQUIRED',by_path['binary.py']['gaps'])
+        self.assertIn('after:NONREGULAR_GIT_INPUT',by_path['link.py']['gaps'])
+        self.assertNotIn('EXTERNAL_SENTINEL_BODY',inline)
+
+    def test_git_batches_are_fixed_count_and_reject_truncated_or_modified_bodies(self):
+        actual=frontier._git;counts=[]
+        def observe(*args,**kwargs):counts.append(args[1]);return actual(*args,**kwargs)
+        with patch.object(frontier,'_git',side_effect=observe):
+            start=time.monotonic();snap=frontier.snapshot(o,self.root,self.context,['source.py',*[f'peer-{i}.py' for i in range(20)]])
+        self.assertEqual(len(counts),4);self.assertEqual(snap['git_calls'],4)
+        elapsed=time.monotonic()-start
+        print(json.dumps({'source_frontier_batch_measurement':{'assigned_paths':21,'git_commands':len(counts),'seconds':elapsed}}))
+        for mode in ['truncate','alter']:
+            def corrupt(root,args,data=None):
+                raw=actual(root,args,data)
+                if args==['cat-file','--batch']:
+                    return raw[:-1] if mode=='truncate' else raw.replace(b'return value',b'return other',1)
+                return raw
+            with self.subTest(mode=mode),patch.object(frontier,'_git',side_effect=corrupt):
+                with self.assertRaises(o.OracleApprovalError):frontier.snapshot(o,self.root,self.context,['source.py'])
+
+    def test_actual_parallel_prompt_delivers_exact_source_and_rejects_forged_pages(self):
+        fixture=fixture_module.ParallelReview('runTest');fixture.setUp();self.addCleanup(fixture.doCleanups)
+        owner=o._METADATA_ROOT.set(self.root);self.addCleanup(o._METADATA_ROOT.reset,owner)
+        # Keep the real Git source fixture while reusing the native envelope constructor.
+        fixture.root=self.root;fixture.run=self.child
+        fixture.context.update(self.context,required_coverage_paths=['source.py'],reusable_coverage=[],
+                               prior_findings={},reusable_validations=[],current_validations=[])
+        fixture.context['input_hashes']['@proposal/scope']='sha256:synthetic-proposal'
+        fixture.binding.update(base_commit=self.context['base_commit'])
+        fixture.plan=parallel.partition(fixture.context,fixture.binding,fixture.digest)
+        o._atomic_write(self.child/'review-context.json',o._pretty(fixture.context))
+        schema=self.root/'.agents/skills/oracle/review-output.schema.json';schema.parent.mkdir(parents=True)
+        schema.write_bytes((Path(__file__).resolve().parents[1]/'.agents/skills/oracle/review-output.schema.json').read_bytes())
+        seen=[];tamper=[False];delivered=[]
+        def consume(root,prompt,prefix,**kwargs):
+            run=o._RUN.get();packet=json.loads((run/'cohort-context.json').read_text());cohort=packet['cohort']
+            if 'source.py' in cohort['required_paths']:
+                self.assertIn('return self.helper(value) + 1',prompt)
+                self.assertIn('@marker',prompt);self.assertTrue(packet['prepared_source']['inline_pages'])
+                delivered.append({'cohort':cohort['id'],'prompt_bytes':len(prompt.encode()),'inline_pages':packet['prepared_source']['inline_pages'],'source_navigation_commands':0})
+                if tamper[0]:
+                    manifest=json.loads(Path(packet['prepared_source']['manifest']).read_text())
+                    page=Path(manifest['pages'][0]['path']);data=json.loads(page.read_text());data['body']='forged source'
+                    data['body_sha256']=hashlib.sha256(data['body'].encode()).hexdigest();o._atomic_write(page,o._pretty(data))
+                    forged_sha=hashlib.sha256(page.read_bytes()).hexdigest()
+                    for reference in manifest['pages']:
+                        if reference['path']==str(page):reference['sha256']=forged_sha
+                    for entry in manifest['entries']:
+                        for unit in entry['units']:
+                            for reference in unit['pages']:
+                                if reference['path']==str(page):reference['sha256']=forged_sha
+                    manifest_path=Path(packet['prepared_source']['manifest']);o._atomic_write(manifest_path,o._pretty(manifest))
+                    packet['prepared_source']['manifest_sha256']=hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+                    packet['packet_sha256']=fixture.digest({k:v for k,v in packet.items() if k!='packet_sha256'})
+                    o._atomic_write(run/'cohort-context.json',o._pretty(packet))
+            seen.append(cohort['id']);envelope=fixture.envelope(cohort)
+            for name,value in {'model.json':{'selected_model':'inherited-model','reasoning_effort':'high'},
+                               'process.json':{'exit_code':0},'result.json':envelope}.items():o._atomic_write(run/name,o._pretty(value))
+            return envelope
+        token=o._RUN.set(self.child)
+        try:
+            with patch.object(o,'_input_binding',return_value=fixture.binding),patch.object(o,'_review_process',side_effect=consume):
+                result=parallel.review(o,self.root,self.context['candidate_tree'],['source.py'],{},None)
+            self.assertEqual(result['review_status'],'COMPLETE',result['limitations']);self.assertEqual(len(seen),2)
+            tamper[0]=True
+            with patch.object(o,'_input_binding',return_value=fixture.binding),patch.object(o,'_review_process',side_effect=consume):
+                result=parallel.review(o,self.root,self.context['candidate_tree'],['source.py'],{},None)
+            self.assertEqual(result['review_status'],'ERROR')
+            self.assertNotIn('source.py',{p['path'] for p in result['coverage']})
+            self.assertTrue(list(self.child.glob('cohorts/*/prepared-source-error.json')))
+            print(json.dumps({'native_frontier_delivery':delivered,'forged_page_manifest_and_context':'ERROR/no source coverage admitted'}))
+        finally:o._RUN.reset(token)
+
+
+if __name__=='__main__':unittest.main()

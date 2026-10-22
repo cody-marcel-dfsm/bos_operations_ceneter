@@ -5,6 +5,46 @@ description: Review BOS Operations Center repository changes against its archite
 
 # Operations Center Review
 
+## Committed validation — controlling owner workflow, October 21, 2026
+
+Commit authored work and repairs directly with Git before independent validation;
+approval and trailers never gate commits. Read governing instructions before
+changes or results. Read governing/document/source/diff/context bodies once per
+content identity and reuse unchanged loaded bodies throughout this lifecycle.
+After governing criteria, inspect bounded candidate changes and validation
+results. Query compact plan/context fields and bounded targeted slices. Avoid
+concatenating entire large artifacts; choose output limits and batch sizes that
+prevent truncation and repeated reads. Expand inspection only for a changed input
+or unresolved behavior. Assess each new commit/range
+once, consolidate all findings, repair together, commit and validate only new,
+missing or affected paths and criteria. Retain unchanged coverage, test evidence
+and sealed observations across commits and instruction movement. Current approval
+still binds the entire exact candidate. `ship-it` owns the four phases and
+atomic `last_validated_commit` checkpoint; its complete validation lifecycle runs
+concurrently across selected changed family members. An unchanged delivered
+candidate returns `NO_CHANGES` with no review, tests, build, version or publication.
+The exact validated SHA is released; `last_released_commit` advances only after
+confirmed successful delivery. Source changes continue without locks or freezes.
+
+The native review itself runs bounded independent area assessments concurrently:
+crosscutting integration, implementation/consumers, and verification/recovery.
+Immutable assignments bind one exact commit/tree and input snapshot. Isolated
+trusted reviewers inherit the selected model/effort, reuse assigned evidence and
+report all findings together. The native controller retains each raw result and
+measured overlap, fails closed on missing/incomplete/error/conflicting cohorts,
+and checks complete coverage, unresolved findings and latest source custody
+before one aggregate receipt. It performs no serial final model review.
+
+Retain the exact immutable approved proposal archive from the native proposal
+attempt. Pass `python3 tools/oracle_approval.py review --proposal-record
+<absolute archived proposal path>` with current evidence when another task has
+advanced the latest proposal pointer. The native context and receipt bind that
+original approved scope; later unrelated proposal bookkeeping adds no acceptance
+criteria. Keep genuine shared implementation commitments and assess current
+instructions and actual changed source. Parent AGENTS and family architecture
+govern locally; a referenced coordinator command is bound only when consumed.
+
+
 Covered normal-plan reviews proceed automatically without spending-approval
 questions or a separate $0 approval. Explicit approval remains required for
 additional monetary spending outside the owner's existing plan.

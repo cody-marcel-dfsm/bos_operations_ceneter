@@ -1,6 +1,8 @@
 import Ajv2020 from "./vendor/ajv2020.bundle.mjs";
 import discoveredOperationRequestSchema from "./discovered-operation-request.schema.mjs";
 import {validateSafeBosExecutionUri} from "./safe-execution-uri.mjs";
+import {binaryResponseContract, validateBinaryResponseBody} from "./binary-response.mjs";
+export {readDiscoveredHttpResponse} from "./binary-response.mjs";
 
 export const authenticationConditionCodes = Object.freeze([
   "MISSING_GRANT",
@@ -35,7 +37,7 @@ const contextHandlePattern = /^bos_ctx_v2_[a-f0-9]{64}$/u;
 const requiredContextHeader = "X-BOS-Context-Handle";
 const safeResponseHeaders = new Set(["content-type", "retry-after", "x-correlation-id"]);
 const safeBinaryResponseHeaders = new Set([
-  "content-disposition", "content-length", "digest", "x-content-sha256"
+  "content-disposition", "content-length", "digest", "x-content-sha256", "content-md5"
 ]);
 const sensitiveKeys = new Set([
   "access_token", "refresh_token", "bearer_token", "authorization", "authorization_header",
@@ -465,6 +467,17 @@ function rejectPublicResponseData(
   }
 }
 
+function cloneBinaryBody(body) {
+  if (body instanceof ArrayBuffer) return body.slice(0);
+  const bytes = new Uint8Array(body.buffer, body.byteOffset, body.byteLength).slice();
+  // Copy the file window only. In particular a pooled Buffer must not expose
+  // unrelated bytes through the returned view's .buffer.
+  const Type = [DataView, Uint8Array, Uint8ClampedArray, Int8Array, Uint16Array, Int16Array,
+    Uint32Array, Int32Array, Float32Array, Float64Array, BigInt64Array, BigUint64Array]
+    .find(candidate => body instanceof candidate) ?? Uint8Array;
+  return new Type(bytes.buffer);
+}
+
 function publicResponse(value, {binaryContract = null} = {}) {
   requireObject(value, "BOS transport response");
   if (!Number.isInteger(value.status) || value.status < 100 || value.status > 599) {
@@ -489,26 +502,20 @@ function publicResponse(value, {binaryContract = null} = {}) {
   if (value.headers && typeof value.headers === "object" && !Array.isArray(value.headers)) {
     for (const [name, header] of Object.entries(value.headers)) {
       const normalized = name.toLowerCase();
-      if ((safeResponseHeaders.has(normalized) || (binaryBody && safeBinaryResponseHeaders.has(normalized))) &&
+      if ((safeResponseHeaders.has(normalized) || (binaryBody && safeBinaryResponseHeaders.has(normalized) &&
+          (normalized !== "content-md5" || binaryContract.optionalMd5))) &&
           typeof header === "string") {
-        headers[normalized] = requireSafeString(header, `BOS transport response.headers.${normalized}`, 1024);
+        const maximum = normalized === "content-disposition" && binaryContract?.optionalMd5 ? 4096 : 1024;
+        headers[normalized] = requireSafeString(header, `BOS transport response.headers.${normalized}`, maximum);
       }
     }
   }
   if (binaryBody) {
-    for (const name of binaryContract.headers) {
-      if (!Object.hasOwn(headers, name.toLowerCase())) {
-        throw new TypeError(`Binary response is missing described header ${name}`);
-      }
-    }
-    const declaredLength = Number(headers["content-length"]);
-    if (!Number.isSafeInteger(declaredLength) || declaredLength !== value.body.byteLength) {
-      throw new TypeError("Binary response Content-Length does not match its body");
-    }
+    validateBinaryResponseBody(value.body, headers, binaryContract);
   }
   return {
     status: value.status,
-    body: structuredClone(value.body),
+    body: binaryBody ? cloneBinaryBody(value.body) : structuredClone(value.body),
     ...(Object.keys(headers).length ? { headers } : {})
   };
 }
@@ -768,16 +775,7 @@ export function createBosExternalDependencyAdapter({
     if (described.execution.response?.body === "event_stream") {
       throw new TypeError("Use the capability-detected incremental notification stream method");
     }
-    const binaryResponse = described.execution.response;
-    const binaryContract = binaryResponse?.body === "binary"
-      ? {
-          maxBytes: described.limits.maximum_attachment_bytes,
-          headers: binaryResponse.headers
-        }
-      : null;
-    if (binaryContract && (!Number.isSafeInteger(binaryContract.maxBytes) || binaryContract.maxBytes < 1)) {
-      throw new TypeError("Described binary operation requires an attachment byte limit");
-    }
+    const binaryContract = binaryResponseContract(described);
     const scopeCheck = await captureExecutionScope();
     const requestOnceDiscovered = async () => {
       const request = await buildDiscoveredRequest(pinnedContact, payloadSupplied, pinnedPayload);

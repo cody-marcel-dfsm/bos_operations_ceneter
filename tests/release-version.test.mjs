@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { access, mkdtemp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -28,6 +29,42 @@ test("release versions default to a patch increment", () => {
   assert.equal(nextVersion("0.4.27", "major"), "1.0.0");
   assert.equal(nextVersion("0.4.27", "0.6.0"), "0.6.0");
   assert.throws(() => nextVersion("0.4.27", "0.4.27"), /must be greater/);
+});
+
+test("unchanged delivered checkout runs no release build and creates no version", async () => {
+  const root = await mkdtemp(join(tmpdir(), "bos-release-no-changes-"));
+  await mkdir(join(root, "scripts"));
+  await mkdir(join(root, "tools"));
+  await writeFile(join(root, ".gitignore"), "__pycache__/\n");
+  const nativeModules = (await readdir(join(repositoryRoot, "tools")))
+    .filter((name) => name.endsWith(".py")).map((name) => `tools/${name}`);
+  for (const path of ["scripts/bump-release-version.mjs", "scripts/release.mjs", ...nativeModules]) {
+    await writeFile(join(root, path), await readFile(join(repositoryRoot, path)));
+  }
+  await writeJson(join(root, "package.json"), { type: "module", version: "0.4.27", scripts: {
+    release: "node scripts/release.mjs",
+    "release:check": "node -e \"require('fs').writeFileSync('unexpected-build', 'ran')\""
+  } });
+  const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: "pipe" }).trim();
+  git("init", "-q");
+  git("config", "user.name", "Synthetic Release");
+  git("config", "user.email", "release@example.invalid");
+  git("add", ".");
+  git("commit", "-qm", "already published");
+  git("update-ref", "refs/remotes/origin/main", "HEAD");
+  const original = await readFile(join(root, "package.json"), "utf8");
+  assert.match(execFileSync("node", ["scripts/bump-release-version.mjs"], { cwd: root, encoding: "utf8" }), /NO_CHANGES/);
+  assert.match(execFileSync("npm", ["run", "release"], { cwd: root, encoding: "utf8" }), /NO_CHANGES/);
+  assert.equal(await readFile(join(root, "package.json"), "utf8"), original);
+  assert.equal(await pathExists(join(root, "unexpected-build")), false);
+  assert.equal(git("status", "--porcelain=v1", "--untracked-files=all"), "");
+  git("update-ref", "-d", "refs/remotes/origin/main");
+  for (const command of [["node", ["scripts/bump-release-version.mjs"]], ["npm", ["run", "release"]]]) {
+    assert.throws(() => execFileSync(command[0], command[1], { cwd: root, encoding: "utf8", stdio: "pipe" }),
+      /baseline UNAVAILABLE/);
+  }
+  assert.equal(await readFile(join(root, "package.json"), "utf8"), original);
+  assert.equal(await pathExists(join(root, "unexpected-build")), false);
 });
 
 test("real repository contains every release-required version and documentation marker", async () => {

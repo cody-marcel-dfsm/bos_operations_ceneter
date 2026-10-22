@@ -711,6 +711,7 @@ export function validateDiscoveryRefresh(response) {
 
 function validateOperationLimits(limits, label, { complete = false } = {}) {
   requireObject(limits, label);
+  validateFileLimits(limits, label);
   if (Object.hasOwn(limits, "multiple_selectors_per_source") &&
       typeof limits.multiple_selectors_per_source !== "boolean") {
     throw new Error(`${label}.multiple_selectors_per_source must be a boolean`);
@@ -751,6 +752,7 @@ function validateOperationLimits(limits, label, { complete = false } = {}) {
 
 function validateSourceOperationLimits(limits, label) {
   requireObject(limits, label);
+  validateFileLimits(limits, label);
   if (Object.hasOwn(limits, "multiple_selectors_per_source") &&
       typeof limits.multiple_selectors_per_source !== "boolean") {
     throw new Error(`${label}.multiple_selectors_per_source must be a boolean`);
@@ -765,6 +767,8 @@ function validateSourceOperationLimits(limits, label) {
       "streaming_supported",
       "multiple_selectors_per_source",
       "maximum_attachment_bytes",
+      "maximum_file_bytes",
+      "maximum_preparation_seconds",
       "maximum_duration_seconds",
       "maximum_fan_out"
     ]),
@@ -797,6 +801,28 @@ function validateSourceOperationLimits(limits, label) {
        limits.maximum_attachment_bytes < 1 ||
        limits.maximum_attachment_bytes > 25 * 1024 * 1024)) {
     throw new Error(`${label}.maximum_attachment_bytes must be an integer from 1 through 26214400`);
+  }
+}
+
+function validateFileLimits(limits, label) {
+  if (Object.hasOwn(limits, "maximum_file_bytes") &&
+      (!Number.isSafeInteger(limits.maximum_file_bytes) || limits.maximum_file_bytes < 1 ||
+       limits.maximum_file_bytes > 20 * 1024 * 1024 ||
+       (limits.maximum_attachment_bytes !== undefined && limits.maximum_attachment_bytes !== limits.maximum_file_bytes))) {
+    throw new Error(`${label}.maximum_file_bytes must be bounded through 20971520 and match maximum_attachment_bytes`);
+  }
+  if (Object.hasOwn(limits, "maximum_preparation_seconds") &&
+      (!Number.isSafeInteger(limits.maximum_preparation_seconds) || limits.maximum_preparation_seconds < 1 ||
+       limits.maximum_preparation_seconds > 45)) {
+    throw new Error(`${label}.maximum_preparation_seconds must be an integer from 1 through 45`);
+  }
+}
+
+function validateBinaryExecutionLimits(operation, label) {
+  if (operation.execution.response?.integrity !== "provider_md5_if_available") return;
+  if (!Number.isSafeInteger(operation.limits.maximum_attachment_bytes) || operation.limits.maximum_attachment_bytes < 1 ||
+      operation.limits.maximum_attachment_bytes > 20 * 1024 * 1024 || operation.limits.maximum_duration_seconds > 120) {
+    throw new Error(`${label} provider MD5 binary response requires maximum_attachment_bytes through 20971520 and duration through 120`);
   }
 }
 
@@ -937,15 +963,18 @@ function validateExecutionContract(execution, label) {
           response.reconnect.max_delay_ms > 30000) throw new Error(`${label}.response.reconnect is unsupported`);
       return;
     }
+    const optionalMd5 = response.integrity === "provider_md5_if_available";
     requireExactKeys(
       response,
-      new Set(["body", "content_type", "headers"]),
+      new Set(["body", "content_type", "headers", ...(optionalMd5 ? ["integrity"] : [])]),
       `${label}.response`
     );
     if (response.body !== "binary" || response.content_type !== "provider") {
       throw new Error(`${label}.response must declare provider-typed binary content`);
     }
-    const expectedHeaders = new Set([
+    const expectedHeaders = new Set(optionalMd5 ? [
+      "Content-Disposition", "Content-Length", "Content-Type", "Content-MD5", "X-Correlation-ID"
+    ] : [
       "Content-Disposition",
       "Content-Length",
       "Content-Type",
@@ -1370,6 +1399,7 @@ export function validateApiContractResponse(response, expected = {}) {
   validateOperationLimits(response.limits, `${label}.limits`, { complete: true });
   validateOperationGuarantees(response.guarantees, `${label}.guarantees`);
   validateExecutionContract(response.execution, `${label}.execution`);
+  validateBinaryExecutionLimits(response, label);
   requireObject(response.retry_policy, `${label}.retry_policy`);
   if (!Number.isInteger(response.retry_policy.maximum_attempts) ||
       response.retry_policy.maximum_attempts < 1) {
@@ -1476,6 +1506,8 @@ export function validateOperationDescription(response) {
         "streaming_supported",
         "multiple_selectors_per_source",
         "maximum_attachment_bytes",
+        "maximum_file_bytes",
+        "maximum_preparation_seconds",
         "maximum_duration_seconds",
         "maximum_fan_out"
       ]),
@@ -1483,6 +1515,7 @@ export function validateOperationDescription(response) {
     );
     validateOperationGuarantees(operation.guarantees, `${label}.guarantees`);
     validateExecutionContract(operation.execution, `${label}.execution`);
+    validateBinaryExecutionLimits(operation, label);
     validateOperationSchema(operation.input_schema, `${label}.input_schema`);
     validateOperationSchema(operation.output_schema, `${label}.output_schema`);
     validateErrorContract(operation.error_contract, `${label}.error_contract`);

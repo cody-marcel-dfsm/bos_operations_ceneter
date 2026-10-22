@@ -2,8 +2,8 @@
 name: bos-app-discovery
 description: Route requests through authenticated BOS app discovery, including finding skills and operations that can contribute to an ad hoc dynamic BOSL workflow. Use when app scope, service ownership, workflow composition, graph shape, or API contracts must be discovered at runtime.
 metadata:
-  version: "1.0.0"
-  requires: "{\"bos-mcp-client\":\"1.0.0\"}"
+  version: "1.0.5"
+  requires: "{\"bos-mcp-client\":\"1.0.4\"}"
 ---
 
 
@@ -424,8 +424,18 @@ operation from current evidence; do not impose a preferred future transport or
 require a second connection for an already callable authorized BOS operation.
 
 All supported operations belong to one current operating contract. Discover
-callable names from the host catalog and argument constraints from current
-validated operation contracts; never invent endpoints or selectors.
+native callable names from the host catalog and public operations from validated
+application/service descriptions and their advertised contracts. Native
+tool-name counts never establish the complete application operation inventory.
+Follow `bos-mcp-client`'s identity-context execution selection: described HTTPS
+operation keys supply no `bos_execute.tool_name`; retain the existing native
+compatibility and resource-delivery paths. Preserve an advertised operation when
+its provider is unready, reporting its actual prerequisite separately from
+availability and host execution support. A packaged adapter or acceptance-host
+helper supplies no ordinary host-authenticated HTTP capability. Use the full
+validated method, URI and context binding for compatible HTTPS contacts with
+absent or null transport, and report that field as unspecified. Never invent
+endpoints, selectors, credentials or execution facilities.
 Directory or transport limitations remain scoped to that operation. An
 access denial never permits switching routes to evade it. Missing or ambiguous
 context, revoked grants, and explicit access denials stop the affected operation.
