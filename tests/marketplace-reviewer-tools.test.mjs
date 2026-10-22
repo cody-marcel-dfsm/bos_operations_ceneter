@@ -590,6 +590,7 @@ test('test host uses the verified adapter, fresh reviewer context and advertised
     const observed=await tools.call('bos_read_resource',{uri});
     assert.equal(observed.published_validation?.valid,true,JSON.stringify(observed));
     const described=await tools.call('bos_https_describe',{document_id:observed.document_id,operations:app.describe.operations});
+    assert.equal(described.isError,undefined,JSON.stringify(described));
     const contactId=described.advertised_https_contacts[0].contact_id;
     const readsBeforeExecution=contextReads;
     const result=await tools.call('bos_https_operation',{contact_id:contactId,payload:{text:'synthetic'}});
