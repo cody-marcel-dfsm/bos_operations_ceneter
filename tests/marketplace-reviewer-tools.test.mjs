@@ -75,6 +75,80 @@ test('fetch host keeps declared file bytes on runtime result and only metadata i
  }finally{await rm(root,{recursive:true,force:true});}
 });
 
+test('reviewer registry admission follows originating scope and per-operation refresh order',async()=>{
+ const root=await realpath(await mkdtemp(join(tmpdir(),'reviewer-registry-order-')));
+ try{
+  for(const skill of ['bos-app-discovery','bos-external-dependency-adapter']){
+   const target=join(root,'skills',skill,'scripts');await mkdir(target,{recursive:true});
+   await cp(new URL('../source/platform/'+skill+'/scripts/',import.meta.url),target,{recursive:true});
+  }
+  await run('git',['init','--quiet'],{cwd:root});await run('git',['add','.'],{cwd:root});
+  await run('git',['-c','user.name=Synthetic Test','-c','user.email=test@example.invalid','commit','--quiet','-m','Synthetic registry ordering fixture'],{cwd:root});
+  const commit=(await run('git',['rev-parse','HEAD'],{cwd:root})).stdout.trim();
+  const app=syntheticAppDescribe(),uri='bos://apps/lead-director/app.describe',parent=syntheticOperationDescribe();
+  const search=structuredClone(parent.operations[0]),calendar=structuredClone(search);
+  calendar.operation='calendar_read_event';calendar.execution.uri+='-calendar';
+  const contracts=new Map([[search.operation,search],[calendar.operation,calendar]]);
+  const state={product:'bos',installed_root:root,installed_roots:{bos:root},published_commits:{bos:commit},organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,resource:'https://dfsm.ai/mcp/apps/bos/platform',canary:true,kind:'positive',handle:context.context_handle,resources:[uri],observations:[],fixtureResponses:[],denials:[],allowed_effects:['read'],validated_contracts:{},failed_validations:{}};
+  let nextDescribe=null,businessRequests=0;
+  const holdDescribe=({fail=false}={})=>{
+   let entered,release;const started=new Promise(resolve=>entered=resolve),wait=new Promise(resolve=>release=resolve);
+   nextDescribe={entered,wait,fail};return {started,release};
+  };
+  const session={rpc:async(method)=>{
+   if(method==='tools/list')return {tools:[{name:'bos_get_context'}]};
+   if(method==='resources/read')return {contents:[{uri,mimeType:'application/json',text:JSON.stringify(app)}]};
+   return {structuredContent:{contract_version:'bos-identity-mcp/v2',contexts:[context]}};
+  },request:async(url,request)=>{
+   if(url.endsWith('/describe')){
+    const raw={...parent,operations:JSON.parse(request.body).operations.map(key=>structuredClone(contracts.get(key)))};
+    const held=nextDescribe;nextDescribe=null;
+    if(held){held.entered();await held.wait;if(held.fail)throw new Error('synthetic_describe_unavailable');}
+    return new Response(JSON.stringify(raw),{headers:{'content-type':'application/json'}});
+   }
+   businessRequests++;return new Response(JSON.stringify({records:[]}),{headers:{'content-type':'application/json'}});
+  }};
+  const tools=await createReviewerTools({session,state,release:{path:root,release_commit:commit}});
+  let observed=await tools.call('bos_read_resource',{uri});
+  const describe=operations=>tools.call('bos_https_describe',{document_id:observed.document_id,operations});
+  const contactId=result=>{assert.equal(result.published_validation?.valid,true,JSON.stringify(result));return result.advertised_https_contacts[0].contact_id;};
+  const read=contact_id=>tools.call('bos_https_operation',{contact_id,payload:{text:'Synthetic registry read'}});
+  const denied=async id=>{const before=businessRequests;assert.equal((await read(id)).reason,'reviewer_contact_not_observed');assert.equal(businessRequests,before);};
+  let currentSearch=contactId(await describe(['search']));
+  const currentCalendar=contactId(await describe(['calendar_read_event']));
+  for(const outcome of ['success','failure','unavailable']){
+   const oldId=currentSearch;
+   if(outcome==='unavailable')contracts.set('search',{operation:'search',status:'not_available'});
+   const held=holdDescribe({fail:outcome==='failure'}),older=describe(['search']);await held.started;
+   contracts.set('search',structuredClone(search));search.execution.uri+='-new';contracts.get('search').execution.uri=search.execution.uri;
+   currentSearch=contactId(await describe(['search']));held.release();
+   const stale=await older;assert.equal(stale.isError,true);
+   if(outcome!=='failure')assert.equal(stale.reason,'reviewer_discovery_refresh_required');
+   await denied(oldId);assert.equal((await read(currentSearch)).isError,undefined,'older response cannot retire the newer contact');
+  }
+  const independent=holdDescribe(),pendingSearch=describe(['search']);await independent.started;
+  assert.equal(contactId(await describe(['calendar_read_event'])),currentCalendar);
+  independent.release();currentSearch=contactId(await pendingSearch);
+  assert.equal((await read(currentSearch)).isError,undefined,'distinct-operation refreshes remain independent');
+  contracts.set('search',{...structuredClone(search),input_schema:null});
+  assert.equal((await describe(['search'])).reason,'reviewer_describe_response_invalid');await denied(currentSearch);
+  assert.equal((await read(currentCalendar)).isError,undefined,'malformed selected refresh preserves other operations');
+  contracts.set('search',structuredClone(search));currentSearch=contactId(await describe(['search']));
+  const scopeChange=holdDescribe(),scopePending=describe(['search']);await scopeChange.started;
+  state.selected_scope={...state.selected_scope,role:'Changed synthetic role'};scopeChange.release();
+  assert.equal((await scopePending).reason,'reviewer_discovery_refresh_required');await denied(currentSearch);
+  currentSearch=contactId(await describe(['search']));
+  const appChange=holdDescribe(),appPending=describe(['search']);await appChange.started;
+  app.describe.uri=app.describe.uri.replace('/synthetic/','/synthetic-refreshed/');
+  observed=await tools.call('bos_read_resource',{uri});assert.equal(observed.published_validation.valid,true);
+  appChange.release();assert.equal((await appPending).reason,'reviewer_discovery_refresh_required');
+  await denied(currentSearch);await denied(currentCalendar);
+  currentSearch=contactId(await describe(['search']));assert.equal((await read(currentSearch)).isError,undefined);
+  contracts.set('search',{operation:'search',status:'not_available'});
+  assert.equal((await describe(['search'])).advertised_https_contacts,undefined);await denied(currentSearch);
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
 test('fresh native positive-3 reaches camp only through exposed published app discovery validation',async()=>{
  const root=await realpath(await mkdtemp(join(tmpdir(),'reviewer-fresh-camp-')));
  try{

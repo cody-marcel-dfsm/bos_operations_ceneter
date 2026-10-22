@@ -149,10 +149,11 @@ export async function createReviewerTools({session,state,release}) {
     description:'Run discovered BOS control-plane operations. For Education Center positive-3 only, this host also permits the single approved read-only education_center_get_camp_roster_report request for the fixed reviewer date range after the class-operations skill is read and app.describe is validated.',
     inputSchema:{...tool.inputSchema,properties:{...tool.inputSchema.properties,operation:{...tool.inputSchema.properties.operation,enum:[...controls,positive3CampOperation]}}}
   }:tool):definitions;
-  const documents=new Map(),contacts=new Map(),references=new Map(),trustedSchemaDocuments=new Set(),originalDocuments=new Map(),controlFailureDiagnostics=new WeakMap(),ajv=new Ajv({strict:false,validateFormats:false});
+  const documents=new Map(),contacts=new Map(),describeRequests=new Map(),references=new Map(),trustedSchemaDocuments=new Set(),originalDocuments=new Map(),controlFailureDiagnostics=new WeakMap(),ajv=new Ajv({strict:false,validateFormats:false});
   let activeBusinessContact=null,lastBusinessHttpMetadata=null;
   let nextReference=0,authorizedContextSource=null;
-  const clearReferences=()=>{documents.clear();contacts.clear();references.clear();trustedSchemaDocuments.clear();originalDocuments.clear();authorizedContextSource=null;};
+  const clearContacts=()=>{contacts.clear();describeRequests.clear();};
+  const clearReferences=()=>{documents.clear();clearContacts();references.clear();trustedSchemaDocuments.clear();originalDocuments.clear();authorizedContextSource=null;};
   const retireOperations=operations=>{for(const [id,contact] of contacts)if(operations.includes(contact.operation))contacts.delete(id);};
   const retainDocument=raw=>{
     const hash=digest(raw),existing=references.get(hash);
@@ -185,7 +186,9 @@ export async function createReviewerTools({session,state,release}) {
     if(!selected?.context_handle)throw new Error('reviewer_identity_unverified');
     if(state.handle&&state.handle!==selected.context_handle){clearReferences();state.validated_contracts={};state.failed_validations={};state.validated_document_proofs={};state.selected_scope=null;throw new Error('reviewer_discovery_refresh_required');}
     state.handle=selected.context_handle;
-    state.selected_scope={organization:selected.organization_name,application:selected.application_name,installation:selected.installation_name,role:selected.role_label,context_handle:state.handle};
+    const selectedScope={organization:selected.organization_name,application:selected.application_name,installation:selected.installation_name,role:selected.role_label,context_handle:state.handle};
+    if(state.selected_scope&&digest(state.selected_scope)!==digest(selectedScope))clearContacts();
+    state.selected_scope=selectedScope;
     observe({tool_name:'mcp__BOS__bos_get_context',tool_input:{},tool_response:response},state);
     bindAuthorizedContext(value);
     return {contract_version:value.contract_version,context:Object.fromEntries(['context_handle','organization_name','application_name','installation_name','role_label','is_default'].map(key=>[key,selected[key]]))};
@@ -273,7 +276,7 @@ export async function createReviewerTools({session,state,release}) {
           const validation=await installed.call('validate_installed',{path:discoveryValidatorPath,mode:'app-describe',document});
           // Provenance is checked against the exact observed bytes before observe() sanitizes its retained copy.
           observe({tool_name:'mcp__Acceptance__validate_installed',tool_input:{path:discoveryValidatorPath,mode:'app-describe',document},tool_response:validation},state);
-          if(validation.valid===true){const current=digest(document);if(state.validated_contracts['app-describe']!==current)contacts.clear();state.validated_contracts['app-describe']=current;}
+          if(validation.valid===true){const current=digest(document);if(state.validated_contracts['app-describe']!==current)clearContacts();state.validated_contracts['app-describe']=current;}
           publishedValidation={valid:validation.valid===true,mode:'app-describe',document_id:exposed.document_id,release_commit:bos.release_commit};
         }
       }
@@ -362,7 +365,7 @@ export async function createReviewerTools({session,state,release}) {
       }
       state.pre_calls=(state.pre_calls??0)+1;const denied=permission(event,state);
       if(denied){state.denials.push({tool:name,reason:denied});return {isError:true,reason:denied};}
-      const result=await installed.call(short,event.tool_input);observe({...event,tool_response:result},state);if(short==='validate_installed'&&result.valid===true){trustedSchemaDocuments.add(args.document_id);if(args.mode==='app-describe'){const current=digest(documents.get(args.document_id));if(state.validated_contracts['app-describe']!==current)contacts.clear();state.validated_contracts['app-describe']=current;}}return result;
+      const result=await installed.call(short,event.tool_input);observe({...event,tool_response:result},state);if(short==='validate_installed'&&result.valid===true){trustedSchemaDocuments.add(args.document_id);if(args.mode==='app-describe'){const current=digest(documents.get(args.document_id));if(state.validated_contracts['app-describe']!==current)clearContacts();state.validated_contracts['app-describe']=current;}}return result;
     }
     if(name==='bos_get_context')return guarded({tool_name:'mcp__BOS__bos_get_context',tool_input:{}},async()=>{
       const response=await mcp('bos.get_context',{});return response;
@@ -496,13 +499,22 @@ export async function createReviewerTools({session,state,release}) {
       // A refresh attempt makes the selected previous contacts stale even if
       // the request or published response validation subsequently fails.
       retireOperations(keys);
+      const refresh=Symbol(),scope=digest(state.selected_scope),handle=state.handle;
+      for(const key of keys)describeRequests.set(key,refresh);
+      const assertCurrentDescription=()=>{
+        if(!documents.has(args.document_id)||state.validated_contracts?.['app-describe']!==validatedDescription||
+          state.handle!==handle||digest(state.selected_scope)!==scope||keys.some(key=>describeRequests.get(key)!==refresh))throw new Error('reviewer_discovery_refresh_required');
+      };
       const response=await session.request(url.href,{method:contact.method,headers:{'content-type':'application/json','X-BOS-Context-Handle':current.context.context_handle},body:JSON.stringify({operations:keys})});
+      assertCurrentDescription();
       if(!response.ok||!/^application\/(?:json|[a-z0-9.+-]+\+json)(?:;|$)/i.test(response.headers.get('content-type')??''))throw new Error('reviewer_describe_http_failed');
       const raw=reviewerDiscoveryDocument(await response.json(),state);
+      assertCurrentDescription();
       if(!Array.isArray(raw.operations)||JSON.stringify(raw.operations.map(row=>row.operation))!==JSON.stringify(keys))throw new Error('reviewer_describe_response_mismatch');
       observe({tool_name:'mcp__BOS__app_describe',tool_input:{operations:keys},tool_response:raw},state);
       state.observations.at(-1).transport='https-discovery';
       const validation=await installed.call('validate_installed',{path:'skills/bos-app-discovery/scripts/validate-discovery.mjs',mode:'operation-describe',document:raw});
+      assertCurrentDescription();
       // Record the actual host-owned invocation for independent grading. The
       // existing validator check below remains the dispatch gate; this receipt
       // adds observations without changing model-validation or dispatch state.
