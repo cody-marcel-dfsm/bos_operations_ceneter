@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {createServer} from "node:http";
 import {readFile} from "node:fs/promises";
+import {isDeepStrictEqual} from "node:util";
 import {syntheticApiContract, syntheticOperationDescribe} from "./helpers/synthetic-bos-discovery-service.mjs";
 import {createBosExternalDependencyAdapter} from "../source/platform/bos-external-dependency-adapter/scripts/external-dependency-adapter.mjs";
 import {checkCallbackSourceReadiness} from "../source/platform/bos-workflow-orchestrator/scripts/callback-source-readiness.mjs";
@@ -54,7 +55,8 @@ async function service(t, responses, recoverAuthentication = async () => { throw
       },
       getProtectedResource: async () => resource,
       recoverAuthentication,
-      captureExecutionScope: async () => async () => true
+      captureExecutionScope: async () => async () => true,
+      verifyExecutionIntent: async ({contract}) => isDeepStrictEqual(contract, fixture().contact)
     },
     contextProvider: {
       getCurrentContext: async () => ({contract_version: "bos-identity-mcp/v2", context: {

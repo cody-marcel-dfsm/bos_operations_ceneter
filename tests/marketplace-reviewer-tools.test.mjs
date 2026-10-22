@@ -562,27 +562,38 @@ test('identity result extraction retains exact reviewer context and rejects fore
 test('test host uses the verified adapter, fresh reviewer context and advertised HTTPS contract',async()=>{
   const root=await mkdtemp(join(tmpdir(),'reviewer-published-unit-'));
   try {
-    const adapter=join(root,'skills/bos-external-dependency-adapter/scripts');await mkdir(adapter,{recursive:true});
-    await cp(new URL('../source/platform/bos-external-dependency-adapter/scripts/',import.meta.url),adapter,{recursive:true});
+    for(const skill of ['bos-external-dependency-adapter','bos-app-discovery']){
+      const target=join(root,'skills',skill,'scripts');await mkdir(target,{recursive:true});
+      await cp(new URL('../source/platform/'+skill+'/scripts/',import.meta.url),target,{recursive:true});
+    }
     await run('git',['init','--quiet'],{cwd:root});await run('git',['add','.'],{cwd:root});
     await run('git',['-c','user.name=Synthetic Test','-c','user.email=test@example.invalid','-c','core.hooksPath=/dev/null','commit','--quiet','-m','synthetic published adapter fixture'],{cwd:root});
     const commit=(await run('git',['rev-parse','HEAD'],{cwd:root})).stdout.trim();
     const state={product:'bos',installed_root:root,installed_roots:{bos:root},published_commits:{bos:commit},organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,resource:'https://dfsm.ai/mcp/apps/bos/platform',canary:true,kind:'positive',handle:context.context_handle,observations:[],denials:[],allowed_effects:['read'],tools:[{name:'app.describe',annotations:{readOnlyHint:true},_meta:{'bos/effect':'read'},inputSchema:{type:'object'}},{name:'bos_get_context',annotations:{readOnlyHint:true},_meta:{'bos/effect':'read'},inputSchema:{type:'object',properties:{}}}],validated_contracts:{'app-describe':'already-validated'},failed_validations:{}};
     const enrollmentContact=structuredClone(contact);enrollmentContact.operation='education_center_list_enrollments';enrollmentContact.execution.uri='/bos/apps/synthetic/api/v1/organizations/synthetic/enrollments';
+    const app=syntheticAppDescribe(),uri='bos://apps/lead-director/app.describe';
+    app.describe.operations=['search','education_center_list_enrollments'];state.resources=[uri];
+    const parent=syntheticOperationDescribe();parent.operations=[contact,enrollmentContact];
     let current=context,requests=0,contextReads=0,appContextReads=0,providerRecoveryUrl='https://dfsm.ai/api/v1/mcp/provider-recovery?private-token=secret',searchResponse=()=>new Response(JSON.stringify({count:2}),{headers:{'content-type':'application/json'}});
     const session={rpc:async(method,params)=>{
       if(method==='tools/list')return {tools:[{name:'bos.get_context'},{name:'bos.execute'}]};
+      if(method==='resources/read'){assert.equal(params.uri,uri);return {contents:[{uri,mimeType:'application/json',text:JSON.stringify(app)}]};}
       if(params.name==='bos.get_context'){contextReads++;return {structuredContent:{contract_version:'bos-identity-mcp/v2',contexts:[current]}};}
       assert.equal(params.name,'bos.execute');if(params.arguments.tool_name==='bos_get_context'){appContextReads++;return {structuredContent:{contract_version:'bos-identity-mcp/v2',context:current,result:{provider_status:'ready',capabilities:['calendar','drive']}}};}assert.equal(params.arguments.tool_name,'app.describe');return {structuredContent:{contract_version:'bos-identity-mcp/v2',context:current,result:{operations:[contact,enrollmentContact]}}};
-    },request:async(url,options)=>{requests++;assert.equal(options.headers['X-BOS-Context-Handle'],context.context_handle);assert.deepEqual(JSON.parse(options.body),{text:'synthetic'});if(url==='https://dfsm.ai'+enrollmentContact.execution.uri)return new Response(JSON.stringify({result:{error:{status:'authorization_required',required_authorizations:[{authorization_kind:'api_key',status:'configuration_required',authorization_url:providerRecoveryUrl}]}}}),{status:200,headers:{'content-type':'application/json'}});assert.equal(url,'https://dfsm.ai'+contact.execution.uri);return searchResponse();}};
+    },request:async(url,options)=>{assert.equal(options.headers['X-BOS-Context-Handle'],context.context_handle);if(url.endsWith('/describe')){assert.deepEqual(JSON.parse(options.body),{operations:app.describe.operations});return new Response(JSON.stringify(parent),{headers:{'content-type':'application/json'}});}requests++;assert.deepEqual(JSON.parse(options.body),{text:'synthetic'});if(url==='https://dfsm.ai'+enrollmentContact.execution.uri)return new Response(JSON.stringify({result:{error:{status:'authorization_required',required_authorizations:[{authorization_kind:'api_key',status:'configuration_required',authorization_url:providerRecoveryUrl}]}}}),{status:200,headers:{'content-type':'application/json'}});assert.equal(url,'https://dfsm.ai'+contact.execution.uri);return searchResponse();}};
     const tools=await createReviewerTools({session,state,release:{path:root,release_commit:commit}});
     await tools.call('bos_get_context',{});
     const appContext=await tools.call('bos_context_provider_status',{});
     assert.equal(appContext.document.provider_status,'ready');assert.equal(appContextReads,1);
-    const described=await tools.call('bos_control_discover',{operation:'app.describe',arguments:{}});
+    const untrusted=await tools.call('bos_control_discover',{operation:'app.describe',arguments:{}});
+    assert.equal(untrusted.advertised_https_contacts,undefined,'a control response cannot register execution contacts by shape');
+    const observed=await tools.call('bos_read_resource',{uri});
+    assert.equal(observed.published_validation.valid,true);
+    const described=await tools.call('bos_https_describe',{document_id:observed.document_id,operations:app.describe.operations});
     const contactId=described.advertised_https_contacts[0].contact_id;
+    const readsBeforeExecution=contextReads;
     const result=await tools.call('bos_https_operation',{contact_id:contactId,payload:{text:'synthetic'}});
-    assert.deepEqual(result.body,{count:2});assert.equal(result.transport,'https');assert.equal(requests,1);assert.equal(contextReads,2);
+    assert.deepEqual(result.body,{count:2});assert.equal(result.transport,'https');assert.equal(requests,1);assert.equal(contextReads,readsBeforeExecution+1);
     const businessReceipt=state.observations.findLast(row=>row.transport==='https');
     assert.equal(businessReceipt.contact_sha256,digest(contact));
     assert.match(businessReceipt.contact_sha256,/^[a-f0-9]{64}$/);

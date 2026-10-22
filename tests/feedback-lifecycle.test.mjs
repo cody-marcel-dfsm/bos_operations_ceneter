@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {isDeepStrictEqual} from "node:util";
 import {observeFeedback, feedbackRecovery, prepareFeedbackMutation, feedbackCommentPayload}
   from "../source/platform/submit-feedback/scripts/feedback-lifecycle.mjs";
 import {createBosExternalDependencyAdapter}
@@ -40,7 +41,11 @@ function client(record, {authorized = true, media = []} = {}) {
     recoverAuthentication: async () => {throw new Error("No extra login is part of this fixture");},
     getProtectedResource: async () => "https://dfsm.ai/mcp/apps/bos/platform",
     captureExecutionScope: async () => async () => true,
-    verifyExecutionIntent: async () => authorized
+    verifyExecutionIntent: async ({contract}) => {
+      const trusted = [readContact, resolveContact, updateContact, triageContact]
+        .find(contact => contact.operation === contract.operation);
+      return isDeepStrictEqual(contract, trusted) && (trusted.effect === "read" || authorized);
+    }
   };
   const adapter = createBosExternalDependencyAdapter({hostTransport, contextProvider: {
     getCurrentContext: async () => ({contract_version: "bos-identity-mcp/v1"}),
