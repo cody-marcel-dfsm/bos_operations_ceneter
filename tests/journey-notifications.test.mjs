@@ -204,8 +204,7 @@ test("control frames enforce declared codes, retryability and private-detail san
   assert.throws(() => accept({event: "stream_error", data: {...publicError(), identity: "one"}}), /schema/);
 });
 
-function hostAdapter(overrides = {}) {
-  const trustedContact = notificationFixture().contact;
+function hostAdapter(overrides = {}, trustedContact = notificationFixture().contact) {
   const transport = {request: async () => {throw new Error("Unexpected ordinary request");},
     recoverAuthentication: async () => {throw new Error("Unexpected recovery");},
     getProtectedResource: async () => "https://dfsm.ai/mcp/apps/bos/platform",
@@ -238,7 +237,7 @@ test("declared midstream throttling reconnects while access-loss control stays t
     contact.error_contract.codes.push("ACCESS_DENIED");
     const error = publicError(code, code === "RATE_LIMITED");
     const adapter = hostAdapter({openAuthenticatedEventStream: async () => ({status: 200,
-      headers: {"content-type": "text/event-stream"}, chunks: bytes(encodeFrame(ready(["one"])) + encodeFrame({event: "stream_error", data: error}))})});
+      headers: {"content-type": "text/event-stream"}, chunks: bytes(encodeFrame(ready(["one"])) + encodeFrame({event: "stream_error", data: error}))})}, contact);
     const result = await runNotificationConnection({adapter, sourceContract: contract, contact, identities: ["one"], queue: f.queue, random: () => 0.5});
     assert.deepEqual(result, code === "RATE_LIMITED" ? {next: "reconnect", delayMs: 500} : {next: "stop", error});
     assert.equal(await f.queue.cursor(), "nc_baseline"); assert.equal((await f.queue.pending()).length, 1);
