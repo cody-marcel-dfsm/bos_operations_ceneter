@@ -128,6 +128,15 @@ const workbook = Workbook.create();
 const sheet = workbook.worksheets.add(template.worksheet_name);
 sheet.showGridLines = true;
 
+// Range.values interprets leading '=' as a formula. Only the calculated
+// amount/total cells below may contain formulas; provider/customer text is literal.
+const textCells = [];
+const literalText = (value, address) => {
+  const text = String(value);
+  textCells.push([address, text]);
+  return text.startsWith("=") ? `'${text}` : text;
+};
+
 const metadataValues = [
   excelDate(input.date_submitted),
   input.center_name,
@@ -137,7 +146,8 @@ const metadataValues = [
   String(input.invoice_reference_number),
 ];
 sheet.getRange(template.metadata.range).values = template.metadata.labels.map(
-  (label, index) => [label, metadataValues[index]],
+  (label, index) => [label, typeof metadataValues[index] === "string"
+    ? literalText(metadataValues[index], `B${index + 1}`) : metadataValues[index]],
 );
 sheet.getRange(template.metadata.label_range).format.font = { bold: true };
 sheet.getRange(template.metadata.date_cell).format.numberFormat =
@@ -159,17 +169,17 @@ sheet.getRange(template.detail.header_range).format = {
 
 const firstDataRow = template.detail.first_data_row;
 const lastDataRow = firstDataRow + rows.length - 1;
-sheet.getRange(`A${firstDataRow}:G${lastDataRow}`).values = rows.map((row) => [
-  row.employee_name,
-  row.employer,
-  String(row.case_number),
+sheet.getRange(`A${firstDataRow}:G${lastDataRow}`).values = rows.map((row, index) => [
+  literalText(row.employee_name, `A${firstDataRow + index}`),
+  literalText(row.employer, `B${firstDataRow + index}`),
+  literalText(row.case_number, `C${firstDataRow + index}`),
   row.number_of_children,
   excelDate(row.date_of_care),
   Number(row.hours_of_care),
   Number(row.rate_per_day ?? input.rate_per_day),
 ]);
 sheet.getRange(`I${firstDataRow}:I${lastDataRow}`).values =
-  rows.map((row) => [row.other_comments ?? ""]);
+  rows.map((row, index) => [literalText(row.other_comments ?? "", `I${firstDataRow + index}`)]);
 sheet.getRange(`H${firstDataRow}`).formulas = [[`=D${firstDataRow}*G${firstDataRow}`]];
 if (lastDataRow > firstDataRow) {
   sheet.getRange(`H${firstDataRow}:H${lastDataRow}`).fillDown();
@@ -219,41 +229,47 @@ sheet.getRange(template.detail.header_range).format.rowHeight =
   template.detail.header_row_height;
 sheet.freezePanes.freezeRows(firstDataRow - 1);
 
-await fs.mkdir(path.dirname(path.resolve(outputPath)), { recursive: true });
-const exported = await SpreadsheetFile.exportXlsx(workbook);
-await exported.save(outputPath);
+for (const [address, text] of textCells) {
+  const cell = sheet.getRange(address);
+  if (cell.values[0]?.[0] !== text || cell.formulas[0]?.[0]) {
+    throw new Error("The spreadsheet serializer could not preserve literal invoice text");
+  }
+}
+workbook.recalculate();
+if (sheet.getRange(`H${totalsRow}`).values[0]?.[0] !== invoiceTotal) {
+  throw new Error("Invoice calculation does not match the reconciled total");
+}
 
-const verificationDir = path.resolve(
-  process.cwd(),
-  "tmp",
-  "bright-horizons-invoice",
-);
-await fs.mkdir(verificationDir, { recursive: true });
-const preview = await workbook.render({
-  sheetName: template.worksheet_name,
-  range: `A1:I${totalsRow}`,
-  scale: 1,
-  format: "png",
-});
-await fs.writeFile(
-  path.join(verificationDir, `${path.basename(outputPath)}.preview.png`),
-  new Uint8Array(await preview.arrayBuffer()),
-);
-
-const inspection = await workbook.inspect({
-  kind: "table",
-  range: `${template.worksheet_name}!A1:I${totalsRow}`,
-  include: "values,formulas",
-  tableMaxRows: Math.min(totalsRow, 100),
-  tableMaxCols: 9,
-  maxChars: 12000,
-});
-const errors = await workbook.inspect({
-  kind: "match",
-  searchTerm: "#REF!|#DIV/0!|#VALUE!|#NAME\\?|#N/A",
-  options: { useRegex: true, maxResults: 100 },
-  summary: "Bright Horizons invoice formula error scan",
-});
-process.stdout.write(
-  `${inspection.ndjson}\n${errors.ndjson}\n${JSON.stringify(resultSummary)}\n`,
-);
+const destination = path.resolve(outputPath);
+await fs.mkdir(path.dirname(destination), { recursive: true, mode: 0o700 });
+// Exporters may create inspection sidecars beside the workbook. Keep the whole
+// run private and publish only the verified final workbook atomically.
+const verificationDir = await fs.mkdtemp(path.join(path.dirname(destination), ".bh-invoice-"));
+try {
+  await fs.chmod(verificationDir, 0o700);
+  const exported = await SpreadsheetFile.exportXlsx(workbook);
+  const privateWorkbook = path.join(verificationDir, "invoice.xlsx");
+  const originalLog = console.log;
+  try {
+    // The exporter logs inspection sidecar details. This single-purpose CLI emits
+    // only its sanitized result summary; diagnostics stay inside the private run.
+    console.log = () => {};
+    await exported.save(privateWorkbook);
+  } finally { console.log = originalLog; }
+  await fs.chmod(privateWorkbook, 0o600);
+  const preview = await workbook.render({
+    sheetName: template.worksheet_name,
+    range: `A1:I${totalsRow}`,
+    scale: 1,
+    format: "png",
+  });
+  await fs.writeFile(
+    path.join(verificationDir, `${path.basename(outputPath)}.preview.png`),
+    new Uint8Array(await preview.arrayBuffer()),
+    { mode: 0o600, flag: "wx" },
+  );
+  await fs.rename(privateWorkbook, destination);
+} finally {
+  await fs.rm(verificationDir, { recursive: true, force: true });
+}
+process.stdout.write(`${JSON.stringify(resultSummary)}\n`);

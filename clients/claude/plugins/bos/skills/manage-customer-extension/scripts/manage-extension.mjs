@@ -235,21 +235,22 @@ export function renderExtensionSkill(manifest) {
 }
 
 async function replaceExtension(paths, manifest, skill, legacySkill) {
-  await mkdir(paths.extensionRoot, { recursive: true });
+  await mkdir(paths.extensionRoot, { recursive: true, mode: 0o700 });
   const transaction = `${process.pid}-${Date.now()}`;
   const staging = `${paths.extensionPath}.staging-${transaction}`;
   const backup = `${paths.extensionPath}.backup-${transaction}`;
   const existed = await pathExists(paths.extensionPath);
   await rm(staging, { recursive: true, force: true });
   if (existed) await cp(paths.extensionPath, staging, { recursive: true });
-  else await mkdir(staging);
+  else await mkdir(staging, { mode: 0o700 });
+  await chmod(staging, 0o700);
   await rm(join(staging, ".bos-extension.json"), { force: true });
   await rm(join(staging, "SKILL.md"), { force: true });
   if (legacySkill !== undefined) await rm(join(staging, "LEGACY.md"), { force: true });
   await writeFile(join(staging, ".bos-extension.json"), stableJson(manifest), { mode: 0o600 });
   await chmod(join(staging, ".bos-extension.json"), 0o600);
-  await writeFile(join(staging, "SKILL.md"), skill, { mode: 0o644 });
-  await chmod(join(staging, "SKILL.md"), 0o644);
+  await writeFile(join(staging, "SKILL.md"), skill, { mode: 0o600 });
+  await chmod(join(staging, "SKILL.md"), 0o600);
   if (legacySkill !== undefined) {
     await writeFile(join(staging, "LEGACY.md"), legacySkill, { mode: 0o600 });
     await chmod(join(staging, "LEGACY.md"), 0o600);

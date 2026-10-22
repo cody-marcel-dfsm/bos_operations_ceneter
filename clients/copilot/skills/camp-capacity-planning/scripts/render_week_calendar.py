@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -144,30 +145,30 @@ def build_svg(data: dict[str, Any]) -> str:
 
 
 def write_output(svg: str, output: Path) -> None:
-    output.parent.mkdir(parents=True, exist_ok=True)
-    if output.suffix.lower() == ".svg":
-        output.write_text(svg, encoding="utf-8")
-        return
-    if output.suffix.lower() != ".png":
+    output.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if output.suffix.lower() not in (".svg", ".png"):
         raise ValueError("output must use .png or .svg")
-    converter = shutil.which("rsvg-convert")
-    if not converter:
-        raise RuntimeError("PNG output requires rsvg-convert; use an .svg output when unavailable")
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".svg", encoding="utf-8", dir=output.parent, delete=False
-    ) as handle:
-        handle.write(svg)
-        temporary_svg = Path(handle.name)
-    try:
-        subprocess.run(
-            [converter, "--output", str(output), str(temporary_svg)],
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-    finally:
-        temporary_svg.unlink(missing_ok=True)
+    # No roster-bearing transient or partially written final file is exposed.
+    with tempfile.TemporaryDirectory(prefix=".bos-roster-", dir=output.parent) as run:
+        private_output = Path(run) / ("roster" + output.suffix.lower())
+        if output.suffix.lower() == ".svg":
+            private_output.write_text(svg, encoding="utf-8")
+        else:
+            converter = shutil.which("rsvg-convert")
+            if not converter:
+                raise RuntimeError("PNG output requires rsvg-convert; use an .svg output when unavailable")
+            temporary_svg = Path(run) / "source.svg"
+            temporary_svg.write_text(svg, encoding="utf-8")
+            temporary_svg.chmod(0o600)
+            try:
+                subprocess.run(
+                    [converter, "--output", str(private_output), str(temporary_svg)],
+                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True,
+                )
+            except subprocess.CalledProcessError:
+                raise RuntimeError("Private roster conversion failed") from None
+        private_output.chmod(0o600)
+        os.replace(private_output, output)
 
 
 def main() -> int:

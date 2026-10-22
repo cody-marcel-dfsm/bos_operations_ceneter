@@ -1,6 +1,6 @@
 {
   "package": "bos-operations-center",
-  "release": "0.4.210",
+  "release": "0.4.211",
   "skills": {
     "agent-call-operations": {
       "version": "1.0.4",
@@ -507,7 +507,7 @@
       }
     },
     "camp-capacity-planning": {
-      "version": "1.0.4",
+      "version": "1.0.5",
       "requires": {
         "bos-mcp-client": "1.0.4",
         "bos-visual-output": "1.0.4"
@@ -515,7 +515,7 @@
       "path": "source/verticals/education-center/camp-capacity-planning",
       "files": {
         "SKILL.md": {
-          "sha256": "3c27865257bdbd4e5b6973a172d592fd9c53d0d2b4b40dc6d472c47aca5ba9d9",
+          "sha256": "be8f9e89fbd39a0c23c5a0f34f5dd80db021096f960a0f94bb2da1570725d6c2",
           "mode": 420
         },
         "references/data-model.md": {
@@ -523,12 +523,12 @@
           "mode": 420
         },
         "scripts/render_week_calendar.py": {
-          "sha256": "2c52cf992e276020d5422a845e21a5d3587ac741ff99ea160425b87d124b49af",
+          "sha256": "a12a65a531709656a4a194c1029673ad4f4ddbc0b8d01faf359e0ee70d5e2e95",
           "mode": 420
         }
       },
       "effective": {
-        "education-center": "92e9ddda4e26273630ddf8336b7c14dcb8e494eb4dc626cd21988429316f19b2"
+        "education-center": "894beade8fda851304113a44d79d361f53d49e02c3e523352372e56a5fb984d4"
       }
     },
     "campaign-offer-marketing-sales": {
@@ -593,19 +593,19 @@
       }
     },
     "education-center-class-operations": {
-      "version": "1.0.4",
+      "version": "1.0.5",
       "requires": {
         "bos-mcp-client": "1.0.4",
         "bos-visual-output": "1.0.4",
-        "camp-capacity-planning": "1.0.4",
-        "education-center-invoice-operations": "1.0.4",
+        "camp-capacity-planning": "1.0.5",
+        "education-center-invoice-operations": "1.0.5",
         "education-center-service-routing": "1.0.4",
         "email-account-routing": "1.0.4"
       },
       "path": "source/verticals/education-center/education-center-class-operations",
       "files": {
         "SKILL.md": {
-          "sha256": "7204da696edcd345c8d39412f373851b040ed3294d6200d323e828bcd69029b2",
+          "sha256": "377ce7ec29a6b7ad81a574c58abe9b3c9bbec3b86b4454f515ec4a7d02c976b8",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -613,12 +613,12 @@
           "mode": 420
         },
         "scripts/render_week_calendar.py": {
-          "sha256": "2c52cf992e276020d5422a845e21a5d3587ac741ff99ea160425b87d124b49af",
+          "sha256": "a12a65a531709656a4a194c1029673ad4f4ddbc0b8d01faf359e0ee70d5e2e95",
           "mode": 420
         }
       },
       "effective": {
-        "education-center": "8b6f904a63495b2e277e370aabba27d1064c182c12072b0f3332d9554d92580c"
+        "education-center": "119c8e3ee5020b7f5477ded3c48439a1b3f8678058b5270dea9d8ffb72209e22"
       }
     },
     "education-center-customer-initialization": {
@@ -646,11 +646,11 @@
       }
     },
     "education-center-director-daily-planner": {
-      "version": "1.0.4",
+      "version": "1.0.5",
       "requires": {
         "bos-mcp-client": "1.0.4",
         "bos-visual-output": "1.0.4",
-        "education-center-class-operations": "1.0.4",
+        "education-center-class-operations": "1.0.5",
         "education-center-customer-initialization": "1.0.4",
         "education-center-service-routing": "1.0.4",
         "education-center-student-operations": "1.0.4",
@@ -659,7 +659,7 @@
       "path": "source/verticals/education-center/education-center-director-daily-planner",
       "files": {
         "SKILL.md": {
-          "sha256": "787088a2f5e28024c6f2ea774d15c934a66b85d8820a0dcefd60c9819a372b2a",
+          "sha256": "bcc36351beb41fb7c0ecf8cc9593ed9332b32198545897f055017e9417a78c39",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -696,7 +696,7 @@
         }
       },
       "effective": {
-        "education-center": "dfac94b77412a82fc663c67f3e4bf58a8701595178ac3df82080d114b9060c3e"
+        "education-center": "b83191ade50ec58a8d2f47427942dd2eb22e653ecf78dce3d6cf6d763add3f6e"
       }
     },
     "education-center-instructor-operations": {
@@ -722,18 +722,18 @@
       }
     },
     "education-center-invoice-operations": {
-      "version": "1.0.4",
+      "version": "1.0.5",
       "requires": {
         "bos-mcp-client": "1.0.4",
         "bos-visual-output": "1.0.4",
-        "education-center-class-operations": "1.0.4",
+        "education-center-class-operations": "1.0.5",
         "education-center-customer-initialization": "1.0.4",
         "education-center-service-routing": "1.0.4"
       },
       "path": "source/verticals/education-center/education-center-invoice-operations",
       "files": {
         "SKILL.md": {
-          "sha256": "bf26719a15cd757b926aaf82818034526630be2b6fd9bfeac1af204590ce51b9",
+          "sha256": "749edd1fca32b5b320604d3f7b23a040dd4617dee485986056b2ba1bd01278c0",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -749,16 +749,16 @@
           "mode": 420
         },
         "references/bright-horizons-workbook.md": {
-          "sha256": "a98a168b0752c0e44687d2ac097581becea96d6d0abe93bd49be9551293c1845",
+          "sha256": "470205bdd54a7fe315bdf208e9a5e62a9e187ab5c869b4f98450fca9c6b9c5bd",
           "mode": 420
         },
         "scripts/build_bh_invoice.mjs": {
-          "sha256": "282763198bcd24d113147f07940498f803e23ebd31d545f6261ff6a1f1976591",
+          "sha256": "9cfbbfdc189fbb95b8b4749bed3a0177672c6f281623d2a2c6d060dc26b113a2",
           "mode": 420
         }
       },
       "effective": {
-        "education-center": "f68670d19439e132020750e58a5e3f9997fec3cfef97845eb2fba5720af067ba"
+        "education-center": "e29f625467d27cdb96ed244345593fde37eb9575637ae2eca04fe593ddfb12db"
       }
     },
     "education-center-paid-attribution-operations": {
@@ -961,12 +961,12 @@
       }
     },
     "manage-customer-extension": {
-      "version": "1.0.4",
+      "version": "1.0.5",
       "requires": {},
       "path": "source/platform/manage-customer-extension",
       "files": {
         "SKILL.md": {
-          "sha256": "a6b4ba210f73447cfca4536adbbd712bba76d2c6c9452badec857cf8e2f51b09",
+          "sha256": "992536a69764dfdefa4b5eb63b824e9312aef365eb3ddc04a24d2d348b7620df",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -974,13 +974,13 @@
           "mode": 420
         },
         "scripts/manage-extension.mjs": {
-          "sha256": "ea53225bdef2d2e875c6ad39c9f8db5f592bbd17d7f87df2e11d535d21ce019d",
+          "sha256": "22b16f28d1b6ebc95a70371da72e1479a96e79b08c1514f2841e6db4492ba52b",
           "mode": 420
         }
       },
       "effective": {
-        "bos": "d90d6d8bedb09e9d47590b6631dd08b51fcf6034283f261295135d90f521bf13",
-        "education-center": "545bfa3b38d5e09cdf1c2eafd644978ecc67c89251c8ef2db1085cda1447056c"
+        "bos": "715b3b02707a25930b3f39236832406ce944b67f437be633742b0b939d21620b",
+        "education-center": "b4abc3120b72a133773c940a37624bca1c601381f37c6aa7246ee7a20db583a3"
       }
     },
     "marketing-analysis": {
