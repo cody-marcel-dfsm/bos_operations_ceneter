@@ -8,6 +8,7 @@ import {
   customerDataFindings,
   isProposedTextArtifact,
   isOperationalTextArtifact,
+  operationalPrivacyText,
   isCpuProfileTextArtifact,
   cpuProfilePrivacyText,
   isWatcherProcessMetadata,
@@ -173,6 +174,41 @@ test("operational output is strict UTF-8 text and retains complete privacy check
     }
     assert(findings.some(value => value.includes("opaque.stderr: unreviewed binary")));
   } finally { await rm(directory, {recursive: true, force: true}); }
+});
+
+test("multi-record operational JSON inspects escaped strings and duplicate members without losing raw evidence", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "boc-operational-records-"));
+  const address = ["person", "production-domain.invalidated"].join("@");
+  const phone = ["202", "867", "5309"].join("-");
+  const phrase = "synthetic blocked operational phrase";
+  const encoded = value => JSON.stringify(value).replaceAll("@", "\\u0040")
+    .replaceAll("2", "\\u0032").replaceAll(" ", "\\u0020");
+  const rows = value => `{"value":${encoded(value)}}\n{"safe":true}\n`;
+  try {
+    const paths = [];
+    for (const extension of [".ndjson", ".jsonl", ".stderr", ".stdout", ".tap"]) {
+      for (const [name, value] of [["email", address], ["phone", phone]]) {
+        const path = join(directory, name + extension); await writeFile(path, rows(value)); paths.push(path);
+      }
+    }
+    const duplicate = join(directory, "duplicate.ndjson");
+    await writeFile(duplicate, `{"value":${encoded(address)},"value":""}\n{"safe":true}\n`); paths.push(duplicate);
+    const findings = await fixturePrivacyFailures(paths);
+    for (const path of paths) assert(findings.some(value => value.startsWith(path + ":")), path);
+    const raw = rows(phrase);
+    const inspected = operationalPrivacyText(raw, {});
+    assert(inspected.startsWith(raw), "all original nonmetadata bytes remain inspected");
+    assert(customerDataFindings(inspected, "records.ndjson", new Set([sha256(phrase)]))
+      .some(value => value.includes("identifier digest")));
+    const numeric = '{"value":1e+000}\r\n{"safe":true}\r\n';
+    assert(operationalPrivacyText(numeric, {}).includes(numeric));
+    assert(customerDataFindings(operationalPrivacyText(numeric, {}), "records.ndjson", new Set([sha256("1e 000")]))
+      .some(value => value.includes("identifier digest")));
+    const malformed = `{"bad":"\\xZZ"}\n{"value":${encoded(address)}}\n`;
+    assert.doesNotThrow(() => operationalPrivacyText(malformed, {}));
+    assert(customerDataFindings(operationalPrivacyText(malformed, {}), "records.ndjson", new Set())
+      .some(value => value.includes("email")));
+  } finally {await rm(directory, {recursive: true, force: true});}
 });
 
 test("verified own native argv normalization preserves every nonmetadata value and denies forged custody", () => {

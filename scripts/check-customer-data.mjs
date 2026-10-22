@@ -330,6 +330,20 @@ export function verifiedGithubMetadataText(text, identities) {
   return prefix + original + "\n" + JSON.stringify(normalized);
 }
 
+// Operational records can contain multiple JSON documents or JSON fragments.
+// Preserve raw nonmetadata bytes and inspect each original valid string token,
+// including overwritten members, without requiring one whole JSON document.
+// This view is restricted to operational/JSONL evidence; ordinary source/SVG
+// keeps its existing representation and avoids combining unrelated attributes.
+export function operationalPrivacyText(text, identities) {
+  const whole = verifiedGithubMetadataText(text, identities);
+  const inspected = whole !== text ? whole : text.replace(/[^\r\n]+/gu,
+    line => verifiedGithubMetadataText(line, identities));
+  const decoded = [...inspected.matchAll(/"(?:\\[\s\S]|[^"\\])*"/gu)]
+    .map(token => {try {return JSON.parse(token[0]);} catch {return token[0];}});
+  return inspected + "\n" + decoded.join("\n");
+}
+
 async function walk(directory) {
   const paths = [];
   for (const entry of await readdir(directory, {withFileTypes: true})) {
@@ -414,8 +428,9 @@ async function scanPrivacyCandidates(candidates) {
       const operationalText = isOperationalTextArtifact(path, body);
       if (proposedText || cpuProfileText || operationalText) {
         const text = body.toString("utf8");
-        findings.push(...customerDataFindings(cpuProfileText ? cpuProfilePrivacyText(text) :
-          verifiedGithubMetadataText(text, githubIdentities), relative(root, path), blockedDigests));
+        findings.push(...customerDataFindings(cpuProfileText ? cpuProfilePrivacyText(text) : operationalText ?
+          operationalPrivacyText(text, githubIdentities) : verifiedGithubMetadataText(text, githubIdentities),
+        relative(root, path), blockedDigests));
         continue;
       }
       if (!approvedBinaryDigests.has(sha256(body))) {
@@ -427,7 +442,9 @@ async function scanPrivacyCandidates(candidates) {
     try { body = await readFile(path, "utf8"); } catch { continue; }
     const nativeText = verifiedNativeProbeMetadataText(body, await ownNativeProbeIdentity(path, nativeProbeIdentities));
     const sourceText = verifiedSyntheticSourceFixtureText(nativeText, await ownSourceFixtureIdentity(path, nativeProbeIdentities));
-    findings.push(...customerDataFindings(verifiedGithubMetadataText(sourceText, githubIdentities), relative(root, path), blockedDigests));
+    findings.push(...customerDataFindings(extname(path).toLowerCase() === ".jsonl" ?
+      operationalPrivacyText(sourceText, githubIdentities) : verifiedGithubMetadataText(sourceText, githubIdentities),
+    relative(root, path), blockedDigests));
   }
   return [...new Set(findings)].sort();
 }
