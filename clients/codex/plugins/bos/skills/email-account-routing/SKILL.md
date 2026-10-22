@@ -2,8 +2,8 @@
 name: email-account-routing
 description: Route email searches, thread reads, summaries, drafts, sends, and mailbox actions through the exact mailbox owner and tenant. Use whenever a BOS workflow names or implies email, Gmail, a mailbox, a message, or a thread.
 metadata:
-  version: "1.0.4"
-  requires: "{\"bos-mcp-client\":\"1.0.4\"}"
+  version: "1.0.6"
+  requires: "{\"bos-mcp-client\":\"1.0.6\"}"
 ---
 
 

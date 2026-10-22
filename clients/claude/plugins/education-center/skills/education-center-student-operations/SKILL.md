@@ -2,8 +2,8 @@
 name: education-center-student-operations
 description: Handle Education Center student enrollment and progress-report workflows across tenant-scoped BOS data and Care.com confirmation emails in the configured customer mailbox. Use when asked to find students, produce or reconcile enrollment reports, compare Lead Director and Calimatic state, include Care.com Backup Care enrollments, locate progress reports, summarize progress evidence, or identify missing student-data capabilities.
 metadata:
-  version: "1.0.4"
-  requires: "{\"bos-mcp-client\":\"1.0.4\",\"bos-plugin-settings-initialization\":\"1.0.4\",\"education-center-customer-initialization\":\"1.0.4\",\"education-center-service-routing\":\"1.0.4\"}"
+  version: "1.0.6"
+  requires: "{\"bos-mcp-client\":\"1.0.6\",\"bos-plugin-settings-initialization\":\"1.0.6\",\"education-center-customer-initialization\":\"1.0.6\",\"education-center-service-routing\":\"1.0.6\"}"
 ---
 
 

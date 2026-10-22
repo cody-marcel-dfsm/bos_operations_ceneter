@@ -204,7 +204,7 @@ export async function createReviewerTools({session,state,release}) {
         reportingContext();
         if(!state.canary||state.kind==='negative'||!state.validated_contracts?.['app-describe']||
           Object.values(state.failed_validations??{}).some(Boolean))return false;
-        const current=[...contacts.values()].find(contact=>digest(contact)===digest(contract));
+        const current=[...contacts.entries()].find(([id,contact])=>trustedSchemaDocuments.has(id)&&digest(contact)===digest(contract))?.[1];
         if(!current||request.method!==current.execution.method||request.href!==current.execution.uri||
           !state.allowed_effects?.includes(current.effect))return false;
         if(current.effect==='read')return true;
@@ -241,7 +241,7 @@ export async function createReviewerTools({session,state,release}) {
       foreign||=!!item.context_handle&&item.context_handle!==state.handle;
       foreign||=!!item.server&&!['BOS-Platform','BOS_Platform'].includes(item.server);
       if(foreign)return;
-      if(item.operation&&['described','not_available'].includes(item.status)){
+      if(kind==='operation-describe'&&item.operation&&['described','not_available'].includes(item.status)){
         // A newly observed contract retires prior contacts for that operation in
         // this selected context, including transitions to unavailable.
         for(const [contactId,prior] of contacts)if(prior.operation===item.operation)contacts.delete(contactId);
@@ -275,7 +275,7 @@ export async function createReviewerTools({session,state,release}) {
           const validation=await installed.call('validate_installed',{path:discoveryValidatorPath,mode:'app-describe',document});
           // Provenance is checked against the exact observed bytes before observe() sanitizes its retained copy.
           observe({tool_name:'mcp__Acceptance__validate_installed',tool_input:{path:discoveryValidatorPath,mode:'app-describe',document},tool_response:validation},state);
-          if(validation.valid===true)state.validated_contracts['app-describe']=digest(document);
+          if(validation.valid===true){const current=digest(document);if(state.validated_contracts['app-describe']!==current)contacts.clear();state.validated_contracts['app-describe']=current;}
           publishedValidation={valid:validation.valid===true,mode:'app-describe',document_id:exposed.document_id,release_commit:bos.release_commit};
         }
       }
@@ -364,7 +364,7 @@ export async function createReviewerTools({session,state,release}) {
       }
       state.pre_calls=(state.pre_calls??0)+1;const denied=permission(event,state);
       if(denied){state.denials.push({tool:name,reason:denied});return {isError:true,reason:denied};}
-      const result=await installed.call(short,event.tool_input);observe({...event,tool_response:result},state);if(short==='validate_installed'&&result.valid===true){trustedSchemaDocuments.add(args.document_id);if(args.mode==='app-describe')state.validated_contracts['app-describe']=digest(documents.get(args.document_id));}return result;
+      const result=await installed.call(short,event.tool_input);observe({...event,tool_response:result},state);if(short==='validate_installed'&&result.valid===true){trustedSchemaDocuments.add(args.document_id);if(args.mode==='app-describe'){const current=digest(documents.get(args.document_id));if(state.validated_contracts['app-describe']!==current)contacts.clear();state.validated_contracts['app-describe']=current;}}return result;
     }
     if(name==='bos_get_context')return guarded({tool_name:'mcp__BOS__bos_get_context',tool_input:{}},async()=>{
       const response=await mcp('bos.get_context',{});return response;
@@ -509,7 +509,7 @@ export async function createReviewerTools({session,state,release}) {
       if(validation.valid!==true)throw new Error('reviewer_describe_response_invalid');
       state.validated_document_proofs??={};state.validated_document_proofs[documentDigests(raw)[0]]={mode:'operation-describe',context_handle:state.handle,scope:{...state.selected_scope}};
       state.fixtureResponses.push({operation:'app.describe',transport:'https_discovery',successful:true,body:raw});
-      const exposed=expose(raw);
+      const exposed=expose(raw,undefined,'operation-describe');
       trustedSchemaDocuments.add(exposed.document_id);for(const contact of exposed.advertised_https_contacts??[])trustedSchemaDocuments.add(contact.document_id);
       return {authorized_context:reportingContext(),...exposed,transport:'https-discovery',published_validation:{valid:true,mode:'operation-describe',document_id:exposed.document_id,release_commit:bos.release_commit}};
     }

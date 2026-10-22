@@ -779,7 +779,10 @@ export function createBosExternalDependencyAdapter({
     const scopeCheck = await captureExecutionScope();
     const requestOnceDiscovered = async () => {
       const request = await buildDiscoveredRequest(pinnedContact, payloadSupplied, pinnedPayload);
-      await verifyRequest(request, pinnedContact, scopeCheck, described.effect !== "read");
+      // The caller's effect label cannot decide whether its descriptor is
+      // trusted. The host verifies every exact contact against current discovery;
+      // only that authentic effect decides which user approval is required.
+      await verifyRequest(request, pinnedContact, scopeCheck, true);
       try {
         return await hostTransport.request(request);
       } catch (cause) {

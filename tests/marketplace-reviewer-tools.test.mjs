@@ -52,6 +52,13 @@ test('fetch host keeps declared file bytes on runtime result and only metadata i
    assert.doesNotMatch(JSON.stringify(result),/opaque_secret|synthetic-only-file-bytes|binaryResponse/);
    assert.doesNotMatch(JSON.stringify(state),/opaque_secret|synthetic-only-file-bytes|binaryResponse/);
   }
+  operation.execution.uri+='-refreshed';
+  const fresh=await tools.call('bos_https_describe',{document_id:observed.document_id,operations:['search']});
+  assert.notEqual(fresh.advertised_https_contacts[0].contact_id,contactId);
+  assert.equal((await tools.call('bos_https_operation',{contact_id:contactId,payload:{text:'Synthetic file'}})).reason,'reviewer_contact_not_observed');
+  parent.operations=[{operation:'search',status:'not_available'}];
+  await tools.call('bos_https_describe',{document_id:observed.document_id,operations:['search']});
+  assert.equal((await tools.call('bos_https_operation',{contact_id:fresh.advertised_https_contacts[0].contact_id,payload:{text:'Synthetic file'}})).reason,'reviewer_contact_not_observed');
  }finally{await rm(root,{recursive:true,force:true});}
 });
 

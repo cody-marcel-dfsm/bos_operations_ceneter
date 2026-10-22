@@ -2,8 +2,8 @@
 name: partnership-proposal-builder
 description: Build concise, professional partnership proposal documents and PDFs for school, enrichment, robotics, STEM, education-center, or local partner programs. Use when drafting, revising, formatting, splitting, or exporting a partnership proposal, school proposal, program proposal, option proposal, sales proposal, customer-facing PDF, or editable proposal source, especially when pricing, curriculum, calendars, cohort structure, summer camps, humanoid robotics, or school-year programs are involved.
 metadata:
-  version: "1.0.4"
-  requires: "{\"bos-mcp-client\":\"1.0.4\",\"bos-plugin-settings-initialization\":\"1.0.4\",\"education-center-customer-initialization\":\"1.0.4\"}"
+  version: "1.0.6"
+  requires: "{\"bos-mcp-client\":\"1.0.6\",\"bos-plugin-settings-initialization\":\"1.0.6\",\"education-center-customer-initialization\":\"1.0.6\"}"
 ---
 
 
