@@ -90,8 +90,10 @@ class ParallelReview(unittest.TestCase):
             'status': 'VERIFIED', 'environment_digest': 'environment', 'inputs': inputs, 'command': ['owned-check']}]
         self.context['unadopted_assessments'] = [{'round': index, 'actual_outcome': 'ERROR',
             'reported_review_status': 'COMPLETE', 'reported_verdict': 'APPROVED', 'status': 'UNADOPTED',
-            'observations': [{'path': 'source.py', 'status': 'REVIEWED', 'reason': 'Original source criterion', 'inputs': inputs}] +
-                [{'path': 'other/' + str(n), 'reason': 'Unrelated retained criterion', 'inputs': inputs[:1]} for n in range(486)],
+            'observations': [{'path': 'source.py', 'reported_status': 'REVIEWED', 'input_binding_valid': True,
+                              'binding_error': None, 'changed_inputs': []}] +
+                [{'path': 'other/' + str(n), 'reported_status': 'REVIEWED', 'input_binding_valid': True,
+                  'binding_error': None, 'changed_inputs': []} for n in range(486)],
             'finding_ids': ['F3004'], 'finding_references': [{'id': 'F3004', 'file': 'source.py'}]} for index in range(13)]
         self.context['prior_findings'] = {
             'F3004': {'state': 'OPEN', 'file': 'source.py', 'affected_paths': ['source.py'], 'required_behavior': 'Preserve exact criteria'},
@@ -123,7 +125,8 @@ class ParallelReview(unittest.TestCase):
 
     def test_retained_fallback_and_mandatory_budget_preserve_original_facts(self):
         self.context['unadopted_assessments'] = [{'actual_outcome': 'ERROR', 'observations': [
-            {'path': 'source.py', 'reason': 'Large original observation ' * 5000}], 'finding_references': []}]
+            {'path': 'source.py', 'reported_status': 'REVIEWED', 'input_binding_valid': False,
+             'binding_error': 'Large original binding diagnostic ' * 5000, 'changed_inputs': ['source.py']}], 'finding_references': []}]
         plan = parallel.partition(self.context, self.binding, self.digest)
         cohort = next(item for item in plan['cohorts'] if item['id'] == parallel.AREAS[1])
         packet = parallel.packet(self.context, plan, cohort, self.run/'review-context.json', self.digest)
