@@ -72,7 +72,8 @@ class SourceFrontier(unittest.TestCase):
                  'clients/codex/plugins/bos/skills/example/SKILL.md',
                  'clients/claude/plugins/bos/skills/example/SKILL.md',
                  'clients/muse/plugins/bos/skills/example/SKILL.md']
-        controls = ['scripts/check-package.mjs', 'scripts/lib/package-model.mjs', 'products/bos/product.json']
+        controls = ['scripts/check-package.mjs', 'scripts/lib/package-model.mjs', 'products/bos/product.json',
+                    '.agents/plugins/marketplace.json', 'tools/scanned-source.py']
         before = '---\nname: example\nmetadata:\n  version: "1.0.1"\n---\n' + '# Rule\n' + 'Inspect current contracts.\n' * 1000
         for name in paths + controls:
             path = self.root / name; path.parent.mkdir(parents=True, exist_ok=True)
@@ -126,10 +127,11 @@ class SourceFrontier(unittest.TestCase):
             self.assertIn('1.0.1',text);self.assertIn('1.0.2',text)
 
     def test_body_generator_configuration_and_output_mode_changes_invalidate_grouping_proof(self):
-        for change in ['semantic-body','generator','configuration','output-mode']:
+        for change in ['semantic-body','generator','configuration','marketplace','scanner-input','output-mode']:
             with self.subTest(change=change):
                 paths,controls=self.skill_fixture()
-                target=self.root/(paths[-1] if change in ['semantic-body','output-mode'] else controls[1 if change=='generator' else 2])
+                control={'generator':1,'configuration':2,'marketplace':3,'scanner-input':4}.get(change)
+                target=self.root/(paths[-1] if control is None else controls[control])
                 if change=='output-mode':target.chmod(0o755)
                 else:target.write_text(target.read_text()+'\nChanged current behavior.\n')
                 self.git('add','.');self.git('commit','-qm','invalidate generation proof');self.refresh_context()

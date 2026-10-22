@@ -18,9 +18,8 @@ MAX_INLINE_BYTES = 96 * 1024
 
 
 def generation_input(path):
-    """Conservative package-check closure, excluding maintainer review execution."""
-    return path != 'AGENTS.md' and not path.startswith((
-        'tools/', 'tests/', '.agents/', '.claude/', 'Vault/', '.github/', '.githooks/'))
+    """The existing checker scans the whole repository except private Vault."""
+    return not path.startswith('Vault/')
 
 
 def _generation_proof(context, snap):
