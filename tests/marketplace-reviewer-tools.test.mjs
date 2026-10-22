@@ -28,6 +28,8 @@ test('fetch host keeps declared file bytes on runtime result and only metadata i
   const app=syntheticAppDescribe(),uri='bos://apps/lead-director/app.describe';
   const parent=syntheticOperationDescribe();parent.operations=parent.operations.slice(0,1);
   const operation=parent.operations[0];
+  const inertExample=structuredClone(operation);inertExample.operation='example_lookup';
+  operation.input_schema.examples=[inertExample,JSON.stringify(inertExample),{operation:'search',status:'not_available'}];
   operation.execution.response={body:'binary',content_type:'provider',integrity:'provider_md5_if_available',headers:['Content-Disposition','Content-Length','Content-Type','Content-MD5','X-Correlation-ID']};
   Object.assign(operation.limits,{maximum_attachment_bytes:20971520,maximum_file_bytes:20971520,maximum_duration_seconds:120,maximum_preparation_seconds:45});
   const state={product:'bos',installed_root:root,installed_roots:{bos:root},published_commits:{bos:commit},organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,resource:'https://dfsm.ai/mcp/apps/bos/platform',canary:true,kind:'positive',handle:context.context_handle,resources:[uri],observations:[],fixtureResponses:[],denials:[],allowed_effects:['read'],validated_contracts:{},failed_validations:{}};
@@ -42,6 +44,8 @@ test('fetch host keeps declared file bytes on runtime result and only metadata i
   const observed=await tools.call('bos_read_resource',{uri});
   assert.equal(observed.published_validation.valid,true);
   const described=await tools.call('bos_https_describe',{document_id:observed.document_id,operations:['search']});
+  assert.equal(described.published_validation.valid,true);
+  assert.deepEqual(described.advertised_https_contacts.map(({operation,pointer})=>({operation,pointer})),[{operation:'search',pointer:'/operations/0'}],'schema examples remain inert and cannot register or retire contacts');
   const contactId=described.advertised_https_contacts[0].contact_id;
   for(md5 of [true,false]){
    const result=await tools.call('bos_https_operation',{contact_id:contactId,payload:{text:'Synthetic file'}});

@@ -235,21 +235,18 @@ export async function createReviewerTools({session,state,release}) {
     const raw=reviewerDiscoveryDocument(value,state,resourceUri),id=retainDocument(raw);
     if(!value?.isError&&(kind==='api-contract'||Array.isArray(raw.operations)))originalDocuments.set(id,kind??'operation-describe');
     const advertised=[];
-    const collect=(item,foreign=false,pointer='')=>{
-      if(typeof item==='string'){try{collect(JSON.parse(item),foreign,null);}catch{}return;}
-      if(!item||typeof item!=='object')return;
-      foreign||=!!item.context_handle&&item.context_handle!==state.handle;
-      foreign||=!!item.server&&!['BOS-Platform','BOS_Platform'].includes(item.server);
-      if(foreign)return;
-      if(kind==='operation-describe'&&item.operation&&['described','not_available'].includes(item.status)){
+    if(kind==='operation-describe'){
+      // The published validator assigns execution meaning only to this list.
+      // Nested schemas, examples and JSON strings remain inert document data.
+      for(const [index,item] of raw.operations.entries()){
+        if(item.context_handle&&item.context_handle!==state.handle||
+          item.server&&!['BOS-Platform','BOS_Platform'].includes(item.server))continue;
         // A newly observed contract retires prior contacts for that operation in
         // this selected context, including transitions to unavailable.
         for(const [contactId,prior] of contacts)if(prior.operation===item.operation)contacts.delete(contactId);
-        if(item.status==='described'&&item.execution&&item.input_schema){const contactId=retainDocument(item);contacts.set(contactId,structuredClone(item));advertised.push({contact_id:contactId,document_id:contactId,...(pointer===null?{}:{parent_document_id:id,pointer}),operation:item.operation});}
+        if(item.status==='described'&&item.execution&&item.input_schema){const contactId=retainDocument(item);contacts.set(contactId,structuredClone(item));advertised.push({contact_id:contactId,document_id:contactId,parent_document_id:id,pointer:'/operations/'+index,operation:item.operation});}
       }
-      for(const [key,nested] of Object.entries(item))collect(nested,foreign,pointer===null?null:pointer+'/'+key.replaceAll('~','~0').replaceAll('/','~1'));
-    };
-    collect(raw);
+    }
     return {document_id:id,document:sanitized(raw),...(advertised.length?{advertised_https_contacts:advertised}:{})};
   };
   const guarded=async(event,run)=>{
