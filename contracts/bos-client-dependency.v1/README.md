@@ -41,6 +41,10 @@ contacts stop before transport; legitimate GET/POST reads require trusted
 provenance and scope without an extra human approval. A host lacking these
 proofs can prepare discovered requests until its existing integration is ready.
 
+Discovered notification streams use those same callbacks for every initial and
+recovered dispatch. The verified immutable request includes its exact identity
+query, stream headers and resume cursor, with scope checked after verification.
+
 The installed BOS host injects one ready consumer object into a dependent
 product. `acceptBosSharedCacheConsumer(consumer)` validates and narrows that
 ready object without accepting any composition input. A dependent product

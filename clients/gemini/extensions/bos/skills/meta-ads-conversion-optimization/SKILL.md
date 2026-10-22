@@ -2,8 +2,8 @@
 name: meta-ads-conversion-optimization
 description: Diagnose, optimize, and report on Meta/Facebook/Instagram paid ads that are intended to drive leads, purchases, booked calls, trials, appointments, subscriptions, or other sales conversions. Use when evaluating Meta campaign performance, ad creative, audiences, offer economics, landing-page conversion, pixel/CAPI tracking, funnel attribution, ROAS/CAC, budget scaling, retargeting, or sales follow-up from paid social traffic.
 metadata:
-  version: "1.0.6"
-  requires: "{\"bos-mcp-client\":\"1.0.6\"}"
+  version: "1.0.7"
+  requires: "{\"bos-mcp-client\":\"1.0.7\"}"
 ---
 
 

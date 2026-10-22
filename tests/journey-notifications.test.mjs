@@ -4,6 +4,7 @@ import {mkdtemp, rm, readdir, stat} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {createServer} from "node:http";
+import {isDeepStrictEqual} from "node:util";
 import {parseNotificationSse, createNotificationProtocol, consumeNotificationStream, runNotificationConnection,
   drainNotificationQueue} from "../source/platform/bos-workflow-orchestrator/scripts/journey-notifications.mjs";
 import {createNotificationQueue} from "../source/host-runtime/bos-journey-notifications/notification-queue.mjs";
@@ -204,10 +205,13 @@ test("control frames enforce declared codes, retryability and private-detail san
 });
 
 function hostAdapter(overrides = {}) {
+  const trustedContact = notificationFixture().contact;
   const transport = {request: async () => {throw new Error("Unexpected ordinary request");},
     recoverAuthentication: async () => {throw new Error("Unexpected recovery");},
     getProtectedResource: async () => "https://dfsm.ai/mcp/apps/bos/platform",
-    captureExecutionScope: async () => async () => true, verifyExecutionIntent: async () => true,
+    captureExecutionScope: async () => async () => true,
+    verifyExecutionIntent: async intent => intent.operation === "journeys.notifications.wake" ||
+      isDeepStrictEqual(intent.contract, trustedContact),
     getNotificationCapabilities: async () => ({authenticatedEventStream: true, durableTaskWake: true}),
     scheduleTaskWake: async () => ({accepted: true}), ...overrides};
   return createBosExternalDependencyAdapter({hostTransport: transport, contextProvider: {
@@ -322,13 +326,91 @@ test("unsupported hosts, scope changes, and task intent rejection fail without d
   const absent = hostAdapter();
   assert.deepEqual(await absent.getNotificationCapabilities(), {authenticatedEventStream: false, durableTaskWake: false});
   await assert.rejects(absent.openNotificationStream(contact, {identities: ["one"]}), /unavailable/);
-  let calls = 0, current = true;
+  let calls = 0, current = true, opens = 0;
   const adapter = hostAdapter({openAuthenticatedEventStream: async () => ({status: 200, headers: {"content-type": "text/event-stream"},
     chunks: (async function* () {current = false; yield new TextEncoder().encode(encodeFrame(ready(["one"])));})()}),
     captureExecutionScope: async () => async () => current, scheduleTaskWake: async () => {calls++;}, verifyExecutionIntent: async () => false});
   await assert.rejects(adapter.scheduleNotificationWake({taskRef: "task", pendingWorkRef: "pending"}), /review/);
-  const reply = await adapter.openNotificationStream(contact, {identities: ["one"]});
+  await assert.rejects(adapter.openNotificationStream(contact, {identities: ["one"]}), /review/);
+  const scoped = hostAdapter({openAuthenticatedEventStream: async () => {opens++; return {status: 200,
+    headers: {"content-type": "text/event-stream"},
+    chunks: (async function* () {current = false; yield new TextEncoder().encode(encodeFrame(ready(["one"])));})()};},
+    captureExecutionScope: async () => async () => current});
+  const reply = await scoped.openNotificationStream(contact, {identities: ["one"]});
   await assert.rejects(collect(reply.chunks), /scope/); assert.equal(calls, 0);
+  assert.equal(opens, 1);
+});
+
+test("stream admission rejects unknown, superseded and denied contacts before any stream open", async () => {
+  const {contact} = notificationFixture();
+  for (const verifier of [async () => false, async () => {throw new Error("Rejected");}]) {
+    let opens = 0;
+    const adapter = hostAdapter({verifyExecutionIntent: verifier, openAuthenticatedEventStream: async () => {opens++;}});
+    await assert.rejects(adapter.openNotificationStream(contact, {identities: ["one"]}), /review/);
+    assert.equal(opens, 0);
+  }
+  let current = structuredClone(contact), opens = 0;
+  const adapter = hostAdapter({verifyExecutionIntent: async intent => isDeepStrictEqual(intent.contract, current),
+    openAuthenticatedEventStream: async () => {opens++; return {status: 200, headers: {"content-type": "text/event-stream"}, chunks: bytes("")};}});
+  const forged = structuredClone(contact); forged.execution.uri = "/bos/synthetic/unadvertised-stream";
+  await assert.rejects(adapter.openNotificationStream(forged, {identities: ["one"]}), /review/);
+  current.execution.uri += "-rediscovered";
+  await assert.rejects(adapter.openNotificationStream(contact, {identities: ["one"]}), /review/);
+  assert.equal(opens, 0);
+  assert.equal((await adapter.openNotificationStream(current, {identities: ["one"]})).status, 200);
+  assert.equal(opens, 1);
+});
+
+test("stream verification pins the complete effective query and cursor across caller and verifier mutation", async () => {
+  const {contact} = notificationFixture(), trusted = structuredClone(contact), identities = ["café"];
+  let sent, reviews = 0;
+  const adapter = hostAdapter({getNotificationCapabilities: async () => {
+    contact.execution.uri = "/bos/synthetic/caller-forgery"; identities[0] = "changed";
+    return {authenticatedEventStream: true, durableTaskWake: true};},
+    verifyExecutionIntent: async intent => {
+      reviews++; assert.deepEqual(intent.contract, trusted);
+      assert.equal(intent.request.href, trusted.execution.uri + "?identity=caf%C3%A9");
+      assert.equal(intent.request.headers["Last-Event-ID"], "nc_saved");
+      assert.equal(intent.request.headers.accept, "text/event-stream");
+      assert.equal(intent.request.headers["cache-control"], "no-cache");
+      intent.request.href = "/bos/synthetic/verifier-forgery";
+      intent.request.headers["Last-Event-ID"] = "nc_changed";
+      intent.contract.execution.uri = "/bos/synthetic/contract-forgery"; return true;
+    }, openAuthenticatedEventStream: async request => {sent = request;
+      return {status: 200, headers: {"content-type": "text/event-stream"}, chunks: bytes("")};}});
+  await adapter.openNotificationStream(contact, {identities, cursor: "nc_saved"});
+  assert.equal(reviews, 1); assert.equal(sent.href, trusted.execution.uri + "?identity=caf%C3%A9");
+  assert.equal(sent.headers["Last-Event-ID"], "nc_saved");
+});
+
+test("scope changes before or during asynchronous stream review prevent opening", async () => {
+  const {contact} = notificationFixture();
+  for (const before of [true, false]) {
+    let current = !before, opens = 0, reviews = 0;
+    const adapter = hostAdapter({captureExecutionScope: async () => async () => current,
+      verifyExecutionIntent: async () => {reviews++; await Promise.resolve(); current = false; return true;},
+      openAuthenticatedEventStream: async () => {opens++;}});
+    await assert.rejects(adapter.openNotificationStream(contact, {identities: ["one"]}), /scope/);
+    assert.equal(opens, 0); assert.equal(reviews, before ? 0 : 1);
+  }
+});
+
+test("stream recovery verifies current discovery and the original effective intent again", async () => {
+  const {contact} = notificationFixture(), resource = "https://dfsm.ai/mcp/apps/bos/platform";
+  for (const supersede of [false, true]) {
+    let current = structuredClone(contact), opens = 0, reviews = 0, recoveries = 0;
+    const adapter = hostAdapter({verifyExecutionIntent: async intent => {
+      reviews++; assert.equal(intent.request.href, contact.execution.uri + "?identity=one");
+      assert.equal(intent.request.headers["Last-Event-ID"], "nc_saved");
+      return isDeepStrictEqual(intent.contract, current);
+    }, openAuthenticatedEventStream: async () => ++opens === 1 ? {code: "EXPIRED_TOKEN", resource} :
+      {status: 200, headers: {"content-type": "text/event-stream"}, chunks: bytes("")},
+    recoverAuthentication: async () => {recoveries++; if (supersede) current.execution.uri += "-rediscovered";
+      return {schema_version: "bos.authentication-handoff/v1", message_type: "result", protected_resource: resource, status: "READY"};}});
+    const running = adapter.openNotificationStream(contact, {identities: ["one"], cursor: "nc_saved"});
+    if (supersede) await assert.rejects(running, /review/); else assert.equal((await running).status, 200);
+    assert.equal(reviews, 2); assert.equal(recoveries, 1); assert.equal(opens, supersede ? 1 : 2);
+  }
 });
 
 test("one connection preserves pending work on replay gap and respects Retry-After", async t => {

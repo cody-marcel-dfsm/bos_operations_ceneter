@@ -825,6 +825,7 @@ export function createBosExternalDependencyAdapter({
   };
   const openNotificationStream = async (contact, {identities, cursor, signal} = {}) => {
     const current = validateDiscoveredOperation(structuredSnapshot(contact, "notification contact"), false).contact;
+    identities = structuredSnapshot(identities, "notification watch list");
     const descriptor = current.execution.response;
     if (current.operation !== "journeys.notifications.subscribe" || current.effect !== "read" ||
         current.execution.method !== "GET" || descriptor?.body !== "event_stream" ||
@@ -855,7 +856,7 @@ export function createBosExternalDependencyAdapter({
       request.headers.accept = "text/event-stream";
       request.headers["cache-control"] = "no-cache";
       if (cursor !== undefined) request.headers["Last-Event-ID"] = cursor;
-      await assertExecutionScope(scopeCheck);
+      await verifyRequest(request, current, scopeCheck, true);
       if (signal?.aborted) throw new BosNotificationTransportError("cancelled");
       let reply;
       try { reply = await hostTransport.openAuthenticatedEventStream({...request, signal}); }

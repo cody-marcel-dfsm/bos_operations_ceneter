@@ -2,8 +2,8 @@
 name: education-center-customer-initialization
 description: Initialize or repair Education Center customer settings after installation by deriving non-secret values from the active client and authenticated BOS context, proposing sourced defaults for uncertain values, and letting the user accept the complete recommendation at once.
 metadata:
-  version: "1.0.6"
-  requires: "{\"bos-mcp-client\":\"1.0.6\"}"
+  version: "1.0.7"
+  requires: "{\"bos-mcp-client\":\"1.0.7\"}"
 ---
 
 

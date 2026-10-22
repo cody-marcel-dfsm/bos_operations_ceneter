@@ -14,7 +14,7 @@
     {
       "id": "external_dependency_adapter",
       "path": "skills/bos-external-dependency-adapter/scripts/external-dependency-adapter.mjs",
-      "sha256": "6c4ae27f146dea44187e29c5e391f201259792800f63b26f321e3d64a6b75378"
+      "sha256": "210361f2e67e916d34c5a134a18a484a508e8bc79bf94bba5da760494353591a"
     },
     {
       "id": "external_dependency_schema_runtime",
@@ -41,7 +41,7 @@
     {
       "path": "README.md",
       "media_type": "text/markdown",
-      "sha256": "c4f3f74bad493520bf1b4f11290601e221786b62643f5a91acdeaf941c81037b"
+      "sha256": "76e822d0efb267cb8eaa57f3ee898f1e63bb6f38b69a7b5dd8a9bd5a5716c08a"
     },
     {
       "path": "discovered-operation.request.example.json",
@@ -84,5 +84,5 @@
       "sha256": "046c4dd184af18af526ed64bd37a75dd316397b3d1437886eb7f57deb5e99d2d"
     }
   ],
-  "bundle_sha256": "2275794ad6d1aa312e4f982b1a0081f52601ac7ff43134738ac24299a5873281"
+  "bundle_sha256": "72657ccfd483d5b4a12e901f5a2f8bf4e761d4d336c9a70e4e4ef0a1716251c9"
 }
