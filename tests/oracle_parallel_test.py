@@ -134,6 +134,23 @@ class ParallelReview(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Mandatory cohort facts'):
             parallel.packet(self.context, plan, plan['cohorts'][0], self.run/'review-context.json', self.digest)
 
+    def test_disposition_and_prepared_path_projection_keeps_exact_source_identity_and_original_facts(self):
+        self.context['path_dispositions'] = [{'path': 'source.py', 'disposition': 'DEPENDENCY_CHANGED',
+            'current_fact': {'object': 'current'}, 'last_verified_fact': {'object': 'prior'},
+            'reasons': ['Exact original dependency changed']}, {'path': 'unchanged.py', 'disposition': 'REUSABLE_VERIFIED'}]
+        plan = parallel.partition(self.context, self.binding, self.digest)
+        cohort = next(item for item in plan['cohorts'] if item['id'] == parallel.AREAS[1])
+        prepared = {'manifest': 'full-frontier.json', 'required_paths': cohort['required_paths'], 'prepared_pages': 12}
+        packet = parallel.packet(self.context, plan, cohort, self.run/'review-context.json', self.digest, prepared)
+        disposition = packet['path_dispositions']
+        self.assertEqual(disposition['assigned_status_indices'], {'DEPENDENCY_CHANGED': [0]})
+        self.assertEqual(disposition['original']['value_sha256'], self.digest(self.context['path_dispositions']))
+        self.assertEqual(packet['input_hashes']['source.py'], 'bound-source.py')
+        self.assertEqual(packet['cohort']['required_paths'], prepared['required_paths'])
+        self.assertEqual(packet['prepared_source']['required_paths_sha256'], self.digest(prepared['required_paths']))
+        self.assertNotIn('required_paths', packet['prepared_source'])
+        self.assertEqual(prepared['required_paths'], cohort['required_paths'], 'Complete original frontier metadata remains unchanged')
+
     def test_dispatch_budget_counts_complete_wrapped_escaped_payload(self):
         command = ['codex', '--developer', '\\"多' * 20, 'source prompt and current effect facts']
         context = o._pretty({'mandatory_effect': '\\"多' * 20})

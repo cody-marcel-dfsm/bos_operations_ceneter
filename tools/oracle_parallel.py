@@ -102,7 +102,6 @@ def packet(context, plan, cohort, parent_context, digest, prepared_source=None):
              "parent_context": str(parent_context), "parent_context_sha256": plan["context_sha256"],
              "input_hashes": {p: value for p, value in context["input_hashes"].items() if p in selected},
              "prior_findings": relevant_findings,
-             "path_dispositions": [item for item in context.get("path_dispositions", []) if item.get("path") in assigned],
              "proposal_scope": context.get("proposal_scope"),
              "previous_proposal_scope": context.get("previous_proposal_scope"), "scope_changed": context.get("scope_changed"),
              "open_prior_finding_ids": sorted(key for key, item in relevant_findings.items() if item.get('state') == 'OPEN'),
@@ -114,6 +113,14 @@ def packet(context, plan, cohort, parent_context, digest, prepared_source=None):
         return {'parent_context': str(parent_context), 'parent_context_sha256': plan['context_sha256'],
                 'digest_encoding': 'canonical-json-v1', 'json_pointer': pointer,
                 'value_sha256': digest(item), 'navigation_only': True, 'eligibility': 'NONE'}
+
+    dispositions = context.get('path_dispositions', [])
+    status_indices = {}
+    for index, item in enumerate(dispositions):
+        if item.get('path') in assigned:
+            status_indices.setdefault(item.get('disposition', 'UNKNOWN'), []).append(index)
+    value['path_dispositions'] = {'original': original('/path_dispositions', dispositions),
+                                 'assigned_status_indices': status_indices}
 
     unadopted = []
     for index, item in enumerate(context.get('unadopted_assessments', [])):
@@ -154,7 +161,9 @@ def packet(context, plan, cohort, parent_context, digest, prepared_source=None):
                     'retained_proof_references': retained['retained_proof_references']}
     value.update(retained)
     if prepared_source is not None:
-        value['prepared_source'] = prepared_source
+        value['prepared_source'] = {key: item for key, item in prepared_source.items() if key != 'required_paths'}
+        value['prepared_source']['required_paths_sha256'] = digest(prepared_source.get('required_paths', []))
+        value['prepared_source']['required_path_count'] = len(prepared_source.get('required_paths', []))
     result = dict(value, packet_sha256=digest(value))
     if len(_serialized(retained)) > RETAINED_NAVIGATION_MAX_BYTES or len(_serialized(result)) > COHORT_PACKET_MAX_BYTES:
         raise CohortPacketBudgetError('Mandatory cohort facts exceed the bounded serialized packet; replan without dropping criteria')
