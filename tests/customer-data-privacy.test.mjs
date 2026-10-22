@@ -200,6 +200,11 @@ test("multi-record operational JSON inspects escaped strings and duplicate membe
     assert(inspected.startsWith(raw), "all original nonmetadata bytes remain inspected");
     assert(customerDataFindings(inspected, "records.ndjson", new Set([sha256(phrase)]))
       .some(value => value.includes("identifier digest")));
+    for (const [value, kind] of [[address, "email"], [phone, "phone"], [phrase, "identifier digest"]]) {
+      const duplicate = `{"value":${encoded(value)},"value":""}\n{"safe":true}\n`;
+      assert(customerDataFindings(operationalPrivacyText(duplicate, {}), "duplicate.ndjson", new Set([sha256(phrase)]))
+        .some(finding => finding.includes(kind)));
+    }
     const numeric = '{"value":1e+000}\r\n{"safe":true}\r\n';
     assert(operationalPrivacyText(numeric, {}).includes(numeric));
     assert(customerDataFindings(operationalPrivacyText(numeric, {}), "records.ndjson", new Set([sha256("1e 000")]))
@@ -380,6 +385,12 @@ test("own HTTP GitHub check-run metadata verifies nested PR IDs while preserving
     verifiedGithubMetadataText(raw, registry), "retained-http.txt", blocked);
   const text = header + JSON.stringify(row);
   assert.deepEqual(scan(text), []);
+  assert.deepEqual(customerDataFindings(operationalPrivacyText(text, identities), "http.stderr", new Set()), []);
+  assert(operationalPrivacyText(text, identities).startsWith(header));
+  const records = JSON.stringify(row) + "\r\n" + JSON.stringify(row) + "\r\n";
+  assert.deepEqual(customerDataFindings(operationalPrivacyText(records, identities), "metadata.ndjson", new Set()), []);
+  assert(customerDataFindings(operationalPrivacyText(header.replace("HTTP/2.0", "INVALID") + JSON.stringify(row), identities),
+    "malformed-http.stderr", new Set()).some(value => value.includes("phone")));
   assert(verifiedGithubMetadataText(text, identities).startsWith(header), "all original headers remain inspected");
   for (const change of [r => { r.node_id = "foreign"; }, r => { r.url = r.url.replace(repository, "foreign/repository"); },
     r => { r.html_url += "?foreign"; }, r => { r.pull_requests[0].id += 1; },

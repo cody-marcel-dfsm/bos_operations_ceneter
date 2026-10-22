@@ -337,8 +337,12 @@ export function verifiedGithubMetadataText(text, identities) {
 // keeps its existing representation and avoids combining unrelated attributes.
 export function operationalPrivacyText(text, identities) {
   const whole = verifiedGithubMetadataText(text, identities);
-  const inspected = whole !== text ? whole : text.replace(/[^\r\n]+/gu,
-    line => verifiedGithubMetadataText(line, identities));
+  const records = text.split(/\r?\n/u).filter(line => line.trim());
+  const jsonRecords = records.length > 0 && records.every(line => {
+    try {JSON.parse(line); return true;} catch {return false;}
+  });
+  const inspected = whole !== text ? whole : jsonRecords ? text.replace(/[^\r\n]+/gu,
+    line => verifiedGithubMetadataText(line, identities)) : text;
   const decoded = [...inspected.matchAll(/"(?:\\[\s\S]|[^"\\])*"/gu)]
     .map(token => {try {return JSON.parse(token[0]);} catch {return token[0];}});
   return inspected + "\n" + decoded.join("\n");
