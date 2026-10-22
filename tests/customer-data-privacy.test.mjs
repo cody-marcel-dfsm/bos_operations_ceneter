@@ -292,7 +292,11 @@ test("malformed record recovery cannot consume later valid escaped values", asyn
     `{"broken":"unterminated\n{"value":${encode(value)}}\n`,
     `{"broken":"escape\\\n{"value":${encode(value)}}\n`,
     `{"bad":"\\xZZ","value":${encode(value)}}\n`,
-    `{"broken":"unterminated\r\n{"value":${encode(value)},"value":""}\r\n`
+    `{"broken":"unterminated\r\n{"value":${encode(value)},"value":""}\r\n`,
+    ...[1, 2, 3, 4].map(count => `{"broken":"prefix${"\\".repeat(count)}"tail\n{"value":${encode(value)}}\n`),
+    `{"first":"unterminated\n{"safe":true}\n{"second":"unterminated\n{"value":${encode(value)}}\n{"last":"unterminated\n`,
+    `{"broken":"unterminated\n{"nested":{"value":${encode(value)},"value":""}}\n`,
+    `{"broken":"unterminated\n{"value":${encode(value.slice(0, 3) + "\x1b[36;1m" + value.slice(3) + "\x1b[0m")}}\n`
   ];
   const paths = [];
   try {
@@ -300,7 +304,8 @@ test("malformed record recovery cannot consume later valid escaped values", asyn
       const path = join(directory, `email-${index}${suffix}`); await writeFile(path, text); paths.push(path);
       assert(operationalPrivacyText(text, {}).startsWith(text));
     }
-    const findings = await fixturePrivacyFailures(paths);
+    const findings = [];
+    for (let index = 0; index < paths.length; index += 100) findings.push(...await fixturePrivacyFailures(paths.slice(index, index + 100)));
     for (const path of paths) assert(findings.some(value => value.startsWith(relative(root, path) + ":")), path);
     for (const [value, kind] of [[phone, "phone"], [phrase, "identifier digest"]]) for (const text of rows(value)) {
       assert(customerDataFindings(operationalPrivacyText(text, {}), "recovery.log", new Set([sha256(phrase)]))
