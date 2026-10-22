@@ -153,6 +153,7 @@ export async function createReviewerTools({session,state,release}) {
   let activeBusinessContact=null,lastBusinessHttpMetadata=null;
   let nextReference=0,authorizedContextSource=null;
   const clearReferences=()=>{documents.clear();contacts.clear();references.clear();trustedSchemaDocuments.clear();originalDocuments.clear();authorizedContextSource=null;};
+  const retireOperations=operations=>{for(const [id,contact] of contacts)if(operations.includes(contact.operation))contacts.delete(id);};
   const retainDocument=raw=>{
     const hash=digest(raw),existing=references.get(hash);
     if(existing&&documents.has(existing))return existing;
@@ -243,7 +244,7 @@ export async function createReviewerTools({session,state,release}) {
           item.server&&!['BOS-Platform','BOS_Platform'].includes(item.server))continue;
         // A newly observed contract retires prior contacts for that operation in
         // this selected context, including transitions to unavailable.
-        for(const [contactId,prior] of contacts)if(prior.operation===item.operation)contacts.delete(contactId);
+        retireOperations([item.operation]);
         if(item.status==='described'&&item.execution&&item.input_schema){const contactId=retainDocument(item);contacts.set(contactId,structuredClone(item));advertised.push({contact_id:contactId,document_id:contactId,parent_document_id:id,pointer:'/operations/'+index,operation:item.operation});}
       }
     }
@@ -492,6 +493,9 @@ export async function createReviewerTools({session,state,release}) {
       if(url.search||!url.pathname.endsWith('/describe'))throw new Error('reviewer_describe_contact_invalid');
       const current=await freshContext();
       if(!documents.has(args.document_id)||state.validated_contracts?.['app-describe']!==digest(app))throw new Error('reviewer_discovery_refresh_required');
+      // A refresh attempt makes the selected previous contacts stale even if
+      // the request or published response validation subsequently fails.
+      retireOperations(keys);
       const response=await session.request(url.href,{method:contact.method,headers:{'content-type':'application/json','X-BOS-Context-Handle':current.context.context_handle},body:JSON.stringify({operations:keys})});
       if(!response.ok||!/^application\/(?:json|[a-z0-9.+-]+\+json)(?:;|$)/i.test(response.headers.get('content-type')??''))throw new Error('reviewer_describe_http_failed');
       const raw=reviewerDiscoveryDocument(await response.json(),state);

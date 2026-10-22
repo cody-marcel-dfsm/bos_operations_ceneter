@@ -56,13 +56,22 @@ test('fetch host keeps declared file bytes on runtime result and only metadata i
    assert.doesNotMatch(JSON.stringify(result),/opaque_secret|synthetic-only-file-bytes|binaryResponse/);
    assert.doesNotMatch(JSON.stringify(state),/opaque_secret|synthetic-only-file-bytes|binaryResponse/);
   }
-  operation.execution.uri+='-refreshed';
+  const oldContact=structuredClone(operation);
+  operation.execution.uri+='-refreshed';operation.input_schema.examples.push(oldContact);
   const fresh=await tools.call('bos_https_describe',{document_id:observed.document_id,operations:['search']});
+  assert.equal(fresh.advertised_https_contacts.length,1,'an old contact moved into an example stays inert');
   assert.notEqual(fresh.advertised_https_contacts[0].contact_id,contactId);
   assert.equal((await tools.call('bos_https_operation',{contact_id:contactId,payload:{text:'Synthetic file'}})).reason,'reviewer_contact_not_observed');
+  const currentSchema=operation.input_schema;operation.input_schema=null;
+  assert.equal((await tools.call('bos_https_describe',{document_id:observed.document_id,operations:['search']})).reason,'reviewer_describe_response_invalid');
+  assert.equal((await tools.call('bos_https_operation',{contact_id:fresh.advertised_https_contacts[0].contact_id,payload:{text:'Synthetic file'}})).reason,'reviewer_contact_not_observed','malformed refresh retires the prior contact');
+  operation.input_schema=currentSchema;
+  const restored=await tools.call('bos_https_describe',{document_id:observed.document_id,operations:['search']});
+  assert.equal(restored.published_validation.valid,true);
+  assert.equal(restored.advertised_https_contacts.length,1);
   parent.operations=[{operation:'search',status:'not_available'}];
   await tools.call('bos_https_describe',{document_id:observed.document_id,operations:['search']});
-  assert.equal((await tools.call('bos_https_operation',{contact_id:fresh.advertised_https_contacts[0].contact_id,payload:{text:'Synthetic file'}})).reason,'reviewer_contact_not_observed');
+  assert.equal((await tools.call('bos_https_operation',{contact_id:restored.advertised_https_contacts[0].contact_id,payload:{text:'Synthetic file'}})).reason,'reviewer_contact_not_observed');
  }finally{await rm(root,{recursive:true,force:true});}
 });
 
