@@ -367,6 +367,8 @@ test("own HTTP GitHub check-run metadata verifies nested PR IDs while preserving
   const body = JSON.stringify({...row, output: phrase});
   assert(scan(header + body, identities, new Set([sha256(phrase)])).some(value => value.includes("identifier digest")));
   assert.doesNotThrow(() => scan('HTTP/2.0 200 OK\n\n{"invalid":"\\xZZ"}'));
+  const svg = '<svg viewBox="0 0 1400 960"><path d="M 210 270 L 380 270"/></svg>';
+  assert.equal(verifiedGithubMetadataText(svg, identities), svg, "non-JSON text keeps its original representation");
 });
 
 test("privacy scanner includes untracked candidates and rejects unreviewed binaries", async () => {

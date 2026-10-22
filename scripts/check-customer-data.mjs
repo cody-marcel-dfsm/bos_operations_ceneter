@@ -249,8 +249,8 @@ export function verifiedGithubMetadataText(text, identities) {
   const unverified = () => tokens ? text + "\n" + tokens.filter(token => token[0].startsWith('"'))
     .map(token => { try { return JSON.parse(token[0]); } catch { return token[0]; } }).join("\n") : text;
   try {
-    tokens = [...body.matchAll(/"(?:\\[\s\S]|[^"\\])*"|true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}\[\]:,]/gu)];
     row = JSON.parse(body);
+    tokens = [...body.matchAll(/"(?:\\[\s\S]|[^"\\])*"|true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}\[\]:,]/gu)];
     let index = 0;
     ranges = new Map();
     function value(path) {
