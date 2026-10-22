@@ -6,6 +6,7 @@ from collections import deque
 import difflib
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -22,22 +23,59 @@ def generation_input(path):
     return not path.startswith('Vault/')
 
 
-def _generation_proof(context, snap):
+def _checker_namespace(root):
+    """Mirror the checker traversal; its source is a required immutable input."""
+    ignored = {'.git', 'dist', 'node_modules', 'tmp', '__pycache__'}
+    extensions = {'.json', '.md', '.mjs', '.js', '.ts', '.toml', '.yaml', '.yml', '.py'}
+    forbidden = {'.env', 'credentials.json', 'service-account.json', 'id_rsa', 'id_ed25519'}
+    entries = []
+    def walk(directory):
+        for item in os.scandir(directory):
+            if item.name in ignored or (directory == root and item.name in {'Vault', '.env'}):
+                continue
+            path = Path(item.path).relative_to(root).as_posix()
+            kind = 'directory' if item.is_dir(follow_symlinks=False) else 'symlink' if item.is_symlink() else 'file'
+            suffix = Path(item.name).suffix
+            entries.append({'path': path, 'kind': kind, 'reads_body': kind != 'directory' and
+                            suffix in extensions and item.name not in forbidden and
+                            not item.name.startswith('.env.') and suffix not in {'.pem', '.key', '.p12', '.pfx'}})
+            if kind == 'directory':walk(Path(item.path))
+    walk(root)
+    return sorted(entries, key=lambda item: item['path'])
+
+
+def _generation_proof(o, root, context, snap):
     needed = {path: context['input_hashes'].get(path) for path in snap['after'] if generation_input(path)}
     if 'scripts/check-package.mjs' not in needed or not needed:
         return None
     for proof in [*context.get('current_validations', []), *context.get('reusable_validations', [])]:
-        if proof.get('command') != ['node', 'scripts/check-package.mjs']:
+        if proof.get('command') != ['node', 'scripts/check-package.mjs', '--review-inputs']:
             continue
         inputs = {item['path']: item['digest'] for item in proof.get('inputs', [])}
         if (not proof.get('output_hashes') or not proof.get('evidence_sha256')
                 or any(value is None or inputs.get(path) != value for path, value in needed.items())):
             continue
+        try:
+            outputs = [(o._custody_read(root, name)[1], digest) for name, digest in proof['output_hashes'].items()
+                       if name.endswith('.stdout.log')]
+            if len(outputs) != 1 or _hash(outputs[0][0]) != outputs[0][1]:
+                continue
+            namespace = json.loads(outputs[0][0].decode().splitlines()[-1])
+            if (namespace.get('kind') != 'boc-package-checker-namespace-v1'
+                    or namespace.get('entries') != _checker_namespace(root)):
+                continue
+            if any(entry['path'] not in inputs for entry in namespace['entries']
+                   if entry['reads_body'] or entry['kind'] != 'directory' and
+                   entry['path'].startswith(('source/', 'clients/'))):
+                continue
+        except (OSError, ValueError, KeyError, o.OracleApprovalError):
+            continue
         return {key: proof[key] for key in ('evidence_path', 'evidence_sha256', 'environment_digest',
                                             'command', 'output_hashes')} | {
             'inputs_sha256': _hash(json.dumps(proof['inputs'], sort_keys=True).encode()),
             'generation_inputs_sha256': _hash(json.dumps(needed, sort_keys=True).encode()),
-            'generation_input_count': len(needed)}
+            'generation_input_count': len(needed),
+            'checker_namespace_sha256': _hash(json.dumps(namespace, sort_keys=True).encode())}
     return None
 
 
@@ -326,7 +364,7 @@ def _entry(context, snap, path):
 def prepare(o, root, context, plan, cohort, child, snap):
     entries = [_entry(context, snap, path) for path in cohort['required_paths']]
     queues = [deque(entry['units']) for entry in entries]; pages = []; total = 0
-    parity = _generation_proof(context, snap)
+    parity = _generation_proof(o, root, context, snap)
     bodies, groups = {}, {}
     while any(queues):
         for entry, queue in zip(entries, queues):

@@ -1,6 +1,6 @@
 import { readFile, readdir } from "node:fs/promises";
 import { createHash } from "node:crypto";
-import { extname, join, sep } from "node:path";
+import { extname, join, relative, sep } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import {
@@ -70,6 +70,8 @@ const ignoredDirectories = new Set([
   "__pycache__"
 ]);
 const failures = [];
+const reviewInputs = process.argv.includes("--review-inputs");
+const scannedNamespace = [];
 const execFileAsync = promisify(execFile);
 const reusableRuntimePlatformSkills = new Set([
   "platform/bos-mcp-client",
@@ -103,6 +105,13 @@ async function scan(directory) {
     if (directory === root && entry.name === "Vault") continue;
     if (directory === root && entry.name === ".env") continue;
     const path = join(directory, entry.name);
+    scannedNamespace.push({
+      path: relative(root, path).split(sep).join("/"),
+      kind: entry.isDirectory() ? "directory" : entry.isSymbolicLink() ? "symlink" : "file",
+      reads_body: !entry.isDirectory() && textExtensions.has(extname(entry.name)) &&
+        !forbiddenNames.has(entry.name) && !entry.name.startsWith(".env.") &&
+        ![".pem", ".key", ".p12", ".pfx"].includes(extname(entry.name))
+    });
     for (const pattern of retiredProductIdentityPatterns) {
       if (pattern.test(entry.name)) {
         failures.push(`Retired product identity in path: ${path}`);
@@ -652,3 +661,9 @@ if (failures.length) {
   process.exit(1);
 }
 console.log("Package structure, products, skills, and credential scan passed.");
+if (reviewInputs) {
+  console.log(JSON.stringify({
+    kind: "boc-package-checker-namespace-v1",
+    entries: scannedNamespace.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0)
+  }));
+}

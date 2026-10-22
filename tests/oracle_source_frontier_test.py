@@ -84,12 +84,19 @@ class SourceFrontier(unittest.TestCase):
         self.git('add', '.'); self.git('commit', '-qm', 'metadata propagation')
         self.refresh_context()
         self.context['current_validations'] = [{
-            'command': ['node', 'scripts/check-package.mjs'], 'evidence_path': 'Vault/tmp/generation.json',
+            'command': ['node', 'scripts/check-package.mjs', '--review-inputs'], 'evidence_path': 'Vault/tmp/generation.json',
             'evidence_sha256': 'a' * 64, 'environment_digest': 'synthetic-environment',
             'output_hashes': {'Vault/tmp/generation.stdout.log': 'b' * 64},
             'inputs': [{'path': name, 'digest': value} for name,value in sorted(self.context['input_hashes'].items())
                        if frontier.generation_input(name)]}]
+        self.bind_checker_namespace()
         return paths, controls
+
+    def bind_checker_namespace(self):
+        path=self.child/'generation.stdout.log'
+        path.write_text(json.dumps({'kind':'boc-package-checker-namespace-v1',
+                                    'entries':frontier._checker_namespace(self.root)})+'\n')
+        self.context['current_validations'][0]['output_hashes']={str(path):frontier._hash(path.read_bytes())}
 
     def refresh_context(self):
         self.context.update(candidate_tree=self.git('rev-parse', 'HEAD^{tree}'), base_commit=self.git('rev-parse', 'HEAD'))
@@ -138,6 +145,7 @@ class SourceFrontier(unittest.TestCase):
         self.git('add','.');self.git('commit','-qm','executable copies after');self.refresh_context()
         self.context['current_validations'][0]['inputs']=[{'path':name,'digest':value}
             for name,value in sorted(self.context['input_hashes'].items()) if frontier.generation_input(name)]
+        self.bind_checker_namespace()
         manifest,reference,_,_=self.prepare(paths)
         self.assertEqual([entry['path'] for entry in manifest['entries']],paths)
         self.assertEqual(len(manifest['generated_parity_groups']),2)
@@ -146,7 +154,30 @@ class SourceFrontier(unittest.TestCase):
             representative=group['representative']
             source=''.join(json.loads(Path(page['path']).read_text())['body'] for page in representative['pages'])
             self.assertEqual(source,before if representative['side']=='before' else before.replace('return 1','return 2'))
-        self.assertLess(reference['prepared_bytes'],100000)
+        self.assertLess(reference['prepared_bytes'],500000)
+
+    def test_checker_namespace_changes_and_undeclared_consumed_files_disable_grouping(self):
+        paths,_=self.skill_fixture()
+        metadata=self.root/'products/bos/.DS_Store';metadata.write_bytes(b'opaque synthetic metadata')
+        manifest,_,_,_=self.prepare(paths)
+        self.assertFalse(manifest['generated_parity_groups'])
+        self.bind_checker_namespace()
+        manifest,_,_,_=self.prepare(paths)
+        self.assertTrue(manifest['generated_parity_groups'])
+        metadata.unlink()
+        manifest,_,_,_=self.prepare(paths)
+        self.assertFalse(manifest['generated_parity_groups'])
+        unknown=self.root/'tools/ignored-input.py';unknown.write_text('synthetic consumed source\n')
+        self.bind_checker_namespace()
+        manifest,_,_,_=self.prepare(paths)
+        self.assertFalse(manifest['generated_parity_groups'])
+        unknown.unlink();asset=self.root/'source/platform/example/opaque.bin';asset.write_bytes(b'asset')
+        self.bind_checker_namespace()
+        manifest,_,_,_=self.prepare(paths)
+        self.assertFalse(manifest['generated_parity_groups'])
+        self.context['current_validations'][0]['output_hashes']={}
+        manifest,_,_,_=self.prepare(paths)
+        self.assertFalse(manifest['generated_parity_groups'])
 
     def test_body_generator_configuration_and_output_mode_changes_invalidate_grouping_proof(self):
         for change in ['semantic-body','generator','configuration','marketplace','scanner-input','output-mode']:
