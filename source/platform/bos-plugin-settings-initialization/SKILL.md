@@ -2,8 +2,8 @@
 name: bos-plugin-settings-initialization
 description: Initialize or repair plugin-service connections and required BOS plugin settings after client settings and BOS authentication are ready, using guided secure connection actions, sourced recommendations, consolidated confirmation, delegated persistence, and authority-scoped cache receipts.
 metadata:
-  version: "1.0.4"
-  requires: "{\"bos-mcp-client\":\"1.0.4\",\"bos-plugin-console\":\"1.0.4\",\"bos-plugin-settings\":\"1.0.4\"}"
+  version: "1.0.5"
+  requires: "{\"bos-mcp-client\":\"1.0.5\",\"bos-plugin-console\":\"1.0.5\",\"bos-plugin-settings\":\"1.0.5\"}"
 ---
 
 

@@ -191,7 +191,28 @@ export async function createReviewerTools({session,state,release}) {
   };
   const adapter=createBosExternalDependencyAdapter({
     contextProvider:{getCurrentContext:freshContext,getExecutionContextHeader:async()=> 'X-BOS-Context-Handle'},
-    hostTransport:{getProtectedResource:async()=>state.resource,recoverAuthentication:async()=>{throw new Error('reviewer_reauthentication_required');},request:async request=>{
+    hostTransport:{
+      getProtectedResource:async()=>state.resource,
+      recoverAuthentication:async()=>{throw new Error('reviewer_reauthentication_required');},
+      captureExecutionScope:async()=>{
+        const handle=state.handle;
+        if(!handle)throw new Error('reviewer_identity_unverified');
+        const selected=digest(state.selected_scope??null);
+        return async()=>state.handle===handle&&digest(state.selected_scope??null)===selected&&!!reportingContext();
+      },
+      verifyExecutionIntent:async({request,contract})=>{
+        reportingContext();
+        if(!state.canary||state.kind==='negative'||!state.validated_contracts?.['app-describe']||
+          Object.values(state.failed_validations??{}).some(Boolean))return false;
+        const current=[...contacts.values()].find(contact=>digest(contact)===digest(contract));
+        if(!current||request.method!==current.execution.method||request.href!==current.execution.uri||
+          !state.allowed_effects?.includes(current.effect))return false;
+        if(current.effect==='read')return true;
+        const payload=request.body===undefined?{}:JSON.parse(request.body);
+        return state.effect_binding?.operation===current.operation&&state.effect_binding.effect===current.effect&&
+          state.effect_binding.input_sha256===digest(payload);
+      },
+      request:async request=>{
       const response=await session.request(new URL(request.href,state.resource).href,{method:request.method,headers:request.headers,body:request.body});
       const contentType=response.headers.get('content-type')??'';
       const contentTypeCategory=/^application\/problem\+json(?:;|$)/i.test(contentType)?'problem_json':/^application\/(?:json|[a-z0-9.+-]+\+json)(?:;|$)/i.test(contentType)?'json':/^text\/event-stream(?:;|$)/i.test(contentType)?'event_stream':/^text\//i.test(contentType)?'text':contentType?'other':'missing';
@@ -220,7 +241,12 @@ export async function createReviewerTools({session,state,release}) {
       foreign||=!!item.context_handle&&item.context_handle!==state.handle;
       foreign||=!!item.server&&!['BOS-Platform','BOS_Platform'].includes(item.server);
       if(foreign)return;
-      if(item.status==='described'&&item.operation&&item.execution&&item.input_schema){const contactId=retainDocument(item);contacts.set(contactId,structuredClone(item));advertised.push({contact_id:contactId,document_id:contactId,...(pointer===null?{}:{parent_document_id:id,pointer}),operation:item.operation});}
+      if(item.operation&&['described','not_available'].includes(item.status)){
+        // A newly observed contract retires prior contacts for that operation in
+        // this selected context, including transitions to unavailable.
+        for(const [contactId,prior] of contacts)if(prior.operation===item.operation)contacts.delete(contactId);
+        if(item.status==='described'&&item.execution&&item.input_schema){const contactId=retainDocument(item);contacts.set(contactId,structuredClone(item));advertised.push({contact_id:contactId,document_id:contactId,...(pointer===null?{}:{parent_document_id:id,pointer}),operation:item.operation});}
+      }
       for(const [key,nested] of Object.entries(item))collect(nested,foreign,pointer===null?null:pointer+'/'+key.replaceAll('~','~0').replaceAll('/','~1'));
     };
     collect(raw);

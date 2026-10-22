@@ -2,8 +2,8 @@
 name: bos-mcp-client
 description: Operate the BOS platform MCP connection, including service-owned sign-out, server-evaluated product scope, live tool discovery, transport recovery, provider authorization recovery, and automatic BOS authentication handoff for dependent plugins.
 metadata:
-  version: "1.0.4"
-  requires: "{\"bos-external-dependency-adapter\":\"1.0.4\"}"
+  version: "1.0.5"
+  requires: "{\"bos-external-dependency-adapter\":\"1.0.5\"}"
 ---
 
 

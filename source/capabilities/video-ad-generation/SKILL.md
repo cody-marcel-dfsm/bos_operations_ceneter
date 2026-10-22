@@ -2,8 +2,8 @@
 name: video-ad-generation
 description: Generate and monitor a video advertisement from an approved brief through an authorized tenant-scoped BOS video capability.
 metadata:
-  version: "1.0.4"
-  requires: "{\"bos-mcp-client\":\"1.0.4\"}"
+  version: "1.0.5"
+  requires: "{\"bos-mcp-client\":\"1.0.5\"}"
 ---
 
 # Video Ad Generation

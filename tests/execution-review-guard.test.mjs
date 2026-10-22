@@ -59,3 +59,30 @@ test("actor, organization, installation, app and role changes block recovered re
     assert.equal(sends, 1);
   }
 });
+
+test('every discovered GET/POST read requires exact current host proof and scope', async () => {
+  const {syntheticOperationDescribe}=await import('./helpers/synthetic-bos-discovery-service.mjs');
+  const contact=syntheticOperationDescribe().operations[0];
+  for(const method of ['POST','GET']){
+    const described=structuredClone(contact);described.execution.method=method;
+    const invoke=adapter=>method==='GET'?adapter.invokeDiscoveredOperation(described):adapter.invokeDiscoveredOperation(described,{text:'synthetic'});
+    for(const options of [{},{captureExecutionScope:async()=>async()=>true},{captureExecutionScope:async()=>async()=>false,verifyExecutionIntent:async()=>true},{captureExecutionScope:async()=>async()=>true,verifyExecutionIntent:async()=>false}]){
+      const {adapter,calls}=create(options);await assert.rejects(invoke(adapter));assert.equal(calls.length,0);
+    }
+    let current=JSON.stringify(described),scope=true,reviews=0;
+    const {adapter,calls}=create({captureExecutionScope:async()=>async()=>scope,verifyExecutionIntent:async intent=>{reviews++;return JSON.stringify(intent.contract)===current;}});
+    await invoke(adapter);assert.equal(calls.length,1);assert.equal(reviews,1);
+    current='new discovery epoch';await assert.rejects(invoke(adapter),/review is required/);assert.equal(calls.length,1);
+    current=JSON.stringify(described);scope=false;await assert.rejects(invoke(adapter));assert.equal(calls.length,1);
+  }
+});
+
+test('forged read-labelled mutation and changed payload schema never dispatch', async () => {
+  const {syntheticOperationDescribe}=await import('./helpers/synthetic-bos-discovery-service.mjs');
+  const trusted=syntheticOperationDescribe().operations[0];
+  const {adapter,calls}=create({captureExecutionScope:async()=>async()=>true,verifyExecutionIntent:async intent=>JSON.stringify(intent.contract)===JSON.stringify(trusted)});
+  for(const mutate of [c=>{c.execution.method='DELETE';c.execution.uri='/bos/synthetic/delete';},c=>{c.execution.uri='/bos/synthetic/update';},c=>{c.input_schema.additionalProperties=true;}]){
+    const forged=structuredClone(trusted);mutate(forged);await assert.rejects(adapter.invokeDiscoveredOperation(forged,{text:'synthetic'}),/review is required/);
+  }
+  assert.equal(calls.length,0);
+});

@@ -33,6 +33,14 @@ schemas, public error contract, and sources. The adapter performs no
 client-authored projection. `GET` operations are bodyless; every other
 deterministic HTTPS operation requires the payload declared by `input_schema`.
 
+Every discovered-operation dispatch requires the existing host-owned
+`captureExecutionScope` and `verifyExecutionIntent` callbacks. The verifier
+matches the complete immutable contact against current authorized discovery and
+uses its authentic effect for required user approval. Unknown, stale or changed
+contacts stop before transport; legitimate GET/POST reads require trusted
+provenance and scope without an extra human approval. A host lacking these
+proofs can prepare discovered requests until its existing integration is ready.
+
 The installed BOS host injects one ready consumer object into a dependent
 product. `acceptBosSharedCacheConsumer(consumer)` validates and narrows that
 ready object without accepting any composition input. A dependent product
