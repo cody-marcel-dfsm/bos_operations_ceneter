@@ -29,7 +29,7 @@ with zipfile.ZipFile(sys.argv[1]) as z:
 test('actual invoice serializer preserves literal text, calculations and private final-only output', {skip:!node||!modules}, async t=>{
  const dir=await fixture(t);await symlink(modules,join(dir,'node_modules'),'dir');
  const data=input(),file=join(dir,'input.json'),out=join(dir,'outputs','invoice.xlsx');await writeFile(file,JSON.stringify(data),{mode:0o600});
- const {stdout}=await exec(node,['--input-type=module','-e',"process.umask(0o022);const p=process.argv.splice(1,1)[0];await import(p);",builder,file,out],{cwd:dir,env:{...process.env}});
+ const {stdout}=await exec(node,['--input-type=module','-e',"process.umask(0o022);await import(process.argv[1]);",builder,file,out],{cwd:dir,env:{...process.env}});
  const summary=JSON.parse(stdout);assert.equal(summary.invoice_total,120);assert.equal(summary.child_day_count,12);assert.equal(stdout.includes('Employee Name'),false);assert.equal(stdout.includes('@SUM'),false);
  const {stdout:xml}=await exec('python3',['-c',cellsScript,out]);const cells=JSON.parse(xml);
  for(const ref of ['B2','B3','B4','B5','B6']){assert.equal(cells[ref].value,'=1+1');assert.equal(cells[ref].formula,null);}
