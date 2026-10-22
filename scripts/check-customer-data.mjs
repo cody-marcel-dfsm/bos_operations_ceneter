@@ -15,6 +15,9 @@ const textExtensions = new Set([
   ".diff", ".lock", ".log", ".md", ".mjs", ".patch", ".py", ".sh", ".sql", ".svg", ".toml", ".ts", ".tsx",
   ".sha256", ".txt", ".yaml", ".yml"
 ]);
+// Native reviewer/validation output, retained TAP and JSON record streams share
+// one format contract, including compound names such as *.stdout.log.
+const operationalTextExtensions = new Set([".tap", ".ndjson", ".stderr", ".stdout", ".json", ".jsonl", ".log"]);
 const ignoredParts = new Set([".git", "node_modules", "vendor", "index"]);
 const emailPattern = /\b[A-Z0-9._%+-]+@([A-Z0-9.-]+\.[A-Z]{2,})\b/giu;
 const formattedNanpPattern = /(?<![\dA-Z])(?:\+?1[-.\s]?)?\(?([2-9]\d{2})\)?[-.\s](\d{3})[-.\s](\d{4})(?!\d)/giu;
@@ -116,7 +119,7 @@ export function isProposedTextArtifact(path, body) {
 // and ordinary whitespace controls. Every admitted byte still receives the
 // same identifier, email and phone checks as other text evidence.
 export function isOperationalTextArtifact(path, body) {
-  if (![".tap", ".ndjson", ".stderr", ".stdout"].includes(extname(path).toLowerCase())) return false;
+  if (!operationalTextExtensions.has(extname(path).toLowerCase())) return false;
   try {
     const text = new TextDecoder("utf-8", {fatal: true}).decode(body);
     return !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(text);
@@ -343,9 +346,23 @@ export function operationalPrivacyText(text, identities) {
   });
   const inspected = whole !== text ? whole : jsonRecords ? text.replace(/[^\r\n]+/gu,
     line => verifiedGithubMetadataText(line, identities, {rawOnly: true})) : text;
-  const decoded = [...inspected.matchAll(/"(?:\\[\s\S]|[^"\\])*"/gu)]
-    .map(token => {try {return JSON.parse(token[0]);} catch {return token[0];}});
-  return inspected + "\n" + decoded.join("\n");
+  const decoded = [];
+  const seen = new Set([inspected]);
+  const pending = [inspected];
+  while (pending.length) {
+    const value = pending.pop();
+    for (const token of value.matchAll(/"(?:\\[\s\S]|[^"\\])*"/gu)) {
+      let string;
+      try {string = JSON.parse(token[0]);} catch {continue;}
+      if (seen.has(string)) continue;
+      seen.add(string); decoded.push(string); pending.push(string);
+    }
+  }
+  // Decoded values are independent evidence. A word boundary keeps unrelated
+  // numeric/string values from assembling a new phone or blocked phrase, while
+  // the complete original representation and each complete value stay checked.
+  const boundary = "\nBOS_PRIVACY_VALUE_BOUNDARY\n";
+  return inspected + boundary + decoded.join(boundary);
 }
 
 async function walk(directory) {
@@ -376,7 +393,13 @@ async function scanZip(path, blockedDigests, approvedBinaryDigests) {
       encoding: "buffer", maxBuffer: 16 * 1024 * 1024
     });
     const label = `${relative(root, path)}!${entry}`;
-    if (textExtensions.has(extname(entry).toLowerCase())) {
+    if (operationalTextExtensions.has(extname(entry).toLowerCase())) {
+      if (isOperationalTextArtifact(entry, body)) {
+        findings.push(...customerDataFindings(operationalPrivacyText(body.toString("utf8"), {}), label, blockedDigests));
+      } else if (!approvedBinaryDigests.has(sha256(body))) {
+        findings.push(`${label}: unreviewed binary publication artifact`);
+      }
+    } else if (textExtensions.has(extname(entry).toLowerCase())) {
       findings.push(...customerDataFindings(body.toString("utf8"), label, blockedDigests));
     } else if (!approvedBinaryDigests.has(sha256(body))) {
       findings.push(`${label}: unreviewed binary publication artifact`);
@@ -420,6 +443,18 @@ async function scanPrivacyCandidates(candidates) {
       findings.push(...await scanZip(path, blockedDigests, approvedBinaryDigests));
       continue;
     }
+    if (operationalTextExtensions.has(extname(path).toLowerCase())) {
+      let body;
+      try {body = await readFile(path);} catch {continue;}
+      if (!isOperationalTextArtifact(path, body)) {
+        if (!approvedBinaryDigests.has(sha256(body))) findings.push(`${relative(root, path)}: unreviewed binary publication artifact`);
+        continue;
+      }
+      const nativeText = verifiedNativeProbeMetadataText(body.toString("utf8"), await ownNativeProbeIdentity(path, nativeProbeIdentities));
+      const sourceText = verifiedSyntheticSourceFixtureText(nativeText, await ownSourceFixtureIdentity(path, nativeProbeIdentities));
+      findings.push(...customerDataFindings(operationalPrivacyText(sourceText, githubIdentities), relative(root, path), blockedDigests));
+      continue;
+    }
     if (!textExtensions.has(extname(path).toLowerCase())) {
       let body;
       try { body = await readFile(path); } catch { continue; }
@@ -429,11 +464,9 @@ async function scanPrivacyCandidates(candidates) {
       }
       const proposedText = isProposedTextArtifact(path, body);
       const cpuProfileText = isCpuProfileTextArtifact(path, body);
-      const operationalText = isOperationalTextArtifact(path, body);
-      if (proposedText || cpuProfileText || operationalText) {
+      if (proposedText || cpuProfileText) {
         const text = body.toString("utf8");
-        findings.push(...customerDataFindings(cpuProfileText ? cpuProfilePrivacyText(text) : operationalText ?
-          operationalPrivacyText(text, githubIdentities) : verifiedGithubMetadataText(text, githubIdentities),
+        findings.push(...customerDataFindings(cpuProfileText ? cpuProfilePrivacyText(text) : verifiedGithubMetadataText(text, githubIdentities),
         relative(root, path), blockedDigests));
         continue;
       }
@@ -446,8 +479,7 @@ async function scanPrivacyCandidates(candidates) {
     try { body = await readFile(path, "utf8"); } catch { continue; }
     const nativeText = verifiedNativeProbeMetadataText(body, await ownNativeProbeIdentity(path, nativeProbeIdentities));
     const sourceText = verifiedSyntheticSourceFixtureText(nativeText, await ownSourceFixtureIdentity(path, nativeProbeIdentities));
-    findings.push(...customerDataFindings(extname(path).toLowerCase() === ".jsonl" ?
-      operationalPrivacyText(sourceText, githubIdentities) : verifiedGithubMetadataText(sourceText, githubIdentities),
+    findings.push(...customerDataFindings(verifiedGithubMetadataText(sourceText, githubIdentities),
     relative(root, path), blockedDigests));
   }
   return [...new Set(findings)].sort();

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {mkdtemp, rm, writeFile} from "node:fs/promises";
+import {mkdtemp, readFile, rm, writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join, relative} from "node:path";
 import test from "node:test";
@@ -22,6 +22,10 @@ import {
 } from "../scripts/check-customer-data.mjs";
 import {syntheticIdentity} from "../scripts/lib/synthetic-fixtures.mjs";
 import {createDeterministicZip} from "../scripts/lib/deterministic-zip.mjs";
+
+// Production native witnesses use *.stdout.log/*.stderr.log; child sessions
+// use JSONL and retained test/probe output also uses these base suffixes.
+const operationalSuffixes = [".tap", ".ndjson", ".stderr", ".stdout", ".json", ".jsonl", ".log", ".stdout.log", ".stderr.log", ".tap.log"];
 
 function originalDigestMatch(text, path, blocked) {
   const words = normalizeSensitiveText(`${path} ${text}`).split(" ").filter(Boolean);
@@ -156,7 +160,7 @@ test("operational output is strict UTF-8 text and retains complete privacy check
   const directory = await mkdtemp(join(tmpdir(), "boc-operational-privacy-"));
   const paths = [];
   try {
-    for (const extension of [".tap", ".ndjson", ".stderr", ".stdout"]) {
+    for (const extension of operationalSuffixes) {
       assert.equal(isOperationalTextArtifact(`fixture${extension}`, Buffer.from("Synthetic text.\n\t")), true);
       for (const bytes of [Buffer.from([0xff]), Buffer.from("hidden\0bytes"), Buffer.from("\x1b[0m")]) {
         assert.equal(isOperationalTextArtifact(`fixture${extension}`, bytes), false);
@@ -164,13 +168,18 @@ test("operational output is strict UTF-8 text and retains complete privacy check
       const path = join(directory, `sensitive${extension}`);
       await writeFile(path, ["person", "production-domain.invalidated"].join("@"));
       paths.push(path);
+      for (const [kind, bytes] of [["invalid", Buffer.from([0xff])], ["control", Buffer.from("hidden\0bytes")]]) {
+        const invalid = join(directory, `${kind}${extension}`);
+        await writeFile(invalid, bytes); paths.push(invalid);
+      }
     }
     assert.equal(isOperationalTextArtifact("opaque.png", Buffer.from("Synthetic text")), false);
     const opaque = join(directory, "opaque.stderr");
     await writeFile(opaque, Buffer.from([0xff])); paths.push(opaque);
     const findings = await fixturePrivacyFailures(paths);
-    for (const extension of [".tap", ".ndjson", ".stderr", ".stdout"]) {
+    for (const extension of operationalSuffixes) {
       assert(findings.some(value => value.includes(`sensitive${extension}: non-synthetic email`)));
+      for (const kind of ["invalid", "control"]) assert(findings.some(value => value.includes(`${kind}${extension}: unreviewed binary`)));
     }
     assert(findings.some(value => value.includes("opaque.stderr: unreviewed binary")));
   } finally { await rm(directory, {recursive: true, force: true}); }
@@ -186,13 +195,18 @@ test("multi-record operational JSON inspects escaped strings and duplicate membe
   const rows = value => `{"value":${encoded(value)}}\n{"safe":true}\n`;
   try {
     const paths = [];
-    for (const extension of [".ndjson", ".jsonl", ".stderr", ".stdout", ".tap"]) {
-      for (const [name, value] of [["email", address], ["phone", phone]]) {
-        const path = join(directory, name + extension); await writeFile(path, rows(value)); paths.push(path);
+    for (const extension of operationalSuffixes) {
+      for (const [name, raw] of [
+        ["email", rows(address)], ["phone", rows(phone)],
+        ["duplicate", `{"value":${encoded(address)},"value":""}\n{"safe":true}\n`],
+        ["malformed", `{"bad":"\\xZZ"}\n{"value":${encoded(address)}}\n`],
+        ["nested", JSON.stringify(rows(address)) + "\n" + JSON.stringify({safe: true}) + "\n"],
+        ["fragment", "native output: " + rows(address)]
+      ]) {
+        const path = join(directory, name + extension); await writeFile(path, raw); paths.push(path);
+        assert.equal(await readFile(path, "utf8"), raw, "privacy inspection preserves retained bytes");
       }
     }
-    const duplicate = join(directory, "duplicate.ndjson");
-    await writeFile(duplicate, `{"value":${encoded(address)},"value":""}\n{"safe":true}\n`); paths.push(duplicate);
     const findings = await fixturePrivacyFailures(paths);
     for (const path of paths) assert(findings.some(value => value.startsWith(relative(root, path) + ":")), path);
     const raw = rows(phrase);
@@ -213,6 +227,35 @@ test("multi-record operational JSON inspects escaped strings and duplicate membe
     assert.doesNotThrow(() => operationalPrivacyText(malformed, {}));
     assert(customerDataFindings(operationalPrivacyText(malformed, {}), "records.ndjson", new Set())
       .some(value => value.includes("email")));
+    const unrelated = JSON.stringify({parts: ["202", "867", "5309"], words: ["synthetic", "blocked", "operational", "phrase"]});
+    assert.deepEqual(customerDataFindings(operationalPrivacyText(unrelated, {}), "independent.log", new Set([sha256(phrase)])), [],
+      "decoded independent values cannot invent a phone or phrase across value boundaries");
+    for (const suffix of operationalSuffixes) {
+      for (const raw of [rows(phrase), `{"value":${encoded(phrase)},"value":""}\r\n{"safe":true}\r\n`,
+        JSON.stringify(rows(phrase)), `malformed {\n{"value":${encoded(phrase)}}\n`]) {
+        const view = operationalPrivacyText(raw, {});
+        assert(view.startsWith(raw));
+        assert(customerDataFindings(view, `records${suffix}`, new Set([sha256(phrase)]))
+          .some(value => value.includes("identifier digest")));
+      }
+    }
+  } finally {await rm(directory, {recursive: true, force: true});}
+});
+
+test("archived operational records use the same escaped-value and strict-byte policy", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "boc-privacy-record-archive-"));
+  const path = join(directory, "records.zip");
+  const encoded = JSON.stringify(["person", "production-domain.invalidated"].join("@")).replace("@", "\\u0040");
+  try {
+    await writeFile(path, createDeterministicZip(operationalSuffixes.flatMap(suffix => [
+      {path: `escaped${suffix}`, mode: 0o644, content: Buffer.from(`{"value":${encoded}}\n{"safe":true}\n`)},
+      {path: `opaque${suffix}`, mode: 0o644, content: Buffer.from([0xff])}
+    ])));
+    const findings = await fixturePrivacyFailures([path]);
+    for (const suffix of operationalSuffixes) {
+      assert(findings.some(value => value.includes(`records.zip!escaped${suffix}: non-synthetic email`)));
+      assert(findings.some(value => value.includes(`records.zip!opaque${suffix}: unreviewed binary`)));
+    }
   } finally {await rm(directory, {recursive: true, force: true});}
 });
 
