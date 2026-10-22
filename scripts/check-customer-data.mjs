@@ -359,11 +359,33 @@ export function operationalPrivacyText(text, identities) {
     if (renderedValue !== value && !seen.has(renderedValue)) {
       seen.add(renderedValue); decoded.push(renderedValue); pending.push(renderedValue);
     }
-    for (const token of value.matchAll(/"(?:\\[\s\S]|[^"\\])*"/gu)) {
+    const admit = token => {
       let string;
-      try {string = JSON.parse(token[0]);} catch {continue;}
-      if (seen.has(string)) continue;
+      try {string = JSON.parse(token);} catch {return false;}
+      if (seen.has(string)) return true;
       seen.add(string); decoded.push(string); pending.push(string);
+      return true;
+    };
+    let recover = false;
+    for (const token of value.matchAll(/"(?:\\[\s\S]|[^"\\])*"/gu)) {
+      if (!admit(token[0])) recover = true;
+    }
+    if (recover) {
+      // An invalid/unterminated token can consume the opening quote of the
+      // following record. Revisit each unescaped quote with record-bounded
+      // candidates, retaining JSON.parse as the value validator. Adjacent quote
+      // spans overlap at most twice; successful normal decoding stays intact.
+      const candidate = /"(?:\\[^\r\n]|[^"\\\r\n])*"/uy;
+      let backslashes = 0;
+      for (let index = 0; index < value.length; index += 1) {
+        const character = value[index];
+        if (character === '"' && backslashes % 2 === 0) {
+          candidate.lastIndex = index;
+          const token = candidate.exec(value);
+          if (token) admit(token[0]);
+        }
+        backslashes = character === "\\" ? backslashes + 1 : 0;
+      }
     }
   }
   // Decoded values are independent evidence. A word boundary keeps unrelated

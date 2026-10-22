@@ -282,6 +282,36 @@ test("archived operational records use the same escaped-value and strict-byte po
   } finally {await rm(directory, {recursive: true, force: true});}
 });
 
+test("malformed record recovery cannot consume later valid escaped values", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "boc-privacy-record-recovery-"));
+  const address = ["person", "production-domain.invalidated"].join("@");
+  const phone = ["202", "867", "5309"].join("-");
+  const phrase = "synthetic blocked record recovery";
+  const encode = value => JSON.stringify(value).replaceAll("@", "\\u0040").replaceAll("2", "\\u0032").replaceAll(" ", "\\u0020");
+  const rows = value => [
+    `{"broken":"unterminated\n{"value":${encode(value)}}\n`,
+    `{"broken":"escape\\\n{"value":${encode(value)}}\n`,
+    `{"bad":"\\xZZ","value":${encode(value)}}\n`,
+    `{"broken":"unterminated\r\n{"value":${encode(value)},"value":""}\r\n`
+  ];
+  const paths = [];
+  try {
+    for (const suffix of operationalSuffixes) for (const [index, text] of rows(address).entries()) {
+      const path = join(directory, `email-${index}${suffix}`); await writeFile(path, text); paths.push(path);
+      assert(operationalPrivacyText(text, {}).startsWith(text));
+    }
+    const findings = await fixturePrivacyFailures(paths);
+    for (const path of paths) assert(findings.some(value => value.startsWith(relative(root, path) + ":")), path);
+    for (const [value, kind] of [[phone, "phone"], [phrase, "identifier digest"]]) for (const text of rows(value)) {
+      assert(customerDataFindings(operationalPrivacyText(text, {}), "recovery.log", new Set([sha256(phrase)]))
+        .some(value => value.includes(kind)));
+    }
+    const nested = JSON.stringify(rows(address)[0]);
+    assert(customerDataFindings(operationalPrivacyText(nested, {}), "nested-recovery.log", new Set())
+      .some(value => value.includes("email")));
+  } finally {await rm(directory, {recursive: true, force: true});}
+});
+
 test("verified own native argv normalization preserves every nonmetadata value and denies forged custody", () => {
   const setting = ["plugins.synthetic", "synthetic-marketplace.enabled=false"].join("@");
   const raw = JSON.stringify(["app-server", "-c", setting]);
