@@ -572,7 +572,7 @@ test('test host uses the verified adapter, fresh reviewer context and advertised
     const state={product:'bos',installed_root:root,installed_roots:{bos:root},published_commits:{bos:commit},organization:context.organization_name,application:context.application_name,installation:context.installation_name,role:context.role_label,resource:'https://dfsm.ai/mcp/apps/bos/platform',canary:true,kind:'positive',handle:context.context_handle,observations:[],denials:[],allowed_effects:['read'],tools:[{name:'app.describe',annotations:{readOnlyHint:true},_meta:{'bos/effect':'read'},inputSchema:{type:'object'}},{name:'bos_get_context',annotations:{readOnlyHint:true},_meta:{'bos/effect':'read'},inputSchema:{type:'object',properties:{}}}],validated_contracts:{'app-describe':'already-validated'},failed_validations:{}};
     const enrollmentContact=structuredClone(contact);enrollmentContact.operation='education_center_list_enrollments';enrollmentContact.execution.uri='/bos/apps/synthetic/api/v1/organizations/synthetic/enrollments';
     const app=syntheticAppDescribe(),uri='bos://apps/lead-director/app.describe';
-    app.describe.operations=['search','education_center_list_enrollments'];state.resources=[uri];
+    app.describe.operations=['search','education_center_list_enrollments'];state.resources=[uri];state.fixtureResponses=[];
     const parent=syntheticOperationDescribe();parent.operations=[contact,enrollmentContact];
     let current=context,requests=0,contextReads=0,appContextReads=0,providerRecoveryUrl='https://dfsm.ai/api/v1/mcp/provider-recovery?private-token=secret',searchResponse=()=>new Response(JSON.stringify({count:2}),{headers:{'content-type':'application/json'}});
     const session={rpc:async(method,params)=>{
