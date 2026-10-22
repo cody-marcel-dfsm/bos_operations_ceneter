@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {mkdtemp, rm, writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
-import {join} from "node:path";
+import {join, relative} from "node:path";
 import test from "node:test";
 
 import {
@@ -194,7 +194,7 @@ test("multi-record operational JSON inspects escaped strings and duplicate membe
     const duplicate = join(directory, "duplicate.ndjson");
     await writeFile(duplicate, `{"value":${encoded(address)},"value":""}\n{"safe":true}\n`); paths.push(duplicate);
     const findings = await fixturePrivacyFailures(paths);
-    for (const path of paths) assert(findings.some(value => value.startsWith(path + ":")), path);
+    for (const path of paths) assert(findings.some(value => value.startsWith(relative(root, path) + ":")), path);
     const raw = rows(phrase);
     const inspected = operationalPrivacyText(raw, {});
     assert(inspected.startsWith(raw), "all original nonmetadata bytes remain inspected");
