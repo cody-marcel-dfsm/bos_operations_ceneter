@@ -2,8 +2,8 @@
 name: review
 description: Review Business Operating System platform changes for architecture, tenant isolation, application neutrality, authentication context, PO/GO boundaries, provider scope, tests, migrations, and release readiness. Use for BOS code, package, MCP, plugin, runtime, or cross-application change review.
 metadata:
-  version: "1.0.3"
-  requires: "{\"bos-mcp-client\":\"1.0.3\"}"
+  version: "1.0.4"
+  requires: "{\"bos-mcp-client\":\"1.0.4\"}"
 ---
 
 

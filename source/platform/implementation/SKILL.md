@@ -2,7 +2,7 @@
 name: implementation
 description: Implement application-neutral Business Operating System platform changes while preserving tenant isolation, explicit app scope, PO/GO data boundaries, server-owned runtime behavior, and fail-closed execution. Use for shared BOS runtime, MCP, plugin, authentication-context, provider, migration, or cross-application infrastructure changes.
 metadata:
-  version: "1.0.3"
+  version: "1.0.4"
   requires: "{}"
 ---
 

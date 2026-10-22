@@ -2,8 +2,8 @@
 name: bos-mcp-client
 description: Operate the BOS platform MCP connection, including service-owned sign-out, server-evaluated product scope, live tool discovery, transport recovery, provider authorization recovery, and automatic BOS authentication handoff for dependent plugins.
 metadata:
-  version: "1.0.3"
-  requires: "{\"bos-external-dependency-adapter\":\"1.0.3\"}"
+  version: "1.0.4"
+  requires: "{\"bos-external-dependency-adapter\":\"1.0.4\"}"
 ---
 
 
@@ -192,8 +192,15 @@ operation from current evidence; do not impose a preferred future transport or
 require a second connection for an already callable authorized BOS operation.
 
 All supported operations belong to one current operating contract. Discover
-callable names from the host catalog and argument constraints from current
-validated operation contracts; never invent endpoints or selectors.
+native callable names from the host catalog and application operations from
+current validated `app.describe`, `service.describe` and advertised contracts.
+Tool-name counts establish only the native catalog. Follow the shared
+[execution selection](references/identity-context.md#resolve-and-execute) for
+native tools, described HTTPS operations and journey runtime; never turn a
+Describe operation key into a native callable or invent endpoints or selectors.
+Keep advertised availability, provider readiness and actual host execution
+support separately attributed. A packaged helper or acceptance-only host tool
+supplies no current native execution capability.
 Directory or transport limitations remain scoped to that operation. An
 access denial never permits switching routes to evade it. Missing or ambiguous
 selected-context authority evidence, revoked credentials, and explicit access denials stop the affected operation.
@@ -427,9 +434,10 @@ apply only the generic handoff contract above and receive no operation state.
 ## Runtime workflow
 
 Apply provider recovery as one request interceptor around every BOS domain
-`tools/call`. Domain skills describe the operation; they never own, opt into,
-or bypass authentication recovery. Preserve the pending call before execution
-and inspect its sanitized result before producing a final answer.
+invocation on its discovered execution surface. Domain skills describe the
+operation; they never own, opt into, or bypass authentication recovery. Preserve
+the pending call before execution and inspect its sanitized result before
+producing a final answer.
 
 1. Use the immutable platform MCP connection recorded by the BOS foundation
    package and declared by the client's native host adapter. Treat the resource as sealed package
@@ -447,12 +455,18 @@ and inspect its sanitized result before producing a final answer.
    closed for invalid discovery or denied authority. A valid identity with zero
    business contexts remains signed in and returns its empty access result.
 4. Use the triggered subservice skill to choose the requested workflow and
-   semantic operation from the current live-discovered dynamic domain service
-   and tool surface. Keep connection selection fixed on BOS and preserve the selected
-   context's application authority. Treat the descriptor only as an operation/schema declaration;
-   call the operation with its declared business arguments and let BOS authorize
-   the organization, installation, role, plugin, capability, tool, and provider
-   at `tools/call` time.
+   semantic operation from current application and service descriptions and
+   operation contracts. Keep connection selection fixed on BOS and preserve the
+   selected context's application authority. Invoke native discovery/control,
+   existing compatibility and resource tools through their advertised MCP
+   surface; invoke described HTTPS operations through the existing adapter and
+   actual host-authenticated HTTP capability, or journey operations through
+   their current journey contract. Preserve the full validated method, URI and
+   context binding when a compatible HTTPS contact omits or nulls its transport
+   field. Supply only declared business arguments and let BOS reauthorize the
+   organization, installation, role, plugin, capability, operation and provider
+   at invocation. Report an evidenced missing host capability at that exact
+   step and preserve successful discovery and independent results.
 5. Use the configured BOS connection authentication profile. Native hosts use
    their native action. The configured host manages standard OAuth
    and normal refresh automatically on OAuth-capable hosts. Muse uses its
