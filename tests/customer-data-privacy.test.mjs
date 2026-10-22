@@ -7,6 +7,7 @@ import test from "node:test";
 import {
   customerDataFindings,
   isProposedTextArtifact,
+  isOperationalTextArtifact,
   isCpuProfileTextArtifact,
   cpuProfilePrivacyText,
   isWatcherProcessMetadata,
@@ -148,6 +149,30 @@ test("proposed text drafts require a known source type and valid control-free UT
   const phrase = "synthetic blocked draft identity";
   assert(customerDataFindings(phrase, "client.mjs.proposed", new Set([sha256(normalizeSensitiveText(phrase))]))
     .some(item => item.includes("identifier digest")));
+});
+
+test("operational output is strict UTF-8 text and retains complete privacy checks", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "boc-operational-privacy-"));
+  const paths = [];
+  try {
+    for (const extension of [".tap", ".ndjson", ".stderr", ".stdout"]) {
+      assert.equal(isOperationalTextArtifact(`fixture${extension}`, Buffer.from("Synthetic text.\n\t")), true);
+      for (const bytes of [Buffer.from([0xff]), Buffer.from("hidden\0bytes"), Buffer.from("\x1b[0m")]) {
+        assert.equal(isOperationalTextArtifact(`fixture${extension}`, bytes), false);
+      }
+      const path = join(directory, `sensitive${extension}`);
+      await writeFile(path, ["person", "production-domain.invalidated"].join("@"));
+      paths.push(path);
+    }
+    assert.equal(isOperationalTextArtifact("opaque.png", Buffer.from("Synthetic text")), false);
+    const opaque = join(directory, "opaque.stderr");
+    await writeFile(opaque, Buffer.from([0xff])); paths.push(opaque);
+    const findings = await fixturePrivacyFailures(paths);
+    for (const extension of [".tap", ".ndjson", ".stderr", ".stdout"]) {
+      assert(findings.some(value => value.includes(`sensitive${extension}: non-synthetic email`)));
+    }
+    assert(findings.some(value => value.includes("opaque.stderr: unreviewed binary")));
+  } finally { await rm(directory, {recursive: true, force: true}); }
 });
 
 test("verified own native argv normalization preserves every nonmetadata value and denies forged custody", () => {
@@ -303,6 +328,45 @@ test("verified owned GitHub identity normalizes only exact provider slots", () =
     assert(customerDataFindings(verifiedGithubMetadataText(raw, identities), "overwritten-provider.json", blocked)
       .some((x) => x.includes("identifier digest")));
   }
+});
+
+test("own HTTP GitHub check-run metadata verifies nested PR IDs while preserving headers and other fields", () => {
+  const repository = "cody-marcel-dfsm/bos_operations_ceneter";
+  const id = 17, node_id = "synthetic-owned-check-run";
+  const pullId = Number(["202", "867", "5309"].join(""));
+  const html_url = `https://github.com/${repository}/actions/runs/23/job/${id}`;
+  const identities = {repository, check_runs: [{id_sha256: sha256(String(id)), node_id_sha256: sha256(node_id),
+    html_url_sha256: sha256(html_url)}], pull_requests: {"7": {id_sha256: sha256(String(pullId))}}};
+  const row = {id, node_id, url: `https://api.github.com/repos/${repository}/check-runs/${id}`, html_url,
+    pull_requests: [{id: pullId, number: 7, url: `https://api.github.com/repos/${repository}/pulls/7`}]};
+  const header = "HTTP/2.0 200 OK\ncontent-type: application/json\nx-request-id: synthetic\n\n";
+  const scan = (raw, registry = identities, blocked = new Set()) => customerDataFindings(
+    verifiedGithubMetadataText(raw, registry), "retained-http.txt", blocked);
+  const text = header + JSON.stringify(row);
+  assert.deepEqual(scan(text), []);
+  assert(verifiedGithubMetadataText(text, identities).startsWith(header), "all original headers remain inspected");
+  for (const change of [r => { r.node_id = "foreign"; }, r => { r.url = r.url.replace(repository, "foreign/repository"); },
+    r => { r.html_url += "?foreign"; }, r => { r.pull_requests[0].id += 1; },
+    r => { r.pull_requests[0].url = r.pull_requests[0].url.replace(repository, "foreign/repository"); }]) {
+    const forged = structuredClone(row); change(forged);
+    assert(scan(header + JSON.stringify(forged)).some(value => value.includes("phone")));
+  }
+  assert(scan(text, {...identities, repository: "foreign/repository"}).some(value => value.includes("phone")));
+  assert(scan(header.replace("HTTP/2.0", "INVALID") + JSON.stringify(row)).some(value => value.includes("phone")));
+  const external = ["person", "production-domain.invalidated"].join("@");
+  assert(scan(header.replace("x-request-id: synthetic", `x-request-id: ${external}`) + JSON.stringify(row))
+    .some(value => value.includes("email")));
+  for (const extra of [{customer: external}, {customer_phone: String(pullId)}]) {
+    assert(scan(header + JSON.stringify({...row, ...extra})).length > 0);
+  }
+  const escaped = JSON.stringify({...row, customer: external}).replace("person@", "person\\u0040");
+  assert(scan(header + escaped).some(value => value.includes("email")));
+  const duplicate = JSON.stringify(row).replace('"pull_requests":', `"customer":${JSON.stringify(external)},"customer":"","pull_requests":`);
+  assert(scan(header + duplicate).some(value => value.includes("email")));
+  const phrase = "synthetic blocked retained diagnostic";
+  const body = JSON.stringify({...row, output: phrase});
+  assert(scan(header + body, identities, new Set([sha256(phrase)])).some(value => value.includes("identifier digest")));
+  assert.doesNotThrow(() => scan('HTTP/2.0 200 OK\n\n{"invalid":"\\xZZ"}'));
 });
 
 test("privacy scanner includes untracked candidates and rejects unreviewed binaries", async () => {

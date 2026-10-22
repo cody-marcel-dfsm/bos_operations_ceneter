@@ -112,6 +112,17 @@ export function isProposedTextArtifact(path, body) {
   } catch { return false; }
 }
 
+// Retained operational output remains text only with lossless UTF-8 decoding
+// and ordinary whitespace controls. Every admitted byte still receives the
+// same identifier, email and phone checks as other text evidence.
+export function isOperationalTextArtifact(path, body) {
+  if (![".tap", ".ndjson", ".stderr", ".stdout"].includes(extname(path).toLowerCase())) return false;
+  try {
+    const text = new TextDecoder("utf-8", {fatal: true}).decode(body);
+    return !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(text);
+  } catch { return false; }
+}
+
 // A retained own CLI probe contains public -c plugin enablement keys whose
 // marketplace.enabled suffix resembles an email domain. Normalize only those
 // typed slots after exact artifact and independently retained namespace custody.
@@ -229,10 +240,17 @@ export function customerDataFindings(text, path, blockedDigests) {
 // Exact provider identity verified through the existing native GitHub client.
 // Only these typed metadata slots are normalized; every other field is scanned.
 export function verifiedGithubMetadataText(text, identities) {
+  // gh --include retains the HTTP envelope. Accept its strict ASCII header
+  // grammar while keeping that complete envelope in the inspected output.
+  const envelope = /^(HTTP\/(?:1\.[01]|2(?:\.0)?|3(?:\.0)?) [1-5]\d{2}(?: [\x20-\x7e]*)?\r?\n(?:[!#$%&'*+.^_`|~0-9A-Za-z-]+:[\t\x20-\x7e]*\r?\n)*\r?\n)([\s\S]*)$/u.exec(text);
+  const prefix = envelope?.[1] ?? "";
+  const body = envelope?.[2] ?? text;
   let row, ranges, tokens;
+  const unverified = () => tokens ? text + "\n" + tokens.filter(token => token[0].startsWith('"'))
+    .map(token => { try { return JSON.parse(token[0]); } catch { return token[0]; } }).join("\n") : text;
   try {
-    row = JSON.parse(text);
-    tokens = [...text.matchAll(/"(?:\\[\s\S]|[^"\\])*"|true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}\[\]:,]/gu)];
+    tokens = [...body.matchAll(/"(?:\\[\s\S]|[^"\\])*"|true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}\[\]:,]/gu)];
+    row = JSON.parse(body);
     let index = 0;
     ranges = new Map();
     function value(path) {
@@ -265,19 +283,35 @@ export function verifiedGithubMetadataText(text, identities) {
   } catch {
     // Inspect decoded original string tokens as well as raw text, including
     // every overwritten member. Parsing an object alone would lose those values.
-    return tokens ? text + "\n" + tokens.filter(token => token[0].startsWith('"'))
-      .map(token => JSON.parse(token[0])).join("\n") : text;
+    return unverified();
   }
   const repository = "cody-marcel-dfsm/bos_operations_ceneter";
-  const identity = identities?.repository === repository && identities.pull_requests?.[String(row?.number)];
-  if (!identity || !Number.isSafeInteger(row.id) || row.id <= 0 || typeof row.node_id !== "string" ||
-      sha256(String(row.id)) !== identity.id_sha256 || sha256(row.node_id) !== identity.node_id_sha256 ||
-      row.url !== `https://api.github.com/repos/${repository}/pulls/${row.number}` ||
-      row.html_url !== `https://github.com/${repository}/pull/${row.number}`) return text;
+  if (identities?.repository !== repository) return unverified();
+  const ownId = (entry, identity) => identity && Number.isSafeInteger(entry?.id) && entry.id > 0 &&
+    sha256(String(entry.id)) === identity.id_sha256;
+  const ownPull = entry => Number.isSafeInteger(entry?.number) && entry.number > 0 &&
+    ownId(entry, identities.pull_requests?.[String(entry.number)]) &&
+    entry.url === `https://api.github.com/repos/${repository}/pulls/${entry.number}`;
+  const identity = identities.pull_requests?.[String(row?.number)];
+  const directPull = ownPull(row) && typeof row.node_id === "string" &&
+    sha256(row.node_id) === identity.node_id_sha256 &&
+    row.html_url === `https://github.com/${repository}/pull/${row.number}`;
+  const checkIdentity = identities.check_runs?.find(entry => ownId(row, entry));
+  const ownCheck = checkIdentity && typeof row.node_id === "string" &&
+    sha256(row.node_id) === checkIdentity.node_id_sha256 &&
+    row.url === `https://api.github.com/repos/${repository}/check-runs/${row.id}` &&
+    typeof row.html_url === "string" && sha256(row.html_url) === checkIdentity.html_url_sha256 &&
+    Array.isArray(row.pull_requests);
+  if (!directPull && !ownCheck) return unverified();
   const normalized = structuredClone(row);
-  normalized.id = "verified-own-github-pull-request-id";
+  normalized.id = directPull ? "verified-own-github-pull-request-id" : "verified-own-github-check-run-id";
   const replacements = [{path: ["id"], value: normalized.id}];
-  for (const branch of ["head", "base"]) {
+  if (ownCheck) for (const [index, pull] of row.pull_requests.entries()) {
+    if (!ownPull(pull)) continue;
+    normalized.pull_requests[index].id = "verified-own-github-pull-request-id";
+    replacements.push({path: ["pull_requests", index, "id"], value: normalized.pull_requests[index].id});
+  }
+  for (const branch of directPull ? ["head", "base"] : []) {
     const repo = normalized[branch]?.repo;
     if (repo?.full_name === repository && repo.ssh_url === `${["git", "github.com"].join("@")}:${repository}.git`) {
       repo.ssh_url = "verified-own-github-repository-ssh-url";
@@ -287,13 +321,13 @@ export function verifiedGithubMetadataText(text, identities) {
   // Preserve every original nonmetadata byte, including numeric lexemes. The
   // additional decoded view retains checks of escaped strings without replacing
   // inspection of the original representation.
-  let original = text;
+  let original = body;
   const spans = replacements.map(({path, value}) => ({range: ranges.get(JSON.stringify(path)), value}));
-  if (spans.some(({range}) => !range)) return text;
+  if (spans.some(({range}) => !range)) return unverified();
   for (const {range: [start, end], value} of spans.sort((a, b) => b.range[0] - a.range[0])) {
     original = original.slice(0, start) + JSON.stringify(value) + original.slice(end);
   }
-  return original + "\n" + JSON.stringify(normalized);
+  return prefix + original + "\n" + JSON.stringify(normalized);
 }
 
 async function walk(directory) {
@@ -377,9 +411,11 @@ async function scanPrivacyCandidates(candidates) {
       }
       const proposedText = isProposedTextArtifact(path, body);
       const cpuProfileText = isCpuProfileTextArtifact(path, body);
-      if (proposedText || cpuProfileText) {
+      const operationalText = isOperationalTextArtifact(path, body);
+      if (proposedText || cpuProfileText || operationalText) {
         const text = body.toString("utf8");
-        findings.push(...customerDataFindings(cpuProfileText ? cpuProfilePrivacyText(text) : text, relative(root, path), blockedDigests));
+        findings.push(...customerDataFindings(cpuProfileText ? cpuProfilePrivacyText(text) :
+          verifiedGithubMetadataText(text, githubIdentities), relative(root, path), blockedDigests));
         continue;
       }
       if (!approvedBinaryDigests.has(sha256(body))) {
