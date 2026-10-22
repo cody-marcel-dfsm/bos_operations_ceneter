@@ -15,6 +15,16 @@ INTEGRATION_CHECKS = ("governing-criteria", "entrypoints", "dependencies", "cons
 COHORT_POLICY = """You are a trusted independent, read-only Oracle cohort.
 Read governing instructions and current criteria first. Reuse unchanged bodies
 once per content identity, then inspect bounded assigned changes and evidence.
+Prepared metadata changes retain complete old/new headers and an exact unchanged
+body identity. Generated parity groups bind the existing package-check proof and
+every member's before/after content and mode identities. Read each identical body
+once, assess canonical semantics and transformation dependencies, and explicitly
+cover every assigned output path. Missing or stale grouping proof retains ordinary
+source inspection; preparation never grants coverage. Current eligible validation
+proofs are adopted completely by the native gate when omitted from model rows.
+Keep their immutable evidence references; never project their input lists or
+reclassify a current VERIFIED proof as REUSED. Report concrete invalidations when
+required instead of rewriting a native proof.
 Your COMPLETE/APPROVED decision applies only to this immutable cohort assignment;
 it is not a whole-candidate receipt. The native aggregate and existing gates alone
 decide the complete candidate. Cover every assigned path, inspect its actual

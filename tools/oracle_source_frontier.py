@@ -7,6 +7,7 @@ import difflib
 import hashlib
 import json
 from pathlib import Path
+import re
 import subprocess
 
 MAX_OBJECT_BYTES = 1024 * 1024
@@ -14,6 +15,38 @@ MAX_SOURCE_BYTES = 8 * 1024 * 1024
 MAX_FRONTIER_BYTES = 2 * 1024 * 1024
 MAX_PAGE_BYTES = 32 * 1024
 MAX_INLINE_BYTES = 96 * 1024
+
+
+def generation_input(path):
+    """Conservative package-check closure, excluding maintainer review execution."""
+    return path != 'AGENTS.md' and not path.startswith((
+        'tools/', 'tests/', '.agents/', '.claude/', 'Vault/', '.github/', '.githooks/'))
+
+
+def _generation_proof(context, snap):
+    needed = {path: context['input_hashes'].get(path) for path in snap['after'] if generation_input(path)}
+    if 'scripts/check-package.mjs' not in needed or not needed:
+        return None
+    for proof in [*context.get('current_validations', []), *context.get('reusable_validations', [])]:
+        if proof.get('command') != ['node', 'scripts/check-package.mjs']:
+            continue
+        inputs = {item['path']: item['digest'] for item in proof.get('inputs', [])}
+        if (not proof.get('output_hashes') or not proof.get('evidence_sha256')
+                or any(value is None or inputs.get(path) != value for path, value in needed.items())):
+            continue
+        return {key: proof[key] for key in ('evidence_path', 'evidence_sha256', 'environment_digest',
+                                            'command', 'output_hashes')} | {
+            'inputs_sha256': _hash(json.dumps(proof['inputs'], sort_keys=True).encode()),
+            'generation_inputs_sha256': _hash(json.dumps(needed, sort_keys=True).encode()),
+            'generation_input_count': len(needed)}
+    return None
+
+
+def _skill_parts(path, text):
+    if Path(path).name != 'SKILL.md':
+        return None
+    match = re.match(r'\A---\r?\n[\s\S]*?\r?\n---(?:\r?\n|\Z)', text)
+    return (text[:match.end()], text[match.end():]) if match else None
 
 
 def _hash(raw):
@@ -236,6 +269,22 @@ def _entry(context, snap, path):
     if not texts or (not snap['before'].get(path) and not snap['after'].get(path)):
         entry['gaps'].append('UNKNOWN_OR_NON_GIT_SOURCE'); return entry
     before, after = texts.get('before'), texts.get('after')
+    old_parts = _skill_parts(path, before) if before is not None else None
+    new_parts = _skill_parts(path, after) if after is not None else None
+    if old_parts and new_parts and old_parts[1] == new_parts[1] and before != after:
+        body_sha = _hash(new_parts[1].encode())
+        entry['unchanged_body'] = {'before_sha256': body_sha, 'after_sha256': body_sha,
+                                  'before_source_identity': entry['originals']['before']['source_identity'],
+                                  'after_source_identity': entry['originals']['after']['source_identity']}
+        entry['units'] = [
+            {'side': 'diff', 'label': 'complete-skill-metadata-change', 'kind': 'skill-metadata-change',
+             'start_line': None, 'end_line': None,
+             'body': json.dumps({'before': old_parts[0], 'after': new_parts[0],
+                                 'unchanged_body_sha256': body_sha}, sort_keys=True)},
+            {'side': 'after', 'label': 'unchanged-skill-body', 'kind': 'unchanged-skill-body',
+             'start_line': new_parts[0].count('\n') + 1, 'end_line': len(after.splitlines()),
+             'body': new_parts[1]}]
+        return entry
     changed = {'before': [], 'after': []}
     if before is not None and after is not None:
         a, b = before.splitlines(keepends=True), after.splitlines(keepends=True)
@@ -278,12 +327,28 @@ def _entry(context, snap, path):
 def prepare(o, root, context, plan, cohort, child, snap):
     entries = [_entry(context, snap, path) for path in cohort['required_paths']]
     queues = [deque(entry['units']) for entry in entries]; pages = []; total = 0
+    parity = _generation_proof(context, snap)
+    bodies, groups = {}, {}
     while any(queues):
         for entry, queue in zip(entries, queues):
             if not queue:
                 continue
             unit = queue.popleft(); raw = unit.pop('body').encode('utf-8')
             unit['body_sha256'] = _hash(raw); unit['body_bytes'] = len(raw); unit['pages'] = []
+            shareable = (parity is not None and entry['path'].startswith(('source/', 'clients/'))
+                         and entry['path'].endswith('.md') and unit['kind'] in {
+                             'skill-metadata-change', 'unchanged-skill-body', 'complete-text-fallback'})
+            key = (unit['kind'], unit['body_sha256'])
+            if shareable:
+                member = {'path': entry['path'], 'side': unit['side'], 'body_sha256': unit['body_sha256'],
+                          'originals': entry['originals']}
+                if key in bodies:
+                    first = bodies[key]
+                    unit.update(preparation='IDENTICAL_BODY_REFERENCE', pages=first['pages'],
+                                body_reference={'path': first['path'], 'side': first['side'],
+                                                'body_sha256': unit['body_sha256']})
+                    groups[key]['members'].append(member)
+                    continue
             prepared = []; start = 0
             while start < len(raw):
                 end = min(len(raw), start + 12 * 1024)
@@ -311,11 +376,22 @@ def prepare(o, root, context, plan, cohort, child, snap):
                     o._atomic_write(path, encoded); total += len(encoded)
                     reference = {'path': str(path), 'sha256': _hash(encoded), 'bytes': len(encoded)}
                     pages.append(reference); unit['pages'].append(reference)
+                if shareable:
+                    bodies[key] = {'path': entry['path'], 'side': unit['side'], 'pages': unit['pages']}
+                    groups[key] = {'kind': unit['kind'], 'body_sha256': unit['body_sha256'],
+                                   'members': [member], 'representative': bodies[key]}
+    parity_groups = []
+    for group in groups.values():
+        if len(group['members']) > 1:
+            group['generation_proof'] = parity
+            group['group_sha256'] = _hash(json.dumps(group, sort_keys=True).encode())
+            parity_groups.append(group)
     manifest = {'kind': 'boc-source-frontier-v1', 'preparation_only': True, 'grants_coverage': False,
                 'candidate_commit': context['base_commit'], 'candidate_tree': context['candidate_tree'],
                 'comparison_tree': snap['base'], 'plan_sha256': plan['plan_sha256'],
                 'parent_context_sha256': plan['context_sha256'], 'required_paths': list(cohort['required_paths']),
                 'entries': entries, 'pages': pages, 'prepared_bytes': total,
+                'generated_parity_groups': parity_groups,
                 'snapshot_git_calls': snap['git_calls'], 'mandatory_governing_reads': sorted(snap['authority'])}
     path = child / 'source-frontier.json'; encoded = o._pretty(manifest); o._atomic_write(path, encoded)
     seal = o._files(root, [str(path), *[page['path'] for page in pages]])

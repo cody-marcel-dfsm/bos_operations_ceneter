@@ -67,6 +67,81 @@ class SourceFrontier(unittest.TestCase):
         reference,seal,inline = frontier.prepare(o,self.root,self.context,self.plan,{'required_paths':paths},self.child,snapshot)
         return json.loads(Path(reference['manifest']).read_text()),reference,seal,inline
 
+    def skill_fixture(self):
+        paths = ['source/platform/example/SKILL.md',
+                 'clients/codex/plugins/bos/skills/example/SKILL.md',
+                 'clients/claude/plugins/bos/skills/example/SKILL.md',
+                 'clients/muse/plugins/bos/skills/example/SKILL.md']
+        controls = ['scripts/check-package.mjs', 'scripts/lib/package-model.mjs', 'products/bos/product.json']
+        before = '---\nname: example\nmetadata:\n  version: "1.0.1"\n---\n' + '# Rule\n' + 'Inspect current contracts.\n' * 1000
+        for name in paths + controls:
+            path = self.root / name; path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(before if name in paths else 'synthetic immutable generation input\n')
+        self.git('add', '.'); self.git('commit', '-qm', 'generation before')
+        self.context['previous_candidate_tree'] = self.git('rev-parse', 'HEAD^{tree}')
+        for name in paths:(self.root/name).write_text(before.replace('1.0.1', '1.0.2'))
+        self.git('add', '.'); self.git('commit', '-qm', 'metadata propagation')
+        self.refresh_context()
+        self.context['current_validations'] = [{
+            'command': ['node', 'scripts/check-package.mjs'], 'evidence_path': 'Vault/tmp/generation.json',
+            'evidence_sha256': 'a' * 64, 'environment_digest': 'synthetic-environment',
+            'output_hashes': {'Vault/tmp/generation.stdout.log': 'b' * 64},
+            'inputs': [{'path': name, 'digest': value} for name,value in sorted(self.context['input_hashes'].items())
+                       if frontier.generation_input(name)]}]
+        return paths, controls
+
+    def refresh_context(self):
+        self.context.update(candidate_tree=self.git('rev-parse', 'HEAD^{tree}'), base_commit=self.git('rev-parse', 'HEAD'))
+        self.context['input_hashes'] = {name: 'git-sha1:' + ':'.join(value)
+                                      for name,value in frontier._tree(self.root,self.context['candidate_tree']).items()}
+
+    def test_metadata_body_and_generated_parity_keep_all_identities_with_bounded_payload(self):
+        paths,_ = self.skill_fixture()
+        manifest,reference,seal,_ = self.prepare(paths)
+        self.assertEqual([entry['path'] for entry in manifest['entries']], paths)
+        self.assertFalse(manifest['grants_coverage'])
+        self.assertEqual(len(manifest['generated_parity_groups']), 2)
+        for entry in manifest['entries']:
+            self.assertEqual(entry['unchanged_body']['before_sha256'],entry['unchanged_body']['after_sha256'])
+            self.assertTrue(all(entry['originals'][side]['git_mode']=='100644' for side in ['before','after']))
+        for group in manifest['generated_parity_groups']:
+            self.assertEqual({member['path'] for member in group['members']},set(paths))
+            self.assertEqual(group['generation_proof']['evidence_sha256'],'a'*64)
+            self.assertEqual(group['group_sha256'],frontier._hash(json.dumps(
+                {key:value for key,value in group.items() if key!='group_sha256'},sort_keys=True).encode()))
+        self.assertLess(reference['prepared_bytes'],40000)
+        self.assertEqual(seal,o._files(self.root,list(seal)))
+        print(json.dumps({'generated_frontier_payload':{'paths':len(paths),'prepared_bytes':reference['prepared_bytes'],
+                                                        'pages':reference['prepared_pages']}}))
+
+    def test_missing_checker_proof_retains_ordinary_inspection_and_complete_metadata(self):
+        paths,_ = self.skill_fixture(); self.context['current_validations']=[]
+        manifest,_,_,_ = self.prepare(paths)
+        self.assertFalse(manifest['generated_parity_groups'])
+        for entry in manifest['entries']:
+            self.assertEqual([unit['kind'] for unit in entry['units']],['skill-metadata-change','unchanged-skill-body'])
+            self.assertTrue(all(unit['preparation']=='COMPLETE_PAGED' for unit in entry['units']))
+            header=entry['units'][0]
+            text=''.join(json.loads(Path(p['path']).read_text())['body'] for p in header['pages'])
+            self.assertIn('1.0.1',text);self.assertIn('1.0.2',text)
+
+    def test_body_generator_configuration_and_output_mode_changes_invalidate_grouping_proof(self):
+        for change in ['semantic-body','generator','configuration','output-mode']:
+            with self.subTest(change=change):
+                paths,controls=self.skill_fixture()
+                target=self.root/(paths[-1] if change in ['semantic-body','output-mode'] else controls[1 if change=='generator' else 2])
+                if change=='output-mode':target.chmod(0o755)
+                else:target.write_text(target.read_text()+'\nChanged current behavior.\n')
+                self.git('add','.');self.git('commit','-qm','invalidate generation proof');self.refresh_context()
+                manifest,_,_,_=self.prepare(paths)
+                self.assertFalse(manifest['generated_parity_groups'])
+                self.assertTrue(all(unit['preparation']!='IDENTICAL_BODY_REFERENCE'
+                                    for entry in manifest['entries'] for unit in entry['units']))
+                if change=='semantic-body':
+                    entry=manifest['entries'][-1]
+                    self.assertNotIn('unchanged_body',entry)
+                    self.assertEqual({unit['side'] for unit in entry['units']},{'diff','before','after'})
+
     def test_changed_method_decorator_headers_constructor_and_dependencies_are_complete(self):
         manifest,reference,seal,inline = self.prepare()
         self.assertEqual(manifest['required_paths'],['source.py']); self.assertFalse(manifest['grants_coverage'])
