@@ -301,3 +301,18 @@ test("feedback discovery returns only the active customer's sanitized overrides"
   assert.doesNotMatch(result.stdout, /This value belongs to another customer/);
   assert.doesNotMatch(result.stdout, new RegExp(activeTenant));
 });
+
+test('customer-bearing extension files stay private under022 on creation and upgrade', async () => {
+  const extensions=await extensionRoot();const previous=process.umask(0o022);
+  try {
+    const selectors={productRoot,extensionRoot:extensions,baseSkill:'planning',tenant:'private-example'};
+    const first=await applyCustomerExtension({...selectors,policies:{'private-rule':'Use the private Example Desk.'}});
+    assert.equal((await stat(first.path)).mode&0o777,0o700);
+    assert.equal((await stat(join(first.path,'SKILL.md'))).mode&0o777,0o600);
+    assert.equal((await stat(join(first.path,'.bos-extension.json'))).mode&0o777,0o600);
+    const {chmod}=await import('node:fs/promises');await chmod(first.path,0o755);await chmod(join(first.path,'SKILL.md'),0o644);
+    const next=await applyCustomerExtension({...selectors,defaults:{'planning-window':'7 days'}});
+    assert.equal((await stat(next.path)).mode&0o777,0o700);assert.equal((await stat(join(next.path,'SKILL.md'))).mode&0o777,0o600);
+    assert.match(await readFile(join(next.path,'SKILL.md'),'utf8'),/private Example Desk/);
+  } finally {process.umask(previous);}
+});

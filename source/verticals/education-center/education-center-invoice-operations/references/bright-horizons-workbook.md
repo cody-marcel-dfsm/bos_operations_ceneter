@@ -124,7 +124,9 @@ argument only when the user requests another destination or filename.
 - Put `Total:` and the sum of Amount on the same totals row.
 - Match the reference style: light-blue bold centered header, black borders,
   white detail rows, dates as `mm/dd/yy`, and currency as `$#,##0.00`.
-- Preserve case numbers as text.
+- Preserve case numbers and all descriptive/billing text literally. The builder
+  escapes formula-leading text and stops before publication if the serializer
+  cannot preserve the original value; formulas belong only in calculated cells.
 - Export `.xlsx`. The reference file happens to be macro-enabled; this invoice
   contains no macros and does not require `.xlsm`.
 
@@ -141,6 +143,13 @@ argument only when the user requests another destination or filename.
 - Confirm the total amount equals the sum of row amounts.
 - Confirm no formula errors, clipped headers, clipped identifiers, or blank
   required fields.
+
+Normalized inputs remain caller-owned: create them with private permissions in
+a private workflow directory and remove them after the authorized reconciliation
+retention period. The builder stages exports, previews and automatic inspection
+sidecars in a private per-run directory, removes those derivatives on success or
+failure, and atomically publishes only the verified private workbook. Its stdout
+contains the result summary rather than employee/case/comment inspections.
 
 ## Delivery contract
 
