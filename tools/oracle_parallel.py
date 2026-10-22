@@ -12,6 +12,8 @@ import time
 
 AREAS = ("crosscutting-integration", "implementation-consumers", "verification-recovery")
 INTEGRATION_CHECKS = ("governing-criteria", "entrypoints", "dependencies", "consumers", "publication", "failure-recovery")
+RETAINED_NAVIGATION_MAX_BYTES = 32 * 1024
+COHORT_PACKET_MAX_BYTES = 256 * 1024
 COHORT_POLICY = """You are a trusted independent, read-only Oracle cohort.
 Read governing instructions and current criteria first. Reuse unchanged bodies
 once per content identity, then inspect bounded assigned changes and evidence.
@@ -33,6 +35,10 @@ Report coverage only for assigned primary paths; dependency inputs may name any
 exact current identity from the sealed parent context when actually consumed.
 Use compact area context and original proof pointers; open larger sealed records
 only for an unresolved fact. Do not repeat unchanged checks or reread whole history.
+Retained projections are navigation only and grant no coverage or eligibility.
+Original references use canonical JSON digests and JSON Pointers in the sealed
+parent, whose complete facts remain authoritative. Resolve only OPEN ledger IDs;
+RESOLVED IDs remain historical unless an actionable finding explicitly reopens.
 COMPLETE requires limitations=[]; put nonblocking area boundaries in summary.
 Retain existing finding IDs. Only the crosscutting cohort dispositions prior
 findings and global integration criteria. Specialists classify their assigned
@@ -70,6 +76,8 @@ def partition(context, binding, digest):
 
 
 def packet(context, plan, cohort, parent_context, digest, prepared_source=None):
+    if digest(context) != plan['context_sha256']:
+        raise ValueError('Cohort projection requires the exact sealed parent context')
     assigned = set(cohort["required_paths"])
     selected = set(assigned)
     shared = set(context.get("guards", {}).get("authority_digests", {}))
@@ -91,22 +99,64 @@ def packet(context, plan, cohort, parent_context, digest, prepared_source=None):
              "path_dispositions": [item for item in context.get("path_dispositions", []) if item.get("path") in assigned],
              "proposal_scope": context.get("proposal_scope"),
              "previous_proposal_scope": context.get("previous_proposal_scope"), "scope_changed": context.get("scope_changed"),
-             "unadopted_assessments": [item for item in context.get("unadopted_assessments", [])
-                 if cohort["id"] == AREAS[0] or assigned &
-                 ({entry.get("path") for entry in item.get("observations", [])} |
-                  {entry.get("file") for entry in item.get("finding_references", [])})],
-             "retained_proof_references": {key: context.get(key) for key in
-                 ("prior_native_assessment", "prior_rounds", "retained_observation_evidence")},
-             "validation_references": [{key: item.get(key) for key in
-                 ("evidence_path", "evidence_sha256", "inputs", "environment_digest")}
-                 for item in [*context["reusable_validations"], *context["current_validations"]]
-                 if assigned & {entry["path"] for entry in item.get("inputs", [])}],
+             "open_prior_finding_ids": sorted(key for key, item in relevant_findings.items() if item.get('state') == 'OPEN'),
+             "resolved_prior_finding_ids": sorted(key for key, item in relevant_findings.items() if item.get('state') == 'RESOLVED'),
              "publication_scope": context["publication_scope"] if cohort["id"] == AREAS[0] else {
                  "range_sha256": context["publication_scope"]["range_sha256"]},
              "finding_disposition_owner": AREAS[0]}
+    def original(pointer, item):
+        return {'parent_context': str(parent_context), 'parent_context_sha256': plan['context_sha256'],
+                'digest_encoding': 'canonical-json-v1', 'json_pointer': pointer,
+                'value_sha256': digest(item), 'navigation_only': True, 'eligibility': 'NONE'}
+
+    unadopted = []
+    for index, item in enumerate(context.get('unadopted_assessments', [])):
+        observations = [entry for entry in item.get('observations', []) if entry.get('path') in assigned]
+        findings = [entry for entry in item.get('finding_references', []) if cohort['id'] == AREAS[0] or
+                    assigned & {entry.get('file'), *entry.get('affected_paths', [])}]
+        if cohort['id'] != AREAS[0] and not observations and not findings:
+            continue
+        summary = {key: item.get(key) for key in ('round', 'status', 'actual_outcome', 'reported_review_status',
+                   'reported_verdict', 'observed_candidate_tree', 'origin_record_sha256', 'assessment_pointer')}
+        summary.update(original=original('/unadopted_assessments/' + str(index), item),
+                       observation_count=len(item.get('observations', [])),
+                       observations=[{**{key: entry.get(key) for key in ('path', 'status', 'reason')},
+                                      'input_count': len(entry.get('inputs', [])),
+                                      'inputs_sha256': digest(entry.get('inputs', []))} for entry in observations],
+                       finding_references=findings, finding_ids=item.get('finding_ids', []))
+        unadopted.append(summary)
+    validations = []
+    for key in ('reusable_validations', 'current_validations'):
+        for index, item in enumerate(context[key]):
+            matched = [entry for entry in item.get('inputs', []) if entry['path'] in assigned]
+            if not matched:
+                continue
+            validations.append({**{name: item.get(name) for name in
+                ('evidence_path', 'evidence_sha256', 'environment_digest', 'status')},
+                'original': original('/' + key + '/' + str(index), item), 'assigned_inputs': matched,
+                'input_count': len(item.get('inputs', [])), 'inputs_sha256': digest(item.get('inputs', [])),
+                'command_sha256': digest(item.get('command'))})
+    retained = {'unadopted_assessments': unadopted, 'validation_references': validations,
+                'retained_proof_references': {key: original('/' + key, context.get(key)) for key in
+                    ('prior_native_assessment', 'prior_rounds', 'retained_observation_evidence')}}
+    if len(_serialized(retained)) > RETAINED_NAVIGATION_MAX_BYTES:
+        # Full originals remain immutable and available on demand; omitting
+        # navigation never omits current findings, governing facts or checks.
+        retained = {'unadopted_assessments': [original('/unadopted_assessments', context.get('unadopted_assessments', []))],
+                    'validation_references': [original('/' + key, context[key]) for key in
+                        ('reusable_validations', 'current_validations')],
+                    'retained_proof_references': retained['retained_proof_references']}
+    value.update(retained)
     if prepared_source is not None:
         value['prepared_source'] = prepared_source
-    return dict(value, packet_sha256=digest(value))
+    result = dict(value, packet_sha256=digest(value))
+    if len(_serialized(retained)) > RETAINED_NAVIGATION_MAX_BYTES or len(_serialized(result)) > COHORT_PACKET_MAX_BYTES:
+        raise ValueError('Mandatory cohort facts exceed the bounded serialized packet; replan without dropping criteria')
+    return result
+
+
+def _serialized(value):
+    return (json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + '\n').encode()
 
 
 def output_schema(base, plan, cohort):
@@ -372,6 +422,8 @@ def review(o, root, tree, paths, evidence, owner):
 
     def worker(cohort, child):
         token = o._RUN.set(child)
+        budget_token = o._DISPATCH_BUDGET.set({'context_path': child / 'cohort-context.json',
+                                               'max_bytes': COHORT_PACKET_MAX_BYTES})
         start = time.monotonic() - started
         failure = None
         try:
@@ -399,6 +451,7 @@ def review(o, root, tree, paths, evidence, owner):
                 "started_offset_seconds": start, "finished_offset_seconds": time.monotonic() - started,
                 "finished_at": datetime.now(timezone.utc).isoformat(), "error": failure}))
             o._RUN.reset(token)
+            o._DISPATCH_BUDGET.reset(budget_token)
 
     envelopes, failures, unadopted = {}, [], []
     with ThreadPoolExecutor(max_workers=min(plan["max_workers"], len(jobs))) as executor:

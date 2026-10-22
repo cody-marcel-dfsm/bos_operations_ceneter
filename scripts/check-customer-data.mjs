@@ -18,6 +18,7 @@ const textExtensions = new Set([
 // Native reviewer/validation output, retained TAP and JSON record streams share
 // one format contract, including compound names such as *.stdout.log.
 const operationalTextExtensions = new Set([".tap", ".ndjson", ".stderr", ".stdout", ".json", ".jsonl", ".log"]);
+const terminalSgrPattern = /\u001b\[[0-9;]*m/gu;
 const ignoredParts = new Set([".git", "node_modules", "vendor", "index"]);
 const emailPattern = /\b[A-Z0-9._%+-]+@([A-Z0-9.-]+\.[A-Z]{2,})\b/giu;
 const formattedNanpPattern = /(?<![\dA-Z])(?:\+?1[-.\s]?)?\(?([2-9]\d{2})\)?[-.\s](\d{3})[-.\s](\d{4})(?!\d)/giu;
@@ -122,7 +123,7 @@ export function isOperationalTextArtifact(path, body) {
   if (!operationalTextExtensions.has(extname(path).toLowerCase())) return false;
   try {
     const text = new TextDecoder("utf-8", {fatal: true}).decode(body);
-    return !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(text);
+    return !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(text.replace(terminalSgrPattern, ""));
   } catch { return false; }
 }
 
@@ -339,6 +340,9 @@ export function verifiedGithubMetadataText(text, identities, {rawOnly = false} =
 // This view is restricted to operational/JSONL evidence; ordinary source/SVG
 // keeps its existing representation and avoids combining unrelated attributes.
 export function operationalPrivacyText(text, identities) {
+  const boundary = "\nBOS_PRIVACY_VALUE_BOUNDARY\n";
+  const rendered = text.replace(terminalSgrPattern, "");
+  if (rendered !== text) return text + boundary + operationalPrivacyText(rendered, identities);
   const whole = verifiedGithubMetadataText(text, identities, {rawOnly: true});
   const records = text.split(/\r?\n/u).filter(line => line.trim());
   const jsonRecords = records.length > 0 && records.every(line => {
@@ -351,6 +355,10 @@ export function operationalPrivacyText(text, identities) {
   const pending = [inspected];
   while (pending.length) {
     const value = pending.pop();
+    const renderedValue = value.replace(terminalSgrPattern, "");
+    if (renderedValue !== value && !seen.has(renderedValue)) {
+      seen.add(renderedValue); decoded.push(renderedValue); pending.push(renderedValue);
+    }
     for (const token of value.matchAll(/"(?:\\[\s\S]|[^"\\])*"/gu)) {
       let string;
       try {string = JSON.parse(token[0]);} catch {continue;}
@@ -361,7 +369,6 @@ export function operationalPrivacyText(text, identities) {
   // Decoded values are independent evidence. A word boundary keeps unrelated
   // numeric/string values from assembling a new phone or blocked phrase, while
   // the complete original representation and each complete value stay checked.
-  const boundary = "\nBOS_PRIVACY_VALUE_BOUNDARY\n";
   return inspected + boundary + decoded.join(boundary);
 }
 

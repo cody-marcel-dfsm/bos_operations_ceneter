@@ -162,7 +162,8 @@ test("operational output is strict UTF-8 text and retains complete privacy check
   try {
     for (const extension of operationalSuffixes) {
       assert.equal(isOperationalTextArtifact(`fixture${extension}`, Buffer.from("Synthetic text.\n\t")), true);
-      for (const bytes of [Buffer.from([0xff]), Buffer.from("hidden\0bytes"), Buffer.from("\x1b[0m")]) {
+      assert.equal(isOperationalTextArtifact(`fixture${extension}`, Buffer.from("\x1b[36;1mSynthetic\x1b[0m")), true);
+      for (const bytes of [Buffer.from([0xff]), Buffer.from("hidden\0bytes"), Buffer.from("\x1b[2J"), Buffer.from("\x1b[malformed")]) {
         assert.equal(isOperationalTextArtifact(`fixture${extension}`, bytes), false);
       }
       const path = join(directory, `sensitive${extension}`);
@@ -183,6 +184,28 @@ test("operational output is strict UTF-8 text and retains complete privacy check
     }
     assert(findings.some(value => value.includes("opaque.stderr: unreviewed binary")));
   } finally { await rm(directory, {recursive: true, force: true}); }
+});
+
+test("terminal color output preserves raw evidence and checks rendered and escaped identifier values", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "boc-privacy-terminal-"));
+  const address = ["person", "production-domain.invalidated"].join("@");
+  const phone = ["202", "867", "5309"].join("-");
+  const color = value => value.slice(0, 3) + "\x1b[36;1m" + value.slice(3) + "\x1b[0m";
+  const paths = [];
+  try {
+    for (const suffix of operationalSuffixes) for (const [name, text] of [
+      ["email", color(address)], ["phone", color(phone)],
+      ["escaped", JSON.stringify({value: color(address)}) + "\n{}\n"]
+    ]) {
+      const path = join(directory, name + suffix); await writeFile(path, text); paths.push(path);
+      assert(operationalPrivacyText(text, {}).startsWith(text));
+    }
+    const findings = await fixturePrivacyFailures(paths);
+    for (const path of paths) assert(findings.some(value => value.startsWith(relative(root, path) + ":")), path);
+    const phrase = "synthetic blocked color phrase", text = color(phrase);
+    assert(customerDataFindings(operationalPrivacyText(text, {}), "color.log", new Set([sha256(phrase)]))
+      .some(value => value.includes("identifier digest")));
+  } finally {await rm(directory, {recursive: true, force: true});}
 });
 
 test("multi-record operational JSON inspects escaped strings and duplicate members without losing raw evidence", async () => {

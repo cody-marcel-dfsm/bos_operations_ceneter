@@ -161,6 +161,7 @@ _RUN = ContextVar("oracle_run", default=None)
 _CONTROLLER = ContextVar("oracle_controller", default=None)
 _FOLLOW_COMMITS = ContextVar("oracle_follow_commits", default=False)
 _PREPARED_SETTINGS = ContextVar("oracle_prepared_settings", default=None)
+_DISPATCH_BUDGET = ContextVar("oracle_dispatch_budget", default=None)
 _METADATA_ROOT = ContextVar("oracle_metadata_root", default=None)
 LIVE_AUTHORITIES = (*AUTHORITY_PATHS, ".agents/skills/oracle/review-output.schema.json",
                     "Vault/docs/CONSTITUTION.md", "Vault/docs/architecture.md",
@@ -697,6 +698,18 @@ def _assert_binding(root: Path, expected: dict, evidence: dict, owner: dict | No
 
 
 @_metadata_owner
+def _dispatch_budget(command: Sequence[str], context_raw: bytes, schema_raw: bytes, maximum: int) -> dict:
+    envelope = {'kind': 'boc-native-review-launch-input-v1', 'argv': list(command),
+                'cohort_context_utf8': context_raw.decode('utf-8', errors='strict'),
+                'output_schema_utf8': schema_raw.decode('utf-8', errors='strict')}
+    raw = _pretty(envelope)
+    return {'kind': 'boc-native-review-launch-budget-v1', 'serialized_bytes': len(raw),
+            'maximum_bytes': maximum, 'within_budget': len(raw) <= maximum,
+            'serialized_sha256': _sha(raw), 'argv_sha256': _sha(_canonical(list(command))),
+            'context_sha256': _sha(context_raw), 'context_bytes': len(context_raw),
+            'schema_sha256': _sha(schema_raw), 'schema_bytes': len(schema_raw)}
+
+
 def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path | None = None,
                     cohort_policy: str | None = None) -> dict:
     run = _RUN.get()
@@ -740,6 +753,17 @@ def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path |
         environment["CODEX_SELECTED_REASONING_EFFORT"] = effort
     else:
         environment.pop("CODEX_SELECTED_REASONING_EFFORT", None)
+    budget = _DISPATCH_BUDGET.get()
+    if budget is not None:
+        # Measure the actual complete native argv and artifact bytes after all
+        # prompt/metadata/developer/schema wrapping and JSON string escaping.
+        # This is an owner launch envelope, not a claim about provider wire bytes.
+        context_raw = _custody_read(root, budget['context_path'])[1]
+        schema_raw = _custody_read(root, schema_path)[1]
+        measurement = _dispatch_budget(cmd, context_raw, schema_raw, budget['max_bytes'])
+        _atomic_write(run / 'dispatch-budget.json', _pretty(measurement))
+        if not measurement['within_budget']:
+            raise OracleApprovalError('Complete serialized native review launch exceeds its bounded input budget')
     controller = _CONTROLLER.get()
     if controller is not None:
         if __package__:
