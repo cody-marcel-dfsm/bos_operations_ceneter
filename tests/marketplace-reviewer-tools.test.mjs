@@ -560,7 +560,7 @@ test('identity result extraction retains exact reviewer context and rejects fore
 });
 
 test('test host uses the verified adapter, fresh reviewer context and advertised HTTPS contract',async()=>{
-  const root=await mkdtemp(join(tmpdir(),'reviewer-published-unit-'));
+  const root=await realpath(await mkdtemp(join(tmpdir(),'reviewer-published-unit-')));
   try {
     for(const skill of ['bos-external-dependency-adapter','bos-app-discovery']){
       const target=join(root,'skills',skill,'scripts');await mkdir(target,{recursive:true});
@@ -588,7 +588,7 @@ test('test host uses the verified adapter, fresh reviewer context and advertised
     const untrusted=await tools.call('bos_control_discover',{operation:'app.describe',arguments:{}});
     assert.equal(untrusted.advertised_https_contacts,undefined,'a control response cannot register execution contacts by shape');
     const observed=await tools.call('bos_read_resource',{uri});
-    assert.equal(observed.published_validation.valid,true);
+    assert.equal(observed.published_validation?.valid,true,JSON.stringify(observed));
     const described=await tools.call('bos_https_describe',{document_id:observed.document_id,operations:app.describe.operations});
     const contactId=described.advertised_https_contacts[0].contact_id;
     const readsBeforeExecution=contextReads;

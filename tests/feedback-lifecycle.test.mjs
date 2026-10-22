@@ -29,7 +29,8 @@ const updateContact = contact("fixture.feedback.update", closed({feedback_id: te
 const triageContact = contact("fixture.feedback.triage", closed({feedback_id: text, expected_status: statusSchema,
   status: statusSchema, assigned_to: {type: ["string", "null"]}}));
 const reply = record => ({status: 200, headers: {}, body: {result: {feedback_id: feedbackId, history: [], comments: [], ...record}, media: []}});
-function client(record, {authorized = true, media = []} = {}) {
+function client(record, {authorized = true, media = [],
+  trustedContacts = [readContact, resolveContact, updateContact, triageContact]} = {}) {
   const requests = [];
   const hostTransport = {
     request: async request => {
@@ -42,8 +43,7 @@ function client(record, {authorized = true, media = []} = {}) {
     getProtectedResource: async () => "https://dfsm.ai/mcp/apps/bos/platform",
     captureExecutionScope: async () => async () => true,
     verifyExecutionIntent: async ({contract}) => {
-      const trusted = [readContact, resolveContact, updateContact, triageContact]
-        .find(contact => contact.operation === contract.operation);
+      const trusted = trustedContacts.find(contact => contact.operation === contract.operation);
       return isDeepStrictEqual(contract, trusted) && (trusted.effect === "read" || authorized);
     }
   };
@@ -168,13 +168,16 @@ test("replies select an existing same-record comment, allow replies to replies a
   assert.throws(() => feedbackCommentPayload({record, body: "a".repeat(4001)}), /bounded/);
 });
 test("actual current schemas gate reply/video input before transport and leave old flat/image paths valid", async () => {
-  const f = client({status: "open"});
   const flat = contact("fixture.feedback.comment", closed({feedback_id: text, body: {type: "string", minLength: 1, maxLength: 4000}}));
+  const trustedContacts = [flat];
+  const f = client({status: "open"}, {trustedContacts});
   const nestedSchema = structuredClone(flat.input_schema);
   nestedSchema.properties.parent_comment_id = {type: "string", format: "uuid"};
   const nested = contact("fixture.feedback.comment", nestedSchema);
   await f.adapter.invokeDiscoveredOperation(flat, {feedback_id: feedbackId, body: "A plain comment"});
   await assert.rejects(f.adapter.invokeDiscoveredOperation(flat, {feedback_id: feedbackId, body: "A reply", parent_comment_id: parent}), /schema|payload/i);
+  trustedContacts.splice(0, 1, nested);
+  await assert.rejects(f.adapter.invokeDiscoveredOperation(flat, {feedback_id: feedbackId, body: "A plain comment"}), /review|intent/i);
   await f.adapter.invokeDiscoveredOperation(nested, {feedback_id: feedbackId, body: "A reply", parent_comment_id: parent});
   const image = contact("fixture.feedback.submit", closed({attachments: {type: "array", maxItems: 5, items: closed({
     mime_type: {enum: ["image/png", "image/jpeg", "image/webp"]},
@@ -182,8 +185,10 @@ test("actual current schemas gate reply/video input before transport and leave o
   const video = structuredClone(image);
   video.input_schema.properties.attachments.items.properties.mime_type.enum.push("video/mp4", "video/webm");
   const attachment = {mime_type: "image/png", data_base64: "c3ludGhldGlj", sanitized: true};
+  trustedContacts.splice(0, 1, image);
   await f.adapter.invokeDiscoveredOperation(image, {attachments: [attachment]});
   await assert.rejects(f.adapter.invokeDiscoveredOperation(image, {attachments: [{...attachment, mime_type: "video/mp4"}]}), /schema|payload/i);
+  trustedContacts.splice(0, 1, video);
   await f.adapter.invokeDiscoveredOperation(video, {attachments: [{...attachment, mime_type: "video/mp4"}]});
   await assert.rejects(f.adapter.invokeDiscoveredOperation(video, {attachments: [{...attachment, sanitized: false}]}), /schema|payload/i);
   await assert.rejects(f.adapter.invokeDiscoveredOperation(video, {attachments: Array(6).fill(attachment)}), /schema|payload/i);
