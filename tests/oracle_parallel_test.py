@@ -36,6 +36,10 @@ class ParallelReview(unittest.TestCase):
             'guards': {'authority_digests': {}}, 'prior_findings': {}, 'reusable_validations': [], 'current_validations': [],
             'publication_scope': {'range_sha256': 'range', 'range_paths': self.paths}}
         self.binding = {'base_commit': 'a' * 40, 'reviewer_settings': {'model': 'inherited-model', 'reasoning_effort': 'high'}}
+        for name, value in (('selected_model', 'inherited-model'), ('selected_reasoning_effort', 'high')):
+            setting = patch.object(o, name, return_value=value)
+            setting.start()
+            self.addCleanup(setting.stop)
         (self.run / 'review-context.json').write_bytes(o._pretty(self.context))
         self.run_token = o._RUN.set(self.run)
         self.owner_token = o._METADATA_ROOT.set(self.root)

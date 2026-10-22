@@ -19,6 +19,12 @@ from tools import oracle_lifecycle as lifecycle
 
 
 class ReviewSeries(unittest.TestCase):
+    def synthetic_reviewer_settings(self):
+        for name, value in (('selected_model', 'synthetic-model'), ('selected_reasoning_effort', None)):
+            setting = patch.object(o, name, return_value=value)
+            setting.start()
+            self.addCleanup(setting.stop)
+
     @contextmanager
     def synthetic_native_child(self, run):
         """Exercise native result handling while forbidding real reviewer launches."""
@@ -2881,6 +2887,7 @@ class ReviewSeries(unittest.TestCase):
             o.verify_staged(self.root)
 
     def test_failed_cohort_final_output_is_unadopted_in_next_context_and_bound(self):
+        self.synthetic_reviewer_settings()
         schema = (Path(__file__).resolve().parents[1] / '.agents/skills/oracle/review-output.schema.json').read_text()
         self.change('.agents/skills/oracle/review-output.schema.json', schema)
         def child(root, prompt, prefix, *, schema_path, cohort_policy):
@@ -2945,6 +2952,7 @@ class ReviewSeries(unittest.TestCase):
             o._raw_assessment_navigation(self.root, rounds, resumed['input_hashes'], resumed['guards'])
 
     def prepared_integrity_response(self, *, transport=False, target='page'):
+        self.synthetic_reviewer_settings()
         schema = (Path(__file__).resolve().parents[1] / '.agents/skills/oracle/review-output.schema.json').read_bytes()
         self.change('.agents/skills/oracle/review-output.schema.json', schema.decode())
         def child(root, prompt, prefix, *, schema_path, cohort_policy):

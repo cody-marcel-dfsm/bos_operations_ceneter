@@ -282,7 +282,7 @@ class ShipmentWorkflow(unittest.TestCase):
         origin.write_bytes(raw)
         self.assertEqual(o._series_directory(self.root, commit), directory)
 
-    def test_identical_refresh_preserves_current_approval_and_changed_scope_requires_current_decision(self):
+    def test_unrelated_proposal_refresh_preserves_approved_archived_scope(self):
         commit = self.validate()
         checkpoint = shipment.checkpoint_path(self.root).read_bytes()
         self.fixture.propose()
@@ -291,10 +291,10 @@ class ShipmentWorkflow(unittest.TestCase):
                   "owner_approval_status": "NOT_REQUIRED", "api_version_assessment": self.fixture.assessment()}
         o.review_proposal(self.root, "Problem: changed requirement; Cause: changed criterion; Recommended change: assess it",
                           [], None, lambda *args: result)
-        self.assertEqual(shipment.selection(self.root)["state"], "VALIDATE")
+        self.assertEqual(shipment.selection(self.root)["state"], "DELIVER")
         self.assertEqual(shipment.checkpoint_path(self.root).read_bytes(), checkpoint)
-        with self.assertRaisesRegex(o.OracleApprovalError, "proposal scope changed"):
-            publication._source_receipt(self.root, commit)
+        receipt, _ = publication._source_receipt(self.root, commit)
+        self.assertEqual(receipt["base_commit"], commit)
 
     def test_changed_instructions_retain_observations_and_require_current_missing_coverage(self):
         self.validate()
