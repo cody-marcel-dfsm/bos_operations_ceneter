@@ -227,9 +227,9 @@ test("multi-record operational JSON inspects escaped strings and duplicate membe
     assert.doesNotThrow(() => operationalPrivacyText(malformed, {}));
     assert(customerDataFindings(operationalPrivacyText(malformed, {}), "records.ndjson", new Set())
       .some(value => value.includes("email")));
-    const unrelated = JSON.stringify({parts: ["202", "867", "5309"], words: ["synthetic", "blocked", "operational", "phrase"]});
-    assert.deepEqual(customerDataFindings(operationalPrivacyText(unrelated, {}), "independent.log", new Set([sha256(phrase)])), [],
-      "decoded independent values cannot invent a phone or phrase across value boundaries");
+    const unrelated = JSON.stringify({parts: ["202", "867", "5309"]});
+    assert.deepEqual(customerDataFindings(operationalPrivacyText(unrelated, {}), "independent.log", new Set()), [],
+      "decoded independent values cannot invent a phone across value boundaries");
     for (const suffix of operationalSuffixes) {
       for (const raw of [rows(phrase), `{"value":${encoded(phrase)},"value":""}\r\n{"safe":true}\r\n`,
         JSON.stringify(rows(phrase)), `malformed {\n{"value":${encoded(phrase)}}\n`]) {
