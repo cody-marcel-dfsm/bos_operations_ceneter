@@ -45,6 +45,11 @@ Retained projections are navigation only and grant no coverage or eligibility.
 Original references use canonical JSON digests and JSON Pointers in the sealed
 parent, whose complete facts remain authoritative. Resolve only OPEN ledger IDs;
 RESOLVED IDs remain historical unless an actionable finding explicitly reopens.
+Criterion navigation preserves each historical source/dependency footprint,
+invalidation reason and current comparison. Independently assess a shared policy
+delta collectively where appropriate, then emit every individual assigned current
+criterion with its actual inputs and rationale. Identity matching alone never
+grants applicability, coverage or approval; inspect unresolved differences.
 COMPLETE requires limitations=[]; put nonblocking area boundaries in summary.
 Retain existing finding IDs. Only the crosscutting cohort dispositions prior
 findings and global integration criteria. Specialists classify their assigned
@@ -122,6 +127,29 @@ def packet(context, plan, cohort, parent_context, digest, prepared_source=None):
     value['path_dispositions'] = {'original': original('/path_dispositions', dispositions),
                                  'assigned_status_indices': status_indices}
 
+    invalidated = context.get('invalidated_coverage', [])
+    path_indices = {path: index for index, path in enumerate(cohort['required_paths'])}
+    criterion_groups = {}
+    for index, entry in enumerate(invalidated):
+        if entry.get('path') not in assigned:
+            continue
+        inputs = entry.get('inputs', [])
+        input_paths = [item.get('path') for item in inputs]
+        current = (bool(inputs) and entry['path'] in input_paths and len(set(input_paths)) == len(inputs) and
+                   all(set(item) == {'path', 'digest'} and context['input_hashes'].get(item['path']) == item['digest']
+                       for item in inputs))
+        facts = {'historical_status': entry.get('status'),
+                 'invalidation_reasons': entry.get('invalidation_reasons', []),
+                 'all_recorded_dependencies_current': current}
+        key = digest(facts)
+        if key not in criterion_groups:
+            criterion_groups[key] = dict(facts, criterion_pairs=[])
+        criterion_groups[key]['criterion_pairs'].append([path_indices[entry['path']], index])
+    criterion_navigation = {'original': original('/invalidated_coverage', invalidated),
+                            'pair_columns': ['cohort_required_path_index', 'original_coverage_index'],
+                            'groups': list(criterion_groups.values()),
+                            'eligibility': 'NONE', 'requires_independent_current_applicability': True}
+
     unadopted = []
     for index, item in enumerate(context.get('unadopted_assessments', [])):
         observations = [entry for entry in item.get('observations', []) if entry.get('path') in assigned]
@@ -133,9 +161,9 @@ def packet(context, plan, cohort, parent_context, digest, prepared_source=None):
                    'reported_verdict', 'observed_candidate_tree', 'origin_record_sha256', 'assessment_pointer')}
         summary.update(original=original('/unadopted_assessments/' + str(index), item),
                        observation_count=len(item.get('observations', [])),
-                       observations=[{**{key: entry.get(key) for key in ('path', 'status', 'reason')},
-                                      'input_count': len(entry.get('inputs', [])),
-                                      'inputs_sha256': digest(entry.get('inputs', []))} for entry in observations],
+                       observations=[{key: entry.get(key) for key in
+                           ('path', 'reported_status', 'input_binding_valid', 'binding_error', 'changed_inputs')}
+                           for entry in observations],
                        finding_references=findings, finding_ids=item.get('finding_ids', []))
         unadopted.append(summary)
     validations = []
@@ -150,6 +178,7 @@ def packet(context, plan, cohort, parent_context, digest, prepared_source=None):
                 'input_count': len(item.get('inputs', [])), 'inputs_sha256': digest(item.get('inputs', [])),
                 'command_sha256': digest(item.get('command'))})
     retained = {'unadopted_assessments': unadopted, 'validation_references': validations,
+                'criterion_navigation': criterion_navigation,
                 'retained_proof_references': {key: original('/' + key, context.get(key)) for key in
                     ('prior_native_assessment', 'prior_rounds', 'retained_observation_evidence')}}
     if len(_serialized(retained)) > RETAINED_NAVIGATION_MAX_BYTES:
@@ -158,6 +187,7 @@ def packet(context, plan, cohort, parent_context, digest, prepared_source=None):
         retained = {'unadopted_assessments': [original('/unadopted_assessments', context.get('unadopted_assessments', []))],
                     'validation_references': [original('/' + key, context[key]) for key in
                         ('reusable_validations', 'current_validations')],
+                    'criterion_navigation': criterion_navigation,
                     'retained_proof_references': retained['retained_proof_references']}
     value.update(retained)
     if prepared_source is not None:

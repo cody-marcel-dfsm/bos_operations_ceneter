@@ -151,6 +151,56 @@ class ParallelReview(unittest.TestCase):
         self.assertNotIn('required_paths', packet['prepared_source'])
         self.assertEqual(prepared['required_paths'], cohort['required_paths'], 'Complete original frontier metadata remains unchanged')
 
+    def test_actual_native_criterion_and_unadopted_shapes_preserve_applicability_facts(self):
+        self.context['invalidated_coverage'] = [{'path': 'source.py', 'status': 'REVIEWED',
+            'reason': 'Actual historical production criterion', 'invalidation_reasons': ['review_policy_digest'],
+            'inputs': [{'path': 'source.py', 'digest': 'bound-source.py'},
+                       {'path': 'unchanged.py', 'digest': 'bound-unchanged.py'}]}]
+        self.context['unadopted_assessments'] = [{'round': 23, 'actual_outcome': 'ERROR',
+            'reported_review_status': 'COMPLETE', 'reported_verdict': 'APPROVED',
+            'guard_changes': ['review_policy_digest'], 'observations': [{'path': 'source.py',
+                'reported_status': 'REVIEWED', 'input_binding_valid': True, 'binding_error': None,
+                'changed_inputs': ['@proposal/scope']}], 'finding_references': []}]
+        original = o._pretty(self.context)
+        def projected():
+            plan = parallel.partition(self.context, self.binding, self.digest)
+            cohort = next(item for item in plan['cohorts'] if item['id'] == parallel.AREAS[1])
+            return parallel.packet(self.context, plan, cohort, self.run/'review-context.json', self.digest), cohort
+        packet, cohort = projected()
+        navigation = packet['criterion_navigation']; group = navigation['groups'][0]
+        self.assertEqual(navigation['original']['value_sha256'], self.digest(self.context['invalidated_coverage']))
+        self.assertEqual(navigation['eligibility'], 'NONE')
+        self.assertTrue(navigation['requires_independent_current_applicability'])
+        self.assertEqual(group['invalidation_reasons'], ['review_policy_digest'])
+        self.assertEqual(group['historical_status'], 'REVIEWED')
+        self.assertEqual(group['criterion_pairs'], [[cohort['required_paths'].index('source.py'), 0]])
+        self.assertTrue(group['all_recorded_dependencies_current'])
+        self.assertEqual(packet['unadopted_assessments'][0]['observations'],
+                         self.context['unadopted_assessments'][0]['observations'])
+        self.assertEqual(packet['unadopted_assessments'][0]['actual_outcome'], 'ERROR')
+        self.assertEqual(o._pretty(self.context), original)
+        for bad_inputs in [[], [{'path': 'source.py', 'digest': 'stale'}],
+                           [{'path': 'unknown.py', 'digest': 'foreign'}],
+                           [{'path': 'source.py', 'digest': 'bound-source.py'}] * 2]:
+            self.context['invalidated_coverage'][0]['inputs'] = bad_inputs
+            packet, _ = projected()
+            self.assertFalse(packet['criterion_navigation']['groups'][0]['all_recorded_dependencies_current'])
+
+    def test_criterion_navigation_survives_retained_detail_fallback(self):
+        self.context['invalidated_coverage'] = [{'path': 'source.py', 'status': 'REVIEWED',
+            'reason': 'Historical actual criterion', 'invalidation_reasons': ['review_policy_digest', 'environment_digest'],
+            'inputs': [{'path': 'source.py', 'digest': 'bound-source.py'}]}]
+        self.context['unadopted_assessments'] = [{'actual_outcome': 'ERROR', 'observations': [
+            {'path': 'source.py', 'reported_status': 'REVIEWED', 'input_binding_valid': False,
+             'binding_error': 'Original source moved', 'changed_inputs': ['exact-source'] * 10000}], 'finding_references': []}]
+        plan = parallel.partition(self.context, self.binding, self.digest)
+        cohort = next(item for item in plan['cohorts'] if item['id'] == parallel.AREAS[1])
+        packet = parallel.packet(self.context, plan, cohort, self.run/'review-context.json', self.digest)
+        self.assertEqual(packet['unadopted_assessments'][0]['json_pointer'], '/unadopted_assessments')
+        self.assertEqual(packet['criterion_navigation']['groups'][0]['invalidation_reasons'],
+                         ['review_policy_digest', 'environment_digest'])
+        self.assertEqual(packet['criterion_navigation']['groups'][0]['criterion_pairs'], [[0, 0]])
+
     def test_dispatch_budget_counts_complete_wrapped_escaped_payload(self):
         command = ['codex', '--developer', '\\"多' * 20, 'source prompt and current effect facts']
         context = o._pretty({'mandatory_effect': '\\"多' * 20})
