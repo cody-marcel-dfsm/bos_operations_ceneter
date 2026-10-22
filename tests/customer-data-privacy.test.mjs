@@ -163,7 +163,7 @@ test("operational output is strict UTF-8 text and retains complete privacy check
     for (const extension of operationalSuffixes) {
       assert.equal(isOperationalTextArtifact(`fixture${extension}`, Buffer.from("Synthetic text.\n\t")), true);
       assert.equal(isOperationalTextArtifact(`fixture${extension}`, Buffer.from("\x1b[36;1mSynthetic\x1b[0m")), true);
-      for (const bytes of [Buffer.from([0xff]), Buffer.from("hidden\0bytes"), Buffer.from("\x1b[2J"), Buffer.from("\x1b[malformed")]) {
+      for (const bytes of [Buffer.from([0xff]), Buffer.from("hidden\0bytes"), Buffer.from("\x1b[2J"), Buffer.from("\x1b[31;")]) {
         assert.equal(isOperationalTextArtifact(`fixture${extension}`, bytes), false);
       }
       const path = join(directory, `sensitive${extension}`);

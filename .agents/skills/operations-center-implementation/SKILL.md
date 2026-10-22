@@ -245,6 +245,14 @@ verified validation summaries and the locations of exact input hashes from the
 retained review records. Use bounded source/evidence slices and keep full audit
 records separately. Checkpoint every fully assessed path/dependency and generated
 parity group so the next continuation advances from applicable completed work.
+The native cohort projection bounds retained navigation to32KiB and the final
+serialized packet to256KiB. It references complete immutable parent values by
+canonical JSON digest and JSON Pointer; projected summaries grant no eligibility.
+The launcher separately measures the actual complete argv/context/schema envelope
+after prompt, developer, metadata and JSON-escaping overhead, rejecting oversized
+input before model dispatch. Preserve all mandatory current facts, source identity,
+full native custody and validation checks; replan an oversized assignment instead
+of dropping criteria. Resolve OPEN finding IDs only, retaining RESOLVED history.
 
 A failed aggregate retains its actual passing-case observations. Use those original
 case outputs with unchanged source/test/fixture/configuration and environment
