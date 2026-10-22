@@ -239,14 +239,14 @@ export function customerDataFindings(text, path, blockedDigests) {
 
 // Exact provider identity verified through the existing native GitHub client.
 // Only these typed metadata slots are normalized; every other field is scanned.
-export function verifiedGithubMetadataText(text, identities) {
+export function verifiedGithubMetadataText(text, identities, {rawOnly = false} = {}) {
   // gh --include retains the HTTP envelope. Accept its strict ASCII header
   // grammar while keeping that complete envelope in the inspected output.
   const envelope = /^(HTTP\/(?:1\.[01]|2(?:\.0)?|3(?:\.0)?) [1-5]\d{2}(?: [\x20-\x7e]*)?\r?\n(?:[!#$%&'*+.^_`|~0-9A-Za-z-]+:[\t\x20-\x7e]*\r?\n)*\r?\n)([\s\S]*)$/u.exec(text);
   const prefix = envelope?.[1] ?? "";
   const body = envelope?.[2] ?? text;
   let row, ranges, tokens;
-  const unverified = () => tokens ? text + "\n" + tokens.filter(token => token[0].startsWith('"'))
+  const unverified = () => !rawOnly && tokens ? text + "\n" + tokens.filter(token => token[0].startsWith('"'))
     .map(token => { try { return JSON.parse(token[0]); } catch { return token[0]; } }).join("\n") : text;
   try {
     row = JSON.parse(body);
@@ -327,7 +327,7 @@ export function verifiedGithubMetadataText(text, identities) {
   for (const {range: [start, end], value} of spans.sort((a, b) => b.range[0] - a.range[0])) {
     original = original.slice(0, start) + JSON.stringify(value) + original.slice(end);
   }
-  return prefix + original + "\n" + JSON.stringify(normalized);
+  return prefix + original + (rawOnly ? "" : "\n" + JSON.stringify(normalized));
 }
 
 // Operational records can contain multiple JSON documents or JSON fragments.
@@ -336,13 +336,13 @@ export function verifiedGithubMetadataText(text, identities) {
 // This view is restricted to operational/JSONL evidence; ordinary source/SVG
 // keeps its existing representation and avoids combining unrelated attributes.
 export function operationalPrivacyText(text, identities) {
-  const whole = verifiedGithubMetadataText(text, identities);
+  const whole = verifiedGithubMetadataText(text, identities, {rawOnly: true});
   const records = text.split(/\r?\n/u).filter(line => line.trim());
   const jsonRecords = records.length > 0 && records.every(line => {
     try {JSON.parse(line); return true;} catch {return false;}
   });
   const inspected = whole !== text ? whole : jsonRecords ? text.replace(/[^\r\n]+/gu,
-    line => verifiedGithubMetadataText(line, identities)) : text;
+    line => verifiedGithubMetadataText(line, identities, {rawOnly: true})) : text;
   const decoded = [...inspected.matchAll(/"(?:\\[\s\S]|[^"\\])*"/gu)]
     .map(token => {try {return JSON.parse(token[0]);} catch {return token[0];}});
   return inspected + "\n" + decoded.join("\n");
