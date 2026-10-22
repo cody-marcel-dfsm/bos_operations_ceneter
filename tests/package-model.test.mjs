@@ -978,7 +978,7 @@ test("application runtime packages ship agent-owned MCP lifecycle recovery", asy
     assert.match(guidance, /restart authorization once/i);
     assert.match(guidance, /authorization_required/i);
     assert.match(guidance, /authorization path immediately[\s\S]*active request/i);
-    assert.match(guidance, /request interceptor around every BOS domain[\s\S]*tools\/call/i);
+    assert.match(guidance, /request interceptor around every BOS domain[\s\S]*invocation on its discovered execution surface/i);
     assert.match(guidance, /Calimatic[\s\S]*portal URL and API\s+key/i);
     assert.match(guidance, /model and MCP client[\s\S]*never receive either value/i);
     assert.match(guidance, /follow the exact[\s\S]*service-returned operation action[\s\S]*without asking the user to resubmit/i);

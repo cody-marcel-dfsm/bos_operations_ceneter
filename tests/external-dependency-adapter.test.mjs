@@ -369,6 +369,11 @@ test("discovered operation invocation validates and binds current context privat
   }]);
   assert.deepEqual(response, { status: 200, body: { records: [] } });
   assert.equal(JSON.stringify(response).includes("context_handle"), false);
+  assert.deepEqual(await current.invokeDiscoveredOperation({
+    ...discoveredOperation,
+    execution: {...discoveredOperation.execution, transport: null}
+  }, {text: "Synthetic Contact 7F3A91"}), response);
+  assert.deepEqual(requests[1], requests[0]);
 });
 
 test("binary attachment responses preserve only bounded public download headers", async () => {
