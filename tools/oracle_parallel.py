@@ -14,6 +14,12 @@ AREAS = ("crosscutting-integration", "implementation-consumers", "verification-r
 INTEGRATION_CHECKS = ("governing-criteria", "entrypoints", "dependencies", "consumers", "publication", "failure-recovery")
 RETAINED_NAVIGATION_MAX_BYTES = 32 * 1024
 COHORT_PACKET_MAX_BYTES = 256 * 1024
+
+
+class CohortPacketBudgetError(ValueError):
+    """Mandatory facts need a smaller native assignment, never truncation."""
+
+
 COHORT_POLICY = """You are a trusted independent, read-only Oracle cohort.
 Read governing instructions and current criteria first. Reuse unchanged bodies
 once per content identity, then inspect bounded assigned changes and evidence.
@@ -151,7 +157,7 @@ def packet(context, plan, cohort, parent_context, digest, prepared_source=None):
         value['prepared_source'] = prepared_source
     result = dict(value, packet_sha256=digest(value))
     if len(_serialized(retained)) > RETAINED_NAVIGATION_MAX_BYTES or len(_serialized(result)) > COHORT_PACKET_MAX_BYTES:
-        raise ValueError('Mandatory cohort facts exceed the bounded serialized packet; replan without dropping criteria')
+        raise CohortPacketBudgetError('Mandatory cohort facts exceed the bounded serialized packet; replan without dropping criteria')
     return result
 
 
@@ -407,7 +413,10 @@ def review(o, root, tree, paths, evidence, owner):
     for cohort in plan["cohorts"]:
         child = o._metadata_run(root, run / "cohorts", cohort["id"] + "-")
         prepared, source_seal, source_prompt = frontier.prepare(o, root, context, plan, cohort, child, source_snapshot)
-        child_context = packet(context, plan, cohort, context_path, digest, prepared)
+        try:
+            child_context = packet(context, plan, cohort, context_path, digest, prepared)
+        except CohortPacketBudgetError as exc:
+            raise o.OracleReviewIncomplete(str(exc)) from exc
         original_packets[cohort['id']] = o._pretty(child_context)
         o._atomic_write(child / "cohort-context.json", original_packets[cohort['id']])
         o._atomic_write(child / "output.schema.json", o._pretty(output_schema(schema, plan, cohort)))

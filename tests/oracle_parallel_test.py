@@ -146,6 +146,21 @@ class ParallelReview(unittest.TestCase):
         with self.assertRaises(UnicodeDecodeError):
             o._dispatch_budget(command, b'\xff', schema, 100000)
 
+    def test_production_dispatch_rejects_oversized_complete_input_before_model_launch(self):
+        context_path = self.run / 'cohort-context.json'
+        context_path.write_bytes(o._pretty({'effect': 'Current mandatory effect'}))
+        token = o._DISPATCH_BUDGET.set({'context_path': context_path, 'max_bytes': 1})
+        try:
+            with patch.object(o.subprocess, 'run') as process:
+                with self.assertRaisesRegex(o.OracleApprovalError, 'Complete serialized native review launch'):
+                    o._review_process(self.root, 'Current exact prompt', 'reviewer', cohort_policy=parallel.COHORT_POLICY)
+                process.assert_not_called()
+            measurement = json.loads((self.run/'dispatch-budget.json').read_text())
+            self.assertFalse(measurement['within_budget'])
+            self.assertEqual(measurement['context_sha256'], o._sha(context_path.read_bytes()))
+        finally:
+            o._DISPATCH_BUDGET.reset(token)
+
     def test_production_launcher_runs_three_isolated_inherited_reviewers_in_parallel(self):
         barrier = threading.Barrier(3)
         launches = []; lock = threading.Lock()
