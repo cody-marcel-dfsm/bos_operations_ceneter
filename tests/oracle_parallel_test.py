@@ -83,6 +83,69 @@ class ParallelReview(unittest.TestCase):
         self.assertNotIn('prior_rounds', packet)
         self.assertEqual(packet['parent_context_sha256'], self.plan['context_sha256'])
 
+    def test_large_retained_projection_has_exact_originals_and_keeps_current_finding_states(self):
+        inputs = [{'path': 'source.py', 'digest': 'bound-source.py'}] + [
+            {'path': 'retained/' + str(index), 'digest': 'original-' + str(index)} for index in range(1845)]
+        self.context['current_validations'] = [{'evidence_path': 'full-native.json', 'evidence_sha256': 'd' * 64,
+            'status': 'VERIFIED', 'environment_digest': 'environment', 'inputs': inputs, 'command': ['owned-check']}]
+        self.context['unadopted_assessments'] = [{'round': index, 'actual_outcome': 'ERROR',
+            'reported_review_status': 'COMPLETE', 'reported_verdict': 'APPROVED', 'status': 'UNADOPTED',
+            'observations': [{'path': 'source.py', 'status': 'REVIEWED', 'reason': 'Original source criterion', 'inputs': inputs}] +
+                [{'path': 'other/' + str(n), 'reason': 'Unrelated retained criterion', 'inputs': inputs[:1]} for n in range(486)],
+            'finding_ids': ['F3004'], 'finding_references': [{'id': 'F3004', 'file': 'source.py'}]} for index in range(13)]
+        self.context['prior_findings'] = {
+            'F3004': {'state': 'OPEN', 'file': 'source.py', 'affected_paths': ['source.py'], 'required_behavior': 'Preserve exact criteria'},
+            'F1000': {'state': 'RESOLVED', 'file': 'source.py', 'affected_paths': ['source.py'], 'resolution': 'Historical fact'}}
+        original = o._pretty(self.context)
+        plan = parallel.partition(self.context, self.binding, self.digest)
+        cohort = next(item for item in plan['cohorts'] if item['id'] == parallel.AREAS[1])
+        packet = parallel.packet(self.context, plan, cohort, self.run/'review-context.json', self.digest)
+        self.assertLessEqual(len(o._pretty(packet)), parallel.COHORT_PACKET_MAX_BYTES)
+        self.assertEqual(packet['open_prior_finding_ids'], ['F3004'])
+        self.assertEqual(packet['resolved_prior_finding_ids'], ['F1000'])
+        self.assertEqual(packet['prior_findings'], self.context['prior_findings'])
+        self.assertNotIn('inputs', packet['validation_references'][0])
+        self.assertEqual(packet['validation_references'][0]['input_count'], len(inputs))
+        self.assertEqual(packet['unadopted_assessments'][0]['actual_outcome'], 'ERROR')
+        self.assertEqual(len(packet['unadopted_assessments'][0]['observations']), 1)
+        refs = [packet['validation_references'][0]['original'], packet['unadopted_assessments'][0]['original']]
+        for ref in refs:
+            selected = self.context
+            for component in ref['json_pointer'].split('/')[1:]:
+                selected = selected[int(component)] if isinstance(selected, list) else selected[component]
+            self.assertEqual(ref['value_sha256'], self.digest(selected))
+            self.assertEqual(ref['parent_context_sha256'], self.digest(self.context))
+            self.assertEqual(ref['eligibility'], 'NONE')
+        self.assertEqual(o._pretty(self.context), original, 'Full native inputs and forensic records remain unchanged')
+        stale = copy.deepcopy(self.context); stale['prior_findings']['F3004']['state'] = 'RESOLVED'
+        with self.assertRaisesRegex(ValueError, 'exact sealed parent'):
+            parallel.packet(stale, plan, cohort, self.run/'review-context.json', self.digest)
+
+    def test_retained_fallback_and_mandatory_budget_preserve_original_facts(self):
+        self.context['unadopted_assessments'] = [{'actual_outcome': 'ERROR', 'observations': [
+            {'path': 'source.py', 'reason': 'Large original observation ' * 5000}], 'finding_references': []}]
+        plan = parallel.partition(self.context, self.binding, self.digest)
+        cohort = next(item for item in plan['cohorts'] if item['id'] == parallel.AREAS[1])
+        packet = parallel.packet(self.context, plan, cohort, self.run/'review-context.json', self.digest)
+        self.assertEqual(packet['unadopted_assessments'][0]['json_pointer'], '/unadopted_assessments')
+        self.assertEqual(packet['unadopted_assessments'][0]['eligibility'], 'NONE')
+        self.context['publication_scope']['mandatory_effect'] = '\\"多' * parallel.COHORT_PACKET_MAX_BYTES
+        plan = parallel.partition(self.context, self.binding, self.digest)
+        with self.assertRaisesRegex(ValueError, 'Mandatory cohort facts'):
+            parallel.packet(self.context, plan, plan['cohorts'][0], self.run/'review-context.json', self.digest)
+
+    def test_dispatch_budget_counts_complete_wrapped_escaped_payload(self):
+        command = ['codex', '--developer', '\\"多' * 20, 'source prompt and current effect facts']
+        context = o._pretty({'mandatory_effect': '\\"多' * 20})
+        schema = o._pretty({'schema': '\\"多' * 20})
+        component_sum = len(o._pretty(command)) + len(context) + len(schema)
+        result = o._dispatch_budget(command, context, schema, component_sum)
+        self.assertFalse(result['within_budget'], 'String escaping and wrapping must be included after components')
+        self.assertGreater(result['serialized_bytes'], component_sum)
+        self.assertTrue(o._dispatch_budget(command, context, schema, result['serialized_bytes'])['within_budget'])
+        with self.assertRaises(UnicodeDecodeError):
+            o._dispatch_budget(command, b'\xff', schema, 100000)
+
     def test_production_launcher_runs_three_isolated_inherited_reviewers_in_parallel(self):
         barrier = threading.Barrier(3)
         launches = []; lock = threading.Lock()
@@ -309,7 +372,7 @@ output.with_name('probe.json').write_text(json.dumps({'pid':os.getpid(),'started
         self.assertFalse((self.run / 'cohorts').exists())
 
     def test_child_execution_failure_and_final_context_movement_fail_closed(self):
-        for mode in ('child-failure', 'context-moved'):
+        for mode in ('child-failure', 'context-moved', 'context-missing', 'packet-moved'):
             with self.subTest(mode=mode):
                 target = self.run.parent / mode
                 target.mkdir()
@@ -320,8 +383,14 @@ output.with_name('probe.json').write_text(json.dumps({'pid':os.getpid(),'started
                     if cohort['id'] == parallel.AREAS[1]:
                         if mode == 'child-failure':
                             raise RuntimeError('Actual isolated process execution failed')
-                        moved = copy.deepcopy(self.context); moved['input_hashes']['source.py'] = 'changed'
-                        o._atomic_write(target / 'review-context.json', o._pretty(moved))
+                        if mode == 'context-missing':
+                            (target / 'review-context.json').unlink()
+                        elif mode == 'packet-moved':
+                            path = run / 'cohort-context.json'
+                            path.write_bytes(path.read_bytes() + b' ')
+                        else:
+                            moved = copy.deepcopy(self.context); moved['input_hashes']['source.py'] = 'changed'
+                            o._atomic_write(target / 'review-context.json', o._pretty(moved))
                     o._atomic_write(run / 'model.json', o._pretty({'selected_model':'inherited-model','reasoning_effort':'high'}))
                     value = self.envelope(cohort)
                     o._atomic_write(run / 'result.json', o._pretty(value))
