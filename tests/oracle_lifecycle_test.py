@@ -615,6 +615,8 @@ class CommittedCatchup(unittest.TestCase):
         self.assertEqual(shipment_state.validated_receipt(self.root)[1],o._pretty(result))
 
     def test_dead_pending_owner_recovers_checkpoint_through_status_and_claim(self):
+        metadata_owner=o._METADATA_ROOT.set(self.root)
+        self.addCleanup(o._METADATA_ROOT.reset,metadata_owner)
         for selector in ('active','claim'):
             with self.subTest(selector=selector):
                 controller=lifecycle.Controller(o,self.root,'issue','synthetic-recovery')
