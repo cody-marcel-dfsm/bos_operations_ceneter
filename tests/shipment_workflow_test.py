@@ -510,7 +510,7 @@ class ShipmentWorkflow(unittest.TestCase):
             "import {readPublishedProductEntries} from './scripts/build-marketplace-update.mjs';"
             "for(const product of ['bos','education-center']) {"
             "try {readPublishedProductEntries(process.argv[1],product);throw Error('rejected commit exported');}"
-            "catch(error) {if(!String(error.stderr).includes('known later native exact-candidate failure')) throw error;}"
+            "catch(error) {if(!String(error.stderr).includes('original native support was explicitly invalidated')) throw error;}"
             "console.log(product);}", commit], cwd=self.root, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.splitlines(), ["bos", "education-center"])
@@ -542,7 +542,7 @@ class ShipmentWorkflow(unittest.TestCase):
         self.fixture.git("update-ref", "refs/remotes/origin/main", merged)
         with patch.object(status, "verify_publication", side_effect=AssertionError("Known rejection must not fall back")):
             for candidate in (commit, merged):
-                with self.assertRaisesRegex(o.OracleApprovalError, "known later native exact-candidate failure"):
+                with self.assertRaisesRegex(o.OracleApprovalError, "original native support was explicitly invalidated"):
                     o.verify_commit(self.root, candidate)
 
     def test_published_status_recovery_requires_genuinely_absent_native_history(self):
