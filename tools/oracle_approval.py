@@ -1476,6 +1476,7 @@ class _CriterionLineage:
                 return None
             result = {'functional_inputs': [{'path': name, 'digest': value} for name, value in sorted(functional.items())],
                       'control_inputs': [{'path': name, 'digest': value} for name, value in sorted(controls.items())],
+                      'policy_control_paths': sorted(set(controls) & set(REVIEW_POLICY_MODULES)),
                       'lineage': [dict(reference, criterion=item['criterion_adoption'],
                                        recorded_policy_sha256=self.records[identity]['guards']['review_policy_digest']),
                                   *(previous['lineage'] if previous else [])]}
@@ -1626,6 +1627,8 @@ def _raw_criterion_candidates(root: Path, rounds: list[dict], inputs: dict, guar
             except (OracleApprovalError, KeyError, TypeError):
                 continue
             support = lineage.support(item, record)
+            if item.get('criterion_adoption') and support is None:
+                continue
             functional = support['functional_inputs'] if support else item['inputs']
             if any(inputs.get(entry["path"]) != entry["digest"] for entry in functional):
                 continue
@@ -1710,7 +1713,8 @@ def _raw_assessment_navigation(root: Path, rounds: list[dict], inputs: dict, gua
                 valid, error = True, None
             except (OracleApprovalError, KeyError, TypeError) as exc:
                 valid, error = False, str(exc)
-            declared = item.get("inputs") if isinstance(item.get("inputs"), list) else []
+            declared = [*(item.get("inputs") if isinstance(item.get("inputs"), list) else []),
+                        *(item.get('criterion_control_inputs') if isinstance(item.get('criterion_control_inputs'), list) else [])]
             changed = sorted({entry["path"] for entry in declared if isinstance(entry, dict)
                               and isinstance(entry.get("path"), str)
                               and (entry["path"] not in inputs or inputs[entry["path"]] != entry.get("digest"))})
@@ -1927,6 +1931,8 @@ def _raw_source_closure(root: Path, rounds: list[dict], inputs: dict) -> tuple[d
                 candidates.append((item.get("path"), "coverage", None))
                 candidates += [(entry.get("path"), "dependency", None) for entry in item.get("inputs", [])
                                if isinstance(entry, dict)] if isinstance(item.get("inputs"), list) else []
+                candidates += [(entry.get('path'), 'dependency', None) for entry in item.get('criterion_control_inputs', [])
+                               if isinstance(entry, dict)] if isinstance(item.get('criterion_control_inputs'), list) else []
         for item in assessment.get("findings", []) if isinstance(assessment.get("findings"), list) else []:
             if isinstance(item, dict):
                 candidates.append((item.get("file"), "finding", item.get("id")))

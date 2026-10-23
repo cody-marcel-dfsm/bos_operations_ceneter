@@ -120,12 +120,15 @@ def _retained_criteria(context, pending, digest):
         names = [item.get('path') for item in inputs if isinstance(item, dict)]
         if (name not in pending or name in seen or name in blocked
                 or entry.get('status') not in {'REVIEWED', 'CARRIED_FORWARD'}
+                or entry.get('criterion_adoption') and not support
                 or not reasons or not set(reasons) <= allowed_reasons
                 or raw is not None and (not isinstance(raw, dict) or not raw.get('provenance_files')
                                        or 'unadopted_native_observation' not in reasons)
                 or entry.get('checkpoint_invalidation_reasons')
                 or not inputs or name not in names or len(set(names)) != len(inputs)
                 or any(context['input_hashes'].get(row['path']) is None for row in controls)
+                or support and any(context['input_hashes'].get(row['path']) != row['digest']
+                                   and row['path'] not in support['policy_control_paths'] for row in controls)
                 or any(not isinstance(item, dict) or set(item) != {'path', 'digest'}
                        or context['input_hashes'].get(item['path']) != item['digest'] for item in inputs)):
             continue

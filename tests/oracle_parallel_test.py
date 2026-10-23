@@ -889,12 +889,10 @@ class CriterionDependencyRoles(unittest.TestCase):
             for name in ['source.py', 'dependency.py', str(self.fixture.evidence.relative_to(self.root))]:
                 changed = copy.deepcopy(test_context); changed['input_hashes'][name] = 'changed'
                 plan = parallel.partition(changed, {'reviewer_settings': {}}, self.digest)
-                if name.endswith('validation.json'):
-                    # A changed control needs explicit independent rebinding;
-                    # it never becomes an automatically passing execution.
-                    self.assertFalse(changed['reusable_coverage'])
-                else:
-                    self.assertIn('source.py', plan['required_paths'])
+                self.assertIn('source.py', plan['required_paths'], 'Changed body/dependency/proof support stays individual')
+            unknown = copy.deepcopy(test_context)
+            unknown['invalidated_coverage'][0].pop('criterion_support')
+            self.assertIn('source.py', parallel.partition(unknown, {'reviewer_settings': {}}, self.digest)['required_paths'])
             result = self.fixture.result(context, status='INCOMPLETE'); result['coverage'] = []
             name = str(self.fixture.evidence.relative_to(self.root)); proof = json.loads(self.fixture.evidence.read_text())
             result['validations'] = [{'evidence_path': name, 'status': 'INVALIDATED', 'inputs': proof['inputs'],
