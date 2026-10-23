@@ -573,7 +573,7 @@ def prepared_intake(o, root, context, plan, jobs, seals, evidence):
     effective = _criterion_context(context, plan)
     missing = ["Source identity absent: " + name for name in plan["required_paths"]
                if name not in effective["input_hashes"]]
-    observations, matched_inputs = [], set()
+    observations, unavailable, matched_inputs = [], [], set()
     # Failed/older executions remain observations. Their actual applicability,
     # including strict original-plus-repair composition, belongs to the cohort.
     candidates = {row["evidence_path"] for key in ("current_validations", "reusable_validations", "invalid_current_validations")
@@ -589,8 +589,16 @@ def prepared_intake(o, root, context, plan, jobs, seals, evidence):
         if value.get("kind") != "oracle-validation-record-v1":
             continue
         outputs = value.get("output_hashes", {})
-        if not outputs or any(o._sha(o._custody_read(root, path)[1]) != digest for path, digest in outputs.items()):
-            missing.append("Original execution outputs unavailable: " + name)
+        try:
+            available = isinstance(outputs, dict) and bool(outputs) and all(
+                o._sha(o._custody_read(root, path)[1]) == digest for path, digest in outputs.items())
+            reason = "Original execution output identity changed or absent"
+        except (OSError, ValueError, TypeError, o.OracleApprovalError) as error:
+            available, reason = False, str(error)
+        if not available:
+            unavailable.append({"path": name, "sha256": evidence[name],
+                                "actual_exit_code": value.get("exit_code"),
+                                "applicability": "INELIGIBLE; original output unavailable", "reason": reason})
             continue
         observations.append({"path": name, "sha256": evidence[name], "command": value.get("command"),
                              "actual_exit_code": value.get("exit_code"), "applicability": "UNASSESSED"})
@@ -609,6 +617,7 @@ def prepared_intake(o, root, context, plan, jobs, seals, evidence):
     payload = {"kind": "boc-review-structural-intake-v1", "candidate_commit": context["base_commit"],
                "candidate_tree": context["candidate_tree"], "plan_sha256": plan["plan_sha256"],
                "required_commands": context.get("required_commands", []), "original_observations": observations,
+               "unavailable_original_observations": unavailable,
                "affected_executable_inputs": len(affected), "matched_affected_inputs": len(affected & matched_inputs),
                "missing": missing, "grants_coverage": False}
     o._atomic_write(o._RUN.get() / "structural-intake.json", o._pretty(payload))

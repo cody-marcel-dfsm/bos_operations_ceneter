@@ -374,6 +374,36 @@ class ParallelReview(unittest.TestCase):
         self.assertEqual(diagnostic['missing'],[])
         self.assertFalse(diagnostic['grants_coverage'])
 
+    def test_retired_output_remains_ineligible_while_actual_replacement_satisfies_intake(self):
+        directory = self.root / 'Vault/tmp'
+        directory.mkdir(parents=True)
+        retired, replacement = directory / 'retired.json', directory / 'replacement.json'
+        output = directory / 'replacement.stdout.log'
+        output.write_text('Actual replacement observation')
+        inputs = [{'path': 'source.py', 'digest': self.context['input_hashes']['source.py']}]
+        retired.write_bytes(o._pretty({'kind': 'oracle-validation-record-v1', 'exit_code': 0,
+            'command': ['owned-probe'], 'inputs': inputs,
+            'output_hashes': {str(directory / 'retired.stdout.log'): '0' * 64}}))
+        replacement.write_bytes(o._pretty({'kind': 'oracle-validation-record-v1', 'exit_code': 0,
+            'command': ['owned-probe'], 'inputs': inputs,
+            'output_hashes': {str(output): o._sha(output.read_bytes())}}))
+        self.context.update(required_commands=[{'id': 'required', 'command': ['npm', 'test']}],
+            changed_since_previous=['source.py'], invalid_current_validations=[
+                {'evidence_path': str(retired)}, {'evidence_path': str(replacement)}])
+        evidence = {str(path): o._sha(path.read_bytes()) for path in [retired, replacement]}
+        parallel.prepared_intake(o, self.root, self.context, self.plan, [], {}, evidence)
+        diagnostic = json.loads((self.run / 'structural-intake.json').read_text())
+        self.assertEqual([row['path'] for row in diagnostic['original_observations']], [str(replacement)])
+        self.assertEqual([row['path'] for row in diagnostic['unavailable_original_observations']], [str(retired)])
+        self.assertEqual(diagnostic['matched_affected_inputs'], 1)
+        self.assertFalse(diagnostic['grants_coverage'])
+        output.unlink()
+        with self.assertRaisesRegex(o.OracleIntakeIncomplete, 'bound original execution'):
+            parallel.prepared_intake(o, self.root, self.context, self.plan, [], {}, evidence)
+        diagnostic = json.loads((self.run / 'structural-intake.json').read_text())
+        self.assertEqual(diagnostic['original_observations'], [])
+        self.assertTrue(any('Affected executable input' in reason for reason in diagnostic['missing']))
+
     def test_queued_evidence_after_preparation_requires_rebinding_before_dispatch(self):
         from types import SimpleNamespace
         token=o._CONTROLLER.set(SimpleNamespace(evidence=lambda:['new-qualified-original.json']))
