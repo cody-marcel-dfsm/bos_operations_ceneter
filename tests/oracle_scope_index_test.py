@@ -212,6 +212,23 @@ class ScopeIndex(unittest.TestCase):
             with self.assertRaises(o.OracleSourceBindingError): self.scope()
         self.assertEqual((self.root / 'source.txt').read_text(), 'concurrent authored content')
 
+    def test_actual_cli_reuses_same_tree_legacy_lineage_and_rejects_foreign_source(self):
+        source, tree = self.commits[-1]
+        native = self.add_receipt((source, tree), 'legacy-lineage')
+        self.git('commit', '--allow-empty', '-qm', 'ordinary bookkeeping CL')
+        message = ('synthetic legacy lineage\n\nOracle-Verdict: APPROVED\nOracle-Reviewed-Tree: '
+                   + tree + '\nOracle-Receipt-SHA256: ' + native.stem)
+        self.git('commit', '--allow-empty', '-qm', message)
+        def verify(commit):
+            return subprocess.run([sys.executable, str(self.cli), 'verify-commit', commit],
+                                  cwd=self.root, capture_output=True, text=True)
+        actual = verify(self.git('rev-parse', 'HEAD'))
+        self.assertEqual(actual.returncode, 0, actual.stderr)
+        foreign = self.git('commit-tree', tree, '-m', message)
+        unrelated = verify(foreign)
+        self.assertNotEqual(unrelated.returncode, 0)
+        self.assertIn('native receipt source/provenance', unrelated.stderr)
+
 
 if __name__ == '__main__':
     unittest.main()

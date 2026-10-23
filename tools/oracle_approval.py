@@ -3065,8 +3065,10 @@ def verify_commit(root: Path, commit: str) -> None:
         return
     receipt = json.loads(raw)
     _shape(receipt)
+    lineage = subprocess.run(["git", "merge-base", "--is-ancestor", receipt["base_commit"], commit],
+                             cwd=root, capture_output=True)
     if (fact["source"].get("links") or raw != _pretty(receipt) or _sha(raw) != digest
-            or receipt["candidate_tree"] != tree or receipt["base_commit"] not in {commit, *parents}):
+            or receipt["candidate_tree"] != tree or lineage.returncode):
         raise OracleApprovalError("Commit trailer lacks exact native receipt source/provenance")
     origin, rounds = _archived_origin(root, receipt)
     committed_origin = dict(origin, base_commit=commit)
