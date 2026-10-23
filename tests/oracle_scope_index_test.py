@@ -18,6 +18,10 @@ class ScopeIndex(unittest.TestCase):
         self.root = Path(self.temp.name).resolve()
         self.git('init', '-q'); self.git('config', 'user.name', 'Synthetic Review')
         self.git('config', 'user.email', 'synthetic@example.invalid')
+        self.cli = self.root / 'tools/oracle_approval.py'
+        for name in ['oracle_approval.py', 'codex_child_model.py', 'shipment_state.py', 'publication_status.py']:
+            target = self.root / 'tools' / name; target.parent.mkdir(exist_ok=True)
+            target.write_bytes((Path(o.__file__).resolve().parent / name).read_bytes())
         self.git('commit', '--allow-empty', '-qm', 'baseline')
         self.base = self.git('rev-parse', 'HEAD')
         self.git('remote', 'add', 'origin', 'https://example.invalid/synthetic.git')
@@ -53,7 +57,7 @@ class ScopeIndex(unittest.TestCase):
         review = {'review_status': 'COMPLETE', 'protected_effects': effects}
         record = dict(context, outcome='APPROVED', review=review,
                       verified_validations=[{'evidence_path': 'synthetic-proof', 'evidence_sha256': 'a' * 64}],
-                      context_file=str(context_path.relative_to(self.root)),
+                      context_file=str(context_path),
                       context_sha256=o._sha(o._canonical(context)))
         record['record_sha256'] = o._sha(o._canonical(record))
         path = self.series / f'round-{number:04d}.json'; path.write_bytes(o._pretty(record))
@@ -137,7 +141,7 @@ class ScopeIndex(unittest.TestCase):
                 context_path = self.directory / 'suffix-context.json'; context_path.write_bytes(o._pretty(context))
                 review = dict(review_status='COMPLETE' if outcome == 'APPROVED' else outcome, **changes)
                 row = dict(context, outcome=outcome, review=review, assessment_admitted=admitted,
-                           finding_ledger={'F1': {'state': 'OPEN'}}, context_file=str(context_path.relative_to(self.root)),
+                           finding_ledger={'F1': {'state': 'OPEN'}}, context_file=str(context_path),
                            context_sha256=o._sha(o._canonical(context)))
                 row['record_sha256'] = o._sha(o._canonical(row))
                 path = self.series / f'round-{number:04d}.json'; path.write_bytes(o._pretty(row))
@@ -160,7 +164,7 @@ class ScopeIndex(unittest.TestCase):
                                 o._receipt_current_context(self.root, receipt, {})
                             with self.assertRaises(o.OracleApprovalError):
                                 shipment._import_currentness(self.root, receipt)
-                    command = [sys.executable, str(Path(o.__file__).resolve()), 'verify-commit', self.commits[0][0]]
+                    command = [sys.executable, str(self.cli), 'verify-commit', self.commits[0][0]]
                     env = dict(os.environ)
                     if name == 'approved-invalidation':
                         self.git('update-ref', 'refs/remotes/origin/main', self.commits[0][0])
