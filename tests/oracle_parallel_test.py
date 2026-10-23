@@ -684,14 +684,17 @@ class RawObservationCriterion(unittest.TestCase):
         self.fixture.setUp()
         self.addCleanup(self.fixture.doCleanups)
         self.root = self.fixture.root
+        self.capture_error()
+
+    def capture_error(self, status='COMPLETE'):
         def drift(context):
-            result = self.fixture.result(context)
+            result = self.fixture.result(context, status=status)
             run = o._RUN.get()
             # Synthetic native producer metadata; this fixture launches no model.
             o._atomic_write(run / 'model.json', o._pretty({'reviewer_role': 'independent-oracle-approver'}))
             o._atomic_write(run / 'process.json', o._pretty({'exit_code': 0}))
             o._atomic_write(run / 'result.json', o._pretty(result))
-            self.fixture.change('peer.py', 'concurrent source movement')
+            self.fixture.change('peer.py', 'concurrent source movement-' + str(len(self.fixture.contexts)))
             return result
         self.fixture.submit(drift, error=o.OracleSourceBindingError)
         self.rounds = o._read_rounds(o._series_directory(self.root, self.fixture.base))
@@ -740,6 +743,16 @@ class RawObservationCriterion(unittest.TestCase):
         result = Path(raw['result_file']); original = result.read_bytes()
         result.write_bytes(original + b' ')
         self.assertEqual(self.candidates(), [])
+
+    def test_aggregate_error_retains_authenticated_completed_per_file_observation(self):
+        self.capture_error(status='ERROR')
+        self.assertEqual(self.rounds[-1]['outcome'], 'ERROR')
+        self.assertEqual(self.rounds[-1]['raw_assessment']['reported_review_status'], 'ERROR')
+        candidates = self.candidates()
+        self.assertEqual([row['path'] for row in candidates], ['source.py'])
+        self.assertEqual(candidates[0]['raw_observation']['record_sha256'], self.rounds[-1]['record_sha256'])
+        self.assertEqual(self.rounds[-1]['verified_coverage'], [])
+        self.assertFalse(o.receipt_path(self.root).exists())
         result.write_bytes(original)
         model = result.parent / 'model.json'
         model.write_bytes(o._pretty({'reviewer_role': 'ordinary-implementation-agent'}))

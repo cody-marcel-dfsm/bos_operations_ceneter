@@ -1491,7 +1491,7 @@ def _raw_criterion_candidates(root: Path, rounds: list[dict], inputs: dict, guar
     """Retain completed bodies for explicit independent applicability only."""
     latest = {}
     for record, raw, assessment, original in _raw_assessment_origins(root, rounds):
-        if assessment.get("review_status") not in {"COMPLETE", "INCOMPLETE"}:
+        if assessment.get("review_status") not in {"COMPLETE", "INCOMPLETE", "ERROR"}:
             continue
         provenance = _raw_native_provenance(root, raw, assessment)
         if not provenance:
