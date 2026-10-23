@@ -257,8 +257,16 @@ def _publish(o, root, path, value):
     return o._sha(raw)
 
 
-def _last(o, root):
-    directory = o.receipt_path(root).parent / "controllers" / "admissions"
+def _admissions(o, root, kind="issue"):
+    if not o.re.fullmatch(r"[a-z_]+", kind):
+        raise o.OracleApprovalError("Native controller kind is invalid")
+    # Proposal/authorization assessment remains independent of the live source
+    # reviewer. Each kind retains its own append-only admission chain.
+    return o.receipt_path(root).parent / "controllers" / ("admissions" if kind == "issue" else kind + "-admissions")
+
+
+def _last(o, root, kind="issue"):
+    directory = _admissions(o, root, kind)
     if not directory.exists():
         return None, 0
     o._metadata_directory(root, directory)
@@ -374,7 +382,7 @@ class Controller:
         self.resumed_evidence = []
         if self.resumed:
             state = _read(o, root, Path(resume))
-            self.identity, _ = _last(o, root)
+            self.identity, _ = _last(o, root, kind)
             if (not self.identity or state.get("controller_id") != self.identity["controller_id"]
                     or self.identity["pid"] != os.getpid()
                     or self.identity["process_identity"] != process_identity(os.getpid())
@@ -458,7 +466,7 @@ class Controller:
             self.thread = threading.Thread(target=self.serve, daemon=True)
             self.thread.start()
             return None
-        previous, count = _last(o, root)
+        previous, count = _last(o, root, self.identity["review_kind"])
         if previous and not _terminal(o, root, previous) and _alive(previous):
             return previous
         if previous and _active_children(o, root, previous):
@@ -469,7 +477,7 @@ class Controller:
         self.identity["previous_sha256"] = o._sha(o._pretty(previous)) if previous else None
         identity_path = self.directory / "identity.json"
         _publish(o, root, identity_path, self.identity)
-        admissions = o.receipt_path(root).parent / "controllers" / "admissions"
+        admissions = _admissions(o, root, self.identity["review_kind"])
         o._metadata_directory(root, admissions)
         source = o._private_directory_fd(root, self.directory, (".git", "oracle"))
         target = o._private_directory_fd(root, admissions, (".git", "oracle"))
@@ -477,7 +485,7 @@ class Controller:
             os.link(identity_path.name, f"{count + 1:08d}.json", src_dir_fd=source,
                     dst_dir_fd=target, follow_symlinks=False)
         except FileExistsError:
-            return _last(o, root)[0]
+            return _last(o, root, self.identity["review_kind"])[0]
         finally:
             os.close(source); os.close(target)
         self.thread = threading.Thread(target=self.serve, daemon=True)

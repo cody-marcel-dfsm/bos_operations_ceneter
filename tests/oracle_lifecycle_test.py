@@ -77,6 +77,28 @@ class Lifecycle(unittest.TestCase):
         self.assertEqual(len((self.root/'.git/oracle/invocations').read_text().splitlines()),1)
         self.assertEqual(len(list((self.root/'.git/oracle/controllers/admissions').iterdir())),1)
 
+    def test_independent_proposal_does_not_replace_or_wait_on_live_source_reviewer(self):
+        owner = self.start()
+        self.entered()
+        original = next((self.root / '.git/oracle/controllers/admissions').iterdir()).read_bytes()
+        script = '''
+from pathlib import Path
+import sys,json
+from tools import oracle_approval as o
+root=Path(sys.argv[1]).resolve()
+@o._serialized_review
+def review_proposal(root,request,evidence,owner):
+    return {"verdict":"APPROVED","scope":request}
+print(json.dumps(review_proposal(root,"independent new proposal",[],None)))
+'''
+        proposal = subprocess.run([sys.executable, '-c', script, str(self.root)], env=self.env,
+                                  capture_output=True, text=True, timeout=5)
+        self.assertEqual(proposal.returncode, 0, proposal.stderr)
+        self.assertEqual(json.loads(proposal.stdout)['scope'], 'independent new proposal')
+        self.assertEqual(next((self.root / '.git/oracle/controllers/admissions').iterdir()).read_bytes(), original)
+        self.assertEqual(len(list((self.root / '.git/oracle/controllers/review_proposal-admissions').iterdir())), 1)
+        self.finish(owner)
+
     def test_observer_cancel_does_not_cancel_owner(self):
         owner=self.start();self.entered();observer=self.start()
         time.sleep(.2);observer.send_signal(__import__('signal').SIGINT)
