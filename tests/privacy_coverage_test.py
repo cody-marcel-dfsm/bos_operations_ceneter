@@ -108,6 +108,7 @@ class PrivacyTransition(unittest.TestCase):
             original = Path(inspect.getsourcefile(o._oracle)).parent / Path(name).name
             target = self.root / name; target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(original.read_bytes())
+            target.chmod(original.stat().st_mode & 0o777)
         (self.root / '.gitignore').write_text('Vault/\n__pycache__/\n')
         for args in [('config', 'user.name', 'Synthetic Reviewer'),
                      ('config', 'user.email', 'review@example.invalid'), ('add', '.'), ('commit', '-qm', 'native archive fixture')]:
