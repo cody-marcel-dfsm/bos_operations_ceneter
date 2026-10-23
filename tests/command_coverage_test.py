@@ -62,6 +62,9 @@ class CommandCoverage(unittest.TestCase):
             reason="Original unchanged passing case plus exact current focused repair; original aggregate remains failed")
         self.assertEqual(coverage.validate_decisions(self.root, {"verdict": "APPROVED", "command_coverage": [row]}, context), [row])
         self.assertEqual(original.read_bytes(), original_raw)
+        with self.assertRaises(o.OracleApprovalError):
+            coverage.validate_decisions(self.root, {"verdict": "APPROVED", "command_coverage": [dict(row,
+                evidence_paths=["original-failed.json", "original-failed.json"])]}, context)
         with self.assertRaises(o.OracleReviewIncomplete):
             coverage.validate_decisions(self.root, {"verdict": "APPROVED", "command_coverage": []}, context)
         repair.write_text("changed output")

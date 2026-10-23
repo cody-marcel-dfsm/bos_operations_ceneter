@@ -107,6 +107,8 @@ def packet(context, plan, cohort, parent_context, digest, prepared_source=None):
     for finding in relevant_findings.values():
         selected.update([finding["file"], *finding.get("affected_paths", [])])
     selected.update(shared)
+    if cohort["id"] == AREAS[0] and context.get("required_commands"):
+        selected.add("package.json")
     value = {"kind": "boc-parallel-cohort-context-v1", "cohort": cohort,
              "plan_sha256": plan["plan_sha256"], "candidate_commit": plan["candidate_commit"],
              "candidate_tree": plan["candidate_tree"], "input_binding_sha256": plan["input_binding_sha256"],

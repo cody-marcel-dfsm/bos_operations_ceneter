@@ -54,8 +54,10 @@ def validate_decisions(root: Path, review: dict, context: dict) -> list[dict]:
         if row.get("status") not in {"COMPLETE", "INCOMPLETE"} or row.get("basis") != "INDEPENDENT_APPLICABILITY":
             raise o.OracleApprovalError("Native command coverage requires an independent applicability decision")
         o._checked_inputs(row.get("inputs"), context, required_path="package.json")
+        paths = row.get("evidence_paths")
         if (row.get("environment_digest") != context["guards"]["environment_digest"]
-                or not row.get("reason", "").strip() or not row.get("evidence_paths")):
+                or not row.get("reason", "").strip() or not isinstance(paths, list) or not paths
+                or any(not isinstance(name, str) for name in paths) or len(set(paths)) != len(paths)):
             raise o.OracleApprovalError("Native command applicability lacks environment, original evidence or rationale")
         for name in row["evidence_paths"]:
             if name not in context["input_hashes"]:
