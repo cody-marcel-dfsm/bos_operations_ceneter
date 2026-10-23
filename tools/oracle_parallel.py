@@ -463,6 +463,33 @@ def _expanded_criteria(o, context, plan, assessment):
     return dict(assessment, coverage=rows), adoptions
 
 
+def _compatible_finding_observations(prior, current):
+    """A stable finding may have several actionable descriptions and locations."""
+    prose = {'message', 'root_cause', 'reproduction', 'required_behavior',
+             'recommendation', 'origin_reason', 'acceptance_checks'}
+    required = prose | {'id', 'severity', 'origin', 'affected_paths', 'file', 'line'}
+    if not all(required <= set(item) for item in (prior, current)):
+        return False
+    if any(not isinstance(item['affected_paths'], list) or not item['affected_paths']
+           or item['file'] not in item['affected_paths']
+           or not isinstance(item['line'], int) or item['line'] < 1 for item in (prior, current)):
+        return False
+    def technical_identity(item):
+        return {key: sorted(value) if key == 'affected_paths' else value
+                for key, value in item.items() if key not in prose | {'file', 'line'}}
+    return technical_identity(prior) == technical_identity(current)
+
+
+def _merge_observation_text(prior, current, fields):
+    merged = copy.deepcopy(prior)
+    for field in fields:
+        if field == 'acceptance_checks':
+            merged[field] = list(dict.fromkeys([*prior[field], *current[field]]))
+        elif prior[field] != current[field]:
+            merged[field] = prior[field] + '\n\n' + current[field]
+    return merged
+
+
 def aggregate(o, plan, context, envelopes, failures, *, root=None):
     assessments, by_cohort, errors = [], {}, list(failures)
     for cohort in plan["cohorts"]:
@@ -530,6 +557,13 @@ def aggregate(o, plan, context, envelopes, failures, *, root=None):
         unique = {}
         for cohort_id, assessment in by_cohort.items():
             for item in assessment[field]:
+                if field in {'findings', 'resolutions'}:
+                    # Keep each role's exact statement alongside the canonical
+                    # ledger entry, including compatible secondary locations.
+                    result.setdefault(field[:-1] + '_observations', []).append({
+                        'cohort_id': cohort_id, 'candidate_commit': plan['candidate_commit'],
+                        'candidate_tree': plan['candidate_tree'],
+                        'observation': copy.deepcopy(item)})
                 if field == 'validations':
                     projected = _invalidated_projection(o, root, context, item)
                     if projected != item:
@@ -550,6 +584,14 @@ def aggregate(o, plan, context, envelopes, failures, *, root=None):
                         prior['reason'] = '\n'.join(sorted(set(prior.get('reason', '').split('\n')
                                                             + item.get('reason', '').split('\n'))))
                         unique[key] = prior
+                    elif field == 'findings' and _compatible_finding_observations(prior, item):
+                        unique[key] = _merge_observation_text(prior, item, {
+                            'message', 'root_cause', 'reproduction', 'required_behavior',
+                            'recommendation', 'origin_reason', 'acceptance_checks'})
+                    elif field == 'resolutions' and prior.get('inputs') and (
+                            {k: v for k, v in prior.items() if k != 'explanation'} ==
+                            {k: v for k, v in item.items() if k != 'explanation'}):
+                        unique[key] = _merge_observation_text(prior, item, {'explanation'})
                     else:
                         errors.append("Contradictory independent " + field + " for " + str(key))
                 else:

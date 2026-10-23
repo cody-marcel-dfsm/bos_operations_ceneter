@@ -537,6 +537,49 @@ class ParallelReview(unittest.TestCase):
                     responses[first]['assessment']['resolutions'] = [{'id': 'F001', 'explanation': 'Resolved'}]
                 self.assertEqual(parallel.aggregate(o, self.plan, self.context, responses, [])['verdict'], 'ERROR')
 
+    def test_actual_f2013_observations_merge_without_erasing_roles_or_critical_conflicts(self):
+        originals = json.loads((Path(__file__).parent / 'fixtures/oracle-f2013-observations.json').read_text())
+        responses = self.all_envelopes()
+        for row in originals:
+            assessment = responses[row['cohort_id']]['assessment']
+            assessment.update(verdict='REJECTED', findings=[copy.deepcopy(row['finding'])])
+        unchanged = copy.deepcopy(responses)
+        result = parallel.aggregate(o, self.plan, self.context, responses, [])
+        self.assertEqual((result['review_status'], result['verdict']), ('COMPLETE', 'REJECTED'))
+        self.assertEqual([item['id'] for item in result['findings']], ['F2013'])
+        self.assertEqual(responses, unchanged)
+        self.assertEqual({row['cohort_id']: row['observation'] for row in result['finding_observations']},
+                         {row['cohort_id']: row['finding'] for row in originals})
+        for row in originals:
+            self.assertIn(row['finding']['message'], result['findings'][0]['message'])
+            self.assertTrue(set(row['finding']['acceptance_checks']) <= set(result['findings'][0]['acceptance_checks']))
+        target = originals[-1]['cohort_id']
+        for field, value in [('severity', 'critical'), ('origin', 'REOPENED'),
+                             ('affected_paths', ['different.py']), ('state', 'RESOLVED')]:
+            with self.subTest(field=field):
+                changed = copy.deepcopy(responses)
+                changed[target]['assessment']['findings'][0][field] = value
+                self.assertEqual(parallel.aggregate(o, self.plan, self.context, changed, [])['verdict'], 'ERROR')
+
+    def test_resolution_explanations_merge_only_for_identical_bound_disposition(self):
+        responses = self.all_envelopes()
+        resolution = {'id': 'F2013', 'explanation': 'Assertions recognize the current diagnostic.',
+                      'inputs': [{'path': 'source.py', 'digest': 'bound-source.py'}]}
+        area = responses[parallel.AREAS[0]]['assessment']
+        area['resolutions'] = [resolution, dict(resolution, explanation='Rejection and no-fallback assertions pass.')]
+        unchanged = copy.deepcopy(responses)
+        result = parallel.aggregate(o, self.plan, self.context, responses, [])
+        self.assertEqual(result['verdict'], 'APPROVED')
+        self.assertEqual(len(result['resolutions']), 1)
+        self.assertEqual(len(result['resolution_observations']), 2)
+        self.assertIn(resolution['explanation'], result['resolutions'][0]['explanation'])
+        self.assertEqual(responses, unchanged)
+        area['resolutions'][1]['inputs'] = [{'path': 'source.py', 'digest': 'foreign-source'}]
+        self.assertEqual(parallel.aggregate(o, self.plan, self.context, responses, [])['verdict'], 'ERROR')
+        responses = self.all_envelopes()
+        responses[parallel.AREAS[1]]['assessment']['resolutions'] = [resolution]
+        self.assertEqual(parallel.aggregate(o, self.plan, self.context, responses, [])['verdict'], 'ERROR')
+
     def test_complete_cohort_cannot_erase_unfinished_limitations_or_invalid_status(self):
         identity = parallel.AREAS[1]
         responses = self.all_envelopes()

@@ -1,0 +1,86 @@
+[
+  {
+    "cohort_id": "crosscutting-integration",
+    "finding": {
+      "acceptance_checks": [
+        "Both targeted shipment selectors pass against the repaired candidate.",
+        "Direct and merge verification still reject admitted same-candidate defects without calling published-status recovery.",
+        "Published export still rejects both products after admitted rejection.",
+        "Retain original aggregate statuses and incorporate the focused repairs into required-command applicability."
+      ],
+      "affected_paths": [
+        "tools/oracle_approval.py",
+        "tests/shipment_workflow_test.py",
+        "tests/shipment-workflow.test.mjs",
+        "scripts/build-marketplace-update.mjs"
+      ],
+      "file": "tools/oracle_approval.py",
+      "id": "F2013",
+      "line": 3008,
+      "message": "The changed verification diagnostic breaks two required shipment regression tests.",
+      "origin": "REPAIR",
+      "origin_reason": "The historical-receipt repair changes the emitted rejection diagnostic while existing consuming assertions retain the former text. This failure is introduced by the changed verifier.",
+      "recommendation": "Update both assertions to recognize the current support-invalidation rejection while preserving their rejection and no-fallback checks.",
+      "reproduction": "Run python3 tests/shipment_workflow_test.py ShipmentWorkflow.test_native_verification_does_not_revive_an_exact_candidate_after_failure ShipmentWorkflow.test_marketplace_export_reads_both_products_from_trailer_free_published_commit -v. The targeted diagnostic exited 1 with two failures in 43.302 seconds: assertions at lines 545 and 513/515 require 'known later native exact-candidate failure', while verification emits 'Commit original native support was explicitly invalidated'. Exact exercised verifier, support, fixture, exporter and test identities match the assignment. Diagnostic: Vault/tmp/oracle-implementation-consumers-7721a7fc/verification-message-diagnostic.json, SHA-256 2a195ad9cdf1cb4f058eb409dfd59825a7c90f67061d440cf415f13bdc3fd1f7.",
+      "required_behavior": "The required shipment suite must pass while proving that admitted defects invalidate original approval and prevent export or remote-status fallback.",
+      "root_cause": "_verify_historical_commit now emits a support-specific error. Two existing tests assert the previous literal diagnostic; the Node shipment wrapper discovers and executes both, causing npm test to fail despite correct rejection behavior.",
+      "severity": "medium"
+    }
+  },
+  {
+    "cohort_id": "implementation-consumers",
+    "finding": {
+      "acceptance_checks": [
+        "Both targeted shipment selectors pass against the repaired candidate.",
+        "Direct and merge verification continue rejecting admitted same-candidate defects without calling published-status recovery.",
+        "Published export continues rejecting both products after admitted rejection.",
+        "Retain original aggregate statuses and incorporate focused repair proof into required-command applicability."
+      ],
+      "affected_paths": [
+        "tools/oracle_approval.py",
+        "tests/shipment_workflow_test.py",
+        "tests/shipment-workflow.test.mjs",
+        "scripts/build-marketplace-update.mjs"
+      ],
+      "file": "tools/oracle_approval.py",
+      "id": "F2013",
+      "line": 3008,
+      "message": "The changed verification diagnostic still breaks two required shipment regression tests in this immutable candidate.",
+      "origin": "REPAIR",
+      "origin_reason": "Retains raw round-44 F2013. Independently confirmed its verifier, fixture, exporter, wrapper and shipment-test identities against the current sealed parent. The current publication-admission repair does not change either failing assertion or exercised verification branch.",
+      "recommendation": "Update both consuming assertions to recognize the current support-invalidation diagnostic while preserving their rejection and no-fallback checks.",
+      "reproduction": "The retained command python3 tests/shipment_workflow_test.py ShipmentWorkflow.test_native_verification_does_not_revive_an_exact_candidate_after_failure ShipmentWorkflow.test_marketplace_export_reads_both_products_from_trailer_free_published_commit -v exited 1 with two failures. Candidate assertions at tests/shipment_workflow_test.py:545 and :513 require 'known later native exact-candidate failure'; tools/oracle_approval.py:3008 emits 'Commit original native support was explicitly invalidated'. All eight recorded consumed source identities match the current parent. Original diagnostic Vault/tmp/oracle-implementation-consumers-7721a7fc/verification-message-diagnostic.json has SHA-256 2a195ad9cdf1cb4f058eb409dfd59825a7c90f67061d440cf415f13bdc3fd1f7. Its FAILED status is preserved; no duplicate execution was needed.",
+      "required_behavior": "The required shipment suite passes while proving that admitted defects invalidate original approval and prevent export or remote-status fallback.",
+      "root_cause": "The historical-verification repair changed the emitted rejection diagnostic while two consuming tests retained the previous literal text. The Node shipment wrapper discovers both selectors, so this mismatch fails npm test despite correct rejection behavior.",
+      "severity": "medium"
+    }
+  },
+  {
+    "cohort_id": "verification-recovery",
+    "finding": {
+      "acceptance_checks": [
+        "Both targeted shipment selectors pass against the repaired candidate.",
+        "Direct and merge verification still reject admitted same-candidate defects without calling published-status recovery.",
+        "Published export still rejects both products after admitted rejection.",
+        "Preserve original failed aggregate statuses and incorporate focused repair evidence into required-command applicability."
+      ],
+      "affected_paths": [
+        "tools/oracle_approval.py",
+        "tests/shipment_workflow_test.py",
+        "tests/shipment-workflow.test.mjs",
+        "scripts/build-marketplace-update.mjs"
+      ],
+      "file": "tests/shipment_workflow_test.py",
+      "id": "F2013",
+      "line": 513,
+      "message": "Two required shipment tests still expect the retired verifier diagnostic and fail on the immutable candidate.",
+      "origin": "REPAIR",
+      "origin_reason": "Retains sealed round-44 raw F2013. The changed verifier emits the support-specific diagnostic while this assignment retains the older assertions at lines 513 and 545. A later live-checkout repair falls outside the assigned commit/tree.",
+      "recommendation": "Update both assertions to recognize 'original native support was explicitly invalidated', preserving the rejection, no-fallback and export-denial checks.",
+      "reproduction": "Run python3 tests/shipment_workflow_test.py ShipmentWorkflow.test_native_verification_does_not_revive_an_exact_candidate_after_failure ShipmentWorkflow.test_marketplace_export_reads_both_products_from_trailer_free_published_commit -v. The retained targeted diagnostic exited 1 with two failures in 43.302 seconds: assertions expect 'known later native exact-candidate failure', while verification emits 'Commit original native support was explicitly invalidated'. Its exercised verifier, support, fixture, exporter and test identities match this assignment. Evidence: Vault/tmp/oracle-implementation-consumers-7721a7fc/verification-message-diagnostic.json, SHA-256 2a195ad9cdf1cb4f058eb409dfd59825a7c90f67061d440cf415f13bdc3fd1f7. No command was rerun.",
+      "required_behavior": "Required shipment tests must pass while proving that admitted defects invalidate original approval and prevent export or remote-status fallback.",
+      "root_cause": "_verify_historical_commit changed its rejection message, but two consuming tests retain literal assertions for the former text. The Node wrapper discovers both tests, causing npm test to fail despite correct rejection behavior.",
+      "severity": "medium"
+    }
+  }
+]
