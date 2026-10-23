@@ -545,6 +545,29 @@ def _publication_scope(root: Path, tree: str) -> dict:
         _SCOPE_AUDIT.reset(token)
 
 
+def _later_support_invalidation(original: dict, rounds: Sequence[dict], evidence: dict | None = None) -> str | None:
+    """Use the same admitted per-receipt support rules as prepared currentness."""
+    if __package__:
+        from . import shipment_state
+    else:
+        import shipment_state
+    support = shipment_state._receipt_support(original, evidence)
+    for row in rounds:
+        if (row["round"] <= original["round"] or row["base_commit"] != original["base_commit"]
+                or row["candidate_tree"] != original["candidate_tree"]):
+            continue
+        review = row.get("review", {})
+        if not row.get("assessment_admitted", not row.get("raw_assessment") and "error" not in review):
+            continue
+        defects, _, _ = shipment_state._decision_facts(row)
+        if defects or review.get("publication_failure"):
+            return "Established admitted same-candidate defect"
+        reason = shipment_state._support_invalidation(support, row, shipment_state._receipt_support(row, {}))
+        if reason:
+            return reason
+    return None
+
+
 def _committed_receipts(root: Path, commit: str) -> list[tuple[dict, bytes]]:
     """Discover exact committed decisions through immutable native provenance."""
     audit = _SCOPE_AUDIT.get()
@@ -576,25 +599,8 @@ def _committed_receipts(root: Path, commit: str) -> list[tuple[dict, bytes]]:
                     and match["review"].get("review_status") == "COMPLETE"
                     and _sha(_canonical(match["review"])) == receipt["review_digest"]
                     and match["review"].get("protected_effects") == receipt.get("protected_effects")):
-                if __package__:
-                    from . import shipment_state
-                else:
-                    import shipment_state
-                support = shipment_state._receipt_support(match, receipt["validation_evidence"])
-                invalidated = False
-                for row in rounds:
-                    if row["round"] <= match["round"] or row["base_commit"] != commit or row["candidate_tree"] != tree:
-                        continue
-                    review = row.get("review", {})
-                    if not row.get("assessment_admitted", not row.get("raw_assessment") and "error" not in review):
-                        continue  # Unadopted execution observations supply no defect.
-                    defects, _, _ = shipment_state._decision_facts(row)
-                    if (defects or review.get("publication_failure")
-                            or shipment_state._support_invalidation(support, row, shipment_state._receipt_support(row, {}))):
-                        invalidated = True
-                        break
-                if invalidated:
-                    break  # Preserve the maintained candidate-specific support semantics.
+                if _later_support_invalidation(match, rounds, receipt["validation_evidence"]):
+                    break
                 selected.append((receipt, raw))
                 break
         else:
@@ -2987,15 +2993,24 @@ def verify_commit(root: Path, commit: str) -> None:
         if tree != approved_tree: raise OracleApprovalError("Merge commit tree differs from the Oracle-approved pull-request tree")
         return
     if not any(re.search(rf"(?m)^{re.escape(key)}:", message) for key in TRAILER_KEYS):
-        # Absence of private history permits published-status recovery. Known
-        # later failure in the preserved lifecycle must never take that route.
+        # Consult applicable originals before considering remote recovery.
+        # Execution-only suffixes cannot erase a complete native checkpoint.
+        if _committed_receipts(root, commit):
+            return
         directory = _series_directory(root, _git(root, "rev-parse", "HEAD").strip())
         decisions = [row for row in _read_rounds(directory)
                      if row["base_commit"] == commit and row["candidate_tree"] == tree]
-        if decisions and decisions[-1]["outcome"] != "APPROVED":
-            raise OracleApprovalError("Commit has a known later native exact-candidate failure")
-        if _committed_receipts(root, commit):
-            return
+        originals = [row for row in decisions if row["outcome"] == "APPROVED"
+                     and row.get("review", {}).get("review_status") == "COMPLETE"]
+        if originals and all(_later_support_invalidation(row, decisions) for row in originals):
+            raise OracleApprovalError("Commit original native support was explicitly invalidated")
+        if not originals:
+            if __package__:
+                from . import shipment_state
+            else:
+                import shipment_state
+            if any(any(shipment_state._decision_facts(row)) for row in decisions):
+                raise OracleApprovalError("Commit has admitted native defects or support invalidation")
         # A published fresh clone uses the existing trusted exact-SHA transport;
         # local approved candidates above remain entirely credential-free.
         baseline = subprocess.run(["git", "merge-base", "--is-ancestor", commit, "refs/remotes/origin/main"],

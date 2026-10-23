@@ -27,7 +27,7 @@ class ScopeIndex(unittest.TestCase):
             self.git('add', 'source.txt'); self.git('commit', '-qm', 'synthetic changelist')
             self.commits.append((self.git('rev-parse', 'HEAD'), self.git('rev-parse', 'HEAD^{tree}')))
         self.directory = self.root / '.git/oracle'
-        self.series = self.directory / 'series/synthetic'
+        self.series = o._series_directory(self.root, self.commits[-1][0])
         self.series.mkdir(parents=True)
         (self.directory / 'receipts').mkdir()
         self.records = []
@@ -41,7 +41,7 @@ class ScopeIndex(unittest.TestCase):
         commit, tree = source
         number = len(self.records) + 1
         previous = self.records[-1]['record_sha256'] if self.records else None
-        context = {'series_id': 'synthetic', 'round': number, 'mode': 'initial',
+        context = {'series_id': self.series.name, 'round': number, 'mode': 'initial',
                    'base_commit': commit, 'candidate_tree': tree, 'guards': {},
                    'previous_record_sha256': previous}
         context_path = self.directory / ('context-' + str(number) + '.json')
@@ -121,6 +121,7 @@ class ScopeIndex(unittest.TestCase):
             ('admitted-defect', 'INCOMPLETE', {'findings': [{'id': 'F1'}]}, True, {}, False),
             ('explicit-invalidation', 'INCOMPLETE', {'validations': [{'status': 'INVALIDATED', 'evidence_path': 'synthetic-proof'}]}, True, {}, False),
             ('changed-criteria', 'INCOMPLETE', {}, True, {'review_policy_digest': 'changed'}, False),
+            ('approved-invalidation', 'APPROVED', {'validations': [{'status': 'INVALIDATED', 'evidence_path': 'synthetic-proof'}]}, True, {}, False),
         ]
         for name, outcome, changes, admitted, guards, retained in cases:
             with self.subTest(name=name):
@@ -129,7 +130,7 @@ class ScopeIndex(unittest.TestCase):
                 context = {key: original[key] for key in ['series_id', 'mode', 'base_commit', 'candidate_tree']}
                 context.update(round=number, guards=guards, previous_record_sha256=self.records[-1]['record_sha256'])
                 context_path = self.directory / 'suffix-context.json'; context_path.write_bytes(o._pretty(context))
-                review = dict(review_status=outcome, **changes)
+                review = dict(review_status='COMPLETE' if outcome == 'APPROVED' else outcome, **changes)
                 row = dict(context, outcome=outcome, review=review, assessment_admitted=admitted,
                            finding_ledger={'F1': {'state': 'OPEN'}}, context_file=str(context_path.relative_to(self.root)),
                            context_sha256=o._sha(o._canonical(context)))
@@ -139,6 +140,11 @@ class ScopeIndex(unittest.TestCase):
                     result = self.scope()
                     self.assertEqual('first' in [item['effect']['id'] for item in result['prior_effects']], retained)
                     self.assertIn('third', [item['effect']['id'] for item in result['prior_effects']])
+                    command = [sys.executable, str(Path(o.__file__).resolve()), 'verify-commit', self.commits[0][0]]
+                    actual = subprocess.run(command, cwd=self.root, capture_output=True, text=True)
+                    self.assertEqual(actual.returncode == 0, retained, actual.stderr)
+                    if not retained:
+                        self.assertIn('explicitly invalidated', actual.stderr)
                 finally:
                     path.unlink(); context_path.unlink()
 
