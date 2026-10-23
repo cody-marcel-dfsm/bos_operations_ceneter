@@ -1501,6 +1501,9 @@ def _raw_criterion_candidates(root: Path, rounds: list[dict], inputs: dict, guar
             continue
         blocked = {name for finding in assessment.get("findings", []) if isinstance(finding, dict)
                    for name in [finding.get("file"), *finding.get("affected_paths", [])]}
+        # Every row shares this immutable record's policy/authority binding.
+        # Historical Git policy lookup belongs to the record, not each file.
+        guard_changes = _observation_guard_changes(root, guards, record)
         for index, item in enumerate(coverage):
             name = item.get("path") if isinstance(item, dict) else None
             if not isinstance(name, str):
@@ -1516,8 +1519,7 @@ def _raw_criterion_candidates(root: Path, rounds: list[dict], inputs: dict, guar
             if any(inputs.get(entry["path"]) != entry["digest"] for entry in item["inputs"]):
                 continue
             latest[name] = dict(item,
-                invalidation_reasons=[*_observation_guard_changes(root, guards, record),
-                                      "unadopted_native_observation"],
+                invalidation_reasons=[*guard_changes, "unadopted_native_observation"],
                 raw_observation={"actual_outcome": record["outcome"],
                     "record_sha256": record["record_sha256"],
                     "context_sha256": record["context_sha256"],

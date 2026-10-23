@@ -801,6 +801,15 @@ class RawObservationCriterion(unittest.TestCase):
         self.assertEqual(self.rounds[-1]['verified_coverage'], [])
         self.assertFalse(o.receipt_path(self.root).exists())
 
+    def test_raw_checkpoint_guard_lookup_is_once_per_original_record(self):
+        with patch.object(o, '_observation_guard_changes', wraps=o._observation_guard_changes) as guards:
+            candidates = self.candidates(dict(self.original['input_hashes']))
+        self.assertEqual({row['path'] for row in candidates}, {'source.py', 'peer.py'})
+        self.assertEqual(guards.call_count, 1)
+        self.assertEqual(candidates[0]['invalidation_reasons'], candidates[1]['invalidation_reasons'])
+        self.assertTrue(all(row['invalidation_reasons'][-1] == 'unadopted_native_observation'
+                            for row in candidates))
+
     def test_changed_inputs_and_negative_rows_remain_individual_assignments(self):
         changed = dict(self.inputs, **{'source.py': 'changed-source'})
         self.assertEqual(self.candidates(changed), [])
