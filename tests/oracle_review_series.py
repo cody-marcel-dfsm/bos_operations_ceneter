@@ -749,7 +749,7 @@ class ReviewSeries(unittest.TestCase):
         self.assertEqual(o.verify_proposal(self.root)["verdict"], "APPROVED")
         o.verify_staged(self.root)
 
-    def test_proposal_binding_error_keeps_prior_state_without_approving_new_scope(self):
+    def test_conceptual_proposal_preserves_prior_receipt_without_approving_concurrent_source(self):
         self.submit()
         original_proposal = o.proposal_path(self.root).read_bytes()
         original_receipt = o.receipt_path(self.root).read_bytes()
@@ -757,11 +757,13 @@ class ReviewSeries(unittest.TestCase):
             self.change("peer.py", "concurrent implementation")
             return {"verdict": "APPROVED", "findings": [], "authentication_impact": "NONE",
                     "owner_approval_status": "NOT_REQUIRED", "api_version_assessment": self.assessment()}
-        with self.assertRaisesRegex(o.OracleApprovalError, "changed"):
-            o.review_proposal(self.root, "new request", [], None, drift)
-        self.assertEqual(o.proposal_path(self.root).read_bytes(), original_proposal)
+        o.review_proposal(self.root, "new request", [], None, drift)
+        proposal = json.loads(o.proposal_path(self.root).read_bytes())
+        self.assertNotEqual(o.proposal_path(self.root).read_bytes(), original_proposal)
+        self.assertEqual(proposal["review_scope"], "CONCEPTUAL_PROPOSAL")
+        self.assertEqual(proposal["source_observations"]["unadopted_delta_paths"], ["peer.py"])
         self.assertEqual(o.receipt_path(self.root).read_bytes(), original_receipt)
-        self.assertNotEqual(o.verify_proposal(self.root)["proposal_sha256"], o._sha(b"new request"))
+        self.assertEqual(o.verify_proposal(self.root)["proposal_sha256"], o._sha(b"new request"))
         with self.assertRaises(o.OracleApprovalError):
             o.verify_staged(self.root)  # Prior receipt never approves concurrent new source.
 
