@@ -65,6 +65,7 @@ class PrivacyTransition(unittest.TestCase):
         self.assertEqual(signature, hmac.new(self.key.read_bytes(), raw, hashlib.sha256).hexdigest())
         self.assertEqual(record["previous_policy_sha256"], self.previous)
         self.assertEqual(self.authorize(), result)
+        self.assertEqual(self.authorize(receipt=dict(self.receipt, approval_id="equivalent-current-approval")), result)
         self.assertEqual((path.stat().st_ino, path.read_bytes()), identity)
         self.assertEqual(self.original.read_bytes(), original)
 

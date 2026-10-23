@@ -103,6 +103,16 @@ def authorize(root: Path, facts_path: Path) -> dict:
     encoded = (json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n").encode()
     result = dict(payload, signature=hmac.new(key, encoded, hashlib.sha256).hexdigest())
     path = o.receipt_path(root).parent / "privacy-coverage/transitions" / (payload["current_policy_sha256"] + ".json")
+    if path.exists():
+        previous_raw = o._custody_read(root, path)[1]
+        previous = json.loads(previous_raw)
+        prior = {name: value for name, value in previous.items() if name != "signature"}
+        prior_encoded = (json.dumps(prior, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n").encode()
+        if (hmac.compare_digest(previous.get("signature", ""), hmac.new(key, prior_encoded, hashlib.sha256).hexdigest())
+                and all(prior.get(name) == payload[name] for name in
+                        ("kind", "scope", "previous_policy_sha256", "current_policy_sha256"))):
+            return {"status": "AUTHORIZED", "transition_file": str(path), "transition_sha256": o._sha(previous_raw)}
+        raise o.OracleApprovalError("Existing privacy policy transition changed")
     identity = oracle_lifecycle._publish(o, root, path, result)
     return {"status": "AUTHORIZED", "transition_file": str(path), "transition_sha256": identity}
 
