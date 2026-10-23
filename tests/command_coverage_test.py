@@ -160,6 +160,24 @@ class CommandCoverage(unittest.TestCase):
     def test_original_environment_metadata_is_required_for_reuse(self):
         self.assertIsNone(coverage._native_coverage([self.row()], self.commit, self.tree, self.required)[0])
 
+    def test_equivalent_approval_retains_receipts_and_explicit_criteria_change_revokes_old_preparation(self):
+        from tools import shipment_state as shipment
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+        record = {"base_commit": self.commit, "candidate_tree": self.tree, "outcome": "APPROVED",
+            "guards": {"authority_digests": {"synthetic-criteria": "original"}, "review_policy_digest": "p", "environment_digest": "e"},
+            "review": {"review_status": "COMPLETE", "protected_effects": {"active": []}, "api_version_assessment": {"impact": "NONE"}}}
+        round_path = self.root / "synthetic-round.json"
+        first, second = "1" * 64, "2" * 64
+        shipment.observe_decision(self.root, record, round_path, technical_receipt_sha256=first, publication_scope={"baseline": "same"})
+        shipment.observe_decision(self.root, record, round_path, technical_receipt_sha256=second, publication_scope={"baseline": "same"})
+        for receipt in (first, second):
+            shipment.publication_eligibility(self.root, self.commit, self.tree, receipt)
+        record["guards"]["authority_digests"] = {"synthetic-criteria": "concretely-changed"}
+        shipment.observe_decision(self.root, record, round_path, technical_receipt_sha256=second, publication_scope={"baseline": "same"})
+        with self.assertRaisesRegex(o.OracleApprovalError, "current criteria/effects"):
+            shipment.publication_eligibility(self.root, self.commit, self.tree, first)
+        shipment.publication_eligibility(self.root, self.commit, self.tree, second)
+
     def admission(self):
         selected = {"candidate_commit": self.commit, "candidate_tree": self.tree,
             "technical_receipt_sha256": "f" * 64, "human_authority_required": False,

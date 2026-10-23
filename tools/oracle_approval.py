@@ -2735,7 +2735,8 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
             else:
                 import shipment_state
             shipment_state.observe_decision(root, round_record, round_path,
-                                            technical_receipt_sha256=_sha(receipt_raw))
+                                            technical_receipt_sha256=_sha(receipt_raw),
+                                            publication_scope=binding["publication_scope"])
             archive = _technical_archive(root, _sha(receipt_raw))
             if archive.exists() and _custody_read(root, archive)[1] != receipt_raw:
                 raise OracleApprovalError("Immutable technical receipt archive conflict")

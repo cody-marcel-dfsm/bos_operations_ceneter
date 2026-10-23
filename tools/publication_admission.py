@@ -250,7 +250,7 @@ def plan(root: Path, candidate: str, release_ref: str, operation: str, *, refres
     current = receipt["publication_scope"]
     if not shipment.checkpoint_path(root).exists():
         current = o._publication_scope(root, receipt["candidate_tree"])
-    elif o._git(root, "rev-parse", "refs/remotes/origin/main^{commit}").strip() != current["baseline_commit"]:
+    elif current["target_ref"] is not None and o._git(root, "rev-parse", "refs/remotes/origin/main^{commit}").strip() != current["baseline_commit"]:
         raise o.OracleApprovalError("Publication baseline changed; validate only the affected destination/range")
     if current["target_ref"] is None:
         raise o.OracleApprovalError("Publication baseline UNAVAILABLE: fetch origin/main and obtain a complete current range assessment")

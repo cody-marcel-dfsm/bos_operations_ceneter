@@ -25,14 +25,7 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
-      - name: Verify commit-bound Oracle approval
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          # A PR merge retains its independently approved head tree. The bounded
-          # wait covers CI starting immediately after the review push.
-          python3 tools/publication_status.py "$VALIDATION_SOURCE_SHA"
-      - name: Accept prior native command coverage and run uncovered checks
+      - name: Verify native approval, reuse prior command coverage and run uncovered checks
         run: python3 tools/command_coverage.py ci --candidate "$VALIDATION_SOURCE_SHA"
         env:
           GH_TOKEN: ${{ github.token }}

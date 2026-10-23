@@ -48,6 +48,9 @@ Consume the captured candidate's compact native decision marker before Git
 dispatch. An explicit same-candidate defect or concrete coverage invalidation
 revokes readiness; execution-only INCOMPLETE/ERROR preserves the last complete
 pass. Unrelated authorship and proposals leave captured eligibility intact.
+Equivalent complete approvals preserve each applicable original receipt; a new
+receipt identifier alone never invalidates coverage. Changed controlling criteria,
+environment or effects retain their concrete binding and revoke affected receipts.
 Retain immutable native Git-attempt results with actual success/failure and timing.
 After confirmed main publication, record the exact delivered SHA through the
 supported `shipment_state.record_released` operation during post-push cleanup;
