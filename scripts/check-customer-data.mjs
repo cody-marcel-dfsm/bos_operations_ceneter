@@ -6,7 +6,7 @@ import {mkdtemp, readFile, readdir, rm, stat, writeFile} from "node:fs/promises"
 import {extname, join, relative, resolve} from "node:path";
 import {tmpdir} from "node:os";
 import {promisify} from "node:util";
-import {privacyFileCoverage, privacyPolicyIdentity, privacyPolicyDigest} from "./lib/privacy-coverage.mjs";
+import {privacyFileCoverage, privacyPolicyIdentity, privacyPolicyDigest, privacyCoveragePartition, privacyTransitionProof} from "./lib/privacy-coverage.mjs";
 
 const execFileAsync = promisify(execFile);
 export const root = resolve(new URL("../", import.meta.url).pathname);
@@ -474,7 +474,11 @@ export async function privacyPolicyPreview() {
   return scanPrivacyCandidates([], {describeOnly: true});
 }
 
-async function scanPrivacyCandidates(candidates, {describeOnly = false} = {}) {
+export async function privacyTransitionAssessment(previousPolicy) {
+  return scanPrivacyCandidates(await privacyCandidates(), {assessTransitionFrom: previousPolicy});
+}
+
+async function scanPrivacyCandidates(candidates, {describeOnly = false, assessTransitionFrom = null} = {}) {
   const names = [digestPath, approvedBinaryPath, join(root, "privacy", "owned-github-pr-identities.json"),
     join(root, "privacy", "owned-native-probe-identities.json")];
   const rules = await Promise.all(names.map(async path => ({path, body: await readFile(path)})));
@@ -521,12 +525,22 @@ async function scanPrivacyCandidates(candidates, {describeOnly = false} = {}) {
   };
   policy.context.scan = scan.toString();
   if (describeOnly) return {kind: "boc-privacy-policy-description-v1", policy_sha256: privacyPolicyDigest(policy)};
-  const result = await privacyFileCoverage({root, directory: join(root, ".git", "oracle", "privacy-coverage"),
-    candidates: [...candidates].filter(path => !path.includes(`${join(root, "Vault", "index")}/`)), policy,
+  const directory = join(root, ".git", "oracle", "privacy-coverage");
+  const currentCandidates = [...candidates].filter(path => !path.includes(`${join(root, "Vault", "index")}/`));
+  const contextFor = async path => ({nativeProbe: await ownNativeProbeIdentity(path, nativeProbeIdentities),
+    sourceFixture: await ownSourceFixtureIdentity(path, nativeProbeIdentities)});
+  const partition = assessTransitionFrom ? await privacyCoveragePartition({root, directory, candidates: currentCandidates,
+    policy, contextFor, previousPolicy: assessTransitionFrom}) : null;
+  const selected = partition ? partition.files.filter(row => !row.original).map(row => join(root, row.path)) : currentCandidates;
+  const result = await privacyFileCoverage({root, directory, candidates: selected, policy,
     source: {commit, tree, command: [process.execPath, ...process.execArgv, ...process.argv.slice(1)]}, scan,
-    contextFor: async path => ({nativeProbe: await ownNativeProbeIdentity(path, nativeProbeIdentities),
-      sourceFixture: await ownSourceFixtureIdentity(path, nativeProbeIdentities)})});
+    contextFor});
   lastPrivacyCoverage = result.report;
+  if (partition) {
+    if (result.report.files.some(row => partition.files.find(item => item.path === row.path)?.sha256 !== row.sha256))
+      throw new Error("Affected privacy input changed during transition assessment");
+    return privacyTransitionProof({root, directory, partition, validation: result.report, findings: result.findings});
+  }
   return result.findings;
 }
 

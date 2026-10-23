@@ -123,17 +123,57 @@ async function policyTransition(directory, key, current) {
   return {...payload, transition_sha256: hash(raw)};
 }
 
-// Every candidate remains in the current scope. Only matching original results
-// are reused; both successful and failing observations retain their outcome.
-export async function privacyFileCoverage({root, directory, candidates, policy, contextFor, scan, source = {}}) {
-  root = resolve(root); directory = resolve(directory);
-  // Check every existing metadata ancestor, so mkdir cannot follow a link.
+async function coverageIssuer(root, directory) {
   let cursor = root;
   const parts = relative(root, directory).split("/");
   if (parts.some(part => part === "..")) throw new Error("Privacy coverage must remain owner-local");
   for (const part of parts) { cursor = join(cursor, part); await privateDirectory(cursor); }
   const key = await issuerKey(directory);
   for (const name of ["by-input", "records", "runs", "transitions"]) await privateDirectory(join(directory, name));
+  return key;
+}
+
+export async function privacyCoveragePartition({root, directory, candidates, policy, contextFor, previousPolicy}) {
+  root = resolve(root); directory = resolve(directory);
+  if (!/^[0-9a-f]{64}$/u.test(previousPolicy)) throw new Error("Original privacy policy identity is required");
+  const key = await coverageIssuer(root, directory), issuer = hash(key), files = [];
+  for (const path of [...new Set(candidates.map(path => resolve(path)))].sort()) {
+    const handle = await open(path, "r"); let body, mode;
+    try { body = await handle.readFile(); mode = (await handle.stat()).mode; } finally { await handle.close(); }
+    const input = {path: relative(root, path), sha256: hash(body), mode, policy_sha256: previousPolicy,
+      context_sha256: hash(encode(contextFor ? await contextFor(path) : {})), issuer};
+    let original;
+    if (!input.path.endsWith(".zip")) {
+      try { const observed = await retainedResult(directory, key, input); if (!observed.findings.length) original = observed; }
+      catch { /* Missing, failing or untrusted original proof remains uncovered. */ }
+    }
+    files.push({path: input.path, sha256: input.sha256, mode, context_sha256: input.context_sha256,
+      ...(original ? {original: {record: original.record, sha256: original.sha256}} : {})});
+  }
+  return {kind: "boc-privacy-coverage-partition-v1", previous_policy_sha256: previousPolicy,
+    current_policy_sha256: privacyPolicyDigest(policy), files, membership_sha256: hash(encode(files))};
+}
+
+export async function privacyTransitionProof({root, directory, partition, validation, findings}) {
+  root = resolve(root); directory = resolve(directory);
+  const key = await coverageIssuer(root, directory);
+  const payload = {kind: "boc-privacy-transition-proof-v1", partition, validation, findings};
+  const raw = encode({...payload, signature: sign(key, payload)});
+  const path = join(directory, "assessments", hash(raw) + ".json");
+  try { await writeRecord(path, raw, true); }
+  catch (error) { if (error.code !== "EEXIST" || (await privateRead(path)).toString() !== raw) throw error; }
+  return {kind: "boc-privacy-transition-assessment-v1", proof_file: path, proof_sha256: hash(raw),
+    previous_policy_sha256: partition.previous_policy_sha256, current_policy_sha256: partition.current_policy_sha256,
+    original_pass_count: partition.files.filter(row => row.original).length, affected_count: validation.files.length,
+    archive_count: partition.files.filter(row => row.path.endsWith(".zip")).length,
+    scanned: validation.scanned, reused: validation.reused, findings};
+}
+
+// Every candidate remains in the current scope. Only matching original results
+// are reused; both successful and failing observations retain their outcome.
+export async function privacyFileCoverage({root, directory, candidates, policy, contextFor, scan, source = {}}) {
+  root = resolve(root); directory = resolve(directory);
+  const key = await coverageIssuer(root, directory);
   const {provenance} = policy;
   const policyHash = privacyPolicyDigest(policy), issuer = hash(key);
   source = {...source, ...(provenance ? {policy_provenance: provenance} : {})};
@@ -179,7 +219,8 @@ export async function privacyFileCoverage({root, directory, candidates, policy, 
       const pointer = {identity, record: name, sha256: hash(raw)};
       await writeRecord(index, encode({...pointer, signature: sign(key, pointer)}));
     }
-    manifest.push({path: input.path, identity, outcome: result.length ? "FAILED" : "PASSED", ...(retained ? {retained} : {})});
+    manifest.push({path: input.path, identity, sha256: input.sha256, mode: input.mode,
+      outcome: result.length ? "FAILED" : "PASSED", ...(retained ? {retained} : {})});
     findings.push(...result);
   }
   const payload = {kind: "boc-privacy-command-coverage-v1", source, policy_sha256: policyHash,

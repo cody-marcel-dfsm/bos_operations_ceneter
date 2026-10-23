@@ -6,7 +6,7 @@ import {createHmac} from "node:crypto";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import test from "node:test";
-import {privacyFileCoverage, privacyPolicyIdentity, privacyPolicyDigest} from "../scripts/lib/privacy-coverage.mjs";
+import {privacyFileCoverage, privacyPolicyIdentity, privacyPolicyDigest, privacyCoveragePartition, privacyTransitionProof} from "../scripts/lib/privacy-coverage.mjs";
 const exec = promisify(execFile);
 
 async function fixture(t) {
@@ -199,6 +199,25 @@ test("reviewed archive-only transition retains exact original non-archive passes
   await writeFile(f.paths[0], "changed bytes under repaired policy");
   const changed = await f.run({policy: current, candidates});
   assert.equal(changed.report.bridged, 2); assert.equal(changed.report.scanned, 1); assert.equal(changed.report.reused, 3);
+});
+
+test("transition assessment partitions authentic originals and captures affected data without activating a bridge", async t => {
+  const f = await fixture(t), previous = {rules: "original"}, current = {rules: "original", archive: "sanitized"};
+  const archive = join(f.root, "artifact.zip"); await writeFile(archive, "synthetic archive bytes");
+  await f.run({policy: previous, candidates: [...f.paths, archive]});
+  const added = join(f.root, "added.txt"); await writeFile(added, "new uncovered bytes");
+  const candidates = [...f.paths, archive, added];
+  const partition = await privacyCoveragePartition({root: f.root, directory: f.directory, candidates,
+    policy: current, previousPolicy: privacyPolicyDigest(previous)});
+  assert.equal(partition.files.filter(row => row.original).length, 3);
+  const selected = partition.files.filter(row => !row.original).map(row => join(f.root, row.path));
+  const checked = await f.run({policy: current, candidates: selected}); assert.equal(checked.report.scanned, 2);
+  const proof = await privacyTransitionProof({root: f.root, directory: f.directory, partition,
+    validation: checked.report, findings: checked.findings});
+  assert.equal(proof.affected_count, 2); assert.equal(proof.archive_count, 1); assert.equal(proof.original_pass_count, 3);
+  assert.deepEqual(await readdir(join(f.directory, "transitions")), []);
+  const unapproved = await f.run({policy: current, candidates});
+  assert.equal(unapproved.report.bridged, 0); assert.equal(unapproved.report.scanned, 3);
 });
 
 test("forged/stale transition facts, changed original proof and original failures never grant a bridged pass", async t => {

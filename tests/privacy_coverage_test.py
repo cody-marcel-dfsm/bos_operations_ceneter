@@ -29,8 +29,21 @@ class PrivacyTransition(unittest.TestCase):
         self.original.write_text(json.dumps({"kind": "privacy-production-measurement-v1", "exit_code": 0,
             "command": ["npm", "run", "check:privacy"], "coverage": {"files": 3, "policy_sha256": self.previous}}))
         self.archive = self.folder / "archive.json"
-        self.archive.write_text(json.dumps({"kind": "oracle-validation-record-v1", "exit_code": 0,
-            "inputs": [], "environment_digest": "actual-original-environment", "output_hashes": {}}))
+        self.archive_file = self.root / "artifact.zip"; self.archive_file.write_bytes(b"synthetic archived bytes")
+        entry = {"path": "artifact.zip", "sha256": o._sha(self.archive_file.read_bytes())}
+        proof = {"kind": "boc-privacy-transition-proof-v1", "partition": {"previous_policy_sha256": self.previous,
+            "current_policy_sha256": self.current, "files": [entry]}, "validation": {"policy_sha256": self.current,
+            "outcome": "PASSED", "files": [dict(entry, outcome="PASSED")]}, "findings": []}
+        encoded = (json.dumps(proof, separators=(",", ":")) + "\n").encode()
+        proof["signature"] = hmac.new(self.key.read_bytes(), encoded, hashlib.sha256).hexdigest()
+        proof_raw = (json.dumps(proof, separators=(",", ":")) + "\n").encode(); proof_hash = o._sha(proof_raw)
+        proof_path = self.key.parent / "assessments" / (proof_hash + ".json"); proof_path.parent.mkdir()
+        proof_path.write_bytes(proof_raw)
+        output = self.folder / "archive.stdout.log"
+        output.write_text(json.dumps({"kind": "boc-privacy-transition-assessment-v1", "proof_file": str(proof_path), "proof_sha256": proof_hash}))
+        self.archive_record = {"kind": "oracle-validation-record-v1", "exit_code": 0,
+            "inputs": [], "environment_digest": "actual-original-environment", "output_hashes": {str(output): o._sha(output.read_bytes())}}
+        self.archive.write_text(json.dumps(self.archive_record))
         self.facts_path = self.folder / "facts.json"
         self.facts = {"kind": "boc-privacy-policy-transition-proposal-v1", "scope": privacy.SCOPE,
             "previous_policy_sha256": self.previous, "current_policy_sha256": self.current,
@@ -52,8 +65,8 @@ class PrivacyTransition(unittest.TestCase):
     def authorize(self, *, receipt=None, preview=None, validation=None):
         receipt = self.receipt if receipt is None else receipt
         with patch.object(privacy.shipment_state, "validated_receipt", return_value=(receipt, o._pretty(receipt))), \
-                patch.object(privacy, "policy_preview", return_value={"policy_sha256": preview or self.current}), \
-                patch.object(o, "_validation_record", side_effect=validation, return_value={"exit_code": 0}):
+                patch.object(privacy, "policy_preview", return_value={"policy_sha256": preview or self.current, "archive_paths": ["artifact.zip"]}), \
+                patch.object(o, "_validation_record", side_effect=validation, return_value=self.archive_record):
             return privacy.authorize(self.root, self.facts_path)
 
     def test_only_finalized_explicit_privacy_coverage_authorizes_an_immutable_transition(self):
@@ -74,6 +87,9 @@ class PrivacyTransition(unittest.TestCase):
         with self.assertRaises(o.OracleApprovalError): self.authorize(receipt=bad)
         with self.assertRaises(o.OracleApprovalError): self.authorize(preview="d" * 64)
         with self.assertRaises(o.OracleApprovalError): self.authorize(validation=o.OracleApprovalError("archive proof invalidated"))
+        archive_body = self.archive_file.read_bytes(); self.archive_file.write_bytes(b"changed archive bytes")
+        with self.assertRaises(o.OracleApprovalError): self.authorize()
+        self.archive_file.write_bytes(archive_body)
         source = self.root / "scripts/check-customer-data.mjs"; body = source.read_bytes(); source.write_text("changed source")
         with self.assertRaises(o.OracleApprovalError): self.authorize()
         source.write_bytes(body)
