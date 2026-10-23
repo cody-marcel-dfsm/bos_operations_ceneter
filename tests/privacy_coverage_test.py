@@ -128,8 +128,14 @@ class PrivacyTransition(unittest.TestCase):
                 patch.object(privacy, 'policy_preview', return_value={'policy_sha256': self.current, 'archive_paths': ['artifact.zip']}):
             result = privacy.authorize(self.root, self.facts_path)
             self.assertEqual(privacy.authorize(self.root, self.facts_path), result)
-            with patch.object(o, '_review_policy_digest', return_value='f' * 64):
-                with self.assertRaises(o.OracleApprovalError): privacy.authorize(self.root, self.facts_path)
+            policy_source = self.root / 'tools/oracle_approval.py'
+            original_policy = policy_source.read_bytes()
+            policy_source.write_bytes(original_policy + b'\nSYNTHETIC_POLICY_CHANGE = True\n')
+            try:
+                with patch.object(o, '__file__', str(policy_source)):
+                    with self.assertRaises(o.OracleApprovalError): privacy.authorize(self.root, self.facts_path)
+            finally:
+                policy_source.write_bytes(original_policy)
             output = next(name for name in self.archive_record['output_hashes'] if name.endswith('.stdout.log'))
             Path(output).write_text(observed + 'tampered')
             with self.assertRaises(o.OracleApprovalError): privacy.authorize(self.root, self.facts_path)
