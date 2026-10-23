@@ -743,6 +743,10 @@ class RawObservationCriterion(unittest.TestCase):
         result = Path(raw['result_file']); original = result.read_bytes()
         result.write_bytes(original + b' ')
         self.assertEqual(self.candidates(), [])
+        result.write_bytes(original)
+        model = result.parent / 'model.json'
+        model.write_bytes(o._pretty({'reviewer_role': 'ordinary-implementation-agent'}))
+        self.assertEqual(self.candidates(), [])
 
     def test_aggregate_error_retains_authenticated_completed_per_file_observation(self):
         self.capture_error(status='ERROR')
@@ -753,10 +757,6 @@ class RawObservationCriterion(unittest.TestCase):
         self.assertEqual(candidates[0]['raw_observation']['record_sha256'], self.rounds[-1]['record_sha256'])
         self.assertEqual(self.rounds[-1]['verified_coverage'], [])
         self.assertFalse(o.receipt_path(self.root).exists())
-        result.write_bytes(original)
-        model = result.parent / 'model.json'
-        model.write_bytes(o._pretty({'reviewer_role': 'ordinary-implementation-agent'}))
-        self.assertEqual(self.candidates(), [])
 
     def test_changed_inputs_and_negative_rows_remain_individual_assignments(self):
         changed = dict(self.inputs, **{'source.py': 'changed-source'})
