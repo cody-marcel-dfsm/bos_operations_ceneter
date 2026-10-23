@@ -6,7 +6,7 @@ import {mkdtemp, readFile, readdir, rm, stat, writeFile} from "node:fs/promises"
 import {extname, join, relative, resolve} from "node:path";
 import {tmpdir} from "node:os";
 import {promisify} from "node:util";
-import {privacyFileCoverage, privacyPolicyIdentity} from "./lib/privacy-coverage.mjs";
+import {privacyFileCoverage, privacyPolicyIdentity, privacyPolicyDigest} from "./lib/privacy-coverage.mjs";
 
 const execFileAsync = promisify(execFile);
 export const root = resolve(new URL("../", import.meta.url).pathname);
@@ -443,7 +443,7 @@ async function scanZip(path, bytes, blockedDigests, approvedBinaryDigests, execu
   } finally { await rm(directory, {recursive: true, force: true}); }
 }
 
-export async function privacyFailures({extraPaths = []} = {}) {
+export async function privacyCandidates({extraPaths = []} = {}) {
   const candidates = new Set([...await trackedFiles(), ...extraPaths.map((path) => resolve(path))]);
   const vault = join(root, "Vault");
   try {
@@ -451,7 +451,11 @@ export async function privacyFailures({extraPaths = []} = {}) {
       for (const path of await walk(vault)) candidates.add(path);
     }
   } catch (error) { if (error.code !== "ENOENT") throw error; }
-  return scanPrivacyCandidates(candidates);
+  return candidates;
+}
+
+export async function privacyFailures(options = {}) {
+  return scanPrivacyCandidates(await privacyCandidates(options));
 }
 
 // Unit fixtures exercise the same complete per-file policy without repeating
@@ -466,7 +470,11 @@ export async function fixturePrivacyFailures(paths) {
 
 export let lastPrivacyCoverage = null;
 
-async function scanPrivacyCandidates(candidates) {
+export async function privacyPolicyPreview() {
+  return scanPrivacyCandidates([], {describeOnly: true});
+}
+
+async function scanPrivacyCandidates(candidates, {describeOnly = false} = {}) {
   const names = [digestPath, approvedBinaryPath, join(root, "privacy", "owned-github-pr-identities.json"),
     join(root, "privacy", "owned-native-probe-identities.json")];
   const rules = await Promise.all(names.map(async path => ({path, body: await readFile(path)})));
@@ -512,6 +520,7 @@ async function scanPrivacyCandidates(candidates) {
     return customerDataFindings(verifiedGithubMetadataText(sourceText, githubIdentities), label, blockedDigests);
   };
   policy.context.scan = scan.toString();
+  if (describeOnly) return {kind: "boc-privacy-policy-description-v1", policy_sha256: privacyPolicyDigest(policy)};
   const result = await privacyFileCoverage({root, directory: join(root, ".git", "oracle", "privacy-coverage"),
     candidates: [...candidates].filter(path => !path.includes(`${join(root, "Vault", "index")}/`)), policy,
     source: {commit, tree, command: [process.execPath, ...process.execArgv, ...process.argv.slice(1)]}, scan,
@@ -526,7 +535,7 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
   console.log(JSON.stringify({privacy_coverage: {
     source_commit: lastPrivacyCoverage.source.commit, source_tree: lastPrivacyCoverage.source.tree,
     files: lastPrivacyCoverage.files.length, reused: lastPrivacyCoverage.reused,
-    scanned: lastPrivacyCoverage.scanned, invalidated: lastPrivacyCoverage.invalidated,
+    scanned: lastPrivacyCoverage.scanned, invalidated: lastPrivacyCoverage.invalidated, bridged: lastPrivacyCoverage.bridged,
     policy_sha256: lastPrivacyCoverage.policy_sha256, membership_sha256: lastPrivacyCoverage.membership_sha256
   }}));
   if (failures.length) {
