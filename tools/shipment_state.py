@@ -184,7 +184,8 @@ def observe_decision(root: Path, record: dict, round_path: Path, *, only_if_abse
     controller = o._CONTROLLER.get()
     if not partial and state == "APPROVED" and controller is not None and controller.identity["review_kind"] == "issue":
         support = dict(support, issuance={"controller_id": controller.identity["controller_id"],
-                                        "directory": controller.identity["directory"]})
+                                        "directory": controller.identity["directory"],
+                                        "checkpoint_required": bool(o._FOLLOW_COMMITS.get())})
         bindings[technical_receipt_sha256] = support
     revoked = partial_revoked
     if not partial and previous and state == "APPROVED":
@@ -304,6 +305,13 @@ def publication_eligibility(root: Path, commit: str, tree: str, digest: str) -> 
                     or terminal.get("result_path") != str(result_path)
                     or terminal.get("result_sha256") != digest or o._sha(raw) != digest):
                 raise o.OracleApprovalError("Shipment native issuance is not completely admitted")
+            if issuance.get("checkpoint_required") or terminal.get("checkpoint_required"):
+                if __package__:
+                    from . import oracle_lifecycle
+                else:
+                    import oracle_lifecycle
+                if not oracle_lifecycle.checkpoint_admitted(o, root, issuance, terminal):
+                    raise o.OracleApprovalError("Shipment native issuance is not completely admitted")
         except (OSError, ValueError) as exc:
             raise o.OracleApprovalError("Shipment native issuance is not completely admitted") from exc
 

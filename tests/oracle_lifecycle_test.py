@@ -513,7 +513,7 @@ class CommittedCatchup(unittest.TestCase):
                 self.fixture.git('commit','-qm','new candidate')
             publish=lifecycle._publish
             def failure(module,root,path,value):
-                if path.name==stage and (value.get('status')=='APPROVED' or value.get('verdict')=='APPROVED'):
+                if path.name==stage and (value.get('status') in {'APPROVED','ADMITTED'} or value.get('verdict')=='APPROVED'):
                     raise OSError('Synthetic final issuance publication failure')
                 return publish(module,root,path,value)
             with patch.object(lifecycle,'_publish',side_effect=failure):
@@ -537,6 +537,34 @@ class CommittedCatchup(unittest.TestCase):
 
     def test_failed_equivalent_issuance_preserves_same_candidate_original_receipt(self):
         self._assert_unadmitted_issuance('terminal.json',same_candidate=True)
+
+    def test_checkpoint_admission_failure_restores_prior_complete_checkpoint(self):
+        self._assert_unadmitted_issuance('checkpoint-admission.json')
+
+    def test_attached_caller_waits_for_successful_checkpoint_admission(self):
+        observed=[];threads=[];finished=threading.Event();finish=lifecycle._finish
+        def reviewer(*args):
+            context=json.loads((o._RUN.get()/'review-context.json').read_text())
+            return self.fixture.result(context)
+        def terminal(module,root,identity,value):
+            result=finish(module,root,identity,value)
+            if value.get('status')=='APPROVED':
+                def attached():
+                    try:observed.append(lifecycle._follow(module,root,identity,'issue',identity['series_id'],[]))
+                    except BaseException as exc:observed.append(exc)
+                    finally:finished.set()
+                thread=threading.Thread(target=attached);threads.append(thread);thread.start()
+                self.assertFalse(finished.wait(.1),'Follower exposed a terminal before checkpoint admission')
+            return result
+        token=o._FOLLOW_COMMITS.set(True)
+        try:
+            with patch.object(lifecycle,'_finish',side_effect=terminal):
+                result=o.issue(self.root,[str(self.fixture.evidence)],None,reviewer)
+        finally:o._FOLLOW_COMMITS.reset(token)
+        for thread in threads:thread.join(2)
+        self.assertTrue(finished.is_set())
+        self.assertEqual(observed,[result])
+        self.assertEqual(shipment_state.validated_receipt(self.root)[1],o._pretty(result))
 
 
 if __name__=='__main__':unittest.main()
