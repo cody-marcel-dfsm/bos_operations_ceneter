@@ -568,14 +568,31 @@ def _later_support_invalidation(original: dict, rounds: Sequence[dict], evidence
     return None
 
 
+def _archived_origin(root: Path, receipt: dict) -> tuple[dict, list]:
+    series = receipt_path(root).parent / "series"
+    for name, digest in receipt["validation_evidence"].items():
+        path = Path(name) if Path(name).is_absolute() else root / name
+        if path.parent.parent != series or not re.fullmatch(r"round-[0-9]{4}\.json", path.name):
+            continue
+        rounds = _read_rounds(path.parent)
+        try:
+            origin = _receipt_origin(root, receipt, path.parent, rounds)
+        except OracleApprovalError:
+            continue
+        if (_sha(_pretty(origin)) == digest and path.name == f"round-{origin['round']:04d}.json"
+                and origin["review"].get("protected_effects") == receipt.get("protected_effects")):
+            return origin, rounds
+    raise OracleApprovalError("Archived receipt lacks its exact native approved origin")
+
+
 def _committed_receipts(root: Path, commit: str) -> list[tuple[dict, bytes]]:
     """Discover exact committed decisions through immutable native provenance."""
     audit = _SCOPE_AUDIT.get()
     tree = audit.commit_tree(commit) if audit else _git(root, "show", "-s", "--format=%T", commit).strip()
-    selected = []
     entries = audit.receipts(commit, tree) if audit else [
         (path, *_custody_read(root, path, allow_absent=True))
         for path in sorted((receipt_path(root).parent / "receipts").glob("*.json"))]
+    selected = []
     for path, fact, raw in entries:
         if fact["source"].get("links"):
             raise OracleApprovalError("Archived technical receipt has an invalid linked route")
@@ -587,24 +604,9 @@ def _committed_receipts(root: Path, commit: str) -> list[tuple[dict, bytes]]:
         _shape(receipt)
         if raw != _pretty(receipt) or path.stem != _sha(raw):
             raise OracleApprovalError("Archived committed receipt changed")
-        for name, digest in receipt["validation_evidence"].items():
-            round_path = Path(name) if Path(name).is_absolute() else root / name
-            series = receipt_path(root).parent / "series"
-            if round_path.parent.parent != series or not re.fullmatch(r"round-[0-9]{4}\.json", round_path.name):
-                continue
-            rounds = _read_rounds(round_path.parent)
-            match = next((row for row in rounds if row["round"] == int(round_path.stem[6:])), None)
-            if (match and digest == _sha(_pretty(match)) and match["outcome"] == "APPROVED"
-                    and match["base_commit"] == commit and match["candidate_tree"] == tree
-                    and match["review"].get("review_status") == "COMPLETE"
-                    and _sha(_canonical(match["review"])) == receipt["review_digest"]
-                    and match["review"].get("protected_effects") == receipt.get("protected_effects")):
-                if _later_support_invalidation(match, rounds, receipt["validation_evidence"]):
-                    break
-                selected.append((receipt, raw))
-                break
-        else:
-            raise OracleApprovalError("Archived committed receipt lacks native decision provenance")
+        origin, rounds = _archived_origin(root, receipt)
+        if not _later_support_invalidation(origin, rounds, receipt["validation_evidence"]):
+            selected.append((receipt, raw))
     return selected
 
 
@@ -2992,6 +2994,55 @@ def apply_trailers(root: Path, path: Path) -> None:
 def verify_message(root: Path, path: Path) -> None:
     if _trailers(path.read_text()) != trailer_values(root): raise OracleApprovalError("Commit trailers do not match Oracle evidence")
 
+def _verify_historical_commit(root: Path, commit: str, tree: str, *, expected_digest: str | None = None) -> None:
+    # Consult applicable originals before considering remote recovery.
+    # Execution-only suffixes cannot erase a complete native checkpoint.
+    if any(expected_digest is None or _sha(raw) == expected_digest for _, raw in _committed_receipts(root, commit)):
+        return
+    directory = _series_directory(root, _git(root, "rev-parse", "HEAD").strip())
+    decisions = [row for row in _read_rounds(directory)
+                 if row["base_commit"] == commit and row["candidate_tree"] == tree]
+    originals = [row for row in decisions if row["outcome"] == "APPROVED"
+                 and row.get("review", {}).get("review_status") == "COMPLETE"]
+    if originals and all(_later_support_invalidation(row, decisions) for row in originals):
+        raise OracleApprovalError("Commit original native support was explicitly invalidated")
+    if not originals:
+        if __package__:
+            from . import shipment_state
+        else:
+            import shipment_state
+        if any(any(shipment_state._decision_facts(row)) for row in decisions):
+            raise OracleApprovalError("Commit has admitted native defects or support invalidation")
+    # A published fresh clone uses the existing trusted exact-SHA transport;
+    # local approved candidates above remain entirely credential-free.
+    baseline = subprocess.run(["git", "merge-base", "--is-ancestor", commit, "refs/remotes/origin/main"],
+                              cwd=root, capture_output=True)
+    if baseline.returncode:
+        raise OracleApprovalError("Commit has no verified native approval or valid Oracle-Verdict trailer")
+    if __package__:
+        from . import publication_status
+    else:
+        import publication_status
+    try:
+        published = publication_status.verify_publication(root, commit, wait_seconds=0)
+        if expected_digest is not None and published["technical_receipt_sha256"] != expected_digest:
+            raise OracleApprovalError("Published receipt differs from the exact commit trailer")
+        archive = _technical_archive(root, published["technical_receipt_sha256"])
+        fact, raw = _custody_read(root, archive, allow_absent=True)
+        if fact["source"].get("exists"):
+            recovered = json.loads(raw)
+            payload = _shape(recovered)
+            if (fact["source"].get("links") or raw != _pretty(recovered)
+                    or _sha(raw) != archive.stem or payload["candidate_tree"] != tree):
+                raise OracleApprovalError("Published native receipt identity changed")
+            origin, native_rounds = _archived_origin(root, payload)
+            if _later_support_invalidation(origin, native_rounds, payload["validation_evidence"]):
+                raise OracleApprovalError("Published original native support was explicitly invalidated")
+    except (OSError, ValueError, subprocess.CalledProcessError) as exc:
+        raise OracleApprovalError("Published commit native approval verification failed") from exc
+    return
+
+
 def verify_commit(root: Path, commit: str) -> None:
     commit = _git(root,"rev-parse",f"{commit}^{{commit}}").strip(); tree = _git(root,"show","-s","--format=%T",commit).strip(); message = _git(root,"show","-s","--format=%B",commit); parents = _git(root,"show","-s","--format=%P",commit).split()
     if len(parents) > 1:
@@ -3001,52 +3052,27 @@ def verify_commit(root: Path, commit: str) -> None:
         if tree != approved_tree: raise OracleApprovalError("Merge commit tree differs from the Oracle-approved pull-request tree")
         return
     if not any(re.search(rf"(?m)^{re.escape(key)}:", message) for key in TRAILER_KEYS):
-        # Consult applicable originals before considering remote recovery.
-        # Execution-only suffixes cannot erase a complete native checkpoint.
-        if _committed_receipts(root, commit):
-            return
-        directory = _series_directory(root, _git(root, "rev-parse", "HEAD").strip())
-        decisions = [row for row in _read_rounds(directory)
-                     if row["base_commit"] == commit and row["candidate_tree"] == tree]
-        originals = [row for row in decisions if row["outcome"] == "APPROVED"
-                     and row.get("review", {}).get("review_status") == "COMPLETE"]
-        if originals and all(_later_support_invalidation(row, decisions) for row in originals):
-            raise OracleApprovalError("Commit original native support was explicitly invalidated")
-        if not originals:
-            if __package__:
-                from . import shipment_state
-            else:
-                import shipment_state
-            if any(any(shipment_state._decision_facts(row)) for row in decisions):
-                raise OracleApprovalError("Commit has admitted native defects or support invalidation")
-        # A published fresh clone uses the existing trusted exact-SHA transport;
-        # local approved candidates above remain entirely credential-free.
-        baseline = subprocess.run(["git", "merge-base", "--is-ancestor", commit, "refs/remotes/origin/main"],
-                                  cwd=root, capture_output=True)
-        if baseline.returncode:
-            raise OracleApprovalError("Commit has no verified native approval or valid Oracle-Verdict trailer")
-        if __package__:
-            from . import publication_status
-        else:
-            import publication_status
-        try:
-            published = publication_status.verify_publication(root, commit, wait_seconds=0)
-            archive = _technical_archive(root, published["technical_receipt_sha256"])
-            fact, raw = _custody_read(root, archive, allow_absent=True)
-            if fact["source"].get("exists"):
-                payload = _shape(json.loads(raw))
-                if _sha(raw) != archive.stem or payload["candidate_tree"] != tree:
-                    raise OracleApprovalError("Published native receipt identity changed")
-                origin = _receipt_origin(root, payload, directory, decisions)
-                if _later_support_invalidation(origin, decisions, payload["validation_evidence"]):
-                    raise OracleApprovalError("Published original native support was explicitly invalidated")
-        except (OSError, ValueError, subprocess.CalledProcessError) as exc:
-            raise OracleApprovalError("Published commit native approval verification failed") from exc
+        _verify_historical_commit(root, commit, tree)
         return
     trailers = _trailers(message)
     if trailers[TRAILER_KEYS[0]] != "APPROVED" or trailers[TRAILER_KEYS[1]] != tree: raise OracleApprovalError("Commit Oracle accepted-state trailers are invalid")
     digest = trailers[TRAILER_KEYS[2]]
     if len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest): raise OracleApprovalError("Commit Oracle receipt digest is invalid")
+    archive = _technical_archive(root, digest)
+    fact, raw = _custody_read(root, archive, allow_absent=True)
+    if not fact["source"].get("exists"):
+        _verify_historical_commit(root, commit, tree, expected_digest=digest)
+        return
+    receipt = json.loads(raw)
+    _shape(receipt)
+    if (fact["source"].get("links") or raw != _pretty(receipt) or _sha(raw) != digest
+            or receipt["candidate_tree"] != tree or receipt["base_commit"] not in {commit, *parents}):
+        raise OracleApprovalError("Commit trailer lacks exact native receipt source/provenance")
+    origin, rounds = _archived_origin(root, receipt)
+    committed_origin = dict(origin, base_commit=commit)
+    if (_later_support_invalidation(origin, rounds, receipt["validation_evidence"])
+            or _later_support_invalidation(committed_origin, rounds, receipt["validation_evidence"])):
+        raise OracleApprovalError("Commit trailer original native support was explicitly invalidated")
 
 def verify_range(root: Path, start: str, end: str) -> None:
     if set(start) == {"0"}:

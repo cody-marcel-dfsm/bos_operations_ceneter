@@ -184,6 +184,23 @@ class ScopeIndex(unittest.TestCase):
                     path.unlink(); context_path.unlink()
                     self.git('update-ref', 'refs/remotes/origin/main', self.base)
 
+    def test_actual_cli_requires_native_trailer_provenance_and_preserves_legacy_staged_tree(self):
+        source, tree = self.commits[-1]
+        native = self.add_receipt((source, tree), 'legacy-staged-tree')
+        def commit_with(digest, target_tree):
+            self.git('commit', '--allow-empty', '-qm', 'synthetic legacy commit\n\nOracle-Verdict: APPROVED\nOracle-Reviewed-Tree: ' + target_tree + '\nOracle-Receipt-SHA256: ' + digest)
+            return subprocess.run([sys.executable, str(self.cli), 'verify-commit', self.git('rev-parse', 'HEAD')],
+                                  cwd=self.root, capture_output=True, text=True)
+        authentic = commit_with(native.stem, tree)
+        self.assertEqual(authentic.returncode, 0, authentic.stderr)
+        forged = commit_with('0' * 64, tree)
+        self.assertNotEqual(forged.returncode, 0)
+        (self.root / 'source.txt').write_text('genuinely changed consumed source')
+        self.git('add', 'source.txt'); changed_tree = self.git('write-tree')
+        changed = commit_with(native.stem, changed_tree)
+        self.assertNotEqual(changed.returncode, 0)
+        self.assertIn('native receipt source/provenance', changed.stderr)
+
     def test_concurrent_real_source_commit_cannot_relabel_captured_scope(self):
         original = o._publication_scope_current
         def author(root, tree):
