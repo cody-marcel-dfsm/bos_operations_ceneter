@@ -166,7 +166,7 @@ class ShipmentWorkflow(unittest.TestCase):
         prepared = publication.prepare(self.root, commit, self.ref, "main-promotion", refresh=False)
         path = Path(prepared["prepared_file"])
         original = path.stat().st_ino, path.read_bytes(), shipment.checkpoint_path(self.root).read_bytes()
-        for status in ("REJECTED", "INCOMPLETE", "ERROR"):
+        for status in ("REJECTED",):
             with self.subTest(status=status):
                 if status == "REJECTED":
                     self.fixture.submit(lambda c: self.fixture.result(c, findings=[self.fixture.finding(origin="MISSED")]),

@@ -60,9 +60,7 @@ def observe_decision(root: Path, record: dict, round_path: Path, *, only_if_abse
     defects = review.get("findings", []) if record.get("outcome") == "REJECTED" else []
     if record.get("outcome") == "APPROVED" and review.get("review_status") == "COMPLETE":
         state = "APPROVED"
-    elif (defects or invalidations or review.get("publication_failure")
-          or record.get("outcome") in {"INCOMPLETE", "ERROR"}
-          and not record.get("raw_assessment") and "error" not in review):
+    elif defects or invalidations or review.get("publication_failure"):
         state = "INVALIDATED"
     else:
         return
@@ -103,8 +101,6 @@ def _import_currentness(root: Path, receipt: dict) -> None:
         review = record.get("review", {})
         if (record["outcome"] == "APPROVED" and review.get("review_status") == "COMPLETE"
                 or record["outcome"] == "REJECTED" and review.get("findings")
-                or record["outcome"] in {"INCOMPLETE", "ERROR"}
-                and not record.get("raw_assessment") and "error" not in review
                 or review.get("publication_failure")
                 or any(item.get("status") == "INVALIDATED" for item in review.get("validations", []))):
             selected = record

@@ -179,6 +179,8 @@ class CommandCoverage(unittest.TestCase):
         from tools import publication_admission as publication
         selected, row, run = self.admission()
         def execute(command, **kwargs):
+            if command[-1].endswith("/branches/main"):
+                return subprocess.CompletedProcess(command, 0, json.dumps({"protected": True}), "")
             return subprocess.CompletedProcess(command, 0, json.dumps(row if command[1] == "pr" else run), "")
         admitted = publication._remote_admission(self.root, selected, execute=execute, wait_seconds=0)
         self.assertEqual(admitted["source_commit"], self.commit)
@@ -197,6 +199,8 @@ class CommandCoverage(unittest.TestCase):
         from tools import publication_admission as publication
         selected, row, run = self.admission()
         def execute(command, **kwargs):
+            if command[-1].endswith("/branches/main"):
+                return subprocess.CompletedProcess(command, 0, json.dumps({"protected": True}), "")
             return subprocess.CompletedProcess(command, 0, json.dumps(row if command[1] == "pr" else run), "")
         row["statusCheckRollup"][0]["conclusion"] = "FAILURE"
         with self.assertRaisesRegex(o.OracleApprovalError, "failed required check"):
@@ -207,6 +211,17 @@ class CommandCoverage(unittest.TestCase):
         row["statusCheckRollup"] = []
         with self.assertRaises(o.OracleReviewIncomplete):
             publication._remote_admission(self.root, selected, execute=execute, wait_seconds=0)
+
+    def test_unprotected_branch_preserves_native_coverage_without_optional_ci_gate(self):
+        from tools import publication_admission as publication
+        selected, _, _ = self.admission()
+        calls = []
+        def execute(command, **kwargs):
+            calls.append(command)
+            return subprocess.CompletedProcess(command, 0, json.dumps({"name": "main", "protected": False}), "")
+        admitted = publication._remote_admission(self.root, selected, execute=execute, wait_seconds=0)
+        self.assertEqual(admitted["required_checks"], [])
+        self.assertEqual(len(calls), 1)
 
     def test_preparation_exports_complete_coverage_before_ci_gate_and_reuses_remote_admission(self):
         from tools import publication_admission as publication

@@ -60,6 +60,15 @@ def _source_receipt(root: Path, commit: str) -> tuple[dict, bytes]:
 def _remote_admission(root: Path, selected: dict, *, pr=None, execute=subprocess.run,
                       wait_seconds=120, pause=time.sleep) -> dict:
     """Complete required remote admission during validation, preserving real failures."""
+    response = execute(["gh", "api", f"repos/{public_status.REPOSITORY}/branches/main"],
+                       cwd=root, capture_output=True, text=True, check=True)
+    branch = json.loads(response.stdout)
+    if branch.get("protected") is False:
+        return {"kind": "boc-remote-validation-admission-v1", "source_commit": selected["candidate_commit"],
+                "source_tree": selected["candidate_tree"], "branch_protected": False,
+                "observation_sha256": o._sha(o._canonical(branch)), "required_checks": [], "run_ids": []}
+    if branch.get("protected") is not True:
+        raise o.OracleApprovalError("Validation remote required-check policy is unavailable")
     deadline = time.monotonic() + wait_seconds
     while True:
         observed = execute(["gh", "pr", "view", str(pr or selected["release_ref"]), "--repo", public_status.REPOSITORY,
