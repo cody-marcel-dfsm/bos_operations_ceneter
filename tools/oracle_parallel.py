@@ -440,6 +440,50 @@ def aggregate(o, plan, context, envelopes, failures, *, root=None):
     return result
 
 
+def prepared_intake(o, root, context, plan, jobs, seals, evidence):
+    """Seal coherent preparation facts, without deciding command applicability."""
+    missing = ["Source identity absent: " + name for name in plan["required_paths"]
+               if name not in context["input_hashes"]]
+    observations = []
+    # Failed/older executions remain observations. Their actual applicability,
+    # including strict original-plus-repair composition, belongs to the cohort.
+    candidates = {row["evidence_path"] for key in ("current_validations", "reusable_validations", "invalid_current_validations")
+                  for row in context.get(key, [])}
+    for name in sorted(candidates):
+        if name not in evidence:
+            continue
+        raw = o._custody_read(root, name)[1]
+        if o._sha(raw) != evidence[name]:
+            missing.append("Original execution identity changed: " + name)
+            continue
+        value = json.loads(raw)
+        if value.get("kind") != "oracle-validation-record-v1":
+            continue
+        outputs = value.get("output_hashes", {})
+        if not outputs or any(o._sha(o._custody_read(root, path)[1]) != digest for path, digest in outputs.items()):
+            missing.append("Original execution outputs unavailable: " + name)
+            continue
+        observations.append({"path": name, "sha256": evidence[name], "command": value.get("command"),
+                             "actual_exit_code": value.get("exit_code"), "applicability": "UNASSESSED"})
+    if context.get("required_commands") and not observations:
+        missing.append("Required command assessment lacks bound original execution observations")
+    for cohort, child in jobs:
+        if o._files(root, list(seals[cohort["id"]])) != seals[cohort["id"]]:
+            missing.append("Prepared source/manifest/audit changed: " + cohort["id"])
+    payload = {"kind": "boc-review-structural-intake-v1", "candidate_commit": context["base_commit"],
+               "candidate_tree": context["candidate_tree"], "plan_sha256": plan["plan_sha256"],
+               "required_commands": context.get("required_commands", []), "original_observations": observations,
+               "missing": missing, "grants_coverage": False}
+    o._atomic_write(o._RUN.get() / "structural-intake.json", o._pretty(payload))
+    if missing:
+        raise o.OracleIntakeIncomplete("Structural reviewer intake is incomplete: " + "; ".join(missing))
+    controller = o._CONTROLLER.get()
+    late = controller.evidence() if controller else []
+    if late:
+        raise o.OracleIntakeIncomplete("Queued evidence arrived during source preparation; rebind before workers",
+                                      evidence_paths=late)
+
+
 def review(o, root, tree, paths, evidence, owner):
     run = o._RUN.get()
     context_path = run / "review-context.json"
@@ -479,6 +523,7 @@ def review(o, root, tree, paths, evidence, owner):
     seals_path = run / "prepared-source-seals.json"
     seals_raw = o._pretty(prepared_seals)
     o._atomic_write(seals_path, seals_raw)
+    prepared_intake(o, root, context, plan, jobs, prepared_seals, evidence)
     started = time.monotonic()
 
     def worker(cohort, child):

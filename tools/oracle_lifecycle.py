@@ -775,6 +775,24 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False, request=N
                 except o.OracleApprovalError as exc:
                     if not follow_commits or kind != "issue":
                         raise
+                    if isinstance(exc, o.OracleIntakeIncomplete):
+                        evidence = list(dict.fromkeys([*evidence, *exc.evidence_paths]))
+                        controller.progress = {"state": "REVIEW_IN_PROGRESS", "attempt": None,
+                                               "reason": str(exc), "subphase": "WAITING_FOR_STRUCTURAL_INPUTS"}
+                        if exc.evidence_paths:
+                            continue
+                        source_tree = o._git(root, "rev-parse", "HEAD^{tree}").strip()
+                        source_status = o._git(root, "status", "--porcelain=v1", "--untracked-files=all")
+                        while True:
+                            arrivals = controller.evidence()
+                            if arrivals:
+                                evidence = list(dict.fromkeys([*evidence, *arrivals]))
+                                break
+                            if (o._git(root, "rev-parse", "HEAD^{tree}").strip() != source_tree
+                                    or o._git(root, "status", "--porcelain=v1", "--untracked-files=all") != source_status):
+                                break
+                            time.sleep(.2)
+                        continue
                     moved = o._git(root, "rev-parse", "HEAD").strip() != before
                     current_status = o._git(root, "status", "--porcelain=v1", "--untracked-files=all")
                     newly_dirty = bool(current_status.strip()) and current_status != before_status

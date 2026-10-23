@@ -643,5 +643,35 @@ class CommittedCatchup(unittest.TestCase):
                 with self.assertRaisesRegex(o.OracleApprovalError,'exited before checkpoint admission'):
                     lifecycle.checkpoint_admitted(o,self.root,controller.identity,terminal)
 
+    def test_missing_intake_waits_for_meaningful_queued_evidence(self):
+        calls=[];threads=[];failures=[]
+        extra=self.root/'Vault/tmp/late-intake.json';extra.parent.mkdir(parents=True,exist_ok=True)
+        extra.write_text('{"kind":"synthetic-qualified-original"}')
+        def reviewer(*args):
+            context=json.loads((o._RUN.get()/'review-context.json').read_text());calls.append(context)
+            if len(calls)==1:
+                controller=o._CONTROLLER.get()
+                def arrive():
+                    try:
+                        time.sleep(.4)
+                        self.assertEqual(len(calls),1,'Unchanged missing intake dispatched another reviewer')
+                        lifecycle._request(o,self.root,controller.identity,{'operation':'attach','review_kind':'issue',
+                            'series_id':controller.identity['series_id'],'reviewer_settings':controller.identity['reviewer_settings'],
+                            'evidence':o._files(self.root,[str(extra)]),'observer_pid':os.getpid()})
+                    except BaseException as exc:failures.append(exc)
+                thread=threading.Thread(target=arrive);threads.append(thread);thread.start()
+                raise o.OracleIntakeIncomplete('Synthetic missing structural inputs')
+            self.assertIn(str(extra.relative_to(self.root)),context['input_hashes'])
+            return self.fixture.result(context)
+        token=o._FOLLOW_COMMITS.set(True)
+        try:o.issue(self.root,[str(self.fixture.evidence)],None,reviewer)
+        finally:o._FOLLOW_COMMITS.reset(token)
+        for thread in threads:thread.join(3)
+        self.assertEqual(failures,[])
+        self.assertEqual(len(calls),2)
+        rounds=o._read_rounds(o._series_directory(self.root,self.fixture.base))
+        self.assertEqual(rounds[-2]['outcome'],'INCOMPLETE')
+        self.assertEqual(rounds[-1]['outcome'],'APPROVED')
+
 
 if __name__=='__main__':unittest.main()

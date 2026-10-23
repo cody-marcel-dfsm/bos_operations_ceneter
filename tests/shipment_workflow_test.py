@@ -217,6 +217,28 @@ class ShipmentWorkflow(unittest.TestCase):
                                         execute=lambda command, **kwargs: commands.append(command))
         self.assertEqual(commands, [["git", "push", o.PUBLICATION_REMOTE, commit + ":refs/heads/main"]])
 
+    def test_additive_approved_evidence_preserves_captured_prepared_receipt(self):
+        package=json.loads((self.root/'package.json').read_text())
+        package.setdefault('scripts',{})['release:check']='npm test'
+        self.fixture.change('package.json',json.dumps(package))
+        commit=self.commit()
+        evidence=str(self.fixture.evidence.relative_to(self.root))
+        def assessment(context,extra=False):
+            result=self.fixture.result(context)
+            result['command_coverage']=[dict(row,status='COMPLETE',basis='INDEPENDENT_APPLICABILITY',
+                inputs=self.fixture.inputs(context,'package.json',*([evidence] if extra else [])),
+                environment_digest=context['guards']['environment_digest'],evidence_paths=[evidence],
+                reason='Synthetic original applicability with additive supporting input') for row in context['required_commands']]
+            return result
+        self.fixture.submit(assessment);shipment.record_validated(self.root)
+        prepared=publication.prepare(self.root,commit,self.ref,'main-promotion',refresh=False)
+        self.fixture.submit(lambda context:assessment(context,True))
+        commands=[]
+        with patch.object(o,'_read_rounds',side_effect=AssertionError('additive evidence replayed original proof')):
+            publication.publish_prepared(self.root,Path(prepared['prepared_file']),
+                execute=lambda command,**kwargs:commands.append(command))
+        self.assertEqual(commands,[['git','push',o.PUBLICATION_REMOTE,commit+':refs/heads/main']])
+
     def test_fresh_same_candidate_approval_advances_after_concrete_criteria_change(self):
         authority = self.root / "Vault/docs/CONSTITUTION.md"
         authority.parent.mkdir(parents=True, exist_ok=True)

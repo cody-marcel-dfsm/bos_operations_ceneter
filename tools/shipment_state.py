@@ -90,13 +90,14 @@ def _decision_facts(record: dict) -> tuple[list, list, list]:
 def _receipt_support(record: dict, evidence: dict | None) -> dict:
     evidence = evidence or {}
     paths = {item["evidence_path"]: item.get("evidence_sha256") for item in record.get("verified_validations", [])}
-    commands = {}
+    commands, bindings = {}, {}
     for row in record.get("review", {}).get("command_coverage", []):
-        commands[row["id"]] = o._sha(o._canonical({"command": row["command"],
+        bindings[row["id"]] = {"command": row["command"],
             "inputs": sorted(row.get("inputs", []), key=lambda item: item["path"]),
-            "environment_digest": row.get("environment_digest"), "status": row["status"]}))
+            "environment_digest": row.get("environment_digest"), "status": row["status"]}
+        commands[row["id"]] = o._sha(o._canonical(bindings[row["id"]]))
         paths.update({name: evidence.get(name, paths.get(name)) for name in row.get("evidence_paths", [])})
-    return {"native_round_sha256": o._sha(o._pretty(record)), "commands": commands, "evidence": paths,
+    return {"native_round_sha256": o._sha(o._pretty(record)), "commands": commands, "command_bindings": bindings, "evidence": paths,
             "criteria": {key: record.get("guards", {}).get(key) for key in
                          ("authority_digests", "review_policy_digest", "environment_digest")}}
 
@@ -119,14 +120,25 @@ def _support_invalidation(support: dict, record: dict, replacement: dict) -> str
     if changed:
         return "Original supporting evidence identity changed: " + ", ".join(changed)
     old, new = support.get("commands", {}), replacement.get("commands", {})
-    if (set(gaps) & set(old) or any(old[name] != new[name] for name in old.keys() & new.keys())
-            or record.get("outcome") == "APPROVED" and old != new):
+    old_bindings, new_bindings = support.get("command_bindings", {}), replacement.get("command_bindings", {})
+    changed_commands = False
+    for name in old.keys() & new.keys():
+        if name not in old_bindings or name not in new_bindings:
+            changed_commands |= old[name] != new[name]
+            continue
+        earlier, later = old_bindings[name], new_bindings[name]
+        before = {item["path"]: item["digest"] for item in earlier["inputs"]}
+        after = {item["path"]: item["digest"] for item in later["inputs"]}
+        changed_commands |= (any(earlier[key] != later[key] for key in ("command", "environment_digest", "status"))
+                             or any(before[path] != after[path] for path in before.keys() & after.keys()))
+    if (set(gaps) & set(old) or changed_commands
+            or record.get("outcome") == "APPROVED" and set(old) != set(new)):
         return "Required command/input/environment applicability concretely changed"
     return None
 
 
 def _retained_support(root: Path, digest: str, support: dict) -> dict:
-    if "criteria" in support:
+    if "criteria" in support and "command_bindings" in support:
         return support
     receipt = json.loads(o._custody_read(root, o._technical_archive(root, digest))[1])
     for name, identity in receipt["validation_evidence"].items():
@@ -134,7 +146,8 @@ def _retained_support(root: Path, digest: str, support: dict) -> dict:
             raw = o._custody_read(root, name)[1]
             if o._sha(raw) != identity:
                 raise o.OracleApprovalError("Original native support identity changed")
-            return dict(support, criteria=_receipt_support(json.loads(raw), {})["criteria"])
+            facts = _receipt_support(json.loads(raw), {})
+            return dict(support, criteria=facts["criteria"], command_bindings=facts["command_bindings"])
     raise o.OracleApprovalError("Original native support criteria are unavailable")
 
 
@@ -197,6 +210,8 @@ def observe_decision(root: Path, record: dict, round_path: Path, *, only_if_abse
                     old = json.loads(o._custody_read(root, o._technical_archive(root, digest))[1])
                     origin = json.loads(o._custody_read(root, previous["native_round"])[1])
                     retained = _receipt_support(origin, old["validation_evidence"])
+                else:
+                    retained = _retained_support(root, digest, retained)
                 reason = _support_invalidation(retained, record, support)
                 if reason:
                     revoked[digest] = reason

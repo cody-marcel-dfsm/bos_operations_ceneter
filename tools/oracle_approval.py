@@ -69,6 +69,11 @@ class OracleApprovalError(RuntimeError): pass
 class OracleCandidateRejected(OracleApprovalError): pass
 class OracleReviewIncomplete(OracleApprovalError): pass
 class OracleSourceBindingError(OracleApprovalError): pass
+class OracleIntakeIncomplete(OracleReviewIncomplete):
+    """Structural preparation is missing; no independent assessment ran."""
+    def __init__(self, message, *, evidence_paths=()):
+        super().__init__(message)
+        self.evidence_paths = list(evidence_paths)
 
 REVIEWER_ROLE = """This process is the independent BOS Operations Center Oracle
 subprocess designated by tools/oracle_approval.py, with the isolated approver
@@ -2689,6 +2694,13 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
                                                "vault_evidence": _files(root, [str(vault)])}))
             complete_evidence += [str(vault), str(diff), str(preparation)]
             evidence = _files(root, complete_evidence)
+        controller = _CONTROLLER.get()
+        if reviewer is _oracle and controller:
+            # Vault/source preparation can take longer than evidence producers.
+            # Consume arrivals before sealing the actual reviewer packet.
+            complete_evidence += controller.evidence()
+            evidence = _files(root, list(dict.fromkeys(complete_evidence)))
+            binding = _input_binding(root, evidence, owner)
         context = _review_context(root, tree, paths, binding, evidence, proposal_record=proposal)
         registered_evidence = context["registered_validation_evidence"]
         if registered_evidence != _files(root, list(registered_evidence)):
@@ -2706,6 +2718,13 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
     review, coverage, validations, ledger = {}, None, None, None
     prepared_approval = None
     try:
+        if reviewer is _oracle:
+            late = controller.evidence() if controller else []
+            if late:
+                raise OracleIntakeIncomplete("Queued evidence arrived after context capture; rebind before workers",
+                                             evidence_paths=late)
+            if context["base_commit"] != review_binding["base_commit"] or context["candidate_tree"] != review_binding["candidate_tree"]:
+                raise OracleSourceBindingError("Prepared reviewer source moved before dispatch; retained original context")
         selected_token = _PREPARED_SETTINGS.set(review_binding["reviewer_settings"])
         try:
             review = reviewer(root,tree,assessment_paths,evidence,owner)

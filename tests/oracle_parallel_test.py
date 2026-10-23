@@ -266,6 +266,41 @@ class ParallelReview(unittest.TestCase):
         self.assertGreater(sum(s['finished_offset_seconds'] - s['started_offset_seconds'] for s in spans), measured['wall_seconds'] * 1.5)
         print(json.dumps({'measured_native_mock_concurrency': measured}, sort_keys=True))
 
+    def test_missing_structural_execution_inputs_do_not_dispatch_models(self):
+        self.context['required_commands']=[{'id':'required','command':['npm','test']}]
+        (self.run/'review-context.json').write_bytes(o._pretty(self.context))
+        with patch.object(o,'_input_binding',return_value=self.binding), patch.object(o,'_review_process') as process:
+            with self.assertRaisesRegex(o.OracleIntakeIncomplete,'bound original execution'):
+                o._oracle(self.root,self.context['candidate_tree'],self.paths,{},None)
+            process.assert_not_called()
+        diagnostic=json.loads((self.run/'structural-intake.json').read_text())
+        self.assertFalse(diagnostic['grants_coverage'])
+        self.assertTrue(diagnostic['missing'])
+
+    def test_structural_intake_retains_failed_originals_without_granting_applicability(self):
+        original=self.root/'Vault/tmp/original.json';original.parent.mkdir(parents=True)
+        output=original.with_suffix('.stdout.log');output.write_text('actual failed aggregate output')
+        original.write_bytes(o._pretty({'kind':'oracle-validation-record-v1','exit_code':1,
+            'command':['npm','test'],'output_hashes':{str(output):o._sha(output.read_bytes())}}))
+        name=str(original)
+        self.context['required_commands']=[{'id':'required','command':['npm','test']}]
+        self.context['invalid_current_validations']=[{'evidence_path':name,'reason':'Requires original-plus-repair assessment'}]
+        parallel.prepared_intake(o,self.root,self.context,self.plan,[],{},{name:o._sha(original.read_bytes())})
+        diagnostic=json.loads((self.run/'structural-intake.json').read_text())
+        self.assertEqual(diagnostic['original_observations'][0]['actual_exit_code'],1)
+        self.assertEqual(diagnostic['original_observations'][0]['applicability'],'UNASSESSED')
+        self.assertEqual(diagnostic['missing'],[])
+        self.assertFalse(diagnostic['grants_coverage'])
+
+    def test_queued_evidence_after_preparation_requires_rebinding_before_dispatch(self):
+        from types import SimpleNamespace
+        token=o._CONTROLLER.set(SimpleNamespace(evidence=lambda:['new-qualified-original.json']))
+        try:
+            with self.assertRaises(o.OracleIntakeIncomplete) as caught:
+                parallel.prepared_intake(o,self.root,self.context,self.plan,[],{},{})
+            self.assertEqual(caught.exception.evidence_paths,['new-qualified-original.json'])
+        finally:o._CONTROLLER.reset(token)
+
     def test_foreign_plan_cohort_commit_tree_binding_and_stale_inputs_fail_closed(self):
         identity = self.plan['cohorts'][1]['id']
         for field in ('plan_sha256', 'cohort_id', 'candidate_commit', 'candidate_tree', 'input_binding_sha256'):
