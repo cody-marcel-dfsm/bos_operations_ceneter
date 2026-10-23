@@ -75,13 +75,15 @@ export async function privacyPolicyIdentity(files, context = {}) {
   }
   sources[resolve(new URL(import.meta.url).pathname)] = hash(await readFile(new URL(import.meta.url)));
   const environment = {};
-  for (const name of ["PATH", "NODE_OPTIONS", "NODE_ENV", "LANG", "LC_ALL", "TZ"])
+  for (const name of ["NODE_OPTIONS", "NODE_ENV", "LANG", "LC_ALL", "TZ"])
     environment[name] = process.env[name] === undefined ? null : hash(process.env[name]);
   return {kind: "boc-privacy-policy-v1", sources, context, environment,
     execution: [privacyFileCoverage, privateDirectory, privateRead, writeRecord, issuerKey, executableIdentity]
       .map(value => value.toString()),
     executables: [await executableIdentity(process.execPath), await executableIdentity("unzip")],
-    runtime: {node: process.version, platform: process.platform, architecture: process.arch}};
+    runtime: {node: process.version, platform: process.platform, architecture: process.arch},
+    provenance: {environment_sha256: hash(encode(Object.fromEntries(Object.entries(process.env).sort()))),
+      working_directory_sha256: hash(process.cwd())}};
 }
 
 // Every candidate remains in the current scope. Only matching original results
@@ -95,7 +97,9 @@ export async function privacyFileCoverage({root, directory, candidates, policy, 
   for (const part of parts) { cursor = join(cursor, part); await privateDirectory(cursor); }
   const key = await issuerKey(directory);
   for (const name of ["by-input", "records", "runs"]) await privateDirectory(join(directory, name));
-  const policyHash = hash(encode(policy)), issuer = hash(key);
+  const {provenance, ...applicability} = policy;
+  const policyHash = hash(encode(applicability)), issuer = hash(key);
+  source = {...source, ...(provenance ? {policy_provenance: provenance} : {})};
   const manifest = [], findings = [];
   let reused = 0, scanned = 0, invalidated = 0;
   for (const path of [...new Set(candidates.map(path => resolve(path)))].sort()) {

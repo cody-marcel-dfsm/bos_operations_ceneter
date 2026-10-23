@@ -98,7 +98,11 @@ test("real privacy policy identity binds bytes and declared functional environme
   const before = process.env.CODEX_THREAD_ID;
   t.after(() => { if (before === undefined) delete process.env.CODEX_THREAD_ID; else process.env.CODEX_THREAD_ID = before; });
   process.env.CODEX_THREAD_ID = "synthetic-chat-A"; const original = await privacyPolicyIdentity([config]);
-  process.env.CODEX_THREAD_ID = "synthetic-chat-B"; assert.deepEqual(await privacyPolicyIdentity([config]), original);
+  process.env.CODEX_THREAD_ID = "synthetic-chat-B";
+  const current = await privacyPolicyIdentity([config]);
+  assert.notEqual(current.provenance.environment_sha256, original.provenance.environment_sha256);
+  assert.deepEqual({...current, provenance: null}, {...original, provenance: null});
+  await f.run({policy: original}); assert.equal((await f.run({policy: current})).report.scanned, 0);
   await writeFile(config, "changed privacy rules"); assert.notDeepEqual(await privacyPolicyIdentity([config]), original);
 });
 

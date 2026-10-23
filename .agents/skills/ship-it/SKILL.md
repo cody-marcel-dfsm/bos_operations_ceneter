@@ -56,6 +56,16 @@ After confirmed main publication, record the exact delivered SHA through the
 supported `shipment_state.record_released` operation during post-push cleanup;
 preserve the prepared SHA and actual remote reachability evidence.
 
+The required privacy command retains its complete source, Vault and archive
+membership. Its private `.git/oracle/privacy-coverage` ledger reuses original
+passing or failing per-file results only for matching content, path, mode, rules,
+configuration, executable and functional environment; new or invalidated files
+receive the same complete checks. Immutable authenticated results retain original
+CL and command provenance, and each invocation seals its current membership.
+Cold coverage scans genuinely uncovered files; a warm invocation checks identities
+and consumes prior results. Cache corruption, unavailable inputs and policy drift
+cannot provide a passing result. Keep aggregate failures and partial progress.
+
 ## Four phases — controlling owner workflow, October 21, 2026
 
 Keep the original user-instruction timestamp as the release clock. Record one
