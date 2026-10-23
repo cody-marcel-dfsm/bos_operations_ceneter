@@ -148,7 +148,11 @@ def _head(o, root):
 
 
 def _alive(identity):
-    if process_identity(identity["pid"]) != identity["process_identity"]:
+    # Intentional producer exec preserves kernel birth while the launcher/comm
+    # field can change. Socket token, immutable identity and inherited FD retain
+    # the invocation's role; a recycled PID has a different birth.
+    expected = identity.get("process_birth") or " ".join(identity["process_identity"].split()[:5])
+    if process_birth(identity["pid"]) != expected:
         return False
     if identity["pid"] == os.getpid():
         return identity["controller_id"] in _LIVE
@@ -386,7 +390,7 @@ class Controller:
             self.identity, _ = _last(o, root, kind, series)
             if (not self.identity or state.get("controller_id") != self.identity["controller_id"]
                     or self.identity["pid"] != os.getpid()
-                    or self.identity["process_identity"] != process_identity(os.getpid())
+                    or (self.identity.get("process_birth") or " ".join(self.identity["process_identity"].split()[:5])) != process_birth(os.getpid())
                     or self.identity["review_kind"] != kind or self.identity["series_id"] != series
                     or self.identity["owner_token"] != inherited_token
                     or self.identity.get("listener_fd", int(inherited_fd)) != int(inherited_fd)
@@ -435,6 +439,7 @@ class Controller:
                          "owner_token": uuid.uuid4().hex,
                          "terminal_seal": True,
                          "process_identity": process_identity(os.getpid()), "review_kind": kind,
+                         "process_birth": process_birth(os.getpid()),
                          "series_id": series, "reviewer_settings": o._review_settings_binding(),
                          "started_at": o.datetime.now(o.timezone.utc).isoformat(),
                          "original_review_started_at": os.environ.get("ORACLE_REVIEW_STARTED_AT"),

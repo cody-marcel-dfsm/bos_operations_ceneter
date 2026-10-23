@@ -77,6 +77,14 @@ class Lifecycle(unittest.TestCase):
         self.assertEqual(len((self.root/'.git/oracle/invocations').read_text().splitlines()),1)
         self.assertEqual(len(list((self.root/'.git/oracle/controllers/admissions').iterdir())),1)
 
+    def test_controller_exec_preserves_birth_identity_and_recycled_pid_is_rejected(self):
+        identity={'pid':123456,'process_identity':'Fri Oct 23 10:27:01 2026 /synthetic/old-launcher','controller_id':'synthetic'}
+        with patch.object(lifecycle,'process_identity',return_value='Fri Oct 23 10:27:01 2026 /synthetic/new-launcher'), \
+                patch.object(lifecycle,'process_birth',return_value='Fri Oct 23 10:27:01 2026'):
+            self.assertTrue(lifecycle._alive(identity))
+        with patch.object(lifecycle,'process_birth',return_value='Fri Oct 23 11:27:01 2026'):
+            self.assertFalse(lifecycle._alive(identity))
+
     def test_independent_proposal_does_not_replace_or_wait_on_live_source_reviewer(self):
         owner = self.start()
         self.entered()
