@@ -31,3 +31,5 @@ jobs:
           python3 tools/publication_status.py "${{ github.sha }}"
       - run: npm run check:publication
       - run: npm run release:check
+        env:
+          GH_TOKEN: ${{ github.token }}
