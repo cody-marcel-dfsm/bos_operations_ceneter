@@ -2498,6 +2498,17 @@ def _read_local(root: Path) -> tuple[dict[str, Any], bytes]:
     if not isinstance(receipt, dict) or raw != _pretty(receipt): raise OracleApprovalError("Oracle receipt is not canonical pretty JSON")
     return receipt, raw
 
+def _receipt_origin(root: Path, payload: dict, directory: Path, records: Sequence[dict]) -> dict:
+    for record in reversed(records):
+        path = directory / f"round-{record['round']:04d}.json"
+        if (record.get("outcome") == "APPROVED" and record.get("review", {}).get("review_status") == "COMPLETE"
+                and record["base_commit"] == payload["base_commit"] and record["candidate_tree"] == payload["candidate_tree"]
+                and _sha(_canonical(record["review"])) == payload["review_digest"]
+                and payload["validation_evidence"].get(_custody_name(root, path)) == _sha(_pretty(record))):
+            return record
+    raise OracleApprovalError("Oracle receipt is not bound to its exact managed approved origin")
+
+
 def _receipt_current_context(root: Path, payload: dict, pending_evidence: dict[str, bytes], *, validation_base: str | None = None) -> tuple[dict, Path]:
     """Select live manifests through the managed native round, preserving history."""
     directory = _series_directory(root, payload["base_commit"])
@@ -2520,15 +2531,12 @@ def _receipt_current_context(root: Path, payload: dict, pending_evidence: dict[s
         records.append(record)
     if not records:
         raise OracleApprovalError("Oracle receipt lacks managed review provenance")
-    record = records[-1]
+    record = _receipt_origin(root, payload, directory, records)
     round_path = directory / f"round-{record['round']:04d}.json"
     round_name = str(round_path.relative_to(root))
     evidence = payload["validation_evidence"]
-    if (evidence.get(round_name) != _sha(_pretty(record)) or record["outcome"] != "APPROVED"
-            or record["base_commit"] != payload["base_commit"]
-            or record["candidate_tree"] != payload["candidate_tree"]
-            or _sha(_canonical(record["review"])) != payload["review_digest"]):
-        raise OracleApprovalError("Oracle receipt is not bound to its current managed approved round")
+    if _later_support_invalidation(record, records, evidence):
+        raise OracleApprovalError("Oracle receipt original native support was explicitly invalidated")
     try:
         path = Path(os.path.abspath(record["context_file"]))
         if (not path.is_relative_to(_git_file(root, "oracle/runs"))
@@ -3022,7 +3030,16 @@ def verify_commit(root: Path, commit: str) -> None:
         else:
             import publication_status
         try:
-            publication_status.verify_publication(root, commit, wait_seconds=0)
+            published = publication_status.verify_publication(root, commit, wait_seconds=0)
+            archive = _technical_archive(root, published["technical_receipt_sha256"])
+            fact, raw = _custody_read(root, archive, allow_absent=True)
+            if fact["source"].get("exists"):
+                payload = _shape(json.loads(raw))
+                if _sha(raw) != archive.stem or payload["candidate_tree"] != tree:
+                    raise OracleApprovalError("Published native receipt identity changed")
+                origin = _receipt_origin(root, payload, directory, decisions)
+                if _later_support_invalidation(origin, decisions, payload["validation_evidence"]):
+                    raise OracleApprovalError("Published original native support was explicitly invalidated")
         except (OSError, ValueError, subprocess.CalledProcessError) as exc:
             raise OracleApprovalError("Published commit native approval verification failed") from exc
         return

@@ -1,6 +1,7 @@
 """Real Git scope audits retain exact CL evidence and ingest immutable suffixes."""
 from pathlib import Path
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -8,7 +9,7 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from tools import oracle_approval as o
+from tools import oracle_approval as o, shipment_state as shipment, publication_status
 
 
 class ScopeIndex(unittest.TestCase):
@@ -31,6 +32,7 @@ class ScopeIndex(unittest.TestCase):
         self.series.mkdir(parents=True)
         (self.directory / 'receipts').mkdir()
         self.records = []
+        self.receipts = {}
         self.add_receipt(self.commits[0], 'first')
         self.add_receipt(self.commits[2], 'third')
 
@@ -44,8 +46,9 @@ class ScopeIndex(unittest.TestCase):
         context = {'series_id': self.series.name, 'round': number, 'mode': 'initial',
                    'base_commit': commit, 'candidate_tree': tree, 'guards': {},
                    'previous_record_sha256': previous}
-        context_path = self.directory / ('context-' + str(number) + '.json')
-        context_path.write_bytes(o._pretty(context))
+        context.update(kind='oracle-review-context-v1', proposal_scope={'sha256': 'synthetic', 'proposal': 'synthetic'})
+        context_path = self.directory / 'runs' / ('context-' + str(number)) / 'review-context.json'
+        context_path.parent.mkdir(parents=True, exist_ok=True); context_path.write_bytes(o._pretty(context))
         effects = {'active': [{'id': identity}], 'dispositions': []}
         review = {'review_status': 'COMPLETE', 'protected_effects': effects}
         record = dict(context, outcome='APPROVED', review=review,
@@ -58,7 +61,8 @@ class ScopeIndex(unittest.TestCase):
         payload = {'schema_version': o.SCHEMA_VERSION, 'issuer': o.ISSUER, 'verdict': 'APPROVED',
                    'base_commit': commit, 'candidate_tree': tree, 'changed_paths': ['source.txt'],
                    'authority_digests': {}, 'authentication_impact': 'NONE', 'owner_approval_status': 'NOT_REQUIRED',
-                   'validation_evidence': {str(path.relative_to(self.root)): o._sha(path.read_bytes())},
+                   'validation_evidence': {str(path.relative_to(self.root)): o._sha(path.read_bytes()),
+                       str(context_path.relative_to(self.root)): o._sha(context_path.read_bytes())},
                    'owner_approval_evidence': None, 'review_digest': o._sha(o._canonical(review)),
                    'api_version_assessment': {'impact': 'NONE', 'request_kind': 'NOT_REQUIRED',
                        'requested_change': None, 'request_quote': None, 'request_evidence': None},
@@ -66,6 +70,7 @@ class ScopeIndex(unittest.TestCase):
         payload['approval_id'] = o._sha(o._canonical(payload))
         raw = o._pretty(payload)
         receipt = self.directory / 'receipts' / (o._sha(raw) + '.json'); receipt.write_bytes(raw)
+        self.receipts[commit] = receipt
         return receipt
 
     def scope(self):
@@ -100,7 +105,7 @@ class ScopeIndex(unittest.TestCase):
     def test_modified_receipt_context_or_removed_inventory_never_reuses_index(self):
         original = o._publication_scope_current
         for target, mutation in [(next((self.directory / 'receipts').glob('*.json')), 'bytes'),
-                                 (self.directory / 'context-1.json', 'bytes'),
+                                 (self.directory / 'runs/context-1/review-context.json', 'bytes'),
                                  (self.series / 'round-0002.json', 'remove')]:
             with self.subTest(target=target.name):
                 before = target.read_bytes()
@@ -116,7 +121,7 @@ class ScopeIndex(unittest.TestCase):
 
     def test_execution_suffixes_preserve_prior_pass_and_admitted_affected_facts_revoke_it(self):
         cases = [
-            ('execution-error', 'ERROR', {'error': 'interrupted', 'findings': [{'id': 'F1'}]}, False, {}, True),
+            ('execution-error', 'ERROR', {'error': 'interrupted', 'publication_failure': True, 'findings': [{'id': 'F1'}]}, False, {}, True),
             ('unfinished', 'INCOMPLETE', {'findings': []}, True, {}, True),
             ('admitted-defect', 'INCOMPLETE', {'findings': [{'id': 'F1'}]}, True, {}, False),
             ('explicit-invalidation', 'INCOMPLETE', {'validations': [{'status': 'INVALIDATED', 'evidence_path': 'synthetic-proof'}]}, True, {}, False),
@@ -140,13 +145,40 @@ class ScopeIndex(unittest.TestCase):
                     result = self.scope()
                     self.assertEqual('first' in [item['effect']['id'] for item in result['prior_effects']], retained)
                     self.assertIn('third', [item['effect']['id'] for item in result['prior_effects']])
+                    receipt = json.loads(self.receipts[self.commits[0][0]].read_text())
+                    with patch.object(o, '_series_directory', return_value=self.series), \
+                            patch.object(o, 'verify_proposal', return_value={'proposal_sha256': 'synthetic'}), \
+                            patch.object(o, '_validation_record', return_value={}), \
+                            patch.object(shipment, 'observe_decision') as imported:
+                        if retained:
+                            _, selected = o._receipt_current_context(self.root, receipt, {})
+                            self.assertEqual(selected, self.root / original['context_file'])
+                            shipment._import_currentness(self.root, receipt)
+                            self.assertEqual(imported.call_args.args[1]['round'], original['round'])
+                        else:
+                            with self.assertRaises(o.OracleApprovalError):
+                                o._receipt_current_context(self.root, receipt, {})
+                            with self.assertRaises(o.OracleApprovalError):
+                                shipment._import_currentness(self.root, receipt)
                     command = [sys.executable, str(Path(o.__file__).resolve()), 'verify-commit', self.commits[0][0]]
-                    actual = subprocess.run(command, cwd=self.root, capture_output=True, text=True)
+                    env = dict(os.environ)
+                    if name == 'approved-invalidation':
+                        self.git('update-ref', 'refs/remotes/origin/main', self.commits[0][0])
+                        executable = self.root / 'bin/gh'; executable.parent.mkdir(exist_ok=True)
+                        status = {'context': publication_status.CONTEXT, 'state': 'success',
+                            'creator': {'login': publication_status.PUBLISHER},
+                            'target_url': publication_status._target(self.commits[0][0]),
+                            'description': publication_status._description(self.commits[0][1], self.receipts[self.commits[0][0]].stem)}
+                        script = '#!' + sys.executable + '\nimport json,sys\nassert sys.argv[1]=="api"\nprint(' + repr(json.dumps([status])) + ')\n'
+                        executable.write_text(script); executable.chmod(0o755)
+                        env['PATH'] = str(executable.parent) + os.pathsep + env.get('PATH', '')
+                    actual = subprocess.run(command, cwd=self.root, capture_output=True, text=True, env=env)
                     self.assertEqual(actual.returncode == 0, retained, actual.stderr)
                     if not retained:
                         self.assertIn('explicitly invalidated', actual.stderr)
                 finally:
                     path.unlink(); context_path.unlink()
+                    self.git('update-ref', 'refs/remotes/origin/main', self.base)
 
     def test_concurrent_real_source_commit_cannot_relabel_captured_scope(self):
         original = o._publication_scope_current

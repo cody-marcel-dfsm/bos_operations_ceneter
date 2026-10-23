@@ -257,11 +257,8 @@ def _import_currentness(root: Path, receipt: dict) -> None:
     if original is None:
         raise o.OracleApprovalError("Shipment lacks its original sealed native decision")
     original_support = _receipt_support(original, receipt["validation_evidence"])
-    for item in rounds[rounds.index(original) + 1:]:
-        if item["base_commit"] == receipt["base_commit"] and item["candidate_tree"] == receipt["candidate_tree"]:
-            defects, _, _ = _decision_facts(item)
-            if defects or item.get("review", {}).get("publication_failure") or _support_invalidation(original_support, item, _receipt_support(item, {})):
-                raise o.OracleApprovalError("Shipment original command/evidence applicability explicitly invalidated")
+    if o._later_support_invalidation(original, rounds, receipt["validation_evidence"]):
+        raise o.OracleApprovalError("Shipment original command/evidence applicability explicitly invalidated")
     selected = None
     for record in rounds:
         if record["base_commit"] != receipt["base_commit"] or record["candidate_tree"] != receipt["candidate_tree"]:
