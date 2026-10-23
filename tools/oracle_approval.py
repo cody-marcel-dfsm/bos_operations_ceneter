@@ -1329,12 +1329,27 @@ def _read_rounds_prefix(directory: Path, prefix: Sequence[dict] = ()) -> list[di
 def _coverage_checkpoints(rounds: list[dict]) -> list[tuple[dict, dict]]:
     checkpoints = {}
     for record in rounds:
-        # Transport/preparation errors assess no source and cannot erase older
-        # observations. Structured UNREVIEWED dispositions remain authoritative.
-        if record["outcome"] != "ERROR" or "coverage" in record["review"]:
-            checkpoints = {}
+        review = record.get("review", {})
+        admitted = record.get("assessment_admitted", not record.get("raw_assessment") and "error" not in review)
+        blocked = {}
+        if admitted:
+            blocked = {item["path"]: "Explicit affected source assessment: " + item.get("reason", "UNREVIEWED")
+                       for item in review.get("coverage", []) if item.get("status") == "UNREVIEWED"}
+            invalid = {item["evidence_path"]: item.get("reason", "Supporting validation invalidated")
+                       for item in review.get("validations", []) if item.get("status") == "INVALIDATED"}
+            for name, (item, origin) in list(checkpoints.items()):
+                reasons = ([blocked[name]] if name in blocked else []) + [
+                    "Original supporting validation invalidated: " + invalid[entry["path"]]
+                    for entry in item["inputs"] if entry["path"] in invalid]
+                if reasons:
+                    checkpoints[name] = (dict(item, checkpoint_invalidation_reasons=list(dict.fromkeys([
+                        *item.get("checkpoint_invalidation_reasons", []), *reasons]))), origin)
+        # A later execution/structural outcome is not an observation of every
+        # previously assessed file. Retain each original and update only actual
+        # completed observations; explicit per-path invalidations stay visible.
         for item in record.get("verified_coverage", []):
-            checkpoints[item["path"]] = (item, record)
+            if item["path"] not in blocked:
+                checkpoints[item["path"]] = (item, record)
     return list(checkpoints.values())
 
 
@@ -1847,7 +1862,7 @@ def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence:
             identity = origin["record_sha256"]
             if identity not in source_guards:
                 source_guards[identity] = _observation_guard_changes(root, guards, origin)
-            reasons = list(source_guards[identity])
+            reasons = [*source_guards[identity], *item.get("checkpoint_invalidation_reasons", [])]
             reasons += [entry["path"] + " content changed or missing" for entry in item["inputs"]
                         if entry["path"] not in inputs or inputs[entry["path"]] != entry["digest"]]
             (invalidated if reasons else reusable).append(dict(item, invalidation_reasons=reasons))

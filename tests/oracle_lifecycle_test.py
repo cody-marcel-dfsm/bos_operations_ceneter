@@ -677,5 +677,45 @@ class CommittedCatchup(unittest.TestCase):
         self.assertEqual(rounds[-2]['outcome'],'INCOMPLETE')
         self.assertEqual(rounds[-1]['outcome'],'APPROVED')
 
+    def test_structural_incomplete_retains_historical_source_observations(self):
+        self.fixture.submit()
+        owner=o._METADATA_ROOT.set(self.root)
+        run=o._metadata_run(self.root,o.receipt_path(self.root).parent/'runs','issue-')
+        active=o._RUN.set(run)
+        try:
+            evidence=o._files(self.root,[str(self.fixture.evidence)])
+            binding=o._input_binding(self.root,evidence,None)
+            with patch.object(o,'_review_policy_digest',return_value='temporary-unfinished-criterion'):
+                context=o._review_context(self.root,self.fixture.git('write-tree'),[],binding,evidence)
+            self.assertEqual(context['reusable_coverage'],[])
+            self.assertTrue(context['invalidated_coverage'])
+            o._record_error(self.root,context,{},o.OracleIntakeIncomplete('Missing structural intake; no assessment ran'))
+        finally:o._RUN.reset(active);o._METADATA_ROOT.reset(owner)
+        def current(context):
+            self.assertTrue({'source.py','peer.py'}<={item['path'] for item in context['reusable_coverage']})
+            return self.fixture.result(context)
+        self.fixture.submit(current)
+        rounds=o._read_rounds(o._series_directory(self.root,self.fixture.base))
+        self.assertEqual(rounds[-2]['outcome'],'INCOMPLETE')
+        self.assertFalse(rounds[-2]['assessment_admitted'])
+        self.assertEqual(rounds[-1]['outcome'],'APPROVED')
+
+    def test_admitted_affected_defect_invalidates_only_its_source_observation(self):
+        self.fixture.submit()
+        def affected(context):
+            result=self.fixture.result(context,status='INCOMPLETE',findings=[self.fixture.finding(origin='MISSED')])
+            result['coverage']=[dict(item,status='UNREVIEWED',inputs=[],
+                reason='Established missed failure branch needs affected repair assessment') if item['path']=='source.py'
+                else item for item in result['coverage']]
+            return result
+        self.fixture.submit(affected,error=o.OracleReviewIncomplete)
+        def current(context):
+            self.assertIn('peer.py',{item['path'] for item in context['reusable_coverage']})
+            self.assertNotIn('source.py',{item['path'] for item in context['reusable_coverage']})
+            invalid=[item for item in context['invalidated_coverage'] if item['path']=='source.py']
+            self.assertTrue(any('Established missed failure branch' in reason for item in invalid for reason in item['invalidation_reasons']))
+            raise RuntimeError('Selector assertions complete; defect remains unresolved')
+        self.fixture.submit(current,error=RuntimeError)
+
 
 if __name__=='__main__':unittest.main()
