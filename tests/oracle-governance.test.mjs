@@ -74,6 +74,7 @@ test("ordinary agents call the Oracle utility and cannot act as approver", () =>
   const prepareCommitMessage = read(".githooks/prepare-commit-msg");
   const commitMessage = read(".githooks/commit-msg");
   const workflow = read(".github/workflows/publication-safety.yml");
+  const commandCoverage = read("tools/command_coverage.py");
   const oracleUtility = read("tools/oracle_approval.py");
   const oracleSchema = JSON.parse(read(".agents/skills/oracle/review-output.schema.json"));
   const packageManifest = JSON.parse(read("package.json"));
@@ -88,7 +89,13 @@ test("ordinary agents call the Oracle utility and cannot act as approver", () =>
   assert.doesNotMatch(preCommit, /verify-staged/);
   assert.doesNotMatch(prepareCommitMessage, /apply-trailers/);
   assert.match(commitMessage, /remove manual approval trailers/);
-  assert.match(workflow, /tools\/publication_status\.py "\$\{\{ github\.sha \}\}"/);
+  assert.match(workflow, /VALIDATION_SOURCE_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
+  assert.match(workflow, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
+  assert.match(workflow, /python3 tools\/command_coverage\.py ci --candidate "\$VALIDATION_SOURCE_SHA"/);
+  assert.match(workflow, /GH_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.match(workflow, /permissions:\s+contents: read\s+statuses: read/);
+  assert.match(commandCoverage, /approved = public_status\.verify_publication\(root, candidate, execute=execute\)/);
+  assert.match(commandCoverage, /if digest:[\s\S]*REUSED_NATIVE_APPLICABILITY[\s\S]*else:[\s\S]*execute\(command\["command"\], cwd=root, check=True\)/);
   assert.match(oracleUtility, /"--ignore-user-config"/i);
   assert.match(oracleUtility, /vault_index\.py", "evidence", VAULT_QUERY/i);
   assert.match(oracleUtility, /vault-query\.json/i);

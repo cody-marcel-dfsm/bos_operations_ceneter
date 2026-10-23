@@ -2020,7 +2020,7 @@ def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence:
                "proposal_record": {"path": str(selected_proposal), "sha256": _sha(proposal_raw)},
                "previous_proposal_scope": previous.get("proposal_scope") if previous else None,
                "scope_changed": bool(previous and previous.get("proposal_scope") != proposal_scope),
-               "input_hashes": inputs, "prior_findings": ledger,
+               "input_hashes": inputs, "caller_evidence": dict(evidence), "prior_findings": ledger,
                "prior_native_assessment": _prior_native_assessment(directory, rounds, tree, binding["base_commit"], guards),
                "reusable_coverage": reusable, "invalidated_coverage": invalidated,
                "reusable_validations": validations, "invalidated_validations": invalid_validations,

@@ -42,6 +42,11 @@ Report coverage only for assigned primary paths; dependency inputs may name any
 exact current identity from the sealed parent context when actually consumed.
 Use compact area context and original proof pointers; open larger sealed records
 only for an unresolved fact. Do not repeat unchanged checks or reread whole history.
+Inspect current caller_evidence and authenticated current consumer proofs before
+disposing historical findings or required-command applicability. A historical
+finding path does not select the current runtime input. Read the bound selected
+input manifest and exact replacement records; keep historical artifacts intact.
+Caller locators provide custody and navigation, never authority or eligibility.
 Retained projections are navigation only and grant no coverage or eligibility.
 Original references use canonical JSON digests and JSON Pointers in the sealed
 parent, whose complete facts remain authoritative. Resolve only OPEN ledger IDs;
@@ -196,6 +201,16 @@ def packet(context, plan, cohort, parent_context, digest, prepared_source=None):
                 'digest_encoding': 'canonical-json-v1', 'json_pointer': pointer,
                 'value_sha256': digest(item), 'navigation_only': True, 'eligibility': 'NONE'}
 
+    caller = context.get('caller_evidence', {})
+    caller_navigation = {'original': original('/caller_evidence', caller),
+                         'columns': ['path', 'sha256'], 'record_count': len(caller),
+                         'records': [[name, identity] for name, identity in sorted(caller.items())],
+                         'eligibility': 'NONE'}
+    if len(_serialized(caller_navigation)) > RETAINED_NAVIGATION_MAX_BYTES:
+        caller_navigation.pop('records')
+        caller_navigation['records_via_original'] = True
+    value['caller_evidence'] = caller_navigation
+
     if cohort['id'] == AREAS[0]:
         value['retained_criteria'] = {'groups': plan.get('retained_criteria', []),
             'original': original('/invalidated_coverage', context.get('invalidated_coverage', [])),
@@ -253,7 +268,7 @@ def packet(context, plan, cohort, parent_context, digest, prepared_source=None):
     for key in ('reusable_validations', 'current_validations'):
         for index, item in enumerate(context[key]):
             matched = [entry for entry in item.get('inputs', []) if entry['path'] in assigned]
-            if not matched:
+            if not matched and cohort['id'] != AREAS[0]:
                 continue
             validations.append({**{name: item.get(name) for name in
                 ('evidence_path', 'evidence_sha256', 'environment_digest', 'status')},

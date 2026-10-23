@@ -34,7 +34,7 @@ class ParallelReview(unittest.TestCase):
             'required_coverage_paths': self.paths, 'input_hashes': {p: 'bound-' + p for p in self.paths},
             'reusable_coverage': [{'path': 'unchanged.py', 'inputs': [{'path': 'unchanged.py', 'digest': 'bound-unchanged.py'}]}],
             'guards': {'authority_digests': {}}, 'prior_findings': {}, 'reusable_validations': [], 'current_validations': [],
-            'publication_scope': {'range_sha256': 'range', 'range_paths': self.paths}}
+            'publication_scope': {'range_sha256': 'range', 'range_paths': self.paths}, 'caller_evidence': {}}
         self.binding = {'base_commit': 'a' * 40, 'reviewer_settings': {'model': 'inherited-model', 'reasoning_effort': 'high'}}
         for name, value in (('selected_model', 'inherited-model'), ('selected_reasoning_effort', 'high')):
             setting = patch.object(o, name, return_value=value)
@@ -347,6 +347,62 @@ class ParallelReview(unittest.TestCase):
         self.assertLess(max(s['started_offset_seconds'] for s in spans), min(s['finished_offset_seconds'] for s in spans))
         self.assertGreater(sum(s['finished_offset_seconds'] - s['started_offset_seconds'] for s in spans), measured['wall_seconds'] * 1.5)
         print(json.dumps({'measured_native_mock_concurrency': measured}, sort_keys=True))
+
+    def test_actual_worker_packets_expose_selected_caller_facts_manifest_and_direct_consumer(self):
+        # Navigation fixture only: no proof validity or source receipt is minted.
+        names = ['Vault/tmp/current-facts.json', 'Vault/tmp/current-manifest.json',
+                 'Vault/tmp/real-selected-facts-consumer.json']
+        for name in names:
+            path = self.root / name; path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(o._pretty({'kind': 'synthetic-caller-navigation', 'selected_facts': names[0]}))
+            identity = o._sha(path.read_bytes())
+            self.context['caller_evidence'][name] = identity
+            self.context['input_hashes'][name] = 'sha256:' + identity
+        self.context['current_validations'] = [{'evidence_path': names[2],
+            'evidence_sha256': self.context['caller_evidence'][names[2]], 'status': 'VERIFIED',
+            'inputs': [{'path': 'source.py', 'digest': 'bound-source.py'}],
+            'environment_digest': 'synthetic-environment', 'command': ['synthetic-consumer', names[0]]}]
+        (self.run / 'review-context.json').write_bytes(o._pretty(self.context))
+        self.plan = parallel.partition(self.context, self.binding, self.digest)
+        observed = []
+        def child(root, prompt, prefix, *, schema_path, cohort_policy):
+            run = o._RUN.get(); packet = json.loads((run / 'cohort-context.json').read_text())
+            navigation = packet['caller_evidence']
+            self.assertEqual(dict(navigation['records']), self.context['caller_evidence'])
+            self.assertEqual(navigation['original']['json_pointer'], '/caller_evidence')
+            self.assertEqual(navigation['original']['value_sha256'], self.digest(self.context['caller_evidence']))
+            self.assertEqual(navigation['eligibility'], 'NONE')
+            self.assertNotIn(names[0], packet['input_hashes'], 'Caller evidence remains visible despite source projection')
+            if packet['cohort']['id'] == parallel.AREAS[0]:
+                proof = next(row for row in packet['validation_references'] if row['evidence_path'] == names[2])
+                self.assertEqual(proof['assigned_inputs'], [])
+            observed.append(packet['cohort']['id'])
+            result = self.envelope(packet['cohort'])
+            for name, value in {'model.json': {'selected_model': 'inherited-model', 'reasoning_effort': 'high'},
+                                'process.json': {'exit_code': 0}, 'result.json': result}.items():
+                o._atomic_write(run / name, o._pretty(value))
+            return result
+        with patch.object(o, '_input_binding', return_value=self.binding), patch.object(o, '_review_process', side_effect=child):
+            result = o._oracle(self.root, self.context['candidate_tree'], self.paths,
+                               self.context['caller_evidence'], None)
+        self.assertEqual(result['verdict'], 'APPROVED')
+        self.assertEqual(set(observed), set(parallel.AREAS))
+        self.assertFalse(o.receipt_path(self.root).exists())
+
+    def test_large_caller_navigation_retains_bounded_exact_original_and_rejects_tamper(self):
+        self.context['caller_evidence'] = {'Vault/tmp/input-' + str(i) + '.json': 'a' * 64 for i in range(2000)}
+        self.plan = parallel.partition(self.context, self.binding, self.digest)
+        packet = parallel.packet(self.context, self.plan, self.plan['cohorts'][0],
+                                 self.run / 'review-context.json', self.digest)
+        navigation = packet['caller_evidence']
+        self.assertNotIn('records', navigation)
+        self.assertTrue(navigation['records_via_original'])
+        self.assertEqual(navigation['record_count'], 2000)
+        self.assertEqual(navigation['original']['value_sha256'], self.digest(self.context['caller_evidence']))
+        self.assertEqual(navigation['eligibility'], 'NONE')
+        changed = copy.deepcopy(self.context); changed['caller_evidence']['Vault/tmp/input-0.json'] = 'forged'
+        with self.assertRaisesRegex(ValueError, 'exact sealed parent'):
+            parallel.packet(changed, self.plan, self.plan['cohorts'][0], self.run / 'review-context.json', self.digest)
 
     def test_missing_structural_execution_inputs_do_not_dispatch_models(self):
         self.context['required_commands']=[{'id':'required','command':['npm','test']}]
