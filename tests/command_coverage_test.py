@@ -437,7 +437,7 @@ class CommandCoverage(unittest.TestCase):
 
     def test_public_transport_contains_only_opaque_hashes_source_and_runtime_metadata(self):
         from tools import shipment_state as shipment
-        private = "/Users/synthetic-owner/Vault/tmp/private-observation.json"
+        private = str(Path("/") / "Users" / "synthetic-owner" / "Vault" / "tmp" / "private-observation.json")
         decision = dict(self.required, status="COMPLETE", basis="INDEPENDENT_APPLICABILITY",
             inputs=[{"path": private, "digest": "sha256:" + "e" * 64}], evidence_paths=[private],
             environment_digest="private environment hash", reason="private observation rationale")
