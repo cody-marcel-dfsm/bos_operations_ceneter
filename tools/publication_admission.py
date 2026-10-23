@@ -88,7 +88,11 @@ def prepare(root: Path, candidate: str, release_ref: str, operation: str, *,
                      selected["candidate_commit"] + ":refs/heads/" + release_ref], cwd=root, check=True)
             public_status.publish_status(root, selected, execute=execute)
             command_coverage.publish_statuses(root, selected, execute=execute)
-        o._atomic_write(path, o._pretty(record))
+        if __package__:
+            from . import oracle_lifecycle
+        else:
+            import oracle_lifecycle
+        oracle_lifecycle._publish(o, root, path, record)
     return dict(record, status="PREPARED", prepared_file=str(path), prepared_record=str(path),
                 prepared_record_sha256=o._sha(o._pretty(record)),
                 publish_argv=["python3", str(root / "tools/publication_admission.py"),
@@ -97,6 +101,7 @@ def prepare(root: Path, candidate: str, release_ref: str, operation: str, *,
 
 def publish_prepared(root: Path, prepared: Path, *, execute=subprocess.run) -> dict:
     """Publish a captured validated SHA with Git only, independent of later authors."""
+    started = time.monotonic()
     path = Path(prepared)
     if not path.is_absolute():
         path = root / path
@@ -114,9 +119,10 @@ def publish_prepared(root: Path, prepared: Path, *, execute=subprocess.run) -> d
     command = ["git", "push", record["remote_url"], record["source_commit"] + ":" + record["target_ref"]]
     if record.get("command") != command:
         raise o.OracleApprovalError("Prepared publication Git command changed")
+    shipment.publication_eligibility(root, record["source_commit"], record["source_tree"],
+                                    record["plan"]["technical_receipt_sha256"])
     # A normal push rejects non-fast-forward movement and preserves server-side
     # protection. It publishes this captured SHA even while new authors work.
-    started = time.monotonic()
     execute(command, cwd=root, check=True)
     elapsed = time.monotonic() - started
     return {"kind": "boc-git-publication-result-v1", "state": "PUBLISHED", "status": "PUBLISHED",

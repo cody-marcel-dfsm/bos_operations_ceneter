@@ -131,7 +131,74 @@ class ShipmentWorkflow(unittest.TestCase):
             self.assertTrue(row["inputs_sha256"])
             self.assertTrue(row["environment_digest"])
             self.assertTrue(row["output_hashes"])
+        path = Path(checkpoint["command_tracking"]["path"])
+        identity = path.stat().st_ino, path.read_bytes()
         self.assertEqual(shipment.record_validated(self.root)["command_tracking"], checkpoint["command_tracking"])
+        self.assertEqual((path.stat().st_ino, path.read_bytes()), identity)
+
+    def test_existing_preparation_is_revoked_by_later_exact_candidate_decisions(self):
+        commit = self.validate()
+        prepared = publication.prepare(self.root, commit, self.ref, "main-promotion", refresh=False)
+        path = Path(prepared["prepared_file"])
+        original = path.stat().st_ino, path.read_bytes(), shipment.checkpoint_path(self.root).read_bytes()
+        for status in ("REJECTED", "INCOMPLETE", "ERROR"):
+            with self.subTest(status=status):
+                if status == "REJECTED":
+                    self.fixture.submit(lambda c: self.fixture.result(c, findings=[self.fixture.finding(origin="MISSED")]),
+                                        error=o.OracleCandidateRejected)
+                else:
+                    self.fixture.submit(lambda c: self.fixture.result(c, status=status), error=o.OracleApprovalError)
+                with patch.object(o, "_verify_receipt", side_effect=AssertionError("proof replay")), \
+                        patch.object(o, "_validation_record", side_effect=AssertionError("command replay")):
+                    with self.assertRaisesRegex(o.OracleApprovalError, "latest native exact-candidate decision"):
+                        publication.publish_prepared(self.root, path,
+                            execute=lambda *a, **k: self.fail("revoked Git publication dispatched"))
+                self.assertEqual((path.stat().st_ino, path.read_bytes(), shipment.checkpoint_path(self.root).read_bytes()), original)
+
+    def test_prepared_candidate_ignores_distinct_candidate_review_and_proposal(self):
+        commit = self.validate()
+        prepared = publication.prepare(self.root, commit, self.ref, "main-promotion", refresh=False)
+        self.fixture.change("peer.py", "new distinct candidate")
+        self.commit("independent later authorship")
+        self.fixture.propose()
+        self.fixture.submit(lambda c: self.fixture.result(c, status="INCOMPLETE"), error=o.OracleApprovalError)
+        commands = []
+        with patch.object(o, "_verify_receipt", side_effect=AssertionError("proof replay")):
+            publication.publish_prepared(self.root, Path(prepared["prepared_file"]),
+                execute=lambda command, **kwargs: commands.append(command))
+        self.assertEqual(commands, [["git", "push", o.PUBLICATION_REMOTE, commit + ":refs/heads/main"]])
+
+    def test_native_validation_capture_rejects_dirty_declared_execution_inputs(self):
+        self.commit()
+        (self.root / "source.py").write_text("dirty bytes must not attest older index tree")
+        with self.assertRaisesRegex(o.OracleApprovalError, "Stage the selected validation inputs"):
+            o.record_validation(self.root, ["python3", "-c", "raise AssertionError('must not execute')"],
+                                ["source.py"], self.root / "Vault/tmp/dirty-capture.json")
+        self.assertFalse((self.root / "Vault/tmp/dirty-capture.json").exists())
+
+    def test_command_tracking_exclusive_publication_preserves_a_race_winner(self):
+        commit = self.validate()
+        checkpoint = shipment._load(self.root)
+        path = Path(checkpoint["command_tracking"]["path"])
+        original = path.read_bytes()
+        receipt, raw = shipment.validated_receipt(self.root)
+        atomic_write = o._atomic_write
+        for competing in (original, b"conflicting immutable command evidence"):
+            with self.subTest(identical=competing == original):
+                path.unlink()
+                identity = []
+                def race(temporary, value):
+                    atomic_write(temporary, value)
+                    if temporary.parent == path.parent and temporary.name.startswith(".publish-"):
+                        path.write_bytes(competing)
+                        identity.append(path.stat().st_ino)
+                with patch.object(o, "_atomic_write", side_effect=race):
+                    if competing == original:
+                        shipment.record_command_tracking(self.root, {}, receipt, raw, commit)
+                    else:
+                        with self.assertRaisesRegex(o.OracleApprovalError, "Immutable controller record changed"):
+                            shipment.record_command_tracking(self.root, {}, receipt, raw, commit)
+                self.assertEqual((path.stat().st_ino, path.read_bytes()), (identity[0], competing))
 
     def test_prepared_publication_runs_git_only_while_authors_continue(self):
         commit = self.validate()

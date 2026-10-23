@@ -51,10 +51,22 @@ def _current_native_decision(root: Path, receipt: dict) -> None:
     paths = sorted(directory.glob("round-*.json"))
     if not paths or paths[-1].name != f"round-{len(paths):04d}.json":
         raise o.OracleApprovalError("Shipment lacks its latest native exact-candidate decision")
-    path = paths[-1]
-    raw = o._custody_read(root, path)[1]
+    # A newer review of a distinct committed candidate does not revoke this
+    # captured candidate. Read decision identities only, never their proof DAG.
+    for path in reversed(paths):
+        raw = o._custody_read(root, path)[1]
+        try:
+            decision = json.loads(raw)
+        except (ValueError, TypeError) as exc:
+            raise o.OracleApprovalError("Shipment latest native decision is malformed") from exc
+        if not isinstance(decision, dict):
+            raise o.OracleApprovalError("Shipment latest native decision is malformed")
+        if (decision.get("base_commit") == receipt["base_commit"]
+                and decision.get("candidate_tree") == receipt["candidate_tree"]):
+            break
+    else:
+        raise o.OracleApprovalError("Shipment lacks its latest native exact-candidate decision")
     try:
-        decision = json.loads(raw)
         eligible = (receipt["validation_evidence"].get(o._custody_name(root, path)) == o._sha(raw)
                     and decision["base_commit"] == receipt["base_commit"]
                     and decision["candidate_tree"] == receipt["candidate_tree"]
@@ -65,6 +77,18 @@ def _current_native_decision(root: Path, receipt: dict) -> None:
         raise o.OracleApprovalError("Shipment latest native decision is malformed") from exc
     if not eligible:
         raise o.OracleApprovalError("Shipment latest native exact-candidate decision supersedes sealed validation")
+
+
+def publication_eligibility(root: Path, commit: str, tree: str, digest: str) -> None:
+    """Consume candidate-scoped revocation without replaying completed validation."""
+    raw = o._custody_read(root, o._technical_archive(root, digest))[1]
+    if o._sha(raw) != digest:
+        raise o.OracleApprovalError("Shipment technical receipt changed")
+    receipt = json.loads(raw)
+    o._shape(receipt)
+    if receipt["base_commit"] != commit or receipt["candidate_tree"] != tree:
+        raise o.OracleApprovalError("Prepared publication differs from its sealed native candidate")
+    _current_native_decision(root, receipt)
 
 
 def validated_receipt(root: Path, commit: str | None = None, *, revalidate: bool = False) -> tuple[dict, bytes]:
@@ -163,10 +187,11 @@ def record_command_tracking(root: Path, previous: dict, receipt: dict, raw: byte
     payload["native_decision"] = native_decision
     result = dict(payload, tracking_sha256=o._sha(o._canonical(payload)))
     path = o.receipt_path(root).parent / "command-tracking" / (commit + "-" + o._sha(raw) + ".json")
-    if path.exists() and o._custody_read(root, path)[1] != o._pretty(result):
-        raise o.OracleApprovalError("Immutable validated changelist command tracking changed")
-    if not path.exists():
-        o._atomic_write(path, o._pretty(result))
+    if __package__:
+        from . import oracle_lifecycle
+    else:
+        import oracle_lifecycle
+    oracle_lifecycle._publish(o, root, path, result)
     return {"path": str(path), "sha256": o._sha(o._pretty(result))}
 
 
