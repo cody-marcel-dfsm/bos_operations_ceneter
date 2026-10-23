@@ -376,31 +376,42 @@ class CommandCoverage(unittest.TestCase):
 
     def test_failed_pending_and_absent_required_remote_checks_never_seal_readiness(self):
         from tools import publication_admission as publication
-        selected, row, run = self.admission()
-        def execute(command, **kwargs):
-            if command[-1].endswith("/branches/main"):
-                return subprocess.CompletedProcess(command, 0, json.dumps({"protected": True}), "")
-            return subprocess.CompletedProcess(command, 0, json.dumps(row if command[1] == "pr" else run), "")
-        row["statusCheckRollup"][0]["conclusion"] = "FAILURE"
-        with self.assertRaisesRegex(o.OracleApprovalError, "failed required check"):
-            publication._remote_admission(self.root, selected, execute=execute, wait_seconds=0)
-        row["statusCheckRollup"][0].update(status="IN_PROGRESS", conclusion=None)
-        with self.assertRaises(o.OracleReviewIncomplete):
-            publication._remote_admission(self.root, selected, execute=execute, wait_seconds=0)
-        row["statusCheckRollup"] = []
-        with self.assertRaises(o.OracleReviewIncomplete):
-            publication._remote_admission(self.root, selected, execute=execute, wait_seconds=0)
+        for protected in (False, True):
+            with self.subTest(protected=protected):
+                selected, row, run = self.admission()
+                def execute(command, **kwargs):
+                    if command[-1].endswith("/branches/main"):
+                        return subprocess.CompletedProcess(command, 0, json.dumps({"protected": protected}), "")
+                    return subprocess.CompletedProcess(command, 0, json.dumps(row if command[1] == "pr" else run), "")
+                row["statusCheckRollup"][0]["conclusion"] = "FAILURE"
+                with self.assertRaisesRegex(o.OracleApprovalError, "failed required check"):
+                    publication._remote_admission(self.root, selected, execute=execute, wait_seconds=0)
+                row["statusCheckRollup"][0].update(status="IN_PROGRESS", conclusion=None)
+                with self.assertRaises(o.OracleReviewIncomplete):
+                    publication._remote_admission(self.root, selected, execute=execute, wait_seconds=0)
+                row["statusCheckRollup"] = []
+                with self.assertRaises(o.OracleReviewIncomplete):
+                    publication._remote_admission(self.root, selected, execute=execute, wait_seconds=0)
 
-    def test_unprotected_branch_preserves_native_coverage_without_optional_ci_gate(self):
+    def test_repository_required_ci_applies_to_unprotected_and_protected_branches(self):
         from tools import publication_admission as publication
-        selected, _, _ = self.admission()
-        calls = []
-        def execute(command, **kwargs):
-            calls.append(command)
-            return subprocess.CompletedProcess(command, 0, json.dumps({"name": "main", "protected": False}), "")
-        admitted = publication._remote_admission(self.root, selected, execute=execute, wait_seconds=0)
-        self.assertEqual(admitted["required_checks"], [])
-        self.assertEqual(len(calls), 1)
+        for protected in (False, True):
+            with self.subTest(protected=protected):
+                selected, row, run = self.admission()
+                calls = []
+                def execute(command, **kwargs):
+                    calls.append(command)
+                    value = ({"name": "main", "protected": protected}
+                             if command[-1].endswith("/branches/main") else row if command[1] == "pr" else run)
+                    return subprocess.CompletedProcess(command, 0, json.dumps(value), "")
+                admitted = publication._remote_admission(self.root, selected, execute=execute, wait_seconds=0)
+                self.assertEqual(admitted["branch_protected"], protected)
+                self.assertEqual(admitted["required_job"], "verify-public-repository")
+                self.assertEqual(admitted["run_ids"], [123])
+                self.assertEqual(len(calls), 3)
+                row["headRefOid"] = "e" * 40
+                with self.assertRaisesRegex(o.OracleApprovalError, "different PR source"):
+                    publication._remote_admission(self.root, selected, execute=execute, wait_seconds=0)
 
     def test_preparation_exports_complete_coverage_before_ci_gate_and_reuses_remote_admission(self):
         from tools import publication_admission as publication
