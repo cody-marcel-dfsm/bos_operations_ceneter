@@ -387,7 +387,7 @@ class ParallelReview(unittest.TestCase):
                                self.context['caller_evidence'], None)
         self.assertEqual(result['verdict'], 'APPROVED')
         self.assertEqual(set(observed), set(parallel.AREAS))
-        self.assertFalse(o.receipt_path(self.root).exists())
+        self.assertFalse((self.root / '.git/oracle/approval.json').exists())
 
     def test_large_caller_navigation_retains_bounded_exact_original_and_rejects_tamper(self):
         self.context['caller_evidence'] = {'Vault/tmp/input-' + str(i) + '.json': 'a' * 64 for i in range(2000)}
