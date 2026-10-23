@@ -179,7 +179,7 @@ class ReviewSeries(unittest.TestCase):
             return result
         self.submit(drift, error=o.OracleApprovalError)
         latest = o._read_rounds(o._series_directory(self.root, self.base))[-1]
-        self.assertEqual(latest["outcome"], "ERROR")
+        self.assertEqual(latest["outcome"], "INCOMPLETE")
         raw = latest["raw_assessment"]
         self.assertEqual(raw["reported_verdict"], "APPROVED")
         self.assertEqual(raw["reported_review_status"], "COMPLETE")
@@ -196,6 +196,56 @@ class ReviewSeries(unittest.TestCase):
             return self.result(context)  # Fresh independent current entries, no automatic adoption.
         self.submit(current)
         o.verify_staged(self.root)
+
+    def test_actual_review_intake_captures_unstaged_untracked_modes_links_and_deletion_without_staging(self):
+        (self.root / 'source.py').write_text('current unstaged source')
+        (self.root / 'new.py').write_text('new current source')
+        executable = self.root / 'new.sh'; executable.write_text('#!/bin/sh\nexit 0\n'); executable.chmod(0o755)
+        (self.root / 'new-link.sh').symlink_to('new.sh')
+        (self.root / 'peer.py').unlink()
+        index_before = subprocess.check_output(['git', 'ls-files', '--stage', '-z'], cwd=self.root)
+        status_before = subprocess.check_output(['git', 'status', '--porcelain=v1', '-z'], cwd=self.root)
+        expected = o._review_tree(self.root)
+        def assess(context):
+            self.assertEqual(context['candidate_tree'], expected)
+            self.assertEqual(self.git('show', expected + ':source.py'), 'current unstaged source')
+            self.assertIn('100755', self.git('ls-tree', expected, '--', 'new.sh'))
+            self.assertIn('120000', self.git('ls-tree', expected, '--', 'new-link.sh'))
+            self.assertIsNone(context['input_hashes']['peer.py'])
+            self.assertTrue({'new.py', 'new.sh', 'new-link.sh', 'source.py', 'peer.py'} <= set(context['required_coverage_paths']))
+            return self.result(context)
+        receipt = self.submit(assess)
+        self.assertEqual(receipt['candidate_tree'], expected)
+        self.assertEqual(subprocess.check_output(['git', 'ls-files', '--stage', '-z'], cwd=self.root), index_before)
+        self.assertEqual(subprocess.check_output(['git', 'status', '--porcelain=v1', '-z'], cwd=self.root), status_before)
+        self.git('add', '-A'); self.git('commit', '-qm', 'ordinary authored commit after assessment')
+        def committed(context):
+            self.assertEqual(context['candidate_tree'], expected)
+            self.assertIn('source.py', {row['path'] for row in context['reusable_coverage']})
+            self.assertIn('new.py', {row['path'] for row in context['reusable_coverage']})
+            return self.result(context)
+        self.submit(committed)
+
+    def test_real_unstaged_input_drift_is_incomplete_and_preserves_unchanged_neighbor(self):
+        (self.root / 'source.py').write_text('unstaged original input')
+        def move(context):
+            result = self.result(context)
+            run = o._RUN.get()
+            o._atomic_write(run / 'result.json', o._pretty(result))
+            o._atomic_write(run / 'model.json', o._pretty({'reviewer_role': 'independent-oracle-approver'}))
+            o._atomic_write(run / 'process.json', o._pretty({'exit_code': 0}))
+            (self.root / 'source.py').write_text('actual changed unstaged input')
+            return result
+        self.submit(move, error=o.OracleSourceMovementIncomplete)
+        rounds = o._read_rounds(o._series_directory(self.root, self.base))
+        self.assertEqual(rounds[-1]['outcome'], 'INCOMPLETE')
+        self.assertEqual(rounds[-1]['raw_assessment']['reported_verdict'], 'APPROVED')
+        def resume(context):
+            raw = [row for row in context['invalidated_coverage'] if row.get('raw_observation')]
+            self.assertIn('peer.py', {row['path'] for row in raw})
+            self.assertNotIn('source.py', {row['path'] for row in raw})
+            return self.result(context)
+        self.submit(resume)
 
     def test_raw_invalid_bindings_remain_untrusted_and_do_not_create_findings(self):
         def drift(context):
@@ -308,7 +358,7 @@ class ReviewSeries(unittest.TestCase):
                         self.submit(error=o.OracleApprovalError)
                 self.assertTrue(path.is_file())
                 latest = o._read_rounds(o._series_directory(self.root, self.base))[-1]
-                self.assertEqual(latest["outcome"], "ERROR")
+                self.assertEqual(latest["outcome"], "INCOMPLETE")
                 self.assertNotIn(name, {item["path"] for item in latest["verified_coverage"]})
                 self.assertEqual(latest["raw_assessment"]["reported_review_status"], "COMPLETE")
                 self.assertEqual(latest["finding_ledger"], {})
@@ -631,8 +681,8 @@ class ReviewSeries(unittest.TestCase):
         self.submit(interrupted, error=o.OracleApprovalError)
         latest = o._read_rounds(o._series_directory(self.root, self.base))[-1]
         public = json.loads((Path(latest["context_file"]).parent / "outcome.json").read_bytes())
-        self.assertEqual(latest["outcome"], "ERROR")
-        self.assertEqual(public["outcome"], "ERROR")
+        self.assertEqual(latest["outcome"], "INCOMPLETE")
+        self.assertEqual(public["outcome"], "INCOMPLETE")
         self.assertEqual(public["reviewer_review_status"], "INCOMPLETE")
         self.assertEqual(public["reviewer_verdict"], "INCOMPLETE")
         self.assertEqual(latest["raw_assessment"]["reported_review_status"], "INCOMPLETE")

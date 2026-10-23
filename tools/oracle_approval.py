@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Issue and verify tree-bound Operations Center approvals."""
 from __future__ import annotations
-import argparse, ast, hashlib, json, os, re, stat, subprocess, sys, time, platform, shutil, shlex
+import argparse, ast, hashlib, json, os, re, stat, subprocess, sys, time, platform, shutil, shlex, tempfile
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from contextvars import ContextVar
@@ -69,6 +69,8 @@ class OracleApprovalError(RuntimeError): pass
 class OracleCandidateRejected(OracleApprovalError): pass
 class OracleReviewIncomplete(OracleApprovalError): pass
 class OracleSourceBindingError(OracleApprovalError): pass
+class OracleSourceMovementIncomplete(OracleSourceBindingError, OracleReviewIncomplete):
+    """Current authoring moved; retain observations and resume current inputs."""
 class OracleIntakeIncomplete(OracleReviewIncomplete):
     """Structural preparation is missing; no independent assessment ran."""
     def __init__(self, message, *, evidence_paths=()):
@@ -794,13 +796,14 @@ def _input_binding(root: Path, evidence: dict, owner: dict | None) -> dict:
     tools = [name for name in ("tools/oracle_approval.py", "tools/vault_index.py", "tools/codex_child_model.py")
              if (root / name).is_file()]
     sources = _vault_sources(root)
-    return {"base_commit": _git(root, "rev-parse", "HEAD").strip(), "candidate_tree": _tree(root),
+    tree = _review_tree(root)
+    return {"base_commit": _git(root, "rev-parse", "HEAD").strip(), "candidate_tree": tree,
             "working_diff_sha256": _sha(_git_bytes(root, "diff", "HEAD", "--", ".", ":(exclude)Vault")),
             "untracked": _files(root, untracked), "authority_digests": _live_authorities(root),
             "vault_source_hashes": sources, "tool_digests": _files(root, tools),
             "environment_digest": _environment_digest(),
             "reviewer_settings": _review_settings_binding(),
-            "publication_scope": _publication_scope(root, _tree(root)),
+            "publication_scope": _publication_scope(root, tree),
             "validation_evidence": _files(root, list(evidence)),
             "owner_approval_evidence": _files(root, list(owner)) if owner is not None else None,
             "route_custody": _custody_files(root, [*evidence, *(owner or {}), *tools, *untracked, *sources,
@@ -813,6 +816,13 @@ def _assert_binding(root: Path, expected: dict, evidence: dict, owner: dict | No
         actual = {key: value for key, value in actual.items() if key not in {"environment_digest", "reviewer_settings"}}
         expected = {key: value for key, value in expected.items() if key not in {"environment_digest", "reviewer_settings"}}
     if actual != expected:
+        protected = {'validation_evidence', 'owner_approval_evidence', 'environment_digest', 'reviewer_settings'}
+        immutable_routes = set(evidence) | set(owner or {})
+        changed_routes = {name for name in set(actual['route_custody']) | set(expected['route_custody'])
+                          if actual['route_custody'].get(name) != expected['route_custody'].get(name)}
+        if (all(actual.get(key) == expected.get(key) for key in protected)
+                and not changed_routes & immutable_routes):
+            raise OracleSourceMovementIncomplete("Oracle current source changed; retained checkpoints require current inputs")
         raise OracleSourceBindingError("Oracle review inputs changed during preparation or review")
 
 
@@ -933,6 +943,27 @@ def _sha(value: bytes) -> str: return hashlib.sha256(value).hexdigest()
 def _canonical(value: dict[str, Any]) -> bytes: return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
 def _pretty(value: dict[str, Any]) -> bytes: return (json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode()
 def _tree(root: Path) -> str: return _git(root, "write-tree").strip()
+
+
+def _review_tree(root: Path) -> str:
+    """Snapshot effective current content without changing the owner's index."""
+    pending = _git(root, 'diff', '--name-only', '--', '.', ':(exclude)Vault').strip()
+    untracked = [name for name in _git(root, 'ls-files', '--others', '--exclude-standard').splitlines()
+                 if not name.startswith('Vault/')]
+    if not pending and not untracked:
+        return _tree(root)
+    parent = receipt_path(root).parent
+    _metadata_directory(root, parent)
+    with tempfile.TemporaryDirectory(prefix='source-index-', dir=parent) as directory:
+        environment = dict(os.environ, GIT_INDEX_FILE=str(Path(directory) / 'index'))
+        def git(*args):
+            result = subprocess.run(['git', *args], cwd=root, env=environment, capture_output=True, text=True)
+            if result.returncode:
+                raise OracleSourceMovementIncomplete('Current source snapshot unavailable; resume current inputs: ' + result.stderr.strip())
+            return result.stdout.strip()
+        git('read-tree', 'HEAD')
+        git('add', '-A', '--', '.', ':(exclude)Vault')
+        return git('write-tree')
 def _paths(root: Path, base: str, tree: str) -> list[str]:
     return sorted(_git(root, "diff", "--name-only", "--diff-filter=ACMRTD", base, tree).splitlines())
 
@@ -1971,7 +2002,9 @@ def _assert_raw_sources(root: Path, context: dict) -> None:
         except (OracleApprovalError, OSError) as exc:
             raise OracleSourceBindingError("Observed raw source became unavailable or unsafe: " + name) from exc
         if current != fact:
-            raise OracleSourceBindingError("Observed raw source changed or appeared: " + name)
+            if any(current.get(key) != fact.get(key) for key in ('links', 'resolved_path')):
+                raise OracleSourceBindingError("Observed raw source custody changed: " + name)
+            raise OracleSourceMovementIncomplete("Observed raw source changed or appeared: " + name)
 
 
 def _input_fact(digest) -> dict:
@@ -2800,9 +2833,9 @@ def _receipt_current_context(root: Path, payload: dict, pending_evidence: dict[s
 
 def _verify_receipt(root: Path, receipt: dict, raw: bytes, *, pending_evidence: dict[str, bytes] | None = None) -> tuple[dict[str, Any], bytes]:
     payload = _shape(receipt)
-    base, tree = _git(root, "rev-parse", "HEAD").strip(), _tree(root)
+    base, tree = _git(root, "rev-parse", "HEAD").strip(), _review_tree(root)
     if payload["base_commit"] != base: raise OracleApprovalError("Oracle receipt is bound to another base")
-    if payload["candidate_tree"] != tree: raise OracleApprovalError("Oracle receipt is stale for the staged tree")
+    if payload["candidate_tree"] != tree: raise OracleApprovalError("Oracle receipt is stale for the current source tree")
     if payload["changed_paths"] != _paths(root, base, tree): raise OracleApprovalError("Oracle changed-path binding is invalid")
     if payload["authority_digests"] != _authorities(root, tree): raise OracleApprovalError("Oracle authority binding is invalid")
     evidence = payload["validation_evidence"]
@@ -3046,10 +3079,10 @@ def verify_proposal(root: Path, record_path: str | Path | None = None) -> dict:
 def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, reviewer: Callable = _oracle,
           *, proposal_record: str | Path | None = None) -> dict[str,Any]:
     with _phase("precheck_seconds"):
-        pending = [p for p in (_git(root,"diff","--name-only").splitlines()+_git(root,"ls-files","--others","--exclude-standard").splitlines()) if not p.startswith("Vault/")]
-        if pending: raise OracleApprovalError("Oracle review requires every non-Vault change staged: " + ", ".join(sorted(pending)))
-        if subprocess.run(["git","diff","--cached","--check"], cwd=root).returncode: raise OracleApprovalError("Staged diff failed git diff --check")
-        base, tree = _git(root,"rev-parse","HEAD").strip(), _tree(root); paths = _paths(root,base,tree)
+        base, tree = _git(root,"rev-parse","HEAD").strip(), _review_tree(root)
+        if subprocess.run(["git","diff","--check",base,tree], cwd=root).returncode:
+            raise OracleApprovalError("Current source diff failed git diff --check")
+        paths = _paths(root,base,tree)
         if not paths and not _publication_scope(root, tree)["range_paths"]:
             raise OracleApprovalError("Oracle cannot approve an empty candidate")
         _metadata_remove(root, receipt_path(root))
@@ -3106,7 +3139,7 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
                 raise OracleIntakeIncomplete("Queued evidence arrived after context capture; rebind before workers",
                                              evidence_paths=late)
             if context["base_commit"] != review_binding["base_commit"] or context["candidate_tree"] != review_binding["candidate_tree"]:
-                raise OracleSourceBindingError("Prepared reviewer source moved before dispatch; retained original context")
+                raise OracleSourceMovementIncomplete("Prepared reviewer source moved before dispatch; retained original context")
         selected_token = _PREPARED_SETTINGS.set(review_binding["reviewer_settings"])
         try:
             review = reviewer(root,tree,assessment_paths,evidence,owner)

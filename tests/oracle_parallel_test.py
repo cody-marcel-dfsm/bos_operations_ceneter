@@ -950,7 +950,7 @@ class RawObservationCriterion(unittest.TestCase):
             self.inputs if inputs is None else inputs, self.guards)
 
     def test_postcheck_error_reuses_only_unchanged_completed_body_after_independent_adoption(self):
-        self.assertEqual(self.rounds[-1]['outcome'], 'ERROR')
+        self.assertEqual(self.rounds[-1]['outcome'], 'INCOMPLETE')
         self.assertEqual(self.rounds[-1]['verified_coverage'], [])
         candidates = self.candidates()
         self.assertEqual([row['path'] for row in candidates], ['source.py'])
@@ -973,7 +973,7 @@ class RawObservationCriterion(unittest.TestCase):
         decision['coverage'][0].update(status='REVIEWED', reason='Independently assessed current criteria and exact retained dependency/source identities')
         expanded, _ = parallel._expanded_criteria(o, context, plan, decision)
         self.assertEqual([row['path'] for row in expanded['coverage']], ['source.py'])
-        self.assertEqual(self.rounds[-1]['outcome'], 'ERROR')
+        self.assertEqual(self.rounds[-1]['outcome'], 'INCOMPLETE')
         self.assertFalse(o.receipt_path(self.root).exists())
         changed = copy.deepcopy(context)
         changed['invalidated_coverage'][0]['raw_observation']['record_sha256'] = 'forged'
@@ -992,7 +992,7 @@ class RawObservationCriterion(unittest.TestCase):
 
     def test_aggregate_error_retains_authenticated_completed_per_file_observation(self):
         self.capture_error(status='ERROR')
-        self.assertEqual(self.rounds[-1]['outcome'], 'ERROR')
+        self.assertEqual(self.rounds[-1]['outcome'], 'INCOMPLETE')
         self.assertEqual(self.rounds[-1]['raw_assessment']['reported_review_status'], 'ERROR')
         candidates = self.candidates()
         self.assertEqual([row['path'] for row in candidates], ['source.py'])
@@ -1052,7 +1052,7 @@ class RawObservationCriterion(unittest.TestCase):
             return self.fixture.result(context)
         self.fixture.submit(inspect)
         self.rounds = o._read_rounds(o._series_directory(self.root, self.fixture.base))
-        self.assertEqual(raw_round['outcome'], 'ERROR')
+        self.assertEqual(raw_round['outcome'], 'INCOMPLETE')
         self.assertNotIn('source.py', [row['path'] for row in self.candidates()])
         current = {row['path']: row for row, _ in o._coverage_checkpoints(self.rounds)}
         self.assertFalse(current['source.py'].get('checkpoint_invalidation_reasons'))

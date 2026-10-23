@@ -474,7 +474,7 @@ class CommittedCatchup(unittest.TestCase):
         self.assertEqual(len(calls),2)
         self.assertEqual(calls[0][0],calls[1][0])
         records=o._read_rounds(o._series_directory(self.root,self.fixture.base))
-        self.assertEqual(records[-2]['outcome'],'ERROR')
+        self.assertEqual(records[-2]['outcome'],'INCOMPLETE')
         self.assertEqual(records[-2]['raw_assessment']['reported_verdict'],'APPROVED')
         self.assertEqual(records[-1]['outcome'],'APPROVED')
         self.assertEqual(shipment_state._load(self.root)['last_validated_commit'],self.fixture.git('rev-parse','HEAD'))
