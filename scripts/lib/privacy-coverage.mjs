@@ -75,7 +75,11 @@ export async function privacyPolicyIdentity(files, context = {}) {
   }
   sources[resolve(new URL(import.meta.url).pathname)] = hash(await readFile(new URL(import.meta.url)));
   const environment = {};
-  for (const name of ["NODE_OPTIONS", "NODE_ENV", "LANG", "LC_ALL", "TZ"])
+  // Info-ZIP reads these options even when the archive argv is fixed. Locale
+  // settings also affect its listing/decoding behavior and remain functional.
+  const environmentNames = new Set(["NODE_OPTIONS", "NODE_ENV", "LANG", "LC_ALL", "LC_CTYPE", "LC_MESSAGES", "TZ",
+    "UNZIP", "UNZIPOPT", "ZIPINFO", "ZIPINFOOPT", ...Object.keys(process.env).filter(name => name.startsWith("LC_"))]);
+  for (const name of [...environmentNames].sort())
     environment[name] = process.env[name] === undefined ? null : hash(process.env[name]);
   return {kind: "boc-privacy-policy-v1", sources, context, environment,
     execution: [privacyFileCoverage, privateDirectory, privateRead, writeRecord, issuerKey, executableIdentity]

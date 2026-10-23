@@ -106,6 +106,24 @@ test("real privacy policy identity binds bytes and declared functional environme
   await writeFile(config, "changed privacy rules"); assert.notDeepEqual(await privacyPolicyIdentity([config]), original);
 });
 
+test("archive option and locale environment changes invalidate original privacy applicability", async t => {
+  const f = await fixture(t);
+  for (const name of ["UNZIP", "UNZIPOPT", "ZIPINFO", "ZIPINFOOPT", "LC_CTYPE", "LC_MESSAGES", "LC_COLLATE"]) {
+    const previous = process.env[name];
+    const original = await privacyPolicyIdentity([f.paths[0]]);
+    await f.run({policy: original});
+    try {
+      process.env[name] = "synthetic-functional-change";
+      const changed = await privacyPolicyIdentity([f.paths[0]]);
+      assert.notDeepEqual(changed.environment, original.environment);
+      assert.equal((await f.run({policy: changed})).report.scanned, 3);
+      assert.equal((await f.run({policy: changed})).report.reused, 3);
+    } finally {
+      if (previous === undefined) delete process.env[name]; else process.env[name] = previous;
+    }
+  }
+});
+
 test("production privacy CLI preserves full source/Vault membership and consumes prior exact-file results", async t => {
   const f = await fixture(t);
   for (const directory of ["scripts/lib", "privacy", "Vault/tmp"]) await mkdir(join(f.root, directory), {recursive: true});
