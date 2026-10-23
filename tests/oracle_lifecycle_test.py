@@ -96,8 +96,29 @@ print(json.dumps(review_proposal(root,"independent new proposal",[],None)))
         self.assertEqual(proposal.returncode, 0, proposal.stderr)
         self.assertEqual(json.loads(proposal.stdout)['scope'], 'independent new proposal')
         self.assertEqual(next((self.root / '.git/oracle/controllers/admissions').iterdir()).read_bytes(), original)
-        self.assertEqual(len(list((self.root / '.git/oracle/controllers/review_proposal-admissions').iterdir())), 1)
+        self.assertEqual(len(list((self.root / '.git/oracle/controllers').glob('review_proposal-*-admissions'))), 1)
         self.finish(owner)
+
+    def test_different_proposals_have_independent_live_admission_chains(self):
+        script = '''
+from pathlib import Path
+import sys,json,time
+from tools import oracle_approval as o
+root=Path(sys.argv[1]).resolve()
+@o._serialized_review
+def review_proposal(root,request,evidence,owner):
+    time.sleep(.3)
+    return {"verdict":"APPROVED","scope":request}
+print(json.dumps(review_proposal(root,sys.argv[2],[],None)))
+'''
+        first = subprocess.Popen([sys.executable, '-c', script, str(self.root), 'first independent scope'],
+                                 env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        second = subprocess.Popen([sys.executable, '-c', script, str(self.root), 'second independent scope'],
+                                  env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.children.extend([first, second])
+        self.assertEqual(self.finish(first)['scope'], 'first independent scope')
+        self.assertEqual(self.finish(second)['scope'], 'second independent scope')
+        self.assertEqual(len(list((self.root / '.git/oracle/controllers').glob('review_proposal-*-admissions'))), 2)
 
     def test_observer_cancel_does_not_cancel_owner(self):
         owner=self.start();self.entered();observer=self.start()
