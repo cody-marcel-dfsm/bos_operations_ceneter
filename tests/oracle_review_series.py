@@ -762,7 +762,8 @@ class ReviewSeries(unittest.TestCase):
         self.assertNotEqual(o.proposal_path(self.root).read_bytes(), original_proposal)
         self.assertEqual(proposal["review_scope"], "CONCEPTUAL_PROPOSAL")
         self.assertEqual(proposal["source_observations"]["unadopted_delta_paths"], ["peer.py"])
-        self.assertEqual(o.receipt_path(self.root).read_bytes(), original_receipt)
+        self.assertEqual(o._technical_archive(self.root, o._sha(original_receipt)).read_bytes(), original_receipt)
+        self.assertFalse(o.receipt_path(self.root).exists())
         self.assertEqual(o.verify_proposal(self.root)["proposal_sha256"], o._sha(b"new request"))
         with self.assertRaises(o.OracleApprovalError):
             o.verify_staged(self.root)  # Prior receipt never approves concurrent new source.
