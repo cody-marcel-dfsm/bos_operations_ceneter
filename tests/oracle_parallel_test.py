@@ -453,7 +453,7 @@ class ParallelReview(unittest.TestCase):
             self.assertEqual(collection['record_count'], len(caller))
             # Every prepared page is part of the existing final custody fence.
             seals = json.loads((self.run / 'prepared-source-seals.json').read_text())
-            self.assertTrue(set(page_paths) <= set(seals[packet['cohort']['id']]))
+            self.assertTrue(set(o._files(self.root, page_paths)) <= set(seals[packet['cohort']['id']]))
             observed.append((packet['cohort']['id'], page_paths))
             result = self.envelope(packet['cohort'])
             for name, value in {'model.json': {'selected_model': 'inherited-model', 'reasoning_effort': 'high'},
