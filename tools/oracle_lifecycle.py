@@ -356,6 +356,16 @@ def _checkpoint_error(o, root, identity, terminal):
 
 
 def _checkpoint_failed(o, root, identity, terminal, error, error_type="OracleApprovalError"):
+    # Status is an ordinary read entrypoint, but an interrupted issuance needs
+    # its narrowly owned recovery before selection can expose the older pass.
+    token = o._METADATA_ROOT.set(root.resolve())
+    try:
+        return _checkpoint_failed_owned(o, root, identity, terminal, error, error_type)
+    finally:
+        o._METADATA_ROOT.reset(token)
+
+
+def _checkpoint_failed_owned(o, root, identity, terminal, error, error_type):
     if __package__:
         from . import shipment_state
     else:

@@ -633,7 +633,11 @@ class CommittedCatchup(unittest.TestCase):
                 shipment_state._save(self.root,pending)
                 controller.close()
                 if selector=='active':
-                    self.assertIsNone(lifecycle.active(o,self.root))
+                    read_only=o._METADATA_ROOT.set(None)
+                    try:
+                        self.assertIsNone(lifecycle.active(o,self.root))
+                        self.assertNotEqual(shipment_state.selection(self.root)['state'],'REVIEW_IN_PROGRESS')
+                    finally:o._METADATA_ROOT.reset(read_only)
                 else:
                     replacement=lifecycle.Controller(o,self.root,'issue','synthetic-recovery')
                     try:self.assertIsNone(replacement.claim())
