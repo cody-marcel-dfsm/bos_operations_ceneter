@@ -672,6 +672,7 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False, request=N
             pending_checkpoint = None
             checkpoint_before = None
             checkpoint_saved = None
+            checkpoint_attempted = False
             evidence = list(dict.fromkeys([*evidence, *controller.resumed_evidence]))
             while True:
                 before = _head(o, root) if kind == "issue" else None
@@ -732,6 +733,7 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False, request=N
                 for key in ("last_released_commit", "released_merge_commit", "released_publication"):
                     if key in current:
                         pending_checkpoint[key] = current[key]
+                checkpoint_attempted = True
                 checkpoint_saved = shipment_state._save(root, pending_checkpoint)
                 payload = {"controller_id": controller.identity["controller_id"], "status": "ADMITTED",
                            "result_sha256": digest, "checkpoint_sha256": checkpoint_saved["state_sha256"],
@@ -741,9 +743,11 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False, request=N
             return result
         except BaseException as exc:
             status = "REJECTED" if isinstance(exc, o.OracleCandidateRejected) else "INCOMPLETE" if isinstance(exc, o.OracleReviewIncomplete) else "ERROR"
-            if checkpoint_saved is not None:
+            if checkpoint_attempted:
                 checkpoint_path = shipment_state.checkpoint_path(root)
-                if o._custody_read(root, checkpoint_path)[1] == o._pretty(checkpoint_saved):
+                current = shipment_state._load(root)
+                comparable = lambda value: {key: item for key, item in value.items() if key not in {"updated_at", "state_sha256"}}
+                if current and comparable(current) == comparable(pending_checkpoint):
                     if checkpoint_before is None:
                         o._metadata_remove(root, checkpoint_path)
                     else:

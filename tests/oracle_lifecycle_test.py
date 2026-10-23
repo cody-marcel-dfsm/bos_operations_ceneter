@@ -516,7 +516,14 @@ class CommittedCatchup(unittest.TestCase):
                 if path.name==stage and (value.get('status') in {'APPROVED','ADMITTED'} or value.get('verdict')=='APPROVED'):
                     raise OSError('Synthetic final issuance publication failure')
                 return publish(module,root,path,value)
-            with patch.object(lifecycle,'_publish',side_effect=failure):
+            save=shipment_state._save
+            def save_failure(root,value):
+                result=save(root,value)
+                if stage=='checkpoint-write-after-effect':
+                    raise OSError('Synthetic final issuance publication failure')
+                return result
+            with patch.object(lifecycle,'_publish',side_effect=failure), \
+                    patch.object(shipment_state,'_save',side_effect=save_failure):
                 with self.assertRaisesRegex(OSError,'final issuance publication failure'):
                     o.issue(self.root,[str(self.fixture.evidence)],None,reviewer)
             self.assertEqual(shipment_state.checkpoint_path(self.root).read_bytes(),checkpoint)
@@ -540,6 +547,9 @@ class CommittedCatchup(unittest.TestCase):
 
     def test_checkpoint_admission_failure_restores_prior_complete_checkpoint(self):
         self._assert_unadmitted_issuance('checkpoint-admission.json')
+
+    def test_checkpoint_write_failure_after_effect_restores_prior_complete_checkpoint(self):
+        self._assert_unadmitted_issuance('checkpoint-write-after-effect')
 
     def test_attached_caller_waits_for_successful_checkpoint_admission(self):
         observed=[];threads=[];finished=threading.Event();finish=lifecycle._finish
