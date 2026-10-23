@@ -306,7 +306,8 @@ class CommandCoverage(unittest.TestCase):
                 commit=o._sha(kind.encode())[:40]
                 record={"base_commit": commit, "candidate_tree": self.tree, "outcome": "APPROVED", "assessment_admitted": True,
                         "guards": {"environment_digest": "original"}, "review": {"review_status": "COMPLETE", "command_coverage": [
-                            dict(self.required, status="COMPLETE", inputs=[], environment_digest="original", evidence_paths=["proof-A"])]}}
+                            dict(self.required, status="COMPLETE", inputs=[{'path':'changed','digest':'original'}],
+                                 environment_digest="original", evidence_paths=["proof-A"])]}}
                 path=self.root/'synthetic-round.json'
                 shipment.observe_decision(self.root,record,path,technical_receipt_sha256="1"*64,publication_scope={})
                 record['outcome']='INCOMPLETE';record['review']['review_status']='INCOMPLETE'
