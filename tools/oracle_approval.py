@@ -1465,10 +1465,73 @@ def _raw_assessment_origins(root: Path, rounds: list[dict]):
                                assessment_pointer=pointer + "/unadopted_cohort_assessments/" + str(index) + "/assessment"), child["assessment"], original
 
 
+def _raw_native_provenance(root: Path, raw: dict, assessment: dict) -> dict:
+    """Authenticate an original producer without admitting its assessment."""
+    path = Path(raw.get("result_file") or "")
+    if (not path.is_absolute() or not path.is_relative_to(receipt_path(root).parent / "runs")
+            or path.name != "result.json" or not raw.get("result_sha256")):
+        return {}
+    try:
+        _, content = _custody_read(root, path)
+        result = json.loads(content)
+        model_path, process_path = path.parent / "model.json", path.parent / "process.json"
+        model = json.loads(_custody_read(root, model_path)[1])
+        process = json.loads(_custody_read(root, process_path)[1])
+        if (_sha(content) != raw["result_sha256"]
+                or result.get("assessment", result) != assessment
+                or model.get("reviewer_role") != "independent-oracle-approver"
+                or process.get("exit_code") != 0):
+            return {}
+        return _files(root, [str(path), str(model_path), str(process_path)])
+    except (OSError, ValueError, TypeError, AttributeError, OracleApprovalError):
+        return {}
+
+
+def _raw_criterion_candidates(root: Path, rounds: list[dict], inputs: dict, guards: dict) -> list:
+    """Retain completed bodies for explicit independent applicability only."""
+    latest = {}
+    for record, raw, assessment, original in _raw_assessment_origins(root, rounds):
+        if assessment.get("review_status") not in {"COMPLETE", "INCOMPLETE"}:
+            continue
+        provenance = _raw_native_provenance(root, raw, assessment)
+        if not provenance:
+            continue
+        coverage = assessment.get("coverage")
+        if not isinstance(coverage, list):
+            continue
+        blocked = {name for finding in assessment.get("findings", []) if isinstance(finding, dict)
+                   for name in [finding.get("file"), *finding.get("affected_paths", [])]}
+        for index, item in enumerate(coverage):
+            name = item.get("path") if isinstance(item, dict) else None
+            if not isinstance(name, str):
+                continue
+            latest[name] = None
+            if (name in blocked or item.get("status") not in {"REVIEWED", "CARRIED_FORWARD"}
+                    or not item.get("reason")):
+                continue
+            try:
+                _checked_inputs(item.get("inputs"), original, required_path=name)
+            except (OracleApprovalError, KeyError, TypeError):
+                continue
+            if any(inputs.get(entry["path"]) != entry["digest"] for entry in item["inputs"]):
+                continue
+            latest[name] = dict(item,
+                invalidation_reasons=[*_observation_guard_changes(root, guards, record),
+                                      "unadopted_native_observation"],
+                raw_observation={"actual_outcome": record["outcome"],
+                    "record_sha256": record["record_sha256"],
+                    "context_sha256": record["context_sha256"],
+                    "assessment_pointer": raw.get("assessment_pointer", "/raw_assessment/assessment")
+                        + "/coverage/" + str(index),
+                    "provenance_files": provenance})
+    return [item for item in latest.values() if item is not None]
+
+
 def _raw_assessment_files(root: Path, rounds: list[dict]) -> dict:
     retained = {}
     for _, raw, assessment, original in _raw_assessment_origins(root, rounds):
         retained.update(raw.get("provenance_files", {}))
+        retained.update(_raw_native_provenance(root, raw, assessment))
         for item in assessment.get("coverage", []) if isinstance(assessment.get("coverage"), list) else []:
             if not isinstance(item, dict):
                 continue
@@ -1891,6 +1954,10 @@ def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence:
             reasons += [entry["path"] + " validation input changed or missing" for entry in item["inputs"]
                         if entry["path"] not in inputs or inputs[entry["path"]] != entry["digest"]]
             (invalid_validations if reasons else validations).append(dict(item, invalidation_reasons=reasons))
+    # These observations remain ineligible until the current independent
+    # criterion decision. A whole-attempt source movement must not require a
+    # fresh body read for an unchanged, authenticated per-file assessment.
+    invalidated.extend(_raw_criterion_candidates(root, rounds, inputs, guards))
     failed_repairs = 0
     for record in reversed(rounds):
         if record["outcome"] == "APPROVED":

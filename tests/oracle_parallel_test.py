@@ -629,5 +629,88 @@ output.with_name('probe.json').write_text(json.dumps({'pid':os.getpid(),'started
                     o._RUN.reset(token)
 
 
+class RawObservationCriterion(unittest.TestCase):
+    """Native ERROR keeps completed bodies without transferring approval."""
+    def setUp(self):
+        import oracle_review_series as fixtures
+        self.fixture = fixtures.ReviewSeries('runTest')
+        self.fixture.setUp()
+        self.addCleanup(self.fixture.doCleanups)
+        self.root = self.fixture.root
+        def drift(context):
+            result = self.fixture.result(context)
+            run = o._RUN.get()
+            # Synthetic native producer metadata; this fixture launches no model.
+            o._atomic_write(run / 'model.json', o._pretty({'reviewer_role': 'independent-oracle-approver'}))
+            o._atomic_write(run / 'process.json', o._pretty({'exit_code': 0}))
+            o._atomic_write(run / 'result.json', o._pretty(result))
+            self.fixture.change('peer.py', 'concurrent source movement')
+            return result
+        self.fixture.submit(drift, error=o.OracleSourceBindingError)
+        self.rounds = o._read_rounds(o._series_directory(self.root, self.fixture.base))
+        self.original = self.fixture.contexts[-1]
+        self.inputs = dict(self.original['input_hashes'])
+        self.inputs.update(o._candidate_inputs(self.root, o._tree(self.root), {}))
+        self.guards = self.original['guards']
+
+    def candidates(self, inputs=None):
+        return o._raw_criterion_candidates(self.root, self.rounds,
+            self.inputs if inputs is None else inputs, self.guards)
+
+    def test_postcheck_error_reuses_only_unchanged_completed_body_after_independent_adoption(self):
+        self.assertEqual(self.rounds[-1]['outcome'], 'ERROR')
+        self.assertEqual(self.rounds[-1]['verified_coverage'], [])
+        candidates = self.candidates()
+        self.assertEqual([row['path'] for row in candidates], ['source.py'])
+        context = dict(self.original, input_hashes=self.inputs, reusable_coverage=[],
+                       invalidated_coverage=candidates, prior_findings={})
+        digest = lambda value: o._sha(o._canonical(value))
+        binding = {'reviewer_settings': {'model': 'synthetic-model', 'reasoning_effort': None}}
+        plan = parallel.partition(context, binding, digest)
+        self.assertEqual(len(plan['retained_criteria']), 1)
+        group = plan['retained_criteria'][0]
+        self.assertTrue(group['unadopted_observation'])
+        self.assertIn('peer.py', plan['required_paths'])
+        self.assertNotIn('source.py', plan['required_paths'])
+        effective = parallel._criterion_context(context, plan)
+        decision = {'coverage': [{'path': group['path'], 'status': 'CARRIED_FORWARD',
+            'inputs': [{'path': group['path'], 'digest': effective['input_hashes'][group['path']]}],
+            'reason': 'Identity alone grants no adoption'}]}
+        with self.assertRaises(o.OracleApprovalError):
+            parallel._expanded_criteria(o, context, plan, decision)
+        decision['coverage'][0].update(status='REVIEWED', reason='Independently assessed current criteria and exact retained dependency/source identities')
+        expanded, _ = parallel._expanded_criteria(o, context, plan, decision)
+        self.assertEqual([row['path'] for row in expanded['coverage']], ['source.py'])
+        self.assertEqual(self.rounds[-1]['outcome'], 'ERROR')
+        self.assertFalse(o.receipt_path(self.root).exists())
+        changed = copy.deepcopy(context)
+        changed['invalidated_coverage'][0]['raw_observation']['record_sha256'] = 'forged'
+        with self.assertRaisesRegex(o.OracleApprovalError, 'members changed'):
+            parallel._expanded_criteria(o, changed, plan, decision)
+
+    def test_tampered_output_or_foreign_producer_role_cannot_form_a_raw_criterion(self):
+        raw = self.rounds[-1]['raw_assessment']
+        result = Path(raw['result_file']); original = result.read_bytes()
+        result.write_bytes(original + b' ')
+        self.assertEqual(self.candidates(), [])
+        result.write_bytes(original)
+        model = result.parent / 'model.json'
+        model.write_bytes(o._pretty({'reviewer_role': 'ordinary-implementation-agent'}))
+        self.assertEqual(self.candidates(), [])
+
+    def test_changed_inputs_and_negative_rows_remain_individual_assignments(self):
+        changed = dict(self.inputs, **{'source.py': 'changed-source'})
+        self.assertEqual(self.candidates(changed), [])
+        record, raw, assessment, original = next(o._raw_assessment_origins(self.root, self.rounds))
+        result_file = Path(raw['result_file'])
+        for status in ['UNREVIEWED', 'BROKEN']:
+            candidate = copy.deepcopy(assessment)
+            candidate['coverage'][0].update(status=status)
+            result_file.write_bytes(o._pretty(candidate))
+            variant = dict(raw, result_sha256=o._sha(result_file.read_bytes()))
+            with patch.object(o, '_raw_assessment_origins', return_value=iter([(record, variant, candidate, original)])):
+                self.assertEqual(self.candidates(), [])
+
+
 if __name__ == '__main__':
     unittest.main()

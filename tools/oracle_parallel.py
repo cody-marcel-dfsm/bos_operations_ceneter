@@ -56,6 +56,10 @@ rationale. This grants current criterion applicability, preserving the original
 body observations; it never claims a new body read. Native aggregation expands
 that explicit decision to its sealed members. Concrete changed source/dependencies,
 admitted invalidations and open findings remain ordinary individual assignments.
+An unadopted-observation group additionally binds authentic original native
+result/model/process bytes and every completed per-file footprint. Its original
+ERROR remains literal. Explicitly assess current applicability before adopting
+that group; neither preparation nor unchanged identities grant eligibility.
 Identity matching alone never
 grants applicability, coverage or approval; inspect unresolved differences.
 COMPLETE requires limitations=[]; put nonblocking area boundaries in summary.
@@ -93,17 +97,24 @@ def _retained_criteria(context, pending, digest):
     for index, entry in enumerate(originals):
         name, inputs = entry.get('path'), entry.get('inputs', [])
         reasons = entry.get('invalidation_reasons', [])
+        raw = entry.get('raw_observation')
+        allowed_reasons = guard_keys | ({'unadopted_native_observation'} if raw else set())
         names = [item.get('path') for item in inputs if isinstance(item, dict)]
         if (name not in pending or name in seen or name in blocked
                 or entry.get('status') not in {'REVIEWED', 'CARRIED_FORWARD'}
-                or not reasons or not set(reasons) <= guard_keys
+                or not reasons or not set(reasons) <= allowed_reasons
+                or raw is not None and (not isinstance(raw, dict) or not raw.get('provenance_files')
+                                       or 'unadopted_native_observation' not in reasons)
                 or entry.get('checkpoint_invalidation_reasons')
                 or not inputs or name not in names or len(set(names)) != len(inputs)
                 or any(not isinstance(item, dict) or set(item) != {'path', 'digest'}
                        or context['input_hashes'].get(item['path']) != item['digest'] for item in inputs)):
             continue
-        facts = {'historical_status': entry['status'], 'guard_deltas': sorted(set(reasons)),
+        facts = {'historical_status': entry['status'],
+                 'guard_deltas': sorted(set(reasons) - {'unadopted_native_observation'}),
                  'current_guards_sha256': digest(context.get('guards', {}))}
+        if raw:
+            facts['unadopted_observation'] = True
         key = digest(facts)
         groups.setdefault(key, dict(facts, original_coverage_indices=[]))['original_coverage_indices'].append(index)
         seen.add(name)
