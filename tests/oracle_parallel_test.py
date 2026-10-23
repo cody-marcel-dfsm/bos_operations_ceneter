@@ -705,7 +705,7 @@ class RawObservationCriterion(unittest.TestCase):
         result_file = Path(raw['result_file'])
         for status in ['UNREVIEWED', 'BROKEN']:
             candidate = copy.deepcopy(assessment)
-            candidate['coverage'][0].update(status=status)
+            next(row for row in candidate['coverage'] if row['path'] == 'source.py').update(status=status)
             result_file.write_bytes(o._pretty(candidate))
             variant = dict(raw, result_sha256=o._sha(result_file.read_bytes()))
             with patch.object(o, '_raw_assessment_origins', return_value=iter([(record, variant, candidate, original)])):
