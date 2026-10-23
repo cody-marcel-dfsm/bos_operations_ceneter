@@ -6,6 +6,7 @@ import argparse
 import json
 import re
 import subprocess
+import time
 from pathlib import Path
 
 try:
@@ -21,7 +22,9 @@ except ImportError:
 def _source_receipt(root: Path, commit: str) -> tuple[dict, bytes]:
     if shipment.checkpoint_path(root).exists():
         receipt, raw = shipment.validated_receipt(root, commit)
-        digest = o._sha(raw)
+        if "publication_scope" not in receipt:
+            raise o.OracleApprovalError("Publication requires a current source/effect technical receipt")
+        return receipt, raw
     else:
         # Historical releases retain their original accepted-state transport.
         o.verify_commit(root, commit)
@@ -51,6 +54,61 @@ def _source_receipt(root: Path, commit: str) -> tuple[dict, bytes]:
     o._validate_api_version_assessment(receipt["api_version_assessment"], "APPROVED", root,
                                      receipt["validation_evidence"])
     return receipt, raw
+
+
+@o._metadata_owner
+def prepare(root: Path, candidate: str, release_ref: str, operation: str, *,
+            authorization=None, refresh: bool = True) -> dict:
+    """Finish validation/preflight and persist the exact Git publication inputs."""
+    selected = plan(root, candidate, release_ref, operation, refresh=refresh)
+    if selected.get("state") == "NO_CHANGES":
+        return selected
+    _check_authorization(root, selected, authorization)
+    target = selected["destination"]["ref"]
+    expected = selected["publication_scope"]["baseline_commit"] if target == "refs/heads/main" else None
+    payload = {"kind": "boc-prepared-git-publication-v1", "plan": selected,
+               "source_commit": selected["candidate_commit"], "source_tree": selected["candidate_tree"],
+               "remote_url": selected["destination"]["remote_url"], "target_ref": target,
+               "expected_remote_commit": expected,
+               "command": ["git", "push", selected["destination"]["remote_url"],
+                           selected["candidate_commit"] + ":" + target]}
+    record = dict(payload, prepared_sha256=o._sha(o._canonical(payload)))
+    path = o.receipt_path(root).parent / "publication-prepared" / (record["prepared_sha256"] + ".json")
+    if path.exists() and o._custody_read(root, path)[1] != o._pretty(record):
+        raise o.OracleApprovalError("Immutable prepared publication changed")
+    if not path.exists():
+        o._atomic_write(path, o._pretty(record))
+    return dict(record, prepared_file=str(path))
+
+
+def publish_prepared(root: Path, prepared: Path, *, execute=subprocess.run) -> dict:
+    """Publish a captured validated SHA with Git only, independent of later authors."""
+    path = Path(prepared)
+    if not path.is_absolute():
+        path = root / path
+    raw = o._custody_read(root, path)[1]
+    record = json.loads(raw)
+    payload = {key: value for key, value in record.items() if key != "prepared_sha256"}
+    digest = o._sha(o._canonical(payload))
+    directory = o.receipt_path(root).parent / "publication-prepared"
+    if (path.parent != directory or path.name != digest + ".json" or raw != o._pretty(record)
+            or record.get("kind") != "boc-prepared-git-publication-v1" or record.get("prepared_sha256") != digest
+            or record.get("remote_url") != o.PUBLICATION_REMOTE
+            or not re.fullmatch(r"[0-9a-f]{40}", record.get("source_commit", ""))
+            or not re.fullmatch(r"refs/heads/(main|codex/release-v[0-9]+\.[0-9]+\.[0-9]+)", record.get("target_ref", ""))):
+        raise o.OracleApprovalError("Publication requires its immutable owner-local prepared Git inputs")
+    command = ["git", "push", record["remote_url"], record["source_commit"] + ":" + record["target_ref"]]
+    if record.get("command") != command:
+        raise o.OracleApprovalError("Prepared publication Git command changed")
+    # A normal push rejects non-fast-forward movement and preserves server-side
+    # protection. It publishes this captured SHA even while new authors work.
+    started = time.monotonic()
+    execute(command, cwd=root, check=True)
+    elapsed = time.monotonic() - started
+    return {"kind": "boc-git-publication-result-v1", "state": "PUBLISHED",
+            "candidate_commit": record["source_commit"], "destination": record["plan"]["destination"],
+            "prepared_sha256": digest, "elapsed_seconds": elapsed,
+            "publication_sla_seconds": 10, "publication_sla_breached": elapsed >= 10}
 
 
 def plan(root: Path, candidate: str, release_ref: str, operation: str, *, refresh: bool = True) -> dict:
@@ -306,9 +364,10 @@ def publish(root: Path, candidate: str, release_ref: str, operation: str, *, pr:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=["plan", "push", "authorize", "merge"])
+    parser.add_argument("command", choices=["plan", "prepare", "publish", "push", "authorize", "merge"])
     parser.add_argument("--candidate", default="HEAD")
-    parser.add_argument("--release-ref", required=True)
+    parser.add_argument("--release-ref")
+    parser.add_argument("--prepared", type=Path)
     parser.add_argument("--operation", choices=["review-push", "main-promotion"], default="main-promotion")
     parser.add_argument("--pr")
     parser.add_argument("--authorization", type=Path, action="append", default=[])
@@ -317,17 +376,22 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     root = o.repository_root()
     try:
-        if args.command == "plan":
+        if args.command in {"publish", "push", "merge"}:
+            if args.prepared is None:
+                raise o.OracleApprovalError("Complete validation with prepare, then publish --prepared <record>")
+            result = publish_prepared(root, args.prepared)
+        elif not args.release_ref:
+            raise o.OracleApprovalError("Validation preparation requires the resolved release ref")
+        elif args.command == "plan":
             result = plan(root, args.candidate, args.release_ref, args.operation)
+        elif args.command == "prepare":
+            result = prepare(root, args.candidate, args.release_ref, args.operation,
+                             authorization=args.authorization)
         elif args.command == "authorize":
             if not args.owner_evidence:
                 raise o.OracleApprovalError("Scoped direct-human evidence is required for publication authorization")
             result = authorize(root, args.candidate, args.release_ref, args.owner_evidence,
                                authorization=args.authorization, effect_ids=args.effect_id)
-        else:
-            result = publish(root, args.candidate, args.release_ref,
-                             "review-push" if args.command == "push" else "main-promotion",
-                             pr=args.pr, authorization=args.authorization)
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0
     except (o.OracleApprovalError, OSError, ValueError, subprocess.CalledProcessError) as exc:

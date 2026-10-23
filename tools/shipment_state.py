@@ -45,8 +45,13 @@ def _ancestor(root: Path, earlier: str, later: str) -> bool:
                           cwd=root, capture_output=True).returncode == 0
 
 
-def validated_receipt(root: Path, commit: str | None = None) -> tuple[dict, bytes]:
-    """Recheck the original independent receipt; checkpoint text grants no approval."""
+def validated_receipt(root: Path, commit: str | None = None, *, revalidate: bool = False) -> tuple[dict, bytes]:
+    """Read the sealed validation result for an immutable committed candidate.
+
+    Full validation happens before record_validated writes its checkpoint. Status
+    and publication consume that completed result; they never replay its tests or
+    private proof closure. Explicit validation entrypoints can request a recheck.
+    """
     record = _load(root)
     commit = commit or o._git(root, "rev-parse", "HEAD").strip()
     if record.get("last_validated_commit") != commit:
@@ -58,7 +63,9 @@ def validated_receipt(root: Path, commit: str | None = None) -> tuple[dict, byte
     if o._sha(raw) != digest:
         raise o.OracleApprovalError("Shipment technical receipt changed")
     receipt = json.loads(raw)
-    o._verify_receipt(root, receipt, raw)
+    o._shape(receipt)
+    if revalidate:
+        o._verify_receipt(root, receipt, raw)
     if (receipt["base_commit"] != commit
             or receipt["candidate_tree"] != o._git(root, "rev-parse", commit + "^{tree}").strip()
             or o._git(root, "status", "--porcelain=v1", "--untracked-files=all").strip()):
@@ -66,6 +73,7 @@ def validated_receipt(root: Path, commit: str | None = None) -> tuple[dict, byte
     return receipt, raw
 
 
+@o._metadata_owner
 def record_validated(root: Path) -> dict:
     if o._git(root, "status", "--porcelain=v1", "--untracked-files=all").strip():
         raise o.OracleApprovalError("Commit the complete candidate before advancing validation")
@@ -74,9 +82,55 @@ def record_validated(root: Path) -> dict:
     if receipt["base_commit"] != commit or receipt["candidate_tree"] != o._git(root, "rev-parse", "HEAD^{tree}").strip():
         raise o.OracleApprovalError("Validation receipt does not bind the exact committed candidate")
     record = _load(root)
+    tracking = record_command_tracking(root, record, receipt, raw, commit)
     record.update(last_validated_commit=commit, validated_tree=receipt["candidate_tree"],
-                  technical_receipt_sha256=o._sha(raw))
+                  technical_receipt_sha256=o._sha(raw), command_tracking=tracking)
     return _save(root, record)
+
+
+def record_command_tracking(root: Path, previous: dict, receipt: dict, raw: bytes, commit: str) -> dict:
+    """Retain actual validated changelists and original native command identities."""
+    existing = previous.get("command_tracking")
+    if previous.get("last_validated_commit") == commit and existing:
+        prior_raw = o._custody_read(root, existing["path"])[1]
+        prior = json.loads(prior_raw)
+        if (o._sha(prior_raw) != existing["sha256"] or prior.get("technical_receipt_sha256") != o._sha(raw)):
+            raise o.OracleApprovalError("Immutable validated changelist command tracking changed")
+        return existing
+    baseline = previous.get("last_validated_commit")
+    if not baseline or not _ancestor(root, baseline, commit):
+        baseline = receipt.get("publication_scope", {}).get("baseline_commit")
+    commits = o._git(root, "rev-list", "--reverse", baseline + ".." + commit).splitlines() if baseline else [commit]
+    if commit not in commits:
+        commits.append(commit)
+    commands = []
+    for name in receipt["validation_evidence"]:
+        path = Path(name) if Path(name).is_absolute() else root / name
+        if path.parent.parent != o.receipt_path(root).parent / "series" or not path.name.startswith("round-"):
+            continue
+        round_record = json.loads(o._custody_read(root, path)[1])
+        if round_record.get("candidate_tree") != receipt["candidate_tree"] or round_record.get("outcome") != "APPROVED":
+            continue
+        for proof in round_record.get("verified_validations", []):
+            validation = json.loads(o._custody_read(root, proof["evidence_path"])[1])
+            commands.append({"command": validation["command"],
+                "command_sha256": o._sha(o._canonical(validation["command"])),
+                "evidence_path": proof["evidence_path"], "evidence_sha256": proof["evidence_sha256"],
+                "inputs_sha256": o._sha(o._canonical(validation["inputs"])),
+                "environment_digest": validation["environment_digest"],
+                "output_hashes": validation["output_hashes"]})
+    payload = {"kind": "boc-validation-command-tracking-v1", "validated_commit": commit,
+        "candidate_tree": receipt["candidate_tree"], "technical_receipt_sha256": o._sha(raw),
+        "previous_validated_commit": previous.get("last_validated_commit"),
+        "changelists": [{"commit": value, "tree": o._git(root, "rev-parse", value + "^{tree}").strip()}
+                        for value in commits], "commands": commands}
+    result = dict(payload, tracking_sha256=o._sha(o._canonical(payload)))
+    path = o.receipt_path(root).parent / "command-tracking" / (commit + ".json")
+    if path.exists() and o._custody_read(root, path)[1] != o._pretty(result):
+        raise o.OracleApprovalError("Immutable validated changelist command tracking changed")
+    if not path.exists():
+        o._atomic_write(path, o._pretty(result))
+    return {"path": str(path), "sha256": o._sha(o._pretty(result))}
 
 
 def record_released(root: Path, commit: str, merge_commit: str) -> dict:
