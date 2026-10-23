@@ -246,7 +246,7 @@ class CommandCoverage(unittest.TestCase):
         from tools import shipment_state as shipment
         subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
         base = {"base_commit": self.commit, "candidate_tree": self.tree, "outcome": "APPROVED", "assessment_admitted": True,
-                "review": {"review_status": "COMPLETE"}}
+                "review": {"review_status": "COMPLETE", "command_coverage": [dict(self.required, status="COMPLETE")]}}
         path = self.root / "synthetic-round.json"
         for kind in ("admitted-defect", "command-gap", "raw-error", "empty-incomplete"):
             with self.subTest(kind=kind):
@@ -268,6 +268,54 @@ class CommandCoverage(unittest.TestCase):
                         shipment.publication_eligibility(self.root, record["base_commit"], self.tree, "1" * 64)
                 else:
                     shipment.publication_eligibility(self.root, record["base_commit"], self.tree, "1" * 64)
+
+    def test_partial_support_invalidation_is_scoped_to_each_original_receipt(self):
+        from tools import shipment_state as shipment
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+        record = {"base_commit": self.commit, "candidate_tree": self.tree, "outcome": "APPROVED", "assessment_admitted": True,
+                  "guards": {"environment_digest": "original"}, "review": {"review_status": "COMPLETE", "command_coverage": [
+                      dict(self.required, status="COMPLETE", inputs=[], environment_digest="original", evidence_paths=["proof-A"])]}}
+        path = self.root / "synthetic-round.json"
+        for digest, proof in (("1" * 64, "proof-A"), ("2" * 64, "proof-B")):
+            record["review"]["command_coverage"][0]["evidence_paths"] = [proof]
+            shipment.observe_decision(self.root, record, path, technical_receipt_sha256=digest,
+                                      publication_scope={}, validation_evidence={proof: digest})
+        record.update(outcome="INCOMPLETE")
+        record["review"].update(review_status="INCOMPLETE", validations=[{"status": "INVALIDATED", "evidence_path": "unrelated"}])
+        shipment.observe_decision(self.root, record, path)
+        for digest in ("1" * 64, "2" * 64):
+            shipment.publication_eligibility(self.root, self.commit, self.tree, digest)
+        record["review"]["validations"][0]["evidence_path"] = "proof-A"
+        shipment.observe_decision(self.root, record, path)
+        with self.assertRaises(o.OracleApprovalError):
+            shipment.publication_eligibility(self.root, self.commit, self.tree, "1" * 64)
+        shipment.publication_eligibility(self.root, self.commit, self.tree, "2" * 64)
+        marker = shipment._decision_read(self.root, shipment._decision_directory(self.root, self.commit, self.tree))
+        self.assertEqual(marker["outcome"], "INCOMPLETE")
+        self.assertEqual(marker["valid_receipts"], ["2" * 64])
+
+    def test_admitted_partial_complete_binding_or_criteria_change_revokes_support(self):
+        from tools import shipment_state as shipment
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+        for kind in ("inputs", "environment", "criteria", "raw-error", "empty"):
+            with self.subTest(kind=kind):
+                commit=o._sha(kind.encode())[:40]
+                record={"base_commit": commit, "candidate_tree": self.tree, "outcome": "APPROVED", "assessment_admitted": True,
+                        "guards": {"environment_digest": "original"}, "review": {"review_status": "COMPLETE", "command_coverage": [
+                            dict(self.required, status="COMPLETE", inputs=[], environment_digest="original", evidence_paths=["proof-A"])]}}
+                path=self.root/'synthetic-round.json'
+                shipment.observe_decision(self.root,record,path,technical_receipt_sha256="1"*64,publication_scope={})
+                record['outcome']='INCOMPLETE';record['review']['review_status']='INCOMPLETE'
+                if kind=='inputs':record['review']['command_coverage'][0]['inputs']=[{'path':'changed','digest':'new'}]
+                if kind=='environment':record['review']['command_coverage'][0]['environment_digest']='changed'
+                if kind=='criteria':record['guards']['environment_digest']='changed'
+                if kind=='raw-error':
+                    record.update(outcome='ERROR',assessment_admitted=False)
+                    record['review']['command_coverage'][0]['environment_digest']='changed'
+                shipment.observe_decision(self.root,record,path)
+                if kind in {'inputs','environment','criteria'}:
+                    with self.assertRaises(o.OracleApprovalError):shipment.publication_eligibility(self.root,commit,self.tree,"1"*64)
+                else:shipment.publication_eligibility(self.root,commit,self.tree,"1"*64)
 
     def test_conceptual_proposal_survives_concurrent_commit_and_rejects_evidence_or_criteria_drift(self):
         def git(*args):

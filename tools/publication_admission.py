@@ -180,10 +180,7 @@ def prepare(root: Path, candidate: str, release_ref: str, operation: str, *,
     return _prepared_result(root, path, record)
 
 
-@o._metadata_owner
-def publish_prepared(root: Path, prepared: Path, *, execute=subprocess.run) -> dict:
-    """Publish a captured validated SHA with Git only, independent of later authors."""
-    started = time.monotonic()
+def _prepared_record(root: Path, prepared: Path) -> tuple[dict, str, list[str]]:
     path = Path(prepared)
     if not path.is_absolute():
         path = root / path
@@ -201,6 +198,14 @@ def publish_prepared(root: Path, prepared: Path, *, execute=subprocess.run) -> d
     command = ["git", "push", record["remote_url"], record["source_commit"] + ":" + record["target_ref"]]
     if record.get("command") != command:
         raise o.OracleApprovalError("Prepared publication Git command changed")
+    return record, digest, command
+
+
+@o._metadata_owner
+def publish_prepared(root: Path, prepared: Path, *, execute=subprocess.run) -> dict:
+    """Publish a captured validated SHA with Git only, independent of later authors."""
+    started = time.monotonic()
+    record, digest, command = _prepared_record(root, prepared)
     shipment.publication_eligibility(root, record["source_commit"], record["source_tree"],
                                     record["plan"]["technical_receipt_sha256"])
     # A normal push rejects non-fast-forward movement and preserves server-side

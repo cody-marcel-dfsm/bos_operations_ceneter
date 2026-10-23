@@ -53,8 +53,11 @@ receipt identifier alone never invalidates coverage. Changed controlling criteri
 environment or effects retain their concrete binding and revoke affected receipts.
 Retain immutable native Git-attempt results with actual success/failure and timing.
 After confirmed main publication, record the exact delivered SHA through the
-supported `shipment_state.record_released` operation during post-push cleanup;
+supported `python3 tools/shipment_state.py released --prepared <prepared-file>
+--publication-attempt <successful-attempt-file>` operation during post-push cleanup;
 preserve the prepared SHA and actual remote reachability evidence.
+Cleanup binds the captured approved preparation and successful main Git result,
+and preserves any newer validation checkpoint while recording actual delivery.
 
 The required privacy command retains its complete source, Vault and archive
 membership. Its private `.git/oracle/privacy-coverage` ledger reuses original

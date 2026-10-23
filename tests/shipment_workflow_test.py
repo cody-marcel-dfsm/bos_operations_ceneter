@@ -304,6 +304,41 @@ class ShipmentWorkflow(unittest.TestCase):
         retained = json.loads(Path(result["attempt_file"]).read_bytes())
         self.assertEqual(retained, {key: value for key, value in result.items() if key != "attempt_file"})
 
+    def test_captured_delivery_cleanup_preserves_newer_validation_and_requires_confirmed_main(self):
+        captured = self.validate()
+        prepared = publication.prepare(self.root, captured, self.ref, "main-promotion", refresh=False)
+        self.fixture.change("peer.py", "newer independently validated source")
+        newer = self.validate()
+        validation = shipment._load(self.root)
+        outcome = publication.publish_prepared(self.root, Path(prepared["prepared_file"]),
+                    execute=lambda command, **kwargs: subprocess.CompletedProcess(command, 0, "", ""))
+        native_git = o._git
+        def remote(root, *args):
+            return captured + "\trefs/heads/main\n" if args[:1] == ("ls-remote",) else native_git(root, *args)
+        with patch.object(o, "_git", side_effect=remote), \
+                patch.object(o, "_verify_receipt", side_effect=AssertionError("cleanup replays proof")):
+            released = shipment.record_released(self.root, captured, captured, prepared=Path(prepared["prepared_file"]),
+                                                publication_attempt=Path(outcome["attempt_file"]))
+            self.assertEqual(released["last_released_commit"], captured)
+            self.assertEqual(released["last_validated_commit"], newer)
+            for key in ("technical_receipt_sha256", "command_tracking"):
+                self.assertEqual(released[key], validation[key])
+            original = shipment.checkpoint_path(self.root).read_bytes()
+            shipment.record_released(self.root, captured, captured, prepared=Path(prepared["prepared_file"]),
+                                     publication_attempt=Path(outcome["attempt_file"]))
+            self.assertEqual(shipment.checkpoint_path(self.root).read_bytes(), original)
+            with self.assertRaises(o.OracleApprovalError):
+                shipment.record_released(self.root, "e" * 40, "e" * 40, prepared=Path(prepared["prepared_file"]),
+                                         publication_attempt=Path(outcome["attempt_file"]))
+            for changes in ({"state": "FAILED", "returncode": 1}, {"state": "UNKNOWN"},
+                            {"destination": {"remote_url": o.PUBLICATION_REMOTE, "ref": "refs/heads/" + self.ref}}):
+                bad=json.loads(Path(outcome["attempt_file"]).read_text());bad.update(changes)
+                path=Path(outcome["attempt_file"]).with_name(o._sha(o._pretty(bad))+'.json')
+                o._metadata_owner(lambda root: o._atomic_write(path,o._pretty(bad)))(self.root)
+                with self.assertRaises(o.OracleApprovalError):
+                    shipment.record_released(self.root,captured,captured,prepared=Path(prepared["prepared_file"]),publication_attempt=path)
+                self.assertEqual(shipment.checkpoint_path(self.root).read_bytes(),original)
+
     def test_new_commit_retains_series_and_unchanged_validation_but_not_approval(self):
         first = self.validate()
         before = shipment.checkpoint_path(self.root).read_bytes()
