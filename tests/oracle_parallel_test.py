@@ -462,7 +462,7 @@ class ParallelReview(unittest.TestCase):
             return result
         with patch.object(o, '_input_binding', return_value=self.binding), patch.object(o, '_review_process', side_effect=child):
             result = o._oracle(self.root, self.context['candidate_tree'], self.paths, {}, None)
-        self.assertEqual(result['verdict'], 'APPROVED')
+        self.assertEqual(result['verdict'], 'APPROVED', result.get('limitations'))
         self.assertEqual({identity for identity, _ in observed}, set(parallel.AREAS))
         seals = json.loads((self.run / 'prepared-source-seals.json').read_text())
         identity, pages = observed[0]
