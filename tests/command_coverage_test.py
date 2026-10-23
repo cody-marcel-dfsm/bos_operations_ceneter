@@ -254,6 +254,38 @@ class CommandCoverage(unittest.TestCase):
                 else:
                     shipment.publication_eligibility(self.root, record["base_commit"], self.tree, "1" * 64)
 
+    def test_conceptual_proposal_survives_concurrent_commit_and_rejects_evidence_or_criteria_drift(self):
+        def git(*args):
+            return subprocess.check_output(["git", *args], cwd=self.root, text=True).strip()
+        git("init", "-q"); git("config", "user.name", "Synthetic Reviewer"); git("config", "user.email", "fixture@example.invalid")
+        (self.root / "AGENTS.md").write_text("Synthetic governing criterion")
+        (self.root / "candidate.txt").write_text("original")
+        git("add", "."); git("commit", "-qm", "base")
+        original = git("rev-parse", "HEAD")
+        evidence = self.root / "proof.json"
+        evidence.write_text("original evidence")
+        result = {"verdict": "APPROVED", "findings": [], "authentication_impact": "NONE", "owner_approval_status": "NOT_REQUIRED",
+                  "api_version_assessment": {"impact": "NONE", "request_kind": "NOT_REQUIRED", "requested_change": None,
+                  "request_quote": None, "request_evidence": None}}
+        def author(*args):
+            (self.root / "candidate.txt").write_text("concurrent implementation")
+            git("add", "candidate.txt"); git("commit", "-qm", "concurrent authored work")
+            return result
+        with patch.object(o, "_review_settings_binding", return_value={"model": "synthetic", "reasoning_effort": None}):
+            o.review_proposal(self.root, "Problem: replay; Cause: coupled phases; Recommended change: preserve scope", [str(evidence)], None, author)
+            self.assertEqual(o.verify_proposal(self.root)["verdict"], "APPROVED")
+            record = json.loads(o.proposal_path(self.root).read_bytes())
+            self.assertEqual(record["base_commit"], original)
+            self.assertEqual(record["source_observations"]["unadopted_delta_paths"], ["candidate.txt"])
+            for target in (evidence, self.root / "AGENTS.md"):
+                original_bytes = target.read_bytes()
+                def drift(*args):
+                    target.write_text("concretely changed")
+                    return result
+                with self.assertRaisesRegex(o.OracleApprovalError, "evidence or governing criteria changed"):
+                    o.review_proposal(self.root, "Problem: replay; Cause: coupled phases; Recommended change: preserve scope", [str(evidence)], None, drift)
+                target.write_bytes(original_bytes)
+
     def test_required_remote_admission_binds_exact_source_repository_and_real_actions_run(self):
         from tools import publication_admission as publication
         selected, row, run = self.admission()

@@ -2497,6 +2497,7 @@ def _proposal_oracle(root: Path, request: str, evidence: dict[str,str], owner: d
     }
     prompt = f"""You are the independent BOS Operations Center Oracle proposal-review process.
 Read .agents/skills/oracle/SKILL.md completely and wear that approver skill. Read AGENTS.md and all required private Vault authority. Review the proposed solution before implementation using current filesystem evidence. Operate read-only: do not edit, stage, commit, deploy, write an approval receipt, or treat this proposal verdict as completed-tree approval.
+Approve only the immutable conceptual proposal, exact supplied evidence and governing criteria. Source-dependent observations describe the source actually examined; ordinary concurrent implementation can continue and its changed implementation/effect claims remain unadopted until complete-current-source review. Do not require a source freeze or grant completed-implementation authority through this proposal verdict.
 
 Creating, bumping, replacing, or splitting a public API version requires the human user's explicit request for that exact version change. Owner approval, general fix/release authorization, inferred compatibility, pre-existing implementation, and Oracle guidance never substitute. Correct behavior and preserve authorized improvements in the current API version; package/build patches and identity-envelope protocols are distinct. Independently classify api_version_assessment: NONE requires NOT_REQUIRED and all request fields null; CHANGE requires EXPLICIT_REQUEST for APPROVED, exact requested_change, verbatim direct-user request_quote, and an absolute request_evidence path supplied through --evidence containing that quote. Independently inspect human provenance, context, exact scope and refusals; an agent assertion or approval-only statement is insufficient. Reject unrequested API version changes. An exact explicit request authorizes continuation through ordinary independent review without repeated owner approval. Authentication classification does not grant publication authority.
 {LEAD_GRAPH_REVIEW}
@@ -2507,6 +2508,14 @@ Return JSON matching the supplied schema. Verify the stated problem and cause, c
 {json.dumps(payload, indent=2, sort_keys=True)}"""
     return _review_process(root, prompt, "proposal_reviewer")
 
+def _proposal_guards(root: Path, evidence: dict, owner: dict | None) -> dict:
+    authorities = _controlling_authorities(_live_authorities(root))
+    names = [*evidence, *(owner or {}), *[name for name, digest in authorities.items() if digest is not None]]
+    return {"authority_digests": authorities, "evidence": _files(root, list(evidence)),
+            "owner_evidence": _files(root, list(owner)) if owner is not None else None,
+            "custody": _custody_files(root, names)}
+
+
 @_serialized_review
 def review_proposal(root: Path, request: str, evidence_paths: Sequence[str], owner_path: str | None, reviewer: Callable = _proposal_oracle) -> dict[str,Any]:
     with _phase("precheck_seconds"):
@@ -2514,12 +2523,16 @@ def review_proposal(root: Path, request: str, evidence_paths: Sequence[str], own
         evidence = _files(root, evidence_paths)
         owner = _files(root, [owner_path]) if owner_path else None
         binding = _input_binding(root, evidence, owner)
+        guards = _proposal_guards(root, evidence, owner)
+        _atomic_write(_RUN.get() / "proposal-inputs.json", _pretty({"proposal_sha256": _sha(request.encode()),
+            "guards": guards, "initial_commit": binding["base_commit"], "initial_tree": binding["candidate_tree"]}))
     selected_token = _PREPARED_SETTINGS.set(binding["reviewer_settings"])
     try:
         review = reviewer(root, request, evidence, owner)
     finally:
         _PREPARED_SETTINGS.reset(selected_token)
-    _timed("postcheck_seconds", lambda: _assert_binding(root, binding, evidence, owner))
+    if _timed("postcheck_seconds", lambda: _proposal_guards(root, evidence, owner)) != guards:
+        raise OracleSourceBindingError("Oracle proposal evidence or governing criteria changed during review")
     if any(value is None for value in _declared_parent_authorities(root).values()):
         raise OracleApprovalError("A required declared parent authority is unavailable")
     if not isinstance(review, dict):
@@ -2540,7 +2553,14 @@ def review_proposal(root: Path, request: str, evidence_paths: Sequence[str], own
         "schema_version": SCHEMA_VERSION,
         "issuer": ISSUER,
         "kind": "proposal-review",
-        "base_commit": _git(root, "rev-parse", "HEAD").strip(),
+        "base_commit": binding["base_commit"],
+        "review_scope": "CONCEPTUAL_PROPOSAL",
+        "source_observations": {"initial_commit": binding["base_commit"], "initial_tree": binding["candidate_tree"],
+            "final_commit": _git(root, "rev-parse", "HEAD").strip(), "final_tree": _tree(root),
+            "initial_working_diff_sha256": binding["working_diff_sha256"],
+            "final_working_diff_sha256": _sha(_git_bytes(root, "diff", "HEAD", "--", ".", ":(exclude)Vault")),
+            "unadopted_delta_paths": _paths(root, binding["candidate_tree"], _tree(root)),
+            "implementation_readiness": "REQUIRES_COMPLETE_CURRENT_SOURCE_REVIEW"},
         "authority_digests": binding["authority_digests"],
         "proposal": request,
         "proposal_sha256": _sha(request.encode()),
