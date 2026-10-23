@@ -49,6 +49,9 @@ input manifest and exact replacement records; keep historical artifacts intact.
 Caller locators provide custody and navigation, never authority or eligibility.
 Directory-prefix locator rows reconstruct each exact path as the indexed prefix
 plus its name; hashes and the immutable original caller map remain authoritative.
+A paged caller collection exposes a sealed bounded index with exact lexical path
+ranges, then bounded leaf pages naming every original path and digest. Open the
+matching range/page for a selected current input; no caller is hidden or promoted.
 Retained projections are navigation only and grant no coverage or eligibility.
 Original references use canonical JSON digests and JSON Pointers in the sealed
 parent, whose complete facts remain authoritative. Resolve only OPEN ledger IDs;
@@ -188,7 +191,27 @@ def partition(context, binding, digest):
     return dict(plan, plan_sha256=digest(plan))
 
 
-def packet(context, plan, cohort, parent_context, digest, prepared_source=None):
+def caller_navigation(caller, original):
+    caller_navigation = {'original': original,
+                         'columns': ['path', 'sha256'], 'record_count': len(caller),
+                         'records': [[name, identity] for name, identity in sorted(caller.items())],
+                         'eligibility': 'NONE'}
+    if len(_serialized(caller_navigation)) > RETAINED_NAVIGATION_MAX_BYTES:
+        # Repeated owned directories consume the navigation budget without
+        # adding facts. Preserve every named locator before using the larger
+        # paged fallback; no path normalization or selection is involved.
+        prefixes = sorted({name.rpartition('/')[0] + '/' if '/' in name else '' for name in caller})
+        indices = {prefix: index for index, prefix in enumerate(prefixes)}
+        compact = dict(caller_navigation, encoding='directory-prefix-v1', prefixes=prefixes,
+                       columns=['prefix_index', 'name', 'sha256'], records=[
+                           [indices[name.rpartition('/')[0] + '/' if '/' in name else ''],
+                            name.rpartition('/')[2], identity] for name, identity in sorted(caller.items())])
+        if len(_serialized(compact)) <= RETAINED_NAVIGATION_MAX_BYTES:
+            caller_navigation = compact
+    return caller_navigation
+
+
+def packet(context, plan, cohort, parent_context, digest, prepared_source=None, prepared_callers=None):
     if digest(context) != plan['context_sha256']:
         raise ValueError('Cohort projection requires the exact sealed parent context')
     assigned = set(cohort["required_paths"])
@@ -225,27 +248,14 @@ def packet(context, plan, cohort, parent_context, digest, prepared_source=None):
                 'digest_encoding': 'canonical-json-v1', 'json_pointer': pointer,
                 'value_sha256': digest(item), 'navigation_only': True, 'eligibility': 'NONE'}
 
-    caller = context.get('caller_evidence', {})
-    caller_navigation = {'original': original('/caller_evidence', caller),
-                         'columns': ['path', 'sha256'], 'record_count': len(caller),
-                         'records': [[name, identity] for name, identity in sorted(caller.items())],
-                         'eligibility': 'NONE'}
-    if len(_serialized(caller_navigation)) > RETAINED_NAVIGATION_MAX_BYTES:
-        # Repeated owned directories consume the navigation budget without
-        # adding facts. Preserve every named locator before using the larger
-        # exact-parent fallback; no path normalization or selection is involved.
-        prefixes = sorted({name.rpartition('/')[0] + '/' if '/' in name else '' for name in caller})
-        indices = {prefix: index for index, prefix in enumerate(prefixes)}
-        compact = dict(caller_navigation, encoding='directory-prefix-v1', prefixes=prefixes,
-                       columns=['prefix_index', 'name', 'sha256'], records=[
-                           [indices[name.rpartition('/')[0] + '/' if '/' in name else ''],
-                            name.rpartition('/')[2], identity] for name, identity in sorted(caller.items())])
-        if len(_serialized(compact)) <= RETAINED_NAVIGATION_MAX_BYTES:
-            caller_navigation = compact
-        else:
-            caller_navigation.pop('records')
-            caller_navigation['records_via_original'] = True
-    value['caller_evidence'] = caller_navigation
+    caller_index = caller_navigation(
+        context.get('caller_evidence', {}), original('/caller_evidence', context.get('caller_evidence', {})))
+    if len(_serialized(caller_index)) > RETAINED_NAVIGATION_MAX_BYTES:
+        if prepared_callers is None:
+            raise CohortPacketBudgetError('Caller evidence requires a sealed bounded locator collection')
+        caller_index = {key: caller_index[key] for key in ('original', 'record_count', 'eligibility')}
+        caller_index.update(columns=['path', 'sha256'], records_via_pages=True, collection=prepared_callers)
+    value['caller_evidence'] = caller_index
 
     if cohort['id'] == AREAS[0]:
         value['retained_criteria'] = {'groups': plan.get('retained_criteria', []),
@@ -759,12 +769,22 @@ def review(o, root, tree, paths, evidence, owner):
     effective_context = _criterion_context(context, plan)
     with o._phase("source_frontier_seconds"):
         source_snapshot = frontier.snapshot(o, root, effective_context, plan["required_paths"])
+    caller = context.get('caller_evidence', {})
+    caller_original = {'parent_context': str(context_path), 'parent_context_sha256': plan['context_sha256'],
+        'digest_encoding': 'canonical-json-v1', 'json_pointer': '/caller_evidence',
+        'value_sha256': digest(caller), 'navigation_only': True, 'eligibility': 'NONE'}
+    caller_paged = len(_serialized(caller_navigation(caller, caller_original))) > RETAINED_NAVIGATION_MAX_BYTES
     jobs, prepared_seals, source_prompts, original_packets = [], {}, {}, {}
     for cohort in plan["cohorts"]:
         child = o._metadata_run(root, run / "cohorts", cohort["id"] + "-")
         prepared, source_seal, source_prompt = frontier.prepare(o, root, effective_context, plan, cohort, child, source_snapshot)
         try:
-            child_context = packet(context, plan, cohort, context_path, digest, prepared)
+            prepared_callers = None
+            if caller_paged:
+                prepared_callers, caller_seal = frontier.prepare_locator_collection(
+                    o, root, child, caller_original, sorted(caller.items()))
+                source_seal.update(caller_seal)
+            child_context = packet(context, plan, cohort, context_path, digest, prepared, prepared_callers)
         except CohortPacketBudgetError as exc:
             raise o.OracleReviewIncomplete(str(exc)) from exc
         original_packets[cohort['id']] = o._pretty(child_context)

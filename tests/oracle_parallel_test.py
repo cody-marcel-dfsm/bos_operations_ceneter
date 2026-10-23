@@ -405,19 +405,73 @@ class ParallelReview(unittest.TestCase):
         self.assertFalse((self.root / '.git/oracle/approval.json').exists())
 
     def test_large_caller_navigation_retains_bounded_exact_original_and_rejects_tamper(self):
-        self.context['caller_evidence'] = {'Vault/tmp/input-' + str(i) + '.json': 'a' * 64 for i in range(2000)}
+        # Find the first actual compact collection just beyond the inline bound.
+        original = {'parent_context': str(self.run / 'review-context.json'),
+            'parent_context_sha256': 'a' * 64, 'digest_encoding': 'canonical-json-v1',
+            'json_pointer': '/caller_evidence', 'value_sha256': 'b' * 64,
+            'navigation_only': True, 'eligibility': 'NONE'}
+        caller = {}; previous_bytes = 0
+        while True:
+            caller['Vault/tmp/input-' + str(len(caller)) + '.json'] = 'a' * 64
+            size = len(parallel._serialized(parallel.caller_navigation(caller, original)))
+            if size > parallel.RETAINED_NAVIGATION_MAX_BYTES:break
+            previous_bytes = size
+        self.assertLessEqual(previous_bytes, parallel.RETAINED_NAVIGATION_MAX_BYTES)
+        self.context['caller_evidence'] = caller
+        (self.run / 'review-context.json').write_bytes(o._pretty(self.context))
         self.plan = parallel.partition(self.context, self.binding, self.digest)
-        packet = parallel.packet(self.context, self.plan, self.plan['cohorts'][0],
-                                 self.run / 'review-context.json', self.digest)
-        navigation = packet['caller_evidence']
-        self.assertNotIn('records', navigation)
-        self.assertTrue(navigation['records_via_original'])
-        self.assertEqual(navigation['record_count'], 2000)
-        self.assertEqual(navigation['original']['value_sha256'], self.digest(self.context['caller_evidence']))
-        self.assertEqual(navigation['eligibility'], 'NONE')
+        with self.assertRaisesRegex(parallel.CohortPacketBudgetError, 'sealed bounded locator'):
+            parallel.packet(self.context, self.plan, self.plan['cohorts'][0],
+                            self.run / 'review-context.json', self.digest)
+        observed = []
+        def child(root, prompt, prefix, *, schema_path, cohort_policy):
+            run = o._RUN.get(); packet = json.loads((run / 'cohort-context.json').read_text())
+            navigation = packet['caller_evidence']; collection = navigation['collection']
+            self.assertTrue(navigation['records_via_pages'])
+            self.assertNotIn('records_via_original', navigation)
+            self.assertLessEqual(len(parallel._serialized(navigation)), parallel.RETAINED_NAVIGATION_MAX_BYTES)
+            self.assertLessEqual(len(parallel._serialized(packet)), parallel.COHORT_PACKET_MAX_BYTES)
+            self.assertEqual(navigation['original']['value_sha256'], self.digest(caller))
+            locators = {}; page_paths = []
+            def read(ref):
+                raw = o._custody_read(self.root, ref['path'])[1]
+                self.assertEqual(o._sha(raw), ref['sha256'])
+                self.assertLessEqual(len(raw), parallel.RETAINED_NAVIGATION_MAX_BYTES)
+                page = json.loads(raw); page_paths.append(ref['path'])
+                self.assertEqual(page['original'], navigation['original'])
+                self.assertEqual(page['eligibility'], 'NONE')
+                if 'records' in page:
+                    self.assertEqual(page['columns'], ['path', 'sha256'])
+                    self.assertEqual(page['first_path'], page['records'][0][0])
+                    self.assertEqual(page['last_path'], page['records'][-1][0])
+                    locators.update(page['records'])
+                else:
+                    for item in page['pages']:read(item)
+                return page
+            read(collection['index'])
+            self.assertEqual(locators, caller)
+            self.assertEqual(collection['record_count'], len(caller))
+            # Every prepared page is part of the existing final custody fence.
+            seals = json.loads((self.run / 'prepared-source-seals.json').read_text())
+            self.assertTrue(set(page_paths) <= set(seals[packet['cohort']['id']]))
+            observed.append((packet['cohort']['id'], page_paths))
+            result = self.envelope(packet['cohort'])
+            for name, value in {'model.json': {'selected_model': 'inherited-model', 'reasoning_effort': 'high'},
+                                'process.json': {'exit_code': 0}, 'result.json': result}.items():
+                o._atomic_write(run / name, o._pretty(value))
+            return result
+        with patch.object(o, '_input_binding', return_value=self.binding), patch.object(o, '_review_process', side_effect=child):
+            result = o._oracle(self.root, self.context['candidate_tree'], self.paths, {}, None)
+        self.assertEqual(result['verdict'], 'APPROVED')
+        self.assertEqual({identity for identity, _ in observed}, set(parallel.AREAS))
+        seals = json.loads((self.run / 'prepared-source-seals.json').read_text())
+        identity, pages = observed[0]
+        Path(pages[0]).write_text('tampered caller locators')
+        self.assertNotEqual(o._files(self.root, list(seals[identity])), seals[identity])
         changed = copy.deepcopy(self.context); changed['caller_evidence']['Vault/tmp/input-0.json'] = 'forged'
         with self.assertRaisesRegex(ValueError, 'exact sealed parent'):
             parallel.packet(changed, self.plan, self.plan['cohorts'][0], self.run / 'review-context.json', self.digest)
+        self.assertFalse((self.root / '.git/oracle/approval.json').exists())
 
     def test_missing_structural_execution_inputs_do_not_dispatch_models(self):
         self.context['required_commands']=[{'id':'required','command':['npm','test']}]

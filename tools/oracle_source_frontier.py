@@ -447,3 +447,55 @@ def prepare(o, root, context, plan, cohort, child, snap):
     return {'manifest': str(path), 'manifest_sha256': _hash(encoded), 'prepared_pages': len(pages),
             'inline_pages': len(inline), 'inline_bytes': size, 'prepared_bytes': total,
             'required_paths': list(cohort['required_paths']), 'preparation_only': True}, seal, '\n'.join(inline)
+
+
+def prepare_locator_collection(o, root, child, original, records):
+    """Page exact caller locators using the same private immutable page custody."""
+    pages = []; total = 0
+    def write(kind, rows, level):
+        nonlocal total
+        leaf = level == 0
+        first = rows[0][0] if leaf else rows[0]['first_path']
+        last = rows[-1][0] if leaf else rows[-1]['last_path']
+        count = len(rows) if leaf else sum(row['record_count'] for row in rows)
+        value = {'kind': kind, 'original': original, 'eligibility': 'NONE',
+                 'first_path': first, 'last_path': last, 'record_count': count,
+                 'columns': ['path', 'sha256'] if leaf else None,
+                 'records' if leaf else 'pages': rows}
+        return value, o._pretty(value)
+    def level_pages(rows, level):
+        nonlocal total
+        kind = 'boc-evidence-locator-page-v1' if level == 0 else 'boc-evidence-locator-index-v1'
+        groups = []; pending = []
+        for row in rows:
+            candidate = pending + [row]
+            if len(write(kind, candidate, level)[1]) > MAX_PAGE_BYTES:
+                if not pending:
+                    raise o.OracleReviewIncomplete('One caller locator exceeds the bounded page budget')
+                groups.append(pending); pending = [row]
+                if len(write(kind, pending, level)[1]) > MAX_PAGE_BYTES:
+                    raise o.OracleReviewIncomplete('One caller locator exceeds the bounded page budget')
+            else:
+                pending = candidate
+        if pending:groups.append(pending)
+        result = []
+        for group in groups:
+            value, encoded = write(kind, group, level)
+            if total + len(encoded) > MAX_FRONTIER_BYTES:
+                raise o.OracleReviewIncomplete('Caller locator collection exceeds bounded preparation budget')
+            path = child / ('caller-locators-%04d.json' % (len(pages) + 1))
+            o._atomic_write(path, encoded); total += len(encoded)
+            ref = {'path': str(path), 'sha256': _hash(encoded), 'bytes': len(encoded),
+                   **{key: value[key] for key in ('first_path', 'last_path', 'record_count')}}
+            pages.append(ref); result.append(ref)
+        return result
+    if not records:
+        raise o.OracleApprovalError('Paged caller collection requires exact original locators')
+    refs = level_pages(records, 0); level = 1
+    while len(refs) > 1:
+        old_count = len(refs); refs = level_pages(refs, level); level += 1
+        if len(refs) >= old_count:
+            raise o.OracleReviewIncomplete('Caller locator index cannot fit the bounded page budget')
+    seal = o._files(root, [page['path'] for page in pages])
+    return {'index': refs[0], 'prepared_pages': len(pages), 'prepared_bytes': total,
+            'record_count': len(records), 'navigation_only': True, 'eligibility': 'NONE'}, seal
