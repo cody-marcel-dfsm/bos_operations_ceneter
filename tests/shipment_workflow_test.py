@@ -217,6 +217,20 @@ class ShipmentWorkflow(unittest.TestCase):
                                         execute=lambda command, **kwargs: commands.append(command))
         self.assertEqual(commands, [["git", "push", o.PUBLICATION_REMOTE, commit + ":refs/heads/main"]])
 
+    def test_fresh_same_candidate_approval_advances_after_concrete_criteria_change(self):
+        commit = self.validate()
+        prepared = publication.prepare(self.root, commit, self.ref, "main-promotion", refresh=False)
+        authority = self.root / "Vault/docs/CONSTITUTION.md"
+        authority.write_text(authority.read_text() + "\nSynthetic changed controlling criterion.\n")
+        receipt = self.fixture.submit()
+        checkpoint = shipment.record_validated(self.root)
+        self.assertEqual(checkpoint["technical_receipt_sha256"], o._sha(o._pretty(receipt)))
+        with self.assertRaises(o.OracleApprovalError):
+            publication.publish_prepared(self.root, Path(prepared["prepared_file"]),
+                                         execute=lambda *a, **k: self.fail("old criteria dispatched Git"))
+        updated = publication.prepare(self.root, commit, self.ref, "main-promotion", refresh=False)
+        self.assertNotEqual(updated["prepared_sha256"], prepared["prepared_sha256"])
+
     def test_native_validation_capture_rejects_dirty_declared_execution_inputs(self):
         self.commit()
         (self.root / "source.py").write_text("dirty bytes must not attest older index tree")

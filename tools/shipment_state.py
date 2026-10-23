@@ -74,16 +74,61 @@ def _decision_read(root: Path, directory: Path) -> dict:
     return decision
 
 
+def _decision_facts(record: dict) -> tuple[list, list, list]:
+    review = record.get("review", {})
+    admitted = record.get("assessment_admitted", not record.get("raw_assessment") and "error" not in review)
+    if not admitted:
+        return [], [], []
+    ledger = record.get("finding_ledger", {})
+    defects = [item for item in review.get("findings", []) if record.get("outcome") == "REJECTED"
+               or ledger.get(item["id"], {}).get("state") == "OPEN"]
+    invalidations = [item for item in review.get("validations", []) if item.get("status") == "INVALIDATED"]
+    gaps = [item["id"] for item in review.get("command_coverage", []) if item.get("status") == "INCOMPLETE"]
+    return defects, invalidations, gaps
+
+
+def _receipt_support(record: dict, evidence: dict | None) -> dict:
+    evidence = evidence or {}
+    paths = {item["evidence_path"]: item.get("evidence_sha256") for item in record.get("verified_validations", [])}
+    commands = {}
+    for row in record.get("review", {}).get("command_coverage", []):
+        commands[row["id"]] = o._sha(o._canonical({"command": row["command"],
+            "inputs": sorted(row.get("inputs", []), key=lambda item: item["path"]),
+            "environment_digest": row.get("environment_digest"), "status": row["status"]}))
+        paths.update({name: evidence.get(name, paths.get(name)) for name in row.get("evidence_paths", [])})
+    return {"native_round_sha256": o._sha(o._pretty(record)), "commands": commands, "evidence": paths}
+
+
+def _support_invalidation(support: dict, record: dict, replacement: dict) -> str | None:
+    if not record.get("assessment_admitted", not record.get("raw_assessment") and "error" not in record.get("review", {})):
+        return None
+    _, invalidations, gaps = _decision_facts(record)
+    changed = sorted({item["evidence_path"] for item in invalidations} & set(support.get("evidence", {})))
+    if changed:
+        return "Original supporting evidence explicitly invalidated: " + ", ".join(changed)
+    old_evidence, new_evidence = support.get("evidence", {}), replacement.get("evidence", {})
+    changed = sorted(name for name in old_evidence.keys() & new_evidence.keys()
+                     if old_evidence[name] is not None and new_evidence[name] is not None
+                     and old_evidence[name] != new_evidence[name])
+    if changed:
+        return "Original supporting evidence identity changed: " + ", ".join(changed)
+    old, new = support.get("commands", {}), replacement.get("commands", {})
+    if (gaps or any(old[name] != new[name] for name in old.keys() & new.keys())
+            or record.get("outcome") == "APPROVED" and old != new):
+        return "Required command/input/environment applicability concretely changed"
+    return None
+
+
 @o._metadata_owner
 def observe_decision(root: Path, record: dict, round_path: Path, *, only_if_absent=False,
-                     technical_receipt_sha256=None, publication_scope=None) -> None:
+                     technical_receipt_sha256=None, publication_scope=None, validation_evidence=None,
+                     supporting_receipt=None) -> None:
     """Seal explicit defects/invalidations; unfinished execution preserves a pass."""
     review = record.get("review", {})
-    invalidations = [item for item in review.get("validations", []) if item.get("status") == "INVALIDATED"]
-    defects = review.get("findings", []) if record.get("outcome") == "REJECTED" else []
+    defects, invalidations, gaps = _decision_facts(record)
     if record.get("outcome") == "APPROVED" and review.get("review_status") == "COMPLETE":
         state = "APPROVED"
-    elif defects or invalidations or review.get("publication_failure"):
+    elif defects or invalidations or gaps or review.get("publication_failure"):
         state = "INVALIDATED"
     else:
         return
@@ -93,16 +138,36 @@ def observe_decision(root: Path, record: dict, round_path: Path, *, only_if_abse
     directory = _decision_directory(root, commit, tree)
     applicability = _applicability(record, publication_scope) if state == "APPROVED" else None
     receipts = [technical_receipt_sha256] if state == "APPROVED" else []
+    support = supporting_receipt or _receipt_support(record, validation_evidence)
+    bindings = {technical_receipt_sha256: support} if state == "APPROVED" else {}
+    revoked = {}
     if (directory / "current.json").exists() and state == "APPROVED":
         previous = _decision_read(root, directory)
         if previous["state"] == "APPROVED" and previous.get("applicability_sha256") == applicability:
-            receipts = sorted(set([*previous.get("valid_receipts", [previous.get("technical_receipt_sha256")]), *receipts]))
+            for digest in previous.get("valid_receipts", [previous.get("technical_receipt_sha256")]):
+                retained = previous.get("receipt_support", {}).get(digest)
+                if retained is None:
+                    # One-time import of pre-ledger metadata belongs validation.
+                    old = json.loads(o._custody_read(root, o._technical_archive(root, digest))[1])
+                    origin = json.loads(o._custody_read(root, previous["native_round"])[1])
+                    retained = _receipt_support(origin, old["validation_evidence"])
+                reason = _support_invalidation(retained, record, support)
+                if reason:
+                    revoked[digest] = reason
+                else:
+                    receipts.append(digest)
+                    bindings[digest] = retained
+            receipts = sorted(set(receipts))
+        elif previous["state"] == "APPROVED":
+            revoked = {digest: "Controlling criteria/environment/effects concretely changed"
+                       for digest in previous.get("valid_receipts", [previous.get("technical_receipt_sha256")])}
     payload = {"kind": "boc-publication-currentness-v1", "source_commit": commit, "source_tree": tree,
         "state": state, "native_round": o._custody_name(root, round_path),
         "native_round_sha256": o._sha(o._pretty(record)), "outcome": record["outcome"],
         "technical_receipt_sha256": technical_receipt_sha256,
         "valid_receipts": receipts, "applicability_sha256": applicability,
-        "finding_ids": [item["id"] for item in defects], "invalidations": invalidations}
+        "receipt_support": bindings, "revoked_receipts": revoked,
+        "finding_ids": [item["id"] for item in defects], "invalidations": invalidations, "command_gaps": gaps}
     result = dict(payload, decision_sha256=o._sha(o._canonical(payload)))
     if __package__:
         from . import oracle_lifecycle
@@ -129,14 +194,16 @@ def _import_currentness(root: Path, receipt: dict) -> None:
         if record["base_commit"] != receipt["base_commit"] or record["candidate_tree"] != receipt["candidate_tree"]:
             continue
         review = record.get("review", {})
+        defects, invalidations, gaps = _decision_facts(record)
         if (record["outcome"] == "APPROVED" and review.get("review_status") == "COMPLETE"
-                or record["outcome"] == "REJECTED" and review.get("findings")
+                or defects or gaps
                 or review.get("publication_failure")
-                or any(item.get("status") == "INVALIDATED" for item in review.get("validations", []))):
+                or invalidations):
             selected = record
     if selected is None:
         raise o.OracleApprovalError("Shipment lacks its sealed native candidate decision")
     scope = receipt.get("publication_scope")
+    support = None
     if selected["outcome"] == "APPROVED" and o._sha(o._canonical(selected["review"])) != receipt["review_digest"]:
         rounds = o._read_rounds(o._series_directory(root, receipt["base_commit"]))
         original = next((item for item in rounds if item["outcome"] == "APPROVED"
@@ -147,10 +214,16 @@ def _import_currentness(root: Path, receipt: dict) -> None:
         if (not original or o._sha(o._canonical(context)) != selected["context_sha256"]
                 or _applicability(original, receipt.get("publication_scope")) != _applicability(selected, scope)):
             raise o.OracleApprovalError("Shipment current criteria/effects supersede sealed validation")
+        support = _receipt_support(original, receipt["validation_evidence"])
+        for item in rounds[rounds.index(original) + 1:]:
+            if item["base_commit"] == receipt["base_commit"] and item["candidate_tree"] == receipt["candidate_tree"]:
+                defects, _, gaps = _decision_facts(item)
+                if defects or gaps or _support_invalidation(support, item, _receipt_support(item, {})):
+                    raise o.OracleApprovalError("Shipment original command/evidence applicability explicitly invalidated")
     path = o._series_directory(root, receipt["base_commit"]) / f"round-{selected['round']:04d}.json"
     observe_decision(root, selected, path, only_if_absent=True,
                      technical_receipt_sha256=o._sha(o._pretty(receipt)) if selected["outcome"] == "APPROVED" else None,
-                     publication_scope=scope)
+                     publication_scope=scope, validation_evidence=receipt.get("validation_evidence"), supporting_receipt=support)
 
 
 def _current_native_decision(root: Path, receipt: dict) -> None:

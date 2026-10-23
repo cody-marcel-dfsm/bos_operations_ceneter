@@ -1,4 +1,5 @@
 """Exact native applicability reuse, preserving original command outcomes."""
+import copy
 import json
 from pathlib import Path
 import subprocess
@@ -192,6 +193,66 @@ class CommandCoverage(unittest.TestCase):
             "repository": {"full_name": coverage.public_status.REPOSITORY},
             "head_repository": {"full_name": coverage.public_status.REPOSITORY}}
         return selected, row, run
+
+    def test_replacement_approval_revokes_explicitly_invalidated_original_support(self):
+        from tools import shipment_state as shipment
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+        record = {"base_commit": self.commit, "candidate_tree": self.tree, "outcome": "APPROVED", "assessment_admitted": True,
+            "guards": {"environment_digest": "same"}, "review": {"review_status": "COMPLETE", "command_coverage": [
+            dict(self.required, status="COMPLETE", inputs=[], environment_digest="same", evidence_paths=["proof-A"])]}}
+        path = self.root / "synthetic-round.json"
+        shipment.observe_decision(self.root, record, path, technical_receipt_sha256="1" * 64,
+                                   publication_scope={}, validation_evidence={"proof-A": "a" * 64})
+        record["review"]["validations"] = [{"status": "INVALIDATED", "evidence_path": "proof-A", "reason": "Original output changed"}]
+        record["review"]["command_coverage"][0]["evidence_paths"] = ["proof-B"]
+        shipment.observe_decision(self.root, record, path, technical_receipt_sha256="2" * 64,
+                                   publication_scope={}, validation_evidence={"proof-B": "b" * 64})
+        with self.assertRaises(o.OracleApprovalError):
+            shipment.publication_eligibility(self.root, self.commit, self.tree, "1" * 64)
+        shipment.publication_eligibility(self.root, self.commit, self.tree, "2" * 64)
+        marker = shipment._decision_read(self.root, shipment._decision_directory(self.root, self.commit, self.tree))
+        self.assertIn("Original supporting evidence explicitly invalidated", marker["revoked_receipts"]["1" * 64])
+
+    def test_changed_original_evidence_identity_revokes_only_the_older_receipt(self):
+        from tools import shipment_state as shipment
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+        record = {"base_commit": self.commit, "candidate_tree": self.tree, "outcome": "APPROVED", "assessment_admitted": True,
+            "review": {"review_status": "COMPLETE", "command_coverage": [dict(self.required,
+            status="COMPLETE", inputs=[], evidence_paths=["proof-A"])]}}
+        path = self.root / "synthetic-round.json"
+        for receipt, evidence in (("1" * 64, "a" * 64), ("2" * 64, "b" * 64)):
+            shipment.observe_decision(self.root, record, path, technical_receipt_sha256=receipt,
+                                      publication_scope={}, validation_evidence={"proof-A": evidence})
+        with self.assertRaises(o.OracleApprovalError):
+            shipment.publication_eligibility(self.root, self.commit, self.tree, "1" * 64)
+        shipment.publication_eligibility(self.root, self.commit, self.tree, "2" * 64)
+
+    def test_admitted_partial_defects_and_command_gaps_revoke_while_raw_errors_preserve(self):
+        from tools import shipment_state as shipment
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+        base = {"base_commit": self.commit, "candidate_tree": self.tree, "outcome": "APPROVED", "assessment_admitted": True,
+                "review": {"review_status": "COMPLETE"}}
+        path = self.root / "synthetic-round.json"
+        for kind in ("admitted-defect", "command-gap", "raw-error", "empty-incomplete"):
+            with self.subTest(kind=kind):
+                record = copy.deepcopy(base)
+                record["base_commit"] = o._sha(kind.encode())[:40]
+                shipment.observe_decision(self.root, record, path, technical_receipt_sha256="1" * 64, publication_scope={})
+                record["outcome"] = "INCOMPLETE"
+                record["review"]["review_status"] = "INCOMPLETE"
+                if kind in {"admitted-defect", "raw-error"}:
+                    record["review"]["findings"] = [{"id": "F003"}]
+                    record["finding_ledger"] = {"F003": {"state": "OPEN"}} if kind == "admitted-defect" else {}
+                if kind == "raw-error":
+                    record.update(outcome="ERROR", assessment_admitted=False, raw_assessment={"findings": [{"id": "F003"}]})
+                if kind == "command-gap":
+                    record["review"]["command_coverage"] = [dict(self.required, status="INCOMPLETE")]
+                shipment.observe_decision(self.root, record, path)
+                if kind in {"admitted-defect", "command-gap"}:
+                    with self.assertRaises(o.OracleApprovalError):
+                        shipment.publication_eligibility(self.root, record["base_commit"], self.tree, "1" * 64)
+                else:
+                    shipment.publication_eligibility(self.root, record["base_commit"], self.tree, "1" * 64)
 
     def test_required_remote_admission_binds_exact_source_repository_and_real_actions_run(self):
         from tools import publication_admission as publication

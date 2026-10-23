@@ -2170,6 +2170,7 @@ def _prepare_round(root: Path, context: dict, review: dict, outcome: str, *, cov
         _atomic_write(Path(plan_path), plan.encode()); plan_digest = _sha(plan.encode())
         _atomic_write(directory / "repair-plan.txt", plan.encode())
     payload.update(outcome=outcome, review=review, context_sha256=_sha(_canonical(context)),
+                   assessment_admitted=ledger is not None,
                    context_file=str(context_file or _RUN.get() / "review-context.json"),
                    proposal_scope=context["proposal_scope"],
                    finding_ledger=current_ledger, validation_invalidations=invalidations,
@@ -2736,7 +2737,8 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
                 import shipment_state
             shipment_state.observe_decision(root, round_record, round_path,
                                             technical_receipt_sha256=_sha(receipt_raw),
-                                            publication_scope=binding["publication_scope"])
+                                            publication_scope=binding["publication_scope"],
+                                            validation_evidence=receipt["validation_evidence"])
             archive = _technical_archive(root, _sha(receipt_raw))
             if archive.exists() and _custody_read(root, archive)[1] != receipt_raw:
                 raise OracleApprovalError("Immutable technical receipt archive conflict")
