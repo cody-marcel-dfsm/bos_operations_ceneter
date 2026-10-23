@@ -961,8 +961,13 @@ def _review_tree(root: Path) -> str:
             if result.returncode:
                 raise OracleSourceMovementIncomplete('Current source snapshot unavailable; resume current inputs: ' + result.stderr.strip())
             return result.stdout.strip()
-        git('read-tree', 'HEAD')
-        git('add', '-A', '--', '.', ':(exclude)Vault')
+        git('read-tree', _tree(root))
+        names = sorted({name for name in _git_bytes(root, 'ls-files', '--cached', '--others',
+                                                    '--exclude-standard', '-z').split(b'\0')
+                        if name and name != b'Vault' and not name.startswith(b'Vault/')})
+        paths = Path(directory) / 'paths'
+        paths.write_bytes(b''.join(b':(literal)' + name + b'\0' for name in names))
+        git('add', '-A', '--pathspec-from-file=' + str(paths), '--pathspec-file-nul')
         return git('write-tree')
 def _paths(root: Path, base: str, tree: str) -> list[str]:
     return sorted(_git(root, "diff", "--name-only", "--diff-filter=ACMRTD", base, tree).splitlines())
