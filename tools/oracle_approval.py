@@ -1422,7 +1422,7 @@ class _CriterionLineage:
         try:
             reference = item['retained_observation']
             identity = reference['parent_context_sha256']
-            if origin is not None and origin['context_sha256'] != identity:
+            if origin is not None and self.records[identity]['round'] > origin['round']:
                 return None
             key = (identity, _sha(_canonical(item)))
             if key in self.resolved:
@@ -2405,6 +2405,10 @@ def _validate_completed_review(root: Path, review: dict, context: dict, evidence
             prior = reusable.get(name)
             if not prior or item["inputs"] != prior["inputs"]:
                 raise OracleApprovalError("Oracle carried coverage without unchanged dependency proof")
+            # The worker's schema contains ordinary coverage fields. Preserve
+            # native original/criterion custody when it explicitly carries a
+            # row, just as omission already preserves the complete checkpoint.
+            item = dict(prior, **item)
         elif item.get("status") != "REVIEWED":
             raise OracleApprovalError("Oracle coverage status is invalid")
         if not item.get("reason", "").strip():

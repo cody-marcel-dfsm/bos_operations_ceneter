@@ -856,6 +856,12 @@ class CriterionDependencyRoles(unittest.TestCase):
         row = next(row for row in rounds[-1]['verified_coverage'] if row['path'] == 'source.py')
         self.assertIsNotNone(o._CriterionLineage(self.root, rounds).support(row, rounds[-1]))
         self.assertIn('tools/oracle_approval.py', {x['path'] for x in self.legacy_row['inputs']}, 'Original bytes remain literal')
+        self.fixture.submit()  # Explicit schema-only CARRIED_FORWARD keeps native custody.
+        carried_rounds = o._read_rounds(o._series_directory(self.root, self.fixture.base))
+        carried = next(row for row in carried_rounds[-1]['verified_coverage'] if row['path'] == 'source.py')
+        self.assertEqual(carried['criterion_control_inputs'], row['criterion_control_inputs'])
+        self.assertEqual(carried['retained_observation'], row['retained_observation'])
+        self.assertIsNotNone(o._CriterionLineage(self.root, carried_rounds).support(carried, carried_rounds[-1]))
 
     def test_original_functional_control_module_and_changed_support_stay_individual(self):
         self.legacy(functional=True)
