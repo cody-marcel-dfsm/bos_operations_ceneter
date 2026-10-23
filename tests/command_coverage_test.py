@@ -130,6 +130,8 @@ class CommandCoverage(unittest.TestCase):
             "destination": {"remote_url": o.PUBLICATION_REMOTE, "ref": "refs/heads/main"}}
         with patch.object(publication, "plan", return_value=selected), patch.object(coverage, "requirements", return_value=[]):
             prepared = publication.prepare(self.root, candidate, "codex/release-v0.0.2", "main-promotion", refresh=False)
+        hooks = Path(__file__).resolve().parents[1] / ".githooks"
+        git("config", "core.hooksPath", str(hooks))
         path = Path(prepared["prepared_file"])
         original = path.read_bytes()
         (self.root / "concurrent.txt").write_text("new authorship remains available")

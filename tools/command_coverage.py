@@ -103,13 +103,29 @@ def publish_statuses(root: Path, selected: dict, *, execute=subprocess.run) -> l
         raise o.OracleApprovalError("Native command tracking differs from the prepared validated candidate")
     required = requirements(root, selected["candidate_tree"])
     coverage = tracking.get("command_coverage", [])
-    if ({row["id"] for row in coverage if row.get("status") == "COMPLETE"} != {row["id"] for row in required}
-            or any(row.get("basis") != "INDEPENDENT_APPLICABILITY" for row in coverage)):
+    expected = {row["id"]: row["command"] for row in required}
+    if (len(coverage) != len(required) or {row["id"] for row in coverage} != set(expected)
+            or any(row.get("basis") != "INDEPENDENT_APPLICABILITY" or row.get("status") != "COMPLETE"
+                   or row.get("command") != expected.get(row.get("id")) for row in coverage)):
         raise o.OracleApprovalError("Native command tracking lacks complete independent required-command applicability")
+    receipt, receipt_raw = shipment.validated_receipt(root, selected["candidate_commit"])
+    decision = tracking.get("native_decision")
+    if not decision or receipt["validation_evidence"].get(decision["path"]) != decision["sha256"]:
+        raise o.OracleApprovalError("Command applicability lacks its original independent native decision")
+    decision_raw = o._custody_read(root, decision["path"])[1]
+    native = json.loads(decision_raw)
+    if (o._sha(receipt_raw) != selected["technical_receipt_sha256"] or o._sha(decision_raw) != decision["sha256"]
+            or native.get("outcome") != "APPROVED" or native.get("candidate_tree") != selected["candidate_tree"]
+            or native.get("review", {}).get("review_status") != "COMPLETE"
+            or o._sha(o._canonical(native["review"])) != receipt["review_digest"]
+            or native["review"].get("command_coverage") != coverage):
+        raise o.OracleApprovalError("Command applicability differs from the original complete native decision")
     digest = tracking["tracking_sha256"]
     description = _description(selected["candidate_tree"], digest)
     environment = tracking["execution_environment"]
     metadata = "origin:" + environment["platform"] + " python:" + environment["python"] + " node:" + environment["node"]
+    if not re.fullmatch(r"origin:[A-Za-z]+ python:[0-9.]+ node:v?[0-9.]+", metadata):
+        raise o.OracleApprovalError("Public command environment metadata must contain only platform and runtime versions")
     rows = [(PREFIX + row["id"], description) for row in coverage]
     rows.append((ENVIRONMENT_PREFIX + digest, metadata))
     statuses = []

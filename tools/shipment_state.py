@@ -117,9 +117,10 @@ def record_command_tracking(root: Path, previous: dict, receipt: dict, raw: byte
     if previous.get("last_validated_commit") == commit and existing:
         prior_raw = o._custody_read(root, existing["path"])[1]
         prior = json.loads(prior_raw)
-        if (o._sha(prior_raw) != existing["sha256"] or prior.get("technical_receipt_sha256") != o._sha(raw)):
+        if o._sha(prior_raw) != existing["sha256"]:
             raise o.OracleApprovalError("Immutable validated changelist command tracking changed")
-        return existing
+        if prior.get("technical_receipt_sha256") == o._sha(raw):
+            return existing
     baseline = previous.get("last_validated_commit")
     if not baseline or not _ancestor(root, baseline, commit):
         baseline = receipt.get("publication_scope", {}).get("baseline_commit")
@@ -127,14 +128,17 @@ def record_command_tracking(root: Path, previous: dict, receipt: dict, raw: byte
     if commit not in commits:
         commits.append(commit)
     commands = []
-    command_coverage, required_commands = [], []
+    command_coverage, required_commands, native_decision = [], [], None
     for name in receipt["validation_evidence"]:
         path = Path(name) if Path(name).is_absolute() else root / name
         if path.parent.parent != o.receipt_path(root).parent / "series" or not path.name.startswith("round-"):
             continue
-        round_record = json.loads(o._custody_read(root, path)[1])
-        if round_record.get("candidate_tree") != receipt["candidate_tree"] or round_record.get("outcome") != "APPROVED":
+        round_raw = o._custody_read(root, path)[1]
+        round_record = json.loads(round_raw)
+        if (round_record.get("candidate_tree") != receipt["candidate_tree"] or round_record.get("outcome") != "APPROVED"
+                or o._sha(o._canonical(round_record["review"])) != receipt["review_digest"]):
             continue
+        native_decision = {"path": o._custody_name(root, path), "sha256": o._sha(round_raw)}
         command_coverage = round_record["review"].get("command_coverage", [])
         context = json.loads(o._custody_read(root, round_record["context_file"])[1])
         required_commands = context.get("required_commands", [])
@@ -156,8 +160,9 @@ def record_command_tracking(root: Path, previous: dict, receipt: dict, raw: byte
         "changelists": [{"commit": value, "tree": o._git(root, "rev-parse", value + "^{tree}").strip()}
                         for value in commits], "commands": commands, "required_commands": required_commands,
         "command_coverage": command_coverage, "execution_environment": environment_metadata()}
+    payload["native_decision"] = native_decision
     result = dict(payload, tracking_sha256=o._sha(o._canonical(payload)))
-    path = o.receipt_path(root).parent / "command-tracking" / (commit + ".json")
+    path = o.receipt_path(root).parent / "command-tracking" / (commit + "-" + o._sha(raw) + ".json")
     if path.exists() and o._custody_read(root, path)[1] != o._pretty(result):
         raise o.OracleApprovalError("Immutable validated changelist command tracking changed")
     if not path.exists():
