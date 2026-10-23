@@ -29,7 +29,7 @@ jobs:
           # A PR merge retains its independently approved head tree. The bounded
           # wait covers CI starting immediately after the review push.
           python3 tools/publication_status.py "${{ github.sha }}"
-      - run: npm run check:publication
-      - run: npm run release:check
+      - name: Accept prior native command coverage and run uncovered checks
+        run: python3 tools/command_coverage.py ci --candidate "${{ github.sha }}"
         env:
           GH_TOKEN: ${{ github.token }}

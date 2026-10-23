@@ -1051,7 +1051,8 @@ def _validation_environment(extra_keys: Sequence[str] = ()) -> tuple[dict, dict,
 
 REVIEW_POLICY_MODULES = ("tools/oracle_approval.py", "tools/codex_child_model.py", "tools/vault_index.py",
                          "tools/publication_admission.py", "tools/shipment_state.py", "tools/publication_status.py",
-                         "tools/oracle_parallel.py", "tools/oracle_source_frontier.py", "tools/oracle_lifecycle.py")
+                         "tools/oracle_parallel.py", "tools/oracle_source_frontier.py", "tools/oracle_lifecycle.py",
+                         "tools/command_coverage.py")
 
 
 def _review_policy_sources(root: Path, tree: str | None = None) -> dict:
@@ -1787,6 +1788,11 @@ def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence:
                "prior_rounds": [{key: item[key] for key in ("round", "candidate_tree", "outcome", "record_sha256")}
                                 for item in rounds]}
     context["publication_scope"] = publication_scope
+    if __package__:
+        from . import command_coverage
+    else:
+        import command_coverage
+    context["required_commands"] = command_coverage.requirements(root, tree)
     context["unadopted_assessments"] = _raw_assessment_navigation(root, rounds, inputs, guards)
     context["path_dispositions"] = _path_dispositions(root, context, rounds)
     context["attempt_delta"] = {"from_candidate": previous["candidate_tree"] if previous else None,
@@ -2118,6 +2124,11 @@ def _validate_completed_review(root: Path, review: dict, context: dict, evidence
         if item["evidence_path"] not in assessed_validations:
             _validation_record(root, item["evidence_path"], item["inputs"], item["environment_digest"])
             validations.append(item)
+    if __package__:
+        from . import command_coverage
+    else:
+        import command_coverage
+    command_coverage.validate_decisions(root, review, context)
     return coverage, validations, ledger
 
 
@@ -2468,6 +2479,7 @@ Read .agents/skills/oracle/SKILL.md completely and wear that approver skill. Use
 {REVIEW_SERIES_POLICY}
 {DEPLOYMENT_PLACEMENT_POLICY}
 The structured review-context.json can be large: inspect its metadata/coverage with selective JSON reads, and select input_hashes only for relevant source/dependency paths. Inspect prior_native_assessment before rereading unchanged owner/authentication/public-API evidence: it projects the latest nonempty native classification, its immutable origin and factual candidate/guard comparisons, skipping ERROR records. It is historical evidence; independently assess current scope, changed inputs and all current gates before issuing a fresh verdict. Cover required_coverage_paths, including reverted repairs, removed files and pending unassessed changes retained through ERROR/INCOMPLETE. A repair finding affecting both changed and unchanged paths is REPAIR when changed behavior causes it. MISSED applies when the affected behavior, dependencies and requirements remained unchanged. Scope changes are explicit in proposal_scope/previous_proposal_scope and the @proposal/scope input; explain new requirements in origin_reason, reassess affected coverage and include that input in requirement-dependent coverage. Preserve unrelated verified coverage. COMPLETE uses limitations=[]; put nonblocking scope boundaries in summary. Validation VERIFIED or REUSED requires an oracle-validation-record-v1 produced by this utility's validate command, whose exact inputs, environment and retained outputs prove the result. Legacy prose/log evidence remains reviewable and cannot acquire reusable validation status by assertion.
+For every required_commands entry, independently emit command_coverage with its exact id/argv, COMPLETE or INCOMPLETE, basis INDEPENDENT_APPLICABILITY, exact current source/test/dependency/configuration inputs including package.json, bound original evidence_paths, current environment_digest and reason. Independently combine actual preserved passing cases with focused repair proof only after checking original test/source/output hashes and environment applicability. Preserve a failed aggregate's original failure; command applicability is a separate current-candidate decision and never a fabricated passing execution witness. A declared platform-specific contract requires its actual platform evidence; a different CI operating system alone creates no new platform requirement. Missing/invalidated coverage remains INCOMPLETE and required work runs before publication. Proposals use command_coverage=[].
 Return JSON matching the supplied schema. Classify authentication_impact as AUTHENTICATION or NONE. Technical approval never requires human deployment permission. Any review may report the applicable NOT_REQUIRED, APPROVED, MISSING or INVALID legacy owner status; this field grants no publication authority. Return protected_effects with active concrete effects and independently source-bound dispositions for the complete publication_scope. A missing permission is not a finding. Only APPROVED with no findings can issue a receipt.\n{json.dumps(request, indent=2, sort_keys=True)}"""
     return _review_process(root, prompt, "reviewer")
 

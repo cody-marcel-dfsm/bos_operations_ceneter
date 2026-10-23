@@ -104,6 +104,7 @@ def record_command_tracking(root: Path, previous: dict, receipt: dict, raw: byte
     if commit not in commits:
         commits.append(commit)
     commands = []
+    command_coverage, required_commands = [], []
     for name in receipt["validation_evidence"]:
         path = Path(name) if Path(name).is_absolute() else root / name
         if path.parent.parent != o.receipt_path(root).parent / "series" or not path.name.startswith("round-"):
@@ -111,6 +112,9 @@ def record_command_tracking(root: Path, previous: dict, receipt: dict, raw: byte
         round_record = json.loads(o._custody_read(root, path)[1])
         if round_record.get("candidate_tree") != receipt["candidate_tree"] or round_record.get("outcome") != "APPROVED":
             continue
+        command_coverage = round_record["review"].get("command_coverage", [])
+        context = json.loads(o._custody_read(root, round_record["context_file"])[1])
+        required_commands = context.get("required_commands", [])
         for proof in round_record.get("verified_validations", []):
             validation = json.loads(o._custody_read(root, proof["evidence_path"])[1])
             commands.append({"command": validation["command"],
@@ -119,11 +123,16 @@ def record_command_tracking(root: Path, previous: dict, receipt: dict, raw: byte
                 "inputs_sha256": o._sha(o._canonical(validation["inputs"])),
                 "environment_digest": validation["environment_digest"],
                 "output_hashes": validation["output_hashes"]})
+    if __package__:
+        from .command_coverage import environment_metadata
+    else:
+        from command_coverage import environment_metadata
     payload = {"kind": "boc-validation-command-tracking-v1", "validated_commit": commit,
         "candidate_tree": receipt["candidate_tree"], "technical_receipt_sha256": o._sha(raw),
         "previous_validated_commit": previous.get("last_validated_commit"),
         "changelists": [{"commit": value, "tree": o._git(root, "rev-parse", value + "^{tree}").strip()}
-                        for value in commits], "commands": commands}
+                        for value in commits], "commands": commands, "required_commands": required_commands,
+        "command_coverage": command_coverage, "execution_environment": environment_metadata()}
     result = dict(payload, tracking_sha256=o._sha(o._canonical(payload)))
     path = o.receipt_path(root).parent / "command-tracking" / (commit + ".json")
     if path.exists() and o._custody_read(root, path)[1] != o._pretty(result):

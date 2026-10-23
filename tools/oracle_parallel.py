@@ -57,6 +57,12 @@ area only: empty/NONE/NOT_REQUIRED fields describe local absence, while positive
 effects must be reported precisely for native reconciliation against the complete
 crosscutting assessment. Never write source, stage, commit,
 publish a receipt, launch another review, or change proposal/review pointers.
+Only the crosscutting cohort emits command_coverage for every required_commands
+entry. Assess preserved original passing cases and focused repairs against exact
+current source/test/dependency/configuration/output hashes and the actual declared
+environment contract. Preserve all original failed aggregate statuses. This is
+explicit INDEPENDENT_APPLICABILITY, distinct from a passing command witness.
+Specialists use command_coverage=[] and report missing relevant proof as findings.
 """
 
 
@@ -114,6 +120,7 @@ def packet(context, plan, cohort, parent_context, digest, prepared_source=None):
              "publication_scope": context["publication_scope"] if cohort["id"] == AREAS[0] else {
                  "range_sha256": context["publication_scope"]["range_sha256"]},
              "finding_disposition_owner": AREAS[0]}
+    value["required_commands"] = context.get("required_commands", []) if cohort["id"] == AREAS[0] else []
     def original(pointer, item):
         return {'parent_context': str(parent_context), 'parent_context_sha256': plan['context_sha256'],
                 'digest_encoding': 'canonical-json-v1', 'json_pointer': pointer,
@@ -368,6 +375,10 @@ def aggregate(o, plan, context, envelopes, failures, *, root=None):
     if global_assessment is None:
         errors.append("Missing complete crosscutting classification")
     else:
+        result["command_coverage"] = copy.deepcopy(global_assessment.get("command_coverage", []))
+        for identity, specialist in by_cohort.items():
+            if identity != AREAS[0] and specialist.get("command_coverage"):
+                errors.append(identity + ": required-command applicability belongs to the crosscutting assessor")
         for field, default in defaults.items():
             result[field] = copy.deepcopy(global_assessment.get(field))
             for identity, specialist in by_cohort.items():

@@ -58,12 +58,23 @@ def _source_receipt(root: Path, commit: str) -> tuple[dict, bytes]:
 
 @o._metadata_owner
 def prepare(root: Path, candidate: str, release_ref: str, operation: str, *,
-            authorization=None, refresh: bool = True) -> dict:
+            authorization=None, refresh: bool = True, execute=subprocess.run) -> dict:
     """Finish validation/preflight and persist the exact Git publication inputs."""
     selected = plan(root, candidate, release_ref, operation, refresh=refresh)
     if selected.get("state") == "NO_CHANGES":
         return selected
     _check_authorization(root, selected, authorization)
+    if __package__:
+        from . import command_coverage
+    else:
+        import command_coverage
+    if command_coverage.requirements(root, selected["candidate_tree"]):
+        # Uploading the review source and its minimal native coverage statuses is
+        # validation preparation. Final publication later runs its Git push only.
+        execute(["git", "push", selected["destination"]["remote_url"],
+                 selected["candidate_commit"] + ":refs/heads/" + release_ref], cwd=root, check=True)
+        public_status.publish_status(root, selected, execute=execute)
+        command_coverage.publish_statuses(root, selected, execute=execute)
     target = selected["destination"]["ref"]
     expected = selected["publication_scope"]["baseline_commit"] if target == "refs/heads/main" else None
     payload = {"kind": "boc-prepared-git-publication-v1", "plan": selected,
