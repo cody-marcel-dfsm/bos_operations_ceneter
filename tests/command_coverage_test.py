@@ -157,12 +157,19 @@ class CommandCoverage(unittest.TestCase):
         print(json.dumps({"real_git_publication_seconds": result["elapsed_seconds"],
                           "effective_hooks_path": str(hooks), "pre_push_exists": (hooks / "pre-push").exists()}))
         self.assertEqual(git("--git-dir", str(remote), "rev-parse", "main"), candidate)
+        from tools import oracle_lifecycle
+        with patch.object(publication.shipment, "publication_eligibility"), \
+                patch.object(oracle_lifecycle, "_publish", side_effect=OSError("synthetic journal write failure")):
+            confirmed = publication.publish_prepared(self.root, path, execute=execute)
+        self.assertEqual(confirmed["state"], "PUBLISHED")
+        self.assertEqual(confirmed["bookkeeping_error"]["stage"], "publication_attempt")
+        self.assertEqual(git("--git-dir", str(remote), "rev-parse", "main"), candidate)
         moved = git("commit-tree", tree, "-p", candidate, "-m", "concurrent remote change")
         git("push", str(remote), moved + ":refs/heads/main")
         with patch.object(publication.shipment, "publication_eligibility"):
             with self.assertRaises(subprocess.CalledProcessError):
                 publication.publish_prepared(self.root, path, execute=execute)
-        self.assertEqual(len(calls), 2)
+        self.assertEqual(len(calls), 3)
         self.assertEqual(path.read_bytes(), original)
         self.assertTrue((self.root / "concurrent.txt").exists())
 

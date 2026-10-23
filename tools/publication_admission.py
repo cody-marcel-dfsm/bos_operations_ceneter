@@ -218,7 +218,12 @@ def publish_prepared(root: Path, prepared: Path, *, execute=subprocess.run) -> d
         else:
             import oracle_lifecycle
         attempt = o.receipt_path(root).parent / "publication-attempts" / (uuid.uuid4().hex + ".json")
-        oracle_lifecycle._publish(o, root, attempt, outcome)
+        try:
+            oracle_lifecycle._publish(o, root, attempt, outcome)
+        except Exception as exc:
+            # The terminal Git result is already known. Preserve it even if
+            # private journal cleanup fails after the remote effect completed.
+            return dict(outcome, attempt_file=None, bookkeeping_error={"stage": "publication_attempt", "error": str(exc)})
         return dict(outcome, attempt_file=str(attempt))
     try:
         execute(command, cwd=root, check=True)
