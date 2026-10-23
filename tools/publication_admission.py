@@ -127,7 +127,6 @@ def prepare(root: Path, candidate: str, release_ref: str, operation: str, *,
     selected = plan(root, candidate, release_ref, operation, refresh=refresh)
     if selected.get("state") == "NO_CHANGES":
         return selected
-    _check_authorization(root, selected, authorization)
     if __package__:
         from . import command_coverage
     else:
@@ -153,6 +152,7 @@ def prepare(root: Path, candidate: str, release_ref: str, operation: str, *,
                 or record["prepared_sha256"] != o._sha(o._canonical({key:value for key,value in record.items() if key != "prepared_sha256"}))):
             raise o.OracleApprovalError("Immutable prepared publication changed")
         return _prepared_result(root, path, record)
+    _check_authorization(root, selected, authorization)
     if command_coverage.requirements(root, selected["candidate_tree"]):
         # Review-source upload and its opaque native coverage transport are
         # validation preparation. Unchanged completed preparation is reused.
