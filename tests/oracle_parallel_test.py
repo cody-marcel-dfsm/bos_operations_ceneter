@@ -51,7 +51,8 @@ class ParallelReview(unittest.TestCase):
         self.plan = parallel.partition(self.context, self.binding, self.digest)
 
     def envelope(self, cohort):
-        inputs = lambda path: [{'path': path, 'digest': self.context['input_hashes'][path]}]
+        effective = parallel._criterion_context(self.context, self.plan)
+        inputs = lambda path: [{'path': path, 'digest': effective['input_hashes'][path]}]
         return {'plan_sha256': self.plan['plan_sha256'], 'cohort_id': cohort['id'],
             'candidate_commit': self.plan['candidate_commit'], 'candidate_tree': self.plan['candidate_tree'],
             'input_binding_sha256': self.plan['input_binding_sha256'],
@@ -155,6 +156,8 @@ class ParallelReview(unittest.TestCase):
         self.assertEqual(prepared['required_paths'], cohort['required_paths'], 'Complete original frontier metadata remains unchanged')
 
     def test_actual_native_criterion_and_unadopted_shapes_preserve_applicability_facts(self):
+        # An admitted unresolved source criterion stays individually assigned.
+        self.context['prior_findings'] = {'F1000': {'state': 'OPEN', 'file': 'source.py', 'affected_paths': ['source.py']}}
         self.context['invalidated_coverage'] = [{'path': 'source.py', 'status': 'REVIEWED',
             'reason': 'Actual historical production criterion', 'invalidation_reasons': ['review_policy_digest'],
             'inputs': [{'path': 'source.py', 'digest': 'bound-source.py'},
@@ -190,6 +193,7 @@ class ParallelReview(unittest.TestCase):
             self.assertFalse(packet['criterion_navigation']['groups'][0]['all_recorded_dependencies_current'])
 
     def test_criterion_navigation_survives_retained_detail_fallback(self):
+        self.context['prior_findings'] = {'F1000': {'state': 'OPEN', 'file': 'source.py', 'affected_paths': ['source.py']}}
         self.context['invalidated_coverage'] = [{'path': 'source.py', 'status': 'REVIEWED',
             'reason': 'Historical actual criterion', 'invalidation_reasons': ['review_policy_digest', 'environment_digest'],
             'inputs': [{'path': 'source.py', 'digest': 'bound-source.py'}]}]
@@ -203,6 +207,76 @@ class ParallelReview(unittest.TestCase):
         self.assertEqual(packet['criterion_navigation']['groups'][0]['invalidation_reasons'],
                          ['review_policy_digest', 'environment_digest'])
         self.assertEqual(packet['criterion_navigation']['groups'][0]['criterion_pairs'], [[0, 0]])
+
+    def retained_context(self, count=471):
+        originals = []
+        for index in range(count):
+            name = 'clients/retained-' + str(index) + '.py'
+            self.context['input_hashes'][name] = 'bound-' + name
+            self.context['required_coverage_paths'].append(name)
+            originals.append({'path': name, 'status': 'REVIEWED', 'reason': 'Actual original source observation',
+                'inputs': [{'path': name, 'digest': 'bound-' + name}],
+                'invalidation_reasons': ['review_policy_digest']})
+        self.context['guards']['review_policy_digest'] = 'current-policy'
+        self.context['invalidated_coverage'] = originals
+        self.plan = parallel.partition(self.context, self.binding, self.digest)
+        (self.run/'review-context.json').write_bytes(o._pretty(self.context))
+
+    def test_actual_dispatch_collectively_assesses_unchanged_originals_and_expands_bound_members(self):
+        self.retained_context()
+        launches = []
+        def child(root, prompt, prefix, *, schema_path, cohort_policy):
+            run = o._RUN.get(); packet = json.loads((run/'cohort-context.json').read_text())
+            cohort = packet['cohort']; launches.append(cohort['id'])
+            self.assertLess(len(o._pretty(packet)), parallel.COHORT_PACKET_MAX_BYTES)
+            self.assertFalse(any(name.startswith('clients/retained-') for name in cohort['required_paths']))
+            if cohort['id'] == parallel.AREAS[0]:
+                groups = packet['retained_criteria']['groups']
+                self.assertEqual(sum(group['member_count'] for group in groups), 471)
+                self.assertEqual(packet['retained_criteria']['original']['value_sha256'],
+                                 self.digest(self.context['invalidated_coverage']))
+                self.assertIn('explicit applicability', cohort_policy)
+            result = self.envelope(cohort)
+            for name, value in {'process.json': {'exit_code': 0}, 'result.json': result}.items():
+                o._atomic_write(run/name, o._pretty(value))
+            return result
+        with patch.object(o, '_input_binding', return_value=self.binding), patch.object(o, '_review_process', side_effect=child):
+            result = o._oracle(self.root, self.context['candidate_tree'], self.paths, {}, None)
+        self.assertEqual((result['review_status'], result['verdict']), ('COMPLETE', 'APPROVED'))
+        self.assertEqual(len(launches), 3)
+        expanded = [row for row in result['coverage'] if row['path'].startswith('clients/retained-')]
+        self.assertEqual(len(expanded), 471)
+        self.assertEqual(len(result['criterion_adoptions']), 1)
+        for row in expanded:
+            o._checked_inputs(row['inputs'], self.context, required_path=row['path'])
+            ref = row['retained_observation']; original = self.context['invalidated_coverage'][int(ref['json_pointer'].rsplit('/', 1)[1])]
+            self.assertEqual(ref['value_sha256'], self.digest(original))
+            self.assertIn('retained original source observation', row['reason'])
+        self.assertFalse(any(row['path'].startswith('@retained-criterion/') for row in result['coverage']))
+
+    def test_collective_adoption_excludes_changed_dependencies_and_requires_actual_independent_decision(self):
+        self.retained_context(4)
+        originals = self.context['invalidated_coverage']
+        originals[1]['inputs'].append({'path': 'source.py', 'digest': 'old-source.py'})
+        originals[1]['invalidation_reasons'].append('source.py content changed or missing')
+        originals[2]['checkpoint_invalidation_reasons'] = ['Admitted missed defect']
+        self.context['prior_findings'] = {'F1000': {'state': 'OPEN', 'file': originals[3]['path'], 'affected_paths': []}}
+        self.plan = parallel.partition(self.context, self.binding, self.digest)
+        self.assertEqual([group['original_coverage_indices'] for group in self.plan['retained_criteria']], [[0]])
+        envelopes = self.all_envelopes(); cross = envelopes[parallel.AREAS[0]]
+        virtual = next(row for row in cross['assessment']['coverage'] if row['path'].startswith('@retained-criterion/'))
+        virtual['status'] = 'CARRIED_FORWARD'
+        result = parallel.aggregate(o, self.plan, self.context, envelopes, [])
+        self.assertEqual(result['review_status'], 'ERROR')
+        self.assertNotIn(originals[0]['path'], {row['path'] for row in result['coverage']})
+        virtual['status'] = 'UNREVIEWED'; cross['assessment'].update(review_status='INCOMPLETE', verdict='INCOMPLETE', limitations=['Shared policy applicability unfinished'])
+        result = parallel.aggregate(o, self.plan, self.context, envelopes, [])
+        self.assertEqual(result['review_status'], 'INCOMPLETE')
+        self.assertEqual(next(row['status'] for row in result['coverage'] if row['path'] == originals[0]['path']), 'UNREVIEWED')
+        virtual['status'] = 'REVIEWED'; virtual['inputs'][0]['digest'] = 'forged-group'
+        result = parallel.aggregate(o, self.plan, self.context, envelopes, [])
+        self.assertEqual(result['review_status'], 'ERROR')
+        self.assertNotIn(originals[0]['path'], {row['path'] for row in result['coverage']})
 
     def test_dispatch_budget_counts_complete_wrapped_escaped_payload(self):
         command = ['codex', '--developer', '\\"多' * 20, 'source prompt and current effect facts']

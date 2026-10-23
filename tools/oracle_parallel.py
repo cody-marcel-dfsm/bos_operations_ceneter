@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextvars import copy_context
 from datetime import datetime, timezone
 import copy
+import hashlib
 import json
 from pathlib import Path
 import time
@@ -47,8 +48,15 @@ parent, whose complete facts remain authoritative. Resolve only OPEN ledger IDs;
 RESOLVED IDs remain historical unless an actionable finding explicitly reopens.
 Criterion navigation preserves each historical source/dependency footprint,
 invalidation reason and current comparison. Independently assess a shared policy
-delta collectively where appropriate, then emit every individual assigned current
-criterion with its actual inputs and rationale. Identity matching alone never
+delta collectively where appropriate. A retained-criterion virtual primary binds
+the exact original observation indices and current guards. Read those immutable
+originals as needed, assess the named policy changes against the entire group,
+and emit one REVIEWED criterion with its actual inputs and explicit applicability
+rationale. This grants current criterion applicability, preserving the original
+body observations; it never claims a new body read. Native aggregation expands
+that explicit decision to its sealed members. Concrete changed source/dependencies,
+admitted invalidations and open findings remain ordinary individual assignments.
+Identity matching alone never
 grants applicability, coverage or approval; inspect unresolved differences.
 COMPLETE requires limitations=[]; put nonblocking area boundaries in summary.
 Retain existing finding IDs. Only the crosscutting cohort dispositions prior
@@ -74,12 +82,59 @@ def _area(path):
     return AREAS[1]
 
 
+def _retained_criteria(context, pending, digest):
+    """Group only shared guard deltas; preserve original source observations."""
+    blocked = {path for item in context.get('prior_findings', {}).values()
+               if item.get('state') == 'OPEN'
+               for path in [item.get('file'), *item.get('affected_paths', [])]}
+    guard_keys = set(context.get('guards', {}))
+    groups, seen = {}, set()
+    originals = context.get('invalidated_coverage', [])
+    for index, entry in enumerate(originals):
+        name, inputs = entry.get('path'), entry.get('inputs', [])
+        reasons = entry.get('invalidation_reasons', [])
+        names = [item.get('path') for item in inputs if isinstance(item, dict)]
+        if (name not in pending or name in seen or name in blocked
+                or entry.get('status') not in {'REVIEWED', 'CARRIED_FORWARD'}
+                or not reasons or not set(reasons) <= guard_keys
+                or entry.get('checkpoint_invalidation_reasons')
+                or not inputs or name not in names or len(set(names)) != len(inputs)
+                or any(not isinstance(item, dict) or set(item) != {'path', 'digest'}
+                       or context['input_hashes'].get(item['path']) != item['digest'] for item in inputs)):
+            continue
+        facts = {'historical_status': entry['status'], 'guard_deltas': sorted(set(reasons)),
+                 'current_guards_sha256': digest(context.get('guards', {}))}
+        key = digest(facts)
+        groups.setdefault(key, dict(facts, original_coverage_indices=[]))['original_coverage_indices'].append(index)
+        seen.add(name)
+    result = []
+    for key, group in sorted(groups.items()):
+        members = [originals[index] for index in group['original_coverage_indices']]
+        result.append(dict(group, path='@retained-criterion/' + key, member_count=len(members),
+                           members_sha256=digest(members)))
+    return result
+
+
+def _criterion_context(context, plan):
+    """Virtual inputs are sealed plan facts, never automatic source eligibility."""
+    result = dict(context, input_hashes=dict(context['input_hashes']))
+    for group in plan.get('retained_criteria', []):
+        raw = json.dumps(group, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode()
+        # The parent context and plan are independently sealed before dispatch.
+        result['input_hashes'][group['path']] = 'sha256:' + hashlib.sha256(raw).hexdigest()
+    return result
+
+
 def partition(context, binding, digest):
     """Assign only missing/affected coverage; native eligible coverage stays carried."""
     reusable = {item["path"] for item in context["reusable_coverage"]}
     pending = sorted(set(context["required_coverage_paths"]) - reusable)
+    retained = _retained_criteria(context, set(pending), digest)
+    adopted_paths = {context['invalidated_coverage'][index]['path'] for group in retained
+                     for index in group['original_coverage_indices']}
+    assigned = sorted((set(pending) - adopted_paths) | {group['path'] for group in retained})
     groups = {area: [] for area in AREAS}
-    for path in pending:
+    for path in assigned:
         groups[_area(path)].append(path)
     cohorts = [{"id": area, "required_paths": groups[area],
                 "integration_checks": list(INTEGRATION_CHECKS) if area == AREAS[0] else [],
@@ -87,7 +142,8 @@ def partition(context, binding, digest):
                for index, area in enumerate(AREAS) if groups[area] or area == AREAS[0]]
     plan = {"kind": "boc-parallel-review-plan-v1", "candidate_commit": context["base_commit"],
             "candidate_tree": context["candidate_tree"], "input_binding_sha256": digest(binding),
-            "context_sha256": digest(context), "required_paths": pending, "cohorts": cohorts,
+            "context_sha256": digest(context), "required_paths": assigned, "cohorts": cohorts,
+            "retained_criteria": retained, "original_required_paths_sha256": digest(pending),
             "max_workers": 3, "reviewer_settings": binding["reviewer_settings"]}
     return dict(plan, plan_sha256=digest(plan))
 
@@ -96,6 +152,7 @@ def packet(context, plan, cohort, parent_context, digest, prepared_source=None):
     if digest(context) != plan['context_sha256']:
         raise ValueError('Cohort projection requires the exact sealed parent context')
     assigned = set(cohort["required_paths"])
+    effective_context = _criterion_context(context, plan)
     selected = set(assigned)
     shared = set(context.get("guards", {}).get("authority_digests", {}))
     for proof in context["reusable_coverage"]:
@@ -113,7 +170,7 @@ def packet(context, plan, cohort, parent_context, digest, prepared_source=None):
              "plan_sha256": plan["plan_sha256"], "candidate_commit": plan["candidate_commit"],
              "candidate_tree": plan["candidate_tree"], "input_binding_sha256": plan["input_binding_sha256"],
              "parent_context": str(parent_context), "parent_context_sha256": plan["context_sha256"],
-             "input_hashes": {p: value for p, value in context["input_hashes"].items() if p in selected},
+             "input_hashes": {p: value for p, value in effective_context["input_hashes"].items() if p in selected},
              "prior_findings": relevant_findings,
              "proposal_scope": context.get("proposal_scope"),
              "previous_proposal_scope": context.get("previous_proposal_scope"), "scope_changed": context.get("scope_changed"),
@@ -127,6 +184,12 @@ def packet(context, plan, cohort, parent_context, digest, prepared_source=None):
         return {'parent_context': str(parent_context), 'parent_context_sha256': plan['context_sha256'],
                 'digest_encoding': 'canonical-json-v1', 'json_pointer': pointer,
                 'value_sha256': digest(item), 'navigation_only': True, 'eligibility': 'NONE'}
+
+    if cohort['id'] == AREAS[0]:
+        value['retained_criteria'] = {'groups': plan.get('retained_criteria', []),
+            'original': original('/invalidated_coverage', context.get('invalidated_coverage', [])),
+            'current_guards': context.get('guards', {}), 'eligibility': 'NONE',
+            'requires_explicit_independent_review': True}
 
     dispositions = context.get('path_dispositions', [])
     status_indices = {}
@@ -253,14 +316,18 @@ def _checked(o, envelope, plan, cohort, context):
         raise o.OracleApprovalError("Unfinished cohort requires limitations and matching verdict")
     if status == "COMPLETE" and assessment.get("verdict") not in {"APPROVED", "REJECTED"}:
         raise o.OracleApprovalError("Complete cohort lacks an independent verdict")
+    effective_context = _criterion_context(context, plan)
+    virtual = {group['path'] for group in plan.get('retained_criteria', [])}
     covered, seen = set(), set()
     for item in assessment["coverage"]:
         name = item.get("path")
         if name in seen or name not in cohort["required_paths"]:
             raise o.OracleApprovalError("Cohort coverage is duplicate or outside its assignment")
         seen.add(name)
+        if name in virtual and (item.get('status') not in {'REVIEWED', 'UNREVIEWED'} or not item.get('reason', '').strip()):
+            raise o.OracleApprovalError('Retained criterion requires an explicit current independent assessment')
         if item.get("status") != "UNREVIEWED":
-            o._checked_inputs(item.get("inputs"), context, required_path=name)
+            o._checked_inputs(item.get("inputs"), effective_context, required_path=name)
             covered.add(name)
     integration = envelope["integration"]
     if not isinstance(integration, list):
@@ -269,7 +336,7 @@ def _checked(o, envelope, plan, cohort, context):
     if len(concerns) != len(integration) or len(set(concerns)) != len(concerns) or not set(concerns) <= set(cohort["integration_checks"]):
         raise o.OracleApprovalError("Cohort integration scope is duplicate or foreign")
     for item in integration:
-        o._checked_inputs(item.get("inputs"), context)
+        o._checked_inputs(item.get("inputs"), effective_context)
         if not item.get("reason") or item.get("status") not in {"REVIEWED", "NOT_APPLICABLE", "UNREVIEWED"}:
             raise o.OracleApprovalError("Integration criterion lacks an explicit current assessment")
     if assessment["review_status"] == "COMPLETE" and (
@@ -344,6 +411,47 @@ def _invalidated_projection(o, root, context, item):
         return item
 
 
+def _expanded_criteria(o, context, plan, assessment):
+    """Expand only a genuine independent shared-criterion decision, never identity alone."""
+    groups = {group['path']: group for group in plan.get('retained_criteria', [])}
+    effective = _criterion_context(context, plan)
+    rows, adoptions = [], []
+    for item in assessment['coverage']:
+        group = groups.get(item.get('path'))
+        if group is None:
+            rows.append(item)
+            continue
+        indices = group['original_coverage_indices']
+        originals = [context['invalidated_coverage'][index] for index in indices]
+        if o._sha(o._canonical(originals)) != group['members_sha256']:
+            raise o.OracleApprovalError('Retained criterion members changed before aggregation')
+        if item.get('status') == 'REVIEWED':
+            o._checked_inputs(item.get('inputs'), effective, required_path=group['path'])
+        elif item.get('status') != 'UNREVIEWED':
+            raise o.OracleApprovalError('Retained criterion was not independently assessed')
+        # References remain in the native result, together with the unmodified
+        # child result; every expanded row keeps its actual original footprint.
+        adoption = {'criterion': group['path'], 'status': item['status'], 'reason': item['reason'],
+                    'original_coverage_indices': indices, 'members_sha256': group['members_sha256'],
+                    'parent_context_sha256': plan['context_sha256'], 'guard_deltas': group['guard_deltas']}
+        adoptions.append(adoption)
+        for index, original in zip(indices, originals):
+            inputs = {entry['path']: entry['digest'] for entry in original['inputs']}
+            # Virtual bindings describe the collective criterion only. Actual
+            # current governing/dependency inputs consumed by the assessor are
+            # recorded on each member without introducing an unknown primary.
+            inputs.update({entry['path']: entry['digest'] for entry in item.get('inputs', [])
+                           if entry['path'] in context['input_hashes']})
+            rows.append({'path': original['path'], 'status': item['status'],
+                         'inputs': [{'path': name, 'digest': value} for name, value in sorted(inputs.items())],
+                         'reason': 'Independent current criterion applicability; retained original source observation. ' + item['reason'],
+                         'retained_observation': {'parent_context_sha256': plan['context_sha256'],
+                             'json_pointer': '/invalidated_coverage/' + str(index),
+                             'value_sha256': o._sha(o._canonical(original))},
+                         'criterion_adoption': group['path']})
+    return dict(assessment, coverage=rows), adoptions
+
+
 def aggregate(o, plan, context, envelopes, failures, *, root=None):
     assessments, by_cohort, errors = [], {}, list(failures)
     for cohort in plan["cohorts"]:
@@ -398,6 +506,15 @@ def aggregate(o, plan, context, envelopes, failures, *, root=None):
                 if not agrees:
                     errors.append(identity + ": positive " + field +
                                   " requires crosscutting reconciliation with the complete assessment")
+    result['criterion_adoptions'] = []
+    for identity, assessment in list(by_cohort.items()):
+        try:
+            expanded, adoptions = _expanded_criteria(o, context, plan, assessment)
+            by_cohort[identity] = expanded
+            result['criterion_adoptions'].extend(adoptions)
+        except (o.OracleApprovalError, KeyError, ValueError, TypeError) as exc:
+            errors.append(identity + ': ' + str(exc))
+            by_cohort[identity] = dict(assessment, coverage=[])
     for field, identity in (("coverage", "path"), ("validations", "evidence_path"), ("findings", "id"), ("resolutions", "id")):
         unique = {}
         for cohort_id, assessment in by_cohort.items():
@@ -442,8 +559,9 @@ def aggregate(o, plan, context, envelopes, failures, *, root=None):
 
 def prepared_intake(o, root, context, plan, jobs, seals, evidence):
     """Seal coherent preparation facts, without deciding command applicability."""
+    effective = _criterion_context(context, plan)
     missing = ["Source identity absent: " + name for name in plan["required_paths"]
-               if name not in context["input_hashes"]]
+               if name not in effective["input_hashes"]]
     observations, matched_inputs = [], set()
     # Failed/older executions remain observations. Their actual applicability,
     # including strict original-plus-repair composition, belongs to the cohort.
@@ -511,12 +629,13 @@ def review(o, root, tree, paths, evidence, owner):
         from . import oracle_source_frontier as frontier
     else:
         import oracle_source_frontier as frontier
+    effective_context = _criterion_context(context, plan)
     with o._phase("source_frontier_seconds"):
-        source_snapshot = frontier.snapshot(o, root, context, plan["required_paths"])
+        source_snapshot = frontier.snapshot(o, root, effective_context, plan["required_paths"])
     jobs, prepared_seals, source_prompts, original_packets = [], {}, {}, {}
     for cohort in plan["cohorts"]:
         child = o._metadata_run(root, run / "cohorts", cohort["id"] + "-")
-        prepared, source_seal, source_prompt = frontier.prepare(o, root, context, plan, cohort, child, source_snapshot)
+        prepared, source_seal, source_prompt = frontier.prepare(o, root, effective_context, plan, cohort, child, source_snapshot)
         try:
             child_context = packet(context, plan, cohort, context_path, digest, prepared)
         except CohortPacketBudgetError as exc:
