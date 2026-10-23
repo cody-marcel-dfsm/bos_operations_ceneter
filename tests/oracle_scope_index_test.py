@@ -56,7 +56,7 @@ class ScopeIndex(unittest.TestCase):
         effects = {'active': [{'id': identity}], 'dispositions': []}
         review = {'review_status': 'COMPLETE', 'protected_effects': effects}
         record = dict(context, outcome='APPROVED', review=review,
-                      verified_validations=[{'evidence_path': 'synthetic-proof', 'evidence_sha256': 'a' * 64}],
+                      verified_validations=[{'evidence_path': 'synthetic-proof', 'evidence_sha256': 'a' * 64, 'inputs': [], 'environment_digest': 'synthetic'}],
                       context_file=str(context_path),
                       context_sha256=o._sha(o._canonical(context)))
         record['record_sha256'] = o._sha(o._canonical(record))
