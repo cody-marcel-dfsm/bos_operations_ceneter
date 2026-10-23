@@ -358,6 +358,13 @@ class ParallelReview(unittest.TestCase):
             identity = o._sha(path.read_bytes())
             self.context['caller_evidence'][name] = identity
             self.context['input_hashes'][name] = 'sha256:' + identity
+        # The real current packet crossed the bound at193 caller locators.
+        # Keep the current facts/manifest/consumer directly named at that scale.
+        for index in range(190):
+            name = 'Vault/tmp/current-requested-validation-observations-20261023/observation-' + str(index) + '.json'
+            path = self.root / name; path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(o._pretty({'kind': 'synthetic-caller-navigation', 'index': index}))
+            self.context['caller_evidence'][name] = o._sha(path.read_bytes())
         self.context['current_validations'] = [{'evidence_path': names[2],
             'evidence_sha256': self.context['caller_evidence'][names[2]], 'status': 'VERIFIED',
             'inputs': [{'path': 'source.py', 'digest': 'bound-source.py'}],
@@ -368,7 +375,15 @@ class ParallelReview(unittest.TestCase):
         def child(root, prompt, prefix, *, schema_path, cohort_policy):
             run = o._RUN.get(); packet = json.loads((run / 'cohort-context.json').read_text())
             navigation = packet['caller_evidence']
-            self.assertEqual(dict(navigation['records']), self.context['caller_evidence'])
+            if navigation.get('encoding') == 'directory-prefix-v1':
+                locators = {navigation['prefixes'][index] + name: identity
+                            for index, name, identity in navigation['records']}
+            else:
+                locators = dict(navigation['records'])
+            self.assertEqual(navigation.get('encoding'), 'directory-prefix-v1')
+            self.assertEqual(locators, self.context['caller_evidence'])
+            self.assertEqual(navigation['record_count'], 193)
+            self.assertTrue(set(names) <= set(locators))
             self.assertEqual(navigation['original']['json_pointer'], '/caller_evidence')
             self.assertEqual(navigation['original']['value_sha256'], self.digest(self.context['caller_evidence']))
             self.assertEqual(navigation['eligibility'], 'NONE')

@@ -47,6 +47,8 @@ disposing historical findings or required-command applicability. A historical
 finding path does not select the current runtime input. Read the bound selected
 input manifest and exact replacement records; keep historical artifacts intact.
 Caller locators provide custody and navigation, never authority or eligibility.
+Directory-prefix locator rows reconstruct each exact path as the indexed prefix
+plus its name; hashes and the immutable original caller map remain authoritative.
 Retained projections are navigation only and grant no coverage or eligibility.
 Original references use canonical JSON digests and JSON Pointers in the sealed
 parent, whose complete facts remain authoritative. Resolve only OPEN ledger IDs;
@@ -229,8 +231,20 @@ def packet(context, plan, cohort, parent_context, digest, prepared_source=None):
                          'records': [[name, identity] for name, identity in sorted(caller.items())],
                          'eligibility': 'NONE'}
     if len(_serialized(caller_navigation)) > RETAINED_NAVIGATION_MAX_BYTES:
-        caller_navigation.pop('records')
-        caller_navigation['records_via_original'] = True
+        # Repeated owned directories consume the navigation budget without
+        # adding facts. Preserve every named locator before using the larger
+        # exact-parent fallback; no path normalization or selection is involved.
+        prefixes = sorted({name.rpartition('/')[0] + '/' if '/' in name else '' for name in caller})
+        indices = {prefix: index for index, prefix in enumerate(prefixes)}
+        compact = dict(caller_navigation, encoding='directory-prefix-v1', prefixes=prefixes,
+                       columns=['prefix_index', 'name', 'sha256'], records=[
+                           [indices[name.rpartition('/')[0] + '/' if '/' in name else ''],
+                            name.rpartition('/')[2], identity] for name, identity in sorted(caller.items())])
+        if len(_serialized(compact)) <= RETAINED_NAVIGATION_MAX_BYTES:
+            caller_navigation = compact
+        else:
+            caller_navigation.pop('records')
+            caller_navigation['records_via_original'] = True
     value['caller_evidence'] = caller_navigation
 
     if cohort['id'] == AREAS[0]:
