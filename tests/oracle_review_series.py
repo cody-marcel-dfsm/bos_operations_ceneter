@@ -1510,10 +1510,24 @@ class ReviewSeries(unittest.TestCase):
         original = record["execution_environment"]
         self.assertEqual(original["platform"], o.platform.system())
         self.assertEqual(original["python"], o.platform.python_version())
-        self.assertTrue(original["node"])
+        self.assertEqual(original["node"], "unknown")
         with patch.object(command_coverage, "environment_metadata", return_value={"platform": "different-assessment-host"}):
             retained = o._validation_record(self.root, str(self.evidence), record["inputs"], record["environment_digest"])
         self.assertEqual(retained["execution_environment"], original)
+
+    def test_capture_binds_nondefault_absolute_runtime_metadata(self):
+        for executable, key, display, version in [("node", "node", "v20.8.1", "v20.8.1"),
+                                                  ("python3.12", "python", "Python 3.12.7", "3.12.7")]:
+            with self.subTest(executable=executable):
+                path = self.root / "alternate-runtime" / executable
+                path.parent.mkdir(exist_ok=True)
+                self.change(str(path.relative_to(self.root)), "#!/bin/sh\nprintf '%s\\n' '" + display + "'\n")
+                path.chmod(0o755); self.git("add", str(path.relative_to(self.root)))
+                record = self.record_check([str(path)])
+                self.assertEqual(record["execution_environment"][key], version)
+                self.assertEqual(record["execution_environment"]["node" if key == "python" else "python"], "unknown")
+                self.assertEqual(record["capture_environment"]["python"], o.platform.python_version())
+                self.assertEqual(record["execution_custody"][0]["token"], str(path))
 
     def test_capture_selected_drift_rejects_and_retains_actual_outputs(self):
         command = [sys.executable, "-c", "import sys; print('actual stdout'); print('actual stderr',file=sys.stderr)"]

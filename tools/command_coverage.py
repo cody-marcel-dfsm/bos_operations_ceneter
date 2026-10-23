@@ -162,6 +162,34 @@ def environment_metadata() -> dict:
     return result
 
 
+def execution_metadata(root: Path, custody: list, environment: dict, *, execute=subprocess.run) -> dict:
+    """Describe the captured executable chain; default PATH is no substitute."""
+    result = dict.fromkeys(("python", "node", "npm"), "unknown")
+    result["platform"] = platform.system()
+    for entry in custody:
+        token = Path(entry["token"]).name
+        name = ("python" if re.fullmatch(r"python(?:[0-9]+(?:\.[0-9]+)*)?", token)
+                else token if token in {"node", "npm"} else None)
+        if name is None:
+            continue
+        path = Path(entry["resolved"])
+        path = path if path.is_absolute() else root / path
+        try:
+            completed = execute([str(path), "--version"], cwd=root, env=environment,
+                                capture_output=True, text=True, check=True)
+            text = completed.stdout.strip() or completed.stderr.strip()
+            if name == "python":
+                match = re.fullmatch(r"Python ([0-9]+(?:\.[0-9]+)*)", text)
+                version = match.group(1) if match else None
+            else:
+                version = text if re.fullmatch(r"v?[0-9]+(?:\.[0-9]+)*", text) else None
+            if version is not None:
+                result[name] = version
+        except (OSError, subprocess.CalledProcessError):
+            pass  # Original custody still binds this runtime; display is unknown.
+    return result
+
+
 def _description(tree: str, coverage: str) -> str:
     if not re.fullmatch(r"[0-9a-f]{40}", tree) or not re.fullmatch(r"[0-9a-f]{64}", coverage):
         raise o.OracleApprovalError("Command attestation requires exact tree and coverage identities")
