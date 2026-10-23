@@ -31,14 +31,18 @@ class CommandCoverage(unittest.TestCase):
             "description": coverage._description(tree or self.tree, self.digest),
             "target_url": coverage.public_status._target(self.commit)}
 
-    def environment(self):
-        return {"context": coverage.ENVIRONMENT_PREFIX + self.digest, "state": "success",
-            "creator": {"login": coverage.public_status.PUBLISHER}, "description": self.origin,
-            "target_url": coverage.public_status._target(self.commit)}
+    def environments(self, values=None):
+        values, identity = coverage._environment_set(values or [self.origin])
+        rows = [(coverage.ENVIRONMENT_PREFIX + self.digest + "/" + self.required["id"],
+                 "origins:" + str(len(values)) + " sha256:" + identity)]
+        rows.extend((coverage.ENVIRONMENT_PREFIX + identity + "/" + o._sha(value.encode()), value) for value in values)
+        return [{"context": context, "state": "success", "creator": {"login": coverage.public_status.PUBLISHER},
+                 "description": summary, "target_url": coverage.public_status._target(self.commit)}
+                for context, summary in rows]
 
     def test_current_changelist_reuses_original_environment_without_claiming_ci_execution(self):
-        result = coverage._native_coverage([self.row(), self.environment()], self.commit, self.tree, self.required)
-        self.assertEqual(result, (self.digest, self.origin))
+        result = coverage._native_coverage([self.row(), *self.environments()], self.commit, self.tree, self.required)
+        self.assertEqual(result, (self.digest, [self.origin]))
 
     def test_chat_author_and_shell_bookkeeping_preserve_functional_validation_environment(self):
         with patch.dict(os.environ, {"CODEX_THREAD_ID": "synthetic-chat-A", "PWD": "/synthetic/old", "SHLVL": "2", "GIT_AUTHOR_NAME": "A"}):
@@ -48,9 +52,9 @@ class CommandCoverage(unittest.TestCase):
         self.assertEqual(original, current)
 
     def test_wrong_issuer_source_and_latest_failure_cannot_reuse_prior_success(self):
-        for rows in ([self.row(issuer="untrusted"), self.environment()],
-                     [self.row(tree="d" * 40), self.environment()],
-                     [self.row(state="failure"), self.row(), self.environment()]):
+        for rows in ([self.row(issuer="untrusted"), *self.environments()],
+                     [self.row(tree="d" * 40), *self.environments()],
+                     [self.row(state="failure"), self.row(), *self.environments()]):
             with self.subTest(rows=rows):
                 self.assertIsNone(coverage._native_coverage(rows, self.commit, self.tree, self.required)[0])
 
@@ -86,7 +90,7 @@ class CommandCoverage(unittest.TestCase):
         calls = []
         def execute(command, **kwargs):
             calls.append(command)
-            return subprocess.CompletedProcess(command, 0, json.dumps([[self.row(), self.environment()]]) if command[0] == "gh" else "", "")
+            return subprocess.CompletedProcess(command, 0, json.dumps([[self.row(), *self.environments()]]) if command[0] == "gh" else "", "")
         with patch.object(coverage.public_status, "verify_publication", return_value={"candidate_commit": self.commit, "candidate_tree": self.tree}), \
                 patch.object(o, "_git", return_value=self.tree), \
                 patch.object(coverage, "requirements", return_value=[self.required, second]):
@@ -102,7 +106,7 @@ class CommandCoverage(unittest.TestCase):
             calls.append(command)
             self.assertEqual(command[0], "gh")
             self.assertIn("commits/" + self.commit + "/statuses", command[2])
-            return subprocess.CompletedProcess(command, 0, json.dumps([[self.row(), self.environment()]]), "")
+            return subprocess.CompletedProcess(command, 0, json.dumps([[self.row(), *self.environments()]]), "")
         approved = {"candidate_commit": self.commit, "candidate_tree": self.tree}
         with patch.object(coverage.public_status, "verify_publication", return_value=approved), \
                 patch.object(o, "_git", return_value=self.tree), \
@@ -454,7 +458,10 @@ class CommandCoverage(unittest.TestCase):
         payload = {"validated_commit": self.commit, "candidate_tree": self.tree,
             "technical_receipt_sha256": selected["technical_receipt_sha256"],
             "native_decision": native_ref, "command_coverage": [decision],
-            "execution_environment": {"platform": "Darwin", "python": "3.14.6", "node": "v22.11.0", "npm": "10.9.0"}}
+            "assessment_environment": {"platform": "Darwin", "python": "3.14.6", "node": "v22.11.0", "npm": "10.9.0"},
+            "command_environments": [{"id": decision["id"], "observations": [{"evidence_path": private,
+                "evidence_sha256": "e" * 64, "environment_digest": "private environment hash",
+                "execution_environment": {"platform": "Linux", "node": "20"}}]}]}
         tracking = dict(payload, tracking_sha256=o._sha(o._canonical(payload)))
         path = self.root / "tracking.json"
         path.write_bytes(o._pretty(tracking))
@@ -468,12 +475,75 @@ class CommandCoverage(unittest.TestCase):
         with patch.object(shipment, "_load", return_value=checkpoint), \
                 patch.object(shipment, "validated_receipt", return_value=(receipt, receipt_raw)), \
                 patch.object(coverage, "requirements", return_value=[self.required]):
-            self.assertEqual(len(coverage.publish_statuses(self.root, selected, execute=execute)), 2)
+            self.assertEqual(len(coverage.publish_statuses(self.root, selected, execute=execute)), 3)
         public = json.dumps(calls)
         for protected in [private, "Vault", "synthetic-owner", "private observation", "private environment", "evidence_paths", "inputs"]:
             self.assertNotIn(protected, public)
         self.assertIn(self.commit, public)
         self.assertIn(self.tree, public)
+        self.assertIn("origin:Linux python:unknown node:20", public)
+        self.assertNotIn("Darwin", public)
+
+    def test_original_mixed_environments_are_bound_per_command_and_missing_metadata_stays_unknown(self):
+        from tools import shipment_state as shipment, oracle_lifecycle
+        directory = self.root / ".git/oracle/series/synthetic"
+        directory.mkdir(parents=True)
+        log = self.root / "original-ci.log"; log.write_text("actual failed aggregate; unchanged cases passed")
+        original = self.root / "original-ci.json"
+        original.write_text(json.dumps({"kind": "external-ci-actual-observation-v1", "outcome": "FAILED",
+            "environment": "GitHub ubuntu-latest / Node20; retained original execution",
+            "log": str(log), "log_sha256": o._sha(log.read_bytes())}))
+        repair = self.root / "repair.json"
+        repair.write_text(json.dumps({"kind": "oracle-validation-record-v1", "command": ["python3", "repair.py"],
+            "environment_digest": "original-Darwin-proof", "inputs": [], "output_hashes": {},
+            "execution_environment": {"platform": "Darwin", "python": "3.14.6", "node": "22.11.0"}}))
+        unknown = self.root / "legacy.json"
+        unknown.write_text(json.dumps({"kind": "oracle-validation-record-v1", "environment_digest": "original-unknown-proof"}))
+        row = dict(self.required, evidence_paths=[str(log), str(repair), str(unknown)],
+                   status="COMPLETE", basis="INDEPENDENT_APPLICABILITY")
+        context = self.root / "context.json"; context.write_text(json.dumps({"required_commands": [self.required]}))
+        review = {"review_status": "COMPLETE", "command_coverage": [row]}
+        round_path = directory / "round-00001.json"
+        round_path.write_bytes(o._pretty({"candidate_tree": self.tree, "outcome": "APPROVED", "review": review,
+            "context_file": str(context), "verified_validations": []}))
+        evidence = {o._custody_name(self.root, path): o._sha(path.read_bytes()) for path in [log, original, repair, unknown, context, round_path]}
+        receipt = {"candidate_tree": self.tree, "review_digest": o._sha(o._canonical(review)), "validation_evidence": evidence}
+        original_bytes = original.read_bytes(); saved = {}
+        assessment = {"platform": "Darwin", "python": "3.14.6", "node": "22.11.0", "npm": "10.9.0"}
+        with patch.object(o, "_git", return_value=self.tree), \
+                patch.object(o, "receipt_path", return_value=self.root / ".git/oracle/approval.json"), \
+                patch.object(coverage, "environment_metadata", return_value=assessment), \
+                patch.object(oracle_lifecycle, "_publish", side_effect=lambda _o, _root, _path, value: saved.update(value)):
+            shipment.record_command_tracking(self.root, {}, receipt, o._pretty(receipt), self.commit)
+        self.assertEqual(saved["assessment_environment"], assessment)
+        observations = saved["command_environments"][0]["observations"]
+        self.assertEqual({value["execution_environment"]["platform"] for value in observations}, {"Linux", "Darwin", "unknown"})
+        self.assertEqual({value["environment_digest"] for value in observations}, {None, "original-Darwin-proof", "original-unknown-proof"})
+        self.assertEqual(original.read_bytes(), original_bytes)
+        self.assertEqual(json.loads(original_bytes)["outcome"], "FAILED")
+        tracking = self.root / "tracking.json"; tracking.write_bytes(o._pretty(saved))
+        checkpoint = {"command_tracking": {"path": str(tracking), "sha256": o._sha(tracking.read_bytes())}}
+        selected = {"candidate_commit": self.commit, "candidate_tree": self.tree,
+                    "technical_receipt_sha256": o._sha(o._pretty(receipt))}
+        def transport(command, **kwargs):
+            fields = dict(command[index + 1].split("=", 1) for index, value in enumerate(command) if value == "-f")
+            fields["creator"] = {"login": coverage.public_status.PUBLISHER}
+            return subprocess.CompletedProcess(command, 0, json.dumps(fields), "")
+        with patch.object(shipment, "_load", return_value=checkpoint), \
+                patch.object(shipment, "validated_receipt", return_value=(receipt, o._pretty(receipt))), \
+                patch.object(coverage, "requirements", return_value=[self.required]):
+            statuses = coverage.publish_statuses(self.root, selected, execute=transport)
+        expected = sorted(coverage._environment_description(value["execution_environment"]) for value in observations)
+        self.assertEqual(coverage._native_coverage(statuses, self.commit, self.tree, self.required), (saved["tracking_sha256"], expected))
+
+    def test_mixed_origin_transport_requires_complete_set_and_preserves_original_metadata(self):
+        values = [self.origin, "origin:Linux python:unknown node:20", "origin:unknown python:unknown node:unknown"]
+        rows = [self.row(), *self.environments(values)]
+        self.assertEqual(coverage._native_coverage(rows, self.commit, self.tree, self.required), (self.digest, sorted(values)))
+        for invalid in (rows[:-1], [rows[0], dict(rows[1], state="failure"), *rows[2:]],
+                        [*rows[:2], dict(rows[2], state="failure"), *rows[2:]]):
+            with self.subTest(invalid=invalid):
+                self.assertIsNone(coverage._native_coverage(invalid, self.commit, self.tree, self.required)[0])
 
 
 if __name__ == "__main__":

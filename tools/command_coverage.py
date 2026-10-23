@@ -24,6 +24,90 @@ except ImportError:
 
 PREFIX = "validation/native-command/"
 ENVIRONMENT_PREFIX = "validation/native-environment/"
+PLATFORMS = {"Linux", "Darwin", "Windows", "FreeBSD", "OpenBSD", "NetBSD", "SunOS", "AIX", "unknown"}
+
+
+def _original_environment(value) -> dict:
+    """Retain only display facts present in original execution evidence."""
+    result = dict.fromkeys(("platform", "python", "node", "npm"), "unknown")
+    if isinstance(value, dict):
+        for name in result:
+            fact = value.get(name)
+            pattern = r"v?[0-9]+(?:\.[0-9]+)*"
+            if isinstance(fact, str) and (fact in PLATFORMS if name == "platform" else re.fullmatch(pattern, fact)):
+                result[name] = fact
+    elif isinstance(value, str):
+        for pattern, name in ((r"\b(?:Linux|ubuntu(?:-latest)?)\b", "Linux"),
+                              (r"\b(?:Darwin|macOS)\b", "Darwin"), (r"\bWindows\b", "Windows")):
+            if re.search(pattern, value):
+                result["platform"] = name
+                break
+        for name in ("python", "node", "npm"):
+            match = re.search(r"\b" + name + r"\s*:?\s*(v?[0-9]+(?:\.[0-9]+)*)\b", value, re.I)
+            if match:
+                result[name] = match.group(1)
+    return result
+
+
+def original_command_environments(root: Path, coverage: list, evidence: dict) -> list:
+    """Bind original per-command provenance; assessment never supplies execution."""
+    originals, outputs = {}, {}
+    kinds = {"oracle-validation-record-v1", "external-ci-actual-observation-v1", "privacy-production-measurement-v1"}
+    for name, identity in evidence.items():
+        raw = o._custody_read(root, name)[1]
+        if o._sha(raw) != identity:
+            raise o.OracleApprovalError("Original command environment evidence changed")
+        try:
+            record = json.loads(raw)
+        except (ValueError, UnicodeDecodeError):
+            continue
+        if not isinstance(record, dict) or record.get("kind") not in kinds:
+            continue
+        value = record.get("execution_environment", record.get("environment"))
+        originals[name] = {"evidence_path": name, "evidence_sha256": identity,
+            "environment_digest": record.get("environment_digest"),
+            "execution_environment": _original_environment(value), "original_environment": value}
+        linked = dict(record.get("output_hashes", {}))
+        if isinstance(record.get("log"), str) and isinstance(record.get("log_sha256"), str):
+            linked[record["log"]] = record["log_sha256"]
+        for output, digest in linked.items():
+            canonical = o._custody_name(root, output)
+            actual = evidence.get(canonical, evidence.get(output))
+            if actual == digest:
+                outputs.setdefault(canonical, []).append(name)
+    rows = []
+    for row in coverage:
+        selected = set()
+        for name in row["evidence_paths"]:
+            canonical = o._custody_name(root, name)
+            selected.update(outputs.get(canonical, []))
+            if name in originals:
+                selected.add(name)
+            elif canonical in originals:
+                selected.add(canonical)
+        observations = [originals[name] for name in sorted(selected)]
+        if not observations:
+            observations = [{"evidence_path": name, "evidence_sha256": evidence[name],
+                "environment_digest": None, "execution_environment": _original_environment(None),
+                "original_environment": None} for name in row["evidence_paths"]]
+        rows.append({"id": row["id"], "observations": observations})
+    return rows
+
+
+def _environment_description(environment: dict) -> str:
+    metadata = _original_environment(environment)
+    return ("origin:" + metadata["platform"] + " python:" + metadata["python"]
+            + " node:" + metadata["node"] + " npm:" + metadata["npm"])
+
+
+def _environment_set(descriptions: list[str]) -> tuple[list[str], str]:
+    values = sorted(set(descriptions))
+    return values, o._sha(o._canonical(values))
+
+
+def _valid_environment_description(value: str) -> bool:
+    match = re.fullmatch(r"origin:([A-Za-z]+) python:(?:unknown|v?[0-9.]+) node:(?:unknown|v?[0-9.]+)(?: npm:(?:unknown|v?[0-9.]+))?", value)
+    return bool(match and match.group(1) in PLATFORMS)
 
 
 def requirements(root: Path, tree: str) -> list[dict]:
@@ -122,12 +206,19 @@ def publish_statuses(root: Path, selected: dict, *, execute=subprocess.run) -> l
         raise o.OracleApprovalError("Command applicability differs from the original complete native decision")
     digest = tracking["tracking_sha256"]
     description = _description(selected["candidate_tree"], digest)
-    environment = tracking["execution_environment"]
-    metadata = "origin:" + environment["platform"] + " python:" + environment["python"] + " node:" + environment["node"]
-    if not re.fullmatch(r"origin:[A-Za-z]+ python:[0-9.]+ node:v?[0-9.]+", metadata):
-        raise o.OracleApprovalError("Public command environment metadata must contain only platform and runtime versions")
     rows = [(PREFIX + row["id"], description) for row in coverage]
-    rows.append((ENVIRONMENT_PREFIX + digest, metadata))
+    environments = tracking.get("command_environments", [])
+    if len(environments) != len(required) or {item["id"] for item in environments} != set(expected):
+        raise o.OracleApprovalError("Command tracking lacks original per-command execution provenance")
+    metadata_rows = set()
+    for row in environments:
+        observations = row.get("observations", [])
+        if not observations or any(not item.get("evidence_sha256") for item in observations):
+            raise o.OracleApprovalError("Original command execution provenance is unbound")
+        values, identity = _environment_set([_environment_description(item["execution_environment"]) for item in observations])
+        rows.append((ENVIRONMENT_PREFIX + digest + "/" + row["id"], "origins:" + str(len(values)) + " sha256:" + identity))
+        metadata_rows.update((ENVIRONMENT_PREFIX + identity + "/" + o._sha(value.encode()), value) for value in values)
+    rows.extend(sorted(metadata_rows))
     statuses = []
     for context, summary in rows:
         completed = execute(["gh", "api", "--method", "POST",
@@ -144,7 +235,7 @@ def publish_statuses(root: Path, selected: dict, *, execute=subprocess.run) -> l
     return statuses
 
 
-def _native_coverage(statuses: list, commit: str, tree: str, command: dict) -> tuple[str | None, str]:
+def _native_coverage(statuses: list, commit: str, tree: str, command: dict) -> tuple[str | None, str | list]:
     trusted = [row for row in statuses if row.get("context") == PREFIX + command["id"]
                and row.get("creator", {}).get("login") == public_status.PUBLISHER]
     if not trusted:
@@ -154,13 +245,30 @@ def _native_coverage(statuses: list, commit: str, tree: str, command: dict) -> t
     if (row.get("state") != "success" or row.get("target_url") != public_status._target(commit)
             or not match or match.group(1) != tree):
         return None, "Latest trusted command coverage is invalidated, failed or bound to different source"
-    environment = next((item for item in statuses if item.get("context") == ENVIRONMENT_PREFIX + match.group(2)
+    environment = next((item for item in statuses if item.get("context") == ENVIRONMENT_PREFIX + match.group(2) + "/" + command["id"]
         and item.get("creator", {}).get("login") == public_status.PUBLISHER), None)
+    selected = re.fullmatch(r"origins:([1-9][0-9]*) sha256:([0-9a-f]{64})", environment.get("description", "")) if environment else None
     if (not environment or environment.get("state") != "success"
             or environment.get("target_url") != public_status._target(commit)
-            or not re.fullmatch(r"origin:[A-Za-z]+ python:[0-9.]+ node:v?[0-9.]+", environment.get("description", ""))):
+            or not selected):
         return None, "Original validation environment metadata is missing or invalidated"
-    return match.group(2), environment["description"]
+    prefix = ENVIRONMENT_PREFIX + selected.group(2) + "/"
+    latest = {}
+    for item in statuses:
+        context = item.get("context", "")
+        if context.startswith(prefix) and item.get("creator", {}).get("login") == public_status.PUBLISHER:
+            latest.setdefault(context, item)
+    descriptions = []
+    for context, item in latest.items():
+        summary = item.get("description", "")
+        if (item.get("state") != "success" or item.get("target_url") != public_status._target(commit)
+                or not _valid_environment_description(summary) or context != prefix + o._sha(summary.encode())):
+            return None, "Original execution environment observation is invalidated"
+        descriptions.append(summary)
+    values, identity = _environment_set(descriptions)
+    if len(values) != int(selected.group(1)) or identity != selected.group(2):
+        return None, "Original execution environment set is incomplete or changed"
+    return match.group(2), values
 
 
 def ci(root: Path, candidate: str, *, execute=subprocess.run) -> list[dict]:
@@ -182,7 +290,8 @@ def ci(root: Path, candidate: str, *, execute=subprocess.run) -> list[dict]:
         digest, reason = _native_coverage(statuses, commit, tree, command)
         if digest:
             outcomes.append({"command": command["command"], "status": "REUSED_NATIVE_APPLICABILITY",
-                             "coverage_sha256": digest, "original_environment": reason})
+                             "coverage_sha256": digest, "original_environments": reason,
+                             "original_environment": "; ".join(reason)})
         else:
             print(json.dumps({"command": command["command"], "status": "RUN_REQUIRED", "reason": reason}), flush=True)
             execute(command["command"], cwd=root, check=True)

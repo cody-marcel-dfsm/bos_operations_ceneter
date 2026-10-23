@@ -409,15 +409,16 @@ def record_command_tracking(root: Path, previous: dict, receipt: dict, raw: byte
                 "environment_digest": validation["environment_digest"],
                 "output_hashes": validation["output_hashes"]})
     if __package__:
-        from .command_coverage import environment_metadata
+        from .command_coverage import environment_metadata, original_command_environments
     else:
-        from command_coverage import environment_metadata
+        from command_coverage import environment_metadata, original_command_environments
     payload = {"kind": "boc-validation-command-tracking-v1", "validated_commit": commit,
         "candidate_tree": receipt["candidate_tree"], "technical_receipt_sha256": o._sha(raw),
         "previous_validated_commit": previous.get("last_validated_commit"),
         "changelists": [{"commit": value, "tree": o._git(root, "rev-parse", value + "^{tree}").strip()}
                         for value in commits], "commands": commands, "required_commands": required_commands,
-        "command_coverage": command_coverage, "execution_environment": environment_metadata()}
+        "command_coverage": command_coverage, "assessment_environment": environment_metadata(),
+        "command_environments": original_command_environments(root, command_coverage, receipt["validation_evidence"])}
     payload["native_decision"] = native_decision
     result = dict(payload, tracking_sha256=o._sha(o._canonical(payload)))
     path = o.receipt_path(root).parent / "command-tracking" / (commit + "-" + o._sha(raw) + ".json")

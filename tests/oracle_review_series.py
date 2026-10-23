@@ -1504,6 +1504,17 @@ class ReviewSeries(unittest.TestCase):
         self.assertEqual(next_record["exit_code"], 0)
         self.assertEqual(o._validation_record(self.root, str(self.evidence), next_record["inputs"], next_record["environment_digest"]), next_record)
 
+    def test_capture_preserves_original_execution_metadata_through_later_assessment(self):
+        from tools import command_coverage
+        record = self.record_check()
+        original = record["execution_environment"]
+        self.assertEqual(original["platform"], o.platform.system())
+        self.assertEqual(original["python"], o.platform.python_version())
+        self.assertTrue(original["node"])
+        with patch.object(command_coverage, "environment_metadata", return_value={"platform": "different-assessment-host"}):
+            retained = o._validation_record(self.root, str(self.evidence), record["inputs"], record["environment_digest"])
+        self.assertEqual(retained["execution_environment"], original)
+
     def test_capture_selected_drift_rejects_and_retains_actual_outputs(self):
         command = [sys.executable, "-c", "import sys; print('actual stdout'); print('actual stderr',file=sys.stderr)"]
         original = o.subprocess.run

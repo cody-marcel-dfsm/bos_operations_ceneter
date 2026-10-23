@@ -1864,6 +1864,11 @@ def record_validation(root: Path, command: Sequence[str], input_paths: Sequence[
     effective_environment, environment_inputs, extras = _validation_environment(environment_keys)
     executable = _execution_custody(root, command, effective_environment)
     authority_custody = _custody_files(root, list(authority), allow_absent=True)
+    if __package__:
+        from .command_coverage import environment_metadata
+    else:
+        from command_coverage import environment_metadata
+    execution_environment = environment_metadata()
     started = datetime.now(timezone.utc).isoformat()
     _private_witness_write(root, output, None)
     completed = subprocess.run(list(command), cwd=root, capture_output=True, env=effective_environment)
@@ -1887,6 +1892,7 @@ def record_validation(root: Path, command: Sequence[str], input_paths: Sequence[
                "inputs": [{"path": name, "digest": selected_inputs[name]} for name in selected],
                "live_inputs": live_inputs,
                "environment_digest": binding["environment_digest"],
+               "execution_environment": execution_environment,
                "environment_policy": "bounded-v1", "environment_keys": extras,
                "environment_inputs": environment_inputs,
                "review_policy_digest": policy,
