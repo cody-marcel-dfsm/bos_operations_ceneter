@@ -3,6 +3,7 @@ import copy
 import hashlib
 import hmac
 import json
+import inspect
 from pathlib import Path
 import subprocess
 import sys
@@ -99,6 +100,38 @@ class PrivacyTransition(unittest.TestCase):
         bad["review_digest"] = o._sha(o._canonical({"review_status": "COMPLETE", "command_coverage": []}))
         with self.assertRaises(o.OracleApprovalError): self.authorize(receipt=bad)
         self.assertEqual(list((self.key.parent / "transitions").glob("*.json")), [])
+
+    def test_real_native_archive_gate_binds_current_policy_and_rejects_stale_or_tampered_proof(self):
+        # A real native execution witness exercises the consumer gate here;
+        # receipt and policy-preview fixtures isolate final authorization.
+        for name in o.REVIEW_POLICY_MODULES:
+            original = Path(inspect.getsourcefile(o._oracle)).parent / Path(name).name
+            target = self.root / name; target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(original.read_bytes())
+        (self.root / '.gitignore').write_text('Vault/\n__pycache__/\n')
+        for args in [('config', 'user.name', 'Synthetic Reviewer'),
+                     ('config', 'user.email', 'review@example.invalid'), ('add', '.'), ('commit', '-qm', 'native archive fixture')]:
+            subprocess.run(['git', *args], cwd=self.root, check=True)
+        old_output = next(iter(self.archive_record['output_hashes']))
+        observed = Path(old_output).read_text()
+        self.archive_record = o.record_validation(self.root,
+            [sys.executable, '-B', '-c', 'print(' + repr(observed) + ', end="")'],
+            sorted(privacy.INPUTS), self.archive)
+        self.facts['source_inputs'] = o._files(self.root, sorted(privacy.INPUTS))
+        self.facts['archive_validation'] = self.reference(self.archive)
+        self.facts_path.write_bytes(o._pretty(self.facts))
+        self.receipt['validation_evidence'][self.name] = o._sha(self.facts_path.read_bytes())
+        self.assertEqual(o._validation_record(self.root, self.facts['archive_validation']['path'],
+            self.archive_record['inputs'], self.archive_record['environment_digest']), self.archive_record)
+        with patch.object(privacy.shipment_state, 'validated_receipt', return_value=(self.receipt, o._pretty(self.receipt))), \
+                patch.object(privacy, 'policy_preview', return_value={'policy_sha256': self.current, 'archive_paths': ['artifact.zip']}):
+            result = privacy.authorize(self.root, self.facts_path)
+            self.assertEqual(privacy.authorize(self.root, self.facts_path), result)
+            with patch.object(o, '_review_policy_digest', return_value='f' * 64):
+                with self.assertRaises(o.OracleApprovalError): privacy.authorize(self.root, self.facts_path)
+            output = next(name for name in self.archive_record['output_hashes'] if name.endswith('.stdout.log'))
+            Path(output).write_text(observed + 'tampered')
+            with self.assertRaises(o.OracleApprovalError): privacy.authorize(self.root, self.facts_path)
 
 
 if __name__ == "__main__":

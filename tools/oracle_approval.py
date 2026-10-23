@@ -1518,15 +1518,45 @@ def _raw_criterion_candidates(root: Path, rounds: list[dict], inputs: dict, guar
                 continue
             if any(inputs.get(entry["path"]) != entry["digest"] for entry in item["inputs"]):
                 continue
-            latest[name] = dict(item,
+            latest[name] = (dict(item,
                 invalidation_reasons=[*guard_changes, "unadopted_native_observation"],
                 raw_observation={"actual_outcome": record["outcome"],
                     "record_sha256": record["record_sha256"],
                     "context_sha256": record["context_sha256"],
                     "assessment_pointer": raw.get("assessment_pointer", "/raw_assessment/assessment")
                         + "/coverage/" + str(index),
-                    "provenance_files": provenance})
-    return [item for item in latest.values() if item is not None]
+                    "provenance_files": provenance}), record['round'])
+    candidates = []
+    for selected in latest.values():
+        if selected is None:
+            continue
+        item, origin_round = selected
+        reasons, superseded = [], False
+        consumed = {entry['path'] for entry in item['inputs']}
+        for record in rounds:
+            review = record.get('review', {})
+            if not record.get('assessment_admitted', not record.get('raw_assessment') and 'error' not in review):
+                continue
+            # A later admitted individual assessment owns its actual footprint.
+            # Collective criterion expansion cannot erase a concrete obligation.
+            individual = any(row.get('path') == item['path'] and row.get('status') == 'REVIEWED'
+                             and not row.get('criterion_adoption') for row in record.get('verified_coverage', []))
+            if individual:
+                if record['round'] > origin_round:
+                    superseded = True
+                    break
+                reasons = []
+            reasons.extend('Explicit affected source assessment: ' + row.get('reason', 'UNREVIEWED')
+                           for row in review.get('coverage', [])
+                           if row.get('path') == item['path'] and row.get('status') == 'UNREVIEWED')
+            reasons.extend('Original supporting validation invalidated: ' + row.get('reason', 'Supporting validation invalidated')
+                           for row in review.get('validations', [])
+                           if row.get('evidence_path') in consumed and row.get('status') == 'INVALIDATED')
+        if not superseded:
+            if reasons:
+                item = dict(item, checkpoint_invalidation_reasons=list(dict.fromkeys(reasons)))
+            candidates.append(item)
+    return candidates
 
 
 def _raw_assessment_files(root: Path, rounds: list[dict]) -> dict:

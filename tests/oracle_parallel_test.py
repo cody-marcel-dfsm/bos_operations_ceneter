@@ -729,9 +729,17 @@ class RawObservationCriterion(unittest.TestCase):
         self.root = self.fixture.root
         self.capture_error()
 
-    def capture_error(self, status='COMPLETE'):
+    def capture_error(self, status='COMPLETE', *, support=False, neighbor=False):
         def drift(context):
             result = self.fixture.result(context, status=status)
+            if support:
+                name = str(self.fixture.evidence.relative_to(self.root))
+                next(row for row in result['coverage'] if row['path'] == 'source.py')['inputs'].append(
+                    {'path': name, 'digest': context['input_hashes'][name]})
+            if neighbor:
+                result['coverage'].append({'path': 'dependency.py', 'status': 'REVIEWED',
+                    'inputs': [{'path': 'dependency.py', 'digest': context['input_hashes']['dependency.py']}],
+                    'reason': 'Independently completed unchanged neighbor body'})
             run = o._RUN.get()
             # Synthetic native producer metadata; this fixture launches no model.
             o._atomic_write(run / 'model.json', o._pretty({'reviewer_role': 'independent-oracle-approver'}))
@@ -809,6 +817,60 @@ class RawObservationCriterion(unittest.TestCase):
         self.assertEqual(candidates[0]['invalidation_reasons'], candidates[1]['invalidation_reasons'])
         self.assertTrue(all(row['invalidation_reasons'][-1] == 'unadopted_native_observation'
                             for row in candidates))
+
+    def admitted_gap(self, *, supporting_proof):
+        self.capture_error(support=supporting_proof, neighbor=True)
+        raw_round = self.rounds[-1]
+        def invalidate(context):
+            result = self.fixture.result(context, status='INCOMPLETE')
+            result['coverage'] = [row for row in result['coverage'] if row['path'] != 'dependency.py']
+            source = next(row for row in result['coverage'] if row['path'] == 'source.py')
+            if supporting_proof:
+                result['coverage'].remove(source)
+                name = str(self.fixture.evidence.relative_to(self.root))
+                proof = json.loads(self.fixture.evidence.read_text())
+                result['validations'] = [{'evidence_path': name, 'status': 'INVALIDATED',
+                    'inputs': proof['inputs'], 'environment_digest': proof['environment_digest'],
+                    'reason': 'Actual supporting proof omitted the construction failure path'}]
+            else:
+                source.update(status='UNREVIEWED', reason='Construction failure path remains unexamined')
+            return result
+        self.fixture.submit(invalidate, error=o.OracleReviewIncomplete)
+        admitted = o._read_rounds(o._series_directory(self.root, self.fixture.base))[-1]
+        self.assertTrue(admitted['assessment_admitted'])
+        def inspect(context):
+            source = next(row for row in context['invalidated_coverage']
+                          if row['path'] == 'source.py' and row.get('raw_observation'))
+            self.assertTrue(source['checkpoint_invalidation_reasons'])
+            digest = lambda value: o._sha(o._canonical(value))
+            plan = parallel.partition(context, {'reviewer_settings': {}}, digest)
+            self.assertIn('source.py', plan['required_paths'])
+            neighbor = next(group for group in plan['retained_criteria']
+                if any(context['invalidated_coverage'][i]['path'] == 'dependency.py'
+                       for i in group['original_coverage_indices']))
+            self.assertFalse(any(context['invalidated_coverage'][i]['path'] == 'source.py'
+                                 for group in plan['retained_criteria'] for i in group['original_coverage_indices']))
+            effective = parallel._criterion_context(context, plan)
+            expanded, _ = parallel._expanded_criteria(o, context, plan, {'coverage': [{
+                'path': neighbor['path'], 'status': 'REVIEWED',
+                'inputs': [{'path': neighbor['path'], 'digest': effective['input_hashes'][neighbor['path']]}],
+                'reason': 'Current applicability of unaffected neighbor; concrete source gap remains individual'}]})
+            self.assertNotIn('source.py', [row['path'] for row in expanded['coverage']])
+            self.assertFalse(o.receipt_path(self.root).exists())
+            return self.fixture.result(context)
+        self.fixture.submit(inspect)
+        self.rounds = o._read_rounds(o._series_directory(self.root, self.fixture.base))
+        self.assertEqual(raw_round['outcome'], 'ERROR')
+        self.assertNotIn('source.py', [row['path'] for row in self.candidates()])
+        current = {row['path']: row for row, _ in o._coverage_checkpoints(self.rounds)}
+        self.assertFalse(current['source.py'].get('checkpoint_invalidation_reasons'))
+        self.assertTrue(o.receipt_path(self.root).exists())
+
+    def test_later_admitted_unreviewed_keeps_raw_source_individual_until_reassessed(self):
+        self.admitted_gap(supporting_proof=False)
+
+    def test_later_admitted_invalidated_support_keeps_raw_source_individual_until_reassessed(self):
+        self.admitted_gap(supporting_proof=True)
 
     def test_changed_inputs_and_negative_rows_remain_individual_assignments(self):
         changed = dict(self.inputs, **{'source.py': 'changed-source'})
