@@ -266,6 +266,7 @@ class CommandCoverage(unittest.TestCase):
             calls.append("remote-admission")
             return {"source_commit": self.commit, "run_ids": [123]}
         with patch.object(publication, "plan", return_value=selected), \
+                patch.object(publication, "_check_authorization", wraps=publication._check_authorization) as authority, \
                 patch.object(coverage, "requirements", return_value=[self.required]), \
                 patch.object(coverage, "publish_statuses", side_effect=command_export), \
                 patch.object(publication.public_status, "publish_status", side_effect=source_export), \
@@ -274,6 +275,7 @@ class CommandCoverage(unittest.TestCase):
             original = Path(first["prepared_file"]).stat().st_ino, Path(first["prepared_file"]).read_bytes()
             second = publication.prepare(self.root, self.commit, selected["release_ref"], "main-promotion", execute=execute)
         self.assertEqual(first, second)
+        self.assertEqual(authority.call_count, 1)
         self.assertEqual(calls, ["object-upload", "command-coverage", "native-approval", "watched-pr-update", "remote-admission"])
         self.assertEqual((Path(first["prepared_file"]).stat().st_ino, Path(first["prepared_file"]).read_bytes()), original)
 
