@@ -91,6 +91,31 @@ class ShipmentWorkflow(unittest.TestCase):
             self.assertEqual(shipment.selection(self.root)["state"], "DELIVER")
             self.assertEqual(publication._source_receipt(self.root, commit)[0]["base_commit"], commit)
 
+    def test_later_rejection_blocks_selection_and_preparation_without_proof_replay(self):
+        commit = self.validate()
+        checkpoint = shipment.checkpoint_path(self.root).read_bytes()
+        self.fixture.submit(lambda c: self.fixture.result(c, findings=[self.fixture.finding(origin="MISSED")]),
+                            error=o.OracleCandidateRejected)
+        with patch.object(o, "_verify_receipt", side_effect=AssertionError("duplicate native proof replay")), \
+                patch.object(o, "_validation_record", side_effect=AssertionError("duplicate command validation")):
+            selected = shipment.selection(self.root)
+            self.assertEqual(selected["state"], "VALIDATE")
+            self.assertIn("latest native exact-candidate decision", selected["reason"])
+            with self.assertRaisesRegex(o.OracleApprovalError, "latest native exact-candidate decision"):
+                publication.prepare(self.root, commit, self.ref, "main-promotion", refresh=False)
+        self.assertEqual(shipment.checkpoint_path(self.root).read_bytes(), checkpoint)
+
+    def test_later_unfinished_decision_preserves_checkpoint_and_blocks_preparation(self):
+        commit = self.validate()
+        checkpoint = shipment.checkpoint_path(self.root).read_bytes()
+        for status in ("INCOMPLETE", "ERROR"):
+            with self.subTest(status=status):
+                self.fixture.submit(lambda c: self.fixture.result(c, status=status), error=o.OracleApprovalError)
+                self.assertEqual(shipment.selection(self.root)["state"], "VALIDATE")
+                with self.assertRaisesRegex(o.OracleApprovalError, "latest native exact-candidate decision"):
+                    publication.prepare(self.root, commit, self.ref, "main-promotion", refresh=False)
+                self.assertEqual(shipment.checkpoint_path(self.root).read_bytes(), checkpoint)
+
     def test_validation_tracks_actual_changelists_and_original_command_evidence(self):
         first = self.commit("first pending changelist")
         self.fixture.change("peer.py", "second pending changelist")

@@ -45,6 +45,28 @@ def _ancestor(root: Path, earlier: str, later: str) -> bool:
                           cwd=root, capture_output=True).returncode == 0
 
 
+def _current_native_decision(root: Path, receipt: dict) -> None:
+    """Consume the latest decision identity without replaying its proof closure."""
+    directory = o._series_directory(root, receipt["base_commit"])
+    paths = sorted(directory.glob("round-*.json"))
+    if not paths or paths[-1].name != f"round-{len(paths):04d}.json":
+        raise o.OracleApprovalError("Shipment lacks its latest native exact-candidate decision")
+    path = paths[-1]
+    raw = o._custody_read(root, path)[1]
+    try:
+        decision = json.loads(raw)
+        eligible = (receipt["validation_evidence"].get(o._custody_name(root, path)) == o._sha(raw)
+                    and decision["base_commit"] == receipt["base_commit"]
+                    and decision["candidate_tree"] == receipt["candidate_tree"]
+                    and decision["outcome"] == "APPROVED"
+                    and decision["review"].get("review_status") == "COMPLETE"
+                    and o._sha(o._canonical(decision["review"])) == receipt["review_digest"])
+    except (ValueError, KeyError, TypeError, AttributeError) as exc:
+        raise o.OracleApprovalError("Shipment latest native decision is malformed") from exc
+    if not eligible:
+        raise o.OracleApprovalError("Shipment latest native exact-candidate decision supersedes sealed validation")
+
+
 def validated_receipt(root: Path, commit: str | None = None, *, revalidate: bool = False) -> tuple[dict, bytes]:
     """Read the sealed validation result for an immutable committed candidate.
 
@@ -64,6 +86,7 @@ def validated_receipt(root: Path, commit: str | None = None, *, revalidate: bool
         raise o.OracleApprovalError("Shipment technical receipt changed")
     receipt = json.loads(raw)
     o._shape(receipt)
+    _current_native_decision(root, receipt)
     if revalidate:
         o._verify_receipt(root, receipt, raw)
     if (receipt["base_commit"] != commit
