@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import {copyFile, mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile} from "node:fs/promises";
 import {execFile} from "node:child_process";
 import {promisify} from "node:util";
+import {createHmac} from "node:crypto";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import test from "node:test";
-import {privacyFileCoverage, privacyPolicyIdentity} from "../scripts/lib/privacy-coverage.mjs";
+import {privacyFileCoverage, privacyPolicyIdentity, privacyPolicyDigest} from "../scripts/lib/privacy-coverage.mjs";
 const exec = promisify(execFile);
 
 async function fixture(t) {
@@ -22,6 +23,18 @@ async function fixture(t) {
   return {root, directory, paths, scan, calls,
     run: options => privacyFileCoverage({root, directory, candidates: paths, policy: {rules: "original", environment: "original"},
       source: {commit: "a".repeat(40), tree: "b".repeat(40)}, scan, ...options})};
+}
+
+async function transition(f, previous, current, changes = {}) {
+  const sorted = value => Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)));
+  const payload = sorted({kind: "boc-privacy-policy-transition-v1", scope: "UNCHANGED_NON_ARCHIVE_PASS",
+    previous_policy_sha256: privacyPolicyDigest(previous), current_policy_sha256: privacyPolicyDigest(current),
+    technical_receipt_sha256: "a".repeat(64), facts_sha256: "b".repeat(64), ...changes});
+  const key = await readFile(join(f.directory, "issuer.key"));
+  const signature = createHmac("sha256", key).update(JSON.stringify(payload) + "\n").digest("hex");
+  const path = join(f.directory, "transitions", privacyPolicyDigest(current) + ".json");
+  await writeFile(path, JSON.stringify(sorted({...payload, signature}), null, 2) + "\n", {mode: 0o600});
+  return path;
 }
 
 test("privacy reuses exact file results across CLs and scans only changed membership/content", async t => {
@@ -169,4 +182,43 @@ test("production privacy CLI preserves full source/Vault membership and consumes
   await rm(artifact); const removed = await invoke();
   assert.equal(removed.report.scanned, 0); assert.equal(removed.report.files.length, cold.report.files.length);
   assert.notEqual(removed.report.membership_sha256, added.report.membership_sha256);
+});
+
+test("reviewed archive-only transition retains exact original non-archive passes and executes archive members", async t => {
+  const f = await fixture(t), previous = {rules: "original"}, current = {rules: "original", archive: "sanitized"};
+  const archive = join(f.root, "artifact.zip"); await writeFile(archive, "synthetic archive bytes");
+  const candidates = [...f.paths, archive];
+  await f.run({policy: previous, candidates});
+  const originals = new Map(await Promise.all((await readdir(join(f.directory, "records")))
+    .map(async name => [name, await readFile(join(f.directory, "records", name))])));
+  await transition(f, previous, current);
+  const adopted = await f.run({policy: current, candidates});
+  assert.equal(adopted.report.bridged, 3); assert.equal(adopted.report.reused, 3); assert.equal(adopted.report.scanned, 1);
+  assert.equal(adopted.report.files.find(row => row.path.endsWith(".zip")).retained, undefined);
+  for (const [name, bytes] of originals) assert.deepEqual(await readFile(join(f.directory, "records", name)), bytes);
+  await writeFile(f.paths[0], "changed bytes under repaired policy");
+  const changed = await f.run({policy: current, candidates});
+  assert.equal(changed.report.bridged, 2); assert.equal(changed.report.scanned, 1); assert.equal(changed.report.reused, 3);
+});
+
+test("forged/stale transition facts, changed original proof and original failures never grant a bridged pass", async t => {
+  for (const variant of ["signature", "scope", "policy", "proof", "failure"]) {
+    const f = await fixture(t), previous = {rules: "original"}, current = {rules: "original", archive: "sanitized"};
+    if (variant === "failure") await writeFile(f.paths[0], "synthetic-blocked");
+    await f.run({policy: previous});
+    const path = await transition(f, previous, current, variant === "scope" ? {scope: "ALL_FILES"}
+      : variant === "policy" ? {current_policy_sha256: "c".repeat(64)} : {});
+    if (variant === "signature") await writeFile(path, (await readFile(path, "utf8")).replace('"signature": "', '"signature": "0'));
+    if (variant === "proof") {
+      for (const name of await readdir(join(f.directory, "records"))) {
+        const path = join(f.directory, "records", name), record = JSON.parse(await readFile(path));
+        if (record.input.path === "a.txt") { record.source.commit = "changed original"; await writeFile(path, JSON.stringify(record) + "\n"); }
+      }
+    }
+    const result = await f.run({policy: current});
+    assert.equal(result.report.bridged, ["proof", "failure"].includes(variant) ? 2 : 0);
+    assert.equal(result.report.scanned, ["proof", "failure"].includes(variant) ? 1 : 3);
+    if (variant === "failure") assert.equal(result.report.outcome, "FAILED");
+    else assert.ok(result.report.invalidated > 0);
+  }
 });

@@ -114,7 +114,7 @@ async function retainedResult(directory, key, input) {
 async function policyTransition(directory, key, current) {
   const raw = await privateRead(join(directory, "transitions", current + ".json"));
   const record = JSON.parse(raw), {signature, ...payload} = record;
-  if (encode(record) !== raw.toString() || signature !== sign(key, payload)
+  if (JSON.stringify(record, null, 2) + "\n" !== raw.toString() || signature !== sign(key, payload)
       || payload.kind !== "boc-privacy-policy-transition-v1" || payload.scope !== "UNCHANGED_NON_ARCHIVE_PASS"
       || payload.current_policy_sha256 !== current || payload.previous_policy_sha256 === current
       || [payload.previous_policy_sha256, payload.current_policy_sha256,
