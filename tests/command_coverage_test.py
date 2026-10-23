@@ -1,6 +1,7 @@
 """Exact native applicability reuse, preserving original command outcomes."""
 import copy
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -38,6 +39,13 @@ class CommandCoverage(unittest.TestCase):
     def test_current_changelist_reuses_original_environment_without_claiming_ci_execution(self):
         result = coverage._native_coverage([self.row(), self.environment()], self.commit, self.tree, self.required)
         self.assertEqual(result, (self.digest, self.origin))
+
+    def test_chat_author_and_shell_bookkeeping_preserve_functional_validation_environment(self):
+        with patch.dict(os.environ, {"CODEX_THREAD_ID": "synthetic-chat-A", "PWD": "/synthetic/old", "SHLVL": "2", "GIT_AUTHOR_NAME": "A"}):
+            original = o._environment_digest(), o._validation_environment()[1]
+        with patch.dict(os.environ, {"CODEX_THREAD_ID": "synthetic-chat-B", "PWD": "/synthetic/new", "SHLVL": "9", "GIT_AUTHOR_NAME": "B"}):
+            current = o._environment_digest(), o._validation_environment()[1]
+        self.assertEqual(original, current)
 
     def test_wrong_issuer_source_and_latest_failure_cannot_reuse_prior_success(self):
         for rows in ([self.row(issuer="untrusted"), self.environment()],
