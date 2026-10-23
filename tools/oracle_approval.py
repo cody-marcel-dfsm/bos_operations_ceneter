@@ -1554,7 +1554,9 @@ def _raw_criterion_candidates(root: Path, rounds: list[dict], inputs: dict, guar
                            if row.get('evidence_path') in consumed and row.get('status') == 'INVALIDATED')
         if not superseded:
             if reasons:
-                item = dict(item, checkpoint_invalidation_reasons=list(dict.fromkeys(reasons)))
+                reasons = list(dict.fromkeys(reasons))
+                item = dict(item, checkpoint_invalidation_reasons=reasons,
+                            invalidation_reasons=[*item['invalidation_reasons'], *reasons])
             candidates.append(item)
     return candidates
 

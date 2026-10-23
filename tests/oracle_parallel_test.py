@@ -842,6 +842,7 @@ class RawObservationCriterion(unittest.TestCase):
             source = next(row for row in context['invalidated_coverage']
                           if row['path'] == 'source.py' and row.get('raw_observation'))
             self.assertTrue(source['checkpoint_invalidation_reasons'])
+            self.assertTrue(set(source['checkpoint_invalidation_reasons']) <= set(source['invalidation_reasons']))
             digest = lambda value: o._sha(o._canonical(value))
             plan = parallel.partition(context, {'reviewer_settings': {}}, digest)
             self.assertIn('source.py', plan['required_paths'])
