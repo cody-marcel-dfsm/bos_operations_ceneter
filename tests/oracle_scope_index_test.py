@@ -49,6 +49,7 @@ class ScopeIndex(unittest.TestCase):
         effects = {'active': [{'id': identity}], 'dispositions': []}
         review = {'review_status': 'COMPLETE', 'protected_effects': effects}
         record = dict(context, outcome='APPROVED', review=review,
+                      verified_validations=[{'evidence_path': 'synthetic-proof', 'evidence_sha256': 'a' * 64}],
                       context_file=str(context_path.relative_to(self.root)),
                       context_sha256=o._sha(o._canonical(context)))
         record['record_sha256'] = o._sha(o._canonical(record))
@@ -112,6 +113,34 @@ class ScopeIndex(unittest.TestCase):
                     with patch.object(o, '_publication_scope_current', side_effect=change):
                         with self.assertRaises(o.OracleSourceBindingError): self.scope()
                 finally: target.write_bytes(before)
+
+    def test_execution_suffixes_preserve_prior_pass_and_admitted_affected_facts_revoke_it(self):
+        cases = [
+            ('execution-error', 'ERROR', {'error': 'interrupted', 'findings': [{'id': 'F1'}]}, False, {}, True),
+            ('unfinished', 'INCOMPLETE', {'findings': []}, True, {}, True),
+            ('admitted-defect', 'INCOMPLETE', {'findings': [{'id': 'F1'}]}, True, {}, False),
+            ('explicit-invalidation', 'INCOMPLETE', {'validations': [{'status': 'INVALIDATED', 'evidence_path': 'synthetic-proof'}]}, True, {}, False),
+            ('changed-criteria', 'INCOMPLETE', {}, True, {'review_policy_digest': 'changed'}, False),
+        ]
+        for name, outcome, changes, admitted, guards, retained in cases:
+            with self.subTest(name=name):
+                number = len(self.records) + 1
+                original = self.records[0]
+                context = {key: original[key] for key in ['series_id', 'mode', 'base_commit', 'candidate_tree']}
+                context.update(round=number, guards=guards, previous_record_sha256=self.records[-1]['record_sha256'])
+                context_path = self.directory / 'suffix-context.json'; context_path.write_bytes(o._pretty(context))
+                review = dict(review_status=outcome, **changes)
+                row = dict(context, outcome=outcome, review=review, assessment_admitted=admitted,
+                           finding_ledger={'F1': {'state': 'OPEN'}}, context_file=str(context_path.relative_to(self.root)),
+                           context_sha256=o._sha(o._canonical(context)))
+                row['record_sha256'] = o._sha(o._canonical(row))
+                path = self.series / f'round-{number:04d}.json'; path.write_bytes(o._pretty(row))
+                try:
+                    result = self.scope()
+                    self.assertEqual('first' in [item['effect']['id'] for item in result['prior_effects']], retained)
+                    self.assertIn('third', [item['effect']['id'] for item in result['prior_effects']])
+                finally:
+                    path.unlink(); context_path.unlink()
 
     def test_concurrent_real_source_commit_cannot_relabel_captured_scope(self):
         original = o._publication_scope_current

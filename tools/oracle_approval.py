@@ -576,10 +576,25 @@ def _committed_receipts(root: Path, commit: str) -> list[tuple[dict, bytes]]:
                     and match["review"].get("review_status") == "COMPLETE"
                     and _sha(_canonical(match["review"])) == receipt["review_digest"]
                     and match["review"].get("protected_effects") == receipt.get("protected_effects")):
-                if any(row["round"] > match["round"] and row["base_commit"] == commit
-                       and row["candidate_tree"] == tree and row["outcome"] != "APPROVED"
-                       for row in rounds):
-                    break  # A later exact-candidate failure cannot revive approval.
+                if __package__:
+                    from . import shipment_state
+                else:
+                    import shipment_state
+                support = shipment_state._receipt_support(match, receipt["validation_evidence"])
+                invalidated = False
+                for row in rounds:
+                    if row["round"] <= match["round"] or row["base_commit"] != commit or row["candidate_tree"] != tree:
+                        continue
+                    review = row.get("review", {})
+                    if not row.get("assessment_admitted", not row.get("raw_assessment") and "error" not in review):
+                        continue  # Unadopted execution observations supply no defect.
+                    defects, _, _ = shipment_state._decision_facts(row)
+                    if (defects or review.get("publication_failure")
+                            or shipment_state._support_invalidation(support, row, shipment_state._receipt_support(row, {}))):
+                        invalidated = True
+                        break
+                if invalidated:
+                    break  # Preserve the maintained candidate-specific support semantics.
                 selected.append((receipt, raw))
                 break
         else:
