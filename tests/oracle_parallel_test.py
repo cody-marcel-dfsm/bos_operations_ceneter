@@ -271,9 +271,9 @@ class ParallelReview(unittest.TestCase):
         self.assertNotIn(originals[0]['path'], {row['path'] for row in result['coverage']})
         # Even a syntactically valid independent response cannot adopt members
         # whose immutable original collection changed after partitioning.
-        envelopes = self.all_envelopes()
-        originals[0]['reason'] = 'tampered original observation'
-        result = parallel.aggregate(o, self.plan, self.context, envelopes, [])
+        tampered = copy.deepcopy(self.context)
+        tampered['invalidated_coverage'][0]['reason'] = 'tampered original observation'
+        result = parallel.aggregate(o, self.plan, tampered, self.all_envelopes(), [])
         self.assertEqual(result['review_status'], 'ERROR')
         self.assertTrue(any('members changed' in reason for reason in result['limitations']))
         self.assertNotIn(originals[0]['path'], {row['path'] for row in result['coverage']})
