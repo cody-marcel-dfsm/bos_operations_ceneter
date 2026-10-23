@@ -5,6 +5,23 @@ description: Implement BOS Operations Center repository changes using its archit
 
 # Operations Center Implementation
 
+## Validation command tracking and publication — October 23, 2026
+
+Retain the original successful command results by actual changelist commit/tree
+and their source, dependency, configuration, environment and output hashes.
+`record_validated` writes the immutable owner-local command ledger with the native
+receipt; unchanged `status` consumes that completed result. New commits return to
+affected validation. Keep all required checks and execute only missing or
+invalidated work. Preserve each failed result and its current applicability.
+
+Complete receipt, authority, CI and remote preparation during validation through
+`npm run release:prepare`. Actual publication consumes the returned immutable
+`prepared_file` with `npm run release:publish -- --prepared <absolute-file>` and
+performs its fixed-SHA Git push within ten seconds, concurrently across selected
+family members. Publication does not rerun validation or require a clean mutable
+HEAD; later authorship remains independent of the captured validated SHA. This
+owner correction controls older publication-plan/push/merge instructions below.
+
 ## Committed validation — controlling owner workflow, October 21, 2026
 
 Commit authored work and repairs directly with Git before independent validation;

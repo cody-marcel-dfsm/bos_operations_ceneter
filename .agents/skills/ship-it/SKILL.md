@@ -5,6 +5,32 @@ description: Ship changed committed work through four phases with reusable valid
 
 # Ship It
 
+## Separate validation and publication — owner correction, October 23, 2026
+
+Validation completes before publication. Detect every committed changelist against
+the durable command tracking emitted with `record_validated`; compare commit/tree,
+command, source/dependency/configuration, environment and original output evidence
+identities. Accept stored valid results and execute only missing or invalidated
+checks. Preserve failed observations and record the actual invalidation reason.
+`status` consumes the sealed exact-commit checkpoint; unchanged success never
+requires another complete proof traversal.
+
+During validation preparation run `npm run release:prepare -- --candidate <SHA>
+--release-ref <resolved-release-ref> --operation main-promotion` with any required
+already scoped authorization. Finish independent review, required CI, authority,
+receipt custody, remote baseline and publication-input work in that phase. Retain
+the returned immutable `prepared_file`, `source_commit` and `source_tree`.
+
+Publication runs `npm run release:publish -- --prepared <absolute-prepared-file>`.
+It publishes the fixed validated SHA with a normal Git push and has a ten-second
+SLA. It performs no review, test, build, CI wait, GH merge workflow, source or
+evidence revalidation. Run selected family members' Git publication concurrently.
+Later commits and uncommitted authorship remain available and do not alter the
+captured publication. Server protection and non-fast-forward rejection remain in
+force; retain the concrete Git result and measured SLA breach without an automatic
+semantic retry. This direction controls older PR/merge and publication-preflight
+steps below. Prepare any remote-required review promotion during validation.
+
 ## Four phases — controlling owner workflow, October 21, 2026
 
 Keep the original user-instruction timestamp as the release clock. Record one
