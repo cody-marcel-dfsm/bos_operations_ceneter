@@ -231,9 +231,13 @@ class ShipmentWorkflow(unittest.TestCase):
                 reason='Synthetic original applicability with additive supporting input') for row in context['required_commands']]
             return result
         self.fixture.submit(assessment);shipment.record_validated(self.root)
+        from tools import command_coverage
         def prepare_transport(command,**kwargs):
             return subprocess.CompletedProcess(command,0,'{}','')
-        prepared=publication.prepare(self.root,commit,self.ref,'main-promotion',refresh=False,execute=prepare_transport)
+        with patch.object(command_coverage,'publish_statuses',return_value=[]), \
+                patch.object(status,'publish_status',return_value={}), \
+                patch.object(publication,'_remote_admission',return_value={'fixture':'completed'}):
+            prepared=publication.prepare(self.root,commit,self.ref,'main-promotion',refresh=False,execute=prepare_transport)
         self.fixture.submit(lambda context:assessment(context,True))
         commands=[]
         with patch.object(o,'_read_rounds',side_effect=AssertionError('additive evidence replayed original proof')):
