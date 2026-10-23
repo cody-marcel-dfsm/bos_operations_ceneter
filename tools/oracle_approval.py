@@ -1339,7 +1339,7 @@ def _coverage_checkpoints(rounds: list[dict]) -> list[tuple[dict, dict]]:
     for record in rounds:
         review = record.get("review", {})
         admitted = record.get("assessment_admitted", not record.get("raw_assessment") and "error" not in review)
-        blocked = {}
+        blocked, invalid = {}, {}
         if admitted:
             blocked = {item["path"]: "Explicit affected source assessment: " + item.get("reason", "UNREVIEWED")
                        for item in review.get("coverage", []) if item.get("status") == "UNREVIEWED"}
@@ -1358,6 +1358,12 @@ def _coverage_checkpoints(rounds: list[dict]) -> list[tuple[dict, dict]]:
         # completed observations; explicit per-path invalidations stay visible.
         for item in record.get("verified_coverage", []):
             if item["path"] not in blocked:
+                reasons = ['Original supporting validation invalidated: ' + invalid[entry['path']]
+                           for entry in [*item['inputs'], *item.get('criterion_control_inputs', [])]
+                           if entry['path'] in invalid]
+                if reasons:
+                    item = dict(item, checkpoint_invalidation_reasons=list(dict.fromkeys([
+                        *item.get('checkpoint_invalidation_reasons', []), *reasons])))
                 checkpoints[item["path"]] = (item, record)
     return list(checkpoints.values())
 
@@ -1679,7 +1685,7 @@ def _raw_assessment_files(root: Path, rounds: list[dict]) -> dict:
                 _checked_inputs(item.get("inputs"), original, required_path=item.get("path"))
             except (OracleApprovalError, KeyError, TypeError):
                 continue
-            for entry in item["inputs"]:
+            for entry in [*item["inputs"], *item.get('criterion_control_inputs', [])]:
                 digest = entry["digest"]
                 if not isinstance(digest, str) or not digest.startswith("sha256:"):
                     continue
