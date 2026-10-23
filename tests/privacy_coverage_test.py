@@ -137,7 +137,10 @@ class PrivacyTransition(unittest.TestCase):
             finally:
                 policy_source.write_bytes(original_policy)
             output = next(name for name in self.archive_record['output_hashes'] if name.endswith('.stdout.log'))
-            Path(output).write_text(observed + 'tampered')
+            output_path = Path(output)
+            if not output_path.is_absolute():
+                output_path = self.root / output_path
+            output_path.write_text(observed + 'tampered')
             with self.assertRaises(o.OracleApprovalError): privacy.authorize(self.root, self.facts_path)
 
 
