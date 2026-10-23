@@ -285,13 +285,15 @@ with tempfile.TemporaryDirectory() as directory:
         else:assert timing['reviewer_seconds']>=0 and outcome['reviewer_invoked']
         records.append(outcome['outcome'])
     assert sorted(records)==['APPROVED','ERROR','ERROR','REJECTED']
-    # The actual public issue precondition also records a failed precheck.
-    (root/'pending.txt').write_text('unstaged candidate')
+    # An intentionally unborn repository exercises the current public precheck.
+    assert subprocess.run(['git','rev-parse','--verify','--quiet','HEAD'],cwd=root,capture_output=True).returncode!=0
     try:o.issue(root,[],None)
-    except o.OracleApprovalError as exc:assert 'requires every' in str(exc)
-    else:raise AssertionError('pending source accepted')
+    except o.OracleApprovalError as exc:
+        diagnostic=str(exc);assert 'HEAD' in diagnostic and 'unknown revision' in diagnostic
+    else:raise AssertionError('missing HEAD accepted')
     run=next(run for run in (o.receipt_path(root).parent/'runs').iterdir() if run.name.startswith('issue-'))
     timing=json.loads((run/'timings.json').read_text());outcome=json.loads((run/'outcome.json').read_text())
     assert timing['precheck_seconds']>=0 and outcome['outcome']=='ERROR' and not outcome['reviewer_invoked']
+    assert outcome['error']['message']==diagnostic
 `);
 });
