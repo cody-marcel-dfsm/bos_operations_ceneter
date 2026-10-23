@@ -717,5 +717,30 @@ class CommittedCatchup(unittest.TestCase):
             raise RuntimeError('Selector assertions complete; defect remains unresolved')
         self.fixture.submit(current,error=RuntimeError)
 
+    def test_legacy_outcome_preserves_original_checkpoint_until_admitted_defect(self):
+        def reviewer(*args):
+            context=json.loads((o._RUN.get()/'review-context.json').read_text())
+            return self.fixture.result(context)
+        follow=o._FOLLOW_COMMITS.set(True)
+        try:original=o.issue(self.root,[str(self.fixture.evidence)],None,reviewer)
+        finally:o._FOLLOW_COMMITS.reset(follow)
+        checkpoint=shipment_state.checkpoint_path(self.root).read_bytes()
+        owner=o._METADATA_ROOT.set(self.root)
+        try:
+            def observe(status):
+                run=o._metadata_run(self.root,o.receipt_path(self.root).parent/'runs','issue-legacy-')
+                o._atomic_write(run/'outcome.json',o._pretty({'outcome':status}))
+                o._atomic_write(run/'review-context.json',o._pretty({'base_commit':original['base_commit']}))
+                record={'identity':{'review_kind':'issue','pid':99999999,'process_identity':'terminated original'},
+                        'attempt':str(run)}
+                return lifecycle._follow_legacy(o,self.root,record,'issue')
+            for status in ('ERROR','INCOMPLETE'):
+                self.assertEqual(observe(status),original)
+                self.assertEqual(shipment_state.checkpoint_path(self.root).read_bytes(),checkpoint)
+            self.fixture.submit(lambda context:self.fixture.result(context,
+                findings=[self.fixture.finding(origin='MISSED')]),error=o.OracleCandidateRejected)
+            with self.assertRaises(o.OracleCandidateRejected):observe('REJECTED')
+        finally:o._METADATA_ROOT.reset(owner)
+
 
 if __name__=='__main__':unittest.main()

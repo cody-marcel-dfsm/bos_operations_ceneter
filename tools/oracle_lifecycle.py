@@ -220,15 +220,18 @@ def _follow_legacy(o, root, record, kind):
     outcome = _read(o, root, run / "outcome.json") if (run / "outcome.json").exists() else {
         "outcome": "ERROR", "error": {"message": "Legacy native process exited without a terminal outcome"}}
     _publish(o, root, path / "observed-outcome.json", outcome)
-    if kind == "issue" and outcome["outcome"] == "APPROVED":
+    if kind == "issue":
         try:
             if o.__package__:
                 from . import shipment_state
             else:
                 import shipment_state
-            return shipment_state.validated_receipt(root)[0]
+            receipt, raw = shipment_state.validated_receipt(root)
+            if any(o._sha(original) == o._sha(raw)
+                   for _, original in o._committed_receipts(root, receipt["base_commit"])):
+                return receipt
         except o.OracleApprovalError:
-            pass  # Genuine historical success remains supporting after movement.
+            pass  # Only actual original-support invalidation supersedes a pass.
     context = run / "review-context.json"
     if context.exists():
         prior = _read(o, root, context)
