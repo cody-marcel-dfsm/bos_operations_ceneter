@@ -218,9 +218,11 @@ class ShipmentWorkflow(unittest.TestCase):
         self.assertEqual(commands, [["git", "push", o.PUBLICATION_REMOTE, commit + ":refs/heads/main"]])
 
     def test_fresh_same_candidate_approval_advances_after_concrete_criteria_change(self):
+        authority = self.root / "Vault/docs/CONSTITUTION.md"
+        authority.parent.mkdir(parents=True, exist_ok=True)
+        authority.write_text("Synthetic original controlling criterion.\n")
         commit = self.validate()
         prepared = publication.prepare(self.root, commit, self.ref, "main-promotion", refresh=False)
-        authority = self.root / "Vault/docs/CONSTITUTION.md"
         authority.write_text(authority.read_text() + "\nSynthetic changed controlling criterion.\n")
         receipt = self.fixture.submit()
         checkpoint = shipment.record_validated(self.root)
