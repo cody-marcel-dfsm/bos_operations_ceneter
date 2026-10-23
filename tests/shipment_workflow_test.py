@@ -168,6 +168,28 @@ class ShipmentWorkflow(unittest.TestCase):
                 execute=lambda command, **kwargs: commands.append(command))
         self.assertEqual(commands, [["git", "push", o.PUBLICATION_REMOTE, commit + ":refs/heads/main"]])
 
+    def test_unadopted_execution_error_preserves_original_prepared_eligibility(self):
+        commit = self.validate()
+        prepared = publication.prepare(self.root, commit, self.ref, "main-promotion", refresh=False)
+        checkpoint = shipment.checkpoint_path(self.root).read_bytes()
+        def interrupted(context):
+            raise RuntimeError("synthetic reviewer transport interrupted before a decision")
+        self.fixture.submit(interrupted, error=RuntimeError)
+        self.assertEqual(shipment.selection(self.root)["state"], "DELIVER")
+        self.assertEqual(shipment.checkpoint_path(self.root).read_bytes(), checkpoint)
+        commands = []
+        publication.publish_prepared(self.root, Path(prepared["prepared_file"]),
+                                     execute=lambda command, **kwargs: commands.append(command))
+        self.assertEqual(commands, [["git", "push", o.PUBLICATION_REMOTE, commit + ":refs/heads/main"]])
+
+    def test_changed_native_approval_cannot_reuse_a_prepared_receipt_identity(self):
+        commit = self.validate()
+        prepared = publication.prepare(self.root, commit, self.ref, "main-promotion", refresh=False)
+        self.fixture.submit()
+        with self.assertRaisesRegex(o.OracleApprovalError, "supersedes sealed validation"):
+            publication.publish_prepared(self.root, Path(prepared["prepared_file"]),
+                                        execute=lambda *a, **k: self.fail("stale native authority dispatched Git"))
+
     def test_native_validation_capture_rejects_dirty_declared_execution_inputs(self):
         self.commit()
         (self.root / "source.py").write_text("dirty bytes must not attest older index tree")

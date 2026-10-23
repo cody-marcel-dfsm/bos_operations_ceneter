@@ -2190,12 +2190,12 @@ def _prepare_round(root: Path, context: dict, review: dict, outcome: str, *, cov
 
 def _record_round(root: Path, context: dict, review: dict, outcome: str, **proofs) -> Path:
     path, record = _prepare_round(root, context, review, outcome, **proofs)
-    _atomic_write(path, _pretty(record))
     if __package__:
         from . import shipment_state
     else:
         import shipment_state
     shipment_state.observe_decision(root, record, path)
+    _atomic_write(path, _pretty(record))
     return path
 
 
@@ -2734,7 +2734,8 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
                 from . import shipment_state
             else:
                 import shipment_state
-            shipment_state.observe_decision(root, round_record, round_path)
+            shipment_state.observe_decision(root, round_record, round_path,
+                                            technical_receipt_sha256=_sha(receipt_raw))
             archive = _technical_archive(root, _sha(receipt_raw))
             if archive.exists() and _custody_read(root, archive)[1] != receipt_raw:
                 raise OracleApprovalError("Immutable technical receipt archive conflict")

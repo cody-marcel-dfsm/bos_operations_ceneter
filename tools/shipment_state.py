@@ -52,22 +52,28 @@ def _decision_directory(root: Path, commit: str, tree: str) -> Path:
 
 
 @o._metadata_owner
-def observe_decision(root: Path, record: dict, round_path: Path, *, only_if_absent=False) -> None:
+def observe_decision(root: Path, record: dict, round_path: Path, *, only_if_absent=False,
+                     technical_receipt_sha256=None) -> None:
     """Seal explicit defects/invalidations; unfinished execution preserves a pass."""
     review = record.get("review", {})
     invalidations = [item for item in review.get("validations", []) if item.get("status") == "INVALIDATED"]
     defects = review.get("findings", []) if record.get("outcome") == "REJECTED" else []
     if record.get("outcome") == "APPROVED" and review.get("review_status") == "COMPLETE":
         state = "APPROVED"
-    elif defects or invalidations:
+    elif (defects or invalidations or review.get("publication_failure")
+          or record.get("outcome") in {"INCOMPLETE", "ERROR"}
+          and not record.get("raw_assessment") and "error" not in review):
         state = "INVALIDATED"
     else:
         return
     commit, tree = record["base_commit"], record["candidate_tree"]
+    if state == "APPROVED" and not o.re.fullmatch(r"[0-9a-f]{64}", technical_receipt_sha256 or ""):
+        raise o.OracleApprovalError("Publication currentness requires its sealed technical receipt identity")
     directory = _decision_directory(root, commit, tree)
     payload = {"kind": "boc-publication-currentness-v1", "source_commit": commit, "source_tree": tree,
         "state": state, "native_round": o._custody_name(root, round_path),
         "native_round_sha256": o._sha(o._pretty(record)), "outcome": record["outcome"],
+        "technical_receipt_sha256": technical_receipt_sha256,
         "finding_ids": [item["id"] for item in defects], "invalidations": invalidations}
     result = dict(payload, decision_sha256=o._sha(o._canonical(payload)))
     if __package__:
@@ -97,12 +103,19 @@ def _import_currentness(root: Path, receipt: dict) -> None:
         review = record.get("review", {})
         if (record["outcome"] == "APPROVED" and review.get("review_status") == "COMPLETE"
                 or record["outcome"] == "REJECTED" and review.get("findings")
+                or record["outcome"] in {"INCOMPLETE", "ERROR"}
+                and not record.get("raw_assessment") and "error" not in review
+                or review.get("publication_failure")
                 or any(item.get("status") == "INVALIDATED" for item in review.get("validations", []))):
             selected = record
     if selected is None:
         raise o.OracleApprovalError("Shipment lacks its sealed native candidate decision")
+    if (selected["outcome"] == "APPROVED"
+            and o._sha(o._canonical(selected["review"])) != receipt["review_digest"]):
+        raise o.OracleApprovalError("Shipment latest native exact-candidate decision supersedes sealed validation")
     path = o._series_directory(root, receipt["base_commit"]) / f"round-{selected['round']:04d}.json"
-    observe_decision(root, selected, path, only_if_absent=True)
+    observe_decision(root, selected, path, only_if_absent=True,
+                     technical_receipt_sha256=o._sha(o._pretty(receipt)) if selected["outcome"] == "APPROVED" else None)
 
 
 def _current_native_decision(root: Path, receipt: dict) -> None:
@@ -128,6 +141,8 @@ def publication_eligibility(root: Path, commit: str, tree: str, digest: str) -> 
         raise o.OracleApprovalError("Publication candidate currentness identity changed")
     if decision["state"] != "APPROVED":
         raise o.OracleApprovalError("Shipment latest native exact-candidate decision explicitly invalidates sealed validation")
+    if decision.get("technical_receipt_sha256") != digest:
+        raise o.OracleApprovalError("Shipment latest native exact-candidate decision supersedes sealed validation")
 
 
 def validated_receipt(root: Path, commit: str | None = None, *, revalidate: bool = False) -> tuple[dict, bytes]:
