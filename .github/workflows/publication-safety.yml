@@ -14,10 +14,13 @@ permissions:
 jobs:
   verify-public-repository:
     runs-on: ubuntu-latest
+    env:
+      VALIDATION_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
@@ -28,8 +31,8 @@ jobs:
         run: |
           # A PR merge retains its independently approved head tree. The bounded
           # wait covers CI starting immediately after the review push.
-          python3 tools/publication_status.py "${{ github.sha }}"
+          python3 tools/publication_status.py "$VALIDATION_SOURCE_SHA"
       - name: Accept prior native command coverage and run uncovered checks
-        run: python3 tools/command_coverage.py ci --candidate "${{ github.sha }}"
+        run: python3 tools/command_coverage.py ci --candidate "$VALIDATION_SOURCE_SHA"
         env:
           GH_TOKEN: ${{ github.token }}

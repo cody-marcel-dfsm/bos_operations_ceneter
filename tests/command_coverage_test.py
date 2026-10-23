@@ -79,11 +79,75 @@ class CommandCoverage(unittest.TestCase):
             calls.append(command)
             return subprocess.CompletedProcess(command, 0, json.dumps([[self.row(), self.environment()]]) if command[0] == "gh" else "", "")
         with patch.object(coverage.public_status, "verify_publication", return_value={"candidate_commit": self.commit, "candidate_tree": self.tree}), \
+                patch.object(o, "_git", return_value=self.tree), \
                 patch.object(coverage, "requirements", return_value=[self.required, second]):
             results = coverage.ci(self.root, self.commit, execute=execute)
         self.assertEqual([row["status"] for row in results], ["REUSED_NATIVE_APPLICABILITY", "PASSED_CURRENT_EXECUTION"])
         self.assertEqual([command for command in calls if command[0] != "gh"], [second["command"]])
         self.assertEqual(results[0]["original_environment"], self.origin)
+
+    def test_ci_merge_identity_resolves_approved_source_head_without_retesting(self):
+        calls = []
+        merge = "d" * 40
+        def execute(command, **kwargs):
+            calls.append(command)
+            self.assertEqual(command[0], "gh")
+            self.assertIn("commits/" + self.commit + "/statuses", command[2])
+            return subprocess.CompletedProcess(command, 0, json.dumps([[self.row(), self.environment()]]), "")
+        approved = {"candidate_commit": self.commit, "candidate_tree": self.tree}
+        with patch.object(coverage.public_status, "verify_publication", return_value=approved), \
+                patch.object(o, "_git", return_value=self.tree), \
+                patch.object(coverage, "requirements", return_value=[self.required]):
+            self.assertEqual(coverage.ci(self.root, merge, execute=execute)[0]["status"], "REUSED_NATIVE_APPLICABILITY")
+        self.assertEqual(len(calls), 1)
+        with patch.object(coverage.public_status, "verify_publication", return_value=approved), \
+                patch.object(o, "_git", return_value="e" * 40):
+            with self.assertRaises(o.OracleApprovalError):
+                coverage.ci(self.root, merge, execute=lambda *a, **k: self.fail("mismatched checkout"))
+
+    def test_prepared_publication_uses_real_fast_forward_git_and_retains_divergence_failure(self):
+        from tools import publication_admission as publication
+        def git(*args):
+            return subprocess.check_output(["git", *args], cwd=self.root, text=True, stderr=subprocess.PIPE).strip()
+        git("init", "-q")
+        git("config", "user.name", "Synthetic Validation")
+        git("config", "user.email", "fixture@example.invalid")
+        (self.root / "package.json").write_text('{"version":"0.0.1"}')
+        git("add", "package.json")
+        git("commit", "-qm", "base")
+        git("branch", "-M", "main")
+        baseline = git("rev-parse", "HEAD")
+        remote = self.root / "owned-synthetic-remote.git"
+        git("init", "--bare", "-q", str(remote))
+        git("push", str(remote), baseline + ":refs/heads/main")
+        (self.root / "package.json").write_text('{"version":"0.0.2"}')
+        git("add", "package.json")
+        git("commit", "-qm", "validated source")
+        candidate, tree = git("rev-parse", "HEAD"), git("rev-parse", "HEAD^{tree}")
+        selected = {"candidate_commit": candidate, "candidate_tree": tree,
+            "technical_receipt_sha256": "f" * 64, "human_authority_required": False,
+            "publication_scope": {"baseline_commit": baseline},
+            "destination": {"remote_url": o.PUBLICATION_REMOTE, "ref": "refs/heads/main"}}
+        with patch.object(publication, "plan", return_value=selected), patch.object(coverage, "requirements", return_value=[]):
+            prepared = publication.prepare(self.root, candidate, "codex/release-v0.0.2", "main-promotion", refresh=False)
+        path = Path(prepared["prepared_file"])
+        original = path.read_bytes()
+        (self.root / "concurrent.txt").write_text("new authorship remains available")
+        calls = []
+        def execute(command, **kwargs):
+            calls.append(command)
+            self.assertEqual(command, ["git", "push", o.PUBLICATION_REMOTE, candidate + ":refs/heads/main"])
+            return subprocess.run([*command[:2], str(remote), *command[3:]], **kwargs, capture_output=True, text=True)
+        result = publication.publish_prepared(self.root, path, execute=execute)
+        self.assertFalse(result["publication_sla_breached"])
+        self.assertEqual(git("--git-dir", str(remote), "rev-parse", "main"), candidate)
+        moved = git("commit-tree", tree, "-p", candidate, "-m", "concurrent remote change")
+        git("push", str(remote), moved + ":refs/heads/main")
+        with self.assertRaises(subprocess.CalledProcessError):
+            publication.publish_prepared(self.root, path, execute=execute)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(path.read_bytes(), original)
+        self.assertTrue((self.root / "concurrent.txt").exists())
 
     def test_original_environment_metadata_is_required_for_reuse(self):
         self.assertIsNone(coverage._native_coverage([self.row()], self.commit, self.tree, self.required)[0])

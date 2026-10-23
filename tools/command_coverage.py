@@ -153,6 +153,8 @@ def ci(root: Path, candidate: str, *, execute=subprocess.run) -> list[dict]:
     # a Linux runner; only the declared command contract can require another OS.
     approved = public_status.verify_publication(root, candidate, execute=execute)
     commit, tree = approved["candidate_commit"], approved["candidate_tree"]
+    if o._git(root, "rev-parse", "HEAD^{tree}").strip() != tree:
+        raise o.OracleApprovalError("CI checkout differs from the exact native-approved source tree")
     response = execute(["gh", "api", f"repos/{public_status.REPOSITORY}/commits/{commit}/statuses",
                         "--paginate", "--slurp"], cwd=root, capture_output=True, text=True, check=True)
     pages = json.loads(response.stdout)
