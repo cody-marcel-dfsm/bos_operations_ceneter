@@ -415,14 +415,16 @@ async function trackedFiles() {
 
 async function scanZip(path, bytes, blockedDigests, approvedBinaryDigests, executable) {
   const findings = [];
+  const readerEnvironment = {...process.env};
+  for (const name of ["UNZIP", "UNZIPOPT", "ZIPINFO", "ZIPINFOOPT"]) delete readerEnvironment[name];
   const directory = await mkdtemp(join(tmpdir(), "boc-privacy-archive-"));
   const snapshot = join(directory, "snapshot.zip");
   try {
   await writeFile(snapshot, bytes, {flag: "wx", mode: 0o600});
-  const {stdout} = await execFileAsync(executable, ["-Z1", snapshot], {maxBuffer: 16 * 1024 * 1024});
+  const {stdout} = await execFileAsync(executable, ["-Z1", snapshot], {env: readerEnvironment, maxBuffer: 16 * 1024 * 1024});
   for (const entry of stdout.split(/\r?\n/u).filter(Boolean)) {
     const {stdout: body} = await execFileAsync(executable, ["-p", snapshot, entry], {
-      encoding: "buffer", maxBuffer: 16 * 1024 * 1024
+      env: readerEnvironment, encoding: "buffer", maxBuffer: 16 * 1024 * 1024
     });
     const label = `${relative(root, path)}!${entry}`;
     if (operationalTextExtensions.has(extname(entry).toLowerCase())) {

@@ -124,6 +124,32 @@ test("archive option and locale environment changes invalidate original privacy 
   }
 });
 
+test("fresh ZIP inspection rejects unsafe content despite inherited UNZIPOPT and retains the real failed observation", async t => {
+  const f = await fixture(t);
+  for (const directory of ["scripts/lib", "privacy"]) await mkdir(join(f.root, directory), {recursive: true});
+  for (const name of ["scripts/check-customer-data.mjs", "scripts/lib/privacy-coverage.mjs",
+    "privacy/customer-identifiers.sha256", "privacy/approved-binary-assets.sha256",
+    "privacy/owned-github-pr-identities.json", "privacy/owned-native-probe-identities.json"])
+    await copyFile(new URL("../" + name, import.meta.url), join(f.root, name));
+  for (const args of [["init", "-q"], ["config", "user.name", "Synthetic Privacy"],
+    ["config", "user.email", "fixture@example.invalid"], ["add", "scripts", "privacy"], ["commit", "-qm", "baseline"]])
+    await exec("git", args, {cwd: f.root});
+  await writeFile(join(f.root, "payload.txt"), ["synthetic-probe", "@", "private-domain", ".com"].join(""));
+  await exec("zip", ["-q", "fixture.zip", "payload.txt"], {cwd: f.root});
+  const entry = "const m=await import('./scripts/check-customer-data.mjs');const findings=await m.fixturePrivacyFailures(['fixture.zip']);console.log(JSON.stringify({findings,report:m.lastPrivacyCoverage}));";
+  const environment = {...process.env};
+  for (const name of ["UNZIP", "UNZIPOPT", "ZIPINFO", "ZIPINFOOPT"]) delete environment[name];
+  const invoke = async options => JSON.parse((await exec(process.execPath, ["--input-type=module", "-e", entry],
+    {cwd: f.root, env: {...environment, ...options}})).stdout);
+  const cold = await invoke({UNZIPOPT: "-z"});
+  assert.equal(cold.report.scanned, 1); assert.equal(cold.report.outcome, "FAILED");
+  assert.ok(cold.findings.some(value => value.includes("non-synthetic email address")));
+  const warm = await invoke({UNZIPOPT: "-z"});
+  assert.equal(warm.report.reused, 1); assert.deepEqual(warm.findings, cold.findings);
+  const normal = await invoke({});
+  assert.equal(normal.report.scanned, 1); assert.equal(normal.report.outcome, "FAILED");
+});
+
 test("production privacy CLI preserves full source/Vault membership and consumes prior exact-file results", async t => {
   const f = await fixture(t);
   for (const directory of ["scripts/lib", "privacy", "Vault/tmp"]) await mkdir(join(f.root, directory), {recursive: true});
