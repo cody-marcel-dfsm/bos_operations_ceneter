@@ -135,7 +135,10 @@ _RETRY = object()
 def _wait_orphan(o, root, identity):
     while _active_children(o, root, identity):
         time.sleep(.1)
-    if _terminal(o, root, identity) is None:
+    terminal = _terminal(o, root, identity)
+    if terminal and _settled_terminal(o, root, identity) is None:
+        _checkpoint_failed(o, root, identity, terminal, "Native controller exited before checkpoint admission")
+    elif terminal is None:
         _finish(o, root, identity, {"status": "ERROR", "error_type": "OracleApprovalError",
                                   "error": "Native controller process exited before its outcome; original evidence retained"})
     return _RETRY
@@ -323,6 +326,66 @@ def _finish(o, root, identity, value):
                     dict(payload, terminal_sha256=o._sha(o._canonical(payload))))
 
 
+def _settled_terminal(o, root, identity):
+    terminal = _terminal(o, root, identity)
+    if terminal and terminal.get("checkpoint_required"):
+        if not _checkpoint_error(o, root, identity, terminal) and not checkpoint_admitted(o, root, identity, terminal):
+            return None
+    return terminal
+
+
+def _checkpoint_payload(value):
+    payload = {key: item for key, item in value.items() if key not in {
+        "updated_at", "state_sha256", "last_released_commit", "released_merge_commit", "released_publication"}}
+    payload["kind"] = "boc-shipment-state-v1"
+    return payload
+
+
+def _checkpoint_error(o, root, identity, terminal):
+    path = Path(identity["directory"]) / "checkpoint-error.json"
+    if not path.exists():
+        return None
+    record = _read(o, root, path)
+    # Legacy error records only denied admission. New records additionally bind
+    # the exact controller result; neither form can confer approval.
+    if (not isinstance(record.get("error"), str)
+            or ("controller_id" in record and record["controller_id"] != identity["controller_id"])
+            or ("result_sha256" in record and record["result_sha256"] != terminal.get("result_sha256"))):
+        raise o.OracleApprovalError("Native checkpoint failure identity changed")
+    return record
+
+
+def _checkpoint_failed(o, root, identity, terminal, error, error_type="OracleApprovalError"):
+    if __package__:
+        from . import shipment_state
+    else:
+        import shipment_state
+    path = Path(identity["directory"]) / "checkpoint-before.json"
+    if path.exists():
+        before = _read(o, root, path)
+        previous = before.get("previous_checkpoint")
+        if (before.get("controller_id") != identity["controller_id"]
+                or before.get("result_sha256") != terminal.get("result_sha256")
+                or before.get("previous_sha256") != (o._sha(o._pretty(previous)) if previous is not None else None)):
+            raise o.OracleApprovalError("Native checkpoint recovery identity changed")
+        current = shipment_state._load(root)
+        if current and o._sha(o._canonical(_checkpoint_payload(current))) == before["pending_payload_sha256"]:
+            restored = dict(previous or {})
+            for key in ("last_released_commit", "released_merge_commit", "released_publication"):
+                if key in current:
+                    restored[key] = current[key]
+            if not restored:
+                o._metadata_remove(root, shipment_state.checkpoint_path(root))
+            elif restored != previous:
+                shipment_state._save(root, restored)
+            else:
+                o._atomic_write(shipment_state.checkpoint_path(root), o._pretty(previous))
+    if not _checkpoint_error(o, root, identity, terminal):
+        _publish(o, root, Path(identity["directory"]) / "checkpoint-error.json",
+                 {"controller_id": identity["controller_id"], "result_sha256": terminal.get("result_sha256"),
+                  "error_type": error_type, "error": str(error)})
+
+
 def _request(o, root, identity, request):
     endpoint = identity["endpoint"]
     if isinstance(endpoint, str):
@@ -353,7 +416,7 @@ def _request(o, root, identity, request):
 
 def active(o, root):
     identity, _ = _last(o, root)
-    if not identity or _terminal(o, root, identity):
+    if not identity or _settled_terminal(o, root, identity):
         return legacy_active(o, root)
     if not _alive(identity):
         children = _active_children(o, root, identity)
@@ -361,17 +424,23 @@ def active(o, root):
             return {"state": "REVIEW_IN_PROGRESS", "identity": {k: v for k, v in identity.items() if k != "owner_token"},
                     "orphaned_children": children, "attempt": None,
                     "reason": "Observe the interrupted owner's live registered reviewer groups"}
+        terminal = _terminal(o, root, identity)
+        if terminal and terminal.get("checkpoint_required"):
+            _checkpoint_failed(o, root, identity, terminal, "Native controller exited before checkpoint admission")
         return None
     try:
         return _request(o, root, identity, {"operation": "observe"})
     except (OSError, ValueError) as exc:
-        if _terminal(o, root, identity):
+        if _settled_terminal(o, root, identity):
             return None
         if not _alive(identity):
             children = _active_children(o, root, identity)
             if children:
                 return {"state": "REVIEW_IN_PROGRESS", "identity": {k: v for k, v in identity.items() if k != "owner_token"},
                         "orphaned_children": children, "attempt": None}
+            terminal = _terminal(o, root, identity)
+            if terminal and terminal.get("checkpoint_required"):
+                _checkpoint_failed(o, root, identity, terminal, "Native controller exited before checkpoint admission")
             return None
         raise o.OracleApprovalError("Live controller observation failed; original owner retained") from exc
 
@@ -473,13 +542,17 @@ class Controller:
             self.thread.start()
             return None
         previous, count = _last(o, root, self.identity["review_kind"], self.identity["series_id"])
-        if previous and not _terminal(o, root, previous) and _alive(previous):
+        if previous and not _settled_terminal(o, root, previous) and _alive(previous):
             return previous
         if previous and _active_children(o, root, previous):
             return previous
-        if previous and not _terminal(o, root, previous):
-            _finish(o, root, previous, {"status": "ERROR", "error_type": "OracleApprovalError",
-                                      "error": "Native controller process exited before its outcome; original evidence retained"})
+        if previous and not _settled_terminal(o, root, previous):
+            terminal = _terminal(o, root, previous)
+            if terminal:
+                _checkpoint_failed(o, root, previous, terminal, "Native controller exited before checkpoint admission")
+            else:
+                _finish(o, root, previous, {"status": "ERROR", "error_type": "OracleApprovalError",
+                                          "error": "Native controller process exited before its outcome; original evidence retained"})
         self.identity["previous_sha256"] = o._sha(o._pretty(previous)) if previous else None
         identity_path = self.directory / "identity.json"
         _publish(o, root, identity_path, self.identity)
@@ -564,11 +637,11 @@ class Controller:
 
 
 def checkpoint_admitted(o, root, identity, terminal):
+    error = _checkpoint_error(o, root, identity, terminal)
+    if error:
+        raise o.OracleApprovalError(error["error"])
     path = Path(identity["directory"]) / "checkpoint-admission.json"
     if not path.exists():
-        error = path.with_name("checkpoint-error.json")
-        if error.exists():
-            raise o.OracleApprovalError(_read(o, root, error)["error"])
         return False
     record = _read(o, root, path)
     payload = {key: value for key, value in record.items() if key != "admission_sha256"}
@@ -670,9 +743,7 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False, request=N
         token = o._CONTROLLER.set(controller)
         try:
             pending_checkpoint = None
-            checkpoint_before = None
             checkpoint_saved = None
-            checkpoint_attempted = False
             evidence = list(dict.fromkeys([*evidence, *controller.resumed_evidence]))
             while True:
                 before = _head(o, root) if kind == "issue" else None
@@ -727,13 +798,15 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False, request=N
                     {"status": status, "result_path": str(result_path), "result_sha256": digest,
                      "checkpoint_required": pending_checkpoint is not None})
             if pending_checkpoint is not None:
-                checkpoint_path = shipment_state.checkpoint_path(root)
-                checkpoint_before = o._custody_read(root, checkpoint_path)[1] if checkpoint_path.exists() else None
                 current = shipment_state._load(root)
                 for key in ("last_released_commit", "released_merge_commit", "released_publication"):
                     if key in current:
                         pending_checkpoint[key] = current[key]
-                checkpoint_attempted = True
+                _publish(o, root, controller.directory / "checkpoint-before.json",
+                         {"controller_id": controller.identity["controller_id"], "result_sha256": digest,
+                          "previous_checkpoint": current or None,
+                          "previous_sha256": o._sha(o._pretty(current)) if current else None,
+                          "pending_payload_sha256": o._sha(o._canonical(_checkpoint_payload(pending_checkpoint)))})
                 checkpoint_saved = shipment_state._save(root, pending_checkpoint)
                 payload = {"controller_id": controller.identity["controller_id"], "status": "ADMITTED",
                            "result_sha256": digest, "checkpoint_sha256": checkpoint_saved["state_sha256"],
@@ -743,19 +816,9 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False, request=N
             return result
         except BaseException as exc:
             status = "REJECTED" if isinstance(exc, o.OracleCandidateRejected) else "INCOMPLETE" if isinstance(exc, o.OracleReviewIncomplete) else "ERROR"
-            if checkpoint_attempted:
-                checkpoint_path = shipment_state.checkpoint_path(root)
-                current = shipment_state._load(root)
-                comparable = lambda value: {key: item for key, item in value.items() if key not in {"updated_at", "state_sha256"}}
-                if current and comparable(current) == comparable(pending_checkpoint):
-                    if checkpoint_before is None:
-                        o._metadata_remove(root, checkpoint_path)
-                    else:
-                        o._atomic_write(checkpoint_path, checkpoint_before)
             terminal = _terminal(o, root, controller.identity)
             if terminal and terminal.get("checkpoint_required"):
-                _publish(o, root, controller.directory / "checkpoint-error.json",
-                         {"error_type": type(exc).__name__, "error": str(exc)})
+                _checkpoint_failed(o, root, controller.identity, terminal, str(exc), type(exc).__name__)
             if terminal is None:
                 _finish(o, root, controller.identity,
                         {"status": status, "error_type": type(exc).__name__, "error": str(exc)})

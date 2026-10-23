@@ -500,6 +500,7 @@ class CommittedCatchup(unittest.TestCase):
         self.assertEqual(shipment_state._load(self.root)['last_validated_commit'],self.fixture.git('rev-parse','HEAD'))
 
     def _assert_unadmitted_issuance(self, stage, *, same_candidate=False):
+        attached=[];threads=[];entered=threading.Event();finished=threading.Event()
         def reviewer(*args):
             context=json.loads((o._RUN.get()/'review-context.json').read_text())
             return self.fixture.result(context)
@@ -512,8 +513,23 @@ class CommittedCatchup(unittest.TestCase):
                 self.fixture.change('peer.py','new candidate for '+stage)
                 self.fixture.git('commit','-qm','new candidate')
             publish=lifecycle._publish
+            follow=lifecycle._follow
+            def observing_follow(*args):
+                entered.set()
+                return follow(*args)
             def failure(module,root,path,value):
                 if path.name==stage and (value.get('status') in {'APPROVED','ADMITTED'} or value.get('verdict')=='APPROVED'):
+                    if stage=='checkpoint-admission.json':
+                        owner=o._CONTROLLER.get().identity
+                        self.assertEqual(lifecycle.active(o,root)['identity']['controller_id'],owner['controller_id'])
+                        def observer():
+                            follow_token=o._FOLLOW_COMMITS.set(True)
+                            try:attached.append(o.issue(root,[str(self.fixture.evidence)],None,reviewer))
+                            except BaseException as exc:attached.append(exc)
+                            finally:o._FOLLOW_COMMITS.reset(follow_token);finished.set()
+                        thread=threading.Thread(target=observer);threads.append(thread);thread.start()
+                        self.assertTrue(entered.wait(3),'Native caller did not select the pending owner')
+                        self.assertFalse(finished.wait(.1))
                     raise OSError('Synthetic final issuance publication failure')
                 return publish(module,root,path,value)
             save=shipment_state._save
@@ -523,6 +539,7 @@ class CommittedCatchup(unittest.TestCase):
                     raise OSError('Synthetic final issuance publication failure')
                 return result
             with patch.object(lifecycle,'_publish',side_effect=failure), \
+                    patch.object(lifecycle,'_follow',side_effect=observing_follow), \
                     patch.object(shipment_state,'_save',side_effect=save_failure):
                 with self.assertRaisesRegex(OSError,'final issuance publication failure'):
                     o.issue(self.root,[str(self.fixture.evidence)],None,reviewer)
@@ -533,6 +550,13 @@ class CommittedCatchup(unittest.TestCase):
             shipment_state.publication_eligibility(self.root,original['base_commit'],original['candidate_tree'],original_digest)
             if same_candidate:
                 self.assertEqual(shipment_state.validated_receipt(self.root)[1],o._pretty(original))
+            for thread in threads:thread.join(3)
+            if threads:
+                self.assertTrue(finished.is_set())
+                self.assertEqual(len(attached),1)
+                self.assertIsInstance(attached[0],o.OracleApprovalError)
+                self.assertIn('final issuance publication failure',str(attached[0]))
+                self.assertIsNone(lifecycle.active(o,self.root))
         finally:
             o._FOLLOW_COMMITS.reset(token)
 
@@ -552,29 +576,70 @@ class CommittedCatchup(unittest.TestCase):
         self._assert_unadmitted_issuance('checkpoint-write-after-effect')
 
     def test_attached_caller_waits_for_successful_checkpoint_admission(self):
-        observed=[];threads=[];finished=threading.Event();finish=lifecycle._finish
+        observed=[];threads=[];finished=threading.Event();entered=threading.Event();finish=lifecycle._finish
+        follow=lifecycle._follow;calls=[]
+        def observing_follow(*args):
+            entered.set()
+            return follow(*args)
         def reviewer(*args):
+            calls.append(o._CONTROLLER.get().identity['controller_id'])
             context=json.loads((o._RUN.get()/'review-context.json').read_text())
             return self.fixture.result(context)
         def terminal(module,root,identity,value):
             result=finish(module,root,identity,value)
             if value.get('status')=='APPROVED':
+                self.assertEqual(lifecycle.active(module,root)['identity']['controller_id'],identity['controller_id'])
+                selected=shipment_state.selection(root)
+                self.assertEqual(selected['state'],'REVIEW_IN_PROGRESS')
+                self.assertEqual(selected['controller']['identity']['controller_id'],identity['controller_id'])
                 def attached():
-                    try:observed.append(lifecycle._follow(module,root,identity,'issue',identity['series_id'],[]))
+                    follow_token=o._FOLLOW_COMMITS.set(True)
+                    try:observed.append(o.issue(root,[str(self.fixture.evidence)],None,reviewer))
                     except BaseException as exc:observed.append(exc)
-                    finally:finished.set()
+                    finally:o._FOLLOW_COMMITS.reset(follow_token);finished.set()
                 thread=threading.Thread(target=attached);threads.append(thread);thread.start()
+                self.assertTrue(entered.wait(3),'Native caller bypassed the pending owner')
                 self.assertFalse(finished.wait(.1),'Follower exposed a terminal before checkpoint admission')
             return result
         token=o._FOLLOW_COMMITS.set(True)
         try:
-            with patch.object(lifecycle,'_finish',side_effect=terminal):
+            with patch.object(lifecycle,'_finish',side_effect=terminal), \
+                    patch.object(lifecycle,'_follow',side_effect=observing_follow):
                 result=o.issue(self.root,[str(self.fixture.evidence)],None,reviewer)
         finally:o._FOLLOW_COMMITS.reset(token)
         for thread in threads:thread.join(2)
         self.assertTrue(finished.is_set())
         self.assertEqual(observed,[result])
+        self.assertEqual(len(calls),1,'A second native caller dispatched a duplicate reviewer')
+        self.assertEqual(len(list((self.root/'.git/oracle/controllers/admissions').iterdir())),1)
         self.assertEqual(shipment_state.validated_receipt(self.root)[1],o._pretty(result))
+
+    def test_dead_pending_owner_recovers_checkpoint_through_status_and_claim(self):
+        for selector in ('active','claim'):
+            with self.subTest(selector=selector):
+                controller=lifecycle.Controller(o,self.root,'issue','synthetic-recovery')
+                self.assertIsNone(controller.claim())
+                prior=shipment_state._save(self.root,{'last_validated_commit':'prior'})
+                pending=dict(prior,last_validated_commit='new-unadmitted')
+                digest='a'*64
+                lifecycle._finish(o,self.root,controller.identity,{'status':'APPROVED','checkpoint_required':True,
+                    'result_sha256':digest})
+                lifecycle._publish(o,self.root,controller.directory/'checkpoint-before.json',{
+                    'controller_id':controller.identity['controller_id'],'result_sha256':digest,
+                    'previous_checkpoint':prior,'previous_sha256':o._sha(o._pretty(prior)),
+                    'pending_payload_sha256':o._sha(o._canonical(lifecycle._checkpoint_payload(pending)))})
+                shipment_state._save(self.root,pending)
+                controller.close()
+                if selector=='active':
+                    self.assertIsNone(lifecycle.active(o,self.root))
+                else:
+                    replacement=lifecycle.Controller(o,self.root,'issue','synthetic-recovery')
+                    try:self.assertIsNone(replacement.claim())
+                    finally:replacement.close()
+                self.assertEqual(shipment_state._load(self.root),prior)
+                terminal=lifecycle._terminal(o,self.root,controller.identity)
+                with self.assertRaisesRegex(o.OracleApprovalError,'exited before checkpoint admission'):
+                    lifecycle.checkpoint_admitted(o,self.root,controller.identity,terminal)
 
 
 if __name__=='__main__':unittest.main()
