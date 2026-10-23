@@ -310,8 +310,11 @@ class ParallelReview(unittest.TestCase):
         self.context.update(required_commands=[{'id':'required','command':['npm','test']}],
                             changed_since_previous=['source.py'],invalid_current_validations=[{'evidence_path':str(original)}])
         original.write_bytes(o._pretty(value))
-        with self.assertRaisesRegex(o.OracleIntakeIncomplete,'Affected executable input'):
-            parallel.prepared_intake(o,self.root,self.context,self.plan,[],{},{str(original):o._sha(original.read_bytes())})
+        (self.run/'review-context.json').write_bytes(o._pretty(self.context))
+        with patch.object(o,'_input_binding',return_value=self.binding), patch.object(o,'_review_process') as process:
+            with self.assertRaisesRegex(o.OracleIntakeIncomplete,'Affected executable input'):
+                o._oracle(self.root,self.context['candidate_tree'],self.paths,{str(original):o._sha(original.read_bytes())},None)
+            process.assert_not_called()
         value['inputs'][0]['digest']=self.context['input_hashes']['source.py']
         original.write_bytes(o._pretty(value))
         parallel.prepared_intake(o,self.root,self.context,self.plan,[],{},{str(original):o._sha(original.read_bytes())})
