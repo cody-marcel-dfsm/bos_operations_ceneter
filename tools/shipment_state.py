@@ -45,50 +45,89 @@ def _ancestor(root: Path, earlier: str, later: str) -> bool:
                           cwd=root, capture_output=True).returncode == 0
 
 
-def _current_native_decision(root: Path, receipt: dict) -> None:
-    """Consume the latest decision identity without replaying its proof closure."""
-    directory = o._series_directory(root, receipt["base_commit"])
-    paths = sorted(directory.glob("round-*.json"))
-    if not paths or paths[-1].name != f"round-{len(paths):04d}.json":
-        raise o.OracleApprovalError("Shipment lacks its latest native exact-candidate decision")
-    # A newer review of a distinct committed candidate does not revoke this
-    # captured candidate. Read decision identities only, never their proof DAG.
-    for path in reversed(paths):
-        raw = o._custody_read(root, path)[1]
-        try:
-            decision = json.loads(raw)
-        except (ValueError, TypeError) as exc:
-            raise o.OracleApprovalError("Shipment latest native decision is malformed") from exc
-        if not isinstance(decision, dict):
-            raise o.OracleApprovalError("Shipment latest native decision is malformed")
-        if (decision.get("base_commit") == receipt["base_commit"]
-                and decision.get("candidate_tree") == receipt["candidate_tree"]):
-            break
+def _decision_directory(root: Path, commit: str, tree: str) -> Path:
+    if not all(o.re.fullmatch(r"[0-9a-f]{40}", value) for value in (commit, tree)):
+        raise o.OracleApprovalError("Publication currentness requires exact candidate identities")
+    return o.receipt_path(root).parent / "publication-decisions" / (commit + "-" + tree)
+
+
+@o._metadata_owner
+def observe_decision(root: Path, record: dict, round_path: Path, *, only_if_absent=False) -> None:
+    """Seal explicit defects/invalidations; unfinished execution preserves a pass."""
+    review = record.get("review", {})
+    invalidations = [item for item in review.get("validations", []) if item.get("status") == "INVALIDATED"]
+    defects = review.get("findings", []) if record.get("outcome") == "REJECTED" else []
+    if record.get("outcome") == "APPROVED" and review.get("review_status") == "COMPLETE":
+        state = "APPROVED"
+    elif defects or invalidations:
+        state = "INVALIDATED"
     else:
-        raise o.OracleApprovalError("Shipment lacks its latest native exact-candidate decision")
-    try:
-        eligible = (receipt["validation_evidence"].get(o._custody_name(root, path)) == o._sha(raw)
-                    and decision["base_commit"] == receipt["base_commit"]
-                    and decision["candidate_tree"] == receipt["candidate_tree"]
-                    and decision["outcome"] == "APPROVED"
-                    and decision["review"].get("review_status") == "COMPLETE"
-                    and o._sha(o._canonical(decision["review"])) == receipt["review_digest"])
-    except (ValueError, KeyError, TypeError, AttributeError) as exc:
-        raise o.OracleApprovalError("Shipment latest native decision is malformed") from exc
-    if not eligible:
-        raise o.OracleApprovalError("Shipment latest native exact-candidate decision supersedes sealed validation")
+        return
+    commit, tree = record["base_commit"], record["candidate_tree"]
+    directory = _decision_directory(root, commit, tree)
+    payload = {"kind": "boc-publication-currentness-v1", "source_commit": commit, "source_tree": tree,
+        "state": state, "native_round": o._custody_name(root, round_path),
+        "native_round_sha256": o._sha(o._pretty(record)), "outcome": record["outcome"],
+        "finding_ids": [item["id"] for item in defects], "invalidations": invalidations}
+    result = dict(payload, decision_sha256=o._sha(o._canonical(payload)))
+    if __package__:
+        from . import oracle_lifecycle
+    else:
+        import oracle_lifecycle
+    path = directory / (result["decision_sha256"] + ".json")
+    oracle_lifecycle._publish(o, root, path, result)
+    pointer = {"decision_file": str(path), "sha256": o._sha(o._pretty(result))}
+    if only_if_absent:
+        try:
+            oracle_lifecycle._publish(o, root, directory / "current.json", pointer)
+        except o.OracleApprovalError:
+            if not (directory / "current.json").exists():
+                raise
+    else:
+        o._atomic_write(directory / "current.json", o._pretty(pointer))
+
+
+@o._metadata_owner
+def _import_currentness(root: Path, receipt: dict) -> None:
+    """One-time legacy decision import; original command proofs remain sealed."""
+    selected = None
+    for record in o._read_rounds(o._series_directory(root, receipt["base_commit"])):
+        if record["base_commit"] != receipt["base_commit"] or record["candidate_tree"] != receipt["candidate_tree"]:
+            continue
+        review = record.get("review", {})
+        if (record["outcome"] == "APPROVED" and review.get("review_status") == "COMPLETE"
+                or record["outcome"] == "REJECTED" and review.get("findings")
+                or any(item.get("status") == "INVALIDATED" for item in review.get("validations", []))):
+            selected = record
+    if selected is None:
+        raise o.OracleApprovalError("Shipment lacks its sealed native candidate decision")
+    path = o._series_directory(root, receipt["base_commit"]) / f"round-{selected['round']:04d}.json"
+    observe_decision(root, selected, path, only_if_absent=True)
+
+
+def _current_native_decision(root: Path, receipt: dict) -> None:
+    directory = _decision_directory(root, receipt["base_commit"], receipt["candidate_tree"])
+    if not (directory / "current.json").exists():
+        _import_currentness(root, receipt)
+    publication_eligibility(root, receipt["base_commit"], receipt["candidate_tree"], o._sha(o._pretty(receipt)))
 
 
 def publication_eligibility(root: Path, commit: str, tree: str, digest: str) -> None:
     """Consume candidate-scoped revocation without replaying completed validation."""
-    raw = o._custody_read(root, o._technical_archive(root, digest))[1]
-    if o._sha(raw) != digest:
-        raise o.OracleApprovalError("Shipment technical receipt changed")
-    receipt = json.loads(raw)
-    o._shape(receipt)
-    if receipt["base_commit"] != commit or receipt["candidate_tree"] != tree:
-        raise o.OracleApprovalError("Prepared publication differs from its sealed native candidate")
-    _current_native_decision(root, receipt)
+    directory = _decision_directory(root, commit, tree)
+    pointer = json.loads(o._custody_read(root, directory / "current.json")[1])
+    path = Path(pointer["decision_file"])
+    raw = o._custody_read(root, path)[1]
+    decision = json.loads(raw)
+    payload = {key: value for key, value in decision.items() if key != "decision_sha256"}
+    identity = o._sha(o._canonical(payload))
+    if (path.parent != directory or path.name != identity + ".json" or o._sha(raw) != pointer["sha256"]
+            or decision.get("decision_sha256") != identity or decision.get("kind") != "boc-publication-currentness-v1"
+            or decision.get("source_commit") != commit or decision.get("source_tree") != tree
+            or not o.re.fullmatch(r"[0-9a-f]{64}", digest)):
+        raise o.OracleApprovalError("Publication candidate currentness identity changed")
+    if decision["state"] != "APPROVED":
+        raise o.OracleApprovalError("Shipment latest native exact-candidate decision explicitly invalidates sealed validation")
 
 
 def validated_receipt(root: Path, commit: str | None = None, *, revalidate: bool = False) -> tuple[dict, bytes]:
