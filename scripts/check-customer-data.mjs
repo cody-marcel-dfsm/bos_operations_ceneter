@@ -2,9 +2,11 @@
 
 import {execFile} from "node:child_process";
 import {createHash} from "node:crypto";
-import {readFile, readdir, stat} from "node:fs/promises";
+import {mkdtemp, readFile, readdir, rm, stat, writeFile} from "node:fs/promises";
 import {extname, join, relative, resolve} from "node:path";
+import {tmpdir} from "node:os";
 import {promisify} from "node:util";
+import {privacyFileCoverage, privacyPolicyIdentity} from "./lib/privacy-coverage.mjs";
 
 const execFileAsync = promisify(execFile);
 export const root = resolve(new URL("../", import.meta.url).pathname);
@@ -411,11 +413,15 @@ async function trackedFiles() {
   return stdout.split("\0").filter(Boolean).map((path) => join(root, path));
 }
 
-async function scanZip(path, blockedDigests, approvedBinaryDigests) {
+async function scanZip(path, bytes, blockedDigests, approvedBinaryDigests, executable) {
   const findings = [];
-  const {stdout} = await execFileAsync("unzip", ["-Z1", path], {maxBuffer: 16 * 1024 * 1024});
+  const directory = await mkdtemp(join(tmpdir(), "boc-privacy-archive-"));
+  const snapshot = join(directory, "snapshot.zip");
+  try {
+  await writeFile(snapshot, bytes, {flag: "wx", mode: 0o600});
+  const {stdout} = await execFileAsync(executable, ["-Z1", snapshot], {maxBuffer: 16 * 1024 * 1024});
   for (const entry of stdout.split(/\r?\n/u).filter(Boolean)) {
-    const {stdout: body} = await execFileAsync("unzip", ["-p", path, entry], {
+    const {stdout: body} = await execFileAsync(executable, ["-p", snapshot, entry], {
       encoding: "buffer", maxBuffer: 16 * 1024 * 1024
     });
     const label = `${relative(root, path)}!${entry}`;
@@ -432,6 +438,7 @@ async function scanZip(path, blockedDigests, approvedBinaryDigests) {
     }
   }
   return findings;
+  } finally { await rm(directory, {recursive: true, force: true}); }
 }
 
 export async function privacyFailures({extraPaths = []} = {}) {
@@ -441,7 +448,7 @@ export async function privacyFailures({extraPaths = []} = {}) {
     if ((await stat(vault)).isDirectory()) {
       for (const path of await walk(vault)) candidates.add(path);
     }
-  } catch {}
+  } catch (error) { if (error.code !== "ENOENT") throw error; }
   return scanPrivacyCandidates(candidates);
 }
 
@@ -455,60 +462,61 @@ export async function fixturePrivacyFailures(paths) {
   return scanPrivacyCandidates(new Set(paths.map(path => resolve(path))));
 }
 
+export let lastPrivacyCoverage = null;
+
 async function scanPrivacyCandidates(candidates) {
-  const blockedDigests = new Set((await readFile(digestPath, "utf8")).split(/\s+/u).filter(Boolean));
-  const approvedBinaryDigests = new Set(
-    (await readFile(approvedBinaryPath, "utf8")).split(/\s+/u).filter(Boolean)
-  );
-  const githubIdentities = JSON.parse(await readFile(join(root, "privacy", "owned-github-pr-identities.json"), "utf8"));
-  const nativeProbeIdentities = JSON.parse(await readFile(join(root, "privacy", "owned-native-probe-identities.json"), "utf8"));
-  const findings = [];
-  for (const path of [...candidates].sort()) {
-    if (path.includes(`${join(root, "Vault", "index")}/`)) continue;
-    if (path.endsWith(".zip")) {
-      findings.push(...await scanZip(path, blockedDigests, approvedBinaryDigests));
-      continue;
-    }
+  const names = [digestPath, approvedBinaryPath, join(root, "privacy", "owned-github-pr-identities.json"),
+    join(root, "privacy", "owned-native-probe-identities.json")];
+  const rules = await Promise.all(names.map(async path => ({path, body: await readFile(path)})));
+  const blockedDigests = new Set(rules[0].body.toString("utf8").split(/\s+/u).filter(Boolean));
+  const approvedBinaryDigests = new Set(rules[1].body.toString("utf8").split(/\s+/u).filter(Boolean));
+  const githubIdentities = JSON.parse(rules[2].body), nativeProbeIdentities = JSON.parse(rules[3].body);
+  const policy = await privacyPolicyIdentity([{path: new URL(import.meta.url).pathname,
+    body: await readFile(new URL(import.meta.url))}, ...rules], {
+      functions: [customerDataFindings, normalizeSensitiveText, hasBlockedDigest, blockedWordWindow, digestMatcher,
+        allowedSyntheticDomain, allowedFictionalPhone, sha256, scanPrivacyCandidates,
+        isCpuProfileTextArtifact, cpuProfilePrivacyText, isProposedTextArtifact, isOperationalTextArtifact,
+        verifiedNativeProbeMetadataText, verifiedSyntheticSourceFixtureText, ownNativeProbeIdentity,
+        ownSourceFixtureIdentity, isWatcherProcessMetadata, operationalPrivacyText, verifiedGithubMetadataText,
+        scanZip].map(value => value.toString()),
+      textExtensions: [...textExtensions], operationalTextExtensions: [...operationalTextExtensions],
+      patterns: [emailPattern, formattedNanpPattern, compactNanpPattern, terminalSgrPattern].map(String)
+    });
+  const source = await execFileAsync("git", ["rev-parse", "HEAD", "HEAD^{tree}"], {cwd: root,
+    env: {...process.env, GIT_OPTIONAL_LOCKS: "0"}});
+  const [commit, tree] = source.stdout.trim().split("\n");
+  const scan = async (path, body, context) => {
+    if (path.endsWith(".zip")) return scanZip(path, body, blockedDigests, approvedBinaryDigests, policy.executables[1].path);
+    const label = relative(root, path);
     if (operationalTextExtensions.has(extname(path).toLowerCase())) {
-      let body;
-      try {body = await readFile(path);} catch {continue;}
-      if (!isOperationalTextArtifact(path, body)) {
-        if (!approvedBinaryDigests.has(sha256(body))) findings.push(`${relative(root, path)}: unreviewed binary publication artifact`);
-        continue;
-      }
-      const nativeText = verifiedNativeProbeMetadataText(body.toString("utf8"), await ownNativeProbeIdentity(path, nativeProbeIdentities));
-      const sourceText = verifiedSyntheticSourceFixtureText(nativeText, await ownSourceFixtureIdentity(path, nativeProbeIdentities));
-      findings.push(...customerDataFindings(operationalPrivacyText(sourceText, githubIdentities), relative(root, path), blockedDigests));
-      continue;
+      if (!isOperationalTextArtifact(path, body))
+        return approvedBinaryDigests.has(sha256(body)) ? [] : [`${label}: unreviewed binary publication artifact`];
+      const nativeText = verifiedNativeProbeMetadataText(body.toString("utf8"), context.nativeProbe);
+      const sourceText = verifiedSyntheticSourceFixtureText(nativeText, context.sourceFixture);
+      return customerDataFindings(operationalPrivacyText(sourceText, githubIdentities), label, blockedDigests);
     }
     if (!textExtensions.has(extname(path).toLowerCase())) {
-      let body;
-      try { body = await readFile(path); } catch { continue; }
-      if (isWatcherProcessMetadata(path, body)) {
-        findings.push(...customerDataFindings(body.toString("utf8"), relative(root, path), blockedDigests));
-        continue;
-      }
-      const proposedText = isProposedTextArtifact(path, body);
-      const cpuProfileText = isCpuProfileTextArtifact(path, body);
+      if (isWatcherProcessMetadata(path, body)) return customerDataFindings(body.toString("ascii"), label, blockedDigests);
+      const proposedText = isProposedTextArtifact(path, body), cpuProfileText = isCpuProfileTextArtifact(path, body);
       if (proposedText || cpuProfileText) {
         const text = body.toString("utf8");
-        findings.push(...customerDataFindings(cpuProfileText ? cpuProfilePrivacyText(text) : verifiedGithubMetadataText(text, githubIdentities),
-        relative(root, path), blockedDigests));
-        continue;
+        return customerDataFindings(cpuProfileText ? cpuProfilePrivacyText(text) : verifiedGithubMetadataText(text, githubIdentities),
+          label, blockedDigests);
       }
-      if (!approvedBinaryDigests.has(sha256(body))) {
-        findings.push(`${relative(root, path)}: unreviewed binary publication artifact`);
-      }
-      continue;
+      return approvedBinaryDigests.has(sha256(body)) ? [] : [`${label}: unreviewed binary publication artifact`];
     }
-    let body;
-    try { body = await readFile(path, "utf8"); } catch { continue; }
-    const nativeText = verifiedNativeProbeMetadataText(body, await ownNativeProbeIdentity(path, nativeProbeIdentities));
-    const sourceText = verifiedSyntheticSourceFixtureText(nativeText, await ownSourceFixtureIdentity(path, nativeProbeIdentities));
-    findings.push(...customerDataFindings(verifiedGithubMetadataText(sourceText, githubIdentities),
-    relative(root, path), blockedDigests));
-  }
-  return [...new Set(findings)].sort();
+    const nativeText = verifiedNativeProbeMetadataText(body.toString("utf8"), context.nativeProbe);
+    const sourceText = verifiedSyntheticSourceFixtureText(nativeText, context.sourceFixture);
+    return customerDataFindings(verifiedGithubMetadataText(sourceText, githubIdentities), label, blockedDigests);
+  };
+  policy.context.scan = scan.toString();
+  const result = await privacyFileCoverage({root, directory: join(root, ".git", "oracle", "privacy-coverage"),
+    candidates: [...candidates].filter(path => !path.includes(`${join(root, "Vault", "index")}/`)), policy,
+    source: {commit, tree, command: process.argv.slice()}, scan,
+    contextFor: async path => ({nativeProbe: await ownNativeProbeIdentity(path, nativeProbeIdentities),
+      sourceFixture: await ownSourceFixtureIdentity(path, nativeProbeIdentities)})});
+  lastPrivacyCoverage = result.report;
+  return result.findings;
 }
 
 if (process.argv[1] === new URL(import.meta.url).pathname) {
