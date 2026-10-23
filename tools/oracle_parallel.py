@@ -444,7 +444,7 @@ def prepared_intake(o, root, context, plan, jobs, seals, evidence):
     """Seal coherent preparation facts, without deciding command applicability."""
     missing = ["Source identity absent: " + name for name in plan["required_paths"]
                if name not in context["input_hashes"]]
-    observations = []
+    observations, matched_inputs = [], set()
     # Failed/older executions remain observations. Their actual applicability,
     # including strict original-plus-repair composition, belongs to the cohort.
     candidates = {row["evidence_path"] for key in ("current_validations", "reusable_validations", "invalid_current_validations")
@@ -465,14 +465,22 @@ def prepared_intake(o, root, context, plan, jobs, seals, evidence):
             continue
         observations.append({"path": name, "sha256": evidence[name], "command": value.get("command"),
                              "actual_exit_code": value.get("exit_code"), "applicability": "UNASSESSED"})
+        matched_inputs.update(item["path"] for item in value.get("inputs", [])
+                              if context["input_hashes"].get(item["path"]) == item.get("digest"))
     if context.get("required_commands") and not observations:
         missing.append("Required command assessment lacks bound original execution observations")
+    affected = {name for name in set(context.get("changed_since_previous", [])) | set(context.get("pending_from_prior", []))
+                if name.endswith((".py", ".mjs", ".js", ".ts"))}
+    if context.get("required_commands"):
+        missing.extend("Affected executable input lacks a matching original/repair observation: " + name
+                       for name in sorted(affected - matched_inputs))
     for cohort, child in jobs:
         if o._files(root, list(seals[cohort["id"]])) != seals[cohort["id"]]:
             missing.append("Prepared source/manifest/audit changed: " + cohort["id"])
     payload = {"kind": "boc-review-structural-intake-v1", "candidate_commit": context["base_commit"],
                "candidate_tree": context["candidate_tree"], "plan_sha256": plan["plan_sha256"],
                "required_commands": context.get("required_commands", []), "original_observations": observations,
+               "affected_executable_inputs": len(affected), "matched_affected_inputs": len(affected & matched_inputs),
                "missing": missing, "grants_coverage": False}
     o._atomic_write(o._RUN.get() / "structural-intake.json", o._pretty(payload))
     if missing:

@@ -301,6 +301,24 @@ class ParallelReview(unittest.TestCase):
             self.assertEqual(caught.exception.evidence_paths,['new-qualified-original.json'])
         finally:o._CONTROLLER.reset(token)
 
+    def test_meaningful_new_executable_scope_waits_for_matching_original_inputs(self):
+        original=self.root/'Vault/tmp/repair.json';original.parent.mkdir(parents=True)
+        output=original.with_suffix('.stdout.log');output.write_text('actual focused repair observation')
+        value={'kind':'oracle-validation-record-v1','exit_code':0,'command':['owned-focused-case'],
+               'inputs':[{'path':'source.py','digest':'older-source'}],
+               'output_hashes':{str(output):o._sha(output.read_bytes())}}
+        self.context.update(required_commands=[{'id':'required','command':['npm','test']}],
+                            changed_since_previous=['source.py'],invalid_current_validations=[{'evidence_path':str(original)}])
+        original.write_bytes(o._pretty(value))
+        with self.assertRaisesRegex(o.OracleIntakeIncomplete,'Affected executable input'):
+            parallel.prepared_intake(o,self.root,self.context,self.plan,[],{},{str(original):o._sha(original.read_bytes())})
+        value['inputs'][0]['digest']=self.context['input_hashes']['source.py']
+        original.write_bytes(o._pretty(value))
+        parallel.prepared_intake(o,self.root,self.context,self.plan,[],{},{str(original):o._sha(original.read_bytes())})
+        diagnostic=json.loads((self.run/'structural-intake.json').read_text())
+        self.assertEqual(diagnostic['matched_affected_inputs'],1)
+        self.assertFalse(diagnostic['grants_coverage'])
+
     def test_foreign_plan_cohort_commit_tree_binding_and_stale_inputs_fail_closed(self):
         identity = self.plan['cohorts'][1]['id']
         for field in ('plan_sha256', 'cohort_id', 'candidate_commit', 'candidate_tree', 'input_binding_sha256'):
