@@ -61,6 +61,12 @@ rationale. This grants current criterion applicability, preserving the original
 body observations; it never claims a new body read. Native aggregation expands
 that explicit decision to its sealed members. Concrete changed source/dependencies,
 admitted invalidations and open findings remain ordinary individual assignments.
+Authenticated criterion_support separates the original functional footprint from
+controls injected by an earlier collective assessment. Inspect its exact lineage
+and old/current control deltas collectively; explicitly bind each changed control
+in the REVIEWED criterion inputs. These controls do not turn into functional
+dependencies of every member. Unknown lineage or changed functional support stays
+individual. Every original observation and original control hash remains intact.
 An unadopted-observation group additionally binds authentic original native
 result/model/process bytes and every completed per-file footprint. Its original
 ERROR remains literal. Explicitly assess current applicability before adopting
@@ -101,9 +107,16 @@ def _retained_criteria(context, pending, digest):
     originals = context.get('invalidated_coverage', [])
     for index, entry in enumerate(originals):
         name, inputs = entry.get('path'), entry.get('inputs', [])
+        support = entry.get('criterion_support')
+        controls = support.get('control_inputs', []) if support else entry.get('criterion_control_inputs', [])
+        if support:
+            inputs = support['functional_inputs']
         reasons = entry.get('invalidation_reasons', [])
         raw = entry.get('raw_observation')
         allowed_reasons = guard_keys | ({'unadopted_native_observation'} if raw else set())
+        if support:
+            allowed_reasons |= {row['path'] + suffix for row in controls
+                                for suffix in (' content changed or missing', ' criterion control changed or missing')}
         names = [item.get('path') for item in inputs if isinstance(item, dict)]
         if (name not in pending or name in seen or name in blocked
                 or entry.get('status') not in {'REVIEWED', 'CARRIED_FORWARD'}
@@ -112,6 +125,7 @@ def _retained_criteria(context, pending, digest):
                                        or 'unadopted_native_observation' not in reasons)
                 or entry.get('checkpoint_invalidation_reasons')
                 or not inputs or name not in names or len(set(names)) != len(inputs)
+                or any(context['input_hashes'].get(row['path']) is None for row in controls)
                 or any(not isinstance(item, dict) or set(item) != {'path', 'digest'}
                        or context['input_hashes'].get(item['path']) != item['digest'] for item in inputs)):
             continue
@@ -120,6 +134,11 @@ def _retained_criteria(context, pending, digest):
                  'current_guards_sha256': digest(context.get('guards', {}))}
         if raw:
             facts['unadopted_observation'] = True
+        if support:
+            facts['control_bindings'] = controls
+            facts['control_deltas'] = [{'path': row['path'], 'original_digest': row['digest'],
+                                       'current_digest': context['input_hashes'][row['path']]}
+                                      for row in controls if context['input_hashes'][row['path']] != row['digest']]
         key = digest(facts)
         groups.setdefault(key, dict(facts, original_coverage_indices=[]))['original_coverage_indices'].append(index)
         seen.add(name)
@@ -459,22 +478,32 @@ def _expanded_criteria(o, context, plan, assessment):
         # child result; every expanded row keeps its actual original footprint.
         adoption = {'criterion': group['path'], 'status': item['status'], 'reason': item['reason'],
                     'original_coverage_indices': indices, 'members_sha256': group['members_sha256'],
-                    'parent_context_sha256': plan['context_sha256'], 'guard_deltas': group['guard_deltas']}
+                    'parent_context_sha256': plan['context_sha256'], 'guard_deltas': group['guard_deltas'],
+                    'dependency_roles': 'functional-and-criterion-v1', 'inputs': item.get('inputs', [])}
         adoptions.append(adoption)
         for index, original in zip(indices, originals):
-            inputs = {entry['path']: entry['digest'] for entry in original['inputs']}
-            # Virtual bindings describe the collective criterion only. Actual
-            # current governing/dependency inputs consumed by the assessor are
-            # recorded on each member without introducing an unknown primary.
-            inputs.update({entry['path']: entry['digest'] for entry in item.get('inputs', [])
-                           if entry['path'] in context['input_hashes']})
+            support = original.get('criterion_support')
+            inputs = {entry['path']: entry['digest'] for entry in
+                      (support['functional_inputs'] if support else original['inputs'])}
+            controls = {entry['path']: entry['digest'] for entry in
+                        (support['control_inputs'] if support else original.get('criterion_control_inputs', []))}
+            current_controls = {entry['path']: entry['digest'] for entry in item.get('inputs', [])
+                                if entry['path'] in context['input_hashes'] and entry['path'] not in inputs}
+            if item['status'] == 'REVIEWED' and (any(context['input_hashes'].get(name) != value
+                    for name, value in inputs.items()) or any(
+                        context['input_hashes'].get(name) != value and
+                        current_controls.get(name) != context['input_hashes'].get(name)
+                        for name, value in controls.items())):
+                raise o.OracleApprovalError('Retained functional support changed or current control delta was not independently bound')
+            controls.update(current_controls)
             rows.append({'path': original['path'], 'status': item['status'],
                          'inputs': [{'path': name, 'digest': value} for name, value in sorted(inputs.items())],
                          'reason': 'Independent current criterion applicability; retained original source observation. ' + item['reason'],
                          'retained_observation': {'parent_context_sha256': plan['context_sha256'],
                              'json_pointer': '/invalidated_coverage/' + str(index),
                              'value_sha256': o._sha(o._canonical(original))},
-                         'criterion_adoption': group['path']})
+                         'criterion_adoption': group['path'],
+                         'criterion_control_inputs': [{'path': name, 'digest': value} for name, value in sorted(controls.items())]})
     return dict(assessment, coverage=rows), adoptions
 
 

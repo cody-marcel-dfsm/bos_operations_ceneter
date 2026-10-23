@@ -775,6 +775,137 @@ output.with_name('probe.json').write_text(json.dumps({'pid':os.getpid(),'started
                     o._RUN.reset(token)
 
 
+class CriterionDependencyRoles(unittest.TestCase):
+    """Native legacy/future adoption keeps actual body dependencies distinct."""
+    def setUp(self):
+        import oracle_review_series as fixtures
+        self.fixture = fixtures.ReviewSeries('runTest')
+        self.fixture.setUp()
+        self.addCleanup(self.fixture.doCleanups)
+        self.root = self.fixture.root
+        self.digest = lambda value: o._sha(o._canonical(value))
+
+    def legacy(self, functional=False, proof_control=False):
+        def first(context):
+            result = self.fixture.result(context)
+            if functional:
+                next(row for row in result['coverage'] if row['path'] == 'source.py')['inputs'].append(
+                    {'path': 'tools/oracle_approval.py', 'digest': context['input_hashes']['tools/oracle_approval.py']})
+            return result
+        self.fixture.submit(first)
+        self.fixture.environment.return_value = 'environment-B'
+        def adopt(context):
+            plan = parallel.partition(context, {'reviewer_settings': {}}, self.digest)
+            effective = parallel._criterion_context(context, plan)
+            controls = ['tools/oracle_approval.py']
+            if proof_control:
+                controls.append(str(self.fixture.evidence.relative_to(self.root)))
+            decisions = {'coverage': [{'path': group['path'], 'status': 'REVIEWED',
+                'inputs': [{'path': group['path'], 'digest': effective['input_hashes'][group['path']]}]
+                          + self.fixture.inputs(context, *controls),
+                'reason': 'Independently checked current policy and actual original functional footprints'}
+                for group in plan['retained_criteria']]}
+            expanded, adoptions = parallel._expanded_criteria(o, context, plan, decisions)
+            # Reproduce the authentic old native serialization, which flattened
+            # collective inputs into every member's observed dependency list.
+            for row in expanded['coverage']:
+                row['inputs'] = sorted(row['inputs'] + row.pop('criterion_control_inputs'), key=lambda x: x['path'])
+            for row in adoptions:
+                row.pop('dependency_roles'); row.pop('inputs')
+            result = self.fixture.result(context)
+            covered = {row['path'] for row in expanded['coverage']}
+            result['coverage'] = [row for row in result['coverage'] if row['path'] not in covered] + expanded['coverage']
+            result['criterion_adoptions'] = adoptions
+            return result
+        self.fixture.submit(adopt)
+        self.rounds = o._read_rounds(o._series_directory(self.root, self.fixture.base))
+        self.legacy_row = next(row for row in self.rounds[-1]['verified_coverage'] if row['path'] == 'source.py')
+
+    def test_authentic_legacy_controls_require_fresh_adoption_and_future_roles_remain_separate(self):
+        self.legacy()
+        original = self.root / 'tools/oracle_approval.py'
+        self.fixture.change('tools/oracle_approval.py', original.read_text() + '\nCALLER_NAVIGATION_FIXTURE = True\n')
+        def current(context):
+            self.assertNotIn('source.py', {row['path'] for row in context['reusable_coverage']})
+            source = next(row for row in context['invalidated_coverage'] if row['path'] == 'source.py')
+            support = source['criterion_support']
+            self.assertNotIn('tools/oracle_approval.py', {row['path'] for row in support['functional_inputs']})
+            self.assertIn('tools/oracle_approval.py', {row['path'] for row in support['control_inputs']})
+            plan = parallel.partition(context, {'reviewer_settings': {}}, self.digest)
+            group = next(group for group in plan['retained_criteria'] if any(
+                context['invalidated_coverage'][index]['path'] == 'source.py' for index in group['original_coverage_indices']))
+            self.assertNotIn('source.py', plan['required_paths'])
+            effective = parallel._criterion_context(context, plan)
+            decision = {'coverage': [{'path': group['path'], 'status': 'REVIEWED',
+                'inputs': [{'path': group['path'], 'digest': effective['input_hashes'][group['path']]}],
+                'reason': 'An actual independent criterion decision remains required'}]}
+            with self.assertRaisesRegex(o.OracleApprovalError, 'control delta'):
+                parallel._expanded_criteria(o, context, plan, decision)
+            decision['coverage'][0]['inputs'] += self.fixture.inputs(context, 'tools/oracle_approval.py')
+            expanded, adoptions = parallel._expanded_criteria(o, context, plan, decision)
+            result = self.fixture.result(context)
+            covered = {row['path'] for row in expanded['coverage']}
+            result['coverage'] = [row for row in result['coverage'] if row['path'] not in covered] + expanded['coverage']
+            result['criterion_adoptions'] = adoptions
+            row = next(row for row in expanded['coverage'] if row['path'] == 'source.py')
+            self.assertEqual(row['inputs'], support['functional_inputs'])
+            self.assertEqual(row['criterion_control_inputs'], self.fixture.inputs(context, 'tools/oracle_approval.py'))
+            return result
+        self.fixture.submit(current)
+        rounds = o._read_rounds(o._series_directory(self.root, self.fixture.base))
+        row = next(row for row in rounds[-1]['verified_coverage'] if row['path'] == 'source.py')
+        self.assertIsNotNone(o._CriterionLineage(self.root, rounds).support(row, rounds[-1]))
+        self.assertIn('tools/oracle_approval.py', {x['path'] for x in self.legacy_row['inputs']}, 'Original bytes remain literal')
+
+    def test_original_functional_control_module_and_changed_support_stay_individual(self):
+        self.legacy(functional=True)
+        control = self.root / 'tools/oracle_approval.py'
+        self.fixture.change('tools/oracle_approval.py', control.read_text() + '\nFUNCTIONAL_DEPENDENCY_FIXTURE = True\n')
+        def inspect(context):
+            plan = parallel.partition(context, {'reviewer_settings': {}}, self.digest)
+            self.assertIn('source.py', plan['required_paths'])
+            # A real original dependency stays functional, even when its name
+            # is also a native producer/control module.
+            row = next(row for row in context['invalidated_coverage'] if row['path'] == 'source.py')
+            self.assertIn('tools/oracle_approval.py', {x['path'] for x in row['criterion_support']['functional_inputs']})
+            return self.fixture.result(context)
+        self.fixture.submit(inspect)
+
+    def test_tampered_unknown_lineage_policy_changed_body_and_admitted_control_invalidation(self):
+        self.legacy(proof_control=True)
+        lineage = o._CriterionLineage(self.root, self.rounds)
+        self.assertIsNotNone(lineage.support(self.legacy_row, self.rounds[-1]))
+        for field, value in [('value_sha256', '0' * 64), ('parent_context_sha256', 'f' * 64),
+                             ('json_pointer', '/coverage/0')]:
+            row = copy.deepcopy(self.legacy_row); row['retained_observation'][field] = value
+            self.assertIsNone(lineage.support(row, self.rounds[-1]))
+        unknown = copy.deepcopy(self.rounds); unknown[-1]['guards']['review_policy_digest'] = 'f' * 64
+        self.assertIsNone(o._CriterionLineage(self.root, unknown).support(self.legacy_row, unknown[-1]))
+        def inspect(context):
+            source = next(row for row in context['reusable_coverage'] if row['path'] == 'source.py')
+            support = lineage.support(source, self.rounds[-1]); self.assertIsNotNone(support)
+            row = dict(source, criterion_support=support, invalidation_reasons=['review_policy_digest'])
+            test_context = dict(context, reusable_coverage=[], invalidated_coverage=[row])
+            for name in ['source.py', 'dependency.py', str(self.fixture.evidence.relative_to(self.root))]:
+                changed = copy.deepcopy(test_context); changed['input_hashes'][name] = 'changed'
+                plan = parallel.partition(changed, {'reviewer_settings': {}}, self.digest)
+                if name.endswith('validation.json'):
+                    # A changed control needs explicit independent rebinding;
+                    # it never becomes an automatically passing execution.
+                    self.assertFalse(changed['reusable_coverage'])
+                else:
+                    self.assertIn('source.py', plan['required_paths'])
+            result = self.fixture.result(context, status='INCOMPLETE'); result['coverage'] = []
+            name = str(self.fixture.evidence.relative_to(self.root)); proof = json.loads(self.fixture.evidence.read_text())
+            result['validations'] = [{'evidence_path': name, 'status': 'INVALIDATED', 'inputs': proof['inputs'],
+                'environment_digest': proof['environment_digest'], 'reason': 'Actual consumed control proof defect'}]
+            return result
+        self.fixture.submit(inspect, error=o.OracleReviewIncomplete)
+        rounds = o._read_rounds(o._series_directory(self.root, self.fixture.base))
+        source = next(row for row, origin in o._coverage_checkpoints(rounds) if row['path'] == 'source.py')
+        self.assertTrue(source['checkpoint_invalidation_reasons'])
+
+
 class RawObservationCriterion(unittest.TestCase):
     """Native ERROR keeps completed bodies without transferring approval."""
     def setUp(self):

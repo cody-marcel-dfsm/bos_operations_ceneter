@@ -1348,7 +1348,8 @@ def _coverage_checkpoints(rounds: list[dict]) -> list[tuple[dict, dict]]:
             for name, (item, origin) in list(checkpoints.items()):
                 reasons = ([blocked[name]] if name in blocked else []) + [
                     "Original supporting validation invalidated: " + invalid[entry["path"]]
-                    for entry in item["inputs"] if entry["path"] in invalid]
+                    for entry in [*item["inputs"], *item.get('criterion_control_inputs', [])]
+                    if entry["path"] in invalid]
                 if reasons:
                     checkpoints[name] = (dict(item, checkpoint_invalidation_reasons=list(dict.fromkeys([
                         *item.get("checkpoint_invalidation_reasons", []), *reasons]))), origin)
@@ -1375,6 +1376,107 @@ def _observation_guard_changes(root: Path, guards: dict, prior: dict, *, validat
             continue
         changes.append(key)
     return changes
+
+
+class _CriterionLineage:
+    """Recover native criterion controls separately from observed dependencies."""
+    def __init__(self, root, rounds):
+        self.root = root
+        self.records = {row['context_sha256']: row for row in rounds}
+        self.contexts, self.adoptions, self.resolved = {}, {}, {}
+
+    def _origin(self, identity):
+        if identity in self.adoptions:
+            return self.contexts[identity], self.adoptions[identity]
+        record = self.records[identity]
+        if _historical_policy_guard(self.root, record['candidate_tree'],
+                                    record['guards'].get('review_policy_digest')) is None:
+            raise ValueError('Unknown original criterion policy')
+        context = json.loads(_scope_read(self.root, record['context_file'])[1])
+        if _sha(_canonical(context)) != identity:
+            raise ValueError('Original criterion context changed')
+        raw = record.get('raw_assessment')
+        assessment = raw.get('assessment', {}) if isinstance(raw, dict) else record.get('review', {})
+        adopted = {}
+        for row in assessment.get('criterion_adoptions', []):
+            indices = row['original_coverage_indices']
+            members = [context['invalidated_coverage'][index] for index in indices]
+            if (row['parent_context_sha256'] != identity or row['status'] != 'REVIEWED'
+                    or not indices or len(set(indices)) != len(indices)
+                    or _sha(_canonical(members)) != row['members_sha256']):
+                continue
+            adopted[row['criterion']] = row
+        self.contexts[identity], self.adoptions[identity] = context, adopted
+        return context, adopted
+
+    def support(self, item, origin=None, visiting=frozenset()):
+        """Only authenticated native expansion can identify injected controls."""
+        if not item.get('criterion_adoption') or not item.get('retained_observation'):
+            return None
+        try:
+            reference = item['retained_observation']
+            identity = reference['parent_context_sha256']
+            if origin is not None and origin['context_sha256'] != identity:
+                return None
+            key = (identity, _sha(_canonical(item)))
+            if key in self.resolved:
+                return self.resolved[key]
+            if key in visiting:
+                return None
+            context, adoptions = self._origin(identity)
+            adoption = adoptions[item['criterion_adoption']]
+            match = re.fullmatch(r'/invalidated_coverage/([0-9]+)', reference['json_pointer'])
+            if not match or int(match[1]) not in adoption['original_coverage_indices']:
+                return None
+            original = context['invalidated_coverage'][int(match[1])]
+            if (original['path'] != item['path'] or original.get('checkpoint_invalidation_reasons')
+                    or _sha(_canonical(original)) != reference['value_sha256']):
+                return None
+            _checked_inputs(item['inputs'], context, required_path=item['path'])
+            previous = self.support(original, visiting=visiting | {key})
+            if original.get('criterion_adoption') and previous is None:
+                return None
+            functional = {row['path']: row['digest'] for row in
+                          (previous['functional_inputs'] if previous else original['inputs'])}
+            controls = {row['path']: row['digest'] for row in
+                        (previous['control_inputs'] if previous else [])}
+            actual = {row['path']: row['digest'] for row in item['inputs']}
+            if any(actual.get(name) != value for name, value in functional.items()):
+                return None
+            if 'criterion_control_inputs' in item:
+                if actual != functional or adoption.get('dependency_roles') != 'functional-and-criterion-v1':
+                    return None
+                declared = item['criterion_control_inputs']
+                if declared:
+                    _checked_inputs(declared, context)
+                assessed = [row for row in adoption['inputs'] if row['path'] in context['input_hashes']]
+                if assessed:
+                    _checked_inputs(assessed, context)
+                assessed = {row['path']: row['digest'] for row in assessed if row['path'] not in functional}
+                if any(context['input_hashes'].get(name) != value and
+                       assessed.get(name) != context['input_hashes'].get(name)
+                       for name, value in controls.items()):
+                    return None
+                controls.update(assessed)
+                if declared != [{'path': name, 'digest': value} for name, value in sorted(controls.items())]:
+                    return None
+            else:
+                # Legacy expansion flattened all collective assessor inputs.
+                # Only additions absent from the authenticated body footprint
+                # are controls; an original functional dependency stays such.
+                controls.update({name: value for name, value in actual.items() if name not in functional})
+            if set(functional) & set(controls) or any(
+                    context['input_hashes'].get(name) != value for name, value in controls.items()):
+                return None
+            result = {'functional_inputs': [{'path': name, 'digest': value} for name, value in sorted(functional.items())],
+                      'control_inputs': [{'path': name, 'digest': value} for name, value in sorted(controls.items())],
+                      'lineage': [dict(reference, criterion=item['criterion_adoption'],
+                                       recorded_policy_sha256=self.records[identity]['guards']['review_policy_digest']),
+                                  *(previous['lineage'] if previous else [])]}
+            self.resolved[key] = result
+            return result
+        except (OSError, OracleApprovalError, ValueError, KeyError, TypeError, IndexError):
+            return None
 
 
 def _prior_native_assessment(directory: Path, rounds: list[dict], tree: str, base: str, guards: dict) -> dict | None:
@@ -1487,9 +1589,10 @@ def _raw_native_provenance(root: Path, raw: dict, assessment: dict) -> dict:
         return {}
 
 
-def _raw_criterion_candidates(root: Path, rounds: list[dict], inputs: dict, guards: dict) -> list:
+def _raw_criterion_candidates(root: Path, rounds: list[dict], inputs: dict, guards: dict, *, lineage=None) -> list:
     """Retain completed bodies for explicit independent applicability only."""
     latest = {}
+    lineage = lineage or _CriterionLineage(root, rounds)
     for record, raw, assessment, original in _raw_assessment_origins(root, rounds):
         if assessment.get("review_status") not in {"COMPLETE", "INCOMPLETE", "ERROR"}:
             continue
@@ -1516,10 +1619,13 @@ def _raw_criterion_candidates(root: Path, rounds: list[dict], inputs: dict, guar
                 _checked_inputs(item.get("inputs"), original, required_path=name)
             except (OracleApprovalError, KeyError, TypeError):
                 continue
-            if any(inputs.get(entry["path"]) != entry["digest"] for entry in item["inputs"]):
+            support = lineage.support(item, record)
+            functional = support['functional_inputs'] if support else item['inputs']
+            if any(inputs.get(entry["path"]) != entry["digest"] for entry in functional):
                 continue
             latest[name] = (dict(item,
                 invalidation_reasons=[*guard_changes, "unadopted_native_observation"],
+                **({'criterion_support': support} if support else {}),
                 raw_observation={"actual_outcome": record["outcome"],
                     "record_sha256": record["record_sha256"],
                     "context_sha256": record["context_sha256"],
@@ -1532,7 +1638,7 @@ def _raw_criterion_candidates(root: Path, rounds: list[dict], inputs: dict, guar
             continue
         item, origin_round = selected
         reasons, superseded = [], False
-        consumed = {entry['path'] for entry in item['inputs']}
+        consumed = {entry['path'] for entry in [*item['inputs'], *item.get('criterion_control_inputs', [])]}
         for record in rounds:
             review = record.get('review', {})
             if not record.get('assessment_admitted', not record.get('raw_assessment') and 'error' not in review):
@@ -1959,6 +2065,7 @@ def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence:
         inputs.setdefault(name, None)
     reusable, invalidated, validations, invalid_validations = [], [], [], []
     ledger = previous.get("finding_ledger", {}) if previous else {}
+    lineage = _CriterionLineage(root, rounds)
     if previous:
         source_guards = {}
         for item, origin in _coverage_checkpoints(rounds):
@@ -1970,7 +2077,12 @@ def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence:
             reasons = [*source_guards[identity], *item.get("checkpoint_invalidation_reasons", [])]
             reasons += [entry["path"] + " content changed or missing" for entry in item["inputs"]
                         if entry["path"] not in inputs or inputs[entry["path"]] != entry["digest"]]
-            (invalidated if reasons else reusable).append(dict(item, invalidation_reasons=reasons))
+            reasons += [entry['path'] + ' criterion control changed or missing'
+                        for entry in item.get('criterion_control_inputs', [])
+                        if inputs.get(entry['path']) != entry['digest']]
+            support = lineage.support(item, origin)
+            (invalidated if reasons else reusable).append(dict(item, invalidation_reasons=reasons,
+                **({'criterion_support': support} if support else {})))
         for item in previous.get("verified_validations", []):
             reasons = _observation_guard_changes(root, guards, previous, validation=True)
             # Evidence from an older round stays eligible only while its exact bytes exist.
@@ -1991,7 +2103,7 @@ def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence:
     # These observations remain ineligible until the current independent
     # criterion decision. A whole-attempt source movement must not require a
     # fresh body read for an unchanged, authenticated per-file assessment.
-    invalidated.extend(_raw_criterion_candidates(root, rounds, inputs, guards))
+    invalidated.extend(_raw_criterion_candidates(root, rounds, inputs, guards, lineage=lineage))
     failed_repairs = 0
     for record in reversed(rounds):
         if record["outcome"] == "APPROVED":
@@ -2275,6 +2387,8 @@ def _validate_completed_review(root: Path, review: dict, context: dict, evidence
         if item.get("status") == "UNREVIEWED":
             continue
         _checked_inputs(item.get("inputs"), context, required_path=name)
+        if item.get('criterion_control_inputs'):
+            _checked_inputs(item['criterion_control_inputs'], context)
         if item.get("status") == "CARRIED_FORWARD":
             prior = reusable.get(name)
             if not prior or item["inputs"] != prior["inputs"]:
