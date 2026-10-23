@@ -89,7 +89,10 @@ def prepare(root: Path, candidate: str, release_ref: str, operation: str, *,
             public_status.publish_status(root, selected, execute=execute)
             command_coverage.publish_statuses(root, selected, execute=execute)
         o._atomic_write(path, o._pretty(record))
-    return dict(record, prepared_file=str(path))
+    return dict(record, status="PREPARED", prepared_file=str(path), prepared_record=str(path),
+                prepared_record_sha256=o._sha(o._pretty(record)),
+                publish_argv=["python3", str(root / "tools/publication_admission.py"),
+                              "publish", "--prepared", str(path)], environment={})
 
 
 def publish_prepared(root: Path, prepared: Path, *, execute=subprocess.run) -> dict:
@@ -116,7 +119,8 @@ def publish_prepared(root: Path, prepared: Path, *, execute=subprocess.run) -> d
     started = time.monotonic()
     execute(command, cwd=root, check=True)
     elapsed = time.monotonic() - started
-    return {"kind": "boc-git-publication-result-v1", "state": "PUBLISHED",
+    return {"kind": "boc-git-publication-result-v1", "state": "PUBLISHED", "status": "PUBLISHED",
+            "source_commit": record["source_commit"], "source_tree": record["source_tree"],
             "candidate_commit": record["source_commit"], "destination": record["plan"]["destination"],
             "prepared_sha256": digest, "elapsed_seconds": elapsed,
             "publication_sla_seconds": 10, "publication_sla_breached": elapsed >= 10}

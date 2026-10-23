@@ -20,6 +20,14 @@ During validation preparation run `npm run release:prepare -- --candidate <SHA>
 already scoped authorization. Finish independent review, required CI, authority,
 receipt custody, remote baseline and publication-input work in that phase. Retain
 the returned immutable `prepared_file`, `source_commit` and `source_tree`.
+The native result also supplies `prepared_record`, its exact byte
+`prepared_record_sha256`, `publish_argv` and `environment` for the family
+coordinator; consume those values directly. Preparation uploads the review source
+and emits only opaque command/source/tree/coverage hashes plus original platform
+and runtime versions. CI checks out the actual PR head, accepts native independent
+command applicability and executes uncovered checks. A failed original aggregate
+retains its status; native coverage can combine its verified passing observations
+with focused repair evidence. Reuse preserves the original execution platform.
 
 Publication runs `npm run release:publish -- --prepared <absolute-prepared-file>`.
 It publishes the fixed validated SHA with a normal Git push and has a ten-second
