@@ -512,7 +512,7 @@ async function scanPrivacyCandidates(candidates) {
   policy.context.scan = scan.toString();
   const result = await privacyFileCoverage({root, directory: join(root, ".git", "oracle", "privacy-coverage"),
     candidates: [...candidates].filter(path => !path.includes(`${join(root, "Vault", "index")}/`)), policy,
-    source: {commit, tree, command: process.argv.slice()}, scan,
+    source: {commit, tree, command: [process.execPath, ...process.execArgv, ...process.argv.slice(1)]}, scan,
     contextFor: async path => ({nativeProbe: await ownNativeProbeIdentity(path, nativeProbeIdentities),
       sourceFixture: await ownSourceFixtureIdentity(path, nativeProbeIdentities)})});
   lastPrivacyCoverage = result.report;

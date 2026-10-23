@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
-import {mkdtemp, readdir, readFile, rm, symlink, writeFile} from "node:fs/promises";
+import {copyFile, mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile} from "node:fs/promises";
+import {execFile} from "node:child_process";
+import {promisify} from "node:util";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import test from "node:test";
 import {privacyFileCoverage, privacyPolicyIdentity} from "../scripts/lib/privacy-coverage.mjs";
+const exec = promisify(execFile);
 
 async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), "boc-privacy-coverage-"));
@@ -97,4 +100,25 @@ test("real privacy policy identity binds bytes and declared functional environme
   process.env.CODEX_THREAD_ID = "synthetic-chat-A"; const original = await privacyPolicyIdentity([config]);
   process.env.CODEX_THREAD_ID = "synthetic-chat-B"; assert.deepEqual(await privacyPolicyIdentity([config]), original);
   await writeFile(config, "changed privacy rules"); assert.notDeepEqual(await privacyPolicyIdentity([config]), original);
+});
+
+test("production privacy CLI preserves full source/Vault membership and consumes prior exact-file results", async t => {
+  const f = await fixture(t);
+  for (const directory of ["scripts/lib", "privacy", "Vault/tmp"]) await mkdir(join(f.root, directory), {recursive: true});
+  for (const name of ["scripts/check-customer-data.mjs", "scripts/lib/privacy-coverage.mjs",
+    "privacy/customer-identifiers.sha256", "privacy/approved-binary-assets.sha256",
+    "privacy/owned-github-pr-identities.json", "privacy/owned-native-probe-identities.json"])
+    await copyFile(new URL("../" + name, import.meta.url), join(f.root, name));
+  for (const args of [["init", "-q"], ["config", "user.name", "Synthetic Privacy"],
+    ["config", "user.email", "fixture@example.invalid"], ["add", "scripts", "privacy"], ["commit", "-qm", "baseline"]])
+    await exec("git", args, {cwd: f.root});
+  const entry = "const m=await import('./scripts/check-customer-data.mjs');const findings=await m.privacyFailures();console.log(JSON.stringify({findings,report:m.lastPrivacyCoverage}));";
+  const invoke = async () => JSON.parse((await exec(process.execPath, ["--input-type=module", "-e", entry], {cwd: f.root})).stdout);
+  const cold = await invoke(); assert.deepEqual(cold.findings, []); assert.ok(cold.report.scanned >= 9);
+  const warm = await invoke(); assert.equal(warm.report.scanned, 0); assert.equal(warm.report.reused, cold.report.scanned);
+  const artifact = join(f.root, "Vault/tmp/new.log"); await writeFile(artifact, "synthetic private validation artifact");
+  const added = await invoke(); assert.equal(added.report.scanned, 1); assert.equal(added.report.files.length, cold.report.files.length + 1);
+  await rm(artifact); const removed = await invoke();
+  assert.equal(removed.report.scanned, 0); assert.equal(removed.report.files.length, cold.report.files.length);
+  assert.notEqual(removed.report.membership_sha256, added.report.membership_sha256);
 });

@@ -18,7 +18,8 @@ async function privateRead(path) {
   const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
   try {
     const info = await handle.stat();
-    if (!info.isFile() || info.nlink !== 1 || info.mode & 0o077 || process.getuid && info.uid !== process.getuid())
+    if (info.nlink !== 1) throw Object.assign(new Error("Privacy coverage record custody changed"), {code: "PRIVACY_LINKED"});
+    if (!info.isFile() || info.mode & 0o077 || process.getuid && info.uid !== process.getuid())
       throw new Error("Privacy coverage record custody changed");
     return await handle.readFile();
   } finally { await handle.close(); }
@@ -37,18 +38,24 @@ async function writeRecord(path, body, immutable = false) {
 
 async function issuerKey(directory) {
   const path = join(directory, "issuer.key");
+  const readKey = async () => {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const key = await privateRead(path);
+        if (key.length !== 32) throw new Error("Privacy coverage issuer identity changed");
+        return key;
+      } catch (error) {
+        if (error.code !== "PRIVACY_LINKED" || attempt >= 4) throw error;
+        await new Promise(done => setTimeout(done, 5));
+      }
+    }
+  };
   try {
-    const key = await privateRead(path);
-    if (key.length !== 32) throw new Error("Privacy coverage issuer identity changed");
-    return key;
+    return await readKey();
   } catch (error) { if (error.code !== "ENOENT") throw error; }
-  const handle = await open(path, "wx", 0o600).catch(error => { if (error.code !== "EEXIST") throw error; });
-  if (handle) {
-    try { await handle.writeFile(randomBytes(32)); await handle.sync(); } finally { await handle.close(); }
-  }
-  const key = await privateRead(path);
-  if (key.length !== 32) throw new Error("Privacy coverage issuer identity changed");
-  return key;
+  try { await writeRecord(path, randomBytes(32), true); }
+  catch (error) { if (error.code !== "EEXIST") throw error; }
+  return readKey();
 }
 
 export async function executableIdentity(name) {
