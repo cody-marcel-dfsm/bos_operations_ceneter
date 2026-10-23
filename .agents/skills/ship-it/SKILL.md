@@ -28,6 +28,12 @@ and runtime versions. CI checks out the actual PR head, accepts native independe
 command applicability and executes uncovered checks. A failed original aggregate
 retains its status; native coverage can combine its verified passing observations
 with focused repair evidence. Reuse preserves the original execution platform.
+Preparation exports every required command attestation before the native approval
+that CI awaits, then records successful exact-source repository-owned Actions
+admission. An absent, pending or failed required check retains completed local
+coverage and prevents a prepared publication record. Repeated preparation reuses
+the sealed command, release-input and remote-admission checkpoints for that exact
+plan; compare the fetched baseline SHA instead of traversing prior receipt history.
 
 Publication runs `npm run release:publish -- --prepared <absolute-prepared-file>`.
 It publishes the fixed validated SHA with a normal Git push and has a ten-second
@@ -38,9 +44,10 @@ captured publication. Server protection and non-fast-forward rejection remain in
 force; retain the concrete Git result and measured SLA breach without an automatic
 semantic retry. This direction controls older PR/merge and publication-preflight
 steps below. Prepare any remote-required review promotion during validation.
-Consume only the captured candidate's sealed receipt and latest applicable native
-decision to refuse a superseding rejection, unfinished decision or error before
-Git dispatch; unrelated authorship and proposals leave its eligibility intact.
+Consume the captured candidate's compact native decision marker before Git
+dispatch. An explicit same-candidate defect or concrete coverage invalidation
+revokes readiness; execution-only INCOMPLETE/ERROR preserves the last complete
+pass. Unrelated authorship and proposals leave captured eligibility intact.
 Retain immutable native Git-attempt results with actual success/failure and timing.
 After confirmed main publication, record the exact delivered SHA through the
 supported `shipment_state.record_released` operation during post-push cleanup;

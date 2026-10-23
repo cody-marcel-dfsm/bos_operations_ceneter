@@ -57,9 +57,63 @@ def _source_receipt(root: Path, commit: str) -> tuple[dict, bytes]:
     return receipt, raw
 
 
+def _remote_admission(root: Path, selected: dict, *, pr=None, execute=subprocess.run,
+                      wait_seconds=120, pause=time.sleep) -> dict:
+    """Complete required remote admission during validation, preserving real failures."""
+    deadline = time.monotonic() + wait_seconds
+    while True:
+        observed = execute(["gh", "pr", "view", str(pr or selected["release_ref"]), "--repo", public_status.REPOSITORY,
+            "--json", "number,state,headRefOid,baseRefOid,headRefName,baseRefName,mergeStateStatus,statusCheckRollup"],
+            cwd=root, capture_output=True, text=True, check=True)
+        row = json.loads(observed.stdout)
+        if (row.get("state") != "OPEN" or row.get("headRefOid") != selected["candidate_commit"]
+                or row.get("headRefName") != selected["release_ref"] or row.get("baseRefName") != "main"
+                or row.get("baseRefOid") != selected["publication_scope"]["baseline_commit"]):
+            raise o.OracleApprovalError("Validation remote admission has a different PR source, ref or baseline")
+        checks = row.get("statusCheckRollup") or []
+        actions = [item for item in checks if item.get("name") == "verify-public-repository"
+                   and item.get("workflowName") == "Publication safety"]
+        failed = [item for item in checks if (item.get("status") == "COMPLETED"
+                  and item.get("conclusion") != "SUCCESS") or item.get("state") in {"FAILURE", "ERROR"}]
+        if failed:
+            raise o.OracleApprovalError("Validation remote admission contains a failed required check: "
+                                       + ", ".join(item.get("name", item.get("context", "unknown")) for item in failed))
+        complete = checks and actions and all(item.get("conclusion", item.get("state")) == "SUCCESS" for item in checks)
+        if complete and row.get("mergeStateStatus") == "CLEAN":
+            break
+        if time.monotonic() >= deadline:
+            raise o.OracleReviewIncomplete("Validation remote admission remains pending; retain completed local command coverage")
+        pause(min(2, max(0, deadline - time.monotonic())))
+    for action in actions:
+        match = re.fullmatch(r"https://github\.com/" + re.escape(public_status.REPOSITORY)
+                            + r"/actions/runs/([1-9][0-9]*)/job/[1-9][0-9]*", action.get("detailsUrl", ""))
+        if not match:
+            raise o.OracleApprovalError("Required Actions check lacks its repository-owned run identity")
+        response = execute(["gh", "api", f"repos/{public_status.REPOSITORY}/actions/runs/{match.group(1)}"],
+                           cwd=root, capture_output=True, text=True, check=True)
+        run = json.loads(response.stdout)
+        if (run.get("head_sha") != selected["candidate_commit"] or run.get("head_branch") != selected["release_ref"]
+                or run.get("repository", {}).get("full_name") != public_status.REPOSITORY
+                or run.get("head_repository", {}).get("full_name") != public_status.REPOSITORY
+                or run.get("event") != "pull_request" or run.get("path") != ".github/workflows/publication-safety.yml"
+                or run.get("status") != "completed" or run.get("conclusion") != "success"):
+            raise o.OracleApprovalError("Required Actions run differs from the exact source/repository/workflow admission")
+    return {"kind": "boc-remote-validation-admission-v1", "source_commit": selected["candidate_commit"],
+            "source_tree": selected["candidate_tree"], "pr": row["number"], "observation_sha256": o._sha(o._canonical(row)),
+            "required_workflow": ".github/workflows/publication-safety.yml", "required_job": "verify-public-repository",
+            "run_ids": [int(re.search(r"/runs/([0-9]+)/", item["detailsUrl"])[1]) for item in actions]}
+
+
+def _prepared_result(root: Path, path: Path, record: dict) -> dict:
+    return dict(record, status="PREPARED", prepared_file=str(path), prepared_record=str(path),
+                prepared_record_sha256=o._sha(o._pretty(record)),
+                publish_argv=["python3", str(root / "tools/publication_admission.py"),
+                              "publish", "--prepared", str(path)], environment={})
+
+
 @o._metadata_owner
 def prepare(root: Path, candidate: str, release_ref: str, operation: str, *,
-            authorization=None, refresh: bool = True, execute=subprocess.run) -> dict:
+            authorization=None, pr=None, refresh: bool = True, execute=subprocess.run) -> dict:
     """Finish validation/preflight and persist the exact Git publication inputs."""
     selected = plan(root, candidate, release_ref, operation, refresh=refresh)
     if selected.get("state") == "NO_CHANGES":
@@ -77,27 +131,44 @@ def prepare(root: Path, candidate: str, release_ref: str, operation: str, *,
                "expected_remote_commit": expected,
                "command": ["git", "push", selected["destination"]["remote_url"],
                            selected["candidate_commit"] + ":" + target]}
+    directory = o.receipt_path(root).parent / "publication-prepared"
+    index = directory / "by-plan" / (o._sha(o._canonical(payload)) + ".json")
+    if index.exists():
+        reference = json.loads(o._custody_read(root, index)[1])
+        path = Path(reference["path"])
+        raw = o._custody_read(root, path)[1]
+        record = json.loads(raw)
+        bound = {key: value for key, value in record.items() if key not in {"prepared_sha256", "remote_admission"}}
+        if (path.parent != directory or o._sha(raw) != reference["sha256"] or bound != payload
+                or path.name != record["prepared_sha256"] + ".json"
+                or record["prepared_sha256"] != o._sha(o._canonical({key:value for key,value in record.items() if key != "prepared_sha256"}))):
+            raise o.OracleApprovalError("Immutable prepared publication changed")
+        return _prepared_result(root, path, record)
+    if command_coverage.requirements(root, selected["candidate_tree"]):
+        # Review-source upload and its opaque native coverage transport are
+        # validation preparation. Unchanged completed preparation is reused.
+        execute(["git", "push", selected["destination"]["remote_url"],
+                 selected["candidate_commit"] + ":refs/heads/codex/validation-" + selected["candidate_commit"]], cwd=root, check=True)
+        # CI waits for native approval. Publish the entire required command
+        # transport first, so its first import sees completed coverage.
+        command_coverage.publish_statuses(root, selected, execute=execute)
+        public_status.publish_status(root, selected, execute=execute)
+        # An existing PR starts Actions on this ref update. Its first CI read
+        # therefore sees the entire original native command transport already.
+        execute(["git", "push", selected["destination"]["remote_url"],
+                 selected["candidate_commit"] + ":refs/heads/" + release_ref], cwd=root, check=True)
+        payload["remote_admission"] = _remote_admission(root, selected, pr=pr, execute=execute)
+    else:
+        payload["remote_admission"] = None  # Synthetic repositories without the owner's release contract.
     record = dict(payload, prepared_sha256=o._sha(o._canonical(payload)))
-    path = o.receipt_path(root).parent / "publication-prepared" / (record["prepared_sha256"] + ".json")
-    if path.exists() and o._custody_read(root, path)[1] != o._pretty(record):
-        raise o.OracleApprovalError("Immutable prepared publication changed")
-    if not path.exists():
-        if command_coverage.requirements(root, selected["candidate_tree"]):
-            # Review-source upload and its opaque native coverage transport are
-            # validation preparation. Unchanged completed preparation is reused.
-            execute(["git", "push", selected["destination"]["remote_url"],
-                     selected["candidate_commit"] + ":refs/heads/" + release_ref], cwd=root, check=True)
-            public_status.publish_status(root, selected, execute=execute)
-            command_coverage.publish_statuses(root, selected, execute=execute)
-        if __package__:
-            from . import oracle_lifecycle
-        else:
-            import oracle_lifecycle
-        oracle_lifecycle._publish(o, root, path, record)
-    return dict(record, status="PREPARED", prepared_file=str(path), prepared_record=str(path),
-                prepared_record_sha256=o._sha(o._pretty(record)),
-                publish_argv=["python3", str(root / "tools/publication_admission.py"),
-                              "publish", "--prepared", str(path)], environment={})
+    path = directory / (record["prepared_sha256"] + ".json")
+    if __package__:
+        from . import oracle_lifecycle
+    else:
+        import oracle_lifecycle
+    oracle_lifecycle._publish(o, root, path, record)
+    oracle_lifecycle._publish(o, root, index, {"path": str(path), "sha256": o._sha(o._pretty(record))})
+    return _prepared_result(root, path, record)
 
 
 @o._metadata_owner
@@ -165,13 +236,19 @@ def plan(root: Path, candidate: str, release_ref: str, operation: str, *, refres
     if shipment.selection(root)["state"] == "NO_CHANGES":
         return {"kind": "boc-publication-plan-v1", "state": "NO_CHANGES", "candidate_commit": commit}
     receipt, raw = _source_receipt(root, commit)
-    current = o._publication_scope(root, receipt["candidate_tree"])
+    # The sealed exact-CL decision already assessed every effective receipt in
+    # this immutable range. Only the fetched destination baseline can change.
+    current = receipt["publication_scope"]
+    if not shipment.checkpoint_path(root).exists():
+        current = o._publication_scope(root, receipt["candidate_tree"])
+    elif o._git(root, "rev-parse", "refs/remotes/origin/main^{commit}").strip() != current["baseline_commit"]:
+        raise o.OracleApprovalError("Publication baseline changed; validate only the affected destination/range")
     if current["target_ref"] is None:
         raise o.OracleApprovalError("Publication baseline UNAVAILABLE: fetch origin/main and obtain a complete current range assessment")
-    shipment.release_preparation(root, current["baseline_commit"], commit)
+    shipment.prepared_release(root, current["baseline_commit"], commit)
     # The just-committed receipt itself is outside the earlier HEAD range; it
     # adds no earlier effect. Preserve every earlier effective origin exactly.
-    current["prior_effects"] = [row for row in current["prior_effects"] if row["origin"] != o._sha(raw)]
+    current = dict(current, prior_effects=[row for row in current["prior_effects"] if row["origin"] != o._sha(raw)])
     if current != receipt["publication_scope"] or current["remote_url"] != o.PUBLICATION_REMOTE:
         raise o.OracleApprovalError("Publication source range or target changed; obtain current technical review")
     o._protected_effects({"protected_effects": receipt["protected_effects"]}, current)
@@ -423,7 +500,7 @@ def main(argv=None) -> int:
             result = plan(root, args.candidate, args.release_ref, args.operation)
         elif args.command == "prepare":
             result = prepare(root, args.candidate, args.release_ref, args.operation,
-                             authorization=args.authorization)
+                             authorization=args.authorization, pr=args.pr)
         elif args.command == "authorize":
             if not args.owner_evidence:
                 raise o.OracleApprovalError("Scoped direct-human evidence is required for publication authorization")

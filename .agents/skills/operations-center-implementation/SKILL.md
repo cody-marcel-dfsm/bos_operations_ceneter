@@ -21,6 +21,13 @@ performs its fixed-SHA Git push within ten seconds, concurrently across selected
 family members. Publication does not rerun validation or require a clean mutable
 HEAD; later authorship remains independent of the captured validated SHA. This
 owner correction controls older publication-plan/push/merge instructions below.
+Repeated exact-CL validation/preparation consumes its sealed native command and
+release-input checkpoint. Preparation finishes required remote Actions admission
+after exporting complete command coverage before the native CI approval gate;
+reuse the immutable completed admission for an unchanged plan. Publisher currentness
+uses a small candidate-specific decision marker: an explicit validated defect or
+coverage invalidation revokes readiness, while an execution-only ERROR/INCOMPLETE
+preserves the last complete pass and its original evidence.
 
 ## Committed validation — controlling owner workflow, October 21, 2026
 

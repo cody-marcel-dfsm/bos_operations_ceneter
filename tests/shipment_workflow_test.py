@@ -105,16 +105,41 @@ class ShipmentWorkflow(unittest.TestCase):
                 publication.prepare(self.root, commit, self.ref, "main-promotion", refresh=False)
         self.assertEqual(shipment.checkpoint_path(self.root).read_bytes(), checkpoint)
 
-    def test_later_unfinished_decision_preserves_checkpoint_and_blocks_preparation(self):
+    def test_later_unfinished_execution_preserves_completed_candidate_and_preparation(self):
         commit = self.validate()
+        prepared = publication.prepare(self.root, commit, self.ref, "main-promotion", refresh=False)
         checkpoint = shipment.checkpoint_path(self.root).read_bytes()
+        decision = (shipment._decision_directory(self.root, commit, prepared["source_tree"]) / "current.json").read_bytes()
         for status in ("INCOMPLETE", "ERROR"):
             with self.subTest(status=status):
                 self.fixture.submit(lambda c: self.fixture.result(c, status=status), error=o.OracleApprovalError)
-                self.assertEqual(shipment.selection(self.root)["state"], "VALIDATE")
-                with self.assertRaisesRegex(o.OracleApprovalError, "latest native exact-candidate decision"):
-                    publication.prepare(self.root, commit, self.ref, "main-promotion", refresh=False)
+                with patch.object(o, "_verify_receipt", side_effect=AssertionError("proof replay")), \
+                        patch.object(o, "_read_rounds", side_effect=AssertionError("round history replay")), \
+                        patch.object(o, "_publication_scope", side_effect=AssertionError("effective range replay")), \
+                        patch.object(o, "verify_staged", side_effect=AssertionError("duplicate validation")), \
+                        patch.object(shipment, "release_preparation", side_effect=AssertionError("duplicate release validation")):
+                    self.assertEqual(shipment.selection(self.root)["state"], "DELIVER")
+                    self.assertEqual(shipment.record_validated(self.root), shipment._load(self.root))
+                    self.assertEqual(publication.prepare(self.root, commit, self.ref, "main-promotion", refresh=False), prepared)
+                    commands = []
+                    publication.publish_prepared(self.root, Path(prepared["prepared_file"]),
+                        execute=lambda command, **kwargs: commands.append(command))
+                    self.assertEqual(commands, [["git", "push", o.PUBLICATION_REMOTE, commit + ":refs/heads/main"]])
                 self.assertEqual(shipment.checkpoint_path(self.root).read_bytes(), checkpoint)
+                self.assertEqual((shipment._decision_directory(self.root, commit, prepared["source_tree"]) / "current.json").read_bytes(), decision)
+
+    def test_concrete_validation_invalidation_revokes_same_candidate_readiness(self):
+        commit = self.validate()
+        prepared = publication.prepare(self.root, commit, self.ref, "main-promotion", refresh=False)
+        path = o._series_directory(self.root, commit) / "round-9999.json"
+        record = {"base_commit": commit, "candidate_tree": prepared["source_tree"], "outcome": "INCOMPLETE",
+                  "review": {"review_status": "INCOMPLETE", "validations": [{"status": "INVALIDATED",
+                  "evidence_path": "synthetic-original", "reason": "Declared dependency identity changed"}]}}
+        shipment.observe_decision(self.root, record, path)
+        with patch.object(o, "_read_rounds", side_effect=AssertionError("round history replay")):
+            with self.assertRaisesRegex(o.OracleApprovalError, "explicitly invalidates"):
+                publication.publish_prepared(self.root, Path(prepared["prepared_file"]),
+                    execute=lambda *a, **k: self.fail("invalidated publication dispatched"))
 
     def test_validation_tracks_actual_changelists_and_original_command_evidence(self):
         first = self.commit("first pending changelist")
@@ -233,6 +258,8 @@ class ShipmentWorkflow(unittest.TestCase):
             return subprocess.CompletedProcess(command, 0, "", "")
         with patch.object(publication, "plan", side_effect=AssertionError("publication repeats preparation")), \
                 patch.object(o, "_verify_receipt", side_effect=AssertionError("publication repeats validation")), \
+                patch.object(o, "_read_rounds", side_effect=AssertionError("publication replays decision history")), \
+                patch.object(o, "_technical_archive", side_effect=AssertionError("publication reopens validation receipt")), \
                 patch.object(shipment, "selection", side_effect=AssertionError("publication inspects new authors")):
             result = publication.publish_prepared(self.root, Path(prepared["prepared_file"]), execute=execute)
         self.assertEqual(commands, [["git", "push", o.PUBLICATION_REMOTE, commit + ":refs/heads/main"]])

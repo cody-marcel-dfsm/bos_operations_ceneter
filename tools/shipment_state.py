@@ -178,14 +178,25 @@ def validated_receipt(root: Path, commit: str | None = None, *, revalidate: bool
 def record_validated(root: Path) -> dict:
     if o._git(root, "status", "--porcelain=v1", "--untracked-files=all").strip():
         raise o.OracleApprovalError("Commit the complete candidate before advancing validation")
-    receipt, raw = o.verify_staged(root)
     commit = o._git(root, "rev-parse", "HEAD").strip()
+    record = _load(root)
+    if record.get("last_validated_commit") == commit:
+        receipt, raw = validated_receipt(root, commit)
+        current = o.receipt_path(root)
+        if not current.exists() or o._sha(o._custody_read(root, current)[1]) == o._sha(raw):
+            reference = record.get("command_tracking", {})
+            if reference and o._sha(o._custody_read(root, reference["path"])[1]) == reference["sha256"]:
+                return record
+    receipt, raw = o.verify_staged(root)
     if receipt["base_commit"] != commit or receipt["candidate_tree"] != o._git(root, "rev-parse", "HEAD^{tree}").strip():
         raise o.OracleApprovalError("Validation receipt does not bind the exact committed candidate")
-    record = _load(root)
     tracking = record_command_tracking(root, record, receipt, raw, commit)
     record.update(last_validated_commit=commit, validated_tree=receipt["candidate_tree"],
                   technical_receipt_sha256=o._sha(raw), command_tracking=tracking)
+    baseline = receipt.get("publication_scope", {}).get("baseline_commit")
+    if baseline:
+        record["release_preparation"] = {"candidate_commit": commit, "baseline_commit": baseline,
+                                          "result": release_preparation(root, baseline, commit)}
     return _save(root, record)
 
 
@@ -297,6 +308,13 @@ def release_preparation(root: Path, baseline: str, commit: str = "HEAD") -> dict
     return {"version": current, "published_version": published, "inputs": inputs}
 
 
+def prepared_release(root: Path, baseline: str, commit: str) -> dict:
+    retained = _load(root).get("release_preparation", {})
+    if retained.get("candidate_commit") == commit and retained.get("baseline_commit") == baseline:
+        return retained["result"]
+    return release_preparation(root, baseline, commit)
+
+
 def selection(root: Path) -> dict:
     commit = o._git(root, "rev-parse", "HEAD").strip()
     result = {"kind": "boc-shipment-selection-v1", "candidate_commit": commit}
@@ -321,7 +339,7 @@ def selection(root: Path) -> dict:
     if not _ancestor(root, baseline, commit):
         return dict(result, state="INTEGRATE", reason="Integrate the current published baseline")
     try:
-        result["release_preparation"] = release_preparation(root, baseline, commit)
+        result["release_preparation"] = prepared_release(root, baseline, commit)
     except (o.OracleApprovalError, OSError, ValueError, TypeError, KeyError) as exc:
         return dict(result, state="PREPARE", reason=str(exc))
     try:
