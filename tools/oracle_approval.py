@@ -168,6 +168,7 @@ _FOLLOW_COMMITS = ContextVar("oracle_follow_commits", default=False)
 _PREPARED_SETTINGS = ContextVar("oracle_prepared_settings", default=None)
 _DISPATCH_BUDGET = ContextVar("oracle_dispatch_budget", default=None)
 _METADATA_ROOT = ContextVar("oracle_metadata_root", default=None)
+_SCOPE_AUDIT = ContextVar("oracle_scope_audit", default=None)
 LIVE_AUTHORITIES = (*AUTHORITY_PATHS, ".agents/skills/oracle/review-output.schema.json",
                     "Vault/docs/CONSTITUTION.md", "Vault/docs/architecture.md",
                     "Vault/docs/issues/ISSUE_HISTORY.md", "Vault/specs/oracle-and-vault.md")
@@ -458,12 +459,101 @@ def _technical_archive(root: Path, digest: str) -> Path:
     return receipt_path(root).parent / "receipts" / (digest + ".json")
 
 
+class _ScopeAudit:
+    """One actual audit: immutable CL lookup plus fresh final custody checks."""
+    def __init__(self, root):
+        self.root = root
+        self.directory = _git_file(root, "oracle/approval.json").parent
+        self.files, self.inventories, self.series, self.archive, self.trees = {}, {}, {}, {}, {}
+        self.head = _git(root, "rev-parse", "HEAD").strip()
+
+    def read(self, path, *, allow_absent=False):
+        name = _custody_name(self.root, path)
+        if name not in self.files:
+            self.files[name] = _custody_read(self.root, path, allow_absent=allow_absent)
+        return self.files[name]
+
+    def inventory(self, directory, pattern):
+        key = (directory, pattern)
+        if key not in self.inventories:
+            self.inventories[key] = sorted(directory.glob(pattern))
+        return self.inventories[key]
+
+    def commit_tree(self, commit):
+        if commit not in self.trees:
+            self.trees[commit] = _git(self.root, "show", "-s", "--format=%T", commit).strip()
+        return self.trees[commit]
+
+    def receipts(self, commit, tree):
+        for path in self.inventory(self.directory / "receipts", "*.json"):
+            if path in self.archive:
+                continue
+            fact, raw = self.read(path, allow_absent=True)
+            if fact["source"].get("links"):
+                raise OracleApprovalError("Archived technical receipt has an invalid linked route")
+            if not fact["source"].get("exists"):
+                continue
+            record = json.loads(raw)
+            self.archive[path] = (record.get("base_commit"), record.get("candidate_tree"), fact, raw)
+        return [(path, fact, raw) for path, (source, candidate, fact, raw) in self.archive.items()
+                if source == commit and candidate == tree]
+
+    def rounds(self, directory):
+        self.series[directory] = _read_rounds_prefix(directory, self.series.get(directory, ()))
+        return self.series[directory]
+
+    def settled(self):
+        changed = False
+        # Every original byte and traversal is checked afresh, including contexts.
+        for name, expected in list(self.files.items()):
+            actual = _custody_read(self.root, name, allow_absent=True)
+            if actual == expected:
+                continue
+            if not expected[0]["source"].get("exists") and actual[0]["source"].get("exists"):
+                self.files[name] = actual
+                changed = True
+            else:
+                raise OracleSourceBindingError("Immutable publication history bytes or custody changed: " + name)
+        for (directory, pattern), before in list(self.inventories.items()):
+            after = sorted(directory.glob(pattern))
+            if not set(before) <= set(after):
+                raise OracleSourceBindingError("Immutable publication history inventory lost records")
+            if after != before:
+                self.inventories[directory, pattern] = after
+                changed = True
+        if (_git_file(self.root, "oracle/approval.json").parent != self.directory
+                or _git(self.root, "rev-parse", "HEAD").strip() != self.head):
+            raise OracleSourceBindingError("Publication history source or metadata route changed")
+        return not changed
+
+
+def _scope_read(root, path, *, allow_absent=False):
+    audit = _SCOPE_AUDIT.get()
+    return audit.read(path, allow_absent=allow_absent) if audit is not None and audit.root == root else _custody_read(root, path, allow_absent=allow_absent)
+
+
+def _publication_scope(root: Path, tree: str) -> dict:
+    audit = _ScopeAudit(root)
+    token = _SCOPE_AUDIT.set(audit)
+    try:
+        for _ in range(8):
+            value = _publication_scope_current(root, tree)
+            if audit.settled():
+                return value
+        raise OracleSourceBindingError("Publication history kept receiving new immutable suffixes")
+    finally:
+        _SCOPE_AUDIT.reset(token)
+
+
 def _committed_receipts(root: Path, commit: str) -> list[tuple[dict, bytes]]:
     """Discover exact committed decisions through immutable native provenance."""
-    tree = _git(root, "show", "-s", "--format=%T", commit).strip()
+    audit = _SCOPE_AUDIT.get()
+    tree = audit.commit_tree(commit) if audit else _git(root, "show", "-s", "--format=%T", commit).strip()
     selected = []
-    for path in sorted((receipt_path(root).parent / "receipts").glob("*.json")):
-        fact, raw = _custody_read(root, path, allow_absent=True)
+    entries = audit.receipts(commit, tree) if audit else [
+        (path, *_custody_read(root, path, allow_absent=True))
+        for path in sorted((receipt_path(root).parent / "receipts").glob("*.json"))]
+    for path, fact, raw in entries:
         if fact["source"].get("links"):
             raise OracleApprovalError("Archived technical receipt has an invalid linked route")
         if not fact["source"].get("exists"):
@@ -504,8 +594,9 @@ def _committed_effect_history(root: Path, commit: str) -> tuple[list, list]:
     """
     prior, limitations = [], []
     directory = receipt_path(root).parent / "committed-history" / commit
-    for path in sorted(directory.glob("*.json")):
-        raw = _custody_read(root, path)[1]
+    audit = _SCOPE_AUDIT.get()
+    for path in audit.inventory(directory, "*.json") if audit else sorted(directory.glob("*.json")):
+        raw = _scope_read(root, path)[1]
         record = json.loads(raw)
         body = {key: value for key, value in record.items() if key != "history_sha256"}
         round_path = root / record.get("round_file", "")
@@ -524,7 +615,7 @@ def _committed_effect_history(root: Path, commit: str) -> tuple[list, list]:
             raise OracleApprovalError("Committed effect history lacks its sealed native origin")
         for effect in match["review"].get("protected_effects", {}).get("active", []):
             prior.append({"origin": path.stem, "effect": effect})
-        fact, receipt_raw = _custody_read(root, _technical_archive(root, path.stem), allow_absent=True)
+        fact, receipt_raw = _scope_read(root, _technical_archive(root, path.stem), allow_absent=True)
         if fact["source"].get("links"):
             raise OracleApprovalError("Archived technical receipt has an invalid linked route")
         if not fact["source"].get("exists"):
@@ -573,7 +664,7 @@ def _record_lifecycle_origin(root: Path, raw: bytes) -> Path:
     return path
 
 
-def _publication_scope(root: Path, tree: str) -> dict:
+def _publication_scope_current(root: Path, tree: str) -> dict:
     """The effective distributed source range, independent of the last commit."""
     base = _git(root, "rev-parse", "HEAD").strip()
     remote_url, target = None, None
@@ -611,7 +702,7 @@ def _publication_scope(root: Path, tree: str) -> dict:
         except OracleApprovalError:
             continue  # The complete current range still requires independent coverage.
         path = _technical_archive(root, digest)
-        fact, raw = _custody_read(root, path, allow_absent=True)
+        fact, raw = _scope_read(root, path, allow_absent=True)
         if fact["source"].get("links"):
             raise OracleApprovalError("Archived technical receipt has an invalid linked route")
         if not fact["source"].get("exists"):
@@ -811,7 +902,9 @@ def _git_file(root: Path, relative: str, common: bool = False) -> Path:
     directory = Path(_git(root, "rev-parse", "--git-common-dir" if common else "--git-dir").strip())
     return ((root / directory) if not directory.is_absolute() else directory).resolve() / relative
 
-def receipt_path(root: Path) -> Path: return _git_file(root, "oracle/approval.json")
+def receipt_path(root: Path) -> Path:
+    audit = _SCOPE_AUDIT.get()
+    return audit.directory / "approval.json" if audit is not None and audit.root == root else _git_file(root, "oracle/approval.json")
 def proposal_path(root: Path) -> Path: return _git_file(root, "oracle/proposal.json")
 def _sha(value: bytes) -> str: return hashlib.sha256(value).hexdigest()
 def _canonical(value: dict[str, Any]) -> bytes: return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
@@ -1183,21 +1276,33 @@ def _series_directory(root: Path, base: str) -> Path:
 
 
 def _read_rounds(directory: Path) -> list[dict]:
-    records, predecessor = [], None
+    audit = _SCOPE_AUDIT.get()
+    if audit is not None and directory.parents[3] == audit.root:
+        return audit.rounds(directory)
+    return _read_rounds_prefix(directory)
+
+
+def _read_rounds_prefix(directory: Path, prefix: Sequence[dict] = ()) -> list[dict]:
+    records = list(prefix)
+    predecessor = records[-1]["record_sha256"] if records else None
     root = directory.parents[3]
-    for index, path in enumerate(sorted(directory.glob("round-*.json")), 1):
+    audit = _SCOPE_AUDIT.get()
+    paths = audit.inventory(directory, "round-*.json") if audit else sorted(directory.glob("round-*.json"))
+    if [path.name for path in paths[:len(records)]] != [f"round-{index:04d}.json" for index in range(1, len(records) + 1)]:
+        raise OracleApprovalError("Oracle review history prefix changed")
+    for index, path in enumerate(paths[len(records):], len(records) + 1):
         try:
-            raw = _custody_read(root, str(path))[1]; record = json.loads(raw)
+            raw = _scope_read(root, str(path))[1]; record = json.loads(raw)
             payload = {key: value for key, value in record.items() if key != "record_sha256"}
             valid = (path.name == f"round-{index:04d}.json" and raw == _pretty(record)
                      and record["round"] == index and record["previous_record_sha256"] == predecessor
                      and record["record_sha256"] == _sha(_canonical(payload)))
-            context = json.loads(_custody_read(root, record["context_file"])[1])
+            context = json.loads(_scope_read(root, record["context_file"])[1])
             valid = valid and record["context_sha256"] == _sha(_canonical(context))
             valid = valid and all(record[key] == context[key] for key in
                                   ("series_id", "round", "mode", "base_commit", "candidate_tree", "guards", "previous_record_sha256"))
             if record.get("repair_plan_file"):
-                valid = valid and _custody_read(root, record["repair_plan_file"])[0]["sha256"] == record["repair_plan_sha256"]
+                valid = valid and _scope_read(root, record["repair_plan_file"])[0]["sha256"] == record["repair_plan_sha256"]
         except (OSError, ValueError, KeyError, AttributeError, TypeError) as exc:
             raise OracleApprovalError("Oracle review history is malformed: " + str(path)) from exc
         if not valid:
