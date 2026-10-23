@@ -407,7 +407,7 @@ from tools import oracle_approval as o
 from tools import shipment_state
 root=Path.cwd()
 o._series_directory=lambda root,base:root/'.git/oracle/series/synthetic-series'
-shipment_state.record_validated=lambda root:{'last_validated_commit':o._git(root,'rev-parse','HEAD').strip()}
+shipment_state.record_validated=lambda root,**kwargs:{'last_validated_commit':o._git(root,'rev-parse','HEAD').strip()}
 @o._serialized_review
 def issue(root,evidence,owner):
  controller=o._CONTROLLER.get()
@@ -476,8 +476,8 @@ class CommittedCatchup(unittest.TestCase):
         def reviewer(*args):
             context=json.loads((o._RUN.get()/'review-context.json').read_text());calls.append(context)
             return self.fixture.result(context)
-        def checkpoint(root):
-            result=actual(root);checkpoints.append(result)
+        def checkpoint(root, **kwargs):
+            result=actual(root, **kwargs);checkpoints.append(result)
             if len(checkpoints)==1:
                 self.fixture.change('peer.py','late checkpoint commit')
                 self.fixture.git('commit','-qm','late authored commit')
@@ -490,6 +490,45 @@ class CommittedCatchup(unittest.TestCase):
         self.assertEqual(len(calls),2)
         self.assertIn('source.py',{x['path'] for x in calls[1]['reusable_coverage']})
         self.assertEqual(shipment_state._load(self.root)['last_validated_commit'],self.fixture.git('rev-parse','HEAD'))
+
+    def _assert_unadmitted_issuance(self, stage, *, same_candidate=False):
+        def reviewer(*args):
+            context=json.loads((o._RUN.get()/'review-context.json').read_text())
+            return self.fixture.result(context)
+        token=o._FOLLOW_COMMITS.set(True)
+        try:
+            original=o.issue(self.root,[str(self.fixture.evidence)],None,reviewer)
+            checkpoint=shipment_state.checkpoint_path(self.root).read_bytes()
+            original_digest=o._sha(o._pretty(original))
+            if not same_candidate:
+                self.fixture.change('peer.py','new candidate for '+stage)
+                self.fixture.git('commit','-qm','new candidate')
+            publish=lifecycle._publish
+            def failure(module,root,path,value):
+                if path.name==stage and (value.get('status')=='APPROVED' or value.get('verdict')=='APPROVED'):
+                    raise OSError('Synthetic final issuance publication failure')
+                return publish(module,root,path,value)
+            with patch.object(lifecycle,'_publish',side_effect=failure):
+                with self.assertRaisesRegex(OSError,'final issuance publication failure'):
+                    o.issue(self.root,[str(self.fixture.evidence)],None,reviewer)
+            self.assertEqual(shipment_state.checkpoint_path(self.root).read_bytes(),checkpoint)
+            pending,raw=o._read_local(self.root)
+            with self.assertRaises(o.OracleApprovalError):
+                shipment_state.publication_eligibility(self.root,pending['base_commit'],pending['candidate_tree'],o._sha(raw))
+            shipment_state.publication_eligibility(self.root,original['base_commit'],original['candidate_tree'],original_digest)
+            if same_candidate:
+                self.assertEqual(shipment_state.validated_receipt(self.root)[1],o._pretty(original))
+        finally:
+            o._FOLLOW_COMMITS.reset(token)
+
+    def test_native_result_failure_retains_complete_checkpoint_and_denies_new_issuance(self):
+        self._assert_unadmitted_issuance('native-result.json')
+
+    def test_terminal_failure_retains_complete_checkpoint_and_denies_new_issuance(self):
+        self._assert_unadmitted_issuance('terminal.json')
+
+    def test_failed_equivalent_issuance_preserves_same_candidate_original_receipt(self):
+        self._assert_unadmitted_issuance('terminal.json',same_candidate=True)
 
 
 if __name__=='__main__':unittest.main()

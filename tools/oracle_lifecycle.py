@@ -645,6 +645,7 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False, request=N
             return result
         token = o._CONTROLLER.set(controller)
         try:
+            pending_checkpoint = None
             evidence = list(dict.fromkeys([*evidence, *controller.resumed_evidence]))
             while True:
                 before = _head(o, root) if kind == "issue" else None
@@ -669,7 +670,7 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False, request=N
                             from . import shipment_state
                         else:
                             import shipment_state
-                        shipment_state.record_validated(root)
+                        pending_checkpoint = shipment_state.record_validated(root, checkpoint=False)
                         if o._git(root, "rev-parse", "HEAD").strip() != before:
                             continue
                     break
@@ -697,11 +698,14 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False, request=N
             status = status if status and status != "COMPLETE" else result.get("verdict", "COMPLETED")
             _finish(o, root, controller.identity,
                     {"status": status, "result_path": str(result_path), "result_sha256": digest})
+            if pending_checkpoint is not None:
+                shipment_state._save(root, pending_checkpoint)
             return result
         except BaseException as exc:
             status = "REJECTED" if isinstance(exc, o.OracleCandidateRejected) else "INCOMPLETE" if isinstance(exc, o.OracleReviewIncomplete) else "ERROR"
-            _finish(o, root, controller.identity,
-                    {"status": status, "error_type": type(exc).__name__, "error": str(exc)})
+            if _terminal(o, root, controller.identity) is None:
+                _finish(o, root, controller.identity,
+                        {"status": status, "error_type": type(exc).__name__, "error": str(exc)})
             raise
         finally:
             o._CONTROLLER.reset(token)

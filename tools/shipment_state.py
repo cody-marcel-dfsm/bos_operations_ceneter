@@ -140,6 +140,11 @@ def observe_decision(root: Path, record: dict, round_path: Path, *, only_if_abse
     receipts = [technical_receipt_sha256] if state == "APPROVED" else []
     support = supporting_receipt or _receipt_support(record, validation_evidence)
     bindings = {technical_receipt_sha256: support} if state == "APPROVED" else {}
+    controller = o._CONTROLLER.get()
+    if state == "APPROVED" and controller is not None and controller.identity["review_kind"] == "issue":
+        support = dict(support, issuance={"controller_id": controller.identity["controller_id"],
+                                        "directory": controller.identity["directory"]})
+        bindings[technical_receipt_sha256] = support
     revoked = {}
     if (directory / "current.json").exists() and state == "APPROVED":
         previous = _decision_read(root, directory)
@@ -244,6 +249,24 @@ def publication_eligibility(root: Path, commit: str, tree: str, digest: str) -> 
         raise o.OracleApprovalError("Shipment latest native exact-candidate decision explicitly invalidates sealed validation")
     if digest not in decision.get("valid_receipts", [decision.get("technical_receipt_sha256")]):
         raise o.OracleApprovalError("Shipment current criteria/effects supersede sealed validation")
+    issuance = decision.get("receipt_support", {}).get(digest, {}).get("issuance")
+    if issuance:
+        directory = o.receipt_path(root).parent / "controllers" / issuance["controller_id"]
+        if str(directory) != issuance["directory"] or directory.name != issuance["controller_id"]:
+            raise o.OracleApprovalError("Shipment native issuance controller changed")
+        try:
+            terminal = json.loads(o._custody_read(root, directory / "terminal.json")[1])
+            payload = {key: value for key, value in terminal.items() if key != "terminal_sha256"}
+            result_path = directory / "native-result.json"
+            raw = o._custody_read(root, result_path)[1]
+            if (terminal.get("controller_id") != issuance["controller_id"]
+                    or terminal.get("terminal_sha256") != o._sha(o._canonical(payload))
+                    or terminal.get("status") != "APPROVED"
+                    or terminal.get("result_path") != str(result_path)
+                    or terminal.get("result_sha256") != digest or o._sha(raw) != digest):
+                raise o.OracleApprovalError("Shipment native issuance is not completely admitted")
+        except (OSError, ValueError) as exc:
+            raise o.OracleApprovalError("Shipment native issuance is not completely admitted") from exc
 
 
 def validated_receipt(root: Path, commit: str | None = None, *, revalidate: bool = False) -> tuple[dict, bytes]:
@@ -276,7 +299,7 @@ def validated_receipt(root: Path, commit: str | None = None, *, revalidate: bool
 
 
 @o._metadata_owner
-def record_validated(root: Path) -> dict:
+def record_validated(root: Path, *, checkpoint: bool = True) -> dict:
     if o._git(root, "status", "--porcelain=v1", "--untracked-files=all").strip():
         raise o.OracleApprovalError("Commit the complete candidate before advancing validation")
     commit = o._git(root, "rev-parse", "HEAD").strip()
@@ -304,7 +327,7 @@ def record_validated(root: Path) -> dict:
         except o.OracleApprovalError as exc:
             record.pop("release_preparation", None)
             record["release_preparation_invalidation"] = str(exc)
-    return _save(root, record)
+    return _save(root, record) if checkpoint else record
 
 
 def record_command_tracking(root: Path, previous: dict, receipt: dict, raw: bytes, commit: str) -> dict:
