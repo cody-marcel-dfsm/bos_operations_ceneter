@@ -167,7 +167,7 @@ def execution_metadata(root: Path, custody: list, environment: dict, *, execute=
     result = dict.fromkeys(("python", "node", "npm"), "unknown")
     result["platform"] = platform.system()
     for entry in custody:
-        token = Path(entry["token"]).name
+        token = Path(entry["token"]).name.lower()
         name = ("python" if re.fullmatch(r"python(?:[0-9]+(?:\.[0-9]+)*)?", token)
                 else token if token in {"node", "npm"} else None)
         if name is None:
