@@ -521,6 +521,12 @@ async function scanPrivacyCandidates(candidates) {
 
 if (process.argv[1] === new URL(import.meta.url).pathname) {
   const failures = await privacyFailures();
+  console.log(JSON.stringify({privacy_coverage: {
+    source_commit: lastPrivacyCoverage.source.commit, source_tree: lastPrivacyCoverage.source.tree,
+    files: lastPrivacyCoverage.files.length, reused: lastPrivacyCoverage.reused,
+    scanned: lastPrivacyCoverage.scanned, invalidated: lastPrivacyCoverage.invalidated,
+    policy_sha256: lastPrivacyCoverage.policy_sha256, membership_sha256: lastPrivacyCoverage.membership_sha256
+  }}));
   if (failures.length) {
     console.error(failures.join("\n"));
     process.exitCode = 1;
