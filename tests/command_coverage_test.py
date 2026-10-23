@@ -154,6 +154,46 @@ class CommandCoverage(unittest.TestCase):
     def test_original_environment_metadata_is_required_for_reuse(self):
         self.assertIsNone(coverage._native_coverage([self.row()], self.commit, self.tree, self.required)[0])
 
+    def test_public_transport_contains_only_opaque_hashes_source_and_runtime_metadata(self):
+        from tools import shipment_state as shipment
+        private = "/Users/synthetic-owner/Vault/tmp/private-observation.json"
+        decision = dict(self.required, status="COMPLETE", basis="INDEPENDENT_APPLICABILITY",
+            inputs=[{"path": private, "digest": "sha256:" + "e" * 64}], evidence_paths=[private],
+            environment_digest="private environment hash", reason="private observation rationale")
+        native = {"outcome": "APPROVED", "candidate_tree": self.tree,
+                  "review": {"review_status": "COMPLETE", "command_coverage": [decision]}}
+        native_path = self.root / "native-round.json"
+        native_path.write_bytes(o._pretty(native))
+        native_ref = {"path": "native-round.json", "sha256": o._sha(native_path.read_bytes())}
+        receipt = {"validation_evidence": {native_ref["path"]: native_ref["sha256"]},
+                   "review_digest": o._sha(o._canonical(native["review"]))}
+        receipt_raw = o._pretty(receipt)
+        selected = {"candidate_commit": self.commit, "candidate_tree": self.tree,
+                    "technical_receipt_sha256": o._sha(receipt_raw)}
+        payload = {"validated_commit": self.commit, "candidate_tree": self.tree,
+            "technical_receipt_sha256": selected["technical_receipt_sha256"],
+            "native_decision": native_ref, "command_coverage": [decision],
+            "execution_environment": {"platform": "Darwin", "python": "3.14.6", "node": "v22.11.0", "npm": "10.9.0"}}
+        tracking = dict(payload, tracking_sha256=o._sha(o._canonical(payload)))
+        path = self.root / "tracking.json"
+        path.write_bytes(o._pretty(tracking))
+        checkpoint = {"command_tracking": {"path": str(path), "sha256": o._sha(path.read_bytes())}}
+        calls = []
+        def execute(command, **kwargs):
+            calls.append(command)
+            fields = dict(command[index + 1].split("=", 1) for index, value in enumerate(command) if value == "-f")
+            fields["creator"] = {"login": coverage.public_status.PUBLISHER}
+            return subprocess.CompletedProcess(command, 0, json.dumps(fields), "")
+        with patch.object(shipment, "_load", return_value=checkpoint), \
+                patch.object(shipment, "validated_receipt", return_value=(receipt, receipt_raw)), \
+                patch.object(coverage, "requirements", return_value=[self.required]):
+            self.assertEqual(len(coverage.publish_statuses(self.root, selected, execute=execute)), 2)
+        public = json.dumps(calls)
+        for protected in [private, "Vault", "synthetic-owner", "private observation", "private environment", "evidence_paths", "inputs"]:
+            self.assertNotIn(protected, public)
+        self.assertIn(self.commit, public)
+        self.assertIn(self.tree, public)
+
 
 if __name__ == "__main__":
     unittest.main()

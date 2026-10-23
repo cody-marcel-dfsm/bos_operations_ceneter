@@ -68,13 +68,6 @@ def prepare(root: Path, candidate: str, release_ref: str, operation: str, *,
         from . import command_coverage
     else:
         import command_coverage
-    if command_coverage.requirements(root, selected["candidate_tree"]):
-        # Uploading the review source and its minimal native coverage statuses is
-        # validation preparation. Final publication later runs its Git push only.
-        execute(["git", "push", selected["destination"]["remote_url"],
-                 selected["candidate_commit"] + ":refs/heads/" + release_ref], cwd=root, check=True)
-        public_status.publish_status(root, selected, execute=execute)
-        command_coverage.publish_statuses(root, selected, execute=execute)
     target = selected["destination"]["ref"]
     expected = selected["publication_scope"]["baseline_commit"] if target == "refs/heads/main" else None
     payload = {"kind": "boc-prepared-git-publication-v1", "plan": selected,
@@ -88,6 +81,13 @@ def prepare(root: Path, candidate: str, release_ref: str, operation: str, *,
     if path.exists() and o._custody_read(root, path)[1] != o._pretty(record):
         raise o.OracleApprovalError("Immutable prepared publication changed")
     if not path.exists():
+        if command_coverage.requirements(root, selected["candidate_tree"]):
+            # Review-source upload and its opaque native coverage transport are
+            # validation preparation. Unchanged completed preparation is reused.
+            execute(["git", "push", selected["destination"]["remote_url"],
+                     selected["candidate_commit"] + ":refs/heads/" + release_ref], cwd=root, check=True)
+            public_status.publish_status(root, selected, execute=execute)
+            command_coverage.publish_statuses(root, selected, execute=execute)
         o._atomic_write(path, o._pretty(record))
     return dict(record, prepared_file=str(path))
 
