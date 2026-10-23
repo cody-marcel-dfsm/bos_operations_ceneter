@@ -84,6 +84,61 @@ class ShipmentWorkflow(unittest.TestCase):
                 patch.object(o, "issue", side_effect=AssertionError("duplicate model review")), redirect_stdout(io.StringIO()):
             self.assertEqual(o.main(["review"]), 0)
 
+    def test_validated_status_consumes_original_success_without_replaying_validation(self):
+        commit = self.validate()
+        with patch.object(o, "_verify_receipt", side_effect=AssertionError("duplicate native proof replay")), \
+                patch.object(o, "_validation_record", side_effect=AssertionError("duplicate command validation")):
+            self.assertEqual(shipment.selection(self.root)["state"], "DELIVER")
+            self.assertEqual(publication._source_receipt(self.root, commit)[0]["base_commit"], commit)
+
+    def test_validation_tracks_actual_changelists_and_original_command_evidence(self):
+        first = self.commit("first pending changelist")
+        self.fixture.change("peer.py", "second pending changelist")
+        second = self.commit("second pending changelist")
+        self.fixture.record_check()
+        self.fixture.submit()
+        checkpoint = shipment.record_validated(self.root)
+        tracking = json.loads(Path(checkpoint["command_tracking"]["path"]).read_bytes())
+        self.assertEqual([row["commit"] for row in tracking["changelists"]], [first, second])
+        self.assertTrue(tracking["commands"])
+        for row in tracking["commands"]:
+            self.assertEqual(row["command_sha256"], o._sha(o._canonical(row["command"])))
+            self.assertTrue(row["inputs_sha256"])
+            self.assertTrue(row["environment_digest"])
+            self.assertTrue(row["output_hashes"])
+        self.assertEqual(shipment.record_validated(self.root)["command_tracking"], checkpoint["command_tracking"])
+
+    def test_prepared_publication_runs_git_only_while_authors_continue(self):
+        commit = self.validate()
+        prepared = publication.prepare(self.root, commit, self.ref, "main-promotion", refresh=False)
+        self.fixture.change("peer.py", "concurrent uncommitted authored work")
+        commands = []
+        def execute(command, **kwargs):
+            commands.append(command)
+            self.assertNotIn("timeout", kwargs)
+            return subprocess.CompletedProcess(command, 0, "", "")
+        with patch.object(publication, "plan", side_effect=AssertionError("publication repeats preparation")), \
+                patch.object(o, "_verify_receipt", side_effect=AssertionError("publication repeats validation")), \
+                patch.object(shipment, "selection", side_effect=AssertionError("publication inspects new authors")):
+            result = publication.publish_prepared(self.root, Path(prepared["prepared_file"]), execute=execute)
+        self.assertEqual(commands, [["git", "push", o.PUBLICATION_REMOTE, commit + ":refs/heads/main"]])
+        self.assertEqual(result["state"], "PUBLISHED")
+        self.assertEqual((self.root / "peer.py").read_text(), "concurrent uncommitted authored work")
+
+    def test_git_publication_failure_preserves_prepared_result_and_has_no_fallback(self):
+        commit = self.validate()
+        prepared = publication.prepare(self.root, commit, self.ref, "main-promotion", refresh=False)
+        path = Path(prepared["prepared_file"])
+        original = path.read_bytes()
+        commands = []
+        def reject(command, **kwargs):
+            commands.append(command)
+            raise subprocess.CalledProcessError(1, command, stderr="protected branch or non-fast-forward")
+        with self.assertRaises(subprocess.CalledProcessError):
+            publication.publish_prepared(self.root, path, execute=reject)
+        self.assertEqual(len(commands), 1)
+        self.assertEqual(path.read_bytes(), original)
+
     def test_new_commit_retains_series_and_unchanged_validation_but_not_approval(self):
         first = self.validate()
         before = shipment.checkpoint_path(self.root).read_bytes()

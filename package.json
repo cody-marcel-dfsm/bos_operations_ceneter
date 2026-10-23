@@ -60,6 +60,8 @@
     "release:check": "npm run build && npm run check && npm run check:privacy && npm run contract:check && npm test",
     "acceptance:marketplace": "node scripts/run-marketplace-prompts.mjs",
     "release:plan": "python3 tools/publication_admission.py plan",
+    "release:prepare": "python3 tools/publication_admission.py prepare",
+    "release:publish": "python3 tools/publication_admission.py publish",
     "release:push": "python3 tools/publication_admission.py push",
     "release:authorize": "python3 tools/publication_admission.py authorize",
     "release:merge": "python3 tools/publication_admission.py merge",
