@@ -403,6 +403,23 @@ class ParallelReview(unittest.TestCase):
         diagnostic = json.loads((self.run / 'structural-intake.json').read_text())
         self.assertEqual(diagnostic['original_observations'], [])
         self.assertTrue(any('Affected executable input' in reason for reason in diagnostic['missing']))
+        standby = directory / 'standby.json'
+        standby_output = directory / 'standby.stdout.log'
+        standby_output.write_text('Independent intact actual replacement')
+        standby.write_bytes(o._pretty({'kind': 'oracle-validation-record-v1', 'exit_code': 0,
+            'command': ['owned-probe'], 'inputs': inputs,
+            'output_hashes': {str(standby_output): o._sha(standby_output.read_bytes())}}))
+        evidence[str(standby)] = o._sha(standby.read_bytes())
+        self.context['invalid_current_validations'].append({'evidence_path': str(standby)})
+        self.context['current_validations'] = [{'evidence_path': str(replacement)}]
+        for state in ['missing', 'tampered']:
+            with self.subTest(current_output=state):
+                if state == 'tampered':
+                    output.write_text('Changed current verified output')
+                with self.assertRaisesRegex(o.OracleIntakeIncomplete, 'Current verified execution output'):
+                    parallel.prepared_intake(o, self.root, self.context, self.plan, [], {}, evidence)
+                diagnostic = json.loads((self.run / 'structural-intake.json').read_text())
+                self.assertEqual([row['path'] for row in diagnostic['original_observations']], [str(standby)])
 
     def test_queued_evidence_after_preparation_requires_rebinding_before_dispatch(self):
         from types import SimpleNamespace

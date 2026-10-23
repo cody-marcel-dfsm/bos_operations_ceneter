@@ -578,6 +578,8 @@ def prepared_intake(o, root, context, plan, jobs, seals, evidence):
     # including strict original-plus-repair composition, belongs to the cohort.
     candidates = {row["evidence_path"] for key in ("current_validations", "reusable_validations", "invalid_current_validations")
                   for row in context.get(key, [])}
+    current_proofs = {row["evidence_path"] for key in ("current_validations", "reusable_validations")
+                      for row in context.get(key, [])}
     for name in sorted(candidates):
         if name not in evidence:
             continue
@@ -599,6 +601,8 @@ def prepared_intake(o, root, context, plan, jobs, seals, evidence):
             unavailable.append({"path": name, "sha256": evidence[name],
                                 "actual_exit_code": value.get("exit_code"),
                                 "applicability": "INELIGIBLE; original output unavailable", "reason": reason})
+            if name in current_proofs:
+                missing.append("Current verified execution output changed or unavailable: " + name)
             continue
         observations.append({"path": name, "sha256": evidence[name], "command": value.get("command"),
                              "actual_exit_code": value.get("exit_code"), "applicability": "UNASSESSED"})
