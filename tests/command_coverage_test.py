@@ -140,15 +140,19 @@ class CommandCoverage(unittest.TestCase):
             calls.append(command)
             self.assertEqual(command, ["git", "push", o.PUBLICATION_REMOTE, candidate + ":refs/heads/main"])
             return subprocess.run([*command[:2], str(remote), *command[3:]], **kwargs, capture_output=True, text=True)
-        result = publication.publish_prepared(self.root, path, execute=execute)
+        # This transport fixture supplies a prepared plan; native revocation is
+        # exercised against real admitted decisions in shipment_workflow_test.
+        with patch.object(publication.shipment, "publication_eligibility"):
+            result = publication.publish_prepared(self.root, path, execute=execute)
         self.assertFalse(result["publication_sla_breached"])
         print(json.dumps({"real_git_publication_seconds": result["elapsed_seconds"],
                           "effective_hooks_path": str(hooks), "pre_push_exists": (hooks / "pre-push").exists()}))
         self.assertEqual(git("--git-dir", str(remote), "rev-parse", "main"), candidate)
         moved = git("commit-tree", tree, "-p", candidate, "-m", "concurrent remote change")
         git("push", str(remote), moved + ":refs/heads/main")
-        with self.assertRaises(subprocess.CalledProcessError):
-            publication.publish_prepared(self.root, path, execute=execute)
+        with patch.object(publication.shipment, "publication_eligibility"):
+            with self.assertRaises(subprocess.CalledProcessError):
+                publication.publish_prepared(self.root, path, execute=execute)
         self.assertEqual(len(calls), 2)
         self.assertEqual(path.read_bytes(), original)
         self.assertTrue((self.root / "concurrent.txt").exists())

@@ -7,6 +7,7 @@ import json
 import re
 import subprocess
 import time
+import uuid
 from pathlib import Path
 
 try:
@@ -99,6 +100,7 @@ def prepare(root: Path, candidate: str, release_ref: str, operation: str, *,
                               "publish", "--prepared", str(path)], environment={})
 
 
+@o._metadata_owner
 def publish_prepared(root: Path, prepared: Path, *, execute=subprocess.run) -> dict:
     """Publish a captured validated SHA with Git only, independent of later authors."""
     started = time.monotonic()
@@ -123,13 +125,27 @@ def publish_prepared(root: Path, prepared: Path, *, execute=subprocess.run) -> d
                                     record["plan"]["technical_receipt_sha256"])
     # A normal push rejects non-fast-forward movement and preserves server-side
     # protection. It publishes this captured SHA even while new authors work.
-    execute(command, cwd=root, check=True)
-    elapsed = time.monotonic() - started
-    return {"kind": "boc-git-publication-result-v1", "state": "PUBLISHED", "status": "PUBLISHED",
+    def result(state, returncode):
+        elapsed = time.monotonic() - started
+        outcome = {"kind": "boc-git-publication-result-v1", "state": state, "status": state,
             "source_commit": record["source_commit"], "source_tree": record["source_tree"],
             "candidate_commit": record["source_commit"], "destination": record["plan"]["destination"],
             "prepared_sha256": digest, "elapsed_seconds": elapsed,
-            "publication_sla_seconds": 10, "publication_sla_breached": elapsed >= 10}
+            "publication_sla_seconds": 10, "publication_sla_breached": elapsed >= 10,
+            "returncode": returncode}
+        if __package__:
+            from . import oracle_lifecycle
+        else:
+            import oracle_lifecycle
+        attempt = o.receipt_path(root).parent / "publication-attempts" / (uuid.uuid4().hex + ".json")
+        oracle_lifecycle._publish(o, root, attempt, outcome)
+        return dict(outcome, attempt_file=str(attempt))
+    try:
+        execute(command, cwd=root, check=True)
+    except (subprocess.CalledProcessError, OSError) as exc:
+        exc.publication_result = result("FAILED", getattr(exc, "returncode", None))
+        raise
+    return result("PUBLISHED", 0)
 
 
 def plan(root: Path, candidate: str, release_ref: str, operation: str, *, refresh: bool = True) -> dict:
@@ -416,6 +432,8 @@ def main(argv=None) -> int:
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0
     except (o.OracleApprovalError, OSError, ValueError, subprocess.CalledProcessError) as exc:
+        if hasattr(exc, "publication_result"):
+            print(json.dumps(exc.publication_result, indent=2, sort_keys=True))
         print(str(exc), file=o.sys.stderr)
         return 2
 

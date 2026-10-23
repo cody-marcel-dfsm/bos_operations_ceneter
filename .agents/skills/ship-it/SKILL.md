@@ -38,6 +38,13 @@ captured publication. Server protection and non-fast-forward rejection remain in
 force; retain the concrete Git result and measured SLA breach without an automatic
 semantic retry. This direction controls older PR/merge and publication-preflight
 steps below. Prepare any remote-required review promotion during validation.
+Consume only the captured candidate's sealed receipt and latest applicable native
+decision to refuse a superseding rejection, unfinished decision or error before
+Git dispatch; unrelated authorship and proposals leave its eligibility intact.
+Retain immutable native Git-attempt results with actual success/failure and timing.
+After confirmed main publication, record the exact delivered SHA through the
+supported `shipment_state.record_released` operation during post-push cleanup;
+preserve the prepared SHA and actual remote reachability evidence.
 
 ## Four phases — controlling owner workflow, October 21, 2026
 

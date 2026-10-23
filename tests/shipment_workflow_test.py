@@ -194,10 +194,10 @@ class ShipmentWorkflow(unittest.TestCase):
                         identity.append(path.stat().st_ino)
                 with patch.object(o, "_atomic_write", side_effect=race):
                     if competing == original:
-                        shipment.record_command_tracking(self.root, {}, receipt, raw, commit)
+                        o._metadata_owner(shipment.record_command_tracking)(self.root, {}, receipt, raw, commit)
                     else:
                         with self.assertRaisesRegex(o.OracleApprovalError, "Immutable controller record changed"):
-                            shipment.record_command_tracking(self.root, {}, receipt, raw, commit)
+                            o._metadata_owner(shipment.record_command_tracking)(self.root, {}, receipt, raw, commit)
                 self.assertEqual((path.stat().st_ino, path.read_bytes()), (identity[0], competing))
 
     def test_prepared_publication_runs_git_only_while_authors_continue(self):
@@ -226,10 +226,16 @@ class ShipmentWorkflow(unittest.TestCase):
         def reject(command, **kwargs):
             commands.append(command)
             raise subprocess.CalledProcessError(1, command, stderr="protected branch or non-fast-forward")
-        with self.assertRaises(subprocess.CalledProcessError):
+        with self.assertRaises(subprocess.CalledProcessError) as caught:
             publication.publish_prepared(self.root, path, execute=reject)
         self.assertEqual(len(commands), 1)
         self.assertEqual(path.read_bytes(), original)
+        result = caught.exception.publication_result
+        self.assertEqual(result["state"], "FAILED")
+        self.assertEqual(result["returncode"], 1)
+        self.assertGreaterEqual(result["elapsed_seconds"], 0)
+        retained = json.loads(Path(result["attempt_file"]).read_bytes())
+        self.assertEqual(retained, {key: value for key, value in result.items() if key != "attempt_file"})
 
     def test_new_commit_retains_series_and_unchanged_validation_but_not_approval(self):
         first = self.validate()
