@@ -214,10 +214,26 @@ class PublicationAdmission(unittest.TestCase):
         self.assertEqual(publication._authorization_effects(self.root, selected, Path(authorized["path"])), {"existing-credential-read"})
         prepared = publication.prepare(self.root, "HEAD", self.ref, "main-promotion", authorization=Path(authorized["path"]),
                                        pr="1", execute=self.execute, refresh=False)
-        outcome = publication.publish_prepared(self.root, Path(prepared["prepared_file"]), execute=self.execute)
+        actual_git = o._git
+        def compact_git(root, *arguments):
+            if arguments[0] in {"diff", "merge-base", "show", "cat-file", "ls-tree", "log", "rev-list"}:
+                raise AssertionError("Prepared publication repeats Git source verification")
+            return actual_git(root, *arguments)
+        with patch.object(o, "_read_rounds", side_effect=AssertionError("Prepared publication replays history")), \
+                patch.object(o, "_archived_origin", side_effect=AssertionError("Prepared publication replays origin")), \
+                patch.object(publication, "_instruction_binding", side_effect=AssertionError("Prepared publication repeats authority verification")):
+            cached = publication.prepare(self.root, "HEAD", self.ref, "main-promotion", authorization=Path(authorized["path"]),
+                                         pr="1", execute=self.execute, refresh=False)
+            self.assertEqual(cached["prepared_file"], prepared["prepared_file"])
+            self.fixture.change("peer.py", "later authored work remains independent")
+            with patch.object(o, "_git", side_effect=compact_git), \
+                    patch.object(o, "_technical_archive", side_effect=AssertionError("Publication reopens validation")), \
+                    patch.object(publication, "plan", side_effect=AssertionError("Publication repeats planning")):
+                outcome = publication.publish_prepared(self.root, Path(prepared["prepared_file"]), execute=self.execute)
         self.assertEqual(outcome["state"], "PUBLISHED")
         self.assertEqual(self.commands[-1][0:2], ["git", "push"])
-        actual_git = o._git
+        self.assertEqual(self.commands[-1][-1], selected["candidate_commit"] + ":refs/heads/main")
+        self.assertEqual((self.root / "peer.py").read_text(), "later authored work remains independent")
         def published_remote(root, *arguments):
             if arguments == ("ls-remote", o.PUBLICATION_REMOTE, "refs/heads/main"):
                 return selected["candidate_commit"] + "\trefs/heads/main\n"
@@ -267,6 +283,13 @@ class PublicationAdmission(unittest.TestCase):
         again = publication.prepare(self.root, "HEAD", self.ref, "main-promotion", authorization=authority,
                                     pr="1", execute=self.execute, refresh=False)
         self.assertEqual(again["prepared_file"], prepared["prepared_file"])
+        original = authority.read_bytes()
+        authority.write_bytes(original + b" ")
+        self.commands.clear()
+        with self.assertRaisesRegex(o.OracleApprovalError, "authority custody changed"):
+            publication.publish_prepared(self.root, Path(prepared["prepared_file"]), execute=self.execute)
+        self.assertEqual(self.commands, [])
+        authority.write_bytes(original)
         source = Path(json.loads(owner.read_bytes())["host_message"]["session_file"])
         answer = json.loads(source.read_bytes().splitlines()[-1])
         answer["payload"]["item"]["id"] = "later-native-refusal"

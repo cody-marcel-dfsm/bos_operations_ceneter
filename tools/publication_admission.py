@@ -125,13 +125,42 @@ def _prepared_authority(root: Path, record: dict) -> None:
     if not record["plan"]["human_authority_required"]:
         return
     reference = record.get("publication_authority")
-    if (not isinstance(reference, dict) or set(reference) != {"paths", "custody"}
+    if (not isinstance(reference, dict) or set(reference) != {"paths", "custody", "instructions"}
             or not isinstance(reference["paths"], list) or not reference["paths"]
             or any(not isinstance(path, str) or not path for path in reference["paths"])
             or len(set(reference["paths"])) != len(reference["paths"])
-            or reference["custody"] != o._custody_files(root, reference["paths"])):
+            or not isinstance(reference["custody"], dict)
+            or any(o._custody_name(root, path) not in reference["custody"] for path in reference["paths"])
+            or reference["custody"] != o._custody_files(root, list(reference["custody"]))
+            or not isinstance(reference["instructions"], list)):
         raise o.OracleApprovalError("Prepared publication authority custody changed or is unavailable")
-    _check_authorization(root, record["plan"], reference["paths"])
+    for instruction in reference["instructions"]:
+        if not isinstance(instruction, dict) or set(instruction) != {"host_message", "host_custody"}:
+            raise o.OracleApprovalError("Prepared native instruction guard changed")
+        decision, custody = _instruction_host_records(root, instruction["host_message"])
+        if decision["decision"] != "Approved" or custody != instruction["host_custody"]:
+            raise o.OracleApprovalError("Prepared native instruction changed or was refused")
+
+
+def _seal_prepared_authority(root: Path, selected: dict, paths: list[str], request: dict) -> dict:
+    """Seal fully verified authority once, during validation preparation."""
+    admitted = o._custody_files(root, paths)
+    if any(request["custody"].get(path) != fact for path, fact in admitted.items()):
+        raise o.OracleApprovalError("Publication authority changed during preparation")
+    sources, instructions = list(paths), []
+    for path in paths:
+        authority = json.loads(o._custody_read(root, path)[1])
+        if (authority["plan"] != selected or authority["owner_evidence"] != o._files(root, list(authority["owner_evidence"]))
+                or authority["native_evidence"] != o._files(root, list(authority["native_evidence"]))):
+            raise o.OracleApprovalError("Admitted publication authority changed before sealing")
+        sources += [*authority["owner_evidence"], *authority["native_evidence"],
+                    str(Path(authority["native_result"]).parent / "outcome.json")]
+        if authority["kind"] == "boc-direct-publication-authorization-v1":
+            owner = json.loads(o._custody_read(root, next(iter(authority["owner_evidence"])))[1])
+            instructions.append({"host_message": owner["host_message"],
+                                 "host_custody": authority["instruction_binding"]["host_custody"]})
+    return {"paths": paths, "custody": o._custody_files(root, list(dict.fromkeys(sources))),
+            "instructions": instructions}
 
 
 @o._metadata_owner
@@ -141,7 +170,6 @@ def prepare(root: Path, candidate: str, release_ref: str, operation: str, *,
     selected = plan(root, candidate, release_ref, operation, refresh=refresh)
     if selected.get("state") == "NO_CHANGES":
         return selected
-    _check_authorization(root, selected, authorization)
     if __package__:
         from . import command_coverage
     else:
@@ -156,7 +184,7 @@ def prepare(root: Path, candidate: str, release_ref: str, operation: str, *,
                            selected["candidate_commit"] + ":" + target]}
     if selected["human_authority_required"]:
         paths = list(dict.fromkeys(str(path) for path in _authorization_paths(authorization)))
-        payload["publication_authority"] = {"paths": paths, "custody": o._custody_files(root, paths)}
+        payload["authorization_request"] = {"paths": paths, "custody": o._custody_files(root, paths, allow_absent=True)}
     directory = o.receipt_path(root).parent / "publication-prepared"
     index = directory / "by-plan" / (o._sha(o._canonical(payload)) + ".json")
     if index.exists():
@@ -164,13 +192,17 @@ def prepare(root: Path, candidate: str, release_ref: str, operation: str, *,
         path = Path(reference["path"])
         raw = o._custody_read(root, path)[1]
         record = json.loads(raw)
-        bound = {key: value for key, value in record.items() if key not in {"prepared_sha256", "remote_admission"}}
+        bound = {key: value for key, value in record.items()
+                 if key not in {"prepared_sha256", "remote_admission", "publication_authority"}}
         if (path.parent != directory or o._sha(raw) != reference["sha256"] or bound != payload
                 or path.name != record["prepared_sha256"] + ".json"
                 or record["prepared_sha256"] != o._sha(o._canonical({key:value for key,value in record.items() if key != "prepared_sha256"}))):
             raise o.OracleApprovalError("Immutable prepared publication changed")
         _prepared_authority(root, record)
         return _prepared_result(root, path, record)
+    admitted = _check_authorization(root, selected, authorization)
+    if selected["human_authority_required"]:
+        payload["publication_authority"] = _seal_prepared_authority(root, selected, admitted, payload["authorization_request"])
     if command_coverage.requirements(root, selected["candidate_tree"]):
         # Review-source upload and its opaque native coverage transport are
         # validation preparation. Unchanged completed preparation is reused.
@@ -187,6 +219,7 @@ def prepare(root: Path, candidate: str, release_ref: str, operation: str, *,
         payload["remote_admission"] = _remote_admission(root, selected, pr=pr, execute=execute)
     else:
         payload["remote_admission"] = None  # Synthetic repositories without the owner's release contract.
+    _prepared_authority(root, payload)
     record = dict(payload, prepared_sha256=o._sha(o._canonical(payload)))
     path = directory / (record["prepared_sha256"] + ".json")
     if __package__:
@@ -375,15 +408,16 @@ def _covered_authorizations(root: Path, selected: dict, authorization) -> tuple[
     return covered, observations
 
 
-def _check_authorization(root: Path, selected: dict, authorization) -> None:
+def _check_authorization(root: Path, selected: dict, authorization) -> list[str]:
     if not selected["human_authority_required"]:
-        return
+        return []
     covered, observations = _covered_authorizations(root, selected, authorization)
     missing = {row["id"] for row in selected["protected_effects"]["active"]} - covered
     if missing:
         detail = "; ".join(item["error"] for item in observations if "error" in item)
         raise o.OracleApprovalError("Protected product publication requires scoped deployment authority for "
                                     + ", ".join(sorted(missing)) + (": " + detail if detail else ""))
+    return [item["path"] for item in observations if "authorized_effect_ids" in item]
 
 
 def _authorization_request(root: Path, candidate: str, release_ref: str, owner_path: str, *, authorization=None, effect_ids=None) -> dict:
