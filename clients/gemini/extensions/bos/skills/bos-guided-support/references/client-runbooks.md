@@ -99,6 +99,11 @@ Official source:
 
 ## Claude Cowork/Desktop
 
+Choose the intended Claude account and personal or organization workspace before
+installing. Follow the host and organization's policy, and confirm the BOS
+marketplace is available in that workspace. Use the workspace owner's supported
+access process when policy or marketplace availability is unclear.
+
 1. Open **Customize → Plugins** and confirm BOS plus the dependent product plugins are
    installed and enabled from the configured marketplace.
 2. Confirm the BOS plugin's own package-owned MCP connection (declared by its
@@ -109,6 +114,17 @@ Official source:
    start a new Cowork task after installation or update.
 4. Refresh discovery, resolve
    context, and run one bounded read.
+
+Each host keeps its own BOS connection and grant. Use the same intended BOS
+identity across hosts and complete each host's supported sign-in when required;
+select the intended BOS organization, application and role separately from fresh
+authorized choices.
+
+Use the current server-returned provider readiness for that selected context.
+Reuse an existing provider connection when current authority permits the
+operation; follow the advertised provider connection or recovery action when the
+server requires it. A host or workspace change alone establishes no provider
+readiness or reconnect requirement.
 
 Official sources:
 

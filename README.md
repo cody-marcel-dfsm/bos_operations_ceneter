@@ -146,6 +146,10 @@ marketplace afterward.
 
 ### Claude Cowork/Desktop
 
+Choose the intended Claude account and personal or organization workspace using
+actual host/organization policy and marketplace availability. Confirm access with
+the workspace owner when those requirements are unclear.
+
 1. Open **Customize → Plugins**.
 2. Add
    `https://github.com/cody-marcel-dfsm/bos_operations_ceneter` as a
@@ -157,6 +161,12 @@ marketplace afterward.
    native sign-in.
 5. Start a new Cowork task and request one authenticated Education Operation
    Center read to verify the connection.
+
+Each host keeps its own BOS connection and grant to the same intended BOS
+identity. Select the intended BOS context from fresh authorized choices after
+sign-in. Reuse a provider connection when current server-returned readiness and
+authority permit the operation; follow the advertised connection or recovery
+action when required.
 
 Run `npm run install:verify:claude-runtime` after installation and each update.
 The verifier follows Claude's active `plugin list --json` `installPath`, checks

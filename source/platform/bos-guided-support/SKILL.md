@@ -3,7 +3,7 @@
 name: bos-guided-support
 description: Guide non-expert BOS users through installation, onboarding, connection, OAuth, tool discovery, provider authorization, updates, version identification, and everyday "How do I do this with BOS?" questions. Use when a user is getting started, seems stuck or hesitant, reports a BOS/plugin/MCP error, asks what to click or do next, shares a screenshot, needs visual step-by-step help, or needs to verify that BOS works. Operate without MCP when necessary and use MCP as additional evidence when available.
 metadata:
-  version: "1.0.8"
+  version: "1.0.9"
   requires: "{\"bos-mcp-client\":\"1.0.7\"}"
 ---
 
@@ -143,6 +143,10 @@ knowledge.
 
 ## Keep authorization boundaries clear
 
+Choose the intended host account and personal or organization workspace using
+current host/organization policy and marketplace availability. Select the BOS
+organization, application and role separately from fresh authorized choices.
+
 Distinguish these states in plain language:
 
 - **Installed:** package files exist.
@@ -151,10 +155,16 @@ Distinguish these states in plain language:
 - **BOS signed in:** the host has authenticated one BOS identity through OAuth,
   or through its user-issued identity key in Muse. The same identity supports
   currently authorized organization/app/role choices without another BOS login.
+  Each host keeps its own BOS connection and grant to that identity; use its
+  supported authentication action when required.
 - **Discovered:** the authenticated scope's dynamic domain-specific MCP services
   and current tooling are loaded.
 - **Provider ready:** any separate Google, SendGrid, Calimatic, or other
   provider grant required by the requested operation is ready.
+  Reuse an existing provider connection when fresh server-returned readiness and
+  current authority permit the operation. Follow the advertised provider
+  connection or recovery action when required; a host/workspace change alone
+  supplies no readiness or reconnect decision.
 
 Installation grants no organization access. Never request a BOS API key,
 access token, refresh token, authorization code, secret-manager name,
