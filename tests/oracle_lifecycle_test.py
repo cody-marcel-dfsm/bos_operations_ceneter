@@ -262,19 +262,20 @@ def plan(*args):
  return dict(value,plan_sha256=o._sha(o._canonical(value)))
 p.plan=plan;p._covered_authorizations=lambda *args:(set(),[])
 o._technical_archive=lambda *args:root/'.git/oracle/technical'
-def reviewer(root,prompt,prefix,**kwargs):
- with (root/'.git/oracle/authorization-calls').open('a') as f:f.write(candidate+'\n')
- (root/'.git/oracle/authorization-entered').write_text('entered')
- end=time.monotonic()+10
- while not (root/'.git/oracle/release-authorization').exists() and time.monotonic()<end:time.sleep(.02)
- request=json.loads((o._RUN.get()/'authorization-inputs.json').read_text())
- result={'verdict':'APPROVED','review_status':'COMPLETE','plan_sha256':request['plan']['plan_sha256'],
-         'authorized_effect_ids':request['requested_effect_ids'],'summary':'synthetic scoped decision'}
- for name,value in {'result.json':result,'process.json':{'exit_code':0},'model.json':{'synthetic':True}}.items():
-  o._atomic_write(o._RUN.get()/name,o._pretty(value))
- o._atomic_write(o._RUN.get()/'request.txt',b'Synthetic authority fixture')
- return result
-o._review_process=reviewer
+def instruction_binding(root,selected,owner_path,requested):
+ # Synchronize once per real owner attempt; authorize rechecks this binding.
+ marker=o._RUN.get()/'synthetic-binding-entered'
+ if not marker.exists():
+  marker.write_text('owned synthetic deterministic boundary')
+  with (root/'.git/oracle/authorization-calls').open('a') as f:f.write(candidate+'\n')
+  (root/'.git/oracle/authorization-entered').write_text('entered')
+  end=time.monotonic()+10
+  while not (root/'.git/oracle/release-authorization').exists() and time.monotonic()<end:time.sleep(.02)
+ return {'decision':'Approved','approved_plan_sha256':selected['plan_sha256'],
+         'effect_ids':requested,'fixture':'owned synthetic instruction binding'}
+def forbidden_model(*args,**kwargs):raise AssertionError('Human instruction must never launch a model')
+p._instruction_binding=instruction_binding
+o._review_process=forbidden_model
 try:print(json.dumps(p.authorize(root,candidate,ref,str(root/'.git/oracle'/owner),
  authorization=[root/'.git/oracle'/prior],effect_ids=[effect])),flush=True)
 except o.OracleApprovalError as e:print(str(e),file=sys.stderr);sys.exit(2)
