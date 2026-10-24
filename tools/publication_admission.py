@@ -120,6 +120,20 @@ def _prepared_result(root: Path, path: Path, record: dict) -> dict:
                               "publish", "--prepared", str(path)], environment={})
 
 
+def _prepared_authority(root: Path, record: dict) -> None:
+    """Consume the captured authority and current instruction before its effect."""
+    if not record["plan"]["human_authority_required"]:
+        return
+    reference = record.get("publication_authority")
+    if (not isinstance(reference, dict) or set(reference) != {"paths", "custody"}
+            or not isinstance(reference["paths"], list) or not reference["paths"]
+            or any(not isinstance(path, str) or not path for path in reference["paths"])
+            or len(set(reference["paths"])) != len(reference["paths"])
+            or reference["custody"] != o._custody_files(root, reference["paths"])):
+        raise o.OracleApprovalError("Prepared publication authority custody changed or is unavailable")
+    _check_authorization(root, record["plan"], reference["paths"])
+
+
 @o._metadata_owner
 def prepare(root: Path, candidate: str, release_ref: str, operation: str, *,
             authorization=None, pr=None, refresh: bool = True, execute=subprocess.run) -> dict:
@@ -127,6 +141,7 @@ def prepare(root: Path, candidate: str, release_ref: str, operation: str, *,
     selected = plan(root, candidate, release_ref, operation, refresh=refresh)
     if selected.get("state") == "NO_CHANGES":
         return selected
+    _check_authorization(root, selected, authorization)
     if __package__:
         from . import command_coverage
     else:
@@ -139,6 +154,9 @@ def prepare(root: Path, candidate: str, release_ref: str, operation: str, *,
                "expected_remote_commit": expected,
                "command": ["git", "push", selected["destination"]["remote_url"],
                            selected["candidate_commit"] + ":" + target]}
+    if selected["human_authority_required"]:
+        paths = list(dict.fromkeys(str(path) for path in _authorization_paths(authorization)))
+        payload["publication_authority"] = {"paths": paths, "custody": o._custody_files(root, paths)}
     directory = o.receipt_path(root).parent / "publication-prepared"
     index = directory / "by-plan" / (o._sha(o._canonical(payload)) + ".json")
     if index.exists():
@@ -151,8 +169,8 @@ def prepare(root: Path, candidate: str, release_ref: str, operation: str, *,
                 or path.name != record["prepared_sha256"] + ".json"
                 or record["prepared_sha256"] != o._sha(o._canonical({key:value for key,value in record.items() if key != "prepared_sha256"}))):
             raise o.OracleApprovalError("Immutable prepared publication changed")
+        _prepared_authority(root, record)
         return _prepared_result(root, path, record)
-    _check_authorization(root, selected, authorization)
     if command_coverage.requirements(root, selected["candidate_tree"]):
         # Review-source upload and its opaque native coverage transport are
         # validation preparation. Unchanged completed preparation is reused.
@@ -208,6 +226,7 @@ def publish_prepared(root: Path, prepared: Path, *, execute=subprocess.run) -> d
     record, digest, command = _prepared_record(root, prepared)
     shipment.publication_eligibility(root, record["source_commit"], record["source_tree"],
                                     record["plan"]["technical_receipt_sha256"])
+    _prepared_authority(root, record)
     # A normal push rejects non-fast-forward movement and preserves server-side
     # protection. It publishes this captured SHA even while new authors work.
     def result(state, returncode):

@@ -255,7 +255,8 @@ from pathlib import Path
 import json,sys,time
 from tools import oracle_approval as o
 from tools import publication_admission as p
-root=Path(sys.argv[1]);candidate,ref,owner,effect,prior=sys.argv[2:]
+from tools import oracle_lifecycle as lifecycle
+root=Path(sys.argv[1]);candidate,ref,owner,effect,prior=sys.argv[2:7]
 def plan(*args):
  value={'candidate_commit':candidate,'release_ref':ref,'technical_receipt_sha256':'a'*64,
         'protected_effects':{'active':[{'id':'effect-a'},{'id':'effect-b'}]}}
@@ -267,6 +268,7 @@ def instruction_binding(root,selected,owner_path,requested):
  marker=o._RUN.get()/'synthetic-binding-entered'
  if not marker.exists():
   marker.write_text('owned synthetic deterministic boundary')
+  (root/'.git/oracle/authorization-owner.json').write_text(json.dumps(o._CONTROLLER.get().identity))
   with (root/'.git/oracle/authorization-calls').open('a') as f:f.write(candidate+'\n')
   (root/'.git/oracle/authorization-entered').write_text('entered')
   end=time.monotonic()+10
@@ -276,12 +278,19 @@ def instruction_binding(root,selected,owner_path,requested):
 def forbidden_model(*args,**kwargs):raise AssertionError('Human instruction must never launch a model')
 p._instruction_binding=instruction_binding
 o._review_process=forbidden_model
-try:print(json.dumps(p.authorize(root,candidate,ref,str(root/'.git/oracle'/owner),
- authorization=[root/'.git/oracle'/prior],effect_ids=[effect])),flush=True)
+try:
+ if len(sys.argv)>7:
+  # Distinct requests own separate admissions. They cannot observe this owner.
+  request=p._authorization_request(root,candidate,ref,str(root/'.git/oracle'/owner),
+      authorization=[root/'.git/oracle'/prior],effect_ids=[effect])
+  identity=json.loads((root/'.git/oracle/authorization-owner.json').read_text())
+  lifecycle._follow(o,root,identity,'authorize',o._sha(o._canonical(request)),[])
+ else:print(json.dumps(p.authorize(root,candidate,ref,str(root/'.git/oracle'/owner),
+  authorization=[root/'.git/oracle'/prior],effect_ids=[effect])),flush=True)
 except o.OracleApprovalError as e:print(str(e),file=sys.stderr);sys.exit(2)
 """
-        def start(values):
-            child=subprocess.Popen([sys.executable,'-c',script,str(self.root),*values],env=self.env,
+        def start(values, observe=False):
+            child=subprocess.Popen([sys.executable,'-c',script,str(self.root),*values,*(['observe'] if observe else [])],env=self.env,
                                    stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
             self.children.append(child);return child
         original=['candidate-a','release/a','owner-a','effect-a','prior-a']
@@ -291,7 +300,7 @@ except o.OracleApprovalError as e:print(str(e),file=sys.stderr);sys.exit(2)
             time.sleep(.02)
         for index,value in enumerate(['candidate-b','release/b','owner-b','effect-b','prior-b']):
             changed=list(original);changed[index]=value
-            child=start(changed);stdout,stderr=child.communicate(timeout=5)
+            child=start(changed,observe=True);stdout,stderr=child.communicate(timeout=5)
             self.assertEqual(child.returncode,2,(changed,stdout,stderr))
             self.assertIn('Incompatible',stderr)
         same=start(original);time.sleep(.2)

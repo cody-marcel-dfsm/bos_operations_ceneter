@@ -253,6 +253,34 @@ class PublicationAdmission(unittest.TestCase):
         with self.assertRaisesRegex(o.OracleApprovalError, "plan changed"):
             publication._instruction_binding(self.root, selected, str(owner), ["existing-credential-read"])
 
+    def test_prepared_publication_preserves_later_native_refusal(self):
+        from tools import shipment_state
+        self.submit(True, authentication=True)
+        self.fixture.submit(lambda context: dict(self.fixture.result(context), authentication_impact="AUTHENTICATION",
+            owner_approval_status="MISSING", protected_effects={"active": [self.effect(context)], "dispositions": []}))
+        shipment_state.record_validated(self.root)
+        owner = self.root / "Vault/tmp/prepared-refusal.json"; owner.write_text('{}')
+        authorized = self.native_authorize(owner)
+        authority = Path(authorized["path"])
+        prepared = publication.prepare(self.root, "HEAD", self.ref, "main-promotion", authorization=authority,
+                                       pr="1", execute=self.execute, refresh=False)
+        again = publication.prepare(self.root, "HEAD", self.ref, "main-promotion", authorization=authority,
+                                    pr="1", execute=self.execute, refresh=False)
+        self.assertEqual(again["prepared_file"], prepared["prepared_file"])
+        source = Path(json.loads(owner.read_bytes())["host_message"]["session_file"])
+        answer = json.loads(source.read_bytes().splitlines()[-1])
+        answer["payload"]["item"]["id"] = "later-native-refusal"
+        content = answer["payload"]["item"]["content"][0]
+        content["text"] = content["text"].replace('"answer": "Approved"', '"answer": "Hold publication"')
+        with source.open("ab") as output: output.write(json.dumps(answer).encode() + b"\n")
+        self.commands.clear()
+        with self.assertRaisesRegex(o.OracleApprovalError, "superseded"):
+            publication.prepare(self.root, "HEAD", self.ref, "main-promotion", authorization=authority,
+                                pr="1", execute=self.execute, refresh=False)
+        with self.assertRaisesRegex(o.OracleApprovalError, "superseded"):
+            publication.publish_prepared(self.root, Path(prepared["prepared_file"]), execute=self.execute)
+        self.assertEqual(self.commands, [])
+
     def test_direct_instruction_rejects_unrelated_genuine_question_and_later_refusal(self):
         self.submit(True, authentication=True)
         owner = self.root / "Vault/tmp/unrelated-question.json"
