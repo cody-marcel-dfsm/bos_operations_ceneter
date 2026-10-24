@@ -44,29 +44,13 @@
     "tool_surface_authorization_semantics": "AUTHENTICATED_DESCRIPTORS_DO_NOT_GRANT_AUTHORITY",
     "operation_authorization": "SERVER_EVALUATED_ON_TOOLS_CALL",
     "native_action_surface": "ACTIVE_CHAT",
-    "rejected_refresh_token_behavior": "CODEX_ZERO_AUTHORITY_HANDOFF_THEN_HOST_REAUTHENTICATION_ACTION",
-    "codex_stale_refresh_compatibility": {
-      "eligible_dcr_client": {
-        "client_name": "Codex",
-        "application_type": "native",
-        "token_endpoint_auth_method": "none",
-        "grant_types": [
-          "authorization_code",
-          "refresh_token"
-        ],
-        "response_types": [
-          "code"
-        ],
-        "redirect_uri_policy": "HTTP_LOOPBACK_CALLBACK_ONLY"
-      },
-      "access_token_scope": "mcp:tools",
-      "maximum_lifetime_seconds": 120,
-      "authority": "NONE",
-      "mcp_transport_result": "HTTP_401_WWW_AUTHENTICATE",
-      "tool_surface": "NONE",
+    "rejected_refresh_token_behavior": "OAUTH_INVALID_GRANT_THEN_HOST_REAUTHENTICATION_ACTION",
+    "rejected_refresh_token_response": {
+      "http_status": 400,
+      "error": "invalid_grant",
+      "access_token_returned": false,
       "refresh_token_returned": false,
-      "registered_nonmatching_client_result": "invalid_grant",
-      "unsupported_registration_metadata_result": "invalid_client_metadata"
+      "id_token_returned": false
     },
     "session_start_blocking": false,
     "continuation_policy": "RESUME_ORIGINAL_REQUEST"

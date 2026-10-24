@@ -326,9 +326,14 @@ async function inspectMcpAuthenticationChallenge(response, resourceUrl) {
   return violations;
 }
 
+function credentialFreeInvalidGrant({response, payload}) {
+  return response.status === 400 && payload?.error === "invalid_grant" &&
+    !["access_token", "refresh_token", "id_token"].some((field) =>
+      Object.hasOwn(payload ?? {}, field));
+}
+
 export async function probeBosCodexStaleRefreshRecovery({
   resourceUrl = CANONICAL_RESOURCE_URL,
-  businessToolName = "bos_list_plugin_services",
   verifyNonCodexControl = false,
   verifyCodexNearMatchControls = false,
   fetchImpl = fetch,
@@ -350,12 +355,10 @@ export async function probeBosCodexStaleRefreshRecovery({
     authorization_server_metadata_status: null,
     codex_registration_status: null,
     stale_refresh_status: null,
-    access_token_expires_in: null,
-    access_token_scope: null,
-    initialize_status: null,
-    tools_list_status: null,
-    tools_call_status: null,
-    business_call_status: null,
+    stale_refresh_error: null,
+    access_token_returned: false,
+    refresh_token_returned: false,
+    id_token_returned: false,
     non_codex_registration_status: null,
     non_codex_refresh_status: null,
     non_codex_error: null,
@@ -540,86 +543,18 @@ export async function probeBosCodexStaleRefreshRecovery({
     fail("oauth_stale_refresh_request", `Codex stale-refresh exchange failed: ${error.message}`, "token");
     return result;
   }
-  const accessToken = refresh.payload?.access_token;
-  result.access_token_expires_in = refresh.payload?.expires_in ?? null;
-  result.access_token_scope = refresh.payload?.scope ?? null;
-  if (refresh.response.status !== 200 ||
-      typeof accessToken !== "string" || !accessToken.startsWith("bos_mcp_at_") ||
-      refresh.payload?.token_type !== "Bearer" ||
-      refresh.payload?.scope !== "mcp:tools" ||
-      !Number.isInteger(refresh.payload?.expires_in) ||
-      refresh.payload.expires_in <= 0 || refresh.payload.expires_in > 120 ||
-      Object.hasOwn(refresh.payload ?? {}, "refresh_token")) {
+  result.stale_refresh_error = refresh.payload?.error === "invalid_grant"
+    ? "invalid_grant" : null;
+  for (const field of ["access_token", "refresh_token", "id_token"]) {
+    result[`${field}_returned`] = Object.hasOwn(refresh.payload ?? {}, field);
+  }
+  if (!credentialFreeInvalidGrant(refresh)) {
     fail(
       "oauth_stale_refresh_token_contract",
-      "Codex stale-refresh recovery must return a BOS bearer scoped only to mcp:tools for at most 120 seconds and must not return a refresh token.",
+      "An unknown refresh token must return terminal HTTP 400 invalid_grant without access, refresh or ID credentials; never consume a successful compatibility bearer.",
       "token"
     );
     return result;
-  }
-
-  let initializeResponse;
-  try {
-    initializeResponse = await postAuthorizedMcp(request, resourceUrl, 101, "initialize", {
-      protocolVersion: "2025-11-25",
-      capabilities: {},
-      clientInfo: { name: "Codex", version: "0.153.4" }
-    }, accessToken);
-    result.initialize_status = initializeResponse.status;
-  } catch (error) {
-    fail("oauth_stale_refresh_initialize_request", `Bridge-bearer MCP initialization failed: ${error.message}`, "initialize");
-    return result;
-  }
-  const initializeViolations = await inspectMcpAuthenticationChallenge(
-    initializeResponse, resourceUrl
-  );
-  if (initializeViolations.length) {
-    fail(
-      "oauth_stale_refresh_initialize_challenge",
-      `The bridge bearer must receive the canonical authentication challenge during initialization: ${initializeViolations.join("; ")}.`,
-      "initialize"
-    );
-  }
-
-  let toolsResponse;
-  try {
-    toolsResponse = await postAuthorizedMcp(request, resourceUrl, 102, "tools/list", {}, accessToken);
-    result.tools_list_status = toolsResponse.status;
-  } catch (error) {
-    fail("oauth_stale_refresh_tools_list_request", `Bridge-bearer tool discovery failed: ${error.message}`, "tools/list");
-    return result;
-  }
-  const toolsViolations = await inspectMcpAuthenticationChallenge(
-    toolsResponse, resourceUrl
-  );
-  if (toolsViolations.length) {
-    fail(
-      "oauth_stale_refresh_tool_surface",
-      `The bridge bearer must receive the canonical authentication challenge and no tool or schema surface: ${toolsViolations.join("; ")}.`,
-      "tools/list"
-    );
-  }
-
-  let contextResponse;
-  try {
-    contextResponse = await postAuthorizedMcp(request, resourceUrl, 103, "tools/call", {
-      name: "bos_get_context",
-      arguments: {}
-    }, accessToken);
-    result.tools_call_status = contextResponse.status;
-  } catch (error) {
-    fail("oauth_stale_refresh_context_request", `Bridge-bearer context call failed: ${error.message}`, "tools/call");
-    return result;
-  }
-  const contextViolations = await inspectMcpAuthenticationChallenge(
-    contextResponse, resourceUrl
-  );
-  if (contextViolations.length) {
-    fail(
-      "oauth_stale_refresh_context_challenge",
-      `The bridge bearer must not expose bos_get_context and must receive the canonical authentication challenge: ${contextViolations.join("; ")}.`,
-      "tools/call"
-    );
   }
 
   if (verifyCodexNearMatchControls) {
@@ -683,9 +618,9 @@ export async function probeBosCodexStaleRefreshRecovery({
       }
       const exchange = await exchangeUnknownRefresh(controlClientId);
       control.refresh_status = exchange.response.status;
-      control.error = exchange.payload?.error ?? null;
+      control.error = exchange.payload?.error === "invalid_grant" ? "invalid_grant" : null;
       result.codex_near_match_controls.push(control);
-      if (exchange.response.status !== 400 || exchange.payload?.error !== "invalid_grant") {
+      if (!credentialFreeInvalidGrant(exchange)) {
         fail(
           "oauth_codex_near_match_handoff",
           "A near-match Codex registration must receive canonical invalid_grant for an unknown refresh token.",
@@ -693,28 +628,6 @@ export async function probeBosCodexStaleRefreshRecovery({
         );
       }
     }
-  }
-
-  let businessResponse;
-  try {
-    businessResponse = await postAuthorizedMcp(request, resourceUrl, 104, "tools/call", {
-      name: businessToolName,
-      arguments: {}
-    }, accessToken);
-    result.business_call_status = businessResponse.status;
-  } catch (error) {
-    fail("oauth_stale_refresh_business_request", `Bridge-bearer business-tool probe failed: ${error.message}`, "business-tools/call");
-    return result;
-  }
-  const businessViolations = await inspectMcpAuthenticationChallenge(
-    businessResponse, resourceUrl
-  );
-  if (businessViolations.length) {
-    fail(
-      "oauth_stale_refresh_business_denial",
-      `The bridge bearer must not authorize business access and must receive the canonical authentication challenge: ${businessViolations.join("; ")}.`,
-      "business-tools/call"
-    );
   }
 
   if (verifyNonCodexControl) {
@@ -746,14 +659,12 @@ export async function probeBosCodexStaleRefreshRecovery({
     try {
       controlRefresh = await exchangeUnknownRefresh(controlClientId);
       result.non_codex_refresh_status = controlRefresh.response.status;
-      result.non_codex_error = controlRefresh.payload?.error ?? null;
+      result.non_codex_error = controlRefresh.payload?.error === "invalid_grant" ? "invalid_grant" : null;
     } catch (error) {
       fail("oauth_non_codex_refresh_request", `Non-Codex stale-refresh control failed: ${error.message}`, "non-codex-token");
       return result;
     }
-    if (controlRefresh.response.status !== 400 ||
-        controlRefresh.payload?.error !== "invalid_grant" ||
-        controlRefresh.payload?.error_description !== "Invalid refresh token") {
+    if (!credentialFreeInvalidGrant(controlRefresh)) {
       fail(
         "oauth_non_codex_invalid_grant",
         "A non-Codex client must retain the canonical invalid_grant response for an unknown refresh token.",
