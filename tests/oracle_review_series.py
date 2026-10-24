@@ -2550,6 +2550,47 @@ class ReviewSeries(unittest.TestCase):
         o.receipt_path(self.root).write_bytes(receipt)
         o.verify_staged(self.root)
 
+    def test_native_committed_effect_receipt_excludes_only_its_own_history(self):
+        from tools import shipment_state
+        self.git("remote", "add", "origin", o.PUBLICATION_REMOTE)
+        self.git("update-ref", "refs/remotes/origin/main", self.base)
+        self.release_metadata("0.0.1")
+        self.git("add", "."); self.git("commit", "-qm", "committed synthetic candidate")
+        self.record_check()
+        vault = self.root / "Vault/tmp/synthetic-vault-query.json"
+        vault.write_text('{"kind":"synthetic-vault-evidence"}')
+        additional = []
+        def reviewer(root, *args):
+            run = o._RUN.get()
+            context = json.loads((run / "review-context.json").read_bytes())
+            o._atomic_write(run / "model.json", b"{}\n")
+            result = self.result(context, validation=True)
+            effect = {"id": "synthetic-contract-effect", "kind": "incompatible-public-contract",
+                      "boundary": "synthetic boundary", "description": "Synthetic response correction",
+                      "paths": ["source.py"], "inputs": self.inputs(context, "source.py")}
+            result.update(owner_approval_status="MISSING",
+                          protected_effects={"active": [effect, *additional], "dispositions": []})
+            return result
+        with patch.object(o, "_oracle", reviewer), patch.object(o, "_vault_evidence", return_value=vault):
+            receipt = o.issue(self.root, [str(self.evidence)], None, reviewer=reviewer)
+            raw = o._pretty(receipt)
+            self.assertEqual(receipt["publication_scope"]["prior_effects"], [])
+            self.assertEqual({row["origin"] for row in o._publication_scope(self.root, receipt["candidate_tree"])["prior_effects"]},
+                             {o._sha(raw)})
+            o.verify_staged(self.root)
+            self.assertEqual(shipment_state.record_validated(self.root)["last_validated_commit"], self.git("rev-parse", "HEAD"))
+            preparation = Path(o._read_rounds(o._series_directory(self.root, self.base))[-1]["context_file"]).parent / "oracle-inputs.json"
+            original = preparation.read_bytes()
+            preparation.write_bytes(original + b" ")
+            with self.assertRaisesRegex(o.OracleApprovalError, "evidence changed"):
+                o._verify_receipt(self.root, receipt, raw)
+            preparation.write_bytes(original)
+            additional.append(dict(receipt["protected_effects"]["active"][0], id="distinct-contract-effect"))
+            o.issue(self.root, [str(self.evidence)], None, reviewer=reviewer)
+            o.verify_staged(self.root)
+            with self.assertRaisesRegex(o.OracleApprovalError, "publication source range changed"):
+                o._verify_receipt(self.root, receipt, raw)
+
     def test_receipt_preparation_reentry_is_rejected_after_initial_evidence_check(self):
         receipt = self.submit()
         records = o._read_rounds(o._series_directory(self.root, self.base))

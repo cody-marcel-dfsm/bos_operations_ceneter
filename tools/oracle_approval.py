@@ -810,8 +810,14 @@ def _input_binding(root: Path, evidence: dict, owner: dict | None) -> dict:
                                                    *[n for n, d in _live_authorities(root).items() if d is not None]])}
 
 
-def _assert_binding(root: Path, expected: dict, evidence: dict, owner: dict | None, *, check_environment: bool = True) -> None:
+def _assert_binding(root: Path, expected: dict, evidence: dict, owner: dict | None, *,
+                    check_environment: bool = True, receipt_origin: str | None = None) -> None:
     actual = _input_binding(root, evidence, owner)
+    if receipt_origin is not None:
+        # Issuance archives this receipt after its preparation was sealed. Its
+        # own history adds no earlier effect to that exact receipt's inputs.
+        actual["publication_scope"]["prior_effects"] = [
+            row for row in actual["publication_scope"]["prior_effects"] if row["origin"] != receipt_origin]
     if not check_environment:
         actual = {key: value for key, value in actual.items() if key not in {"environment_digest", "reviewer_settings"}}
         expected = {key: value for key, value in expected.items() if key not in {"environment_digest", "reviewer_settings"}}
@@ -2894,7 +2900,8 @@ def _verify_receipt(root: Path, receipt: dict, raw: bytes, *, pending_evidence: 
         binding = preparation["input_binding"]
         # Historical approval retains its recorded validation environment. A
         # later Git hook's ambient PATH does not change the approved source.
-        _assert_binding(root, binding, binding["validation_evidence"], binding["owner_approval_evidence"], check_environment=False)
+        _assert_binding(root, binding, binding["validation_evidence"], binding["owner_approval_evidence"],
+                        check_environment=False, receipt_origin=_sha(raw))
         for group in ("candidate_diff", "vault_evidence"):
             files = preparation[group]
             if files != _files(root, list(files)):
