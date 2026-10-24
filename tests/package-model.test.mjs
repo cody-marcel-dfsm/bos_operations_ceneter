@@ -2648,7 +2648,7 @@ test("README routes customer, development, and credential-free release validatio
   assert.match(installSection, /Open a new Codex task and paste:/);
   assert.ok(
     installSection.includes(
-      `Current desktop marketplace release: \`${repositoryPackage.version}\``
+      `Current source package release: \`${repositoryPackage.version}\``
     )
   );
   assert.match(installSection, /Customize → Plugins/);

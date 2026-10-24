@@ -605,7 +605,9 @@ class ShipmentWorkflow(unittest.TestCase):
     def test_published_status_recovery_requires_genuinely_absent_native_history(self):
         commit = self.commit()
         self.fixture.git("update-ref", "refs/remotes/origin/main", commit)
-        with patch.object(status, "verify_publication", return_value={"candidate_commit": commit}) as verify:
+        published = {"candidate_commit": commit, "candidate_tree": self.fixture.git("rev-parse", commit + "^{tree}"),
+                     "technical_receipt_sha256": "a" * 64, "publisher": status.PUBLISHER}
+        with patch.object(status, "verify_publication", return_value=published) as verify:
             o.verify_commit(self.root, commit)
             verify.assert_called_once_with(self.root, commit, wait_seconds=0)
 
