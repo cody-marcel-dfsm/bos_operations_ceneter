@@ -1,9 +1,9 @@
 ---
 
 name: bos-guided-support
-description: Guide non-expert BOS users through installation, onboarding, connection, OAuth, tool discovery, provider authorization, updates, and everyday "How do I do this with BOS?" questions. Use when a user is getting started, seems stuck or hesitant, reports a BOS/plugin/MCP error, asks what to click or do next, shares a screenshot, needs visual step-by-step help, or needs to verify that BOS works. Operate without MCP when necessary and use MCP as additional evidence when available.
+description: Guide non-expert BOS users through installation, onboarding, connection, OAuth, tool discovery, provider authorization, updates, version identification, and everyday "How do I do this with BOS?" questions. Use when a user is getting started, seems stuck or hesitant, reports a BOS/plugin/MCP error, asks what to click or do next, shares a screenshot, needs visual step-by-step help, or needs to verify that BOS works. Operate without MCP when necessary and use MCP as additional evidence when available.
 metadata:
-  version: "1.0.7"
+  version: "1.0.8"
   requires: "{\"bos-mcp-client\":\"1.0.7\"}"
 ---
 
@@ -54,6 +54,31 @@ isolated. Make the next action feel small, safe, and obvious.
 
 Do not give the entire runbook at once unless the user explicitly asks for a
 copyable checklist. Keep normal replies under roughly one phone screen.
+
+## Identify versions
+
+Report each version with its owner and source:
+
+- **BOS Service release/build:** use the actual current server metadata exposed
+  by the host, such as MCP initialization's `serverInfo.version`, or a freshly
+  advertised server contract. Include a serving revision only when that evidence
+  supplies it. When current service metadata is absent, say **BOS Service
+  release/build: unavailable**.
+- **Client package release:** read the installed product manifest, such as
+  `plugin.json` or `.bos-product.json`. Attribute a repository or marketplace
+  version to that source when the installed version has not been verified.
+- **Skill component version:** read the skill's `metadata.version`; its exact
+  `metadata.requires` values identify required skill components.
+- **Host version and protocol/schema identifiers:** retain their declared owner,
+  such as the host's `clientInfo.version`, negotiated MCP `protocolVersion`, or
+  a manifest's `schema_version`.
+
+Package and skill releases advance independently of the service. Keep the exact
+observed values and their source; never derive a service build from package,
+skill, host or schema numbers, or put a synchronized service build in static
+client metadata. Use the existing BOS connection and currently supported host
+inspection for service evidence; an unavailable field creates no new endpoint,
+connection or authentication step.
 
 ## Use screenshots as the working surface
 

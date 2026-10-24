@@ -1800,7 +1800,7 @@ test("GPT and every generated client publish one canonical product description",
     assert.equal(gemini.description, description, `${product.name} Gemini`);
     assert.equal(
       antigravity.description,
-      `${description} Version ${product.version}.`,
+      `${description} Client package release ${product.version}.`,
       `${product.name} Antigravity`
     );
     assert.match(copilotReadme, new RegExp(description.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
@@ -2322,7 +2322,7 @@ test("one Gemini extension bundles CLI and Antigravity Desktop with OAuth MCP", 
     assert.deepEqual(desktopPlugin, geminiPluginManifest(product));
     assert.match(
       desktopPlugin.description,
-      new RegExp(`Version ${product.version.replaceAll(".", "\\.")}\\.$`)
+      new RegExp(`Client package release ${product.version.replaceAll(".", "\\.")}\\.$`)
     );
     assert.match(
       readme,

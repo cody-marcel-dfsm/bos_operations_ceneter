@@ -77,8 +77,17 @@ Upgrading replaces the former `platform` identifier. Hosts may require native
 sign-in again when a connection identifier changes; valid-session continuity
 has not been verified for this migration.
 
-Current desktop marketplace release: `0.4.211`. If `0.4.210` is installed,
+Current desktop marketplace release: `0.4.212`. If `0.4.211` is installed,
 refresh the marketplace and upgrade or reinstall both plugins before connecting.
+
+Version labels identify separate release streams. **BOS Service release/build**
+comes from actual current host/server metadata, including a serving revision
+when supplied; an unavailable value is reported as **unavailable**. **Client
+package release** identifies the installed plugin or extension package.
+**Skill component version** comes from each skill's `metadata.version`.
+Host versions, MCP protocol versions, and schema identifiers retain their own
+labels. Package and skill versions advance independently of the service; static
+client manifests carry their own package versions.
 
 ### ChatGPT/Codex Desktop
 

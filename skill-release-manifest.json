@@ -1,6 +1,6 @@
 {
   "package": "bos-operations-center",
-  "release": "0.4.211",
+  "release": "0.4.212",
   "skills": {
     "agent-call-operations": {
       "version": "1.0.7",
@@ -187,14 +187,14 @@
       }
     },
     "bos-guided-support": {
-      "version": "1.0.7",
+      "version": "1.0.8",
       "requires": {
         "bos-mcp-client": "1.0.7"
       },
       "path": "source/platform/bos-guided-support",
       "files": {
         "SKILL.md": {
-          "sha256": "0e227a35e5f28fa32472f99ae97c0756256419cd33b3761c167c225c3b47c9db",
+          "sha256": "fc039f3f35169ab179d967c22ebe2e1d3eb57f9002e8bb1dd6dc8ce90a7ba642",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -219,7 +219,7 @@
         }
       },
       "effective": {
-        "bos": "e08123f802a990acdcc78ff6951cec6be8dc077f95db71341cebb074a4bba801"
+        "bos": "b555a6d4a2da26e620afa3eaf14f60d063ac8bc9a5cba4acf4ca1f35cfa27464"
       }
     },
     "bos-mcp-client": {
