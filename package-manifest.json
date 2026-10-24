@@ -1,7 +1,15 @@
 {
   "schema_version": "1",
   "package": "bos-operations-center",
-  "version": "0.4.212",
+  "version": "0.0.212",
+  "release_line_transitions": [
+    {
+      "id": "client-zero-minor-line",
+      "from_commit": "0b6a53982a8250b96d2de6da67dc8e7b64d5ab63",
+      "from_version": "0.4.211",
+      "to_version": "0.0.212"
+    }
+  ],
   "publisher": "Infinite State Machines LLC",
   "canonical_skills": [
     "./source/platform",

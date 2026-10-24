@@ -55,13 +55,26 @@ function replacePatternExactly(content, pattern, replacement, path) {
   return content.replace(pattern, replacement);
 }
 
-export async function bumpReleaseVersion({ root = scriptRoot, requested = "patch" } = {}) {
+function nativeVersionPlan(root, { transitionId, targetVersion } = {}) {
+  const arguments_ = [join(root, "tools/shipment_state.py"), "version-plan"];
+  if (transitionId !== undefined) arguments_.push("--transition", transitionId);
+  if (targetVersion !== undefined) arguments_.push("--target-version", targetVersion);
+  const result = JSON.parse(execFileSync("python3", arguments_, { cwd: root, encoding: "utf8" }));
+  if (!semverPattern.test(result.version) || !semverPattern.test(result.current_version)) {
+    throw new Error("Native release version plan is invalid");
+  }
+  return result;
+}
+
+export async function bumpReleaseVersion({ root = scriptRoot, requested = "patch", transitionId } = {}) {
   const packagePath = join(root, "package.json");
   const packageManifestPath = join(root, "package-manifest.json");
   const repositoryPackage = await readJson(packagePath);
   const packageManifest = await readJson(packageManifestPath);
   const current = repositoryPackage.version;
-  const next = nextVersion(current, requested);
+  const plan = transitionId === undefined ? null : nativeVersionPlan(root, { transitionId });
+  if (plan && plan.current_version !== current) throw new Error("Native release plan source version changed");
+  const next = plan ? plan.version : nextVersion(current, requested);
 
   if (packageManifest.version !== current) {
     throw new Error(`package-manifest.json version ${packageManifest.version} does not match ${current}`);
@@ -83,6 +96,10 @@ export async function bumpReleaseVersion({ root = scriptRoot, requested = "patch
     activeProducts.push({ path, product });
   }
   if (!activeProducts.length) throw new Error("No active products found");
+  if (plan && current === next) {
+    return { previous: current, version: next, activeProducts: activeProducts.map(({ product }) => product.name),
+      releaseLineTransition: plan.release_line_transition };
+  }
 
   const readmePath = join(root, "README.md");
   const licensingPath = join(root, "Vault", "docs", "bos-product-licensing-user-experience.md");
@@ -96,12 +113,12 @@ export async function bumpReleaseVersion({ root = scriptRoot, requested = "patch
   const nextReadme = replacePatternExactly(
     readme,
     new RegExp(
-      "Current desktop marketplace release: `" +
+      "Current source package release: `" +
         current.replaceAll(".", "\\.") +
         "`\\. If `[^`]+` is installed,",
       "g"
     ),
-    `Current desktop marketplace release: \`${next}\`. If \`${current}\` is installed,`,
+    `Current source package release: \`${next}\`. If \`${plan ? plan.published_version : current}\` is installed,`,
     readmePath
   );
   const nextLicensing = replaceExactly(
@@ -143,24 +160,36 @@ export async function bumpReleaseVersion({ root = scriptRoot, requested = "patch
     writeFile(marketplacePath, nextMarketplace)
   ]);
 
-  return { previous: current, version: next, activeProducts: activeProducts.map(({ product }) => product.name) };
+  return { previous: current, version: next, activeProducts: activeProducts.map(({ product }) => product.name),
+    ...(plan ? { releaseLineTransition: plan.release_line_transition } : {}) };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const arguments_ = process.argv.slice(2);
+  const transitionId = arguments_[0] === "--release-line" ? arguments_[1] : undefined;
+  if ((arguments_[0] === "--release-line" && (arguments_.length !== 2 || !transitionId)) ||
+      (arguments_[0] !== "--release-line" && arguments_.length > 1)) {
+    throw new Error("Use a version increment or --release-line <declared-transition-id>");
+  }
   const selected = JSON.parse(execFileSync("python3", ["tools/shipment_state.py", "status"],
     { cwd: scriptRoot, encoding: "utf8" }));
+  if (["INTEGRATE", "BASELINE_UNAVAILABLE"].includes(selected.state)) throw new Error(selected.reason);
+  if (transitionId !== undefined) {
+    const result = await bumpReleaseVersion({ transitionId });
+    console.log(`Prepared declared release-line transition ${transitionId}: ${result.previous} -> ${result.version}.`);
+    process.exit(0);
+  }
   if (["NO_CHANGES", "DELIVER"].includes(selected.state)) {
     console.log(selected.state);
     process.exit(0);
   }
-  if (["INTEGRATE", "BASELINE_UNAVAILABLE"].includes(selected.state)) throw new Error(selected.reason);
   const published = JSON.parse(execFileSync("git", ["show", "refs/remotes/origin/main:package.json"],
     { cwd: scriptRoot, encoding: "utf8" }));
   const current = await readJson(join(scriptRoot, "package.json"));
   if (published.version !== current.version) {
-    // nextVersion validates strict advancement; a lower or malformed version
-    // cannot masquerade as an already prepared release.
-    nextVersion(published.version, current.version);
+    // Ordinary ordering stays strict; the native gate owns exact line transitions.
+    try { nextVersion(published.version, current.version); }
+    catch { nativeVersionPlan(scriptRoot, { targetVersion: current.version }); }
     const canonical = await readJson(join(scriptRoot, "package-manifest.json"));
     if (canonical.version !== current.version) throw new Error("Prepared canonical release versions are inconsistent");
     const names = await readdir(join(scriptRoot, "products"));
@@ -173,6 +202,6 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     console.log(`Release ${current.version} is already prepared.`);
     process.exit(0);
   }
-  const result = await bumpReleaseVersion({ requested: process.argv[2] ?? "patch" });
+  const result = await bumpReleaseVersion({ requested: arguments_[0] ?? "patch" });
   console.log(`Bumped release ${result.previous} -> ${result.version} for ${result.activeProducts.join(", ")}.`);
 }

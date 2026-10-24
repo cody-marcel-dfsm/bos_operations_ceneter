@@ -467,6 +467,63 @@ class ShipmentWorkflow(unittest.TestCase):
         with self.assertRaisesRegex(o.OracleApprovalError, "baseline UNAVAILABLE"):
             publication.plan(self.root, "HEAD", self.ref, "main-promotion", refresh=False)
 
+    def test_declared_package_line_transition_binds_actual_predecessor_and_committed_target(self):
+        self.fixture.release_metadata("0.4.211")
+        self.fixture.git("add", ".")
+        baseline = self.commit("published old package line")
+        self.fixture.git("update-ref", "refs/remotes/origin/main", baseline)
+        self.fixture.change("peer.py", "same version with another source identity")
+        other_baseline = self.commit("different predecessor identity")
+        transition = {"id": "client-zero-minor-line", "from_commit": baseline,
+                      "from_version": "0.4.211", "to_version": "0.0.212"}
+
+        def candidate(version, rows):
+            self.fixture.release_metadata(version)
+            package = self.root / "package.json"
+            package.write_text(json.dumps({"name": "bos-operations-center", "version": version}))
+            self.fixture.change("package-manifest.json", json.dumps({"package": "bos-operations-center",
+                "version": version, "release_line_transitions": rows}))
+            self.fixture.git("add", ".")
+            return self.commit("candidate package identity")
+
+        exact = candidate("0.0.212", [transition])
+        result = shipment.release_preparation(self.root, baseline, exact)
+        self.assertEqual(result["release_line_transition"], transition)
+        self.assertEqual(result["published_version"], "0.4.211")
+        with self.assertRaisesRegex(o.OracleApprovalError, "exact declared"):
+            shipment.release_preparation(self.root, other_baseline, exact)
+        with self.assertRaisesRegex(o.OracleApprovalError, "Unknown declared"):
+            shipment.release_version_plan(self.root, transition_id="unknown")
+        undeclared = candidate("0.0.212", [])
+        with self.assertRaisesRegex(o.OracleApprovalError, "greater"):
+            shipment.release_preparation(self.root, baseline, undeclared)
+        wrong_target = candidate("0.0.213", [transition])
+        with self.assertRaisesRegex(o.OracleApprovalError, "exact declared"):
+            shipment.release_preparation(self.root, baseline, wrong_target)
+        first = candidate("0.0.212", [transition])
+        self.fixture.git("update-ref", "refs/remotes/origin/main", first)
+        next_commit = candidate("0.0.213", [transition])
+        normal = shipment.release_preparation(self.root, first, next_commit)
+        self.assertEqual(normal["version"], "0.0.213")
+        self.assertNotIn("release_line_transition", normal)
+
+    def test_package_line_policy_rejects_malformed_ambiguous_or_wrong_identity_rows(self):
+        row = {"id": "client-zero-minor-line", "from_commit": "a" * 40,
+               "from_version": "0.4.211", "to_version": "0.0.212"}
+        cases = [dict(row, extra=True), dict(row, from_commit="short"),
+                 dict(row, from_version="0.4.210"), dict(row, to_version="0.0.0212"),
+                 dict(row, to_version="0.1.212"), dict(row, id="Invalid")]
+        for changed in cases:
+            with self.subTest(row=changed), self.assertRaises(o.OracleApprovalError):
+                shipment.package_release_advancement({"package": "fixture", "release_line_transitions": [changed]},
+                    "fixture", "a" * 40, "0.4.211", "0.0.212")
+        with self.assertRaisesRegex(o.OracleApprovalError, "duplicated"):
+            shipment.package_release_advancement({"package": "fixture", "release_line_transitions": [row, row]},
+                "fixture", "a" * 40, "0.4.211", "0.0.212")
+        with self.assertRaisesRegex(o.OracleApprovalError, "identity mismatch"):
+            shipment.package_release_advancement({"package": "other", "release_line_transitions": [row]},
+                "fixture", "a" * 40, "0.4.211", "0.0.212")
+
     def test_trailer_free_verification_accepts_native_commit_and_exact_merge_but_rejects_changed_tree(self):
         commit = self.validate()
         o.verify_commit(self.root, commit)

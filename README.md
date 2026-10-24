@@ -77,8 +77,10 @@ Upgrading replaces the former `platform` identifier. Hosts may require native
 sign-in again when a connection identifier changes; valid-session continuity
 has not been verified for this migration.
 
-Current desktop marketplace release: `0.4.212`. If `0.4.211` is installed,
-refresh the marketplace and upgrade or reinstall both plugins before connecting.
+Current source package release: `0.0.212`. If `0.4.211` is installed,
+follow the release-line transition below after your host catalog offers the
+published target. Source preparation and host marketplace publication are
+separate steps.
 
 Version labels identify separate release streams. **BOS Service release/build**
 comes from actual current host/server metadata, including a serving revision
@@ -246,6 +248,43 @@ resulting grant across tasks.
 
 Server-only tool-catalog changes require reconnection and tool rediscovery.
 They do not require a different endpoint or a new package.
+
+### Moving to the 0.0.x package line
+
+The client package moves from published `0.4.211` to `0.0.212`. Existing
+releases retain their original identities. The package ordinal remains 212;
+the service reports its own actual release/build, and skill component versions
+retain their independent compatibility floors. This change creates no new
+public API, MCP protocol or schema version.
+
+Maintainers prepare this single transition with
+`npm run version:next -- --release-line client-zero-minor-line`, then generate
+packages and complete the normal reviewed publication workflow. The declaration
+in `package-manifest.json` binds both native preparation and committed release
+admission to predecessor commit
+`0b6a53982a8250b96d2de6da67dc8e7b64d5ab63`, version `0.4.211`, and target
+`0.0.212`. Ordinary later releases advance numerically within `0.0.x`.
+
+After publication, confirm that the selected host catalog or source actually
+offers the target before replacing an installation. Preserve customer settings
+and extensions through the host's supported controls, then verify the installed
+package version and source commit when available. Start a fresh session and
+follow current BOS connection readiness; a host may require fresh approval or
+sign-in.
+
+| Host delivery path | Supported transition and evidence boundary |
+| --- | --- |
+| Claude Code Git marketplace | Refresh the marketplace, then update both plugins. Claude Code treats the manifest version as an opaque string and updates when it differs; its documented algorithm admits this label change. [Version/update rules](https://code.claude.com/docs/en/plugins/loading#versions-and-updates). |
+| Claude Desktop or organization catalog | Use the relevant marketplace update or organization synchronization above. Proceed when that account's catalog offers `0.0.212`; local source changes cannot force a hosted snapshot refresh. Desktop acceptance of this transition requires verification in that published catalog. |
+| Codex Git marketplace or public directory | Refresh the Git marketplace, or wait for the reviewed public submission to publish. If the host does not select the target through update, use its supported plugin remove/add controls against the catalog that offers it and verify the installed result. OpenAI documents these separate distribution paths without guaranteeing selection of a numerically lower version. [Plugin distribution](https://developers.openai.com/plugins/build/plugins), [public submission](https://developers.openai.com/plugins/deploy/submission). |
+| Muse Code | Updates re-read the recorded source and compare manifest digests. A Git marketplace refresh can leave an installed plugin pointing at its earlier source snapshot; remove and install from the current catalog in that case. Preserve data by omitting `--delete-data`; inspect and approve the new runtime capabilities again. [Source/update rules](https://meta-models.github.io/muse-code-sdk/next/guides/plugins/concepts/marketplaces-and-updates/). |
+| Gemini CLI | Git installations detect remote commit changes; GitHub Release installations follow the selected latest release tag. Update from the published source and verify `0.0.212`; if a local-path installation does not select it, use supported uninstall/install against that published bundle. Restart Gemini afterward. [Update detection](https://geminicli.com/docs/extensions/releasing/), [installation controls](https://geminicli.com/docs/extensions/reference/). |
+| Copilot managed package | Run the repository's supported managed installation workflow from the published target. Its ownership/hash plan records the package version without a numeric ordering gate; preserve customer-owned configuration and verify installed metadata. |
+| Antigravity package | Use the documented installation from the published release and its runtime verifier. The package description identifies the client package release; package-owned plugin metadata has no numeric update selector. Native host transition acceptance remains a published-installation check. |
+
+Source tests establish the exact local transition and generated metadata.
+Live host migration results require the published target, the installed version
+and an observed host outcome; preparation alone supplies no such result.
 
 ### Customer settings and extensions
 

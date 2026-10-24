@@ -486,6 +486,79 @@ def record_released(root: Path, commit: str, merge_commit: str, *, prepared: Pat
     return _save(root, record)
 
 
+def _package_version(value):
+    if not isinstance(value, str) or not o.re.fullmatch(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", value):
+        raise o.OracleApprovalError("Release version must be canonical x.y.z")
+    return tuple(map(int, value.split(".")))
+
+
+def _release_line_transitions(manifest: dict, package_name) -> list:
+    rows = manifest.get("release_line_transitions", [])
+    if not isinstance(rows, list) or len(rows) > 32:
+        raise o.OracleApprovalError("Release-line transitions must be a bounded array")
+    if rows and (not package_name or manifest.get("package") != package_name):
+        raise o.OracleApprovalError("Release-line transition package identity mismatch")
+    identities, destinations = set(), set()
+    for row in rows:
+        if not isinstance(row, dict) or set(row) != {"id", "from_commit", "from_version", "to_version"}:
+            raise o.OracleApprovalError("Release-line transition has an invalid closed shape")
+        if not isinstance(row["id"], str) or not o.re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", row["id"]):
+            raise o.OracleApprovalError("Release-line transition identity is invalid")
+        if not isinstance(row["from_commit"], str) or not o.re.fullmatch(r"[0-9a-f]{40}", row["from_commit"]):
+            raise o.OracleApprovalError("Release-line transition requires an exact predecessor commit")
+        previous, target = _package_version(row["from_version"]), _package_version(row["to_version"])
+        if target[:2] != (0, 0) or previous[:2] == (0, 0) or target >= previous:
+            raise o.OracleApprovalError("Release-line transition must explicitly enter the 0.0.x package line")
+        if row["id"] in identities or row["to_version"] in destinations:
+            raise o.OracleApprovalError("Release-line transition identity or destination is duplicated")
+        identities.add(row["id"])
+        destinations.add(row["to_version"])
+    return rows
+
+
+def package_release_advancement(manifest: dict, package_name, baseline: str,
+                                published: str, current: str, transition_id=None):
+    """Keep ordinary ordering; admit only an exact declared package-line move."""
+    previous, target = _package_version(published), _package_version(current)
+    rows = _release_line_transitions(manifest, package_name)
+    if transition_id is None and target > previous:
+        return None
+    matches = [row for row in rows if row["from_commit"] == baseline
+               and row["from_version"] == published and row["to_version"] == current
+               and (transition_id is None or row["id"] == transition_id)]
+    if len(matches) != 1:
+        raise o.OracleApprovalError("Release preparation requires a version greater than the published version or its exact declared release-line transition")
+    return dict(matches[0])
+
+
+def release_version_plan(root: Path, *, transition_id=None, target_version=None) -> dict:
+    """Read-only plan used by the canonical release bumper."""
+    baseline = o._git(root, "rev-parse", "refs/remotes/origin/main^{commit}").strip()
+    if not _ancestor(root, baseline, "HEAD"):
+        raise o.OracleApprovalError("Integrate the current published baseline before release preparation")
+    package = json.loads((root / "package.json").read_text())
+    manifest = json.loads((root / "package-manifest.json").read_text())
+    _package_version(package["version"])
+    if manifest.get("version") != package["version"]:
+        raise o.OracleApprovalError("Canonical release versions are inconsistent")
+    rows = _release_line_transitions(manifest, package.get("name"))
+    if transition_id is not None:
+        matches = [row for row in rows if row["id"] == transition_id]
+        if len(matches) != 1:
+            raise o.OracleApprovalError("Unknown declared release-line transition")
+        if target_version is not None and target_version != matches[0]["to_version"]:
+            raise o.OracleApprovalError("Declared release-line target mismatch")
+        target_version = matches[0]["to_version"]
+    if target_version is None:
+        raise o.OracleApprovalError("A target version or release-line transition is required")
+    published = json.loads(o._git_bytes(root, "show", baseline + ":package.json"))["version"]
+    transition = package_release_advancement(manifest, package.get("name"), baseline,
+                                           published, target_version, transition_id)
+    return {"current_version": package["version"], "version": target_version,
+            "published_commit": baseline, "published_version": published,
+            "release_line_transition": transition}
+
+
 def release_preparation(root: Path, baseline: str, commit: str = "HEAD") -> dict:
     """Bind advancing canonical and generated release identities to committed source."""
     inputs = {}
@@ -493,15 +566,12 @@ def release_preparation(root: Path, baseline: str, commit: str = "HEAD") -> dict
         raw = o._git_bytes(root, "show", commit + ":" + name)
         inputs[name] = o._sha(raw)
         return json.loads(raw)
-    def version(value):
-        if not isinstance(value, str) or not o.re.fullmatch(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", value):
-            raise o.OracleApprovalError("Release version must be canonical x.y.z")
-        return tuple(map(int, value.split(".")))
-    current = read("package.json")["version"]
+    package = read("package.json")
+    current = package["version"]
+    manifest = read("package-manifest.json")
     published = json.loads(o._git_bytes(root, "show", baseline + ":package.json"))["version"]
-    if version(current) <= version(published):
-        raise o.OracleApprovalError("Release preparation requires a version greater than the published version")
-    if read("package-manifest.json").get("version") != current or read("skill-release-manifest.json").get("release") != current:
+    transition = package_release_advancement(manifest, package.get("name"), baseline, published, current)
+    if manifest.get("version") != current or read("skill-release-manifest.json").get("release") != current:
         raise o.OracleApprovalError("Release preparation has inconsistent canonical or generated versions")
     names = o._git(root, "ls-tree", "-r", "--name-only", commit, "--", "products").splitlines()
     active = []
@@ -523,7 +593,10 @@ def release_preparation(root: Path, baseline: str, commit: str = "HEAD") -> dict
             manifest = read(f"{prefix}/{product}/.bos-product.json")
             if manifest.get("name") != product or manifest.get("client") != client or manifest.get("version") != current:
                 raise o.OracleApprovalError("Generated product release identity is inconsistent")
-    return {"version": current, "published_version": published, "inputs": inputs}
+    result = {"version": current, "published_version": published, "inputs": inputs}
+    if transition is not None:
+        result["release_line_transition"] = transition
+    return result
 
 
 def prepared_release(root: Path, baseline: str, commit: str) -> dict:
@@ -571,13 +644,17 @@ def selection(root: Path) -> dict:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=["status", "validated", "released"])
+    parser.add_argument("command", choices=["status", "validated", "released", "version-plan"])
     parser.add_argument("--prepared", type=Path)
     parser.add_argument("--publication-attempt", type=Path)
+    parser.add_argument("--transition")
+    parser.add_argument("--target-version")
     args = parser.parse_args(argv)
     try:
         root = o.repository_root()
-        if args.command == "released":
+        if args.command == "version-plan":
+            result = release_version_plan(root, transition_id=args.transition, target_version=args.target_version)
+        elif args.command == "released":
             if not args.prepared or not args.publication_attempt:
                 raise o.OracleApprovalError("Released cleanup requires --prepared and --publication-attempt")
             if __package__:

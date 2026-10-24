@@ -92,7 +92,7 @@ test("real repository contains every release-required version and documentation 
   const requiredMarkers = [
     {
       path: join(repositoryRoot, "README.md"),
-      marker: `Current desktop marketplace release: \`${current}\`. If \``
+      marker: `Current source package release: \`${current}\`. If \``
     }
   ];
   if (await pathExists(join(repositoryRoot, "Vault", "docs"))) {
@@ -135,7 +135,7 @@ test("release bump updates canonical active versions and current-release documen
   });
   await writeFile(
     join(root, "README.md"),
-    "Current desktop marketplace release: `0.4.27`. If `0.4.26` is installed,\nupgrade.\n"
+    "Current source package release: `0.4.27`. If `0.4.26` is installed,\nupgrade.\n"
   );
   await writeFile(
     join(root, "Vault", "docs", "bos-product-licensing-user-experience.md"),
@@ -175,4 +175,56 @@ test("release bump updates canonical active versions and current-release documen
     await readFile(join(root, "Vault", "docs", "marketplace-submission-assets.md"), "utf8"),
     /Current BOS marketplace package release: `0\.4\.28`\./
   );
+});
+
+test("explicit package-line transition uses the native gate and preserves historical component identities", async () => {
+  const root = await mkdtemp(join(tmpdir(), "bos-release-line-"));
+  for (const name of ["scripts", "tools", "products/bos", "products/education-center", "Vault/docs", "source/component"]) {
+    await mkdir(join(root, name), { recursive: true });
+  }
+  for (const name of (await readdir(join(repositoryRoot, "tools"))).filter(name => name.endsWith(".py"))) {
+    await writeFile(join(root, "tools", name), await readFile(join(repositoryRoot, "tools", name)));
+  }
+  await writeFile(join(root, "scripts/bump-release-version.mjs"), await readFile(join(repositoryRoot, "scripts/bump-release-version.mjs")));
+  await writeFile(join(root, ".gitignore"), "__pycache__/\n");
+  await writeJson(join(root, "package.json"), { name: "bos-operations-center", version: "0.4.211" });
+  await writeJson(join(root, "package-lock.json"), { version: "0.4.211", packages: { "": { version: "0.4.211" } } });
+  await writeJson(join(root, "package-manifest.json"), { package: "bos-operations-center", version: "0.4.211" });
+  for (const name of ["bos", "education-center"]) {
+    await writeJson(join(root, "products", name, "product.json"), { name, version: "0.4.211", release_status: "active" });
+  }
+  await writeFile(join(root, "README.md"), "Current source package release: `0.4.211`. If `0.4.210` is installed,\nupgrade.\n");
+  await writeFile(join(root, "Vault/docs/bos-product-licensing-user-experience.md"), "Current BOS Operations Center release: `0.4.211`.\n");
+  await writeFile(join(root, "Vault/docs/marketplace-submission-assets.md"), "Current BOS marketplace package release: `0.4.211`.\n");
+  const component = '---\nname: component\ndescription: Synthetic independently versioned component.\nmetadata:\n  version: "1.0.9"\n  requires: "{}"\n---\n';
+  await writeFile(join(root, "source/component/SKILL.md"), component);
+  const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: "pipe" }).trim();
+  git("init", "-q");
+  git("config", "user.name", "Synthetic Release");
+  git("config", "user.email", "release@example.invalid");
+  git("add", ".");
+  git("commit", "-qm", "published predecessor");
+  const baseline = git("rev-parse", "HEAD");
+  git("update-ref", "refs/remotes/origin/main", baseline);
+  await bumpReleaseVersion({ root });
+  const transition = { id: "client-zero-minor-line", from_commit: baseline, from_version: "0.4.211", to_version: "0.0.212" };
+  await writeJson(join(root, "package-manifest.json"), { package: "bos-operations-center", version: "0.4.212", release_line_transitions: [transition] });
+  await assert.rejects(bumpReleaseVersion({ root, requested: "0.0.212" }), /must be greater/);
+  await assert.rejects(bumpReleaseVersion({ root, transitionId: "unknown" }), /Unknown declared/);
+  const result = await bumpReleaseVersion({ root, transitionId: transition.id });
+  assert.equal(result.version, "0.0.212");
+  assert.deepEqual(result.releaseLineTransition, transition);
+  assert.match(await readFile(join(root, "README.md"), "utf8"), /release: `0\.0\.212`\. If `0\.4\.211`/);
+  assert.equal(await readFile(join(root, "source/component/SKILL.md"), "utf8"), component);
+  assert.equal(JSON.parse(git("show", `${baseline}:package.json`)).version, "0.4.211");
+  const before = await readFile(join(root, "README.md"), "utf8");
+  await bumpReleaseVersion({ root, transitionId: transition.id });
+  assert.equal(await readFile(join(root, "README.md"), "utf8"), before);
+  assert.match(execFileSync(process.execPath, ["scripts/bump-release-version.mjs"], { cwd: root, encoding: "utf8" }), /Release 0\.0\.212 is already prepared/);
+  git("add", ".");
+  git("commit", "-qm", "published package-line transition");
+  git("update-ref", "refs/remotes/origin/main", "HEAD");
+  const next = await bumpReleaseVersion({ root });
+  assert.equal(next.version, "0.0.213");
+  assert.equal(await readFile(join(root, "source/component/SKILL.md"), "utf8"), component);
 });
