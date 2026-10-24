@@ -279,6 +279,19 @@ class PublicationAdmission(unittest.TestCase):
         with self.assertRaisesRegex(o.OracleApprovalError, "superseded"):
             publication._instruction_binding(self.root, selected, str(owner), ["existing-credential-read"])
 
+    def test_direct_instruction_refusal_retains_its_actual_denied_attempt(self):
+        self.submit(True, authentication=True)
+        owner = self.root / "Vault/tmp/actual-refusal.json"; owner.write_text('{}')
+        with self.assertRaises(o.OracleCandidateRejected):
+            self.native_authorize(owner, verdict="REJECTED")
+        records = list((o.receipt_path(self.root).parent / "publication").glob("*.json"))
+        self.assertEqual(len(records), 1)
+        self.assertEqual(json.loads(records[0].read_bytes())["verdict"], "REJECTED")
+        with self.assertRaisesRegex(o.OracleApprovalError, "requires scoped deployment authority"):
+            publication.prepare(self.root, "HEAD", self.ref, "main-promotion", authorization=records,
+                                pr="1", execute=self.execute, refresh=False)
+        self.assertEqual(self.commands, [])
+
     def test_direct_instruction_preserves_reviewed_bookkeeping_advancement(self):
         self.submit(True, authentication=True)
         owner = self.root / "Vault/tmp/bookkeeping-authority.json"
