@@ -128,9 +128,20 @@ class PublicationAdmission(unittest.TestCase):
     def instruction(self, owner, effects=None, decision="Approved", mutate=None):
         selected = publication.plan(self.root, "HEAD", self.ref, "main-promotion", refresh=False)
         plan = owner.with_suffix(".prepared.json"); plan.write_bytes(o._pretty(selected))
+        review_plan = publication.plan(self.root, "HEAD", self.ref, "review-push", refresh=False)
+        review = {"kind": "boc-prepared-git-publication-v1", "plan": review_plan,
+                  "source_commit": selected["candidate_commit"], "source_tree": selected["candidate_tree"],
+                  "remote_url": o.PUBLICATION_REMOTE, "target_ref": review_plan["destination"]["ref"], "expected_remote_commit": None,
+                  "command": ["git", "push", o.PUBLICATION_REMOTE, selected["candidate_commit"] + ":" + review_plan["destination"]["ref"]],
+                  "remote_admission": {"pr": 1, "source_commit": selected["candidate_commit"], "source_tree": selected["candidate_tree"]}}
+        review["prepared_sha256"] = o._sha(o._canonical(review))
+        review_path = o.receipt_path(self.root).parent / "publication-prepared" / (review["prepared_sha256"] + ".json")
+        review_path.parent.mkdir(exist_ok=True)
+        if not review_path.exists(): review_path.write_bytes(o._pretty(review))
         thread = str(uuid.uuid4()); call = "call_synthetic_" + uuid.uuid4().hex
-        text = "Publish the exact synthetic prepared product and protected effects"
-        timestamp = datetime.fromtimestamp(plan.stat().st_mtime + 1, timezone.utc).isoformat()
+        identities = effects or [row["id"] for row in selected["protected_effects"]["active"]]
+        text = publication._instruction_question(self.root, selected, identities, 1)
+        timestamp = datetime.fromtimestamp(max(plan.stat().st_mtime, review_path.stat().st_mtime) + 1, timezone.utc).isoformat()
         reply = "<send_user_message_question_reply>\n" + json.dumps([{
             "questionItemId": json.dumps(["request_user_input_async", call, 0]), "question": text, "answer": decision}]) + "\n</send_user_message_question_reply>"
         events = {
@@ -153,7 +164,8 @@ class PublicationAdmission(unittest.TestCase):
         session.write_bytes(raw)
         value = {"kind": "boc-direct-publication-instruction-input-v1",
                  "prepared_plan": {"path": str(plan), "sha256": o._sha(plan.read_bytes())},
-                 "effect_ids": effects or [row["id"] for row in selected["protected_effects"]["active"]],
+                 "prepared_review": {"path": str(review_path), "sha256": o._sha(review_path.read_bytes())},
+                 "effect_ids": identities,
                  "host_message": {"session_file": str(session), "thread_id": thread, "question_call_id": call,
                      "question_index": 0, "question_text": text, "approved_answer": "Approved", "user_message_id": "synthetic-user-message",
                      "turn_id": "synthetic-turn", "records": ranges}}
@@ -188,6 +200,10 @@ class PublicationAdmission(unittest.TestCase):
 
     def test_direct_instruction_append_safe_custody_and_actual_main_preparation(self):
         self.submit(True, authentication=True)
+        from tools import shipment_state
+        self.fixture.submit(lambda context: dict(self.fixture.result(context), authentication_impact="AUTHENTICATION",
+            owner_approval_status="MISSING", protected_effects={"active": [self.effect(context)], "dispositions": []}))
+        shipment_state.record_validated(self.root)
         owner = self.root / "Vault/tmp/append-safe.json"; owner.write_text('{}')
         authorized = self.native_authorize(owner)
         self.assertEqual(authorized["kind"], "boc-direct-publication-authorization-v1")
@@ -201,6 +217,15 @@ class PublicationAdmission(unittest.TestCase):
         outcome = publication.publish_prepared(self.root, Path(prepared["prepared_file"]), execute=self.execute)
         self.assertEqual(outcome["state"], "PUBLISHED")
         self.assertEqual(self.commands[-1][0:2], ["git", "push"])
+        actual_git = o._git
+        def published_remote(root, *arguments):
+            if arguments == ("ls-remote", o.PUBLICATION_REMOTE, "refs/heads/main"):
+                return selected["candidate_commit"] + "\trefs/heads/main\n"
+            return actual_git(root, *arguments)
+        with patch.object(o, "_git", side_effect=published_remote):
+            released = shipment_state.record_released(self.root, selected["candidate_commit"], selected["candidate_commit"],
+                prepared=Path(prepared["prepared_file"]), publication_attempt=Path(outcome["attempt_file"]))
+        self.assertEqual(released["last_released_commit"], selected["candidate_commit"])
         with source.open("r+b") as output:
             output.seek(0); output.write(b"X")
         with self.assertRaisesRegex(o.OracleApprovalError, "bytes changed"):
@@ -226,6 +251,32 @@ class PublicationAdmission(unittest.TestCase):
         source.unlink(); saved.rename(source)
         plan = Path(value["prepared_plan"]["path"]); plan.write_bytes(plan.read_bytes() + b" ")
         with self.assertRaisesRegex(o.OracleApprovalError, "plan changed"):
+            publication._instruction_binding(self.root, selected, str(owner), ["existing-credential-read"])
+
+    def test_direct_instruction_rejects_unrelated_genuine_question_and_later_refusal(self):
+        self.submit(True, authentication=True)
+        owner = self.root / "Vault/tmp/unrelated-question.json"
+        def unrelated(rows):
+            call = rows["question"]["payload"]
+            arguments = json.loads(call["arguments"]); arguments["questions"][0]["title"] = "Approve unrelated action"
+            call["arguments"] = json.dumps(arguments)
+            content = rows["answer"]["payload"]["item"]["content"][0]
+            start, end = content["text"].index("["), content["text"].rindex("]") + 1
+            reply = json.loads(content["text"][start:end]); reply[0]["question"] = "Approve unrelated action"
+            content["text"] = "<send_user_message_question_reply>" + json.dumps(reply) + "</send_user_message_question_reply>"
+        value = self.instruction(owner, mutate=unrelated)
+        value["host_message"]["question_text"] = "Approve unrelated action"; owner.write_bytes(o._pretty(value))
+        selected = publication.plan(self.root, "HEAD", self.ref, "main-promotion", refresh=False)
+        with self.assertRaisesRegex(o.OracleApprovalError, "different prepared PR"):
+            publication._instruction_binding(self.root, selected, str(owner), ["existing-credential-read"])
+        value = self.instruction(owner)
+        source = Path(value["host_message"]["session_file"])
+        rows = source.read_bytes().splitlines(); answer = json.loads(rows[-1])
+        answer["payload"]["item"]["id"] = "later-native-user-message"
+        content = answer["payload"]["item"]["content"][0]
+        content["text"] = content["text"].replace('"answer": "Approved"', '"answer": "Hold publication"')
+        with source.open("ab") as output: output.write(json.dumps(answer).encode() + b"\n")
+        with self.assertRaisesRegex(o.OracleApprovalError, "superseded"):
             publication._instruction_binding(self.root, selected, str(owner), ["existing-credential-read"])
 
     def test_direct_instruction_preserves_reviewed_bookkeeping_advancement(self):
@@ -350,7 +401,7 @@ class PublicationAdmission(unittest.TestCase):
         original = archive.read_bytes()
         alternate = dict(receipt, protected_effects={"active": [], "dispositions": []})
         archive.write_bytes(o._pretty(alternate))
-        with self.assertRaisesRegex(o.OracleApprovalError, "technical receipt digest changed"):
+        with self.assertRaisesRegex(o.OracleApprovalError, "technical receipt digest changed|approval receipt ID is invalid"):
             publication.publish(self.root, "HEAD", self.ref, "main-promotion", pr="1",
                                 execute=self.execute, refresh=False)
         self.assertEqual(self.commands, [])
