@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
+import stat
 import subprocess
 import time
 import uuid
+from datetime import datetime
 from pathlib import Path
 
 try:
@@ -288,6 +291,8 @@ def _authorization_effects(root: Path, selected: dict, authorization: Path) -> s
     """An immutable exact-plan attempt contributes only its genuinely authorized subset."""
     raw = o._custody_read(root, authorization)[1]
     record = json.loads(raw)
+    if record.get("kind") == "boc-direct-publication-authorization-v1":
+        return _direct_authorization_effects(root, selected, record, raw)
     required = {"kind", "plan", "requested_effect_ids", "verdict", "review_status", "owner_evidence",
                 "native_result", "native_evidence", "authorization_sha256"}
     if not isinstance(record, dict) or set(record) not in (required, required | {"authorization_request_sha256"}):
@@ -393,6 +398,182 @@ def _authorization_result(root: Path, request: dict, result: dict) -> None:
         raise o.OracleApprovalError("Observed publication authority changed its plan/effect/evidence scope")
 
 
+def _host_sessions_root() -> Path:
+    return Path.home() / ".codex" / "sessions"
+
+
+def _instruction_host_records(root: Path, host: dict) -> tuple[dict, dict]:
+    """Read only selected native host records; ordinary journal append is safe."""
+    required = {"session_file", "thread_id", "question_call_id", "question_index", "question_text",
+                "approved_answer", "user_message_id", "turn_id", "records"}
+    if (not isinstance(host, dict) or set(host) != required or host["approved_answer"] != "Approved"
+            or not re.fullmatch(r"[0-9a-f-]{36}", host["thread_id"])
+            or type(host["question_index"]) is not int or host["question_index"] < 0):
+        raise o.OracleApprovalError("Invalid direct native user instruction")
+    path = Path(host["session_file"])
+    home = _host_sessions_root()
+    if (not path.is_absolute() or ".." in path.parts or not path.is_relative_to(home)
+            or list(home.rglob("*" + host["thread_id"] + ".jsonl")) != [path]):
+        raise o.OracleApprovalError("Instruction source is outside its unique native host journal")
+    before = o._custody_read(root, path, content=False)[0]
+    if before["source"].get("links"):
+        raise o.OracleApprovalError("Instruction journal has a linked route")
+    parent = []
+    o._owner_source_walk(Path(path.anchor), str(path.parent).lstrip(os.sep), content=False,
+                         directory_fd=parent, custody=True)
+    records, descriptor = {}, None
+    try:
+        descriptor = os.open(path.name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent[0])
+        original = os.fstat(descriptor)
+        identity = lambda value: (value.st_dev, value.st_ino, value.st_mode, value.st_uid)
+        if not stat.S_ISREG(original.st_mode) or original.st_uid != os.getuid():
+            raise o.OracleApprovalError("Instruction journal is not an owned regular file")
+        selections = host["records"]
+        if not isinstance(selections, dict) or set(selections) != {"meta", "question", "acceptance", "answer"}:
+            raise o.OracleApprovalError("Instruction lacks original host record ranges")
+        end = 0
+        for name in ("meta", "question", "acceptance", "answer"):
+            row = selections[name]
+            if (not isinstance(row, dict) or set(row) != {"offset", "length", "sha256"}
+                    or type(row["offset"]) is not int or type(row["length"]) is not int
+                    or row["offset"] < end or not 0 < row["length"] <= 65536
+                    or name == "meta" and row["offset"] != 0):
+                raise o.OracleApprovalError("Invalid native instruction byte range")
+            raw = os.pread(descriptor, row["length"], row["offset"])
+            if (len(raw) != row["length"] or not raw.endswith(b"\n") or raw.count(b"\n") != 1
+                    or row["offset"] and os.pread(descriptor, 1, row["offset"] - 1) != b"\n"
+                    or o._sha(raw) != row["sha256"]):
+                raise o.OracleApprovalError("Native instruction bytes changed or are incomplete")
+            records[name] = json.loads(raw)
+            end = row["offset"] + row["length"]
+        if (identity(os.fstat(descriptor)) != identity(original)
+                or identity(os.stat(path.name, dir_fd=parent[0], follow_symlinks=False)) != identity(original)
+                or o._custody_read(root, path, content=False)[0] != before):
+            raise o.OracleApprovalError("Native instruction route changed during consumption")
+        custody = {"route": before, "identity": list(identity(original)), "records": selections}
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+        os.close(parent[0])
+    meta, question, accepted, answer = (records[name] for name in ("meta", "question", "acceptance", "answer"))
+    source = meta.get("payload", {})
+    call, response, user = (item.get("payload", {}) for item in (question, accepted, answer))
+    if (meta.get("type") != "session_meta" or source.get("id") != host["thread_id"]
+            or source.get("thread_source") != "user" or source.get("source") != "vscode"
+            or source.get("originator") != "Codex Desktop"
+            or question.get("type") != "response_item" or call.get("type") != "function_call"
+            or call.get("name") != "request_user_input_async" or call.get("call_id") != host["question_call_id"]
+            or accepted.get("type") != "response_item" or response.get("type") != "function_call_output"
+            or response.get("call_id") != host["question_call_id"] or json.loads(response.get("output", "null")) != {"accepted": True}
+            or answer.get("type") != "event_msg" or user.get("type") != "item_completed"
+            or user.get("thread_id") != host["thread_id"] or user.get("turn_id") != host["turn_id"]
+            or user.get("item", {}).get("type") != "UserMessage" or user["item"].get("id") != host["user_message_id"]
+            or not question["ordinal"] < accepted["ordinal"] < answer["ordinal"]):
+        raise o.OracleApprovalError("Instruction lacks the original native question and direct UserMessage")
+    questions = json.loads(call.get("arguments", "{}"))["questions"]
+    chosen = questions[host["question_index"]]
+    if chosen.get("title") != host["question_text"] or chosen.get("options") != ["Approved", "Hold publication"]:
+        raise o.OracleApprovalError("Native prepared question differs from the bound instruction")
+    content = user["item"].get("content", [])
+    if len(content) != 1 or content[0].get("type") != "text":
+        raise o.OracleApprovalError("Direct user instruction content is unavailable")
+    text = content[0].get("text", "").strip()
+    opening, closing = "<send_user_message_question_reply>", "</send_user_message_question_reply>"
+    if not text.startswith(opening) or not text.endswith(closing):
+        raise o.OracleApprovalError("Derived prose is not a native user question reply")
+    replies = json.loads(text[len(opening):-len(closing)])
+    if (not isinstance(replies, list) or len(replies) != 1 or set(replies[0]) != {"questionItemId", "question", "answer"}
+            or json.loads(replies[0]["questionItemId"]) != ["request_user_input_async", host["question_call_id"], host["question_index"]]
+            or replies[0]["question"] != host["question_text"]
+            or replies[0]["answer"] not in {"Approved", "Hold publication"}):
+        raise o.OracleApprovalError("Native user reply has a different question, call or decision")
+    return {"decision": replies[0]["answer"], "question_timestamp": question["timestamp"]}, custody
+
+
+def _instruction_binding(root: Path, selected: dict, owner_path: str, requested: list[str]) -> dict:
+    instruction = json.loads(o._custody_read(root, owner_path)[1])
+    if (not isinstance(instruction, dict) or set(instruction) != {"kind", "prepared_plan", "effect_ids", "host_message"}
+            or instruction["kind"] != "boc-direct-publication-instruction-input-v1"
+            or not isinstance(instruction["effect_ids"], list) or not instruction["effect_ids"]
+            or len(set(instruction["effect_ids"])) != len(instruction["effect_ids"])
+            or not set(requested).issubset(instruction["effect_ids"])):
+        raise o.OracleApprovalError("Publication requires exact native direct-human instruction evidence")
+    reference = instruction["prepared_plan"]
+    if not isinstance(reference, dict) or set(reference) != {"path", "sha256"}:
+        raise o.OracleApprovalError("Instruction lacks its original prepared plan")
+    plan_fact, raw = o._custody_read(root, reference["path"])
+    approved = json.loads(raw)
+    if (o._sha(raw) != reference["sha256"] or approved.get("plan_sha256") != o._sha(o._canonical(
+            {key: value for key, value in approved.items() if key != "plan_sha256"}))):
+        raise o.OracleApprovalError("Original prepared instruction plan changed")
+    origin_raw = o._custody_read(root, o._technical_archive(root, approved["technical_receipt_sha256"]))[1]
+    origin = json.loads(origin_raw)
+    o._shape(origin); o._archived_origin(root, origin)
+    if (o._sha(origin_raw) != approved["technical_receipt_sha256"]
+            or origin["candidate_tree"] != approved["candidate_tree"]
+            or origin["publication_scope"] != approved["publication_scope"]
+            or origin["protected_effects"] != approved["protected_effects"]
+            or o._git(root, "rev-parse", approved["candidate_commit"] + "^{tree}").strip() != approved["candidate_tree"]
+            or approved.get("operation") != "main-promotion" or not approved.get("human_authority_required")
+            or any(approved.get(key) != selected.get(key) for key in ("kind", "destination", "release_ref", "operation"))
+            or approved["destination"] != {"remote_url": o.PUBLICATION_REMOTE, "ref": "refs/heads/main"}):
+        raise o.OracleApprovalError("Instruction has a different original technical scope or publication destination")
+    if subprocess.run(["git", "merge-base", "--is-ancestor", approved["candidate_commit"], selected["candidate_commit"]],
+                      cwd=root, capture_output=True).returncode:
+        raise o.OracleApprovalError("Instruction candidate is outside the reviewed publication history")
+    def effects(plan):
+        # Prose reporting permission status can change; the actual boundary and
+        # every consumed contract/source identity remain exact.
+        return {row["id"]: {key: value for key, value in row.items() if key != "description"}
+                for row in plan["protected_effects"]["active"]}
+    original, current = effects(approved), effects(selected)
+    if any(identity not in original or current.get(identity) != original[identity] for identity in instruction["effect_ids"]):
+        raise o.OracleApprovalError("Instruction's protected effect or consumed source changed")
+    assets = ("clients", "products", "source", "contracts", "scripts", "package.json", "package-lock.json",
+              "package-manifest.json", "skill-release-manifest.json")
+    if o._git(root, "diff", "--name-only", approved["candidate_commit"], selected["candidate_commit"], "--", *assets).strip():
+        raise o.OracleApprovalError("Prepared product assets changed after the instruction question")
+    decision, custody = _instruction_host_records(root, instruction["host_message"])
+    question_time = datetime.fromisoformat(decision["question_timestamp"].replace("Z", "+00:00")).timestamp()
+    if Path(reference["path"]).stat().st_mtime > question_time:
+        raise o.OracleApprovalError("Instruction plan was not prepared before its native question")
+    return {"decision": decision["decision"], "approved_plan_sha256": approved["plan_sha256"],
+            "prepared_plan_custody": plan_fact, "host_custody": custody,
+            "effect_ids": instruction["effect_ids"]}
+
+
+def _direct_authorization_effects(root: Path, selected: dict, record: dict, raw: bytes) -> set[str]:
+    required = {"kind", "plan", "requested_effect_ids", "verdict", "review_status", "owner_evidence",
+                "native_result", "native_evidence", "authorization_request_sha256", "instruction_binding", "authorization_sha256"}
+    requested, owner = record.get("requested_effect_ids"), record.get("owner_evidence")
+    if (set(record) != required or raw != o._pretty(record)
+            or record["authorization_sha256"] != o._sha(o._canonical({k:v for k,v in record.items() if k != "authorization_sha256"}))
+            or record["plan"] != selected or record["verdict"] != "APPROVED" or record["review_status"] != "COMPLETE"
+            or not isinstance(requested, list) or not requested or len(set(requested)) != len(requested)
+            or not set(requested).issubset({row["id"] for row in selected["protected_effects"]["active"]})
+            or not isinstance(owner, dict) or len(owner) != 1 or owner != o._files(root, list(owner))):
+        raise o.OracleApprovalError("Direct publication authority is stale, mismatched or lacks original evidence")
+    binding = _instruction_binding(root, selected, next(iter(owner)), requested)
+    evidence, path = record["native_evidence"], Path(record["native_result"])
+    names = ("result.json", "authorization-inputs.json", "authorization-request.json", "instruction-binding.json")
+    if (binding != record["instruction_binding"] or binding["decision"] != "Approved"
+            or path.name != "result.json" or path.parent.parent != o.receipt_path(root).parent / "runs"
+            or not re.fullmatch(r"authorize-[0-9a-f]{32}", path.parent.name)
+            or not isinstance(evidence, dict) or evidence != o._files(root, list(evidence))
+            or any(o._custody_name(root, path.parent / name) not in evidence for name in names)):
+        raise o.OracleApprovalError("Direct publication instruction custody changed")
+    result = json.loads(o._custody_read(root, path)[1])
+    request = json.loads(o._custody_read(root, path.parent / "authorization-request.json")[1])
+    outcome = json.loads(o._custody_read(root, path.parent / "outcome.json")[1])
+    if (result != {"authority_source": "native-direct-user-instruction", "decision": "Approved",
+                   "plan_sha256": selected["plan_sha256"], "authorized_effect_ids": requested}
+            or record["authorization_request_sha256"] != o._sha(o._canonical(request))
+            or request["plan"] != selected or request["owner_evidence"] != owner or request["requested_effect_ids"] != requested
+            or outcome.get("outcome") != "APPROVED" or outcome.get("reviewer_invoked")):
+        raise o.OracleApprovalError("Publication lacks its genuine native user-instruction binding")
+    return set(requested)
+
+
 @o._serialized_review(request_binding=_authorization_request, result_validator=_authorization_result)
 def authorize(root: Path, candidate: str, release_ref: str, owner_path: str, *, authorization=None, effect_ids=None) -> dict:
     request_binding = _authorization_request(root, candidate, release_ref, owner_path,
@@ -417,33 +598,33 @@ def authorize(root: Path, candidate: str, release_ref: str, owner_path: str, *, 
     request = {"plan": selected, "requested_effect_ids": requested, "owner_evidence": owner}
     o._atomic_write(o._RUN.get() / "authorization-inputs.json", o._pretty(request))
     o._atomic_write(o._RUN.get() / "authorization-request.json", o._pretty(request_binding))
-    prompt = """Independently assess genuine direct-human deployment authority for this exact protected product publication. The original technical review is complete and immutable. Do not repeat or alter it. Verify the supplied owner's human provenance, exact concrete effect/boundary, refusals, destination and scope. A filename, AUTHENTICATION label, generic release instruction or an agent assertion alone supplies no protected deployment permission. Existing exact scoped authority persists through in-scope corrections; versions/hashes alone create no new protected effect. Assess only requested_effect_ids. Existing exact authority retains its scope without repeated human permission; this request grants no authority for unrequested effects, which may remain missing. Approve only all requested current effect IDs under the exact plan hash. Missing or mismatched authority rejects this publication authorization, never the technical review. Keep normal spending and public API version request gates unchanged. Return the supplied closed authorization JSON schema.\n""" + json.dumps(request, sort_keys=True)
-    result = o._review_process(root, prompt, "authorization_reviewer",
-                              schema_path=root / "tools/publication-authorization.schema.json")
+    binding = _instruction_binding(root, selected, owner_path, requested)
+    result = {"authority_source": "native-direct-user-instruction", "decision": binding["decision"],
+              "plan_sha256": selected["plan_sha256"],
+              "authorized_effect_ids": requested if binding["decision"] == "Approved" else []}
+    o._atomic_write(o._RUN.get() / "instruction-binding.json", o._pretty(binding))
+    o._atomic_write(o._RUN.get() / "result.json", o._pretty(result))
     if (_authorization_request(root, candidate, release_ref, owner_path, authorization=authorization, effect_ids=effect_ids) != request_binding
             or plan(root, candidate, release_ref, "main-promotion") != selected or owner != o._files(root, [owner_path])):
         raise o.OracleApprovalError("Publication authorization inputs changed")
     if o._custody_read(root, o._technical_archive(root, selected["technical_receipt_sha256"]))[1] != original:
         raise o.OracleApprovalError("Original technical receipt changed during authority assessment")
     run = o._RUN.get()
-    payload = {"kind": "boc-publication-authorization-v1", "plan": selected,
+    if _instruction_binding(root, selected, owner_path, requested) != binding:
+        raise o.OracleApprovalError("Native user instruction changed during binding")
+    payload = {"kind": "boc-direct-publication-authorization-v1", "plan": selected,
                "authorization_request_sha256": request_digest,
-               "requested_effect_ids": requested, "verdict": result["verdict"],
-               "review_status": result["review_status"], "owner_evidence": owner,
+               "requested_effect_ids": requested, "verdict": "APPROVED" if binding["decision"] == "Approved" else "REJECTED",
+               "review_status": "COMPLETE", "owner_evidence": owner, "instruction_binding": binding,
                "native_result": str(run / "result.json"),
-               "native_evidence": o._files(root, [str(run / name) for name in ("result.json", "process.json", "model.json", "request.txt", "authorization-inputs.json", "authorization-request.json")])}
+               "native_evidence": o._files(root, [str(run / name) for name in ("result.json", "instruction-binding.json", "authorization-inputs.json", "authorization-request.json")])}
     record = dict(payload, authorization_sha256=o._sha(o._canonical(payload)))
     path = o.receipt_path(root).parent / "publication" / (record["authorization_sha256"] + ".json")
     # Every completed attempt has a separate immutable content-addressed record;
     # execution failures also retain their native run and actual outcome.
     o._atomic_write(path, o._pretty(record))
-    if result["review_status"] == "INCOMPLETE":
-        raise o.OracleReviewIncomplete(result["summary"])
-    if result["review_status"] != "COMPLETE":
-        raise o.OracleApprovalError(result["summary"])
-    if (result["verdict"] != "APPROVED" or result["plan_sha256"] != selected["plan_sha256"]
-            or set(result["authorized_effect_ids"]) != set(requested)):
-        raise o.OracleCandidateRejected("Publication authorization rejected: " + result["summary"])
+    if binding["decision"] != "Approved":
+        raise o.OracleCandidateRejected("Publication instruction is Hold publication")
     return dict(record, path=str(path), prior_attempts=observations)
 
 

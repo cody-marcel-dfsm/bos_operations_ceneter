@@ -3,6 +3,8 @@ from pathlib import Path
 import json
 import subprocess
 import unittest
+import uuid
+from datetime import datetime, timezone
 from unittest.mock import patch
 
 import oracle_review_series as fixtures
@@ -23,6 +25,9 @@ class PublicationAdmission(unittest.TestCase):
         self.fixture.git("add", ".")
         self.ref = "codex/release-v0.0.1"
         self.commands = []
+        self.host_sessions = self.root / "Vault/tmp/synthetic-host-sessions"
+        patcher = patch.object(publication, "_host_sessions_root", return_value=self.host_sessions)
+        patcher.start(); self.addCleanup(patcher.stop)
 
     def effect(self, context):
         return {"id": "existing-credential-read", "kind": "credential-trust",
@@ -120,25 +125,127 @@ class PublicationAdmission(unittest.TestCase):
         selected = publication.plan(self.root, "HEAD", self.ref, "main-promotion", refresh=False)
         self.assertFalse(selected["human_authority_required"])
 
+    def instruction(self, owner, effects=None, decision="Approved", mutate=None):
+        selected = publication.plan(self.root, "HEAD", self.ref, "main-promotion", refresh=False)
+        plan = owner.with_suffix(".prepared.json"); plan.write_bytes(o._pretty(selected))
+        thread = str(uuid.uuid4()); call = "call_synthetic_" + uuid.uuid4().hex
+        text = "Publish the exact synthetic prepared product and protected effects"
+        timestamp = datetime.fromtimestamp(plan.stat().st_mtime + 1, timezone.utc).isoformat()
+        reply = "<send_user_message_question_reply>\n" + json.dumps([{
+            "questionItemId": json.dumps(["request_user_input_async", call, 0]), "question": text, "answer": decision}]) + "\n</send_user_message_question_reply>"
+        events = {
+            "meta": {"type": "session_meta", "payload": {"id": thread, "source": "vscode", "originator": "Codex Desktop", "thread_source": "user"}},
+            "question": {"type": "response_item", "ordinal": 1, "timestamp": timestamp, "payload": {
+                "type": "function_call", "name": "request_user_input_async", "call_id": call,
+                "arguments": json.dumps({"questions": [{"title": text, "options": ["Approved", "Hold publication"]}]})}},
+            "acceptance": {"type": "response_item", "ordinal": 2, "payload": {"type": "function_call_output", "call_id": call, "output": '{"accepted":true}'}},
+            "answer": {"type": "event_msg", "ordinal": 3, "payload": {"type": "item_completed", "thread_id": thread,
+                "turn_id": "synthetic-turn", "item": {"type": "UserMessage", "id": "synthetic-user-message", "content": [{"type": "text", "text": reply}]}}}}
+        if mutate:
+            mutate(events)
+        session = self.host_sessions / "2026/10/24" / ("rollout-synthetic-" + thread + ".jsonl")
+        session.parent.mkdir(parents=True, exist_ok=True)
+        ranges, raw = {}, b""
+        for name, event in events.items():
+            line = json.dumps(event).encode() + b"\n"
+            ranges[name] = {"offset": len(raw), "length": len(line), "sha256": o._sha(line)}
+            raw += line
+        session.write_bytes(raw)
+        value = {"kind": "boc-direct-publication-instruction-input-v1",
+                 "prepared_plan": {"path": str(plan), "sha256": o._sha(plan.read_bytes())},
+                 "effect_ids": effects or [row["id"] for row in selected["protected_effects"]["active"]],
+                 "host_message": {"session_file": str(session), "thread_id": thread, "question_call_id": call,
+                     "question_index": 0, "question_text": text, "approved_answer": "Approved", "user_message_id": "synthetic-user-message",
+                     "turn_id": "synthetic-turn", "records": ranges}}
+        owner.write_bytes(o._pretty(value)); return value
+
     def native_authorize(self, owner, *, prior=None, verdict="APPROVED", observed=None, effect_ids=None):
         original_plan = publication.plan
-        def synthetic_native(root, prompt, prefix, **kwargs):
-            request = json.loads((o._RUN.get() / "authorization-inputs.json").read_bytes())
-            if observed is not None:
-                observed.append(request["requested_effect_ids"])
-            result = {"verdict": verdict, "review_status": "COMPLETE", "summary": "Synthetic scoped decision",
-                      "plan_sha256": request["plan"]["plan_sha256"],
-                      "authorized_effect_ids": request["requested_effect_ids"] if verdict == "APPROVED" else []}
-            run = o._RUN.get()
-            o._timed("authorization_reviewer_seconds", lambda: None)
-            for name, value in {"result.json": result, "process.json": {"exit_code": 0},
-                                "model.json": {"reviewer_role": "independent-oracle-approver"}}.items():
-                o._atomic_write(run / name, o._pretty(value))
-            o._atomic_write(run / "request.txt", prompt.encode())
-            return result
+        selected = original_plan(self.root, "HEAD", self.ref, "main-promotion", refresh=False)
+        covered, _ = publication._covered_authorizations(self.root, selected, prior)
+        chosen = set(effect_ids) if effect_ids is not None else {row["id"] for row in selected["protected_effects"]["active"]}
+        if observed is not None:
+            observed.append(sorted(chosen - covered))
+        if json.loads(owner.read_bytes()).get("kind") != "boc-direct-publication-instruction-input-v1":
+            self.instruction(owner, effect_ids, "Approved" if verdict == "APPROVED" else "Hold publication")
         with patch.object(publication, "plan", side_effect=lambda *a, **kw: original_plan(*a, **dict(kw, refresh=False))), \
-                patch.object(o, "_review_process", side_effect=synthetic_native):
+                patch.object(o, "_review_process", side_effect=AssertionError("Human instruction must never launch a model")):
             return publication.authorize(self.root, "HEAD", self.ref, str(owner), authorization=prior, effect_ids=effect_ids)
+
+    def test_direct_instruction_rejects_delegated_derived_and_mismatched_native_records(self):
+        self.submit(True, authentication=True)
+        selected = publication.plan(self.root, "HEAD", self.ref, "main-promotion", refresh=False)
+        mutations = [lambda rows: rows["meta"]["payload"].update(thread_source="subagent"),
+                     lambda rows: rows["answer"]["payload"]["item"].update(type="AgentMessage"),
+                     lambda rows: rows["question"]["payload"].update(name="send_message_to_thread"),
+                     lambda rows: rows["acceptance"]["payload"].update(output='{"accepted":false}'),
+                     lambda rows: rows["answer"]["payload"].update(thread_id=str(uuid.uuid4()))]
+        for number, mutate in enumerate(mutations):
+            owner = self.root / f"Vault/tmp/derived-{number}.json"
+            self.instruction(owner, mutate=mutate)
+            with self.subTest(number=number), self.assertRaises(o.OracleApprovalError):
+                publication._instruction_binding(self.root, selected, str(owner), ["existing-credential-read"])
+
+    def test_direct_instruction_append_safe_custody_and_actual_main_preparation(self):
+        self.submit(True, authentication=True)
+        owner = self.root / "Vault/tmp/append-safe.json"; owner.write_text('{}')
+        authorized = self.native_authorize(owner)
+        self.assertEqual(authorized["kind"], "boc-direct-publication-authorization-v1")
+        source = Path(json.loads(owner.read_bytes())["host_message"]["session_file"])
+        with source.open("ab") as output:
+            output.write(b'{"type":"event_msg","payload":{"type":"agent_message"}}\n')
+        selected = publication.plan(self.root, "HEAD", self.ref, "main-promotion", refresh=False)
+        self.assertEqual(publication._authorization_effects(self.root, selected, Path(authorized["path"])), {"existing-credential-read"})
+        prepared = publication.prepare(self.root, "HEAD", self.ref, "main-promotion", authorization=Path(authorized["path"]),
+                                       pr="1", execute=self.execute, refresh=False)
+        outcome = publication.publish_prepared(self.root, Path(prepared["prepared_file"]), execute=self.execute)
+        self.assertEqual(outcome["state"], "PUBLISHED")
+        self.assertEqual(self.commands[-1][0:2], ["git", "push"])
+        with source.open("r+b") as output:
+            output.seek(0); output.write(b"X")
+        with self.assertRaisesRegex(o.OracleApprovalError, "bytes changed"):
+            publication._authorization_effects(self.root, selected, Path(authorized["path"]))
+
+    def test_direct_instruction_rejects_target_effect_plan_and_link_changes(self):
+        self.submit(True, authentication=True)
+        owner = self.root / "Vault/tmp/scope-checked.json"
+        value = self.instruction(owner)
+        selected = publication.plan(self.root, "HEAD", self.ref, "main-promotion", refresh=False)
+        for field in ("destination", "protected_effects"):
+            changed = json.loads(json.dumps(selected))
+            if field == "destination":
+                changed[field]["ref"] = "refs/heads/foreign"
+            else:
+                changed[field]["active"][0]["boundary"] = "broader boundary"
+            with self.subTest(field=field), self.assertRaises(o.OracleApprovalError):
+                publication._instruction_binding(self.root, changed, str(owner), ["existing-credential-read"])
+        source = Path(value["host_message"]["session_file"]); saved = source.with_suffix(".original")
+        source.rename(saved); source.symlink_to(saved)
+        with self.assertRaisesRegex(o.OracleApprovalError, "linked route"):
+            publication._instruction_binding(self.root, selected, str(owner), ["existing-credential-read"])
+        source.unlink(); saved.rename(source)
+        plan = Path(value["prepared_plan"]["path"]); plan.write_bytes(plan.read_bytes() + b" ")
+        with self.assertRaisesRegex(o.OracleApprovalError, "plan changed"):
+            publication._instruction_binding(self.root, selected, str(owner), ["existing-credential-read"])
+
+    def test_direct_instruction_preserves_reviewed_bookkeeping_advancement(self):
+        self.submit(True, authentication=True)
+        owner = self.root / "Vault/tmp/bookkeeping-authority.json"
+        self.instruction(owner)
+        self.fixture.change("tools/synthetic-maintenance.py", "# reviewed maintenance change\n")
+        self.submit(True, authentication=True)
+        authorized = self.native_authorize(owner)
+        self.assertEqual(authorized["verdict"], "APPROVED")
+        self.assertNotEqual(authorized["plan"]["plan_sha256"], authorized["instruction_binding"]["approved_plan_sha256"])
+
+    def test_direct_instruction_rejects_changed_product_assets(self):
+        self.submit(True, authentication=True)
+        owner = self.root / "Vault/tmp/product-asset-authority.json"
+        self.instruction(owner)
+        self.fixture.change("clients/codex/plugins/bos/readme.txt", "new product behavior")
+        self.submit(True, authentication=True)
+        with self.assertRaisesRegex(o.OracleApprovalError, "product assets changed"):
+            self.native_authorize(owner)
 
     def test_fresh_clone_missing_private_history_keeps_complete_technical_review_available(self):
         first = self.submit(True)
@@ -303,23 +410,7 @@ class PublicationAdmission(unittest.TestCase):
         original = o.receipt_path(self.root).read_bytes()
         owner = self.root / "Vault/tmp/direct-synthetic-owner.json"
         owner.write_text('{"direct_user_quote":"Approve the exact synthetic credential effect"}')
-        original_plan = publication.plan
-
-        def synthetic_native(root, prompt, prefix, **kwargs):
-            selected = original_plan(root, "HEAD", self.ref, "main-promotion", refresh=False)
-            result = {"verdict": "APPROVED", "review_status": "COMPLETE", "summary": "Synthetic scoped authority",
-                      "plan_sha256": selected["plan_sha256"], "authorized_effect_ids": ["existing-credential-read"]}
-            run = o._RUN.get()
-            o._timed("authorization_reviewer_seconds", lambda: None)
-            for name, value in {"result.json": result, "process.json": {"exit_code": 0},
-                                "model.json": {"reviewer_role": "independent-oracle-approver"}}.items():
-                o._atomic_write(run / name, o._pretty(value))
-            o._atomic_write(run / "request.txt", prompt.encode())
-            return result
-
-        with patch.object(publication, "plan", side_effect=lambda *a, **kw: original_plan(*a, **dict(kw, refresh=False))), \
-                patch.object(o, "_review_process", side_effect=synthetic_native):
-            authorized = publication.authorize(self.root, "HEAD", self.ref, str(owner))
+        authorized = self.native_authorize(owner)
         record = Path(authorized["path"])
         publication.publish(self.root, "HEAD", self.ref, "main-promotion", pr="1", authorization=record,
                             execute=self.execute, refresh=False)
