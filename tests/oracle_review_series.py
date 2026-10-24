@@ -2126,6 +2126,54 @@ class ReviewSeries(unittest.TestCase):
         self.git("add", "native-input")
         return middle, alias
 
+    def test_explicit_owner_file_validation_roundtrips_into_review_inputs(self):
+        name = "Vault/tmp/native-probe.py"
+        (self.root / name).write_text("print('bounded synthetic probe')\n")
+        record = o.record_validation(self.root, [sys.executable, name], [name], self.evidence)
+        self.assertEqual(record["exit_code"], 0)
+        self.assertTrue(record["inputs"][0]["digest"].startswith("fs-sha256:"))
+        inputs = o._candidate_inputs(self.root, o._tree(self.root),
+                                     {str(self.evidence): o._sha(self.evidence.read_bytes())})
+        self.assertEqual(inputs[name], record["inputs"][0]["digest"])
+        o._validation_record(self.root, str(self.evidence), record["inputs"], record["environment_digest"])
+        verified, invalid = o._current_validation_proofs(self.root,
+            {str(self.evidence): o._sha(self.evidence.read_bytes())}, inputs, record["environment_digest"], {})
+        self.assertEqual(len(verified), 1)
+        self.assertEqual(invalid, [])
+
+    def test_explicit_owner_file_validation_rejects_unsafe_or_nonregular_inputs(self):
+        outside = tempfile.TemporaryDirectory()
+        self.addCleanup(outside.cleanup)
+        external = Path(outside.name) / "probe.py"
+        external.write_text("print('outside')\n")
+        escaped = self.root / "Vault/tmp/escaped.py"
+        escaped.symlink_to(external)
+        directory = self.root / "Vault/tmp/directory.py"
+        directory.mkdir()
+        for name in (str(external), "../probe.py", ".git/config", "Vault/tmp/escaped.py",
+                     "Vault/tmp/directory.py", "Vault/tmp/absent.py"):
+            with self.subTest(name=name), self.assertRaises(o.OracleApprovalError):
+                o.record_validation(self.root, [sys.executable, "-c", "pass"], [name], self.evidence)
+
+    def test_explicit_owner_file_change_during_capture_preserves_output_without_witness(self):
+        name = "Vault/tmp/native-probe.py"
+        (self.root / name).write_text("original synthetic input\n")
+        command = [sys.executable, "-c",
+            "from pathlib import Path; print('observed execution'); "
+            "Path('Vault/tmp/native-probe.py').write_text('changed synthetic input')"]
+        with self.assertRaisesRegex(o.OracleApprovalError, "changed during capture"):
+            o.record_validation(self.root, command, [name], self.evidence)
+        self.assertFalse(self.evidence.exists())
+        self.assertIn("observed execution", self.evidence.with_suffix(".stdout.log").read_text())
+
+    def test_explicit_owner_file_original_witness_rejects_later_source_drift(self):
+        name = "Vault/tmp/native-probe.py"
+        (self.root / name).write_text("print('bounded synthetic probe')\n")
+        record = o.record_validation(self.root, [sys.executable, name], [name], self.evidence)
+        (self.root / name).write_text("print('changed synthetic probe')\n")
+        with self.assertRaises(o.OracleApprovalError):
+            o._validation_record(self.root, str(self.evidence), record["inputs"], record["environment_digest"])
+
     def native_external_return(self, middle):
         saved = middle.with_name(middle.name + "-saved")
         middle.rename(saved)

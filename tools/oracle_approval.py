@@ -1189,6 +1189,7 @@ def _candidate_inputs(root: Path, tree: str, evidence: dict) -> dict:
                 consumed_names.add(item['path'])
     if consumed_names:
         inputs.update(_declared_parent_execution_inputs(root, sorted(consumed_names)))
+        inputs.update(_explicit_owner_execution_inputs(root, sorted(consumed_names), inputs))
     return inputs
 
 
@@ -2229,12 +2230,28 @@ def _checked_inputs(entries: Any, context: dict, *, required_path: str | None = 
     return entries
 
 
+def _explicit_owner_execution_inputs(root: Path, selected: Sequence[str], known: dict) -> dict:
+    """Bind explicitly consumed regular owner files with the raw-review identity."""
+    inputs = {}
+    for name in selected:
+        if name in known:
+            continue
+        normalized, error = _owner_source_name(root, name)
+        if error or normalized != name:
+            continue
+        fact = _owner_source_fact(root, name)
+        if fact.get("exists") and fact.get("kind") == "file":
+            inputs[name] = "fs-sha256:" + fact["mode"] + ":file:" + _sha(_canonical(fact))
+    return inputs
+
+
 def _validation_capture_inputs(root: Path, selected: Sequence[str]) -> tuple[dict, dict]:
     """Inspect only the declared execution closure, including live file bytes."""
     inputs = _candidate_inputs(root, _tree(root), {})
     inputs.update(_declared_parent_execution_inputs(root, selected))
+    inputs.update(_explicit_owner_execution_inputs(root, selected, inputs))
     if not selected or any(name not in inputs for name in selected):
-        raise OracleApprovalError("Validation inputs must name existing candidate or canonical knowledge paths")
+        raise OracleApprovalError("Validation inputs must name existing candidate, knowledge or regular owner paths")
     tracked = [name for name in selected if isinstance(inputs[name], str) and inputs[name].startswith("git-")]
     if tracked and _git(root, "diff", "--name-only", "--", *tracked).strip():
         raise OracleApprovalError("Stage the selected validation inputs before capture or reuse")
@@ -2268,6 +2285,7 @@ def record_validation(root: Path, command: Sequence[str], input_paths: Sequence[
     selected = sorted(set(input_paths)) if input_paths else sorted(inputs)
     selected_inputs, live_inputs = _validation_capture_inputs(root, selected)
     inputs.update(_declared_parent_execution_inputs(root, selected))
+    inputs.update(_explicit_owner_execution_inputs(root, selected, inputs))
     if selected_inputs != {name: inputs[name] for name in selected}:
         raise OracleApprovalError("Selected validation inputs changed during preparation")
     authority = _controlling_authorities(binding["authority_digests"])
