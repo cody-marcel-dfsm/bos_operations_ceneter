@@ -27,6 +27,11 @@ no resource. It never substitutes a base URL, opens a connection, discovers
 OAuth metadata, stores a credential, or accepts bearer material.
 When recovery creates a host correlation, the adapter carries that value and
 the recovery result's exact protected resource into the single bounded wait.
+The host reuses its one BOS plugin binding across logical sessions and owns
+physical transport multiplexing and coordinated identity refresh. The adapter
+keeps operation contexts independent. Caller-supplied `host_correlation` provides
+no trusted identity or original-transaction custody, so independent adapter
+instances do not cache readiness or coalesce recovery from that value.
 
 ## Authentication wire contract
 
@@ -115,6 +120,10 @@ the adapter performs one generic BOS authentication handoff, waits through one
 host-owned action when required, obtains a fresh context, and invokes the same
 action once. A second authentication result is a terminal sanitized recovery
 failure. Non-authentication failures are never replayed.
+HTTP 429 and 503 take precedence over body authentication codes for both returned
+and thrown transport results. They retain `Retry-After`, return the original
+failure, and invoke neither authentication recovery nor a second operation attempt.
+An unclassified MCP startup error also supplies no authentication trigger.
 
 
 ## Trusted execution review and scope continuity

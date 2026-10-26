@@ -18,6 +18,14 @@ the same current authorized discovery and selected-context permission checks;
 see the [public OAuth client guide](oauth-client-guide.md) for OAuth clients.
 Authentication recovery creates no business-operation retry authority.
 
+All logical sessions reuse the same authenticated BOS plugin binding in the
+same host and identity. MCP initialization establishes protocol state using that
+existing credential. A new task or closed transport does not establish a need
+for another OAuth grant. The host owns connection multiplexing and coordinated
+credential refresh; each operation retains its own fresh authorized context.
+HTTP 429/503 preserves its retry information and stops the current attempt
+without authentication recovery or operation replay.
+
 The caller retains its semantic request and owns live discovery, approval,
 cache, semantic continuation, and presentation. None of that state enters the
 BOS authentication handoff. BOS Service owns API idempotency, bounded execution
@@ -50,7 +58,8 @@ observed failures.
 
 Refresh the callable manifest immediately after:
 
-- initial connection or task continuation;
+- initial connection or a host-reported catalog invalidation; a task continuation
+  reuses the current host catalog when it remains valid;
 - Successful OAuth connection/reconnection or Muse identity-key recovery;
 - Codex request-time or MCP-startup `reauthenticationRequired` recovery through
   the native authentication action owned by the resolved registered-app

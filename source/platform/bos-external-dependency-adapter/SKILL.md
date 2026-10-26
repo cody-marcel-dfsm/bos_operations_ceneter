@@ -2,7 +2,7 @@
 name: bos-external-dependency-adapter
 description: Provide the installed BOS product's authenticated dependency seam to external BOS-family plugins without giving those plugins tokens, context handles, authority selectors, or a second connection.
 metadata:
-  version: "1.0.7"
+  version: "1.0.8"
   requires: "{}"
 ---
 
@@ -16,6 +16,12 @@ a user-issued identity API key held privately by the host. Delegation returns
 readiness for that supported method. The existing BOS context-selection workflow
 resolves explicit requests or confirmed defaults without another BOS login/key.
 Keep credentials and opaque handles inside the BOS/host boundary.
+Reuse that host-owned plugin binding across all logical sessions. The host owns
+physical connection multiplexing and coordinated identity refresh; each adapter
+operation still obtains its own fresh context. HTTP 429/503 stops the current
+attempt with retry information preserved and never invokes authentication recovery.
+Caller-supplied correlation is diagnostic; it cannot prove shared identity or
+original transaction ownership for a recovery cache or coalescing registry.
 
 
 Use this BOS-owned adapter whenever a separately installed product delegates

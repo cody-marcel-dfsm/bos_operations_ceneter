@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "package": "bos-operations-center",
-  "version": "0.0.212",
+  "version": "0.0.213",
   "release_line_transitions": [
     {
       "id": "client-zero-minor-line",

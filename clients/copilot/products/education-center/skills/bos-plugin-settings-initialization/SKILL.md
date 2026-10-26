@@ -2,8 +2,8 @@
 name: bos-plugin-settings-initialization
 description: Initialize or repair plugin-service connections and required BOS plugin settings after client settings and BOS authentication are ready, using guided secure connection actions, sourced recommendations, consolidated confirmation, delegated persistence, and authority-scoped cache receipts.
 metadata:
-  version: "1.0.7"
-  requires: "{\"bos-mcp-client\":\"1.0.7\",\"bos-plugin-console\":\"1.0.7\",\"bos-plugin-settings\":\"1.0.7\",\"education-center-customer-initialization\":\"1.0.7\"}"
+  version: "1.0.8"
+  requires: "{\"bos-mcp-client\":\"1.0.8\",\"bos-plugin-console\":\"1.0.8\",\"bos-plugin-settings\":\"1.0.8\",\"education-center-customer-initialization\":\"1.0.8\"}"
 ---
 
 
@@ -27,8 +27,10 @@ When first-run configuration is detected, invoke `education-center-customer-init
 immediately. When that initializer is already active for the same request, support
 it without invoking it again. Preserve the user's original request while
 initialization runs.
-Complete the product's host-managed BOS authentication before asking any settings
-question. If direct sign-in is required, ask only for that action and resume
+Reuse the product's authenticated host-owned BOS plugin binding before asking any settings
+question. A new task or session never starts another login. Only a verified identity failure
+requires the host's existing sign-in action; HTTP 429/503 preserves its Retry-After gate.
+When direct sign-in is required, ask only for that action and resume
 initialization automatically afterward. Do not perform the original workflow or
 substitute generic customer values while configuration remains unresolved. After
 the user accepts the consolidated recommendation and the initializer writes and

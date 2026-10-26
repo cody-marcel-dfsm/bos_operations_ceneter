@@ -2,8 +2,8 @@
 name: education-center-service-routing
 description: Route Education Center requests to tenant-scoped BOS capabilities and contribute education-domain steps to ad hoc dynamic workflows. Use for multi-step or cross-service objectives and whenever work needs Gmail, Calendar, Drive, Calimatic, Lead Director, calls, SMS, reviews, outreach, students, camps, enrollment, or another connected service.
 metadata:
-  version: "1.0.7"
-  requires: "{\"bos-mcp-client\":\"1.0.7\",\"bos-plugin-settings-initialization\":\"1.0.7\",\"bos-visual-output\":\"1.0.7\",\"bos-workflow-orchestrator\":\"1.0.7\",\"education-center-customer-initialization\":\"1.0.7\",\"email-account-routing\":\"1.0.7\"}"
+  version: "1.0.8"
+  requires: "{\"bos-mcp-client\":\"1.0.8\",\"bos-plugin-settings-initialization\":\"1.0.8\",\"bos-visual-output\":\"1.0.8\",\"bos-workflow-orchestrator\":\"1.0.8\",\"education-center-customer-initialization\":\"1.0.8\",\"email-account-routing\":\"1.0.8\"}"
 ---
 
 
@@ -16,7 +16,10 @@ before initialization, settings reconciliation, context selection or login.
 Do not authenticate to sign out; preserve confirmed preferences.
 
 Before performing this skill's workflow, preserve the pending request and
-complete the product's host-managed BOS authentication. Run the configured
+reuse the product's authenticated host-owned BOS plugin binding across logical sessions.
+Only a verified identity failure requires its existing native sign-in action.
+HTTP 429/503 preserves Retry-After and stops the attempt without another grant.
+Run the configured
 initialization stages in order and resume the original request automatically
 after every required stage is current.
 
@@ -55,6 +58,13 @@ with empty arguments and terminate after its receipt or canonical challenged
 401. This connection-level action precedes context/default selection and
 authentication recovery; do not sign in to perform logout.
 
+
+Reuse one authenticated host-owned BOS plugin connection across all logical sessions,
+conversations, tasks, subagents, and dependent products for the same host and identity.
+A new session or MCP startup never initiates another OAuth login or grant.
+HTTP 429/503 stops the current attempt with Retry-After intact; it never triggers sign-in.
+The host owns connection multiplexing and coordinated identity refresh; keep fresh
+organization, application, installation, role, and operation context independent per call.
 
 First apply the versioned identity-context workflow in `bos-mcp-client`.
 For live `bos-identity-mcp/v2`, resolve explicit request scope or the saved

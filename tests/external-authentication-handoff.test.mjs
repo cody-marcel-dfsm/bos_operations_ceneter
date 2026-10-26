@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
+import {listProducts} from "../scripts/lib/package-model.mjs";
 
 const root = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
 
@@ -155,6 +156,39 @@ test("BOS source skills limit external delegation to generic authentication read
   assert.match(continuation, /BOS coordinates the host authentication lifecycle/i);
   assert.match(continuation, /BOS Service owns API\s+idempotency[\s\S]*bounded execution[\s\S]*uncertain-outcome\s+reconciliation/i);
   assert.doesNotMatch(continuation, /caller[^.]*owns[^.]*retry|caller[^.]*owns[^.]*reconciliation/i);
+});
+
+test("active generated products reuse the host plugin identity across logical sessions", async () => {
+  const prefixes = {
+    codex: "clients/codex/plugins",
+    claude: "clients/claude/plugins",
+    copilot: "clients/copilot/products",
+    gemini: "clients/gemini/extensions",
+    muse: "clients/muse/plugins"
+  };
+  for (const {manifest: product} of await listProducts()) {
+    if (product.release_status !== "active") continue;
+    for (const client of product.clients) {
+      const productRoot = `${prefixes[client]}/${product.name}`;
+      const skillsRoot = `${productRoot}/skills`;
+      const clientGuidance = await read(`${skillsRoot}/bos-mcp-client/SKILL.md`);
+      assert.match(clientGuidance, /one host-owned BOS plugin connection[\s\S]*all\s+conversations, tasks, subagents, and dependent products/, productRoot);
+      assert.match(clientGuidance, /HTTP 429 and 503 stop the current attempt/, productRoot);
+      let scopedSkills = 0;
+      for (const entry of await readdir(`${root}/${skillsRoot}`, {withFileTypes: true})) {
+        if (!entry.isDirectory()) continue;
+        const path = `${skillsRoot}/${entry.name}/SKILL.md`;
+        const guidance = await read(path);
+        if (!guidance.includes("## Scoped authorization preflight")) continue;
+        scopedSkills += 1;
+        assert.match(guidance, /Reuse one authenticated host-owned BOS plugin connection across all logical sessions/, path);
+        assert.match(guidance, /A new session or MCP startup never initiates another OAuth login or grant/, path);
+        assert.match(guidance, /HTTP 429\/503 stops the current attempt with Retry-After intact/, path);
+        assert.match(guidance, /operation context independent per call/, path);
+      }
+      assert(scopedSkills > 0, `${productRoot} must exercise generated dependent-skill guidance`);
+    }
+  }
 });
 
 test("generated packages preserve the corrected generic handoff exactly", async () => {

@@ -2,8 +2,8 @@
 name: bos-mcp-client
 description: Operate the BOS platform MCP connection, including service-owned sign-out, server-evaluated product scope, live tool discovery, transport recovery, provider authorization recovery, and automatic BOS authentication handoff for dependent plugins.
 metadata:
-  version: "1.0.7"
-  requires: "{\"bos-external-dependency-adapter\":\"1.0.7\"}"
+  version: "1.0.8"
+  requires: "{\"bos-external-dependency-adapter\":\"1.0.8\"}"
 ---
 
 
@@ -19,6 +19,15 @@ Resolve unscoped work with the calling plugin's customer preference namespace:
 requests. An explicit organization selection for the task takes precedence.
 Never substitute a default saved by another plugin.
 # BOS MCP Client
+
+Reuse one host-owned BOS plugin connection and identity credential across all
+conversations, tasks, subagents, and dependent products in that host. A new
+logical session reuses the authenticated binding; it does not start another
+OAuth login, client registration, or grant. The host owns transport multiplexing,
+credential refresh, and coordination of concurrent connection recovery. Separate
+hosts and identities retain their own credential custody. Validate fresh
+organization, application, installation, role, and operation context for each
+call without creating a global active context or caching authentication readiness.
 
 For CRM lead/contact detail results, read the shared
 [record journey display contract](references/record-journey-display.md)
@@ -313,7 +322,9 @@ apply only the generic handoff contract above and receive no operation state.
   or materialize a URL from `installed_app_id` or customer settings.
   Do not stop at diagnosing client registration.
 - If the transport, stream, or MCP session closes, reconnect or reinitialize
-  that same configured connection, rediscover its live tools, call
+  that same configured connection through the host using its existing identity
+  credential. Session startup or closure alone never initiates another grant.
+  Rediscover its live tools only when the host reports catalog invalidation, call
   `bos_get_context` again, and follow only the exact returned continuation or
   state action. When none exists, preserve the interrupted request and report
   the exact failed operation without replaying it.
@@ -327,8 +338,14 @@ apply only the generic handoff contract above and receive no operation state.
   host's supported connection reset or **Connect/Sign in** surface when it does
   not expose programmatic registration replacement. Keep the product endpoint
   and installed product plugins unchanged throughout recovery.
-- If Codex reports `reauthenticationRequired`, `requires OAuth
-  reauthentication`, or an equivalent MCP-startup authentication failure,
+- HTTP 429 and 503 stop the current attempt and retain `Retry-After` on the
+  existing connection. Honor that retry gate; do not sign in, register a client,
+  fetch OAuth metadata again, reload connections, or restart sessions to bypass
+  it. Authentication wording inside a startup error does not override these
+  HTTP statuses.
+- If Codex reports `reauthenticationRequired` or `requires OAuth
+  reauthentication` with a verified missing, expired, revoked, or invalid identity
+  proof,
   classify it as **Sign in** and preserve the active request. The protected MCP
   resource returns HTTP 401 with its exact `WWW-Authenticate` resource-metadata
   challenge. Use the host's native **Connect**, **Sign in**, or **Authenticate**

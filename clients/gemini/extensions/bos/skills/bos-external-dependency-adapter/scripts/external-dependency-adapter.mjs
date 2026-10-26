@@ -369,6 +369,9 @@ function headerValue(headers, target) {
 
 function authenticationCondition(value) {
   const status = Number(value?.status ?? value?.details?.status);
+  // Admission/availability failures retain their retry gate even when a host
+  // wraps them in an authentication error. They never start a new grant.
+  if (status === 429 || status === 503) return null;
   const code = String(value?.body?.error?.code ?? value?.code ?? "").toUpperCase();
   if (conditionCodeSet.has(code)) return code;
   if (status === 401 && headerValue(value?.headers, "www-authenticate")) return "MCP_WWW_AUTHENTICATE";

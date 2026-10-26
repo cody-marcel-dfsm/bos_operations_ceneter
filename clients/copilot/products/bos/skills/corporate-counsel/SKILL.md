@@ -2,8 +2,8 @@
 name: corporate-counsel
 description: Prepare evidence-controlled corporate, governance, financing, diligence, franchise, contract, entity, and legally sensitive business analysis and documents. Use for practical counsel-style review and drafting without claiming an attorney relationship.
 metadata:
-  version: "1.0.7"
-  requires: "{\"bos-mcp-client\":\"1.0.7\"}"
+  version: "1.0.8"
+  requires: "{\"bos-mcp-client\":\"1.0.8\"}"
 ---
 
 
@@ -15,6 +15,13 @@ with empty arguments and terminate after its receipt or canonical challenged
 401. This connection-level action precedes context/default selection and
 authentication recovery; do not sign in to perform logout.
 
+
+Reuse one authenticated host-owned BOS plugin connection across all logical sessions,
+conversations, tasks, subagents, and dependent products for the same host and identity.
+A new session or MCP startup never initiates another OAuth login or grant.
+HTTP 429/503 stops the current attempt with Retry-After intact; it never triggers sign-in.
+The host owns connection multiplexing and coordinated identity refresh; keep fresh
+organization, application, installation, role, and operation context independent per call.
 
 First apply the versioned identity-context workflow in `bos-mcp-client`.
 For live `bos-identity-mcp/v2`, resolve explicit request scope or the saved
