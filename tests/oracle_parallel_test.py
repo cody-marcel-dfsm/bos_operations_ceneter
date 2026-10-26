@@ -208,6 +208,56 @@ class ParallelReview(unittest.TestCase):
                          ['review_policy_digest', 'environment_digest'])
         self.assertEqual(packet['criterion_navigation']['groups'][0]['criterion_pairs'], [[0, 0]])
 
+    def test_large_criterion_navigation_retains_every_exact_original_and_rejects_tamper(self):
+        paths = ['clients/generated-' + str(index) + '.md' for index in range(387)]
+        self.context['required_coverage_paths'] += paths
+        self.context['input_hashes'].update({name: 'current-' + name for name in paths})
+        originals = [{'path': name, 'status': 'REVIEWED' if index % 2 else 'CARRIED_FORWARD',
+            'reason': 'Historical criterion ' + str(index),
+            'invalidation_reasons': [name + ' content changed or missing', 'exact dependency ' * 30 + str(index)],
+            'inputs': [{'path': name, 'digest': 'original-' + name},
+                       {'path': 'source.py', 'digest': 'bound-source.py'}]}
+            for index, name in enumerate(paths)]
+        # Multiple distinct observations for one path retain separate locators.
+        originals.append(dict(originals[0], reason='An additional original criterion'))
+        self.context['invalidated_coverage'] = originals
+        self.context['prior_findings'] = {'F1000': {'state': 'OPEN', 'file': 'source.py',
+            'affected_paths': ['source.py'], 'required_behavior': 'Preserve this mandatory finding'}}
+        before = o._pretty(self.context)
+        plan = parallel.partition(self.context, self.binding, self.digest)
+        cohort = next(item for item in plan['cohorts'] if item['id'] == parallel.AREAS[1])
+        packet = parallel.packet(self.context, plan, cohort, self.run/'review-context.json', self.digest)
+        navigation = packet['criterion_navigation']
+        self.assertTrue(navigation['facts_via_original_records'])
+        self.assertNotIn('groups', navigation)
+        self.assertEqual(navigation['eligibility'], 'NONE')
+        self.assertTrue(navigation['requires_independent_current_applicability'])
+        self.assertEqual(navigation['original']['json_pointer'], '/invalidated_coverage')
+        self.assertEqual(navigation['original']['value_sha256'], self.digest(originals))
+        self.assertEqual(navigation['original']['parent_context_sha256'], self.digest(self.context))
+        self.assertEqual(navigation['pair_columns'], ['cohort_required_path_index', 'original_coverage_index'])
+        expected = sorted([cohort['required_paths'].index(row['path']), index]
+                          for index, row in enumerate(originals))
+        self.assertEqual(navigation['criterion_pairs'], expected)
+        reconstructed = []
+        for path_index, original_index in navigation['criterion_pairs']:
+            row = originals[original_index]
+            self.assertEqual(cohort['required_paths'][path_index], row['path'])
+            reconstructed.append(row)
+        self.assertEqual(sorted(reconstructed, key=lambda row: (row['path'], row['reason'])),
+                         sorted(originals, key=lambda row: (row['path'], row['reason'])))
+        self.assertEqual(packet['prior_findings'], self.context['prior_findings'])
+        self.assertEqual(packet['open_prior_finding_ids'], ['F1000'])
+        self.assertEqual(packet['input_hashes'], {name: self.context['input_hashes'][name]
+                                               for name in cohort['required_paths']})
+        self.assertLessEqual(len(parallel._serialized(navigation)), parallel.RETAINED_NAVIGATION_MAX_BYTES)
+        self.assertLessEqual(len(parallel._serialized(packet)), parallel.COHORT_PACKET_MAX_BYTES)
+        self.assertEqual(o._pretty(self.context), before)
+        for field, value in [('status', 'REJECTED'), ('invalidation_reasons', []), ('inputs', [])]:
+            changed = copy.deepcopy(self.context); changed['invalidated_coverage'][0][field] = value
+            with self.assertRaisesRegex(ValueError, 'exact sealed parent'):
+                parallel.packet(changed, plan, cohort, self.run/'review-context.json', self.digest)
+
     def retained_context(self, count=471):
         originals = []
         for index in range(count):
