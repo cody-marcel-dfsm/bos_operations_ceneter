@@ -2,8 +2,8 @@
 name: education-center-paid-attribution-operations
 description: Reconcile Education Center organization paid leads and outcomes across tenant-scoped BOS Gmail, Google Calendar, Lead Director, Calimatic, and Google Ads. Use for GCLID discovery in lead emails, missing-GCLID audits, paid-lead attribution, trial or enrollment matching, offline conversion preparation or upload, Google Ads conversion updates, and diagnosing missing BOS Google Ads capabilities.
 metadata:
-  version: "1.0.8"
-  requires: "{\"bos-mcp-client\":\"1.0.8\",\"bos-visual-output\":\"1.0.8\",\"education-center-service-routing\":\"1.0.8\"}"
+  version: "1.0.9"
+  requires: "{\"bos-mcp-client\":\"1.0.9\",\"bos-visual-output\":\"1.0.9\",\"education-center-service-routing\":\"1.0.9\"}"
 ---
 
 # Education Center Paid Attribution Operations

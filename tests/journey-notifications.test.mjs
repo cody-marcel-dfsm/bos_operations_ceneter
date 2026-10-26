@@ -426,6 +426,42 @@ test("one connection preserves pending work on replay gap and respects Retry-Aft
   assert.deepEqual(await runNotificationConnection({...args, adapter}), {next: "reconnect", delayMs: 30000});
 });
 
+test("notification admission responses preserve retry gates across returned and thrown host results", async t => {
+  const {contact} = notificationFixture();
+  for (const status of [429, 503]) for (const thrown of [false, true]) {
+    await t.test(`${status} ${thrown ? "thrown" : "returned"}`, async () => {
+      let opens = 0, recoveries = 0;
+      const response = {status, headers: {"Retry-After": "60", authorization: "private synthetic header"},
+        body: {error: {code: "AUTHORIZATION_REQUIRED", message: "Retry later.", retryable: true,
+          correlation_id: "synthetic", details: []}}};
+      const adapter = hostAdapter({openAuthenticatedEventStream: async () => {
+        opens++; if (thrown) throw response; return response;
+      }, recoverAuthentication: async () => {recoveries++; throw new Error("Must retain the current grant");}});
+      const reply = await adapter.openNotificationStream(contact, {identities: ["one"], cursor: "nc_saved"});
+      assert.deepEqual(reply, {status, headers: {"retry-after": "60"}, body: response.body});
+      assert.equal(opens, 1); assert.equal(recoveries, 0);
+    });
+  }
+});
+
+test("notification supervisor retains pending work and the declared retry delay for thrown admission responses", async t => {
+  for (const status of [429, 503]) await t.test(String(status), async t => {
+    const f = await queue(t, {identities: ["one"]}); await f.queue.bootstrap("nc_saved");
+    const {contract, contact} = notificationFixture();
+    const pending = await f.queue.pending(); let opens = 0, recoveries = 0;
+    const adapter = hostAdapter({openAuthenticatedEventStream: async () => {
+      opens++; throw {status, headers: {"retry-after": "60"}, body: {error: {
+        code: status === 429 ? "RATE_LIMITED" : "NOTIFICATION_STREAM_UNAVAILABLE",
+        message: "Retry later.", retryable: true, correlation_id: "synthetic", details: []}}};
+    }, recoverAuthentication: async () => {recoveries++; throw new Error("Must retain the current grant");}});
+    assert.deepEqual(await runNotificationConnection({adapter, sourceContract: contract, contact,
+      identities: ["one"], queue: f.queue, random: () => 0.5}), {next: "reconnect", delayMs: 60000});
+    assert.equal(opens, 1); assert.equal(recoveries, 0);
+    assert.deepEqual(await f.queue.pending(), pending);
+    assert.equal(await f.queue.cursor(), "nc_saved");
+  });
+});
+
 test("expiry uses one existing recovery cycle and explicit logout remains terminal", async () => {
   const {contact} = notificationFixture();
   const resource = "https://dfsm.ai/mcp/apps/bos/platform";

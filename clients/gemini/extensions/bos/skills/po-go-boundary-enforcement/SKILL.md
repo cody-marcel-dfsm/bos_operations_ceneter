@@ -2,8 +2,8 @@
 name: po-go-boundary-enforcement
 description: Enforce BOS Router-to-PO-to-GO-to-database boundaries for runtime tools, reconciliation, metrics, transitions, plugins, migrations, and every data mutation path. Use when designing, implementing, or reviewing BOS operations that read or change tenant-scoped state.
 metadata:
-  version: "1.0.8"
-  requires: "{\"bos-mcp-client\":\"1.0.8\"}"
+  version: "1.0.9"
+  requires: "{\"bos-mcp-client\":\"1.0.9\"}"
 ---
 
 

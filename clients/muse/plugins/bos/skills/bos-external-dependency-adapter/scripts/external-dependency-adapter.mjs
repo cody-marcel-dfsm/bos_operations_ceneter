@@ -863,7 +863,12 @@ export function createBosExternalDependencyAdapter({
       if (signal?.aborted) throw new BosNotificationTransportError("cancelled");
       let reply;
       try { reply = await hostTransport.openAuthenticatedEventStream({...request, signal}); }
-      catch (error) { if (!authenticationCondition(error)) throw notificationTransportFailure(error, signal); reply = error; }
+      catch (error) {
+        if (!authenticationCondition(error) && ![429, 503].includes(Number(error?.status))) {
+          throw notificationTransportFailure(error, signal);
+        }
+        reply = error;
+      }
       await assertExecutionScope(scopeCheck);
       const condition = authenticationCondition(reply);
       if (condition) return {condition, resource: reply.resource};
