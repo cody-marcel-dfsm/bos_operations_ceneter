@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
 import test from "node:test";
 
 import {
@@ -35,6 +36,11 @@ test("publication workflow audits release refs without importing retained pull-r
   );
 
   assert.doesNotMatch(workflow, /refs\/pull|publication-audit/);
-  assert.match(workflow, /npm run check:publication/);
-  assert.match(workflow, /npm run release:check/);
+  assert.match(workflow, /python3 tools\/command_coverage\.py ci --candidate "\$VALIDATION_SOURCE_SHA"/);
+  const commands = JSON.parse(execFileSync("python3", ["-c",
+    "import json; from pathlib import Path; from tools import command_coverage as c; print(json.dumps([row['command'] for row in c.requirements(Path.cwd(), 'HEAD')]))"],
+  {cwd: new URL("../", import.meta.url), encoding: "utf8"}));
+  assert.deepEqual(commands, [["npm", "run", "build"], ["npm", "run", "check"],
+    ["npm", "run", "check:privacy"], ["npm", "run", "contract:check"], ["npm", "test"],
+    ["npm", "run", "check:publication"]]);
 });

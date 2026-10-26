@@ -137,7 +137,7 @@ with tempfile.TemporaryDirectory() as directory:
     def git(*args): return subprocess.check_output(['git',*args],cwd=root,text=True).strip()
     git('init','-q');git('config','user.name','Synthetic Reviewer');git('config','user.email','review@example.invalid')
     for name,text in {'AGENTS.md':'governed','.agents/skills/oracle/SKILL.md':'synthetic authority',
-                      'candidate.txt':'base','.gitignore':'Vault/\\n__pycache__/\\n'}.items():
+                      'candidate.txt':'base','package.json':'{"version":"0.0.0","scripts":{}}','.gitignore':'Vault/\\n__pycache__/\\n'}.items():
         path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(text)
     git('add','.');git('commit','-qm','base')
     evidence=root/'Vault/tmp/validation.json';evidence.parent.mkdir(parents=True);evidence.write_text('{}')
@@ -197,7 +197,7 @@ with tempfile.TemporaryDirectory() as directory:
     def git(*args):return subprocess.check_output(['git',*args],cwd=root,text=True).strip()
     git('init','-q');git('config','user.name','Synthetic Reviewer');git('config','user.email','review@example.invalid')
     for name,text in {'AGENTS.md':'governed','.agents/skills/oracle/SKILL.md':'synthetic authority',
-                      '.agents/skills/oracle/review-output.schema.json':'{}','candidate.txt':'base',
+                      '.agents/skills/oracle/review-output.schema.json':'{}','candidate.txt':'base','package.json':'{"version":"0.0.0","scripts":{}}',
                       '.gitignore':'Vault/\\n__pycache__/\\n'}.items():
         path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(text)
     (root/'.agents/skills/oracle/review-output.schema.json').write_bytes((repository/'.agents/skills/oracle/review-output.schema.json').read_bytes())

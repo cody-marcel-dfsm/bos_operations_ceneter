@@ -2414,19 +2414,29 @@ class ReviewSeries(unittest.TestCase):
                     path.unlink(); saved.rename(path)
                     self._cleanups.pop()
 
+    def isolated_proposal_admission(self):
+        calls = []
+        @o._serialized_review
+        def review_proposal(root):
+            calls.append(True)
+            return {'verdict': 'APPROVED'}
+        review_proposal(self.root)
+        calls.clear()
+        directory = lifecycle._admissions(o, self.root, 'review_proposal', 'review_proposal')
+        return review_proposal, calls, directory / '00000001.json'
+
     def test_metadata_special_admission_record_is_rejected_before_review(self):
-        directory = o.receipt_path(self.root).parent / 'controllers/admissions'
-        path = directory / '00000001.json'
+        review_proposal, calls, path = self.isolated_proposal_admission()
+        directory = path.parent
         saved = directory.parent / 'saved-admission.json'; path.rename(saved)
         try:
             for kind in ('directory', 'fifo'):
                 with self.subTest(kind=kind):
                     path.mkdir() if kind == 'directory' else os.mkfifo(path)
                     try:
-                        def review_proposal(root):
-                            self.fail('nonregular controller record admitted the review')
                         with self.assertRaises(o.OracleApprovalError):
-                            o._serialized_review(review_proposal)(self.root)
+                            review_proposal(self.root)
+                        self.assertEqual(calls, [])
                     finally:
                         path.rmdir() if kind == 'directory' else path.unlink()
         finally:
@@ -2453,17 +2463,15 @@ class ReviewSeries(unittest.TestCase):
             self.assertFalse((base / 'new-directory').exists())
 
     def test_controller_admission_cannot_rewrite_original_invocation(self):
-        directory = o.receipt_path(self.root).parent / 'controllers/admissions'
-        path = directory / '00000001.json'
+        review_proposal, calls, path = self.isolated_proposal_admission()
         original = path.read_bytes()
         value = json.loads(original)
         value['process_identity'] = 'replaced process identity'
         path.unlink(); path.write_text(json.dumps(value))
         try:
-            def review_proposal(root):
-                self.fail('a replaced original invocation admitted another review')
             with self.assertRaisesRegex(o.OracleApprovalError, 'custody'):
-                o._serialized_review(review_proposal)(self.root)
+                review_proposal(self.root)
+            self.assertEqual(calls, [])
             self.assertIsNone(o._METADATA_ROOT.get())
         finally:
             path.unlink()
@@ -2976,7 +2984,8 @@ class ReviewSeries(unittest.TestCase):
                 path.write_text("changed controlling parent input")
                 return result
             self.submit(drift, error=o.OracleApprovalError)
-            self.assertIn("inputs changed", str(self.last_error))
+            self.assertIsInstance(self.last_error, o.OracleSourceMovementIncomplete)
+            self.assertIn("current source changed", str(self.last_error))
             path.write_bytes(original)
         self.submit()
 

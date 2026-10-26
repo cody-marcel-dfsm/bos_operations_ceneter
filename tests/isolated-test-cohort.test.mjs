@@ -70,10 +70,32 @@ test("isolated cohort cancellation settles queued jobs and kills its owned proce
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
 
+test("isolated cohort deadlines stop the owned group and retain later case execution", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "cohort-deadline-"));
+  const file = join(directory, "owned.json");
+  const leader = `const {spawn}=require('node:child_process');
+    const child=spawn(process.execPath,['-e',"process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"],{stdio:'ignore'});
+    require('node:fs').writeFileSync(${JSON.stringify(file)},JSON.stringify({leader:process.pid,child:child.pid}));
+    setInterval(()=>{},1000);`;
+  try {
+    const results = await isolatedTestCohort([nodeJob("deadline", leader), nodeJob("later", "console.log('completed')")],
+      {concurrency: 1, timeoutMs: 1000, killAfterMs: 50}).completion;
+    const pids = JSON.parse(await readFile(file, "utf8"));
+    assert.match(results[0].error, /timed out after 1000 milliseconds/);
+    assert.equal(results[0].cancelled, false);
+    for (const pid of Object.values(pids)) assert.throws(() => process.kill(pid, 0), {code: "ESRCH"});
+    assert.equal(results[1].code, 0); assert.equal(results[1].error, null);
+    assert.match(results[1].stdout, /completed/);
+  } finally { await rm(directory, {recursive: true, force: true}); }
+});
+
 test("isolated cohort rejects duplicate targets and unbounded worker settings", async () => {
   const job = nodeJob("same", "");
   assert.throws(() => isolatedTestCohort([job, job]), /Unique named/);
   assert.throws(() => isolatedTestCohort([job], { concurrency: 5 }), /Bounded/);
+  for (const timeoutMs of [-1, NaN, Infinity, 1.5]) {
+    assert.throws(() => isolatedTestCohort([job], {timeoutMs}), /Bounded/);
+  }
   const abort = new AbortController(); abort.abort();
   const cohort = isolatedTestCohort([job], { signal: abort.signal });
   assert.equal((await cohort.completion)[0].cancelled, true);
