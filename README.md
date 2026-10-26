@@ -428,12 +428,15 @@ contract probe:
 npm run contract:oauth-live -- --authorize-url "$BOS_OAUTH_AUTHORIZE_URL" --format json
 ```
 
-The probe stops at the first redirect. It requires a 302/303/307 response to
-`accounts.google.com` with `prompt` containing `select_account`; an HTTP 500,
-the wrong provider, or automatic account selection fails the contract. After
-the selected Google identity returns, the BOS server resolves organization and
-role from that verified identity on every authorization. The client never
-chooses or stores an organization mapping.
+The probe accepts a direct 302/303/307 Google redirect or at most two automatic
+same-origin continuations through the existing bound BOS handoff routes. Every
+continuation preserves its opaque transaction; a rendered BOS login, consent,
+organization/role or grant page fails the contract. The final Google redirect
+requires `prompt` containing `select_account`. Google owns account choice and
+provider consent. The probe establishes login initiation; the service-owned
+browser suite separately verifies automatic registered-client callback delivery,
+code/token exchange and authenticated MCP. The server checks current membership
+and operation authority after identity verification.
 
 The live contract tools emit one redacted NDJSON
 event to standard error for every outbound request and one correlated response
