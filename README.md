@@ -78,9 +78,11 @@ sign-in again when a connection identifier changes; valid-session continuity
 has not been verified for this migration.
 
 Current source package release: `0.0.213`. If `0.0.212` is installed,
-follow the release-line transition below after your host catalog offers the
-published target. Source preparation and host marketplace publication are
-separate steps.
+follow the ordinary [update instructions](#updates) after your host catalog
+offers the current release shown above, then verify that the installed package
+reports that version. The [release-line transition](#moving-to-the-00x-package-line)
+applies only to installations still on `0.4.211`. Source preparation and host
+marketplace publication are separate steps.
 
 Version labels identify separate release streams. **BOS Service release/build**
 comes from actual current host/server metadata, including a serving revision
