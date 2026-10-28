@@ -86,10 +86,21 @@ effects must be reported precisely for native reconciliation against the complet
 crosscutting assessment. Never write source, stage, commit,
 publish a receipt, launch another review, or change proposal/review pointers.
 Only the crosscutting cohort emits command_coverage for every required_commands
-entry. Assess preserved original passing cases and focused repairs against exact
+entry. Emit each exact id/argv once, status COMPLETE or INCOMPLETE, basis
+INDEPENDENT_APPLICABILITY, a nonempty unique inputs list including exactly one
+current package.json identity, the current environment_digest, nonempty unique
+directly bound original evidence_paths, and your independent reason. The sealed
+command_coverage_contract supplies required identities and original locators;
+it grants no coverage or decision. Copy current input identities, not historical
+execution input hashes. A nested output locator in a record is not itself a
+bound evidence_path: cite its directly supplied record or a separately bound
+original output. Never repair, prefill or relabel an earlier model decision.
+Assess preserved original passing cases and focused repairs against exact
 current source/test/dependency/configuration/output hashes and the actual declared
 environment contract. Preserve all original failed aggregate statuses. This is
 explicit INDEPENDENT_APPLICABILITY, distinct from a passing command witness.
+Missing or invalidated applicability stays INCOMPLETE. The existing native gate
+checks command completeness, exact identities and original custody independently.
 Specialists use command_coverage=[] and report missing relevant proof as findings.
 """
 
@@ -248,6 +259,19 @@ def packet(context, plan, cohort, parent_context, digest, prepared_source=None, 
                 'digest_encoding': 'canonical-json-v1', 'json_pointer': pointer,
                 'value_sha256': digest(item), 'navigation_only': True, 'eligibility': 'NONE'}
 
+    if value['required_commands']:
+        package = effective_context['input_hashes'].get('package.json')
+        environment = context.get('guards', {}).get('environment_digest')
+        if not isinstance(package, str) or not package or not isinstance(environment, str) or not environment:
+            raise ValueError('Required-command contract lacks current package.json or environment identity')
+        value['command_coverage_contract'] = {
+            'required_input': {'path': 'package.json', 'digest': package},
+            'environment_digest': environment,
+            'required_commands': original('/required_commands', context['required_commands']),
+            'current_input_identities': original('/input_hashes', context['input_hashes']),
+            'original_evidence': original('/caller_evidence', context.get('caller_evidence', {})),
+            'grants_coverage': False}
+
     caller_index = caller_navigation(
         context.get('caller_evidence', {}), original('/caller_evidence', context.get('caller_evidence', {})))
     if len(_serialized(caller_index)) > RETAINED_NAVIGATION_MAX_BYTES:
@@ -348,12 +372,31 @@ def _serialized(value):
     return (json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + '\n').encode()
 
 
-def output_schema(base, plan, cohort):
+def output_schema(base, plan, cohort, prepared=None):
     string = {"type": "string", "minLength": 1}
+    assessment = copy.deepcopy(base)
+    commands = assessment['properties']['command_coverage']
+    if cohort['id'] != AREAS[0]:
+        commands['enum'] = [[]]
+    elif prepared and prepared.get('required_commands'):
+        contract = prepared['command_coverage_contract']
+        fields = commands['items']['properties']
+        fields['id']['enum'] = [row['id'] for row in prepared['required_commands']]
+        fields['environment_digest']['enum'] = [contract['environment_digest']]
+        fields['inputs']['minItems'] = 1
+        fields['inputs']['description'] = (
+            'Every command row must contain exactly one current package.json input: '
+            + json.dumps(contract['required_input'], sort_keys=True)
+            + '. Include other consumed current dependencies; each path is unique. '
+            'The native validator checks membership and exact current identities.')
+        fields['evidence_paths']['description'] = (
+            'Unique original observation paths directly bound in the sealed parent input_hashes. '
+            'A nested output locator is not a separately bound input. Preserve original failures; '
+            'the native validator checks current bytes and independent applicability.')
     fields = {"plan_sha256": {"enum": [plan["plan_sha256"]]}, "cohort_id": {"enum": [cohort["id"]]},
               "candidate_commit": {"enum": [plan["candidate_commit"]]},
               "candidate_tree": {"enum": [plan["candidate_tree"]]},
-              "input_binding_sha256": {"enum": [plan["input_binding_sha256"]]}, "assessment": base,
+              "input_binding_sha256": {"enum": [plan["input_binding_sha256"]]}, "assessment": assessment,
               "integration": {"type": "array", "items": {"type": "object", "additionalProperties": False,
                   "required": ["concern", "status", "inputs", "reason"], "properties": {
                       "concern": {"enum": list(INTEGRATION_CHECKS)},
@@ -789,7 +832,7 @@ def review(o, root, tree, paths, evidence, owner):
             raise o.OracleReviewIncomplete(str(exc)) from exc
         original_packets[cohort['id']] = o._pretty(child_context)
         o._atomic_write(child / "cohort-context.json", original_packets[cohort['id']])
-        o._atomic_write(child / "output.schema.json", o._pretty(output_schema(schema, plan, cohort)))
+        o._atomic_write(child / "output.schema.json", o._pretty(output_schema(schema, plan, cohort, child_context)))
         source_seal.update(o._files(root, [str(child / "cohort-context.json"), str(child / "output.schema.json")]))
         prepared_seals[cohort['id']] = source_seal
         source_prompts[cohort['id']] = source_prompt
