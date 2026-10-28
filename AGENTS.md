@@ -13,7 +13,7 @@ Private native continuation tasks: `Vault/docs/implementation/native-callback-co
 
 ## Canonical main checkout and project agent context
 
-- Work on `main` in `/Users/cody/Development/Projects/bos_operations_center`.
+- Work on `main` in `/home/cody/Projects/bosops_staging`.
   Run the project-specific implementation agent from this directory and use
   this project's skills, validation commands, and Oracle approval process.
 - Preserve staged, unstaged, and untracked work. Fetch the configured remote
@@ -35,11 +35,11 @@ Private native continuation tasks: `Vault/docs/implementation/native-callback-co
   discovery use, explain planning, BOSL authoring, client-owned journey work,
   recovery, caching, presentation, packaging, and release.
 - Read the canonical family relationship at
-  `/Users/cody/Development/Projects/Vault/docs/architecture/bos-product-family.md`
+  `/home/cody/Projects/Vault/docs/architecture/bos-product-family.md`
   for family membership, cross-project ownership, and shared public-contract
   obligations.
 - Request Projects-level Oracle review through `python3
-  /Users/cody/Development/Projects/tools/projects_oracle.py --review "<request>"` for family
+  /home/cody/Projects/tools/projects_oracle.py --review "<request>"` for family
   membership, ownership boundaries, and shared
   public-contract alignment. Request repository review through `npm run
   oracle:review`. Ordinary agents never load or act as either Oracle; each
@@ -279,3 +279,13 @@ specific protected-publication authority remains independent.
 - Application repositories own their own local Oracle utilities, approver-only
   skills, architecture, and approval services. Those services remain owned by
   the application repository.
+
+## Deployment-host bootstrap — owner direction, 2026-10-27
+
+The owner authorized this host to implement and publish the scoped native acceptance
+repair and explicitly instructed creation of missing governance. Canonical private
+family and Vault authorities here are newly bootstrapped from existing ownership
+and safety requirements, not recovered historical Mac records. Preserve original
+failed proposals. Host path alignment supplies no source approval, native acceptance
+or additional spending/publication authority. Use Projects architectural review and
+this repository's independent proposal/source review before publishing the repair.
