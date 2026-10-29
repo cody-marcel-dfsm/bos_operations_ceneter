@@ -370,7 +370,7 @@ npm install
 python3 -m pip install -r tools/requirements-dev.txt
 npm run build:packages
 npm run check
-npm test
+npm run release:check
 ```
 
 Maintainers use a private, untracked local knowledge store for architecture,
@@ -484,10 +484,13 @@ the same release evidence. Source tests and builds remain local validation.
 
 ### Local validation
 
+Run the fixed Oracle-selected categories for the exact change. `npm test` remains
+an explicit broad diagnostic command; it is not an automatic release baseline.
+
 ```bash
 python3 tools/vault_index.py sync --quiet
 npm run check
-npm test
+npm run release:check
 git diff --check
 ```
 

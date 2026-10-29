@@ -40,8 +40,8 @@ Private native continuation tasks: `Vault/docs/implementation/native-callback-co
 - Do not create, switch to, or use Git worktrees for planning, implementation,
   validation, review, or release. Inspect existing worktree sources solely to
   recover changes into canonical `main`; preserve them until recovery is verified.
-- Validate the complete integrated candidate on `main`, including regression
-  checks and Oracle approval. Recheck remote divergence before publication.
+- Validate the complete Oracle-selected contract against the integrated candidate
+  on `main`; include recurrence regression only when selected, and retain Oracle approval. Recheck remote divergence before publication.
 - Publish through the required reviewed release pull request by creating and
   pushing its branch ref from canonical `main` without switching the checkout.
   Preserve every exact Oracle tree and required GitHub check.
