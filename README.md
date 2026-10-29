@@ -807,3 +807,11 @@ key, customer data, or reusable bootstrap authority.
 The source code and skills are licensed under Apache License 2.0. Product names,
 logos, and marks remain governed by [TRADEMARKS.md](TRADEMARKS.md). See
 [NOTICE](NOTICE) for attribution.
+
+## Maintainer validation
+
+Source work uses the independent, fixed change-class contract described in
+[the validation guide](tools/validation-contract.md). Genuine documentation receives
+minimal sanity; fixes require focused reproduction; deep fixes cover relevant
+interactions; features require thorough acceptance. No selected category may pass
+with empty, skipped or partial tests. Public runtime/package behavior is unchanged.

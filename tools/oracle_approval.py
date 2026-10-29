@@ -10,8 +10,10 @@ from pathlib import Path
 from typing import Any, Callable, Sequence
 if __package__:
     from .codex_child_model import selected_model, selected_reasoning_effort
+    from . import validation_contract
 else:
     from codex_child_model import selected_model, selected_reasoning_effort
+    import validation_contract
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = 1
@@ -1216,7 +1218,7 @@ def _validation_environment(extra_keys: Sequence[str] = ()) -> tuple[dict, dict,
 REVIEW_POLICY_MODULES = ("tools/oracle_approval.py", "tools/codex_child_model.py", "tools/vault_index.py",
                          "tools/publication_admission.py", "tools/shipment_state.py", "tools/publication_status.py",
                          "tools/oracle_parallel.py", "tools/oracle_source_frontier.py", "tools/oracle_lifecycle.py",
-                         "tools/command_coverage.py")
+                         "tools/command_coverage.py", "tools/validation_contract.py")
 
 
 def _review_policy_sources(root: Path, tree: str | None = None) -> dict:
@@ -2963,6 +2965,17 @@ Creating, bumping, replacing, or splitting a public API version requires the hum
 Assess the complete proposal and consolidate every finding. Use review_status COMPLETE only when the proposal assessment is finished. Use INCOMPLETE or ERROR with limitations when assessment cannot finish; such outcomes never approve. For a proposal, coverage, validations and resolutions may be empty and repair_plan may be empty. Every finding still needs the schema's actionable detail and stable F001-style ID.
 Return JSON matching the supplied schema. Verify the stated problem and cause, classify authentication_impact as AUTHENTICATION or NONE (NONE uses owner_approval_status NOT_REQUIRED), and reject architectural invention or a service/API-contract change presented as a client fix. Restoration of already-approved behavior may reuse exact existing owner approval; outside the explicit API-version request gate, missing human deployment permission never rejects a technical proposal. Identify any concrete protected publication effect separately; actual publication checks its scoped authority later. Return protected_effects with planned active effects and any applicable dispositions. An approved proposal allows the ordinary workflow to continue automatically within the user's existing task authorization; completed-tree Oracle review remains mandatory after implementation. Every finding must state concise Problem, Cause, and Recommended change sections with no more than three sentences each.
 {json.dumps(payload, indent=2, sort_keys=True)}"""
+    if (root / validation_contract.CATALOG).exists():
+        catalog = json.loads((root / validation_contract.CATALOG).read_text())
+        schema = json.loads((root / ".agents/skills/oracle/review-output.schema.json").read_text())
+        schema["properties"]["validation_selection"] = validation_contract.selection_schema()
+        schema["required"].append("validation_selection")
+        schema_path = _RUN.get() / "proposal-contract.schema.json"
+        _atomic_write(schema_path, _pretty(schema))
+        prompt += "\nSelect validation_selection before implementation from this exact catalog. Use bounded scope_paths and exact planned test paths and supporting fixture paths under tests/; fixed sanity/regression fixtures are empty; bug_fix requires a fail-before reproduction, deep_bug_fix all relevant interactions, feature thorough acceptance, docs_only minimal document sanity. Preserve security/privacy and expand unknown impact. Existing tests are not automatically added to the curated recurrence registry. Every revision names the current contract hash, never changes original evidence. Catalog: " + json.dumps(catalog, sort_keys=True)
+        previous = root / validation_contract.SELECTION
+        prompt += "\nCurrent contract: " + (previous.read_text() if previous.exists() else "none; revision_of must be null")
+        return _review_process(root, prompt, "proposal_reviewer", schema_path=schema_path)
     return _review_process(root, prompt, "proposal_reviewer")
 
 def _proposal_guards(root: Path, evidence: dict, owner: dict | None) -> dict:
@@ -2970,7 +2983,9 @@ def _proposal_guards(root: Path, evidence: dict, owner: dict | None) -> dict:
     names = [*evidence, *(owner or {}), *[name for name, digest in authorities.items() if digest is not None]]
     return {"authority_digests": authorities, "evidence": _files(root, list(evidence)),
             "owner_evidence": _files(root, list(owner)) if owner is not None else None,
-            "custody": _custody_files(root, names)}
+            "custody": _custody_files(root, names),
+            "validation_catalog": _files(root, [validation_contract.CATALOG]) if (root / validation_contract.CATALOG).exists() else None,
+            "validation_selection": _files(root, [validation_contract.SELECTION]) if (root / validation_contract.SELECTION).exists() else None}
 
 
 @_serialized_review
@@ -3027,6 +3042,10 @@ def review_proposal(root: Path, request: str, evidence_paths: Sequence[str], own
         "review_process": json.loads(_custody_read(root, _RUN.get() / "model.json")[1])
                           if (_RUN.get() / "model.json").is_file() else None,
     }
+    contract = None
+    if review["verdict"] == "APPROVED" and (root / validation_contract.CATALOG).exists():
+        contract = validation_contract.seal(root, review.get("validation_selection", {}), request, review, base=binding["base_commit"])
+        payload["validation_contract"] = contract
     # Proposal refreshes remain in the same unfinished descendant lifecycle.
     # Preserve the previous proposal bytes as evidence before replacing its pointer.
     previous_path = proposal_path(root)
@@ -3051,6 +3070,8 @@ def review_proposal(root: Path, request: str, evidence_paths: Sequence[str], own
     if review["verdict"] == "APPROVED":
         _record_lifecycle_origin(root, _pretty(record))
     _atomic_write(path, _pretty(record))
+    if contract is not None:
+        validation_contract.write_selection(root, contract)
     _metadata_remove(root, receipt_path(root))
     return review
 
@@ -3120,7 +3141,14 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
         proposal_raw = _custody_read(root, proposal_record or proposal_path(root))[1]
         proposal = _archive_proposal(root, proposal_raw)
         origin_record = _record_lifecycle_origin(root, proposal_raw)
-        complete_evidence = [*evidence_paths, str(proposal), str(origin_record)]
+        contract_proof = validation_contract.admit(root, tree, json.loads(proposal_raw))
+        contract_evidence = []
+        if contract_proof:
+            for row in contract_proof["results"]:
+                contract_evidence.extend([row["_record_path"], row["output_file"]])
+            for row in validation_contract.originals(root, contract_proof["contract"], "before"):
+                contract_evidence.extend([row["_record_path"], row["output_file"]])
+        complete_evidence = [*evidence_paths, *contract_evidence, str(proposal), str(origin_record)]
         evidence, owner = _files(root, complete_evidence), (_files(root, [owner_path]) if owner_path else None)
     with _phase("preparation_seconds"):
         binding = _input_binding(root, evidence, owner)

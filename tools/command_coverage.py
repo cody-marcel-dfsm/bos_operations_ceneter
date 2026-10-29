@@ -52,7 +52,7 @@ def _original_environment(value) -> dict:
 def original_command_environments(root: Path, coverage: list, evidence: dict) -> list:
     """Bind original per-command provenance; assessment never supplies execution."""
     originals, outputs = {}, {}
-    kinds = {"oracle-validation-record-v1", "external-ci-actual-observation-v1", "privacy-production-measurement-v1"}
+    kinds = {"oracle-validation-record-v1", "external-ci-actual-observation-v1", "privacy-production-measurement-v1", "boc-validation-execution-v1"}
     for name, identity in evidence.items():
         raw = o._custody_read(root, name)[1]
         if o._sha(raw) != identity:
@@ -111,6 +111,9 @@ def _valid_environment_description(value: str) -> bool:
 
 
 def requirements(root: Path, tree: str) -> list[dict]:
+    if o.validation_contract.blob(root, tree, o.validation_contract.CATALOG) is not None:
+        commands = o.validation_contract.required(root, tree)
+        return [{"id": o._sha(o._canonical(command)), "command": command} for command in commands]
     package = json.loads(o._git_bytes(root, "show", tree + ":package.json"))
     scripts = package.get("scripts", {})
     aggregate = scripts.get("release:check")

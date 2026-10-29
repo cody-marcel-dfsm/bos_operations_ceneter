@@ -1,0 +1,13 @@
+{
+  "schema": "boc.validation-catalog/v1",
+  "classes": {
+    "docs_only": ["sanity"],
+    "bug_fix": ["sanity", "focused", "regression"],
+    "deep_bug_fix": ["sanity", "focused", "interactions", "regression"],
+    "feature": ["sanity", "interactions", "acceptance", "regression"]
+  },
+  "regression": [
+    {"test": "tests/mutation-safety.test.mjs", "recurrence": "Repeated mutation retry and approval boundaries warrant a durable small safety check.", "boundary": "Unapproved or ambiguous effects cannot silently execute."},
+    {"test": "tests/server-contract-boundary.test.mjs", "recurrence": "Client/server ownership drift recurs across package changes.", "boundary": "Client source cannot invent server authority or implementation."}
+  ]
+}

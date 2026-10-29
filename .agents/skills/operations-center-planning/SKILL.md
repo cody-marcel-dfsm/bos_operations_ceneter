@@ -3,6 +3,24 @@ name: operations-center-planning
 description: Plan BOS Operations Center changes using current Vault architecture, issue history, package ownership, repository boundaries, validation, and mandatory Oracle review. Use when the user requests a plan, design, or proposal for features, fixes, migrations, integrations, client packaging, or releases. Route requests to perform a change or correct observed behavior to operations-center-implementation, carrying planning forward as part of execution.
 ---
 
+## Fixed validation contract — controlling owner direction, 2026-10-29
+
+Apply `tools/validation-contract.md`. Before implementation, the native proposal
+Oracle selects `docs_only`, `bug_fix`, `deep_bug_fix` or `feature` and fixed exact
+categories/test files. Its generated `tools/validation-selection.json` binds the
+source baseline, catalog, runtime and original decision. Implementation, build and
+release use the same selected commands. Complete every selected category: empty,
+skipped, cancelled, partial or failing tests never pass. Bug fixes retain an actual
+unchanged-test fail-before/pass-after reproduction; deep fixes cover all relevant
+interactions and features receive thorough acceptance. Genuine docs-only changes
+use minimal sanity. This replaces blanket full-suite/baseline requirements for new
+selected contracts, without removing security, privacy or independent publication
+gates. Unknown impact expands scrutiny. Keep regression small and curated by
+recurrence rationale; do not accumulate every feature test. Changed acceptance
+needs an explicit Oracle revision linked to the original contract and evidence.
+Ordinary agents invoke the native Oracle and never adopt its approver role.
+
+
 # Operations Center Planning
 
 ## Committed workflow — controlling owner direction, October 21, 2026
