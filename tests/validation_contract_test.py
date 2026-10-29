@@ -9,7 +9,7 @@ from tools import oracle_approval as oracle
 class Contracts(unittest.TestCase):
  def setUp(self):
   self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)
-  self.catalog={'schema':'boc.validation-catalog/v1','classes':copy.deepcopy(v.CLASSES),'regression':[{'test':'tests/regression.test.mjs','recurrence':'Synthetic recurrence','boundary':'Synthetic boundary'}]}
+  self.catalog={'schema':'boc.validation-catalog/v1','classes':copy.deepcopy(v.CLASSES),'sla_seconds':copy.deepcopy(v.SLA_SECONDS),'maximum_reasoning_effort':'medium','regression':[{'test':'tests/regression.test.mjs','recurrence':'Synthetic recurrence','boundary':'Synthetic boundary'}]}
   for d in ['tools','tests']: (self.root/d).mkdir()
   (self.root/v.CATALOG).write_text(json.dumps(self.catalog));(self.root/'package.json').write_text(json.dumps({'scripts':{'check:privacy':'node -e "process.exit(0)"','check:publication':'node -e "process.exit(0)"'}}))
   (self.root/'tools/validation_contract.py').write_bytes(Path(v.__file__).read_bytes())
@@ -39,7 +39,7 @@ class Contracts(unittest.TestCase):
   for kind in v.CLASSES:
    s=self.selection(kind);self.assertEqual(v.validate_selection(s,self.catalog),s)
    if kind!='docs_only':
-    broken=copy.deepcopy(s);broken['categories']=[r for r in broken['categories'] if r['name']!='regression']
+    broken=copy.deepcopy(s);broken['categories']=broken['categories'][:-1]
     with self.assertRaises(ValueError):v.validate_selection(broken,self.catalog)
   for change in [lambda s:s.update(categories=[]),lambda s:s['categories'].append(s['categories'][0]),lambda s:s['categories'][1].update(tests=[]),lambda s:s['categories'][1].update(tests=['tests/*.test.mjs']),lambda s:s.update(scope_paths=['../outside']),lambda s:s.update(revision_of='wrong')]:
    s=self.selection();change(s)
@@ -56,8 +56,8 @@ class Contracts(unittest.TestCase):
   self.assertEqual(v.execute(self.root,'focused','before'),0);before=list(v.originals(self.root,c,'before'));self.assertEqual(len(before),1);self.assertNotEqual(before[0]['exit_code'],0)
   (self.root/'source.mjs').write_text('export default true;\n');self.commit();tree=self.git('rev-parse','HEAD^{tree}')
   with self.assertRaisesRegex(ValueError,'Incomplete'):v.admit(self.root,tree,{'validation_contract':c})
-  for name in ['sanity','focused','regression']:self.assertEqual(v.execute(self.root,name),0)
-  self.assertEqual(len(v.admit(self.root,tree,{'validation_contract':c})['results']),3)
+  for name in ['sanity','focused']:self.assertEqual(v.execute(self.root,name),0)
+  self.assertEqual(len(v.admit(self.root,tree,{'validation_contract':c})['results']),2)
   self.assertEqual(list(v.originals(self.root,c,'before'))[0]['record_sha256'],before[0]['record_sha256'])
   self.assertEqual(cc.requirements(self.root,tree)[1]['command'],['python3','tools/validation_contract.py','run','--category','focused'])
  def test_source_catalog_runtime_and_fixture_changes_fail_closed(self):
@@ -65,7 +65,7 @@ class Contracts(unittest.TestCase):
   (self.root/'tests/reproduction.test.mjs').write_text("import test from 'node:test';test('different test',()=>{});");self.commit()
   with self.assertRaisesRegex(ValueError,'unchanged-test'):v.execute(self.root,'focused')
   with patch.object(v,'runtime',return_value={'node':'different'}):
-   with self.assertRaisesRegex(ValueError,'runtime'):v.execute(self.root,'regression')
+   with self.assertRaisesRegex(ValueError,'runtime'):v.execute(self.root,'focused')
   (self.root/'outside.mjs').write_text('changed');self.commit()
   with self.assertRaisesRegex(ValueError,'outside'):v.verify(self.root)
  def test_selection_preserves_initial_immutable_base_when_unadopted_source_moves(self):
@@ -77,4 +77,14 @@ class Contracts(unittest.TestCase):
  def test_docs_class_rejects_executable_instruction_changes(self):
   c=self.publish('docs_only');c['selection']['scope_paths']=['AGENTS.md'];c['contract_sha256']=v.digest({k:val for k,val in c.items() if k!='contract_sha256'});(self.root/v.SELECTION).write_text(json.dumps(c));(self.root/'AGENTS.md').write_text('changed policy');self.commit()
   with self.assertRaisesRegex(ValueError,'docs_only'):v.verify(self.root)
+ def test_hard_delivery_budgets_reasoning_and_no_automatic_expansion(self):
+  self.assertEqual(v.SLA_SECONDS,{'docs_only':120,'bug_fix':180,'deep_bug_fix':300,'feature':300})
+  for kind in v.CLASSES:
+   policy=v.delivery_policy(kind);self.assertFalse(policy['retries_reset_clock']);self.assertEqual(policy['clock_start'],'original_insertion')
+   self.assertEqual(policy['reasoning_effort'],'low' if kind in {'docs_only','bug_fix'} else 'medium')
+  simple=self.selection();simple['categories'].append({'name':'interactions','tests':['tests/extra.test.mjs'],'fixtures':[]})
+  with self.assertRaisesRegex(ValueError,'higher risk'):v.validate_selection(simple,self.catalog)
+  c=self.publish('bug_fix');self.assertEqual(v.review_effort('ultra',self.root),'low');self.assertEqual(c['delivery_policy']['sla_seconds'],180)
+  self.commit();next_selection=self.selection();next_selection['revision_of']=c['contract_sha256'];revised=v.seal(self.root,next_selection,'revision',{})
+  self.assertEqual(revised['delivery_policy'],c['delivery_policy'])
 if __name__=='__main__':unittest.main()

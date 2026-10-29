@@ -2669,7 +2669,7 @@ test("README routes customer, development, and credential-free release validatio
   assert.equal(repositoryPackage.scripts.build, "npm run build:packages");
   assert.equal(
     repositoryPackage.scripts["release:check"],
-    "npm run build && npm run check && npm run check:privacy && npm run contract:check && npm test"
+    "python3 tools/validation_contract.py release"
   );
   assert.equal(
     repositoryPackage.scripts["acceptance:post-release"],

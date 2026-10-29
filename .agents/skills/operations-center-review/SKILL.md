@@ -197,3 +197,15 @@ source, test, fixture and configuration closures. A full-scope capture requires 
 initial-baseline need or a concrete affected-behavior/dependency justification.
 Supporting passing-case observations do not relabel a failed aggregate or invent
 a reusable native proof.
+
+## Validation delivery limits
+
+The controlling delivery budgets are docs_only120s, bug_fix180s,
+deep_bug_fix300s and feature300s end to end, including network/build/effects and
+verification (verified Git publication for source-only work). The host's original
+request clock survives retries and revisions; local PASS is only phase PASS.
+Rank/pare checks before freezing the contract, then run the whole selected set.
+Small bugs get deterministic focused tests only; auth/cross-area work is deep.
+No automatic broader regression or partial/empty/skipped PASS. Use low reasoning
+for simple work and medium for hard work, never above medium or paid fallback.
+Authenticated platform JEV may assist prioritization without granting authority.

@@ -7,9 +7,23 @@ from pathlib import Path
 
 CATALOG = 'tools/validation-catalog.json'
 SELECTION = 'tools/validation-selection.json'
-CLASSES = {'docs_only': ['sanity'], 'bug_fix': ['sanity','focused','regression'],
-           'deep_bug_fix': ['sanity','focused','interactions','regression'],
-           'feature': ['sanity','interactions','acceptance','regression']}
+CLASSES = {'docs_only': ['sanity'], 'bug_fix': ['sanity','focused'],
+           'deep_bug_fix': ['sanity','focused','interactions'],
+           'feature': ['sanity','interactions','acceptance']}
+SLA_SECONDS = {'docs_only':120, 'bug_fix':180, 'deep_bug_fix':300, 'feature':300}
+
+def delivery_policy(kind):
+    return {'sla_seconds':SLA_SECONDS[kind], 'clock_owner':'build_host', 'clock_start':'original_insertion',
+            'completion':'verified_remote_git', 'retries_reset_clock':False,
+            'reasoning_effort':'low' if kind in {'docs_only','bug_fix'} else 'medium', 'maximum_reasoning_effort':'medium'}
+
+def review_effort(requested, root=None):
+    path=(root or Path.cwd())/SELECTION
+    kind=json.loads(path.read_text())['selection']['change_class'] if path.exists() else 'deep_bug_fix'
+    # Direct owner policy bounds an inherited task setting; no model/provider fallback.
+    maximum=delivery_policy(kind)['reasoning_effort']
+    return requested if requested in {'none','minimal','low'} else maximum
+
 
 def digest(value): return hashlib.sha256(json.dumps(value,sort_keys=True,separators=(',',':')).encode()).hexdigest()
 def git(root,*args): return subprocess.check_output(['git',*args],cwd=root).decode().strip()
@@ -22,6 +36,7 @@ def safe_path(name):
     return isinstance(name,str) and bool(name) and not name.startswith(('/','-')) and '\\' not in name and '..' not in name.split('/') and not any(c in name for c in '\n\r\x00')
 def catalog_check(catalog):
     if catalog.get('schema')!='boc.validation-catalog/v1' or set(catalog.get('classes',{}))!=set(CLASSES): raise ValueError('Unknown validation catalog')
+    if catalog.get('sla_seconds')!=SLA_SECONDS or catalog.get('maximum_reasoning_effort')!='medium': raise ValueError('Immutable delivery budget or reasoning maximum changed')
     if catalog['classes']!=CLASSES: raise ValueError('Change-class minimum categories changed; revise native policy first')
     registry=catalog.get('regression',[])
     if not registry or len(registry)>8 or len({r['test'] for r in registry})!=len(registry): raise ValueError('Regression registry must be a small nonempty reviewed recurrence set')
@@ -40,7 +55,7 @@ def validate_selection(selection,catalog):
     if set(selection)!={'change_class','scope_paths','categories','reason','revision_of'}: raise ValueError('Unexpected selection fields')
     kind=selection['change_class']; categories=selection['categories']; names=[r['name'] for r in categories]
     if kind not in CLASSES or not categories or len(names)!=len(set(names)) or not set(CLASSES[kind])<=set(names): raise ValueError('Selected categories are empty, duplicated or omit class requirements')
-    if kind=='docs_only' and names!=['sanity']: raise ValueError('docs_only has exactly minimal sanity')
+    if kind in {'docs_only','bug_fix'} and names!=CLASSES[kind]: raise ValueError('Simple changes have only their fixed minimal categories; integration or higher risk requires deep_bug_fix')
     if not selection['reason'].strip() or not selection['scope_paths'] or any(not safe_path(p) for p in selection['scope_paths']): raise ValueError('Contract needs bounded scope and rationale')
     if selection['revision_of'] is not None and not re.fullmatch('[a-f0-9]{64}',selection['revision_of']): raise ValueError('Revision must name exact previous contract')
     for row in categories:
@@ -72,7 +87,7 @@ def seal(root,selection,proposal,review,base=None):
     previous=json.loads((root/SELECTION).read_text()) if (root/SELECTION).exists() else None
     if selection['revision_of']!=(previous or {}).get('contract_sha256'): raise ValueError('Explicit revision does not name current original contract')
     base=base or git(root,'rev-parse','HEAD')
-    value={'schema':'boc.validation-contract/v1','selection':selection,'base_commit':base,'base_tree':git(root,'rev-parse',base+'^{tree}'),'catalog_sha256':digest(catalog),'runtime':runtime(),'proposal_sha256':hashlib.sha256(proposal.encode()).hexdigest(),'review_sha256':digest(review),'commands':commands(selection,catalog)}
+    value={'schema':'boc.validation-contract/v1','selection':selection,'base_commit':base,'base_tree':git(root,'rev-parse',base+'^{tree}'),'catalog_sha256':digest(catalog),'runtime':runtime(),'proposal_sha256':hashlib.sha256(proposal.encode()).hexdigest(),'review_sha256':digest(review),'commands':commands(selection,catalog),'delivery_policy':delivery_policy(selection['change_class'])}
     value['contract_sha256']=digest(value);return value
 
 def write_selection(root,value):
@@ -90,6 +105,7 @@ def verify(root,tree='HEAD',proposal=None):
     body={k:v for k,v in contract.items() if k!='contract_sha256'}
     if contract.get('schema')!='boc.validation-contract/v1' or contract.get('contract_sha256')!=digest(body): raise ValueError('Validation contract identity changed')
     selection=validate_selection(contract['selection'],catalog)
+    if contract.get('delivery_policy')!=delivery_policy(selection['change_class']): raise ValueError('Delivery policy changed; original host clock must survive revision')
     if contract['catalog_sha256']!=digest(catalog) or contract['commands']!=commands(selection,catalog): raise ValueError('Catalog or selected commands changed; obtain explicit Oracle revision')
     if proposal is not None and proposal.get('validation_contract')!=contract: raise ValueError('Candidate selection lacks its exact original Oracle proposal')
     if git(root,'rev-parse',contract['base_commit']+'^{tree}')!=contract['base_tree']: raise ValueError('Baseline tree differs')
@@ -146,7 +162,7 @@ def execute(root,category,phase='after'):
     env={k:v for k,v in os.environ.items() if k!='NODE_TEST_CONTEXT'}
     result=subprocess.run(row['argv'],cwd=root,capture_output=True,text=True,env=env);text=result.stdout+result.stderr
     summary=result_summary(text,result.returncode,bool(row['tests']));unchanged=git(root,'rev-parse','HEAD')==commit and not git(root,'status','--porcelain=v1','--untracked-files=all') and runtime()==contract['runtime']
-    record={'kind':'boc-validation-execution-v1','finished_at':datetime.now(timezone.utc).isoformat(),'execution_environment':{'node':contract['runtime']['node'],'python':platform.python_version(),'platform':platform.system()},'contract_sha256':contract['contract_sha256'],'catalog_sha256':contract['catalog_sha256'],'commit':commit,'tree':git(root,'rev-parse',commit+'^{tree}'),'category':category,'phase':phase,'command':row['argv'],'fixtures':fixtures,'runtime':contract['runtime'],'controller_python':platform.python_version(),'exit_code':result.returncode,'summary':summary,'inputs_unchanged':unchanged,'passed':phase=='after' and summary['passed'] and unchanged}
+    record={'kind':'boc-validation-execution-v1','result_scope':'validation_phase','e2e_status':'NOT_EVALUATED','delivery_policy':contract['delivery_policy'],'finished_at':datetime.now(timezone.utc).isoformat(),'execution_environment':{'node':contract['runtime']['node'],'python':platform.python_version(),'platform':platform.system()},'contract_sha256':contract['contract_sha256'],'catalog_sha256':contract['catalog_sha256'],'commit':commit,'tree':git(root,'rev-parse',commit+'^{tree}'),'category':category,'phase':phase,'command':row['argv'],'fixtures':fixtures,'runtime':contract['runtime'],'controller_python':platform.python_version(),'exit_code':result.returncode,'summary':summary,'inputs_unchanged':unchanged,'passed':phase=='after' and summary['passed'] and unchanged}
     target=store(root,contract,commit,category,phase,record,text);print(json.dumps({'record':str(target),'passed':record['passed'],'phase':phase,'summary':summary}))
     return 0 if record['passed'] or phase=='before' and unchanged and summary.get('complete') and summary.get('fail',0)>0 and not any(summary.get(k,0) for k in ('skipped','todo','cancelled')) and 'ERR_ASSERTION' in text and result.returncode!=0 else 1
 

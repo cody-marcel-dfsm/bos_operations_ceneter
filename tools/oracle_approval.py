@@ -446,7 +446,7 @@ def _vault_sources(root: Path) -> dict:
 
 def _review_settings_binding() -> dict:
     try:
-        return {"model": selected_model(), "reasoning_effort": selected_reasoning_effort()}
+        return {"model": selected_model(), "reasoning_effort": validation_contract.review_effort(selected_reasoning_effort())}
     except (RuntimeError, ValueError) as exc:
         # Preserve a managed source checkpoint before the normal launcher
         # reports its structured configuration error; never select a fallback.
@@ -855,7 +855,7 @@ def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path |
     output = run / "result.json"
     schema_path = schema_path or root / ".agents/skills/oracle/review-output.schema.json"
     try:
-        model, effort = selected_model(), selected_reasoning_effort()
+        model, effort = selected_model(), validation_contract.review_effort(selected_reasoning_effort())
     except (RuntimeError, ValueError) as exc:
         raise OracleApprovalError(
             f"Independent Oracle model resolution failed ({type(exc).__name__}): {exc}; "
@@ -2920,7 +2920,7 @@ def _oracle(root: Path, tree: str, paths: list[str], evidence: dict[str,str], ow
     # Configuration failures precede area preparation and reviewer timing. The
     # native attempt retains their structured failure without launching a cohort.
     try:
-        selected_model(), selected_reasoning_effort()
+        selected_model(), validation_contract.review_effort(selected_reasoning_effort())
     except (RuntimeError, ValueError) as exc:
         raise OracleApprovalError(
             f"Independent Oracle model resolution failed ({type(exc).__name__}): {exc}; "
@@ -2972,7 +2972,7 @@ Return JSON matching the supplied schema. Verify the stated problem and cause, c
         schema["required"].append("validation_selection")
         schema_path = _RUN.get() / "proposal-contract.schema.json"
         _atomic_write(schema_path, _pretty(schema))
-        prompt += "\nSelect validation_selection before implementation from this exact catalog. Use bounded scope_paths and exact planned test paths and supporting fixture paths under tests/; fixed sanity/regression fixtures are empty; bug_fix requires a fail-before reproduction, deep_bug_fix all relevant interactions, feature thorough acceptance, docs_only minimal document sanity. Preserve security/privacy and expand unknown impact. Existing tests are not automatically added to the curated recurrence registry. Every revision names the current contract hash, never changes original evidence. Catalog: " + json.dumps(catalog, sort_keys=True)
+        prompt += "\nSelect validation_selection before implementation from this exact catalog. Use bounded scope_paths and exact planned test paths and supporting fixture paths under tests/; fixed sanity/regression fixtures are empty; bug_fix permits only small deterministic fail-before/pass-after reproduction and sanity, no integration or automatic wider regression; auth/security/cross-area or unknown impact is deep_bug_fix with all relevant interactions; feature requires thorough acceptance; docs_only minimal document sanity. Rank/pare before freezing, then run every selected test. Fixed end-to-end budgets are docs_only120s/bug_fix180s/deep_bug_fix300s/feature300s; the build host retains original insertion through retries and publication. Low reasoning for simple work, medium maximum, no paid fallback. Existing tests are not automatically added to the curated recurrence registry. Every revision names the current contract hash, never changes original evidence. Catalog: " + json.dumps(catalog, sort_keys=True)
         previous = root / validation_contract.SELECTION
         prompt += "\nCurrent contract: " + (previous.read_text() if previous.exists() else "none; revision_of must be null")
         return _review_process(root, prompt, "proposal_reviewer", schema_path=schema_path)

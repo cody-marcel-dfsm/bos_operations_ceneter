@@ -12,15 +12,37 @@ matching execution or an explicitly approved revision.
 | Class | Required execution |
 | --- | --- |
 | `docs_only` | Minimal whitespace, privacy and publication sanity for genuine documentation changes. Executable skills, instructions or source require another class. |
-| `bug_fix` | Sanity, the focused reproduction failing before the fix and passing after it, plus curated recurrence checks. |
+| `bug_fix` | Sanity, the focused reproduction failing before the fix and passing after it, without integration or automatic broader regression. |
 | `deep_bug_fix` | The bug-fix checks and every relevant interaction selected by Oracle, including failure and recovery paths. |
-| `feature` | Sanity, complete relevant interactions, thorough acceptance and curated recurrence checks. |
+| `feature` | Sanity, complete relevant interactions, thorough acceptance; select curated recurrence checks only for an evidenced risk. |
+
+The hard end-to-end limits are `docs_only` 120 seconds, `bug_fix` 180 seconds,
+`deep_bug_fix` 300 seconds and `feature` 300 seconds. The build host owns the
+original request admission clock, including upload, network, validation, build,
+deployment and live verification when applicable; these source-only repositories
+finish at verified remote Git publication. Retries, revisions and handoffs retain
+`request_started_at` and `deadline_at`; they never start a fresh clock. A late
+completion is an SLA failure, never approval or a partial pass. Local category
+results are phase results and cannot certify end-to-end completion.
+
+Rank and pare the relevant checks before Oracle freezes the executable contract,
+then execute every selected check completely. A small `bug_fix` uses only sanity
+and its small deterministic fail-before/pass-after reproduction, with no
+integration or automatic broader regression. Authentication, security, cross-area
+or uncertain impact requires `deep_bug_fix` and the complete relevant interactions.
+The small curated regression registry is opt-in for a demonstrated recurring risk,
+not an automatic addition to every change. Feature acceptance remains thorough
+within its selected impact. The authenticated platform JEV ranking seam may help
+classify and prioritize; it never supplies authorization or replaces Oracle.
+Use low reasoning for simple documentation and small bugs, medium for hard/deep
+changes and features; medium is the maximum. The native launcher bounds inherited
+higher settings. No paid inference fallback is authorized.
 
 The catalog supplies class minima and the small regression registry. Oracle
 chooses exact planned test files and supporting fixture paths under `tests/` for focused,
 interaction and acceptance categories;
 commands do not accept name filters or silently expand to a full system suite.
-Unknown impact expands scope. User input, interface, authentication, authorization,
+Unknown impact is classified as deep work before scope is fixed. User input, interface, authentication, authorization,
 security and prompt-injection boundaries receive the appropriate full scrutiny.
 Preserve independent source, privacy and publication gates.
 
