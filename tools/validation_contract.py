@@ -31,7 +31,7 @@ def blob(root,tree,name):
     result=subprocess.run(['git','show',tree+':'+name],cwd=root,capture_output=True)
     return None if result.returncode else json.loads(result.stdout)
 def runtime():
-    return {'node':subprocess.check_output(['node','--version']).decode().strip(),'node_sha256':hashlib.sha256(Path(shutil.which('node')).read_bytes()).hexdigest(),'controller_sha256':hashlib.sha256(Path(sys.executable).read_bytes()).hexdigest(),'platform':platform.system(),'architecture':platform.machine(),'options_sha256':digest({k:os.environ.get(k) for k in ('NODE_OPTIONS','NODE_PATH','PYTHONPATH','PYTHONHOME')})}
+    return {'node':subprocess.check_output(['node','--version']).decode().strip(),'node_sha256':hashlib.sha256(Path(shutil.which('node')).read_bytes()).hexdigest(),'controller_sha256':hashlib.sha256(Path(shutil.which('python3')).read_bytes()).hexdigest(),'platform':platform.system(),'architecture':platform.machine(),'options_sha256':digest({k:os.environ.get(k) for k in ('NODE_OPTIONS','NODE_PATH','PYTHONPATH','PYTHONHOME')})}
 def safe_path(name):
     return isinstance(name,str) and bool(name) and not name.startswith(('/','-')) and '\\' not in name and '..' not in name.split('/') and not any(c in name for c in '\n\r\x00')
 def catalog_check(catalog):
@@ -47,7 +47,7 @@ def catalog_check(catalog):
 def selection_schema():
     return {'type':'object','additionalProperties':False,'required':['change_class','scope_paths','categories','reason','revision_of'], 'properties':{
       'change_class':{'type':'string','enum':list(CLASSES)},'scope_paths':{'type':'array','items':{'type':'string'},'minItems':1},
-      'categories':{'type':'array','minItems':1,'items':{'type':'object','additionalProperties':False,'required':['name','tests','fixtures'],'properties':{'name':{'enum':['sanity','focused','interactions','acceptance','regression']},'tests':{'type':'array','items':{'type':'string'}},'fixtures':{'type':'array','items':{'type':'string'}}}}},
+      'categories':{'type':'array','minItems':1,'items':{'type':'object','additionalProperties':False,'required':['name','tests','fixtures'],'properties':{'name':{'type':'string','enum':['sanity','focused','interactions','acceptance','regression']},'tests':{'type':'array','items':{'type':'string'}},'fixtures':{'type':'array','items':{'type':'string'}}}}},
       'reason':{'type':'string','minLength':1},'revision_of':{'type':['string','null']}}}
 
 def validate_selection(selection,catalog):
@@ -157,7 +157,7 @@ def execute(root,category,phase='after'):
         changed=git(root,'diff','--name-only',contract['base_commit'],commit).splitlines()
         if any(p!=SELECTION and p not in fixtures for p in changed):raise ValueError('Fail-before source includes implementation changes')
     elif category=='focused' and contract['selection']['change_class'] in {'bug_fix','deep_bug_fix'}:
-        before=[r for r in originals(root,contract,'before') if r['category']==category and r['fixtures']==fixtures and r['runtime']==contract['runtime'] and r['exit_code']!=0 and r['summary'].get('complete') and r['summary'].get('fail',0)>0 and 'ERR_ASSERTION' in Path(r['output_file']).read_text() and not any(r['summary'].get(k,0) for k in ('skipped','todo','cancelled'))]
+        before=[r for r in originals(root,contract,'before') if r.get('inputs_unchanged') is True and r['category']==category and r['fixtures']==fixtures and r['runtime']==contract['runtime'] and r['exit_code']!=0 and r['summary'].get('complete') and r['summary'].get('fail',0)>0 and 'ERR_ASSERTION' in Path(r['output_file']).read_text() and not any(r['summary'].get(k,0) for k in ('skipped','todo','cancelled'))]
         if not before:raise ValueError('Missing unchanged-test fail-before execution; do not substitute an infrastructure error')
     env={k:v for k,v in os.environ.items() if k!='NODE_TEST_CONTEXT'}
     result=subprocess.run(row['argv'],cwd=root,capture_output=True,text=True,env=env);text=result.stdout+result.stderr

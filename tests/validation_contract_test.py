@@ -35,6 +35,28 @@ class Contracts(unittest.TestCase):
    self.assertIn('validation_selection',selected['required']);self.assertEqual(selected['properties']['validation_selection'],v.selection_schema())
    self.assertEqual(schema_path.read_text(),original)
   finally:oracle._RUN.reset(token)
+ def test_actual_native_launch_caps_effort_and_preserves_model(self):
+  schema=self.root/'schema.json';schema.write_text('{}')
+  (self.root/'tools/codex_child_model.py').write_text('# synthetic model helper')
+  run=self.root/'.git/oracle/runs/synthetic';run.mkdir(parents=True)
+  token=oracle._RUN.set(run)
+  def launch(argv,**kwargs):
+   self.assertEqual(argv[argv.index('--model')+1],'synthetic-selected-model')
+   self.assertIn('model_reasoning_effort="medium"',argv)
+   self.assertEqual(kwargs['env']['CODEX_SELECTED_REASONING_EFFORT'],'medium')
+   (run/'result.json').write_text('{"synthetic":true}')
+   return subprocess.CompletedProcess(argv,0,'','')
+  try:
+   with patch.object(oracle,'selected_model',return_value='synthetic-selected-model'),patch.object(oracle,'selected_reasoning_effort',return_value='ultra'),patch.object(oracle.subprocess,'run',side_effect=launch):
+    self.assertEqual(oracle._review_process(self.root,'Synthetic native cap','synthetic',schema_path=schema),{'synthetic':True})
+   self.assertEqual(json.loads((run/'model.json').read_text())['reasoning_effort'],'medium')
+  finally:oracle._RUN.reset(token)
+ def test_runtime_binds_fixed_runner_not_proposal_controller_interpreter(self):
+  current=v.runtime()
+  with patch.object(v.sys,'executable','/nonexistent/proposal-only-python'):
+   self.assertEqual(v.runtime(),current)
+  selected=v.selection_schema()['properties']['categories']['items']['properties']['name']
+  self.assertEqual(selected['type'],'string')
  def test_class_minima_exact_nonempty_commands_and_explicit_revision(self):
   for kind in v.CLASSES:
    s=self.selection(kind);self.assertEqual(v.validate_selection(s,self.catalog),s)
@@ -60,6 +82,13 @@ class Contracts(unittest.TestCase):
   self.assertEqual(len(v.admit(self.root,tree,{'validation_contract':c})['results']),2)
   self.assertEqual(list(v.originals(self.root,c,'before'))[0]['record_sha256'],before[0]['record_sha256'])
   self.assertEqual(cc.requirements(self.root,tree)[1]['command'],['python3','tools/validation_contract.py','run','--category','focused'])
+ def test_rejected_mutating_before_cannot_supply_reproduction(self):
+  c=self.publish();(self.root/'tests/reproduction.test.mjs').write_text("import test from 'node:test';import assert from 'node:assert/strict';import{writeFileSync}from'node:fs';import value from '../source.mjs';test('mutation is not reproduction',()=>{if(!value)writeFileSync(new URL('../source.mjs',import.meta.url),'export default true;');assert.equal(value,true);});");self.commit()
+  self.assertEqual(v.execute(self.root,'focused','before'),1)
+  before=list(v.originals(self.root,c,'before'));self.assertEqual(len(before),1);self.assertIs(before[0]['inputs_unchanged'],False);self.assertEqual(before[0]['summary']['fail'],1)
+  retained=Path(before[0]['_record_path']).read_bytes();self.commit()
+  with self.assertRaisesRegex(ValueError,'unchanged-test'):v.execute(self.root,'focused')
+  self.assertEqual(Path(before[0]['_record_path']).read_bytes(),retained)
  def test_source_catalog_runtime_and_fixture_changes_fail_closed(self):
   c=self.publish();(self.root/'tests/reproduction.test.mjs').write_text("import test from 'node:test';import assert from 'node:assert/strict';test('failure',()=>assert.equal(false,true));");self.commit();self.assertEqual(v.execute(self.root,'focused','before'),0)
   (self.root/'tests/reproduction.test.mjs').write_text("import test from 'node:test';test('different test',()=>{});");self.commit()
