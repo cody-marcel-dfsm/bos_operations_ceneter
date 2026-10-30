@@ -32,6 +32,7 @@ python3 -B tools/deterministic_source.py merge --ref codex/source-DESCRIPTION --
 ```
 
 The native consumer rechecks exact source, original outputs and remote baseline,
+requires one push destination identifying this exact public repository, and
 then uses the existing required-workflow admission and ordinary matching-head PR
 merge. No administrator bypass is used. Read back remote main and tree, fetch and
 fast-forward canonical main, and report publication separately from any customer

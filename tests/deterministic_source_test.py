@@ -60,11 +60,22 @@ class SourceAdmissionTests(unittest.TestCase):
     def test_publisher_rejects_moved_baseline_before_push(self):
         value=self.validate();original=d.git;calls=[]
         def observed(root,*args):
-            if args[:3]==('remote','get-url','--push'):return 'fixture-destination'
+            if args[:3]==('remote','get-url','--push'):return 'https://github.com/'+d.REPOSITORY+'.git'
             if args[0]=='ls-remote':return 'f'*40+'\trefs/heads/main'
             return original(root,*args)
         with patch.object(d,'verify',return_value=value),patch.object(d,'git',side_effect=observed),patch.object(d.subprocess,'run',side_effect=lambda *a,**k:calls.append(a)):
             with self.assertRaisesRegex(ValueError,'base moved'):d.publish(self.root,'codex/source-docs')
         self.assertEqual(calls,[])
+
+    def test_wrong_or_multiple_destinations_have_no_publication_effect(self):
+        value=self.validate()
+        for remote in ['https://example.invalid/wrong-owner.git',
+                       'https://github.com/cody-marcel-dfsm/bos_operations_ceneter.git\nhttps://example.invalid/second.git']:
+            calls=[]
+            def observed(root, *args):
+                return remote if args[0]=='remote' else value['base']+'\trefs/heads/main'
+            with patch.object(d,'verify',return_value=value), patch.object(d,'git',side_effect=observed), patch.object(d.subprocess,'run',side_effect=lambda *a,**k:calls.append(a)):
+                with self.assertRaisesRegex(ValueError,'exact public repository'):d.publish(self.root,'codex/source-docs')
+            self.assertEqual(calls,[])
 
 if __name__=='__main__':unittest.main()
