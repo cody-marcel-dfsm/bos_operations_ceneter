@@ -1,3 +1,12 @@
+## Deterministic source maintenance — controlling owner direction
+
+The owner prohibits model review for this source-maintenance work. Use
+`tools/deterministic-source.md` for its narrow documentation/controller scope.
+Its distinct VERIFIED receipt grants source publication only; existing product,
+package and protected-effect gates remain outside that scope. Never manufacture
+an Oracle approval, reset the original request clock, or publish private workspace
+paths or configuration. Other changes retain their existing native contract.
+
 
 ## Fixed validation contract — controlling owner direction, 2026-10-29
 
@@ -31,7 +40,7 @@ Private native continuation tasks: `Vault/docs/implementation/native-callback-co
 
 ## Canonical main checkout and project agent context
 
-- Work on `main` in `/home/cody/Projects/bosops_staging`.
+- Work on `main` in the canonical checkout of this repository.
   Run the project-specific implementation agent from this directory and use
   this project's skills, validation commands, and Oracle approval process.
 - Preserve staged, unstaged, and untracked work. Fetch the configured remote
@@ -52,12 +61,12 @@ Private native continuation tasks: `Vault/docs/implementation/native-callback-co
   product**. It owns operating-system client skills, prompt interpretation,
   discovery use, explain planning, BOSL authoring, client-owned journey work,
   recovery, caching, presentation, packaging, and release.
-- Read the canonical family relationship at
-  `/home/cody/Projects/Vault/docs/architecture/bos-product-family.md`
+- Read the canonical family relationship document identified by the
+  private maintainer workspace configuration
   for family membership, cross-project ownership, and shared public-contract
   obligations.
-- Request Projects-level Oracle review through `python3
-  /home/cody/Projects/tools/projects_oracle.py --review "<request>"` for family
+- Request Projects-level Oracle review through the coordinator identified
+  by the private maintainer workspace configuration for family
   membership, ownership boundaries, and shared
   public-contract alignment. Request repository review through `npm run
   oracle:review`. Ordinary agents never load or act as either Oracle; each

@@ -3,6 +3,16 @@ name: operations-center-implementation
 description: Implement BOS Operations Center repository changes using its architecture, Vault, issue history, validation, repository boundary, and mandatory Oracle review requirements. Use for requests to change or fix repository behavior, including expected-versus-observed reports and screenshot-based defects, and for code, tests, skills, manifests, generated clients, documentation, and release changes. Use planning alone only when the user requests a plan.
 ---
 
+## Deterministic source maintenance
+
+For owner-authorized source-maintenance scope, follow
+`tools/deterministic-source.md`. Run the complete fixed checks against committed
+source, retain original outputs and failure clocks, and use its exact-source PR
+publication commands. The scope includes only named documentation and the native
+controller bootstrap, with dedicated negative tests. It authorizes no package,
+version, deployment, authentication or protected public-contract change. Model
+review and fabricated approval receipts are prohibited for this lane.
+
 ## Fixed validation contract — controlling owner direction, 2026-10-29
 
 Apply `tools/validation-contract.md`. Before implementation, the native proposal

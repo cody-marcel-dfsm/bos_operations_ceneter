@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VALIDATION_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      VALIDATION_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -25,7 +26,7 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
-      - name: Verify native approval, reuse prior command coverage and run uncovered checks
-        run: python3 tools/command_coverage.py ci --candidate "$VALIDATION_SOURCE_SHA"
+      - name: Verify source maintenance or the native selected product contract
+        run: python3 tools/deterministic_source.py ci --base "$VALIDATION_BASE_SHA"
         env:
           GH_TOKEN: ${{ github.token }}
