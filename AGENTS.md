@@ -1,3 +1,12 @@
+## Deterministic source maintenance — controlling owner direction
+
+The owner prohibits model review for this source-maintenance work. Use
+`tools/deterministic-source.md` for its narrow documentation/controller scope.
+Its distinct VERIFIED receipt grants source publication only; existing product,
+package and protected-effect gates remain outside that scope. Never manufacture
+an Oracle approval, reset the original request clock, or publish private workspace
+paths or configuration. Other changes retain their existing native contract.
+
 
 ## Fixed validation contract — controlling owner direction, 2026-10-29
 
