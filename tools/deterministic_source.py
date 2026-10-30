@@ -106,7 +106,7 @@ def publish(root, ref, pr=None):
     value=verify(root)
     if not re.fullmatch('codex/source-[a-z0-9-]+',ref):raise ValueError('Source-maintenance review ref required')
     destinations=git(root,'remote','get-url','--push','--all','origin').splitlines()
-    allowed={prefix+REPOSITORY+suffix for prefix in ['https://github.com/', 'git@github.com:', 'ssh://git@github.com/'] for suffix in ['', '.git']}
+    allowed={'https://github.com/'+REPOSITORY+suffix for suffix in ['', '.git']}
     if len(destinations)!=1 or destinations[0] not in allowed:
         raise ValueError('Publication requires the exact public repository destination')
     remote=destinations[0]
