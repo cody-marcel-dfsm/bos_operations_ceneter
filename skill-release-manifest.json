@@ -3,15 +3,15 @@
   "release": "0.0.214",
   "skills": {
     "agent-call-operations": {
-      "version": "1.0.7",
+      "version": "1.0.8",
       "requires": {
         "bos-mcp-client": "1.0.7",
-        "education-center-service-routing": "1.0.7"
+        "education-center-service-routing": "1.0.8"
       },
       "path": "source/capabilities/agent-call-operations",
       "files": {
         "SKILL.md": {
-          "sha256": "1344144b4a5fd5dcf27d1177954fec11c88a508546aa1921699bb8251aecc2a0",
+          "sha256": "189229bd44f76e7a4185c76d35cbe97d0d919b4a6caf63cc24c513b2a38d91ef",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -24,7 +24,7 @@
         }
       },
       "effective": {
-        "education-center": "ba444a417f30696e0638774e5f5b353130abda5a6d0d28c61406c9d09c77ab25"
+        "education-center": "25927252b97a7f1f6f9397f0eb13835148ec63b33687c61543dd6686900769b8"
       }
     },
     "authentication-context-integrity": {
@@ -154,7 +154,7 @@
       }
     },
     "bos-google-review-outreach": {
-      "version": "1.0.7",
+      "version": "1.0.8",
       "requires": {
         "bos-mcp-client": "1.0.7",
         "bos-visual-output": "1.0.7"
@@ -162,7 +162,7 @@
       "path": "source/capabilities/review-outreach",
       "files": {
         "SKILL.md": {
-          "sha256": "7b372f75d80839bebb66119f0340ce5b3aafb62d742693ff6e6e958bca6cdf0d",
+          "sha256": "3308edbd815034b0e0ae86a3d7f46d476abc4e22d64cee6964519c3c01187259",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -183,7 +183,7 @@
         }
       },
       "effective": {
-        "education-center": "2fd55137343f22dbdc1be012c55b5a3abdb76b23dd14d9fcfdab0c40ceed7c8e"
+        "education-center": "b422936cc5dbb81451388d026986d1ee49f0a563ff5646fbd236e22045fb46ae"
       }
     },
     "bos-guided-support": {
@@ -308,15 +308,15 @@
       }
     },
     "bos-plugin-console": {
-      "version": "1.0.7",
+      "version": "1.0.8",
       "requires": {
         "bos-mcp-client": "1.0.7",
-        "bos-plugin-settings": "1.0.7"
+        "bos-plugin-settings": "1.0.8"
       },
       "path": "source/platform/bos-plugin-console",
       "files": {
         "SKILL.md": {
-          "sha256": "767b7d9cbaf4e50fd4ad5fa8cbb4249f1710c6d01227cc93944341b654810d80",
+          "sha256": "8eef6033e1ed8fca510aa2524f8f54e5172012a56cec29e1dfefe842a25414e8",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -325,21 +325,21 @@
         }
       },
       "effective": {
-        "bos": "dfe6be6d182a7cb93a97b7dc99a6fe07d425a23da6df6c493f134ffa7e89a23b"
+        "bos": "594e245503557781f8ac705c3356f1859fa6d550893c239b0e6623795516609f"
       }
     },
     "bos-plugin-settings": {
-      "version": "1.0.7",
+      "version": "1.0.8",
       "requires": {
         "bos-mcp-client": "1.0.7",
-        "bos-plugin-console": "1.0.7",
-        "bos-plugin-settings-initialization": "1.0.7",
-        "submit-feedback": "1.0.7"
+        "bos-plugin-console": "1.0.8",
+        "bos-plugin-settings-initialization": "1.0.8",
+        "submit-feedback": "1.0.8"
       },
       "path": "source/platform/bos-plugin-settings",
       "files": {
         "SKILL.md": {
-          "sha256": "8be78edb8293c935c176bc82cdee444a40fdb7bb4dbed9e658e6fe640cac1682",
+          "sha256": "795c26cd20a825bb4a5ed842ce5809e990c9c658d669c0b35f8bd11a9403f800",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -352,21 +352,21 @@
         }
       },
       "effective": {
-        "bos": "7ada5ed7801e2adce76d6ba3c03614c8631c2e305d651f84a98fa829576a3177",
-        "education-center": "7ada5ed7801e2adce76d6ba3c03614c8631c2e305d651f84a98fa829576a3177"
+        "bos": "8b930f5a2c514515e1dad8efdcfe6128e4ee7cd4614bb78d4b3ecc9a26e43c0d",
+        "education-center": "8b930f5a2c514515e1dad8efdcfe6128e4ee7cd4614bb78d4b3ecc9a26e43c0d"
       }
     },
     "bos-plugin-settings-initialization": {
-      "version": "1.0.7",
+      "version": "1.0.8",
       "requires": {
         "bos-mcp-client": "1.0.7",
-        "bos-plugin-console": "1.0.7",
-        "bos-plugin-settings": "1.0.7"
+        "bos-plugin-console": "1.0.8",
+        "bos-plugin-settings": "1.0.8"
       },
       "path": "source/platform/bos-plugin-settings-initialization",
       "files": {
         "SKILL.md": {
-          "sha256": "25618e56309b77bd4fcdd8b7b22738eff7a633e440f1501491b99c3dace33aea",
+          "sha256": "cf4fa8c2977b12a6a3f349afdc55641bb4ecf3abf1340730f896e43972ea3f23",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -379,8 +379,8 @@
         }
       },
       "effective": {
-        "bos": "a64102fb6fd60122cd6fa6f76ae5d2c5038ce48d9762fff6f93c0c3b114ce1e1",
-        "education-center": "fd955543846e3274a3e2b0253eb8955ca0aa18d80d0bb46aeeb720d84bf3dbc4"
+        "bos": "1beebc1e76b1a508e5563e8f613273231cb136761a82b14a25e86c369c6c8b76",
+        "education-center": "747564a460344988393f4007804297270a5d3a8a419ec2e8a1539b4e0288fbad"
       }
     },
     "bos-visual-output": {
@@ -507,7 +507,7 @@
       }
     },
     "camp-capacity-planning": {
-      "version": "1.0.7",
+      "version": "1.0.8",
       "requires": {
         "bos-mcp-client": "1.0.7",
         "bos-visual-output": "1.0.7"
@@ -515,7 +515,7 @@
       "path": "source/verticals/education-center/camp-capacity-planning",
       "files": {
         "SKILL.md": {
-          "sha256": "bfba3f94375c1fbe547545ab08ba1f593c6f6963a429f73e02efeb8a95001d1c",
+          "sha256": "c8baaa9cd5ea5778f77bde23844af24fc79c7ac4666d578990bba0641c4e1572",
           "mode": 420
         },
         "references/data-model.md": {
@@ -528,7 +528,7 @@
         }
       },
       "effective": {
-        "education-center": "0957ece4402da81ece812089c6ff13f17b7f2f0cc25a2b7e92a0fc2bd8a1f6cf"
+        "education-center": "10376b757add5b3ad988b24a35324f96a5f43eb9b0ef5fedbae263281806bca7"
       }
     },
     "campaign-offer-marketing-sales": {
@@ -593,19 +593,19 @@
       }
     },
     "education-center-class-operations": {
-      "version": "1.0.7",
+      "version": "1.0.8",
       "requires": {
         "bos-mcp-client": "1.0.7",
         "bos-visual-output": "1.0.7",
-        "camp-capacity-planning": "1.0.7",
-        "education-center-invoice-operations": "1.0.7",
-        "education-center-service-routing": "1.0.7",
+        "camp-capacity-planning": "1.0.8",
+        "education-center-invoice-operations": "1.0.8",
+        "education-center-service-routing": "1.0.8",
         "email-account-routing": "1.0.7"
       },
       "path": "source/verticals/education-center/education-center-class-operations",
       "files": {
         "SKILL.md": {
-          "sha256": "2ba3a058be4dc0d419eb556f7aa24fa123212f1ddd938fc3f654d3441cd1f45d",
+          "sha256": "824fccfeaa0b8f6e9294b025c24ecf1ba3e56d3aff264131895063c0d4e9e200",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -618,7 +618,7 @@
         }
       },
       "effective": {
-        "education-center": "02da115d59854835ed4d085f9ff0b15bc3032199beaa51ff9afa2d5b67570b9e"
+        "education-center": "ab9ef86df68ef6bf1ea04e74160620a326793602c8f1e3701817a5e446d2f233"
       }
     },
     "education-center-customer-initialization": {
@@ -646,20 +646,20 @@
       }
     },
     "education-center-director-daily-planner": {
-      "version": "1.0.7",
+      "version": "1.0.8",
       "requires": {
         "bos-mcp-client": "1.0.7",
         "bos-visual-output": "1.0.7",
-        "education-center-class-operations": "1.0.7",
+        "education-center-class-operations": "1.0.8",
         "education-center-customer-initialization": "1.0.7",
-        "education-center-service-routing": "1.0.7",
-        "education-center-student-operations": "1.0.7",
+        "education-center-service-routing": "1.0.8",
+        "education-center-student-operations": "1.0.8",
         "email-account-routing": "1.0.7"
       },
       "path": "source/verticals/education-center/education-center-director-daily-planner",
       "files": {
         "SKILL.md": {
-          "sha256": "832f6eb1a37f31069e0cb98fa1c9da3215cf939c3418982fa0301e55512e6669",
+          "sha256": "9fcaa096faae4e807984a1ec0f234d364462a73bfd2604c97223010d49a100fd",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -696,20 +696,20 @@
         }
       },
       "effective": {
-        "education-center": "7cff1bb81814e35c5b714b25f945d99e860c06aac9777982c53a27107bde6c19"
+        "education-center": "5207d07b798ba05723a51239fae2ab7e7f914bd7fc3b95a6542e3036e4ce2d95"
       }
     },
     "education-center-instructor-operations": {
-      "version": "1.0.7",
+      "version": "1.0.8",
       "requires": {
         "bos-mcp-client": "1.0.7",
         "bos-visual-output": "1.0.7",
-        "education-center-service-routing": "1.0.7"
+        "education-center-service-routing": "1.0.8"
       },
       "path": "source/verticals/education-center/education-center-instructor-operations",
       "files": {
         "SKILL.md": {
-          "sha256": "6e235e9440773429744c90cd1467db0119c6684631ba80bed42a81a29ce5c9e0",
+          "sha256": "a97d7ec5f62724081f5f59db31afe294915c0ae6753c17c75666772ad6586084",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -718,22 +718,22 @@
         }
       },
       "effective": {
-        "education-center": "f789e468e81bd90684ac676666fe25e1c426cd233ee6c4d1143f1e692bcab017"
+        "education-center": "847f47c48732ac2426bb83a85ed801a7a16732328aec906979144276a96afb0b"
       }
     },
     "education-center-invoice-operations": {
-      "version": "1.0.7",
+      "version": "1.0.8",
       "requires": {
         "bos-mcp-client": "1.0.7",
         "bos-visual-output": "1.0.7",
-        "education-center-class-operations": "1.0.7",
+        "education-center-class-operations": "1.0.8",
         "education-center-customer-initialization": "1.0.7",
-        "education-center-service-routing": "1.0.7"
+        "education-center-service-routing": "1.0.8"
       },
       "path": "source/verticals/education-center/education-center-invoice-operations",
       "files": {
         "SKILL.md": {
-          "sha256": "967e2815fe85fc208bc40b96d7da3d5f589e3c5e9f8c163dd6ebc0c8192ee674",
+          "sha256": "b8fbeffe7bf7acb55927d4f68e45824bd958474b9810b679cdcd434cb2c40ff1",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -758,20 +758,20 @@
         }
       },
       "effective": {
-        "education-center": "91111e430697c8cb31c477318bb091f51b33c6444fe8d2dee5eed32de1c9e5ac"
+        "education-center": "2652c6f6f141c61a5eb5bdcd11dc654003c347c0cfd4ed8e8ff5278e1212b157"
       }
     },
     "education-center-paid-attribution-operations": {
-      "version": "1.0.7",
+      "version": "1.0.8",
       "requires": {
         "bos-mcp-client": "1.0.7",
         "bos-visual-output": "1.0.7",
-        "education-center-service-routing": "1.0.7"
+        "education-center-service-routing": "1.0.8"
       },
       "path": "source/verticals/education-center/education-center-paid-attribution-operations",
       "files": {
         "SKILL.md": {
-          "sha256": "d49b4c6a7e7ed393398d23b17240b42ecf52ea2767d5ec18575aeb070c8ba35a",
+          "sha256": "daa057aa7d608a185f1e4ab7be18c2b4bdf514f1075df32c8baffb5d276f4767",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -788,22 +788,22 @@
         }
       },
       "effective": {
-        "education-center": "e27a992c6935306c9a027b1465d8412514519347bbe6f140a6a35db45a01a5e6"
+        "education-center": "abd437b1e7ac9c446a90e669daf0492b3788200da2a4ef15e7cfba6cfbd2b083"
       }
     },
     "education-center-parent-communications": {
-      "version": "1.0.7",
+      "version": "1.0.8",
       "requires": {
-        "bos-google-review-outreach": "1.0.7",
+        "bos-google-review-outreach": "1.0.8",
         "bos-mcp-client": "1.0.7",
         "bos-visual-output": "1.0.7",
-        "education-center-service-routing": "1.0.7",
+        "education-center-service-routing": "1.0.8",
         "email-account-routing": "1.0.7"
       },
       "path": "source/verticals/education-center/education-center-parent-communications",
       "files": {
         "SKILL.md": {
-          "sha256": "d0c07d582233acba4fda793a2179ea271adf9b15b24b1cc2f60fb5ef03d79f50",
+          "sha256": "61eab93f7df31ca6d3a73495f4bfcf6df8dd0209cfac08e4807cbc180f37d27f",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -812,11 +812,11 @@
         }
       },
       "effective": {
-        "education-center": "a921d36532da4108d0340866344e10325041c46331a01011f29c091f9a073a30"
+        "education-center": "bc84df5f5dad65b6de53a394b429f0ba403f570f7a971daae9a3a99d4c07a052"
       }
     },
     "education-center-service-routing": {
-      "version": "1.0.7",
+      "version": "1.0.8",
       "requires": {
         "bos-mcp-client": "1.0.7",
         "bos-visual-output": "1.0.7",
@@ -827,7 +827,7 @@
       "path": "source/verticals/education-center/education-center-service-routing",
       "files": {
         "SKILL.md": {
-          "sha256": "b45f51308f3e18f4ac33567b34d4e714237fd3430ffed9ca0f524a6cc66c5329",
+          "sha256": "e2bd86289f9397cf3368044818e3ccbf75ee9f6c54a2e4d470b06a007e7dcc6d",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -836,19 +836,19 @@
         }
       },
       "effective": {
-        "education-center": "1a6f91cd3bd211c35393a4d768963e83137bcdf36b9f72b3164302d64fe484c1"
+        "education-center": "d700265e85c68f00faa8c2a347c6c030ef7fb1568ec98fc3f9d6881c5cbacbd9"
       }
     },
     "education-center-student-operations": {
-      "version": "1.0.7",
+      "version": "1.0.8",
       "requires": {
         "bos-mcp-client": "1.0.7",
-        "education-center-service-routing": "1.0.7"
+        "education-center-service-routing": "1.0.8"
       },
       "path": "source/verticals/education-center/education-center-student-operations",
       "files": {
         "SKILL.md": {
-          "sha256": "23c8a2dda859371b819eafcbe897beace8625b481be0374846cff01de64cae6a",
+          "sha256": "549ecf6494a7f54f6b2fa9c726ab3b5834659fd9c7e27a010e1a0d11326f6311",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -857,20 +857,20 @@
         }
       },
       "effective": {
-        "education-center": "c252bab6e96444a89b85ac1fb6ae75f80c1662dc7807c60d5b0036744b318be0"
+        "education-center": "a59beeb96452ae8b618d066480d368b394fe5047f7e4c0f8309fa8004cb6cf56"
       }
     },
     "education-center-trial-reconciliation": {
-      "version": "1.0.7",
+      "version": "1.0.8",
       "requires": {
         "bos-mcp-client": "1.0.7",
         "bos-visual-output": "1.0.7",
-        "education-center-service-routing": "1.0.7"
+        "education-center-service-routing": "1.0.8"
       },
       "path": "source/verticals/education-center/education-center-trial-reconciliation",
       "files": {
         "SKILL.md": {
-          "sha256": "4f82b75f84cd7baa68265b3539415916dd1e0f5f8801e2829686be4365ca9454",
+          "sha256": "2d9f0e231179de41325d9a2a2415af49dc6ba3a612bcd5a4c57cfe99cdfb47e1",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -879,7 +879,7 @@
         }
       },
       "effective": {
-        "education-center": "359fc2e81c422e3542d1147439f38e1fcd0d71ee0ec8bacf40c646ed96140ec4"
+        "education-center": "c07ce5efa2db15653ed1ef1f2ea6d2c828964edb6674f8e24a06af05242922c4"
       }
     },
     "email-account-routing": {
@@ -941,14 +941,14 @@
       }
     },
     "local-school-market-research": {
-      "version": "1.0.7",
+      "version": "1.0.8",
       "requires": {
         "marketing-analysis": "1.0.7"
       },
       "path": "source/verticals/education-center/local-school-market-research",
       "files": {
         "SKILL.md": {
-          "sha256": "79909fda239153284360746ff80016f7246ef459bacc369c4746d2e82cc0e36a",
+          "sha256": "9a2423f1f159c750305041e14a4fd31688588ba581c73958a6950a9dee7b0238",
           "mode": 420
         },
         "references/research-fields.md": {
@@ -957,16 +957,16 @@
         }
       },
       "effective": {
-        "education-center": "85174c878d42a76c00d305f78192c0a107a8fbb9ce2d98aba695e23781c49266"
+        "education-center": "6fc35da2279c0df3cfa180bbb7a22ecefd35f40d970a0c47c459d0c47578be33"
       }
     },
     "manage-customer-extension": {
-      "version": "1.0.7",
+      "version": "1.0.8",
       "requires": {},
       "path": "source/platform/manage-customer-extension",
       "files": {
         "SKILL.md": {
-          "sha256": "778aecdebec5f3a86f0ebce1c6b4e9980af93bbeee9c0a402381a91a9e5415fc",
+          "sha256": "f0bc9bde0b1a7ed14f30ebf5294cbbc219d087d3e8040c070024222a2644a463",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -979,8 +979,8 @@
         }
       },
       "effective": {
-        "bos": "ddd8750ac26b34b09731a076c42e11966fb910e57f111e1a476e5e14c0f81ef0",
-        "education-center": "a1ccaa93643fb3bcbf4cc022de3d9b2cd44775e0e3e81838c7e19736a0323d82"
+        "bos": "1308eaeb4e3bb5f62831f7b3e03dc5fefc7722fd220f93face166f5b49456935",
+        "education-center": "37ce09bd640f7ce23143bc050a4c28edab7ceb6b663d4cc348cacc108a774231"
       }
     },
     "marketing-analysis": {
@@ -1044,17 +1044,17 @@
       }
     },
     "partnership-proposal-builder": {
-      "version": "1.0.7",
+      "version": "1.0.8",
       "requires": {},
       "path": "source/verticals/education-center/partnership-proposal-builder",
       "files": {
         "SKILL.md": {
-          "sha256": "85c7a467854c109c1ea70ae43c185f9a8d0b411eea43a9c021b14fc8bb0def51",
+          "sha256": "9db8169c27cf773db002c0a7320eda1514e3ef5415315f37c4022184b237a741",
           "mode": 420
         }
       },
       "effective": {
-        "education-center": "852c0dbfc5ea0c8c3eb171d6a56fe79af9d5938b515eb904bcb7219d6e24c598"
+        "education-center": "79dbd086600c8db4b072c086291a4918d59392015314b675aecc3769652550fa"
       }
     },
     "planning": {
@@ -1112,15 +1112,15 @@
       }
     },
     "sendgrid-campaign-operations": {
-      "version": "1.0.7",
+      "version": "1.0.8",
       "requires": {
         "bos-mcp-client": "1.0.7",
-        "education-center-service-routing": "1.0.7"
+        "education-center-service-routing": "1.0.8"
       },
       "path": "source/capabilities/sendgrid-campaign-operations",
       "files": {
         "SKILL.md": {
-          "sha256": "5e8c4496eef2cd2944b4cd0baca316abf8ced7f52be47bc65b0d1d9b3d3f3b3e",
+          "sha256": "601a8c891071a78e8954e27972abd203e5785f7a15c4e07612e1c4dd9196822b",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -1141,7 +1141,7 @@
         }
       },
       "effective": {
-        "education-center": "6f23b454f16adebe49ebb64aa0c76deef8ef45e17c3ca9e6a04ccf3a6918188b"
+        "education-center": "df87994498c0c6dfe9a1f6bedfaf5fee6f459e7415360922a02836d153c6a7ec"
       }
     },
     "sendgrid-campaigns": {
@@ -1197,14 +1197,14 @@
       }
     },
     "submit-feedback": {
-      "version": "1.0.7",
+      "version": "1.0.8",
       "requires": {
         "bos-mcp-client": "1.0.7"
       },
       "path": "source/platform/submit-feedback",
       "files": {
         "SKILL.md": {
-          "sha256": "a27d590c1bbc92d361528342504cce52571d7db9d2835e6d4f4c10c3cfcb0811",
+          "sha256": "dfb86ec8ac8b584b32d0ee6bd14a466c8a476cd6bca128e9f79227f9fe67b35d",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -1212,7 +1212,7 @@
           "mode": 420
         },
         "references/feedback-contract.md": {
-          "sha256": "dc46a08ba366f7275931f6fba11b9c9a43800b3ca996b19b5a3dd0c7dee4fb48",
+          "sha256": "b79ca0953502c62fd52222546f022bc014d976b6f661afc79368da57cdbceab2",
           "mode": 420
         },
         "scripts/discover-customizations.mjs": {
@@ -1225,8 +1225,8 @@
         }
       },
       "effective": {
-        "bos": "baca4758865b049ed8975526565bd9c8454dd34a99803fa4c0915707c60a557e",
-        "education-center": "4063f977b737ec9b043191d68cebb8346c154846f9c57da6deb7643359ecbf84"
+        "bos": "fc5db7073c180449feeb4d19d9ab1f60430ededc32fdda3c45906162b5e9927f",
+        "education-center": "efc24a5a043bfeaaa2589d25adfd0238484fe85df39d1bf4cf3c5db690bf1f60"
       }
     },
     "video-ad-briefing": {

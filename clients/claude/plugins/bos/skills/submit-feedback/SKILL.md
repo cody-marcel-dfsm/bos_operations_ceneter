@@ -2,7 +2,7 @@
 name: submit-feedback
 description: Submit or draft private BOS product feedback with sanitized media, track its lifecycle, and discuss or complete an existing report through currently supported operations. Use for product feedback, report session, feedback tracking, replies, and reporter completion.
 metadata:
-  version: "1.0.7"
+  version: "1.0.8"
   requires: "{\"bos-mcp-client\":\"1.0.7\"}"
 ---
 
@@ -237,6 +237,43 @@ feedback meaningless.
    report `BOS feedback capability unavailable`.
 
 Never create a client-side feedback file, cache, or offline queue.
+
+## Add evidence to an existing discussion
+
+Inspect the current operation schemas before declaring a capability unavailable.
+Comments are text-only in the current contract; attachment support belongs to
+`feedback.create` / `bos_submit_feedback`. A missing `attachments` field on the
+comment operation does not mean feedback cannot carry media. Use a direct
+attachment operation only if actually advertised; never invent comment fields,
+endpoints, upload URLs or relationship fields. HTTPS calls use the returned
+method and URI through the existing BOS adapter; native tools retain their own
+advertised envelope. Do not pass an HTTPS descriptor as `bos_execute` arguments.
+
+Obtain applicable user authorization for both creating an evidence continuation
+and linking it to the existing discussion. Preserve the submission confirmation
+and sanitization rules above. Read the original report in the same selected
+scope, retain its original target, and inspect and sanitize the media before
+asserting `sanitized: true`. Explain that the continuation creates another private
+report: it is not an in-place attachment to a comment. Reference the original
+feedback ID in supported title/message text; retain the original discussion and
+lifecycle as the primary work item.
+
+Create one continuation using only supported submission fields. Link the actual
+`feedback_id` from its successful receipt in a text comment on the original.
+For a reply, copy `parent_comment_id` from that original record's current
+`comments[].event_id`; follow advertised pagination to find an older parent.
+Read back the continuation's attachment metadata/media and read back the original
+comment, parent and attribution before reporting delivery. Follow the worked
+JSON inputs below when present, or the reference's example; illustrative IDs
+never authorize a write.
+
+If creating succeeds but linking fails, report partial delivery, retain the new
+ID in the current task, and do not create another continuation. Resolve the link
+using current authority and the service's response. An uncertain write follows
+only the exact service-returned state action; never blindly replay either write.
+Honor Retry-After. If a required capability is unavailable or authority is denied,
+preserve a sanitized draft and state the exact missing step; do not switch scope,
+change the original lifecycle, or claim the evidence was linked.
 
 ## Track and discuss feedback
 
