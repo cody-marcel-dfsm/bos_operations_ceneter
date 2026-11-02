@@ -11,33 +11,57 @@
         "fixtures": [],
         "name": "focused",
         "tests": [
-          "tests/feedback-evidence-guidance.test.mjs"
+          "tests/feedback-evidence-guidance.test.mjs",
+          "tests/versioned-skills.test.mjs"
         ]
       }
     ],
     "change_class": "bug_fix",
-    "reason": "Small deterministic executable-guidance correction within the existing feedback skill; no transport, authorization enforcement, service schema or runtime implementation change. Retain an actual assertion failure before implementation and pass afterward with identical test bytes. The focused file must cover the worked sequence, explicit write authorization, sanitization, discovery-gated unsupported capabilities, actual receipt linking and readback, partial-link failure and uncertain-outcome non-replay, unchanged original lifecycle, absence of invented attachment/comment fields, and applicable generated-client parity. Use synthetic examples only. No integration or broader regression is selected. Preserve the original request clock and 180-second end-to-end budget; local results establish source validation only.",
-    "revision_of": null,
+    "reason": "Retain the unchanged feedback reproduction and generated-guidance parity checks. Add the existing small deterministic versioned-skills file because the revision newly admits exact dependency pins, transitive version propagation, release-manifest identities and product-specific metadata transformation. Its synthetic fixtures are constructed inline; no external fixtures or integration suite is needed. Do not add the broad package-model suite or recurrence registry. Preserve original fail-before evidence for feedback-evidence-guidance.test.mjs; the added metadata checks supplement it rather than replacing it. Retain the original 180-second request clock and all prior statuses. Native package generation and completed review must verify that admitted metadata changes are mechanical and generated artifacts match canonical sources.",
+    "revision_of": "c27b9fdd0f53643684941bed9c502a8a4dfea09cbb103747d767ed52d4b22930",
     "scope_paths": [
       "source/platform/submit-feedback/SKILL.md",
       "source/platform/submit-feedback/references/feedback-contract.md",
+      "source/platform/bos-plugin-console/SKILL.md",
+      "source/platform/bos-plugin-settings-initialization/SKILL.md",
+      "source/platform/bos-plugin-settings/SKILL.md",
+      "source/platform/manage-customer-extension/SKILL.md",
+      "source/capabilities/agent-call-operations/SKILL.md",
+      "source/capabilities/review-outreach/SKILL.md",
+      "source/capabilities/sendgrid-campaign-operations/SKILL.md",
+      "source/verticals/education-center/camp-capacity-planning/SKILL.md",
+      "source/verticals/education-center/education-center-class-operations/SKILL.md",
+      "source/verticals/education-center/education-center-director-daily-planner/SKILL.md",
+      "source/verticals/education-center/education-center-instructor-operations/SKILL.md",
+      "source/verticals/education-center/education-center-invoice-operations/SKILL.md",
+      "source/verticals/education-center/education-center-paid-attribution-operations/SKILL.md",
+      "source/verticals/education-center/education-center-parent-communications/SKILL.md",
+      "source/verticals/education-center/education-center-service-routing/SKILL.md",
+      "source/verticals/education-center/education-center-student-operations/SKILL.md",
+      "source/verticals/education-center/education-center-trial-reconciliation/SKILL.md",
+      "source/verticals/education-center/local-school-market-research/SKILL.md",
+      "source/verticals/education-center/partnership-proposal-builder/SKILL.md",
       "tests/feedback-evidence-guidance.test.mjs",
+      "tests/versioned-skills.test.mjs",
       "tools/validation-selection.json",
-      "clients/claude/plugins/bos/skills/submit-feedback",
-      "clients/claude/plugins/education-center/skills/submit-feedback",
-      "clients/codex/plugins/bos/skills/submit-feedback",
-      "clients/codex/plugins/education-center/skills/submit-feedback",
-      "clients/copilot/skills/submit-feedback",
-      "clients/copilot/products/bos/skills/submit-feedback",
-      "clients/copilot/products/education-center/skills/submit-feedback",
-      "clients/gemini/extensions/bos/skills/submit-feedback",
-      "clients/gemini/extensions/education-center/skills/submit-feedback",
-      "clients/muse/plugins/bos/skills/submit-feedback",
-      "clients/muse/plugins/education-center/skills/submit-feedback"
+      "skill-release-manifest.json",
+      "clients/claude/plugins/bos",
+      "clients/claude/plugins/education-center",
+      "clients/codex/plugins/bos",
+      "clients/codex/plugins/education-center",
+      "clients/copilot/skills",
+      "clients/copilot/products/bos",
+      "clients/copilot/products/education-center",
+      "clients/gemini/extensions/bos",
+      "clients/gemini/extensions/education-center",
+      "clients/muse/plugins/bos",
+      "clients/muse/plugins/education-center",
+      "products/bos/openai/bos-skills.zip",
+      "products/education-center/openai/education-center-skills.zip"
     ]
   },
-  "base_commit": "85e798c73b97c2f1589d864cc8bda861713102b1",
-  "base_tree": "af052c8c7786453e9e27603056cea2eda4a5cfff",
+  "base_commit": "b509324bd7ad9ac5c7441737711b3a3ce2eb66a6",
+  "base_tree": "598f68cf7c9225c4d0353136258056fc4a43140c",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v26.12.0",
@@ -47,8 +71,8 @@
     "architecture": "x86_64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "715c6e1d120456ef71ff15f71f62440ef4e5ffe24b2e1357edc98f75ec9da2cd",
-  "review_sha256": "4678df5215f01b4c19a55c68745e86254e81b0d463f8180f0599a95a731a4cf6",
+  "proposal_sha256": "f6dd2194a2a818ae783230150fb927f2bdbf90a7e5439c5bc96bf9c2b3c60ae3",
+  "review_sha256": "5eb895f3f822d07ac24fa077f33d49ae7e24c806efeefa248d531855661c8daa",
   "commands": [
     {
       "category": "sanity",
@@ -66,10 +90,12 @@
         "node",
         "--test",
         "--test-reporter=tap",
-        "tests/feedback-evidence-guidance.test.mjs"
+        "tests/feedback-evidence-guidance.test.mjs",
+        "tests/versioned-skills.test.mjs"
       ],
       "tests": [
-        "tests/feedback-evidence-guidance.test.mjs"
+        "tests/feedback-evidence-guidance.test.mjs",
+        "tests/versioned-skills.test.mjs"
       ],
       "fixtures": []
     }
@@ -83,5 +109,5 @@
     "reasoning_effort": "low",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "c27b9fdd0f53643684941bed9c502a8a4dfea09cbb103747d767ed52d4b22930"
+  "contract_sha256": "3c59f60dd4ba3aa9be6f29520fb7adc04149e0a63378c98af5c8e59d6cd4728a"
 }
