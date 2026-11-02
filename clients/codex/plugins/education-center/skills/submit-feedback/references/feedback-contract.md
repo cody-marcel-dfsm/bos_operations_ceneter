@@ -201,6 +201,83 @@ There is no feedback push subscription. Polling supports v1 tracking when
 requested. Issues, discussion and media remain private;
 only separately authorized code patches may become public.
 
+## Add evidence to an existing discussion
+
+Inspect the current operation schemas before declaring a capability unavailable.
+Comments are text-only in the current contract; attachment support belongs to
+`feedback.create` / `bos_submit_feedback`. A missing `attachments` field on the
+comment operation does not mean feedback cannot carry media. Use a direct
+attachment operation only if actually advertised; never invent comment fields,
+endpoints, upload URLs or relationship fields. HTTPS calls use the returned
+method and URI through the existing BOS adapter; native tools retain their own
+advertised envelope. Do not pass an HTTPS descriptor as `bos_execute` arguments.
+
+Obtain applicable user authorization for both creating an evidence continuation
+and linking it to the existing discussion. Preserve the submission confirmation
+and sanitization rules above. Read the original report in the same selected
+scope, retain its original target, and inspect and sanitize the media before
+asserting `sanitized: true`. Explain that the continuation creates another private
+report: it is not an in-place attachment to a comment. Reference the original
+feedback ID in supported title/message text; retain the original discussion and
+lifecycle as the primary work item.
+
+Create one continuation using only supported submission fields. Link the actual
+`feedback_id` from its successful receipt in a text comment on the original.
+For a reply, copy `parent_comment_id` from that original record's current
+`comments[].event_id`; follow advertised pagination to find an older parent.
+Read back the continuation's attachment metadata/media and read back the original
+comment, parent and attribution before reporting delivery. Follow the worked
+JSON inputs below when present, or the reference's example; illustrative IDs
+never authorize a write.
+
+If creating succeeds but linking fails, report partial delivery, retain the new
+ID in the current task, and do not create another continuation. Resolve the link
+using current authority and the service's response. An uncertain write follows
+only the exact service-returned state action; never blindly replay either write.
+Honor Retry-After. If a required capability is unavailable or authority is denied,
+preserve a sanitized draft and state the exact missing step; do not switch scope,
+change the original lifecycle, or claim the evidence was linked.
+
+These are synthetic sample inputs. Replace sample IDs with actual returned IDs,
+copy the original target, and replace the tiny synthetic PNG with media you have
+inspected and sanitized. They are business bodies for the discovered HTTPS
+operations; native calls additionally use their live-declared context envelope.
+Do not execute these samples unchanged.
+
+1. Read the original through discovered `feedback.get`. After applicable
+   authorization, submit through discovered `feedback.create`:
+
+```json
+{
+  "category": "other",
+  "severity": "low",
+  "target": {"type": "general"},
+  "title": "Evidence continuation for FB-2099-000001",
+  "message": "Additional sanitized evidence for FB-2099-000001. Continue discussion and lifecycle on the original report.",
+  "attachments": [{
+    "mime_type": "image/png",
+    "data_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+    "sanitized": true
+  }]
+}
+```
+
+2. If the successful receipt returns `result.feedback_id: FB-2099-000002`,
+   read that report with discovered `feedback.get` and verify its media.
+   Then use discovered `comments.create` on the original:
+
+```json
+{
+  "feedback_id": "FB-2099-000001",
+  "body": "Sanitized evidence is attached to continuation report FB-2099-000002.",
+  "parent_comment_id": "11111111-1111-4111-8111-111111111111"
+}
+```
+
+3. Replace the sample parent with an actual event ID from the original's fresh
+   comments; omit it for a flat comment. Read the original again and verify the
+   saved link and attribution. Return both IDs and the verified delivery status.
+
 ## Errors
 
 - `authentication_required`: run local BOS auth.
