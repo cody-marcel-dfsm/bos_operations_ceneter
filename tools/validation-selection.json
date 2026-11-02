@@ -1,0 +1,87 @@
+{
+  "schema": "boc.validation-contract/v1",
+  "selection": {
+    "categories": [
+      {
+        "fixtures": [],
+        "name": "sanity",
+        "tests": []
+      },
+      {
+        "fixtures": [],
+        "name": "focused",
+        "tests": [
+          "tests/feedback-evidence-guidance.test.mjs"
+        ]
+      }
+    ],
+    "change_class": "bug_fix",
+    "reason": "Small deterministic executable-guidance correction within the existing feedback skill; no transport, authorization enforcement, service schema or runtime implementation change. Retain an actual assertion failure before implementation and pass afterward with identical test bytes. The focused file must cover the worked sequence, explicit write authorization, sanitization, discovery-gated unsupported capabilities, actual receipt linking and readback, partial-link failure and uncertain-outcome non-replay, unchanged original lifecycle, absence of invented attachment/comment fields, and applicable generated-client parity. Use synthetic examples only. No integration or broader regression is selected. Preserve the original request clock and 180-second end-to-end budget; local results establish source validation only.",
+    "revision_of": null,
+    "scope_paths": [
+      "source/platform/submit-feedback/SKILL.md",
+      "source/platform/submit-feedback/references/feedback-contract.md",
+      "tests/feedback-evidence-guidance.test.mjs",
+      "tools/validation-selection.json",
+      "clients/claude/plugins/bos/skills/submit-feedback",
+      "clients/claude/plugins/education-center/skills/submit-feedback",
+      "clients/codex/plugins/bos/skills/submit-feedback",
+      "clients/codex/plugins/education-center/skills/submit-feedback",
+      "clients/copilot/skills/submit-feedback",
+      "clients/copilot/products/bos/skills/submit-feedback",
+      "clients/copilot/products/education-center/skills/submit-feedback",
+      "clients/gemini/extensions/bos/skills/submit-feedback",
+      "clients/gemini/extensions/education-center/skills/submit-feedback",
+      "clients/muse/plugins/bos/skills/submit-feedback",
+      "clients/muse/plugins/education-center/skills/submit-feedback"
+    ]
+  },
+  "base_commit": "85e798c73b97c2f1589d864cc8bda861713102b1",
+  "base_tree": "af052c8c7786453e9e27603056cea2eda4a5cfff",
+  "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
+  "runtime": {
+    "node": "v26.12.0",
+    "node_sha256": "caa24debe02770c92a70677e2a62ca98890150e7ac1c17bcfe31bcc98cc89943",
+    "controller_sha256": "fa67443527ed9647f760d807e2a38f26340757123e643c4639cf273ed15d5ea7",
+    "platform": "Linux",
+    "architecture": "x86_64",
+    "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
+  },
+  "proposal_sha256": "715c6e1d120456ef71ff15f71f62440ef4e5ffe24b2e1357edc98f75ec9da2cd",
+  "review_sha256": "4678df5215f01b4c19a55c68745e86254e81b0d463f8180f0599a95a731a4cf6",
+  "commands": [
+    {
+      "category": "sanity",
+      "argv": [
+        "python3",
+        "tools/validation_contract.py",
+        "sanity"
+      ],
+      "tests": [],
+      "fixtures": []
+    },
+    {
+      "category": "focused",
+      "argv": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "tests/feedback-evidence-guidance.test.mjs"
+      ],
+      "tests": [
+        "tests/feedback-evidence-guidance.test.mjs"
+      ],
+      "fixtures": []
+    }
+  ],
+  "delivery_policy": {
+    "sla_seconds": 180,
+    "clock_owner": "build_host",
+    "clock_start": "original_insertion",
+    "completion": "verified_remote_git",
+    "retries_reset_clock": false,
+    "reasoning_effort": "low",
+    "maximum_reasoning_effort": "medium"
+  },
+  "contract_sha256": "c27b9fdd0f53643684941bed9c502a8a4dfea09cbb103747d767ed52d4b22930"
+}
