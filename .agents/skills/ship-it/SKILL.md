@@ -23,6 +23,19 @@ Ordinary agents invoke the native Oracle and never adopt its approver role.
 
 # Ship It
 
+## Deterministic skill-package release — controlling owner correction
+
+For the owner-authorized bounded skill/release-tool profile, first apply
+`tools/deterministic-package.md`. Invoke `tools/deterministic_package.py validate`
+against the exact fetched publication base on committed source, then `verify`.
+The fixed complete commands, custody and native negative tests replace model
+proposal/review for this profile. Use its version-bound push and normal CI-gated
+merge commands for publication. Do not invoke a model, construct an approval
+receipt, copy missing private Vault files or use the BOS server build API for
+this client package. Preserve failed observations and original request clocks;
+unknown original timing remains unknown/breached. Unsupported scope fails closed.
+This controls the older model-review steps below for this profile only.
+
 ## Separate validation and publication — owner correction, October 23, 2026
 
 Validation completes before publication. Detect every committed changelist against

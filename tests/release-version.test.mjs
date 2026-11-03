@@ -270,3 +270,17 @@ test("malformed existing private notes fail before any release file changes", as
   assert.equal(await readFile(join(root, "README.md"), "utf8"), readme);
   assert.equal(await readFile(note, "utf8"), "An existing note without its version marker.");
 });
+
+test("normal release continuation uses deterministic checks without dispatching a model reviewer", async () => {
+  const root = await mkdtemp(join(tmpdir(), "bos-release-deterministic-"));
+  await mkdir(join(root, "scripts"));
+  await mkdir(join(root, "tools"));
+  await writeFile(join(root, "scripts/release.mjs"), await readFile(join(repositoryRoot, "scripts/release.mjs")));
+  await writeFile(join(root, "tools/shipment_state.py"), 'print(\'{"state":"REVIEW_IN_PROGRESS"}\')\n');
+  await writeFile(join(root, "tools/oracle_approval.py"), 'raise RuntimeError("model dispatch must not occur")\n');
+  await writeJson(join(root, "package.json"), { type: "module", scripts: {
+    "release:check": "node -e \"require('fs').writeFileSync('deterministic-check-ran', 'passed')\""
+  } });
+  execFileSync(process.execPath, ["scripts/release.mjs"], { cwd: root, encoding: "utf8" });
+  assert.equal(await readFile(join(root, "deterministic-check-ran"), "utf8"), "passed");
+});
