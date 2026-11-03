@@ -234,7 +234,29 @@ def validate(root, base, requested_at):
     return read_receipt(root)
 
 
+def effect(root, command, value):
+    began = time.time()
+    try:
+        result = subprocess.run(command, cwd=root, capture_output=True, timeout=120)
+        output, code = result.stdout + b'\n' + result.stderr, result.returncode
+    except subprocess.TimeoutExpired as error:
+        output, code = (error.stdout or b'') + b'\n' + (error.stderr or b''), 'TIMEOUT'
+    checksum = native.digest(output)
+    path = directory(root) / (checksum + '.log')
+    if not path.exists():
+        native.private_write(path, output)
+    record = {'kind': KIND + '-publication-attempt', 'source': value['source'],
+              'tree': value['tree'], 'base': value['base'], 'command': command,
+              'exit_code': code, 'output_sha256': checksum,
+              'started_at': began, 'completed_at': time.time()}
+    native.private_write(directory(root) / (str(time.time_ns()) + '.publication.json'), native.encoded(record))
+    if code != 0:
+        raise ValueError('Git publication failed; original attempt retained: ' + str(path))
+
+
 def publish(root, ref, pr=None):
+    if pr is not None and not re.fullmatch('[1-9][0-9]*', str(pr)):
+        raise ValueError('Exact numeric pull request identity required')
     value = read_receipt(root)
     version = json.loads(blob(root, value['source'], 'package.json'))['version']
     if ref != 'codex/release-v' + version:
@@ -248,7 +270,10 @@ def publish(root, ref, pr=None):
     if native.git(root, 'ls-remote', remote, 'refs/heads/main').split()[0] != value['base']:
         raise ValueError('Remote publication base moved; integrate and revalidate')
     if pr is None:
-        subprocess.run(['git', 'push', remote, value['source'] + ':refs/heads/' + ref], cwd=root, check=True)
+        effect(root, ['git', 'push', remote, value['source'] + ':refs/heads/' + ref], value)
+        observed = native.git(root, 'ls-remote', remote, 'refs/heads/' + ref).split()
+        if not observed or observed[0] != value['source']:
+            raise ValueError('Release branch publication was not confirmed; read state before retrying')
     else:
         try:
             from . import publication_admission as admission
@@ -261,8 +286,8 @@ def publish(root, ref, pr=None):
         read_receipt(root)
         if native.git(root, 'ls-remote', remote, 'refs/heads/main').split()[0] != value['base']:
             raise ValueError('Remote publication base moved during CI admission')
-        subprocess.run(['gh', 'pr', 'merge', str(pr), '--repo', native.REPOSITORY,
-                        '--merge', '--match-head-commit', value['source']], cwd=root, check=True)
+        effect(root, ['gh', 'pr', 'merge', str(pr), '--repo', native.REPOSITORY,
+                      '--merge', '--match-head-commit', value['source']], value)
         merged = native.git(root, 'ls-remote', remote, 'refs/heads/main').split()[0]
         native.git(root, 'fetch', 'origin')
         if native.git(root, 'rev-parse', merged + '^{tree}') != value['tree']:

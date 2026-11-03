@@ -222,19 +222,45 @@ class PackageGateTests(unittest.TestCase):
 
     def test_existing_owner_ssh_publishes_only_the_verified_sha_and_version_ref(self):
         value = self.validate()
+        store = d.directory(self.root)
         remote = 'git' + chr(64) + 'github.com:' + d.native.REPOSITORY + '.git'
         def observed(root, *args):
+            if args[-1] == 'refs/heads/codex/release-v1.0.0':
+                return value['source'] + '\t' + args[-1]
             return remote if args[0] == 'remote' else value['base'] + '\trefs/heads/main'
         with patch.object(d, 'read_receipt', return_value=value), \
                 patch.object(d, 'blob', return_value=b'{"version":"1.0.0"}'), \
+                patch.object(d, 'directory', return_value=store), \
                 patch.object(d.native, 'git', side_effect=observed), \
-                patch.object(d.subprocess, 'run') as run:
+                patch.object(d.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, b'published', b'')) as run:
             result = d.publish(self.root, 'codex/release-v1.0.0')
             self.assertEqual(result['status'], 'RELEASE_SOURCE_PUSHED')
             self.assertFalse(result['deployment_authorized'])
             run.assert_called_once_with(['git', 'push', remote,
                                          value['source'] + ':refs/heads/codex/release-v1.0.0'],
-                                        cwd=self.root, check=True)
+                                        cwd=self.root, capture_output=True, timeout=120)
+            self.assertEqual(len(list(store.glob('*.publication.json'))), 1)
+
+    def test_failed_publication_retains_actual_native_output_without_success(self):
+        value = self.validate()
+        store = d.directory(self.root)
+        result = subprocess.CompletedProcess(['git'], 128, b'', b'permission denied')
+        with patch.object(d, 'directory', return_value=store), \
+                patch.object(d.subprocess, 'run', return_value=result):
+            with self.assertRaisesRegex(ValueError, 'publication failed'):
+                d.effect(self.root, ['git', 'push'], value)
+        records = [json.loads(path.read_bytes()) for path in store.glob('*.publication.json')]
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]['exit_code'], 128)
+        self.assertEqual(records[0]['source'], value['source'])
+        self.assertIn(b'permission denied', (store / (records[0]['output_sha256'] + '.log')).read_bytes())
+
+    def test_pull_request_option_injection_is_refused_before_any_effect(self):
+        with patch.object(d, 'read_receipt') as read, patch.object(d.subprocess, 'run') as run:
+            with self.assertRaisesRegex(ValueError, 'numeric'):
+                d.publish(self.root, 'codex/release-v1.0.0', '--admin')
+            read.assert_not_called()
+            run.assert_not_called()
 
 
 if __name__ == '__main__':
