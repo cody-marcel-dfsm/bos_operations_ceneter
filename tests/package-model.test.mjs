@@ -2681,7 +2681,7 @@ test("README routes customer, development, and credential-free release validatio
   assert.equal(repositoryPackage.scripts.build, "npm run build:packages");
   assert.equal(
     repositoryPackage.scripts["release:check"],
-    "python3 tools/validation_contract.py release"
+    "python3 tools/deterministic_package.py validate"
   );
   assert.equal(
     repositoryPackage.scripts["acceptance:post-release"],

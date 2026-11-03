@@ -119,6 +119,8 @@ def scope(root, base, source):
             continue
         if path == 'README.md':
             def without_release(value):
+                value = re.sub(rb'\n<!-- deterministic-package-release -->.*?<!-- /deterministic-package-release -->\n',
+                               b'\n', value, flags=re.S)
                 return re.sub(rb'Current source package release: `[^`]+`\. If `[^`]+` is installed,',
                               b'RELEASE', value)
             if without_release(blob(root, parent, path)) != without_release(blob(root, commit, path)):
@@ -282,7 +284,6 @@ def main(argv=None):
         requested = (datetime.now(timezone.utc).isoformat() if args.action == 'ci' else
                      args.requested_at or os.environ.get('BOS_REVIEW_STARTED_AT') or 'unknown')
         if not args.base:
-            native.git(root, 'fetch', 'origin')
             args.base = native.git(root, 'rev-parse', 'origin/main^{commit}')
         if args.action == 'ci':
             try:

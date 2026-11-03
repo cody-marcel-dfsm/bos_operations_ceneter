@@ -630,6 +630,17 @@ sibling source/build dependency, registry, service or public API version.
 
 ## Release validation
 
+<!-- deterministic-package-release -->
+For the bounded feedback-discovery and release-tool package profile, `npm run
+release:check` runs the fixed deterministic category on clean committed source.
+Fetch and integrate the publication base first. The gate uses no model review,
+requires complete tests without skips, and retains exact source/runtime/output
+custody. See [deterministic package release](tools/deterministic-package.md) for
+scope, original-clock handling and the normal CI-gated publication commands.
+Unsupported runtime or configuration changes fail closed; this profile supplies
+no deployment authority.
+<!-- /deterministic-package-release -->
+
 Release validation is credential-free and local. It regenerates canonical
 client packages, checks generated parity and credential containment, and runs
 the complete test suite. It deterministically regenerates each active
