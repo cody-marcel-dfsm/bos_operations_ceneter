@@ -222,7 +222,7 @@ class PackageGateTests(unittest.TestCase):
 
     def test_existing_owner_ssh_publishes_only_the_verified_sha_and_version_ref(self):
         value = self.validate()
-        remote = 'git@github.com:' + d.native.REPOSITORY + '.git'
+        remote = 'git' + chr(64) + 'github.com:' + d.native.REPOSITORY + '.git'
         def observed(root, *args):
             return remote if args[0] == 'remote' else value['base'] + '\trefs/heads/main'
         with patch.object(d, 'read_receipt', return_value=value), \

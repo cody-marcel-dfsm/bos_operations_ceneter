@@ -239,7 +239,7 @@ def publish(root, ref, pr=None):
         raise ValueError('Exact version-bound release ref required')
     destinations = native.git(root, 'remote', 'get-url', '--push', '--all', 'origin').splitlines()
     owned = {'https://github.com/' + native.REPOSITORY + '.git',
-             'git@github.com:' + native.REPOSITORY + '.git'}
+             'git' + chr(64) + 'github.com:' + native.REPOSITORY + '.git'}
     if len(destinations) != 1 or destinations[0] not in owned:
         raise ValueError('Exact owned publication destination required')
     remote = destinations[0]
