@@ -109,6 +109,7 @@ test("real repository contains every release-required version and documentation 
   }
 
   for (const { path, marker } of requiredMarkers) {
+    if (path !== join(repositoryRoot, "README.md") && !await pathExists(path)) continue;
     const content = await readFile(path, "utf8");
     const matches = content.split(marker).length - 1;
     assert.equal(matches, 1, `${path} must contain exactly one required release marker`);
@@ -227,4 +228,45 @@ test("explicit package-line transition uses the native gate and preserves histor
   const next = await bumpReleaseVersion({ root });
   assert.equal(next.version, "0.0.213");
   assert.equal(await readFile(join(root, "source/component/SKILL.md"), "utf8"), component);
+});
+
+for (const present of [[], ["licensing"], ["marketplace"]]) {
+  test(`release bump works without private maintainer documents (${present.join(",") || "none"})`, async () => {
+    const root = await mkdtemp(join(tmpdir(), "bos-public-release-"));
+    await mkdir(join(root, "products/bos"), { recursive: true });
+    await mkdir(join(root, "Vault/docs"), { recursive: true });
+    await writeJson(join(root, "package.json"), { version: "1.2.3" });
+    await writeJson(join(root, "package-manifest.json"), { version: "1.2.3" });
+    await writeJson(join(root, "products/bos/product.json"), { name: "bos", version: "1.2.3", release_status: "active" });
+    await writeFile(join(root, "README.md"), "Current source package release: `1.2.3`. If `1.2.2` is installed,");
+    const docs = {
+      licensing: ["bos-product-licensing-user-experience.md", "Current BOS Operations Center release: `1.2.3`."],
+      marketplace: ["marketplace-submission-assets.md", "Current BOS marketplace package release: `1.2.3`."]
+    };
+    for (const name of present) await writeFile(join(root, "Vault/docs", docs[name][0]), docs[name][1]);
+    assert.equal((await bumpReleaseVersion({ root })).version, "1.2.4");
+    assert.equal(JSON.parse(await readFile(join(root, "package.json"))).version, "1.2.4");
+    for (const [name, [file]] of Object.entries(docs)) {
+      const path = join(root, "Vault/docs", file);
+      if (present.includes(name)) assert.match(await readFile(path, "utf8"), /1\.2\.4/);
+      else assert.equal(await pathExists(path), false, "must not fabricate private documents");
+    }
+  });
+}
+
+test("malformed existing private notes fail before any release file changes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "bos-release-invalid-note-"));
+  await mkdir(join(root, "products/bos"), { recursive: true });
+  await mkdir(join(root, "Vault/docs"), { recursive: true });
+  await writeJson(join(root, "package.json"), { version: "1.2.3" });
+  await writeJson(join(root, "package-manifest.json"), { version: "1.2.3" });
+  await writeJson(join(root, "products/bos/product.json"), { name: "bos", version: "1.2.3", release_status: "active" });
+  const readme = "Current source package release: `1.2.3`. If `1.2.2` is installed,";
+  await writeFile(join(root, "README.md"), readme);
+  const note = join(root, "Vault/docs/bos-product-licensing-user-experience.md");
+  await writeFile(note, "An existing note without its version marker.");
+  await assert.rejects(bumpReleaseVersion({ root }), /expected exactly one release marker/);
+  assert.equal(JSON.parse(await readFile(join(root, "package.json"))).version, "1.2.3");
+  assert.equal(await readFile(join(root, "README.md"), "utf8"), readme);
+  assert.equal(await readFile(note, "utf8"), "An existing note without its version marker.");
 });
