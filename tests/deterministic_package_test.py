@@ -262,6 +262,107 @@ class PackageGateTests(unittest.TestCase):
             read.assert_not_called()
             run.assert_not_called()
 
+    def actions(self):
+        source = self.git('rev-parse', 'HEAD')
+        run = {'id': 41, 'path': '.github/workflows/publication-safety.yml',
+               'head_sha': source, 'head_branch': 'codex/release-v1.0.0', 'event': 'push',
+               'repository': {'full_name': d.native.REPOSITORY},
+               'head_repository': {'full_name': d.native.REPOSITORY},
+               'status': 'completed', 'conclusion': 'success'}
+        jobs = {'total_count': 1, 'jobs': [{'name': 'verify-public-repository',
+                'conclusion': 'success', 'steps': [{'name':
+                'Verify the fixed deterministic source or skill-package category',
+                'conclusion': 'success'}]}]}
+        return source, run, jobs
+
+    def test_ci_consumes_exact_repository_source_and_required_native_step(self):
+        source, run, jobs = self.actions()
+        def read(path):
+            return jobs if '/jobs?' in path else {'total_count': 1, 'workflow_runs': [run]}
+        result = d.ci_observation(source, 'codex/release-v1.0.0', read)
+        self.assertEqual(result['run']['id'], 41)
+
+    def test_ci_foreign_source_branch_repository_workflow_or_event_cannot_pass(self):
+        source, run, jobs = self.actions()
+        for key, wrong in [('head_sha', 'f' * 40), ('head_branch', 'main'),
+                           ('repository', {'full_name': 'other/repository'}),
+                           ('head_repository', {'full_name': 'other/repository'}),
+                           ('path', '.github/workflows/unrelated.yml'), ('event', 'workflow_dispatch')]:
+            changed = dict(run, **{key: wrong})
+            with self.subTest(key=key):
+                with self.assertRaises(ValueError):
+                    d.ci_observation(source, 'codex/release-v1.0.0', lambda path:
+                                     jobs if '/jobs?' in path else {'total_count': 1, 'workflow_runs': [changed]})
+
+    def test_later_failed_ci_cannot_fall_back_to_older_success(self):
+        source, run, jobs = self.actions()
+        failed = dict(run, id=42, conclusion='failure')
+        with self.assertRaisesRegex(ValueError, 'not successful'):
+            d.ci_observation(source, 'codex/release-v1.0.0', lambda path:
+                             {'total_count': 2, 'workflow_runs': [run, failed]})
+
+    def test_pending_absent_or_incomplete_ci_cannot_pass(self):
+        source, run, jobs = self.actions()
+        for data in ({'total_count': 0, 'workflow_runs': []},
+                     {'total_count': 101, 'workflow_runs': [run]},
+                     {'total_count': 1, 'workflow_runs': [dict(run, status='in_progress')]}):
+            with self.subTest(data=data):
+                with self.assertRaises(ValueError):
+                    d.ci_observation(source, 'codex/release-v1.0.0', lambda path: data)
+
+    def test_skipped_missing_or_failed_fixed_ci_step_cannot_pass(self):
+        source, run, jobs = self.actions()
+        for conclusion in ('skipped', 'failure', None):
+            changed = json.loads(json.dumps(jobs))
+            changed['jobs'][0]['steps'][0]['conclusion'] = conclusion
+            with self.subTest(conclusion=conclusion):
+                with self.assertRaisesRegex(ValueError, 'native execution'):
+                    d.ci_observation(source, 'codex/release-v1.0.0', lambda path:
+                                     changed if '/jobs?' in path else {'total_count': 1, 'workflow_runs': [run]})
+
+    def test_ssh_promotion_requires_green_ci_and_unchanged_base_before_write(self):
+        value = self.validate()
+        store = d.directory(self.root)
+        remote = 'git' + chr(64) + 'github.com:' + d.native.REPOSITORY + '.git'
+        for moved in (True, False):
+            def observed(root, *args):
+                if args[0] == 'remote':
+                    return remote
+                if args[-1].endswith('release-v1.0.0'):
+                    return value['source'] + '\t' + args[-1]
+                return ('f' * 40 if moved else value['base']) + '\trefs/heads/main'
+            with self.subTest(moved=moved), patch.object(d, 'read_receipt', return_value=value), \
+                    patch.object(d, 'blob', return_value=b'{"version":"1.0.0"}'), \
+                    patch.object(d, 'directory', return_value=store), \
+                    patch.object(d.native, 'git', side_effect=observed), \
+                    patch.object(d, 'ci_observation', side_effect=(None if moved else ValueError('CI pending')),
+                                 return_value={'run': {'id': 41}}), \
+                    patch.object(d, 'effect') as effect:
+                with self.assertRaisesRegex(ValueError, 'base moved|CI pending'):
+                    d.promote(self.root, 'codex/release-v1.0.0')
+                effect.assert_not_called()
+
+    def test_successful_ssh_promotion_uses_ordinary_push_and_checks_remote_sha(self):
+        value = self.validate()
+        store = d.directory(self.root)
+        remote = 'git' + chr(64) + 'github.com:' + d.native.REPOSITORY + '.git'
+        written = []
+        def observed(root, *args):
+            if args[0] == 'remote':
+                return remote
+            if args[-1].endswith('release-v1.0.0') or written:
+                return value['source'] + '\t' + args[-1]
+            return value['base'] + '\trefs/heads/main'
+        with patch.object(d, 'read_receipt', return_value=value), \
+                patch.object(d, 'blob', return_value=b'{"version":"1.0.0"}'), \
+                patch.object(d, 'directory', return_value=store), \
+                patch.object(d.native, 'git', side_effect=observed), \
+                patch.object(d, 'ci_observation', return_value={'run': {'id': 41}}), \
+                patch.object(d, 'effect', side_effect=lambda root, command, receipt: written.append(command)):
+            result = d.promote(self.root, 'codex/release-v1.0.0')
+            self.assertEqual(result['status'], 'RELEASE_PUBLISHED')
+            self.assertEqual(written, [['git', 'push', remote, value['source'] + ':refs/heads/main']])
+
 
 if __name__ == '__main__':
     unittest.main()

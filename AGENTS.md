@@ -11,6 +11,10 @@ required remote CI, user release authority and protected-effect boundaries.
 Unsupported scope and existing selected contracts require their explicit native
 migration/profile amendment; no model fallback or automatic policy weakening.
 This direction supersedes older model-review requirements for this package profile.
+The owner's SSH publication direction uses the native deterministic `promote`
+operation after successful exact-source release-branch CI. It performs a normal
+fast-forward main push, retains server protection and verifies remote readback.
+This controls older mandatory PR/CLI-merge wording for this bounded profile.
 
 ## Deterministic source maintenance — controlling owner direction
 

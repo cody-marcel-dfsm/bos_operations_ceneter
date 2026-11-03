@@ -14,6 +14,7 @@ import re
 import subprocess
 import sys
 import time
+import urllib.request
 
 try:
     from . import deterministic_source as native
@@ -296,9 +297,78 @@ def publish(root, ref, pr=None):
             'source': value['source'], 'deployment_authorized': False}
 
 
+def github_read(path):
+    request = urllib.request.Request('https://api.github.com/repos/' + native.REPOSITORY + path,
+                                     headers={'Accept': 'application/vnd.github+json',
+                                              'User-Agent': 'bos-deterministic-package'})
+    with urllib.request.urlopen(request, timeout=20) as response:
+        return json.load(response)
+
+
+def ci_observation(source, ref, read=github_read):
+    """Consume actual repository-owned Actions execution, never a supplied PASS."""
+    data = read('/actions/runs?event=push&head_sha=' + source + '&per_page=100')
+    if data.get('total_count', 0) > 100:
+        raise ValueError('Actions result set is incomplete')
+    runs = [run for run in data.get('workflow_runs', [])
+            if run.get('path') == '.github/workflows/publication-safety.yml'
+            and run.get('head_sha') == source and run.get('head_branch') == ref
+            and run.get('event') == 'push'
+            and run.get('repository', {}).get('full_name') == native.REPOSITORY
+            and run.get('head_repository', {}).get('full_name') == native.REPOSITORY]
+    if not runs:
+        raise ValueError('Exact-source repository Actions execution is not available yet')
+    run = max(runs, key=lambda row: int(row['id']))
+    if run.get('status') != 'completed' or run.get('conclusion') != 'success':
+        raise ValueError('Latest exact-source repository CI is not successful: ' + str(run.get('status'))
+                         + '/' + str(run.get('conclusion')))
+    identity = run['id']
+    if not isinstance(identity, int) or identity <= 0:
+        raise ValueError('Invalid Actions execution identity')
+    jobs = read('/actions/runs/' + str(identity) + '/jobs?filter=latest&per_page=100')
+    if jobs.get('total_count') != len(jobs.get('jobs', [])):
+        raise ValueError('Actions job evidence is incomplete')
+    relevant = [job for job in jobs['jobs'] if job.get('name') == 'verify-public-repository']
+    if len(relevant) != 1 or relevant[0].get('conclusion') != 'success':
+        raise ValueError('Required repository verification job did not succeed')
+    step = [step for step in relevant[0].get('steps', [])
+            if step.get('name') == 'Verify the fixed deterministic source or skill-package category']
+    if len(step) != 1 or step[0].get('conclusion') != 'success':
+        raise ValueError('Fixed deterministic category has no successful native execution')
+    return {'run': run, 'jobs': jobs}
+
+
+def promote(root, ref):
+    value = read_receipt(root)
+    version = json.loads(blob(root, value['source'], 'package.json'))['version']
+    if ref != 'codex/release-v' + version:
+        raise ValueError('Exact version-bound release ref required')
+    destinations = native.git(root, 'remote', 'get-url', '--push', '--all', 'origin').splitlines()
+    owned = {'https://github.com/' + native.REPOSITORY + '.git',
+             'git' + chr(64) + 'github.com:' + native.REPOSITORY + '.git'}
+    if len(destinations) != 1 or destinations[0] not in owned:
+        raise ValueError('Exact owned publication destination required')
+    remote = destinations[0]
+    branch = native.git(root, 'ls-remote', remote, 'refs/heads/' + ref).split()
+    if not branch or branch[0] != value['source']:
+        raise ValueError('Remote release ref differs from the verified source')
+    observed = ci_observation(value['source'], ref)
+    native.private_write(directory(root) / (str(time.time_ns()) + '.remote.json'), native.encoded(observed))
+    read_receipt(root)
+    if native.git(root, 'ls-remote', remote, 'refs/heads/main').split()[0] != value['base']:
+        raise ValueError('Publication base moved; integrate and revalidate')
+    # Ordinary fast-forward push; server protection and rejection remain active.
+    effect(root, ['git', 'push', remote, value['source'] + ':refs/heads/main'], value)
+    actual = native.git(root, 'ls-remote', remote, 'refs/heads/main').split()
+    if not actual or actual[0] != value['source']:
+        raise ValueError('Main publication was not confirmed; read state before retrying')
+    return {'status': 'RELEASE_PUBLISHED', 'source': value['source'],
+            'ci_run_id': observed['run']['id'], 'deployment_authorized': False}
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['validate', 'verify', 'push', 'merge', 'ci'])
+    parser.add_argument('action', choices=['validate', 'verify', 'push', 'merge', 'promote', 'ci'])
     parser.add_argument('--base')
     parser.add_argument('--requested-at')
     parser.add_argument('--ref')
@@ -323,6 +393,8 @@ def main(argv=None):
         value = validate(root, args.base, requested)
     elif args.action == 'verify':
         value = read_receipt(root)
+    elif args.action == 'promote':
+        value = promote(root, args.ref)
     else:
         value = publish(root, args.ref, args.pr if args.action == 'merge' else None)
     print(json.dumps({key: value[key] for key in ('kind', 'status', 'source', 'sla_status',

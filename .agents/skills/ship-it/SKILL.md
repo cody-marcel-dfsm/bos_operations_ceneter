@@ -35,6 +35,10 @@ receipt, copy missing private Vault files or use the BOS server build API for
 this client package. Preserve failed observations and original request clocks;
 unknown original timing remains unknown/breached. Unsupported scope fails closed.
 This controls the older model-review steps below for this profile only.
+After exact-source release-branch CI succeeds, use the native `promote` command
+for an ordinary SSH/HTTPS main push and exact remote readback. It consumes actual
+repository-owned Actions evidence and preserves server protection; it requires
+neither a GitHub CLI credential nor a newly invented PR handoff.
 
 ## Separate validation and publication — owner correction, October 23, 2026
 

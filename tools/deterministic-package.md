@@ -35,21 +35,24 @@ rewritten or relabeled. If the original request time was not retained by the hos
 use `--requested-at unknown`: the receipt preserves that absence and records
 `BREACHED_ORIGINAL_TIME_UNAVAILABLE`, never a restarted clock or an SLA success.
 
-Create the ordinary pull request for that exact pushed release ref. Repository CI
-independently executes the same fixed profile against the actual PR head and base.
-Then, under the user's existing release instruction:
+Repository CI independently executes the same fixed profile on that exact release
+branch, against the current main base. Under the user's existing release instruction,
+publish with the existing authenticated Git transport:
 
 ```sh
-python3 tools/deterministic_package.py merge --ref codex/release-vPACKAGE_VERSION --pr NUMBER
+python3 tools/deterministic_package.py promote --ref codex/release-vPACKAGE_VERSION
 ```
 
-The merge consumer verifies original local custody, exact destination/base/head,
-successful repository-owned Actions admission, and the normal matching-head merge.
+The promotion consumer verifies original local custody, exact destination/base/head,
+and the latest successful repository-owned Actions run/job/fixed verification step
+through the public GitHub API. It then performs an ordinary fast-forward main push.
 The sole push destination must identify this exact GitHub repository using HTTPS
 or its standard SSH URL. Existing host-managed Git authentication is reused;
 credentials are never copied into source or command output.
-It rereads remote main and requires its tree to equal the verified package tree.
+It rereads remote main and requires the exact verified package commit.
 No administrator override or protection change is permitted. Fetch and fast-forward
 canonical main after publication; install through supported host release controls.
 Remote CI is its own execution observation and supplies no original-task SLA proof.
 Publication does not establish installation or native client acceptance.
+An optional PR-based route remains available through `merge --pr NUMBER`; the
+normal SSH route requires no GitHub CLI credential or model approval.
