@@ -120,7 +120,7 @@ def scope(root, base, source):
         if path == 'README.md':
             def without_release(value):
                 value = re.sub(rb'\n<!-- deterministic-package-release -->.*?<!-- /deterministic-package-release -->\n',
-                               b'\n', value, flags=re.S)
+                               b'', value, flags=re.S)
                 return re.sub(rb'Current source package release: `[^`]+`\. If `[^`]+` is installed,',
                               b'RELEASE', value)
             if without_release(blob(root, parent, path)) != without_release(blob(root, commit, path)):
