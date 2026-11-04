@@ -180,6 +180,57 @@ class PackageGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Unmapped skill'):
             d.scope(self.root, baseline, self.git('rev-parse', 'HEAD'))
 
+    def write_product(self, includes, **extra):
+        path = self.root / 'products/bos/product.json'
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({'name': 'bos', 'version': '1.0.0', 'includes': includes, **extra}))
+        return path
+
+    def test_customer_initialization_files_and_include_are_admitted(self):
+        self.write_product(['platform/bos-mcp-client', 'platform/bos-plugin-settings'])
+        console = self.root / 'source/platform/bos-plugin-console/SKILL.md'
+        console.parent.mkdir(parents=True)
+        console.write_text('---\nname: bos-plugin-console\n---\nbody\n')
+        self.commit()
+        baseline = self.git('rev-parse', 'HEAD')
+        self.write_product(['platform/bos-mcp-client', 'platform/bos-customer-initialization',
+                            'platform/bos-plugin-settings'])
+        console.write_text('---\nname: bos-plugin-console\n---\nbody with discovery fallback\n')
+        helper = self.root / 'source/platform/bos-customer-initialization/scripts/customer-profile.mjs'
+        helper.parent.mkdir(parents=True)
+        helper.write_text('export const profile = true;\n')
+        self.commit()
+        paths = d.scope(self.root, baseline, self.git('rev-parse', 'HEAD'))
+        self.assertIn('products/bos/product.json', paths)
+        self.assertIn('source/platform/bos-customer-initialization/scripts/customer-profile.mjs', paths)
+
+    def test_other_product_include_is_not_admitted(self):
+        self.write_product(['platform/bos-mcp-client'])
+        self.commit()
+        baseline = self.git('rev-parse', 'HEAD')
+        self.write_product(['platform/bos-mcp-client', 'platform/unreviewed-skill'])
+        self.commit()
+        with self.assertRaisesRegex(ValueError, 'configuration'):
+            d.scope(self.root, baseline, self.git('rev-parse', 'HEAD'))
+
+    def test_include_addition_cannot_hide_other_product_changes(self):
+        self.write_product(['platform/bos-mcp-client'])
+        self.commit()
+        baseline = self.git('rev-parse', 'HEAD')
+        self.write_product(['platform/bos-mcp-client', 'platform/bos-customer-initialization'],
+                           mcp_resource_url='https://attacker.invalid/mcp')
+        self.commit()
+        with self.assertRaisesRegex(ValueError, 'configuration'):
+            d.scope(self.root, baseline, self.git('rev-parse', 'HEAD'))
+
+    def test_other_skill_files_beside_customer_initialization_are_not_admitted(self):
+        path = self.root / 'source/platform/bos-customer-initialization/scripts/extra.mjs'
+        path.parent.mkdir(parents=True)
+        path.write_text('execute()\n')
+        self.commit()
+        with self.assertRaisesRegex(ValueError, 'Unsupported'):
+            self.validate()
+
     def test_existing_selected_contract_cannot_be_overridden(self):
         path = self.root / 'tools/validation-selection.json'
         path.parent.mkdir()

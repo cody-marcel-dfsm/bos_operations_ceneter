@@ -22,7 +22,7 @@ except ImportError:
     import deterministic_source as native
 
 KIND = 'boc-deterministic-package/1'
-PROFILE = 'feedback-discovery-and-release-tool/1'
+PROFILE = 'feedback-discovery-and-release-tool/2'
 TESTS = [
     'tests/bos-foundation-connection.test.mjs', 'tests/bos-logout.test.mjs',
     'tests/context-selection.test.mjs', 'tests/product-mcp-contract.test.mjs',
@@ -31,6 +31,8 @@ TESTS = [
     'tests/release-version.test.mjs', 'tests/skill-dependencies.test.mjs',
     'tests/versioned-skills.test.mjs', 'tests/package-model.test.mjs',
     'tests/journey-package-parity.test.mjs', 'tests/muse-package.test.mjs',
+    'tests/bos-customer-profile.test.mjs', 'tests/plugin-console.test.mjs',
+    'tests/plugin-settings.test.mjs',
 ]
 CHECKS = [
     ['npm', 'run', 'build:packages'], ['git', 'diff', '--exit-code', 'HEAD', '--'],
@@ -42,6 +44,19 @@ CHECKS = [
 ]
 BODY_SKILLS = {'source/platform/bos-mcp-client/SKILL.md',
                'source/platform/submit-feedback/SKILL.md'}
+# Profile /2 amendment: BOS customer initialization and the MCP discovery
+# fallback for plugin settings/console. Exact files only; anything else in
+# source/ still fails closed.
+CUSTOMER_INITIALIZATION = {
+    'source/platform/bos-customer-initialization/SKILL.md',
+    'source/platform/bos-customer-initialization/agents/openai.yaml',
+    'source/platform/bos-customer-initialization/scripts/customer-profile.mjs',
+    'source/platform/bos-plugin-settings-initialization/SKILL.md',
+    'source/platform/bos-plugin-console/SKILL.md',
+    'source/platform/bos-mcp-client/references/identity-context.md',
+    'tests/bos-customer-profile.test.mjs',
+}
+PRODUCT_INCLUDE_ADDITIONS = {'products/bos/product.json': {'platform/bos-customer-initialization'}}
 MAINTENANCE = {
     'AGENTS.md', '.agents/skills/ship-it/SKILL.md',
     'tools/deterministic_package.py', 'tools/deterministic-package.md',
@@ -83,7 +98,7 @@ def scope(root, base, source):
     paths = set()
     for parent, commit, path, old_mode, new_mode in rows:
         paths.add(path)
-        if path in MAINTENANCE or path in BODY_SKILLS:
+        if path in MAINTENANCE or path in BODY_SKILLS or path in CUSTOMER_INITIALIZATION:
             continue
         if path.startswith('clients/'):
             # The fixed build+clean-tree checks independently regenerate all consumers.
@@ -115,6 +130,12 @@ def scope(root, base, source):
                         value['scripts']['release:check'] = 'FIXED_DETERMINISTIC_GATE_MIGRATION'
                 if path == 'package-lock.json':
                     value.get('packages', {}).get('', {}).pop('version', None)
+            allowed = PRODUCT_INCLUDE_ADDITIONS.get(path)
+            if allowed and isinstance(before.get('includes'), list) and isinstance(after.get('includes'), list):
+                added = [x for x in after['includes'] if x not in before['includes']]
+                if set(added) <= allowed and len(added) == len(set(added)) and \
+                        [x for x in after['includes'] if x not in added] == before['includes']:
+                    after['includes'] = before['includes']
             if before != after:
                 raise ValueError('Unmapped package configuration or dependency change: ' + path)
             continue

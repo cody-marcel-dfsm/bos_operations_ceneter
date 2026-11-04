@@ -5,10 +5,20 @@ not model proposals or model approval. Historical Oracle records remain historic
 The distinct `boc-deterministic-package/1` VERIFIED receipt is not an Oracle verdict
 or deployment authority. The existing source-maintenance lane retains its own scope.
 
-The fixed `feedback-discovery-and-release-tool/1` profile covers the BOS connection
+The fixed `feedback-discovery-and-release-tool/2` profile covers the BOS connection
 and feedback instructions, transitive skill version pins, generated consumers,
 release versions, the version-bump script and the verifier's own implementation,
-tests and CI wiring. Other skill behavior, runtime scripts, provider/credential
+tests and CI wiring.
+
+Amendment `/2` (owner-directed, 2026-11-04) adds exactly the BOS customer
+initialization feature: the files of `source/platform/bos-customer-initialization`
+(`SKILL.md`, `agents/openai.yaml`, `scripts/customer-profile.mjs`), the MCP
+discovery-fallback instructions in `bos-plugin-settings-initialization/SKILL.md`,
+`bos-plugin-console/SKILL.md` and `bos-mcp-client/references/identity-context.md`,
+its test `tests/bos-customer-profile.test.mjs`, and a single
+`platform/bos-customer-initialization` addition to `products/bos/product.json`
+`includes` with no other product change. The fixed test set adds that test plus
+the plugin console and plugin settings modules. Other skill behavior, runtime scripts, provider/credential
 configuration, dependencies, contracts and existing selected validation contracts
 are outside this profile. Unsupported scope fails closed and requires an explicit
 profile amendment with corresponding complete tests. Nothing selects a model as a
