@@ -2,8 +2,8 @@
 name: bos-plugin-settings-initialization
 description: Initialize or repair plugin-service connections and required BOS plugin settings after client settings and BOS authentication are ready, using guided secure connection actions, sourced recommendations, consolidated confirmation, delegated persistence, and authority-scoped cache receipts.
 metadata:
-  version: "1.0.8"
-  requires: "{\"bos-mcp-client\":\"1.0.8\",\"bos-plugin-console\":\"1.0.8\",\"bos-plugin-settings\":\"1.0.8\"}"
+  version: "1.0.9"
+  requires: "{\"bos-mcp-client\":\"1.0.9\",\"bos-plugin-console\":\"1.0.9\",\"bos-plugin-settings\":\"1.0.9\"}"
 ---
 
 
@@ -120,7 +120,11 @@ denials; never invent missing setup tools or recurse into this initializer.
 1. Preserve the request that triggered initialization.
 2. When the product declares a customer-settings initializer, validate its
    effective customer-owned client settings and invoke that initializer for
-   missing or invalid values. For a product without one, including BOS, use
+   missing or invalid values. For BOS, when this package includes a BOS
+   customer-profile initialization skill, run it first when the selected
+   organization's saved profile or the saved default context is missing or
+   invalid, then use its confirmed organization and user values as
+   recommendation source inputs. For a product without either initializer, use
    current authorized context, confirmed server settings and explicit user
    inputs for the source roles required by the live recommendation profile.
    Ask only for unresolved inputs needed by that profile; do not require a
@@ -145,6 +149,34 @@ denials; never invent missing setup tools or recurse into this initializer.
 7. Call `bos_get_plugin_settings_initialization` without authority arguments.
    Skip the workflow when its initialization epoch, required
    canonical field states, and local receipt are current.
+
+## Discovery fallback
+
+The direct control-plane tools named above (`bos_list_plugin_services`,
+`bos_begin_plugin_service_connection`, `bos_get_plugin_settings_initialization`,
+`bos_get_plugin_settings`, `bos_prepare_plugin_settings`,
+`bos_apply_plugin_settings`) may be absent from both the host tool list and the
+selected context's `bos_list_context_tools` catalog. In that case, do not stop
+at reporting them missing. Use the live discovery chain for the same selected
+`context_handle`:
+
+1. Call `plugins.list` (direct alias or `bos_execute`) as the plugin inventory.
+   Render each row's server-returned name, `catalog.enabled`,
+   `catalog.configuration`, and `readiness` status, preserving server order.
+2. For each enabled row whose configuration is `unconfigured` or whose
+   readiness is `configuration_required`, call `service.describe`. Collect its
+   advertised queries, operations, and readiness recovery instructions.
+3. For an advertised settings, configuration, or connection operation, call
+   `api.contract.get` and execute only that exact contract through
+   `bos_execute`. Apply the same consolidated review, confirmation, and
+   single-record mutation rules as the direct tools.
+4. When a row advertises no usable operation, report it as incomplete with its
+   exact server-returned recovery instruction (for example, an operator
+   connecting the provider in the BOS app's Business Settings). Never invent a
+   tool, route, or argument, and never switch organization or role to find one.
+
+Write no initialization receipt while any fallback row remains incomplete.
+Report the per-plugin checklist, then resume the pending request.
 
 ## Connection readiness
 

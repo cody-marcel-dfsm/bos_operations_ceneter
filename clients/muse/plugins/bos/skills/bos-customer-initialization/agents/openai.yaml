@@ -1,0 +1,4 @@
+interface:
+  display_name: "Initialize BOS Customer Profile"
+  short_description: "Discover and save organization and user details"
+  default_prompt: "Use $bos-customer-initialization to discover my organization's information through BOS, recommend defaults, and save my organization and user profile."

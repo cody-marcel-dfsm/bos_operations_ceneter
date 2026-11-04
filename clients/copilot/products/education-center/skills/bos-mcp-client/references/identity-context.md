@@ -63,7 +63,8 @@ fresh authorized matching without asking again. Never silently
 promote organization display text or a one-request selection to a saved default.
 
 For BOS without a product initializer, establish this preference through
-`bos-mcp-client` during setup or the first unscoped business request. Read it in
+the installed BOS customer-profile initialization skill when present, otherwise
+through `bos-mcp-client`, during setup or the first unscoped business request. Read it in
 every ordinary workflow; a valid default needs no repeat organization question.
 Control-plane status may use an explicit request without initializing unrelated
 product fields. If persistence is unavailable, retain the explicit scope for the

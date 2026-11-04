@@ -2,8 +2,8 @@
 name: education-center-trial-reconciliation
 description: Reconcile Education Center organization scheduled trials across BOS Lead Director, Google Calendar, and Gmail, identify families needing confirmation or scheduling follow-up, and create appropriate Gmail drafts. Use for requests such as “show every trial during the next seven days,” “which trial families need confirmation or follow-up,” “find Testy’s trial,” “reconcile upcoming trials,” or “prepare trial confirmation/follow-up drafts.”
 metadata:
-  version: "1.0.8"
-  requires: "{\"bos-mcp-client\":\"1.0.8\",\"bos-visual-output\":\"1.0.8\",\"education-center-service-routing\":\"1.0.8\"}"
+  version: "1.0.9"
+  requires: "{\"bos-mcp-client\":\"1.0.9\",\"bos-visual-output\":\"1.0.9\",\"education-center-service-routing\":\"1.0.9\"}"
 ---
 
 # Education Center Trial Reconciliation

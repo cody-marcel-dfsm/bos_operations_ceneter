@@ -2,8 +2,8 @@
 name: bos-plugin-console
 description: Show and manage BOS plugin, connection, enablement, server-settings summary, and display-property status. When a signed-out request needs BOS data, use bos-mcp-client's host-supported identity recovery, preserve the pending request, and resume it afterward. Never substitute local inventory for authenticated results.
 metadata:
-  version: "1.0.8"
-  requires: "{\"bos-mcp-client\":\"1.0.8\",\"bos-plugin-settings\":\"1.0.8\"}"
+  version: "1.0.9"
+  requires: "{\"bos-mcp-client\":\"1.0.9\",\"bos-plugin-settings\":\"1.0.9\"}"
 ---
 
 
@@ -113,6 +113,13 @@ an authorized organization or app alone requires no new BOS login or key.
 3. Invoke the selected context's advertised plugin-service inventory operation
    through its exact current contract. Legacy direct tools keep their declared
    argument shape. The server derives and revalidates the selected inventory.
+   When no dedicated inventory operation is advertised, the live `plugins.list`
+   result for the same context is the server-returned inventory. Render its
+   rows (name, enabled, configuration, readiness, and recovery instructions)
+   with **Connection** taken from readiness, and use `service.describe` plus
+   `api.contract.get` to find any connection or settings action. Offer only
+   actions that discovery advertises; state that other controls are not
+   available from this context.
 4. Treat inability to load the live console as a live-console failure. Never
    substitute a prior-task response, typed-settings cache, last-confirmed
    settings table, local plugin inventory, or multi-organization summary. A
