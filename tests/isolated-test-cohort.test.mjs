@@ -1,9 +1,18 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { isolatedTestCohort } from "./helpers/isolated-test-cohort.mjs";
+
+// A killed orphan is a zombie until its reaper runs; it is terminated either way.
+function terminated(pid) {
+  try { process.kill(pid, 0); } catch (error) { return error.code === "ESRCH"; }
+  if (process.platform !== "linux") return false;
+  try { return readFileSync(`/proc/${pid}/stat`, "utf8").replace(/^.*\) /s, "")[0] === "Z"; }
+  catch (error) { return error.code === "ENOENT"; }
+}
 
 const nodeJob = (name, code) => ({ name, command: process.execPath, args: ["-e", code] });
 test("isolated cohort runs all 152 targets with four workers, ordered outcomes and retained failures", async () => {
@@ -66,7 +75,7 @@ test("isolated cohort cancellation settles queued jobs and kills its owned proce
     const results = await cohort.completion;
     assert.ok(results.every(item => item.cancelled));
     assert.equal(results[1].code, null);
-    for (const pid of Object.values(pids)) assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });
+    for (const pid of Object.values(pids)) assert.ok(terminated(pid), `owned process ${pid} survived cancellation`);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
 

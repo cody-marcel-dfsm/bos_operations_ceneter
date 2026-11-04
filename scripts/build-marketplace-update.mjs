@@ -82,6 +82,23 @@ export function createMarketplaceUpdate(releasedEntries, legacyName, options = {
     sha256: createHash("sha256").update(archive).digest("hex") };
 }
 
+// A published commit is accepted with Oracle accepted-state trailers or, since
+// deterministic SSH promotion (2dbc43b4), with the exact-source deterministic CI
+// evidence that promotion itself requires.
+function verifyPublishedProvenance(revision) {
+  try {
+    execFileSync("python3", ["tools/oracle_approval.py", "verify-commit", revision], { cwd: root, stdio: "pipe" });
+  } catch (oracleError) {
+    try {
+      execFileSync("python3", ["tools/deterministic_package.py", "verify-published", "--source", revision],
+        { cwd: root, stdio: "pipe" });
+    } catch (deterministicError) {
+      throw new Error(`Published commit ${revision} has neither Oracle nor deterministic CI provenance`,
+        { cause: deterministicError });
+    }
+  }
+}
+
 export function readPublishedProductEntries(revision, product = "bos") {
   assertProduct(product);
   const prefix = `clients/codex/plugins/${product}/`;
@@ -89,7 +106,7 @@ export function readPublishedProductEntries(revision, product = "bos") {
     throw new Error("Supply an exact 40-character published commit");
   }
   execFileSync("git", ["merge-base", "--is-ancestor", revision, "origin/main"], { cwd: root, stdio: "pipe" });
-  execFileSync("python3", ["tools/oracle_approval.py", "verify-commit", revision], { cwd: root, stdio: "pipe" });
+  verifyPublishedProvenance(revision);
   const listing = execFileSync("git", ["ls-tree", "-r", "-z", revision, "--", prefix], { cwd: root }).toString();
   return listing.split("\0").filter(Boolean).map(line => {
     const [header, path] = line.split("\t");

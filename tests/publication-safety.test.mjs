@@ -34,7 +34,18 @@ test("publication workflow audits release refs without importing retained pull-r
     "utf8",
   );
 
+  const packageGate = await readFile(
+    new URL("../tools/deterministic_package.py", import.meta.url),
+    "utf8",
+  );
+  const packageJson = JSON.parse(
+    await readFile(new URL("../package.json", import.meta.url), "utf8"),
+  );
+
   assert.doesNotMatch(workflow, /refs\/pull|publication-audit/);
-  assert.match(workflow, /npm run check:publication/);
-  assert.match(workflow, /npm run release:check/);
+  // Since 6d75ed26 the workflow delegates to the fixed deterministic gate,
+  // whose release check category runs the publication audit itself.
+  assert.match(workflow, /python3 tools\/deterministic_package\.py ci --base/);
+  assert.match(packageGate, /\['npm', 'run', 'check:publication'\]/);
+  assert.equal(packageJson.scripts["release:check"], "python3 tools/deterministic_package.py validate");
 });

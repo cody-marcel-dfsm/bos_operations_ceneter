@@ -2415,7 +2415,7 @@ class ReviewSeries(unittest.TestCase):
                     self._cleanups.pop()
 
     def test_metadata_special_admission_record_is_rejected_before_review(self):
-        directory = o.receipt_path(self.root).parent / 'controllers/admissions'
+        directory = next((o.receipt_path(self.root).parent / 'controllers').glob('review_proposal-*-admissions'))
         path = directory / '00000001.json'
         saved = directory.parent / 'saved-admission.json'; path.rename(saved)
         try:
@@ -2423,10 +2423,10 @@ class ReviewSeries(unittest.TestCase):
                 with self.subTest(kind=kind):
                     path.mkdir() if kind == 'directory' else os.mkfifo(path)
                     try:
-                        def review_proposal(root):
+                        def review_proposal(root, *args):
                             self.fail('nonregular controller record admitted the review')
                         with self.assertRaises(o.OracleApprovalError):
-                            o._serialized_review(review_proposal)(self.root)
+                            o._serialized_review(review_proposal)(self.root, "Problem: synthetic; Cause: synthetic; Recommended change: synthetic", [])
                     finally:
                         path.rmdir() if kind == 'directory' else path.unlink()
         finally:
@@ -2453,17 +2453,17 @@ class ReviewSeries(unittest.TestCase):
             self.assertFalse((base / 'new-directory').exists())
 
     def test_controller_admission_cannot_rewrite_original_invocation(self):
-        directory = o.receipt_path(self.root).parent / 'controllers/admissions'
+        directory = next((o.receipt_path(self.root).parent / 'controllers').glob('review_proposal-*-admissions'))
         path = directory / '00000001.json'
         original = path.read_bytes()
         value = json.loads(original)
         value['process_identity'] = 'replaced process identity'
         path.unlink(); path.write_text(json.dumps(value))
         try:
-            def review_proposal(root):
+            def review_proposal(root, *args):
                 self.fail('a replaced original invocation admitted another review')
             with self.assertRaisesRegex(o.OracleApprovalError, 'custody'):
-                o._serialized_review(review_proposal)(self.root)
+                o._serialized_review(review_proposal)(self.root, "Problem: synthetic; Cause: synthetic; Recommended change: synthetic", [])
             self.assertIsNone(o._METADATA_ROOT.get())
         finally:
             path.unlink()
@@ -2731,11 +2731,11 @@ class ReviewSeries(unittest.TestCase):
                         else:
                             o._oracle(self.root, 'synthetic-tree', ['source.py'], {}, None)
                     command, options = calls[0]
-                    self.assertIn('model_reasoning_effort="xhigh"', command)
-                    self.assertEqual(options['env']['CODEX_SELECTED_REASONING_EFFORT'], 'xhigh')
+                    self.assertIn('model_reasoning_effort="medium"', command)
+                    self.assertEqual(options['env']['CODEX_SELECTED_REASONING_EFFORT'], 'medium')
                     self.assertEqual(options['env']['CODEX_SELECTED_MODEL'], 'gpt-6.1-sol')
                     metadata = json.loads((run / 'model.json').read_text())
-                    self.assertEqual(metadata['reasoning_effort'], 'xhigh')
+                    self.assertEqual(metadata['reasoning_effort'], 'medium')
                     self.assertEqual(metadata['selected_model'], 'gpt-6.1-sol')
                     self.assertTrue(metadata['ignore_user_config'])
                 finally:
@@ -2745,8 +2745,8 @@ class ReviewSeries(unittest.TestCase):
         with patch.object(o, 'selected_model', return_value='gpt-6.1-sol'), \
                 patch.object(o, 'selected_reasoning_effort', return_value='xhigh') as effort:
             binding = o._input_binding(self.root, {}, None)
-            self.assertEqual(binding['reviewer_settings'], {'model': 'gpt-6.1-sol', 'reasoning_effort': 'xhigh'})
-            effort.return_value = 'high'
+            self.assertEqual(binding['reviewer_settings'], {'model': 'gpt-6.1-sol', 'reasoning_effort': 'medium'})
+            effort.return_value = 'low'
             with self.assertRaises(o.OracleApprovalError):
                 o._assert_binding(self.root, binding, {}, None)
             o._assert_binding(self.root, binding, {}, None, check_environment=False)
@@ -2766,9 +2766,10 @@ class ReviewSeries(unittest.TestCase):
                     patch.object(o.subprocess, 'run', side_effect=execute):
                 o._review_process(self.root, 'Synthetic settings', 'reviewer')
             command, options = calls[0]
-            self.assertFalse(any('model_reasoning_effort=' in argument for argument in command))
-            self.assertNotIn('CODEX_SELECTED_REASONING_EFFORT', options['env'])
-            self.assertIsNone(json.loads((run / 'model.json').read_text())['reasoning_effort'])
+            # Owner delivery policy supplies the class effort; the stale inherited hint is replaced.
+            self.assertIn('model_reasoning_effort="medium"', command)
+            self.assertEqual(options['env']['CODEX_SELECTED_REASONING_EFFORT'], 'medium')
+            self.assertEqual(json.loads((run / 'model.json').read_text())['reasoning_effort'], 'medium')
         finally:
             o._RUN.reset(token)
 
@@ -2976,7 +2977,7 @@ class ReviewSeries(unittest.TestCase):
                 path.write_text("changed controlling parent input")
                 return result
             self.submit(drift, error=o.OracleApprovalError)
-            self.assertIn("inputs changed", str(self.last_error))
+            self.assertRegex(str(self.last_error), "inputs changed|require current inputs")
             path.write_bytes(original)
         self.submit()
 

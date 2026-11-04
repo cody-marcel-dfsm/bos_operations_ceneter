@@ -99,7 +99,8 @@ test("ordinary agents call the Oracle utility and cannot act as approver", () =>
   assert.match(commitMessage, /remove manual approval trailers/);
   assert.match(workflow, /VALIDATION_SOURCE_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
   assert.match(workflow, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
-  assert.match(workflow, /python3 tools\/command_coverage\.py ci --candidate "\$VALIDATION_SOURCE_SHA"/);
+  // Owner direction 2026-11-03: CI runs the fixed deterministic package gate.
+  assert.match(workflow, /python3 tools\/deterministic_package\.py ci --base "\$validation_base_sha"/);
   assert.match(workflow, /GH_TOKEN: \$\{\{ github\.token \}\}/);
   assert.match(workflow, /permissions:\s+contents: read\s+statuses: read/);
   assert.match(commandCoverage, /approved = public_status\.verify_publication\(root, candidate, execute=execute\)/);

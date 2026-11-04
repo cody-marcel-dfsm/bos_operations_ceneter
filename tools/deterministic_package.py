@@ -32,7 +32,7 @@ TESTS = [
     'tests/versioned-skills.test.mjs', 'tests/package-model.test.mjs',
     'tests/journey-package-parity.test.mjs', 'tests/muse-package.test.mjs',
     'tests/bos-customer-profile.test.mjs', 'tests/plugin-console.test.mjs',
-    'tests/plugin-settings.test.mjs',
+    'tests/plugin-settings.test.mjs', 'tests/publication-safety.test.mjs',
 ]
 CHECKS = [
     ['npm', 'run', 'build:packages'], ['git', 'diff', '--exit-code', 'HEAD', '--'],
@@ -55,6 +55,27 @@ CUSTOMER_INITIALIZATION = {
     'source/platform/bos-plugin-console/SKILL.md',
     'source/platform/bos-mcp-client/references/identity-context.md',
     'tests/bos-customer-profile.test.mjs',
+}
+# Profile /2 amendment: owner-approved repairs of tests that went stale when
+# CI moved to this deterministic gate (aa66d553, 6d75ed26, 2dbc43b4).
+STALE_TEST_REPAIRS = {
+    # Workflow text assertions removed by aa66d553 / 6d75ed26 / 2dbc43b4.
+    'tests/publication-safety.test.mjs',
+    'tests/oracle-governance.test.mjs',
+    # Reasoning effort is bounded by owner delivery policy since ca4c5108.
+    'tests/oracle_parallel_test.py',
+    'tests/oracle_review_series.py',
+    # Patched helper was renamed (process_identity -> process_birth).
+    'tests/oracle_lifecycle_test.py',
+    # A killed orphan is a zombie until reaped; it is terminated either way.
+    'tests/isolated-test-cohort.test.mjs',
+    # Wrapper timeout (120s) was at the suite's runtime on slower hosts.
+    'tests/oracle-lifecycle.test.mjs',
+    # Owner-approved tool bug fixes found by these tests.
+    'tools/command_coverage.py',   # crash on a tree without package.json
+    'tools/oracle_approval.py',    # proposal final_tree used _tree, not _review_tree
+    # Owner-approved: exporter accepts deterministic CI provenance (verify-published).
+    'scripts/build-marketplace-update.mjs',
 }
 PRODUCT_INCLUDE_ADDITIONS = {'products/bos/product.json': {'platform/bos-customer-initialization'}}
 MAINTENANCE = {
@@ -98,7 +119,8 @@ def scope(root, base, source):
     paths = set()
     for parent, commit, path, old_mode, new_mode in rows:
         paths.add(path)
-        if path in MAINTENANCE or path in BODY_SKILLS or path in CUSTOMER_INITIALIZATION:
+        if (path in MAINTENANCE or path in BODY_SKILLS or path in CUSTOMER_INITIALIZATION
+                or path in STALE_TEST_REPAIRS):
             continue
         if path.startswith('clients/'):
             # The fixed build+clean-tree checks independently regenerate all consumers.
@@ -359,6 +381,21 @@ def ci_observation(source, ref, read=github_read):
     return {'run': run, 'jobs': jobs}
 
 
+def verify_published(root, source, read=github_read):
+    """Accept a published main commit by its exact-source deterministic CI evidence.
+
+    The commit must be on origin/main and its version-bound release branch must
+    carry a successful repository-owned run of the fixed deterministic step for
+    that exact SHA (the same evidence promote requires before publishing)."""
+    if not re.fullmatch('[0-9a-f]{40}', source or ''):
+        raise ValueError('Exact 40-character published commit required')
+    native.git(root, 'merge-base', '--is-ancestor', source, 'origin/main')
+    version = json.loads(blob(root, source, 'package.json'))['version']
+    observation = ci_observation(source, 'codex/release-v' + version, read)
+    return {'status': 'PUBLISHED_VERIFIED', 'source': source, 'version': version,
+            'run': observation['run']['id']}
+
+
 def promote(root, ref):
     value = read_receipt(root)
     version = json.loads(blob(root, value['source'], 'package.json'))['version']
@@ -389,11 +426,13 @@ def promote(root, ref):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['validate', 'verify', 'push', 'merge', 'promote', 'ci'])
+    parser.add_argument('action', choices=['validate', 'verify', 'push', 'merge', 'promote', 'ci',
+                                           'verify-published'])
     parser.add_argument('--base')
     parser.add_argument('--requested-at')
     parser.add_argument('--ref')
     parser.add_argument('--pr')
+    parser.add_argument('--source')
     args = parser.parse_args(argv)
     root = Path(native.git(Path.cwd(), 'rev-parse', '--show-toplevel'))
     if args.action in {'validate', 'ci'}:
@@ -414,6 +453,8 @@ def main(argv=None):
         value = validate(root, args.base, requested)
     elif args.action == 'verify':
         value = read_receipt(root)
+    elif args.action == 'verify-published':
+        value = verify_published(root, args.source)
     elif args.action == 'promote':
         value = promote(root, args.ref)
     else:

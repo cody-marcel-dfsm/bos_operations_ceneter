@@ -114,7 +114,9 @@ def requirements(root: Path, tree: str) -> list[dict]:
     if o.validation_contract.blob(root, tree, o.validation_contract.CATALOG) is not None:
         commands = o.validation_contract.required(root, tree)
         return [{"id": o._sha(o._canonical(command)), "command": command} for command in commands]
-    package = json.loads(o._git_bytes(root, "show", tree + ":package.json"))
+    package = o.validation_contract.blob(root, tree, "package.json")
+    if package is None:
+        return []
     scripts = package.get("scripts", {})
     aggregate = scripts.get("release:check")
     if not aggregate:

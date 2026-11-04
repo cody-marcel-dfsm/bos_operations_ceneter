@@ -333,6 +333,31 @@ class PackageGateTests(unittest.TestCase):
         result = d.ci_observation(source, 'codex/release-v1.0.0', read)
         self.assertEqual(result['run']['id'], 41)
 
+    def test_published_main_commit_is_verified_by_exact_release_ci(self):
+        source, run, jobs = self.actions()
+        self.git('update-ref', 'refs/remotes/origin/main', source)
+        def read(path):
+            return jobs if '/jobs?' in path else {'total_count': 1, 'workflow_runs': [run]}
+        result = d.verify_published(self.root, source, read)
+        self.assertEqual((result['status'], result['version'], result['run']), ('PUBLISHED_VERIFIED', '1.0.0', 41))
+
+    def test_published_verification_requires_main_ancestry_success_and_exact_sha(self):
+        source, run, jobs = self.actions()
+        read = lambda path: jobs if '/jobs?' in path else {'total_count': 1, 'workflow_runs': [run]}
+        with self.assertRaises(subprocess.CalledProcessError):
+            d.verify_published(self.root, source, read)  # not on origin/main
+        self.git('update-ref', 'refs/remotes/origin/main', self.base)
+        with self.assertRaises(subprocess.CalledProcessError):
+            d.verify_published(self.root, source, read)  # main does not contain it
+        self.git('update-ref', 'refs/remotes/origin/main', source)
+        failed = {**run, 'conclusion': 'failure'}
+        with self.assertRaisesRegex(ValueError, 'not successful'):
+            d.verify_published(self.root, source,
+                               lambda path: jobs if '/jobs?' in path else {'total_count': 1, 'workflow_runs': [failed]})
+        for value in ('main', 'a' * 39, None):
+            with self.assertRaisesRegex(ValueError, 'Exact 40-character'):
+                d.verify_published(self.root, value, read)
+
     def test_ci_foreign_source_branch_repository_workflow_or_event_cannot_pass(self):
         source, run, jobs = self.actions()
         for key, wrong in [('head_sha', 'f' * 40), ('head_branch', 'main'),
