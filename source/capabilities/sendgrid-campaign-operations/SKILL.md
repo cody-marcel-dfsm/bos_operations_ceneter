@@ -2,8 +2,8 @@
 name: sendgrid-campaign-operations
 description: Build, approve, test, send, recover, monitor, and report permission-based Education Center SendGrid campaigns through the tenant-scoped BOS platform MCP. Use for customer-family audiences with documented marketing consent from Calimatic, Lead Director, Gmail, Calendar, camp, enrollment, inquiry, lead, or trial evidence; prioritized overlapping cohorts; governed recipient additions; suppression reconciliation; exact UTF-8 content review; manifest refresh and same-task continuation; deterministic test/list sends; delivery-event statistics; or structured missing-capability issues.
 metadata:
-  version: "1.0.8"
-  requires: "{\"bos-mcp-client\":\"1.0.8\",\"education-center-service-routing\":\"1.0.8\"}"
+  version: "1.0.10"
+  requires: "{\"bos-mcp-client\":\"1.0.9\",\"education-center-service-routing\":\"1.0.10\"}"
 ---
 
 # SendGrid Campaign Operations

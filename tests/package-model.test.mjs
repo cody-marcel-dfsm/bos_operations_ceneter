@@ -3100,3 +3100,24 @@ test("resource operation schemas supplement frozen callable envelopes without ex
     assert.match(continuation, /Resource-owned operation schemas/);
   }
 });
+
+test("feedback review uses the plugin connection and leaves no feedback unread", async () => {
+  const feedback = await readFile(`${root}/source/platform/submit-feedback/SKILL.md`, "utf8");
+  const client = await readFile(`${root}/source/platform/bos-mcp-client/SKILL.md`, "utf8");
+  for (const required of [
+    "## Feedback API access",
+    "## Complete feedback review",
+    "every context `bos_get_context` returns",
+    "`view: \"team\"`",
+    "`feedback_operation_not_allowed`",
+    "`status: \"closed\"`",
+    "`next_cursor`",
+    "`comments_next_cursor`",
+    "`history_next_cursor`",
+    "helper scripts",
+    "minted keys",
+    "separate deployment"
+  ]) assert(feedback.includes(required), required);
+  assert.doesNotMatch(feedback, /lists the reporter's own submissions/);
+  assert.match(client, /BOS feedback skill's\s+\*\*Feedback API access\*\*/);
+});
