@@ -6,7 +6,7 @@ The distinct `boc-deterministic-package/1` VERIFIED receipt is not an Oracle ver
 or deployment authority. The existing source-maintenance lane retains its own scope.
 
 The fixed `feedback-discovery-and-release-tool/1` profile covers the BOS connection
-and feedback instructions, transitive skill version pins, generated consumers,
+and feedback instructions, the feedback contract reference, transitive skill version pins, generated consumers,
 release versions, the version-bump script and the verifier's own implementation,
 tests and CI wiring. Other skill behavior, runtime scripts, provider/credential
 configuration, dependencies, contracts and existing selected validation contracts

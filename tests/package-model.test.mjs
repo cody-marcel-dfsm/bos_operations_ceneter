@@ -3119,5 +3119,9 @@ test("feedback review uses the plugin connection and leaves no feedback unread",
     "separate deployment"
   ]) assert(feedback.includes(required), required);
   assert.doesNotMatch(feedback, /lists the reporter's own submissions/);
+  const contract = await readFile(`${root}/source/platform/submit-feedback/references/feedback-contract.md`, "utf8");
+  for (const required of ["`view`", "`cursor`", "`next_cursor`", "`comments_next_cursor`", "`history_next_cursor`", "`context_handle`"])
+    assert(contract.includes(required), required);
+  assert.doesNotMatch(contract, /Lists contain only the caller's own|at most 100\s+comments/);
   assert.match(client, /BOS feedback skill's\s+\*\*Feedback API access\*\*/);
 });

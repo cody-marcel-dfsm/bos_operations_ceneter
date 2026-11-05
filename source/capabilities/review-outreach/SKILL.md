@@ -2,7 +2,7 @@
 name: bos-google-review-outreach
 description: Prepare, approve, send, and report Google Business Profile review requests to documented-consent families with an existing Education Center service relationship through tenant-scoped BOS MCP workflows. Use for eligible Calimatic class and camp families, Google review links, Drive templates, bounded follow-up, completion tracking, reviewer and rating enrichment, and dependency diagnosis.
 metadata:
-  version: "1.0.10"
+  version: "1.0.11"
   requires: "{\"bos-mcp-client\":\"1.0.9\",\"bos-visual-output\":\"1.0.9\"}"
 ---
 

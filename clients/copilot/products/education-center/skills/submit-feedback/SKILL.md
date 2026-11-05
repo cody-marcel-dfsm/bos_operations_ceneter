@@ -2,8 +2,8 @@
 name: submit-feedback
 description: Submit or draft private BOS product feedback with sanitized media, track its lifecycle, and discuss or complete an existing report through currently supported operations. Use for reviewing or reading feedback and comments, including staging feedback API questions and agent reports, product feedback, report session, feedback tracking, replies, and reporter completion.
 metadata:
-  version: "1.0.10"
-  requires: "{\"bos-mcp-client\":\"1.0.9\",\"bos-plugin-settings-initialization\":\"1.0.10\",\"education-center-customer-initialization\":\"1.0.9\"}"
+  version: "1.0.11"
+  requires: "{\"bos-mcp-client\":\"1.0.9\",\"bos-plugin-settings-initialization\":\"1.0.11\",\"education-center-customer-initialization\":\"1.0.9\"}"
 ---
 
 
@@ -153,7 +153,7 @@ including staging for BOS maintainers, holds the queue. Do not use shell
 commands, helper scripts, direct HTTP calls, database queries or minted keys to
 read or answer feedback, and do not write such a route. Each tool takes the
 `context_handle` of a fresh `bos_get_context` choice. The current tool schema
-governs over any older argument table in the contract reference.
+governs over the contract reference.
 
 A demo, preview or customer environment under review is a separate deployment
 from the feedback API, even when the feedback is about it. Reports about that

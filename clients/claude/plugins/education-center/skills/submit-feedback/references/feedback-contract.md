@@ -126,11 +126,11 @@ current membership, role, installation and exact operation grants.
 
 | Tool | Arguments | Result |
 | --- | --- | --- |
-| `bos_list_feedback` | Optional `status`, `limit` (1–100; default 20) | Reporter's own summaries, newest first |
-| `bos_get_feedback` | `feedback_id` | Private full record, status, attributed `history`, `comments`, attachment metadata and MCP image content blocks |
-| `bos_add_feedback_comment` | `feedback_id`, `body` (1–4000 characters); declared optional `parent_comment_id` | Updated private record with server-attributed comment/reply; identical normalized body, parent and actor on one record are deduplicated |
-| `bos_update_feedback` | `feedback_id`, `status`, `expected_status` | Authorized assignee transition |
-| `bos_triage_feedback` | `feedback_id`, `status`, `expected_status`; optional `assigned_to` (current member UUID or null) | Authorized team transition/assignment |
+| `bos_list_feedback` | `context_handle`; optional `view` (`mine` default, `team`), `status`, `query`, `limit` (1–100; default 20), `cursor` | Summaries newest first, with `next_cursor` for the next page; the default queue excludes closed items |
+| `bos_get_feedback` | `context_handle`, `feedback_id`; optional `page_size` (1–100; default 100), `comments_before`, `history_before` | Private full record with `comments_next_cursor` and `history_next_cursor` for earlier entries, status, attributed `history`, `comments`, attachment metadata and MCP image content blocks |
+| `bos_add_feedback_comment` | `context_handle`, `feedback_id`, `body` (1–4000 characters); declared optional `parent_comment_id` | Updated private record with server-attributed comment/reply; identical normalized body, parent and actor on one record are deduplicated |
+| `bos_update_feedback` | `context_handle`, `feedback_id`, `status`, `expected_status`; optional `assigned_to` | Authorized assignee transition |
+| `bos_triage_feedback` | `context_handle`, `feedback_id`, `status`, `expected_status`; optional `assigned_to` (current member UUID or null) | Authorized team transition/assignment |
 | Discovered HTTPS `feedback.resolve` | Only `feedback_id`, `expected_status` | Canonical reporter completion from any tracked state; closes atomically and records `resolution: reporter_confirmed` on the closure history event |
 
 The ordinary transitions are:
@@ -182,12 +182,15 @@ and authorized same-installation triage participants, with each current
 operation's permissions also required.
 Assignment grants no authority. Read/comment participation alone permits no
 ordinary implementation transition; the canonical reporter's separately
-discovered completion operation retains its own rules. Lists contain only the caller's own
-submissions, including for team members. History and comments contain
+discovered completion operation retains its own rules. `view: "mine"` lists only the caller's
+own submissions; `view: "team"` lists the selected scope and requires current
+triage authority there. Paging continues the same view, query and status, and
+each page reflects current state. History and comments contain
 server-derived actor IDs, agent-installation IDs, timestamps and event IDs.
 Reads exclude notification delivery state and provider secrets. Comments follow
-the same sanitization rules and feedback rate limits. A record holds at most 100
-comments and 1,000 lifecycle events. Native MCP image bytes appear once as image
+the same sanitization rules and feedback rate limits. Discussion has no lifetime
+length limit; each read returns a bounded newest page, so follow its comment and
+history cursors to reach earlier entries. Native MCP image bytes appear once as image
 blocks, and video as an embedded resource blob; structured/text receipts carry
 metadata only. HTTPS media bytes belong only to the top-level media array.
 Match returned attachment metadata, display unknown formats as safe metadata,
