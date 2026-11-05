@@ -1,9 +1,9 @@
 ---
 name: submit-feedback
-description: Submit or draft private BOS product feedback with sanitized media, track its lifecycle, and discuss or complete an existing report through currently supported operations. Use for product feedback, report session, feedback tracking, replies, and reporter completion.
+description: Submit or draft private BOS product feedback with sanitized media, track its lifecycle, and discuss or complete an existing report through currently supported operations. Use for reading feedback and comments, product feedback, report session, feedback tracking, replies, and reporter completion.
 metadata:
   version: "1.0.8"
-  requires: "{\"bos-mcp-client\":\"1.0.7\"}"
+  requires: "{\"bos-mcp-client\":\"1.0.8\"}"
 ---
 
 
@@ -87,6 +87,23 @@ remain required; the package does not intercept or enforce arbitrary API calls.
 Submit privacy-minimized feedback through the existing BOS connection. Read
 [references/feedback-contract.md](references/feedback-contract.md) before the
 first submission in a task.
+
+## First action for feedback reads and writes
+
+Before inspecting repository API clients, local credentials, cloud login or browser
+access, load the installed `bos-mcp-client` skill and perform its **First action:
+resolve the callable BOS tool** workflow. This applies to listing comments and
+reading reports as well as submission. In a host exposing `ALL_TOOLS`, find the
+exact `bos_get_context` descriptor, read its schema and invoke that callable.
+
+An empty initial tool inventory can be startup delay. Follow the connection
+skill's single bounded 180-second startup window, checking a fresh inventory
+in separate calls before declaring the capability unavailable. Do not end the
+request or ask for credentials while that startup state remains unresolved.
+Cloud CLI authentication, local credential-file absence and disabled browser
+access do not diagnose the host-managed BOS connection. If the user says BOS is
+already authenticated, refresh callable discovery and invoke `bos_get_context`;
+report only the observed result and resume the pending feedback request.
 
 ## Decide whether to submit
 

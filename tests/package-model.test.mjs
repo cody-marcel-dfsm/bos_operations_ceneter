@@ -1103,20 +1103,32 @@ test("repository release skill cannot cross into the BOS server repository", asy
   assert.match(repositoryInstructions, /exactly one continuous\s+Markdown prompt/i);
 });
 
-test("canonical product-MCP knowledge requires native auth and client-owned server acceptance", {
-  skip: !privateVaultAvailable,
-}, async () => {
-  const specification = await readFile(
-    `${root}/Vault/specs/product-mcp-connections.md`,
-    "utf8"
-  );
-
-  assert.match(specification, /each Codex plugin[\s\S]*\.mcp\.json/i);
-  assert.match(specification, /https:\/\/dfsm\.ai\/mcp\/apps\/bos\/platform/i);
-  assert.match(specification, /contains no[\s\S]*`\.app\.json` or registered connector/i);
-  assert.match(specification, /https:\/\/dfsm\.ai\/api\/v1\/mcp\/oauth\/authorize/i);
-  assert.match(specification, /Packages contain no BOS credentials[\s\S]*account-management logic/i);
-  assert.doesNotMatch(specification, /codex mcp login/i);
+test("shipped product-MCP contracts retain native host authentication without private Vault inputs", async () => {
+  const contract = JSON.parse(await readFile(`${root}/contracts/product-mcp-connections.v1.json`, "utf8"));
+  assert.equal(contract.request_time_authentication.unauthenticated_transport_result, "HTTP_401_WWW_AUTHENTICATE");
+  assert.equal(contract.request_time_authentication.operation_authorization, "SERVER_EVALUATED_ON_TOOLS_CALL");
+  const foundation = contract.products.find(product => product.name === "bos");
+  assert.equal(foundation.resource_url, "https://dfsm.ai/mcp/apps/bos/platform");
+  assert.equal(foundation.oauth.authorization_endpoint, "https://dfsm.ai/api/v1/mcp/oauth/authorize");
+  for (const name of ["bos", "education-center"]) {
+    const directory = `${root}/clients/codex/plugins/${name}`;
+    assert.equal(await pathExists(`${directory}/.app.json`), false);
+    const manifest = JSON.parse(await readFile(`${directory}/.codex-plugin/plugin.json`, "utf8"));
+    const metadata = JSON.parse(await readFile(`${directory}/.bos-product.json`, "utf8"));
+    if (name === "education-center") {
+      assert.equal(manifest.mcpServers, undefined);
+      assert.equal(await pathExists(`${directory}/.mcp.json`), false);
+      assert.equal(metadata.connection_owner, "bos");
+      assert.equal(metadata.authentication, "bos_dependency");
+      continue;
+    }
+    assert.equal(manifest.mcpServers, "./.mcp.json");
+    const mcp = JSON.parse(await readFile(`${directory}/.mcp.json`, "utf8"));
+    assert.equal(Object.keys(mcp.mcpServers).length, 1);
+    const connection = Object.values(mcp.mcpServers)[0];
+    assert.equal(connection.url, foundation.resource_url);
+    assert.deepEqual(Object.keys(connection).sort(), ["required", "startup_timeout_sec", "tool_timeout_sec", "type", "url"]);
+  }
 });
 
 test("guided support classifies OAuth invalid_client as registration recovery", async () => {
@@ -2669,7 +2681,7 @@ test("README routes customer, development, and credential-free release validatio
   assert.equal(repositoryPackage.scripts.build, "npm run build:packages");
   assert.equal(
     repositoryPackage.scripts["release:check"],
-    "python3 tools/validation_contract.py release"
+    "python3 tools/deterministic_package.py validate"
   );
   assert.equal(
     repositoryPackage.scripts["acceptance:post-release"],

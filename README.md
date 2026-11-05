@@ -77,7 +77,7 @@ Upgrading replaces the former `platform` identifier. Hosts may require native
 sign-in again when a connection identifier changes; valid-session continuity
 has not been verified for this migration.
 
-Current source package release: `0.0.214`. If `0.0.213` is installed,
+Current source package release: `0.0.215`. If `0.0.214` is installed,
 follow the ordinary [update instructions](#updates) after your host catalog
 offers the current release shown above, then verify that the installed package
 reports that version. The [release-line transition](#moving-to-the-00x-package-line)
@@ -629,6 +629,17 @@ Each publisher retains its own source and release ownership; this introduces no
 sibling source/build dependency, registry, service or public API version.
 
 ## Release validation
+
+<!-- deterministic-package-release -->
+For the bounded feedback-discovery and release-tool package profile, `npm run
+release:check` runs the fixed deterministic category on clean committed source.
+Fetch and integrate the publication base first. The gate uses no model review,
+requires complete tests without skips, and retains exact source/runtime/output
+custody. See [deterministic package release](tools/deterministic-package.md) for
+scope, original-clock handling and the normal CI-gated publication commands.
+Unsupported runtime or configuration changes fail closed; this profile supplies
+no deployment authority.
+<!-- /deterministic-package-release -->
 
 Release validation is credential-free and local. It regenerates canonical
 client packages, checks generated parity and credential containment, and runs

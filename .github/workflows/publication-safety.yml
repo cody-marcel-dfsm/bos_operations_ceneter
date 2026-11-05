@@ -2,7 +2,7 @@ name: Publication safety
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'codex/release-v*']
     tags: ["v*"]
   pull_request:
     branches: [main]
@@ -26,7 +26,12 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
-      - name: Verify source maintenance or the native selected product contract
-        run: python3 tools/deterministic_source.py ci --base "$VALIDATION_BASE_SHA"
+      - name: Verify the fixed deterministic source or skill-package category
+        run: |
+          validation_base_sha="$VALIDATION_BASE_SHA"
+          case "$GITHUB_REF" in
+            refs/heads/codex/release-v*) validation_base_sha="$(git rev-parse origin/main)" ;;
+          esac
+          python3 tools/deterministic_package.py ci --base "$validation_base_sha"
         env:
           GH_TOKEN: ${{ github.token }}

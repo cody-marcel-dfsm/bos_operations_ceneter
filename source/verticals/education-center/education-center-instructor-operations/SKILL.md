@@ -3,7 +3,7 @@ name: education-center-instructor-operations
 description: Handle Education Center instructor hiring, onboarding, teaching operations, and offboarding through the tenant-scoped BOS MCP. Use when asked to find candidates, reconcile instructor communications or documents, schedule interviews or onboarding, inspect teaching schedules and rosters, prepare lifecycle checklists, or identify missing instructor-management capabilities.
 metadata:
   version: "1.0.8"
-  requires: "{\"bos-mcp-client\":\"1.0.7\",\"bos-visual-output\":\"1.0.7\",\"education-center-service-routing\":\"1.0.8\"}"
+  requires: "{\"bos-mcp-client\":\"1.0.8\",\"bos-visual-output\":\"1.0.8\",\"education-center-service-routing\":\"1.0.8\"}"
 ---
 
 # Education Center Instructor Operations
