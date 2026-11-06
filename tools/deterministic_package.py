@@ -6,6 +6,7 @@ runtime/configuration changes require a separate fixed verification profile.
 from __future__ import annotations
 
 import argparse
+import hashlib
 from datetime import datetime, timezone
 import json
 import os
@@ -22,11 +23,12 @@ except ImportError:
     import deterministic_source as native
 
 KIND = 'boc-deterministic-package/1'
-PROFILE = 'feedback-discovery-and-release-tool/1'
+PROFILE = 'feedback-discovery-and-release-tool/2'
 TESTS = [
     'tests/bos-foundation-connection.test.mjs', 'tests/bos-logout.test.mjs',
     'tests/context-selection.test.mjs', 'tests/product-mcp-contract.test.mjs',
     'tests/external-authentication-handoff.test.mjs',
+    'tests/feedback-evidence-guidance.test.mjs', 'tests/bos-native-compatibility.test.mjs',
     'tests/feedback-customization.test.mjs', 'tests/feedback-lifecycle.test.mjs',
     'tests/release-version.test.mjs', 'tests/skill-dependencies.test.mjs',
     'tests/versioned-skills.test.mjs', 'tests/package-model.test.mjs',
@@ -42,7 +44,8 @@ CHECKS = [
 ]
 BODY_SKILLS = {'source/platform/bos-mcp-client/SKILL.md',
                'source/platform/submit-feedback/SKILL.md',
-               'source/platform/submit-feedback/references/feedback-contract.md'}
+               'source/platform/submit-feedback/references/feedback-contract.md',
+               'source/platform/bos-mcp-client/references/identity-context.md'}
 MAINTENANCE = {
     'AGENTS.md', '.agents/skills/ship-it/SKILL.md',
     'tools/deterministic_package.py', 'tools/deterministic-package.md',
@@ -50,7 +53,16 @@ MAINTENANCE = {
     'tests/release-version.test.mjs', '.github/workflows/publication-safety.yml',
     'scripts/release.mjs',
     'tests/package-model.test.mjs',
+    'tests/feedback-evidence-guidance.test.mjs', 'tests/bos-native-compatibility.test.mjs',
 }
+
+# Historical selections are retained evidence, never executable validation authority.
+RETIRED_SELECTION = 'tools/validation-selection.json'
+RETIRED_SELECTION_SHA256 = frozenset({
+    '3492d4153de820e07a13d7ecc8c187fc04c5e60a2acce2fa488ea4972b8823b4',
+    'c1f0431bcc70c271d2411797d049ab1d7b18ffc375b86e08d43e42322469eddf',
+    '97963c568bef047d9621c0d07bf8b7b672e3130edd018c0b5bc638eb966bd1eb',
+})
 
 
 def blob(root, revision, path):
@@ -65,13 +77,29 @@ def commits_and_paths(root, base, source):
     result = []
     for commit in native.git(root, 'rev-list', '--reverse', base + '..' + source).splitlines():
         parents = native.git(root, 'show', '-s', '--format=%P', commit).split()
-        if len(parents) != 1:
-            raise ValueError('Integrate merge candidates through a separately mapped profile')
+        if len(parents) == 2:
+            trusted = []
+            for parent in parents:
+                observation = subprocess.run(['git', '--no-replace-objects', 'merge-base',
+                                               '--is-ancestor', parent, base], cwd=root,
+                                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                if observation.returncode not in (0, 1):
+                    observation.check_returncode()
+                if observation.returncode == 0:
+                    trusted.append(parent)
+            if len(trusted) != 1:
+                raise ValueError('Merge needs exactly one publication-base ancestor parent')
+            # Check the integrated result against its trusted published parent.
+            # rev-list still checks every unpublished nonmerge edge, including reverts.
+            parents = trusted
+        elif len(parents) != 1:
+            raise ValueError('Only two-parent publication-base anchored merges are mapped')
         for row in native.git(root, 'diff-tree', '--no-commit-id', '--raw', '-r',
                               '--no-renames', parents[0], commit).splitlines():
             fields, path = row.split('\t')
             old_mode, new_mode = fields.split()[:2]
-            if new_mode not in {'100644', '100755'}:
+            if new_mode not in {'100644', '100755'} and not (
+                    path == RETIRED_SELECTION and new_mode == '000000'):
                 raise ValueError('Deletion or nonregular source change: ' + path)
             result.append((parents[0], commit, path, old_mode[1:], new_mode))
     if not result:
@@ -84,6 +112,13 @@ def scope(root, base, source):
     paths = set()
     for parent, commit, path, old_mode, new_mode in rows:
         paths.add(path)
+        if path == RETIRED_SELECTION:
+            for revision, mode in ((parent, old_mode), (commit, new_mode)):
+                if mode == '000000':
+                    continue
+                if mode != '100644' or hashlib.sha256(blob(root, revision, path)).hexdigest() not in RETIRED_SELECTION_SHA256:
+                    raise ValueError('Unmapped retired validation selection')
+            continue
         if path in MAINTENANCE or path in BODY_SKILLS:
             continue
         if path.startswith('clients/'):
@@ -129,7 +164,7 @@ def scope(root, base, source):
                 raise ValueError('Unmapped documentation change')
             continue
         raise ValueError('Unsupported package-release scope: ' + path)
-    if (Path(root) / 'tools/validation-selection.json').exists():
+    if native.git(root, 'ls-tree', source, '--', RETIRED_SELECTION):
         raise ValueError('Existing selected contract must be explicitly migrated; no override')
     return sorted(paths)
 

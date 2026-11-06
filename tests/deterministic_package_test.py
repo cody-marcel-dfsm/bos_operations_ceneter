@@ -1,5 +1,6 @@
 """Negative admission, completeness, custody and publication tests; no model calls."""
 import json
+import hashlib
 from pathlib import Path
 import subprocess
 import sys
@@ -155,6 +156,12 @@ class PackageGateTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'category'):
                 d.read_receipt(self.root)
 
+    def test_changed_profile_invalidates_original_receipt(self):
+        self.validate()
+        with patch.object(d, 'PROFILE', 'untrusted-replacement'):
+            with self.assertRaisesRegex(ValueError, 'receipt'):
+                d.read_receipt(self.root)
+
     def test_runtime_source_change_even_if_reverted_is_not_admitted(self):
         (self.root / 'runtime.js').write_text('execute()')
         self.commit()
@@ -192,6 +199,115 @@ class PackageGateTests(unittest.TestCase):
         self.commit()
         with self.assertRaisesRegex(ValueError, 'Unsupported'):
             d.scope(self.root, baseline, self.git('rev-parse', 'HEAD'))
+
+    def side_merge(self, path, content='compatible instructions', revert=False):
+        published = self.git('rev-parse', 'HEAD')
+        self.git('checkout', '-qb', 'topic', self.base)
+        target = self.root / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content)
+        self.commit()
+        if revert:
+            target.unlink()
+            self.commit()
+        self.git('checkout', 'main')
+        self.git('merge', '--no-ff', '-qm', 'integrate compatibility', 'topic')
+        return published, self.git('rev-parse', 'HEAD')
+
+    def test_base_anchored_merge_checks_unpublished_side_history(self):
+        path = 'source/platform/bos-mcp-client/references/identity-context.md'
+        published, source = self.side_merge(path)
+        self.assertIn(path, d.scope(self.root, published, source))
+
+    def test_unanchored_and_two_trusted_parent_merges_are_rejected(self):
+        published, source = self.side_merge('source/platform/bos-mcp-client/references/identity-context.md')
+        with self.assertRaisesRegex(ValueError, 'exactly one'):
+            d.scope(self.root, self.base, source)
+        redundant = self.git('commit-tree', 'HEAD^{tree}', '-p', self.base, '-p', published, '-m', 'two trusted parents')
+        with self.assertRaisesRegex(ValueError, 'exactly one'):
+            d.scope(self.root, published, redundant)
+
+    def test_octopus_merge_is_rejected(self):
+        published, source = self.side_merge('source/platform/bos-mcp-client/references/identity-context.md')
+        octopus = self.git('commit-tree', 'HEAD^{tree}', '-p', self.base, '-p', published, '-p', source, '-m', 'octopus')
+        with self.assertRaisesRegex(ValueError, 'two-parent'):
+            d.scope(self.root, published, octopus)
+
+    def test_merge_cannot_hide_out_of_scope_side_change_or_revert(self):
+        for revert in (False, True):
+            with self.subTest(revert=revert):
+                # Independent fixture per case preserves the complete DAG observation.
+                fixture = PackageGateTests()
+                fixture.setUp()
+                try:
+                    published, source = fixture.side_merge('runtime.js', revert=revert)
+                    with self.assertRaisesRegex(ValueError, 'Unsupported|Deletion'):
+                        d.scope(fixture.root, published, source)
+                finally:
+                    fixture.doCleanups()
+
+    def test_merge_result_cannot_introduce_unmapped_resolution(self):
+        published, source = self.side_merge('source/platform/bos-mcp-client/references/identity-context.md')
+        (self.root / 'runtime.js').write_text('unexpected resolution')
+        self.git('add', 'runtime.js')
+        tree = self.git('write-tree')
+        resolution = self.git('commit-tree', tree, '-p', published, '-p', self.git('rev-parse', 'topic'), '-m', 'unmapped resolution')
+        with self.assertRaisesRegex(ValueError, 'Unsupported'):
+            d.scope(self.root, published, resolution)
+
+    def test_only_exact_native_reference_and_named_regressions_are_mapped(self):
+        for path in ('source/platform/bos-mcp-client/references/identity-context.md',
+                     'tests/bos-native-compatibility.test.mjs', 'tests/feedback-evidence-guidance.test.mjs'):
+            target = self.root / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text('mapped')
+        self.commit()
+        d.scope(self.root, self.base, self.git('rev-parse', 'HEAD'))
+        (self.root / 'source/platform/bos-mcp-client/references/another.md').write_text('unmapped')
+        self.commit()
+        with self.assertRaisesRegex(ValueError, 'Unsupported'):
+            d.scope(self.root, self.base, self.git('rev-parse', 'HEAD'))
+        for path in ('tests/bos-native-compatibility.test.mjs', 'tests/feedback-evidence-guidance.test.mjs'):
+            self.assertIn(path, d.TESTS)
+
+    def test_only_exact_retired_selection_absent_from_final_candidate_is_mapped(self):
+        path = self.root / d.RETIRED_SELECTION
+        path.parent.mkdir()
+        path.write_text('retired immutable bytes')
+        self.commit()
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        with patch.object(d, 'RETIRED_SELECTION_SHA256', frozenset({digest})):
+            with self.assertRaisesRegex(ValueError, 'Existing selected'):
+                d.scope(self.root, self.base, self.git('rev-parse', 'HEAD'))
+            path.unlink()
+            self.commit()
+            self.assertIn(d.RETIRED_SELECTION, d.scope(self.root, self.base, self.git('rev-parse', 'HEAD')))
+            path.write_text('retired immutable bytes')
+            self.commit()
+            with self.assertRaisesRegex(ValueError, 'Existing selected'):
+                d.scope(self.root, self.base, self.git('rev-parse', 'HEAD'))
+
+    def test_unknown_retired_selection_even_if_removed_is_rejected(self):
+        path = self.root / d.RETIRED_SELECTION
+        path.parent.mkdir()
+        path.write_text('unknown selection')
+        self.commit()
+        path.unlink()
+        self.commit()
+        with self.assertRaisesRegex(ValueError, 'Unmapped retired'):
+            d.scope(self.root, self.base, self.git('rev-parse', 'HEAD'))
+
+    def test_wrong_retired_selection_path_and_arbitrary_deletion_are_rejected(self):
+        path = self.root / 'tools/another-selection.json'
+        path.parent.mkdir()
+        path.write_text('retired immutable bytes')
+        self.commit()
+        with self.assertRaisesRegex(ValueError, 'Unsupported'):
+            d.scope(self.root, self.base, self.git('rev-parse', 'HEAD'))
+        path.unlink()
+        self.commit()
+        with self.assertRaisesRegex(ValueError, 'Deletion'):
+            d.scope(self.root, self.base, self.git('rev-parse', 'HEAD'))
 
     def test_existing_selected_contract_cannot_be_overridden(self):
         path = self.root / 'tools/validation-selection.json'

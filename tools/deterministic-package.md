@@ -5,14 +5,29 @@ not model proposals or model approval. Historical Oracle records remain historic
 The distinct `boc-deterministic-package/1` VERIFIED receipt is not an Oracle verdict
 or deployment authority. The existing source-maintenance lane retains its own scope.
 
-The fixed `feedback-discovery-and-release-tool/1` profile covers the BOS connection
-and feedback instructions, the feedback contract reference, transitive skill version pins, generated consumers,
+The fixed `feedback-discovery-and-release-tool/2` profile covers the BOS connection
+and feedback instructions, the exact feedback-contract and identity-context references,
+the feedback-evidence and native-compatibility regressions, transitive skill version pins, generated consumers,
 release versions, the version-bump script and the verifier's own implementation,
 tests and CI wiring. Other skill behavior, runtime scripts, provider/credential
 configuration, dependencies, contracts and existing selected validation contracts
 are outside this profile. Unsupported scope fails closed and requires an explicit
 profile amendment with corresponding complete tests. Nothing selects a model as a
 fallback. Per-commit scope inspection retains reverted/out-of-scope source history.
+
+The version 2 profile preserves existing unpublished history when integrating the
+published main line. A two-parent merge must have exactly one parent that is an
+ancestor of the exact publication base; its result is classified against that
+trusted parent. Every unpublished nonmerge edge is still inspected, including
+out-of-scope changes later reverted. Unanchored and octopus merges fail closed.
+The only retired validation-selection exception is the exact path
+`tools/validation-selection.json` with one of three immutable historical SHA-256
+blobs pinned in the verifier, and only when absent from the final candidate tree.
+Those bytes are historical evidence, never current or executable validation
+contracts. Unknown selections, retained/reintroduced final selections, arbitrary
+deletions and unrelated reference or test paths remain inadmissible. The complete
+fixed category includes both mapped regressions and the verifier's full negative
+suite; changed profile, commands, source or publication base invalidate readiness.
 
 From clean committed canonical main, after fetching and integrating origin/main:
 
