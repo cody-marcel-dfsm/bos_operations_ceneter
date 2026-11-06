@@ -61,6 +61,11 @@
         "enabledDefault": true
       },
       {
+        "id": "bos-customer-initialization",
+        "path": "skills/bos-customer-initialization/SKILL.md",
+        "enabledDefault": true
+      },
+      {
         "id": "planning",
         "path": "skills/planning/SKILL.md",
         "enabledDefault": true

@@ -2739,11 +2739,11 @@ class ReviewSeries(unittest.TestCase):
                         else:
                             o._oracle(self.root, 'synthetic-tree', ['source.py'], {}, None)
                     command, options = calls[0]
-                    self.assertIn('model_reasoning_effort="xhigh"', command)
-                    self.assertEqual(options['env']['CODEX_SELECTED_REASONING_EFFORT'], 'xhigh')
+                    self.assertIn('model_reasoning_effort="medium"', command)
+                    self.assertEqual(options['env']['CODEX_SELECTED_REASONING_EFFORT'], 'medium')
                     self.assertEqual(options['env']['CODEX_SELECTED_MODEL'], 'gpt-6.1-sol')
                     metadata = json.loads((run / 'model.json').read_text())
-                    self.assertEqual(metadata['reasoning_effort'], 'xhigh')
+                    self.assertEqual(metadata['reasoning_effort'], 'medium')
                     self.assertEqual(metadata['selected_model'], 'gpt-6.1-sol')
                     self.assertTrue(metadata['ignore_user_config'])
                 finally:
@@ -2753,8 +2753,8 @@ class ReviewSeries(unittest.TestCase):
         with patch.object(o, 'selected_model', return_value='gpt-6.1-sol'), \
                 patch.object(o, 'selected_reasoning_effort', return_value='xhigh') as effort:
             binding = o._input_binding(self.root, {}, None)
-            self.assertEqual(binding['reviewer_settings'], {'model': 'gpt-6.1-sol', 'reasoning_effort': 'xhigh'})
-            effort.return_value = 'high'
+            self.assertEqual(binding['reviewer_settings'], {'model': 'gpt-6.1-sol', 'reasoning_effort': 'medium'})
+            effort.return_value = 'low'
             with self.assertRaises(o.OracleApprovalError):
                 o._assert_binding(self.root, binding, {}, None)
             o._assert_binding(self.root, binding, {}, None, check_environment=False)
@@ -2774,9 +2774,10 @@ class ReviewSeries(unittest.TestCase):
                     patch.object(o.subprocess, 'run', side_effect=execute):
                 o._review_process(self.root, 'Synthetic settings', 'reviewer')
             command, options = calls[0]
-            self.assertFalse(any('model_reasoning_effort=' in argument for argument in command))
-            self.assertNotIn('CODEX_SELECTED_REASONING_EFFORT', options['env'])
-            self.assertIsNone(json.loads((run / 'model.json').read_text())['reasoning_effort'])
+            # Owner delivery policy supplies the class effort; the stale inherited hint is replaced.
+            self.assertIn('model_reasoning_effort="medium"', command)
+            self.assertEqual(options['env']['CODEX_SELECTED_REASONING_EFFORT'], 'medium')
+            self.assertEqual(json.loads((run / 'model.json').read_text())['reasoning_effort'], 'medium')
         finally:
             o._RUN.reset(token)
 

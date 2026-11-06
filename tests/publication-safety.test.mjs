@@ -35,6 +35,14 @@ test("publication workflow audits release refs without importing retained pull-r
     "utf8",
   );
 
+  const packageGate = await readFile(
+    new URL("../tools/deterministic_package.py", import.meta.url),
+    "utf8",
+  );
+  const packageJson = JSON.parse(
+    await readFile(new URL("../package.json", import.meta.url), "utf8"),
+  );
+
   assert.doesNotMatch(workflow, /refs\/pull|publication-audit/);
   assert.match(workflow, /python3 tools\/command_coverage\.py ci --candidate "\$VALIDATION_SOURCE_SHA"/);
   const commands = JSON.parse(execFileSync("python3", ["-c",

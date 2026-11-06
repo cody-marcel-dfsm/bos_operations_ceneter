@@ -2,8 +2,8 @@
 name: education-center-service-routing
 description: Route Education Center requests to tenant-scoped BOS capabilities and contribute education-domain steps to ad hoc dynamic workflows. Use for multi-step or cross-service objectives and whenever work needs Gmail, Calendar, Drive, Calimatic, Lead Director, calls, SMS, reviews, outreach, students, camps, enrollment, or another connected service.
 metadata:
-  version: "1.0.13"
-  requires: "{\"bos-mcp-client\":\"1.0.11\",\"bos-visual-output\":\"1.0.11\",\"bos-workflow-orchestrator\":\"1.0.11\",\"education-center-customer-initialization\":\"1.0.11\",\"email-account-routing\":\"1.0.11\"}"
+  version: "1.0.14"
+  requires: "{\"bos-mcp-client\":\"1.0.12\",\"bos-visual-output\":\"1.0.12\",\"bos-workflow-orchestrator\":\"1.0.12\",\"education-center-customer-initialization\":\"1.0.12\",\"email-account-routing\":\"1.0.12\"}"
 ---
 
 # Education Center Service Routing

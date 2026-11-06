@@ -38,6 +38,7 @@
     "platform/bos-plugin-console",
     "platform/bos-plugin-settings",
     "platform/bos-plugin-settings-initialization",
+    "platform/bos-customer-initialization",
     "platform/planning",
     "platform/implementation",
     "platform/review",

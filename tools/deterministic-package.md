@@ -9,7 +9,27 @@ The fixed `feedback-discovery-and-release-tool/2` profile covers the BOS connect
 and feedback instructions, the exact feedback-contract and identity-context references,
 the feedback-evidence and native-compatibility regressions, transitive skill version pins, generated consumers,
 release versions, the version-bump script and the verifier's own implementation,
-tests and CI wiring. Other skill behavior, runtime scripts, provider/credential
+tests and CI wiring.
+
+Amendment `/2` (owner-directed, 2026-11-04) adds exactly the BOS customer
+initialization feature: the files of `source/platform/bos-customer-initialization`
+(`SKILL.md`, `agents/openai.yaml`, `scripts/customer-profile.mjs`), the MCP
+discovery-fallback instructions in `bos-plugin-settings-initialization/SKILL.md`,
+`bos-plugin-console/SKILL.md` and `bos-mcp-client/references/identity-context.md`,
+its test `tests/bos-customer-profile.test.mjs`, and a single
+`platform/bos-customer-initialization` addition to `products/bos/product.json`
+`includes` with no other product change. The fixed test set adds that test plus
+the plugin console and plugin settings modules. It also admits owner-approved
+repairs to stale tests, by exact path with a stated reason in
+`STALE_TEST_REPAIRS`: workflow assertions made stale when CI moved to this gate,
+reasoning-effort expectations superseded by the owner delivery policy, a renamed
+lifecycle helper, and zombie-aware process termination. The publication safety
+module joins the fixed test set. Two owner-approved tool fixes are admitted
+(`tools/command_coverage.py`, `tools/oracle_approval.py`), and
+`scripts/build-marketplace-update.mjs` accepts a published commit through Oracle
+trailers or `python3 tools/deterministic_package.py verify-published --source SHA`,
+which requires origin/main ancestry and the same exact-source release-branch CI
+evidence that `promote` requires. Other skill behavior, runtime scripts, provider/credential
 configuration, dependencies, contracts and existing selected validation contracts
 are outside this profile. Unsupported scope fails closed and requires an explicit
 profile amendment with corresponding complete tests. Nothing selects a model as a

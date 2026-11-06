@@ -165,7 +165,7 @@ print(json.dumps(review_proposal(root,sys.argv[2],[],None)))
 
     def test_process_birth_mismatch_is_not_a_live_owner(self):
         owner=self.start();self.entered()
-        with patch.object(lifecycle,'process_identity',return_value='reused PID with a different birth'):
+        with patch.object(lifecycle,'process_birth',return_value='reused PID with a different birth'):
             self.assertIsNone(lifecycle.active(o,self.root))
         self.finish(owner)
 

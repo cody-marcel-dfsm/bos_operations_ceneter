@@ -308,6 +308,56 @@ class PackageGateTests(unittest.TestCase):
         self.commit()
         with self.assertRaisesRegex(ValueError, 'Deletion'):
             d.scope(self.root, self.base, self.git('rev-parse', 'HEAD'))
+    def write_product(self, includes, **extra):
+        path = self.root / 'products/bos/product.json'
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({'name': 'bos', 'version': '1.0.0', 'includes': includes, **extra}))
+        return path
+
+    def test_customer_initialization_files_and_include_are_admitted(self):
+        self.write_product(['platform/bos-mcp-client', 'platform/bos-plugin-settings'])
+        console = self.root / 'source/platform/bos-plugin-console/SKILL.md'
+        console.parent.mkdir(parents=True)
+        console.write_text('---\nname: bos-plugin-console\n---\nbody\n')
+        self.commit()
+        baseline = self.git('rev-parse', 'HEAD')
+        self.write_product(['platform/bos-mcp-client', 'platform/bos-customer-initialization',
+                            'platform/bos-plugin-settings'])
+        console.write_text('---\nname: bos-plugin-console\n---\nbody with discovery fallback\n')
+        helper = self.root / 'source/platform/bos-customer-initialization/scripts/customer-profile.mjs'
+        helper.parent.mkdir(parents=True)
+        helper.write_text('export const profile = true;\n')
+        self.commit()
+        paths = d.scope(self.root, baseline, self.git('rev-parse', 'HEAD'))
+        self.assertIn('products/bos/product.json', paths)
+        self.assertIn('source/platform/bos-customer-initialization/scripts/customer-profile.mjs', paths)
+
+    def test_other_product_include_is_not_admitted(self):
+        self.write_product(['platform/bos-mcp-client'])
+        self.commit()
+        baseline = self.git('rev-parse', 'HEAD')
+        self.write_product(['platform/bos-mcp-client', 'platform/unreviewed-skill'])
+        self.commit()
+        with self.assertRaisesRegex(ValueError, 'configuration'):
+            d.scope(self.root, baseline, self.git('rev-parse', 'HEAD'))
+
+    def test_include_addition_cannot_hide_other_product_changes(self):
+        self.write_product(['platform/bos-mcp-client'])
+        self.commit()
+        baseline = self.git('rev-parse', 'HEAD')
+        self.write_product(['platform/bos-mcp-client', 'platform/bos-customer-initialization'],
+                           mcp_resource_url='https://attacker.invalid/mcp')
+        self.commit()
+        with self.assertRaisesRegex(ValueError, 'configuration'):
+            d.scope(self.root, baseline, self.git('rev-parse', 'HEAD'))
+
+    def test_other_skill_files_beside_customer_initialization_are_not_admitted(self):
+        path = self.root / 'source/platform/bos-customer-initialization/scripts/extra.mjs'
+        path.parent.mkdir(parents=True)
+        path.write_text('execute()\n')
+        self.commit()
+        with self.assertRaisesRegex(ValueError, 'Unsupported'):
+            self.validate()
 
     def test_existing_selected_contract_cannot_be_overridden(self):
         path = self.root / 'tools/validation-selection.json'
@@ -410,6 +460,31 @@ class PackageGateTests(unittest.TestCase):
             return jobs if '/jobs?' in path else {'total_count': 1, 'workflow_runs': [run]}
         result = d.ci_observation(source, 'codex/release-v1.0.0', read)
         self.assertEqual(result['run']['id'], 41)
+
+    def test_published_main_commit_is_verified_by_exact_release_ci(self):
+        source, run, jobs = self.actions()
+        self.git('update-ref', 'refs/remotes/origin/main', source)
+        def read(path):
+            return jobs if '/jobs?' in path else {'total_count': 1, 'workflow_runs': [run]}
+        result = d.verify_published(self.root, source, read)
+        self.assertEqual((result['status'], result['version'], result['run']), ('PUBLISHED_VERIFIED', '1.0.0', 41))
+
+    def test_published_verification_requires_main_ancestry_success_and_exact_sha(self):
+        source, run, jobs = self.actions()
+        read = lambda path: jobs if '/jobs?' in path else {'total_count': 1, 'workflow_runs': [run]}
+        with self.assertRaises(subprocess.CalledProcessError):
+            d.verify_published(self.root, source, read)  # not on origin/main
+        self.git('update-ref', 'refs/remotes/origin/main', self.base)
+        with self.assertRaises(subprocess.CalledProcessError):
+            d.verify_published(self.root, source, read)  # main does not contain it
+        self.git('update-ref', 'refs/remotes/origin/main', source)
+        failed = {**run, 'conclusion': 'failure'}
+        with self.assertRaisesRegex(ValueError, 'not successful'):
+            d.verify_published(self.root, source,
+                               lambda path: jobs if '/jobs?' in path else {'total_count': 1, 'workflow_runs': [failed]})
+        for value in ('main', 'a' * 39, None):
+            with self.assertRaisesRegex(ValueError, 'Exact 40-character'):
+                d.verify_published(self.root, value, read)
 
     def test_ci_foreign_source_branch_repository_workflow_or_event_cannot_pass(self):
         source, run, jobs = self.actions()
