@@ -21,6 +21,13 @@ class SourceAdmissionTests(unittest.TestCase):
     def git(self,*args):return subprocess.check_output(['git',*args],cwd=self.root,text=True,stderr=subprocess.DEVNULL).strip()
     def commit(self,message):self.git('add','-A');self.git('commit','-qm',message)
     def validate(self):return d.validate(self.root,self.base,'2020-01-01T00:00:00Z')
+    def test_validation_contract_is_admitted_only_with_its_complete_test_module(self):
+        self.commands.stop()
+        try:
+            self.assertIn('tests/validation_contract_test.py',d.ALLOWED);self.assertIn('tools/validation_contract.py',d.ALLOWED)
+            self.assertTrue(any('validation_contract_test.py' in command for command in d.CHECKS))
+            self.assertNotIn('tools/oracle_approval.py',d.ALLOWED)
+        finally:self.commands.start()
     def test_real_execution_has_distinct_source_only_receipt(self):
         value=self.validate();self.assertEqual(value['status'],'VERIFIED');self.assertTrue(value['source_only']);self.assertEqual(value['sla_status'],'FAILED');self.assertNotIn('verdict',value);self.assertEqual(d.verify(self.root),value)
     def test_runtime_dependency_mutation_rejected(self):

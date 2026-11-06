@@ -6,6 +6,8 @@ configuration. Controller, test and CI changes are executable maintenance with
 complete negative tests, not a docs-only shortcut. The fixed allowlist rejects
 all product/package/version changes and every out-of-scope intermediate commit,
 including later reverts. Existing selected contracts cannot be overridden.
+The validation contract tool, its document and its complete test module are in
+scope; that test module is one of the fixed checks.
 
 Commit the source normally, then run:
 

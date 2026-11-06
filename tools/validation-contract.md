@@ -46,6 +46,34 @@ Unknown impact is classified as deep work before scope is fixed. User input, int
 security and prompt-injection boundaries receive the appropriate full scrutiny.
 Preserve independent source, privacy and publication gates.
 
+## Feature design approval
+
+A feature design includes a test plan. A `feature` selection names its design
+`.md` file in `design`, and the plan sits beside it as `<design>.test-plan.json`:
+
+```json
+{
+  "kind": "boc.feature-test-plan/v1",
+  "feature": "What the feature does",
+  "design": "Vault/docs/design/example.md",
+  "design_sha256": "<SHA-256 of the exact design bytes>",
+  "runtime_paths": ["source/example.mjs"],
+  "tests": [
+    {"module": "tests/example.test.mjs", "covers": ["source/example.mjs"], "purpose": "What it proves"}
+  ]
+}
+```
+
+The Oracle refuses to seal a feature contract, whatever its proposal verdict, when
+the plan is missing or malformed, names another design or another revision of this
+design, covers a runtime path outside the selected scope, leaves a runtime path
+without a test, or names a test that is not selected in `interactions` or
+`acceptance`. This is a deterministic shape check in
+`tools/validation_contract.py`; no model judges plan quality. The sealed contract
+keeps the design and plan hashes. Planned tests may be written after approval, but
+a candidate that lacks one fails contract verification, and a changed design or
+plan needs an explicit revision wherever those files are available.
+
 For a bug, first commit the selected test/fixture and the generated contract while
 leaving implementation source at its approved baseline. Capture the original
 failure with `python3 tools/validation_contract.py run --category focused --phase

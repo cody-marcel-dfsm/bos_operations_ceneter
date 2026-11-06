@@ -11,6 +11,12 @@ CLASSES = {'docs_only': ['sanity'], 'bug_fix': ['sanity','focused'],
            'deep_bug_fix': ['sanity','focused','interactions'],
            'feature': ['sanity','interactions','acceptance']}
 SLA_SECONDS = {'docs_only':120, 'bug_fix':180, 'deep_bug_fix':300, 'feature':300}
+SELECTION_KEYS = {'change_class','scope_paths','categories','reason','revision_of'}
+PLAN_KIND = 'boc.feature-test-plan/v1'
+PLAN_KEYS = {'kind','feature','design','design_sha256','runtime_paths','tests'}
+PLAN_TEST_KEYS = {'module','covers','purpose'}
+PLAN_LIMIT = 65536
+BINDING_KEYS = {'design','design_sha256','plan','plan_sha256','tests'}
 
 def delivery_policy(kind):
     return {'sla_seconds':SLA_SECONDS[kind], 'clock_owner':'build_host', 'clock_start':'original_insertion',
@@ -45,15 +51,20 @@ def catalog_check(catalog):
     return catalog
 
 def selection_schema():
-    return {'type':'object','additionalProperties':False,'required':['change_class','scope_paths','categories','reason','revision_of'], 'properties':{
+    return {'type':'object','additionalProperties':False,'required':['change_class','scope_paths','categories','reason','revision_of','design'], 'properties':{
       'change_class':{'type':'string','enum':list(CLASSES)},'scope_paths':{'type':'array','items':{'type':'string'},'minItems':1},
       'categories':{'type':'array','minItems':1,'items':{'type':'object','additionalProperties':False,'required':['name','tests','fixtures'],'properties':{'name':{'type':'string','enum':['sanity','focused','interactions','acceptance','regression']},'tests':{'type':'array','items':{'type':'string'}},'fixtures':{'type':'array','items':{'type':'string'}}}}},
-      'reason':{'type':'string','minLength':1},'revision_of':{'type':['string','null']}}}
+      'reason':{'type':'string','minLength':1},'revision_of':{'type':['string','null']},
+      'design':{'type':['string','null'],'description':'For a feature, the repository-relative design .md file; its required test plan sits beside it as <design>.test-plan.json. Null for every other class.'}}}
 
 def validate_selection(selection,catalog):
     catalog_check(catalog)
-    if set(selection)!={'change_class','scope_paths','categories','reason','revision_of'}: raise ValueError('Unexpected selection fields')
+    if set(selection)-{'design'}!=SELECTION_KEYS: raise ValueError('Unexpected selection fields')
     kind=selection['change_class']; categories=selection['categories']; names=[r['name'] for r in categories]
+    design=selection.get('design')
+    if kind=='feature':
+        if not safe_path(design) or not design.endswith('.md'): raise ValueError('A feature selection must name its design document')
+    elif design is not None: raise ValueError('Only a feature selection names a design')
     if kind not in CLASSES or not categories or len(names)!=len(set(names)) or not set(CLASSES[kind])<=set(names): raise ValueError('Selected categories are empty, duplicated or omit class requirements')
     if kind in {'docs_only','bug_fix'} and names!=CLASSES[kind]: raise ValueError('Simple changes have only their fixed minimal categories; integration or higher risk requires deep_bug_fix')
     if not selection['reason'].strip() or not selection['scope_paths'] or any(not safe_path(p) for p in selection['scope_paths']): raise ValueError('Contract needs bounded scope and rationale')
@@ -68,6 +79,55 @@ def validate_selection(selection,catalog):
             if tests or fixtures: raise ValueError('Fixed categories cannot replace their catalog commands')
         elif not tests or any(not safe_path(p) or not p.startswith('tests/') or not p.endswith('.test.mjs') or any(c in p for c in '*?[]') for p in tests): raise ValueError('Test category requires exact nonempty test paths')
     return selection
+
+def plan_path(design): return design[:-len('.md')]+'.test-plan.json'
+def text(value): return isinstance(value,str) and bool(value.strip())
+def sha256(content): return hashlib.sha256(content).hexdigest()
+def scoped(name,selection): return any(fnmatch.fnmatchcase(name,p) for p in selection['scope_paths'])
+def planned(selection): return {t for r in selection['categories'] if r['name'] in {'interactions','acceptance'} for t in r['tests']}
+
+def design_binding(root,selection):
+    """Refuse a feature design without its bound test plan. Shape only; no model judges quality."""
+    design=selection['design'];plan=plan_path(design)
+    if not (root/design).is_file(): raise ValueError('Feature design document is missing: '+design)
+    if not (root/plan).is_file(): raise ValueError('A feature design must include a test plan document: '+plan)
+    raw=(root/plan).read_bytes();design_sha256=sha256((root/design).read_bytes())
+    if len(raw)>PLAN_LIMIT: raise ValueError('Test plan is too large')
+    try: value=json.loads(raw)
+    except (ValueError,RecursionError) as error: raise ValueError('Test plan is not valid JSON') from error
+    if not isinstance(value,dict) or set(value)!=PLAN_KEYS or value['kind']!=PLAN_KIND: raise ValueError('Test plan requires exactly: '+', '.join(sorted(PLAN_KEYS)))
+    if value['design']!=design: raise ValueError('Test plan is bound to a different design: '+str(value['design']))
+    if value['design_sha256']!=design_sha256: raise ValueError('Test plan is bound to a different revision of its design')
+    if not text(value['feature']): raise ValueError('Test plan must name its feature')
+    covered=value['runtime_paths']
+    if not isinstance(covered,list) or not covered or not all(safe_path(p) for p in covered): raise ValueError('Test plan must list the runtime paths it covers')
+    outside=sorted(p for p in covered if not scoped(p,selection))
+    if outside: raise ValueError('Test plan covers paths outside the selected scope: '+', '.join(outside))
+    rows=value['tests']
+    if not isinstance(rows,list) or not rows: raise ValueError('Test plan must name its tests')
+    reached,names=set(),[]
+    for row in rows:
+        if not isinstance(row,dict) or set(row)!=PLAN_TEST_KEYS or not text(row['module']) or not text(row['purpose']) or not isinstance(row['covers'],list) or not row['covers'] or not all(text(p) for p in row['covers']): raise ValueError('Each planned test requires: '+', '.join(sorted(PLAN_TEST_KEYS)))
+        if row['module'] not in planned(selection): raise ValueError('Planned test is not selected for execution: '+row['module'])
+        unknown=sorted(set(row['covers'])-set(covered))
+        if unknown: raise ValueError('Planned test covers unlisted paths: '+', '.join(unknown))
+        reached.update(row['covers']);names.append(row['module'])
+    if len(set(names))!=len(names): raise ValueError('Test plan repeats a test module')
+    unreached=sorted(set(covered)-reached)
+    if unreached: raise ValueError('No planned test covers: '+', '.join(unreached))
+    return {'design':design,'design_sha256':design_sha256,'plan':plan,'plan_sha256':sha256(raw),'tests':sorted(names)}
+
+def verify_binding(root,contract,tree):
+    selection=contract['selection'];binding=contract.get('design_binding')
+    if selection['change_class']!='feature':
+        if binding is not None: raise ValueError('Only a feature contract binds a design')
+        return
+    if not isinstance(binding,dict) or set(binding)!=BINDING_KEYS or binding['design']!=selection['design'] or binding['plan']!=plan_path(selection['design']) or not isinstance(binding['tests'],list) or not binding['tests'] or not set(binding['tests'])<=planned(selection): raise ValueError('Feature contract lacks its bound test plan')
+    for module in binding['tests']:
+        if subprocess.run(['git','cat-file','-e',tree+':'+module],cwd=root,capture_output=True).returncode: raise ValueError('Planned test is missing from the candidate: '+module)
+    # Designs are private maintainer material, so a public checkout holds only the hashes.
+    for name,key in ((binding['design'],'design_sha256'),(binding['plan'],'plan_sha256')):
+        if (root/name).is_file() and sha256((root/name).read_bytes())!=binding[key]: raise ValueError('Design or test plan changed after approval; obtain explicit Oracle revision: '+name)
 
 def commands(selection,catalog):
     result=[]
@@ -88,6 +148,7 @@ def seal(root,selection,proposal,review,base=None):
     if selection['revision_of']!=(previous or {}).get('contract_sha256'): raise ValueError('Explicit revision does not name current original contract')
     base=base or git(root,'rev-parse','HEAD')
     value={'schema':'boc.validation-contract/v1','selection':selection,'base_commit':base,'base_tree':git(root,'rev-parse',base+'^{tree}'),'catalog_sha256':digest(catalog),'runtime':runtime(),'proposal_sha256':hashlib.sha256(proposal.encode()).hexdigest(),'review_sha256':digest(review),'commands':commands(selection,catalog),'delivery_policy':delivery_policy(selection['change_class'])}
+    if selection['change_class']=='feature': value['design_binding']=design_binding(root,selection)
     value['contract_sha256']=digest(value);return value
 
 def write_selection(root,value):
@@ -107,6 +168,7 @@ def verify(root,tree='HEAD',proposal=None):
     selection=validate_selection(contract['selection'],catalog)
     if contract.get('delivery_policy')!=delivery_policy(selection['change_class']): raise ValueError('Delivery policy changed; original host clock must survive revision')
     if contract['catalog_sha256']!=digest(catalog) or contract['commands']!=commands(selection,catalog): raise ValueError('Catalog or selected commands changed; obtain explicit Oracle revision')
+    verify_binding(root,contract,tree)
     if proposal is not None and proposal.get('validation_contract')!=contract: raise ValueError('Candidate selection lacks its exact original Oracle proposal')
     if git(root,'rev-parse',contract['base_commit']+'^{tree}')!=contract['base_tree']: raise ValueError('Baseline tree differs')
     candidate = tree if git(root,'cat-file','-t',tree)=='commit' else git(root,'rev-parse','HEAD')

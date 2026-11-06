@@ -16,9 +16,11 @@ KIND = 'boc-deterministic-source/1'
 REPOSITORY = 'cody-marcel-dfsm/bos_operations_ceneter'
 ALLOWED = {'AGENTS.md', 'tools/deterministic_source.py', 'tools/deterministic-source.md',
            'tests/deterministic_source_test.py', '.github/workflows/publication-safety.yml',
-           '.agents/skills/operations-center-implementation/SKILL.md'}
+           '.agents/skills/operations-center-implementation/SKILL.md',
+           'tools/validation_contract.py', 'tools/validation-contract.md', 'tests/validation_contract_test.py'}
 CHECKS = [['npm', 'run', 'check:privacy'], ['npm', 'run', 'check:publication'],
-          [sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'deterministic_source_test.py', '-v']]
+          [sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'deterministic_source_test.py', '-v'],
+          [sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'validation_contract_test.py', '-v']]
 
 def digest(value): return hashlib.sha256(value).hexdigest()
 def encoded(value): return json.dumps(value, sort_keys=True, separators=(',', ':')).encode()
