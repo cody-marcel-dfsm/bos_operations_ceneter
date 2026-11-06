@@ -41,7 +41,8 @@ CHECKS = [
      '-p', 'deterministic_package_test.py', '-v'],
 ]
 BODY_SKILLS = {'source/platform/bos-mcp-client/SKILL.md',
-               'source/platform/submit-feedback/SKILL.md'}
+               'source/platform/submit-feedback/SKILL.md',
+               'source/platform/submit-feedback/references/feedback-contract.md'}
 MAINTENANCE = {
     'AGENTS.md', '.agents/skills/ship-it/SKILL.md',
     'tools/deterministic_package.py', 'tools/deterministic-package.md',

@@ -2,8 +2,8 @@
 name: bos-mcp-client
 description: Use first for every BOS API or connected-data request, including feedback reads. Resolve bos_get_context from the live host tool catalog and allow bounded tool startup before diagnosing missing access; then use the existing authenticated connection. Also handles BOS discovery, transport recovery, provider authorization and sign-out.
 metadata:
-  version: "1.0.8"
-  requires: "{\"bos-external-dependency-adapter\":\"1.0.8\"}"
+  version: "1.0.9"
+  requires: "{\"bos-external-dependency-adapter\":\"1.0.9\"}"
 ---
 
 
@@ -72,6 +72,9 @@ catalog state and the unavailable recovery facility. Ask to enable or sign in
 only when host status or a BOS challenge establishes that requirement. Empty
 resources or tools alone never establish that the connection is disabled.
 A successful context call immediately resumes the original operation.
+
+For any feedback read or review, continue with the BOS feedback skill's
+**Feedback API access** and **Complete feedback review** sections.
 
 Use this skill for every client-side BOS-family operation. BOS owns one
 host-managed identity connection to its platform resource. GPT/Claude and other

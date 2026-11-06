@@ -180,6 +180,19 @@ class PackageGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Unmapped skill'):
             d.scope(self.root, baseline, self.git('rev-parse', 'HEAD'))
 
+    def test_only_the_feedback_contract_reference_is_admitted(self):
+        baseline = self.git('rev-parse', 'HEAD')
+        allowed = self.root / 'source/platform/submit-feedback/references/feedback-contract.md'
+        allowed.parent.mkdir(parents=True, exist_ok=True)
+        allowed.write_text('current contract\n')
+        self.commit()
+        admitted = self.git('rev-parse', 'HEAD')
+        self.assertIn(str(allowed.relative_to(self.root)), d.scope(self.root, baseline, admitted))
+        (allowed.parent / 'other.md').write_text('other reference\n')
+        self.commit()
+        with self.assertRaisesRegex(ValueError, 'Unsupported'):
+            d.scope(self.root, baseline, self.git('rev-parse', 'HEAD'))
+
     def test_existing_selected_contract_cannot_be_overridden(self):
         path = self.root / 'tools/validation-selection.json'
         path.parent.mkdir()
