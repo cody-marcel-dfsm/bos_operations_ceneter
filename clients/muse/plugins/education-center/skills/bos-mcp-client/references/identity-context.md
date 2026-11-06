@@ -111,17 +111,26 @@ plugin never inherits either historical BOS default.
    executability separately. A top-level CRUD description supplies no specific
    operation contract; an absent native name supplies no evidence that a
    described HTTPS operation is absent.
-5. For a freshly advertised native discovery/control, compatibility or resource
-   delivery tool, call `bos_execute` with that handle, its exact `tool_name`, and
-   schema-validated `arguments`. The business-read compatibility exceptions
-   remain exactly `feedback.recommendations.query`, `journeys.notifications.read`
-   and `journeys.state.read`, with their existing scope and schemas. Preserve
-   existing native embedded-resource delivery. Never convert a Describe
-   operation key into `tool_name` or route another described business operation
-   through this dispatcher. Keep raw org/app/install/role IDs out of business
-   arguments and verify the returned context before using its result.
-6. For a discovered deterministic HTTPS operation, use its complete current
-   execution contract: method, URI, context binding and any declared transport.
+5. Existing operational MCP tools remain compatibility surfaces. In the
+   fresh `bos_list_context_tools` response, use the exact descriptor in `tools`
+   whose `name` and `inputSchema` satisfy the request. With the same selected `context_handle`,
+   call `bos_execute` using that exact `name` as `tool_name` and schema-validated
+   business `arguments`. This includes existing operational email search,
+   thread reads, and attachment retrieval when their native descriptors are
+   advertised; it does not require host-authenticated HTTPS. Do not report `host_capability_unavailable`
+   when a suitable advertised native compatibility tool is callable.
+   No similar name, cached descriptor, or Describe contract establishes a native tool.
+   The new semantic business-read exceptions remain exactly
+   `feedback.recommendations.query`, `journeys.notifications.read` and
+   `journeys.state.read`, with their existing scope and schemas; they do not
+   remove existing operational native compatibility. Preserve existing native
+   discovery/control and embedded-resource delivery. Never convert a Describe
+   operation key into `tool_name` or invent an alias for an unadvertised operation.
+   Keep raw org/app/install/role IDs out of business arguments and verify the returned context before using its result.
+   Current denials, provider readiness, and mutation safety remain binding.
+6. For a discovered deterministic HTTPS operation without a suitable native
+   compatibility tool, use its complete current execution contract: method, URI,
+   context binding and any declared transport.
    Compatible contacts with absent or null `execution.transport` retain their
    validated method, URI and context binding; report that field as unspecified.
    Invoke through the existing BOS adapter only when the current host supplies
