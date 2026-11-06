@@ -42,6 +42,8 @@ gates. Unknown impact expands scrutiny. Keep regression small and curated by
 recurrence rationale; do not accumulate every feature test. Changed acceptance
 needs an explicit Oracle revision linked to the original contract and evidence.
 Ordinary agents invoke the native Oracle and never adopt its approver role.
+A feature design includes a test plan: the Oracle refuses a `feature` contract
+without a plan bound to that exact design, as `tools/validation-contract.md` defines.
 
 # BOS Operations Center
 

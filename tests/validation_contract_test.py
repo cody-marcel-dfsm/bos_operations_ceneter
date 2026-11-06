@@ -19,7 +19,68 @@ class Contracts(unittest.TestCase):
  def git(self,*args): return subprocess.check_output(['git',*args],cwd=self.root,stderr=subprocess.DEVNULL).decode().strip()
  def commit(self):self.git('add','-A');self.git('commit','-qm','synthetic');return self.git('rev-parse','HEAD')
  def selection(self,kind='bug_fix'):
-  return {'change_class':kind,'scope_paths':['source.mjs','tests/*'],'categories':[{'name':n,'tests':['tests/reproduction.test.mjs'] if n not in ['sanity','regression'] else [],'fixtures':[]} for n in v.CLASSES[kind]],'reason':'Synthetic exact coverage','revision_of':None}
+  s={'change_class':kind,'scope_paths':['source.mjs','tests/*'],'categories':[{'name':n,'tests':['tests/reproduction.test.mjs'] if n not in ['sanity','regression'] else [],'fixtures':[]} for n in v.CLASSES[kind]],'reason':'Synthetic exact coverage','revision_of':None}
+  if kind=='feature':s['design']='design/synthetic.md'
+  return s
+ def plan(self,design='design/synthetic.md',**change):
+  (self.root/'.git/info/exclude').write_text('design/\n')  # Designs stay private, as under Vault.
+  (self.root/'design').mkdir(exist_ok=True);(self.root/'design/synthetic.md').write_text('# Synthetic design\n');(self.root/'design/other.md').write_text('# Other design\n')
+  value={'kind':v.PLAN_KIND,'feature':'Synthetic feature','design':design,'design_sha256':v.sha256((self.root/design).read_bytes()),'runtime_paths':['source.mjs'],'tests':[{'module':'tests/reproduction.test.mjs','covers':['source.mjs'],'purpose':'Synthetic proof'}],**change}
+  (self.root/'design/synthetic.test-plan.json').write_text(json.dumps(value));return value
+ def seal_feature(self):return v.seal(self.root,self.selection('feature'),'synthetic proposal',{'verdict':'APPROVED'})
+ def test_feature_design_without_a_test_plan_is_refused_even_after_an_approved_verdict(self):
+  (self.root/'design').mkdir();(self.root/'design/synthetic.md').write_text('# Synthetic design\n')
+  with self.assertRaisesRegex(ValueError,'must include a test plan document: design/synthetic.test-plan.json'):self.seal_feature()
+ def test_native_proposal_records_nothing_when_the_gate_refuses_an_approved_verdict(self):
+  (self.root/'AGENTS.md').write_text('Synthetic governing criterion\n');self.commit()
+  (self.root/'.git/info/exclude').write_text('design/\n');(self.root/'design').mkdir();(self.root/'design/synthetic.md').write_text('# Synthetic design\n')
+  reviewer=lambda *args:{'verdict':'APPROVED','findings':[],'authentication_impact':'NONE','owner_approval_status':'NOT_REQUIRED','api_version_assessment':{'impact':'NONE','request_kind':'NOT_REQUIRED','requested_change':None,'request_quote':None,'request_evidence':None},'validation_selection':self.selection('feature')}
+  with patch.object(oracle,'_review_settings_binding',return_value={'model':'synthetic','reasoning_effort':None}):
+   with self.assertRaisesRegex(ValueError,'must include a test plan document'):oracle.review_proposal(self.root,'Problem: synthetic; Cause: synthetic; Recommended change: synthetic',[],None,reviewer)
+   self.assertFalse(oracle.proposal_path(self.root).exists());self.assertFalse((self.root/v.SELECTION).exists())
+   self.plan();oracle.review_proposal(self.root,'Problem: synthetic; Cause: synthetic; Recommended change: synthetic',[],None,reviewer)
+   self.assertEqual(json.loads((self.root/v.SELECTION).read_text())['design_binding']['design'],'design/synthetic.md')
+ def test_feature_design_with_its_bound_test_plan_is_sealed_with_both_hashes(self):
+  self.plan();c=self.seal_feature();b=c['design_binding']
+  self.assertEqual((b['design'],b['plan'],b['tests']),('design/synthetic.md','design/synthetic.test-plan.json',['tests/reproduction.test.mjs']))
+  self.assertEqual(b['design_sha256'],v.sha256((self.root/'design/synthetic.md').read_bytes()))
+  self.assertEqual(b['plan_sha256'],v.sha256((self.root/'design/synthetic.test-plan.json').read_bytes()))
+ def test_test_plan_bound_to_a_different_design_or_revision_is_refused(self):
+  self.plan(design='design/other.md')
+  with self.assertRaisesRegex(ValueError,'bound to a different design: design/other.md'):self.seal_feature()
+  self.plan(design_sha256='0'*64)
+  with self.assertRaisesRegex(ValueError,'different revision'):self.seal_feature()
+ def test_test_plan_shape_is_refused_without_judging_quality(self):
+  row={'module':'tests/reproduction.test.mjs','covers':['source.mjs'],'purpose':'Synthetic proof'}
+  for change,message in [({'tests':[]},'name its tests'),({'feature':' '},'name its feature'),({'runtime_paths':[]},'runtime paths'),({'runtime_paths':['elsewhere.mjs']},'outside the selected scope'),({'runtime_paths':['source.mjs','tests/x.mjs']},'No planned test covers'),({'tests':[{**row,'module':'tests/unselected.test.mjs'}]},'not selected for execution'),({'tests':[row,row]},'repeats'),({'tests':[{**row,'covers':['tests/x.mjs']}]},'unlisted paths'),({'tests':[{'module':row['module']}]},'Each planned test'),({'tests':[{**row,'covers':[['source.mjs']]}]},'Each planned test'),({'extra':True},'requires exactly'),({'kind':'other'},'requires exactly')]:
+   self.plan(**change)
+   with self.assertRaisesRegex(ValueError,message):self.seal_feature()
+  self.plan();(self.root/'design/synthetic.test-plan.json').write_text('[')
+  with self.assertRaisesRegex(ValueError,'not valid JSON'):self.seal_feature()
+  (self.root/'design/synthetic.test-plan.json').write_text('['*200000)
+  with self.assertRaisesRegex(ValueError,'too large'):self.seal_feature()
+ def test_only_a_feature_names_a_design_and_a_feature_must(self):
+  for kind,change in [('feature',{'design':None}),('feature',{'design':'../design.md'}),('feature',{'design':'design/synthetic.txt'}),('bug_fix',{'design':'design/synthetic.md'})]:
+   with self.assertRaises(ValueError):v.validate_selection({**self.selection(kind),**change},self.catalog)
+  self.assertEqual(v.validate_selection({**self.selection(),'design':None},self.catalog)['design'],None)
+  self.assertIn('design',v.selection_schema()['required'])
+ def test_feature_contract_verifies_its_binding_on_the_candidate(self):
+  self.plan();c=self.seal_feature();v.write_selection(self.root,c)
+  self.commit()
+  with self.assertRaisesRegex(ValueError,'Planned test is missing from the candidate'):v.verify(self.root)
+  (self.root/'tests/reproduction.test.mjs').write_text("import test from 'node:test';test('p',()=>{});\n");self.commit()
+  self.assertEqual(v.verify(self.root)['contract_sha256'],c['contract_sha256'])
+  (self.root/'design/synthetic.md').write_text('# Changed design\n')
+  with self.assertRaisesRegex(ValueError,'changed after approval'):v.verify(self.root)
+ def test_public_checkout_without_the_private_design_still_needs_the_binding(self):
+  self.plan();c=self.seal_feature();v.write_selection(self.root,c)
+  (self.root/'tests/reproduction.test.mjs').write_text("import test from 'node:test';test('p',()=>{});\n")
+  (self.root/'design/synthetic.md').unlink();(self.root/'design/synthetic.test-plan.json').unlink();(self.root/'design/other.md').unlink();self.commit()
+  self.assertEqual(v.verify(self.root)['contract_sha256'],c['contract_sha256'])
+  for forged in [lambda x:x.pop('design_binding'),lambda x:x['design_binding'].update(tests=[]),lambda x:x['design_binding'].update(design='design/other.md')]:
+   value=copy.deepcopy(c);forged(value);value.pop('contract_sha256');value['contract_sha256']=v.digest(value)
+   (self.root/v.SELECTION).write_text(json.dumps(value));self.commit()
+   with self.assertRaisesRegex(ValueError,'lacks its bound test plan'):v.verify(self.root)
  def publish(self,kind='bug_fix',fixtures=None):
   s=self.selection(kind)
   if fixtures:s['categories'][1]['fixtures']=fixtures
