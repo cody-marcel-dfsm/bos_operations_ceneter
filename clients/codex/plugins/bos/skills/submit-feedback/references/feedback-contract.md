@@ -126,11 +126,11 @@ current membership, role, installation and exact operation grants.
 
 | Tool | Arguments | Result |
 | --- | --- | --- |
-| `bos_list_feedback` | Optional `status`, `limit` (1–100; default 20) | Reporter's own summaries, newest first |
-| `bos_get_feedback` | `feedback_id` | Private full record, status, attributed `history`, `comments`, attachment metadata and MCP image content blocks |
-| `bos_add_feedback_comment` | `feedback_id`, `body` (1–4000 characters); declared optional `parent_comment_id` | Updated private record with server-attributed comment/reply; identical normalized body, parent and actor on one record are deduplicated |
-| `bos_update_feedback` | `feedback_id`, `status`, `expected_status` | Authorized assignee transition |
-| `bos_triage_feedback` | `feedback_id`, `status`, `expected_status`; optional `assigned_to` (current member UUID or null) | Authorized team transition/assignment |
+| `bos_list_feedback` | `context_handle`; optional `view` (`mine` default, `team`), `status`, `query`, `limit` (1–100; default 20), `cursor` | Summaries newest first, with `next_cursor` for the next page; the default queue excludes closed items |
+| `bos_get_feedback` | `context_handle`, `feedback_id`; optional `page_size` (1–100; default 100), `comments_before`, `history_before` | Private full record with `comments_next_cursor` and `history_next_cursor` for earlier entries, status, attributed `history`, `comments`, attachment metadata and MCP image content blocks |
+| `bos_add_feedback_comment` | `context_handle`, `feedback_id`, `body` (1–4000 characters); declared optional `parent_comment_id` | Updated private record with server-attributed comment/reply; identical normalized body, parent and actor on one record are deduplicated |
+| `bos_update_feedback` | `context_handle`, `feedback_id`, `status`, `expected_status`; optional `assigned_to` | Authorized assignee transition |
+| `bos_triage_feedback` | `context_handle`, `feedback_id`, `status`, `expected_status`; optional `assigned_to` (current member UUID or null) | Authorized team transition/assignment |
 | Discovered HTTPS `feedback.resolve` | Only `feedback_id`, `expected_status` | Canonical reporter completion from any tracked state; closes atomically and records `resolution: reporter_confirmed` on the closure history event |
 
 The ordinary transitions are:
@@ -182,12 +182,15 @@ and authorized same-installation triage participants, with each current
 operation's permissions also required.
 Assignment grants no authority. Read/comment participation alone permits no
 ordinary implementation transition; the canonical reporter's separately
-discovered completion operation retains its own rules. Lists contain only the caller's own
-submissions, including for team members. History and comments contain
+discovered completion operation retains its own rules. `view: "mine"` lists only the caller's
+own submissions; `view: "team"` lists the selected scope and requires current
+triage authority there. Paging continues the same view, query and status, and
+each page reflects current state. History and comments contain
 server-derived actor IDs, agent-installation IDs, timestamps and event IDs.
 Reads exclude notification delivery state and provider secrets. Comments follow
-the same sanitization rules and feedback rate limits. A record holds at most 100
-comments and 1,000 lifecycle events. Native MCP image bytes appear once as image
+the same sanitization rules and feedback rate limits. Discussion has no lifetime
+length limit; each read returns a bounded newest page, so follow its comment and
+history cursors to reach earlier entries. Native MCP image bytes appear once as image
 blocks, and video as an embedded resource blob; structured/text receipts carry
 metadata only. HTTPS media bytes belong only to the top-level media array.
 Match returned attachment metadata, display unknown formats as safe metadata,
@@ -200,6 +203,83 @@ signs in to read the report. A receipt does not prove notification delivery.
 There is no feedback push subscription. Polling supports v1 tracking when
 requested. Issues, discussion and media remain private;
 only separately authorized code patches may become public.
+
+## Add evidence to an existing discussion
+
+Inspect the current operation schemas before declaring a capability unavailable.
+Comments are text-only in the current contract; attachment support belongs to
+`feedback.create` / `bos_submit_feedback`. A missing `attachments` field on the
+comment operation does not mean feedback cannot carry media. Use a direct
+attachment operation only if actually advertised; never invent comment fields,
+endpoints, upload URLs or relationship fields. HTTPS calls use the returned
+method and URI through the existing BOS adapter; native tools retain their own
+advertised envelope. Do not pass an HTTPS descriptor as `bos_execute` arguments.
+
+Obtain applicable user authorization for both creating an evidence continuation
+and linking it to the existing discussion. Preserve the submission confirmation
+and sanitization rules above. Read the original report in the same selected
+scope, retain its original target, and inspect and sanitize the media before
+asserting `sanitized: true`. Explain that the continuation creates another private
+report: it is not an in-place attachment to a comment. Reference the original
+feedback ID in supported title/message text; retain the original discussion and
+lifecycle as the primary work item.
+
+Create one continuation using only supported submission fields. Link the actual
+`feedback_id` from its successful receipt in a text comment on the original.
+For a reply, copy `parent_comment_id` from that original record's current
+`comments[].event_id`; follow advertised pagination to find an older parent.
+Read back the continuation's attachment metadata/media and read back the original
+comment, parent and attribution before reporting delivery. Follow the worked
+JSON inputs below when present, or the reference's example; illustrative IDs
+never authorize a write.
+
+If creating succeeds but linking fails, report partial delivery, retain the new
+ID in the current task, and do not create another continuation. Resolve the link
+using current authority and the service's response. An uncertain write follows
+only the exact service-returned state action; never blindly replay either write.
+Honor Retry-After. If a required capability is unavailable or authority is denied,
+preserve a sanitized draft and state the exact missing step; do not switch scope,
+change the original lifecycle, or claim the evidence was linked.
+
+These are synthetic sample inputs. Replace sample IDs with actual returned IDs,
+copy the original target, and replace the tiny synthetic PNG with media you have
+inspected and sanitized. They are business bodies for the discovered HTTPS
+operations; native calls additionally use their live-declared context envelope.
+Do not execute these samples unchanged.
+
+1. Read the original through discovered `feedback.get`. After applicable
+   authorization, submit through discovered `feedback.create`:
+
+```json
+{
+  "category": "other",
+  "severity": "low",
+  "target": {"type": "general"},
+  "title": "Evidence continuation for FB-2099-000001",
+  "message": "Additional sanitized evidence for FB-2099-000001. Continue discussion and lifecycle on the original report.",
+  "attachments": [{
+    "mime_type": "image/png",
+    "data_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+    "sanitized": true
+  }]
+}
+```
+
+2. If the successful receipt returns `result.feedback_id: FB-2099-000002`,
+   read that report with discovered `feedback.get` and verify its media.
+   Then use discovered `comments.create` on the original:
+
+```json
+{
+  "feedback_id": "FB-2099-000001",
+  "body": "Sanitized evidence is attached to continuation report FB-2099-000002.",
+  "parent_comment_id": "11111111-1111-4111-8111-111111111111"
+}
+```
+
+3. Replace the sample parent with an actual event ID from the original's fresh
+   comments; omit it for a flat comment. Read the original again and verify the
+   saved link and attribution. Return both IDs and the verified delivery status.
 
 ## Errors
 

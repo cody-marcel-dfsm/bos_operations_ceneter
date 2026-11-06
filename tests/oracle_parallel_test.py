@@ -35,6 +35,8 @@ class ParallelReview(unittest.TestCase):
             'reusable_coverage': [{'path': 'unchanged.py', 'inputs': [{'path': 'unchanged.py', 'digest': 'bound-unchanged.py'}]}],
             'guards': {'authority_digests': {}}, 'prior_findings': {}, 'reusable_validations': [], 'current_validations': [],
             'publication_scope': {'range_sha256': 'range', 'range_paths': self.paths}, 'caller_evidence': {}}
+        self.context['input_hashes']['package.json'] = 'git-sha1:100644:blob:' + 'c' * 40
+        self.context['guards']['environment_digest'] = 'e' * 64
         self.binding = {'base_commit': 'a' * 40, 'reviewer_settings': {'model': 'inherited-model', 'reasoning_effort': 'high'}}
         for name, value in (('selected_model', 'inherited-model'), ('selected_reasoning_effort', 'high')):
             setting = patch.object(o, name, return_value=value)
@@ -70,6 +72,127 @@ class ParallelReview(unittest.TestCase):
 
     def all_envelopes(self):
         return {cohort['id']: self.envelope(cohort) for cohort in self.plan['cohorts']}
+
+    def command_observations(self):
+        commands = [['npm', 'run', name] for name in ('build', 'check', 'check:privacy', 'contract:check')]
+        commands += [['npm', 'test'], ['npm', 'run', 'check:publication']]
+        self.context['required_commands'] = [{'id': self.digest(command), 'command': command} for command in commands]
+        evidence, originals = {}, {}
+        for name, exit_code in (('original-failed.json', 1), ('focused-repair.json', 0)):
+            output = self.root / (name + '.stdout.log')
+            output.write_text('Original synthetic execution, exit ' + str(exit_code))
+            raw = o._pretty({'kind': 'oracle-validation-record-v1', 'exit_code': exit_code,
+                'command': ['npm', 'test'], 'output_hashes': {str(output): o._sha(output.read_bytes())},
+                'inputs': [{'path': 'package.json', 'digest': self.context['input_hashes']['package.json']}]})
+            (self.root / name).write_bytes(raw)
+            originals[name] = raw
+            evidence[name] = o._sha(raw)
+            self.context['input_hashes'][name] = 'sha256:' + evidence[name]
+        self.context['caller_evidence'] = evidence
+        self.context['invalid_current_validations'] = [{'evidence_path': name} for name in evidence]
+        self.plan = parallel.partition(self.context, self.binding, self.digest)
+        (self.run / 'review-context.json').write_bytes(o._pretty(self.context))
+        return evidence, originals
+
+    def test_command_contract_schema_isolated_and_preparation_rejects_missing_identity(self):
+        self.command_observations()
+        base = json.loads((self.root / '.agents/skills/oracle/review-output.schema.json').read_text())
+        original_base, original_context = o._pretty(base), o._pretty(self.context)
+        for order in (self.plan['cohorts'], list(reversed(self.plan['cohorts']))):
+            for cohort in order:
+                packet = parallel.packet(self.context, self.plan, cohort, self.run / 'review-context.json', self.digest)
+                schema = parallel.output_schema(base, self.plan, cohort, packet)
+                commands = schema['properties']['assessment']['properties']['command_coverage']
+                if cohort['id'] == parallel.AREAS[0]:
+                    contract = packet['command_coverage_contract']
+                    self.assertFalse(contract['grants_coverage'])
+                    self.assertEqual(contract['required_input'], {'path': 'package.json',
+                        'digest': self.context['input_hashes']['package.json']})
+                    self.assertEqual(contract['environment_digest'], self.context['guards']['environment_digest'])
+                    for key in ('required_commands', 'current_input_identities', 'original_evidence'):
+                        reference = contract[key]
+                        original = self.context[reference['json_pointer'][1:]]
+                        self.assertEqual(reference['value_sha256'], self.digest(original))
+                        self.assertEqual(reference['parent_context_sha256'], self.plan['context_sha256'])
+                        self.assertEqual(reference['eligibility'], 'NONE')
+                    self.assertNotIn('status', contract)
+                    self.assertNotIn('verdict', contract)
+                    fields = commands['items']['properties']
+                    self.assertEqual(fields['inputs']['minItems'], 1)
+                    self.assertIn(contract['required_input']['digest'], fields['inputs']['description'])
+                    self.assertEqual(fields['id']['enum'], [r['id'] for r in self.context['required_commands']])
+                    self.assertEqual(fields['environment_digest']['enum'], [contract['environment_digest']])
+                    self.assertEqual(fields['status']['enum'], ['COMPLETE', 'INCOMPLETE'])
+                    self.assertNotIn('minItems', commands, 'Unfinished assessments may omit command decisions')
+                else:
+                    self.assertNotIn('command_coverage_contract', packet)
+                    self.assertEqual(commands['enum'], [[]])
+                self.assertEqual(o._pretty(base), original_base, 'Specialization cannot contaminate another cohort')
+        self.assertEqual(o._pretty(self.context), original_context)
+        for kind in ('package', 'environment'):
+            missing = copy.deepcopy(self.context)
+            if kind == 'package':
+                del missing['input_hashes']['package.json']
+            else:
+                missing['guards']['environment_digest'] = None
+            plan = parallel.partition(missing, self.binding, self.digest)
+            with self.subTest(missing=kind), self.assertRaisesRegex(ValueError, 'Required-command contract lacks'):
+                parallel.packet(missing, plan, plan['cohorts'][0], self.run / 'review-context.json', self.digest)
+        empty = copy.deepcopy(self.context); empty['required_commands'] = []
+        plan = parallel.partition(empty, self.binding, self.digest)
+        packet = parallel.packet(empty, plan, plan['cohorts'][0], self.run / 'review-context.json', self.digest)
+        schema = parallel.output_schema(base, plan, plan['cohorts'][0], packet)
+        self.assertNotIn('command_coverage_contract', packet)
+        self.assertNotIn('enum', schema['properties']['assessment']['properties']['command_coverage']['items']['properties']['id'])
+
+    def test_actual_dispatch_supplies_command_contract_without_rewriting_independent_rows(self):
+        from tools import command_coverage
+        evidence, originals = self.command_observations()
+        observed = []
+
+        def child(root, prompt, prefix, *, schema_path, cohort_policy):
+            run = o._RUN.get()
+            packet = json.loads((run / 'cohort-context.json').read_text())
+            schema = json.loads(Path(schema_path).read_text())
+            self.assertIn('including exactly one\ncurrent package.json identity', cohort_policy)
+            self.assertIn('directly bound original evidence_paths', cohort_policy)
+            result = self.envelope(packet['cohort'])
+            result['assessment']['command_coverage'] = []
+            if packet['cohort']['id'] == parallel.AREAS[0]:
+                contract = packet['command_coverage_contract']
+                fields = schema['properties']['assessment']['properties']['command_coverage']['items']['properties']
+                self.assertEqual(fields['environment_digest']['enum'], [contract['environment_digest']])
+                for required in packet['required_commands']:
+                    result['assessment']['command_coverage'].append(dict(required, status='COMPLETE',
+                        basis='INDEPENDENT_APPLICABILITY', inputs=[copy.deepcopy(contract['required_input'])],
+                        environment_digest=contract['environment_digest'], evidence_paths=list(evidence),
+                        reason='Synthetic independent applicability; the original aggregate still failed'))
+            for name, value in {'model.json': {'selected_model': 'inherited-model', 'reasoning_effort': 'high'},
+                                'process.json': {'exit_code': 0}, 'result.json': result}.items():
+                o._atomic_write(run / name, o._pretty(value))
+            observed.append(copy.deepcopy(result))
+            return result
+
+        with patch.object(o, '_input_binding', return_value=self.binding), patch.object(o, '_review_process', side_effect=child):
+            result = o._oracle(self.root, self.context['candidate_tree'], self.paths, evidence, None)
+        self.assertEqual(result['verdict'], 'APPROVED', result.get('limitations'))
+        self.assertEqual(len(result['command_coverage']), 6)
+        owner = next(item for item in observed if item['cohort_id'] == parallel.AREAS[0])
+        self.assertEqual(result['command_coverage'], owner['assessment']['command_coverage'])
+        self.assertEqual(command_coverage.validate_decisions(self.root, result, self.context), result['command_coverage'])
+        for index in range(6):
+            malformed = copy.deepcopy(result)
+            malformed['command_coverage'][index]['inputs'] = []
+            with self.subTest(command=index), self.assertRaises(o.OracleApprovalError):
+                command_coverage.validate_decisions(self.root, malformed, self.context)
+            self.assertEqual(malformed['command_coverage'][index]['inputs'], [], 'No decision repair is permitted')
+        responses = {row['cohort_id']: copy.deepcopy(row) for row in observed}
+        responses[parallel.AREAS[1]]['assessment']['command_coverage'] = [copy.deepcopy(result['command_coverage'][0])]
+        self.assertEqual(parallel.aggregate(o, self.plan, self.context, responses, [], root=self.root)['verdict'], 'ERROR')
+        for name, raw in originals.items():
+            self.assertEqual((self.root / name).read_bytes(), raw)
+        self.assertEqual(json.loads(originals['original-failed.json'])['exit_code'], 1)
+        self.assertFalse((self.root / '.git/oracle/approval.json').exists())
 
     def test_partition_excludes_native_carried_paths_and_binds_candidate_and_settings(self):
         assigned = [p for cohort in self.plan['cohorts'] for p in cohort['required_paths']]

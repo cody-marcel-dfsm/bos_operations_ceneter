@@ -3,6 +3,34 @@ name: operations-center-implementation
 description: Implement BOS Operations Center repository changes using its architecture, Vault, issue history, validation, repository boundary, and mandatory Oracle review requirements. Use for requests to change or fix repository behavior, including expected-versus-observed reports and screenshot-based defects, and for code, tests, skills, manifests, generated clients, documentation, and release changes. Use planning alone only when the user requests a plan.
 ---
 
+## Deterministic source maintenance
+
+For owner-authorized source-maintenance scope, follow
+`tools/deterministic-source.md`. Run the complete fixed checks against committed
+source, retain original outputs and failure clocks, and use its exact-source PR
+publication commands. The scope includes only named documentation and the native
+controller bootstrap, with dedicated negative tests. It authorizes no package,
+version, deployment, authentication or protected public-contract change. Model
+review and fabricated approval receipts are prohibited for this lane.
+
+## Fixed validation contract — controlling owner direction, 2026-10-29
+
+Apply `tools/validation-contract.md`. Before implementation, the native proposal
+Oracle selects `docs_only`, `bug_fix`, `deep_bug_fix` or `feature` and fixed exact
+categories/test files. Its generated `tools/validation-selection.json` binds the
+source baseline, catalog, runtime and original decision. Implementation, build and
+release use the same selected commands. Complete every selected category: empty,
+skipped, cancelled, partial or failing tests never pass. Bug fixes retain an actual
+unchanged-test fail-before/pass-after reproduction; deep fixes cover all relevant
+interactions and features receive thorough acceptance. Genuine docs-only changes
+use minimal sanity. This replaces blanket full-suite/baseline requirements for new
+selected contracts, without removing security, privacy or independent publication
+gates. Unknown impact expands scrutiny. Keep regression small and curated by
+recurrence rationale; do not accumulate every feature test. Changed acceptance
+needs an explicit Oracle revision linked to the original contract and evidence.
+Ordinary agents invoke the native Oracle and never adopt its approver role.
+
+
 # Operations Center Implementation
 
 ## Validation command tracking and publication — October 23, 2026
@@ -287,3 +315,15 @@ source, test, fixture and configuration closures. A full-scope capture requires 
 initial-baseline need or a concrete affected-behavior/dependency justification.
 Supporting passing-case observations do not relabel a failed aggregate or invent
 a reusable native proof.
+
+## Validation delivery limits
+
+The controlling delivery budgets are docs_only120s, bug_fix180s,
+deep_bug_fix300s and feature300s end to end, including network/build/effects and
+verification (verified Git publication for source-only work). The host's original
+request clock survives retries and revisions; local PASS is only phase PASS.
+Rank/pare checks before freezing the contract, then run the whole selected set.
+Small bugs get deterministic focused tests only; auth/cross-area work is deep.
+No automatic broader regression or partial/empty/skipped PASS. Use low reasoning
+for simple work and medium for hard work, never above medium or paid fallback.
+Authenticated platform JEV may assist prioritization without granting authority.

@@ -99,6 +99,49 @@ class CommandCoverage(unittest.TestCase):
         self.assertEqual([command for command in calls if command[0] != "gh"], [second["command"]])
         self.assertEqual(results[0]["original_environment"], self.origin)
 
+    def test_six_command_contract_rejects_stale_foreign_and_missing_bindings_without_repair(self):
+        commands = [["npm", "run", name] for name in ("build", "check", "check:privacy", "contract:check")]
+        commands += [["npm", "test"], ["npm", "run", "check:publication"]]
+        required = [{"id": o._sha(o._canonical(command)), "command": command} for command in commands]
+        output = self.root / "original.stdout.log"
+        output.write_text("Actual synthetic failed output")
+        original = self.root / "original.json"
+        original.write_bytes(o._pretty({"kind": "oracle-validation-record-v1", "exit_code": 1,
+            "output_hashes": {str(output): o._sha(output.read_bytes())}}))
+        original_bytes = original.read_bytes()
+        context = {"required_commands": required, "guards": {"environment_digest": "e" * 64},
+            "input_hashes": {"package.json": "git-sha1:100644:blob:" + "c" * 40,
+                             "original.json": "sha256:" + o._sha(original_bytes)}}
+        rows = [dict(item, status="COMPLETE", basis="INDEPENDENT_APPLICABILITY",
+            inputs=[{"path": "package.json", "digest": context["input_hashes"]["package.json"]}],
+            environment_digest=context["guards"]["environment_digest"], evidence_paths=["original.json"],
+            reason="Synthetic applicability assertion; original exit remains 1") for item in required]
+        self.assertEqual(coverage.validate_decisions(self.root, {"verdict": "APPROVED", "command_coverage": rows}, context), rows)
+        for defect in ("missing_package", "duplicate_package", "stale_package", "unknown_command", "wrong_argv",
+                       "duplicate_command", "missing_command", "wrong_environment", "unbound_output", "foreign_record"):
+            bad = copy.deepcopy(rows)
+            row = bad[0]
+            if defect == "missing_package": row["inputs"] = []
+            elif defect == "duplicate_package": row["inputs"].append(copy.deepcopy(row["inputs"][0]))
+            elif defect == "stale_package": row["inputs"][0]["digest"] = "git-sha1:100644:blob:" + "d" * 40
+            elif defect == "unknown_command": row["id"] = "f" * 64
+            elif defect == "wrong_argv": row["command"] = ["npm", "run", "unrelated"]
+            elif defect == "duplicate_command": bad[1] = copy.deepcopy(row)
+            elif defect == "missing_command": bad.pop()
+            elif defect == "wrong_environment": row["environment_digest"] = "f" * 64
+            elif defect == "unbound_output": row["evidence_paths"] = [str(output)]
+            elif defect == "foreign_record": row["evidence_paths"] = ["foreign.json"]
+            before = copy.deepcopy(bad)
+            with self.subTest(defect=defect), self.assertRaises((o.OracleApprovalError, o.OracleReviewIncomplete)):
+                coverage.validate_decisions(self.root, {"verdict": "APPROVED", "command_coverage": bad}, context)
+            self.assertEqual(bad, before, "Final admission must not repair an independent decision")
+            self.assertEqual(original.read_bytes(), original_bytes)
+        original.write_bytes(original_bytes + b" ")
+        with self.assertRaisesRegex(o.OracleApprovalError, "observation changed"):
+            coverage.validate_decisions(self.root, {"verdict": "APPROVED", "command_coverage": rows}, context)
+        self.assertEqual(json.loads(original_bytes)["exit_code"], 1)
+        self.assertFalse((self.root / ".git/oracle/approval.json").exists())
+
     def test_ci_merge_identity_resolves_approved_source_head_without_retesting(self):
         calls = []
         merge = "d" * 40

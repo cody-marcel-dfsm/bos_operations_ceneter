@@ -104,11 +104,20 @@ export async function bumpReleaseVersion({ root = scriptRoot, requested = "patch
   const readmePath = join(root, "README.md");
   const licensingPath = join(root, "Vault", "docs", "bos-product-licensing-user-experience.md");
   const marketplacePath = join(root, "Vault", "docs", "marketplace-submission-assets.md");
-  const [readme, licensing, marketplace] = await Promise.all([
-    readFile(readmePath, "utf8"),
-    readFile(licensingPath, "utf8"),
-    readFile(marketplacePath, "utf8")
-  ]);
+  const readme = await readFile(readmePath, "utf8");
+  // Private maintainer notes are not inputs to a public package release.
+  // Keep existing notes current, but never create them in a clean checkout.
+  const privateEdits = [];
+  for (const [path, label] of [
+    [licensingPath, "Current BOS Operations Center release"],
+    [marketplacePath, "Current BOS marketplace package release"]
+  ]) {
+    let content;
+    try { content = await readFile(path, "utf8"); }
+    catch (error) { if (error.code === "ENOENT") continue; throw error; }
+    privateEdits.push([path, replaceExactly(content,
+      `${label}: \`${current}\`.`, `${label}: \`${next}\`.`, path)]);
+  }
 
   const nextReadme = replacePatternExactly(
     readme,
@@ -121,19 +130,6 @@ export async function bumpReleaseVersion({ root = scriptRoot, requested = "patch
     `Current source package release: \`${next}\`. If \`${plan ? plan.published_version : current}\` is installed,`,
     readmePath
   );
-  const nextLicensing = replaceExactly(
-    licensing,
-    `Current BOS Operations Center release: \`${current}\`.`,
-    `Current BOS Operations Center release: \`${next}\`.`,
-    licensingPath
-  );
-  const nextMarketplace = replaceExactly(
-    marketplace,
-    `Current BOS marketplace package release: \`${current}\`.`,
-    `Current BOS marketplace package release: \`${next}\`.`,
-    marketplacePath
-  );
-
   const lockPath = join(root, "package-lock.json");
   let lock;
   try { lock = await readJson(lockPath); }
@@ -156,8 +152,7 @@ export async function bumpReleaseVersion({ root = scriptRoot, requested = "patch
       return writeJson(path, product);
     }),
     writeFile(readmePath, nextReadme),
-    writeFile(licensingPath, nextLicensing),
-    writeFile(marketplacePath, nextMarketplace)
+    ...privateEdits.map(([path, content]) => writeFile(path, content))
   ]);
 
   return { previous: current, version: next, activeProducts: activeProducts.map(({ product }) => product.name),

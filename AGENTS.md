@@ -1,3 +1,50 @@
+## Deterministic package verification — controlling owner direction, 2026-11-03
+
+The owner explicitly authorized repairing the package-release gate to use
+deterministic verification instead of model approval. For the bounded skill and
+release-tool profile, follow `tools/deterministic-package.md`. Its fixed complete
+category runs on committed source and produces a distinct VERIFIED receipt with
+native input/runtime/output custody. No model may review or approve this source
+or its proposal. No Oracle verdict/trailer is manufactured. Preserve historical
+failures and receipts, unchanged source observations, exact publication base,
+required remote CI, user release authority and protected-effect boundaries.
+Unsupported scope and existing selected contracts require their explicit native
+migration/profile amendment; no model fallback or automatic policy weakening.
+This direction supersedes older model-review requirements for this package profile.
+The owner's SSH publication direction uses the native deterministic `promote`
+operation after successful exact-source release-branch CI. It performs a normal
+fast-forward main push, retains server protection and verifies remote readback.
+This controls older mandatory PR/CLI-merge wording for this bounded profile.
+
+## Deterministic source maintenance — controlling owner direction
+
+The owner prohibits model review for this source-maintenance work. Use
+`tools/deterministic-source.md` for its narrow documentation/controller scope.
+Its distinct VERIFIED receipt grants source publication only; existing product,
+package and protected-effect gates remain outside that scope. Never manufacture
+an Oracle approval, reset the original request clock, or publish private workspace
+paths or configuration. Other changes retain their existing native contract.
+
+
+## Fixed validation contract — controlling owner direction, 2026-10-29
+
+Apply `tools/validation-contract.md`. Before implementation, the native proposal
+Oracle selects `docs_only`, `bug_fix`, `deep_bug_fix` or `feature` and fixed exact
+categories/test files. Its generated `tools/validation-selection.json` binds the
+source baseline, catalog, runtime and original decision. Implementation, build and
+release use the same selected commands. Complete every selected category: empty,
+skipped, cancelled, partial or failing tests never pass. Bug fixes retain an actual
+unchanged-test fail-before/pass-after reproduction; deep fixes cover all relevant
+interactions and features receive thorough acceptance. Genuine docs-only changes
+use minimal sanity. This replaces blanket full-suite/baseline requirements for new
+selected contracts, without removing security, privacy or independent publication
+gates. Unknown impact expands scrutiny. Keep regression small and curated by
+recurrence rationale; do not accumulate every feature test. Changed acceptance
+needs an explicit Oracle revision linked to the original contract and evidence.
+Ordinary agents invoke the native Oracle and never adopt its approver role.
+A feature design includes a test plan: the Oracle refuses a `feature` contract
+without a plan bound to that exact design, as `tools/validation-contract.md` defines.
+
 # BOS Operations Center
 
 Private local architecture: `Vault/docs/architecture.md`
@@ -13,7 +60,7 @@ Private native continuation tasks: `Vault/docs/implementation/native-callback-co
 
 ## Canonical main checkout and project agent context
 
-- Work on `main` in `/Users/cody/Development/Projects/bos_operations_center`.
+- Work on `main` in the canonical checkout of this repository.
   Run the project-specific implementation agent from this directory and use
   this project's skills, validation commands, and Oracle approval process.
 - Preserve staged, unstaged, and untracked work. Fetch the configured remote
@@ -22,8 +69,8 @@ Private native continuation tasks: `Vault/docs/implementation/native-callback-co
 - Do not create, switch to, or use Git worktrees for planning, implementation,
   validation, review, or release. Inspect existing worktree sources solely to
   recover changes into canonical `main`; preserve them until recovery is verified.
-- Validate the complete integrated candidate on `main`, including regression
-  checks and Oracle approval. Recheck remote divergence before publication.
+- Validate the complete Oracle-selected contract against the integrated candidate
+  on `main`; include recurrence regression only when selected, and retain Oracle approval. Recheck remote divergence before publication.
 - Publish through the required reviewed release pull request by creating and
   pushing its branch ref from canonical `main` without switching the checkout.
   Preserve every exact Oracle tree and required GitHub check.
@@ -34,12 +81,12 @@ Private native continuation tasks: `Vault/docs/implementation/native-callback-co
   product**. It owns operating-system client skills, prompt interpretation,
   discovery use, explain planning, BOSL authoring, client-owned journey work,
   recovery, caching, presentation, packaging, and release.
-- Read the canonical family relationship at
-  `/Users/cody/Development/Projects/Vault/docs/architecture/bos-product-family.md`
+- Read the canonical family relationship document identified by the
+  private maintainer workspace configuration
   for family membership, cross-project ownership, and shared public-contract
   obligations.
-- Request Projects-level Oracle review through `python3
-  /Users/cody/Development/Projects/tools/projects_oracle.py --review "<request>"` for family
+- Request Projects-level Oracle review through the coordinator identified
+  by the private maintainer workspace configuration for family
   membership, ownership boundaries, and shared
   public-contract alignment. Request repository review through `npm run
   oracle:review`. Ordinary agents never load or act as either Oracle; each
@@ -279,3 +326,25 @@ specific protected-publication authority remains independent.
 - Application repositories own their own local Oracle utilities, approver-only
   skills, architecture, and approval services. Those services remain owned by
   the application repository.
+
+## Deployment-host bootstrap — owner direction, 2026-10-27
+
+The owner authorized this host to implement and publish the scoped native acceptance
+repair and explicitly instructed creation of missing governance. Canonical private
+family and Vault authorities here are newly bootstrapped from existing ownership
+and safety requirements, not recovered historical Mac records. Preserve original
+failed proposals. Host path alignment supplies no source approval, native acceptance
+or additional spending/publication authority. Use Projects architectural review and
+this repository's independent proposal/source review before publishing the repair.
+
+## Validation delivery limits
+
+The controlling delivery budgets are docs_only120s, bug_fix180s,
+deep_bug_fix300s and feature300s end to end, including network/build/effects and
+verification (verified Git publication for source-only work). The host's original
+request clock survives retries and revisions; local PASS is only phase PASS.
+Rank/pare checks before freezing the contract, then run the whole selected set.
+Small bugs get deterministic focused tests only; auth/cross-area work is deep.
+No automatic broader regression or partial/empty/skipped PASS. Use low reasoning
+for simple work and medium for hard work, never above medium or paid fallback.
+Authenticated platform JEV may assist prioritization without granting authority.

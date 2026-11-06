@@ -77,10 +77,12 @@ Upgrading replaces the former `platform` identifier. Hosts may require native
 sign-in again when a connection identifier changes; valid-session continuity
 has not been verified for this migration.
 
-Current source package release: `0.0.213`. If `0.0.212` is installed,
-follow the release-line transition below after your host catalog offers the
-published target. Source preparation and host marketplace publication are
-separate steps.
+Current source package release: `0.0.218`. If `0.0.217` is installed,
+follow the ordinary [update instructions](#updates) after your host catalog
+offers the current release shown above, then verify that the installed package
+reports that version. The [release-line transition](#moving-to-the-00x-package-line)
+applies only to installations still on `0.4.211`. Source preparation and host
+marketplace publication are separate steps.
 
 Version labels identify separate release streams. **BOS Service release/build**
 comes from actual current host/server metadata, including a serving revision
@@ -368,7 +370,7 @@ npm install
 python3 -m pip install -r tools/requirements-dev.txt
 npm run build:packages
 npm run check
-npm test
+npm run release:check
 ```
 
 Maintainers use a private, untracked local knowledge store for architecture,
@@ -485,10 +487,13 @@ the same release evidence. Source tests and builds remain local validation.
 
 ### Local validation
 
+Run the fixed Oracle-selected categories for the exact change. `npm test` remains
+an explicit broad diagnostic command; it is not an automatic release baseline.
+
 ```bash
 python3 tools/vault_index.py sync --quiet
 npm run check
-npm test
+npm run release:check
 git diff --check
 ```
 
@@ -627,6 +632,17 @@ Each publisher retains its own source and release ownership; this introduces no
 sibling source/build dependency, registry, service or public API version.
 
 ## Release validation
+
+<!-- deterministic-package-release -->
+For the bounded feedback-discovery and release-tool package profile, `npm run
+release:check` runs the fixed deterministic category on clean committed source.
+Fetch and integrate the publication base first. The gate uses no model review,
+requires complete tests without skips, and retains exact source/runtime/output
+custody. See [deterministic package release](tools/deterministic-package.md) for
+scope, original-clock handling and the normal CI-gated publication commands.
+Unsupported runtime or configuration changes fail closed; this profile supplies
+no deployment authority.
+<!-- /deterministic-package-release -->
 
 Release validation is credential-free and local. It regenerates canonical
 client packages, checks generated parity and credential containment, and runs
@@ -808,3 +824,23 @@ key, customer data, or reusable bootstrap authority.
 The source code and skills are licensed under Apache License 2.0. Product names,
 logos, and marks remain governed by [TRADEMARKS.md](TRADEMARKS.md). See
 [NOTICE](NOTICE) for attribution.
+
+## Maintainer validation
+
+Source work uses the independent, fixed change-class contract described in
+[the validation guide](tools/validation-contract.md). Genuine documentation receives
+minimal sanity; fixes require focused reproduction; deep fixes cover relevant
+interactions; features require thorough acceptance. No selected category may pass
+with empty, skipped or partial tests. Public runtime/package behavior is unchanged.
+
+## Validation delivery limits
+
+The controlling delivery budgets are docs_only120s, bug_fix180s,
+deep_bug_fix300s and feature300s end to end, including network/build/effects and
+verification (verified Git publication for source-only work). The host's original
+request clock survives retries and revisions; local PASS is only phase PASS.
+Rank/pare checks before freezing the contract, then run the whole selected set.
+Small bugs get deterministic focused tests only; auth/cross-area work is deep.
+No automatic broader regression or partial/empty/skipped PASS. Use low reasoning
+for simple work and medium for hard work, never above medium or paid fallback.
+Authenticated platform JEV may assist prioritization without granting authority.

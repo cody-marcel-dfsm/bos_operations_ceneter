@@ -355,7 +355,7 @@ test("arguments and release integration are closed; real-send mode fails before 
   const packageJson = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
   assert.equal(packageJson.scripts["acceptance:agent-journey-live"],
     "node scripts/verify-agent-driven-journey-live.mjs");
-  assert.match(packageJson.scripts["release:check"], /npm test/u);
+  assert.equal(packageJson.scripts["release:check"], "python3 tools/validation_contract.py release");
   const result = spawnSync(process.execPath, [
     script,
     "--candidate-acceptance", fixture,
