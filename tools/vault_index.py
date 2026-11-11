@@ -71,12 +71,13 @@ def ensure_stable_chroma_runtime() -> None:
     for candidate in candidates:
         if candidate is None or not candidate.is_file():
             continue
-        resolved = candidate.resolve()
-        if resolved == current:
+        if candidate.resolve() == current:
             continue
+        # Keep a virtualenv's own python: resolving its symlink loses the venv's packages.
+        interpreter = str(candidate.absolute())
         os.execv(
-            str(resolved),
-            [str(resolved), str(Path(__file__).resolve()), *sys.argv[1:]],
+            interpreter,
+            [interpreter, str(Path(__file__).resolve()), *sys.argv[1:]],
         )
     raise RuntimeError(
         "Vault indexing requires Python 3.12 or 3.13 because the installed "
