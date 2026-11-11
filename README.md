@@ -77,7 +77,7 @@ Upgrading replaces the former `platform` identifier. Hosts may require native
 sign-in again when a connection identifier changes; valid-session continuity
 has not been verified for this migration.
 
-Current source package release: `0.0.218`. If `0.0.217` is installed,
+Current source package release: `0.0.219`. If `0.0.218` is installed,
 follow the ordinary [update instructions](#updates) after your host catalog
 offers the current release shown above, then verify that the installed package
 reports that version. The [release-line transition](#moving-to-the-00x-package-line)

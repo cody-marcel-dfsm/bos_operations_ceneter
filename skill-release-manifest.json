@@ -1,6 +1,6 @@
 {
   "package": "bos-operations-center",
-  "release": "0.0.218",
+  "release": "0.0.219",
   "skills": {
     "agent-call-operations": {
       "version": "1.0.12",
