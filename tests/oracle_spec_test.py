@@ -328,6 +328,18 @@ class Migration(Fixture):
         self.assertTrue(v.native_origin(self.root, head))
         self.assertFalse(package_lane.sealed_or_retired(v1_bytes))
 
+    def test_request_digest_names_the_bound_evidence_bytes(self):
+        request = self.root / 'request.txt'
+        request.write_text('Synthetic original request\n')
+        reviewer = lambda *args: dict(APPROVED, review_status='COMPLETE', validation_selection=self.selection())
+        with patch.object(oracle, '_review_settings_binding', return_value={'model': 'synthetic', 'reasoning_effort': None}), \
+                patch.object(oracle, '_fresh_origin', return_value=ORIGIN):
+            with self.assertRaisesRegex(oracle.OracleApprovalError, 'supplied as reviewer evidence'):
+                oracle.review_proposal(self.root, PROPOSAL, [], None, reviewer, request_path=str(request))
+            oracle.review_proposal(self.root, PROPOSAL, [str(request)], None, reviewer, request_path=str(request))
+        stamped = json.loads((self.root / v.SELECTION).read_text())['stamp']
+        self.assertEqual(stamped['request_sha256'], hashlib.sha256(request.read_bytes()).hexdigest())
+
     def test_proposal_refuses_when_head_lacks_fetched_origin(self):
         remote = Path(self.temp.name) / 'origin.git'
         subprocess.run(['git', 'init', '-q', '--bare', '-b', 'main', str(remote)], check=True)

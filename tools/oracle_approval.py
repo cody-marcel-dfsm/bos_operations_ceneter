@@ -3138,12 +3138,23 @@ def _proposal_guards(root: Path, evidence: dict, owner: dict | None) -> dict:
 
 @_serialized_review
 def review_proposal(root: Path, request: str, evidence_paths: Sequence[str], owner_path: str | None, reviewer: Callable = _proposal_oracle,
-                    *, request_bytes: bytes | None = None) -> dict[str,Any]:
+                    *, request_bytes: bytes | None = None, request_path: str | None = None) -> dict[str,Any]:
     with _phase("precheck_seconds"):
         if not request.strip(): raise OracleApprovalError("Oracle proposal review requires a proposal")
+        if request_path is not None and request_bytes is not None:
+            raise OracleApprovalError("Supply the original request either as a bound path or as bytes")
         origin = _fresh_origin(root) if (root / validation_contract.CATALOG).exists() else None
         evidence = _files(root, evidence_paths)
         owner = _files(root, [owner_path]) if owner_path else None
+        if request_path is not None:
+            # The stamp digest names exactly the request bytes the reviewer receives as bound evidence;
+            # the evidence guards then refuse any movement until the review completes.
+            name = _custody_name(root, request_path)
+            if name not in evidence:
+                raise OracleApprovalError("The original request must be supplied as reviewer evidence")
+            request_bytes = _custody_read(root, name)[1]
+            if _sha(request_bytes) != evidence[name]:
+                raise OracleApprovalError("Original request changed while its evidence was bound")
         binding = _input_binding(root, evidence, owner)
         guards = _proposal_guards(root, evidence, owner)
         _atomic_write(_RUN.get() / "proposal-inputs.json", _pretty({"proposal_sha256": _sha(request.encode()),
@@ -3604,7 +3615,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if requested not in evidence:
                     evidence.append(requested)
             result = review_proposal(root,request,evidence,args.owner_approval,
-                                     request_bytes=args.request_file.read_bytes() if args.request_file else None)
+                                     request_path=str(args.request_file) if args.request_file else None)
             print(json.dumps(result,indent=2,sort_keys=True))
             if result["verdict"] != "APPROVED": return 1
         elif args.cmd=="verify-proposal": print(json.dumps(verify_proposal(root), sort_keys=True))
