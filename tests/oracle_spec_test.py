@@ -469,6 +469,45 @@ class LaneExecution(Fixture):
         self.assertEqual(failures[-1]['spec_runs'][-1]['category'], 'focused')
 
 
+class DeterministicProvenance(Fixture):
+    def receipt(self, lane='deterministic-source', **change):
+        commit = self.git('rev-parse', 'HEAD'); tree = self.git('rev-parse', 'HEAD^{tree}')
+        folder = self.root / '.git/oracle' / lane; folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+        output = b'Ran 1 test in 0.1s\n\nOK\n'; key = hashlib.sha256(output).hexdigest()
+        (folder / (key + '.log')).write_bytes(output); os.chmod(folder / (key + '.log'), 0o600)
+        value = {'kind': oracle.DETERMINISTIC_LANES[lane], 'status': 'VERIFIED', 'source': commit, 'tree': tree,
+                 'base': self.base, 'paths': [], 'runs': [{'command': ['synthetic'], 'exit_code': 0, 'output_sha256': key,
+                 'started_at': 1, 'completed_at': 2}], 'spec_runs': [], 'spec_mode': 'native', **change}
+        value['sha256'] = hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+        path = folder / (commit + '.json'); path.write_text(json.dumps(value)); os.chmod(path, 0o600)
+        return commit, tree, folder
+
+    def test_exact_verified_lane_receipt_is_provenance(self):
+        (self.root / 'source.mjs').write_text('export default 2;\n'); self.commit()
+        for lane in oracle.DETERMINISTIC_LANES:
+            commit, tree, folder = self.receipt(lane)
+            self.assertTrue(oracle._deterministic_provenance(self.root, commit, tree))
+            self.assertIsNone(oracle._deterministic_provenance(self.root, commit, '0' * 40))
+            oracle.verify_commit(self.root, commit)
+            for path in folder.iterdir(): path.unlink()
+
+    def test_forged_ci_failed_or_superseded_receipts_grant_nothing(self):
+        (self.root / 'source.mjs').write_text('export default 2;\n'); self.commit()
+        for change in ({'spec_mode': 'ci'}, {'status': 'FAILED'}, {'base': 'f' * 40}):
+            commit, tree, folder = self.receipt(**change)
+            self.assertIsNone(oracle._deterministic_provenance(self.root, commit, tree))
+            for path in folder.iterdir(): path.unlink()
+        commit, tree, folder = self.receipt()
+        path = folder / (commit + '.json'); value = json.loads(path.read_text()); value['tree'] = '0' * 40
+        path.write_text(json.dumps(value))  # Hand-edited without a matching self-digest.
+        self.assertIsNone(oracle._deterministic_provenance(self.root, commit, tree))
+        for item in folder.iterdir(): item.unlink()
+        commit, tree, folder = self.receipt()
+        later = {'identity': {'source': commit}, 'runs': [{'completed_at': 99}]}
+        (folder / 'later.failure.json').write_text(json.dumps(later))
+        self.assertIsNone(oracle._deterministic_provenance(self.root, commit, tree))
+
+
 class Engines(Fixture):
     def test_engine_selection(self):
         self.assertEqual(oracle.oracle_engine({'CLAUDECODE': '1'}), 'claude')

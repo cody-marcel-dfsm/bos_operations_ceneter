@@ -3482,6 +3482,60 @@ def apply_trailers(root: Path, path: Path) -> None:
 def verify_message(root: Path, path: Path) -> None:
     if _trailers(path.read_text()) != trailer_values(root): raise OracleApprovalError("Commit trailers do not match Oracle evidence")
 
+DETERMINISTIC_LANES = {"deterministic-source": "boc-deterministic-source/1",
+                       "deterministic-package": "boc-deterministic-package/1"}
+
+
+def _deterministic_provenance(root: Path, commit: str, tree: str) -> str | None:
+    """A VERIFIED deterministic-lane receipt bound to this exact commit and tree (owner decision).
+
+    The lane's own self-digested receipt, its retained command outputs and its base ancestry must
+    all match; a CI-phase receipt, a later failed execution of the same commit, or any mismatch
+    grants nothing. Native approval remains separately accepted.
+    """
+    oracle = receipt_path(root).parent
+    for lane, kind in DETERMINISTIC_LANES.items():
+        directory = oracle / lane
+        if not directory.is_dir() or directory.is_symlink():
+            continue
+        for path in sorted([directory / (commit + ".json"), *directory.glob(commit + ".*.json")]):
+            if (not path.is_file() or path.is_symlink() or path.stat().st_mode & 0o077
+                    or not re.fullmatch(re.escape(commit) + r"(?:\.[0-9]+)?\.json", path.name)):
+                continue
+            try:
+                value = json.loads(path.read_bytes())
+                claimed = value.pop("sha256")
+                encoded = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+                runs = [*value["runs"], *value.get("spec_runs", [])]
+                if (claimed != _sha(encoded) or value.get("kind") != kind or value.get("status") != "VERIFIED"
+                        or value.get("source") != commit or value.get("tree") != tree
+                        or value.get("spec_mode", "native") != "native" or not value["runs"]
+                        or not re.fullmatch(r"[0-9a-f]{40}", value.get("base", ""))):
+                    continue
+                if any(row.get("exit_code") != 0 for row in runs):
+                    continue
+                logs = [directory / (row["output_sha256"] + ".log") for row in runs]
+                if any(log.is_symlink() or not log.is_file() or _sha(log.read_bytes()) != row["output_sha256"]
+                       for log, row in zip(logs, runs)):
+                    continue
+                if subprocess.run(["git", "merge-base", "--is-ancestor", value["base"], commit],
+                                  cwd=root, capture_output=True).returncode:
+                    continue
+                completed = max(row.get("completed_at", 0) for row in runs)
+                superseded = False
+                for failure in directory.glob("*.failure.json"):
+                    record = json.loads(failure.read_bytes())
+                    attempts = [*record.get("runs", []), *record.get("spec_runs", [])]
+                    if (record.get("identity", {}).get("source") == commit
+                            and max([row.get("completed_at", 0) for row in attempts] or [0]) > completed):
+                        superseded = True
+                if not superseded:
+                    return str(path)
+            except (OSError, ValueError, KeyError, TypeError, AttributeError):
+                continue
+    return None
+
+
 def _verify_historical_commit(root: Path, commit: str, tree: str, *, expected_digest: str | None = None) -> None:
     # Consult applicable originals before considering remote recovery.
     # Execution-only suffixes cannot erase a complete native checkpoint.
@@ -3501,6 +3555,10 @@ def _verify_historical_commit(root: Path, commit: str, tree: str, *, expected_di
             import shipment_state
         if any(any(shipment_state._decision_facts(row)) for row in decisions):
             raise OracleApprovalError("Commit has admitted native defects or support invalidation")
+    # Owner decision: a VERIFIED deterministic-lane receipt for this exact commit/tree is
+    # provenance alongside native approval, and needs no remote transport.
+    if expected_digest is None and _deterministic_provenance(root, commit, tree):
+        return
     # A published fresh clone uses the existing trusted exact-SHA transport;
     # local approved candidates above remain entirely credential-free.
     baseline = subprocess.run(["git", "merge-base", "--is-ancestor", commit, "refs/remotes/origin/main"],

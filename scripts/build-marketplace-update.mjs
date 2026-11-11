@@ -82,8 +82,9 @@ export function createMarketplaceUpdate(releasedEntries, legacyName, options = {
     sha256: createHash("sha256").update(archive).digest("hex") };
 }
 
-export function readPublishedProductEntries(revision, product = "bos") {
+export function readPublishedProductEntries(revision, product = "bos", { repository = root } = {}) {
   assertProduct(product);
+  const root = repository;
   const prefix = `clients/codex/plugins/${product}/`;
   if (typeof revision !== "string" || revision.length !== 40 || !/^[a-f0-9]{40}$/.test(revision)) {
     throw new Error("Supply an exact 40-character published commit");
@@ -100,8 +101,8 @@ export function readPublishedProductEntries(revision, product = "bos") {
   });
 }
 
-export function readPublishedBosEntries(revision) {
-  return readPublishedProductEntries(revision, "bos");
+export function readPublishedBosEntries(revision, options = {}) {
+  return readPublishedProductEntries(revision, "bos", options);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
