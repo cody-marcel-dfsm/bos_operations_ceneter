@@ -4,12 +4,12 @@
   "stamp": {
     "engine": "codex",
     "model": "gpt-6.1-sol",
-    "oracle_sha256": "e420c15b418c208b79c20dbf65c7c8dc06a2b00902b3af39ff1ead11fd4fa43a",
+    "oracle_sha256": "19208ce38a473a9559d7b8c2c469cb0320ef8ca231d606b388c5be133ad988db",
     "host": "aio",
-    "time": "2026-11-11T18:36:04Z",
+    "time": "2026-11-11T18:43:35Z",
     "origin_main": "e70de278e116c7761f60fcfc700641e1ecb9288d",
     "request_sha256": "66e98fee9f63d6af43b21eb5cf53ba6c39f237ab1c42f928f76b8a3fab9386f8",
-    "proposal_sha256": "51afa88ea49d782bf00f9c1f1221c3286988887693ad42ed9314ec44492a398f"
+    "proposal_sha256": "08ad89e19c6191868d5b53fa5ed526696ae9d63b061d9ad26a70d422ede7f71d"
   },
   "selection": {
     "acceptance": [
@@ -21,10 +21,11 @@
       "Invoke the Claude reviewer with restricted read-only tools, disabled MCP access and schema-bound output; reject error envelopes, malformed output and missing model identity.",
       "Deliver required external authorities and supplied external evidence as exact hash-bound inputs, rejecting missing, inaccessible or changed inputs before dispatch.",
       "Migrate existing contracts only through native revisions naming the original contract hash, preserve historical evidence and require matching approved native proposal evidence for local admission.",
-      "Admit genuine documentation-only ranges without a spec and reject executable ranges with missing, stale, malformed, tampered or out-of-scope specs.",
+      "Admit genuine documentation-only ranges without a spec and reject executable ranges with missing, stale, malformed or tampered specs; require every changed path across the complete publication baseline-to-candidate range to fall within the selected scope, including changes preceding the spec baseline.",
       "Make both deterministic lanes and CI execute every selected category completely while preserving fixed lane checks, historical-selection restrictions and original delivery clocks.",
       "Preserve existing validation-contract and feature-design binding requirements.",
-      "Admit the intended maintainer instruction entrypoints and skill mirror through publication checks while continuing to reject private and look-alike paths."
+      "Admit the intended maintainer instruction entrypoints and skill mirror through publication checks while continuing to reject private and look-alike paths.",
+      "Execute a configured virtualenv interpreter for Vault indexing using its configured executable path, preserving the virtualenv rather than resolving the executable to its base interpreter."
     ],
     "acceptance_tests": [
       {
@@ -37,10 +38,11 @@
           5,
           6,
           7,
-          8
+          8,
+          12
         ],
         "module": "tests/oracle-implementation-spec.test.mjs",
-        "purpose": "Verify sealed spec production, privacy, engine invocation, external input custody, native migration and admission failures."
+        "purpose": "Verify sealed spec production, privacy, engine invocation, external input custody, native migration, complete publication-range scope enforcement and preservation of the configured virtualenv interpreter executable."
       },
       {
         "covers": [
@@ -99,8 +101,8 @@
     ],
     "change_class": "feature",
     "design": "Vault/docs/design/oracle-implementation-spec.md",
-    "reason": "Spec production, reviewer engine support and admission across CI and deterministic lanes require thorough feature acceptance and relevant interactions. Run every selected category within the original 300-second delivery budget, retaining fixed lane verification and historical evidence. No additional recurrence suite is selected.",
-    "revision_of": null,
+    "reason": "Retain the feature contract and every selected category and test. Extend its scope and acceptance to cover the complete publication range and configured virtualenv interpreter preservation through the existing acceptance module. Run the complete selected set within the original 300-second delivery budget, preserving fixed lane checks, historical evidence and the original request clock. No additional recurrence suite is selected.",
+    "revision_of": "9e50533663ec262342df557b100d3bde928ee5c7e246cd7664adc2c39d3d2209",
     "scope_paths": [
       "AGENTS.md",
       "CLAUDE.md",
@@ -126,11 +128,12 @@
       "tests/deterministic_package_test.py",
       "tests/oracle-implementation-spec.test.mjs",
       "tests/oracle_spec_test.py",
-      "tests/publication-safety.test.mjs"
+      "tests/publication-safety.test.mjs",
+      "tools/vault_index.py"
     ]
   },
-  "base_commit": "a12e54102decf1c567ec60b88908b128bbc1ee25",
-  "base_tree": "024b2e47d1f4b4b4e5195f3b127f92bd87d593d4",
+  "base_commit": "1f9b57f35054a033d804e6c8ef7c7e27e115184d",
+  "base_tree": "c1ce96e2090f9f11e4100fa5a34ee1a5e07d42be",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v26.12.0",
@@ -140,8 +143,8 @@
     "architecture": "x86_64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "51afa88ea49d782bf00f9c1f1221c3286988887693ad42ed9314ec44492a398f",
-  "review_sha256": "cd330d1d8887c7b9c8ba1fc39e7dfb8bc4a435e14f22f6686e26c0201ace1b4b",
+  "proposal_sha256": "08ad89e19c6191868d5b53fa5ed526696ae9d63b061d9ad26a70d422ede7f71d",
+  "review_sha256": "65cb5ced4627f47d9952dd443c4ef1e80c37a316481b60afaf3700d3535c10c2",
   "commands": [
     {
       "category": "sanity",
@@ -201,9 +204,9 @@
   },
   "design_binding": {
     "design": "Vault/docs/design/oracle-implementation-spec.md",
-    "design_sha256": "81670ea553b6006488e1dc3dec48671ac41405f3a07868e435af5006ba8d0b0c",
+    "design_sha256": "a4396c855d375b21959cbc2d431a325caaa528d86d24d92a0e276026bff76ee7",
     "plan": "Vault/docs/design/oracle-implementation-spec.test-plan.json",
-    "plan_sha256": "32f5918c9c3703e7253d603297d843509ab11e525b03f5be3ad847e7c024f6f0",
+    "plan_sha256": "d0e75043903cabb13324a6a5f9f543aabd693c0d4f96c095103ba1a4c53deabd",
     "tests": [
       "tests/deterministic-lanes.test.mjs",
       "tests/oracle-implementation-spec.test.mjs",
@@ -211,6 +214,6 @@
       "tests/validation-contract.test.mjs"
     ]
   },
-  "contract_sha256": "9e50533663ec262342df557b100d3bde928ee5c7e246cd7664adc2c39d3d2209",
-  "seal": "6baf3128ef9afc5af3bb68e68f321eb47d24aaef23068773eff324083a3a6f79"
+  "contract_sha256": "02d2f364e7c08ce4dc8235afc6f2f38ba8d65e15f00511b967a905e4e75c9eb8",
+  "seal": "76060966fa8b8472853680a18d9500fd70a4f00d39ab4ff3487254c11f346b64"
 }
