@@ -45,7 +45,7 @@ def build(root, revision):
     git(root, 'config', 'user.name', 'Synthetic'); git(root, 'config', 'user.email', 'synthetic@example.invalid')
     (root / 'tools').mkdir(); (root / 'tests').mkdir(); (root / 'node_modules').mkdir()
     (root / 'node_modules/dependency').write_text('locked')
-    for name in [*oracle.REVIEW_POLICY_MODULES, 'tools/deterministic_source.py', 'tools/deterministic_package.py',
+    for name in [*oracle.REVIEW_POLICY_MODULES,
                  'tools/validation-catalog.json']:
         shutil.copy2(REPOSITORY / name, root / name)
     (root / '.gitignore').write_text('__pycache__/\nnode_modules/\n')

@@ -20,7 +20,7 @@ class ScopeIndex(unittest.TestCase):
         self.git('config', 'user.email', 'synthetic@example.invalid')
         self.cli = self.root / 'tools/oracle_approval.py'
         for name in ['oracle_approval.py', 'codex_child_model.py', 'shipment_state.py', 'publication_status.py',
-                     'validation_contract.py', 'oracle_spec_seal.py']:
+                     'validation_contract.py', 'oracle_spec_seal.py', 'deterministic_source.py', 'deterministic_package.py']:
             target = self.root / 'tools' / name; target.parent.mkdir(exist_ok=True)
             target.write_bytes((Path(o.__file__).resolve().parent / name).read_bytes())
         self.git('commit', '--allow-empty', '-qm', 'baseline')
