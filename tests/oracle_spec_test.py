@@ -397,6 +397,42 @@ class LaneExecution(Fixture):
             source_lane.private_write(source_lane.directory(self.root) / 'later.failure.json', source_lane.encoded(later))
             with self.assertRaisesRegex(ValueError, 'later failed'):
                 source_lane.verify(self.root)
+        # A newer complete passing execution of the same candidate restores readiness; history survives.
+        with patch.object(source_lane, 'time') as clock:
+            clock.time.side_effect = lambda: later['runs'][0]['completed_at'] + 120
+            clock.time_ns.side_effect = time.time_ns
+            retry = self.validate()
+        with patch.object(source_lane, 'CHECKS', [[sys.executable, '-c', 'print("fixed check")']]):
+            self.assertEqual(source_lane.verify(self.root)['sha256'], retry['sha256'])
+        self.assertEqual(len(list(source_lane.directory(self.root).glob(receipt['source'] + '*.json'))), 2)
+
+    def test_ci_mode_admits_complete_direct_execution_without_native_records(self):
+        self.prepare(self.REPAIRED, reproduce=False)  # CI has no owner-local reproduction.
+        with patch.object(source_lane, 'CHECKS', [[sys.executable, '-c', 'print("fixed check")']]):
+            receipt = source_lane.validate(self.root, self.base, '2026-11-11T00:00:00Z', ci=True)
+            self.assertEqual(receipt['spec_mode'], 'ci')
+            self.assertEqual([row['runner'] for row in receipt['spec_runs']], [row['command'] for row in receipt['spec_runs']])
+            with self.assertRaisesRegex(ValueError, 'local native spec execution'):
+                source_lane.verify(self.root, publication=True)
+            # A same-candidate local retry records new evidence beside the CI receipt and recovers.
+            done = subprocess.run([sys.executable, 'tools/validation_contract.py', 'run', '--category', 'focused'],
+                                  cwd=self.root, capture_output=True, text=True)
+            self.assertNotEqual(done.returncode, 0)  # No fail-before reproduction locally.
+
+    def test_package_lane_ci_mode_completes_selected_categories(self):
+        (self.root / '.gitignore').write_text('__pycache__/\nnode_modules/\n')
+        (self.root / 'node_modules').mkdir()
+        (self.root / 'node_modules/dependency').write_text('locked')
+        (self.root / 'tests/spec.test.mjs').write_text(self.MARKER + "test('passes',()=>{});\n")
+        self.base = self.commit()
+        self.genuine_spec(self.selection(scope_paths=['scripts/*', 'tools/*', 'tests/*']))
+        (self.root / 'scripts').mkdir()
+        (self.root / 'scripts/release.mjs').write_text('export default 1;\n')
+        self.commit('package maintenance')
+        with patch.object(package_lane, 'CHECKS', [[sys.executable, '-c', 'print("fixed check")']]):
+            receipt = package_lane.validate(self.root, self.base, '2026-11-11T00:00:00Z', ci=True)
+        self.assertEqual((receipt['status'], receipt['spec_mode']), ('VERIFIED', 'ci'))
+        self.assertEqual([row['category'] for row in receipt['spec_runs']], ['sanity', 'focused'])
 
     def test_bug_fix_without_fail_before_reproduction_is_not_verified(self):
         self.prepare(self.REPAIRED, reproduce=False)

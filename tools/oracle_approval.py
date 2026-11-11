@@ -3599,8 +3599,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             evidence = list(args.evidence)
             if args.request_file:
                 # The reviewer reads the original request itself; the stamp keeps only its digest.
-                requested = str(args.request_file.resolve())
-                if requested not in {str(Path(item).resolve()) for item in evidence}:
+                # Keep the supplied route itself so evidence custody binds that exact path.
+                requested = str(args.request_file)
+                if requested not in evidence:
                     evidence.append(requested)
             result = review_proposal(root,request,evidence,args.owner_approval,
                                      request_bytes=args.request_file.read_bytes() if args.request_file else None)

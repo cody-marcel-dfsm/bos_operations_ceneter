@@ -230,7 +230,7 @@ def read_receipt(root):
     if [row['command'] for row in value['runs']] != CHECKS:
         raise ValueError('Fixed command category changed')
     native.check_spec_runs(root, value['base'], current['source'], value.get('spec_runs'), directory(root),
-                           receipt_completed=native._completed(value))
+                           receipt_completed=native._completed(value), mode=value.get('spec_mode'))
     for failure in directory(root).glob('*.failure.json'):
         record = json.loads(failure.read_bytes())
         if (record.get('identity') == current and record.get('runs')
@@ -281,7 +281,8 @@ def validate(root, base, requested_at, *, ci=False):
     if native.identity(root) != before:
         raise ValueError('Source, generated package or runtime changed during verification')
     value = {'kind': KIND, 'profile': PROFILE, 'status': 'VERIFIED', **before,
-             'base': base, 'paths': paths, 'runs': runs, 'spec_runs': selected, 'request_started_at': requested_at,
+             'base': base, 'paths': paths, 'runs': runs, 'spec_runs': selected, 'spec_mode': 'ci' if ci else 'native',
+             'request_started_at': requested_at,
              'sla_status': ('BREACHED_ORIGINAL_TIME_UNAVAILABLE' if start is None else
                             'BREACHED' if time.time() - start.timestamp() > 300 else 'NOT_ESTABLISHED'),
              'deployment_authorized': False}
@@ -318,6 +319,8 @@ def publish(root, ref, pr=None):
     if pr is not None and not re.fullmatch('[1-9][0-9]*', str(pr)):
         raise ValueError('Exact numeric pull request identity required')
     value = read_receipt(root)
+    if value.get('spec_mode') != 'native':
+        raise ValueError('Publication requires the local native spec execution receipt')
     version = json.loads(blob(root, value['source'], 'package.json'))['version']
     if ref != 'codex/release-v' + version:
         raise ValueError('Exact version-bound release ref required')
@@ -399,6 +402,8 @@ def ci_observation(source, ref, read=github_read):
 
 def promote(root, ref):
     value = read_receipt(root)
+    if value.get('spec_mode') != 'native':
+        raise ValueError('Publication requires the local native spec execution receipt')
     version = json.loads(blob(root, value['source'], 'package.json'))['version']
     if ref != 'codex/release-v' + version:
         raise ValueError('Exact version-bound release ref required')

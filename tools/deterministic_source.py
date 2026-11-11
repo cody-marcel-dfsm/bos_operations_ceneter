@@ -94,7 +94,11 @@ def validate(root, base, requested_at, *, ci=False):
     if identity(root)!=before:raise ValueError('Source or runtime changed during execution')
     value={'kind':KIND,'status':'VERIFIED','base':base,'paths':paths,**before,'runs':runs,'spec_runs':selected,'request_started_at':requested_at,
            'sla_status':'FAILED' if time.time()-start.timestamp()>120 else 'NOT_ESTABLISHED','source_only':True}
-    value['sha256']=digest(encoded(value));private_write(store/(before['source']+'.json'),encoded(value))
+    value['spec_mode']='ci' if ci else 'native'
+    value['sha256']=digest(encoded(value));target=store/(before['source']+'.json')
+    # A repaired same-candidate retry gets new immutable evidence; prior executions survive.
+    if target.exists():target=store/(before['source']+'.'+str(time.time_ns())+'.json')
+    private_write(target,encoded(value))
     return verify(root)
 
 def selected_commands(root, base, source):
@@ -148,15 +152,24 @@ def _native_record(output):
 def _completed(record):
     return max([r.get('completed_at', 0) for r in [*record.get('runs', []), *record.get('spec_runs', [])]] or [0])
 
-def check_spec_runs(root, base, source, runs, store, *, receipt_completed=None):
+def check_spec_runs(root, base, source, runs, store, *, receipt_completed=None, mode='native'):
     """A receipt holds the native runner's passing records of exactly the spec's selected commands,
     and no later failed execution of the same candidate supersedes them."""
     expected = selected_commands(root, base, source)
     if not isinstance(runs, list) or [r.get('command') for r in runs] != [r['argv'] for r in expected]:
         raise ValueError('Receipt lacks the sealed spec category executions')
     selected = contract.verify(root, source) if expected else None
-    for row in runs:
+    if mode not in {'native', 'ci'}:
+        raise ValueError('Unknown spec execution mode')
+    for row, chosen in zip(runs, expected):
         path = store / (row['output_sha256'] + '.log')
+        if mode == 'ci':
+            # A CI phase receipt binds the complete retained output of the directly executed argv.
+            if (path.is_symlink() or not path.is_file() or digest(path.read_bytes()) != row['output_sha256'] or row['exit_code'] == 'TIMEOUT'
+                    or row.get('runner') != chosen['argv']
+                    or not contract.result_summary(path.read_bytes().decode('utf-8', 'replace'), row['exit_code'], bool(chosen['tests']))['passed']):
+                raise ValueError('Spec category output changed or is incomplete')
+            continue
         record = Path(row.get('record') or '')
         if (path.is_symlink() or not path.is_file() or digest(path.read_bytes()) != row['output_sha256']
                 or row['exit_code'] != 0 or not record.is_file() or digest(record.read_bytes()) != row.get('record_sha256')):
@@ -175,21 +188,25 @@ def check_spec_runs(root, base, source, runs, store, *, receipt_completed=None):
             if value.get('identity', {}).get('source') == source and _completed(value) > receipt_completed:
                 raise ValueError('A later failed execution supersedes this receipt')
 
-def verify(root):
-    current=identity(root);path=directory(root)/(current['source']+'.json')
-    if path.is_symlink() or path.stat().st_mode&0o077:raise ValueError('Unsafe source evidence file')
+def verify(root, *, publication=False):
+    current=identity(root)
+    paths=[p for p in [directory(root)/(current['source']+'.json'),*directory(root).glob(current['source']+'.*.json')] if p.exists()]
+    if not paths:raise ValueError('No deterministic source receipt for this candidate')
+    if any(p.is_symlink() or p.stat().st_mode&0o077 for p in paths):raise ValueError('Unsafe source evidence file')
+    path=max(paths,key=lambda p:_completed(json.loads(p.read_bytes())))
     value=json.loads(path.read_bytes());key=value.pop('sha256')
+    if publication and value.get('spec_mode')!='native':raise ValueError('Publication requires the local native spec execution receipt')
     if digest(encoded(value))!=key or value.get('kind')!=KIND or value.get('status')!='VERIFIED' or value.get('source_only') is not True:
         raise ValueError('Invalid deterministic source receipt')
     if any(value.get(k)!=v for k,v in current.items()) or value['paths']!=scope(root,value['base'],current['source']):raise ValueError('Source/runtime/range changed')
     if [x['command'] for x in value['runs']]!=CHECKS:raise ValueError('Required commands changed')
-    check_spec_runs(root,value['base'],current['source'],value.get('spec_runs'),directory(root),receipt_completed=_completed(value))
+    check_spec_runs(root,value['base'],current['source'],value.get('spec_runs'),directory(root),receipt_completed=_completed(value),mode=value.get('spec_mode'))
     for row in value['runs']:
         if row['exit_code']!=0 or digest((directory(root)/(row['output_sha256']+'.log')).read_bytes())!=row['output_sha256']:raise ValueError('Original execution output changed')
     return dict(value,sha256=key)
 
 def publish(root, ref, pr=None):
-    value=verify(root)
+    value=verify(root,publication=True)
     if not re.fullmatch('codex/source-[a-z0-9-]+',ref):raise ValueError('Source-maintenance review ref required')
     destinations=git(root,'remote','get-url','--push','--all','origin').splitlines()
     allowed={'https://github.com/'+REPOSITORY+suffix for suffix in ['', '.git']}
