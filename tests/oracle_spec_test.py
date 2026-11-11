@@ -339,6 +339,15 @@ class Migration(Fixture):
             oracle.review_proposal(self.root, PROPOSAL, [str(request)], None, reviewer, request_path=str(request))
         stamped = json.loads((self.root / v.SELECTION).read_text())['stamp']
         self.assertEqual(stamped['request_sha256'], hashlib.sha256(request.read_bytes()).hexdigest())
+        # Movement after the stamped read but before the guards bind the evidence is refused.
+        actual = oracle._input_binding
+        def moving(*args, **kwargs):
+            request.write_text('Moved request\n')
+            return actual(*args, **kwargs)
+        with patch.object(oracle, '_review_settings_binding', return_value={'model': 'synthetic', 'reasoning_effort': None}), \
+                patch.object(oracle, '_fresh_origin', return_value=ORIGIN), patch.object(oracle, '_input_binding', side_effect=moving):
+            with self.assertRaisesRegex(oracle.OracleApprovalError, 'changed while its evidence was bound'):
+                oracle.review_proposal(self.root, PROPOSAL + ' again', [str(request)], None, reviewer, request_path=str(request))
 
     def test_proposal_refuses_when_head_lacks_fetched_origin(self):
         remote = Path(self.temp.name) / 'origin.git'

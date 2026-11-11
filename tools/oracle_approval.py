@@ -3157,6 +3157,9 @@ def review_proposal(root: Path, request: str, evidence_paths: Sequence[str], own
                 raise OracleApprovalError("Original request changed while its evidence was bound")
         binding = _input_binding(root, evidence, owner)
         guards = _proposal_guards(root, evidence, owner)
+        if request_path is not None and guards["evidence"].get(_custody_name(root, request_path)) != _sha(request_bytes):
+            # The guards bind what the reviewer reads; they must name the stamped request bytes.
+            raise OracleSourceBindingError("Original request changed while its evidence was bound")
         _atomic_write(_RUN.get() / "proposal-inputs.json", _pretty({"proposal_sha256": _sha(request.encode()),
             "guards": guards, "initial_commit": binding["base_commit"], "initial_tree": binding["candidate_tree"]}))
     selected_token = _PREPARED_SETTINGS.set(binding["reviewer_settings"])
