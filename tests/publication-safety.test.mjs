@@ -39,6 +39,10 @@ test("publication workflow audits release refs without importing retained pull-r
   );
 
   assert.doesNotMatch(workflow, /refs\/pull|publication-audit/);
-  assert.match(workflow, /npm run check:publication/);
-  assert.match(workflow, /npm run release:check/);
+  // Owner direction 2026-11-11: the sealed Oracle spec gate runs first, then the fixed
+  // deterministic category (which includes check:publication) and the spec's own tests.
+  const gate = workflow.indexOf("python3 tools/validation_contract.py gate");
+  const category = workflow.indexOf("python3 tools/deterministic_package.py ci");
+  assert.ok(gate > 0, "workflow runs the sealed Oracle spec gate");
+  assert.ok(category > gate, "the spec gate precedes the fixed deterministic category");
 });
