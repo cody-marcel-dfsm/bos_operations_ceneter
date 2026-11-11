@@ -507,20 +507,32 @@ class DeterministicProvenance(unittest.TestCase):
         self.path.write_bytes(self.original)
         self.assertTrue(oracle._deterministic_provenance(self.root, self.commit, self.tree))
 
-    def replace_category_record(self, change):
+    def replace_category_record(self, change, *, rename=False):
         value = json.loads(self.original); record = Path(value['spec_runs'][1]['record'])
-        data = json.loads(record.read_text()); data.pop('record_sha256'); change(data)
+        data = json.loads(self.category_original); data.pop('record_sha256'); change(data)
         data['record_sha256'] = v.digest(data)  # A self-consistent replacement record.
-        os.chmod(record, 0o600); record.write_text(json.dumps(data, indent=2) + '\n')
-        self.forge(lambda receipt: receipt['spec_runs'][1].update(record_sha256=source_lane.digest(record.read_bytes())))
+        target = record.with_name('focused-after-' + data['record_sha256'] + '.json') if rename else record
+        os.chmod(record, 0o600); target.write_text(json.dumps(data, indent=2) + '\n')
+        self.forge(lambda receipt: receipt['spec_runs'][1].update(record=str(target), record_sha256=source_lane.digest(target.read_bytes())))
+        return record, target
 
     def test_fabricated_native_category_records_grant_nothing(self):
-        for change in (lambda d: d.update(tree='0' * 40), lambda d: d.update(runtime={'node': 'fabricated'}),
-                       lambda d: d.update(exit_code=1), lambda d: d.update(inputs_unchanged=False),
-                       lambda d: d.update(output_file=str(self.root / 'absent.log'))):
-            with self.subTest(change=change):
-                self.replace_category_record(change)
-                self.assertIsNone(oracle._deterministic_provenance(self.root, self.commit, self.tree))
+        record = Path(json.loads(self.original)['spec_runs'][1]['record'])
+        self.category_original = record.read_bytes()
+        changes = {'tree': lambda d: d.update(tree='0' * 40), 'runtime': lambda d: d.update(runtime={'node': 'fabricated'}),
+                   'exit': lambda d: d.update(exit_code=1), 'inputs': lambda d: d.update(inputs_unchanged=False),
+                   'output': lambda d: d.update(output_file=str(self.root / 'absent.log')),
+                   'fixtures-empty': lambda d: d.update(fixtures={}),
+                   'fixtures-wrong': lambda d: d.update(fixtures={k: '0' * 40 for k in d['fixtures']})}
+        for name, change in changes.items():
+            for rename in (False, True):
+                with self.subTest(field=name, renamed=rename):
+                    original, target = self.replace_category_record(change, rename=rename)
+                    self.assertIsNone(oracle._deterministic_provenance(self.root, self.commit, self.tree))
+                    original.write_bytes(self.category_original)  # Isolate each case.
+                    if target != original: target.unlink()
+                    self.path.write_bytes(self.original)
+        self.assertTrue(oracle._deterministic_provenance(self.root, self.commit, self.tree))
 
     def test_bug_fix_category_without_its_fail_before_original_grants_nothing(self):
         selected = v.verify(self.root, self.commit)

@@ -173,7 +173,16 @@ def _native_original(root, selected, source, row, record):
             or value.get('category') != row['category'] or value.get('command') != row['command']
             or value.get('contract_sha256') != selected['contract_sha256'] or value.get('catalog_sha256') != selected['catalog_sha256']
             or value.get('runtime') != selected['runtime'] or value.get('passed') is not True
-            or value.get('inputs_unchanged') is not True or value.get('exit_code') != 0):
+            or value.get('inputs_unchanged') is not True or value.get('exit_code') != 0
+            or record.name != row['category'] + '-after-' + str(value.get('record_sha256')) + '.json'):
+        raise ValueError('Spec category output changed or is incomplete')
+    # The record must bind the exact selected test and fixture bytes of the claimed commit.
+    chosen = next(r for r in selected['commands'] if r['category'] == row['category'])
+    committed = {name: git(root, 'rev-parse', source + ':' + name) for name in [*chosen['tests'], *chosen['fixtures']]}
+    if value.get('fixtures') != committed:
+        raise ValueError('Spec category record does not bind the committed selected tests')
+    output_file = Path(value['output_file'])
+    if output_file.parent.resolve() != results.resolve() or output_file.name != str(value.get('output_sha256')) + '.log':
         raise ValueError('Spec category output changed or is incomplete')
     tested = any(r['category'] == row['category'] and r['tests'] for r in selected['commands'])
     output = Path(value['output_file']).read_text(errors='replace')
@@ -181,8 +190,12 @@ def _native_original(root, selected, source, row, record):
         raise ValueError('Spec category output changed or is incomplete')
     if row['category'] == 'focused' and selected['selection']['change_class'] in BUG_CLASSES:
         before = [r for r in contract.originals(root, selected, 'before') if r['category'] == 'focused'
-                  and r.get('fixtures') == value.get('fixtures') and r.get('runtime') == selected['runtime']
-                  and r.get('inputs_unchanged') is True and _reproduces(r)]
+                  and r.get('fixtures') == committed and r.get('runtime') == selected['runtime']
+                  and r.get('contract_sha256') == selected['contract_sha256'] and r.get('phase') == 'before'
+                  and Path(r['_record_path']).name == 'focused-before-' + str(r.get('record_sha256')) + '.json'
+                  and r.get('inputs_unchanged') is True
+                  and subprocess.run(['git', 'merge-base', '--is-ancestor', r['commit'], source], cwd=root, capture_output=True).returncode == 0
+                  and _reproduces(r)]
         if not before:
             raise ValueError('Spec category lacks its retained fail-before reproduction')
     return value
