@@ -423,7 +423,12 @@ async function reclaimExpiredAuthorityMutationLock(
   }
 }
 
+// The lock's publication primitives. Tests may substitute an observing wrapper to stop the
+// acquirer at the exact moment the lock path appears; production always uses node:fs.
+const LOCK_FILE_SYSTEM = Object.freeze({ chmod, link, open, rm, writeFile });
+
 async function acquireAuthorityMutationLock(path, options = {}) {
+  const fs = options.lockFileSystem ?? LOCK_FILE_SYSTEM;
   await ensurePrivateDirectory(dirname(path));
   const token = randomUUID();
   const leaseMs = options.mutationLockLeaseMs ?? 600_000;
@@ -439,13 +444,13 @@ async function acquireAuthorityMutationLock(path, options = {}) {
     // writer can never observe a created-but-still-empty lock file.
     const pending = `${path}.${token}.acquire`;
     try {
-      await writeFile(pending, `${JSON.stringify({ token, pid: process.pid, expires_at: expiresAt })}\n`,
+      await fs.writeFile(pending, `${JSON.stringify({ token, pid: process.pid, expires_at: expiresAt })}\n`,
         { mode: 0o600, flag: "wx" });
-      await chmod(pending, 0o600);
+      await fs.chmod(pending, 0o600);
       try {
-        await link(pending, path);
+        await fs.link(pending, path);
       } finally {
-        await rm(pending, { force: true });
+        await fs.rm(pending, { force: true });
       }
       return { token, pid: process.pid, expires_at: expiresAt, leaseMs };
     } catch (error) {

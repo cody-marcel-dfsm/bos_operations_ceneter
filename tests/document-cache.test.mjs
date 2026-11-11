@@ -578,19 +578,38 @@ test("overlapping queries share immutable objects while authority indexes stay s
   assert.notEqual(isolated.authority_key, first.authority_key);
 });
 
-test("the mutation lock is published with its complete owner record, never empty", async (t) => {
+// Stop the acquirer immediately after whichever primitive makes the lock path appear, read the
+// lock exactly as a competing writer would at that instant, then let the acquirer continue.
+async function observeLockPublication(t) {
   const root = await mkdtemp(join(tmpdir(), "bos-lock-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const path = join(root, "mutation.lock");
-  const observed = await withAuthorityMutationLock(path, async () => ({
-    lock: JSON.parse(await readFile(path, "utf8")),
-    entries: await readdir(root)
-  }));
-  // A competing writer that sees the lock exist can always read a complete owner record.
-  assert.equal(observed.lock.pid, process.pid);
-  assert.match(observed.lock.token, /^[0-9a-f-]{36}$/u);
-  assert.ok(Date.parse(observed.lock.expires_at) > 0);
-  // The private staging file is gone once the lock is in place, and release removes the lock.
-  assert.deepEqual(observed.entries, ["mutation.lock"]);
-  assert.deepEqual(await readdir(root), []);
+  const real = await import("node:fs/promises");
+  let reached, resume;
+  const created = new Promise((resolve) => { reached = resolve; });
+  const released = new Promise((resolve) => { resume = resolve; });
+  const pauseAt = async (target, result) => {
+    if (target === path) { reached(); await released; }
+    return result;
+  };
+  const lockFileSystem = {
+    chmod: real.chmod, rm: real.rm, writeFile: real.writeFile,
+    link: async (from, to) => pauseAt(to, await real.link(from, to)),
+    open: async (target, ...rest) => pauseAt(target, await real.open(target, ...rest))
+  };
+  const holder = withAuthorityMutationLock(path, async () => readdir(root), { lockFileSystem });
+  await created;
+  const competitorView = await readFile(path, "utf8");
+  resume();
+  return { root, competitorView, entriesWhileHeld: await holder };
+}
+
+test("a competing writer that sees the mutation lock always reads its complete owner record", async (t) => {
+  const { root, competitorView, entriesWhileHeld } = await observeLockPublication(t);
+  const lock = JSON.parse(competitorView); // An exclusive open followed by a write left this empty.
+  assert.equal(lock.pid, process.pid);
+  assert.match(lock.token, /^[0-9a-f-]{36}$/u);
+  assert.ok(Date.parse(lock.expires_at) > 0);
+  assert.deepEqual(entriesWhileHeld, ["mutation.lock"]); // The private staging file is gone.
+  assert.deepEqual(await readdir(root), []); // Release removes the lock.
 });

@@ -77,11 +77,24 @@ test("durable enqueue survives recreation and rejected wake without cursor regre
 
 test("concurrent writers and generations preserve later hints and prototype-shaped identities", async t => {
   const f = await queue(t, {identities: ["one", "__proto__"]});
-  const second = await createNotificationQueue(f.configuration);
-  // Two writers on one partition, in an explicit order: each mutation is serialized by the
-  // protected lock, so the outcome is defined without racing them.
-  await f.queue.enqueue({identity: "one", cursor: "nc_1"});
-  await second.enqueue({identity: "__proto__", cursor: "nc_2"});
+  // Overlapping writers on one partition, ordered by explicit barriers rather than timing: the
+  // first writer is stopped while it holds the protected lock, the second is started against the
+  // held lock, and only then is the first released.
+  let holding, releaseFirst, secondStarted, guards = 0;
+  const held = new Promise(resolve => { holding = resolve; });
+  const release = new Promise(resolve => { releaseFirst = resolve; });
+  const started = new Promise(resolve => { secondStarted = resolve; });
+  const first = await createNotificationQueue({...f.configuration, assertCurrent: async () => {
+    if (++guards === 2) { holding(); await release; } // The second guard runs inside the lock.
+    return true;
+  }});
+  const second = await createNotificationQueue({...f.configuration, assertCurrent: async () => { secondStarted(); return true; }});
+  const one = first.enqueue({identity: "one", cursor: "nc_1"});
+  await held;
+  const two = second.enqueue({identity: "__proto__", cursor: "nc_2"});
+  await started;
+  releaseFirst();
+  await Promise.all([one, two]);
   const before = await f.queue.pending();
   assert.equal(before.length, 2);
   await second.enqueue({identity: "one", cursor: "nc_3"});
