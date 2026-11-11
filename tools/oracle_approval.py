@@ -1377,8 +1377,19 @@ def _review_policy_sources(root: Path, tree: str | None = None) -> dict:
                 raise ValueError("Unavailable live reviewer module")
             fact, source = _custody_read(root, str(path))
             mode = "100755" if int(fact["source"]["mode"], 8) & 0o111 else "100644"
-        result[name] = {"mode": mode, "ast": ast.dump(ast.parse(source), include_attributes=False)}
+        result[name] = {"mode": mode, "ast": _policy_ast(source)}
     return result
+
+
+_POLICY_AST: dict[str, str] = {}
+
+
+def _policy_ast(source: bytes) -> str:
+    """Identical bytes always parse to the identical AST dump; reuse it by content digest."""
+    key = _sha(source)
+    if key not in _POLICY_AST:
+        _POLICY_AST[key] = ast.dump(ast.parse(source), include_attributes=False)
+    return _POLICY_AST[key]
 
 
 def _review_policy_digest(root: Path, tree: str | None = None, *, version: int = 4) -> str | None:
