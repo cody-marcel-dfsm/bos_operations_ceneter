@@ -355,7 +355,8 @@ test("arguments and release integration are closed; real-send mode fails before 
   const packageJson = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
   assert.equal(packageJson.scripts["acceptance:agent-journey-live"],
     "node scripts/verify-agent-driven-journey-live.mjs");
-  assert.equal(packageJson.scripts["release:check"], "python3 tools/validation_contract.py release");
+  // Owner direction 2026-11-03: release:check is the fixed deterministic package verification.
+  assert.equal(packageJson.scripts["release:check"], "python3 tools/deterministic_package.py validate");
   const result = spawnSync(process.execPath, [
     script,
     "--candidate-acceptance", fixture,

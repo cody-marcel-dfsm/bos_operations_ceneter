@@ -445,6 +445,10 @@ def ci(root, base, requested):
     if admitted['status'] == 'SPEC_SEALED':
         tests = contract.ci_execute(root, head)
         print(json.dumps({'spec_tests': tests['status'], 'seal': tests['seal']}))
+    if lane is None:
+        # Outside both deterministic lanes the native contract still governs: CI imports the
+        # exact native approval status and command coverage, executing any uncovered command.
+        subprocess.run([sys.executable, 'tools/command_coverage.py', 'ci', '--candidate', head], cwd=root, check=True)
     print(json.dumps({'kind': lane['kind'] if lane else 'boc-oracle-spec-ci/1', 'status': 'VERIFIED',
                       'source': head, 'sla_status': 'CI_PHASE_ONLY'}))
     return 0

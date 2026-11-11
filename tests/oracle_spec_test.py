@@ -262,6 +262,38 @@ class Lanes(Fixture):
             (self.root / 'tools/validation_contract.py').read_text() + '\n# synthetic maintenance\n')
 
 
+class ContinuousIntegration(Fixture):
+    def run_ci(self, status, lane_admits):
+        calls, real = [], subprocess.run
+        refuse = lambda *args, **kwargs: (_ for _ in ()).throw(ValueError('not this lane'))
+        with patch.object(package_lane.contract, 'gate', return_value={'status': status, 'seal': 's' * 64}), \
+                patch.object(package_lane.native, 'scope', side_effect=None if lane_admits else refuse), \
+                patch.object(package_lane.native, 'validate', return_value={'kind': 'boc-deterministic-source/1'}), \
+                patch.object(package_lane, 'scope', side_effect=refuse), \
+                patch.object(package_lane.contract, 'ci_execute', return_value={'status': 'SPEC_TESTS_PASSED', 'seal': 's' * 64}) as tests, \
+                patch.object(package_lane.subprocess, 'run', side_effect=lambda command, *a, **kw:
+                             real(command, *a, **kw) if command[0] == 'git' else calls.append(command)):
+            self.assertEqual(package_lane.ci(self.root, self.base, '2026-11-11T00:00:00Z'), 0)
+        return calls, tests
+
+    def test_native_contract_range_runs_spec_tests_then_native_command_coverage(self):
+        calls, tests = self.run_ci('SPEC_SEALED', lane_admits=False)
+        tests.assert_called_once()
+        self.assertEqual(calls[-1][1:4], ['tools/command_coverage.py', 'ci', '--candidate'])
+
+    def test_deterministic_lane_range_needs_no_native_command_coverage(self):
+        calls, tests = self.run_ci('SPEC_SEALED', lane_admits=True)
+        tests.assert_called_once()
+        self.assertFalse(any('tools/command_coverage.py' in command for command in calls))
+
+    def test_gate_failure_stops_ci_before_any_lane(self):
+        with patch.object(package_lane.contract, 'gate', side_effect=ValueError('lacks its sealed Oracle spec')), \
+                patch.object(package_lane.native, 'scope') as lane:
+            with self.assertRaisesRegex(ValueError, 'lacks its sealed'):
+                package_lane.ci(self.root, self.base, '2026-11-11T00:00:00Z')
+        lane.assert_not_called()
+
+
 class Migration(Fixture):
     def proposal(self, selection):
         reviewer = lambda *args: dict(APPROVED, validation_selection=selection)

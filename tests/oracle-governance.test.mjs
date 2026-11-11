@@ -99,7 +99,11 @@ test("ordinary agents call the Oracle utility and cannot act as approver", () =>
   assert.match(commitMessage, /remove manual approval trailers/);
   assert.match(workflow, /VALIDATION_SOURCE_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
   assert.match(workflow, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
-  assert.match(workflow, /python3 tools\/command_coverage\.py ci --candidate "\$VALIDATION_SOURCE_SHA"/);
+  // The workflow gates the sealed spec, then deterministic_package.py ci, whose native-contract
+  // branch (outside both deterministic lanes) runs command_coverage.py ci for the exact candidate.
+  assert.match(workflow, /python3 tools\/validation_contract\.py gate --base "\$validation_base_sha"/);
+  assert.match(workflow, /python3 tools\/deterministic_package\.py ci --base "\$validation_base_sha"/);
+  assert.match(read("tools/deterministic_package.py"), /\[sys\.executable, 'tools\/command_coverage\.py', 'ci', '--candidate', head\]/);
   assert.match(workflow, /GH_TOKEN: \$\{\{ github\.token \}\}/);
   assert.match(workflow, /permissions:\s+contents: read\s+statuses: read/);
   assert.match(commandCoverage, /approved = public_status\.verify_publication\(root, candidate, execute=execute\)/);

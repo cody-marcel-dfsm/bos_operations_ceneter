@@ -939,7 +939,9 @@ def _assert_binding(root: Path, expected: dict, evidence: dict, owner: dict | No
         expected = {key: value for key, value in expected.items() if key not in {"environment_digest", "reviewer_settings"}}
     if actual != expected:
         protected = {'validation_evidence', 'owner_approval_evidence', 'environment_digest', 'reviewer_settings'}
-        immutable_routes = set(evidence) | set(owner or {})
+        # Declared parent family authority is controlling criteria outside this checkout, never
+        # ordinary current-source movement: its drift during review is a binding error.
+        immutable_routes = set(evidence) | set(owner or {}) | set(_declared_parent_authorities(root))
         changed_routes = {name for name in set(actual['route_custody']) | set(expected['route_custody'])
                           if actual['route_custody'].get(name) != expected['route_custody'].get(name)}
         if (all(actual.get(key) == expected.get(key) for key in protected)
@@ -1352,7 +1354,7 @@ def _validation_environment(extra_keys: Sequence[str] = ()) -> tuple[dict, dict,
 REVIEW_POLICY_MODULES = ("tools/oracle_approval.py", "tools/codex_child_model.py", "tools/vault_index.py",
                          "tools/publication_admission.py", "tools/shipment_state.py", "tools/publication_status.py",
                          "tools/oracle_parallel.py", "tools/oracle_source_frontier.py", "tools/oracle_lifecycle.py",
-                         "tools/command_coverage.py", "tools/validation_contract.py")
+                         "tools/command_coverage.py", "tools/validation_contract.py", "tools/oracle_spec_seal.py")
 
 
 def _review_policy_sources(root: Path, tree: str | None = None) -> dict:

@@ -327,7 +327,7 @@ class SourceFrontier(unittest.TestCase):
                     packet['packet_sha256']=fixture.digest({k:v for k,v in packet.items() if k!='packet_sha256'})
                     o._atomic_write(run/'cohort-context.json',o._pretty(packet))
             seen.append(cohort['id']);envelope=fixture.envelope(cohort)
-            for name,value in {'model.json':{'selected_model':'inherited-model','reasoning_effort':'high'},
+            for name,value in {'model.json':{'selected_model':'inherited-model','reasoning_effort':'medium'},
                                'process.json':{'exit_code':0},'result.json':envelope}.items():o._atomic_write(run/name,o._pretty(value))
             return envelope
         token=o._RUN.set(self.child)

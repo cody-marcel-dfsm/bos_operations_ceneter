@@ -18,6 +18,9 @@ from tools import oracle_parallel as parallel
 from tools import oracle_lifecycle as lifecycle
 
 
+SETUP_PROPOSAL = "Problem: synthetic; Cause: synthetic; Recommended change: synthetic"
+
+
 class ReviewSeries(unittest.TestCase):
     def synthetic_reviewer_settings(self):
         for name, value in (('selected_model', 'synthetic-model'), ('selected_reasoning_effort', None)):
@@ -42,6 +45,8 @@ class ReviewSeries(unittest.TestCase):
             yield
 
     def setUp(self):
+        # These cases exercise the codex launcher; pin it so the running harness never selects claude.
+        engine = patch.dict(os.environ, {"BOC_ORACLE_ENGINE": "codex"}); engine.start(); self.addCleanup(engine.stop)
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name).resolve()
@@ -98,7 +103,7 @@ class ReviewSeries(unittest.TestCase):
     def propose(self):
         result = {"verdict": "APPROVED", "findings": [], "authentication_impact": "NONE",
                   "owner_approval_status": "NOT_REQUIRED", "api_version_assessment": self.assessment()}
-        o.review_proposal(self.root, "Problem: synthetic; Cause: synthetic; Recommended change: synthetic", [], None,
+        o.review_proposal(self.root, SETUP_PROPOSAL, [], None,
                           lambda *args: result)
 
     @staticmethod
@@ -2414,8 +2419,16 @@ class ReviewSeries(unittest.TestCase):
                     path.unlink(); saved.rename(path)
                     self._cleanups.pop()
 
+    def setup_admissions(self):
+        # setUp's native proposal review keeps its own kind- and scope-specific admission chain;
+        # the same scoped proposal request must observe that chain.
+        from tools import oracle_lifecycle
+        chain = oracle_lifecycle._admissions(o, self.root, 'review_proposal', o._sha(SETUP_PROPOSAL.encode()))
+        self.assertTrue((chain / '00000001.json').is_file())
+        return chain
+
     def test_metadata_special_admission_record_is_rejected_before_review(self):
-        directory = o.receipt_path(self.root).parent / 'controllers/admissions'
+        directory = self.setup_admissions()
         path = directory / '00000001.json'
         saved = directory.parent / 'saved-admission.json'; path.rename(saved)
         try:
@@ -2423,10 +2436,10 @@ class ReviewSeries(unittest.TestCase):
                 with self.subTest(kind=kind):
                     path.mkdir() if kind == 'directory' else os.mkfifo(path)
                     try:
-                        def review_proposal(root):
+                        def review_proposal(root, request):
                             self.fail('nonregular controller record admitted the review')
                         with self.assertRaises(o.OracleApprovalError):
-                            o._serialized_review(review_proposal)(self.root)
+                            o._serialized_review(review_proposal)(self.root, SETUP_PROPOSAL)
                     finally:
                         path.rmdir() if kind == 'directory' else path.unlink()
         finally:
@@ -2453,17 +2466,17 @@ class ReviewSeries(unittest.TestCase):
             self.assertFalse((base / 'new-directory').exists())
 
     def test_controller_admission_cannot_rewrite_original_invocation(self):
-        directory = o.receipt_path(self.root).parent / 'controllers/admissions'
+        directory = self.setup_admissions()
         path = directory / '00000001.json'
         original = path.read_bytes()
         value = json.loads(original)
         value['process_identity'] = 'replaced process identity'
         path.unlink(); path.write_text(json.dumps(value))
         try:
-            def review_proposal(root):
+            def review_proposal(root, request):
                 self.fail('a replaced original invocation admitted another review')
             with self.assertRaisesRegex(o.OracleApprovalError, 'custody'):
-                o._serialized_review(review_proposal)(self.root)
+                o._serialized_review(review_proposal)(self.root, SETUP_PROPOSAL)
             self.assertIsNone(o._METADATA_ROOT.get())
         finally:
             path.unlink()
@@ -2731,11 +2744,15 @@ class ReviewSeries(unittest.TestCase):
                         else:
                             o._oracle(self.root, 'synthetic-tree', ['source.py'], {}, None)
                     command, options = calls[0]
-                    self.assertIn('model_reasoning_effort="xhigh"', command)
-                    self.assertEqual(options['env']['CODEX_SELECTED_REASONING_EFFORT'], 'xhigh')
+                    # Owner policy: an inherited effort above the delivery maximum is bounded, never forwarded.
+                    bounded = o.validation_contract.review_effort('xhigh')
+                    self.assertIn(bounded, {'low', 'medium'})
+                    self.assertIn('model_reasoning_effort="' + bounded + '"', command)
+                    self.assertNotIn('model_reasoning_effort="xhigh"', command)
+                    self.assertEqual(options['env']['CODEX_SELECTED_REASONING_EFFORT'], bounded)
                     self.assertEqual(options['env']['CODEX_SELECTED_MODEL'], 'gpt-6.1-sol')
                     metadata = json.loads((run / 'model.json').read_text())
-                    self.assertEqual(metadata['reasoning_effort'], 'xhigh')
+                    self.assertEqual(metadata['reasoning_effort'], bounded)
                     self.assertEqual(metadata['selected_model'], 'gpt-6.1-sol')
                     self.assertTrue(metadata['ignore_user_config'])
                 finally:
@@ -2745,13 +2762,14 @@ class ReviewSeries(unittest.TestCase):
         with patch.object(o, 'selected_model', return_value='gpt-6.1-sol'), \
                 patch.object(o, 'selected_reasoning_effort', return_value='xhigh') as effort:
             binding = o._input_binding(self.root, {}, None)
-            self.assertEqual(binding['reviewer_settings'], {'model': 'gpt-6.1-sol', 'reasoning_effort': 'xhigh'})
-            effort.return_value = 'high'
+            bounded = o.validation_contract.review_effort('xhigh')
+            self.assertEqual(binding['reviewer_settings'], {'model': 'gpt-6.1-sol', 'reasoning_effort': bounded})
+            effort.return_value = 'minimal'  # A real change of the bounded launch setting.
             with self.assertRaises(o.OracleApprovalError):
                 o._assert_binding(self.root, binding, {}, None)
             o._assert_binding(self.root, binding, {}, None, check_environment=False)
 
-    def test_native_unspecified_effort_adds_no_override_or_inherited_hint(self):
+    def test_native_unspecified_effort_is_pinned_to_the_delivery_policy_effort(self):
         schema = self.root / ".agents/skills/oracle/review-output.schema.json"; schema.write_text('{}')
         run = self.root / 'Vault/tmp/unspecified-effort'; run.mkdir(); token = o._RUN.set(run)
         calls = []
@@ -2766,9 +2784,12 @@ class ReviewSeries(unittest.TestCase):
                     patch.object(o.subprocess, 'run', side_effect=execute):
                 o._review_process(self.root, 'Synthetic settings', 'reviewer')
             command, options = calls[0]
-            self.assertFalse(any('model_reasoning_effort=' in argument for argument in command))
-            self.assertNotIn('CODEX_SELECTED_REASONING_EFFORT', options['env'])
-            self.assertIsNone(json.loads((run / 'model.json').read_text())['reasoning_effort'])
+            # Owner policy: an unspecified inherited effort is pinned to the delivery policy effort,
+            # so the CLI default can never exceed the maximum; the stale hint is replaced.
+            bounded = o.validation_contract.review_effort(None)
+            self.assertEqual([a for a in command if 'model_reasoning_effort=' in a], ['model_reasoning_effort="' + bounded + '"'])
+            self.assertEqual(options['env']['CODEX_SELECTED_REASONING_EFFORT'], bounded)
+            self.assertEqual(json.loads((run / 'model.json').read_text())['reasoning_effort'], bounded)
         finally:
             o._RUN.reset(token)
 

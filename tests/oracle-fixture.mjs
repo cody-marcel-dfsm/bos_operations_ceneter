@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdirSync, readFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 const fixture = readFileSync(new URL("./oracle_fixture.py", import.meta.url), "utf8");
@@ -18,4 +18,7 @@ export function copyOracleModules(workspace) {
     mkdirSync(dirname(target), { recursive: true });
     copyFileSync(new URL(`../${relative}`, import.meta.url), target);
   }
+  // Every governed checkout has package metadata; release command coverage reads it from the tree.
+  const manifest = join(workspace, "package.json");
+  if (!existsSync(manifest)) writeFileSync(manifest, JSON.stringify({ private: true, scripts: {} }) + "\n");
 }
