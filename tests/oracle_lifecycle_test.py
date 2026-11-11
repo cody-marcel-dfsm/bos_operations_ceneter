@@ -594,11 +594,14 @@ class CommittedCatchup(unittest.TestCase):
         self._assert_unadmitted_issuance('checkpoint-write-after-effect')
 
     def test_attached_caller_waits_for_successful_checkpoint_admission(self):
+        # entered: the follower's attach to the pending owner was accepted; ordering is decided by
+        # that event and by the owner's own checkpoint admission, never by sleeps.
         observed=[];threads=[];finished=threading.Event();entered=threading.Event();finish=lifecycle._finish
-        follow=lifecycle._follow;calls=[]
-        def observing_follow(*args):
-            entered.set()
-            return follow(*args)
+        request=lifecycle._request;calls=[]
+        def observing_request(module,root,identity,value):
+            response=request(module,root,identity,value)
+            if value.get('operation')=='attach' and not response.get('error'):entered.set()
+            return response
         def reviewer(*args):
             calls.append(o._CONTROLLER.get().identity['controller_id'])
             context=json.loads((o._RUN.get()/'review-context.json').read_text())
@@ -616,16 +619,16 @@ class CommittedCatchup(unittest.TestCase):
                     except BaseException as exc:observed.append(exc)
                     finally:o._FOLLOW_COMMITS.reset(follow_token);finished.set()
                 thread=threading.Thread(target=attached);threads.append(thread);thread.start()
-                self.assertTrue(entered.wait(3),'Native caller bypassed the pending owner')
-                self.assertFalse(finished.wait(.1),'Follower exposed a terminal before checkpoint admission')
+                self.assertTrue(entered.wait(60),'Native caller bypassed the pending owner')  # hang guard only
+                self.assertFalse(finished.is_set(),'Follower exposed a terminal before checkpoint admission')
             return result
         token=o._FOLLOW_COMMITS.set(True)
         try:
             with patch.object(lifecycle,'_finish',side_effect=terminal), \
-                    patch.object(lifecycle,'_follow',side_effect=observing_follow):
+                    patch.object(lifecycle,'_request',side_effect=observing_request):
                 result=o.issue(self.root,[str(self.fixture.evidence)],None,reviewer)
         finally:o._FOLLOW_COMMITS.reset(token)
-        for thread in threads:thread.join(2)
+        for thread in threads:thread.join(60)  # hang guard only; completion is asserted below
         self.assertTrue(finished.is_set())
         self.assertEqual(observed,[result])
         self.assertEqual(len(calls),1,'A second native caller dispatched a duplicate reviewer')
@@ -688,7 +691,7 @@ class CommittedCatchup(unittest.TestCase):
         token=o._FOLLOW_COMMITS.set(True)
         try:o.issue(self.root,[str(self.fixture.evidence)],None,reviewer)
         finally:o._FOLLOW_COMMITS.reset(token)
-        for thread in threads:thread.join(3)
+        for thread in threads:thread.join(60)  # hang guard only
         self.assertEqual(failures,[])
         self.assertEqual(len(calls),2)
         rounds=o._read_rounds(o._series_directory(self.root,self.fixture.base))
