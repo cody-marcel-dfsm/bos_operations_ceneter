@@ -507,6 +507,27 @@ class DeterministicProvenance(unittest.TestCase):
         self.path.write_bytes(self.original)
         self.assertTrue(oracle._deterministic_provenance(self.root, self.commit, self.tree))
 
+    def replace_category_record(self, change):
+        value = json.loads(self.original); record = Path(value['spec_runs'][1]['record'])
+        data = json.loads(record.read_text()); data.pop('record_sha256'); change(data)
+        data['record_sha256'] = v.digest(data)  # A self-consistent replacement record.
+        os.chmod(record, 0o600); record.write_text(json.dumps(data, indent=2) + '\n')
+        self.forge(lambda receipt: receipt['spec_runs'][1].update(record_sha256=source_lane.digest(record.read_bytes())))
+
+    def test_fabricated_native_category_records_grant_nothing(self):
+        for change in (lambda d: d.update(tree='0' * 40), lambda d: d.update(runtime={'node': 'fabricated'}),
+                       lambda d: d.update(exit_code=1), lambda d: d.update(inputs_unchanged=False),
+                       lambda d: d.update(output_file=str(self.root / 'absent.log'))):
+            with self.subTest(change=change):
+                self.replace_category_record(change)
+                self.assertIsNone(oracle._deterministic_provenance(self.root, self.commit, self.tree))
+
+    def test_bug_fix_category_without_its_fail_before_original_grants_nothing(self):
+        selected = v.verify(self.root, self.commit)
+        for record in v.originals(self.root, selected, 'before'):
+            Path(record['_record_path']).unlink()
+        self.assertIsNone(oracle._deterministic_provenance(self.root, self.commit, self.tree))
+
     def test_later_failure_of_the_same_commit_supersedes_the_receipt(self):
         later = {'identity': {'source': self.commit}, 'runs': [{'completed_at': time.time() + 3600}]}
         target = self.path.parent / 'later.failure.json'; target.write_text(json.dumps(later)); os.chmod(target, 0o600)

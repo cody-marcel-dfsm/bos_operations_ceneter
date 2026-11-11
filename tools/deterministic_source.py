@@ -152,6 +152,41 @@ def _native_record(output):
 def _completed(record):
     return max([r.get('completed_at', 0) for r in [*record.get('runs', []), *record.get('spec_runs', [])]] or [0])
 
+BUG_CLASSES = {'bug_fix', 'deep_bug_fix'}
+
+def _reproduces(record):
+    output = Path(record['output_file']).read_text(errors='replace')
+    summary = contract.result_summary(output, record['exit_code'], True)
+    return (record['exit_code'] != 0 and summary.get('complete') and summary.get('fail', 0) > 0 and 'ERR_ASSERTION' in output
+            and not any(summary.get(k, 0) for k in ('skipped', 'todo', 'cancelled')))
+
+def _native_original(root, selected, source, row, record):
+    """The category record must be a custody-verified native runner original for this exact commit,
+    tree, contract and runtime whose own retained output re-derives a complete pass; a bug-fix
+    focused category also needs its retained unchanged-test fail-before original."""
+    results = Path(git(root, 'rev-parse', '--absolute-git-dir')) / 'oracle/validation-contract-results' / selected['contract_sha256'] / source
+    originals = {Path(r['_record_path']).resolve(): r for r in contract.originals(root, selected, 'after')}
+    value = originals.get(record.resolve())
+    tree = git(root, 'rev-parse', source + '^{tree}')
+    if (value is None or record.resolve().parent != results.resolve() or value.get('kind') != 'boc-validation-execution-v1'
+            or value.get('phase') != 'after' or value.get('commit') != source or value.get('tree') != tree
+            or value.get('category') != row['category'] or value.get('command') != row['command']
+            or value.get('contract_sha256') != selected['contract_sha256'] or value.get('catalog_sha256') != selected['catalog_sha256']
+            or value.get('runtime') != selected['runtime'] or value.get('passed') is not True
+            or value.get('inputs_unchanged') is not True or value.get('exit_code') != 0):
+        raise ValueError('Spec category output changed or is incomplete')
+    tested = any(r['category'] == row['category'] and r['tests'] for r in selected['commands'])
+    output = Path(value['output_file']).read_text(errors='replace')
+    if not contract.result_summary(output, value['exit_code'], tested)['passed']:
+        raise ValueError('Spec category output changed or is incomplete')
+    if row['category'] == 'focused' and selected['selection']['change_class'] in BUG_CLASSES:
+        before = [r for r in contract.originals(root, selected, 'before') if r['category'] == 'focused'
+                  and r.get('fixtures') == value.get('fixtures') and r.get('runtime') == selected['runtime']
+                  and r.get('inputs_unchanged') is True and _reproduces(r)]
+        if not before:
+            raise ValueError('Spec category lacks its retained fail-before reproduction')
+    return value
+
 def check_spec_runs(root, base, source, runs, store, *, receipt_completed=None, mode='native'):
     """A receipt holds the native runner's passing records of exactly the spec's selected commands,
     and no later failed execution of the same candidate supersedes them."""
@@ -174,10 +209,7 @@ def check_spec_runs(root, base, source, runs, store, *, receipt_completed=None, 
         if (path.is_symlink() or not path.is_file() or digest(path.read_bytes()) != row['output_sha256']
                 or row['exit_code'] != 0 or not record.is_file() or digest(record.read_bytes()) != row.get('record_sha256')):
             raise ValueError('Spec category output changed or is incomplete')
-        value = json.loads(record.read_bytes())
-        if (value.get('passed') is not True or value.get('commit') != source or value.get('category') != row['category']
-                or value.get('command') != row['command'] or value.get('contract_sha256') != selected['contract_sha256']):
-            raise ValueError('Spec category output changed or is incomplete')
+        value = _native_original(root, selected, source, row, record)
         later = [r for r in contract.originals(root, selected, 'after') if r['commit'] == source and r['category'] == row['category']
                  and r['finished_at'] > value['finished_at'] and not r['passed']]
         if later:
