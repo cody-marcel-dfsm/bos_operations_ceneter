@@ -56,6 +56,7 @@ class Fixture(unittest.TestCase):
             (self.root / 'tools' / Path(module.__file__).name).write_bytes(Path(module.__file__).read_bytes())
         (self.root / 'source.mjs').write_text('export default true;\n')
         (self.root / 'AGENTS.md').write_text('Synthetic governing criterion\n')
+        (self.root / '.gitignore').write_text('__pycache__/\n')  # Imported helper modules may write bytecode.
         (self.root / 'tests/spec.test.mjs').write_text(
             "import test from 'node:test';import assert from 'node:assert/strict';import value from '../source.mjs';"
             "test('synthetic acceptance',()=>assert.equal(value,true));\n")

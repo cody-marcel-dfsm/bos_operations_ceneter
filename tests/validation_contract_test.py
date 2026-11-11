@@ -23,6 +23,7 @@ class Contracts(unittest.TestCase):
   (self.root/v.CATALOG).write_text(json.dumps(self.catalog));(self.root/'package.json').write_text(json.dumps({'scripts':{'check:privacy':'node -e "process.exit(0)"','check:publication':'node -e "process.exit(0)"'}}))
   (self.root/'tools/validation_contract.py').write_bytes(Path(v.__file__).read_bytes())
   (self.root/'tools/oracle_spec_seal.py').write_bytes(Path(v.spec_seal.__file__).read_bytes())
+  (self.root/'.gitignore').write_text('__pycache__/\n')  # Imported helper modules may write bytecode.
   (self.root/'source.mjs').write_text('export default false;\n')
   (self.root/'tests/regression.test.mjs').write_text("import test from 'node:test';test('synthetic recurrence',()=>{});\n")
   self.git('init','-q');self.git('config','user.name','Synthetic');self.git('config','user.email','synthetic@example.invalid');self.commit()
