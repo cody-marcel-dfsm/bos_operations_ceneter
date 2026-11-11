@@ -3,6 +3,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import {
   chmod,
+  link,
   mkdir,
   open,
   readFile,
@@ -433,11 +434,19 @@ async function acquireAuthorityMutationLock(path, options = {}) {
   for (let attempt = 0; attempt < 200; attempt += 1) {
     const now = new Date();
     const expiresAt = new Date(now.valueOf() + leaseMs).toISOString();
+    // Publish the lock with its complete content in one step: write a private file, then hard-link
+    // it into place. link() fails with EEXIST exactly like an exclusive create, but a competing
+    // writer can never observe a created-but-still-empty lock file.
+    const pending = `${path}.${token}.acquire`;
     try {
-      const handle = await open(path, "wx", 0o600);
-      await handle.writeFile(`${JSON.stringify({ token, pid: process.pid, expires_at: expiresAt })}\n`);
-      await handle.close();
-      await chmod(path, 0o600);
+      await writeFile(pending, `${JSON.stringify({ token, pid: process.pid, expires_at: expiresAt })}\n`,
+        { mode: 0o600, flag: "wx" });
+      await chmod(pending, 0o600);
+      try {
+        await link(pending, path);
+      } finally {
+        await rm(pending, { force: true });
+      }
       return { token, pid: process.pid, expires_at: expiresAt, leaseMs };
     } catch (error) {
       if (error.code !== "EEXIST") throw error;

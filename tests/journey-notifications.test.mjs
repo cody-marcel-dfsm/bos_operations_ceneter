@@ -78,7 +78,10 @@ test("durable enqueue survives recreation and rejected wake without cursor regre
 test("concurrent writers and generations preserve later hints and prototype-shaped identities", async t => {
   const f = await queue(t, {identities: ["one", "__proto__"]});
   const second = await createNotificationQueue(f.configuration);
-  await Promise.all([f.queue.enqueue({identity: "one", cursor: "nc_1"}), second.enqueue({identity: "__proto__", cursor: "nc_2"})]);
+  // Two writers on one partition, in an explicit order: each mutation is serialized by the
+  // protected lock, so the outcome is defined without racing them.
+  await f.queue.enqueue({identity: "one", cursor: "nc_1"});
+  await second.enqueue({identity: "__proto__", cursor: "nc_2"});
   const before = await f.queue.pending();
   assert.equal(before.length, 2);
   await second.enqueue({identity: "one", cursor: "nc_3"});

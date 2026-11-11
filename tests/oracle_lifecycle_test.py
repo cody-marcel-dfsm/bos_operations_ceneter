@@ -515,6 +515,8 @@ class CommittedCatchup(unittest.TestCase):
         self.assertEqual(shipment_state._load(self.root)['last_validated_commit'],self.fixture.git('rev-parse','HEAD'))
 
     def _assert_unadmitted_issuance(self, stage, *, same_candidate=False):
+        # entered: the observer's attach to the pending owner was accepted (not merely begun), so the
+        # owner's failure is guaranteed to reach an attached observer; no sleeps decide the ordering.
         attached=[];threads=[];entered=threading.Event();finished=threading.Event()
         def reviewer(*args):
             context=json.loads((o._RUN.get()/'review-context.json').read_text())
@@ -528,10 +530,11 @@ class CommittedCatchup(unittest.TestCase):
                 self.fixture.change('peer.py','new candidate for '+stage)
                 self.fixture.git('commit','-qm','new candidate')
             publish=lifecycle._publish
-            follow=lifecycle._follow
-            def observing_follow(*args):
-                entered.set()
-                return follow(*args)
+            request=lifecycle._request
+            def observing_request(module,root,identity,value):
+                response=request(module,root,identity,value)
+                if value.get('operation')=='attach' and not response.get('error'):entered.set()
+                return response
             def failure(module,root,path,value):
                 if path.name==stage and (value.get('status') in {'APPROVED','ADMITTED'} or value.get('verdict')=='APPROVED'):
                     if stage=='checkpoint-admission.json':
@@ -543,8 +546,8 @@ class CommittedCatchup(unittest.TestCase):
                             except BaseException as exc:attached.append(exc)
                             finally:o._FOLLOW_COMMITS.reset(follow_token);finished.set()
                         thread=threading.Thread(target=observer);threads.append(thread);thread.start()
-                        self.assertTrue(entered.wait(3),'Native caller did not select the pending owner')
-                        self.assertFalse(finished.wait(.1))
+                        self.assertTrue(entered.wait(60),'Native caller did not attach to the pending owner')  # hang guard only
+                        self.assertFalse(finished.is_set())
                     raise OSError('Synthetic final issuance publication failure')
                 return publish(module,root,path,value)
             save=shipment_state._save
@@ -554,7 +557,7 @@ class CommittedCatchup(unittest.TestCase):
                     raise OSError('Synthetic final issuance publication failure')
                 return result
             with patch.object(lifecycle,'_publish',side_effect=failure), \
-                    patch.object(lifecycle,'_follow',side_effect=observing_follow), \
+                    patch.object(lifecycle,'_request',side_effect=observing_request), \
                     patch.object(shipment_state,'_save',side_effect=save_failure):
                 with self.assertRaisesRegex(OSError,'final issuance publication failure'):
                     o.issue(self.root,[str(self.fixture.evidence)],None,reviewer)
@@ -565,7 +568,7 @@ class CommittedCatchup(unittest.TestCase):
             shipment_state.publication_eligibility(self.root,original['base_commit'],original['candidate_tree'],original_digest)
             if same_candidate:
                 self.assertEqual(shipment_state.validated_receipt(self.root)[1],o._pretty(original))
-            for thread in threads:thread.join(3)
+            for thread in threads:thread.join(60)  # hang guard only; completion is asserted below
             if threads:
                 self.assertTrue(finished.is_set())
                 self.assertEqual(len(attached),1)

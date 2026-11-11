@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -15,7 +15,8 @@ import {
   invalidateDocumentCacheDataset,
   invalidateDocumentCacheSource,
   readDocumentCache,
-  resolveDocumentCacheRoot
+  resolveDocumentCacheRoot,
+  withAuthorityMutationLock
 } from "../source/host-runtime/bos-shared-cache/document-cache.mjs";
 
 const baseRequest = {
@@ -575,4 +576,21 @@ test("overlapping queries share immutable objects while authority indexes stay s
   assert.equal(isolated.state, "cold");
   assert.deepEqual(isolated.documents, []);
   assert.notEqual(isolated.authority_key, first.authority_key);
+});
+
+test("the mutation lock is published with its complete owner record, never empty", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "bos-lock-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const path = join(root, "mutation.lock");
+  const observed = await withAuthorityMutationLock(path, async () => ({
+    lock: JSON.parse(await readFile(path, "utf8")),
+    entries: await readdir(root)
+  }));
+  // A competing writer that sees the lock exist can always read a complete owner record.
+  assert.equal(observed.lock.pid, process.pid);
+  assert.match(observed.lock.token, /^[0-9a-f-]{36}$/u);
+  assert.ok(Date.parse(observed.lock.expires_at) > 0);
+  // The private staging file is gone once the lock is in place, and release removes the lock.
+  assert.deepEqual(observed.entries, ["mutation.lock"]);
+  assert.deepEqual(await readdir(root), []);
 });
