@@ -268,6 +268,8 @@ def gate(root,base,head='HEAD'):
     try: contract=verify(root,head)
     except (KeyError,TypeError,AttributeError,subprocess.CalledProcessError) as error: raise ValueError('Sealed Oracle spec is malformed: '+type(error).__name__) from error
     if contract['selection']['change_class']=='docs_only': raise ValueError('A docs_only spec cannot admit non-document changes')
+    outside=sorted(p for p in paths if p!=SELECTION and not scoped(p,contract['selection']))
+    if outside: raise ValueError('Publication range changes paths outside the sealed spec scope: '+', '.join(outside))
     return {'status':'SPEC_SEALED','paths':paths,'seal':contract['seal'],'contract_sha256':contract['contract_sha256'],'categories':[r['category'] for r in contract['commands']]}
 
 def native_origin(root,head='HEAD'):

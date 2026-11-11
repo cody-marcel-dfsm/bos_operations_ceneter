@@ -195,6 +195,18 @@ class Gate(Fixture):
         with self.assertRaisesRegex(ValueError, 'outside fixed selection'):
             v.gate(self.root, self.base, self.commit())
 
+    def test_whole_publication_range_must_be_inside_the_spec_scope(self):
+        # Unpublished work committed before the spec's own base is still part of the range.
+        (self.root / 'unscoped.mjs').write_text('export default 2;\n')
+        self.base_before = self.base
+        self.base = self.commit()
+        self.change()
+        self.sealed()
+        head = self.commit()
+        self.assertEqual(v.gate(self.root, self.base, head)['status'], 'SPEC_SEALED')
+        with self.assertRaisesRegex(ValueError, 'outside the sealed spec scope: unscoped.mjs'):
+            v.gate(self.root, self.base_before, head)
+
     def test_ci_execute_runs_spec_tests_and_refuses_failures(self):
         self.change()
         self.sealed()
