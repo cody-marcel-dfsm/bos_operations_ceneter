@@ -36,6 +36,8 @@ print(json.dumps(issue(root,[],None)),flush=True)
 
 class Lifecycle(unittest.TestCase):
     def setUp(self):
+        # These cases exercise the codex launcher; pin it so the running harness never selects claude.
+        engine = patch.dict(os.environ, {'BOC_ORACLE_ENGINE': 'codex'}); engine.start(); self.addCleanup(engine.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
@@ -165,7 +167,8 @@ print(json.dumps(review_proposal(root,sys.argv[2],[],None)))
 
     def test_process_birth_mismatch_is_not_a_live_owner(self):
         owner=self.start();self.entered()
-        with patch.object(lifecycle,'process_identity',return_value='reused PID with a different birth'):
+        # Liveness binds the kernel birth (process_birth); a reused PID reports a different one.
+        with patch.object(lifecycle,'process_birth',return_value='reused PID with a different birth'):
             self.assertIsNone(lifecycle.active(o,self.root))
         self.finish(owner)
 
@@ -459,6 +462,8 @@ finally:o._FOLLOW_COMMITS.reset(token)
 
 class CommittedCatchup(unittest.TestCase):
     def setUp(self):
+        # These cases exercise the codex launcher; pin it so the running harness never selects claude.
+        engine = patch.dict(os.environ, {'BOC_ORACLE_ENGINE': 'codex'}); engine.start(); self.addCleanup(engine.stop)
         settings=patch.object(o,'_review_settings_binding',return_value={
             'model':'synthetic-model','reasoning_effort':'low'})
         settings.start();self.addCleanup(settings.stop)

@@ -3164,10 +3164,11 @@ def review_proposal(root: Path, request: str, evidence_paths: Sequence[str], own
         "base_commit": binding["base_commit"],
         "review_scope": "CONCEPTUAL_PROPOSAL",
         "source_observations": {"initial_commit": binding["base_commit"], "initial_tree": binding["candidate_tree"],
-            "final_commit": _git(root, "rev-parse", "HEAD").strip(), "final_tree": _tree(root),
+            "final_commit": _git(root, "rev-parse", "HEAD").strip(), "final_tree": _review_tree(root),
             "initial_working_diff_sha256": binding["working_diff_sha256"],
             "final_working_diff_sha256": _sha(_git_bytes(root, "diff", "HEAD", "--", ".", ":(exclude)Vault")),
-            "unadopted_delta_paths": _paths(root, binding["candidate_tree"], _tree(root)),
+            # Compare like with like: both snapshots include untracked current source.
+            "unadopted_delta_paths": _paths(root, binding["candidate_tree"], _review_tree(root)),
             "implementation_readiness": "REQUIRES_COMPLETE_CURRENT_SOURCE_REVIEW"},
         "authority_digests": binding["authority_digests"],
         "proposal": request,

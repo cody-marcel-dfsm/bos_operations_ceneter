@@ -18,6 +18,8 @@ from tools import oracle_parallel as parallel
 
 class ParallelReview(unittest.TestCase):
     def setUp(self):
+        # These cases exercise the codex launcher; pin it so the running harness never selects claude.
+        engine = patch.dict(os.environ, {'BOC_ORACLE_ENGINE': 'codex'}); engine.start(); self.addCleanup(engine.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
@@ -37,7 +39,7 @@ class ParallelReview(unittest.TestCase):
             'publication_scope': {'range_sha256': 'range', 'range_paths': self.paths}, 'caller_evidence': {}}
         self.context['input_hashes']['package.json'] = 'git-sha1:100644:blob:' + 'c' * 40
         self.context['guards']['environment_digest'] = 'e' * 64
-        self.binding = {'base_commit': 'a' * 40, 'reviewer_settings': {'model': 'inherited-model', 'reasoning_effort': 'high'}}
+        self.binding = {'base_commit': 'a' * 40, 'reviewer_settings': {'model': 'inherited-model', 'reasoning_effort': 'medium'}}
         for name, value in (('selected_model', 'inherited-model'), ('selected_reasoning_effort', 'high')):
             setting = patch.object(o, name, return_value=value)
             setting.start()
@@ -167,7 +169,7 @@ class ParallelReview(unittest.TestCase):
                         basis='INDEPENDENT_APPLICABILITY', inputs=[copy.deepcopy(contract['required_input'])],
                         environment_digest=contract['environment_digest'], evidence_paths=list(evidence),
                         reason='Synthetic independent applicability; the original aggregate still failed'))
-            for name, value in {'model.json': {'selected_model': 'inherited-model', 'reasoning_effort': 'high'},
+            for name, value in {'model.json': {'selected_model': 'inherited-model', 'reasoning_effort': 'medium'},
                                 'process.json': {'exit_code': 0}, 'result.json': result}.items():
                 o._atomic_write(run / name, o._pretty(value))
             observed.append(copy.deepcopy(result))
@@ -452,7 +454,7 @@ class ParallelReview(unittest.TestCase):
             barrier.wait(timeout=5)
             time.sleep(0.08)
             result = self.envelope(cohort)
-            for name, value in {'model.json': {'selected_model': 'inherited-model', 'reasoning_effort': 'high'},
+            for name, value in {'model.json': {'selected_model': 'inherited-model', 'reasoning_effort': 'medium'},
                                 'process.json': {'exit_code': 0}, 'result.json': result}.items():
                 o._atomic_write(run / name, o._pretty(value))
             return result
@@ -516,7 +518,7 @@ class ParallelReview(unittest.TestCase):
                 self.assertEqual(proof['assigned_inputs'], [])
             observed.append(packet['cohort']['id'])
             result = self.envelope(packet['cohort'])
-            for name, value in {'model.json': {'selected_model': 'inherited-model', 'reasoning_effort': 'high'},
+            for name, value in {'model.json': {'selected_model': 'inherited-model', 'reasoning_effort': 'medium'},
                                 'process.json': {'exit_code': 0}, 'result.json': result}.items():
                 o._atomic_write(run / name, o._pretty(value))
             return result
@@ -579,7 +581,7 @@ class ParallelReview(unittest.TestCase):
             self.assertTrue(set(o._files(self.root, page_paths)) <= set(seals[packet['cohort']['id']]))
             observed.append((packet['cohort']['id'], page_paths))
             result = self.envelope(packet['cohort'])
-            for name, value in {'model.json': {'selected_model': 'inherited-model', 'reasoning_effort': 'high'},
+            for name, value in {'model.json': {'selected_model': 'inherited-model', 'reasoning_effort': 'medium'},
                                 'process.json': {'exit_code': 0}, 'result.json': result}.items():
                 o._atomic_write(run / name, o._pretty(value))
             return result
@@ -892,7 +894,7 @@ packet=json.loads(output.with_name('cohort-context.json').read_text())
 developer=json.loads(next(value.split('=',1)[1] for value in args if value.startswith('developer_instructions=')))
 assert 'trusted independent, read-only Oracle cohort' in developer
 assert os.environ['CODEX_SELECTED_MODEL']=='inherited-model'
-assert os.environ['CODEX_SELECTED_REASONING_EFFORT']=='high'
+assert os.environ['CODEX_SELECTED_REASONING_EFFORT']=='medium'
 started=time.time(); time.sleep(.18)
 cohort=packet['cohort']; hashes=packet['input_hashes']
 inputs=lambda p:[{'path':p,'digest':hashes[p]}]
@@ -952,7 +954,7 @@ output.with_name('probe.json').write_text(json.dumps({'pid':os.getpid(),'started
                         else:
                             moved = copy.deepcopy(self.context); moved['input_hashes']['source.py'] = 'changed'
                             o._atomic_write(target / 'review-context.json', o._pretty(moved))
-                    o._atomic_write(run / 'model.json', o._pretty({'selected_model':'inherited-model','reasoning_effort':'high'}))
+                    o._atomic_write(run / 'model.json', o._pretty({'selected_model':'inherited-model','reasoning_effort':'medium'}))
                     value = self.envelope(cohort)
                     o._atomic_write(run / 'result.json', o._pretty(value))
                     return value
@@ -970,6 +972,8 @@ output.with_name('probe.json').write_text(json.dumps({'pid':os.getpid(),'started
 class CriterionDependencyRoles(unittest.TestCase):
     """Native legacy/future adoption keeps actual body dependencies distinct."""
     def setUp(self):
+        # These cases exercise the codex launcher; pin it so the running harness never selects claude.
+        engine = patch.dict(os.environ, {'BOC_ORACLE_ENGINE': 'codex'}); engine.start(); self.addCleanup(engine.stop)
         import oracle_review_series as fixtures
         self.fixture = fixtures.ReviewSeries('runTest')
         self.fixture.setUp()
@@ -1105,6 +1109,8 @@ class CriterionDependencyRoles(unittest.TestCase):
 class RawObservationCriterion(unittest.TestCase):
     """Native ERROR keeps completed bodies without transferring approval."""
     def setUp(self):
+        # These cases exercise the codex launcher; pin it so the running harness never selects claude.
+        engine = patch.dict(os.environ, {'BOC_ORACLE_ENGINE': 'codex'}); engine.start(); self.addCleanup(engine.stop)
         import oracle_review_series as fixtures
         self.fixture = fixtures.ReviewSeries('runTest')
         self.fixture.setUp()
