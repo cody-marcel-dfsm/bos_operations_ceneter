@@ -4,12 +4,12 @@
   "stamp": {
     "engine": "codex",
     "model": "gpt-6.1-sol",
-    "oracle_sha256": "4ab0e11bace93fc2baf5cd8d1595ee423363b9116ee77dc54b30e0c3a642f2cb",
+    "oracle_sha256": "74692b05d9a8f25b9cf9749a246b7ed43651335047922fcc799df361e9c7eafd",
     "host": "aio",
-    "time": "2026-11-11T20:00:59Z",
+    "time": "2026-11-11T22:04:28Z",
     "origin_main": "e70de278e116c7761f60fcfc700641e1ecb9288d",
     "request_sha256": "66e98fee9f63d6af43b21eb5cf53ba6c39f237ab1c42f928f76b8a3fab9386f8",
-    "proposal_sha256": "f3bd2d9671b21331507a4d98f9b8da8f2c4da87d515bb4989f8c77a9ba84afd8"
+    "proposal_sha256": "c3f390cfc449477d1eb12f93fecf0d766983e588ec69c8e472b9b652426053e0"
   },
   "selection": {
     "acceptance": [
@@ -35,7 +35,11 @@
       "Preserve direct-human public API version request evidence checks through proposal, receipt and commit verification.",
       "Keep review-policy fingerprints sensitive to current module content and executable modes while reusing parsed representations only for identical content; preserve performance and lifecycle assertions.",
       "For changes outside both deterministic lanes, run selected spec tests and native exact-candidate command coverage before CI reports success; fail immediately on spec-gate failure.",
-      "Preserve source-frontier delivery and forged-page rejection, and retain closed live-verifier arguments and deterministic release integration."
+      "Preserve source-frontier delivery and forged-page rejection, and retain closed live-verifier arguments and deterministic release integration.",
+      "Publish a complete private mutation-lock owner record atomically before contenders can observe its path; retain exclusive acquisition, live-owner renewal, token-scoped abandoned-owner recovery and owner-matched release, with staging cleanup after successful publication and contention.",
+      "Retain an unchanged barrier-controlled regression that fails on the former incomplete lock publication and passes with atomic publication, without retries or timing-based outcome selection.",
+      "Exercise overlapping notification writers on one partition with explicit barriers while the first holds the lock, preserving both pending identities and later generations through acknowledgements.",
+      "Synchronize the lifecycle failure observer on accepted attachment before owner failure; propagate that failure to the attached observer while preserving the prior admitted checkpoint, using timeouts only as hang guards."
     ],
     "acceptance_tests": [
       {
@@ -90,10 +94,11 @@
       {
         "covers": [
           14,
-          20
+          20,
+          26
         ],
         "module": "tests/oracle-lifecycle.test.mjs",
-        "purpose": "Verify controller lifecycle, process-birth rejection and explicit launcher isolation while preserving lifecycle assertions."
+        "purpose": "Verify controller lifecycle, process-birth rejection, explicit launcher isolation and accepted-observer failure propagation with checkpoint preservation."
       },
       {
         "covers": [
@@ -165,6 +170,22 @@
         ],
         "module": "tests/agent-driven-journey-live-verifier.test.mjs",
         "purpose": "Verify closed verifier arguments, pre-execution refusal boundaries and the deterministic release verification command."
+      },
+      {
+        "covers": [
+          23,
+          24
+        ],
+        "module": "tests/document-cache.test.mjs",
+        "purpose": "Verify complete atomic lock publication at an explicit barrier, private staging cleanup and preserved exclusive ownership, renewal, recovery and release."
+      },
+      {
+        "covers": [
+          23,
+          25
+        ],
+        "module": "tests/journey-notifications.test.mjs",
+        "purpose": "Verify overlapping queue writers retain pending identities and newer generations under the shared mutation lock."
       }
     ],
     "categories": [
@@ -201,7 +222,9 @@
           "tests/oracle-api-version-request.test.mjs",
           "tests/oracle-performance.test.mjs",
           "tests/oracle-source-frontier.test.mjs",
-          "tests/agent-driven-journey-live-verifier.test.mjs"
+          "tests/agent-driven-journey-live-verifier.test.mjs",
+          "tests/document-cache.test.mjs",
+          "tests/journey-notifications.test.mjs"
         ]
       },
       {
@@ -217,8 +240,8 @@
     ],
     "change_class": "feature",
     "design": "Vault/docs/design/oracle-implementation-spec.md",
-    "reason": "Revise the existing feature contract without dropping earlier requirements or tests. Add the affected review-series, governance, version-request, performance, source-frontier and release-integration suites and their supporting fixtures. Preserve every custody assertion, historical outcome, independent verification boundary and original 300-second delivery clock. Process kill bounds do not extend that delivery policy. Unresolved published-export provenance remains separate and cannot be reported as passing.",
-    "revision_of": "6492152b66b11a08231c709c7dae538d2e52f29d70f661c4f5043838271d200c",
+    "reason": "Revise the existing feature contract while preserving every earlier requirement and selected test. Add atomic host-runtime lock publication and deterministic cache, notification-writer and accepted-observer interaction coverage. Preserve exclusive ownership, private storage, recovery, custody assertions, historical outcomes, independent verification boundaries and the original 300-second delivery clock. Process kill bounds do not extend delivery policy. Unresolved publication provenance and unreproduced failures remain separately reported; no retries, automatic broader regression or paid fallback are authorized.",
+    "revision_of": "a2ef2b7586b4c3582c8b6daa317289b8b4caf7a0fba50e8a27b09c3c1a2a0762",
     "scope_paths": [
       "AGENTS.md",
       "CLAUDE.md",
@@ -289,11 +312,14 @@
       "tests/command_coverage_test.py",
       "tests/oracle_source_frontier_test.py",
       "tests/oracle-source-frontier.test.mjs",
-      "tests/agent-driven-journey-live-verifier.test.mjs"
+      "tests/agent-driven-journey-live-verifier.test.mjs",
+      "source/host-runtime/bos-shared-cache/document-cache.mjs",
+      "tests/document-cache.test.mjs",
+      "tests/journey-notifications.test.mjs"
     ]
   },
-  "base_commit": "3d7189f1c1534b98bbd0fbcd5519bc4a42cade5b",
-  "base_tree": "769f28c605b344558737397521199cb89935a13d",
+  "base_commit": "b5c9676c55f51475786bbf8a8e204f542fe61a6d",
+  "base_tree": "9dfb21d5404be9ffad3d5de6497ac059314a940e",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v26.12.0",
@@ -303,8 +329,8 @@
     "architecture": "x86_64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "f3bd2d9671b21331507a4d98f9b8da8f2c4da87d515bb4989f8c77a9ba84afd8",
-  "review_sha256": "5d0168472b25ee1e0bf7a60c64d426669852393c304065b95a9a4b36965a260f",
+  "proposal_sha256": "c3f390cfc449477d1eb12f93fecf0d766983e588ec69c8e472b9b652426053e0",
+  "review_sha256": "8400676ae68c117046278d0238a9b3dcc968ae7e4267c5a743881bcac2e93a5f",
   "commands": [
     {
       "category": "sanity",
@@ -335,7 +361,9 @@
         "tests/oracle-api-version-request.test.mjs",
         "tests/oracle-performance.test.mjs",
         "tests/oracle-source-frontier.test.mjs",
-        "tests/agent-driven-journey-live-verifier.test.mjs"
+        "tests/agent-driven-journey-live-verifier.test.mjs",
+        "tests/document-cache.test.mjs",
+        "tests/journey-notifications.test.mjs"
       ],
       "tests": [
         "tests/validation-contract.test.mjs",
@@ -351,7 +379,9 @@
         "tests/oracle-api-version-request.test.mjs",
         "tests/oracle-performance.test.mjs",
         "tests/oracle-source-frontier.test.mjs",
-        "tests/agent-driven-journey-live-verifier.test.mjs"
+        "tests/agent-driven-journey-live-verifier.test.mjs",
+        "tests/document-cache.test.mjs",
+        "tests/journey-notifications.test.mjs"
       ],
       "fixtures": [
         "tests/validation_contract_test.py",
@@ -395,13 +425,15 @@
   },
   "design_binding": {
     "design": "Vault/docs/design/oracle-implementation-spec.md",
-    "design_sha256": "302638b3c4840890d4bd31099b93019987ee50f981bbbeab2842cb62323ae108",
+    "design_sha256": "54a275e0793f124c63c4280c53bcc2a84efa5246ee4c30ff1568eaa619dd04f7",
     "plan": "Vault/docs/design/oracle-implementation-spec.test-plan.json",
-    "plan_sha256": "ed1ca50d7828cc01303293edef7685f39d47005902350d1a9da2e34cf108847c",
+    "plan_sha256": "103288380fec8dedf8a84b94716b9243734541b460f4f5319a85cfc40bdf2e10",
     "tests": [
       "tests/agent-driven-journey-live-verifier.test.mjs",
       "tests/command-coverage.test.mjs",
       "tests/deterministic-lanes.test.mjs",
+      "tests/document-cache.test.mjs",
+      "tests/journey-notifications.test.mjs",
       "tests/oracle-api-version-request.test.mjs",
       "tests/oracle-governance.test.mjs",
       "tests/oracle-implementation-spec.test.mjs",
@@ -415,6 +447,6 @@
       "tests/validation-contract.test.mjs"
     ]
   },
-  "contract_sha256": "a2ef2b7586b4c3582c8b6daa317289b8b4caf7a0fba50e8a27b09c3c1a2a0762",
-  "seal": "80b24aba6903d22530b513dfce51da071feb1c1e36e2ef960a977c62586567ab"
+  "contract_sha256": "5c99ba5a3d4d8720efb170b992764d4ca0497f1f12917eb50690afe68242898a",
+  "seal": "1acf4dffe4b2b931f849a66e753013f852401b27bc6996f3f652371288aeaa1a"
 }
