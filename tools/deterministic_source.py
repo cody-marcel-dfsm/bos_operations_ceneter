@@ -90,7 +90,7 @@ def validate(root, base, requested_at, *, ci=False):
         if code != 0 or ('unittest' in command and (not re.search(rb'Ran [1-9][0-9]* tests? in',output) or not re.search(rb'\nOK\s*$',output) or b'skipped=' in output)):
             private_write(store/(str(time.time_ns())+'.failure.json'),encoded({'kind':KIND+'-failure','identity':before,'base':base,'request_started_at':requested_at,'runs':runs}))
             raise ValueError('Incomplete deterministic command; retained '+str(path))
-    selected=spec_runs(root,base,before['source'],store,{'kind':KIND+'-failure','identity':before,'base':base,'request_started_at':requested_at,'runs':runs})
+    selected=spec_runs(root,base,before['source'],store,{'kind':KIND+'-failure','identity':before,'base':base,'request_started_at':requested_at,'runs':runs},ci=ci)
     if identity(root)!=before:raise ValueError('Source or runtime changed during execution')
     value={'kind':KIND,'status':'VERIFIED','base':base,'paths':paths,**before,'runs':runs,'spec_runs':selected,'request_started_at':requested_at,
            'sla_status':'FAILED' if time.time()-start.timestamp()>120 else 'NOT_ESTABLISHED','source_only':True}
@@ -103,38 +103,77 @@ def selected_commands(root, base, source):
         return []
     return contract.verify(root, source)['commands']
 
-def spec_runs(root, base, source, store, failure):
-    """Execute every spec-selected category completely; a failure retains output and issues nothing."""
+def spec_runs(root, base, source, store, failure, *, ci=False):
+    """Execute every spec-selected category completely; a failure retains output and issues nothing.
+
+    Locally each category runs through the native runner, which also enforces the bug-fix
+    fail-before reproduction and records its result. A CI host has a different runtime and
+    no owner-local reproduction, so it executes the selected argv directly as a phase check.
+    """
     runs = []
     environment = {k: v for k, v in os.environ.items() if k != 'NODE_TEST_CONTEXT'}
     for row in selected_commands(root, base, source):
+        command = row['argv'] if ci else [sys.executable, 'tools/validation_contract.py', 'run', '--category', row['category']]
         began = time.time()
         try:
-            done = subprocess.run(row['argv'], cwd=root, capture_output=True, timeout=900, env=environment)
+            done = subprocess.run(command, cwd=root, capture_output=True, timeout=900, env=environment)
             output, code = done.stdout + b'\n' + done.stderr, done.returncode
         except subprocess.TimeoutExpired as error:
             output, code = (error.stdout or b'') + b'\n' + (error.stderr or b''), 'TIMEOUT'
         key = digest(output); path = store / (key + '.log')
         if not path.exists(): private_write(path, output)
-        runs.append({'category': row['category'], 'command': row['argv'], 'tests': bool(row['tests']),
-                     'exit_code': code, 'output_sha256': key, 'started_at': began, 'completed_at': time.time()})
-        if code == 'TIMEOUT' or not contract.result_summary(output.decode('utf-8', 'replace'), code, bool(row['tests']))['passed']:
+        entry = {'category': row['category'], 'command': row['argv'], 'runner': command, 'exit_code': code,
+                 'output_sha256': key, 'started_at': began, 'completed_at': time.time()}
+        if ci:
+            passed = code != 'TIMEOUT' and contract.result_summary(output.decode('utf-8', 'replace'), code, bool(row['tests']))['passed']
+        else:
+            native = _native_record(output)
+            passed = code == 0 and native is not None and native.get('passed') is True
+            if native is not None:
+                record = Path(native['record'])
+                entry.update(record=str(record), record_sha256=digest(record.read_bytes()) if record.is_file() else None)
+        runs.append(entry)
+        if not passed:
             private_write(store / (str(time.time_ns()) + '.failure.json'), encoded(dict(failure, spec_runs=runs)))
             raise ValueError('Sealed spec category failed: ' + row['category'] + '; retained ' + str(path))
     return runs
 
-def check_spec_runs(root, base, source, runs, store):
-    """A receipt holds complete passing executions of exactly the spec's selected commands."""
+def _native_record(output):
+    for line in reversed(output.decode('utf-8', 'replace').splitlines()):
+        try: value = json.loads(line)
+        except ValueError: continue
+        if isinstance(value, dict) and 'record' in value and 'passed' in value: return value
+    return None
+
+def _completed(record):
+    return max([r.get('completed_at', 0) for r in [*record.get('runs', []), *record.get('spec_runs', [])]] or [0])
+
+def check_spec_runs(root, base, source, runs, store, *, receipt_completed=None):
+    """A receipt holds the native runner's passing records of exactly the spec's selected commands,
+    and no later failed execution of the same candidate supersedes them."""
     expected = selected_commands(root, base, source)
     if not isinstance(runs, list) or [r.get('command') for r in runs] != [r['argv'] for r in expected]:
         raise ValueError('Receipt lacks the sealed spec category executions')
-    for row, selected in zip(runs, expected):
+    selected = contract.verify(root, source) if expected else None
+    for row in runs:
         path = store / (row['output_sha256'] + '.log')
-        if path.is_symlink() or not path.is_file(): raise ValueError('Spec category output is missing')
-        output = path.read_bytes()
-        if (digest(output) != row['output_sha256'] or row['exit_code'] == 'TIMEOUT'
-                or not contract.result_summary(output.decode('utf-8', 'replace'), row['exit_code'], bool(selected['tests']))['passed']):
+        record = Path(row.get('record') or '')
+        if (path.is_symlink() or not path.is_file() or digest(path.read_bytes()) != row['output_sha256']
+                or row['exit_code'] != 0 or not record.is_file() or digest(record.read_bytes()) != row.get('record_sha256')):
             raise ValueError('Spec category output changed or is incomplete')
+        value = json.loads(record.read_bytes())
+        if (value.get('passed') is not True or value.get('commit') != source or value.get('category') != row['category']
+                or value.get('command') != row['command'] or value.get('contract_sha256') != selected['contract_sha256']):
+            raise ValueError('Spec category output changed or is incomplete')
+        later = [r for r in contract.originals(root, selected, 'after') if r['commit'] == source and r['category'] == row['category']
+                 and r['finished_at'] > value['finished_at'] and not r['passed']]
+        if later:
+            raise ValueError('A later failed spec category execution supersedes this receipt')
+    if receipt_completed is not None:
+        for failure in store.glob('*.failure.json'):
+            value = json.loads(failure.read_bytes())
+            if value.get('identity', {}).get('source') == source and _completed(value) > receipt_completed:
+                raise ValueError('A later failed execution supersedes this receipt')
 
 def verify(root):
     current=identity(root);path=directory(root)/(current['source']+'.json')
@@ -144,7 +183,7 @@ def verify(root):
         raise ValueError('Invalid deterministic source receipt')
     if any(value.get(k)!=v for k,v in current.items()) or value['paths']!=scope(root,value['base'],current['source']):raise ValueError('Source/runtime/range changed')
     if [x['command'] for x in value['runs']]!=CHECKS:raise ValueError('Required commands changed')
-    check_spec_runs(root,value['base'],current['source'],value.get('spec_runs'),directory(root))
+    check_spec_runs(root,value['base'],current['source'],value.get('spec_runs'),directory(root),receipt_completed=_completed(value))
     for row in value['runs']:
         if row['exit_code']!=0 or digest((directory(root)/(row['output_sha256']+'.log')).read_bytes())!=row['output_sha256']:raise ValueError('Original execution output changed')
     return dict(value,sha256=key)

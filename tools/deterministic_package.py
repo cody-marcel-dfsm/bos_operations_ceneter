@@ -229,7 +229,8 @@ def read_receipt(root):
         raise ValueError('Publication range changed')
     if [row['command'] for row in value['runs']] != CHECKS:
         raise ValueError('Fixed command category changed')
-    native.check_spec_runs(root, value['base'], current['source'], value.get('spec_runs'), directory(root))
+    native.check_spec_runs(root, value['base'], current['source'], value.get('spec_runs'), directory(root),
+                           receipt_completed=native._completed(value))
     for failure in directory(root).glob('*.failure.json'):
         record = json.loads(failure.read_bytes())
         if (record.get('identity') == current and record.get('runs')
@@ -276,7 +277,7 @@ def validate(root, base, requested_at, *, ci=False):
             raise ValueError('Required package check failed; original output retained: ' + str(path))
     selected = native.spec_runs(root, base, before['source'], directory(root),
                                 {'kind': KIND + '-failure', 'identity': before, 'base': base,
-                                 'request_started_at': requested_at, 'runs': runs})
+                                 'request_started_at': requested_at, 'runs': runs}, ci=ci)
     if native.identity(root) != before:
         raise ValueError('Source, generated package or runtime changed during verification')
     value = {'kind': KIND, 'profile': PROFILE, 'status': 'VERIFIED', **before,

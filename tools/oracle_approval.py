@@ -3596,7 +3596,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"APPROVED {receipt['candidate_tree']}")
         elif args.cmd=="proposal":
             request = args.request or sys.stdin.read().strip()
-            result = review_proposal(root,request,args.evidence,args.owner_approval,
+            evidence = list(args.evidence)
+            if args.request_file:
+                # The reviewer reads the original request itself; the stamp keeps only its digest.
+                requested = str(args.request_file.resolve())
+                if requested not in {str(Path(item).resolve()) for item in evidence}:
+                    evidence.append(requested)
+            result = review_proposal(root,request,evidence,args.owner_approval,
                                      request_bytes=args.request_file.read_bytes() if args.request_file else None)
             print(json.dumps(result,indent=2,sort_keys=True))
             if result["verdict"] != "APPROVED": return 1

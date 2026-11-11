@@ -10,6 +10,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
@@ -349,36 +350,63 @@ class LaneExecution(Fixture):
                 patch.object(oracle, '_fresh_origin', return_value=ORIGIN):
             oracle.review_proposal(self.root, PROPOSAL, [], None, reviewer)
 
-    def prepare(self, test_body):
+    MARKER = "import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';"
+    REPAIRED = MARKER + "test('repaired',()=>assert.match(readFileSync('tools/validation_contract.py','utf8'),/synthetic maintenance/));\n"
+    NEVER = MARKER + "test('never repaired',()=>assert.match(readFileSync('tools/validation_contract.py','utf8'),/absent marker/));\n"
+
+    def prepare(self, test_body, *, reproduce=True):
         (self.root / '.gitignore').write_text('__pycache__/\nnode_modules/\n')
         (self.root / 'node_modules').mkdir()
         (self.root / 'node_modules/dependency').write_text('locked')
         (self.root / 'tests/spec.test.mjs').write_text(test_body)
         self.base = self.commit()
         self.genuine_spec(self.selection())
+        self.commit('sealed spec')
+        if reproduce:  # The bug-fix reproduction fails before the repair, through the native runner.
+            done = subprocess.run([sys.executable, 'tools/validation_contract.py', 'run', '--category', 'focused',
+                                   '--phase', 'before'], cwd=self.root, capture_output=True, text=True)
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         (self.root / 'tools/validation_contract.py').write_text(
             (self.root / 'tools/validation_contract.py').read_text() + '\n# synthetic maintenance\n')
-        return self.commit()
+        return self.commit('repair')
+
+    def validate(self):
+        with patch.object(source_lane, 'CHECKS', [[sys.executable, '-c', 'print("fixed check")']]):
+            return source_lane.validate(self.root, self.base, '2026-11-11T00:00:00Z')
 
     def test_genuine_native_record_is_accepted(self):
-        head = self.prepare("import test from 'node:test';test('passes',()=>{});\n")
+        head = self.prepare(self.REPAIRED)
         self.assertTrue(v.native_origin(self.root, head).endswith('.json'))
 
     def test_source_lane_executes_and_binds_every_selected_category(self):
-        self.prepare("import test from 'node:test';test('passes',()=>{});\n")
+        self.prepare(self.REPAIRED)
+        receipt = self.validate()
+        self.assertEqual([row['category'] for row in receipt['spec_runs']], ['sanity', 'focused'])
+        self.assertTrue(all(row['runner'][1:3] == ['tools/validation_contract.py', 'run'] for row in receipt['spec_runs']))
         with patch.object(source_lane, 'CHECKS', [[sys.executable, '-c', 'print("fixed check")']]):
-            receipt = source_lane.validate(self.root, self.base, '2026-11-11T00:00:00Z')
-            self.assertEqual([row['category'] for row in receipt['spec_runs']], ['sanity', 'focused'])
-            log = source_lane.directory(self.root) / (receipt['spec_runs'][1]['output_sha256'] + '.log')
-            os.chmod(log, 0o600); log.write_bytes(b'# tests 0\n')
-            with self.assertRaisesRegex(ValueError, 'Spec category output'):
+            self.assertEqual(source_lane.verify(self.root)['spec_runs'], receipt['spec_runs'])
+            record = Path(receipt['spec_runs'][1]['record'])
+            original = record.read_bytes()
+            record.write_bytes(original.replace(b'"passed": true', b'"passed": false'))
+            with self.assertRaisesRegex(ValueError, 'Spec category output|custody changed'):
+                source_lane.verify(self.root)
+            record.write_bytes(original)
+            # A later failed execution of the same candidate supersedes the earlier receipt.
+            later = {'kind': source_lane.KIND + '-failure', 'identity': {'source': receipt['source']},
+                     'runs': [{'completed_at': time.time() + 60}]}
+            source_lane.private_write(source_lane.directory(self.root) / 'later.failure.json', source_lane.encoded(later))
+            with self.assertRaisesRegex(ValueError, 'later failed'):
                 source_lane.verify(self.root)
 
+    def test_bug_fix_without_fail_before_reproduction_is_not_verified(self):
+        self.prepare(self.REPAIRED, reproduce=False)
+        with self.assertRaisesRegex(ValueError, 'Sealed spec category failed: focused'):
+            self.validate()
+
     def test_failing_selected_category_issues_no_receipt_and_retains_output(self):
-        head = self.prepare("import test from 'node:test';import assert from 'node:assert/strict';test('fails',()=>assert.equal(1,2));\n")
-        with patch.object(source_lane, 'CHECKS', [[sys.executable, '-c', 'print("fixed check")']]):
-            with self.assertRaisesRegex(ValueError, 'Sealed spec category failed: focused'):
-                source_lane.validate(self.root, self.base, '2026-11-11T00:00:00Z')
+        head = self.prepare(self.NEVER)
+        with self.assertRaisesRegex(ValueError, 'Sealed spec category failed: focused'):
+            self.validate()
         self.assertFalse((source_lane.directory(self.root) / (head + '.json')).exists())
         failures = [json.loads(p.read_text()) for p in source_lane.directory(self.root).glob('*.failure.json')]
         self.assertEqual(failures[-1]['spec_runs'][-1]['category'], 'focused')
