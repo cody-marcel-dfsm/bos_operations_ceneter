@@ -408,5 +408,25 @@ class Engines(Fixture):
             self.launch(json.dumps({'is_error': True, 'result': 'synthetic failure'}))
 
 
+class VaultIndexInterpreter(unittest.TestCase):
+    def test_configured_virtualenv_interpreter_is_not_resolved_to_its_base(self):
+        from tools import vault_index
+        with tempfile.TemporaryDirectory() as folder:
+            base = Path(folder) / 'base-python'
+            base.write_text('synthetic base interpreter')
+            venv = Path(folder) / 'venv/bin/python'
+            venv.parent.mkdir(parents=True)
+            venv.symlink_to(base)
+            calls = []
+            with patch.object(vault_index.sys, 'version_info', (3, 14, 0)), \
+                    patch.dict(os.environ, {'VAULT_INDEX_PYTHON': str(venv)}), \
+                    patch.object(vault_index.os, 'execv', side_effect=lambda path, argv: calls.append((path, argv))):
+                with self.assertRaises(RuntimeError):
+                    vault_index.ensure_stable_chroma_runtime()  # The fake execv returns; no candidate remains.
+            self.assertEqual(calls[0][0], str(venv.absolute()))
+            self.assertNotEqual(calls[0][0], str(base.resolve()))
+            self.assertEqual(calls[0][1][0], str(venv.absolute()))
+
+
 if __name__ == '__main__':
     unittest.main()
