@@ -82,7 +82,9 @@ export function createMarketplaceUpdate(releasedEntries, legacyName, options = {
     sha256: createHash("sha256").update(archive).digest("hex") };
 }
 
-export function readPublishedProductEntries(revision, product = "bos", { repository = root } = {}) {
+const VERIFY_COMMIT = ["python3", "tools/oracle_approval.py", "verify-commit"];
+
+export function readPublishedProductEntries(revision, product = "bos", { repository = root, verifyCommand = VERIFY_COMMIT } = {}) {
   assertProduct(product);
   const root = repository;
   const prefix = `clients/codex/plugins/${product}/`;
@@ -90,7 +92,7 @@ export function readPublishedProductEntries(revision, product = "bos", { reposit
     throw new Error("Supply an exact 40-character published commit");
   }
   execFileSync("git", ["merge-base", "--is-ancestor", revision, "origin/main"], { cwd: root, stdio: "pipe" });
-  execFileSync("python3", ["tools/oracle_approval.py", "verify-commit", revision], { cwd: root, stdio: "pipe" });
+  execFileSync(verifyCommand[0], [...verifyCommand.slice(1), revision], { cwd: root, stdio: "pipe" });
   const listing = execFileSync("git", ["ls-tree", "-r", "-z", revision, "--", prefix], { cwd: root }).toString();
   return listing.split("\0").filter(Boolean).map(line => {
     const [header, path] = line.split("\t");

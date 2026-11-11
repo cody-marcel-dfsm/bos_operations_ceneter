@@ -1,51 +1,29 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { copyOracleModules } from "./oracle-fixture.mjs";
+import { fileURLToPath } from "node:url";
 import { createMarketplaceUpdate, readPublishedBosEntries, readPublishedProductEntries } from "../scripts/build-marketplace-update.mjs";
 import { readZipEntries } from "../scripts/lib/deterministic-zip.mjs";
 
 const legacyName = `app-${"a".repeat(32)}`;
 
-// A local fixture of the published ref: the real published product packages committed in an
-// isolated repository whose origin/main is that commit, with deterministic-lane provenance
-// written in the lane's receipt format. No live GitHub access is involved.
-function publishedFixture(t, { receipt = true, change = value => value } = {}) {
+// A local fixture of the published ref: tests/published_fixture.py commits the real published
+// product packages in an isolated repository whose origin/main is that commit and produces its
+// VERIFIED receipt through the real package lane. verify-commit judges it by that lane's contract.
+// No live GitHub access is involved.
+const fixtureTool = fileURLToPath(new URL("./published_fixture.py", import.meta.url));
+function publishedFixture(t, { tamper } = {}) {
   const workspace = mkdtempSync(join(tmpdir(), "boc-published-"));
   t.after(() => rmSync(workspace, { recursive: true, force: true }));
-  const git = (...args) => execFileSync("git", args, { cwd: workspace, encoding: "utf8" }).trim();
-  git("init", "-q", "-b", "main"); git("config", "user.name", "Synthetic"); git("config", "user.email", "synthetic@example.invalid");
   const published = execFileSync("git", ["rev-parse", "origin/main"], { encoding: "utf8" }).trim();
-  execFileSync("sh", ["-c", `git archive ${published} clients/codex/plugins/bos clients/codex/plugins/education-center | tar -x -C "$1"`, "archive", workspace]);
-  copyOracleModules(workspace);
-  writeFileSync(join(workspace, "AGENTS.md"), "governed\n");
-  writeFileSync(join(workspace, ".gitignore"), "__pycache__/\n");
-  git("add", "-A"); git("commit", "-qm", "published release");
-  const commit = git("rev-parse", "HEAD"), tree = git("rev-parse", "HEAD^{tree}");
-  git("update-ref", "refs/remotes/origin/main", commit);
-  if (receipt) {
-    execFileSync("python3", ["-c", `
-import hashlib,json,os,sys
-from pathlib import Path
-root,commit,tree,change=sys.argv[1],sys.argv[2],sys.argv[3],json.loads(sys.argv[4])
-folder=Path(root)/'.git/oracle/deterministic-package';folder.mkdir(parents=True,mode=0o700)
-output=b'# tests 1\\n# pass 1\\n';key=hashlib.sha256(output).hexdigest()
-log=folder/(key+'.log');log.write_bytes(output);os.chmod(log,0o600)
-value={'kind':'boc-deterministic-package/1','profile':'synthetic','status':'VERIFIED','source':commit,'tree':tree,
-       'runtime':{},'base':commit,'paths':[],'runs':[{'command':['synthetic'],'exit_code':0,'output_sha256':key,
-       'started_at':1,'completed_at':2}],'spec_runs':[],'spec_mode':'native','deployment_authorized':False}
-value.update(change.get('set',{}))
-for name in change.get('remove_logs',[]): log.unlink()
-value['sha256']=hashlib.sha256(json.dumps(value,sort_keys=True,separators=(',',':')).encode()).hexdigest()
-if change.get('forge'): value['tree']='0'*40
-path=folder/(commit+'.json');path.write_text(json.dumps(value));os.chmod(path,0o600)
-`, workspace, commit, tree, JSON.stringify(change({}))]);
-  }
-  return { workspace, commit };
+  const commit = execFileSync("python3", ["-B", fixtureTool, "build", workspace, published], { encoding: "utf8" }).trim().split("\n").at(-1);
+  if (tamper) tamper(join(workspace, ".git/oracle/deterministic-package", commit + ".json"));
+  return { workspace, commit, options: { repository: workspace, verifyCommand: ["python3", "-B", fixtureTool, "verify", workspace] } };
 }
+
 const fixture = () => [
   { path: ".codex-plugin/plugin.json", mode: 0o644, content: Buffer.from('{\n  "name": "bos",\n  "version": "1.2.3",\n  "mcpServers": "./.mcp.json"\n}\n') },
   { path: ".bos-product.json", mode: 0o644, content: Buffer.from('{"name":"bos","version":"1.2.3"}\n') },
@@ -89,11 +67,10 @@ test("Education export rejects mismatched products and independent connection de
 });
 
 test("Education export retains accepted published-commit provenance and real package parity", t => {
-  const { workspace, commit: revision } = publishedFixture(t);
-  const repository = { repository: workspace };
-  assert.throws(() => readPublishedProductEntries("main", "education-center", repository), /exact 40-character/);
-  assert.throws(() => readPublishedProductEntries("a".repeat(40), "education-center", repository), /Command failed/);
-  const entries = readPublishedProductEntries(revision, "education-center", repository);
+  const { commit: revision, options } = publishedFixture(t);
+  assert.throws(() => readPublishedProductEntries("main", "education-center", options), /exact 40-character/);
+  assert.throws(() => readPublishedProductEntries("a".repeat(40), "education-center", options), /Command failed/);
+  const entries = readPublishedProductEntries(revision, "education-center", options);
   const actual = readZipEntries(createMarketplaceUpdate(entries, legacyName, { product: "education-center" }).archive);
   assert.ok(entries.length > 3);
   assert.equal(actual.size, entries.length);
@@ -135,18 +112,18 @@ test("marketplace export rejects malformed names, missing files, ambiguous ident
   assert.throws(() => createMarketplaceUpdate(symlink, legacyName), /Unsupported/);
 });
 
-test("published release export refuses missing, forged, CI-phase or incomplete deterministic provenance", t => {
-  for (const options of [{ receipt: false }, { change: () => ({ forge: true }) },
-    { change: () => ({ set: { spec_mode: "ci" } }) }, { change: () => ({ set: { status: "FAILED" } }) },
-    { change: () => ({ remove_logs: ["synthetic"] }) }]) {
-    const { workspace, commit } = publishedFixture(t, options);
-    assert.throws(() => readPublishedBosEntries(commit, { repository: workspace }), /Command failed/);
+test("published release export refuses missing, hand-edited, CI-phase or incomplete deterministic provenance", t => {
+  const edit = change => path => { const value = JSON.parse(readFileSync(path, "utf8")); change(value); writeFileSync(path, JSON.stringify(value)); };
+  for (const tamper of [path => unlinkSync(path), edit(value => { value.tree = "0".repeat(40); }),
+    edit(value => { value.spec_mode = "ci"; }), edit(value => { value.runs = [{ command: ["synthetic"], exit_code: 0, output_sha256: value.runs[0].output_sha256 }]; })]) {
+    const { commit, options } = publishedFixture(t, { tamper });
+    assert.throws(() => readPublishedBosEntries(commit, options), /Command failed/);
   }
 });
 
 test("published release export verifies accepted Git provenance and preserves every real package entry", t => {
-  const { workspace, commit: revision } = publishedFixture(t);
-  const entries = readPublishedBosEntries(revision, { repository: workspace });
+  const { commit: revision, options } = publishedFixture(t);
+  const entries = readPublishedBosEntries(revision, options);
   assert.ok(entries.length > 3);
   const actual = readZipEntries(createMarketplaceUpdate(entries, legacyName).archive);
   for (const entry of entries.filter(entry => entry.path !== ".codex-plugin/plugin.json")) {

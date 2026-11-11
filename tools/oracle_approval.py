@@ -3482,20 +3482,26 @@ def apply_trailers(root: Path, path: Path) -> None:
 def verify_message(root: Path, path: Path) -> None:
     if _trailers(path.read_text()) != trailer_values(root): raise OracleApprovalError("Commit trailers do not match Oracle evidence")
 
-DETERMINISTIC_LANES = {"deterministic-source": "boc-deterministic-source/1",
-                       "deterministic-package": "boc-deterministic-package/1"}
+DETERMINISTIC_LANES = ("deterministic-source", "deterministic-package")
 
 
 def _deterministic_provenance(root: Path, commit: str, tree: str) -> str | None:
-    """A VERIFIED deterministic-lane receipt bound to this exact commit and tree (owner decision).
+    """A VERIFIED deterministic-lane receipt that satisfies its lane's own contract for this
+    exact commit and tree (owner decision). Native approval remains separately accepted.
 
-    The lane's own self-digested receipt, its retained command outputs and its base ancestry must
-    all match; a CI-phase receipt, a later failed execution of the same commit, or any mismatch
-    grants nothing. Native approval remains separately accepted.
+    The lane module re-derives everything a hand-written record could assert: the admitted
+    scope of the receipt's publication range (including the sealed-spec gate), the lane's fixed
+    command set and profile, complete retained outputs for every fixed command, and the native
+    runner's records for every spec-selected category. A CI-phase receipt or a later failure of
+    the same commit grants nothing.
     """
-    oracle = receipt_path(root).parent
-    for lane, kind in DETERMINISTIC_LANES.items():
-        directory = oracle / lane
+    if __package__:
+        from . import deterministic_package as package_lane, deterministic_source as source_lane
+    else:
+        import deterministic_package as package_lane, deterministic_source as source_lane
+    lanes = {"deterministic-source": (source_lane, source_lane.directory(root)),
+             "deterministic-package": (package_lane, package_lane.directory(root))}
+    for lane, (module, directory) in lanes.items():
         if not directory.is_dir() or directory.is_symlink():
             continue
         for path in sorted([directory / (commit + ".json"), *directory.glob(commit + ".*.json")]):
@@ -3505,33 +3511,31 @@ def _deterministic_provenance(root: Path, commit: str, tree: str) -> str | None:
             try:
                 value = json.loads(path.read_bytes())
                 claimed = value.pop("sha256")
-                encoded = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
-                runs = [*value["runs"], *value.get("spec_runs", [])]
-                if (claimed != _sha(encoded) or value.get("kind") != kind or value.get("status") != "VERIFIED"
-                        or value.get("source") != commit or value.get("tree") != tree
-                        or value.get("spec_mode", "native") != "native" or not value["runs"]
-                        or not re.fullmatch(r"[0-9a-f]{40}", value.get("base", ""))):
+                if (claimed != source_lane.digest(source_lane.encoded(value)) or value.get("kind") != module.KIND
+                        or value.get("status") != "VERIFIED" or value.get("source") != commit
+                        or value.get("tree") != tree or value.get("spec_mode") != "native"):
                     continue
-                if any(row.get("exit_code") != 0 for row in runs):
+                if module is package_lane and value.get("profile") != package_lane.PROFILE:
                     continue
-                logs = [directory / (row["output_sha256"] + ".log") for row in runs]
-                if any(log.is_symlink() or not log.is_file() or _sha(log.read_bytes()) != row["output_sha256"]
-                       for log, row in zip(logs, runs)):
+                if module is source_lane and value.get("source_only") is not True:
                     continue
-                if subprocess.run(["git", "merge-base", "--is-ancestor", value["base"], commit],
-                                  cwd=root, capture_output=True).returncode:
+                if value["paths"] != module.scope(root, value["base"], commit):
                     continue
-                completed = max(row.get("completed_at", 0) for row in runs)
-                superseded = False
-                for failure in directory.glob("*.failure.json"):
-                    record = json.loads(failure.read_bytes())
-                    attempts = [*record.get("runs", []), *record.get("spec_runs", [])]
-                    if (record.get("identity", {}).get("source") == commit
-                            and max([row.get("completed_at", 0) for row in attempts] or [0]) > completed):
-                        superseded = True
-                if not superseded:
-                    return str(path)
-            except (OSError, ValueError, KeyError, TypeError, AttributeError):
+                if [row["command"] for row in value["runs"]] != module.CHECKS:
+                    continue
+                complete = all(
+                    (directory / (row["output_sha256"] + ".log")).is_file()
+                    and not (directory / (row["output_sha256"] + ".log")).is_symlink()
+                    and source_lane.digest((directory / (row["output_sha256"] + ".log")).read_bytes()) == row["output_sha256"]
+                    and package_lane.complete(row["command"], (directory / (row["output_sha256"] + ".log")).read_bytes(), row["exit_code"])
+                    for row in value["runs"])
+                if not complete:
+                    continue
+                source_lane.check_spec_runs(root, value["base"], commit, value.get("spec_runs"), directory,
+                                            receipt_completed=source_lane._completed(value), mode="native")
+                return str(path)
+            except (OSError, ValueError, KeyError, TypeError, AttributeError, OracleApprovalError,
+                    subprocess.CalledProcessError):
                 continue
     return None
 

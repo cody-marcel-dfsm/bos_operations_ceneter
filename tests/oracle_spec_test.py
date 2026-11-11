@@ -469,43 +469,48 @@ class LaneExecution(Fixture):
         self.assertEqual(failures[-1]['spec_runs'][-1]['category'], 'focused')
 
 
-class DeterministicProvenance(Fixture):
-    def receipt(self, lane='deterministic-source', **change):
-        commit = self.git('rev-parse', 'HEAD'); tree = self.git('rev-parse', 'HEAD^{tree}')
-        folder = self.root / '.git/oracle' / lane; folder.mkdir(parents=True, exist_ok=True, mode=0o700)
-        output = b'Ran 1 test in 0.1s\n\nOK\n'; key = hashlib.sha256(output).hexdigest()
-        (folder / (key + '.log')).write_bytes(output); os.chmod(folder / (key + '.log'), 0o600)
-        value = {'kind': oracle.DETERMINISTIC_LANES[lane], 'status': 'VERIFIED', 'source': commit, 'tree': tree,
-                 'base': self.base, 'paths': [], 'runs': [{'command': ['synthetic'], 'exit_code': 0, 'output_sha256': key,
-                 'started_at': 1, 'completed_at': 2}], 'spec_runs': [], 'spec_mode': 'native', **change}
-        value['sha256'] = hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
-        path = folder / (commit + '.json'); path.write_text(json.dumps(value)); os.chmod(path, 0o600)
-        return commit, tree, folder
+class DeterministicProvenance(unittest.TestCase):
+    """Genuine receipts come from the real package lane; forgeries recompute the self-digest."""
+    def setUp(self):
+        import published_fixture
+        self.published = published_fixture
+        self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+        self.commit = published_fixture.build(self.root, subprocess.check_output(['git', 'rev-parse', 'origin/main'], cwd=REPOSITORY, text=True).strip())
+        self.tree = subprocess.check_output(['git', 'rev-parse', self.commit + '^{tree}'], cwd=self.root, text=True).strip()
+        self.path = self.root / '.git/oracle/deterministic-package' / (self.commit + '.json')
+        self.original = self.path.read_bytes()
+        checks = patch.object(package_lane, 'CHECKS', published_fixture.CHECKS); checks.start(); self.addCleanup(checks.stop)
 
-    def test_exact_verified_lane_receipt_is_provenance(self):
-        (self.root / 'source.mjs').write_text('export default 2;\n'); self.commit()
-        for lane in oracle.DETERMINISTIC_LANES:
-            commit, tree, folder = self.receipt(lane)
-            self.assertTrue(oracle._deterministic_provenance(self.root, commit, tree))
-            self.assertIsNone(oracle._deterministic_provenance(self.root, commit, '0' * 40))
-            oracle.verify_commit(self.root, commit)
-            for path in folder.iterdir(): path.unlink()
+    def forge(self, change):
+        value = json.loads(self.original); value.pop('sha256'); change(value)
+        value['sha256'] = source_lane.digest(source_lane.encoded(value))
+        self.path.write_text(json.dumps(value))
 
-    def test_forged_ci_failed_or_superseded_receipts_grant_nothing(self):
-        (self.root / 'source.mjs').write_text('export default 2;\n'); self.commit()
-        for change in ({'spec_mode': 'ci'}, {'status': 'FAILED'}, {'base': 'f' * 40}):
-            commit, tree, folder = self.receipt(**change)
-            self.assertIsNone(oracle._deterministic_provenance(self.root, commit, tree))
-            for path in folder.iterdir(): path.unlink()
-        commit, tree, folder = self.receipt()
-        path = folder / (commit + '.json'); value = json.loads(path.read_text()); value['tree'] = '0' * 40
-        path.write_text(json.dumps(value))  # Hand-edited without a matching self-digest.
-        self.assertIsNone(oracle._deterministic_provenance(self.root, commit, tree))
-        for item in folder.iterdir(): item.unlink()
-        commit, tree, folder = self.receipt()
-        later = {'identity': {'source': commit}, 'runs': [{'completed_at': 99}]}
-        (folder / 'later.failure.json').write_text(json.dumps(later))
-        self.assertIsNone(oracle._deterministic_provenance(self.root, commit, tree))
+    def test_genuine_lane_receipt_is_provenance_for_its_exact_commit_only(self):
+        self.assertEqual(oracle._deterministic_provenance(self.root, self.commit, self.tree), str(self.path))
+        oracle.verify_commit(self.root, self.commit)
+        self.assertIsNone(oracle._deterministic_provenance(self.root, self.commit, '0' * 40))
+        with patch.object(package_lane, 'CHECKS', [['different', 'fixed', 'check']]):
+            self.assertIsNone(oracle._deterministic_provenance(self.root, self.commit, self.tree))
+
+    def test_self_consistent_forgeries_grant_nothing(self):
+        forgeries = [lambda v: v.update(runs=[dict(v['runs'][0], command=['synthetic'])]),
+                     lambda v: v.update(spec_runs=[]), lambda v: v.update(paths=['clients/codex/plugins/bos/x']),
+                     lambda v: v.update(spec_mode='ci'), lambda v: v.update(profile='another-profile'),
+                     lambda v: v['spec_runs'][1].update(record_sha256='0' * 64),
+                     lambda v: v.update(base=v['source'])]
+        for forgery in forgeries:
+            with self.subTest(forgery=forgeries.index(forgery)):
+                self.forge(forgery)
+                self.assertIsNone(oracle._deterministic_provenance(self.root, self.commit, self.tree))
+        self.path.write_bytes(self.original)
+        self.assertTrue(oracle._deterministic_provenance(self.root, self.commit, self.tree))
+
+    def test_later_failure_of_the_same_commit_supersedes_the_receipt(self):
+        later = {'identity': {'source': self.commit}, 'runs': [{'completed_at': time.time() + 3600}]}
+        target = self.path.parent / 'later.failure.json'; target.write_text(json.dumps(later)); os.chmod(target, 0o600)
+        self.assertIsNone(oracle._deterministic_provenance(self.root, self.commit, self.tree))
 
 
 class Engines(Fixture):
