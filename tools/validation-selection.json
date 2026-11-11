@@ -4,12 +4,12 @@
   "stamp": {
     "engine": "codex",
     "model": "gpt-6.1-sol",
-    "oracle_sha256": "53c6671ba85a581560fd202758067489e6447c502b48203afc4d473153ad9579",
+    "oracle_sha256": "4ab0e11bace93fc2baf5cd8d1595ee423363b9116ee77dc54b30e0c3a642f2cb",
     "host": "aio",
-    "time": "2026-11-11T19:05:06Z",
+    "time": "2026-11-11T20:00:59Z",
     "origin_main": "e70de278e116c7761f60fcfc700641e1ecb9288d",
     "request_sha256": "66e98fee9f63d6af43b21eb5cf53ba6c39f237ab1c42f928f76b8a3fab9386f8",
-    "proposal_sha256": "237c2e73aeab9b701bf212647db03c6ace807c7f2338d7f6659d0eede2dd1486"
+    "proposal_sha256": "f3bd2d9671b21331507a4d98f9b8da8f2c4da87d515bb4989f8c77a9ba84afd8"
   },
   "selection": {
     "acceptance": [
@@ -30,7 +30,12 @@
       "Preserve controller lifecycle and reused-process rejection through process-birth checks; isolate explicit Codex launcher tests from inherited harness engine selection without changing automatic engine selection.",
       "Preserve independent parallel-review custody, overlap and failure handling while binding the configured reviewer effort after the maximum-effort cap.",
       "Run the complete scope-index suite through its Node entrypoint with the copied CLI dependency closure, preserving trailer provenance and execution-suffix checks.",
-      "Prepare the patch release consistently across canonical manifests, lockfile, release documentation, skill release metadata and generated client manifests while preserving product composition, transport and authentication declarations."
+      "Prepare the patch release consistently across canonical manifests, lockfile, release documentation, skill release metadata and generated client manifests while preserving product composition, transport and authentication declarations.",
+      "Exercise scoped controller admission, complete launcher fixtures and bounded reviewer settings without weakening custody assertions; classify declared governing-authority drift as an execution error.",
+      "Preserve direct-human public API version request evidence checks through proposal, receipt and commit verification.",
+      "Keep review-policy fingerprints sensitive to current module content and executable modes while reusing parsed representations only for identical content; preserve performance and lifecycle assertions.",
+      "For changes outside both deterministic lanes, run selected spec tests and native exact-candidate command coverage before CI reports success; fail immediately on spec-gate failure.",
+      "Preserve source-frontier delivery and forged-page rejection, and retain closed live-verifier arguments and deterministic release integration."
     ],
     "acceptance_tests": [
       {
@@ -44,10 +49,11 @@
           6,
           7,
           8,
-          12
+          12,
+          21
         ],
         "module": "tests/oracle-implementation-spec.test.mjs",
-        "purpose": "Verify sealed spec production, privacy, engine invocation, external input custody, native migration, complete publication-range scope enforcement and configured virtualenv interpreter preservation."
+        "purpose": "Verify sealed spec production, privacy, engine invocation, external input custody, native migration, publication-range scope, configured interpreter preservation and CI branch admission."
       },
       {
         "covers": [
@@ -65,7 +71,7 @@
           9
         ],
         "module": "tests/deterministic-lanes.test.mjs",
-        "purpose": "Verify source and package lane admission, selected command execution and retained deterministic verification boundaries."
+        "purpose": "Verify both deterministic lanes retain scope admission, selected execution and their fixed verification boundaries."
       },
       {
         "covers": [
@@ -79,42 +85,86 @@
           13
         ],
         "module": "tests/command-coverage.test.mjs",
-        "purpose": "Verify conceptual proposal continuity, equivalent source snapshots, genuine concurrent deltas and evidence or governing-criteria drift rejection."
+        "purpose": "Verify equivalent proposal snapshots, concurrent source deltas and evidence or governing-criteria drift rejection."
       },
       {
         "covers": [
-          14
+          14,
+          20
         ],
         "module": "tests/oracle-lifecycle.test.mjs",
-        "purpose": "Verify controller lifecycle, process-birth mismatch rejection and explicitly isolated Codex launcher behavior."
+        "purpose": "Verify controller lifecycle, process-birth rejection and explicit launcher isolation while preserving lifecycle assertions."
       },
       {
         "covers": [
           15
         ],
         "module": "tests/oracle-parallel.test.mjs",
-        "purpose": "Verify parallel review bindings, capped reviewer effort, source custody and failure handling."
+        "purpose": "Verify parallel review custody, capped effort, overlap and failure handling."
       },
       {
         "covers": [
           16
         ],
         "module": "tests/oracle-scope-index.test.mjs",
-        "purpose": "Execute native scope-index, trailer-provenance and execution-suffix cases with the CLI import dependencies available."
+        "purpose": "Execute the complete native scope-index suite with its copied dependencies and retained provenance checks."
       },
       {
         "covers": [
           17
         ],
         "module": "tests/release-version.test.mjs",
-        "purpose": "Verify default patch progression, consistent release markers and native release preparation behavior."
+        "purpose": "Verify patch progression, consistent release markers and native release preparation."
       },
       {
         "covers": [
           17
         ],
         "module": "tests/package-model.test.mjs",
-        "purpose": "Verify canonical and generated product metadata, package composition and preserved transport and authentication declarations."
+        "purpose": "Verify canonical and generated metadata, product composition and preserved transport and authentication declarations."
+      },
+      {
+        "covers": [
+          18
+        ],
+        "module": "tests/oracle-review-series.test.mjs",
+        "purpose": "Verify scoped admission custody, governing-authority drift errors, complete launcher dependencies and bounded reviewer settings."
+      },
+      {
+        "covers": [
+          18,
+          21
+        ],
+        "module": "tests/oracle-governance.test.mjs",
+        "purpose": "Verify proposal and receipt governance with complete fixtures and the required workflow-to-native-coverage chain."
+      },
+      {
+        "covers": [
+          19
+        ],
+        "module": "tests/oracle-api-version-request.test.mjs",
+        "purpose": "Verify independent direct-human version-request evidence across proposal, receipt and commit verification."
+      },
+      {
+        "covers": [
+          20
+        ],
+        "module": "tests/oracle-performance.test.mjs",
+        "purpose": "Verify bounded discovery and review behavior, policy-sensitive evidence and isolated explicit launcher execution."
+      },
+      {
+        "covers": [
+          22
+        ],
+        "module": "tests/oracle-source-frontier.test.mjs",
+        "purpose": "Execute native source-frontier delivery and forged-page refusal under the configured effort bound."
+      },
+      {
+        "covers": [
+          22
+        ],
+        "module": "tests/agent-driven-journey-live-verifier.test.mjs",
+        "purpose": "Verify closed verifier arguments, pre-execution refusal boundaries and the deterministic release verification command."
       }
     ],
     "categories": [
@@ -131,7 +181,10 @@
           "tests/oracle_lifecycle_test.py",
           "tests/oracle_parallel_test.py",
           "tests/command_coverage_test.py",
-          "tests/oracle_scope_index_test.py"
+          "tests/oracle_scope_index_test.py",
+          "tests/oracle-fixture.mjs",
+          "tests/oracle_review_series.py",
+          "tests/oracle_source_frontier_test.py"
         ],
         "name": "interactions",
         "tests": [
@@ -142,7 +195,13 @@
           "tests/command-coverage.test.mjs",
           "tests/oracle-scope-index.test.mjs",
           "tests/release-version.test.mjs",
-          "tests/package-model.test.mjs"
+          "tests/package-model.test.mjs",
+          "tests/oracle-review-series.test.mjs",
+          "tests/oracle-governance.test.mjs",
+          "tests/oracle-api-version-request.test.mjs",
+          "tests/oracle-performance.test.mjs",
+          "tests/oracle-source-frontier.test.mjs",
+          "tests/agent-driven-journey-live-verifier.test.mjs"
         ]
       },
       {
@@ -158,8 +217,8 @@
     ],
     "change_class": "feature",
     "design": "Vault/docs/design/oracle-implementation-spec.md",
-    "reason": "Retain every existing feature requirement and selected test. Add the affected Oracle interaction suites and release-version and package-model checks for the controller fixture repairs and patch-release metadata. Keep the complete selected execution within the original 300-second delivery policy without resetting its clock, weakening assertions, discarding historical failures or adding automatic regression suites. Completed-source verification and publication retain their applicable native gates.",
-    "revision_of": "02d2f364e7c08ce4dc8235afc6f2f38ba8d65e15f00511b967a905e4e75c9eb8",
+    "reason": "Revise the existing feature contract without dropping earlier requirements or tests. Add the affected review-series, governance, version-request, performance, source-frontier and release-integration suites and their supporting fixtures. Preserve every custody assertion, historical outcome, independent verification boundary and original 300-second delivery clock. Process kill bounds do not extend that delivery policy. Unresolved published-export provenance remains separate and cannot be reported as passing.",
+    "revision_of": "6492152b66b11a08231c709c7dae538d2e52f29d70f661c4f5043838271d200c",
     "scope_paths": [
       "AGENTS.md",
       "CLAUDE.md",
@@ -217,11 +276,24 @@
       "clients/muse/plugins/bos/.bos-product.json",
       "clients/muse/plugins/bos/.muse-plugin/plugin.json",
       "clients/muse/plugins/education-center/.bos-product.json",
-      "clients/muse/plugins/education-center/.muse-plugin/plugin.json"
+      "clients/muse/plugins/education-center/.muse-plugin/plugin.json",
+      "tests/oracle-fixture.mjs",
+      "tests/oracle_review_series.py",
+      "tests/oracle-review-series.test.mjs",
+      "tests/oracle-governance.test.mjs",
+      "tests/oracle-api-version-request.test.mjs",
+      "tests/oracle-performance.test.mjs",
+      "tests/oracle-lifecycle.test.mjs",
+      "tests/oracle-parallel.test.mjs",
+      "tests/command-coverage.test.mjs",
+      "tests/command_coverage_test.py",
+      "tests/oracle_source_frontier_test.py",
+      "tests/oracle-source-frontier.test.mjs",
+      "tests/agent-driven-journey-live-verifier.test.mjs"
     ]
   },
-  "base_commit": "fd5a1f036f13ae0d318fe00199384d9728c2ac5c",
-  "base_tree": "daf5cbd2feb2c95609f9f176979bb6f305ee8574",
+  "base_commit": "3d7189f1c1534b98bbd0fbcd5519bc4a42cade5b",
+  "base_tree": "769f28c605b344558737397521199cb89935a13d",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v26.12.0",
@@ -231,8 +303,8 @@
     "architecture": "x86_64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "237c2e73aeab9b701bf212647db03c6ace807c7f2338d7f6659d0eede2dd1486",
-  "review_sha256": "fa97cca40bc92493476cb79e449459f645926cbe1ea20c2e85389c18689ceca0",
+  "proposal_sha256": "f3bd2d9671b21331507a4d98f9b8da8f2c4da87d515bb4989f8c77a9ba84afd8",
+  "review_sha256": "5d0168472b25ee1e0bf7a60c64d426669852393c304065b95a9a4b36965a260f",
   "commands": [
     {
       "category": "sanity",
@@ -257,7 +329,13 @@
         "tests/command-coverage.test.mjs",
         "tests/oracle-scope-index.test.mjs",
         "tests/release-version.test.mjs",
-        "tests/package-model.test.mjs"
+        "tests/package-model.test.mjs",
+        "tests/oracle-review-series.test.mjs",
+        "tests/oracle-governance.test.mjs",
+        "tests/oracle-api-version-request.test.mjs",
+        "tests/oracle-performance.test.mjs",
+        "tests/oracle-source-frontier.test.mjs",
+        "tests/agent-driven-journey-live-verifier.test.mjs"
       ],
       "tests": [
         "tests/validation-contract.test.mjs",
@@ -267,7 +345,13 @@
         "tests/command-coverage.test.mjs",
         "tests/oracle-scope-index.test.mjs",
         "tests/release-version.test.mjs",
-        "tests/package-model.test.mjs"
+        "tests/package-model.test.mjs",
+        "tests/oracle-review-series.test.mjs",
+        "tests/oracle-governance.test.mjs",
+        "tests/oracle-api-version-request.test.mjs",
+        "tests/oracle-performance.test.mjs",
+        "tests/oracle-source-frontier.test.mjs",
+        "tests/agent-driven-journey-live-verifier.test.mjs"
       ],
       "fixtures": [
         "tests/validation_contract_test.py",
@@ -276,7 +360,10 @@
         "tests/oracle_lifecycle_test.py",
         "tests/oracle_parallel_test.py",
         "tests/command_coverage_test.py",
-        "tests/oracle_scope_index_test.py"
+        "tests/oracle_scope_index_test.py",
+        "tests/oracle-fixture.mjs",
+        "tests/oracle_review_series.py",
+        "tests/oracle_source_frontier_test.py"
       ]
     },
     {
@@ -308,20 +395,26 @@
   },
   "design_binding": {
     "design": "Vault/docs/design/oracle-implementation-spec.md",
-    "design_sha256": "37757db7b359de80c00de87a3add41d91d72827789f930bc3bb84e79bcd812b4",
+    "design_sha256": "302638b3c4840890d4bd31099b93019987ee50f981bbbeab2842cb62323ae108",
     "plan": "Vault/docs/design/oracle-implementation-spec.test-plan.json",
-    "plan_sha256": "693872f0519dd0d267e2fa95afaca7986764ac65188e61b2acb34a67daceda44",
+    "plan_sha256": "ed1ca50d7828cc01303293edef7685f39d47005902350d1a9da2e34cf108847c",
     "tests": [
+      "tests/agent-driven-journey-live-verifier.test.mjs",
       "tests/command-coverage.test.mjs",
       "tests/deterministic-lanes.test.mjs",
+      "tests/oracle-api-version-request.test.mjs",
+      "tests/oracle-governance.test.mjs",
       "tests/oracle-implementation-spec.test.mjs",
       "tests/oracle-lifecycle.test.mjs",
       "tests/oracle-parallel.test.mjs",
+      "tests/oracle-performance.test.mjs",
+      "tests/oracle-review-series.test.mjs",
       "tests/oracle-scope-index.test.mjs",
+      "tests/oracle-source-frontier.test.mjs",
       "tests/publication-safety.test.mjs",
       "tests/validation-contract.test.mjs"
     ]
   },
-  "contract_sha256": "6492152b66b11a08231c709c7dae538d2e52f29d70f661c4f5043838271d200c",
-  "seal": "c84e476cf263bda537173170bc78ed1648582e426f1bad9d2f4208cdeaf6a29e"
+  "contract_sha256": "a2ef2b7586b4c3582c8b6daa317289b8b4caf7a0fba50e8a27b09c3c1a2a0762",
+  "seal": "80b24aba6903d22530b513dfce51da071feb1c1e36e2ef960a977c62586567ab"
 }
