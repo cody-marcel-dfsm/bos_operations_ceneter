@@ -26,6 +26,13 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
+      - name: Verify the sealed Oracle spec
+        run: |
+          validation_base_sha="$VALIDATION_BASE_SHA"
+          case "$GITHUB_REF" in
+            refs/heads/codex/release-v*) validation_base_sha="$(git rev-parse origin/main)" ;;
+          esac
+          python3 tools/validation_contract.py gate --base "$validation_base_sha"
       - name: Verify the fixed deterministic source or skill-package category
         run: |
           validation_base_sha="$VALIDATION_BASE_SHA"

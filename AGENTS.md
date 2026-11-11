@@ -1,3 +1,23 @@
+## Oracle implementation spec — controlling owner direction, 2026-11-11
+
+Every non-docs implementation carries a sealed Oracle spec. Sync first
+(`git fetch origin` and integrate `origin/main` into `main`), then submit the
+proposal through `npm run oracle:proposal -- [--engine claude|codex|auto]
+[--request-file <file>] "<proposal>"`; `auto` uses `claude` under `CLAUDECODE`,
+otherwise `codex`. The approved `tools/validation-selection.json` is the single
+self-contained spec: scope, acceptance criteria, the selected tests, a runtime stamp
+(engine, model, Oracle file digest, host, UTC time, fetched `origin/main`, request
+and proposal digests) and the family `oracle-spec/1` seal. The seal is a sanity
+check that the Oracle step ran, not security. The committed spec holds no raw
+request, proposal or private Vault text. Commit it with the change, pass its
+selected categories, re-sync before publication and re-run them when `main` moved.
+CI and both deterministic lanes fail immediately when a non-docs range lacks its
+valid sealed spec, then run its tests. This supersedes the deterministic-only and
+"no model review" wording below only for the proposal-to-spec step, including the
+deterministic package and source-maintenance lanes; completed-source verification
+is unchanged. Genuine documentation-only changes need no spec. See
+`tools/validation-contract.md`.
+
 ## Deterministic package verification — controlling owner direction, 2026-11-03
 
 The owner explicitly authorized repairing the package-release gate to use

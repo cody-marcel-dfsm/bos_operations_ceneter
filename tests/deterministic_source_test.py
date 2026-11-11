@@ -18,6 +18,8 @@ class SourceAdmissionTests(unittest.TestCase):
         (self.root/'AGENTS.md').write_text('Portable maintainer documentation\n');self.commit('base');self.base=self.git('rev-parse','HEAD')
         (self.root/'AGENTS.md').write_text('Portable maintainer documentation, corrected\n');self.commit('docs')
         self.commands=patch.object(d,'CHECKS',[[sys.executable,'-c','print("real execution")']]);self.commands.start();self.addCleanup(self.commands.stop)
+        # The sealed-spec gate has its own real-fixture tests (oracle_spec_test.py); lane tests isolate lane custody.
+        self.gate=patch.object(d.contract,'gate',return_value={'status':'DOCS_ONLY','paths':[]});self.gate.start();self.addCleanup(self.gate.stop)
     def git(self,*args):return subprocess.check_output(['git',*args],cwd=self.root,text=True,stderr=subprocess.DEVNULL).strip()
     def commit(self,message):self.git('add','-A');self.git('commit','-qm',message)
     def validate(self):return d.validate(self.root,self.base,'2020-01-01T00:00:00Z')
@@ -60,7 +62,12 @@ class SourceAdmissionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'scope|maintenance'):self.validate()
     def test_selected_contract_cannot_be_overridden(self):
         (self.root/'tools').mkdir();(self.root/'tools/validation-selection.json').write_text('{}');self.commit('contract')
-        with self.assertRaises(ValueError):self.validate()
+        self.gate.stop()
+        try:
+            with self.assertRaises(ValueError):self.validate()
+        finally:self.gate.start()
+    def test_every_admission_runs_the_spec_gate(self):
+        self.validate();self.gate.target.gate.assert_called();self.assertEqual(self.gate.target.gate.call_args.args[1],self.base)
     def test_outside_dependency_symlink_rejected(self):
         (self.root/'node_modules/escape').symlink_to(sys.executable)
         with self.assertRaisesRegex(ValueError,'escapes'):self.validate()

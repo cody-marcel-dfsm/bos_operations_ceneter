@@ -6,11 +6,13 @@ const root = new URL("../", import.meta.url).pathname;
 
 export const allowedTopLevelPaths = new Set([
   ".agents",
+  ".claude",
   ".claude-plugin",
   ".githooks",
   ".github",
   ".gitignore",
   "AGENTS.md",
+  "CLAUDE.md",
   "CODE_OF_CONDUCT.md",
   "CONTRIBUTING.md",
   "LICENSE",

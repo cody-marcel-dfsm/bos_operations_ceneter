@@ -46,6 +46,36 @@ Unknown impact is classified as deep work before scope is fixed. User input, int
 security and prompt-injection boundaries receive the appropriate full scrutiny.
 Preserve independent source, privacy and publication gates.
 
+## Sealed Oracle spec — owner direction, 2026-11-11
+
+The approved contract is the self-contained implementation spec
+(`boc.validation-contract/v2`, `kind: oracle-spec/1`). Beside the fields above it
+holds `selection.acceptance` (publishable criteria), `selection.acceptance_tests`
+(`module`, `covers` criterion indices, `purpose`; every criterion covered by a
+selected focused/interactions/acceptance test), a `stamp` (`engine`, `model`,
+`oracle_sha256` over the Oracle skill, output schema, `tools/oracle_approval.py`,
+`tools/validation_contract.py` and `tools/oracle_spec_seal.py`, `host`, UTC `time`,
+`origin_main`, `request_sha256` or null, `proposal_sha256`) and `seal`:
+`sha256(b"oracle-spec/1\0" + json.dumps(contract_without_seal, sort_keys=True,
+separators=(",", ":"), ensure_ascii=False, allow_nan=False))` from
+`tools/oracle_spec_seal.py`. The seal is a sanity check, not security. Sealing
+refuses secret-like text and local absolute paths; proposal and request text enter
+only as digests. The proposal fetches `origin/main` first and refuses when `HEAD`
+does not contain it.
+
+`python3 tools/validation_contract.py gate --base <publication base>` admits a
+documentation-only range without a spec and otherwise fails immediately unless the
+candidate's spec was sealed within that range, recomputes and covers every changed
+path. `ci` additionally runs the spec's selected commands. Local lane admission also
+requires the exact spec to match an APPROVED native proposal record in
+`.git/oracle/proposals/`. A current v1 contract is superseded only by a native
+revision naming its `contract_sha256`; nobody reseals a contract by hand.
+
+The proposal launcher runs `--engine claude|codex|auto` (or `BOC_ORACLE_ENGINE`).
+Claude runs `claude -p --output-format json --json-schema` with `--restricted`,
+`--strict-mcp-config` and only Read, Grep and Glob; inputs outside the checkout,
+such as the declared family authority, arrive as hash-bound prompt copies.
+
 ## Feature design approval
 
 A feature design includes a test plan. A `feature` selection names its design

@@ -1,4 +1,4 @@
-import copy,json,subprocess,sys,tempfile,unittest
+import copy,hashlib,json,os,subprocess,sys,tempfile,unittest
 from pathlib import Path
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
@@ -6,20 +6,31 @@ from tools import validation_contract as v
 from tools import command_coverage as cc
 from tools import oracle_approval as oracle
 
+def stamp(proposal,**change):
+ return {'engine':'codex','model':'synthetic-model','oracle_sha256':'a'*64,'host':'synthetic-host','time':'2026-11-11T00:00:00Z','origin_main':'b'*40,'request_sha256':None,'proposal_sha256':hashlib.sha256(proposal.encode()).hexdigest(),**change}
+
+def reseal(value):
+ value=copy.deepcopy(value);value.pop('seal',None);value.pop('contract_sha256',None);value['contract_sha256']=v.digest(value);value['seal']=v.spec_seal.compute_seal(value);return value
+
 class Contracts(unittest.TestCase):
+ def seal(self,selection,proposal,review,base=None):return v.seal(self.root,selection,proposal,review,base=base,stamp=stamp(proposal))
  def setUp(self):
+  environment=patch.dict(os.environ,{'BOC_ORACLE_ENGINE':'codex'});environment.start();self.addCleanup(environment.stop)
+  origin=patch.object(oracle,'_fresh_origin',return_value='b'*40);origin.start();self.addCleanup(origin.stop)
   self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)
   self.catalog={'schema':'boc.validation-catalog/v1','classes':copy.deepcopy(v.CLASSES),'sla_seconds':copy.deepcopy(v.SLA_SECONDS),'maximum_reasoning_effort':'medium','regression':[{'test':'tests/regression.test.mjs','recurrence':'Synthetic recurrence','boundary':'Synthetic boundary'}]}
   for d in ['tools','tests']: (self.root/d).mkdir()
   (self.root/v.CATALOG).write_text(json.dumps(self.catalog));(self.root/'package.json').write_text(json.dumps({'scripts':{'check:privacy':'node -e "process.exit(0)"','check:publication':'node -e "process.exit(0)"'}}))
   (self.root/'tools/validation_contract.py').write_bytes(Path(v.__file__).read_bytes())
+  (self.root/'tools/oracle_spec_seal.py').write_bytes(Path(v.spec_seal.__file__).read_bytes())
   (self.root/'source.mjs').write_text('export default false;\n')
   (self.root/'tests/regression.test.mjs').write_text("import test from 'node:test';test('synthetic recurrence',()=>{});\n")
   self.git('init','-q');self.git('config','user.name','Synthetic');self.git('config','user.email','synthetic@example.invalid');self.commit()
  def git(self,*args): return subprocess.check_output(['git',*args],cwd=self.root,stderr=subprocess.DEVNULL).decode().strip()
  def commit(self):self.git('add','-A');self.git('commit','-qm','synthetic');return self.git('rev-parse','HEAD')
  def selection(self,kind='bug_fix'):
-  s={'change_class':kind,'scope_paths':['source.mjs','tests/*'],'categories':[{'name':n,'tests':['tests/reproduction.test.mjs'] if n not in ['sanity','regression'] else [],'fixtures':[]} for n in v.CLASSES[kind]],'reason':'Synthetic exact coverage','revision_of':None}
+  s={'change_class':kind,'scope_paths':['source.mjs','tests/*'],'categories':[{'name':n,'tests':['tests/reproduction.test.mjs'] if n not in ['sanity','regression'] else [],'fixtures':[]} for n in v.CLASSES[kind]],'reason':'Synthetic exact coverage','revision_of':None,
+     'acceptance':[] if kind=='docs_only' else ['Synthetic criterion'],'acceptance_tests':[] if kind=='docs_only' else [{'module':'tests/reproduction.test.mjs','covers':[0],'purpose':'Synthetic proof'}]}
   if kind=='feature':s['design']='design/synthetic.md'
   return s
  def plan(self,design='design/synthetic.md',**change):
@@ -27,7 +38,7 @@ class Contracts(unittest.TestCase):
   (self.root/'design').mkdir(exist_ok=True);(self.root/'design/synthetic.md').write_text('# Synthetic design\n');(self.root/'design/other.md').write_text('# Other design\n')
   value={'kind':v.PLAN_KIND,'feature':'Synthetic feature','design':design,'design_sha256':v.sha256((self.root/design).read_bytes()),'runtime_paths':['source.mjs'],'tests':[{'module':'tests/reproduction.test.mjs','covers':['source.mjs'],'purpose':'Synthetic proof'}],**change}
   (self.root/'design/synthetic.test-plan.json').write_text(json.dumps(value));return value
- def seal_feature(self):return v.seal(self.root,self.selection('feature'),'synthetic proposal',{'verdict':'APPROVED'})
+ def seal_feature(self):return self.seal(self.selection('feature'),'synthetic proposal',{'verdict':'APPROVED'})
  def test_feature_design_without_a_test_plan_is_refused_even_after_an_approved_verdict(self):
   (self.root/'design').mkdir();(self.root/'design/synthetic.md').write_text('# Synthetic design\n')
   with self.assertRaisesRegex(ValueError,'must include a test plan document: design/synthetic.test-plan.json'):self.seal_feature()
@@ -78,13 +89,13 @@ class Contracts(unittest.TestCase):
   (self.root/'design/synthetic.md').unlink();(self.root/'design/synthetic.test-plan.json').unlink();(self.root/'design/other.md').unlink();self.commit()
   self.assertEqual(v.verify(self.root)['contract_sha256'],c['contract_sha256'])
   for forged in [lambda x:x.pop('design_binding'),lambda x:x['design_binding'].update(tests=[]),lambda x:x['design_binding'].update(design='design/other.md')]:
-   value=copy.deepcopy(c);forged(value);value.pop('contract_sha256');value['contract_sha256']=v.digest(value)
+   value=copy.deepcopy(c);forged(value);value=reseal(value)
    (self.root/v.SELECTION).write_text(json.dumps(value));self.commit()
    with self.assertRaisesRegex(ValueError,'lacks its bound test plan'):v.verify(self.root)
  def publish(self,kind='bug_fix',fixtures=None):
   s=self.selection(kind)
   if fixtures:s['categories'][1]['fixtures']=fixtures
-  c=v.seal(self.root,s,'synthetic proposal',{'verdict':'APPROVED'});v.write_selection(self.root,c);return c
+  c=self.seal(s,'synthetic proposal',{'verdict':'APPROVED'});v.write_selection(self.root,c);return c
  def test_native_proposal_dispatch_seals_the_selection_schema_without_mutating_base(self):
   schema_path=self.root/'.agents/skills/oracle/review-output.schema.json';schema_path.parent.mkdir(parents=True)
   original=json.dumps({'type':'object','properties':{},'required':[]});schema_path.write_text(original)
@@ -129,7 +140,7 @@ class Contracts(unittest.TestCase):
    with self.assertRaises(ValueError):v.validate_selection(s,self.catalog)
   c=self.publish()
   with self.assertRaisesRegex(ValueError,'revision'):self.publish()
-  self.commit();revised=self.selection();revised['revision_of']=c['contract_sha256'];self.assertEqual(v.seal(self.root,revised,'revision',{})['selection']['revision_of'],c['contract_sha256'])
+  self.commit();revised=self.selection();revised['revision_of']=c['contract_sha256'];self.assertEqual(self.seal(revised,'revision',{})['selection']['revision_of'],c['contract_sha256'])
  def test_no_empty_skip_partial_or_exit_only_pass(self):
   def tap(tests=2,passed=2,fail=0,skipped=0,todo=0,cancelled=0):return ''.join(f'# {k} {val}\n' for k,val in [('tests',tests),('pass',passed),('fail',fail),('skipped',skipped),('todo',todo),('cancelled',cancelled)])
   self.assertTrue(v.result_summary(tap(),0,True)['passed'])
@@ -160,12 +171,12 @@ class Contracts(unittest.TestCase):
   with self.assertRaisesRegex(ValueError,'outside'):v.verify(self.root)
  def test_selection_preserves_initial_immutable_base_when_unadopted_source_moves(self):
   base=self.git('rev-parse','HEAD');(self.root/'source.mjs').write_text('concurrent change');self.commit()
-  contract=v.seal(self.root,self.selection(),'Synthetic proposal',{},base=base)
+  contract=self.seal(self.selection(),'Synthetic proposal',{},base=base)
   self.assertEqual(contract['base_commit'],base);self.assertNotEqual(contract['base_commit'],self.git('rev-parse','HEAD'))
  def test_bootstrap_is_only_for_proposal_base_without_catalog(self):
   with self.assertRaisesRegex(ValueError,'select validation'):v.admit(self.root,self.git('rev-parse','HEAD^{tree}'),{'base_commit':self.git('rev-parse','HEAD')})
  def test_docs_class_rejects_executable_instruction_changes(self):
-  c=self.publish('docs_only');c['selection']['scope_paths']=['AGENTS.md'];c['contract_sha256']=v.digest({k:val for k,val in c.items() if k!='contract_sha256'});(self.root/v.SELECTION).write_text(json.dumps(c));(self.root/'AGENTS.md').write_text('changed policy');self.commit()
+  c=self.publish('docs_only');c['selection']['scope_paths']=['AGENTS.md'];c=reseal(c);(self.root/v.SELECTION).write_text(json.dumps(c));(self.root/'AGENTS.md').write_text('changed policy');self.commit()
   with self.assertRaisesRegex(ValueError,'docs_only'):v.verify(self.root)
  def test_hard_delivery_budgets_reasoning_and_no_automatic_expansion(self):
   self.assertEqual(v.SLA_SECONDS,{'docs_only':120,'bug_fix':180,'deep_bug_fix':300,'feature':300})
@@ -175,6 +186,6 @@ class Contracts(unittest.TestCase):
   simple=self.selection();simple['categories'].append({'name':'interactions','tests':['tests/extra.test.mjs'],'fixtures':[]})
   with self.assertRaisesRegex(ValueError,'higher risk'):v.validate_selection(simple,self.catalog)
   c=self.publish('bug_fix');self.assertEqual(v.review_effort('ultra',self.root),'low');self.assertEqual(c['delivery_policy']['sla_seconds'],180)
-  self.commit();next_selection=self.selection();next_selection['revision_of']=c['contract_sha256'];revised=v.seal(self.root,next_selection,'revision',{})
+  self.commit();next_selection=self.selection();next_selection['revision_of']=c['contract_sha256'];revised=self.seal(next_selection,'revision',{})
   self.assertEqual(revised['delivery_policy'],c['delivery_policy'])
 if __name__=='__main__':unittest.main()

@@ -32,6 +32,14 @@ class PackageGateTests(unittest.TestCase):
         self.commands = patch.object(d, 'CHECKS', [[sys.executable, '-c', 'print("actual command")']])
         self.commands.start()
         self.addCleanup(self.commands.stop)
+        # The sealed-spec gate has its own real-fixture tests (oracle_spec_test.py); lane tests isolate lane custody.
+        self.gate = patch.object(d.contract, 'gate', return_value={'status': 'DOCS_ONLY', 'paths': []})
+        self.gate.start()
+        self.addCleanup(self.gate.stop)
+
+    def real_gate(self):
+        self.gate.stop()
+        self.addCleanup(self.gate.start)
 
     def git(self, *args):
         return subprocess.check_output(['git', *args], cwd=self.root, text=True,
@@ -277,15 +285,24 @@ class PackageGateTests(unittest.TestCase):
         self.commit()
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         with patch.object(d, 'RETIRED_SELECTION_SHA256', frozenset({digest})):
-            with self.assertRaisesRegex(ValueError, 'Existing selected'):
-                d.scope(self.root, self.base, self.git('rev-parse', 'HEAD'))
+            self.gate.stop()
+            try:
+                # A retained retired v1 blob is never this changelist's sealed spec.
+                with self.assertRaises(ValueError):
+                    d.scope(self.root, self.base, self.git('rev-parse', 'HEAD'))
+            finally:
+                self.gate.start()
             path.unlink()
             self.commit()
             self.assertIn(d.RETIRED_SELECTION, d.scope(self.root, self.base, self.git('rev-parse', 'HEAD')))
             path.write_text('retired immutable bytes')
             self.commit()
-            with self.assertRaisesRegex(ValueError, 'Existing selected'):
-                d.scope(self.root, self.base, self.git('rev-parse', 'HEAD'))
+            self.gate.stop()
+            try:
+                with self.assertRaises(ValueError):
+                    d.scope(self.root, self.base, self.git('rev-parse', 'HEAD'))
+            finally:
+                self.gate.start()
 
     def test_unknown_retired_selection_even_if_removed_is_rejected(self):
         path = self.root / d.RETIRED_SELECTION

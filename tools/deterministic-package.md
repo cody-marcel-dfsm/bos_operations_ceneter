@@ -29,6 +29,14 @@ deletions and unrelated reference or test paths remain inadmissible. The complet
 fixed category includes both mapped regressions and the verifier's full negative
 suite; changed profile, commands, source or publication base invalidate readiness.
 
+Owner direction of 2026-11-11 applies the sealed Oracle spec to this lane too: the
+range must carry its own sealed `tools/validation-selection.json`
+(`tools/validation-contract.md`), recomputed by `validate`, `verify` and CI, and
+local validation requires its matching APPROVED native proposal record. Sealed
+spec revisions inside the range are admitted beside the pinned retired blobs;
+unpinned v1 selections remain inadmissible. Only the proposal-to-spec step uses a
+model; this lane's verification stays deterministic.
+
 From clean committed canonical main, after fetching and integrating origin/main:
 
 ```sh

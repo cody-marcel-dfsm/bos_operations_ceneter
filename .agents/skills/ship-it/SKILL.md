@@ -23,6 +23,20 @@ Ordinary agents invoke the native Oracle and never adopt its approver role.
 
 # Ship It
 
+## Sync and sealed spec before publication — owner direction, 2026-11-11
+
+Before validation and again immediately before any publication command:
+
+```sh
+git fetch origin
+git merge-base --is-ancestor origin/main HEAD || git merge --no-edit origin/main
+python3 tools/validation_contract.py gate --base "$(git rev-parse origin/main)"
+```
+
+A non-docs range without its own valid sealed `tools/validation-selection.json`
+stops here; obtain it through `npm run oracle:proposal`. When the merge moved
+`main`, rerun the spec's selected categories before publishing.
+
 ## Deterministic skill-package release — controlling owner correction
 
 For the owner-authorized bounded skill/release-tool profile, first apply

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Issue and verify tree-bound Operations Center approvals."""
 from __future__ import annotations
-import argparse, ast, hashlib, json, os, re, stat, subprocess, sys, time, platform, shutil, shlex, tempfile
+import argparse, ast, hashlib, json, os, re, socket, stat, subprocess, sys, time, platform, shutil, shlex, tempfile
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from contextvars import ContextVar
@@ -68,6 +68,119 @@ fetch and a current full-range assessment; technical work remains available.
 LEAD_GRAPH_REVIEW = """For changes affecting CRM record lookup routing, skill composition, or graph presentation, explicitly inspect the recurring graph-omission history in Vault/docs/issues/ISSUE_HISTORY.md, Issue #0008, and the October 8 focused student-workflow exception in Issue #0026. Trace the shared source/platform/bos-mcp-client/references/record-journey-display.md contract through each applicable canonical and generated entrypoint. Require focused tests/lead-graph-regression.test.mjs evidence: a successful named lead/contact lookup retains its graph completion rule after a workspace clarification; available topology includes the current node and every intermediate node and edge to a resolved goal; the default view contains one compact preferred route, with a shortest structural fallback and full topology only on explicit request; a partial graph cites the exact missing read and preserves verified state without invented topology. Preserve app-ranking provenance, explicit shortest/text/full-graph requests, and focused student lookup/state-comparison scope. Reject a source candidate that removes this rule, crowds the default with off-route branches and loops, suppresses verified topology because actions/history are empty, or weakens these regressions. Require plain-text node and edge labels with diagram-native emphasis; reject added literal or escaped HTML formatting in labels and require the corresponding response regression cases. Require advertised native inline visualization tools to take priority over Mermaid, allow Mermaid only with established host rendering support, and reject ASCII routes or unrendered Mermaid as graph completion. Keep internal identifiers and unsolicited off-route explanations out of normal graph delivery. Require delivery-selector regressions against the Claude Code raw-code failure shape and generated-script behavior. Distinguish deterministic source/response-contract checks from observed published-client acceptance: synthetic responses and passing prose/reference checks cannot establish native prompt success. Keep the recurring incident open until version-bound published-client output proves both automatic graph completion and compact path presentation; normal source readiness may proceed with that acceptance explicitly pending."""
 
 class OracleApprovalError(RuntimeError): pass
+
+# Owner direction 2026-11-11: the local Oracle runs under claude or codex.
+ENGINES = ("claude", "codex")
+CLAUDE_READ_TOOLS = "Read,Grep,Glob"
+CLAUDE_DEFAULT_MODEL = "claude-cli-default"
+NESTED_CLAUDE_VARIABLES = ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT")
+
+
+def oracle_engine(environ=None) -> str:
+    """--engine/BOC_ORACLE_ENGINE; auto follows the current harness. No fallback."""
+    environ = os.environ if environ is None else environ
+    requested = (environ.get("BOC_ORACLE_ENGINE") or "auto").strip()
+    if requested in ENGINES:
+        return requested
+    if requested != "auto":
+        raise OracleApprovalError("Unknown Oracle engine: " + requested)
+    return "claude" if environ.get("CLAUDECODE") else "codex"
+
+
+def _engine_settings() -> tuple[str, str | None]:
+    if oracle_engine() == "claude":
+        model = (os.environ.get("BOC_ORACLE_CLAUDE_MODEL") or "").strip()
+        return model or CLAUDE_DEFAULT_MODEL, None
+    return selected_model(), validation_contract.review_effort(selected_reasoning_effort())
+
+
+def _claude_command(prompt: str, schema_text: str, developer_instructions: str, model: str) -> list[str]:
+    """Read-only, schema-bound, MCP-free Claude reviewer; the prompt follows `--`."""
+    command = ["claude", "-p", "--output-format", "json", "--json-schema", schema_text,
+               "--restricted", "--strict-mcp-config", "--tools", CLAUDE_READ_TOOLS,
+               "--allowedTools", CLAUDE_READ_TOOLS, "--no-session-persistence",
+               "--append-system-prompt", developer_instructions]
+    if model != CLAUDE_DEFAULT_MODEL:
+        command += ["--model", model]
+    return command + ["--", prompt]
+
+
+CLAUDE_ARGUMENT_LIMIT = 120 * 1024
+
+
+def _claude_external_inputs(root: Path, prompt: str) -> tuple[str, dict]:
+    """Hash-bound copies of required inputs outside the checkout (--restricted cannot read them)."""
+    inside = root.resolve()
+    names = dict(_declared_parent_authorities(root))
+    for candidate in sorted(set(re.findall(r'"(/[^"\\]+)"', prompt))):
+        path = Path(candidate)
+        if path.is_file() and not path.resolve().is_relative_to(inside):
+            names.setdefault(str(path), _custody_read(root, str(path))[0]["sha256"])
+    blocks, digests = [], {}
+    for name, expected in sorted(names.items()):
+        if expected is None:
+            raise OracleApprovalError("Required external authority is inaccessible to the Claude reviewer: " + name)
+        try:
+            meta, raw = _custody_read(root, name)
+        except (OSError, OracleApprovalError) as exc:
+            raise OracleApprovalError("Required external authority is inaccessible to the Claude reviewer: " + name) from exc
+        if meta["sha256"] != expected:
+            raise OracleApprovalError("External authority changed before the Claude reviewer launch: " + name)
+        digests[name] = expected
+        blocks.append('<external-input path="%s" sha256="%s">\n%s\n</external-input>' % (name, expected, raw.decode("utf-8")))
+    if not blocks:
+        return "", digests
+    return ("\nExternal governing inputs outside the repository (exact hash-bound read-only copies; your file tools "
+            "cannot reach these paths, so read them here):\n" + "\n".join(blocks)), digests
+
+
+def _claude_answer(stdout: str, requested: str) -> tuple[dict, str]:
+    """Structured answer and actual model from a Claude JSON envelope."""
+    try:
+        envelope = json.loads(stdout)
+    except ValueError as exc:
+        raise OracleApprovalError("Claude Oracle returned non-JSON output") from exc
+    if not isinstance(envelope, dict) or envelope.get("is_error"):
+        raise OracleApprovalError("Claude Oracle reported an error: " + str(envelope.get("result") if isinstance(envelope, dict) else envelope)[-2000:])
+    answer = envelope.get("structured_output")
+    if answer is None:
+        try:
+            answer = json.loads(envelope.get("result") or "")
+        except ValueError as exc:
+            raise OracleApprovalError("Claude Oracle returned no structured answer") from exc
+    if not isinstance(answer, dict):
+        raise OracleApprovalError("Claude Oracle answer is not an object")
+    usage = envelope.get("modelUsage")
+    model = requested if requested != CLAUDE_DEFAULT_MODEL else (next(iter(usage)) if isinstance(usage, dict) and usage else None)
+    if not isinstance(model, str) or not model.strip():
+        raise OracleApprovalError("Claude Oracle reported no model identity")
+    return answer, model
+
+
+def _fresh_origin(root: Path) -> str:
+    """Fetch origin/main and require HEAD to contain it; return the fetched commit."""
+    fetched = subprocess.run(["git", "fetch", "origin", "main"], cwd=root, capture_output=True, text=True)
+    if fetched.returncode:
+        raise OracleApprovalError("Cannot fetch origin/main: " + fetched.stderr.strip()[-500:])
+    base = _git(root, "rev-parse", "origin/main^{commit}").strip()
+    if subprocess.run(["git", "merge-base", "--is-ancestor", base, "HEAD"], cwd=root, capture_output=True).returncode:
+        raise OracleApprovalError("Local main does not contain fetched origin/main " + base + "; integrate it first")
+    return base
+
+
+def _spec_stamp(root: Path, proposal: str, request_bytes: bytes | None, origin: str, settings: dict) -> dict:
+    run = _RUN.get()
+    actual = run / "engine-model.json" if run is not None else None
+    if actual is not None and actual.is_file():
+        identity = json.loads(_custody_read(root, actual)[1])
+    else:
+        identity = {"engine": oracle_engine(), "model": settings.get("model")}
+    return {"engine": identity["engine"], "model": identity["model"],
+            "oracle_sha256": validation_contract.oracle_sha256(root), "host": socket.gethostname(),
+            "time": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "origin_main": origin,
+            "request_sha256": _sha(request_bytes) if request_bytes is not None else None,
+            "proposal_sha256": _sha(proposal.encode())}
+
 class OracleCandidateRejected(OracleApprovalError): pass
 class OracleReviewIncomplete(OracleApprovalError): pass
 class OracleSourceBindingError(OracleApprovalError): pass
@@ -446,7 +559,8 @@ def _vault_sources(root: Path) -> dict:
 
 def _review_settings_binding() -> dict:
     try:
-        return {"model": selected_model(), "reasoning_effort": validation_contract.review_effort(selected_reasoning_effort())}
+        model, effort = _engine_settings()
+        return {"model": model, "reasoning_effort": effort}
     except (RuntimeError, ValueError) as exc:
         # Preserve a managed source checkpoint before the normal launcher
         # reports its structured configuration error; never select a fallback.
@@ -855,7 +969,8 @@ def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path |
     output = run / "result.json"
     schema_path = schema_path or root / ".agents/skills/oracle/review-output.schema.json"
     try:
-        model, effort = selected_model(), validation_contract.review_effort(selected_reasoning_effort())
+        engine = oracle_engine()
+        model, effort = _engine_settings()
     except (RuntimeError, ValueError) as exc:
         raise OracleApprovalError(
             f"Independent Oracle model resolution failed ({type(exc).__name__}): {exc}; "
@@ -864,18 +979,25 @@ def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path |
     expected_settings = _PREPARED_SETTINGS.get()
     if expected_settings is not None and expected_settings != {"model": model, "reasoning_effort": effort}:
         raise OracleApprovalError("Selected Oracle model/effort changed before launch")
+    external_digests = None
+    if engine == "claude":
+        external, external_digests = _claude_external_inputs(root, prompt)
+        prompt += external
     developer_instructions = "\n\n".join((REVIEWER_ROLE, NORMAL_PLAN_REVIEW_POLICY,
                                          LOCAL_EXECUTION_POLICY, REVIEW_SERIES_POLICY,
                                          DEPLOYMENT_PLACEMENT_POLICY))
     if cohort_policy is not None:
         developer_instructions += "\n\n" + cohort_policy
-    metadata = {"selected_model": model, "reasoning_effort": effort,
-                "sandbox": "danger-full-access", "ephemeral": True,
+    metadata = {"engine": engine, "selected_model": model, "reasoning_effort": effort,
+                "sandbox": "danger-full-access" if engine == "codex" else "read-only-tools:" + CLAUDE_READ_TOOLS,
+                "ephemeral": True,
                 "ignore_user_config": True,
                 "reviewer_role": "independent-oracle-approver",
                 "developer_instructions_sha256": _sha(developer_instructions.encode()),
                 "schema_sha256": _custody_read(root, schema_path)[0]["sha256"],
                 "model_helper_sha256": _custody_read(root, root / "tools/codex_child_model.py")[0]["sha256"]}
+    if external_digests is not None:
+        metadata["external_inputs"] = external_digests
     _atomic_write(run / "model.json", _pretty(metadata))
     prompt += "\nReviewer process configuration:\n" + json.dumps(metadata, sort_keys=True)
     _atomic_write(run / "request.txt", prompt.encode())
@@ -890,6 +1012,11 @@ def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path |
         environment["CODEX_SELECTED_REASONING_EFFORT"] = effort
     else:
         environment.pop("CODEX_SELECTED_REASONING_EFFORT", None)
+    if engine == "claude":
+        cmd = _claude_command(prompt, _custody_read(root, schema_path)[1].decode(), developer_instructions, model)
+        if any(len(part.encode()) > CLAUDE_ARGUMENT_LIMIT for part in cmd):
+            raise OracleApprovalError("Claude reviewer launch argument exceeds its bounded size; diagnostics retained at " + str(run))
+        environment = {key: value for key, value in os.environ.items() if key not in NESTED_CLAUDE_VARIABLES}
     budget = _DISPATCH_BUDGET.get()
     if budget is not None:
         # Measure the actual complete native argv and artifact bytes after all
@@ -920,6 +1047,13 @@ def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path |
     _atomic_write(run / "stderr.log", completed.stderr.encode())
     if completed.returncode:
         raise OracleApprovalError("Independent Oracle process failed; diagnostics retained at " + str(run))
+    if engine == "claude":
+        try:
+            answer, model = _claude_answer(completed.stdout, model)
+        except OracleApprovalError as exc:
+            raise OracleApprovalError(str(exc) + "; diagnostics retained at " + str(run)) from exc
+        _atomic_write(output, _pretty(answer))
+    _atomic_write(run / "engine-model.json", _pretty({"engine": engine, "model": model}))
     try:
         return json.loads(_custody_read(root, output)[1])
     except (OSError, json.JSONDecodeError) as exc:
@@ -2920,7 +3054,7 @@ def _oracle(root: Path, tree: str, paths: list[str], evidence: dict[str,str], ow
     # Configuration failures precede area preparation and reviewer timing. The
     # native attempt retains their structured failure without launching a cohort.
     try:
-        selected_model(), validation_contract.review_effort(selected_reasoning_effort())
+        _engine_settings()
     except (RuntimeError, ValueError) as exc:
         raise OracleApprovalError(
             f"Independent Oracle model resolution failed ({type(exc).__name__}): {exc}; "
@@ -2972,7 +3106,7 @@ Return JSON matching the supplied schema. Verify the stated problem and cause, c
         schema["required"].append("validation_selection")
         schema_path = _RUN.get() / "proposal-contract.schema.json"
         _atomic_write(schema_path, _pretty(schema))
-        prompt += "\nSelect validation_selection before implementation from this exact catalog. Use bounded scope_paths and exact planned test paths and supporting fixture paths under tests/; fixed sanity/regression fixtures are empty; bug_fix permits only small deterministic fail-before/pass-after reproduction and sanity, no integration or automatic wider regression; auth/security/cross-area or unknown impact is deep_bug_fix with all relevant interactions; feature requires thorough acceptance; docs_only minimal document sanity. Rank/pare before freezing, then run every selected test. Fixed end-to-end budgets are docs_only120s/bug_fix180s/deep_bug_fix300s/feature300s; the build host retains original insertion through retries and publication. Low reasoning for simple work, medium maximum, no paid fallback. Existing tests are not automatically added to the curated recurrence registry. Every revision names the current contract hash, never changes original evidence. Catalog: " + json.dumps(catalog, sort_keys=True)
+        prompt += "\nSelect validation_selection before implementation from this exact catalog. Use bounded scope_paths and exact planned test paths and supporting fixture paths under tests/; fixed sanity/regression fixtures are empty; bug_fix permits only small deterministic fail-before/pass-after reproduction and sanity, no integration or automatic wider regression; auth/security/cross-area or unknown impact is deep_bug_fix with all relevant interactions; feature requires thorough acceptance; docs_only minimal document sanity. Rank/pare before freezing, then run every selected test. Fixed end-to-end budgets are docs_only120s/bug_fix180s/deep_bug_fix300s/feature300s; the build host retains original insertion through retries and publication. Low reasoning for simple work, medium maximum, no paid fallback. Existing tests are not automatically added to the curated recurrence registry. Every revision names the current contract hash, never changes original evidence. The sealed selection is the self-contained implementation spec (owner direction 2026-11-11): give concrete, checkable acceptance criteria and acceptance_tests mapping every criterion (by index) to at least one selected focused/interactions/acceptance test module; docs_only may leave both empty. acceptance, acceptance_tests purposes and reason are committed and published: write general requirements with no secrets, credentials, tenant or customer data, person names, local absolute paths, ticket identifiers or quoted private request, proposal or Vault text. Catalog: " + json.dumps(catalog, sort_keys=True)
         previous = root / validation_contract.SELECTION
         prompt += "\nCurrent contract: " + (previous.read_text() if previous.exists() else "none; revision_of must be null")
         return _review_process(root, prompt, "proposal_reviewer", schema_path=schema_path)
@@ -2989,9 +3123,11 @@ def _proposal_guards(root: Path, evidence: dict, owner: dict | None) -> dict:
 
 
 @_serialized_review
-def review_proposal(root: Path, request: str, evidence_paths: Sequence[str], owner_path: str | None, reviewer: Callable = _proposal_oracle) -> dict[str,Any]:
+def review_proposal(root: Path, request: str, evidence_paths: Sequence[str], owner_path: str | None, reviewer: Callable = _proposal_oracle,
+                    *, request_bytes: bytes | None = None) -> dict[str,Any]:
     with _phase("precheck_seconds"):
         if not request.strip(): raise OracleApprovalError("Oracle proposal review requires a proposal")
+        origin = _fresh_origin(root) if (root / validation_contract.CATALOG).exists() else None
         evidence = _files(root, evidence_paths)
         owner = _files(root, [owner_path]) if owner_path else None
         binding = _input_binding(root, evidence, owner)
@@ -3044,7 +3180,8 @@ def review_proposal(root: Path, request: str, evidence_paths: Sequence[str], own
     }
     contract = None
     if review["verdict"] == "APPROVED" and (root / validation_contract.CATALOG).exists():
-        contract = validation_contract.seal(root, review.get("validation_selection", {}), request, review, base=binding["base_commit"])
+        contract = validation_contract.seal(root, review.get("validation_selection", {}), request, review, base=binding["base_commit"],
+                                            stamp=_spec_stamp(root, request, request_bytes, origin, binding["reviewer_settings"]))
         payload["validation_contract"] = contract
     # Proposal refreshes remain in the same unfinished descendant lifecycle.
     # Preserve the previous proposal bytes as evidence before replacing its pointer.
@@ -3410,12 +3547,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     p=argparse.ArgumentParser(); sub=p.add_subparsers(dest="cmd",required=True)
     review=sub.add_parser("review"); review.add_argument("--evidence",action="append",default=[]); review.add_argument("--owner-approval"); review.add_argument("--proposal-record", type=Path)
     proposal=sub.add_parser("proposal"); proposal.add_argument("request",nargs="?"); proposal.add_argument("--evidence",action="append",default=[]); proposal.add_argument("--owner-approval")
+    proposal.add_argument("--request-file", type=Path, help="Original feedback request; only its SHA-256 enters the spec stamp")
+    for command in (review, proposal):
+        command.add_argument("--engine", choices=("claude", "codex", "auto"), help="Oracle LLM CLI; auto: CLAUDECODE selects claude, else codex")
     validation = sub.add_parser("validate"); validation.add_argument("--output", type=Path, required=True)
     validation.add_argument("--input", action="append", default=[])
     validation.add_argument("--env-input", action="append", default=[])
     validation.add_argument("command", nargs=argparse.REMAINDER)
     sub.add_parser("verify-proposal"); sub.add_parser("verify-staged"); a=sub.add_parser("apply-trailers"); a.add_argument("path",type=Path); m=sub.add_parser("verify-message"); m.add_argument("path",type=Path); v=sub.add_parser("verify-commit"); v.add_argument("commit",nargs="?",default="HEAD"); r=sub.add_parser("verify-range"); r.add_argument("start"); r.add_argument("end")
     args=p.parse_args(argv); root=repository_root()
+    if getattr(args, "engine", None):
+        os.environ["BOC_ORACLE_ENGINE"] = args.engine
     try:
         if args.cmd == "validate":
             command = args.command[1:] if args.command[:1] == ["--"] else args.command
@@ -3439,7 +3581,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"APPROVED {receipt['candidate_tree']}")
         elif args.cmd=="proposal":
             request = args.request or sys.stdin.read().strip()
-            result = review_proposal(root,request,args.evidence,args.owner_approval)
+            result = review_proposal(root,request,args.evidence,args.owner_approval,
+                                     request_bytes=args.request_file.read_bytes() if args.request_file else None)
             print(json.dumps(result,indent=2,sort_keys=True))
             if result["verdict"] != "APPROVED": return 1
         elif args.cmd=="verify-proposal": print(json.dumps(verify_proposal(root), sort_keys=True))

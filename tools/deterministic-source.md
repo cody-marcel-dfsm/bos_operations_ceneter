@@ -9,6 +9,11 @@ including later reverts. Existing selected contracts cannot be overridden.
 The validation contract tool, its document and its complete test module are in
 scope; that test module is one of the fixed checks.
 
+Owner direction of 2026-11-11: an executable maintenance range also carries its own
+sealed Oracle spec (`tools/validation-selection.json`, see
+`tools/validation-contract.md`); the lane admits that file and fails immediately
+when it is missing, stale or mismatched. Documentation-only ranges need none.
+
 Commit the source normally, then run:
 
 ```sh

@@ -11,13 +11,17 @@ import shutil
 import subprocess
 import sys
 import time
+try: from . import validation_contract as contract
+except ImportError: import validation_contract as contract
 
 KIND = 'boc-deterministic-source/1'
 REPOSITORY = 'cody-marcel-dfsm/bos_operations_ceneter'
 ALLOWED = {'AGENTS.md', 'tools/deterministic_source.py', 'tools/deterministic-source.md',
            'tests/deterministic_source_test.py', '.github/workflows/publication-safety.yml',
            '.agents/skills/operations-center-implementation/SKILL.md',
-           'tools/validation_contract.py', 'tools/validation-contract.md', 'tests/validation_contract_test.py'}
+           'tools/validation_contract.py', 'tools/validation-contract.md', 'tests/validation_contract_test.py',
+           # Owner direction 2026-11-11: every non-docs change carries its sealed Oracle spec.
+           'tools/validation-selection.json', 'tools/oracle_spec_seal.py'}
 CHECKS = [['npm', 'run', 'check:privacy'], ['npm', 'run', 'check:publication'],
           [sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'deterministic_source_test.py', '-v'],
           [sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'validation_contract_test.py', '-v']]
@@ -40,8 +44,7 @@ def scope(root, base, source):
             paths.update(git(root, 'diff', '--name-only', parent, commit).splitlines())
     if not paths or paths - ALLOWED:
         raise ValueError('Outside narrowly admitted source maintenance: '+repr(sorted(paths - ALLOWED)))
-    if (Path(root)/'tools/validation-selection.json').exists():
-        raise ValueError('A selected contract requires its native owner; no override')
+    contract.gate(root, base, source)  # Missing or mismatched sealed spec fails immediately.
     return sorted(paths)
 
 def runtime(root):
@@ -69,10 +72,11 @@ def private_write(path, value):
     path.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
     with path.open('xb') as stream:os.chmod(path,0o600);stream.write(value)
 
-def validate(root, base, requested_at):
+def validate(root, base, requested_at, *, ci=False):
     start=datetime.fromisoformat(requested_at.replace('Z','+00:00'))
     if start.tzinfo is None or start>datetime.now(timezone.utc):raise ValueError('Original request clock is required')
     before=identity(root);paths=scope(root,base,before['source']);runs=[];store=directory(root)
+    if not ci and contract.gate(root,base,before['source'])['status']=='SPEC_SEALED':contract.native_origin(root,before['source'])
     for command in CHECKS:
         began=time.time()
         try:
@@ -131,7 +135,7 @@ def main():
     if a.action=='ci':
         try:scope(root,a.base,git(root,'rev-parse','HEAD'))
         except ValueError:return subprocess.run([sys.executable,'tools/command_coverage.py','ci','--candidate',git(root,'rev-parse','HEAD')],cwd=root).returncode
-        value=validate(root,a.base,datetime.now(timezone.utc).isoformat());value['sla_status']='CI_PHASE_ONLY'
+        value=validate(root,a.base,datetime.now(timezone.utc).isoformat(),ci=True);value['sla_status']='CI_PHASE_ONLY'
     elif a.action=='validate':value=validate(root,a.base,a.requested_at)
     elif a.action=='verify':value=verify(root)
     else:value=publish(root,a.ref,a.pr if a.action=='merge' else None)

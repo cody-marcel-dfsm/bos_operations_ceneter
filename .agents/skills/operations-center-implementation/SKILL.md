@@ -3,6 +3,33 @@ name: operations-center-implementation
 description: Implement BOS Operations Center repository changes using its architecture, Vault, issue history, validation, repository boundary, and mandatory Oracle review requirements. Use for requests to change or fix repository behavior, including expected-versus-observed reports and screenshot-based defects, and for code, tests, skills, manifests, generated clients, documentation, and release changes. Use planning alone only when the user requests a plan.
 ---
 
+## Sync and sealed Oracle spec — owner direction, 2026-11-11
+
+Before any work, sync canonical `main` and record the base:
+
+```sh
+git fetch origin
+git merge --ff-only origin/main || git merge --no-edit origin/main
+git rev-parse origin/main
+```
+
+Write the proposal (and the original request, when there is one) under
+`Vault/tmp/<workflow>/`, then run `npm run oracle:proposal -- --engine auto
+--request-file Vault/tmp/<workflow>/request.txt --evidence <design> "<proposal>"`.
+The APPROVED result writes the sealed spec `tools/validation-selection.json`; never
+edit or reseal it. Implement within its scope, commit the spec with the change, and
+run every selected category with `python3 tools/validation_contract.py run
+--category <name>`. Before publication sync again:
+
+```sh
+git fetch origin
+git merge-base --is-ancestor origin/main HEAD || git merge --no-edit origin/main
+python3 tools/validation_contract.py gate --base "$(git rev-parse origin/main)"
+```
+
+When `origin/main` moved, rerun the selected categories on the integrated commit.
+Genuine documentation-only changes need no spec.
+
 ## Deterministic source maintenance
 
 For owner-authorized source-maintenance scope, follow

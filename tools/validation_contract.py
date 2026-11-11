@@ -4,6 +4,8 @@ from __future__ import annotations
 import argparse, fnmatch, hashlib, json, os, platform, re, shutil, subprocess, sys, tempfile
 from datetime import datetime, timezone
 from pathlib import Path
+try: from . import oracle_spec_seal as spec_seal
+except ImportError: import oracle_spec_seal as spec_seal
 
 CATALOG = 'tools/validation-catalog.json'
 SELECTION = 'tools/validation-selection.json'
@@ -11,7 +13,21 @@ CLASSES = {'docs_only': ['sanity'], 'bug_fix': ['sanity','focused'],
            'deep_bug_fix': ['sanity','focused','interactions'],
            'feature': ['sanity','interactions','acceptance']}
 SLA_SECONDS = {'docs_only':120, 'bug_fix':180, 'deep_bug_fix':300, 'feature':300}
-SELECTION_KEYS = {'change_class','scope_paths','categories','reason','revision_of'}
+SELECTION_KEYS = {'change_class','scope_paths','categories','reason','revision_of','acceptance','acceptance_tests'}
+SCHEMA = 'boc.validation-contract/v2'
+# The sealed contract is the family oracle-spec/1 implementation spec (owner direction 2026-11-11).
+STAMP_KEYS = {'engine','model','oracle_sha256','host','time','origin_main','request_sha256','proposal_sha256'}
+ENGINES = ('claude','codex')
+ORACLE_FILES = ('.agents/skills/oracle/SKILL.md','.agents/skills/oracle/review-output.schema.json',
+                'tools/oracle_approval.py','tools/validation_contract.py','tools/oracle_spec_seal.py')
+TESTED = {'focused','interactions','acceptance'}
+# Family secret patterns plus local absolute paths: committed spec text stays publishable.
+PRIVATE_PATTERNS = tuple(re.compile(p) for p in (
+    r'(?i)\bauthorization\s*:\s*(?:bearer|basic)\s+\S+', r'(?i)\bbearer\s+[a-z0-9._~+/=-]{12,}',
+    r'(?i)\b(?:cookie|set-cookie)\s*:\s*\S+', r'-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----',
+    r'\b(?:sk|pk)_(?:live|test)_[A-Za-z0-9]{12,}\b', r'\b(?:ghp|github_pat|xox[baprs]|AIza)[A-Za-z0-9_-]{12,}\b',
+    r'(?i)\b(?:api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret|password|private[_-]?key)\s*(?:=|:)\s*[^\s,;]{8,}',
+    r'(?:^|[\s"\'(=])(?:/home/|/Users/|/root/|[A-Za-z]:\\)'))
 PLAN_KIND = 'boc.feature-test-plan/v1'
 PLAN_KEYS = {'kind','feature','design','design_sha256','runtime_paths','tests'}
 PLAN_TEST_KEYS = {'module','covers','purpose'}
@@ -51,7 +67,9 @@ def catalog_check(catalog):
     return catalog
 
 def selection_schema():
-    return {'type':'object','additionalProperties':False,'required':['change_class','scope_paths','categories','reason','revision_of','design'], 'properties':{
+    return {'type':'object','additionalProperties':False,'required':['change_class','scope_paths','categories','reason','revision_of','design','acceptance','acceptance_tests'], 'properties':{
+      'acceptance':{'type':'array','items':{'type':'string'},'description':'Concrete, checkable, publishable acceptance criteria. Empty only for docs_only.'},
+      'acceptance_tests':{'type':'array','description':'Every acceptance criterion maps to at least one selected focused/interactions/acceptance test module.','items':{'type':'object','additionalProperties':False,'required':['module','covers','purpose'],'properties':{'module':{'type':'string'},'covers':{'type':'array','items':{'type':'integer'}},'purpose':{'type':'string'}}}},
       'change_class':{'type':'string','enum':list(CLASSES)},'scope_paths':{'type':'array','items':{'type':'string'},'minItems':1},
       'categories':{'type':'array','minItems':1,'items':{'type':'object','additionalProperties':False,'required':['name','tests','fixtures'],'properties':{'name':{'type':'string','enum':['sanity','focused','interactions','acceptance','regression']},'tests':{'type':'array','items':{'type':'string'}},'fixtures':{'type':'array','items':{'type':'string'}}}}},
       'reason':{'type':'string','minLength':1},'revision_of':{'type':['string','null']},
@@ -69,6 +87,7 @@ def validate_selection(selection,catalog):
     if kind in {'docs_only','bug_fix'} and names!=CLASSES[kind]: raise ValueError('Simple changes have only their fixed minimal categories; integration or higher risk requires deep_bug_fix')
     if not selection['reason'].strip() or not selection['scope_paths'] or any(not safe_path(p) for p in selection['scope_paths']): raise ValueError('Contract needs bounded scope and rationale')
     if selection['revision_of'] is not None and not re.fullmatch('[a-f0-9]{64}',selection['revision_of']): raise ValueError('Revision must name exact previous contract')
+    acceptance_check(selection)
     for row in categories:
         if set(row)!={'name','tests','fixtures'} or row['name'] not in {'sanity','focused','interactions','acceptance','regression'}: raise ValueError('Unknown category')
         tests=row['tests']; fixtures=row['fixtures']
@@ -79,6 +98,50 @@ def validate_selection(selection,catalog):
             if tests or fixtures: raise ValueError('Fixed categories cannot replace their catalog commands')
         elif not tests or any(not safe_path(p) or not p.startswith('tests/') or not p.endswith('.test.mjs') or any(c in p for c in '*?[]') for p in tests): raise ValueError('Test category requires exact nonempty test paths')
     return selection
+
+def private_matches(value, where='spec'):
+    """Field paths whose text looks like a secret or a local absolute path."""
+    if isinstance(value,str): return [where] if any(p.search(value) for p in PRIVATE_PATTERNS) else []
+    if isinstance(value,dict): return [hit for k,item in value.items() for hit in private_matches(item,where+'.'+str(k))]
+    if isinstance(value,list): return [hit for i,item in enumerate(value) for hit in private_matches(item,'%s[%d]'%(where,i))]
+    return []
+
+def acceptance_check(selection):
+    criteria=selection['acceptance'];rows=selection['acceptance_tests']
+    if not isinstance(criteria,list) or not all(text(c) for c in criteria) or not isinstance(rows,list): raise ValueError('Spec acceptance criteria must be nonempty strings')
+    if selection['change_class']=='docs_only':
+        if rows and not criteria: raise ValueError('Acceptance tests need acceptance criteria')
+    elif not criteria or not rows: raise ValueError('A spec needs acceptance criteria and the tests that must pass')
+    selected={t for r in selection['categories'] if r['name'] in TESTED for t in r['tests']};covered=set();names=[]
+    for row in rows:
+        if (not isinstance(row,dict) or set(row)!={'module','covers','purpose'} or row['module'] not in selected or not text(row['purpose'])
+                or not isinstance(row['covers'],list) or not row['covers']
+                or not all(isinstance(i,int) and not isinstance(i,bool) and 0<=i<len(criteria) for i in row['covers'])):
+            raise ValueError('Each acceptance test needs a selected test module, purpose and valid criterion indices')
+        covered.update(row['covers']);names.append(row['module'])
+    if len(set(names))!=len(names): raise ValueError('Acceptance tests repeat a module')
+    if set(range(len(criteria)))-covered: raise ValueError('Acceptance criteria without a test: '+str(sorted(set(range(len(criteria)))-covered)))
+    hits=private_matches({'reason':selection['reason'],'acceptance':criteria,'acceptance_tests':rows})
+    if hits: raise ValueError('Spec text must stay publishable; secret or local path in: '+', '.join(hits))
+
+def stamp_check(stamp):
+    hexes=lambda v,n: isinstance(v,str) and re.fullmatch('[0-9a-f]{%d}'%n,v) is not None
+    if (not isinstance(stamp,dict) or set(stamp)!=STAMP_KEYS or stamp['engine'] not in ENGINES
+            or not all(text(stamp[k]) for k in ('model','host')) or not hexes(stamp['oracle_sha256'],64)
+            or not hexes(stamp['proposal_sha256'],64) or not hexes(stamp['origin_main'],40)
+            or not (stamp['request_sha256'] is None or hexes(stamp['request_sha256'],64))
+            or not isinstance(stamp['time'],str) or not re.fullmatch(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z',stamp['time'])):
+        raise ValueError('Spec stamp needs engine, model, oracle_sha256, host, UTC time, origin_main, request_sha256 (or null) and proposal_sha256')
+    if private_matches({'model':stamp['model'],'host':stamp['host']}): raise ValueError('Spec stamp must stay publishable')
+    return stamp
+
+def oracle_sha256(root):
+    """SHA-256 over the Oracle's own skill and tool files, in fixed order."""
+    value=hashlib.sha256()
+    for name in ORACLE_FILES:
+        path=Path(root)/name
+        value.update(name.encode()+b'\0'+(sha256(path.read_bytes()) if path.is_file() else 'absent').encode()+b'\n')
+    return value.hexdigest()
 
 def plan_path(design): return design[:-len('.md')]+'.test-plan.json'
 def text(value): return isinstance(value,str) and bool(value.strip())
@@ -142,14 +205,19 @@ def commands(selection,catalog):
         result.append({'category':name,'argv':argv,'tests':tests,'fixtures':row['fixtures']})
     return result
 
-def seal(root,selection,proposal,review,base=None):
+def seal(root,selection,proposal,review,base=None,*,stamp):
     catalog=json.loads((root/CATALOG).read_text());validate_selection(selection,catalog)
     previous=json.loads((root/SELECTION).read_text()) if (root/SELECTION).exists() else None
     if selection['revision_of']!=(previous or {}).get('contract_sha256'): raise ValueError('Explicit revision does not name current original contract')
     base=base or git(root,'rev-parse','HEAD')
-    value={'schema':'boc.validation-contract/v1','selection':selection,'base_commit':base,'base_tree':git(root,'rev-parse',base+'^{tree}'),'catalog_sha256':digest(catalog),'runtime':runtime(),'proposal_sha256':hashlib.sha256(proposal.encode()).hexdigest(),'review_sha256':digest(review),'commands':commands(selection,catalog),'delivery_policy':delivery_policy(selection['change_class'])}
+    stamp_check(stamp)
+    if stamp['proposal_sha256']!=hashlib.sha256(proposal.encode()).hexdigest(): raise ValueError('Stamp is bound to a different proposal')
+    value={'schema':SCHEMA,'kind':spec_seal.KIND,'stamp':stamp,'selection':selection,'base_commit':base,'base_tree':git(root,'rev-parse',base+'^{tree}'),'catalog_sha256':digest(catalog),'runtime':runtime(),'proposal_sha256':hashlib.sha256(proposal.encode()).hexdigest(),'review_sha256':digest(review),'commands':commands(selection,catalog),'delivery_policy':delivery_policy(selection['change_class'])}
     if selection['change_class']=='feature': value['design_binding']=design_binding(root,selection)
-    value['contract_sha256']=digest(value);return value
+    value['contract_sha256']=digest(value)
+    hits=private_matches(value)
+    if hits: raise ValueError('Sealed spec must stay publishable; secret or local path in: '+', '.join(hits))
+    value['seal']=spec_seal.compute_seal(value);return value
 
 def write_selection(root,value):
     path=root/SELECTION
@@ -162,9 +230,13 @@ def write_selection(root,value):
 def verify(root,tree='HEAD',proposal=None):
     contract=blob(root,tree,SELECTION)
     if contract is None: return None # Bootstrap commits are separately admitted by native source review.
-    catalog=blob(root,tree,CATALOG); catalog_check(catalog)
-    body={k:v for k,v in contract.items() if k!='contract_sha256'}
-    if contract.get('schema')!='boc.validation-contract/v1' or contract.get('contract_sha256')!=digest(body): raise ValueError('Validation contract identity changed')
+    catalog=blob(root,tree,CATALOG)
+    if not isinstance(catalog,dict) or not isinstance(contract,dict): raise ValueError('Validation catalog or sealed spec is missing or malformed')
+    catalog_check(catalog)
+    body={k:v for k,v in contract.items() if k not in ('contract_sha256','seal')}
+    if contract.get('schema')!=SCHEMA or contract.get('contract_sha256')!=digest(body): raise ValueError('Validation contract identity changed')
+    if not spec_seal.seal_matches(contract): raise ValueError('Sealed Oracle spec does not recompute; obtain a fresh native proposal')
+    stamp_check(contract.get('stamp'))
     selection=validate_selection(contract['selection'],catalog)
     if contract.get('delivery_policy')!=delivery_policy(selection['change_class']): raise ValueError('Delivery policy changed; original host clock must survive revision')
     if contract['catalog_sha256']!=digest(catalog) or contract['commands']!=commands(selection,catalog): raise ValueError('Catalog or selected commands changed; obtain explicit Oracle revision')
@@ -178,8 +250,49 @@ def verify(root,tree='HEAD',proposal=None):
     for name in changed:
         if name==SELECTION: continue
         if not any(fnmatch.fnmatchcase(name,p) for p in selection['scope_paths']): raise ValueError('Changed path outside fixed selection: '+name)
-        if selection['change_class']=='docs_only' and (not name.endswith('.md') or name.startswith(('.agents/','source/','clients/')) or name=='AGENTS.md'): raise ValueError('Executable instructions or non-document change cannot use docs_only')
+        if selection['change_class']=='docs_only' and not documentation(name): raise ValueError('Executable instructions or non-document change cannot use docs_only')
     return contract
+
+def documentation(name):
+    """Genuine documentation: needs no spec. Instructions, skills, packages and source do."""
+    return name.endswith('.md') and name not in {'AGENTS.md','CLAUDE.md'} and not name.startswith(('.agents/','.claude/','source/','clients/'))
+
+def gate(root,base,head='HEAD'):
+    """Fail immediately unless a non-docs range carries its own valid sealed spec."""
+    head=git(root,'rev-parse',head+'^{commit}');base=git(root,'rev-parse',base+'^{commit}')
+    if subprocess.run(['git','merge-base','--is-ancestor',base,head],cwd=root,capture_output=True).returncode: raise ValueError('Publication base is not candidate ancestry')
+    paths=git(root,'diff','--name-only',base,head).splitlines()
+    if not paths: raise ValueError('No changes to admit')
+    if all(documentation(p) for p in paths): return {'status':'DOCS_ONLY','paths':paths}
+    if SELECTION not in paths or blob(root,head,SELECTION) is None: raise ValueError('Non-docs change lacks its sealed Oracle spec: '+SELECTION+' must be sealed for this changelist')
+    try: contract=verify(root,head)
+    except (KeyError,TypeError,AttributeError,subprocess.CalledProcessError) as error: raise ValueError('Sealed Oracle spec is malformed: '+type(error).__name__) from error
+    if contract['selection']['change_class']=='docs_only': raise ValueError('A docs_only spec cannot admit non-document changes')
+    return {'status':'SPEC_SEALED','paths':paths,'seal':contract['seal'],'contract_sha256':contract['contract_sha256'],'categories':[r['category'] for r in contract['commands']]}
+
+def native_origin(root,head='HEAD'):
+    """Local admission: the committed spec must equal an APPROVED native proposal record's contract."""
+    contract=verify(root,head)
+    if contract is None: raise ValueError('No sealed spec to admit')
+    folder=Path(git(root,'rev-parse','--absolute-git-dir'))/'oracle/proposals'
+    for path in sorted(folder.glob('*.json')) if folder.is_dir() else []:
+        try: record=json.loads(path.read_bytes())
+        except (OSError,ValueError): continue
+        if (isinstance(record,dict) and record.get('kind')=='proposal-review' and record.get('review',{}).get('verdict')=='APPROVED'
+                and record.get('validation_contract')==contract and record.get('proposal_sha256')==contract['stamp']['proposal_sha256']):
+            return str(path)
+    raise ValueError('Committed spec has no matching APPROVED native proposal record; obtain it from npm run oracle:proposal, never reseal by hand')
+
+def ci_execute(root,head='HEAD'):
+    """Run the sealed spec's selected commands on a CI host; complete positive TAP or a clean exit only."""
+    contract=verify(root,head);results=[]
+    env={k:v for k,v in os.environ.items() if k!='NODE_TEST_CONTEXT'}
+    for row in contract['commands']:
+        done=subprocess.run(row['argv'],cwd=root,capture_output=True,text=True,env=env);output=done.stdout+done.stderr
+        summary=result_summary(output,done.returncode,bool(row['tests']));results.append({'category':row['category'],'summary':summary})
+        if not summary['passed']:
+            sys.stdout.write(output);raise ValueError('Sealed spec category failed: '+row['category'])
+    return {'status':'SPEC_TESTS_PASSED','seal':contract['seal'],'results':results}
 
 def result_summary(text,exit_code,is_test):
     if not is_test: return {'passed':exit_code==0,'tests':None,'skipped':0}
@@ -247,7 +360,11 @@ def required(root,tree):
     return [['python3','tools/validation_contract.py','run','--category',r['category']] for r in contract['commands']]
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('action',choices=['run','sanity','release']);p.add_argument('--category');p.add_argument('--phase',choices=['before','after'],default='after');a=p.parse_args();root=Path(git(Path.cwd(),'rev-parse','--show-toplevel'))
+    p=argparse.ArgumentParser();p.add_argument('action',choices=['run','sanity','release','gate','ci']);p.add_argument('--category');p.add_argument('--base');p.add_argument('--phase',choices=['before','after'],default='after');a=p.parse_args();root=Path(git(Path.cwd(),'rev-parse','--show-toplevel'))
+    if a.action in {'gate','ci'}:
+        value=gate(root,a.base or 'origin/main')
+        if a.action=='ci' and value['status']=='SPEC_SEALED': value=dict(value,**ci_execute(root))
+        print(json.dumps(value));return 0
     if a.action=='release':
         for command in required(root,'HEAD'):subprocess.run(command,cwd=root,check=True)
         return 0

@@ -19,8 +19,12 @@ import urllib.request
 
 try:
     from . import deterministic_source as native
+    from . import validation_contract as contract
+    from . import oracle_spec_seal as spec_seal
 except ImportError:
     import deterministic_source as native
+    import validation_contract as contract
+    import oracle_spec_seal as spec_seal
 
 KIND = 'boc-deterministic-package/1'
 PROFILE = 'feedback-discovery-and-release-tool/2'
@@ -116,7 +120,7 @@ def scope(root, base, source):
             for revision, mode in ((parent, old_mode), (commit, new_mode)):
                 if mode == '000000':
                     continue
-                if mode != '100644' or hashlib.sha256(blob(root, revision, path)).hexdigest() not in RETIRED_SELECTION_SHA256:
+                if mode != '100644' or not sealed_or_retired(blob(root, revision, path)):
                     raise ValueError('Unmapped retired validation selection')
             continue
         if path in MAINTENANCE or path in BODY_SKILLS:
@@ -164,9 +168,21 @@ def scope(root, base, source):
                 raise ValueError('Unmapped documentation change')
             continue
         raise ValueError('Unsupported package-release scope: ' + path)
-    if native.git(root, 'ls-tree', source, '--', RETIRED_SELECTION):
-        raise ValueError('Existing selected contract must be explicitly migrated; no override')
+    # Owner direction 2026-11-11: a package change carries this changelist's sealed spec;
+    # a missing, stale or mismatched spec fails here. Retired v1 blobs never qualify.
+    contract.gate(root, base, source)
     return sorted(paths)
+
+
+def sealed_or_retired(raw):
+    """A pinned historical v1 selection, or an oracle-spec/1 sealed contract revision."""
+    if hashlib.sha256(raw).hexdigest() in RETIRED_SELECTION_SHA256:
+        return True
+    try:
+        value = json.loads(raw)
+    except ValueError:
+        return False
+    return isinstance(value, dict) and value.get('schema') == contract.SCHEMA and spec_seal.seal_matches(value)
 
 
 def complete(command, output, code):
@@ -228,12 +244,14 @@ def read_receipt(root):
     return dict(value, sha256=checksum)
 
 
-def validate(root, base, requested_at):
+def validate(root, base, requested_at, *, ci=False):
     start = None if requested_at == 'unknown' else datetime.fromisoformat(requested_at.replace('Z', '+00:00'))
     if start is not None and (start.tzinfo is None or start > datetime.now(timezone.utc)):
         raise ValueError('Original timezone-aware request time is required')
     before = native.identity(root)
     paths = scope(root, base, before['source'])
+    if not ci and contract.gate(root, base, before['source'])['status'] == 'SPEC_SEALED':
+        contract.native_origin(root, before['source'])
     if not CHECKS:
         raise ValueError('Fixed package check category is empty')
     runs = []
@@ -402,6 +420,36 @@ def promote(root, ref):
             'ci_run_id': observed['run']['id'], 'deployment_authorized': False}
 
 
+def ci(root, base, requested):
+    """Spec gate first, then the admitting lane, then the sealed spec's own tests."""
+    head = native.git(root, 'rev-parse', 'HEAD')
+    admitted = contract.gate(root, base, head)  # Missing or mismatched sealed spec: fail now.
+    print(json.dumps({'spec_gate': admitted['status'], 'seal': admitted.get('seal')}))
+    try:
+        native.scope(root, base, head)
+    except ValueError:
+        lane = None
+    else:
+        lane = native.validate(root, base, requested, ci=True)
+    if lane is None:
+        try:
+            scope(root, base, head)
+        except ValueError:
+            lane = None
+        else:
+            lane = validate(root, base, requested, ci=True)
+    if lane is None and admitted['status'] == 'DOCS_ONLY':
+        for command in (['git', 'diff', '--check', base, head], ['npm', 'run', 'check:privacy'],
+                        ['npm', 'run', 'check:publication']):
+            subprocess.run(command, cwd=root, check=True)
+    if admitted['status'] == 'SPEC_SEALED':
+        tests = contract.ci_execute(root, head)
+        print(json.dumps({'spec_tests': tests['status'], 'seal': tests['seal']}))
+    print(json.dumps({'kind': lane['kind'] if lane else 'boc-oracle-spec-ci/1', 'status': 'VERIFIED',
+                      'source': head, 'sla_status': 'CI_PHASE_ONLY'}))
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['validate', 'verify', 'push', 'merge', 'promote', 'ci'])
@@ -417,15 +465,7 @@ def main(argv=None):
         if not args.base:
             args.base = native.git(root, 'rev-parse', 'origin/main^{commit}')
         if args.action == 'ci':
-            try:
-                native.scope(root, args.base, native.git(root, 'rev-parse', 'HEAD'))
-            except ValueError:
-                pass
-            else:
-                value = native.validate(root, args.base, requested)
-                print(json.dumps({'kind': value['kind'], 'status': value['status'],
-                                  'source': value['source'], 'sla_status': 'CI_PHASE_ONLY'}))
-                return 0
+            return ci(root, args.base, requested)
         value = validate(root, args.base, requested)
     elif args.action == 'verify':
         value = read_receipt(root)
