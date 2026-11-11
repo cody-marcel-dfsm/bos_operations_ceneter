@@ -229,6 +229,7 @@ def read_receipt(root):
         raise ValueError('Publication range changed')
     if [row['command'] for row in value['runs']] != CHECKS:
         raise ValueError('Fixed command category changed')
+    native.check_spec_runs(root, value['base'], current['source'], value.get('spec_runs'), directory(root))
     for failure in directory(root).glob('*.failure.json'):
         record = json.loads(failure.read_bytes())
         if (record.get('identity') == current and record.get('runs')
@@ -273,10 +274,13 @@ def validate(root, base, requested_at, *, ci=False):
                                  native.encoded({'kind': KIND + '-failure', 'identity': before,
                                                  'base': base, 'request_started_at': requested_at, 'runs': runs}))
             raise ValueError('Required package check failed; original output retained: ' + str(path))
+    selected = native.spec_runs(root, base, before['source'], directory(root),
+                                {'kind': KIND + '-failure', 'identity': before, 'base': base,
+                                 'request_started_at': requested_at, 'runs': runs})
     if native.identity(root) != before:
         raise ValueError('Source, generated package or runtime changed during verification')
     value = {'kind': KIND, 'profile': PROFILE, 'status': 'VERIFIED', **before,
-             'base': base, 'paths': paths, 'runs': runs, 'request_started_at': requested_at,
+             'base': base, 'paths': paths, 'runs': runs, 'spec_runs': selected, 'request_started_at': requested_at,
              'sla_status': ('BREACHED_ORIGINAL_TIME_UNAVAILABLE' if start is None else
                             'BREACHED' if time.time() - start.timestamp() > 300 else 'NOT_ESTABLISHED'),
              'deployment_authorized': False}
@@ -442,7 +446,8 @@ def ci(root, base, requested):
         for command in (['git', 'diff', '--check', base, head], ['npm', 'run', 'check:privacy'],
                         ['npm', 'run', 'check:publication']):
             subprocess.run(command, cwd=root, check=True)
-    if admitted['status'] == 'SPEC_SEALED':
+    if admitted['status'] == 'SPEC_SEALED' and lane is None:
+        # A deterministic lane already executed and bound every selected category; run them once.
         tests = contract.ci_execute(root, head)
         print(json.dumps({'spec_tests': tests['status'], 'seal': tests['seal']}))
     if lane is None:

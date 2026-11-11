@@ -272,17 +272,34 @@ def gate(root,base,head='HEAD'):
     if outside: raise ValueError('Publication range changes paths outside the sealed spec scope: '+', '.join(outside))
     return {'status':'SPEC_SEALED','paths':paths,'seal':contract['seal'],'contract_sha256':contract['contract_sha256'],'categories':[r['category'] for r in contract['commands']]}
 
+def native_proposal_record(root,path,contract,head):
+    """True only for an immutable, canonical, self-bound APPROVED native proposal archive of this exact spec."""
+    try: from . import oracle_approval as native
+    except ImportError: import oracle_approval as native
+    try:
+        raw=Path(path).read_bytes();record=json.loads(raw)
+    except (OSError,ValueError): return False
+    if not isinstance(record,dict) or Path(path).name!=native._sha(raw)+'.json' or raw!=native._pretty(record): return False
+    body={k:x for k,x in record.items() if k!='proposal_review_id'}
+    review=record.get('review') if isinstance(record.get('review'),dict) else {}
+    proposal=record.get('proposal')
+    return (record.get('proposal_review_id')==native._sha(native._canonical(body))
+            and record.get('schema_version')==native.SCHEMA_VERSION and record.get('issuer')==native.ISSUER
+            and record.get('kind')=='proposal-review' and record.get('review_scope')=='CONCEPTUAL_PROPOSAL'
+            and review.get('verdict')=='APPROVED' and review.get('review_status')=='COMPLETE' and review.get('findings')==[]
+            and isinstance(proposal,str) and record.get('proposal_sha256')==hashlib.sha256(proposal.encode()).hexdigest()
+            and record.get('proposal_sha256')==contract['stamp']['proposal_sha256']
+            and record.get('validation_contract')==contract and record.get('base_commit')==contract['base_commit']
+            and subprocess.run(['git','merge-base','--is-ancestor',contract['base_commit'],head],cwd=root,capture_output=True).returncode==0)
+
 def native_origin(root,head='HEAD'):
-    """Local admission: the committed spec must equal an APPROVED native proposal record's contract."""
+    """Local admission: the committed spec must equal a genuine APPROVED native proposal archive's contract."""
     contract=verify(root,head)
     if contract is None: raise ValueError('No sealed spec to admit')
+    head=git(root,'rev-parse',head+'^{commit}')
     folder=Path(git(root,'rev-parse','--absolute-git-dir'))/'oracle/proposals'
     for path in sorted(folder.glob('*.json')) if folder.is_dir() else []:
-        try: record=json.loads(path.read_bytes())
-        except (OSError,ValueError): continue
-        if (isinstance(record,dict) and record.get('kind')=='proposal-review' and record.get('review',{}).get('verdict')=='APPROVED'
-                and record.get('validation_contract')==contract and record.get('proposal_sha256')==contract['stamp']['proposal_sha256']):
-            return str(path)
+        if not path.is_symlink() and path.is_file() and native_proposal_record(root,path,contract,head): return str(path)
     raise ValueError('Committed spec has no matching APPROVED native proposal record; obtain it from npm run oracle:proposal, never reseal by hand')
 
 def ci_execute(root,head='HEAD'):

@@ -150,11 +150,12 @@ def _claude_answer(stdout: str, requested: str) -> tuple[dict, str]:
             raise OracleApprovalError("Claude Oracle returned no structured answer") from exc
     if not isinstance(answer, dict):
         raise OracleApprovalError("Claude Oracle answer is not an object")
+    # The stamp names the model that actually ran; an explicit selector is never a substitute.
     usage = envelope.get("modelUsage")
-    model = requested if requested != CLAUDE_DEFAULT_MODEL else (next(iter(usage)) if isinstance(usage, dict) and usage else None)
-    if not isinstance(model, str) or not model.strip():
-        raise OracleApprovalError("Claude Oracle reported no model identity")
-    return answer, model
+    reported = [name for name in usage if isinstance(name, str) and name.strip()] if isinstance(usage, dict) else []
+    if len(reported) != 1:
+        raise OracleApprovalError("Claude Oracle reported no single actual model identity")
+    return answer, reported[0]
 
 
 def _fresh_origin(root: Path) -> str:
@@ -1055,7 +1056,7 @@ def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path |
         except OracleApprovalError as exc:
             raise OracleApprovalError(str(exc) + "; diagnostics retained at " + str(run)) from exc
         _atomic_write(output, _pretty(answer))
-    _atomic_write(run / "engine-model.json", _pretty({"engine": engine, "model": model}))
+    _atomic_write(run / "engine-model.json", _pretty({"engine": engine, "model": model, "requested_model": metadata["selected_model"]}))
     try:
         return json.loads(_custody_read(root, output)[1])
     except (OSError, json.JSONDecodeError) as exc:

@@ -220,7 +220,7 @@ class Gate(Fixture):
         with self.assertRaisesRegex(ValueError, 'focused'):
             v.ci_execute(self.root)
 
-    def test_local_admission_requires_matching_native_proposal_record(self):
+    def test_local_admission_refuses_forged_or_altered_proposal_records(self):
         self.change()
         contract = self.sealed()
         head = self.commit()
@@ -228,13 +228,13 @@ class Gate(Fixture):
             v.native_origin(self.root, head)
         folder = self.root / '.git/oracle/proposals'
         folder.mkdir(parents=True)
-        record = {'kind': 'proposal-review', 'review': {'verdict': 'APPROVED'}, 'validation_contract': contract,
+        forged = {'kind': 'proposal-review', 'review': {'verdict': 'APPROVED'}, 'validation_contract': contract,
                   'proposal_sha256': contract['stamp']['proposal_sha256']}
-        (folder / 'other.json').write_text(json.dumps(dict(record, validation_contract=dict(contract, seal='0' * 64))))
+        raw = (json.dumps(forged, indent=2, sort_keys=True) + '\n').encode()
+        for name in ('not-a-native-proposal.json', hashlib.sha256(raw).hexdigest() + '.json'):
+            (folder / name).write_bytes(raw)  # The four-field assertion, under any name.
         with self.assertRaisesRegex(ValueError, 'never reseal by hand'):
             v.native_origin(self.root, head)
-        (folder / 'native.json').write_text(json.dumps(record))
-        self.assertTrue(v.native_origin(self.root, head).endswith('native.json'))
 
 
 class Lanes(Fixture):
@@ -284,7 +284,7 @@ class ContinuousIntegration(Fixture):
 
     def test_deterministic_lane_range_needs_no_native_command_coverage(self):
         calls, tests = self.run_ci('SPEC_SEALED', lane_admits=True)
-        tests.assert_called_once()
+        tests.assert_not_called()  # The lane's own validate already executed and bound every category.
         self.assertFalse(any('tools/command_coverage.py' in command for command in calls))
 
     def test_gate_failure_stops_ci_before_any_lane(self):
@@ -297,7 +297,7 @@ class ContinuousIntegration(Fixture):
 
 class Migration(Fixture):
     def proposal(self, selection):
-        reviewer = lambda *args: dict(APPROVED, validation_selection=selection)
+        reviewer = lambda *args: dict(APPROVED, review_status='COMPLETE', validation_selection=selection)
         with patch.object(oracle, '_review_settings_binding', return_value={'model': 'synthetic', 'reasoning_effort': None}), \
                 patch.object(oracle, '_fresh_origin', return_value=ORIGIN):
             return oracle.review_proposal(self.root, PROPOSAL, [], None, reviewer, request_bytes=b'synthetic request')
@@ -342,6 +342,48 @@ class Migration(Fixture):
             oracle._fresh_origin(self.root)
 
 
+class LaneExecution(Fixture):
+    def genuine_spec(self, selection):
+        reviewer = lambda *args: dict(APPROVED, review_status='COMPLETE', validation_selection=selection)
+        with patch.object(oracle, '_review_settings_binding', return_value={'model': 'synthetic', 'reasoning_effort': None}), \
+                patch.object(oracle, '_fresh_origin', return_value=ORIGIN):
+            oracle.review_proposal(self.root, PROPOSAL, [], None, reviewer)
+
+    def prepare(self, test_body):
+        (self.root / '.gitignore').write_text('__pycache__/\nnode_modules/\n')
+        (self.root / 'node_modules').mkdir()
+        (self.root / 'node_modules/dependency').write_text('locked')
+        (self.root / 'tests/spec.test.mjs').write_text(test_body)
+        self.base = self.commit()
+        self.genuine_spec(self.selection())
+        (self.root / 'tools/validation_contract.py').write_text(
+            (self.root / 'tools/validation_contract.py').read_text() + '\n# synthetic maintenance\n')
+        return self.commit()
+
+    def test_genuine_native_record_is_accepted(self):
+        head = self.prepare("import test from 'node:test';test('passes',()=>{});\n")
+        self.assertTrue(v.native_origin(self.root, head).endswith('.json'))
+
+    def test_source_lane_executes_and_binds_every_selected_category(self):
+        self.prepare("import test from 'node:test';test('passes',()=>{});\n")
+        with patch.object(source_lane, 'CHECKS', [[sys.executable, '-c', 'print("fixed check")']]):
+            receipt = source_lane.validate(self.root, self.base, '2026-11-11T00:00:00Z')
+            self.assertEqual([row['category'] for row in receipt['spec_runs']], ['sanity', 'focused'])
+            log = source_lane.directory(self.root) / (receipt['spec_runs'][1]['output_sha256'] + '.log')
+            os.chmod(log, 0o600); log.write_bytes(b'# tests 0\n')
+            with self.assertRaisesRegex(ValueError, 'Spec category output'):
+                source_lane.verify(self.root)
+
+    def test_failing_selected_category_issues_no_receipt_and_retains_output(self):
+        head = self.prepare("import test from 'node:test';import assert from 'node:assert/strict';test('fails',()=>assert.equal(1,2));\n")
+        with patch.object(source_lane, 'CHECKS', [[sys.executable, '-c', 'print("fixed check")']]):
+            with self.assertRaisesRegex(ValueError, 'Sealed spec category failed: focused'):
+                source_lane.validate(self.root, self.base, '2026-11-11T00:00:00Z')
+        self.assertFalse((source_lane.directory(self.root) / (head + '.json')).exists())
+        failures = [json.loads(p.read_text()) for p in source_lane.directory(self.root).glob('*.failure.json')]
+        self.assertEqual(failures[-1]['spec_runs'][-1]['category'], 'focused')
+
+
 class Engines(Fixture):
     def test_engine_selection(self):
         self.assertEqual(oracle.oracle_engine({'CLAUDECODE': '1'}), 'claude')
@@ -369,8 +411,15 @@ class Engines(Fixture):
         envelope = {'structured_output': {'verdict': 'APPROVED'}, 'modelUsage': {'claude-synthetic-1': {}}}
         self.assertEqual(oracle._claude_answer(json.dumps(envelope), oracle.CLAUDE_DEFAULT_MODEL),
                          ({'verdict': 'APPROVED'}, 'claude-synthetic-1'))
-        self.assertEqual(oracle._claude_answer(json.dumps({'result': '{"verdict":"REJECTED"}'}), 'requested')[0],
+        self.assertEqual(oracle._claude_answer(json.dumps({'result': '{"verdict":"REJECTED"}', 'modelUsage': {'m': {}}}), 'requested')[0],
                          {'verdict': 'REJECTED'})
+        # An explicit selector never substitutes for the model that actually ran.
+        self.assertEqual(oracle._claude_answer(json.dumps(dict(envelope, modelUsage={'claude-resolved-2': {}})), 'opus')[1],
+                         'claude-resolved-2')
+        with self.assertRaisesRegex(oracle.OracleApprovalError, 'actual model'):
+            oracle._claude_answer(json.dumps({'structured_output': {'v': 1}}), 'opus')
+        with self.assertRaisesRegex(oracle.OracleApprovalError, 'actual model'):
+            oracle._claude_answer(json.dumps({'structured_output': {'v': 1}, 'modelUsage': {'a': {}, 'b': {}}}), 'opus')
         for stdout in ('not json', json.dumps({'is_error': True, 'result': 'failure'}), json.dumps({'result': 'prose'}),
                        json.dumps({'structured_output': {'v': 1}})):
             with self.assertRaises(oracle.OracleApprovalError):
@@ -422,7 +471,7 @@ class Engines(Fixture):
         metadata = json.loads((run / 'model.json').read_text())
         self.assertEqual((metadata['engine'], metadata['external_inputs'][str(family)]), ('claude', digest))
         self.assertEqual(json.loads((run / 'engine-model.json').read_text()),
-                         {'engine': 'claude', 'model': 'claude-synthetic-1'})
+                         {'engine': 'claude', 'model': 'claude-synthetic-1', 'requested_model': oracle.CLAUDE_DEFAULT_MODEL})
         self.assertEqual(json.loads((run / 'result.json').read_text()), {'verdict': 'APPROVED'})
 
     def test_missing_or_changed_external_authority_fails_before_launch(self):

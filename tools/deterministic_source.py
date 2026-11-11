@@ -90,11 +90,51 @@ def validate(root, base, requested_at, *, ci=False):
         if code != 0 or ('unittest' in command and (not re.search(rb'Ran [1-9][0-9]* tests? in',output) or not re.search(rb'\nOK\s*$',output) or b'skipped=' in output)):
             private_write(store/(str(time.time_ns())+'.failure.json'),encoded({'kind':KIND+'-failure','identity':before,'base':base,'request_started_at':requested_at,'runs':runs}))
             raise ValueError('Incomplete deterministic command; retained '+str(path))
+    selected=spec_runs(root,base,before['source'],store,{'kind':KIND+'-failure','identity':before,'base':base,'request_started_at':requested_at,'runs':runs})
     if identity(root)!=before:raise ValueError('Source or runtime changed during execution')
-    value={'kind':KIND,'status':'VERIFIED','base':base,'paths':paths,**before,'runs':runs,'request_started_at':requested_at,
+    value={'kind':KIND,'status':'VERIFIED','base':base,'paths':paths,**before,'runs':runs,'spec_runs':selected,'request_started_at':requested_at,
            'sla_status':'FAILED' if time.time()-start.timestamp()>120 else 'NOT_ESTABLISHED','source_only':True}
     value['sha256']=digest(encoded(value));private_write(store/(before['source']+'.json'),encoded(value))
     return verify(root)
+
+def selected_commands(root, base, source):
+    """The sealed spec's selected category commands for this range (none for docs-only)."""
+    if contract.gate(root, base, source)['status'] != 'SPEC_SEALED':
+        return []
+    return contract.verify(root, source)['commands']
+
+def spec_runs(root, base, source, store, failure):
+    """Execute every spec-selected category completely; a failure retains output and issues nothing."""
+    runs = []
+    environment = {k: v for k, v in os.environ.items() if k != 'NODE_TEST_CONTEXT'}
+    for row in selected_commands(root, base, source):
+        began = time.time()
+        try:
+            done = subprocess.run(row['argv'], cwd=root, capture_output=True, timeout=900, env=environment)
+            output, code = done.stdout + b'\n' + done.stderr, done.returncode
+        except subprocess.TimeoutExpired as error:
+            output, code = (error.stdout or b'') + b'\n' + (error.stderr or b''), 'TIMEOUT'
+        key = digest(output); path = store / (key + '.log')
+        if not path.exists(): private_write(path, output)
+        runs.append({'category': row['category'], 'command': row['argv'], 'tests': bool(row['tests']),
+                     'exit_code': code, 'output_sha256': key, 'started_at': began, 'completed_at': time.time()})
+        if code == 'TIMEOUT' or not contract.result_summary(output.decode('utf-8', 'replace'), code, bool(row['tests']))['passed']:
+            private_write(store / (str(time.time_ns()) + '.failure.json'), encoded(dict(failure, spec_runs=runs)))
+            raise ValueError('Sealed spec category failed: ' + row['category'] + '; retained ' + str(path))
+    return runs
+
+def check_spec_runs(root, base, source, runs, store):
+    """A receipt holds complete passing executions of exactly the spec's selected commands."""
+    expected = selected_commands(root, base, source)
+    if not isinstance(runs, list) or [r.get('command') for r in runs] != [r['argv'] for r in expected]:
+        raise ValueError('Receipt lacks the sealed spec category executions')
+    for row, selected in zip(runs, expected):
+        path = store / (row['output_sha256'] + '.log')
+        if path.is_symlink() or not path.is_file(): raise ValueError('Spec category output is missing')
+        output = path.read_bytes()
+        if (digest(output) != row['output_sha256'] or row['exit_code'] == 'TIMEOUT'
+                or not contract.result_summary(output.decode('utf-8', 'replace'), row['exit_code'], bool(selected['tests']))['passed']):
+            raise ValueError('Spec category output changed or is incomplete')
 
 def verify(root):
     current=identity(root);path=directory(root)/(current['source']+'.json')
@@ -104,6 +144,7 @@ def verify(root):
         raise ValueError('Invalid deterministic source receipt')
     if any(value.get(k)!=v for k,v in current.items()) or value['paths']!=scope(root,value['base'],current['source']):raise ValueError('Source/runtime/range changed')
     if [x['command'] for x in value['runs']]!=CHECKS:raise ValueError('Required commands changed')
+    check_spec_runs(root,value['base'],current['source'],value.get('spec_runs'),directory(root))
     for row in value['runs']:
         if row['exit_code']!=0 or digest((directory(root)/(row['output_sha256']+'.log')).read_bytes())!=row['output_sha256']:raise ValueError('Original execution output changed')
     return dict(value,sha256=key)
