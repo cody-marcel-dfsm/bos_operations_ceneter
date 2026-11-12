@@ -822,6 +822,15 @@ class PublicationAdmission(unittest.TestCase, ClaudeCodeAuthorityFixture):
         with self.assertRaisesRegex(o.OracleApprovalError, "superseded"):
             publication.instruction(self.root, Path(asked["question_file"]), self.journal, self.root / "Vault/tmp/s2.json")
         self.transcript(text)
+        owner = self.root / "Vault/tmp/withdrawn.json"
+        publication.instruction(self.root, Path(asked["question_file"]), self.journal, owner)
+        host = json.loads(owner.read_bytes())["host_message"]
+        with self.journal.open("ab") as output:  # A later direct withdrawal on the normal chain revokes.
+            output.write(json.dumps(self.entry("user", "a-withdraw", host["answer_uuid"], message={"role": "user",
+                "content": "Hold publication"}, origin={"kind": "human"}, turnOrigin="human")).encode() + b"\n")
+        with self.assertRaisesRegex(o.OracleApprovalError, "superseded"):
+            publication._claude_host_records(self.root, host)
+        self.transcript(text)
         link = self.journal.with_name(str(uuid.uuid4()) + ".jsonl")
         link.symlink_to(self.journal)
         owner = self.root / "Vault/tmp/linked.json"

@@ -518,6 +518,14 @@ def _claude_human_answer(entry: dict, session: str) -> str | None:
     return text
 
 
+_WITHDRAWALS = {"no", "hold", "stop", "wait", "cancel", "revoke", "deny", "denied", "do not publish", "don't publish"}
+
+
+def _claude_withdrawal(text: str) -> bool:
+    normalized = " ".join(text.strip().lower().rstrip(".!").split())
+    return "hold publication" in normalized or normalized in _WITHDRAWALS
+
+
 def _claude_decision(text: str) -> str:
     normalized = " ".join(text.strip().lower().rstrip(".!").split())
     return "Approved" if normalized in _AFFIRMATIVE else "Hold publication"
@@ -605,8 +613,12 @@ def _claude_host_records(root: Path, host: dict) -> tuple[dict, dict]:
         # (directly or through later non-message entries) without the answer, supersedes it.
         if item.get("uuid") == host["answer_uuid"] and item != answer:
             raise o.OracleApprovalError("Native user instruction was superseded")
-        if item.get("uuid") == host["answer_uuid"] or _claude_human_answer(item, session) is None:
+        reply = None if item.get("uuid") == host["answer_uuid"] else _claude_human_answer(item, session)
+        if reply is None:
             continue
+        if _claude_withdrawal(reply):
+            # A later direct human withdrawal anywhere in the session revokes the approval.
+            raise o.OracleApprovalError("Native user instruction was superseded by a later Hold publication")
         cursor, seen = item.get("parentUuid"), set()
         while isinstance(cursor, str) and cursor not in seen and cursor != host["answer_uuid"]:
             if cursor == question["uuid"]:
