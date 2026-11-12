@@ -866,6 +866,18 @@ class ReviewSeries(unittest.TestCase):
         with self.assertRaisesRegex(o.OracleApprovalError, "stale"):
             o.verify_staged(self.root)
 
+    def test_new_finding_reusing_a_resolved_id_is_renumbered_not_fatal(self):
+        self.submit(lambda c: self.result(c, findings=[self.finding()]), error=o.OracleCandidateRejected)
+        self.change("source.py", "repair A introduced defect B")
+        # The reviewer resolves F001 in one round, then reuses F001 for a new repair defect.
+        self.submit(lambda c: self.result(c, resolutions=[self.resolve(c, "F001")]))
+        self.change("source.py", "repair B")
+        self.submit(lambda c: self.result(c, findings=[self.finding("F001", origin="REPAIR")]), error=o.OracleCandidateRejected)
+        ledger = o._read_rounds(o._series_directory(self.root, self.base))[-1]["finding_ledger"]
+        self.assertEqual(ledger["F001"]["state"], "RESOLVED")
+        self.assertEqual(ledger["F002"]["state"], "OPEN")
+        self.assertEqual(ledger["F002"]["origin"], "REPAIR")
+
     def test_dependency_config_authority_environment_and_evidence_invalidation(self):
         scenarios = ["dependency.py", "config.json", "AGENTS.md", "environment", "evidence", "tools/oracle_approval.py"]
         for number, name in enumerate(scenarios):

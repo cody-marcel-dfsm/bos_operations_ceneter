@@ -2637,6 +2637,16 @@ def _validate_completed_review(root: Path, review: dict, context: dict, evidence
     open_ids = {key for key, item in ledger.items() if item["state"] == "OPEN"}
     finding_ids, resolved_ids = set(), set()
     historical, observation_deltas = None, {}
+    # The reviewer sometimes reuses a resolved finding's ID for a new finding. Give such
+    # a finding the next unused stable ID so it is assessed as new instead of failing the
+    # whole review; an explicit REOPENED origin keeps its original identity.
+    taken = set(ledger) | {item.get("id", "") for item in review["findings"]}
+    next_number = max([int(key[1:]) for key in taken if re.fullmatch(r"F[0-9]{3,}", key)] or [0]) + 1
+    for item in review["findings"]:
+        identity = item.get("id", "")
+        if identity in ledger and ledger[identity]["state"] == "RESOLVED" and item.get("origin") != "REOPENED":
+            item["id"] = "F%03d" % next_number
+            next_number += 1
     for item in review["findings"]:
         identity = item.get("id", "")
         if not re.fullmatch(r"F[0-9]{3,}", identity) or identity in finding_ids:
