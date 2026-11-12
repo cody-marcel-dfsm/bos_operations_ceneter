@@ -827,12 +827,14 @@ class PublicationAdmission(unittest.TestCase, ClaudeCodeAuthorityFixture):
         host = json.loads(owner.read_bytes())["host_message"]
         original = self.journal.read_bytes()
         self.assertEqual(publication._claude_host_records(self.root, host)[0]["decision"], "Approved")
-        with self.journal.open("ab") as output:  # Unrelated later conversation keeps the approval.
-            output.write(json.dumps(self.entry("user", "a-chat", host["answer_uuid"], message={"role": "user",
-                "content": "The MyCRM deploy key is added now."}, origin={"kind": "human"}, turnOrigin="human")).encode() + b"\n")
+        with self.journal.open("ab") as output:  # Later agent and tool entries keep the approval.
+            output.write(json.dumps(self.entry("assistant", "r-1", host["answer_uuid"], message={"role": "assistant",
+                "content": [{"type": "text", "text": "Publishing now."}]})).encode() + b"\n")
+            output.write(json.dumps(self.entry("user", "t-1", "r-1", message={"role": "user", "content": [
+                {"type": "tool_result", "tool_use_id": "toolu_y", "content": "Hold publication"}]})).encode() + b"\n")
         self.assertEqual(publication._claude_host_records(self.root, host)[0]["decision"], "Approved")
-        for withdrawal in ("Hold publication", "No, do not publish", "Wait, cancel that", "Please don't publish yet",
-                           "I revoke that approval", "Not approved after all"):
+        for withdrawal in ("Hold publication", "No, do not publish", "Please don\u2019t publish yet",
+                           "I no longer approve this release", "The MyCRM deploy key is added now."):
             with self.subTest(withdrawal=withdrawal):
                 self.journal.write_bytes(original)
                 with self.journal.open("ab") as output:  # A later direct withdrawal on the normal chain revokes.

@@ -518,21 +518,6 @@ def _claude_human_answer(entry: dict, session: str) -> str | None:
     return text
 
 
-_WITHDRAWAL_STARTS = {"no", "nope", "hold", "stop", "wait", "cancel", "revoke", "deny", "denied", "don't", "dont",
-                      "never", "abort", "withdraw", "withdrawn", "rescind"}
-_WITHDRAWAL_PHRASES = ("hold publication", "do not publish", "don't publish", "dont publish", "not publish",
-                       "do not approve", "don't approve", "not approved", "cancel", "revoke", "withdraw", "rescind",
-                       "stop the release", "stop publication", "abort")
-
-
-def _claude_withdrawal(text: str) -> bool:
-    """Conservative: any later reply that reads as a refusal or cancellation revokes the approval."""
-    normalized = " ".join(re.sub(r"[^a-z' ]+", " ", text.lower()).split())
-    words = normalized.split()
-    return bool(words) and (words[0] in _WITHDRAWAL_STARTS or words[:2] == ["do", "not"]
-                            or any(phrase in normalized for phrase in _WITHDRAWAL_PHRASES))
-
-
 def _claude_decision(text: str) -> str:
     normalized = " ".join(text.strip().lower().rstrip(".!").split())
     return "Approved" if normalized in _AFFIRMATIVE else "Hold publication"
@@ -623,9 +608,10 @@ def _claude_host_records(root: Path, host: dict) -> tuple[dict, dict]:
         reply = None if item.get("uuid") == host["answer_uuid"] else _claude_human_answer(item, session)
         if reply is None:
             continue
-        if _claude_withdrawal(reply):
-            # A later direct human withdrawal anywhere in the session revokes the approval.
-            raise o.OracleApprovalError("Native user instruction was superseded by a later Hold publication")
+        # Deterministic currency: the approval holds only while it is the session's latest
+        # direct human message. Any later human reply (a withdrawal in any wording, or new
+        # conversation) supersedes it; ask the exact question again to renew.
+        raise o.OracleApprovalError("Native user instruction was superseded by a later direct human message")
         cursor, seen = item.get("parentUuid"), set()
         while isinstance(cursor, str) and cursor not in seen and cursor != host["answer_uuid"]:
             if cursor == question["uuid"]:
