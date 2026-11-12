@@ -169,14 +169,27 @@ class ScopeIndex(unittest.TestCase):
                     env = dict(os.environ)
                     if name == 'approved-invalidation':
                         self.git('update-ref', 'refs/remotes/origin/main', self.commits[0][0])
-                        executable = self.root / 'bin/gh'; executable.parent.mkdir(exist_ok=True)
-                        status = {'context': publication_status.CONTEXT, 'state': 'success',
-                            'creator': {'login': publication_status.PUBLISHER},
-                            'target_url': publication_status._target(self.commits[0][0]),
-                            'description': publication_status._description(self.commits[0][1], self.receipts[self.commits[0][0]].stem)}
-                        script = '#!' + sys.executable + '\nimport json,sys\nassert sys.argv[1]=="api"\nprint(' + repr(json.dumps([status])) + ')\n'
-                        executable.write_text(script); executable.chmod(0o755)
-                        env['PATH'] = str(executable.parent) + os.pathsep + env.get('PATH', '')
+                        # The published approval arrives as the exact-commit git attestation on an
+                        # owned synthetic remote reached through the SSH push URL; no gh, no network.
+                        commit, tree = self.commits[0]
+                        holder = tempfile.TemporaryDirectory(); self.addCleanup(holder.cleanup)
+                        remote = Path(holder.name) / 'owned.git'
+                        subprocess.run(['git', 'init', '-q', '--bare', str(remote)], check=True)
+                        record = {'kind': publication_status.ATTESTATION_KIND, 'repository': publication_status.REPOSITORY,
+                            'candidate_commit': commit, 'candidate_tree': tree,
+                            'technical_receipt_sha256': self.receipts[commit].stem,
+                            'statuses': [{'context': publication_status.CONTEXT, 'state': 'success',
+                                'target_url': publication_status._target(commit),
+                                'description': publication_status._description(tree, self.receipts[commit].stem)}]}
+                        blob = subprocess.run(['git', 'hash-object', '-w', '--stdin'], cwd=self.root, input=o._pretty(record),
+                                              capture_output=True, check=True).stdout.decode().strip()
+                        listing = subprocess.run(['git', 'mktree'], cwd=self.root, capture_output=True, check=True,
+                            input=('100644 blob ' + blob + '\t' + publication_status.ATTESTATION_FILE + '\n').encode()).stdout.decode().strip()
+                        attestation = self.git('commit-tree', listing, '-p', commit, '-m', 'synthetic attestation').strip()
+                        subprocess.run(['git', 'push', '-q', '-f', str(remote), attestation + ':' + publication_status.ATTESTATION_PREFIX + commit],
+                                       cwd=self.root, check=True)
+                        self.git('config', 'remote.origin.pushurl', publication_status.SSH_REMOTE)
+                        self.git('config', 'url.' + str(remote) + '.insteadOf', publication_status.SSH_REMOTE)
                     actual = subprocess.run(command, cwd=self.root, capture_output=True, text=True, env=env)
                     self.assertEqual(actual.returncode == 0, retained, actual.stderr)
                     if not retained:
@@ -184,6 +197,7 @@ class ScopeIndex(unittest.TestCase):
                 finally:
                     path.unlink(); context_path.unlink()
                     self.git('update-ref', 'refs/remotes/origin/main', self.base)
+                    subprocess.run(['git', 'config', '--unset', 'remote.origin.pushurl'], cwd=self.root)
 
     def test_actual_cli_requires_native_trailer_provenance_and_preserves_legacy_staged_tree(self):
         source, tree = self.commits[-1]

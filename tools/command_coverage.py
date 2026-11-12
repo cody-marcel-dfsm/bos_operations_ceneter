@@ -294,7 +294,7 @@ def ci(root: Path, candidate: str, *, execute=subprocess.run, read=None) -> list
     # The exact native approval independently binds command applicability to this
     # commit. An original Darwin result remains a Darwin result when consumed by
     # a Linux runner; only the declared command contract can require another OS.
-    approved = public_status.verify_publication(root, candidate, execute=execute, read=read)
+    approved = public_status.verify_publication(root, candidate, execute=execute)
     commit, tree = approved["candidate_commit"], approved["candidate_tree"]
     if o._git(root, "rev-parse", "HEAD^{tree}").strip() != tree:
         raise o.OracleApprovalError("CI checkout differs from the exact native-approved source tree")
