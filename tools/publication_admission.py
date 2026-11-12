@@ -518,6 +518,17 @@ def _claude_human_answer(entry: dict, session: str) -> str | None:
     return text
 
 
+_TOPIC = re.compile(r"\b(publish\w*|publication|release\w*|approv\w*|authori\w*|promot\w*|ship\w*|deploy\w*)\b")
+_NEGATION = re.compile(r"\b(no|not|don't|dont|never|hold|stop|wait|cancel\w*|revok\w*|withdraw\w*|rescind\w*|abort\w*|longer|reject\w*|deny|denied|halt)\b")
+
+
+def _claude_withdrawal(text: str) -> bool:
+    """A later reply withdraws the approval when it says Hold publication, or refuses or
+    cancels while referring to the publication; unrelated conversation never does."""
+    normalized = " ".join(text.lower().replace("\u2019", "'").replace("\u2018", "'").split())
+    return normalized.startswith("hold publication") or bool(_TOPIC.search(normalized) and _NEGATION.search(normalized))
+
+
 def _claude_decision(text: str) -> str:
     normalized = " ".join(text.strip().lower().rstrip(".!").split())
     return "Approved" if normalized in _AFFIRMATIVE else "Hold publication"
@@ -608,10 +619,8 @@ def _claude_host_records(root: Path, host: dict) -> tuple[dict, dict]:
         reply = None if item.get("uuid") == host["answer_uuid"] else _claude_human_answer(item, session)
         if reply is None:
             continue
-        # Deterministic currency: the approval holds only while it is the session's latest
-        # direct human message. Any later human reply (a withdrawal in any wording, or new
-        # conversation) supersedes it; ask the exact question again to renew.
-        raise o.OracleApprovalError("Native user instruction was superseded by a later direct human message")
+        if _claude_withdrawal(reply):
+            raise o.OracleApprovalError("Native user instruction was superseded by a later direct human withdrawal")
         cursor, seen = item.get("parentUuid"), set()
         while isinstance(cursor, str) and cursor not in seen and cursor != host["answer_uuid"]:
             if cursor == question["uuid"]:
