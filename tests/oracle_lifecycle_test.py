@@ -647,6 +647,17 @@ class CommittedCatchup(unittest.TestCase):
                 patch.object(lifecycle.time,'sleep'), \
                 patch.object(lifecycle,'_wait_orphan',side_effect=AssertionError('finished owner treated as orphan')):
             self.assertIs(lifecycle._follow(o,self.root,identity,'issue','race',[]),result)
+        # Every orphan entry, including the attachment-error branch, re-reads completion first.
+        for branch in ('attach-error','precheck'):
+            with self.subTest(branch=branch):
+                reads=iter([(False,None),(False,None),(True,result)] if branch=='attach-error' else [(True,result)])
+                with patch.object(lifecycle,'_alive',side_effect=[True,False] if branch=='attach-error' else [False]), \
+                        patch.object(lifecycle,'_active_children',side_effect=[[], []] if branch=='attach-error' else [['child'], []]), \
+                        patch.object(lifecycle,'_completed_result',side_effect=lambda *a:next(reads)), \
+                        patch.object(lifecycle,'_request',side_effect=OSError('owner closed its socket')), \
+                        patch.object(lifecycle,'_terminal',side_effect=AssertionError('finished owner reached orphan recovery')), \
+                        patch.object(lifecycle.time,'sleep'):
+                    self.assertIs(lifecycle._follow(o,self.root,identity,'issue','race',[]),result)
         # A genuinely unfinished owner that is gone still reaches orphan recovery.
         reads=iter([(False,None),(False,None),(False,None)])
         with patch.object(lifecycle,'_alive',side_effect=[True,False]), \

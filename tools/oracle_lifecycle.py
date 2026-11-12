@@ -135,6 +135,11 @@ _RETRY = object()
 def _wait_orphan(o, root, identity):
     while _active_children(o, root, identity):
         time.sleep(.1)
+    # Every caller reaches here after an earlier incomplete read; an owner that
+    # admitted its checkpoint and closed meanwhile is finished, never an orphan.
+    complete, result = _completed_result(o, root, identity)
+    if complete:
+        return result
     terminal = _terminal(o, root, identity)
     if terminal and _settled_terminal(o, root, identity) is None:
         _checkpoint_failed(o, root, identity, terminal, "Native controller exited before checkpoint admission")
