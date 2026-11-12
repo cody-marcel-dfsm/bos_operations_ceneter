@@ -6,10 +6,10 @@
     "model": "gpt-6.1-sol",
     "oracle_sha256": "bdc1e90057c6f908c31fc803d836f517e6c8d09dd59a69aab016d0d00ebfe3a8",
     "host": "aio",
-    "time": "2026-11-12T00:36:04Z",
+    "time": "2026-11-12T02:17:39Z",
     "origin_main": "e70de278e116c7761f60fcfc700641e1ecb9288d",
     "request_sha256": "e1108156465baf99d8c2da13f1f1e9d55530b51f9fd8557f6a4e0029cac10250",
-    "proposal_sha256": "1d4de7bd7cf389f3a2cb0ecd116af630363ef8a420671ed1dfa3a0e2e375ee4f"
+    "proposal_sha256": "022feb80c5ef791908cd0409e07909b3d00356792f0c83e9281d29782fb936d5"
   },
   "selection": {
     "acceptance": [
@@ -47,7 +47,8 @@
       "Reuse unchanged attestation objects and preserve replacement history through the previous attestation parent, expected-old-value leases and exact remote readback; reject stale leases and unconfirmed effects.",
       "Use attestation rows consistently in CI and fresh-clone commit verification; only genuine ref absence permits legacy public-status fallback with the pinned creator, while malformed, conflicting, revoked or unreadable current attestations fail closed.",
       "Require exact remote release and baseline heads plus the latest successful repository-owned publication-safety push run and verification job for the exact candidate and release ref; reject failed, missing, mismatched or incomplete evidence regardless of branch protection.",
-      "Promote through ancestry-checked, exact-baseline leased fast-forward pushes with destination revalidation and exact main readback across native and deterministic paths; preserve immutable receipts, later-decision revocation, scoped human authority and concurrent authoring."
+      "Promote through ancestry-checked, exact-baseline leased fast-forward pushes with destination revalidation and exact main readback across native and deterministic paths; preserve immutable receipts, later-decision revocation, scoped human authority and concurrent authoring.",
+      "After observing an owner no longer alive, re-read its custody-checked completed result before orphan recovery and return an admitted result without duplicate review dispatch; preserve genuine orphan recovery and failure propagation. Retain an unchanged deterministic fail-before/pass-after regression that drives incomplete-result, dead-owner and completed-result reads without timers, and preserve the existing attached-caller checkpoint-admission regression."
     ],
     "acceptance_tests": [
       {
@@ -112,10 +113,11 @@
         "covers": [
           14,
           20,
-          26
+          26,
+          35
         ],
         "module": "tests/oracle-lifecycle.test.mjs",
-        "purpose": "Verify controller lifecycle, process-birth rejection, explicit launcher isolation and accepted-observer failure propagation with checkpoint preservation."
+        "purpose": "Verify controller lifecycle, process-birth rejection, explicit launcher isolation, accepted-observer failure propagation with checkpoint preservation, and deterministic completion rechecking before orphan recovery without duplicate review dispatch."
       },
       {
         "covers": [
@@ -295,8 +297,8 @@
     ],
     "change_class": "feature",
     "design": "Vault/docs/design/oracle-implementation-spec.md",
-    "reason": "Revise the existing feature contract while retaining every earlier acceptance criterion, selected module and fixture. Add complete SSH publication and attestation interactions covering the changed issuer boundary, exact source and receipt custody, replacement history, refusal behavior, remote CI and leased promotion. Use synthetic Git repositories and injected executors, readers and clocks with explicit synchronization; timers serve only as hang guards. Preserve historical outcomes, native verification, scoped publication authority and the original 300-second delivery clock. No automatic wider regression, clock reset or paid fallback is authorized.",
-    "revision_of": "634bb7ee759a509adbb750ffdd0b21d5de1457e8e674463c503e09f938bb7a56",
+    "reason": "Revise the existing feature contract while retaining every earlier acceptance criterion, selected module and fixture. Add lifecycle source scope and a deterministic regression proving that a completed owner is rechecked before orphan recovery, while preserving checkpoint custody, genuine orphan recovery and failure propagation. Preserve all earlier publication, provenance, privacy and native verification boundaries. Run every selected category completely, with no automatic wider regression, clock reset or paid fallback; retain the original 300-second delivery clock and historical outcomes.",
+    "revision_of": "81675dde8f156e120f49fc3e758a5d593d5b7b97e125f512eed54a9f11ec733e",
     "scope_paths": [
       "AGENTS.md",
       "CLAUDE.md",
@@ -381,11 +383,12 @@
       "tests/publication_admission_test.py",
       "tests/publication-admission.test.mjs",
       "tests/shipment_workflow_test.py",
-      "tests/shipment-workflow.test.mjs"
+      "tests/shipment-workflow.test.mjs",
+      "tools/oracle_lifecycle.py"
     ]
   },
-  "base_commit": "8588d8ebab4fd322caae228795f4d2c1b9b57184",
-  "base_tree": "818264aa3df77f77cf16a3337dfcee2d54d4c082",
+  "base_commit": "a0c0537ee16ed5ba0ae3205a094abc471a97d895",
+  "base_tree": "f8522e21df1bf8d16f2eeff7cf330ebd86552dd0",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v26.12.0",
@@ -395,8 +398,8 @@
     "architecture": "x86_64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "1d4de7bd7cf389f3a2cb0ecd116af630363ef8a420671ed1dfa3a0e2e375ee4f",
-  "review_sha256": "c0ad50191def1215f674c27dba0c2a35e0fe534a9174a2676534dee827a33ea4",
+  "proposal_sha256": "022feb80c5ef791908cd0409e07909b3d00356792f0c83e9281d29782fb936d5",
+  "review_sha256": "37203497d5e8c666d68d5daecea1c2b5a1fa952c2ebfd0f0702ce883fdcd9fea",
   "commands": [
     {
       "category": "sanity",
@@ -500,9 +503,9 @@
   },
   "design_binding": {
     "design": "Vault/docs/design/oracle-implementation-spec.md",
-    "design_sha256": "5b36c4df6bba50bf3aa06def3b666a56938a190dc088b3baf2acf1244a9bcd95",
+    "design_sha256": "e11cb285470c802c89de998691347ece89a8fff13ecf06ed3b59b15a18dd035f",
     "plan": "Vault/docs/design/oracle-implementation-spec.test-plan.json",
-    "plan_sha256": "2d913eb7567b70d6bbe24a9049d9a8c55623e82fd92b7332c014766b43ae7f75",
+    "plan_sha256": "d8b5dac42312adf00e9cc95d73a0294a7309f298226daad5e127bba747352947",
     "tests": [
       "tests/agent-driven-journey-live-verifier.test.mjs",
       "tests/command-coverage.test.mjs",
@@ -525,6 +528,6 @@
       "tests/validation-contract.test.mjs"
     ]
   },
-  "contract_sha256": "81675dde8f156e120f49fc3e758a5d593d5b7b97e125f512eed54a9f11ec733e",
-  "seal": "fceb43e9071564d9d8221fa16a71d85b6d540294ede3fda063acb130e7e8f40a"
+  "contract_sha256": "369264df9085315abe916a1a2ddb99429b193016630aa0183c6a8f1129db7d7c",
+  "seal": "19a40c8e752f8baafd48908ce62697294385335553a354036590fa7f20e96495"
 }
