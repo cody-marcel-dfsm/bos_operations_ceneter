@@ -635,6 +635,28 @@ class CommittedCatchup(unittest.TestCase):
         self.assertEqual(len(list((self.root/'.git/oracle/controllers/admissions').iterdir())),1)
         self.assertEqual(shipment_state.validated_receipt(self.root)[1],o._pretty(result))
 
+    def test_follower_rereads_completed_owner_after_observing_it_closed(self):
+        # Exact read order of the race seen in public CI: not complete, owner gone, then complete.
+        identity={'review_kind':'issue','series_id':'race','reviewer_settings':o._review_settings_binding()}
+        result={'verdict':'APPROVED','base_commit':'0'*40}
+        reads=iter([(False,None),(False,None),(True,result)])
+        with patch.object(lifecycle,'_alive',side_effect=[True,False]), \
+                patch.object(lifecycle,'_active_children',return_value=[]), \
+                patch.object(lifecycle,'_completed_result',side_effect=lambda *a:next(reads)), \
+                patch.object(lifecycle,'_request',return_value={'controller_id':'owner'}), \
+                patch.object(lifecycle.time,'sleep'), \
+                patch.object(lifecycle,'_wait_orphan',side_effect=AssertionError('finished owner treated as orphan')):
+            self.assertIs(lifecycle._follow(o,self.root,identity,'issue','race',[]),result)
+        # A genuinely unfinished owner that is gone still reaches orphan recovery.
+        reads=iter([(False,None),(False,None),(False,None)])
+        with patch.object(lifecycle,'_alive',side_effect=[True,False]), \
+                patch.object(lifecycle,'_active_children',return_value=[]), \
+                patch.object(lifecycle,'_completed_result',side_effect=lambda *a:next(reads)), \
+                patch.object(lifecycle,'_request',return_value={'controller_id':'owner'}), \
+                patch.object(lifecycle,'_wait_orphan',return_value=lifecycle._RETRY) as orphan:
+            self.assertIs(lifecycle._follow(o,self.root,identity,'issue','race',[]),lifecycle._RETRY)
+            orphan.assert_called_once()
+
     def test_dead_pending_owner_recovers_checkpoint_through_status_and_claim(self):
         metadata_owner=o._METADATA_ROOT.set(self.root)
         self.addCleanup(o._METADATA_ROOT.reset,metadata_owner)

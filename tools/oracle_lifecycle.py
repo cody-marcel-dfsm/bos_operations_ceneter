@@ -716,6 +716,11 @@ def _follow(o, root, identity, kind, series, evidence):
         if complete:
             return result
         if not _alive(identity):
+            # The owner may admit its checkpoint and close between the two reads;
+            # a finished owner is never an orphan, so read its result once more.
+            complete, result = _completed_result(o, root, identity)
+            if complete:
+                return result
             return _wait_orphan(o, root, identity)
         time.sleep(.1)
 
