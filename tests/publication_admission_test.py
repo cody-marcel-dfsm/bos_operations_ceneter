@@ -1,6 +1,7 @@
 """Behavioral publication tests use only an owned synthetic Git repository."""
 from pathlib import Path
 import json
+import re
 import subprocess
 import tempfile
 import unittest
@@ -64,6 +65,21 @@ class PublicationAdmission(unittest.TestCase):
     def pushes(self):
         return [command for command in self.commands if command[:2] == ["git", "push"]]
 
+    def read(self, path):
+        """Unauthenticated public REST reads of a successful exact-source push run."""
+        repository = {"full_name": publication.public_status.REPOSITORY}
+        if path == "/branches/main":
+            return {"name": "main", "protected": False}
+        if path.startswith("/actions/runs?"):
+            source = re.search(r"head_sha=([0-9a-f]{40})", path).group(1)
+            return {"total_count": 1, "workflow_runs": [{"id": 7, "head_sha": source, "head_branch": self.ref,
+                    "event": "push", "path": ".github/workflows/publication-safety.yml", "status": "completed",
+                    "conclusion": "success", "repository": repository, "head_repository": repository}]}
+        return {"total_count": 1, "jobs": [{"name": "verify-public-repository", "status": "completed", "conclusion": "success"}]}
+
+    def release_ready(self):
+        self.move_remote("refs/heads/" + self.ref, self.fixture.git("rev-parse", "HEAD"))
+
     def rewind(self):
         """Return the owned remote and its tracking ref to the published baseline."""
         subprocess.run(["git", "--git-dir", str(self.remote), "update-ref", "refs/heads/main", self.fixture.base], check=True)
@@ -97,15 +113,19 @@ class PublicationAdmission(unittest.TestCase):
         self.submit(True, authentication=True)
         original = o.receipt_path(self.root).read_bytes()
         with self.assertRaisesRegex(o.OracleApprovalError, "scoped deployment authority"):
-            publication.publish(self.root, "HEAD", self.ref, "main-promotion", execute=self.execute, refresh=False)
+            publication.publish(self.root, "HEAD", self.ref, "main-promotion", execute=self.execute, read=self.read, refresh=False)
         self.assertEqual(self.commands, [])
         self.assertEqual(o.receipt_path(self.root).read_bytes(), original)
 
     def test_ordinary_compatible_auth_label_does_not_require_human_permission(self):
         self.fixture.change("auth-boundary-label.txt", "ordinary compatible correction")
         self.submit(authentication=True)
+        with self.assertRaisesRegex(o.OracleApprovalError, "different release source"):
+            publication.publish(self.root, "HEAD", self.ref, "main-promotion", execute=self.execute, read=self.read, refresh=False)
+        self.assertEqual(self.pushes(), [])
+        self.release_ready()
         selected = publication.publish(self.root, "HEAD", self.ref, "main-promotion",
-                                       execute=self.execute, refresh=False)
+                                       execute=self.execute, read=self.read, refresh=False)
         self.assertFalse(selected["human_authority_required"])
         self.assertEqual(self.pushes()[-1][:3], ["git", "push", "--force-with-lease=refs/heads/main:" + self.fixture.base])
         self.assertEqual(self.remote_head("refs/heads/main"), selected["candidate_commit"])
@@ -446,7 +466,7 @@ class PublicationAdmission(unittest.TestCase):
         mode = output.stat().st_mode & 0o777
         output.chmod(0o644 if mode != 0o644 else 0o600)
         with self.assertRaisesRegex(o.OracleApprovalError, "Validation.*provenance"):
-            publication.publish(self.root, "HEAD", self.ref, "main-promotion", execute=self.execute, refresh=False)
+            publication.publish(self.root, "HEAD", self.ref, "main-promotion", execute=self.execute, read=self.read, refresh=False)
         self.assertEqual(self.commands, [])
         output.chmod(mode)
         publication.plan(self.root, "HEAD", self.ref, "main-promotion", refresh=False)
@@ -477,7 +497,7 @@ class PublicationAdmission(unittest.TestCase):
         alternate = dict(receipt, protected_effects={"active": [], "dispositions": []})
         archive.write_bytes(o._pretty(alternate))
         with self.assertRaisesRegex(o.OracleApprovalError, "technical receipt digest changed|approval receipt ID is invalid"):
-            publication.publish(self.root, "HEAD", self.ref, "main-promotion", execute=self.execute, refresh=False)
+            publication.publish(self.root, "HEAD", self.ref, "main-promotion", execute=self.execute, read=self.read, refresh=False)
         self.assertEqual(self.commands, [])
         archive.write_bytes(original)
         self.assertTrue(publication.plan(self.root, "HEAD", self.ref, "main-promotion", refresh=False)
@@ -497,7 +517,7 @@ class PublicationAdmission(unittest.TestCase):
         first_bytes = first_path.read_bytes()
         with self.assertRaisesRegex(o.OracleApprovalError, "second-tenant-boundary"):
             publication.publish(self.root, "HEAD", self.ref, "main-promotion", authorization=[first_path],
-                                execute=self.execute, refresh=False)
+                                execute=self.execute, read=self.read, refresh=False)
         self.assertEqual(self.commands, [])
         bad_owner = self.root / "Vault/tmp/incorrect-synthetic-authority.json"
         bad_owner.write_text('{"quote":"synthetic insufficient authority"}')
@@ -519,8 +539,9 @@ class PublicationAdmission(unittest.TestCase):
         second = self.native_authorize(correct_owner, prior=[first_path, rejected, stale], observed=requested)
         self.assertEqual(requested[-1], ["second-tenant-boundary"])
         second_path = Path(second["path"])
+        self.release_ready()
         publication.publish(self.root, "HEAD", self.ref, "main-promotion",
-                            authorization=[first_path, rejected, stale, second_path], execute=self.execute, refresh=False)
+                            authorization=[first_path, rejected, stale, second_path], execute=self.execute, read=self.read, refresh=False)
         self.assertEqual(self.pushes()[-1][:3], ["git", "push", "--force-with-lease=refs/heads/main:" + self.fixture.base])
         self.rewind()
         all_covered = self.native_authorize(correct_owner, prior=[first_path, rejected, stale, second_path])
@@ -538,8 +559,9 @@ class PublicationAdmission(unittest.TestCase):
         owner.write_text('{"direct_user_quote":"Approve the exact synthetic credential effect"}')
         authorized = self.native_authorize(owner)
         record = Path(authorized["path"])
+        self.release_ready()
         publication.publish(self.root, "HEAD", self.ref, "main-promotion", authorization=record,
-                            execute=self.execute, refresh=False)
+                            execute=self.execute, read=self.read, refresh=False)
         self.assertEqual(o.receipt_path(self.root).read_bytes(), original)
         self.assertEqual(self.pushes()[-1][:3], ["git", "push", "--force-with-lease=refs/heads/main:" + self.fixture.base])
         self.rewind()
@@ -559,7 +581,7 @@ class PublicationAdmission(unittest.TestCase):
                 self.commands.clear()
                 with self.assertRaisesRegex(o.OracleApprovalError, "stale, mismatched"):
                     publication.publish(self.root, "HEAD", self.ref, "main-promotion", authorization=record,
-                                        execute=self.execute, refresh=False)
+                                        execute=self.execute, read=self.read, refresh=False)
                 self.assertEqual(self.commands, [])
                 self.assertEqual(o.receipt_path(self.root).read_bytes(), original)
         record.write_bytes(original_authorization)
@@ -567,7 +589,7 @@ class PublicationAdmission(unittest.TestCase):
         self.commands.clear()
         with self.assertRaisesRegex(o.OracleApprovalError, "stale, mismatched"):
             publication.publish(self.root, "HEAD", self.ref, "main-promotion", authorization=record,
-                                execute=self.execute, refresh=False)
+                                execute=self.execute, read=self.read, refresh=False)
         self.assertEqual(self.commands, [])
 
 
@@ -579,7 +601,7 @@ class PublicationAdmission(unittest.TestCase):
                                  "-p", self.fixture.base, "-m", "concurrent remote change")
         self.move_remote("refs/heads/main", moved)
         with self.assertRaisesRegex(o.OracleApprovalError, "moved"):
-            publication.publish(self.root, "HEAD", self.ref, "main-promotion", execute=self.execute, refresh=False)
+            publication.publish(self.root, "HEAD", self.ref, "main-promotion", execute=self.execute, read=self.read, refresh=False)
         self.assertEqual(self.pushes(), [])
         # A lease on the stale baseline is rejected by Git itself, never forced.
         with self.assertRaises(subprocess.CalledProcessError):

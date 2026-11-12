@@ -351,6 +351,27 @@ class ShipmentWorkflow(unittest.TestCase):
         retained = json.loads(Path(result["attempt_file"]).read_bytes())
         self.assertEqual(retained, {key: value for key, value in result.items() if key != "attempt_file"})
 
+    def test_unconfirmed_readback_retains_its_durable_attempt_outcome(self):
+        commit = self.validate()
+        prepared = publication.prepare(self.root, commit, self.ref, "main-promotion", refresh=False)
+        def unreadable(command, **kwargs):
+            if command[:2] == ["git", "ls-remote"]:
+                raise subprocess.CalledProcessError(128, command, stderr="synthetic transport loss after push")
+            return subprocess.CompletedProcess(command, 0, "", "")
+        for label, execute in (("unreadable", unreadable),
+                               ("differs", self.remote_execute([], {"refs/heads/main": "e" * 40}))):
+            with self.subTest(label=label):
+                if label == "differs":
+                    remote = execute
+                    execute = lambda command, **kwargs: (remote(command, **kwargs) if command[1] == "ls-remote"
+                                                         else subprocess.CompletedProcess(command, 0, "", ""))
+                with self.assertRaisesRegex(o.OracleApprovalError, "unconfirmed") as caught:
+                    publication.publish_prepared(self.root, Path(prepared["prepared_file"]), execute=execute)
+                result = caught.exception.publication_result
+                self.assertEqual(result["state"], "UNCONFIRMED")
+                retained = json.loads(Path(result["attempt_file"]).read_bytes())
+                self.assertEqual(retained["state"], "UNCONFIRMED")
+
     def test_captured_delivery_cleanup_preserves_newer_validation_and_requires_confirmed_main(self):
         captured = self.validate()
         prepared = publication.prepare(self.root, captured, self.ref, "main-promotion", refresh=False)
@@ -702,8 +723,17 @@ class ShipmentWorkflow(unittest.TestCase):
     def test_confirmed_delivery_advances_distinct_checkpoint_and_repeat_is_noop(self):
         commit = self.validate()
         commands = []
-        execute = self.remote_execute(commands)
-        publication.publish(self.root, "HEAD", self.ref, "main-promotion", execute=execute, refresh=False)
+        execute = self.remote_execute(commands, {"refs/heads/main": self.fixture.base, "refs/heads/" + self.ref: commit})
+        repository = {"full_name": status.REPOSITORY}
+        def read(path):
+            if path == "/branches/main":
+                return {"name": "main", "protected": False}
+            if path.startswith("/actions/runs?"):
+                return {"total_count": 1, "workflow_runs": [{"id": 7, "head_sha": commit, "head_branch": self.ref,
+                        "event": "push", "path": ".github/workflows/publication-safety.yml", "status": "completed",
+                        "conclusion": "success", "repository": repository, "head_repository": repository}]}
+            return {"total_count": 1, "jobs": [{"name": "verify-public-repository", "status": "completed", "conclusion": "success"}]}
+        publication.publish(self.root, "HEAD", self.ref, "main-promotion", execute=execute, read=read, refresh=False)
         record = shipment._load(self.root)
         self.assertEqual(record["last_validated_commit"], commit)
         self.assertEqual(record["last_released_commit"], commit)

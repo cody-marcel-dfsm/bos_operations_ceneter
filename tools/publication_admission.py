@@ -308,9 +308,15 @@ def publish_prepared(root: Path, prepared: Path, *, execute=subprocess.run) -> d
         raise
     if "push_url" in record:
         # Read the exact remote ref back over the same destination before success.
-        observed = public_status.remote_refs(root, record["push_url"], [record["target_ref"]], execute=execute)
-        if observed.get(record["target_ref"]) != record["source_commit"]:
-            error = o.OracleApprovalError("Remote " + record["target_ref"] + " publication is unconfirmed; read state before retrying")
+        # A failed or mismatched readback still retains the durable attempt outcome.
+        try:
+            observed = public_status.remote_refs(root, record["push_url"], [record["target_ref"]], execute=execute)
+            reason = None if observed.get(record["target_ref"]) == record["source_commit"] else "differs"
+        except (o.OracleApprovalError, subprocess.CalledProcessError, OSError) as exc:
+            reason = "unreadable: " + str(exc)
+        if reason is not None:
+            error = o.OracleApprovalError("Remote " + record["target_ref"] + " publication is unconfirmed ("
+                                          + reason + "); read state before retrying")
             error.publication_result = result("UNCONFIRMED", 0)
             raise error
     return result("PUBLISHED", 0)
@@ -774,7 +780,7 @@ def authorize(root: Path, candidate: str, release_ref: str, owner_path: str, *, 
 
 
 def publish(root: Path, candidate: str, release_ref: str, operation: str, *,
-            authorization=None, execute=subprocess.run, refresh: bool = True) -> dict:
+            authorization=None, execute=subprocess.run, read=None, refresh: bool = True) -> dict:
     """Direct SSH Git publication: review push or exact-baseline main fast-forward."""
     selected = plan(root, candidate, release_ref, operation, refresh=refresh)
     if selected.get("state") == "NO_CHANGES":
@@ -792,6 +798,8 @@ def publish(root: Path, candidate: str, release_ref: str, operation: str, *,
     baseline = selected["publication_scope"]["baseline_commit"]
     if public_status.remote_refs(root, url, ["refs/heads/main"], execute=execute).get("refs/heads/main") != baseline:
         raise o.OracleApprovalError("Publication remote main moved from the validated baseline")
+    # Main promotion always requires the exact release ref and its successful exact-source CI.
+    _remote_admission(root, selected, execute=execute, read=read)
     # Recheck immediately before the product effect.
     if plan(root, candidate, release_ref, operation, refresh=refresh) != selected:
         raise o.OracleApprovalError("Publication plan changed before promotion")
