@@ -437,7 +437,19 @@ exact-source push-event Publication safety run (public REST) and seals the prepa
 record. Then run `npm run release:publish -- --prepared <absolute-prepared-file>`,
 which fast-forwards main with `--force-with-lease=refs/heads/main:<baseline>` and
 reads it back. A pull request is optional and is never read or merged by these
-tools. The numbered pull-request steps below are historical and superseded by
+tools.
+Protected effects need Cody's direct answer. From Claude Code: run
+`npm run release:question -- --candidate <sha> --release-ref <ref> --prepared
+<admitted review-push prepared file> --output Vault/tmp/<workflow>/` and put the
+printed question to Cody verbatim, on its own line, in the session's final
+assistant message. After his next typed reply, run `npm run release:instruction --
+--question <question file> --session-file ~/.claude/projects/<project>/<session>.jsonl
+--output Vault/tmp/<workflow>/instruction.json`, then `npm run release:authorize --
+--owner-evidence <instruction.json> --release-ref <ref>` and pass the resulting
+record to `prepare --authorization`. Only an explicit affirmative typed directly
+after that exact question counts; relayed, tool-result, subagent or wrapped
+messages, and answers to any other wording, are refused. Codex Desktop questions
+keep their existing route. The numbered pull-request steps below are historical and superseded by
 this section wherever they conflict.
 
 ## Publish through a pull request (historical)

@@ -48,6 +48,19 @@ attestation; only a genuinely absent attestation falls back to legacy commit
 statuses over public REST. Scoped human authority for protected effects is
 unchanged and is still required before main promotion.
 
+Protected effects need Cody's direct answer. From Claude Code: run
+`npm run release:question -- --candidate <sha> --release-ref <ref> --prepared
+<admitted review-push prepared file> --output Vault/tmp/<workflow>/` and put the
+printed question to Cody verbatim, on its own line, in the session's final
+assistant message. After his next typed reply, run `npm run release:instruction --
+--question <question file> --session-file ~/.claude/projects/<project>/<session>.jsonl
+--output Vault/tmp/<workflow>/instruction.json`, then `npm run release:authorize --
+--owner-evidence <instruction.json> --release-ref <ref>` and pass the resulting
+record to `prepare --authorization`. Only an explicit affirmative typed directly
+after that exact question counts; relayed, tool-result, subagent or wrapped
+messages, and answers to any other wording, are refused. Codex Desktop questions
+keep their existing route.
+
 ## Deterministic source maintenance
 
 For owner-authorized source-maintenance scope, follow
