@@ -518,15 +518,13 @@ def _claude_human_answer(entry: dict, session: str) -> str | None:
     return text
 
 
-_TOPIC = re.compile(r"\b(publish\w*|publication|release\w*|approv\w*|authori\w*|promot\w*|ship\w*|deploy\w*)\b")
-_NEGATION = re.compile(r"\b(no|not|don't|dont|never|hold|stop|wait|cancel\w*|revok\w*|withdraw\w*|rescind\w*|abort\w*|longer|reject\w*|deny|denied|halt)\b")
-
-
 def _claude_withdrawal(text: str) -> bool:
-    """A later reply withdraws the approval when it says Hold publication, or refuses or
-    cancels while referring to the publication; unrelated conversation never does."""
-    normalized = " ".join(text.lower().replace("\u2019", "'").replace("\u2018", "'").split())
-    return normalized.startswith("hold publication") or bool(_TOPIC.search(normalized) and _NEGATION.search(normalized))
+    """The explicit withdrawal protocol: a later direct human reply beginning "Hold publication".
+
+    Like the Codex route, which honours only structured replies, free-text conversation is
+    never interpreted; the question tells the human exactly how to withdraw.
+    """
+    return " ".join(text.lower().split()).startswith("hold publication")
 
 
 def _claude_decision(text: str) -> str:
@@ -748,7 +746,8 @@ def _claude_question(root: Path, approved: dict, identities: list[str]) -> str:
     active = sorted(row["id"] for row in approved["protected_effects"]["active"] if row["id"] in identities)
     return (f"Do you approve publishing BOS Operations Center {version} to main from {approved['release_ref']} "
             f"at commit {approved['candidate_commit']} (tree {approved['candidate_tree']}, plan "
-            f"{approved['plan_sha256']}) with protected effects {', '.join(active)}? Reply Approved or Hold publication.")
+            f"{approved['plan_sha256']}) with protected effects {', '.join(active)}? Reply Approved or Hold publication; "
+            "a later Hold publication reply withdraws approval.")
 
 
 def _instruction_question(root: Path, approved: dict, identities: list[str], pr: int | None) -> str:

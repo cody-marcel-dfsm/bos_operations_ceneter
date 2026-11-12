@@ -833,15 +833,15 @@ class PublicationAdmission(unittest.TestCase, ClaudeCodeAuthorityFixture):
             output.write(json.dumps(self.entry("user", "t-1", "r-1", message={"role": "user", "content": [
                 {"type": "tool_result", "tool_use_id": "toolu_y", "content": "Hold publication"}]})).encode() + b"\n")
         self.assertEqual(publication._claude_host_records(self.root, host)[0]["decision"], "Approved")
-        for unrelated in ("The MyCRM deploy key is added now.", "Cancel the MyCRM timer, it is noisy.", "No worries, thanks"):
+        for unrelated in ("The MyCRM deploy key is added now.", "Cancel the MyCRM timer, it is noisy.", "No worries, thanks",
+                          "No worries, proceed with the release"):
             with self.subTest(unrelated=unrelated):
                 self.journal.write_bytes(original)
                 with self.journal.open("ab") as output:  # Unrelated later conversation keeps the approval.
                     output.write(json.dumps(self.entry("user", "a-chat", host["answer_uuid"], message={"role": "user",
                         "content": unrelated}, origin={"kind": "human"}, turnOrigin="human")).encode() + b"\n")
                 self.assertEqual(publication._claude_host_records(self.root, host)[0]["decision"], "Approved")
-        for withdrawal in ("Hold publication", "No, do not publish", "Please don\u2019t publish yet",
-                           "I no longer approve this release", "Cancel the release", "Wait, stop the promotion"):
+        for withdrawal in ("Hold publication", "hold publication, please", "Hold   Publication until tomorrow"):
             with self.subTest(withdrawal=withdrawal):
                 self.journal.write_bytes(original)
                 with self.journal.open("ab") as output:  # A later direct withdrawal on the normal chain revokes.
