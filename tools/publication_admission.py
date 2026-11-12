@@ -518,12 +518,19 @@ def _claude_human_answer(entry: dict, session: str) -> str | None:
     return text
 
 
-_WITHDRAWALS = {"no", "hold", "stop", "wait", "cancel", "revoke", "deny", "denied", "do not publish", "don't publish"}
+_WITHDRAWAL_STARTS = {"no", "nope", "hold", "stop", "wait", "cancel", "revoke", "deny", "denied", "don't", "dont",
+                      "never", "abort", "withdraw", "withdrawn", "rescind"}
+_WITHDRAWAL_PHRASES = ("hold publication", "do not publish", "don't publish", "dont publish", "not publish",
+                       "do not approve", "don't approve", "not approved", "cancel", "revoke", "withdraw", "rescind",
+                       "stop the release", "stop publication", "abort")
 
 
 def _claude_withdrawal(text: str) -> bool:
-    normalized = " ".join(text.strip().lower().rstrip(".!").split())
-    return "hold publication" in normalized or normalized in _WITHDRAWALS
+    """Conservative: any later reply that reads as a refusal or cancellation revokes the approval."""
+    normalized = " ".join(re.sub(r"[^a-z' ]+", " ", text.lower()).split())
+    words = normalized.split()
+    return bool(words) and (words[0] in _WITHDRAWAL_STARTS or words[:2] == ["do", "not"]
+                            or any(phrase in normalized for phrase in _WITHDRAWAL_PHRASES))
 
 
 def _claude_decision(text: str) -> str:

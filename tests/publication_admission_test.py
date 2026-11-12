@@ -825,11 +825,21 @@ class PublicationAdmission(unittest.TestCase, ClaudeCodeAuthorityFixture):
         owner = self.root / "Vault/tmp/withdrawn.json"
         publication.instruction(self.root, Path(asked["question_file"]), self.journal, owner)
         host = json.loads(owner.read_bytes())["host_message"]
-        with self.journal.open("ab") as output:  # A later direct withdrawal on the normal chain revokes.
-            output.write(json.dumps(self.entry("user", "a-withdraw", host["answer_uuid"], message={"role": "user",
-                "content": "Hold publication"}, origin={"kind": "human"}, turnOrigin="human")).encode() + b"\n")
-        with self.assertRaisesRegex(o.OracleApprovalError, "superseded"):
-            publication._claude_host_records(self.root, host)
+        original = self.journal.read_bytes()
+        self.assertEqual(publication._claude_host_records(self.root, host)[0]["decision"], "Approved")
+        with self.journal.open("ab") as output:  # Unrelated later conversation keeps the approval.
+            output.write(json.dumps(self.entry("user", "a-chat", host["answer_uuid"], message={"role": "user",
+                "content": "The MyCRM deploy key is added now."}, origin={"kind": "human"}, turnOrigin="human")).encode() + b"\n")
+        self.assertEqual(publication._claude_host_records(self.root, host)[0]["decision"], "Approved")
+        for withdrawal in ("Hold publication", "No, do not publish", "Wait, cancel that", "Please don't publish yet",
+                           "I revoke that approval", "Not approved after all"):
+            with self.subTest(withdrawal=withdrawal):
+                self.journal.write_bytes(original)
+                with self.journal.open("ab") as output:  # A later direct withdrawal on the normal chain revokes.
+                    output.write(json.dumps(self.entry("user", "a-withdraw", host["answer_uuid"], message={"role": "user",
+                        "content": withdrawal}, origin={"kind": "human"}, turnOrigin="human")).encode() + b"\n")
+                with self.assertRaisesRegex(o.OracleApprovalError, "superseded"):
+                    publication._claude_host_records(self.root, host)
         self.transcript(text)
         link = self.journal.with_name(str(uuid.uuid4()) + ".jsonl")
         link.symlink_to(self.journal)
