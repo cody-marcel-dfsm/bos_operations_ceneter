@@ -91,9 +91,11 @@ Private native continuation tasks: `Vault/docs/implementation/native-callback-co
   recover changes into canonical `main`; preserve them until recovery is verified.
 - Validate the complete Oracle-selected contract against the integrated candidate
   on `main`; include recurrence regression only when selected, and retain Oracle approval. Recheck remote divergence before publication.
-- Publish through the required reviewed release pull request by creating and
-  pushing its branch ref from canonical `main` without switching the checkout.
-  Preserve every exact Oracle tree and required GitHub check.
+- Publish over SSH Git without the `gh` CLI (owner direction, 2026-11-11):
+  `npm run release:prepare` pushes the exact-commit attestation and release ref
+  from canonical `main` without switching the checkout, admits the exact-source
+  push-event checks, and `npm run release:publish` fast-forwards main on its exact
+  leased baseline. Preserve every exact Oracle tree and required GitHub check.
 
 ## BOS Product Family coordination
 

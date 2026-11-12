@@ -77,5 +77,7 @@ No administrator override or protection change is permitted. Fetch and fast-forw
 canonical main after publication; install through supported host release controls.
 Remote CI is its own execution observation and supplies no original-task SLA proof.
 Publication does not establish installation or native client acceptance.
-An optional PR-based route remains available through `merge --pr NUMBER`; the
-normal SSH route requires no GitHub CLI credential or model approval.
+The `merge --pr NUMBER` route reads and merges no pull request: it admits the exact
+release ref, baseline and push-event Actions run, then performs the same exact-base
+leased fast-forward (`--force-with-lease=refs/heads/main:<base>`) with readback as
+`promote`. Neither route needs a GitHub CLI credential or model approval.

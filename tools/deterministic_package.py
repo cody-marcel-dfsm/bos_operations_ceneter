@@ -344,14 +344,17 @@ def publish(root, ref, pr=None):
             import publication_admission as admission
         selected = {'candidate_commit': value['source'], 'candidate_tree': value['tree'],
                     'release_ref': ref, 'publication_scope': {'baseline_commit': value['base']}}
-        observed = admission._remote_admission(root, selected, pr=pr)
+        observed = admission._remote_admission(root, selected)
         native.private_write(directory(root) / (str(time.time_ns()) + '.remote.json'), native.encoded(observed))
         read_receipt(root)
         if native.git(root, 'ls-remote', remote, 'refs/heads/main').split()[0] != value['base']:
             raise ValueError('Remote publication base moved during CI admission')
-        effect(root, ['gh', 'pr', 'merge', str(pr), '--repo', native.REPOSITORY,
-                      '--merge', '--match-head-commit', value['source']], value)
+        # Exact-baseline fast-forward over the owned destination replaces the PR merge.
+        effect(root, ['git', 'push', '--force-with-lease=refs/heads/main:' + value['base'], remote,
+                      value['source'] + ':refs/heads/main'], value)
         merged = native.git(root, 'ls-remote', remote, 'refs/heads/main').split()[0]
+        if merged != value['source']:
+            raise ValueError('Main publication was not confirmed; read state before retrying')
         native.git(root, 'fetch', 'origin')
         if native.git(root, 'rev-parse', merged + '^{tree}') != value['tree']:
             raise ValueError('Published main tree differs from verified package')
@@ -421,8 +424,9 @@ def promote(root, ref):
     read_receipt(root)
     if native.git(root, 'ls-remote', remote, 'refs/heads/main').split()[0] != value['base']:
         raise ValueError('Publication base moved; integrate and revalidate')
-    # Ordinary fast-forward push; server protection and rejection remain active.
-    effect(root, ['git', 'push', remote, value['source'] + ':refs/heads/main'], value)
+    # Fast-forward push leased on the exact validated base; server protection remains active.
+    effect(root, ['git', 'push', '--force-with-lease=refs/heads/main:' + value['base'], remote,
+                  value['source'] + ':refs/heads/main'], value)
     actual = native.git(root, 'ls-remote', remote, 'refs/heads/main').split()
     if not actual or actual[0] != value['source']:
         raise ValueError('Main publication was not confirmed; read state before retrying')

@@ -38,6 +38,24 @@ class ShipmentWorkflow(unittest.TestCase):
         shipment.record_validated(self.root)
         return commit
 
+    def remote_execute(self, commands, heads=None):
+        """A recorded owned remote: ls-remote reads its heads, a push moves them."""
+        heads = {"refs/heads/main": self.fixture.base} if heads is None else heads
+        def execute(command, **kwargs):
+            commands.append(command)
+            if command[:2] == ["git", "ls-remote"]:
+                rows = "".join(heads[ref] + "\t" + ref + "\n" for ref in command[3:] if ref in heads)
+                return subprocess.CompletedProcess(command, 0, rows, "")
+            if command[:2] == ["git", "push"]:
+                source, ref = command[-1].split(":")
+                heads[ref] = source
+            return subprocess.CompletedProcess(command, 0, "", "")
+        return execute
+
+    def published(self, commit):
+        return [status.lease_command(o.PUBLICATION_REMOTE, commit, "refs/heads/main", self.fixture.base),
+                ["git", "ls-remote", o.PUBLICATION_REMOTE, "refs/heads/main"]]
+
     def row(self, *, commit=None, tree=None):
         commit = commit or self.fixture.git("rev-parse", "HEAD")
         tree = tree or self.fixture.git("rev-parse", "HEAD^{tree}")
@@ -48,7 +66,7 @@ class ShipmentWorkflow(unittest.TestCase):
         self.fixture.git("reset", "--hard", self.fixture.base)
         self.assertEqual(shipment.selection(self.root)["state"], "NO_CHANGES")
         with patch.object(publication, "_source_receipt", side_effect=AssertionError("review must not run")), \
-                patch.object(status, "publish_status", side_effect=AssertionError("status must not publish")):
+                patch.object(status, "publish_attestation", side_effect=AssertionError("attestation must not publish")):
             result = publication.publish(self.root, "HEAD", self.ref, "main-promotion",
                                          execute=lambda *a, **k: self.fail("external mutation"), refresh=False)
         self.assertEqual(result["state"], "NO_CHANGES")
@@ -123,8 +141,8 @@ class ShipmentWorkflow(unittest.TestCase):
                     self.assertEqual(publication.prepare(self.root, commit, self.ref, "main-promotion", refresh=False), prepared)
                     commands = []
                     publication.publish_prepared(self.root, Path(prepared["prepared_file"]),
-                        execute=lambda command, **kwargs: commands.append(command))
-                    self.assertEqual(commands, [["git", "push", o.PUBLICATION_REMOTE, commit + ":refs/heads/main"]])
+                        execute=self.remote_execute(commands))
+                    self.assertEqual(commands, self.published(commit))
                 self.assertEqual(shipment.checkpoint_path(self.root).read_bytes(), checkpoint)
                 self.assertEqual((shipment._decision_directory(self.root, commit, prepared["source_tree"]) / "current.json").read_bytes(), decision)
 
@@ -190,8 +208,8 @@ class ShipmentWorkflow(unittest.TestCase):
         commands = []
         with patch.object(o, "_verify_receipt", side_effect=AssertionError("proof replay")):
             publication.publish_prepared(self.root, Path(prepared["prepared_file"]),
-                execute=lambda command, **kwargs: commands.append(command))
-        self.assertEqual(commands, [["git", "push", o.PUBLICATION_REMOTE, commit + ":refs/heads/main"]])
+                execute=self.remote_execute(commands))
+        self.assertEqual(commands, self.published(commit))
 
     def test_unadopted_execution_error_preserves_original_prepared_eligibility(self):
         commit = self.validate()
@@ -204,8 +222,8 @@ class ShipmentWorkflow(unittest.TestCase):
         self.assertEqual(shipment.checkpoint_path(self.root).read_bytes(), checkpoint)
         commands = []
         publication.publish_prepared(self.root, Path(prepared["prepared_file"]),
-                                     execute=lambda command, **kwargs: commands.append(command))
-        self.assertEqual(commands, [["git", "push", o.PUBLICATION_REMOTE, commit + ":refs/heads/main"]])
+                                     execute=self.remote_execute(commands))
+        self.assertEqual(commands, self.published(commit))
 
     def test_equivalent_native_approval_preserves_a_prepared_receipt_identity(self):
         commit = self.validate()
@@ -214,8 +232,8 @@ class ShipmentWorkflow(unittest.TestCase):
         commands = []
         with patch.object(o, "_read_rounds", side_effect=AssertionError("approval bookkeeping repeats proof")):
             publication.publish_prepared(self.root, Path(prepared["prepared_file"]),
-                                        execute=lambda command, **kwargs: commands.append(command))
-        self.assertEqual(commands, [["git", "push", o.PUBLICATION_REMOTE, commit + ":refs/heads/main"]])
+                                        execute=self.remote_execute(commands))
+        self.assertEqual(commands, self.published(commit))
 
     def test_additive_approved_evidence_preserves_captured_prepared_receipt(self):
         package=json.loads((self.root/'package.json').read_text())
@@ -233,17 +251,18 @@ class ShipmentWorkflow(unittest.TestCase):
         self.fixture.submit(assessment);shipment.record_validated(self.root)
         from tools import command_coverage
         def prepare_transport(command,**kwargs):
-            return subprocess.CompletedProcess(command,0,'{}','')
-        with patch.object(command_coverage,'publish_statuses',return_value=[]), \
-                patch.object(status,'publish_status',return_value={}), \
+            return subprocess.CompletedProcess(command,0,'','')
+        with patch.object(command_coverage,'attestation_rows',return_value=[]), \
+                patch.object(status,'publish_attestation',return_value={}), \
+                patch.object(status,'push_ref',return_value={}), \
                 patch.object(publication,'_remote_admission',return_value={'fixture':'completed'}):
             prepared=publication.prepare(self.root,commit,self.ref,'main-promotion',refresh=False,execute=prepare_transport)
         self.fixture.submit(lambda context:assessment(context,True))
         commands=[]
         with patch.object(o,'_read_rounds',side_effect=AssertionError('additive evidence replayed original proof')):
             publication.publish_prepared(self.root,Path(prepared['prepared_file']),
-                execute=lambda command,**kwargs:commands.append(command))
-        self.assertEqual(commands,[['git','push',o.PUBLICATION_REMOTE,commit+':refs/heads/main']])
+                execute=self.remote_execute(commands))
+        self.assertEqual(commands, self.published(commit))
 
     def test_fresh_same_candidate_approval_advances_after_concrete_criteria_change(self):
         authority = self.root / "Vault/docs/CONSTITUTION.md"
@@ -298,17 +317,17 @@ class ShipmentWorkflow(unittest.TestCase):
         prepared = publication.prepare(self.root, commit, self.ref, "main-promotion", refresh=False)
         self.fixture.change("peer.py", "concurrent uncommitted authored work")
         commands = []
+        remote = self.remote_execute(commands)
         def execute(command, **kwargs):
-            commands.append(command)
             self.assertNotIn("timeout", kwargs)
-            return subprocess.CompletedProcess(command, 0, "", "")
+            return remote(command, **kwargs)
         with patch.object(publication, "plan", side_effect=AssertionError("publication repeats preparation")), \
                 patch.object(o, "_verify_receipt", side_effect=AssertionError("publication repeats validation")), \
                 patch.object(o, "_read_rounds", side_effect=AssertionError("publication replays decision history")), \
                 patch.object(o, "_technical_archive", side_effect=AssertionError("publication reopens validation receipt")), \
                 patch.object(shipment, "selection", side_effect=AssertionError("publication inspects new authors")):
             result = publication.publish_prepared(self.root, Path(prepared["prepared_file"]), execute=execute)
-        self.assertEqual(commands, [["git", "push", o.PUBLICATION_REMOTE, commit + ":refs/heads/main"]])
+        self.assertEqual(commands, self.published(commit))
         self.assertEqual(result["state"], "PUBLISHED")
         self.assertEqual((self.root / "peer.py").read_text(), "concurrent uncommitted authored work")
 
@@ -338,8 +357,7 @@ class ShipmentWorkflow(unittest.TestCase):
         self.fixture.change("peer.py", "newer independently validated source")
         newer = self.validate()
         validation = shipment._load(self.root)
-        outcome = publication.publish_prepared(self.root, Path(prepared["prepared_file"]),
-                    execute=lambda command, **kwargs: subprocess.CompletedProcess(command, 0, "", ""))
+        outcome = publication.publish_prepared(self.root, Path(prepared["prepared_file"]), execute=self.remote_execute([]))
         native_git = o._git
         def remote(root, *args):
             return captured + "\trefs/heads/main\n" if args[:1] == ("ls-remote",) else native_git(root, *args)
@@ -684,40 +702,43 @@ class ShipmentWorkflow(unittest.TestCase):
     def test_confirmed_delivery_advances_distinct_checkpoint_and_repeat_is_noop(self):
         commit = self.validate()
         commands = []
-        def execute(command, **kwargs):
-            commands.append(command)
-            if command[:3] == ["gh", "pr", "view"]:
-                row = ({"state": "MERGED", "headRefOid": commit, "mergeCommit": {"oid": "b" * 40}}
-                       if command[-1] == "state,headRefOid,mergeCommit" else
-                       {"headRefOid": commit, "baseRefOid": self.fixture.base, "headRefName": self.ref,
-                        "baseRefName": "main", "mergeStateStatus": "CLEAN",
-                        "statusCheckRollup": [{"conclusion": "SUCCESS"}]})
-                return subprocess.CompletedProcess(command, 0, json.dumps(row), "")
-            return subprocess.CompletedProcess(command, 0, "", "")
-        publication.publish(self.root, "HEAD", self.ref, "main-promotion", pr="1", execute=execute, refresh=False)
+        execute = self.remote_execute(commands)
+        publication.publish(self.root, "HEAD", self.ref, "main-promotion", execute=execute, refresh=False)
         record = shipment._load(self.root)
         self.assertEqual(record["last_validated_commit"], commit)
         self.assertEqual(record["last_released_commit"], commit)
-        self.assertEqual(sum(command[:3] == ["gh", "pr", "merge"] for command in commands), 1)
+        self.assertEqual(sum(command[:2] == ["git", "push"] for command in commands), 1)
+        self.assertEqual(commands[-2:], self.published(commit))
+        self.assertNotIn("gh", {command[0] for command in commands})
         self.fixture.git("update-ref", "refs/remotes/origin/main", commit)
-        repeated = publication.publish(self.root, "HEAD", self.ref, "main-promotion", pr="1",
+        repeated = publication.publish(self.root, "HEAD", self.ref, "main-promotion",
                                        execute=lambda *a, **k: self.fail("duplicate release"), refresh=False)
         self.assertEqual(repeated["state"], "NO_CHANGES")
 
     def test_status_producer_rechecks_native_receipt_before_external_write(self):
         self.validate()
         selected = publication.plan(self.root, "HEAD", self.ref, "review-push", refresh=False)
+        remote = owned_remote(self, self.root, self.fixture.base)
         observed = []
-        row = self.row()
-        row["description"] = status._description(selected["candidate_tree"], selected["technical_receipt_sha256"])
         def execute(command, **kwargs):
             observed.append(command)
-            return subprocess.CompletedProcess(command, 0, json.dumps(row), "")
-        status.publish_status(self.root, selected, execute=execute)
-        self.assertIn("statuses/" + selected["candidate_commit"], " ".join(observed[0]))
+            return subprocess.run(command, **kwargs)
+        published = status.publish_attestation(self.root, selected, execute=execute)
+        ref = status.ATTESTATION_PREFIX + selected["candidate_commit"]
+        self.assertEqual(observed[-2][-1], published["object"] + ":" + ref)
+        self.assertEqual(subprocess.run(["git", "--git-dir", str(remote), "rev-parse", ref], capture_output=True,
+                                        text=True).stdout.strip(), published["object"])
+        self.assertEqual(status.verify_publication(self.root, "HEAD", wait_seconds=0)["technical_receipt_sha256"],
+                         selected["technical_receipt_sha256"])
+        count = len(observed)
         with self.assertRaises(o.OracleApprovalError):
-            status.publish_status(self.root, dict(selected, technical_receipt_sha256="f" * 64), execute=execute)
-        self.assertEqual(len(observed), 1)
+            status.publish_attestation(self.root, dict(selected, technical_receipt_sha256="f" * 64), execute=execute)
+        self.assertEqual(len(observed), count)
+
+    def absent(self, command, **kwargs):
+        """No exact-commit attestation exists on the owned remote."""
+        self.assertEqual(command[:2], ["git", "ls-remote"])
+        return subprocess.CompletedProcess(command, 0, "", "")
 
     def test_public_status_rejects_wrong_issuer_tree_commit_failed_and_malformed_approval(self):
         self.commit()
@@ -726,35 +747,47 @@ class ShipmentWorkflow(unittest.TestCase):
                              ("description", "{\"approved\":true}"), ("target_url", status._target("0" * 40))]:
             with self.subTest(field=field, value=value):
                 row = dict(self.row(), **{field: value})
-                execute = lambda command, **kw: subprocess.CompletedProcess(command, 0, json.dumps([[row]]), "")
                 with self.assertRaises(o.OracleApprovalError):
-                    status.verify_publication(self.root, "HEAD", execute=execute, wait_seconds=0)
+                    status.verify_publication(self.root, "HEAD", execute=self.absent, read=lambda path: [row], wait_seconds=0)
 
     def test_status_wait_covers_push_race_and_latest_trusted_failure_revokes_older_success(self):
         self.commit()
         attempts, waits = [], []
-        def execute(command, **kwargs):
-            attempts.append(command)
-            return subprocess.CompletedProcess(command, 0, json.dumps([[]] if len(attempts) == 1 else [[self.row()]]), "")
-        result = status.verify_publication(self.root, "HEAD", execute=execute, wait_seconds=3,
+        def read(path):
+            attempts.append(path)
+            return [] if len(attempts) == 1 else [self.row()]
+        result = status.verify_publication(self.root, "HEAD", execute=self.absent, read=read, wait_seconds=3,
                                            monotonic=lambda: 0, sleep=waits.append)
         self.assertEqual(result["candidate_commit"], self.fixture.git("rev-parse", "HEAD"))
         self.assertEqual(waits, [2])
-        execute = lambda command, **kw: subprocess.CompletedProcess(command, 0,
-            json.dumps([[dict(self.row(), state="failure"), self.row()]]), "")
         with self.assertRaises(o.OracleApprovalError):
-            status.verify_publication(self.root, "HEAD", execute=execute, wait_seconds=0)
+            status.verify_publication(self.root, "HEAD", execute=self.absent,
+                                      read=lambda path: [dict(self.row(), state="failure"), self.row()], wait_seconds=0)
 
     def test_ci_merge_requires_the_exact_approved_head_tree(self):
         head = self.commit()
         tree = self.fixture.git("rev-parse", "HEAD^{tree}")
         merge = self.fixture.git("commit-tree", tree, "-p", self.fixture.base, "-p", head, "-m", "synthetic merge")
-        execute = lambda command, **kw: subprocess.CompletedProcess(command, 0, json.dumps([[self.row(commit=head, tree=tree)]]), "")
-        status.verify_publication(self.root, merge, execute=execute, wait_seconds=0)
+        read = lambda path: [self.row(commit=head, tree=tree)]
+        status.verify_publication(self.root, merge, execute=self.absent, read=read, wait_seconds=0)
         changed = self.fixture.git("commit-tree", self.fixture.git("rev-parse", self.fixture.base + "^{tree}"),
                                    "-p", self.fixture.base, "-p", head, "-m", "changed merge tree")
         with self.assertRaises(o.OracleApprovalError):
-            status.verify_publication(self.root, changed, execute=execute, wait_seconds=0)
+            status.verify_publication(self.root, changed, execute=self.absent, read=read, wait_seconds=0)
+
+
+def owned_remote(test, root, commit):
+    """A local bare repository standing in for the owned GitHub repository over both URLs."""
+    import tempfile
+    directory = tempfile.TemporaryDirectory()
+    test.addCleanup(directory.cleanup)
+    remote = Path(directory.name) / "owned.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(remote)], check=True)
+    subprocess.run(["git", "push", "-q", str(remote), commit + ":refs/heads/main"], cwd=root, check=True)
+    # Publication uses the owned SSH push URL; only it resolves to the synthetic remote.
+    subprocess.run(["git", "config", "remote.origin.pushurl", status.SSH_REMOTE], cwd=root, check=True)
+    subprocess.run(["git", "config", "url." + str(remote) + ".insteadOf", status.SSH_REMOTE], cwd=root, check=True)
+    return remote
 
 
 if __name__ == "__main__":

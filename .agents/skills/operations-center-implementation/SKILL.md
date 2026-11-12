@@ -30,6 +30,24 @@ python3 tools/validation_contract.py gate --base "$(git rev-parse origin/main)"
 When `origin/main` moved, rerun the selected categories on the integrated commit.
 Genuine documentation-only changes need no spec.
 
+## SSH publication without gh — owner direction, 2026-11-11
+
+The `gh` CLI stays unauthenticated on the build host ("Use ssh"); no release step
+needs it. `npm run release:prepare -- --candidate <sha> --release-ref <ref>
+--operation main-promotion` verifies the native receipt, pushes one exact-commit
+attestation (`refs/boc/attestations/<sha>`: first parent the candidate, only
+`attestation.json` binding repository, commit, tree, receipt digest and every
+approval/command-coverage row) over the configured owned SSH push URL, pushes the
+release ref, then admits the exact `git ls-remote` release/baseline heads and the
+latest exact-source push-event Publication safety run and job read through
+unauthenticated public REST. The prepared record holds
+`git push --force-with-lease=refs/heads/main:<baseline> <ssh-url> <sha>:refs/heads/main`;
+`npm run release:publish -- --prepared <file>` runs it and reads main back.
+No pull request is created or merged. CI and fresh-clone `verify-commit` read the
+attestation; only a genuinely absent attestation falls back to legacy commit
+statuses over public REST. Scoped human authority for protected effects is
+unchanged and is still required before main promotion.
+
 ## Deterministic source maintenance
 
 For owner-authorized source-maintenance scope, follow
@@ -103,7 +121,7 @@ confirmed successful delivery. Source changes continue without locks or freezes.
 
 Complete independent technical proposal/review and commit checks without human deployment permission. Missing permission is not a technical finding. Existing human-approval wording below applies only to an actual protected deployment/publication effect: concrete credential-trust, permission-authority, tenant-isolation or incompatible-public-contract behavior. Authentication labels, filenames and ordinary compatible corrections create no gate. Keep the explicit public API version request and cost controls.
 
-Use `python3 tools/publication_admission.py plan --release-ref <resolved-ref>` to inspect the exact publication. Source review pushes use its `push` command and require no deployment permission; PR creation/review remain available. Actual distributed-plugin main promotion uses its `merge --pr <number> --release-ref <resolved-ref>` command after required checks. When its exact protected effect lacks scoped human authority, finish all technical work and pause only that actual publication effect; use its `authorize --owner-evidence <direct-human-evidence> --release-ref <resolved-ref>` command to assess later evidence separately, then supply the resulting `--authorization <record>` to merge. Preserve the original technical receipt, full effective range and current effect dispositions. Never hot-patch installations.
+Use `python3 tools/publication_admission.py plan --release-ref <resolved-ref>` to inspect the exact publication. Source review pushes use its `push` command and require no deployment permission. Actual distributed-plugin main promotion uses `prepare --operation main-promotion` and `publish --prepared <record>` (the SSH route above) after the required push-event checks. When its exact protected effect lacks scoped human authority, finish all technical work and pause only that actual publication effect; use its `authorize --owner-evidence <direct-human-evidence> --release-ref <resolved-ref>` command to assess later evidence separately, then supply the resulting `--authorization <record>` to merge. Preserve the original technical receipt, full effective range and current effect dispositions. Never hot-patch installations.
 
 ## Automated proposal gate
 

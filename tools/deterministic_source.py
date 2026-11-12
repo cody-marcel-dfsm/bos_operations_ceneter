@@ -254,7 +254,7 @@ def publish(root, ref, pr=None):
     value=verify(root,publication=True)
     if not re.fullmatch('codex/source-[a-z0-9-]+',ref):raise ValueError('Source-maintenance review ref required')
     destinations=git(root,'remote','get-url','--push','--all','origin').splitlines()
-    allowed={'https://github.com/'+REPOSITORY+suffix for suffix in ['', '.git']}
+    allowed={'https://github.com/'+REPOSITORY+suffix for suffix in ['', '.git']}|{'git'+chr(64)+'github.com:'+REPOSITORY+'.git'}
     if len(destinations)!=1 or destinations[0] not in allowed:
         raise ValueError('Publication requires the exact public repository destination')
     remote=destinations[0]
@@ -266,10 +266,12 @@ def publish(root, ref, pr=None):
         try:from . import publication_admission as native
         except ImportError:import publication_admission as native
         selected={'candidate_commit':value['source'],'candidate_tree':value['tree'],'release_ref':ref,'publication_scope':{'baseline_commit':base}}
-        observation=native._remote_admission(root,selected,pr=pr)
+        observation=native._remote_admission(root,selected)
         private_write(directory(root)/(str(time.time_ns())+'.remote.json'),encoded(observation))
         verify(root)
-        subprocess.run(['gh','pr','merge',str(pr),'--repo',native.public_status.REPOSITORY,'--merge','--match-head-commit',value['source']],cwd=root,check=True)
+        # Exact-base fast-forward over the owned destination replaces the PR merge.
+        subprocess.run(['git','push','--force-with-lease=refs/heads/main:'+value['base'],remote,value['source']+':refs/heads/main'],cwd=root,check=True)
+        if git(root,'ls-remote',remote,'refs/heads/main').split()[0]!=value['source']:raise ValueError('Main publication was not confirmed; read state before retrying')
     return {'status':'SOURCE_PUSHED' if pr is None else 'SOURCE_PR_MERGED','source':value['source'],'deployment_authorized':False}
 
 def main():

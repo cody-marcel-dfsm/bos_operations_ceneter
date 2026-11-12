@@ -195,8 +195,8 @@ repeated reads. Expand inspection only for a changed input or unresolved behavio
    described effects. Recheck remote freshness and receipt custody, then use
    `tools/publication_admission.py` for review push and protected main promotion.
    Review push transports the verified exact-SHA/tree receipt digest through the
-   trusted publisher's `oracle/native-approval` GitHub status; CI independently
-   checks that status and the exact PR merge tree, with a bounded race wait.
+   exact-commit git attestation `refs/boc/attestations/<sha>` pushed over SSH; CI
+   independently fetches and checks it against the exact tree, with a bounded race wait.
    Reuse valid test/build evidence. A new commit returns only that member to
    affected validation. Confirm successful merge before recording the distinct
    `last_released_commit`; a failed delivery leaves the validated candidate pending.
@@ -210,7 +210,7 @@ Technical review governs release readiness; authored commits remain independent.
 
 Complete independent technical proposal/review and commit checks without human deployment permission. Missing permission is not a technical finding. Existing human-approval wording below applies only to an actual protected deployment/publication effect: concrete credential-trust, permission-authority, tenant-isolation or incompatible-public-contract behavior. Authentication labels, filenames and ordinary compatible corrections create no gate. Keep the explicit public API version request and cost controls.
 
-Use `python3 tools/publication_admission.py plan --release-ref <resolved-ref>` to inspect the exact publication. Source review pushes use its `push` command and require no deployment permission; PR creation/review remain available. Actual distributed-plugin main promotion uses its `merge --pr <number> --release-ref <resolved-ref>` command after required checks. When its exact protected effect lacks scoped human authority, finish all technical work and pause only that actual publication effect; use its `authorize --owner-evidence <direct-human-evidence> --release-ref <resolved-ref>` command to assess later evidence separately, then supply the resulting `--authorization <record>` to merge. Use repeatable `--effect-id <current-effect>` when supplied evidence covers selected missing scopes; omitted selection assesses all remaining scopes. Repeat `--authorization` for cumulative exact-effect decisions; `authorize` requests only effects still missing valid authority. Preserve every rejected/stale attempt alongside later valid evidence. Preserve the original technical receipt, full effective range and current effect dispositions. Never hot-patch installations.
+Use `python3 tools/publication_admission.py plan --release-ref <resolved-ref>` to inspect the exact publication. Source review pushes use its `push` command and require no deployment permission. Actual distributed-plugin main promotion uses `prepare --operation main-promotion` and `publish --prepared <record>` over SSH after the required push-event checks; no pull request or `gh` CLI is involved. When its exact protected effect lacks scoped human authority, finish all technical work and pause only that actual publication effect; use its `authorize --owner-evidence <direct-human-evidence> --release-ref <resolved-ref>` command to assess later evidence separately, then supply the resulting `--authorization <record>` to merge. Use repeatable `--effect-id <current-effect>` when supplied evidence covers selected missing scopes; omitted selection assesses all remaining scopes. Repeat `--authorization` for cumulative exact-effect decisions; `authorize` requests only effects still missing valid authority. Preserve every rejected/stale attempt alongside later valid evidence. Preserve the original technical receipt, full effective range and current effect dispositions. Never hot-patch installations.
 
 ## Model inheritance
 
@@ -428,7 +428,19 @@ file presence, dimensions or a PNG signature supplies no native acceptance.
 A GitHub merge must preserve the exact approved pull-request tree. New remote
 source requires integration and affected validation before publication.
 
-## Publish through a pull request
+## Publish over SSH — owner direction, 2026-11-11
+
+The `gh` CLI is never required. Run `npm run release:prepare -- --candidate <sha>
+--release-ref <resolved-ref> --operation main-promotion`: it pushes the exact-commit
+attestation and the release ref over the owned SSH push URL, waits for the
+exact-source push-event Publication safety run (public REST) and seals the prepared
+record. Then run `npm run release:publish -- --prepared <absolute-prepared-file>`,
+which fast-forwards main with `--force-with-lease=refs/heads/main:<baseline>` and
+reads it back. A pull request is optional and is never read or merged by these
+tools. The numbered pull-request steps below are historical and superseded by
+this section wherever they conflict.
+
+## Publish through a pull request (historical)
 
 1. Run `python3 tools/publication_admission.py push --release-ref <resolved-ref>` to push the review branch under the invocation's
    existing authorization. When no upstream exists, set one only when the

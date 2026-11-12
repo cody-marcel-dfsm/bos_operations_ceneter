@@ -90,13 +90,14 @@ class CommandCoverage(unittest.TestCase):
         calls = []
         def execute(command, **kwargs):
             calls.append(command)
-            return subprocess.CompletedProcess(command, 0, json.dumps([[self.row(), *self.environments()]]) if command[0] == "gh" else "", "")
+            return subprocess.CompletedProcess(command, 0, "", "")
         with patch.object(coverage.public_status, "verify_publication", return_value={"candidate_commit": self.commit, "candidate_tree": self.tree}), \
+                patch.object(coverage.public_status, "statuses_for", return_value=[self.row(), *self.environments()]), \
                 patch.object(o, "_git", return_value=self.tree), \
                 patch.object(coverage, "requirements", return_value=[self.required, second]):
             results = coverage.ci(self.root, self.commit, execute=execute)
         self.assertEqual([row["status"] for row in results], ["REUSED_NATIVE_APPLICABILITY", "PASSED_CURRENT_EXECUTION"])
-        self.assertEqual([command for command in calls if command[0] != "gh"], [second["command"]])
+        self.assertEqual(calls, [second["command"]])
         self.assertEqual(results[0]["original_environment"], self.origin)
 
     def test_six_command_contract_rejects_stale_foreign_and_missing_bindings_without_repair(self):
@@ -145,17 +146,20 @@ class CommandCoverage(unittest.TestCase):
     def test_ci_merge_identity_resolves_approved_source_head_without_retesting(self):
         calls = []
         merge = "d" * 40
-        def execute(command, **kwargs):
-            calls.append(command)
-            self.assertEqual(command[0], "gh")
-            self.assertIn("commits/" + self.commit + "/statuses", command[2])
-            return subprocess.CompletedProcess(command, 0, json.dumps([[self.row(), *self.environments()]]), "")
+        def statuses(root, commit, **kwargs):
+            calls.append(commit)
+            return [self.row(), *self.environments()]
         approved = {"candidate_commit": self.commit, "candidate_tree": self.tree}
         with patch.object(coverage.public_status, "verify_publication", return_value=approved), \
+                patch.object(coverage.public_status, "statuses_for", side_effect=statuses), \
                 patch.object(o, "_git", return_value=self.tree), \
                 patch.object(coverage, "requirements", return_value=[self.required]):
-            self.assertEqual(coverage.ci(self.root, merge, execute=execute)[0]["status"], "REUSED_NATIVE_APPLICABILITY")
-        self.assertEqual(len(calls), 1)
+            self.assertEqual(coverage.ci(self.root, merge, execute=lambda *a, **k: self.fail("covered command reran"))[0]["status"],
+                             "REUSED_NATIVE_APPLICABILITY")
+        self.assertEqual(calls, [self.commit])
+        attested = [dict({key: value for key, value in row.items() if key != "creator"}, issuer=coverage.public_status.ATTESTATION_ISSUER)
+                    for row in [self.row(), *self.environments()]]
+        self.assertEqual(coverage._native_coverage(attested, self.commit, self.tree, self.required), (self.digest, [self.origin]))
         with patch.object(coverage.public_status, "verify_publication", return_value=approved), \
                 patch.object(o, "_git", return_value="e" * 40):
             with self.assertRaises(o.OracleApprovalError):
@@ -176,6 +180,10 @@ class CommandCoverage(unittest.TestCase):
         remote = self.root / "owned-synthetic-remote.git"
         git("init", "--bare", "-q", str(remote))
         git("push", str(remote), baseline + ":refs/heads/main")
+        git("remote", "add", "origin", o.PUBLICATION_REMOTE)
+        git("config", "remote.origin.pushurl", publication.public_status.SSH_REMOTE)
+        # The owned SSH destination resolves to the synthetic bare remote; no network.
+        git("config", "url." + str(remote) + ".insteadOf", publication.public_status.SSH_REMOTE)
         (self.root / "package.json").write_text('{"version":"0.0.2"}')
         git("add", "package.json")
         git("commit", "-qm", "validated source")
@@ -192,10 +200,13 @@ class CommandCoverage(unittest.TestCase):
         original = path.read_bytes()
         (self.root / "concurrent.txt").write_text("new authorship remains available")
         calls = []
+        lease = ["git", "push", "--force-with-lease=refs/heads/main:" + baseline, publication.public_status.SSH_REMOTE,
+                 candidate + ":refs/heads/main"]
+        self.assertEqual(json.loads(original)["command"], lease)
         def execute(command, **kwargs):
             calls.append(command)
-            self.assertEqual(command, ["git", "push", o.PUBLICATION_REMOTE, candidate + ":refs/heads/main"])
-            return subprocess.run([*command[:2], str(remote), *command[3:]], **kwargs, capture_output=True, text=True)
+            self.assertIn(command, [lease, ["git", "ls-remote", publication.public_status.SSH_REMOTE, "refs/heads/main"]])
+            return subprocess.run(command, **dict({"capture_output": True, "text": True}, **kwargs))
         # This transport fixture supplies a prepared plan; native revocation is
         # exercised against real admitted decisions in shipment_workflow_test.
         with patch.object(publication.shipment, "publication_eligibility"):
@@ -216,7 +227,7 @@ class CommandCoverage(unittest.TestCase):
         with patch.object(publication.shipment, "publication_eligibility"):
             with self.assertRaises(subprocess.CalledProcessError):
                 publication.publish_prepared(self.root, path, execute=execute)
-        self.assertEqual(len(calls), 3)
+        self.assertEqual([command[1] for command in calls], ["push", "ls-remote", "push", "ls-remote", "push"])
         self.assertEqual(path.read_bytes(), original)
         self.assertTrue((self.root / "concurrent.txt").exists())
 
@@ -246,15 +257,114 @@ class CommandCoverage(unittest.TestCase):
             "technical_receipt_sha256": "f" * 64, "human_authority_required": False,
             "release_ref": "codex/release-v0.0.2", "publication_scope": {"baseline_commit": "d" * 40},
             "destination": {"remote_url": o.PUBLICATION_REMOTE, "ref": "refs/heads/main"}}
-        row = {"number": 12, "state": "OPEN", "headRefOid": self.commit, "headRefName": selected["release_ref"],
-            "baseRefOid": "d" * 40, "baseRefName": "main", "mergeStateStatus": "CLEAN", "statusCheckRollup": [{
-            "name": "verify-public-repository", "workflowName": "Publication safety", "status": "COMPLETED",
-            "conclusion": "SUCCESS", "detailsUrl": "https://github.com/" + coverage.public_status.REPOSITORY + "/actions/runs/123/job/456"}]}
-        run = {"id": 123, "head_sha": self.commit, "head_branch": selected["release_ref"], "event": "pull_request",
+        heads = {"refs/heads/main": "d" * 40, "refs/heads/" + selected["release_ref"]: self.commit}
+        run = {"id": 123, "head_sha": self.commit, "head_branch": selected["release_ref"], "event": "push",
             "path": ".github/workflows/publication-safety.yml", "status": "completed", "conclusion": "success",
             "repository": {"full_name": coverage.public_status.REPOSITORY},
             "head_repository": {"full_name": coverage.public_status.REPOSITORY}}
-        return selected, row, run
+        jobs = {"total_count": 1, "jobs": [{"name": "verify-public-repository", "status": "completed", "conclusion": "success"}]}
+        return selected, heads, run, jobs
+
+    def transport(self, heads, run, jobs, protected=True, calls=None):
+        """git ls-remote over the owned SSH destination and unauthenticated public REST reads."""
+        def execute(command, **kwargs):
+            if calls is not None: calls.append(command)
+            self.assertEqual(command[:3], ["git", "ls-remote", coverage.public_status.SSH_REMOTE])
+            rows = "".join(heads[ref] + "\t" + ref + "\n" for ref in command[3:] if ref in heads)
+            return subprocess.CompletedProcess(command, 0, rows, "")
+        def read(path):
+            if calls is not None: calls.append(path)
+            if path == "/branches/main":
+                return {"name": "main", "protected": protected}
+            if path.startswith("/actions/runs?"):
+                self.assertEqual(path, "/actions/runs?event=push&head_sha=" + self.commit + "&per_page=100")
+                return {"total_count": len(run), "workflow_runs": [dict(item) for item in run]}
+            self.assertEqual(path, "/actions/runs/123/jobs?filter=latest&per_page=100")
+            return jobs
+        return execute, read
+
+    def admit(self, selected, execute, read, **kwargs):
+        from tools import publication_admission as publication
+        with patch.object(publication.public_status, "push_url", return_value=coverage.public_status.SSH_REMOTE):
+            return publication._remote_admission(self.root, selected, execute=execute, read=read,
+                                                 wait_seconds=0, pause=lambda seconds: None, monotonic=lambda: 0, **kwargs)
+
+    def test_required_remote_admission_binds_exact_source_repository_and_real_actions_run(self):
+        selected, heads, run, jobs = self.admission()
+        execute, read = self.transport(heads, [run], jobs)
+        admitted = self.admit(selected, execute, read)
+        self.assertEqual(admitted["source_commit"], self.commit)
+        self.assertEqual(admitted["run_ids"], [123])
+        self.assertEqual(admitted["kind"], "boc-remote-validation-admission-v2")
+        for field, wrong in (("head_sha", "e" * 40), ("head_branch", "another-branch"), ("event", "pull_request"),
+                              ("path", "another-workflow.yml"),
+                              ("head_repository", {"full_name": "another/repository"})):
+            with self.subTest(field=field):
+                execute, read = self.transport(heads, [dict(run, **{field: wrong})], jobs)
+                with self.assertRaises(o.OracleReviewIncomplete):
+                    self.admit(selected, execute, read)
+        for label, value in (("job", {"total_count": 1, "jobs": [{"name": "verify-public-repository", "status": "completed",
+                                                                  "conclusion": "failure"}]}),
+                             ("incomplete", {"total_count": 2, "jobs": jobs["jobs"]})):
+            with self.subTest(label=label):
+                execute, read = self.transport(heads, [run], value)
+                with self.assertRaises(o.OracleApprovalError):
+                    self.admit(selected, execute, read)
+
+    def test_failed_pending_and_absent_required_remote_checks_never_seal_readiness(self):
+        for protected in (False, True):
+            with self.subTest(protected=protected):
+                selected, heads, run, jobs = self.admission()
+                execute, read = self.transport(heads, [dict(run, conclusion="failure")], jobs, protected)
+                with self.assertRaisesRegex(o.OracleApprovalError, "failed required check"):
+                    self.admit(selected, execute, read)
+                execute, read = self.transport(heads, [dict(run, status="in_progress", conclusion=None)], jobs, protected)
+                with self.assertRaises(o.OracleReviewIncomplete):
+                    self.admit(selected, execute, read)
+                execute, read = self.transport(heads, [], jobs, protected)
+                with self.assertRaises(o.OracleReviewIncomplete):
+                    self.admit(selected, execute, read)
+                # The latest exact-source run decides; an older success never admits a newer failure.
+                execute, read = self.transport(heads, [run, dict(run, id=124, conclusion="failure")], jobs, protected)
+                with self.assertRaisesRegex(o.OracleApprovalError, "failed required check"):
+                    self.admit(selected, execute, read)
+
+    def test_pending_admission_waits_on_injected_clock_then_admits(self):
+        selected, heads, run, jobs = self.admission()
+        observed, pauses, clock = [], [], [0]
+        def read(path):
+            if path.startswith("/actions/runs?"):
+                observed.append(path)
+                current = run if len(observed) > 1 else dict(run, status="queued", conclusion=None)
+                return {"total_count": 1, "workflow_runs": [current]}
+            return transport_read(path)
+        execute, transport_read = self.transport(heads, [run], jobs)
+        from tools import publication_admission as publication
+        with patch.object(publication.public_status, "push_url", return_value=coverage.public_status.SSH_REMOTE):
+            admitted = publication._remote_admission(self.root, selected, execute=execute, read=read, wait_seconds=10,
+                                                     pause=pauses.append, monotonic=lambda: clock[0])
+        self.assertEqual(admitted["run_ids"], [123])
+        self.assertEqual(pauses, [2])
+        self.assertEqual(len(observed), 2)
+
+    def test_repository_required_ci_applies_to_unprotected_and_protected_branches(self):
+        for protected in (False, True):
+            with self.subTest(protected=protected):
+                selected, heads, run, jobs = self.admission()
+                calls = []
+                execute, read = self.transport(heads, [run], jobs, protected, calls)
+                admitted = self.admit(selected, execute, read)
+                self.assertEqual(admitted["branch_protected"], protected)
+                self.assertEqual(admitted["required_job"], "verify-public-repository")
+                self.assertEqual(admitted["run_ids"], [123])
+                self.assertEqual(len(calls), 4)
+                self.assertNotIn("gh", {call[0] for call in calls if isinstance(call, list)})
+                for ref, wrong in (("refs/heads/" + selected["release_ref"], "e" * 40), ("refs/heads/main", "e" * 40),
+                                   ("refs/heads/" + selected["release_ref"], None)):
+                    moved = dict(heads, **{ref: wrong}) if wrong else {key: value for key, value in heads.items() if key != ref}
+                    execute, read = self.transport(moved, [run], jobs, protected)
+                    with self.assertRaisesRegex(o.OracleApprovalError, "different release source"):
+                        self.admit(selected, execute, read)
 
     def test_replacement_approval_revokes_explicitly_invalidated_original_support(self):
         from tools import shipment_state as shipment
@@ -397,101 +507,53 @@ class CommandCoverage(unittest.TestCase):
                     o.review_proposal(self.root, "Problem: replay; Cause: coupled phases; Recommended change: preserve scope", [str(evidence)], None, drift)
                 target.write_bytes(original_bytes)
 
-    def test_required_remote_admission_binds_exact_source_repository_and_real_actions_run(self):
-        from tools import publication_admission as publication
-        selected, row, run = self.admission()
-        def execute(command, **kwargs):
-            if command[-1].endswith("/branches/main"):
-                return subprocess.CompletedProcess(command, 0, json.dumps({"protected": True}), "")
-            return subprocess.CompletedProcess(command, 0, json.dumps(row if command[1] == "pr" else run), "")
-        admitted = publication._remote_admission(self.root, selected, execute=execute, wait_seconds=0)
-        self.assertEqual(admitted["source_commit"], self.commit)
-        self.assertEqual(admitted["run_ids"], [123])
-        for field, wrong in (("head_sha", "e" * 40), ("head_branch", "another-branch"),
-                              ("conclusion", "failure"), ("path", "another-workflow.yml"),
-                              ("head_repository", {"full_name": "another/repository"})):
-            with self.subTest(field=field):
-                original = run[field]
-                run[field] = wrong
-                with self.assertRaises(o.OracleApprovalError):
-                    publication._remote_admission(self.root, selected, execute=execute, wait_seconds=0)
-                run[field] = original
-
-    def test_failed_pending_and_absent_required_remote_checks_never_seal_readiness(self):
-        from tools import publication_admission as publication
-        for protected in (False, True):
-            with self.subTest(protected=protected):
-                selected, row, run = self.admission()
-                def execute(command, **kwargs):
-                    if command[-1].endswith("/branches/main"):
-                        return subprocess.CompletedProcess(command, 0, json.dumps({"protected": protected}), "")
-                    return subprocess.CompletedProcess(command, 0, json.dumps(row if command[1] == "pr" else run), "")
-                row["statusCheckRollup"][0]["conclusion"] = "FAILURE"
-                with self.assertRaisesRegex(o.OracleApprovalError, "failed required check"):
-                    publication._remote_admission(self.root, selected, execute=execute, wait_seconds=0)
-                row["statusCheckRollup"][0].update(status="IN_PROGRESS", conclusion=None)
-                with self.assertRaises(o.OracleReviewIncomplete):
-                    publication._remote_admission(self.root, selected, execute=execute, wait_seconds=0)
-                row["statusCheckRollup"] = []
-                with self.assertRaises(o.OracleReviewIncomplete):
-                    publication._remote_admission(self.root, selected, execute=execute, wait_seconds=0)
-
-    def test_repository_required_ci_applies_to_unprotected_and_protected_branches(self):
-        from tools import publication_admission as publication
-        for protected in (False, True):
-            with self.subTest(protected=protected):
-                selected, row, run = self.admission()
-                calls = []
-                def execute(command, **kwargs):
-                    calls.append(command)
-                    value = ({"name": "main", "protected": protected}
-                             if command[-1].endswith("/branches/main") else row if command[1] == "pr" else run)
-                    return subprocess.CompletedProcess(command, 0, json.dumps(value), "")
-                admitted = publication._remote_admission(self.root, selected, execute=execute, wait_seconds=0)
-                self.assertEqual(admitted["branch_protected"], protected)
-                self.assertEqual(admitted["required_job"], "verify-public-repository")
-                self.assertEqual(admitted["run_ids"], [123])
-                self.assertEqual(len(calls), 3)
-                row["headRefOid"] = "e" * 40
-                with self.assertRaisesRegex(o.OracleApprovalError, "different PR source"):
-                    publication._remote_admission(self.root, selected, execute=execute, wait_seconds=0)
-
     def test_preparation_exports_complete_coverage_before_ci_gate_and_reuses_remote_admission(self):
         from tools import publication_admission as publication
         subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
-        selected, row, run = self.admission()
+        selected, heads, run, jobs = self.admission()
         calls = []
+        release = "refs/heads/" + selected["release_ref"]
         def execute(command, **kwargs):
             self.assertEqual(command[0], "git")
-            if calls:
-                self.assertEqual(calls, ["object-upload", "command-coverage", "native-approval"])
-                self.assertTrue(command[-1].endswith(":refs/heads/" + selected["release_ref"]))
-                calls.append("watched-pr-update")
-            else:
-                self.assertTrue(command[-1].endswith(":refs/heads/codex/validation-" + self.commit))
-                calls.append("object-upload")
+            if command[1] == "ls-remote":
+                self.assertEqual(command[2:], [coverage.public_status.SSH_REMOTE, release])
+                calls.append("release-read")
+                return subprocess.CompletedProcess(command, 0, "", "")
+            self.assertEqual(calls, ["command-coverage", "attestation", "release-read"])
+            self.assertEqual(command, ["git", "push", "--force-with-lease=" + release + ":", coverage.public_status.SSH_REMOTE,
+                                       self.commit + ":" + release])
+            calls.append("release-update")
             return subprocess.CompletedProcess(command, 0, "", "")
         def command_export(*args, **kwargs):
             calls.append("command-coverage")
-        def source_export(*args, **kwargs):
-            self.assertEqual(calls, ["object-upload", "command-coverage"])
-            calls.append("native-approval")
+            return [("validation/native-command/x", "tree:" + self.tree + " coverage:" + "c" * 64)]
+        def source_export(root, value, rows, **kwargs):
+            self.assertEqual(calls, ["command-coverage"])
+            self.assertEqual(rows, [("validation/native-command/x", "tree:" + self.tree + " coverage:" + "c" * 64)])
+            calls.append("attestation")
+        def push(root, url, commit, ref, expected, *, execute):
+            execute(coverage.public_status.lease_command(url, commit, ref, expected), cwd=root, check=True)
         def admit(*args, **kwargs):
-            self.assertEqual(calls, ["object-upload", "command-coverage", "native-approval", "watched-pr-update"])
+            self.assertEqual(calls, ["command-coverage", "attestation", "release-read", "release-update"])
             calls.append("remote-admission")
             return {"source_commit": self.commit, "run_ids": [123]}
         with patch.object(publication, "plan", return_value=selected), \
                 patch.object(publication, "_check_authorization", wraps=publication._check_authorization) as authority, \
+                patch.object(publication.public_status, "push_url", return_value=coverage.public_status.SSH_REMOTE), \
+                patch.object(publication.public_status, "is_ancestor", return_value=True), \
+                patch.object(publication.public_status, "push_ref", side_effect=push), \
                 patch.object(coverage, "requirements", return_value=[self.required]), \
-                patch.object(coverage, "publish_statuses", side_effect=command_export), \
-                patch.object(publication.public_status, "publish_status", side_effect=source_export), \
+                patch.object(coverage, "attestation_rows", side_effect=command_export), \
+                patch.object(publication.public_status, "publish_attestation", side_effect=source_export), \
                 patch.object(publication, "_remote_admission", side_effect=admit):
             first = publication.prepare(self.root, self.commit, selected["release_ref"], "main-promotion", execute=execute)
             original = Path(first["prepared_file"]).stat().st_ino, Path(first["prepared_file"]).read_bytes()
             second = publication.prepare(self.root, self.commit, selected["release_ref"], "main-promotion", execute=execute)
         self.assertEqual(first, second)
         self.assertEqual(authority.call_count, 1)
-        self.assertEqual(calls, ["object-upload", "command-coverage", "native-approval", "watched-pr-update", "remote-admission"])
+        self.assertEqual(calls, ["command-coverage", "attestation", "release-read", "release-update", "remote-admission"])
+        self.assertEqual(json.loads(original[1])["command"], coverage.public_status.lease_command(
+            coverage.public_status.SSH_REMOTE, self.commit, "refs/heads/main", "d" * 40))
         self.assertEqual((Path(first["prepared_file"]).stat().st_ino, Path(first["prepared_file"]).read_bytes()), original)
 
     def test_public_transport_contains_only_opaque_hashes_source_and_runtime_metadata(self):
@@ -521,20 +583,14 @@ class CommandCoverage(unittest.TestCase):
         path = self.root / "tracking.json"
         path.write_bytes(o._pretty(tracking))
         checkpoint = {"command_tracking": {"path": str(path), "sha256": o._sha(path.read_bytes())}}
-        calls = []
-        def execute(command, **kwargs):
-            calls.append(command)
-            fields = dict(command[index + 1].split("=", 1) for index, value in enumerate(command) if value == "-f")
-            fields["creator"] = {"login": coverage.public_status.PUBLISHER}
-            return subprocess.CompletedProcess(command, 0, json.dumps(fields), "")
         with patch.object(shipment, "_load", return_value=checkpoint), \
                 patch.object(shipment, "validated_receipt", return_value=(receipt, receipt_raw)), \
                 patch.object(coverage, "requirements", return_value=[self.required]):
-            self.assertEqual(len(coverage.publish_statuses(self.root, selected, execute=execute)), 3)
-        public = json.dumps(calls)
+            rows = coverage.attestation_rows(self.root, selected)
+        self.assertEqual(len(rows), 3)
+        public = json.dumps(rows)
         for protected in [private, "Vault", "synthetic-owner", "private observation", "private environment", "evidence_paths", "inputs"]:
             self.assertNotIn(protected, public)
-        self.assertIn(self.commit, public)
         self.assertIn(self.tree, public)
         self.assertIn("origin:Linux python:unknown node:20", public)
         self.assertNotIn("Darwin", public)
@@ -580,14 +636,14 @@ class CommandCoverage(unittest.TestCase):
         checkpoint = {"command_tracking": {"path": str(tracking), "sha256": o._sha(tracking.read_bytes())}}
         selected = {"candidate_commit": self.commit, "candidate_tree": self.tree,
                     "technical_receipt_sha256": o._sha(o._pretty(receipt))}
-        def transport(command, **kwargs):
-            fields = dict(command[index + 1].split("=", 1) for index, value in enumerate(command) if value == "-f")
-            fields["creator"] = {"login": coverage.public_status.PUBLISHER}
-            return subprocess.CompletedProcess(command, 0, json.dumps(fields), "")
         with patch.object(shipment, "_load", return_value=checkpoint), \
                 patch.object(shipment, "validated_receipt", return_value=(receipt, o._pretty(receipt))), \
                 patch.object(coverage, "requirements", return_value=[self.required]):
-            statuses = coverage.publish_statuses(self.root, selected, execute=transport)
+            rows = coverage.attestation_rows(self.root, selected)
+        # The attestation reader marks exactly these rows with the git-attestation issuer.
+        statuses = [{"context": context, "state": "success", "description": summary,
+                     "target_url": coverage.public_status._target(self.commit),
+                     "issuer": coverage.public_status.ATTESTATION_ISSUER} for context, summary in rows]
         expected = sorted(coverage._environment_description(value["execution_environment"]) for value in observations)
         self.assertEqual(coverage._native_coverage(statuses, self.commit, self.tree, self.required), (saved["tracking_sha256"], expected))
 

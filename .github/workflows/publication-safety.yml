@@ -2,7 +2,7 @@ name: Publication safety
 
 on:
   push:
-    branches: [main, 'codex/release-v*']
+    branches: [main, 'codex/release-v*', 'codex/source-*']
     tags: ["v*"]
   pull_request:
     branches: [main]
@@ -30,14 +30,14 @@ jobs:
         run: |
           validation_base_sha="$VALIDATION_BASE_SHA"
           case "$GITHUB_REF" in
-            refs/heads/codex/release-v*) validation_base_sha="$(git rev-parse origin/main)" ;;
+            refs/heads/codex/release-v*|refs/heads/codex/source-*) validation_base_sha="$(git rev-parse origin/main)" ;;
           esac
           python3 tools/validation_contract.py gate --base "$validation_base_sha"
       - name: Verify the fixed deterministic source or skill-package category
         run: |
           validation_base_sha="$VALIDATION_BASE_SHA"
           case "$GITHUB_REF" in
-            refs/heads/codex/release-v*) validation_base_sha="$(git rev-parse origin/main)" ;;
+            refs/heads/codex/release-v*|refs/heads/codex/source-*) validation_base_sha="$(git rev-parse origin/main)" ;;
           esac
           python3 tools/deterministic_package.py ci --base "$validation_base_sha"
         env:

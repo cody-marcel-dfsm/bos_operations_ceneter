@@ -199,7 +199,8 @@ def _description(tree: str, coverage: str) -> str:
     return "tree:" + tree + " coverage:" + coverage
 
 
-def publish_statuses(root: Path, selected: dict, *, execute=subprocess.run) -> list[dict]:
+def attestation_rows(root: Path, selected: dict) -> list[tuple[str, str]]:
+    """Verified (context, description) command-coverage rows for the exact-commit attestation."""
     try:
         from . import shipment_state as shipment
     except ImportError:
@@ -250,25 +251,12 @@ def publish_statuses(root: Path, selected: dict, *, execute=subprocess.run) -> l
         rows.append((ENVIRONMENT_PREFIX + digest + "/" + row["id"], "origins:" + str(len(values)) + " sha256:" + identity))
         metadata_rows.update((ENVIRONMENT_PREFIX + identity + "/" + o._sha(value.encode()), value) for value in values)
     rows.extend(sorted(metadata_rows))
-    statuses = []
-    for context, summary in rows:
-        completed = execute(["gh", "api", "--method", "POST",
-            f"repos/{public_status.REPOSITORY}/statuses/{selected['candidate_commit']}",
-            "-f", "state=success", "-f", "context=" + context, "-f", "description=" + summary,
-            "-f", "target_url=" + public_status._target(selected["candidate_commit"])],
-            cwd=root, capture_output=True, text=True, check=True)
-        status = json.loads(completed.stdout)
-        if (status.get("context") != context or status.get("state") != "success" or status.get("description") != summary
-                or status.get("creator", {}).get("login") != public_status.PUBLISHER
-                or status.get("target_url") != public_status._target(selected["candidate_commit"])):
-            raise o.OracleApprovalError("Command attestation transport changed issuer, candidate, coverage or outcome")
-        statuses.append(status)
-    return statuses
+    return rows
 
 
 def _native_coverage(statuses: list, commit: str, tree: str, command: dict) -> tuple[str | None, str | list]:
     trusted = [row for row in statuses if row.get("context") == PREFIX + command["id"]
-               and row.get("creator", {}).get("login") == public_status.PUBLISHER]
+               and public_status.trusted(row)]
     if not trusted:
         return None, "No prior trusted command coverage for this changelist"
     row = trusted[0]
@@ -277,7 +265,7 @@ def _native_coverage(statuses: list, commit: str, tree: str, command: dict) -> t
             or not match or match.group(1) != tree):
         return None, "Latest trusted command coverage is invalidated, failed or bound to different source"
     environment = next((item for item in statuses if item.get("context") == ENVIRONMENT_PREFIX + match.group(2) + "/" + command["id"]
-        and item.get("creator", {}).get("login") == public_status.PUBLISHER), None)
+        and public_status.trusted(item)), None)
     selected = re.fullmatch(r"origins:([1-9][0-9]*) sha256:([0-9a-f]{64})", environment.get("description", "")) if environment else None
     if (not environment or environment.get("state") != "success"
             or environment.get("target_url") != public_status._target(commit)
@@ -287,7 +275,7 @@ def _native_coverage(statuses: list, commit: str, tree: str, command: dict) -> t
     latest = {}
     for item in statuses:
         context = item.get("context", "")
-        if context.startswith(prefix) and item.get("creator", {}).get("login") == public_status.PUBLISHER:
+        if context.startswith(prefix) and public_status.trusted(item):
             latest.setdefault(context, item)
     descriptions = []
     for context, item in latest.items():
@@ -302,20 +290,16 @@ def _native_coverage(statuses: list, commit: str, tree: str, command: dict) -> t
     return match.group(2), values
 
 
-def ci(root: Path, candidate: str, *, execute=subprocess.run) -> list[dict]:
+def ci(root: Path, candidate: str, *, execute=subprocess.run, read=None) -> list[dict]:
     # The exact native approval independently binds command applicability to this
     # commit. An original Darwin result remains a Darwin result when consumed by
     # a Linux runner; only the declared command contract can require another OS.
-    approved = public_status.verify_publication(root, candidate, execute=execute)
+    approved = public_status.verify_publication(root, candidate, execute=execute, read=read)
     commit, tree = approved["candidate_commit"], approved["candidate_tree"]
     if o._git(root, "rev-parse", "HEAD^{tree}").strip() != tree:
         raise o.OracleApprovalError("CI checkout differs from the exact native-approved source tree")
-    response = execute(["gh", "api", f"repos/{public_status.REPOSITORY}/commits/{commit}/statuses",
-                        "--paginate", "--slurp"], cwd=root, capture_output=True, text=True, check=True)
-    pages = json.loads(response.stdout)
-    statuses = [row for page in pages for row in page] if pages and isinstance(pages[0], list) else pages
-    if not isinstance(statuses, list) or any(not isinstance(row, dict) for row in statuses):
-        raise o.OracleApprovalError("Command attestation response is malformed")
+    # The exact-commit git attestation (or legacy public statuses) carries coverage.
+    statuses = public_status.statuses_for(root, commit, execute=execute, read=read)
     outcomes = []
     for command in requirements(root, tree):
         digest, reason = _native_coverage(statuses, commit, tree, command)

@@ -507,7 +507,8 @@ class PackageGateTests(unittest.TestCase):
                 patch.object(d, 'effect', side_effect=lambda root, command, receipt: written.append(command)):
             result = d.promote(self.root, 'codex/release-v1.0.0')
             self.assertEqual(result['status'], 'RELEASE_PUBLISHED')
-            self.assertEqual(written, [['git', 'push', remote, value['source'] + ':refs/heads/main']])
+            self.assertEqual(written, [['git', 'push', '--force-with-lease=refs/heads/main:' + value['base'], remote,
+                                        value['source'] + ':refs/heads/main']])
 
 
 if __name__ == '__main__':

@@ -2,6 +2,7 @@
 from pathlib import Path
 import json
 import subprocess
+import tempfile
 import unittest
 import uuid
 from datetime import datetime, timezone
@@ -10,6 +11,7 @@ from unittest.mock import patch
 import oracle_review_series as fixtures
 o = fixtures.o
 from tools import publication_admission as publication
+SSH = publication.public_status.SSH_REMOTE
 
 
 class PublicationAdmission(unittest.TestCase):
@@ -24,6 +26,7 @@ class PublicationAdmission(unittest.TestCase):
         self.fixture.release_metadata("0.0.1")
         self.fixture.git("add", ".")
         self.ref = "codex/release-v0.0.1"
+        self.remote = owned_remote(self, self.root, self.fixture.base)
         self.commands = []
         self.host_sessions = self.root / "Vault/tmp/synthetic-host-sessions"
         patcher = patch.object(publication, "_host_sessions_root", return_value=self.host_sessions)
@@ -54,24 +57,27 @@ class PublicationAdmission(unittest.TestCase):
         return receipt
 
     def execute(self, command, **kwargs):
-        if command[:3] == ["gh", "pr", "view"]:
-            if command[-1] == "state,headRefOid,mergeCommit":
-                return subprocess.CompletedProcess(command, 0, json.dumps({"state": "MERGED",
-                    "headRefOid": self.fixture.git("rev-parse", "HEAD"),
-                    "mergeCommit": {"oid": "a" * 40}}), "")
-            value = {"headRefOid": self.fixture.git("rev-parse", "HEAD"), "baseRefOid": self.fixture.base,
-                     "headRefName": self.ref, "baseRefName": "main", "mergeStateStatus": "CLEAN",
-                     "statusCheckRollup": [{"conclusion": "SUCCESS"}]}
-            return subprocess.CompletedProcess(command, 0, json.dumps(value), "")
-        if command[:4] == ["gh", "api", "--method", "POST"]:
-            selected = publication.plan(self.root, "HEAD", self.ref, "review-push", refresh=False)
-            row = {"context": publication.public_status.CONTEXT, "state": "success",
-                   "creator": {"login": publication.public_status.PUBLISHER},
-                   "description": publication.public_status._description(selected["candidate_tree"], selected["technical_receipt_sha256"]),
-                   "target_url": publication.public_status._target(selected["candidate_commit"])}
-            return subprocess.CompletedProcess(command, 0, json.dumps(row), "")
+        # Real Git against the owned synthetic bare remote; no gh and no network.
         self.commands.append(command)
-        return subprocess.CompletedProcess(command, 0, "", "")
+        return subprocess.run(command, **kwargs)
+
+    def pushes(self):
+        return [command for command in self.commands if command[:2] == ["git", "push"]]
+
+    def rewind(self):
+        """Return the owned remote and its tracking ref to the published baseline."""
+        subprocess.run(["git", "--git-dir", str(self.remote), "update-ref", "refs/heads/main", self.fixture.base], check=True)
+        self.fixture.git("update-ref", "refs/remotes/origin/main", self.fixture.base)
+
+    def move_remote(self, ref, commit):
+        """Move a remote ref directly, as another writer would, without local tracking updates."""
+        subprocess.run(["git", "push", "-q", "-f", str(self.remote), commit + ":refs/synthetic/upload"], cwd=self.root, check=True)
+        subprocess.run(["git", "--git-dir", str(self.remote), "update-ref", ref, commit], check=True)
+        self.fixture.git("update-ref", "refs/remotes/origin/main", self.fixture.base)
+
+    def remote_head(self, ref):
+        return subprocess.run(["git", "--git-dir", str(self.remote), "rev-parse", "--verify", "-q", ref],
+                              capture_output=True, text=True).stdout.strip()
 
     def test_authentication_technical_review_commit_and_review_push_need_no_deployment_permission(self):
         receipt = self.submit(True, authentication=True)
@@ -80,25 +86,29 @@ class PublicationAdmission(unittest.TestCase):
         selected = publication.publish(self.root, "HEAD", self.ref, "review-push",
                                        execute=self.execute, refresh=False)
         self.assertFalse(selected["human_authority_required"])
-        self.assertEqual(self.commands[-1][:4], ["git", "push", "--set-upstream", "origin"])
+        self.assertNotIn("gh", {command[0] for command in self.commands})
+        self.assertEqual(self.pushes()[-1], ["git", "push", "--force-with-lease=refs/heads/" + self.ref + ":",
+                                             SSH, selected["candidate_commit"] + ":refs/heads/" + self.ref])
+        self.assertEqual(self.remote_head("refs/heads/" + self.ref), selected["candidate_commit"])
+        attestation = publication.public_status.read_attestation(self.root, selected["candidate_commit"])
+        self.assertEqual(attestation["record"]["candidate_tree"], selected["candidate_tree"])
 
     def test_missing_permission_blocks_only_actual_protected_promotion(self):
         self.submit(True, authentication=True)
         original = o.receipt_path(self.root).read_bytes()
         with self.assertRaisesRegex(o.OracleApprovalError, "scoped deployment authority"):
-            publication.publish(self.root, "HEAD", self.ref, "main-promotion", pr="1",
-                                execute=self.execute, refresh=False)
+            publication.publish(self.root, "HEAD", self.ref, "main-promotion", execute=self.execute, refresh=False)
         self.assertEqual(self.commands, [])
         self.assertEqual(o.receipt_path(self.root).read_bytes(), original)
 
     def test_ordinary_compatible_auth_label_does_not_require_human_permission(self):
         self.fixture.change("auth-boundary-label.txt", "ordinary compatible correction")
         self.submit(authentication=True)
-        selected = publication.publish(self.root, "HEAD", self.ref, "main-promotion", pr="1",
+        selected = publication.publish(self.root, "HEAD", self.ref, "main-promotion",
                                        execute=self.execute, refresh=False)
         self.assertFalse(selected["human_authority_required"])
-        self.assertEqual(self.commands[-1][:4], ["gh", "pr", "merge", "1"])
-        self.assertIn("--match-head-commit", self.commands[-1])
+        self.assertEqual(self.pushes()[-1][:3], ["git", "push", "--force-with-lease=refs/heads/main:" + self.fixture.base])
+        self.assertEqual(self.remote_head("refs/heads/main"), selected["candidate_commit"])
 
     def test_later_ordinary_commit_cannot_erase_earlier_effect(self):
         first = self.submit(True)
@@ -213,7 +223,7 @@ class PublicationAdmission(unittest.TestCase):
         selected = publication.plan(self.root, "HEAD", self.ref, "main-promotion", refresh=False)
         self.assertEqual(publication._authorization_effects(self.root, selected, Path(authorized["path"])), {"existing-credential-read"})
         prepared = publication.prepare(self.root, "HEAD", self.ref, "main-promotion", authorization=Path(authorized["path"]),
-                                       pr="1", execute=self.execute, refresh=False)
+                                       execute=self.execute, refresh=False)
         actual_git = o._git
         def compact_git(root, *arguments):
             if arguments[0] in {"diff", "merge-base", "show", "cat-file", "ls-tree", "log", "rev-list"}:
@@ -223,7 +233,7 @@ class PublicationAdmission(unittest.TestCase):
                 patch.object(o, "_archived_origin", side_effect=AssertionError("Prepared publication replays origin")), \
                 patch.object(publication, "_instruction_binding", side_effect=AssertionError("Prepared publication repeats authority verification")):
             cached = publication.prepare(self.root, "HEAD", self.ref, "main-promotion", authorization=Path(authorized["path"]),
-                                         pr="1", execute=self.execute, refresh=False)
+                                         execute=self.execute, refresh=False)
             self.assertEqual(cached["prepared_file"], prepared["prepared_file"])
             self.fixture.change("peer.py", "later authored work remains independent")
             with patch.object(o, "_git", side_effect=compact_git), \
@@ -231,8 +241,10 @@ class PublicationAdmission(unittest.TestCase):
                     patch.object(publication, "plan", side_effect=AssertionError("Publication repeats planning")):
                 outcome = publication.publish_prepared(self.root, Path(prepared["prepared_file"]), execute=self.execute)
         self.assertEqual(outcome["state"], "PUBLISHED")
-        self.assertEqual(self.commands[-1][0:2], ["git", "push"])
-        self.assertEqual(self.commands[-1][-1], selected["candidate_commit"] + ":refs/heads/main")
+        self.assertEqual(self.pushes()[-1], publication.public_status.lease_command(
+            SSH, selected["candidate_commit"], "refs/heads/main", self.fixture.base))
+        self.assertEqual(self.commands[-1][:2], ["git", "ls-remote"])
+        self.assertEqual(self.remote_head("refs/heads/main"), selected["candidate_commit"])
         self.assertEqual((self.root / "peer.py").read_text(), "later authored work remains independent")
         def published_remote(root, *arguments):
             if arguments == ("ls-remote", o.PUBLICATION_REMOTE, "refs/heads/main"):
@@ -279,9 +291,9 @@ class PublicationAdmission(unittest.TestCase):
         authorized = self.native_authorize(owner)
         authority = Path(authorized["path"])
         prepared = publication.prepare(self.root, "HEAD", self.ref, "main-promotion", authorization=authority,
-                                       pr="1", execute=self.execute, refresh=False)
+                                       execute=self.execute, refresh=False)
         again = publication.prepare(self.root, "HEAD", self.ref, "main-promotion", authorization=authority,
-                                    pr="1", execute=self.execute, refresh=False)
+                                    execute=self.execute, refresh=False)
         self.assertEqual(again["prepared_file"], prepared["prepared_file"])
         original = authority.read_bytes()
         authority.write_bytes(original + b" ")
@@ -299,7 +311,7 @@ class PublicationAdmission(unittest.TestCase):
         self.commands.clear()
         with self.assertRaisesRegex(o.OracleApprovalError, "superseded"):
             publication.prepare(self.root, "HEAD", self.ref, "main-promotion", authorization=authority,
-                                pr="1", execute=self.execute, refresh=False)
+                                execute=self.execute, refresh=False)
         with self.assertRaisesRegex(o.OracleApprovalError, "superseded"):
             publication.publish_prepared(self.root, Path(prepared["prepared_file"]), execute=self.execute)
         self.assertEqual(self.commands, [])
@@ -340,7 +352,7 @@ class PublicationAdmission(unittest.TestCase):
         self.assertEqual(json.loads(records[0].read_bytes())["verdict"], "REJECTED")
         with self.assertRaisesRegex(o.OracleApprovalError, "requires scoped deployment authority"):
             publication.prepare(self.root, "HEAD", self.ref, "main-promotion", authorization=records,
-                                pr="1", execute=self.execute, refresh=False)
+                                execute=self.execute, refresh=False)
         self.assertEqual(self.commands, [])
 
     def test_direct_instruction_preserves_reviewed_bookkeeping_advancement(self):
@@ -373,7 +385,7 @@ class PublicationAdmission(unittest.TestCase):
         self.assertIn("source.py", self.fixture.contexts[-1]["required_coverage_paths"])
         self.assertIn("peer.py", self.fixture.contexts[-1]["required_coverage_paths"])
         publication.publish(self.root, "HEAD", self.ref, "review-push", execute=self.execute, refresh=False)
-        self.assertEqual(self.commands[-1][:2], ["git", "push"])
+        self.assertEqual(self.pushes()[-1][-1], self.fixture.git("rev-parse", "HEAD") + ":refs/heads/" + self.ref)
 
     def test_native_current_diff_includes_unpublished_history_without_private_archive(self):
         first = self.submit(True)
@@ -434,8 +446,7 @@ class PublicationAdmission(unittest.TestCase):
         mode = output.stat().st_mode & 0o777
         output.chmod(0o644 if mode != 0o644 else 0o600)
         with self.assertRaisesRegex(o.OracleApprovalError, "Validation.*provenance"):
-            publication.publish(self.root, "HEAD", self.ref, "main-promotion", pr="1",
-                                execute=self.execute, refresh=False)
+            publication.publish(self.root, "HEAD", self.ref, "main-promotion", execute=self.execute, refresh=False)
         self.assertEqual(self.commands, [])
         output.chmod(mode)
         publication.plan(self.root, "HEAD", self.ref, "main-promotion", refresh=False)
@@ -466,8 +477,7 @@ class PublicationAdmission(unittest.TestCase):
         alternate = dict(receipt, protected_effects={"active": [], "dispositions": []})
         archive.write_bytes(o._pretty(alternate))
         with self.assertRaisesRegex(o.OracleApprovalError, "technical receipt digest changed|approval receipt ID is invalid"):
-            publication.publish(self.root, "HEAD", self.ref, "main-promotion", pr="1",
-                                execute=self.execute, refresh=False)
+            publication.publish(self.root, "HEAD", self.ref, "main-promotion", execute=self.execute, refresh=False)
         self.assertEqual(self.commands, [])
         archive.write_bytes(original)
         self.assertTrue(publication.plan(self.root, "HEAD", self.ref, "main-promotion", refresh=False)
@@ -486,7 +496,7 @@ class PublicationAdmission(unittest.TestCase):
         first_path = Path(first["path"])
         first_bytes = first_path.read_bytes()
         with self.assertRaisesRegex(o.OracleApprovalError, "second-tenant-boundary"):
-            publication.publish(self.root, "HEAD", self.ref, "main-promotion", pr="1", authorization=[first_path],
+            publication.publish(self.root, "HEAD", self.ref, "main-promotion", authorization=[first_path],
                                 execute=self.execute, refresh=False)
         self.assertEqual(self.commands, [])
         bad_owner = self.root / "Vault/tmp/incorrect-synthetic-authority.json"
@@ -509,9 +519,10 @@ class PublicationAdmission(unittest.TestCase):
         second = self.native_authorize(correct_owner, prior=[first_path, rejected, stale], observed=requested)
         self.assertEqual(requested[-1], ["second-tenant-boundary"])
         second_path = Path(second["path"])
-        publication.publish(self.root, "HEAD", self.ref, "main-promotion", pr="1",
+        publication.publish(self.root, "HEAD", self.ref, "main-promotion",
                             authorization=[first_path, rejected, stale, second_path], execute=self.execute, refresh=False)
-        self.assertEqual(self.commands[-1][:3], ["gh", "pr", "merge"])
+        self.assertEqual(self.pushes()[-1][:3], ["git", "push", "--force-with-lease=refs/heads/main:" + self.fixture.base])
+        self.rewind()
         all_covered = self.native_authorize(correct_owner, prior=[first_path, rejected, stale, second_path])
         self.assertEqual(all_covered["requested_effect_ids"], [])
         self.assertEqual(first_path.read_bytes(), first_bytes)
@@ -527,10 +538,11 @@ class PublicationAdmission(unittest.TestCase):
         owner.write_text('{"direct_user_quote":"Approve the exact synthetic credential effect"}')
         authorized = self.native_authorize(owner)
         record = Path(authorized["path"])
-        publication.publish(self.root, "HEAD", self.ref, "main-promotion", pr="1", authorization=record,
+        publication.publish(self.root, "HEAD", self.ref, "main-promotion", authorization=record,
                             execute=self.execute, refresh=False)
         self.assertEqual(o.receipt_path(self.root).read_bytes(), original)
-        self.assertEqual(self.commands[-1][:3], ["gh", "pr", "merge"])
+        self.assertEqual(self.pushes()[-1][:3], ["git", "push", "--force-with-lease=refs/heads/main:" + self.fixture.base])
+        self.rewind()
         original_authorization = record.read_bytes()
         for changed in ["candidate_tree", "destination", "protected_effects", "technical_receipt_sha256"]:
             with self.subTest(changed=changed):
@@ -546,7 +558,7 @@ class PublicationAdmission(unittest.TestCase):
                 record.write_bytes(o._pretty(forged))
                 self.commands.clear()
                 with self.assertRaisesRegex(o.OracleApprovalError, "stale, mismatched"):
-                    publication.publish(self.root, "HEAD", self.ref, "main-promotion", pr="1", authorization=record,
+                    publication.publish(self.root, "HEAD", self.ref, "main-promotion", authorization=record,
                                         execute=self.execute, refresh=False)
                 self.assertEqual(self.commands, [])
                 self.assertEqual(o.receipt_path(self.root).read_bytes(), original)
@@ -554,9 +566,115 @@ class PublicationAdmission(unittest.TestCase):
         owner.write_text('{"direct_user_quote":"changed authority"}')
         self.commands.clear()
         with self.assertRaisesRegex(o.OracleApprovalError, "stale, mismatched"):
-            publication.publish(self.root, "HEAD", self.ref, "main-promotion", pr="1", authorization=record,
+            publication.publish(self.root, "HEAD", self.ref, "main-promotion", authorization=record,
                                 execute=self.execute, refresh=False)
         self.assertEqual(self.commands, [])
+
+
+    def test_ssh_main_publication_requires_the_exact_remote_baseline_and_reads_it_back(self):
+        self.fixture.change("auth-boundary-label.txt", "ordinary compatible correction")
+        self.submit()
+        candidate = self.fixture.git("rev-parse", "HEAD")
+        moved = self.fixture.git("commit-tree", self.fixture.git("rev-parse", self.fixture.base + "^{tree}"),
+                                 "-p", self.fixture.base, "-m", "concurrent remote change")
+        self.move_remote("refs/heads/main", moved)
+        with self.assertRaisesRegex(o.OracleApprovalError, "moved"):
+            publication.publish(self.root, "HEAD", self.ref, "main-promotion", execute=self.execute, refresh=False)
+        self.assertEqual(self.pushes(), [])
+        # A lease on the stale baseline is rejected by Git itself, never forced.
+        with self.assertRaises(subprocess.CalledProcessError):
+            publication.public_status.push_ref(self.root, SSH, candidate, "refs/heads/main",
+                                               self.fixture.base, execute=self.execute)
+        self.assertEqual(self.remote_head("refs/heads/main"), moved)
+        with self.assertRaisesRegex(o.OracleApprovalError, "not an ancestor"):
+            publication.public_status.push_ref(self.root, SSH, self.fixture.base, "refs/heads/main",
+                                               candidate, execute=self.execute)
+        self.fixture.git("config", "remote.origin.pushurl", "https://example.invalid/foreign.git")
+        with self.assertRaisesRegex(o.OracleApprovalError, "owned repository push destination"):
+            publication.public_status.push_url(self.root)
+
+    def test_attestation_binds_exact_commit_tree_receipt_and_rejects_forged_records(self):
+        status = publication.public_status
+        self.submit()
+        selected = publication.plan(self.root, "HEAD", self.ref, "review-push", refresh=False)
+        commit, ref = selected["candidate_commit"], status.ATTESTATION_PREFIX + selected["candidate_commit"]
+        self.assertIsNone(status.read_attestation(self.root, commit, execute=self.execute))
+        first = status.publish_attestation(self.root, selected, [("validation/native-command/x", "tree:t coverage:c")],
+                                           execute=self.execute)
+        self.assertFalse(first["reused"])
+        self.assertEqual(self.remote_head(ref), first["object"])
+        verified = status.verify_publication(self.root, "HEAD", execute=self.execute, wait_seconds=0,
+                                             read=lambda path: self.fail("attestation present; no REST fallback"))
+        self.assertEqual(verified["technical_receipt_sha256"], selected["technical_receipt_sha256"])
+        self.assertEqual(verified["publisher"], status.ATTESTATION_ISSUER)
+        again = status.publish_attestation(self.root, selected, [("validation/native-command/x", "tree:t coverage:c")],
+                                           execute=self.execute)
+        self.assertTrue(again["reused"])
+        replaced = status.publish_attestation(self.root, selected, [], execute=self.execute)
+        self.assertEqual(self.fixture.git("show", "-s", "--format=%P", replaced["object"]).split(), [commit, first["object"]])
+        self.assertEqual([row["context"] for row in status.read_attestation(self.root, commit)["statuses"]], [status.CONTEXT])
+        with self.assertRaisesRegex(o.OracleApprovalError, "native receipt"):
+            status.publish_attestation(self.root, dict(selected, technical_receipt_sha256="f" * 64), execute=self.execute)
+        record = replaced["record"]
+        def forge(mutate, parents=(commit,), name=status.ATTESTATION_FILE, extra=False):
+            value = json.loads(json.dumps(record)); mutate(value)
+            blob = subprocess.run(["git", "hash-object", "-w", "--stdin"], cwd=self.root, input=o._pretty(value),
+                                  capture_output=True, check=True).stdout.decode().strip()
+            rows = "100644 blob " + blob + "\t" + name + "\n" + ("100644 blob " + blob + "\textra.json\n" if extra else "")
+            tree = subprocess.run(["git", "mktree"], cwd=self.root, input=rows.encode(), capture_output=True,
+                                  check=True).stdout.decode().strip()
+            arguments = [item for parent in parents for item in ("-p", parent)]
+            forged = self.fixture.git("commit-tree", tree, *arguments, "-m", "forged")
+            self.move_remote(ref, forged)
+        for label, arguments in (("parent", dict(mutate=lambda value: None, parents=(self.fixture.base,))),
+                                 ("file", dict(mutate=lambda value: None, name="other.json")),
+                                 ("extra", dict(mutate=lambda value: None, extra=True)),
+                                 ("tree", dict(mutate=lambda value: value.update(candidate_tree="0" * 40))),
+                                 ("repository", dict(mutate=lambda value: value.update(repository="another/repository"))),
+                                 ("row", dict(mutate=lambda value: value["statuses"][0].update(issuer="forged")))):
+            with self.subTest(label=label):
+                forge(**arguments)
+                with self.assertRaises(o.OracleApprovalError):
+                    status.verify_publication(self.root, "HEAD", execute=self.execute, wait_seconds=0)
+
+    def test_legacy_public_rest_statuses_remain_readable_without_gh(self):
+        status = publication.public_status
+        self.submit()
+        commit, tree = self.fixture.git("rev-parse", "HEAD"), self.fixture.git("rev-parse", "HEAD^{tree}")
+        row = {"context": status.CONTEXT, "state": "success", "creator": {"login": status.PUBLISHER},
+               "description": status._description(tree, "a" * 64), "target_url": status._target(commit)}
+        paths = []
+        def read(path):
+            paths.append(path)
+            return [row]
+        self.assertEqual(status.verify_publication(self.root, "HEAD", execute=self.execute, read=read, wait_seconds=0)
+                         ["technical_receipt_sha256"], "a" * 64)
+        self.assertEqual(paths, ["/commits/" + commit + "/statuses?per_page=100&page=1"])
+        for forged in (dict(row, creator={"login": "untrusted"}),
+                       dict(row, creator={"login": "untrusted"}, issuer=status.ATTESTATION_ISSUER)):
+            with self.subTest(forged=forged), self.assertRaises(o.OracleApprovalError):
+                status.verify_publication(self.root, "HEAD", execute=self.execute, read=lambda path: [forged], wait_seconds=0)
+
+    def test_ssh_instruction_question_names_the_exact_release_ref_commit_and_tree(self):
+        self.submit(True)
+        selected = publication.plan(self.root, "HEAD", self.ref, "main-promotion", refresh=False)
+        text = publication._instruction_question(self.root, selected, ["existing-credential-read"], None)
+        for value in (self.ref, selected["candidate_commit"], selected["candidate_tree"], "existing-credential-read"):
+            self.assertIn(value, text)
+        self.assertNotIn("/pull/", text)
+
+
+def owned_remote(test, root, commit):
+    """A local bare repository standing in for the owned GitHub repository over both URLs."""
+    directory = tempfile.TemporaryDirectory()
+    test.addCleanup(directory.cleanup)
+    remote = Path(directory.name) / "owned.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(remote)], check=True)
+    subprocess.run(["git", "push", "-q", str(remote), commit + ":refs/heads/main"], cwd=root, check=True)
+    # Publication uses the owned SSH push URL; only it resolves to the synthetic remote.
+    subprocess.run(["git", "config", "remote.origin.pushurl", publication.public_status.SSH_REMOTE], cwd=root, check=True)
+    subprocess.run(["git", "config", "url." + str(remote) + ".insteadOf", publication.public_status.SSH_REMOTE], cwd=root, check=True)
+    return remote
 
 
 if __name__ == "__main__":

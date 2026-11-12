@@ -29,19 +29,23 @@ commit/tree, runtime/dependency/environment hashes and original request time in
 private Git-local evidence. Failed/empty/skipped execution never passes; retries
 retain the original clock and evidence. VERIFIED is not an Oracle approval.
 
-Create the normal pull request to main from that exact review ref. CI independently
-executes the same scope checks and full category, without trusting a supplied
-success status. Out-of-scope changes route to the existing product contract.
-After the required Actions checks succeed, invoke:
+Pushing that exact review ref starts the push-event Publication safety run. CI
+independently executes the same scope checks and full category, without trusting a
+supplied success status. Out-of-scope changes route to the existing product
+contract. After the required Actions run succeeds, invoke:
 
 ```sh
 python3 -B tools/deterministic_source.py merge --ref codex/source-DESCRIPTION --pr NUMBER
 ```
 
-The native consumer rechecks exact source, original outputs and remote baseline,
-requires one HTTPS push destination identifying this exact public repository, and
-then uses the existing required-workflow admission and ordinary matching-head PR
-merge. No administrator bypass is used. Read back remote main and tree, fetch and
+`NUMBER` is retained only as the caller's selector; no pull request is read or
+merged and no `gh` CLI is used. The native consumer rechecks exact source, original
+outputs and remote baseline, requires one push destination identifying this exact
+public repository (its SSH URL or HTTPS identity), admits the exact ref and baseline
+heads by `git ls-remote` and the exact-source push run and job by unauthenticated
+public REST, then fast-forwards main with
+`git push --force-with-lease=refs/heads/main:<base>` and reads it back. No
+administrator bypass is used. Read back remote main and tree, fetch and
 fast-forward canonical main, and report publication separately from any customer
 release. This source lane grants no version bump, package distribution or live
 production authority. Public maintainer docs use portable repository references;
