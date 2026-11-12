@@ -532,13 +532,35 @@ def _claude_decision(text: str) -> str:
     return "Approved" if normalized in _AFFIRMATIVE else "Hold publication"
 
 
-def _claude_host_records(root: Path, host: dict) -> tuple[dict, dict]:
-    """Read a Claude Code session transcript as a native host journal (append-safe)."""
-    required = {"host", "session_file", "session_id", "question_uuid", "answer_uuid", "question_text", "records"}
-    if (not isinstance(host, dict) or set(host) != required or host["host"] != CLAUDE_HOST
-            or not re.fullmatch(r"[0-9a-f-]{36}", host["session_id"])
-            or not isinstance(host["question_text"], str) or not host["question_text"]):
-        raise o.OracleApprovalError("Invalid direct Claude Code user instruction")
+CLAUDE_RELEASE_HOST = "claude-code-release-instruction"
+# The owner's release instructions ("approved", "ship it" and "send it" are synonymous, AGENTS.md).
+_RELEASE_INSTRUCTIONS = {"approved", "ship it", "send it"}
+
+
+def _claude_release_records(root: Path, host: dict) -> tuple[dict, dict]:
+    """Read the owner's direct release instruction from a Claude Code session transcript.
+
+    AGENTS.md binds the actual "approved"/"ship it"/"send it" instruction to the prepared
+    release and its described effects with no further approval question.
+    """
+    required = {"host", "session_file", "session_id", "instruction_uuid", "records"}
+    if (not isinstance(host, dict) or set(host) != required or host["host"] != CLAUDE_RELEASE_HOST
+            or not re.fullmatch(r"[0-9a-f-]{36}", host["session_id"])):
+        raise o.OracleApprovalError("Invalid direct Claude Code release instruction")
+    entries, _later, custody = _claude_journal_range(root, host)
+    if len(entries) != 1 or entries[0].get("uuid") != host["instruction_uuid"]:
+        raise o.OracleApprovalError("Instruction range is not exactly the owner's release instruction")
+    text = _claude_human_answer(entries[0], host["session_id"])
+    if text is None or not isinstance(entries[0].get("timestamp"), str):
+        raise o.OracleApprovalError("Claude Code release instruction is not a direct human-typed main-chain user message")
+    normalized = " ".join(text.strip().lower().rstrip(".!").split())
+    if normalized not in _RELEASE_INSTRUCTIONS:
+        raise o.OracleApprovalError("Claude Code message is not an owner release instruction")
+    return {"decision": "Approved", "instruction_timestamp": entries[0]["timestamp"]}, custody
+
+
+def _claude_journal_range(root: Path, host: dict) -> tuple[list, list, dict]:
+    """Read an exact byte range and its later suffix from a unique owned Claude Code transcript."""
     path = Path(host["session_file"])
     home = _claude_sessions_root()
     if (not path.is_absolute() or ".." in path.parts or not path.is_relative_to(home)
@@ -588,6 +610,17 @@ def _claude_host_records(root: Path, host: dict) -> tuple[dict, dict]:
             os.close(descriptor)
         if parent:
             os.close(parent[0])
+    return entries, later, custody
+
+
+def _claude_host_records(root: Path, host: dict) -> tuple[dict, dict]:
+    """Read a Claude Code session transcript as a native host journal (append-safe)."""
+    required = {"host", "session_file", "session_id", "question_uuid", "answer_uuid", "question_text", "records"}
+    if (not isinstance(host, dict) or set(host) != required or host["host"] != CLAUDE_HOST
+            or not re.fullmatch(r"[0-9a-f-]{36}", host["session_id"])
+            or not isinstance(host["question_text"], str) or not host["question_text"]):
+        raise o.OracleApprovalError("Invalid direct Claude Code user instruction")
+    entries, later, custody = _claude_journal_range(root, host)
     # The range is exactly: the question entry, non-message entries only, the answer entry.
     question, answer, between = entries[0], entries[-1], entries[1:-1]
     session = host["session_id"]
@@ -632,6 +665,8 @@ def _instruction_host_records(root: Path, host: dict) -> tuple[dict, dict]:
     """Read only selected native host records; ordinary journal append is safe."""
     if isinstance(host, dict) and host.get("host") == CLAUDE_HOST:
         return _claude_host_records(root, host)
+    if isinstance(host, dict) and host.get("host") == CLAUDE_RELEASE_HOST:
+        return _claude_release_records(root, host)
     required = {"session_file", "thread_id", "question_call_id", "question_index", "question_text",
                 "approved_answer", "user_message_id", "turn_id", "records"}
     if (not isinstance(host, dict) or set(host) != required or host["approved_answer"] != "Approved"
@@ -827,16 +862,28 @@ def _instruction_binding_contents(root: Path, selected: dict, owner_path: str, r
             or admission.get("source_commit") != approved["candidate_commit"] or admission.get("source_tree") != approved["candidate_tree"]
             or not (admission.get("kind") == "boc-remote-validation-admission-v2"
                     and admission.get("release_ref") == approved["release_ref"] and "pr" not in admission
-                    or type(admission.get("pr")) is int and admission["pr"] > 0)
-            or instruction["host_message"]["question_text"] != (
-                _claude_question(root, approved, instruction["effect_ids"])
-                if isinstance(instruction["host_message"], dict) and instruction["host_message"].get("host") == CLAUDE_HOST
-                else _instruction_question(root, approved, instruction["effect_ids"], admission.get("pr")))):
+                    or type(admission.get("pr")) is int and admission["pr"] > 0)):
         raise o.OracleApprovalError("Native question has a different prepared PR, release or effect scope")
-    decision, custody = _instruction_host_records(root, instruction["host_message"])
-    question_time = datetime.fromisoformat(decision["question_timestamp"].replace("Z", "+00:00")).timestamp()
-    if max(Path(reference["path"]).stat().st_mtime, review_path.stat().st_mtime) > question_time:
-        raise o.OracleApprovalError("Instruction plan was not prepared before its native question")
+    host = instruction["host_message"]
+    release_instruction = isinstance(host, dict) and host.get("host") == CLAUDE_RELEASE_HOST
+    if not release_instruction and host["question_text"] != (
+            _claude_question(root, approved, instruction["effect_ids"])
+            if isinstance(host, dict) and host.get("host") == CLAUDE_HOST
+            else _instruction_question(root, approved, instruction["effect_ids"], admission.get("pr"))):
+        raise o.OracleApprovalError("Native question has a different prepared PR, release or effect scope")
+    decision, custody = _instruction_host_records(root, host)
+    if release_instruction:
+        # The owner's release instruction covers the prepared release, including later repair
+        # and revalidation; it must postdate the published baseline it releases from.
+        baseline = approved["publication_scope"]["baseline_commit"]
+        baseline_time = int(o._git(root, "show", "-s", "--format=%ct", baseline).strip())
+        given = datetime.fromisoformat(decision["instruction_timestamp"].replace("Z", "+00:00")).timestamp()
+        if given <= baseline_time:
+            raise o.OracleApprovalError("Release instruction predates the published baseline it would release from")
+    else:
+        question_time = datetime.fromisoformat(decision["question_timestamp"].replace("Z", "+00:00")).timestamp()
+        if max(Path(reference["path"]).stat().st_mtime, review_path.stat().st_mtime) > question_time:
+            raise o.OracleApprovalError("Instruction plan was not prepared before its native question")
     return {"decision": decision["decision"], "approved_plan_sha256": approved["plan_sha256"],
             "prepared_plan_custody": plan_fact, "prepared_review_custody": review_fact, "host_custody": custody,
             "effect_ids": instruction["effect_ids"]}
@@ -990,8 +1037,10 @@ def question(root: Path, candidate: str, release_ref: str, prepared_review: Path
     return dict(record, question_file=str(path))
 
 
-def instruction(root: Path, question_file: Path, session_file: Path, output: Path) -> dict:
-    """Bind the human answer that directly follows the exact question in a Claude Code transcript."""
+def instruction(root: Path, question_file: Path, session_file: Path, output: Path, *,
+                instruction_uuid: str | None = None) -> dict:
+    """Bind the human answer that directly follows the exact question in a Claude Code transcript,
+    or, with instruction_uuid, the owner's direct release instruction message."""
     asked = json.loads(Path(question_file).read_bytes())
     if asked.get("kind") != "boc-claude-publication-question-v1":
         raise o.OracleApprovalError("Instruction requires a generated publication question record")
@@ -999,6 +1048,20 @@ def instruction(root: Path, question_file: Path, session_file: Path, output: Pat
     offsets, position = [], 0
     for line in raw.splitlines(keepends=True):
         offsets.append((position, line)); position += len(line)
+    if instruction_uuid is not None:
+        found = [(start, line) for start, line in offsets if json.loads(line).get("uuid") == instruction_uuid]
+        if len(found) != 1:
+            raise o.OracleApprovalError("The release instruction was not found exactly once in the session transcript")
+        start, line = found[0]
+        host = {"host": CLAUDE_RELEASE_HOST, "session_file": str(Path(session_file).absolute()),
+                "session_id": Path(session_file).stem, "instruction_uuid": instruction_uuid,
+                "records": {"offset": start, "length": len(line), "sha256": o._sha(line)}}
+        decision, _ = _claude_release_records(root, host)
+        value = {"kind": "boc-direct-publication-instruction-input-v1", "prepared_plan": asked["prepared_plan"],
+                 "prepared_review": asked["prepared_review"], "effect_ids": asked["effect_ids"], "host_message": host}
+        Path(output).parent.mkdir(parents=True, exist_ok=True)
+        Path(output).write_bytes(o._pretty(value))
+        return {"instruction_file": str(output), "decision": decision["decision"], "instruction_uuid": instruction_uuid}
     found = None
     for index, (start, line) in enumerate(offsets):
         entry = json.loads(line)
@@ -1038,13 +1101,15 @@ def main(argv=None) -> int:
     parser.add_argument("--question", type=Path)
     parser.add_argument("--session-file", type=Path)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--instruction-uuid")
     args = parser.parse_args(argv)
     root = o.repository_root()
     try:
         if args.command == "instruction":
             if not (args.question and args.session_file and args.output):
                 raise o.OracleApprovalError("instruction requires --question, --session-file and --output")
-            print(json.dumps(instruction(root, args.question, args.session_file, args.output), indent=2, sort_keys=True))
+            print(json.dumps(instruction(root, args.question, args.session_file, args.output,
+                                         instruction_uuid=args.instruction_uuid), indent=2, sort_keys=True))
             return 0
         if args.command in {"publish", "push", "merge"}:
             if args.prepared is None:

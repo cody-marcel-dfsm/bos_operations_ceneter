@@ -438,6 +438,14 @@ record. Then run `npm run release:publish -- --prepared <absolute-prepared-file>
 which fast-forwards main with `--force-with-lease=refs/heads/main:<baseline>` and
 reads it back. A pull request is optional and is never read or merged by these
 tools.
+Cody's own release instruction ("approved", "ship it" or "send it", typed by him in
+the Claude Code session) authorizes the prepared release and its protected effects
+without another question. Run `npm run release:question` as below only to write the
+plan record, then `npm run release:instruction -- --question <question file>
+--session-file <session>.jsonl --instruction-uuid <uuid of his message> --output
+Vault/tmp/<workflow>/instruction.json` and continue with `release:authorize`. The
+instruction must postdate the published main baseline it releases from.
+
 Protected effects need Cody's direct answer. From Claude Code: run
 `npm run release:question -- --candidate <sha> --release-ref <ref> --prepared
 <admitted review-push prepared file> --output Vault/tmp/<workflow>/` and put the
