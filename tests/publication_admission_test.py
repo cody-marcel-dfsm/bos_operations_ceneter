@@ -653,7 +653,13 @@ class PublicationAdmission(unittest.TestCase):
                                  ("extra", dict(mutate=lambda value: None, extra=True)),
                                  ("tree", dict(mutate=lambda value: value.update(candidate_tree="0" * 40))),
                                  ("repository", dict(mutate=lambda value: value.update(repository="another/repository"))),
-                                 ("row", dict(mutate=lambda value: value["statuses"][0].update(issuer="forged")))):
+                                 ("row", dict(mutate=lambda value: value["statuses"][0].update(issuer="forged"))),
+                                 ("receipt", dict(mutate=lambda value: value.update(technical_receipt_sha256="e" * 64))),
+                                 ("short-receipt", dict(mutate=lambda value: value.update(technical_receipt_sha256="e"))),
+                                 ("approval-row", dict(mutate=lambda value: value["statuses"][0].update(
+                                     description=status._description(value["candidate_tree"], "e" * 64)))),
+                                 ("no-approval", dict(mutate=lambda value: value.update(statuses=[
+                                     dict(value["statuses"][0], context="validation/native-command/x")])))):
             with self.subTest(label=label):
                 forge(**arguments)
                 with self.assertRaises(o.OracleApprovalError):

@@ -191,11 +191,16 @@ def read_attestation(root: Path, commit: str, *, execute=subprocess.run) -> dict
             or record["kind"] != ATTESTATION_KIND or record["repository"] != REPOSITORY
             or record["candidate_commit"] != commit or record["candidate_tree"] != tree
             or not isinstance(record["technical_receipt_sha256"], str)
+            or not re.fullmatch(r"[0-9a-f]{64}", record["technical_receipt_sha256"])
             or not isinstance(statuses, list) or not statuses
             or any(not isinstance(row, dict) or set(row) != _ROW_KEYS
                    or any(not isinstance(row[key], str) for key in _ROW_KEYS) for row in statuses)
             or len({row["context"] for row in statuses}) != len(statuses)):
         raise o.OracleApprovalError("Public attestation has a wrong repository, commit, tree or record shape")
+    # The approval row must name exactly the record's own tree and receipt identity.
+    approvals = [row for row in statuses if row["context"] == CONTEXT]
+    if len(approvals) != 1 or approvals[0]["description"] != _description(tree, record["technical_receipt_sha256"]):
+        raise o.OracleApprovalError("Public attestation approval row conflicts with its technical receipt identity")
     return {"object": head, "record": record,
             "statuses": [dict(row, issuer=ATTESTATION_ISSUER) for row in statuses]}
 
