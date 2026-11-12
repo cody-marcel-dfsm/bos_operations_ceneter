@@ -814,6 +814,13 @@ class PublicationAdmission(unittest.TestCase, ClaudeCodeAuthorityFixture):
             origin={"kind": "human"}, turnOrigin="human")))
         with self.assertRaisesRegex(o.OracleApprovalError, "superseded"):
             publication.instruction(self.root, Path(asked["question_file"]), self.journal, self.root / "Vault/tmp/s.json")
+        def appended_branch(rows):
+            stop = self.entry("system", "s-late", rows["question"]["uuid"], subtype="stop_hook_summary")
+            rows["after"] += [stop, self.entry("user", "a-late", stop["uuid"], message={"role": "user", "content": "Hold publication"},
+                                               origin={"kind": "human"}, turnOrigin="human")]
+        self.transcript(text, mutate=appended_branch)
+        with self.assertRaisesRegex(o.OracleApprovalError, "superseded"):
+            publication.instruction(self.root, Path(asked["question_file"]), self.journal, self.root / "Vault/tmp/s2.json")
         self.transcript(text)
         link = self.journal.with_name(str(uuid.uuid4()) + ".jsonl")
         link.symlink_to(self.journal)

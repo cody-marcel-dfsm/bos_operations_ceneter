@@ -560,7 +560,6 @@ def _claude_host_records(root: Path, host: dict) -> tuple[dict, dict]:
                 or o._sha(raw) != row["sha256"]):
             raise o.OracleApprovalError("Native instruction bytes changed or are incomplete")
         entries = [json.loads(line) for line in raw.splitlines()]
-        markers = [item["uuid"].encode() for item in entries if isinstance(item, dict) and isinstance(item.get("uuid"), str)]
         later = []
         with os.fdopen(os.dup(descriptor), "rb") as suffix:
             suffix.seek(row["offset"] + row["length"])
@@ -568,7 +567,7 @@ def _claude_host_records(root: Path, host: dict) -> tuple[dict, dict]:
                 line = suffix.readline(4_000_001)
                 if len(line) > 4_000_000:
                     raise o.OracleApprovalError("Native instruction suffix exceeds its bounded record size")
-                if any(marker in line for marker in markers):
+                if line.strip():
                     later.append(json.loads(line))
         if (identity(os.fstat(descriptor)) != identity(original)
                 or identity(os.stat(path.name, dir_fd=parent[0], follow_symlinks=False)) != identity(original)
@@ -599,13 +598,21 @@ def _claude_host_records(root: Path, host: dict) -> tuple[dict, dict]:
             raise o.OracleApprovalError("Claude Code answer does not descend from the exact question")
         seen.add(cursor)
         cursor = chain[cursor].get("parentUuid")
+    parents = {item["uuid"]: item.get("parentUuid") for item in [*entries, *later]
+               if isinstance(item, dict) and isinstance(item.get("uuid"), str)}
     for item in later:
-        # A rewritten answer or a sibling human reply to the same question supersedes it.
+        # A rewritten answer, or any later human reply that branches from the question
+        # (directly or through later non-message entries) without the answer, supersedes it.
         if item.get("uuid") == host["answer_uuid"] and item != answer:
             raise o.OracleApprovalError("Native user instruction was superseded")
-        if (item.get("uuid") != host["answer_uuid"] and _claude_human_answer(item, session) is not None
-                and item.get("parentUuid") in {question["uuid"], *chain}):
-            raise o.OracleApprovalError("Native user instruction was superseded")
+        if item.get("uuid") == host["answer_uuid"] or _claude_human_answer(item, session) is None:
+            continue
+        cursor, seen = item.get("parentUuid"), set()
+        while isinstance(cursor, str) and cursor not in seen and cursor != host["answer_uuid"]:
+            if cursor == question["uuid"]:
+                raise o.OracleApprovalError("Native user instruction was superseded")
+            seen.add(cursor)
+            cursor = parents.get(cursor)
     return {"decision": _claude_decision(text), "question_timestamp": question["timestamp"]}, custody
 
 
