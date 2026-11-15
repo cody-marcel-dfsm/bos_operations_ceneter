@@ -393,3 +393,29 @@ failure, malformed-frame and source/environment-tamper regressions remain fixed.
 All original failed receipts and clocks remain; only a complete current-base
 execution and exact verify can establish local source readiness. CI and actual
 publication remain separate future effects.
+
+The module-level parallel measurement passed every check but retained a
+215.32-second Oracle module tail. Inspection found three self-contained Oracle
+classes (34, 3 and 7 cases), each with independent per-test directories/context
+cleanup and no module lifetime hooks. The final scheduler keeps each entire
+class and its unittest order together. Those three classes and the other two
+whole modules use one global three-process pool; there is no nested worker
+increase. Oracle classes enter first to avoid deferring their measured tail.
+Discovery seals all three full modules, exact source-file hashes and the
+nonduplicated union of all case IDs. Added/missing classes, lifetime hooks,
+duplicate/omitted IDs, changed files, unequal testsRun counts or changed
+membership prevent PASS. Issuance and consumption independently rediscover the
+same complete membership; no synthetic success summary substitutes for actual
+cohort results. All original stdout/stderr frames and prior timings remain.
+
+A separate measurement found 476 Git-show launches for 435 immutable commit/path
+lookups (3.52 MiB), taking 10.61 seconds in one range classification. The bounded
+scope reader now resolves the same explicit queries and captures one parent-owned
+in-memory snapshot through Git's batch protocols. It rejects mutable/control-byte
+queries, shallow/replaced/grafted history and unsupported object formats, and
+checks each resolution, response order, blob type, bounded declared size, exact
+body framing/EOF and raw Git hash. No shared file descriptor, authority cache,
+source writer or historical witness is introduced. Raw byte equivalence,
+malformed/order/type/size/hash/EOF, foreign-repository and changed-ref negatives
+remain fixed. Current candidate/runtime/ref checks still control issuance and
+consumption. Exact-candidate full-range verification remains required.

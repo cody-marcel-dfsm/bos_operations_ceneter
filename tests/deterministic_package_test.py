@@ -51,6 +51,7 @@ class PackageGateTests(unittest.TestCase):
         return d.validate(self.root, self.base, '2020-01-01T00:00:00Z')
 
     def scheduled_execution(self, *, bad_ready=False, bad_report=False, failed=False, mutate=False, io_threads=8, writers=1):
+        self.enterContext(patch.object(d,'python_inventory',return_value=self.python_inventory(count=1)))
         before=d.native.identity(self.root); ready=threading.Event(); peers=threading.Event()
         lock=threading.Lock(); calls=[]; active=0; peak=0; peer_count=0
         def execute(root, command, channel=None, history=None):
@@ -80,8 +81,8 @@ class PackageGateTests(unittest.TestCase):
                 elif command == d.PYTHON_CHECK:
                     results=[{'module':module,'command':d.python_module_command(module),'exit_code':0,
                               'output':b'Ran 1 test in 0.01s\n\nOK\n','wall_ms':1,
-                              'temporary_directory_sha256':'d'*64} for module in d.PYTHON_MODULES]
-                    output,_=d.python_category_output(before,results)
+                              'temporary_directory_sha256':'d'*64} for module in d.PYTHON_UNITS]
+                    output,_=d.python_category_output(before,results,inventory=self.python_inventory(count=1))
                 else:
                     output=(b'# tests 1\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n' if '--test-reporter=tap' in command else
                         b'Ran 1 test in 0.01s\n\nOK\n' if 'unittest' in command else b'synthetic completed command')
@@ -427,25 +428,30 @@ class PackageGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'public dependency contract'):
             d.scope(self.root,base,self.git('rev-parse','HEAD'))
 
+    def python_inventory(self, count=2):
+        units={unit:[unit+('.Synthetic' if unit in d.PYTHON_MODULES[:2] else '')+'.test_'+str(index) for index in range(count)] for unit in d.PYTHON_UNITS}
+        return {'units':units,'modules':{module:sorted(name for unit,ids in units.items() if unit.split('.')[0]==module for name in ids) for module in d.PYTHON_MODULES},
+                'source_sha256':{module:'a'*64 for module in d.PYTHON_MODULES}}
+
     def python_results(self):
         return [{'module':module,'command':d.python_module_command(module),'exit_code':0,
                  'output':b'Ran 2 tests in 0.01s\n\nOK\n','wall_ms':10,
-                 'temporary_directory_sha256':'d'*64} for module in d.PYTHON_MODULES]
+                 'temporary_directory_sha256':'d'*64} for module in d.PYTHON_UNITS]
 
     def test_fixed_python_category_runs_all_three_independently_and_merges_in_fixed_order(self):
         before=d.native.identity(self.root);barrier=threading.Barrier(3);active=0;peak=0;lock=threading.Lock()
         def execute(root,module):
             nonlocal active,peak
             with lock: active+=1;peak=max(peak,active)
-            barrier.wait(timeout=3)
+            if module in d.PYTHON_DISPATCH[:3]:barrier.wait(timeout=3)
             time.sleep(.03 if module==d.PYTHON_MODULES[0] else .001)
             with lock: active-=1
             return next(row for row in self.python_results() if row['module']==module)
-        output,code=d.run_python_category(self.root,execute)
+        output,code=d.run_python_category(self.root,execute,inventory_loader=lambda root:self.python_inventory())
         self.assertEqual(code,0);self.assertEqual(peak,3)
         report=d.python_category_report(output,before)
-        self.assertEqual([row['module'] for row in report['modules']],list(d.PYTHON_MODULES))
-        self.assertEqual(sum(row['tests'] for row in report['modules']),6)
+        self.assertEqual([row['module'] for row in report['modules']],list(d.PYTHON_UNITS))
+        self.assertEqual(sum(row['tests'] for row in report['modules']),10)
         for row in report['modules']:
             self.assertEqual(d.native.digest((d.directory(self.root)/(row['output_sha256']+'.log')).read_bytes()),row['output_sha256'])
 
@@ -464,26 +470,26 @@ class PackageGateTests(unittest.TestCase):
                         if kind=='empty': row['output']=b'Ran 0 tests in .01s\nOK\n'
                         if kind=='timeout': row['exit_code']='TIMEOUT'
                     return row
-                output,code=d.run_python_category(self.root,execute)
-                self.assertEqual(code,1);self.assertEqual(set(attempted),set(d.PYTHON_MODULES))
+                output,code=d.run_python_category(self.root,execute,inventory_loader=lambda root:self.python_inventory())
+                self.assertEqual(code,1);self.assertEqual(set(attempted),set(d.PYTHON_UNITS))
                 with self.assertRaisesRegex(ValueError,'Python module proof'):d.python_category_report(output,before)
 
     def test_python_category_rejects_framing_hash_command_environment_and_source_tamper(self):
-        before=d.native.identity(self.root);output,code=d.python_category_output(before,self.python_results())
+        before=d.native.identity(self.root);output,code=d.python_category_output(before,self.python_results(),inventory=self.python_inventory())
         self.assertTrue(d.complete(d.PYTHON_CHECK,output,code))
         for bad in (output[:-12],output.replace(b'Ran 2',b'Ran 3',1),output.replace(b'BOC_PYTHON_MODULE',b'BAD_PYTHON_MODULE',1)):
             self.assertFalse(d.complete(d.PYTHON_CHECK,bad,0))
         for changed in ({**before,'source':'e'*40},{**before,'tree':'f'*40},{**before,'runtime':{}}):
             with self.assertRaisesRegex(ValueError,'Python module proof'):d.python_category_report(output,changed)
         rows=self.python_results();rows[0]['command']=['python','unittest','different_module']
-        bad,_=d.python_category_output(before,rows)
+        bad,_=d.python_category_output(before,rows,inventory=self.python_inventory())
         self.assertFalse(d.complete(d.PYTHON_CHECK,bad,0))
 
     def test_python_category_source_change_retains_every_module_but_prevents_pass(self):
         def execute(root,module):
             if module==d.PYTHON_MODULES[0]:(self.root/'AGENTS.md').write_text('intervening candidate')
             return next(row for row in self.python_results() if row['module']==module)
-        output,code=d.run_python_category(self.root,execute)
+        output,code=d.run_python_category(self.root,execute,inventory_loader=lambda root:self.python_inventory())
         self.assertEqual(code,1);self.assertFalse(d.complete(d.PYTHON_CHECK,output,code))
         self.assertEqual(len(list(d.directory(self.root).glob('*.log'))),1)
 
@@ -528,6 +534,80 @@ class PackageGateTests(unittest.TestCase):
             process.terminate.assert_not_called()
         finally:
             with d._PYTHON_LOCK:d._PYTHON_ACTIVE.discard(process);d._PYTHON_STOPPING.discard(process)
+
+    def test_python_inventory_retains_all_exact_ids_and_rejects_duplicate_or_omitted_cases(self):
+        inventory=self.python_inventory();self.assertEqual(d.validate_python_inventory(inventory),inventory)
+        for kind in ('missing','duplicate','module','class','source'):
+            changed=json.loads(json.dumps(inventory))
+            if kind=='missing':changed['units'][d.PYTHON_UNITS[-1]].pop()
+            if kind=='duplicate':changed['units'][d.PYTHON_UNITS[-1]].append(changed['units'][d.PYTHON_UNITS[-1]][0])
+            if kind=='module':changed['modules'][d.PYTHON_MODULES[-1]].pop()
+            if kind=='class':changed['units']['oracle_parallel_test.ForeignClass']=changed['units'].pop(d.PYTHON_UNITS[-1])
+            if kind=='source':changed['source_sha256'][d.PYTHON_MODULES[0]]='bad'
+            with self.assertRaisesRegex(ValueError,'membership'):d.validate_python_inventory(changed)
+        before=d.native.identity(self.root);output,code=d.python_category_output(before,self.python_results(),inventory=inventory)
+        changed=json.loads(json.dumps(inventory));changed['source_sha256'][d.PYTHON_MODULES[0]]='f'*64
+        with self.assertRaisesRegex(ValueError,'Python module proof'):d.python_category_report(output,before,changed)
+
+    def test_actual_python_discovery_seals_full_module_union_and_preserves_class_fixture_semantics(self):
+        directory=self.root/'tests';directory.mkdir()
+        base='import unittest\nclass Synthetic(unittest.TestCase):\n def test_fixture(self): pass\n'
+        for module in d.PYTHON_MODULES[:2]:(directory/(module+'.py')).write_text(base)
+        oracle='import unittest\n'+''.join('class '+name+'(unittest.TestCase):\n def test_fixture(self): pass\n' for name in d.ORACLE_CLASSES)
+        path=directory/'oracle_parallel_test.py';path.write_text(oracle);self.commit()
+        result=d.python_inventory(self.root)
+        self.assertEqual(len(result['modules']['oracle_parallel_test']),3)
+        self.assertEqual(set(result['units']),set(d.PYTHON_UNITS))
+        path.write_text(oracle+'def setUpModule(): pass\n');self.commit()
+        with self.assertRaisesRegex(ValueError,'discovery'):d.python_inventory(self.root)
+        path.write_text(oracle+'class Extra(unittest.TestCase):\n def test_unadmitted(self): pass\n');self.commit()
+        with self.assertRaisesRegex(ValueError,'discovery'):d.python_inventory(self.root)
+
+    def test_scope_batch_retains_identical_raw_bytes_including_newlines_and_zero_bytes(self):
+        path=self.root/'source/fixture.txt';path.parent.mkdir();path.write_bytes(b'first\nline\0tail\n');self.commit();first=self.git('rev-parse','HEAD')
+        path.write_bytes(b'second\n\0body');self.commit();second=self.git('rev-parse','HEAD')
+        requests=[(first,'source/fixture.txt'),(second,'source/fixture.txt'),(first,'source/fixture.txt')]
+        result=d.scope_blob_snapshot(self.root,requests)
+        self.assertEqual(result,{key:d.blob(self.root,*key) for key in set(requests)})
+        path.write_bytes(b'changed current reference');self.commit()
+        self.assertEqual(d.scope_blob_snapshot(self.root,requests),result)
+        with self.assertRaisesRegex(ValueError,'Immutable'):d.scope_blob_snapshot(self.root,[('HEAD','source/fixture.txt')])
+        with self.assertRaisesRegex(ValueError,'Immutable'):d.scope_blob_snapshot(self.root,[(first,'source/fixture.txt\n'+second+':AGENTS.md')])
+
+    def test_scope_batch_scope_equivalence_uses_same_complete_immutable_inputs(self):
+        path=self.root/'source/platform/new-synthetic/SKILL.md';path.parent.mkdir(parents=True)
+        path.write_text('---\nname: synthetic\nmetadata:\n  version: "1.0.0"\n---\nFixed guidance\n');self.commit();base=self.git('rev-parse','HEAD')
+        path.write_text(path.read_text().replace('1.0.0','1.0.1'));self.commit();source=self.git('rev-parse','HEAD')
+        with patch.object(d,'scope_blob_snapshot',side_effect=lambda root,requests:{key:d.blob(root,*key) for key in requests}):
+            expected=d.scope(self.root,base,source)
+        self.assertEqual(d.scope(self.root,base,source),expected)
+
+    def test_scope_batch_rejects_malformed_order_type_size_hash_eof_and_foreign_repository(self):
+        from types import SimpleNamespace
+        requests=[(self.base,'AGENTS.md'),(self.git('rev-parse','HEAD'),'AGENTS.md')]
+        original=subprocess.run;outputs=[]
+        def batch_call(args):
+            return args[0][2:3]==['cat-file'] or '--revs-only' in args[0]
+        def observe(*args,**kwargs):
+            result=original(*args,**kwargs)
+            if batch_call(args):outputs.append(result.stdout)
+            return result
+        with patch.object(d.subprocess,'run',side_effect=observe):d.scope_blob_snapshot(self.root,requests)
+        self.assertEqual(len(outputs),3)
+        variants=[]
+        for index,body in [(0,b'bad\n'),(1,outputs[1].replace(b' blob ',b' tree ',1)),(1,outputs[1].splitlines()[1]+b'\n'+outputs[1].splitlines()[0]+b'\n'),(1,outputs[1].replace(b' 17\n',b' 9000000\n',1)),(2,outputs[2][:-1]),(2,outputs[2]+b'extra'),(2,outputs[2].replace(b'base instructions',b'bad! instructions',1))]:
+            changed=list(outputs);changed[index]=body;variants.append(changed)
+        for output in variants:
+            pending=iter(output)
+            def malformed(*args,**kwargs):
+                return SimpleNamespace(stdout=next(pending)) if batch_call(args) else original(*args,**kwargs)
+            with patch.object(d.subprocess,'run',side_effect=malformed):
+                with self.assertRaises(ValueError):d.scope_blob_snapshot(self.root,requests)
+        with tempfile.TemporaryDirectory(dir=self.root,prefix='foreign-') as other:
+            subprocess.run(['git','init','-q',other],check=True)
+            with self.assertRaisesRegex(ValueError,'resolution incomplete'):d.scope_blob_snapshot(Path(other),requests)
+        with patch.object(d.native,'git',side_effect=lambda root,*args:'sha256' if args==('rev-parse','--show-object-format') else 'false' if args==('rev-parse','--is-shallow-repository') else '' if args==('replace','-l') else '.git/info/grafts'):
+            with self.assertRaisesRegex(ValueError,'object format'):d.scope_blob_snapshot(self.root,requests)
 
     def test_octopus_merge_is_rejected(self):
         published, source = self.side_merge('source/platform/bos-mcp-client/references/identity-context.md')

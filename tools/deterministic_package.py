@@ -62,6 +62,9 @@ TESTS = [
     'tests/customer-data-privacy.test.mjs', 'tests/privacy-coverage.test.mjs',
 ]
 PYTHON_MODULES = ('deterministic_package_test', 'command_coverage_test', 'oracle_parallel_test')
+ORACLE_CLASSES = ('ParallelReview', 'CriterionDependencyRoles', 'RawObservationCriterion')
+PYTHON_UNITS = PYTHON_MODULES[:2] + tuple('oracle_parallel_test.' + name for name in ORACLE_CLASSES)
+PYTHON_DISPATCH = PYTHON_UNITS[2:] + PYTHON_UNITS[:2]
 PYTHON_CHECK = [sys.executable, '-B', 'tools/deterministic_package.py', 'python-category', 'unittest']
 _PYTHON_ACTIVE = set()
 _PYTHON_LOCK = threading.Lock()
@@ -202,15 +205,19 @@ def blob(root, revision, path):
                                     revision + ':' + path], cwd=root)
 
 
-def commits_and_paths(root, base, source):
-    if not all(re.fullmatch('[0-9a-f]{40}', x or '') for x in (base, source)):
-        raise ValueError('Exact candidate and publication base are required')
+def require_original_git_history(root):
     if native.git(root, 'rev-parse', '--is-shallow-repository') != 'false' or native.git(root, 'replace', '-l'):
         raise ValueError('Complete original Git history is required')
     graft = Path(native.git(root, 'rev-parse', '--git-path', 'info/grafts'))
     if not graft.is_absolute(): graft = Path(root) / graft
     if graft.exists() and graft.read_bytes().strip():
         raise ValueError('Original Git history cannot use grafts')
+
+
+def commits_and_paths(root, base, source):
+    if not all(re.fullmatch('[0-9a-f]{40}', x or '') for x in (base, source)):
+        raise ValueError('Exact candidate and publication base are required')
+    require_original_git_history(root)
     native.git(root, 'merge-base', '--is-ancestor', base, source)
     result = []
     for commit in native.git(root, 'rev-list', '--reverse', base + '..' + source).splitlines():
@@ -257,8 +264,73 @@ def commits_and_paths(root, base, source):
     return result
 
 
+def scope_blob_snapshot(root, requests):
+    require_original_git_history(root)
+    requests = sorted(set(requests))
+    if not requests: return {}
+    if len(requests)>8192: raise ValueError('Scope snapshot request bound exceeded')
+    queries=[]
+    for revision,path in requests:
+        if (not re.fullmatch('[0-9a-f]{40}',revision) or not isinstance(path,str) or not path
+                or path.startswith('/') or '..' in path.split('/') or len(path)>4096
+                or any(ord(char)<32 or ord(char)==127 for char in path)):
+            raise ValueError('Immutable scope snapshot query required')
+        queries.append(revision+':'+path)
+    if sum(len(value.encode())+1 for value in queries)>128*1024:
+        raise ValueError('Scope snapshot argument bound exceeded')
+    if native.git(root,'rev-parse','--show-object-format')!='sha1':
+        raise ValueError('Unsupported scope object format')
+    def run(arguments, body=None):
+        result=subprocess.run(['git','--no-replace-objects',*arguments],cwd=root,input=body,
+                              stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True,timeout=30)
+        return result.stdout
+    resolved=run(['rev-parse','--revs-only','--end-of-options',*queries])
+    ids=resolved.split(b'\n')
+    if ids[-1:]!=[b''] or len(ids)!=len(queries)+1 or any(not re.fullmatch(rb'[0-9a-f]{40}',value) for value in ids[:-1]):
+        raise ValueError('Scope object resolution incomplete')
+    ids=ids[:-1];request_bytes=b'\n'.join(ids)+b'\n'
+    metadata=run(['cat-file','--batch-check'],request_bytes)
+    lines=metadata.split(b'\n')
+    if len(metadata)>2*1024*1024 or len(lines)!=len(ids)+1 or lines[-1]!=b'':
+        raise ValueError('Scope metadata framing changed')
+    headers=[];total=0
+    for expected,line in zip(ids,lines[:-1]):
+        match=re.fullmatch(rb'([0-9a-f]{40}) (blob) ([0-9]+)',line)
+        if not match or match[1]!=expected: raise ValueError('Scope object type or order changed')
+        size=int(match[3]);total+=size
+        if size>8*1024*1024 or total>32*1024*1024: raise ValueError('Scope snapshot byte bound exceeded')
+        headers.append((line,size))
+    raw=run(['cat-file','--batch'],request_bytes)
+    if len(raw)!=total+sum(len(header)+2 for header,size in headers):
+        raise ValueError('Scope body length or EOF changed')
+    result={};offset=0
+    for key,expected,(header,size) in zip(requests,ids,headers):
+        if raw[offset:offset+len(header)+1]!=header+b'\n':raise ValueError('Scope response order changed')
+        offset+=len(header)+1;body=raw[offset:offset+size];offset+=size
+        if raw[offset:offset+1]!=b'\n':raise ValueError('Scope body framing changed')
+        offset+=1
+        observed=hashlib.sha1(b'blob '+str(size).encode()+b'\0'+body).hexdigest().encode()
+        if observed!=expected:raise ValueError('Scope raw Git blob hash changed')
+        result[key]=body
+    if offset!=len(raw):raise ValueError('Scope trailing bytes changed')
+    return result
+
+
 def scope(root, base, source):
     rows = commits_and_paths(root, base, source)
+    requests=set()
+    for parent,commit,path,old_mode,new_mode in rows:
+        known=(path in MAINTENANCE or path in BODY_SKILLS or path in CUSTOMER_INITIALIZATION
+               or path in STALE_TEST_REPAIRS or path in ADA_CLIENT or path in LEGACY_FEATURE_PATHS)
+        if (path==RETIRED_SELECTION or path=='contracts/bos-client-dependency.v1/manifest.json'
+                or not known and (path=='README.md' or path.startswith('source/') and path.endswith('/SKILL.md')
+                  or path in {'package.json','package-manifest.json','package-lock.json','products/bos/product.json','products/education-center/product.json'})):
+            for revision,mode in ((parent,old_mode),(commit,new_mode)):
+                if mode!='000000':requests.add((revision,path))
+    snapshot=scope_blob_snapshot(root,requests)
+    def read_blob(unused_root,revision,path):
+        try:return snapshot[(revision,path)]
+        except KeyError:raise ValueError('Complete scope snapshot required')
     paths = set()
     for parent, commit, path, old_mode, new_mode in rows:
         paths.add(path)
@@ -266,11 +338,11 @@ def scope(root, base, source):
             for revision, mode in ((parent, old_mode), (commit, new_mode)):
                 if mode == '000000':
                     continue
-                if mode != '100644' or hashlib.sha256(blob(root, revision, path)).hexdigest() not in RETIRED_SELECTION_SHA256:
+                if mode != '100644' or hashlib.sha256(read_blob(root, revision, path)).hexdigest() not in RETIRED_SELECTION_SHA256:
                     raise ValueError('Unmapped retired validation selection')
             continue
         if path == 'contracts/bos-client-dependency.v1/manifest.json':
-            values = [json.loads(blob(root, revision, path)) for revision in (parent, commit)]
+            values = [json.loads(read_blob(root, revision, path)) for revision in (parent, commit)]
             def immutable_contract(value):
                 if isinstance(value, dict):
                     return {key: immutable_contract(item) for key, item in value.items()
@@ -296,12 +368,12 @@ def scope(root, base, source):
                     raise ValueError('Skill frontmatter is required')
                 parts[1] = re.sub(rb'^  (?:version|requires):.*$', b'', parts[1], flags=re.M)
                 return b'---'.join(parts)
-            if without_pins(blob(root, parent, path)) != without_pins(blob(root, commit, path)):
+            if without_pins(read_blob(root, parent, path)) != without_pins(read_blob(root, commit, path)):
                 raise ValueError('Unmapped skill behavior: ' + path)
             continue
         if path in {'package.json', 'package-manifest.json', 'package-lock.json',
                     'products/bos/product.json', 'products/education-center/product.json'}:
-            before, after = (json.loads(blob(root, ref, path)) for ref in (parent, commit))
+            before, after = (json.loads(read_blob(root, ref, path)) for ref in (parent, commit))
             for value in (before, after):
                 value.pop('version', None)
                 if path == 'package.json':
@@ -341,7 +413,7 @@ def scope(root, base, source):
                                b'', value, flags=re.S)
                 return re.sub(rb'Current source package release: `[^`]+`\. If `[^`]+` is installed,',
                               b'RELEASE', value)
-            if without_release(blob(root, parent, path)) != without_release(blob(root, commit, path)):
+            if without_release(read_blob(root, parent, path)) != without_release(read_blob(root, commit, path)):
                 raise ValueError('Unmapped documentation change')
             continue
         raise ValueError('Unsupported package-release scope: ' + path)
@@ -355,7 +427,7 @@ _PYTHON_OUTPUT_LIMIT = 8 * 1024 * 1024
 
 
 def python_module_command(module):
-    if module not in PYTHON_MODULES: raise ValueError('Unknown Python module')
+    if module not in set(PYTHON_MODULES) | set(PYTHON_UNITS): raise ValueError('Unknown Python module')
     return [sys.executable, '-B', '-c',
             "import sys,unittest;sys.path.insert(0,'tests');sys.argv.pop(1);unittest.main(module=None)",
             'unittest', module, '-v']
@@ -441,8 +513,59 @@ def execute_python_module(root, module, *, command=None, timeout=300):
     return result
 
 
-def python_category_output(before, results, *, unchanged=True):
-    if [row['module'] for row in results] != list(PYTHON_MODULES):
+def validate_python_inventory(value):
+    try:
+        if set(value) != {'units','modules','source_sha256'}: raise ValueError()
+        if set(value['units'])!=set(PYTHON_UNITS) or set(value['modules'])!=set(PYTHON_MODULES) or set(value['source_sha256'])!=set(PYTHON_MODULES): raise ValueError()
+        for unit, ids in value['units'].items():
+            if (not isinstance(ids,list) or not 0<len(ids)<=10000 or ids!=sorted(set(ids))
+                    or any(not isinstance(name,str) or len(name)>512 or not name.startswith(unit+'.') for name in ids)): raise ValueError()
+        for module in PYTHON_MODULES:
+            ids=sorted(name for unit in PYTHON_UNITS if unit.split('.')[0]==module for name in value['units'][unit])
+            if (value['modules'][module]!=ids or len(ids)!=len(set(ids))
+                    or not re.fullmatch('[0-9a-f]{64}',value['source_sha256'][module])): raise ValueError()
+        return value
+    except (ValueError,KeyError,TypeError,AttributeError):
+        raise ValueError('Complete nonduplicated Python test membership required')
+
+
+def python_inventory(root):
+    # Discovery imports definitions only, in its own process. No test or fixture
+    # is executed here. Whole-class units retain their original fixture order.
+    code = """import importlib,json,sys,unittest
+sys.path.insert(0,'tests')
+modules=('deterministic_package_test','command_coverage_test','oracle_parallel_test')
+classes=('ParallelReview','CriterionDependencyRoles','RawObservationCriterion')
+def ids(suite):
+ result=[]
+ for item in suite:
+  result.extend(ids(item) if isinstance(item,unittest.TestSuite) else [item.id()])
+ return sorted(result)
+loader=unittest.TestLoader()
+full={name:ids(loader.loadTestsFromName(name)) for name in modules}
+oracle=importlib.import_module('oracle_parallel_test')
+assert not getattr(oracle,'setUpModule',None) and not getattr(oracle,'tearDownModule',None)
+actual=sorted(name for name,item in vars(oracle).items() if isinstance(item,type) and issubclass(item,unittest.TestCase) and item.__module__==oracle.__name__)
+assert actual==sorted(classes)
+units={name:full[name] for name in modules[:2]}
+units.update({'oracle_parallel_test.'+name:ids(loader.loadTestsFromName('oracle_parallel_test.'+name)) for name in classes})
+print(json.dumps({'units':units,'modules':full}))
+"""
+    root=Path(root)
+    hashes={name:native.digest((root/'tests'/ (name+'.py')).read_bytes()) for name in PYTHON_MODULES}
+    source=native.git(root,'rev-parse','HEAD')
+    if hashes!={name:native.digest(blob(root,source,'tests/'+name+'.py')) for name in PYTHON_MODULES}:
+        raise ValueError('Python discovery source differs from committed content')
+    result=subprocess.run([sys.executable,'-B','-c',code],cwd=root,capture_output=True,timeout=30)
+    if result.returncode or len(result.stdout)>2*1024*1024: raise ValueError('Python test discovery failed')
+    value=json.loads(result.stdout);value['source_sha256']=hashes
+    if hashes!={name:native.digest((root/'tests'/ (name+'.py')).read_bytes()) for name in PYTHON_MODULES}: raise ValueError('Python membership source changed')
+    return validate_python_inventory(value)
+
+
+def python_category_output(before, results, *, inventory, unchanged=True):
+    validate_python_inventory(inventory)
+    if [row['module'] for row in results] != list(PYTHON_UNITS):
         raise ValueError('Complete fixed Python modules required')
     frames = []; summaries = []
     passed = unchanged
@@ -451,22 +574,25 @@ def python_category_output(before, results, *, unchanged=True):
         if len(raw) > _PYTHON_OUTPUT_LIMIT + 1: raise ValueError('Python output bound changed')
         count = re.findall(rb'Ran ([1-9][0-9]*) tests? in', raw)
         tests = int(count[-1]) if count else 0
-        passed = passed and complete(python_module_command(row['module']), raw, row['exit_code'])
+        passed = passed and complete(python_module_command(row['module']), raw, row['exit_code']) and tests==len(inventory['units'][row['module']])
         frames.append(b'BOC_PYTHON_MODULE '+row['module'].encode()+b' '+str(len(raw)).encode()+b'\n'+raw)
         summaries.append({key:row[key] for key in ('module','command','exit_code','wall_ms','temporary_directory_sha256')} |
                          {'tests':tests,'output_sha256':native.digest(raw)})
     report = {'source':before['source'],'tree':before['tree'],'runtime_sha256':native.digest(native.encoded(before['runtime'])),
-              'modules':summaries,'concurrency':3,'status':'PASS' if passed else 'REJECT'}
+              'modules':summaries,'membership':inventory,'concurrency':3,'status':'PASS' if passed else 'REJECT'}
     return b''.join(frames)+native.encoded({'python_category':report})+b'\n', 0 if passed else 1
 
 
-def run_python_category(root, executor=execute_python_module, *, reset=True):
+def run_python_category(root, executor=execute_python_module, *, reset=True, inventory_loader=None):
     if reset: _PYTHON_CANCELLED.clear()
     before = native.identity(root)
+    inventory_loader = inventory_loader or python_inventory
+    inventory = validate_python_inventory(inventory_loader(root))
     with ThreadPoolExecutor(max_workers=3) as pool:
-        futures = [pool.submit(executor, root, module) for module in PYTHON_MODULES]
+        futures = {module:pool.submit(executor, root, module) for module in PYTHON_DISPATCH}
         results = []
-        for module, future in zip(PYTHON_MODULES, futures):
+        for module in PYTHON_UNITS:
+            future = futures[module]
             try: results.append(future.result())
             except Exception:
                 results.append({'module':module,'command':python_module_command(module),'exit_code':'EXECUTION_ERROR',
@@ -476,15 +602,15 @@ def run_python_category(root, executor=execute_python_module, *, reset=True):
         path = directory(root)/(native.digest(row['output'])+'.log')
         with _OUTPUT_LOCK:
             if not path.exists(): native.private_write(path,row['output'])
-    try: unchanged = native.identity(root) == before and not _PYTHON_CANCELLED.is_set()
+    try: unchanged = native.identity(root) == before and not _PYTHON_CANCELLED.is_set() and inventory_loader(root)==inventory
     except (ValueError, OSError, subprocess.SubprocessError): unchanged = False
-    return python_category_output(before,results,unchanged=unchanged)
+    return python_category_output(before,results,inventory=inventory,unchanged=unchanged)
 
 
-def python_category_report(output, expected=None):
+def python_category_report(output, expected=None, membership=None):
     try:
         remaining = output; originals = []
-        for module in PYTHON_MODULES:
+        for module in PYTHON_UNITS:
             header,remaining = remaining.split(b'\n',1)
             prefix = b'BOC_PYTHON_MODULE '+module.encode()+b' '
             if not header.startswith(prefix): raise ValueError()
@@ -494,20 +620,22 @@ def python_category_report(output, expected=None):
         envelope = json.loads(remaining)
         if set(envelope) != {'python_category'}: raise ValueError()
         report = envelope['python_category']
-        if set(report) != {'source','tree','runtime_sha256','modules','concurrency','status'}: raise ValueError()
+        if set(report) != {'source','tree','runtime_sha256','modules','membership','concurrency','status'}: raise ValueError()
         if (report['status']!='PASS' or type(report['concurrency']) is not int or report['concurrency']!=3
-                or len(report['modules'])!=3 or not re.fullmatch('[0-9a-f]{40}',report['source'])
+                or len(report['modules'])!=len(PYTHON_UNITS) or not re.fullmatch('[0-9a-f]{40}',report['source'])
                 or not re.fullmatch('[0-9a-f]{40}',report['tree'])
                 or not re.fullmatch('[0-9a-f]{64}',report['runtime_sha256'])): raise ValueError()
         if expected is not None and (report['source']!=expected['source'] or report['tree']!=expected['tree']
                 or report['runtime_sha256']!=native.digest(native.encoded(expected['runtime']))): raise ValueError()
-        for module,row,raw in zip(PYTHON_MODULES,report['modules'],originals):
+        validate_python_inventory(report['membership'])
+        if membership is not None and membership!=report['membership']: raise ValueError()
+        for module,row,raw in zip(PYTHON_UNITS,report['modules'],originals):
             if set(row) != {'module','command','exit_code','wall_ms','temporary_directory_sha256','tests','output_sha256'}: raise ValueError()
             count=re.findall(rb'Ran ([1-9][0-9]*) tests? in',raw)
             if (row['module']!=module or row['command']!=python_module_command(module)
                     or type(row['exit_code']) is not int or row['exit_code']!=0
                     or row['output_sha256']!=native.digest(raw) or not count
-                    or type(row['tests']) is not int or row['tests']!=int(count[-1])
+                    or type(row['tests']) is not int or row['tests']!=int(count[-1]) or row['tests']!=len(report['membership']['units'][module])
                     or type(row['wall_ms']) not in (int,float) or not 0<=row['wall_ms']<=305000
                     or not re.fullmatch('[0-9a-f]{64}',row['temporary_directory_sha256'])
                     or not complete(python_module_command(module),raw,row['exit_code'])): raise ValueError()
@@ -580,7 +708,7 @@ def read_receipt(root):
             raise ValueError('Original command output changed or is incomplete')
         if row['command']==['node','scripts/check-customer-data.mjs']:privacy_report(output)
         if row['command']==['node','scripts/check-publication-history.mjs']:history_report(output, value['base'], current['source'])
-        if row['command']==PYTHON_CHECK:python_category_report(output, current)
+        if row['command']==PYTHON_CHECK:python_category_report(output, current, python_inventory(root))
     return dict(value, sha256=checksum)
 
 
@@ -721,7 +849,7 @@ def run_category(root, commands, before, base=None):
     if not matches:runs[4]['exit_code']='SNAPSHOT_RESULT_MISMATCH'
     if commands[7] == PYTHON_CHECK:
         row = runs[7]
-        try: python_category_report((directory(root)/(row['output_sha256']+'.log')).read_bytes(), before)
+        try: python_category_report((directory(root)/(row['output_sha256']+'.log')).read_bytes(), before, python_inventory(root))
         except ValueError: row['exit_code'] = 'PYTHON_RESULT_MISMATCH'
     if len(commands) == 9:
         row = runs[8]
