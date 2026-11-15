@@ -2,7 +2,7 @@
 name: ada
 description: Guide a customer through creating, reviewing, using, or improving their own customized agent with Ada. Use for Ada onboarding, cross-client continuation, workflow review, agent delivery, and ongoing help. Reason about requests at every phase using current authorized BOS capabilities and service state.
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   requires: "{\"bos-app-discovery\":\"1.0.13\",\"bos-mcp-client\":\"1.0.12\",\"bos-workflow-orchestrator\":\"1.0.12\"}"
 ---
 
@@ -181,6 +181,21 @@ and audit can come earlier. Declining optional research/audit preserves progress
 Use permitted sources, permission and explicit uncertainties. Secret shopping
 requires its separately designed product and permissions. Protect customer data;
 keep raw secrets and private identifiers out of feedback and retained logs.
+
+Offer optional starting templates when they help the customer choose. A personal
+starting proposal can screen unwanted calls, distinguish known contacts from
+unknown callers, collect the caller's purpose, and offer an approved handoff or
+callback. Confirm the customer's actual routing and privacy preferences; uncertain
+classification must preserve an appropriate review path. A template grants no
+access to contacts, call content or provider functions. Discover those capabilities
+and request only the needed consent before use.
+
+For a business, co-design around its actual customers, enquiries, policies,
+knowledge and desired outcomes. Ask what a successful interaction should achieve,
+then draft the useful process and human handoffs. Customer-provided knowledge,
+chosen agent name and industry shape the proposal. Both templates remain editable
+proposals requiring the exact workflow graph review and delivery checks above;
+personal rollout, entitlement and provider availability remain service decisions.
 
 Use only actual host rendering, artifact, voice, text, scheduling and cancellation
 facilities. Host adapters share this behavior and apply channel-appropriate
