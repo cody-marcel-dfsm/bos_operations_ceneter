@@ -4,7 +4,7 @@ import {join} from "node:path";
 import {pathToFileURL} from "node:url";
 import test from "node:test";
 import {presentConfirmation, resolveConfirmation, projectProgress} from "../source/platform/ada/scripts/turn-safeguards.mjs";
-import {root, resolveProductSkills} from "../scripts/lib/package-model.mjs";
+import {root, resolveProductSkills, transformProductSkillGuidance} from "../scripts/lib/package-model.mjs";
 
 function snapshot() {
   return {scope: "participation_demo", revision: "revision_3", actions: [
@@ -103,8 +103,9 @@ test("BOS production selection and all supported generated consumers ship the sa
   for (const consumer of consumers) {
     const base = join(root, "clients", consumer, "bos/skills/ada");
     for (const file of relativeFiles) {
+      const canonical = await readFile(join(root, "source/platform/ada", file), "utf8");
       assert.equal(await readFile(join(base, file), "utf8"),
-        await readFile(join(root, "source/platform/ada", file), "utf8"), `${consumer}: ${file}`);
+        file === "SKILL.md" ? transformProductSkillGuidance(product, "ada", canonical) : canonical, `${consumer}: ${file}`);
     }
     const runtime = await import(pathToFileURL(join(base, "scripts/turn-safeguards.mjs")));
     const state = snapshot(); const presented = runtime.presentConfirmation(state, "action_callback");
