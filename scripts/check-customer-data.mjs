@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import {writeSync} from "node:fs";
 import {execFile} from "node:child_process";
 import {createHash} from "node:crypto";
 import * as nodeCrypto from "node:crypto";
@@ -571,6 +572,12 @@ async function scanPrivacyCandidates(candidates, {describeOnly = false, assessTr
   const partition = assessTransitionFrom ? await privacyCoveragePartition({root, directory, candidates: currentCandidates,
     policy, contextFor, previousPolicy: assessTransitionFrom}) : null;
   const selected = partition ? partition.files.filter(row => !row.original).map(row => join(root, row.path)) : currentCandidates;
+  if (process.env.BOC_PRIVACY_READY_FD !== undefined) {
+    const fd = Number(process.env.BOC_PRIVACY_READY_FD), token = process.env.BOC_PRIVACY_READY_TOKEN;
+    if (!Number.isSafeInteger(fd) || fd < 3 || !/^[0-9a-f]{64}$/u.test(token ?? "")) throw Error("Invalid private privacy snapshot channel");
+    writeSync(fd, JSON.stringify({kind:"boc-privacy-snapshot-ready-v1",token,source:commit,tree,
+      files:new Set(selected).size,policy_sha256:privacyPolicyDigest(policy)})+"\n");
+  }
   const pool = selected.length >= 32 ? await createPrivacyScanPool({policySha256: privacyPolicyDigest(policy), ruleHashes: policy.sources, count: 8}) : null;
   let result;
   try {

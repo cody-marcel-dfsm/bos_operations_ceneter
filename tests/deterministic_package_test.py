@@ -1,6 +1,9 @@
 """Negative admission, completeness, custody and publication tests; no model calls."""
 import json
 import hashlib
+import threading
+import os
+import time
 from pathlib import Path
 import subprocess
 import sys
@@ -14,7 +17,9 @@ from tools import deterministic_package as d
 
 class PackageGateTests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
+        scratch = Path(__file__).resolve().parents[1] / "Vault/tmp"
+        scratch.mkdir(parents=True, exist_ok=True)
+        self.temp = tempfile.TemporaryDirectory(dir=scratch, prefix="dp-")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.git('init', '-q', '-b', 'main')
@@ -29,6 +34,7 @@ class PackageGateTests(unittest.TestCase):
         self.base = self.git('rev-parse', 'HEAD')
         (self.root / 'AGENTS.md').write_text('changed instructions')
         self.commit()
+        self.fixed_commands = d.CHECKS
         self.commands = patch.object(d, 'CHECKS', [[sys.executable, '-c', 'print("actual command")']])
         self.commands.start()
         self.addCleanup(self.commands.stop)
@@ -43,6 +49,96 @@ class PackageGateTests(unittest.TestCase):
 
     def validate(self):
         return d.validate(self.root, self.base, '2020-01-01T00:00:00Z')
+
+    def scheduled_execution(self, *, bad_ready=False, bad_report=False, failed=False, mutate=False):
+        before=d.native.identity(self.root); ready=threading.Event(); peers=threading.Event()
+        lock=threading.Lock(); calls=[]; active=0; peak=0; peer_count=0
+        def execute(root, command, channel=None):
+            nonlocal active,peak,peer_count
+            began=time.time()
+            with lock:
+                calls.append(command); active+=1;peak=max(peak,active)
+            if channel:
+                fd,token=channel
+                row={'kind':'boc-privacy-snapshot-ready-v1','token':('0'*64 if bad_ready else token),
+                     'source':before['source'],'tree':before['tree'],'files':1,'policy_sha256':'a'*64}
+                os.write(fd,(json.dumps(row)+'\n').encode());os.close(fd)
+                if not bad_ready: peers.wait(2)
+                output=json.dumps({'privacy_coverage':{'source_commit':before['source'],'source_tree':before['tree'],
+                    'files':2 if bad_report else 1,'policy_sha256':'a'*64}}).encode()
+            else:
+                if command in self.fixed_commands[5:]:
+                    self.assertTrue(ready.is_set())
+                    with lock:
+                        peer_count+=1
+                        if peer_count==3:peers.set()
+                    peers.wait(2)
+                    if mutate and command==self.fixed_commands[6]:(self.root/'AGENTS.md').write_text('concurrent mutation')
+                output=(b'# tests 1\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n' if '--test-reporter=tap' in command else
+                        b'Ran 1 test in 0.01s\n\nOK\n' if 'unittest' in command else b'synthetic completed command')
+            time.sleep(.01)
+            checksum=d.native.digest(output);path=d.directory(root)/(checksum+'.log')
+            with lock:
+                if not path.exists():d.native.private_write(path,output)
+                active-=1
+            return {'command':command,'exit_code':7 if failed and command==self.fixed_commands[6] else 0,
+                    'output_sha256':checksum,'started_at':began,'completed_at':time.time()}
+        original=d.await_privacy_snapshot
+        def snapshot(*args):
+            value=original(*args);ready.set();return value
+        return execute,snapshot,calls,lambda:peak
+
+    def test_parallel_category_waits_for_snapshot_preserves_order_and_all_real_results(self):
+        execute,snapshot,calls,peak=self.scheduled_execution()
+        with patch.object(d,'CHECKS',self.fixed_commands),patch.object(d,'execute_check',side_effect=execute),patch.object(d,'await_privacy_snapshot',side_effect=snapshot):
+            value=self.validate();self.assertEqual(value['scheduling'],'source-prepared-privacy-snapshot-parallel/1')
+            self.assertEqual([r['command']for r in value['runs']],self.fixed_commands)
+            self.assertEqual(d.read_receipt(self.root),value)
+        self.assertEqual(calls[:4],self.fixed_commands[:4]);self.assertEqual(len(calls),8);self.assertEqual(peak(),4)
+
+    def test_parallel_failed_peer_retains_every_completed_output_and_prevents_receipt(self):
+        execute,snapshot,calls,peak=self.scheduled_execution(failed=True)
+        with patch.object(d,'CHECKS',self.fixed_commands),patch.object(d,'execute_check',side_effect=execute),patch.object(d,'await_privacy_snapshot',side_effect=snapshot):
+            with self.assertRaisesRegex(ValueError,'check failed'):self.validate()
+        record=json.loads(next(d.directory(self.root).glob('*.failure.json')).read_bytes())
+        self.assertEqual(len(record['runs']),8);self.assertEqual(record['runs'][6]['exit_code'],7)
+        self.assertTrue(all((d.directory(self.root)/(row['output_sha256']+'.log')).exists()for row in record['runs']))
+
+    def test_parallel_wrong_snapshot_starts_no_peer_and_retains_failed_privacy(self):
+        execute,snapshot,calls,peak=self.scheduled_execution(bad_ready=True)
+        with patch.object(d,'CHECKS',self.fixed_commands),patch.object(d,'execute_check',side_effect=execute):
+            with self.assertRaisesRegex(ValueError,'check failed'):self.validate()
+        self.assertEqual(calls,self.fixed_commands[:5])
+        record=json.loads(next(d.directory(self.root).glob('*.failure.json')).read_bytes())
+        self.assertEqual(record['runs'][-1]['exit_code'],'READINESS_ERROR')
+
+    def test_parallel_snapshot_result_mismatch_retains_all_outputs_and_rejects(self):
+        execute,snapshot,calls,peak=self.scheduled_execution(bad_report=True)
+        with patch.object(d,'CHECKS',self.fixed_commands),patch.object(d,'execute_check',side_effect=execute),patch.object(d,'await_privacy_snapshot',side_effect=snapshot):
+            with self.assertRaisesRegex(ValueError,'check failed'):self.validate()
+        record=json.loads(next(d.directory(self.root).glob('*.failure.json')).read_bytes())
+        self.assertEqual(len(record['runs']),8);self.assertEqual(record['runs'][4]['exit_code'],'SNAPSHOT_RESULT_MISMATCH')
+
+    def test_snapshot_channel_rejects_missing_oversized_and_stale_identity(self):
+        before=d.native.identity(self.root); token='b'*64
+        correct={'kind':'boc-privacy-snapshot-ready-v1','token':token,'source':before['source'],
+                 'tree':before['tree'],'files':1,'policy_sha256':'a'*64}
+        bodies=[b'',b'x'*1025,b'{}\n',b'{malformed}\n']
+        for key,value in [('source','0'*40),('tree','0'*40),('files',0),('policy_sha256','wrong')]:
+            bodies.append((json.dumps(dict(correct,**{key:value}))+'\n').encode())
+        for body in bodies:
+            fd,writer=os.pipe()
+            try:
+                if body:os.write(writer,body)
+                os.close(writer)
+                with self.assertRaises((ValueError,TypeError)):d.await_privacy_snapshot(fd,token,before)
+            finally:os.close(fd)
+
+    def test_parallel_source_mutation_is_rejected_after_every_peer_completes(self):
+        execute,snapshot,calls,peak=self.scheduled_execution(mutate=True)
+        with patch.object(d,'CHECKS',self.fixed_commands),patch.object(d,'execute_check',side_effect=execute),patch.object(d,'await_privacy_snapshot',side_effect=snapshot):
+            with self.assertRaisesRegex(ValueError,'Clean|changed'):self.validate()
+        self.assertEqual(len(calls),8)
 
     def test_actual_execution_and_distinct_verified_receipt(self):
         value = self.validate()

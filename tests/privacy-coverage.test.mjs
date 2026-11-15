@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import {copyFile, mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile} from "node:fs/promises";
-import {execFile} from "node:child_process";
+import {execFile,spawn} from "node:child_process";
 import {promisify} from "node:util";
 import {createHash, createHmac} from "node:crypto";
-import {EventEmitter} from "node:events";
+import {EventEmitter,once} from "node:events";
 import {join} from "node:path";
 import test from "node:test";
 import {privacyFileCoverage, privacyPolicyIdentity, privacyPolicyDigest, privacyCoveragePartition, privacyTransitionProof} from "../scripts/lib/privacy-coverage.mjs";
@@ -195,6 +195,22 @@ test("production privacy CLI preserves full source/Vault membership and consumes
   const fullFallback=await invoke();assert(fullFallback.findings.some(row=>row.includes("large.txt: non-synthetic email")));
   assert(fullFallback.report.scanned_bytes>8*1024*1024);assert.equal(fullFallback.report.scanned,1);
   await rm(large);assert.equal((await invoke()).report.outcome,"PASSED");
+  const token="a".repeat(64),child=spawn(process.execPath,["--input-type=module","-e",entry],{cwd:f.root,
+    env:{...process.env,BOC_PRIVACY_READY_FD:"3",BOC_PRIVACY_READY_TOKEN:token},stdio:["ignore","pipe","pipe","pipe"]});
+  let output="",errors="";child.stdout.on("data",chunk=>output+=chunk);child.stderr.on("data",chunk=>errors+=chunk);
+  const finished=once(child,"close");
+  const ready=await new Promise((resolve,reject)=>{let bytes="";child.stdio[3].on("data",chunk=>{bytes+=chunk;
+    if(bytes.length>1024)reject(Error("oversized readiness"));else if(bytes.includes("\n"))resolve(JSON.parse(bytes));});child.on("error",reject);});
+  assert.equal(ready.kind,"boc-privacy-snapshot-ready-v1");assert.equal(ready.token,token);
+  assert.match(ready.source,/^[0-9a-f]{40}$/u);assert.match(ready.policy_sha256,/^[0-9a-f]{64}$/u);
+  // Unique test fixtures created after this barrier cannot disappear from the
+  // already captured membership. A following scan still discovers every file.
+  const later=join(f.root,"Vault/tmp/post-snapshot.txt");await writeFile(later,address);
+  assert.equal((await finished)[0],0,errors);const captured=JSON.parse(output);
+  assert.equal(captured.report.files.length,ready.files);assert.deepEqual(captured.findings,[]);
+  assert((await invoke()).findings.some(row=>row.includes("post-snapshot.txt: non-synthetic email")));
+  await rm(later);
+
 });
 
 test("reviewed archive-only transition retains exact original non-archive passes and executes archive members", async t => {

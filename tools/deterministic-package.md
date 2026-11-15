@@ -188,3 +188,17 @@ per-entry deletion churn; misses always compute the original SHA-256 membership.
 Matcher identity changes discard every cached result. Eviction/oversized-word,
 mutated-rule and complete original one-to-eight-word equivalence tests remain
 required, alongside the fresh full-policy cold category.
+
+The `/7` scheduler preserves sequential vendor parity, regeneration, clean-source
+and package checks, then invokes the identical privacy Node entry directly with
+a private inherited readiness pipe. Privacy captures the complete current file
+membership before sending a bounded nonce/source/tree/policy/count message.
+Only after validating that message does the parent launch the fixed publication,
+Node and Python suites concurrently. Their unique disposable fixtures cannot
+enter the captured membership; the following scan still discovers new files.
+Every command retains its original timeout, output, exit status and completeness
+requirements. The parent records results in fixed category order, binds the
+privacy result back to the snapshot, preserves every concurrent failure and
+rechecks the complete candidate/runtime before issuing a receipt. Receipt
+freshness compares maximum completion time across all commands. Missing, stale
+or malformed readiness launches no dependent suite and prevents verification.

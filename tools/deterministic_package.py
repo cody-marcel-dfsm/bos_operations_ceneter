@@ -5,6 +5,10 @@ runtime/configuration changes require a separate fixed verification profile.
 """
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
+import selectors
+import secrets
+import threading
 import argparse
 import hashlib
 from datetime import datetime, timezone
@@ -24,6 +28,7 @@ except ImportError:
 
 KIND = 'boc-deterministic-package/1'
 PROFILE = 'feedback-discovery-and-release-tool/7'
+_OUTPUT_LOCK = threading.Lock()
 WS_LOCK_RECORD = {
     'version': '8.23.0', 'resolved': 'https://registry.npmjs.org/ws/-/ws-8.23.0.tgz',
     'integrity': 'sha512-wCkmX8QMOrKjgO8HW2WyDbTSGeqkocxgDzS9iR79rEAexty6/2qzilx3Ag8Tqf9ykop3irLKle0MtVn5qjVnoQ==',
@@ -51,7 +56,7 @@ TESTS = [
 CHECKS = [
     ['node', 'scripts/build-feedback-socket-runtime.mjs', '--check'],
     ['npm', 'run', 'build:packages'], ['git', 'diff', '--exit-code', 'HEAD', '--'],
-    ['npm', 'run', 'check'], ['npm', 'run', 'check:privacy'],
+    ['npm', 'run', 'check'], ['node', 'scripts/check-customer-data.mjs'],
     ['npm', 'run', 'check:publication'],
     ['node', '--test', '--test-reporter=tap', *TESTS],
     [sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'tests',
@@ -303,7 +308,7 @@ def read_receipt(root):
     for candidate in paths:
         if candidate.is_symlink() or candidate.stat().st_mode & 0o077:
             raise ValueError('Unsafe package receipt')
-    path = max(paths, key=lambda item: json.loads(item.read_bytes())['runs'][-1]['completed_at'])
+    path = max(paths, key=lambda item: max(row['completed_at'] for row in json.loads(item.read_bytes())['runs']))
     if path.is_symlink() or path.stat().st_mode & 0o077:
         raise ValueError('Unsafe package receipt')
     value = json.loads(path.read_bytes())
@@ -315,12 +320,14 @@ def read_receipt(root):
         raise ValueError('Candidate, runtime or dependency inputs changed')
     if value['paths'] != scope(root, value['base'], current['source']):
         raise ValueError('Publication range changed')
+    if value.get('scheduling') != scheduling(CHECKS):
+        raise ValueError('Fixed scheduling contract changed')
     if [row['command'] for row in value['runs']] != CHECKS:
         raise ValueError('Fixed command category changed')
     for failure in directory(root).glob('*.failure.json'):
         record = json.loads(failure.read_bytes())
         if (record.get('identity') == current and record.get('runs')
-                and record['runs'][-1]['completed_at'] > value['runs'][-1]['completed_at']):
+                and max(row['completed_at'] for row in record['runs']) > max(row['completed_at'] for row in value['runs'])):
             raise ValueError('A later failed execution supersedes this receipt')
     for row in value['runs']:
         path = directory(root) / (row['output_sha256'] + '.log')
@@ -332,6 +339,107 @@ def read_receipt(root):
     return dict(value, sha256=checksum)
 
 
+def scheduling(commands):
+    return ('source-prepared-privacy-snapshot-parallel/1' if len(commands) == 8 and
+            commands[4] == ['node', 'scripts/check-customer-data.mjs'] and
+            commands[5] == ['npm', 'run', 'check:publication'] and
+            commands[6][:3] == ['node', '--test', '--test-reporter=tap'] and
+            'unittest' in commands[7] else 'serial/1')
+
+
+def execute_check(root, command, ready=None):
+    began = time.time()
+    try:
+        if ready is None:
+            result = subprocess.run(command, cwd=root, capture_output=True, timeout=300)
+            output, code = result.stdout + b'\n' + result.stderr, result.returncode
+        else:
+            fd, token = ready
+            environment = dict(os.environ, BOC_PRIVACY_READY_FD=str(fd), BOC_PRIVACY_READY_TOKEN=token)
+            try:
+                process = subprocess.Popen(command, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                           env=environment, pass_fds=(fd,))
+            finally:
+                os.close(fd)
+            try:
+                stdout, stderr = process.communicate(timeout=300)
+                output, code = stdout + b'\n' + stderr, process.returncode
+            except subprocess.TimeoutExpired:
+                process.kill(); stdout, stderr = process.communicate()
+                output, code = stdout + b'\n' + stderr, 'TIMEOUT'
+    except subprocess.TimeoutExpired as error:
+        output, code = (error.stdout or b'') + b'\n' + (error.stderr or b''), 'TIMEOUT'
+    except OSError as error:
+        output, code = str(error).encode(), 'EXECUTION_ERROR'
+    checksum = native.digest(output)
+    path = directory(root) / (checksum + '.log')
+    with _OUTPUT_LOCK:
+        if not path.exists():
+            native.private_write(path, output)
+    return {'command': command, 'exit_code': code, 'output_sha256': checksum,
+            'started_at': began, 'completed_at': time.time()}
+
+
+def await_privacy_snapshot(fd, token, before):
+    with selectors.DefaultSelector() as selector:
+        selector.register(fd, selectors.EVENT_READ)
+        pending = b''; deadline = time.monotonic() + 10
+        while b'\n' not in pending:
+            if not selector.select(max(0, deadline-time.monotonic())):
+                raise ValueError('Privacy snapshot readiness timed out')
+            part = os.read(fd, 1025-len(pending))
+            if not part or len(pending)+len(part)>1024:
+                raise ValueError('Privacy snapshot readiness missing or oversized')
+            pending += part
+        row = json.loads(pending)
+        if (set(row) != {'kind','token','source','tree','files','policy_sha256'} or
+                row['kind'] != 'boc-privacy-snapshot-ready-v1' or row['token'] != token or
+                row['source'] != before['source'] or row['tree'] != before['tree'] or
+                type(row['files']) is not int or row['files'] < 1 or
+                not re.fullmatch('[0-9a-f]{64}', row['policy_sha256'])):
+            raise ValueError('Privacy snapshot readiness identity changed')
+        return row
+
+
+def run_category(root, commands, before):
+    runs = []
+    parallel = scheduling(commands) != 'serial/1'
+    for command in commands[:4] if parallel else commands:
+        row = execute_check(root, command); runs.append(row)
+        if not complete(command, (directory(root)/(row['output_sha256']+'.log')).read_bytes(), row['exit_code']):
+            return runs
+    if not parallel:
+        return runs
+    read_fd, write_fd = os.pipe(); token = secrets.token_hex(32)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        privacy = pool.submit(execute_check, root, commands[4], (write_fd, token))
+        try:
+            snapshot = await_privacy_snapshot(read_fd, token, before)
+        except Exception as error:
+            runs.append(privacy.result())
+            # A malformed/missing snapshot never starts the independent suites.
+            row = runs[-1]; original=(directory(root)/(row['output_sha256']+'.log')).read_bytes()
+            output=original+b'\n'+str(error).encode(); checksum=native.digest(output)
+            path=directory(root)/(checksum+'.log')
+            if not path.exists():native.private_write(path,output)
+            row.update(exit_code='READINESS_ERROR',output_sha256=checksum)
+            return runs
+        finally:
+            os.close(read_fd)
+        others = [pool.submit(execute_check, root, command) for command in commands[5:]]
+        runs.extend([privacy.result(), *(future.result() for future in others)])
+    privacy_output=(directory(root)/(runs[4]['output_sha256']+'.log')).read_bytes()
+    try:
+        reports=[json.loads(line)['privacy_coverage'] for line in privacy_output.splitlines()
+                 if line.startswith(b'{"privacy_coverage":')]
+    except (ValueError, KeyError):
+        reports=[]
+    if len(reports)!=1 or any(reports[0].get(key)!=snapshot[value] for key,value in
+            [('source_commit','source'),('source_tree','tree'),('files','files'),('policy_sha256','policy_sha256')]):
+        runs[4]['exit_code']='SNAPSHOT_RESULT_MISMATCH'
+    return runs
+
+
 def validate(root, base, requested_at):
     start = None if requested_at == 'unknown' else datetime.fromisoformat(requested_at.replace('Z', '+00:00'))
     if start is not None and (start.tzinfo is None or start > datetime.now(timezone.utc)):
@@ -340,29 +448,16 @@ def validate(root, base, requested_at):
     paths = scope(root, base, before['source'])
     if not CHECKS:
         raise ValueError('Fixed package check category is empty')
-    runs = []
-    for command in CHECKS:
-        began = time.time()
-        try:
-            result = subprocess.run(command, cwd=root, capture_output=True, timeout=300)
-            output, code = result.stdout + b'\n' + result.stderr, result.returncode
-        except subprocess.TimeoutExpired as error:
-            output, code = (error.stdout or b'') + b'\n' + (error.stderr or b''), 'TIMEOUT'
-        checksum = native.digest(output)
-        path = directory(root) / (checksum + '.log')
-        if not path.exists():
-            native.private_write(path, output)
-        runs.append({'command': command, 'exit_code': code, 'output_sha256': checksum,
-                     'started_at': began, 'completed_at': time.time()})
-        if not complete(command, output, code):
-            native.private_write(directory(root) / (str(time.time_ns()) + '.failure.json'),
-                                 native.encoded({'kind': KIND + '-failure', 'identity': before,
-                                                 'base': base, 'request_started_at': requested_at, 'runs': runs}))
-            raise ValueError('Required package check failed; original output retained: ' + str(path))
+    runs = run_category(root, CHECKS, before)
+    if any(not complete(row['command'], (directory(root) / (row['output_sha256'] + '.log')).read_bytes(), row['exit_code']) for row in runs):
+        native.private_write(directory(root) / (str(time.time_ns()) + '.failure.json'),
+                             native.encoded({'kind': KIND + '-failure', 'identity': before,
+                                             'base': base, 'request_started_at': requested_at, 'runs': runs}))
+        raise ValueError('Required package check failed; original outputs retained: ' + str(directory(root)))
     if native.identity(root) != before:
         raise ValueError('Source, generated package or runtime changed during verification')
     value = {'kind': KIND, 'profile': PROFILE, 'status': 'VERIFIED', **before,
-             'base': base, 'paths': paths, 'runs': runs, 'request_started_at': requested_at,
+             'base': base, 'paths': paths, 'runs': runs, 'scheduling': scheduling(CHECKS), 'request_started_at': requested_at,
              'sla_status': ('BREACHED_ORIGINAL_TIME_UNAVAILABLE' if start is None else
                             'BREACHED' if time.time() - start.timestamp() > 300 else 'NOT_ESTABLISHED'),
              'deployment_authorized': False}
