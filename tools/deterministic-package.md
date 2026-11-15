@@ -436,3 +436,8 @@ against the explicit first parent and still inspects every unpublished edge on
 both lines, including later removed content. Multiple/older ambiguous common
 bases, two trusted published parents, octopus/replaced/grafted/shallow history
 remain rejected. This preserves Muse attribution without rewriting either line.
+
+Failure diagnostics retain original command output in private native custody and
+print only failing fixed command ordinals, exit statuses, output hashes and at
+most twenty bounded plain test locators. Failure bodies and unrecognized lines
+remain private. This adds no public artifact upload or acceptance exemption.

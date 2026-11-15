@@ -315,6 +315,21 @@ class PackageGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Unmapped skill'):
             d.scope(self.root, baseline, self.git('rev-parse', 'HEAD'))
 
+    def test_failed_summary_exposes_only_bounded_public_locators_not_failure_bodies(self):
+        output = (b'not ok 2 - safe public acceptance\n'
+                  b'FAIL: test_closed_case (fixture.Case)\n'
+                  b'error: private body\npassword=private-value\n'
+                  b'not ok 3 - <unsafe title>\n')
+        checksum = d.native.digest(output)
+        d.native.private_write(d.directory(self.root) / (checksum+'.log'), output)
+        row = {'command':['node','--test'], 'exit_code':1, 'output_sha256':checksum}
+        summaries = d.failed_check_summary([row], self.root)
+        self.assertEqual(summaries[0]['failed_tests'],
+                         ['safe public acceptance','test_closed_case (fixture.Case)'])
+        self.assertNotIn('private', json.dumps(summaries))
+        self.assertNotIn('unsafe', json.dumps(summaries))
+        self.assertEqual(summaries[0]['output_sha256'], checksum)
+
     def test_muse_guidance_amendment_admits_only_exact_named_files(self):
         baseline = self.git('rev-parse', 'HEAD')
         expected = {'source/platform/bos-visual-output/SKILL.md',

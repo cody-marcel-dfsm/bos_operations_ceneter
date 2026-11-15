@@ -902,6 +902,23 @@ def history_report(output, base, source):
         raise ValueError('Exact complete publication history proof missing or changed')
 
 
+def failed_check_summary(runs, root):
+    """Expose bounded public test locators/counts, retaining raw output privately."""
+    summaries = []
+    for index, row in enumerate(runs):
+        output = (directory(root) / (row['output_sha256'] + '.log')).read_bytes()
+        if complete(row['command'], output, row['exit_code']):
+            continue
+        locators = []
+        for line in output.decode('utf-8', errors='replace').splitlines():
+            match = re.fullmatch(r'(?:not ok [0-9]+ - |FAIL: |ERROR: )([A-Za-z0-9_ .,:()/-]{1,180})', line)
+            if match and len(locators) < 20:
+                locators.append(match.group(1))
+        summaries.append({'check_index': index, 'exit_code': row['exit_code'],
+                          'output_sha256': row['output_sha256'], 'failed_tests': locators})
+    return summaries
+
+
 def validate(root, base, requested_at):
     start = None if requested_at == 'unknown' else datetime.fromisoformat(requested_at.replace('Z', '+00:00'))
     if start is not None and (start.tzinfo is None or start > datetime.now(timezone.utc)):
@@ -915,7 +932,8 @@ def validate(root, base, requested_at):
         native.private_write(directory(root) / (str(time.time_ns()) + '.failure.json'),
                              native.encoded({'kind': KIND + '-failure', 'identity': before,
                                              'base': base, 'request_started_at': requested_at, 'runs': runs}))
-        raise ValueError('Required package check failed; original outputs retained: ' + str(directory(root)))
+        raise ValueError('Required package check failed: ' + json.dumps(failed_check_summary(runs, root), sort_keys=True)
+                         + '; original outputs retained: ' + str(directory(root)))
     if native.identity(root) != before:
         raise ValueError('Source, generated package or runtime changed during verification')
     value = {'kind': KIND, 'profile': PROFILE, 'status': 'VERIFIED', **before,
