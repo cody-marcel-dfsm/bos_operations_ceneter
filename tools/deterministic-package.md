@@ -213,7 +213,7 @@ with iterative eviction and 3.94 seconds with generation reset. This diagnostic
 is evidence for the repair, while the complete fresh-policy cold category
 remains the acceptance measurement. All prior timing breaches are retained.
 
-The remaining `/7` scheduling-tail correction dispatches the entire captured
+An evaluated `/7` scheduling-tail correction dispatched the entire captured
 membership by descending metadata size, with canonical path ordinal tie-break.
 Two bounded metadata readers retain only sizes/ordinals; every actual byte/mode/
 context snapshot is still independently captured at observation time. Completed
@@ -237,9 +237,9 @@ queue was assessed against the original coupled path with controlled real-worker
 and atomic-writer timing; its measured benefit governs final selection. All
 experimental source remains recoverable in Git, with no publication or activation.
 
-The final measured correction retains the original per-file await and atomic
-record/pointer writes. The queue prototype has no consistent measured gain and
-is removed from final source. Eight I/O threads are configured only in the
+The initial I/O-only correction retained the original per-file await and atomic
+record/pointer writes. Its tiny-input queue sample had no consistent gain; the
+calibrated mixed-input assessment below controls the subsequent queue selection. Eight I/O threads are configured only in the
 spawned native privacy validator before Node startup; the installed companion,
 outer shell and other commands receive no tuning. Controlled coupled-path
 samples measured 1.233 seconds at four threads and 1.024–1.083 seconds at eight
@@ -262,3 +262,17 @@ waiting, compact-metadata and I/O reports. Held-writer, pointer-custody failure,
 unchanged orphan records, exact retry, large findings and input/context
 comparisons remain required. Original weak/strong measurements and SLA breaches
 are retained; one fresh-policy cold category decides the final wall-time result.
+
+The final `/7` dispatcher restores canonical path FIFO and removes the size
+preflight. Actual captured inputs (256 whole files, 25.9 MiB, proportional
+origin/type/size strata, verified unchanged hashes, fresh worker pools and
+independent stores) measured FIFO 3.32–3.45 seconds versus largest-first
+3.74–3.80 seconds. A two-ended dispatcher measured 2.98–3.03 seconds, while FIFO
+provides the smaller competitive correction and is retained. The original
+heuristic and all weak/strong diagnostics remain in Git/private evidence.
+Current required behavior remains bounded parent persistence, canonical result
+and error order, immutable byte/mode/context snapshots, parent-only signatures,
+unchanged atomic writes and a fully drained queue before any PASS. No size hint
+controls scheduling or authority in final source. Canonical-order held-input
+checks prove that later completed records persist immediately, and exact input/
+context equivalence against the retired dispatcher remains required.

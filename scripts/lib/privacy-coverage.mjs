@@ -183,6 +183,7 @@ export async function privacyFileCoverage({root, directory, candidates, policy, 
   let reused = 0, scanned = 0, invalidated = 0, bridged = 0, transition;
   try { transition = await policyTransition(directory, key, policyHash); }
   catch (error) { if (error.code !== "ENOENT") invalidated++; }
+  const membershipStarted=performance.now();
   const paths = [...new Set(candidates.map(path => resolve(path)))].sort();
   let position = 0, reading = 0, maxInputReads = 0; const readers = [];
   const readSlot = async operation => {
@@ -191,9 +192,6 @@ export async function privacyFileCoverage({root, directory, candidates, policy, 
     try {return await operation();}
     finally {const next = readers.shift(); if (next) next(); else reading--;}
   };
-  // Scheduling hints contain metadata only. Actual immutable bytes, mode and
-  // context are captured independently below; size never grants coverage.
-  const dispatch = new Array(paths.length); let metadataPosition = 0;
   const failures = [], persistence = new Set();
   let maxPersistence = 0, awaitingPersistence = 0, maxAwaitingPersistence = 0;
   const phases = {};
@@ -221,23 +219,13 @@ export async function privacyFileCoverage({root, directory, candidates, policy, 
     // compact metadata is allowed to advance ahead of durable persistence.
     if(wait)await pending;
   };
-  const metadataStarted=performance.now();
-  await Promise.all(Array.from({length: Math.min(2, paths.length)}, async () => {
-    while (metadataPosition < paths.length) {
-      const ordinal = metadataPosition++;
-      try { dispatch[ordinal] = {ordinal, size: (await lstat(paths[ordinal])).size}; }
-      catch (error) { failures.push({ordinal, error: new Error("Required privacy input became unavailable: " + relative(root, paths[ordinal]), {cause: error})}); }
-    }
-  }));
-  elapsed("metadata", "captured-membership", metadataStarted);
+  elapsed("metadata","captured-membership",membershipStarted);
   const rejectFailures = () => {
     if (failures.length) {
       const errors = failures.sort((a,b) => a.ordinal-b.ordinal).map(row => row.error);
       throw new AggregateError(errors, errors.map(error => error.message).join("\n"));
     }
   };
-  rejectFailures();
-  dispatch.sort((a,b) => b.size-a.size || a.ordinal-b.ordinal);
   const observe = async (path, ordinal) => {
     let body, mode;
     const readStarted=performance.now();
@@ -300,8 +288,8 @@ export async function privacyFileCoverage({root, directory, candidates, policy, 
     fileFindings[ordinal] = result;
   };
   await Promise.all(Array.from({length: Math.min(concurrency, paths.length)}, async () => {
-    while (position < dispatch.length) {
-      const {ordinal} = dispatch[position++];
+    while (position < paths.length) {
+      const ordinal = position++;
       try {await observe(paths[ordinal], ordinal);} catch (error) {failures.push({ordinal, error});}
     }
   }));

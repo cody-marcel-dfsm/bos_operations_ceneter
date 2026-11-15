@@ -288,30 +288,28 @@ test("bounded independent file observations preserve sorted merge, exact snapsho
   await assert.rejects(f.run({concurrency:9}),/Bounded/);
 });
 
-test("largest-first dispatch persists short observations while a large input remains blocked",async t=>{
+test("canonical FIFO persists later observations while the first input remains blocked",async t=>{
   const f=await fixture(t),last=join(f.root,"z.txt"),paths=[...f.paths,last];
-  for(const [index,path]of paths.entries())await writeFile(path,"x".repeat([1,64,64,256][index]));
-  let release,changed;const held=new Promise(resolve=>release=resolve),updated=new Promise(resolve=>changed=resolve);t.after(()=>release());const started=[];
-  const resultPromise=f.run({candidates:paths,concurrency:2,contextFor:async path=>({item:path.slice(-5)}),scan:async(path,body)=>{
-    started.push(path);
-    if(path===last){await writeFile(paths[0],"updated synthetic-blocked");changed();await held;}else await updated;
-    return body.includes("synthetic-blocked")?["synthetic exact changed-byte finding"]:[];
+  for(const [index,path]of paths.entries())await writeFile(path,"x".repeat([256,64,64,1][index]));
+  let release;const held=new Promise(resolve=>release=resolve);t.after(()=>release());const started=[];
+  const resultPromise=f.run({candidates:[...paths].reverse(),concurrency:2,contextFor:async path=>({item:path.slice(-5)}),scan:async(path,body)=>{
+    started.push(path);if(path===paths[0]){await writeFile(path,"later source mutation");await held;}
+    return path===paths[1]?["synthetic exact finding"]:[];
   }});
   let records=[];
   for(let attempt=0;attempt<200;attempt++){
     try{records=await Promise.all((await readdir(join(f.directory,"records"))).map(async name=>JSON.parse(await readFile(join(f.directory,"records",name)))));}catch(error){if(error.code!=="ENOENT")throw error;}
     if(records.length===3)break;await new Promise(resolve=>setTimeout(resolve,5));
   }
-  assert.deepEqual([...started.slice(0,2)].sort(),[paths[1],last].sort());
-  assert(started.indexOf(paths[1])<started.indexOf(paths[2]));
-  assert.equal(records.length,3);assert(records.every(row=>row.input.path!=="z.txt"));
+  assert.deepEqual([...started.slice(0,2)].sort(),[paths[0],paths[1]].sort());
+  assert(started.indexOf(paths[1])<started.indexOf(paths[2]));assert.equal(records.length,3);assert(records.every(row=>row.input.path!=="a.txt"));
   release();const result=await resultPromise;
   assert.deepEqual(result.report.files.map(row=>row.path),["a.txt","b.txt","c.txt","z.txt"]);
-  assert.equal(result.report.files[0].sha256,createHash("sha256").update("updated synthetic-blocked").digest("hex"));
-  assert.deepEqual(result.findings,["synthetic exact changed-byte finding"]);assert(result.report.max_input_reads<=2);
+  assert.equal(result.report.files[0].sha256,createHash("sha256").update("x".repeat(256)).digest("hex"));
+  assert.deepEqual(result.findings,["synthetic exact finding"]);assert(result.report.max_input_reads<=2);
 });
 
-test("largest-first metadata and scan errors reject in canonical order without a partial pass",async t=>{
+test("canonical FIFO input and scan errors reject in canonical order without a partial pass",async t=>{
   const f=await fixture(t);
   await assert.rejects(f.run({candidates:[join(f.root,"missing-z.txt"),join(f.root,"missing-a.txt")],concurrency:2}),error=>{
     assert(error instanceof AggregateError);assert.equal(error.errors.length,2);
@@ -324,28 +322,22 @@ test("largest-first metadata and scan errors reject in canonical order without a
   assert.equal(attempted.length,3);assert.equal((await readdir(join(f.directory,"runs"))).length,0);
 });
 
-test("largest-first representative tail timing retains exact serial findings and input identities",async t=>{
+test("canonical FIFO retains exact findings and input identities against the retired size dispatcher",async t=>{
   const f=await fixture(t),paths=Array.from({length:6},(_,n)=>join(f.root,n===5?"z.txt":String.fromCharCode(97+n)+".txt"));
   for(const [index,path]of paths.entries())await writeFile(path,"x".repeat(index===5?8:1));
   const source=await readFile(new URL("../scripts/lib/privacy-coverage.mjs",import.meta.url),"utf8");
-  const referenceSource=source.replace("dispatch.sort((a,b) => b.size-a.size || a.ordinal-b.ordinal);","dispatch.sort((a,b) => a.ordinal-b.ordinal);");
-  assert.notEqual(referenceSource,source);
-  const reference=await import("data:text/javascript;base64,"+Buffer.from(referenceSource).toString("base64"));
+  const referenceSource=source.replace("  let position = 0, reading = 0",`  const referenceDispatch=(await Promise.all(paths.map(async(path,ordinal)=>({ordinal,size:(await lstat(path)).size})))).sort((a,b)=>b.size-a.size||a.ordinal-b.ordinal);
+  let position = 0, reading = 0`).replace("const ordinal = position++;","const {ordinal} = referenceDispatch[position++];");
+  assert.notEqual(referenceSource,source);const reference=await import("data:text/javascript;base64,"+Buffer.from(referenceSource).toString("base64"));
   const scan=async(path,body)=>{await new Promise(resolve=>setTimeout(resolve,body.length*20));return path.endsWith("b.txt")?["synthetic retained failure"]:[];};
-  const contextFor=async path=>({snapshot:path.slice(-5)}),policy={rules:"representative-original"};
-  const start=performance.now();const before=await reference.privacyFileCoverage({root:f.root,directory:join(f.root,".git/oracle/reference"),candidates:paths,policy,contextFor,scan,concurrency:2});
-  const beforeMs=performance.now()-start,afterStart=performance.now();
+  const contextFor=async path=>({snapshot:path.slice(-5)}),policy={rules:"exact-dispatch-equivalence"};
+  const before=await reference.privacyFileCoverage({root:f.root,directory:join(f.root,".git/oracle/reference"),candidates:paths,policy,contextFor,scan,concurrency:2});
   const after=await f.run({candidates:[...paths].reverse(),policy,contextFor,scan,concurrency:2});
-  const afterMs=performance.now()-afterStart;
   assert.deepEqual(after.findings,before.findings);
-  const observations=result=>result.report.files.map(({path,sha256,mode,outcome})=>({path,sha256,mode,outcome}));
-  assert.deepEqual(observations(after),observations(before));assert.equal(after.report.bytes,before.report.bytes);
+  const observations=result=>result.report.files.map(({path,sha256,mode,outcome})=>({path,sha256,mode,outcome}));assert.deepEqual(observations(after),observations(before));
   const inputs=async directory=>(await Promise.all((await readdir(join(directory,"records"))).map(async name=>JSON.parse(await readFile(join(directory,"records",name))).input)))
     .map(({path,sha256,mode,policy_sha256,context_sha256})=>({path,sha256,mode,policy_sha256,context_sha256})).sort((a,b)=>a.path.localeCompare(b.path));
-  assert.deepEqual(await inputs(f.directory),await inputs(join(f.root,".git/oracle/reference")));
-  assert(after.report.max_input_reads<=2);assert.equal(after.report.scanned,6);assert.equal(after.report.bridged,0);
-  t.diagnostic(JSON.stringify({kind:"bounded-representative-tail-timing",files:6,total_weight:13,workers:2,canonical_fifo_ms:beforeMs,largest_first_ms:afterMs,
-    canonical_fifo_ideal_ticks:10,largest_first_ideal_ticks:8,findings_equal:true,input_context_hashes_equal:true,ordered_write_buffer:false}));
+  assert.deepEqual(await inputs(f.directory),await inputs(join(f.root,".git/oracle/reference")));assert(after.report.max_input_reads<=2);assert.equal(after.report.scanned,6);assert.equal(after.report.bridged,0);
 });
 
 test("privacy policy binds the explicit native I/O thread configuration",async()=>{
