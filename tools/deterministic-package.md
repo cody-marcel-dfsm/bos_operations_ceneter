@@ -457,3 +457,8 @@ Same-directory readback accepts both the new exact name and the old exact
 `s-<16hex>.sock` pattern. Ownership, mode, inode, fixed bindings and operations
 remain mandatory. Complete host/onboarding/socket/installer checks plus actual
 102-byte IPC, overbound rejection and legacy readback remain fixed acceptance.
+
+The /10 exact editable inventory additionally admits `tests/notification-host.test.mjs`
+for the portable-socket conformance repair above. It was already a complete fixed
+category module; its new cases now remain both editable and mandatory. No other
+notification file or test path becomes admitted.

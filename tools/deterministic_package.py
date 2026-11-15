@@ -131,6 +131,7 @@ ADA_CLIENT = {
     'source/host-runtime/bos-journey-notifications/feedback-discussion-host.mjs',
     'source/host-runtime/bos-journey-notifications/muse-companion-cli.mjs',
     'source/host-runtime/bos-journey-notifications/muse-companion-host.mjs',
+    'tests/notification-host.test.mjs',  # /10 exact portable-socket conformance repair
     'source/host-runtime/bos-journey-notifications/muse-hook.sh',
     'source/host-runtime/bos-journey-notifications/README.md',
     'source/host-runtime/bos-journey-notifications/vendor/ws.bundle.mjs',
