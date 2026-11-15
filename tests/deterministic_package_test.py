@@ -77,6 +77,11 @@ class PackageGateTests(unittest.TestCase):
                 if history is not None:
                     output=json.dumps({'publication_history':{'base':history[0],'source':history[1],
                         'status':'PASS','pairs':1,'inventory_sha256':'b'*64,'policy_sha256':'c'*64,'findings':[],'classifications':[]}}).encode()
+                elif command == d.PYTHON_CHECK:
+                    results=[{'module':module,'command':d.python_module_command(module),'exit_code':0,
+                              'output':b'Ran 1 test in 0.01s\n\nOK\n','wall_ms':1,
+                              'temporary_directory_sha256':'d'*64} for module in d.PYTHON_MODULES]
+                    output,_=d.python_category_output(before,results)
                 else:
                     output=(b'# tests 1\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n' if '--test-reporter=tap' in command else
                         b'Ran 1 test in 0.01s\n\nOK\n' if 'unittest' in command else b'synthetic completed command')
@@ -421,6 +426,108 @@ class PackageGateTests(unittest.TestCase):
         value['contract_version']='bos-client-dependency/v2';path.write_text(json.dumps(value));self.commit()
         with self.assertRaisesRegex(ValueError,'public dependency contract'):
             d.scope(self.root,base,self.git('rev-parse','HEAD'))
+
+    def python_results(self):
+        return [{'module':module,'command':d.python_module_command(module),'exit_code':0,
+                 'output':b'Ran 2 tests in 0.01s\n\nOK\n','wall_ms':10,
+                 'temporary_directory_sha256':'d'*64} for module in d.PYTHON_MODULES]
+
+    def test_fixed_python_category_runs_all_three_independently_and_merges_in_fixed_order(self):
+        before=d.native.identity(self.root);barrier=threading.Barrier(3);active=0;peak=0;lock=threading.Lock()
+        def execute(root,module):
+            nonlocal active,peak
+            with lock: active+=1;peak=max(peak,active)
+            barrier.wait(timeout=3)
+            time.sleep(.03 if module==d.PYTHON_MODULES[0] else .001)
+            with lock: active-=1
+            return next(row for row in self.python_results() if row['module']==module)
+        output,code=d.run_python_category(self.root,execute)
+        self.assertEqual(code,0);self.assertEqual(peak,3)
+        report=d.python_category_report(output,before)
+        self.assertEqual([row['module'] for row in report['modules']],list(d.PYTHON_MODULES))
+        self.assertEqual(sum(row['tests'] for row in report['modules']),6)
+        for row in report['modules']:
+            self.assertEqual(d.native.digest((d.directory(self.root)/(row['output_sha256']+'.log')).read_bytes()),row['output_sha256'])
+
+    def test_python_category_keeps_every_failure_skip_and_original_output(self):
+        before=d.native.identity(self.root)
+        for kind in ('failure','skip','empty','timeout','error'):
+            with self.subTest(kind=kind):
+                attempted=[]
+                def execute(root,module):
+                    attempted.append(module)
+                    row=next(row for row in self.python_results() if row['module']==module)
+                    if module==d.PYTHON_MODULES[1]:
+                        if kind=='error': raise OSError('synthetic module execution error')
+                        if kind=='failure': row.update(exit_code=1,output=b'Ran 2 tests in .01s\nFAILED (failures=1)\n')
+                        if kind=='skip': row['output']=b'Ran 2 tests in .01s\nOK (skipped=1)\n'
+                        if kind=='empty': row['output']=b'Ran 0 tests in .01s\nOK\n'
+                        if kind=='timeout': row['exit_code']='TIMEOUT'
+                    return row
+                output,code=d.run_python_category(self.root,execute)
+                self.assertEqual(code,1);self.assertEqual(set(attempted),set(d.PYTHON_MODULES))
+                with self.assertRaisesRegex(ValueError,'Python module proof'):d.python_category_report(output,before)
+
+    def test_python_category_rejects_framing_hash_command_environment_and_source_tamper(self):
+        before=d.native.identity(self.root);output,code=d.python_category_output(before,self.python_results())
+        self.assertTrue(d.complete(d.PYTHON_CHECK,output,code))
+        for bad in (output[:-12],output.replace(b'Ran 2',b'Ran 3',1),output.replace(b'BOC_PYTHON_MODULE',b'BAD_PYTHON_MODULE',1)):
+            self.assertFalse(d.complete(d.PYTHON_CHECK,bad,0))
+        for changed in ({**before,'source':'e'*40},{**before,'tree':'f'*40},{**before,'runtime':{}}):
+            with self.assertRaisesRegex(ValueError,'Python module proof'):d.python_category_report(output,changed)
+        rows=self.python_results();rows[0]['command']=['python','unittest','different_module']
+        bad,_=d.python_category_output(before,rows)
+        self.assertFalse(d.complete(d.PYTHON_CHECK,bad,0))
+
+    def test_python_category_source_change_retains_every_module_but_prevents_pass(self):
+        def execute(root,module):
+            if module==d.PYTHON_MODULES[0]:(self.root/'AGENTS.md').write_text('intervening candidate')
+            return next(row for row in self.python_results() if row['module']==module)
+        output,code=d.run_python_category(self.root,execute)
+        self.assertEqual(code,1);self.assertFalse(d.complete(d.PYTHON_CHECK,output,code))
+        self.assertEqual(len(list(d.directory(self.root).glob('*.log'))),1)
+
+    def test_actual_python_subprocesses_have_isolated_private_temp_and_bounded_timeout_output(self):
+        import concurrent.futures
+        def execute(module):
+            code="import os,sys,time; assert os.stat(os.environ['TMPDIR']).st_mode & 0o777 == 0o700; time.sleep(.03); print('Ran 1 test in 0.03s\\n\\nOK')"
+            return d.execute_python_module(self.root,module,command=[sys.executable,'-c',code])
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+            rows=list(pool.map(execute,d.PYTHON_MODULES))
+        self.assertEqual(len({row['temporary_directory_sha256'] for row in rows}),3)
+        self.assertTrue(all(row['exit_code']==0 for row in rows))
+        timeout=d.execute_python_module(self.root,d.PYTHON_MODULES[0],command=[sys.executable,'-c','import time;time.sleep(5)'],timeout=.05)
+        self.assertEqual(timeout['exit_code'],'TIMEOUT')
+        with patch.object(d,'_PYTHON_OUTPUT_LIMIT',1024):
+            overflow=d.execute_python_module(self.root,d.PYTHON_MODULES[0],command=[sys.executable,'-c',"print('x'*10000)"])
+        self.assertEqual(overflow['exit_code'],'OUTPUT_LIMIT');self.assertLessEqual(len(overflow['output']),1025)
+        self.assertEqual(list((self.root/'Vault/tmp').iterdir()),[])
+        self.assertEqual(d._PYTHON_ACTIVE,set())
+
+    def test_python_module_cancellation_joins_owned_process_group_and_prevents_pass(self):
+        import concurrent.futures
+        d._PYTHON_CANCELLED.clear()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            pending=pool.submit(d.execute_python_module,self.root,d.PYTHON_MODULES[0],
+                                command=[sys.executable,'-c','import time;time.sleep(5)'])
+            for attempt in range(200):
+                with d._PYTHON_LOCK: active=bool(d._PYTHON_ACTIVE)
+                if active: break
+                time.sleep(.005)
+            self.assertTrue(active);d.cancel_python_category()
+            row=pending.result(timeout=5)
+        self.assertEqual(row['exit_code'],'CANCELLED');self.assertEqual(d._PYTHON_ACTIVE,set())
+        d._PYTHON_CANCELLED.clear()
+
+    def test_late_exited_python_group_permission_error_never_targets_another_process(self):
+        from unittest.mock import Mock
+        process=Mock(pid=999999);process.poll.return_value=0
+        with d._PYTHON_LOCK:d._PYTHON_ACTIVE.add(process)
+        try:
+            with patch.object(d.os,'killpg',side_effect=PermissionError()):d._stop_python_group(process)
+            process.terminate.assert_not_called()
+        finally:
+            with d._PYTHON_LOCK:d._PYTHON_ACTIVE.discard(process);d._PYTHON_STOPPING.discard(process)
 
     def test_octopus_merge_is_rejected(self):
         published, source = self.side_merge('source/platform/bos-mcp-client/references/identity-context.md')

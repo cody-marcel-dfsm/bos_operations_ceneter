@@ -296,9 +296,13 @@ test("canonical FIFO persists later observations while the first input remains b
     started.push(path);if(path===paths[0]){await writeFile(path,"later source mutation");await held;}
     return path===paths[1]?["synthetic exact finding"]:[];
   }});
+  // Atomic publication exposes only canonical final record names. Keep an
+  // explicitly incomplete writer temporary present to exercise that boundary.
+  await mkdir(join(f.directory,"records"),{recursive:true});
+  await writeFile(join(f.directory,"records",".publish-held-fixture"),"{");
   let records=[];
   for(let attempt=0;attempt<200;attempt++){
-    try{records=await Promise.all((await readdir(join(f.directory,"records"))).map(async name=>JSON.parse(await readFile(join(f.directory,"records",name)))));}catch(error){if(error.code!=="ENOENT")throw error;}
+    try{records=await Promise.all((await readdir(join(f.directory,"records"))).filter(name=>/^[a-f0-9]{64}-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.json$/u.test(name)).map(async name=>JSON.parse(await readFile(join(f.directory,"records",name)))));}catch(error){if(error.code!=="ENOENT")throw error;}
     if(records.length===3)break;await new Promise(resolve=>setTimeout(resolve,5));
   }
   assert.deepEqual([...started.slice(0,2)].sort(),[paths[0],paths[1]].sort());

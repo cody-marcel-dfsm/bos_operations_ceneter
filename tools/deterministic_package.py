@@ -9,6 +9,8 @@ from concurrent.futures import ThreadPoolExecutor
 import selectors
 import secrets
 import threading
+import tempfile
+import signal
 import argparse
 import hashlib
 from datetime import datetime, timezone
@@ -59,15 +61,19 @@ TESTS = [
     'tests/feedback-socket-host.test.mjs',
     'tests/customer-data-privacy.test.mjs', 'tests/privacy-coverage.test.mjs',
 ]
+PYTHON_MODULES = ('deterministic_package_test', 'command_coverage_test', 'oracle_parallel_test')
+PYTHON_CHECK = [sys.executable, '-B', 'tools/deterministic_package.py', 'python-category', 'unittest']
+_PYTHON_ACTIVE = set()
+_PYTHON_LOCK = threading.Lock()
+_PYTHON_STOPPING = set()
+
 CHECKS = [
     ['node', 'scripts/build-feedback-socket-runtime.mjs', '--check'],
     ['npm', 'run', 'build:packages'], ['git', 'diff', '--exit-code', 'HEAD', '--'],
     ['npm', 'run', 'check'], ['node', 'scripts/check-customer-data.mjs'],
     ['npm', 'run', 'check:publication'],
     ['node', '--test', '--test-reporter=tap', *TESTS],
-    [sys.executable, '-B', '-c',
-     "import sys,unittest;sys.path.insert(0,'tests');sys.argv.pop(1);unittest.main(module=None)",
-     'unittest', 'deterministic_package_test', 'command_coverage_test', 'oracle_parallel_test', '-v'],
+    PYTHON_CHECK,
     ['node', 'scripts/check-publication-history.mjs'],
 ]
 BODY_SKILLS = {'source/platform/bos-mcp-client/SKILL.md',
@@ -344,6 +350,172 @@ def scope(root, base, source):
     return sorted(paths)
 
 
+_PYTHON_CANCELLED = threading.Event()
+_PYTHON_OUTPUT_LIMIT = 8 * 1024 * 1024
+
+
+def python_module_command(module):
+    if module not in PYTHON_MODULES: raise ValueError('Unknown Python module')
+    return [sys.executable, '-B', '-c',
+            "import sys,unittest;sys.path.insert(0,'tests');sys.argv.pop(1);unittest.main(module=None)",
+            'unittest', module, '-v']
+
+
+def _stop_python_group(process, force=False):
+    with _PYTHON_LOCK:
+        if process not in _PYTHON_ACTIVE or not force and process in _PYTHON_STOPPING: return
+        _PYTHON_STOPPING.add(process)
+    try: os.killpg(process.pid, signal.SIGKILL if force else signal.SIGTERM)
+    except ProcessLookupError: return
+    except PermissionError:
+        # A short-lived child can already be reaped before the pipe reader
+        # observes its final chunk. Never signal a reused/foreign group.
+        if process.poll() is None:
+            try: process.terminate()
+            except ProcessLookupError: pass
+        return
+    if not force:
+        timer = threading.Timer(2, _stop_python_group, args=(process, True))
+        timer.daemon = True; timer.start()
+
+
+def cancel_python_category(*unused):
+    _PYTHON_CANCELLED.set()
+    with _PYTHON_LOCK: processes = list(_PYTHON_ACTIVE)
+    for process in processes: _stop_python_group(process)
+
+
+def execute_python_module(root, module, *, command=None, timeout=300):
+    command = command or python_module_command(module)
+    began = time.monotonic(); root = Path(root)
+    scratch = root / 'Vault/tmp'; scratch.mkdir(parents=True, exist_ok=True)
+    result = {'module':module, 'command':command, 'exit_code':'CANCELLED', 'output':b''}
+    with tempfile.TemporaryDirectory(dir=scratch, prefix='native-python-') as temporary:
+        environment = dict(os.environ, TMPDIR=temporary)
+        result['temporary_directory_sha256'] = native.digest(temporary.encode())
+        if not _PYTHON_CANCELLED.is_set():
+            process = subprocess.Popen(command, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                       env=environment, start_new_session=True)
+            with _PYTHON_LOCK: _PYTHON_ACTIVE.add(process)
+            if _PYTHON_CANCELLED.is_set(): _stop_python_group(process)
+            streams = [[], []]; size = 0; lock = threading.Lock(); overflow = threading.Event(); reader_error = threading.Event()
+            def collect(index, pipe):
+                nonlocal size
+                try:
+                    while True:
+                        chunk = pipe.read(65536)
+                        if not chunk: break
+                        with lock:
+                            if size + len(chunk) > _PYTHON_OUTPUT_LIMIT:
+                                overflow.set()
+                            elif not overflow.is_set():
+                                streams[index].append(chunk); size += len(chunk)
+                        if overflow.is_set(): _stop_python_group(process)
+                except Exception:
+                    reader_error.set()
+                    try: _stop_python_group(process)
+                    except OSError: pass
+                finally: pipe.close()
+            readers = [threading.Thread(target=collect,args=(index,pipe),daemon=True)
+                       for index,pipe in enumerate((process.stdout,process.stderr))]
+            for reader in readers: reader.start()
+            try:
+                try: result['exit_code'] = process.wait(timeout=timeout)
+                except subprocess.TimeoutExpired:
+                    result['exit_code'] = 'TIMEOUT'; _stop_python_group(process)
+                    process.wait(timeout=5)
+                for reader in readers: reader.join(timeout=5)
+                if any(reader.is_alive() for reader in readers):
+                    _stop_python_group(process, True)
+                    for reader in readers: reader.join(timeout=5)
+                    result['exit_code'] = 'PIPE_CLEANUP_ERROR'
+                if overflow.is_set(): result['exit_code'] = 'OUTPUT_LIMIT'
+                if reader_error.is_set(): result['exit_code'] = 'PIPE_READER_ERROR'
+                if _PYTHON_CANCELLED.is_set(): result['exit_code'] = 'CANCELLED'
+                result['output'] = b''.join(streams[0])+b'\n'+b''.join(streams[1])
+            finally:
+                if process.poll() is None: _stop_python_group(process, True); process.wait()
+                with _PYTHON_LOCK:
+                    _PYTHON_ACTIVE.discard(process); _PYTHON_STOPPING.discard(process)
+    result['wall_ms'] = round((time.monotonic()-began)*1000,3)
+    return result
+
+
+def python_category_output(before, results, *, unchanged=True):
+    if [row['module'] for row in results] != list(PYTHON_MODULES):
+        raise ValueError('Complete fixed Python modules required')
+    frames = []; summaries = []
+    passed = unchanged
+    for row in results:
+        raw = row['output']
+        if len(raw) > _PYTHON_OUTPUT_LIMIT + 1: raise ValueError('Python output bound changed')
+        count = re.findall(rb'Ran ([1-9][0-9]*) tests? in', raw)
+        tests = int(count[-1]) if count else 0
+        passed = passed and complete(python_module_command(row['module']), raw, row['exit_code'])
+        frames.append(b'BOC_PYTHON_MODULE '+row['module'].encode()+b' '+str(len(raw)).encode()+b'\n'+raw)
+        summaries.append({key:row[key] for key in ('module','command','exit_code','wall_ms','temporary_directory_sha256')} |
+                         {'tests':tests,'output_sha256':native.digest(raw)})
+    report = {'source':before['source'],'tree':before['tree'],'runtime_sha256':native.digest(native.encoded(before['runtime'])),
+              'modules':summaries,'concurrency':3,'status':'PASS' if passed else 'REJECT'}
+    return b''.join(frames)+native.encoded({'python_category':report})+b'\n', 0 if passed else 1
+
+
+def run_python_category(root, executor=execute_python_module, *, reset=True):
+    if reset: _PYTHON_CANCELLED.clear()
+    before = native.identity(root)
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        futures = [pool.submit(executor, root, module) for module in PYTHON_MODULES]
+        results = []
+        for module, future in zip(PYTHON_MODULES, futures):
+            try: results.append(future.result())
+            except Exception:
+                results.append({'module':module,'command':python_module_command(module),'exit_code':'EXECUTION_ERROR',
+                                'output':b'Fixed Python module execution failed.\n','wall_ms':0,
+                                'temporary_directory_sha256':'0'*64})
+    for row in results:
+        path = directory(root)/(native.digest(row['output'])+'.log')
+        with _OUTPUT_LOCK:
+            if not path.exists(): native.private_write(path,row['output'])
+    try: unchanged = native.identity(root) == before and not _PYTHON_CANCELLED.is_set()
+    except (ValueError, OSError, subprocess.SubprocessError): unchanged = False
+    return python_category_output(before,results,unchanged=unchanged)
+
+
+def python_category_report(output, expected=None):
+    try:
+        remaining = output; originals = []
+        for module in PYTHON_MODULES:
+            header,remaining = remaining.split(b'\n',1)
+            prefix = b'BOC_PYTHON_MODULE '+module.encode()+b' '
+            if not header.startswith(prefix): raise ValueError()
+            size = int(header[len(prefix):])
+            if not 0 < size <= _PYTHON_OUTPUT_LIMIT+1 or len(remaining)<size: raise ValueError()
+            originals.append(remaining[:size]);remaining=remaining[size:]
+        envelope = json.loads(remaining)
+        if set(envelope) != {'python_category'}: raise ValueError()
+        report = envelope['python_category']
+        if set(report) != {'source','tree','runtime_sha256','modules','concurrency','status'}: raise ValueError()
+        if (report['status']!='PASS' or type(report['concurrency']) is not int or report['concurrency']!=3
+                or len(report['modules'])!=3 or not re.fullmatch('[0-9a-f]{40}',report['source'])
+                or not re.fullmatch('[0-9a-f]{40}',report['tree'])
+                or not re.fullmatch('[0-9a-f]{64}',report['runtime_sha256'])): raise ValueError()
+        if expected is not None and (report['source']!=expected['source'] or report['tree']!=expected['tree']
+                or report['runtime_sha256']!=native.digest(native.encoded(expected['runtime']))): raise ValueError()
+        for module,row,raw in zip(PYTHON_MODULES,report['modules'],originals):
+            if set(row) != {'module','command','exit_code','wall_ms','temporary_directory_sha256','tests','output_sha256'}: raise ValueError()
+            count=re.findall(rb'Ran ([1-9][0-9]*) tests? in',raw)
+            if (row['module']!=module or row['command']!=python_module_command(module)
+                    or type(row['exit_code']) is not int or row['exit_code']!=0
+                    or row['output_sha256']!=native.digest(raw) or not count
+                    or type(row['tests']) is not int or row['tests']!=int(count[-1])
+                    or type(row['wall_ms']) not in (int,float) or not 0<=row['wall_ms']<=305000
+                    or not re.fullmatch('[0-9a-f]{64}',row['temporary_directory_sha256'])
+                    or not complete(python_module_command(module),raw,row['exit_code'])): raise ValueError()
+        return report
+    except (ValueError, KeyError, TypeError, AttributeError, IndexError):
+        raise ValueError('Exact complete Python module proof missing or changed')
+
+
 def complete(command, output, code):
     if code != 0:
         return False
@@ -354,6 +526,10 @@ def complete(command, output, code):
         return (set(values) == {'tests', 'pass', 'fail', 'cancelled', 'skipped', 'todo'}
                 and values['tests'] > 0 and values['pass'] == values['tests']
                 and not any(values[k] for k in ('fail', 'cancelled', 'skipped', 'todo')))
+    if 'python-category' in command:
+        try: python_category_report(output)
+        except ValueError: return False
+        return True
     if 'unittest' in command:
         return (bool(re.search(rb'Ran [1-9][0-9]* tests? in', output))
                 and bool(re.search(rb'\nOK\s*$', output)) and b'skipped=' not in output)
@@ -404,6 +580,7 @@ def read_receipt(root):
             raise ValueError('Original command output changed or is incomplete')
         if row['command']==['node','scripts/check-customer-data.mjs']:privacy_report(output)
         if row['command']==['node','scripts/check-publication-history.mjs']:history_report(output, value['base'], current['source'])
+        if row['command']==PYTHON_CHECK:python_category_report(output, current)
     return dict(value, sha256=checksum)
 
 
@@ -440,8 +617,23 @@ def execute_check(root, command, ready=None, history=None):
             environment = dict(os.environ)
             if history is not None:
                 environment.update(BOC_PUBLICATION_BASE=history[0], BOC_PUBLICATION_SOURCE=history[1])
-            result = subprocess.run(command, cwd=root, capture_output=True, timeout=300, env=environment)
-            output, code = result.stdout + b'\n' + result.stderr, result.returncode
+            if command == PYTHON_CHECK:
+                process = subprocess.Popen(command, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=environment)
+                try:
+                    stdout, stderr = process.communicate(timeout=300)
+                    code = process.returncode
+                except subprocess.TimeoutExpired:
+                    # The category's TERM handler drains/kills its isolated
+                    # groups. Preserve the original 300-second deadline.
+                    process.terminate()
+                    try: stdout, stderr = process.communicate(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        process.kill(); stdout, stderr = process.communicate()
+                    code = 'TIMEOUT'
+                output = stdout + b'\n' + stderr
+            else:
+                result = subprocess.run(command, cwd=root, capture_output=True, timeout=300, env=environment)
+                output, code = result.stdout + b'\n' + result.stderr, result.returncode
         else:
             fd, token = ready
             environment = dict(os.environ, BOC_PRIVACY_READY_FD=str(fd), BOC_PRIVACY_READY_TOKEN=token, UV_THREADPOOL_SIZE="8")
@@ -527,6 +719,10 @@ def run_category(root, commands, before, base=None):
     except ValueError:
         matches=False
     if not matches:runs[4]['exit_code']='SNAPSHOT_RESULT_MISMATCH'
+    if commands[7] == PYTHON_CHECK:
+        row = runs[7]
+        try: python_category_report((directory(root)/(row['output_sha256']+'.log')).read_bytes(), before)
+        except ValueError: row['exit_code'] = 'PYTHON_RESULT_MISMATCH'
     if len(commands) == 9:
         row = runs[8]
         try: history_report((directory(root)/(row['output_sha256']+'.log')).read_bytes(), base, before['source'])
@@ -740,7 +936,8 @@ def promote(root, ref):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['validate', 'verify', 'push', 'merge', 'promote', 'ci',
-                                           'verify-published'])
+                                           'verify-published', 'python-category'])
+    parser.add_argument('component', nargs='?')
     parser.add_argument('--base')
     parser.add_argument('--requested-at')
     parser.add_argument('--ref')
@@ -748,6 +945,16 @@ def main(argv=None):
     parser.add_argument('--source')
     args = parser.parse_args(argv)
     root = Path(native.git(Path.cwd(), 'rev-parse', '--show-toplevel'))
+    if args.action == 'python-category':
+        if args.component != 'unittest' or any((args.base,args.requested_at,args.ref,args.pr,args.source)):
+            raise ValueError('Exact fixed Python category required')
+        _PYTHON_CANCELLED.clear()
+        signal.signal(signal.SIGTERM, cancel_python_category)
+        signal.signal(signal.SIGINT, cancel_python_category)
+        output, code = run_python_category(root, reset=False)
+        sys.stdout.buffer.write(output); sys.stdout.buffer.flush()
+        return code
+    if args.component is not None: raise ValueError('Unexpected category component')
     if args.action in {'validate', 'ci'}:
         requested = (datetime.now(timezone.utc).isoformat() if args.action == 'ci' else
                      args.requested_at or os.environ.get('BOS_REVIEW_STARTED_AT') or 'unknown')

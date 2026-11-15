@@ -370,3 +370,26 @@ bytes retain every credential/digest/phone check; the remaining email-bearing
 bytes receive the unchanged decoder. This is no whole-blob exemption or domain
 allowlist. Mutation, copied path and appended customer/credential tests preserve
 ordinary rejection. The original fail-before history finding remains immutable.
+
+The first complete `/9` run retained a FIFO acceptance race and a 271.81-second
+sequential Python category. The FIFO test now watches only canonical published
+record names while an explicitly incomplete `.publish-*` writer file remains
+present; production atomic persistence and all assertions remain unchanged.
+The same three complete Python modules now run in exactly three isolated
+subprocesses after the existing privacy-readiness boundary. Each receives its
+own private disposable `TMPDIR`; no outer shell or installed runtime changes.
+Every module retains the original 300-second deadline, bounded process-group
+cancellation/cleanup, and an eight-MiB combined output limit. Failure, timeout,
+output overflow, skipped/empty tests or cancellation prevents aggregate PASS.
+No module or criterion is omitted, including the complete original Oracle suite.
+
+The parent joins all three modules and persists their original stdout/stderr
+bytes independently, then emits byte-count-framed results in fixed module order.
+Receipt issuance and consumption verify every frame/hash, exact module command,
+positive complete test count, zero skips, fixed concurrency, source/tree and
+runtime binding. Intervening source changes preserve all outputs and prevent
+PASS. Actual process, private-temp, cancellation, timeout, output-bound, mixed
+failure, malformed-frame and source/environment-tamper regressions remain fixed.
+All original failed receipts and clocks remain; only a complete current-base
+execution and exact verify can establish local source readiness. CI and actual
+publication remain separate future effects.
