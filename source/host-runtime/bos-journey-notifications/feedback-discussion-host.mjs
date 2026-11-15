@@ -41,7 +41,7 @@ export async function createFeedbackDiscussionHost({enabled=false,root,credentia
   const queueRoot=join(root,"q-"+opaque());await privateDirectory(queueRoot,{create:true});
   const queuePath=join(queueRoot,"pending.json"),outboxPath=join(queueRoot,"outbox.json"),recordPath=join(root,registrationRef+".json");
   const signingKey=randomBytes(32),controller=new AbortController(),tickets=new Map();
-  let retired=false,retirement=null,lastRefresh=0,refreshing=null,facade,reading=false,workerLeaseUntil=0,consuming=null,resyncAttested=false;
+  let retired=false,retirement=null,lastRefresh=0,refreshing=null,facade,reading=false,commentSending=false,workerLeaseUntil=0,consuming=null,resyncAttested=false;
   const fingerprint=contractFingerprint(discovery);
   const retire=()=>{
     if(retirement)return retirement;retired=true;secret="";signingKey.fill(0);tickets.clear();controller.abort();
@@ -165,6 +165,8 @@ export async function createFeedbackDiscussionHost({enabled=false,root,credentia
     async acknowledge(ticket){await refresh();const accepted=tickets.get(ticket);if(!accepted)return false;
       consuming=accepted;try{await facade.acknowledge(accepted);tickets.delete(ticket);if(!tickets.size)workerLeaseUntil=0;return true;}finally{consuming=null;}},
     async submitComment(value){
+      if(commentSending)fail();commentSending=true;
+      try{
       await readCurrent();await syncOutbox();
       const prior=outbox.find(row=>row.status!=="not_submitted"&&row.body===value.body&&(row.parent_comment_id??null)===(value.parent_comment_id??null));
       if(prior)return{status:prior.status};
@@ -175,6 +177,7 @@ export async function createFeedbackDiscussionHost({enabled=false,root,credentia
       outbox.push(entry);await saveOutbox();
       try{const result=await facade.submitComment(value);entry.status=result.status;await saveOutbox();return result;}
       catch{entry.status=["awaiting_commit","uncertain"].includes(facade.commentStatus().status)?"uncertain":"not_submitted";if(!retired)await saveOutbox();fail();}
+      }finally{commentSending=false;}
     },
     commentStatus:()=>facade.commentStatus(),
     async retire(){clearTimeout(timeout);clearInterval(custodyTimer);if(!retired)await syncOutbox();await retire();}

@@ -163,6 +163,14 @@ test("a pre-dispatch rejected request never inherits an earlier committed acknow
   assert.equal(receipt.state.entries[0].status,"committed");assert.equal(receipt.state.entries[1].status,"not_submitted");
   assert.equal(f.sends.filter(row=>row.type==="comment").length,1);
 });
+test("concurrent different comments cannot bind one request's ACK to another outbox entry",async t=>{
+  const f=await fixture(t);await f.start();
+  const results=await Promise.allSettled([f.host.submitComment({body:"First concurrent reply"}),f.host.submitComment({body:"Second concurrent reply"})]);
+  await until(()=>f.host.commentStatus().status==="committed");await f.host.poll();
+  const q=(await readdir(f.root)).find(name=>name.startsWith("q-"));const receipt=JSON.parse(await readFile(join(f.root,q,"outbox.json")));
+  assert.equal(results.filter(row=>row.status==="fulfilled").length,1);
+  assert.equal(receipt.state.entries.length,1);assert.equal(f.sends.filter(row=>row.type==="comment").length,1);
+});
 
 class FakeSocket extends EventEmitter{
   static latest;
