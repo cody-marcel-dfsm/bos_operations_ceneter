@@ -9,7 +9,7 @@ if [[ -z "${HATCH_HOOK_RUNTIME:-}" || ! -f "$HATCH_HOOK_RUNTIME" ]]; then
 fi
 source "$HATCH_HOOK_RUNTIME"
 if payload="$(node "$here/muse-companion-cli.mjs" hook-payload --control "$root/run/control.json")" && [[ "$payload" != "null" ]]; then
-  wake "BOS journey work is pending" "$payload"
+  wake "BOS registered work is pending" "$payload"
 else
   silent
 fi

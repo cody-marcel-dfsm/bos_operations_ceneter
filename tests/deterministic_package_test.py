@@ -341,6 +341,33 @@ class PackageGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'configuration'):
             d.scope(self.root, baseline, self.git('rev-parse', 'HEAD'))
 
+    def test_exact_ws_dependency_addition_is_admitted_and_other_versions_rejected(self):
+        package = self.root / 'package.json'
+        package.write_text(json.dumps({'version': '1.0.0', 'devDependencies': {'esbuild': '0.28.2'}}))
+        self.commit()
+        baseline = self.git('rev-parse', 'HEAD')
+        package.write_text(json.dumps({'version': '1.0.0', 'devDependencies': {'esbuild': '0.28.2', 'ws': '8.23.0'}}))
+        self.commit()
+        self.assertIn('package.json', d.scope(self.root, baseline, self.git('rev-parse', 'HEAD')))
+        package.write_text(json.dumps({'version': '1.0.0', 'devDependencies': {'esbuild': '0.28.2', 'ws': '99.0.0'}}))
+        self.commit()
+        with self.assertRaisesRegex(ValueError, 'WebSocket dependency version'):
+            d.scope(self.root, baseline, self.git('rev-parse', 'HEAD'))
+
+    def test_ws_lock_integrity_scope_cannot_hide_resolution_or_script_changes(self):
+        lock = self.root / 'package-lock.json'
+        value = {'lockfileVersion': 3, 'packages': {'': {'version': '1.0.0', 'devDependencies': {'esbuild': '0.28.2'}}}}
+        lock.write_text(json.dumps(value)); self.commit()
+        baseline = self.git('rev-parse', 'HEAD')
+        value['packages']['']['devDependencies']['ws'] = '8.23.0'
+        value['packages']['node_modules/ws'] = dict(d.WS_LOCK_RECORD)
+        lock.write_text(json.dumps(value)); self.commit()
+        self.assertIn('package-lock.json', d.scope(self.root, baseline, self.git('rev-parse', 'HEAD')))
+        value['packages']['node_modules/ws']['resolved'] = 'https://example.invalid/untrusted.tgz'
+        lock.write_text(json.dumps(value)); self.commit()
+        with self.assertRaisesRegex(ValueError, 'WebSocket dependency integrity'):
+            d.scope(self.root, baseline, self.git('rev-parse', 'HEAD'))
+
     def test_ada_exact_files_and_product_include_are_admitted(self):
         self.write_product(['platform/bos-mcp-client'])
         self.commit()

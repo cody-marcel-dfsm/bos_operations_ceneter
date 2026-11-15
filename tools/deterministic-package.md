@@ -77,7 +77,20 @@ transitive skill pins remain validated. No socket implementation, credential
 access, arbitrary URL dispatch, host companion extension, native wake or release
 exemption is added. All earlier fixed categories remain required.
 
-The version 6 profile preserves existing unpublished history when integrating the
+Amendment `/7` (owner-directed protected item socket source, 2026-11-14)
+adds the exact protected companion feedback-socket/feedback-discussion-host modules,
+the existing companion bridge/CLI/README and installer, the pinned ws vendor
+bundle/license/provenance, its build script and entry, and
+`tests/feedback-socket-host.test.mjs`. Exact paths are enumerated by the verifier.
+The only dependency addition is build-only `ws@8.23.0` with its exact registry
+integrity; its pure-JavaScript runtime is bundled with optional native extensions
+disabled and installed under the same immutable file/mode inventory. The fixed
+category adds vendor regeneration parity, existing notification host/installer
+regressions and new header/item/scope/queue/retirement/socket acceptance. All
+prior checks remain. No installed host change, enabled hook, live connection,
+credential trust change or publication exemption follows from source validation.
+
+The version 7 profile preserves existing unpublished history when integrating the
 published main line. A two-parent merge must have exactly one parent that is an
 ancestor of the exact publication base; its result is classified against that
 trusted parent. Every unpublished nonmerge edge is still inspected, including

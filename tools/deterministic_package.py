@@ -23,7 +23,14 @@ except ImportError:
     import deterministic_source as native
 
 KIND = 'boc-deterministic-package/1'
-PROFILE = 'feedback-discovery-and-release-tool/6'
+PROFILE = 'feedback-discovery-and-release-tool/7'
+WS_LOCK_RECORD = {
+    'version': '8.23.0', 'resolved': 'https://registry.npmjs.org/ws/-/ws-8.23.0.tgz',
+    'integrity': 'sha512-wCkmX8QMOrKjgO8HW2WyDbTSGeqkocxgDzS9iR79rEAexty6/2qzilx3Ag8Tqf9ykop3irLKle0MtVn5qjVnoQ==',
+    'dev': True, 'license': 'MIT', 'engines': {'node': '>=10.0.0'},
+    'peerDependencies': {'bufferutil': '^4.0.1', 'utf-8-validate': '>=5.0.2'},
+    'peerDependenciesMeta': {'bufferutil': {'optional': True}, 'utf-8-validate': {'optional': True}},
+}
 TESTS = [
     'tests/bos-foundation-connection.test.mjs', 'tests/bos-logout.test.mjs',
     'tests/context-selection.test.mjs', 'tests/product-mcp-contract.test.mjs',
@@ -37,8 +44,11 @@ TESTS = [
     'tests/plugin-settings.test.mjs', 'tests/publication-safety.test.mjs',
     'tests/ada-client.test.mjs', 'tests/ada-journey-view.test.mjs',
     'tests/runtime-skill-export.test.mjs', 'tests/feedback-item-discussion.test.mjs',
+    'tests/notification-host.test.mjs', 'tests/notification-host-installer.test.mjs',
+    'tests/feedback-socket-host.test.mjs',
 ]
 CHECKS = [
+    ['node', 'scripts/build-feedback-socket-runtime.mjs', '--check'],
     ['npm', 'run', 'build:packages'], ['git', 'diff', '--exit-code', 'HEAD', '--'],
     ['npm', 'run', 'check'], ['npm', 'run', 'check:privacy'],
     ['npm', 'run', 'check:publication'],
@@ -82,6 +92,20 @@ ADA_CLIENT = {
     'source/platform/submit-feedback/scripts/item-discussion.mjs',
     'source/platform/submit-feedback/references/item-discussion.md',
     'tests/feedback-item-discussion.test.mjs',
+    'source/host-runtime/bos-journey-notifications/feedback-socket.mjs',
+    'source/host-runtime/bos-journey-notifications/feedback-discussion-host.mjs',
+    'source/host-runtime/bos-journey-notifications/muse-companion-cli.mjs',
+    'source/host-runtime/bos-journey-notifications/muse-companion-host.mjs',
+    'source/host-runtime/bos-journey-notifications/muse-hook.sh',
+    'source/host-runtime/bos-journey-notifications/README.md',
+    'source/host-runtime/bos-journey-notifications/vendor/ws.bundle.mjs',
+    'source/host-runtime/bos-journey-notifications/vendor/WS-LICENSE.txt',
+    'source/host-runtime/bos-journey-notifications/vendor/ws.provenance.json',
+    'scripts/build-feedback-socket-runtime.mjs',
+    'scripts/entries/feedback-websocket-runtime.mjs',
+    'scripts/install-notification-host.mjs',
+    'tests/notification-host-installer.test.mjs',
+    'tests/feedback-socket-host.test.mjs',
 }
 # Profile /2 amendment: owner-approved repairs of tests that went stale when
 # CI moved to this deterministic gate (aa66d553, 6d75ed26, 2dbc43b4).
@@ -211,6 +235,16 @@ def scope(root, base, source):
                         value['scripts']['release:check'] = 'FIXED_DETERMINISTIC_GATE_MIGRATION'
                 if path == 'package-lock.json':
                     value.get('packages', {}).get('', {}).pop('version', None)
+            if path in {'package.json', 'package-lock.json'}:
+                for value in (before, after):
+                    owner = value if path == 'package.json' else value.get('packages', {}).get('', {})
+                    ws = owner.get('devDependencies', {}).pop('ws', None)
+                    if ws not in (None, '8.23.0'):
+                        raise ValueError('Unmapped WebSocket dependency version')
+                    if path == 'package-lock.json':
+                        ws_row = value.get('packages', {}).pop('node_modules/ws', None)
+                        if ws_row is not None and ws_row != WS_LOCK_RECORD:
+                            raise ValueError('Unmapped WebSocket dependency integrity')
             allowed = PRODUCT_INCLUDE_ADDITIONS.get(path)
             if allowed and isinstance(before.get('includes'), list) and isinstance(after.get('includes'), list):
                 added = [x for x in after['includes'] if x not in before['includes']]

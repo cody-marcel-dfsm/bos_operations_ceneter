@@ -63,3 +63,60 @@ and reconnect/replay, observed native wake invocation, intended worker fresh-sta
 handoff, replacement and retirement. Silent logs and requested wake establish
 none of those outcomes. Keep runtime customer data within the authorized host
 interaction and keep secrets out of retained acceptance evidence.
+
+## Protected feedback-item mode
+
+The separately installed host also has an explicit `feedback` mode. Its source
+constructor is disabled by default. Installation uses `--mode feedback` and
+returns the matching fixed worker prompt and a **disabled** hook plan; it enables
+no hook, monitor or socket. Existing journey mode and legacy installed metadata
+retain their journey behavior. Changing mode requires the same inactive-lease,
+disabled-current-hook and immutable-source lifecycle as upgrade/retirement.
+
+After actual admitted installation and supported native hook setup, the host
+entry is `discussion-monitor` with the existing root/credential-file controls.
+Volatile stdin contains exactly origin, contextHandle, discovery, itemRef,
+taskIntent, lifetimeMs and intentConfirmed. The current host supplies them from
+its existing BOS connection. No secret/context/action is persisted or printed.
+No operator or public skill receives a new login or socket/header override.
+
+The host refreshes the authenticated feedback descriptor at its fixed existing
+describe contact, binds only the selected current item, and consumes its actual
+advertised feedback.get POST URI and schemas. HTTP UUID paging cursors remain
+distinct from opaque WebSocket append-position cursors. The WebSocket uses only
+same-service WSS, existing Authorization/context headers, strict TLS, no redirects,
+no subprotocol credentials, no compression and bounded text frames. Read/schema,
+scope, credential, source or registration changes retire the volatile generation.
+There is no browser fallback, arbitrary network dispatcher or shell WebSocket.
+
+The pinned MIT-licensed ws runtime is pure-JavaScript bundled under `vendor/`;
+its license, registry integrity, input hashes and bundle hash accompany the same
+immutable installer inventory. Optional native extensions are disabled. Rebuild
+or check it with `node scripts/build-feedback-socket-runtime.mjs [--check]`.
+The installed host uses no node_modules or sibling checkout dependency.
+
+The facade's queue/cursor state is atomically stored in a fresh private authority
+partition and authenticated with a process-local HMAC key. Restart preserves old
+bytes and creates new authority; it never reconstructs an old grant from disk.
+The native hook wakes only the fixed registered task with opaque references.
+`worker-read` obtains current authenticated item detail and queued handoff tickets;
+`worker-ack` consumes only the accepted exact ticket. A 35-second worker lease
+bounds duplicate wakes; newer event IDs survive an older acceptance.
+
+`worker-comment` accepts only a body and optional parent_comment_id on stdin for
+the fixed item/task. Its protected local outbox records prepared, awaiting_commit,
+committed or uncertain observations. Only a canonical server ACK proves committed.
+Rejection before dispatch is recorded as not_submitted and inherits no prior ACK.
+The registration deduplicates its exact own requests and permits at most five
+distinct outbound comments, preventing unattended reply loops. It never blindly
+retries an uncertain write. Neither actor equality nor text naming Muse/an owner
+proves an own echo, installation, UAT authority or permission. Same-actor peer
+events stay visible; the current ACK supplies no event ID, so none is invented.
+The worker replies only to substantive peer intent and acknowledges ordinary
+updates without automatically generating another comment.
+
+Finite connection/replay budgets and the existing maximum 15-minute registration
+lifetime remain in force. A completed connection budget retains accepted pending
+work for the current native worker until retirement; no auto-restarting daemon
+is installed. Source tests, including a synthetic TLS loopback, establish no real
+Muse hook, service login, external socket, native wake or customer-path acceptance.

@@ -33,6 +33,12 @@ export async function createCompanionBridge({root, host}) {
     }
     if (exact(request, ["operation", "binding", "ticket", "accepted"]) && request.operation === "ack" &&
         request.accepted === true && opaque(request.ticket)) return {acknowledged: await host.acknowledge(request.ticket)};
+    if (exact(request, ["operation", "binding", "comment"]) && request.operation === "comment" &&
+        typeof host.submitComment === "function" && request.comment && typeof request.comment === "object" &&
+        !Array.isArray(request.comment) && typeof request.comment.body === "string" && request.comment.body.length>=1 && request.comment.body.length<=4000 &&
+        (exact(request.comment,["body"]) || exact(request.comment,["body","parent_comment_id"]))) {
+      return host.submitComment(request.comment);
+    }
     fail();
   };
   const server = createServer(socket => {
@@ -44,7 +50,7 @@ export async function createCompanionBridge({root, host}) {
     socket.on("data", chunk => {
       if (used) return socket.destroy();
       try { text += decoder.decode(chunk, {stream: true}); } catch { return socket.destroy(); }
-      if (Buffer.byteLength(text) > 4096) return socket.destroy();
+      if (Buffer.byteLength(text) > 20000) return socket.destroy();
       if (!text.endsWith("\n")) return;
       used = true;
       void (async () => {

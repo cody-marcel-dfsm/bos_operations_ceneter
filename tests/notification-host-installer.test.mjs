@@ -19,7 +19,7 @@ test("immutable published host closure installs atomically, verifies modes and p
   const source = join(temporary, "source"), root = join(temporary, "installed"); await mkdir(source, {mode: 0o700});
   for (const name of ["source/host-runtime/bos-journey-notifications", "source/host-runtime/bos-shared-cache",
     "source/platform/bos-workflow-orchestrator/scripts", "source/platform/bos-app-discovery/scripts",
-    "source/platform/bos-external-dependency-adapter/scripts"]) {
+    "source/platform/bos-external-dependency-adapter/scripts", "source/platform/submit-feedback/scripts"]) {
     await mkdir(join(source, name, ".."), {recursive: true});
     await cp(join(project, name), join(source, name), {recursive: true});
   }
@@ -89,4 +89,23 @@ test("immutable published host closure installs atomically, verifies modes and p
   await retireNotificationHost({root, observedHook: observation(false)});
   assert.equal(JSON.parse(await readFile(join(root, "active.json"))).status, "retired");
   assert.ok(await verifyNotificationHost(destination));
+  const discussion=await installNotificationHost({sourceRoot:source,root,revision,observedHook:observation(false),mode:"feedback"});
+  assert.equal(discussion.native_hook_installed,false);
+  assert.equal(discussion.hook_definition_plan.initial_state,"disabled");
+  const selected=JSON.parse(await readFile(join(root,"active.json")));
+  assert.equal(selected.mode,"feedback");assert.equal(selected.hook,null);
+  assert(discussion.hook_definition_plan.prompt.includes("worker-comment"));
+  const immutable=await verifyNotificationHost(destination);
+  for(const suffix of ["vendor/ws.bundle.mjs","vendor/WS-LICENSE.txt","vendor/ws.provenance.json","feedback-discussion-host.mjs"]){
+    assert(immutable.files.some(row=>row.path.endsWith(suffix)));
+  }
+  // The previous journey prompt is insufficient for the new fixed item mode.
+  await assert.rejects(recordNotificationHook({root,observation:observation(true)}),NotificationHostError);
+  const disabled=spawn(process.execPath,[join(destination,"source/host-runtime/bos-journey-notifications/muse-companion-cli.mjs"),
+    "discussion-monitor","--root",root,"--credential-file",credential],{stdio:["pipe","pipe","pipe"]});
+  const disabledDone=new Promise(resolve=>disabled.on("close",resolve));disabled.stdin.end("{}");
+  assert.equal(await disabledDone,1);
+  const vendor=join(destination,"source/host-runtime/bos-journey-notifications/vendor/ws.bundle.mjs");
+  const vendorBytes=await readFile(vendor);await writeFile(vendor,"changed vendor");
+  await assert.rejects(verifyNotificationHost(destination),NotificationHostError);await writeFile(vendor,vendorBytes);
 });
