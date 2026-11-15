@@ -434,7 +434,7 @@ def run_category(root, commands, before):
                  if line.startswith(b'{"privacy_coverage":')]
     except (ValueError, KeyError):
         reports=[]
-    if len(reports)!=1 or any(reports[0].get(key)!=snapshot[value] for key,value in
+    if len(reports)!=1 or not isinstance(reports[0],dict) or any(reports[0].get(key)!=snapshot[value] for key,value in
             [('source_commit','source'),('source_tree','tree'),('files','files'),('policy_sha256','policy_sha256')]):
         runs[4]['exit_code']='SNAPSHOT_RESULT_MISMATCH'
     return runs

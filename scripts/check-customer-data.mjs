@@ -75,10 +75,10 @@ function blockedWordWindow(words, matcher) {
     }
   }
   if (key.length <= maxDigestWindowCharacters) {
-    while (matcher.windows.size >= maxDigestCacheEntries || matcher.characters + key.length > maxDigestCacheCharacters) {
-      const oldest = matcher.windows.keys().next().value;
-      matcher.characters -= oldest.length;
-      matcher.windows.delete(oldest);
+    if (matcher.windows.size >= maxDigestCacheEntries || matcher.characters + key.length > maxDigestCacheCharacters) {
+      // Whole-generation reset preserves the same exact-result/character bounds
+      // while avoiding repeated oldest-key iterator/tombstone work.
+      matcher.windows.clear(); matcher.characters = 0;
     }
     matcher.windows.set(key, found);
     matcher.characters += key.length;

@@ -202,3 +202,13 @@ privacy result back to the snapshot, preserves every concurrent failure and
 rechecks the complete candidate/runtime before issuing a receipt. Receipt
 freshness compares maximum completion time across all commands. Missing, stale
 or malformed readiness launches no dependent suite and prevents verification.
+
+The measured parallel cold category retained all checks and took 192.59 seconds.
+Its remaining bounded repair changes only window-memo eviction bookkeeping:
+whole-generation reset replaces per-entry oldest-key iteration at the same
+32,768-entry/four-MiB character bounds. Every cache miss still evaluates the
+complete original phrase set; generation eviction and mutable-rule equivalence
+remain tested. An immutable 4.3-MiB full-file diagnostic measured 5.54 seconds
+with iterative eviction and 3.94 seconds with generation reset. This diagnostic
+is evidence for the repair, while the complete fresh-policy cold category
+remains the acceptance measurement. All prior timing breaches are retained.
