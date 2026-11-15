@@ -441,3 +441,11 @@ Failure diagnostics retain original command output in private native custody and
 print only failing fixed command ordinals, exit statuses, output hashes and at
 most twenty bounded plain test locators. Failure bodies and unrecognized lines
 remain private. This adds no public artifact upload or acceptance exemption.
+
+The complete launcher conformance test now proves three-way entry using its
+existing bounded barrier, native maximum concurrency and overlapping positive
+spans, preserving isolated settings, custody and no fourth reviewer checks.
+It no longer estimates concurrency from an artificial sleep versus total setup
+wall time, which failed under contention despite verified three-way execution.
+Bounded public failure locators allow512 ASCII characters for full unittest IDs;
+unrecognized/oversized names and all failure bodies remain private.

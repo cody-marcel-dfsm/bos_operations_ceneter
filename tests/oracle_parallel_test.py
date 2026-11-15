@@ -500,7 +500,8 @@ class ParallelReview(unittest.TestCase):
             self.assertEqual(Path(schema_path).parent, run)
             with lock: launches.append((cohort['id'], str(run)))
             barrier.wait(timeout=5)
-            time.sleep(0.08)
+            with lock:
+                self.assertEqual(len(launches), 3, 'Every worker enters before any worker returns')
             result = self.envelope(cohort)
             for name, value in {'model.json': {'selected_model': 'inherited-model', 'reasoning_effort': 'medium'},
                                 'process.json': {'exit_code': 0}, 'result.json': result}.items():
@@ -518,7 +519,7 @@ class ParallelReview(unittest.TestCase):
         self.assertEqual(measured['max_observed_concurrency'], 3)
         spans = measured['cohorts']
         self.assertLess(max(s['started_offset_seconds'] for s in spans), min(s['finished_offset_seconds'] for s in spans))
-        self.assertGreater(sum(s['finished_offset_seconds'] - s['started_offset_seconds'] for s in spans), measured['wall_seconds'] * 1.5)
+        self.assertTrue(all(s['finished_offset_seconds'] > s['started_offset_seconds'] for s in spans))
         print(json.dumps({'measured_native_mock_concurrency': measured}, sort_keys=True))
 
     def test_actual_worker_packets_expose_selected_caller_facts_manifest_and_direct_consumer(self):

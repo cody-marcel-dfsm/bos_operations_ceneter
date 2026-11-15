@@ -911,7 +911,7 @@ def failed_check_summary(runs, root):
             continue
         locators = []
         for line in output.decode('utf-8', errors='replace').splitlines():
-            match = re.fullmatch(r'(?:not ok [0-9]+ - |FAIL: |ERROR: )([A-Za-z0-9_ .,:()/-]{1,180})', line)
+            match = re.fullmatch(r'(?:not ok [0-9]+ - |FAIL: |ERROR: )([A-Za-z0-9_ .,:()/-]{1,512})', line)
             if match and len(locators) < 20:
                 locators.append(match.group(1))
         summaries.append({'check_index': index, 'exit_code': row['exit_code'],

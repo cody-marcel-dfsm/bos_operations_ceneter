@@ -319,7 +319,7 @@ class PackageGateTests(unittest.TestCase):
         output = (b'not ok 2 - safe public acceptance\n'
                   b'FAIL: test_closed_case (fixture.Case)\n'
                   b'error: private body\npassword=private-value\n'
-                  b'not ok 3 - <unsafe title>\n')
+                  b'not ok 3 - <unsafe title>\n' + b'not ok 4 - '+b'a'*513+b'\n')
         checksum = d.native.digest(output)
         d.native.private_write(d.directory(self.root) / (checksum+'.log'), output)
         row = {'command':['node','--test'], 'exit_code':1, 'output_sha256':checksum}
