@@ -191,6 +191,25 @@ export async function privacyFileCoverage({root, directory, candidates, policy, 
     try {return await operation();}
     finally {const next = readers.shift(); if (next) next(); else reading--;}
   };
+  // Scheduling hints contain metadata only. Actual immutable bytes, mode and
+  // context are captured independently below; size never grants coverage.
+  const dispatch = new Array(paths.length); let metadataPosition = 0;
+  const failures = [];
+  await Promise.all(Array.from({length: Math.min(2, paths.length)}, async () => {
+    while (metadataPosition < paths.length) {
+      const ordinal = metadataPosition++;
+      try { dispatch[ordinal] = {ordinal, size: (await lstat(paths[ordinal])).size}; }
+      catch (error) { failures.push({ordinal, error: new Error("Required privacy input became unavailable: " + relative(root, paths[ordinal]), {cause: error})}); }
+    }
+  }));
+  const rejectFailures = () => {
+    if (failures.length) {
+      const errors = failures.sort((a,b) => a.ordinal-b.ordinal).map(row => row.error);
+      throw new AggregateError(errors, errors.map(error => error.message).join("\n"));
+    }
+  };
+  rejectFailures();
+  dispatch.sort((a,b) => b.size-a.size || a.ordinal-b.ordinal);
   const observe = async (path, ordinal) => {
     let body, mode;
     try {
@@ -237,15 +256,13 @@ export async function privacyFileCoverage({root, directory, candidates, policy, 
       outcome: result.length ? "FAILED" : "PASSED", ...(retained ? {retained} : {})};
     fileFindings[ordinal] = result;
   };
-  let observationError;
-  const evaluations = await Promise.allSettled(Array.from({length: Math.min(concurrency, paths.length)}, async () => {
-    while (position < paths.length && !observationError) {
-      const ordinal = position++;
-      try {await observe(paths[ordinal], ordinal);} catch (error) {observationError = error; throw error;}
+  await Promise.all(Array.from({length: Math.min(concurrency, paths.length)}, async () => {
+    while (position < dispatch.length) {
+      const {ordinal} = dispatch[position++];
+      try {await observe(paths[ordinal], ordinal);} catch (error) {failures.push({ordinal, error});}
     }
   }));
-  const failure = evaluations.find(row => row.status === "rejected");
-  if (failure) throw failure.reason;
+  rejectFailures();
   const findings = fileFindings.flat();
   const payload = {kind: "boc-privacy-command-coverage-v1", source, policy_sha256: policyHash,
     membership_sha256: hash(encode(manifest)), files: manifest, reused, scanned, invalidated, bridged, bytes, scanned_bytes: scannedBytes, concurrency, max_input_reads: maxInputReads,

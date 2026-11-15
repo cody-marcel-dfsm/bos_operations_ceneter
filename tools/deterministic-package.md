@@ -212,3 +212,16 @@ remain tested. An immutable 4.3-MiB full-file diagnostic measured 5.54 seconds
 with iterative eviction and 3.94 seconds with generation reset. This diagnostic
 is evidence for the repair, while the complete fresh-policy cold category
 remains the acceptance measurement. All prior timing breaches are retained.
+
+The remaining `/7` scheduling-tail correction dispatches the entire captured
+membership by descending metadata size, with canonical path ordinal tie-break.
+Two bounded metadata readers retain only sizes/ordinals; every actual byte/mode/
+context snapshot is still independently captured at observation time. Completed
+observations write/sign immediately, with no canonical-order write barrier or
+body buffer. Only compact result records occupy their canonical ordinal slots.
+All attempted independent errors are collected and rejected in canonical order;
+no aggregate pass is emitted after any error. Missing metadata fails closed.
+The exact input membership, two body-read bound, worker/body/heap bounds, original
+phrase rules, FD admission and fixed category remain unchanged. Representative
+long-tail timing, immediate-short-result durability and serial-equivalent
+findings/content/context identities are required before one fresh cold category.
