@@ -418,7 +418,17 @@ class PackageGateTests(unittest.TestCase):
         self.git('rm', 'runtime.js')
         self.commit()
         with self.assertRaisesRegex(ValueError, 'Unsupported|Deletion'):
-            d.scope(self.root, self.base, self.git('rev-parse', 'HEAD')))
+            d.scope(self.root, self.base, self.git('rev-parse', 'HEAD'))
+
+    def test_exact_base_two_descendants_inspect_merge_only_resolution(self):
+        published, source = self.side_merge('source/platform/bos-mcp-client/references/identity-context.md')
+        (self.root / 'runtime.js').write_text('merge-only unsupported resolution')
+        self.git('add', 'runtime.js')
+        merge = self.git('commit-tree', self.git('write-tree'),
+                         '-p', self.git('rev-parse', source+'^1'),
+                         '-p', self.git('rev-parse', source+'^2'), '-m', 'resolution')
+        with self.assertRaisesRegex(ValueError, 'Unsupported'):
+            d.scope(self.root, self.base, merge)
 
     def test_two_descendants_with_older_common_fork_remain_rejected(self):
         published, source = self.side_merge('source/platform/bos-mcp-client/references/identity-context.md')
