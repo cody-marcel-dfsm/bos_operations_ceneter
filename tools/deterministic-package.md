@@ -35,7 +35,19 @@ are outside this profile. Unsupported scope fails closed and requires an explici
 profile amendment with corresponding complete tests. Nothing selects a model as a
 fallback. Per-commit scope inspection retains reverted/out-of-scope source history.
 
-The version 2 profile preserves existing unpublished history when integrating the
+Amendment `/3` (owner-directed Ada implementation, 2026-11-14) adds exactly
+`source/platform/ada/SKILL.md`, `agents/openai.yaml`,
+`references/turn-safeguards.md`, `scripts/turn-safeguards.mjs` within that skill,
+`tests/ada-client.test.mjs`, and one `platform/ada` include in the BOS product.
+The fixed category adds the Ada behavioral safeguards and generated-consumer
+parity module. Its pure local helpers perform no execution or authorization;
+existing transport, credentials, public API versions and service state ownership
+remain unchanged. Unknown Ada files and unrelated product changes fail closed.
+All earlier fixed tests, publication, privacy and exact-source custody remain.
+This amendment verifies package source; live Ada operations, provider effects,
+voice/SMS adapters and native host acceptance require independent runtime evidence.
+
+The version 3 profile preserves existing unpublished history when integrating the
 published main line. A two-parent merge must have exactly one parent that is an
 ancestor of the exact publication base; its result is classified against that
 trusted parent. Every unpublished nonmerge edge is still inspected, including

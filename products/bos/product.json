@@ -39,6 +39,7 @@
     "platform/bos-plugin-settings",
     "platform/bos-plugin-settings-initialization",
     "platform/bos-customer-initialization",
+    "platform/ada",
     "platform/planning",
     "platform/implementation",
     "platform/review",

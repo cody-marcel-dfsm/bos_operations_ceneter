@@ -23,7 +23,7 @@ except ImportError:
     import deterministic_source as native
 
 KIND = 'boc-deterministic-package/1'
-PROFILE = 'feedback-discovery-and-release-tool/2'
+PROFILE = 'feedback-discovery-and-release-tool/3'
 TESTS = [
     'tests/bos-foundation-connection.test.mjs', 'tests/bos-logout.test.mjs',
     'tests/context-selection.test.mjs', 'tests/product-mcp-contract.test.mjs',
@@ -35,6 +35,7 @@ TESTS = [
     'tests/journey-package-parity.test.mjs', 'tests/muse-package.test.mjs',
     'tests/bos-customer-profile.test.mjs', 'tests/plugin-console.test.mjs',
     'tests/plugin-settings.test.mjs', 'tests/publication-safety.test.mjs',
+    'tests/ada-client.test.mjs',
 ]
 CHECKS = [
     ['npm', 'run', 'build:packages'], ['git', 'diff', '--exit-code', 'HEAD', '--'],
@@ -60,6 +61,15 @@ CUSTOMER_INITIALIZATION = {
     'source/platform/bos-mcp-client/references/identity-context.md',
     'tests/bos-customer-profile.test.mjs',
 }
+# Profile /3 amendment: owner-directed shared Ada client behavior and pure
+# turn safeguards. Exact files only; existing auth/transport is unchanged.
+ADA_CLIENT = {
+    'source/platform/ada/SKILL.md',
+    'source/platform/ada/agents/openai.yaml',
+    'source/platform/ada/references/turn-safeguards.md',
+    'source/platform/ada/scripts/turn-safeguards.mjs',
+    'tests/ada-client.test.mjs',
+}
 # Profile /2 amendment: owner-approved repairs of tests that went stale when
 # CI moved to this deterministic gate (aa66d553, 6d75ed26, 2dbc43b4).
 STALE_TEST_REPAIRS = {
@@ -81,7 +91,7 @@ STALE_TEST_REPAIRS = {
     # Owner-approved: exporter accepts deterministic CI provenance (verify-published).
     'scripts/build-marketplace-update.mjs',
 }
-PRODUCT_INCLUDE_ADDITIONS = {'products/bos/product.json': {'platform/bos-customer-initialization'}}
+PRODUCT_INCLUDE_ADDITIONS = {'products/bos/product.json': {'platform/bos-customer-initialization', 'platform/ada'}}
 MAINTENANCE = {
     'AGENTS.md', '.agents/skills/ship-it/SKILL.md',
     'tools/deterministic_package.py', 'tools/deterministic-package.md',
@@ -156,7 +166,7 @@ def scope(root, base, source):
                     raise ValueError('Unmapped retired validation selection')
             continue
         if (path in MAINTENANCE or path in BODY_SKILLS or path in CUSTOMER_INITIALIZATION
-                or path in STALE_TEST_REPAIRS):
+                or path in STALE_TEST_REPAIRS or path in ADA_CLIENT):
             continue
         if path.startswith('clients/'):
             # The fixed build+clean-tree checks independently regenerate all consumers.

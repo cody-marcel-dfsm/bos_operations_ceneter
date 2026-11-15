@@ -2,6 +2,36 @@
   "package": "bos-operations-center",
   "release": "0.0.218",
   "skills": {
+    "ada": {
+      "version": "1.0.0",
+      "requires": {
+        "bos-app-discovery": "1.0.13",
+        "bos-mcp-client": "1.0.12",
+        "bos-workflow-orchestrator": "1.0.12"
+      },
+      "path": "source/platform/ada",
+      "files": {
+        "SKILL.md": {
+          "sha256": "a1c2ef13f9ff8e717bb490b3dba2c27fadf20752416cdb56e4b57fdbc67924df",
+          "mode": 420
+        },
+        "agents/openai.yaml": {
+          "sha256": "f3f005d99028e6fbdd5fe3788f22a4002c76177d8f27c31235d3ee85735d8085",
+          "mode": 420
+        },
+        "references/turn-safeguards.md": {
+          "sha256": "2f580b35be46e426ab5c239d202caf9b6cdad59e13c4f29e449b0d5eb3fc58f4",
+          "mode": 420
+        },
+        "scripts/turn-safeguards.mjs": {
+          "sha256": "8ae66b7a698f772dc1d504825a3cad85b0448cddd8c36ddef558faf55971fe51",
+          "mode": 420
+        }
+      },
+      "effective": {
+        "bos": "2e7b7bed5b3842755658674d1432ce89064ad1eba4caa2141f159f946d105534"
+      }
+    },
     "agent-call-operations": {
       "version": "1.0.14",
       "requires": {

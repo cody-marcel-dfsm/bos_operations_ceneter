@@ -341,6 +341,37 @@ class PackageGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'configuration'):
             d.scope(self.root, baseline, self.git('rev-parse', 'HEAD'))
 
+    def test_ada_exact_files_and_product_include_are_admitted(self):
+        self.write_product(['platform/bos-mcp-client'])
+        self.commit()
+        baseline = self.git('rev-parse', 'HEAD')
+        self.write_product(['platform/bos-mcp-client', 'platform/ada'])
+        for name in d.ADA_CLIENT:
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('synthetic Ada source\n')
+        self.commit()
+        paths = d.scope(self.root, baseline, self.git('rev-parse', 'HEAD'))
+        self.assertTrue(d.ADA_CLIENT <= set(paths))
+        self.assertIn('tests/ada-client.test.mjs', d.TESTS)
+
+    def test_unknown_ada_source_is_rejected(self):
+        path = self.root / 'source/platform/ada/scripts/credentials.mjs'
+        path.parent.mkdir(parents=True)
+        path.write_text('unapproved source\n')
+        self.commit()
+        with self.assertRaisesRegex(ValueError, 'Unsupported'):
+            d.scope(self.root, self.base, self.git('rev-parse', 'HEAD'))
+
+    def test_ada_include_cannot_hide_transport_change(self):
+        self.write_product(['platform/bos-mcp-client'])
+        self.commit()
+        baseline = self.git('rev-parse', 'HEAD')
+        self.write_product(['platform/bos-mcp-client', 'platform/ada'], connection_owner='other')
+        self.commit()
+        with self.assertRaisesRegex(ValueError, 'configuration'):
+            d.scope(self.root, baseline, self.git('rev-parse', 'HEAD'))
+
     def test_include_addition_cannot_hide_other_product_changes(self):
         self.write_product(['platform/bos-mcp-client'])
         self.commit()

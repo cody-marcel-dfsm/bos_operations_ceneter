@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ada"
+  short_description: "Create and improve your customized agent"
+  default_prompt: "Use $ada to recover my current setup, help with my request, and show the next useful action toward my customized agent."

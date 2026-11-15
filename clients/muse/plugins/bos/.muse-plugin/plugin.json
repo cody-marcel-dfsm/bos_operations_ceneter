@@ -66,6 +66,11 @@
         "enabledDefault": true
       },
       {
+        "id": "ada",
+        "path": "skills/ada/SKILL.md",
+        "enabledDefault": true
+      },
+      {
         "id": "planning",
         "path": "skills/planning/SKILL.md",
         "enabledDefault": true
