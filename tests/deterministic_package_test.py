@@ -372,8 +372,8 @@ class PackageGateTests(unittest.TestCase):
 
     def test_unanchored_and_two_trusted_parent_merges_are_rejected(self):
         published, source = self.side_merge('source/platform/bos-mcp-client/references/identity-context.md')
-        with self.assertRaisesRegex(ValueError, 'exactly one'):
-            d.scope(self.root, self.base, source)
+        self.assertIn('source/platform/bos-mcp-client/references/identity-context.md',
+                      d.scope(self.root, self.base, source))
         redundant = self.git('commit-tree', 'HEAD^{tree}', '-p', self.base, '-p', published, '-m', 'two trusted parents')
         with self.assertRaisesRegex(ValueError, 'exactly one'):
             d.scope(self.root, published, redundant)
@@ -409,6 +409,27 @@ class PackageGateTests(unittest.TestCase):
         merge = self.git('commit-tree', self.git('write-tree'), '-p', self.git('rev-parse', source+'^1'), '-p', self.git('rev-parse', source+'^2'), '-m', 'resolution')
         with self.assertRaisesRegex(ValueError, 'Unsupported'):
             d.scope(self.root, published, merge)
+
+    def test_exact_base_two_descendants_retain_both_edges_and_merge_resolution(self):
+        published, source = self.side_merge('runtime.js')
+        with self.assertRaisesRegex(ValueError, 'Unsupported'):
+            d.scope(self.root, self.base, source)
+        # A clean final tree cannot erase an inadmissible side edge.
+        self.git('rm', 'runtime.js')
+        self.commit()
+        with self.assertRaisesRegex(ValueError, 'Unsupported|Deletion'):
+            d.scope(self.root, self.base, self.git('rev-parse', 'HEAD')))
+
+    def test_two_descendants_with_older_common_fork_remain_rejected(self):
+        published, source = self.side_merge('source/platform/bos-mcp-client/references/identity-context.md')
+        # Both inputs descend from the older fork, but the selected publication
+        # base is a sibling and therefore cannot authorize this candidate.
+        self.git('checkout', '-qb', 'other-base', self.base)
+        (self.root / 'AGENTS.md').write_text('different publication line')
+        self.commit()
+        foreign = self.git('rev-parse', 'HEAD')
+        with self.assertRaises(Exception):
+            d.scope(self.root, foreign, source)
 
     def test_original_history_rejects_replace_refs_and_grafts(self):
         source = self.git('rev-parse', 'HEAD')

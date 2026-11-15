@@ -252,6 +252,13 @@ def commits_and_paths(root, base, source):
                                       cwd=root, capture_output=True, text=True)
                 if descendants == [parents[0]] and fork.returncode == 0 and fork.stdout.strip():
                     trusted = [parents[0]]
+                elif descendants == parents:
+                    # /10: two independently unpublished lines may fork exactly
+                    # at the current publication base. First-parent resolution
+                    # is explicit; every side edge remains inspected below.
+                    common = native.git(root, 'merge-base', '--all', *parents).splitlines()
+                    if common == [base]:
+                        trusted = [parents[0]]
             if len(trusted) != 1:
                 raise ValueError('Merge needs exactly one publication-base ancestor parent or bounded published-fork integration')
             # Check the integrated result against its trusted published parent.

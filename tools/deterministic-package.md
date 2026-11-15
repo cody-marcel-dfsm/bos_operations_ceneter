@@ -429,3 +429,10 @@ customer-scoped routing, discovery-only uncertain-result reconciliation and
 five-host generated parity. Feedback remains within its existing admitted skill.
 All /9 checks, history privacy, negative scope and publication custody remain.
 This adds no route, customer authority, runtime effect or API version.
+
+The /10 integration also admits two unpublished parents whose unique complete
+merge-base is exactly the current publication base. It classifies resolution
+against the explicit first parent and still inspects every unpublished edge on
+both lines, including later removed content. Multiple/older ambiguous common
+bases, two trusted published parents, octopus/replaced/grafted/shallow history
+remain rejected. This preserves Muse attribution without rewriting either line.
