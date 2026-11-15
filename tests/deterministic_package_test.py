@@ -315,6 +315,29 @@ class PackageGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Unmapped skill'):
             d.scope(self.root, baseline, self.git('rev-parse', 'HEAD'))
 
+    def test_muse_guidance_amendment_admits_only_exact_named_files(self):
+        baseline = self.git('rev-parse', 'HEAD')
+        expected = {'source/platform/bos-visual-output/SKILL.md',
+                    'source/platform/bos-visual-output/references/graph-rendering.md',
+                    'tests/muse-workflow-guidance.test.mjs'}
+        self.assertEqual(d.MUSE_GUIDANCE, expected)
+        for name in sorted(expected):
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('bounded guidance acceptance\n')
+        self.commit()
+        self.assertTrue(expected <= set(d.scope(self.root, baseline, self.git('rev-parse', 'HEAD'))))
+        for name in ('source/platform/bos-visual-output/references/unrelated.md',
+                     'source/platform/bos-visual-output/scripts/execute.mjs'):
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('unrequested behavior\n')
+            self.commit()
+            with self.assertRaisesRegex(ValueError, 'Unsupported|Deletion or nonregular'):
+                d.scope(self.root, baseline, self.git('rev-parse', 'HEAD'))
+            self.git('rm', name)
+            self.commit()
+
     def test_only_the_feedback_contract_reference_is_admitted(self):
         baseline = self.git('rev-parse', 'HEAD')
         allowed = self.root / 'source/platform/submit-feedback/references/feedback-contract.md'

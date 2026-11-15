@@ -419,3 +419,13 @@ source writer or historical witness is introduced. Raw byte equivalence,
 malformed/order/type/size/hash/EOF, foreign-repository and changed-ref negatives
 remain fixed. Current candidate/runtime/ref checks still control issuance and
 consumption. Exact-candidate full-range verification remains required.
+
+Amendment `/10` integrates the owner-requested Muse PR187 workflow display and
+feedback guidance. Exactly `source/platform/bos-visual-output/SKILL.md`, its
+`references/graph-rendering.md`, and `tests/muse-workflow-guidance.test.mjs` join
+the existing profile. The full new module checks verified execution evidence,
+transaction/attempt separation, partial evidence, host capability limits,
+customer-scoped routing, discovery-only uncertain-result reconciliation and
+five-host generated parity. Feedback remains within its existing admitted skill.
+All /9 checks, history privacy, negative scope and publication custody remain.
+This adds no route, customer authority, runtime effect or API version.

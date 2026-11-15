@@ -2,8 +2,8 @@
 name: bos-customer-initialization
 description: Initialize or repair the BOS customer profile for the signed-in user and each authorized organization. Discover organization information through live BOS MCP services, derive sourced defaults, confirm them once, then save organization, user, and default-context details. Use for "initialize BOS", "set up my organization", first-run setup, or when a workflow needs missing organization or user details.
 metadata:
-  version: "1.0.2"
-  requires: "{\"bos-mcp-client\":\"1.0.12\",\"bos-plugin-settings-initialization\":\"1.0.15\"}"
+  version: "1.0.4"
+  requires: "{\"bos-mcp-client\":\"1.0.12\",\"bos-plugin-settings-initialization\":\"1.0.17\"}"
 ---
 
 # BOS Customer Initialization

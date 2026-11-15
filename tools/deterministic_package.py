@@ -29,7 +29,7 @@ except ImportError:
     import deterministic_source as native
 
 KIND = 'boc-deterministic-package/1'
-PROFILE = 'feedback-discovery-and-release-tool/9'
+PROFILE = 'feedback-discovery-and-release-tool/10'
 _OUTPUT_LOCK = threading.Lock()
 WS_LOCK_RECORD = {
     'version': '8.23.0', 'resolved': 'https://registry.npmjs.org/ws/-/ws-8.23.0.tgz',
@@ -42,6 +42,7 @@ TESTS = [
     'tests/bos-foundation-connection.test.mjs', 'tests/bos-logout.test.mjs',
     'tests/context-selection.test.mjs', 'tests/product-mcp-contract.test.mjs',
     'tests/external-authentication-handoff.test.mjs',
+    'tests/muse-workflow-guidance.test.mjs',
     'tests/feedback-evidence-guidance.test.mjs', 'tests/bos-native-compatibility.test.mjs',
     'tests/feedback-customization.test.mjs', 'tests/feedback-lifecycle.test.mjs',
     'tests/release-version.test.mjs', 'tests/skill-dependencies.test.mjs',
@@ -79,6 +80,12 @@ CHECKS = [
     PYTHON_CHECK,
     ['node', 'scripts/check-publication-history.mjs'],
 ]
+# /10: the explicitly requested Muse PR187 guidance and complete conformance module.
+MUSE_GUIDANCE = {
+    'source/platform/bos-visual-output/SKILL.md',
+    'source/platform/bos-visual-output/references/graph-rendering.md',
+    'tests/muse-workflow-guidance.test.mjs',
+}
 BODY_SKILLS = {'source/platform/bos-mcp-client/SKILL.md',
                'source/platform/submit-feedback/SKILL.md',
                'source/platform/submit-feedback/references/feedback-contract.md',
@@ -188,6 +195,7 @@ MAINTENANCE = {
     'tests/release-version.test.mjs', '.github/workflows/publication-safety.yml',
     'scripts/release.mjs',
     'tests/package-model.test.mjs',
+    'tests/muse-workflow-guidance.test.mjs',
     'tests/feedback-evidence-guidance.test.mjs', 'tests/bos-native-compatibility.test.mjs',
 }
 
@@ -321,7 +329,8 @@ def scope(root, base, source):
     requests=set()
     for parent,commit,path,old_mode,new_mode in rows:
         known=(path in MAINTENANCE or path in BODY_SKILLS or path in CUSTOMER_INITIALIZATION
-               or path in STALE_TEST_REPAIRS or path in ADA_CLIENT or path in LEGACY_FEATURE_PATHS)
+               or path in STALE_TEST_REPAIRS or path in ADA_CLIENT or path in LEGACY_FEATURE_PATHS
+                or path in MUSE_GUIDANCE)
         if (path==RETIRED_SELECTION or path=='contracts/bos-client-dependency.v1/manifest.json'
                 or not known and (path=='README.md' or path.startswith('source/') and path.endswith('/SKILL.md')
                   or path in {'package.json','package-manifest.json','package-lock.json','products/bos/product.json','products/education-center/product.json'})):
@@ -353,7 +362,8 @@ def scope(root, base, source):
                 raise ValueError('Existing public dependency contract identity cannot change')
             continue
         if (path in MAINTENANCE or path in BODY_SKILLS or path in CUSTOMER_INITIALIZATION
-                or path in STALE_TEST_REPAIRS or path in ADA_CLIENT or path in LEGACY_FEATURE_PATHS):
+                or path in STALE_TEST_REPAIRS or path in ADA_CLIENT or path in LEGACY_FEATURE_PATHS
+                or path in MUSE_GUIDANCE):
             continue
         if path.startswith('clients/'):
             # The fixed build+clean-tree checks independently regenerate all consumers.
