@@ -236,3 +236,13 @@ records and transition guards remain unchanged. A metadata-only persistence
 queue was assessed against the original coupled path with controlled real-worker
 and atomic-writer timing; its measured benefit governs final selection. All
 experimental source remains recoverable in Git, with no publication or activation.
+
+The final measured correction retains the original per-file await and atomic
+record/pointer writes. The queue prototype has no consistent measured gain and
+is removed from final source. Eight I/O threads are configured only in the
+spawned native privacy validator before Node startup; the installed companion,
+outer shell and other commands receive no tuning. Controlled coupled-path
+samples measured 1.233 seconds at four threads and 1.024–1.083 seconds at eight
+for 128 real worker/atomic-write observations. Phase durations are cumulative
+and may overlap across files; the complete cold category remains the wall-time
+acceptance. Effective I/O configuration is policy-bound and report-validated.

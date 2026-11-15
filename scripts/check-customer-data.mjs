@@ -602,8 +602,7 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
     source_commit: lastPrivacyCoverage.source.commit, source_tree: lastPrivacyCoverage.source.tree,
     files: lastPrivacyCoverage.files.length, reused: lastPrivacyCoverage.reused,
     scanned: lastPrivacyCoverage.scanned, bytes: lastPrivacyCoverage.bytes, scanned_bytes: lastPrivacyCoverage.scanned_bytes, concurrency: lastPrivacyCoverage.concurrency, max_input_reads: lastPrivacyCoverage.max_input_reads, invalidated: lastPrivacyCoverage.invalidated, bridged: lastPrivacyCoverage.bridged,
-    max_active_persistence:lastPrivacyCoverage.max_active_persistence,max_awaiting_persistence:lastPrivacyCoverage.max_awaiting_persistence,
-    compact_persistence_bytes:lastPrivacyCoverage.compact_persistence_bytes,io_threads:lastPrivacyCoverage.io_threads,phases:lastPrivacyCoverage.phases,
+    io_threads:lastPrivacyCoverage.io_threads,phases:lastPrivacyCoverage.phases,
     policy_sha256: lastPrivacyCoverage.policy_sha256, membership_sha256: lastPrivacyCoverage.membership_sha256
   }}));
   if (failures.length) {
