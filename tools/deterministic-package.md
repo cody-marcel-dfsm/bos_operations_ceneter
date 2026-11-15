@@ -300,3 +300,73 @@ uncertain state recovery and explicit current-subject confirmation are mandatory
 All prior /7 checks, sealed observations, privacy, publication history and
 protected installation boundaries remain required. Native tests include actual
 loopback HTTPS metadata headers and the closed existing-OAuth transport seam.
+
+Amendment `/9` is the owner-directed preserved-history publication-readiness
+repair. A two-parent integration may additionally use its first parent as the
+resolution baseline when that parent uniquely descends from the exact published
+base and the other parent shares an older published fork. Every unpublished
+nonmerge edge remains inspected, including changes later reverted; every merge
+resolution is classified. Unrelated, ambiguous dual-published/dual-descendant,
+octopus, shallow, replacement-ref and grafted histories remain rejected. This
+adds no witness, supplied-PASS mode, history rewrite or task-base publication.
+
+The exact `LEGACY_FEATURE_PATHS` inventory covers five preserved feature edges:
+
+- Automatic bound OAuth handoff: OAuth live-contract helper/test and the exact
+  README paragraph transition; whole OAuth contract regressions retain direct
+  redirects, bounded same-origin transaction-preserving handoffs, rejected human
+  pages/foreign origins, provider account choice and rate-limit termination.
+- Shared host identity: package guidance transformer, existing dependency/v1
+  digest manifest, authentication-context/adapter skills and their exact
+  references/adapter; existing handoff, adapter and package-model suites retain
+  session multiplexing, current context isolation, no token export and 429/503
+  retry gates. Existing dependency public identity/schema remains unchanged;
+  only bound executable/bundle digests migrate.
+- Retained criterion navigation: exact Oracle parallel helper and its full
+  deterministic module retain every original locator, parent/input hash,
+  current applicability, finding state and tamper rejection. These are synthetic
+  wrapper tests; no model is invoked or adopts an approver role.
+- Thrown notification retry gates: the same adapter, exact contract digests and
+  complete journey-notifications suite preserve 429/503/Retry-After without
+  sign-in or hidden replay, plus current execution-scope checks.
+- Publication fixtures: the exact command-coverage, isolated cohort, API-version
+  and performance fixtures and their complete named modules preserve input
+  discovery, bounded process cleanup, public-version request and sealed native
+  custody. The retired exact historical full-suite release command is recognized
+  only as the prior migration input; the current fixed native command remains.
+
+All `/8` checks remain. The fixed Python invocation additionally runs the full
+command-coverage and Oracle-parallel modules; the fixed Node set adds the named
+OAuth/adapter/notification/API-version/performance/cohort/history modules. The
+ninth bounded category is `scripts/check-publication-history.mjs`, consuming the
+native parent's exact source/publication base through validation-only environment
+fields. It runs in the existing bounded pool after privacy membership capture;
+all command results remain canonically ordered, completely settled and source
+rechecked. Its complete source/base/inventory/policy PASS is checked at issuance
+and receipt consumption. A path inventory alone grants no readiness.
+
+The history guard scans every distinct unpublished changed path/blob, both merge
+inputs and resolution bytes, including removed/reverted bodies. Exact base tree
+pairs remain trusted. The existing full privacy decoder, customer digest rules,
+ZIP/binary policy and unchanged shared credential patterns apply; archive entries
+also receive the credential checks. Sequential input bodies are bounded to
+16 MiB, inventories/archives are bounded and disposable archive copies are
+removed. Errors and findings prevent PASS and expose only hashes/classifications.
+No historical customer/secret exception, privacy exclusion or installed runtime
+setting is added. The shared credential module is an import-only extraction from
+the existing package checker with identical patterns and instruction treatment.
+Native tests cover reverted side-branch secrets/customer content, merge-only
+content, archive credentials, immutable input/policy identity and foreign proof.
+Actual remote main must equal the final receipt base; genuine exact-source CI
+and published-main ancestry remain required before production artifact admission.
+
+The historical-content acceptance retains one exact public protocol-syntax
+classification at `scripts/lib/runtime-skill-export.mjs`, Git blob
+`7dab470bc8e3a1f647a2d2a5ec094e48be25f401`, SHA-256
+`49ae97294c1c9e0b3fa09ca0dba20603e2d02685fa5a65aee3fc847f9b4db242`.
+After verifying both raw hashes, relative path and exactly one occurrence, only
+the public Git SSH transport user receives email-match classification. Original
+bytes retain every credential/digest/phone check; the remaining email-bearing
+bytes receive the unchanged decoder. This is no whole-blob exemption or domain
+allowlist. Mutation, copied path and appended customer/credential tests preserve
+ordinary rejection. The original fail-before history finding remains immutable.

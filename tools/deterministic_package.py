@@ -27,7 +27,7 @@ except ImportError:
     import deterministic_source as native
 
 KIND = 'boc-deterministic-package/1'
-PROFILE = 'feedback-discovery-and-release-tool/8'
+PROFILE = 'feedback-discovery-and-release-tool/9'
 _OUTPUT_LOCK = threading.Lock()
 WS_LOCK_RECORD = {
     'version': '8.23.0', 'resolved': 'https://registry.npmjs.org/ws/-/ws-8.23.0.tgz',
@@ -52,6 +52,10 @@ TESTS = [
     'tests/notification-host.test.mjs', 'tests/notification-host-installer.test.mjs',
     'tests/document-cache.test.mjs', 'tests/ada-customer-onboarding.test.mjs',
     'tests/customer-onboarding-host.test.mjs',
+    'tests/bos-oauth-live-contract.test.mjs', 'tests/external-dependency-adapter.test.mjs',
+    'tests/journey-notifications.test.mjs', 'tests/oracle-api-version-request.test.mjs',
+    'tests/oracle-performance.test.mjs', 'tests/isolated-test-cohort.test.mjs',
+    'tests/publication-history.test.mjs',
     'tests/feedback-socket-host.test.mjs',
     'tests/customer-data-privacy.test.mjs', 'tests/privacy-coverage.test.mjs',
 ]
@@ -61,8 +65,10 @@ CHECKS = [
     ['npm', 'run', 'check'], ['node', 'scripts/check-customer-data.mjs'],
     ['npm', 'run', 'check:publication'],
     ['node', '--test', '--test-reporter=tap', *TESTS],
-    [sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'tests',
-     '-p', 'deterministic_package_test.py', '-v'],
+    [sys.executable, '-B', '-c',
+     "import sys,unittest;sys.path.insert(0,'tests');sys.argv.pop(1);unittest.main(module=None)",
+     'unittest', 'deterministic_package_test', 'command_coverage_test', 'oracle_parallel_test', '-v'],
+    ['node', 'scripts/check-publication-history.mjs'],
 ]
 BODY_SKILLS = {'source/platform/bos-mcp-client/SKILL.md',
                'source/platform/submit-feedback/SKILL.md',
@@ -145,6 +151,26 @@ STALE_TEST_REPAIRS = {
     # Owner-approved: exporter accepts deterministic CI provenance (verify-published).
     'scripts/build-marketplace-update.mjs',
 }
+
+# /9 explicitly covers preserved feature edges, not arbitrary older history.
+LEGACY_FEATURE_PATHS = {
+    'scripts/lib/bos-oauth-live-contract.mjs', 'tests/bos-oauth-live-contract.test.mjs',
+    'contracts/bos-client-dependency.v1/manifest.json', 'scripts/lib/package-model.mjs',
+    'source/platform/authentication-context-integrity/SKILL.md',
+    'source/platform/bos-external-dependency-adapter/SKILL.md',
+    'source/platform/bos-external-dependency-adapter/references/dependency-adapter.md',
+    'source/platform/bos-external-dependency-adapter/scripts/external-dependency-adapter.mjs',
+    'source/platform/bos-guided-support/references/support-state-machine.md',
+    'source/platform/bos-mcp-client/references/runtime-continuation-contract.md',
+    'tests/external-authentication-handoff.test.mjs', 'tests/external-dependency-adapter.test.mjs',
+    'tools/oracle_parallel.py', 'tests/oracle_parallel_test.py',
+    'tests/journey-notifications.test.mjs', 'tests/command_coverage_test.py',
+    'tests/helpers/isolated-test-cohort.mjs', 'tests/isolated-test-cohort.test.mjs',
+    'tests/oracle-api-version-request.test.mjs', 'tests/oracle-performance.test.mjs',
+    'scripts/check-publication-history.mjs', 'tests/publication-history.test.mjs',
+    'scripts/lib/publication-credentials.mjs', 'scripts/check-package.mjs',
+}
+
 PRODUCT_INCLUDE_ADDITIONS = {'products/bos/product.json': {'platform/bos-customer-initialization', 'platform/ada'}}
 MAINTENANCE = {
     'AGENTS.md', '.agents/skills/ship-it/SKILL.md',
@@ -173,6 +199,12 @@ def blob(root, revision, path):
 def commits_and_paths(root, base, source):
     if not all(re.fullmatch('[0-9a-f]{40}', x or '') for x in (base, source)):
         raise ValueError('Exact candidate and publication base are required')
+    if native.git(root, 'rev-parse', '--is-shallow-repository') != 'false' or native.git(root, 'replace', '-l'):
+        raise ValueError('Complete original Git history is required')
+    graft = Path(native.git(root, 'rev-parse', '--git-path', 'info/grafts'))
+    if not graft.is_absolute(): graft = Path(root) / graft
+    if graft.exists() and graft.read_bytes().strip():
+        raise ValueError('Original Git history cannot use grafts')
     native.git(root, 'merge-base', '--is-ancestor', base, source)
     result = []
     for commit in native.git(root, 'rev-list', '--reverse', base + '..' + source).splitlines():
@@ -187,8 +219,20 @@ def commits_and_paths(root, base, source):
                     observation.check_returncode()
                 if observation.returncode == 0:
                     trusted.append(parent)
+            if not trusted:
+                # A preserved integration may have unpublished work after main
+                # on its first parent and a side branch from older published main.
+                # Every side commit remains in rev-list below; this selects only
+                # the baseline for classifying the merge resolution itself.
+                descendants = [parent for parent in parents if subprocess.run(
+                    ['git', '--no-replace-objects', 'merge-base', '--is-ancestor', base, parent],
+                    cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False).returncode == 0]
+                fork = subprocess.run(['git', '--no-replace-objects', 'merge-base', base, parents[1]],
+                                      cwd=root, capture_output=True, text=True)
+                if descendants == [parents[0]] and fork.returncode == 0 and fork.stdout.strip():
+                    trusted = [parents[0]]
             if len(trusted) != 1:
-                raise ValueError('Merge needs exactly one publication-base ancestor parent')
+                raise ValueError('Merge needs exactly one publication-base ancestor parent or bounded published-fork integration')
             # Check the integrated result against its trusted published parent.
             # rev-list still checks every unpublished nonmerge edge, including reverts.
             parents = trusted
@@ -219,8 +263,19 @@ def scope(root, base, source):
                 if mode != '100644' or hashlib.sha256(blob(root, revision, path)).hexdigest() not in RETIRED_SELECTION_SHA256:
                     raise ValueError('Unmapped retired validation selection')
             continue
+        if path == 'contracts/bos-client-dependency.v1/manifest.json':
+            values = [json.loads(blob(root, revision, path)) for revision in (parent, commit)]
+            def immutable_contract(value):
+                if isinstance(value, dict):
+                    return {key: immutable_contract(item) for key, item in value.items()
+                            if key not in {'sha256', 'bundle_sha256'}}
+                if isinstance(value, list): return [immutable_contract(item) for item in value]
+                return value
+            if immutable_contract(values[0]) != immutable_contract(values[1]):
+                raise ValueError('Existing public dependency contract identity cannot change')
+            continue
         if (path in MAINTENANCE or path in BODY_SKILLS or path in CUSTOMER_INITIALIZATION
-                or path in STALE_TEST_REPAIRS or path in ADA_CLIENT):
+                or path in STALE_TEST_REPAIRS or path in ADA_CLIENT or path in LEGACY_FEATURE_PATHS):
             continue
         if path.startswith('clients/'):
             # The fixed build+clean-tree checks independently regenerate all consumers.
@@ -246,7 +301,8 @@ def scope(root, base, source):
                 if path == 'package.json':
                     command = value.get('scripts', {}).get('release:check')
                     if command is not None and command not in {'python3 tools/validation_contract.py release',
-                                                               'python3 tools/deterministic_package.py validate'}:
+                                                               'python3 tools/deterministic_package.py validate',
+                                                               'npm run build && npm run check && npm run check:privacy && npm run contract:check && npm test'}:
                         raise ValueError('Unexpected release verification command')
                     if 'release:check' in value.get('scripts', {}):
                         value['scripts']['release:check'] = 'FIXED_DETERMINISTIC_GATE_MIGRATION'
@@ -273,6 +329,8 @@ def scope(root, base, source):
             continue
         if path == 'README.md':
             def without_release(value):
+                for handoff in (b'The probe stops at the first redirect. It requires a 302/303/307 response to\n`accounts.google.com` with `prompt` containing `select_account`; an HTTP 500,\nthe wrong provider, or automatic account selection fails the contract. After\nthe selected Google identity returns, the BOS server resolves organization and\nrole from that verified identity on every authorization. The client never\nchooses or stores an organization mapping.', b'The probe accepts a direct 302/303/307 Google redirect or at most two automatic\nsame-origin continuations through the existing bound BOS handoff routes. Every\ncontinuation preserves its opaque transaction; a rendered BOS login, consent,\norganization/role or grant page fails the contract. The final Google redirect\nrequires `prompt` containing `select_account`. Google owns account choice and\nprovider consent. The probe establishes login initiation; the service-owned\nbrowser suite separately verifies automatic registered-client callback delivery,\ncode/token exchange and authenticated MCP. The server checks current membership\nand operation authority after identity verification.'):
+                    value = value.replace(handoff, b'BOUNDED_AUTOMATIC_HANDOFF_GUIDANCE')
                 value = re.sub(rb'\n<!-- deterministic-package-release -->.*?<!-- /deterministic-package-release -->\n',
                                b'', value, flags=re.S)
                 return re.sub(rb'Current source package release: `[^`]+`\. If `[^`]+` is installed,',
@@ -345,6 +403,7 @@ def read_receipt(root):
         if native.digest(output) != row['output_sha256'] or not complete(row['command'], output, row['exit_code']):
             raise ValueError('Original command output changed or is incomplete')
         if row['command']==['node','scripts/check-customer-data.mjs']:privacy_report(output)
+        if row['command']==['node','scripts/check-publication-history.mjs']:history_report(output, value['base'], current['source'])
     return dict(value, sha256=checksum)
 
 
@@ -366,18 +425,22 @@ def privacy_report(output):
 
 
 def scheduling(commands):
-    return ('source-prepared-privacy-snapshot-parallel/1' if len(commands) == 8 and
+    return ('source-prepared-privacy-snapshot-parallel/1' if len(commands) in (8, 9) and
+            (len(commands) == 8 or commands[8] == ['node', 'scripts/check-publication-history.mjs']) and
             commands[4] == ['node', 'scripts/check-customer-data.mjs'] and
             commands[5] == ['npm', 'run', 'check:publication'] and
             commands[6][:3] == ['node', '--test', '--test-reporter=tap'] and
             'unittest' in commands[7] else 'serial/1')
 
 
-def execute_check(root, command, ready=None):
+def execute_check(root, command, ready=None, history=None):
     began = time.time()
     try:
         if ready is None:
-            result = subprocess.run(command, cwd=root, capture_output=True, timeout=300)
+            environment = dict(os.environ)
+            if history is not None:
+                environment.update(BOC_PUBLICATION_BASE=history[0], BOC_PUBLICATION_SOURCE=history[1])
+            result = subprocess.run(command, cwd=root, capture_output=True, timeout=300, env=environment)
             output, code = result.stdout + b'\n' + result.stderr, result.returncode
         else:
             fd, token = ready
@@ -427,7 +490,7 @@ def await_privacy_snapshot(fd, token, before):
         return row
 
 
-def run_category(root, commands, before):
+def run_category(root, commands, before, base=None):
     runs = []
     parallel = scheduling(commands) != 'serial/1'
     for command in commands[:4] if parallel else commands:
@@ -452,7 +515,9 @@ def run_category(root, commands, before):
             return runs
         finally:
             os.close(read_fd)
-        others = [pool.submit(execute_check, root, command) for command in commands[5:]]
+        others = [pool.submit(execute_check, root, command, None, (base, before['source']))
+                  if command == ['node', 'scripts/check-publication-history.mjs'] else
+                  pool.submit(execute_check, root, command) for command in commands[5:]]
         runs.extend([privacy.result(), *(future.result() for future in others)])
     privacy_output=(directory(root)/(runs[4]['output_sha256']+'.log')).read_bytes()
     try:
@@ -462,7 +527,38 @@ def run_category(root, commands, before):
     except ValueError:
         matches=False
     if not matches:runs[4]['exit_code']='SNAPSHOT_RESULT_MISMATCH'
+    if len(commands) == 9:
+        row = runs[8]
+        try: history_report((directory(root)/(row['output_sha256']+'.log')).read_bytes(), base, before['source'])
+        except ValueError: row['exit_code'] = 'HISTORY_RESULT_MISMATCH'
     return runs
+
+
+def history_report(output, base, source):
+    try:
+        reports = [json.loads(line)['publication_history'] for line in output.splitlines()
+                   if line.startswith(b'{"publication_history":')]
+        if len(reports) != 1: raise ValueError()
+        row = reports[0]
+        if set(row) != {'base','source','status','pairs','inventory_sha256','policy_sha256','findings','classifications'} or row['findings'] != []:
+            raise ValueError()
+        classifications = row['classifications']
+        if not isinstance(classifications, list) or len(classifications) > 1:
+            raise ValueError()
+        for item in classifications:
+            expected = {'path_sha256': hashlib.sha256(b'scripts/lib/runtime-skill-export.mjs').hexdigest(),
+                        'blob':'7dab470bc8e3a1f647a2d2a5ec094e48be25f401',
+                        'sha256':'49ae97294c1c9e0b3fa09ca0dba20603e2d02685fa5a65aee3fc847f9b4db242',
+                        'kind':'exact_public_git_ssh_protocol_user','literal_count':1}
+            if item != expected or type(item.get('literal_count')) is not int:
+                raise ValueError()
+        if (row['base'] != base or row['source'] != source or row['status'] != 'PASS'
+                or type(row['pairs']) is not int or row['pairs'] < 1
+                or not re.fullmatch('[0-9a-f]{64}', row['inventory_sha256'])
+                or not re.fullmatch('[0-9a-f]{64}', row['policy_sha256'])): raise ValueError()
+        return row
+    except (ValueError, KeyError, TypeError):
+        raise ValueError('Exact complete publication history proof missing or changed')
 
 
 def validate(root, base, requested_at):
@@ -473,7 +569,7 @@ def validate(root, base, requested_at):
     paths = scope(root, base, before['source'])
     if not CHECKS:
         raise ValueError('Fixed package check category is empty')
-    runs = run_category(root, CHECKS, before)
+    runs = run_category(root, CHECKS, before, base)
     if any(not complete(row['command'], (directory(root) / (row['output_sha256'] + '.log')).read_bytes(), row['exit_code']) for row in runs):
         native.private_write(directory(root) / (str(time.time_ns()) + '.failure.json'),
                              native.encoded({'kind': KIND + '-failure', 'identity': before,

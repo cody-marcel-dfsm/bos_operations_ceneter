@@ -53,7 +53,7 @@ class PackageGateTests(unittest.TestCase):
     def scheduled_execution(self, *, bad_ready=False, bad_report=False, failed=False, mutate=False, io_threads=8, writers=1):
         before=d.native.identity(self.root); ready=threading.Event(); peers=threading.Event()
         lock=threading.Lock(); calls=[]; active=0; peak=0; peer_count=0
-        def execute(root, command, channel=None):
+        def execute(root, command, channel=None, history=None):
             nonlocal active,peak,peer_count
             began=time.time()
             with lock:
@@ -74,7 +74,11 @@ class PackageGateTests(unittest.TestCase):
                         if peer_count==3:peers.set()
                     peers.wait(2)
                     if mutate and command==self.fixed_commands[6]:(self.root/'AGENTS.md').write_text('concurrent mutation')
-                output=(b'# tests 1\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n' if '--test-reporter=tap' in command else
+                if history is not None:
+                    output=json.dumps({'publication_history':{'base':history[0],'source':history[1],
+                        'status':'PASS','pairs':1,'inventory_sha256':'b'*64,'policy_sha256':'c'*64,'findings':[],'classifications':[]}}).encode()
+                else:
+                    output=(b'# tests 1\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n' if '--test-reporter=tap' in command else
                         b'Ran 1 test in 0.01s\n\nOK\n' if 'unittest' in command else b'synthetic completed command')
             time.sleep(.01)
             checksum=d.native.digest(output);path=d.directory(root)/(checksum+'.log')
@@ -94,14 +98,14 @@ class PackageGateTests(unittest.TestCase):
             value=self.validate();self.assertEqual(value['scheduling'],'source-prepared-privacy-snapshot-parallel/1')
             self.assertEqual([r['command']for r in value['runs']],self.fixed_commands)
             self.assertEqual(d.read_receipt(self.root),value)
-        self.assertEqual(calls[:4],self.fixed_commands[:4]);self.assertEqual(len(calls),8);self.assertEqual(peak(),4)
+        self.assertEqual(calls[:4],self.fixed_commands[:4]);self.assertEqual(len(calls),9);self.assertEqual(peak(),4)
 
     def test_parallel_failed_peer_retains_every_completed_output_and_prevents_receipt(self):
         execute,snapshot,calls,peak=self.scheduled_execution(failed=True)
         with patch.object(d,'CHECKS',self.fixed_commands),patch.object(d,'execute_check',side_effect=execute),patch.object(d,'await_privacy_snapshot',side_effect=snapshot):
             with self.assertRaisesRegex(ValueError,'check failed'):self.validate()
         record=json.loads(next(d.directory(self.root).glob('*.failure.json')).read_bytes())
-        self.assertEqual(len(record['runs']),8);self.assertEqual(record['runs'][6]['exit_code'],7)
+        self.assertEqual(len(record['runs']),9);self.assertEqual(record['runs'][6]['exit_code'],7)
         self.assertTrue(all((d.directory(self.root)/(row['output_sha256']+'.log')).exists()for row in record['runs']))
 
     def test_parallel_wrong_snapshot_starts_no_peer_and_retains_failed_privacy(self):
@@ -117,21 +121,21 @@ class PackageGateTests(unittest.TestCase):
         with patch.object(d,'CHECKS',self.fixed_commands),patch.object(d,'execute_check',side_effect=execute),patch.object(d,'await_privacy_snapshot',side_effect=snapshot):
             with self.assertRaisesRegex(ValueError,'check failed'):self.validate()
         record=json.loads(next(d.directory(self.root).glob('*.failure.json')).read_bytes())
-        self.assertEqual(len(record['runs']),8);self.assertEqual(record['runs'][4]['exit_code'],'SNAPSHOT_RESULT_MISMATCH')
+        self.assertEqual(len(record['runs']),9);self.assertEqual(record['runs'][4]['exit_code'],'SNAPSHOT_RESULT_MISMATCH')
 
     def test_parallel_wrong_privacy_io_configuration_rejects_all_outputs(self):
         execute,snapshot,calls,peak=self.scheduled_execution(io_threads=4)
         with patch.object(d,'CHECKS',self.fixed_commands),patch.object(d,'execute_check',side_effect=execute),patch.object(d,'await_privacy_snapshot',side_effect=snapshot):
             with self.assertRaisesRegex(ValueError,'check failed'):self.validate()
         record=json.loads(next(d.directory(self.root).glob('*.failure.json')).read_bytes())
-        self.assertEqual(len(record['runs']),8);self.assertEqual(record['runs'][4]['exit_code'],'SNAPSHOT_RESULT_MISMATCH')
+        self.assertEqual(len(record['runs']),9);self.assertEqual(record['runs'][4]['exit_code'],'SNAPSHOT_RESULT_MISMATCH')
 
     def test_parallel_overbound_persistence_report_prevents_receipt(self):
         execute,snapshot,calls,peak=self.scheduled_execution(writers=9)
         with patch.object(d,'CHECKS',self.fixed_commands),patch.object(d,'execute_check',side_effect=execute),patch.object(d,'await_privacy_snapshot',side_effect=snapshot):
             with self.assertRaisesRegex(ValueError,'check failed'):self.validate()
         record=json.loads(next(d.directory(self.root).glob('*.failure.json')).read_bytes())
-        self.assertEqual(len(record['runs']),8);self.assertEqual(record['runs'][4]['exit_code'],'SNAPSHOT_RESULT_MISMATCH')
+        self.assertEqual(len(record['runs']),9);self.assertEqual(record['runs'][4]['exit_code'],'SNAPSHOT_RESULT_MISMATCH')
 
     def test_report_bounds_require_exact_integer_configuration_and_bounded_waiting(self):
         original={'io_threads':8,'compact_persistence_bytes':65536,'max_active_persistence':8,'max_awaiting_persistence':8}
@@ -160,7 +164,7 @@ class PackageGateTests(unittest.TestCase):
         execute,snapshot,calls,peak=self.scheduled_execution(mutate=True)
         with patch.object(d,'CHECKS',self.fixed_commands),patch.object(d,'execute_check',side_effect=execute),patch.object(d,'await_privacy_snapshot',side_effect=snapshot):
             with self.assertRaisesRegex(ValueError,'Clean|changed'):self.validate()
-        self.assertEqual(len(calls),8)
+        self.assertEqual(len(calls),9)
 
     def test_actual_execution_and_distinct_verified_receipt(self):
         value = self.validate()
@@ -344,6 +348,79 @@ class PackageGateTests(unittest.TestCase):
         redundant = self.git('commit-tree', 'HEAD^{tree}', '-p', self.base, '-p', published, '-m', 'two trusted parents')
         with self.assertRaisesRegex(ValueError, 'exactly one'):
             d.scope(self.root, published, redundant)
+
+    def preserved_integration(self, path='source/platform/bos-mcp-client/references/identity-context.md', revert=False):
+        published = self.git('rev-parse', 'HEAD')
+        (self.root / 'AGENTS.md').write_text('unpublished main after published base')
+        self.commit()
+        self.git('checkout', '-qb', 'old-fork', self.base)
+        target = self.root / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text('unpublished fork content')
+        self.commit()
+        if revert:
+            target.unlink(); self.commit()
+        self.git('checkout', 'main')
+        self.git('merge', '--no-ff', '-qm', 'preserve unpublished integration', 'old-fork')
+        return published, self.git('rev-parse', 'HEAD')
+
+    def test_descendant_first_parent_and_older_published_fork_are_fully_checked(self):
+        published, source = self.preserved_integration()
+        self.assertIn('source/platform/bos-mcp-client/references/identity-context.md', d.scope(self.root, published, source))
+
+    def test_preserved_integration_cannot_hide_reverted_side_content_or_resolution(self):
+        published, source = self.preserved_integration('runtime.js', revert=True)
+        with self.assertRaisesRegex(ValueError, 'Unsupported|Deletion'):
+            d.scope(self.root, published, source)
+
+    def test_preserved_integration_rejects_unmapped_merge_resolution(self):
+        published, source = self.preserved_integration()
+        (self.root / 'runtime.js').write_text('unmapped merge-only bytes')
+        self.git('add', 'runtime.js')
+        merge = self.git('commit-tree', self.git('write-tree'), '-p', self.git('rev-parse', source+'^1'), '-p', self.git('rev-parse', source+'^2'), '-m', 'resolution')
+        with self.assertRaisesRegex(ValueError, 'Unsupported'):
+            d.scope(self.root, published, merge)
+
+    def test_original_history_rejects_replace_refs_and_grafts(self):
+        source = self.git('rev-parse', 'HEAD')
+        self.git('replace', source, self.base)
+        with self.assertRaisesRegex(ValueError, 'original Git history'):
+            d.scope(self.root, self.base, source)
+        self.git('replace', '-d', source)
+        graft = self.root / '.git/info/grafts'
+        graft.write_text(source+' '+self.base+'\n')
+        with self.assertRaisesRegex(ValueError, 'grafts'):
+            d.scope(self.root, self.base, source)
+
+    def test_history_receipt_never_accepts_foreign_source_base_or_partial_pass(self):
+        report = {'publication_history': {'base':self.base,'source':'a'*40,'status':'PASS','pairs':1,'inventory_sha256':'b'*64,'policy_sha256':'c'*64,'findings':[],'classifications':[]}}
+        self.assertEqual(d.history_report(json.dumps(report).encode(), self.base, 'a'*40)['status'], 'PASS')
+        for key, value in [('source','d'*40),('base','e'*40),('status','REJECT'),('pairs',0),('findings',[{'classification':'customer_privacy'}]),('classifications',[{'kind':'arbitrary'}])]:
+            changed = json.loads(json.dumps(report));changed['publication_history'][key] = value
+            with self.assertRaisesRegex(ValueError, 'history proof'):
+                d.history_report(json.dumps(changed).encode(), self.base, 'a'*40)
+
+    def test_unrelated_side_parent_cannot_become_a_published_fork(self):
+        published = self.git('rev-parse', 'HEAD')
+        (self.root / 'AGENTS.md').write_text('unpublished main')
+        self.commit()
+        first = self.git('rev-parse', 'HEAD')
+        unrelated = self.git('commit-tree', 'HEAD^{tree}', '-m', 'unrelated root')
+        merge = self.git('commit-tree', 'HEAD^{tree}', '-p', first, '-p', unrelated, '-m', 'unrelated integration')
+        with self.assertRaisesRegex(ValueError, 'exactly one|two-parent'):
+            d.scope(self.root, published, merge)
+
+    def test_legacy_dependency_digest_migration_cannot_change_existing_public_version(self):
+        path = self.root / 'contracts/bos-client-dependency.v1/manifest.json'
+        path.parent.mkdir(parents=True, exist_ok=True)
+        value = {'contract_version':'bos-client-dependency/v1','executable_files':[{'path':'same.mjs','sha256':'a'*64}],'bundle_sha256':'a'*64}
+        path.write_text(json.dumps(value));self.commit();base = self.git('rev-parse','HEAD')
+        value['executable_files'][0]['sha256']='b'*64;value['bundle_sha256']='b'*64
+        path.write_text(json.dumps(value));self.commit()
+        self.assertIn(str(path.relative_to(self.root)), d.scope(self.root,base,self.git('rev-parse','HEAD')))
+        value['contract_version']='bos-client-dependency/v2';path.write_text(json.dumps(value));self.commit()
+        with self.assertRaisesRegex(ValueError,'public dependency contract'):
+            d.scope(self.root,base,self.git('rev-parse','HEAD'))
 
     def test_octopus_merge_is_rejected(self):
         published, source = self.side_merge('source/platform/bos-mcp-client/references/identity-context.md')

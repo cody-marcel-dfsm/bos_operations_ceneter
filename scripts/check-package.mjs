@@ -28,25 +28,7 @@ import { checkSkillDependencies } from "./lib/skill-dependencies.mjs";
 import { buildSkillManifest, checkSkillReleaseHistory, skillManifestFile } from "./lib/skill-release.mjs";
 import {validateMusePackage} from "./lib/muse-package.mjs";
 
-const forbiddenNames = new Set([
-  ".env",
-  "credentials.json",
-  "service-account.json",
-  "id_rsa",
-  "id_ed25519"
-]);
-const personalAbsolutePathPattern = /\/Users\/[A-Za-z0-9._-]+\//;
-const secretPatterns = [
-  /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,
-  /\bbos_agent_[A-Za-z0-9_-]{16,}\b/,
-  /\bAIza[0-9A-Za-z_-]{30,}\b/,
-  /\bgh[ps]_[A-Za-z0-9]{30,}\b/,
-  /\bglpat-[A-Za-z0-9_-]{20,}\b/,
-  /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/,
-  /\bAKIA[0-9A-Z]{16}\b/,
-  /"(?:access_token|refresh_token|client_secret|private_key)"\s*:\s*"(?!REDACTED|EXAMPLE|<)[^"]+"/i,
-  personalAbsolutePathPattern
-];
+import {forbiddenNames, personalAbsolutePathPattern, secretPatterns} from "./lib/publication-credentials.mjs";
 const retiredProductIdentityPatterns = [
   new RegExp(`\\b${["i", "code"].join("")}\\b`, "i"),
   new RegExp(["I", "CODE", "_OPERATIONS"].join(""))

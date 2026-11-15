@@ -387,7 +387,8 @@ class CommandCoverage(unittest.TestCase):
             self.assertEqual(o.verify_proposal(self.root)["verdict"], "APPROVED")
             record = json.loads(o.proposal_path(self.root).read_bytes())
             self.assertEqual(record["base_commit"], original)
-            self.assertEqual(record["source_observations"]["unadopted_delta_paths"], ["candidate.txt", "proof.json"])
+            self.assertEqual(record["source_observations"]["unadopted_delta_paths"], ["candidate.txt"])
+            self.assertEqual(record["evidence"]["proof.json"], o._sha(b"original evidence"))
             for target in (evidence, self.root / "AGENTS.md"):
                 original_bytes = target.read_bytes()
                 def drift(*args):
