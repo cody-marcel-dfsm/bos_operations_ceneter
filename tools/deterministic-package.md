@@ -276,3 +276,15 @@ unchanged atomic writes and a fully drained queue before any PASS. No size hint
 controls scheduling or authority in final source. Canonical-order held-input
 checks prove that later completed records persist immediately, and exact input/
 context equivalence against the retired dispatcher remains required.
+
+The bounded `/7` correctness repair additionally admits exactly the existing
+shared-cache `source/host-runtime/bos-shared-cache/document-cache.mjs` and its
+complete `tests/document-cache.test.mjs` suite. Only initial authority-mutation
+lock publication changes: completed private 0600 JSON is linked atomically with
+no replacement, preserving every token/PID/deadline/liveness/reclaim/heartbeat
+check and corrupt-existing-lock failure. Controlled held-publication and losing
+contender custody tests plus the existing stale-takeover/heartbeat/invalidation
+regressions remain required. No cache schema or public API version changes.
+Owned monotonic-duration diagnostics display microsecond precision (0.001 ms)
+while preserving raw immutable native evidence, integers, bodies and hashes.
+Classifier/phone rules and computation/deadline precision remain unchanged.

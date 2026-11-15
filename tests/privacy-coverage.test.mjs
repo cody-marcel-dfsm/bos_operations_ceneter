@@ -6,9 +6,9 @@ import {createHash, createHmac} from "node:crypto";
 import {EventEmitter,once} from "node:events";
 import {join} from "node:path";
 import test from "node:test";
-import {privacyFileCoverage, privacyPolicyIdentity, privacyPolicyDigest, privacyCoveragePartition, privacyTransitionProof} from "../scripts/lib/privacy-coverage.mjs";
+import {privacyTimingDisplay, privacyFileCoverage, privacyPolicyIdentity, privacyPolicyDigest, privacyCoveragePartition, privacyTransitionProof} from "../scripts/lib/privacy-coverage.mjs";
 import {createPrivacyScanPool} from "../scripts/lib/privacy-scan-pool.mjs";
-import {privacyPolicyPreview, scanPrivacyFile, root as projectRoot} from "../scripts/check-customer-data.mjs";
+import {customerDataFindings, privacyPolicyPreview, scanPrivacyFile, root as projectRoot} from "../scripts/check-customer-data.mjs";
 import {createDeterministicZip} from "../scripts/lib/deterministic-zip.mjs";
 const exec = promisify(execFile);
 
@@ -338,6 +338,17 @@ test("canonical FIFO retains exact findings and input identities against the ret
   const inputs=async directory=>(await Promise.all((await readdir(join(directory,"records"))).map(async name=>JSON.parse(await readFile(join(directory,"records",name))).input)))
     .map(({path,sha256,mode,policy_sha256,context_sha256})=>({path,sha256,mode,policy_sha256,context_sha256})).sort((a,b)=>a.path.localeCompare(b.path));
   assert.deepEqual(await inputs(f.directory),await inputs(join(f.root,".git/oracle/reference")));assert(after.report.max_input_reads<=2);assert.equal(after.report.scanned,6);assert.equal(after.report.bridged,0);
+});
+
+test("owned duration display rounds precision without changing evidence, integers, strings or other numeric data",()=>{
+  const phone=Number(["270","555","1234"].join("")),decimal="123."+phone;
+  const raw={milliseconds:Number("16280."+["1799","9700004"].join("")),slowest_ms:12.345678,ms:1.234567,body:decimal,hash:"a".repeat(64),count:phone,other:Number(decimal)};
+  const copy=structuredClone(raw),display=privacyTimingDisplay(raw);
+  assert.deepEqual(raw,copy);assert.equal(display.milliseconds,16280.18);assert.equal(display.slowest_ms,12.346);assert.equal(display.ms,1.235);
+  for(const key of ["body","hash","count","other"])assert.equal(display[key],raw[key]);
+  const opaqueBody={milliseconds:Number(decimal)};assert.equal(privacyTimingDisplay({body:opaqueBody}).body,opaqueBody);
+  assert(customerDataFindings(JSON.stringify({ms:phone}),"synthetic.json",new Set()).some(row=>row.includes("phone")));
+  assert(customerDataFindings(JSON.stringify({body:display.body}),"synthetic.json",new Set()).some(row=>row.includes("phone")));
 });
 
 test("privacy policy binds the explicit native I/O thread configuration",async()=>{

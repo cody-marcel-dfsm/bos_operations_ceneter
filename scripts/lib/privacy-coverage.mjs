@@ -303,3 +303,13 @@ export async function privacyFileCoverage({root, directory, candidates, policy, 
   await writeRecord(join(directory, "runs", randomUUID() + ".json"), encode({...payload, signature: sign(key, payload)}), true);
   return {findings: [...new Set(findings)].sort(), report: payload};
 }
+
+// Presentation of our own numeric timing metadata only. The measured values,
+// signed records and deadlines keep their original precision.
+export function privacyTimingDisplay(value) {
+  if(Array.isArray(value))return value.map(privacyTimingDisplay);
+  if(value&&typeof value==="object")return Object.fromEntries(Object.entries(value).map(([key,item])=>[
+    key,key==="body"?item:["ms","milliseconds","slowest_ms"].includes(key)&&typeof item==="number"&&Number.isFinite(item)&&!Number.isInteger(item)
+      ?Number(item.toFixed(3)):privacyTimingDisplay(item)]));
+  return value;
+}

@@ -3,6 +3,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import {
   chmod,
+  link,
   mkdir,
   open,
   readFile,
@@ -422,6 +423,19 @@ async function reclaimExpiredAuthorityMutationLock(
   }
 }
 
+async function publishExclusiveAuthorityMutationLock(path, value) {
+  const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
+  try {
+    const handle = await open(temporary, "wx", 0o600);
+    try { await handle.writeFile(`${JSON.stringify(value)}\n`); }
+    finally { await handle.close(); }
+    await chmod(temporary, 0o600);
+    // Readers observe either no lock or the complete private JSON. A losing
+    // contender cannot replace an existing owner's token, PID or deadline.
+    await link(temporary, path);
+  } finally { await rm(temporary, {force: true}); }
+}
+
 async function acquireAuthorityMutationLock(path, options = {}) {
   await ensurePrivateDirectory(dirname(path));
   const token = randomUUID();
@@ -434,10 +448,7 @@ async function acquireAuthorityMutationLock(path, options = {}) {
     const now = new Date();
     const expiresAt = new Date(now.valueOf() + leaseMs).toISOString();
     try {
-      const handle = await open(path, "wx", 0o600);
-      await handle.writeFile(`${JSON.stringify({ token, pid: process.pid, expires_at: expiresAt })}\n`);
-      await handle.close();
-      await chmod(path, 0o600);
+      await publishExclusiveAuthorityMutationLock(path, {token, pid: process.pid, expires_at: expiresAt});
       return { token, pid: process.pid, expires_at: expiresAt, leaseMs };
     } catch (error) {
       if (error.code !== "EEXIST") throw error;

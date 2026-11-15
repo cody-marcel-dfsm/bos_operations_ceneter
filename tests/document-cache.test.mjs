@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { access, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { access, mkdir, mkdtemp, readdir, readFile, lstat, rm, writeFile } from "node:fs/promises";
+import fsPromises from "node:fs/promises";
+import {syncBuiltinESMExports} from "node:module";
 import { join } from "node:path";
 import test from "node:test";
 import {
@@ -15,7 +16,8 @@ import {
   invalidateDocumentCacheDataset,
   invalidateDocumentCacheSource,
   readDocumentCache,
-  resolveDocumentCacheRoot
+  resolveDocumentCacheRoot,
+  withAuthorityMutationLock
 } from "../source/host-runtime/bos-shared-cache/document-cache.mjs";
 
 const baseRequest = {
@@ -40,7 +42,8 @@ const baseRequest = {
 };
 
 async function temporaryCache(context) {
-  const path = await mkdtemp(join(tmpdir(), "bos-document-cache-test-"));
+  const scratch=new URL("../Vault/tmp/",import.meta.url).pathname;await mkdir(scratch,{recursive:true});
+  const path = await mkdtemp(join(scratch, "dc-"));
   context.after(() => rm(path, { recursive: true, force: true }));
   return path;
 }
@@ -575,4 +578,40 @@ test("overlapping queries share immutable objects while authority indexes stay s
   assert.equal(isolated.state, "cold");
   assert.deepEqual(isolated.documents, []);
   assert.notEqual(isolated.authority_key, first.authority_key);
+});
+
+
+test("initial authority mutation publication never exposes incomplete JSON to a contender",async context=>{
+  const cacheRoot=await temporaryCache(context),path=join(cacheRoot,"authority-mutation.lock.json"),original=fsPromises.open;
+  let entered,release,first,second,intercept=true,active=0,maxActive=0;
+  const held=new Promise(resolve=>release=resolve),ready=new Promise(resolve=>entered=resolve);
+  fsPromises.open=async(...args)=>{const handle=await original(...args),candidate=String(args[0]);
+    if(intercept&&args[1]==="wx"&&(candidate===path||candidate.startsWith(path+"."))){intercept=false;const write=handle.writeFile.bind(handle);
+      handle.writeFile=async(...values)=>{entered();await held;return write(...values);};}
+    return handle;};syncBuiltinESMExports();
+  const operation=async value=>{active++;maxActive=Math.max(maxActive,active);try{
+    const row=JSON.parse(await readFile(path,"utf8"));assert.equal(row.pid,process.pid);assert.equal(typeof row.token,"string");assert(Number.isFinite(Date.parse(row.expires_at)));
+    assert.equal((await lstat(path)).mode&0o777,0o600);await new Promise(resolve=>setTimeout(resolve,5));return value;
+  }finally{active--;}};
+  try{
+    first=withAuthorityMutationLock(path,()=>operation("first"));await ready;
+    second=withAuthorityMutationLock(path,()=>operation("second"));
+    const outcome=await second.then(value=>({value}),error=>({error}));assert.equal(outcome.error,undefined,outcome.error?.message);assert.equal(outcome.value,"second");
+    await assert.rejects(readFile(path),{code:"ENOENT"});release();assert.equal(await first,"first");assert.equal(maxActive,1);
+  }finally{release();await Promise.allSettled([first,second].filter(Boolean));fsPromises.open=original;syncBuiltinESMExports();}
+  assert.deepEqual(await readdir(cacheRoot),[]);
+});
+
+test("failed initial mutation publication cleans its private temporary and never runs the operation",async context=>{
+  const cacheRoot=await temporaryCache(context),path=join(cacheRoot,"authority-mutation.lock.json"),original=fsPromises.link;let ran=false;
+  fsPromises.link=async(from,to)=>{if(to===path)throw Object.assign(Error("synthetic denied publication"),{code:"EACCES"});return original(from,to);};syncBuiltinESMExports();
+  try{await assert.rejects(withAuthorityMutationLock(path,async()=>{ran=true;}),{code:"EACCES"});}
+  finally{fsPromises.link=original;syncBuiltinESMExports();}
+  assert.equal(ran,false);assert.deepEqual(await readdir(cacheRoot),[]);
+});
+
+test("corrupt existing mutation locks remain fail closed and unchanged",async context=>{
+  const cacheRoot=await temporaryCache(context),path=join(cacheRoot,"authority-mutation.lock.json");await writeFile(path,"not-json",{mode:0o600});let ran=false;
+  await assert.rejects(withAuthorityMutationLock(path,async()=>{ran=true;}),SyntaxError);
+  assert.equal(ran,false);assert.equal(await readFile(path,"utf8"),"not-json");
 });

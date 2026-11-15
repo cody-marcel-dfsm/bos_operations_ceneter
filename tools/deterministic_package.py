@@ -50,6 +50,7 @@ TESTS = [
     'tests/ada-client.test.mjs', 'tests/ada-journey-view.test.mjs',
     'tests/runtime-skill-export.test.mjs', 'tests/feedback-item-discussion.test.mjs',
     'tests/notification-host.test.mjs', 'tests/notification-host-installer.test.mjs',
+    'tests/document-cache.test.mjs',
     'tests/feedback-socket-host.test.mjs',
     'tests/customer-data-privacy.test.mjs', 'tests/privacy-coverage.test.mjs',
 ]
@@ -112,6 +113,7 @@ ADA_CLIENT = {
     'scripts/install-notification-host.mjs',
     'tests/notification-host-installer.test.mjs',
     'tests/feedback-socket-host.test.mjs',
+    'source/host-runtime/bos-shared-cache/document-cache.mjs', 'tests/document-cache.test.mjs',
     'scripts/check-customer-data.mjs', 'tests/customer-data-privacy.test.mjs',
     'scripts/lib/privacy-coverage.mjs', 'scripts/lib/privacy-scan-pool.mjs',
     'scripts/lib/privacy-scan-worker.mjs', 'tests/privacy-coverage.test.mjs',

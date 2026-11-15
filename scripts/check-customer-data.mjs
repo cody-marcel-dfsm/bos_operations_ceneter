@@ -8,7 +8,7 @@ import {mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile} from "node:fs/pr
 import {extname, join, relative, resolve} from "node:path";
 import {promisify} from "node:util";
 import {createPrivacyScanPool} from "./lib/privacy-scan-pool.mjs";
-import {privacyFileCoverage, privacyPolicyIdentity, privacyPolicyDigest, privacyCoveragePartition, privacyTransitionProof} from "./lib/privacy-coverage.mjs";
+import {privacyTimingDisplay, privacyFileCoverage, privacyPolicyIdentity, privacyPolicyDigest, privacyCoveragePartition, privacyTransitionProof} from "./lib/privacy-coverage.mjs";
 
 const execFileAsync = promisify(execFile);
 export const root = resolve(new URL("../", import.meta.url).pathname);
@@ -603,7 +603,7 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
     files: lastPrivacyCoverage.files.length, reused: lastPrivacyCoverage.reused,
     scanned: lastPrivacyCoverage.scanned, bytes: lastPrivacyCoverage.bytes, scanned_bytes: lastPrivacyCoverage.scanned_bytes, concurrency: lastPrivacyCoverage.concurrency, max_input_reads: lastPrivacyCoverage.max_input_reads, invalidated: lastPrivacyCoverage.invalidated, bridged: lastPrivacyCoverage.bridged,
     max_active_persistence:lastPrivacyCoverage.max_active_persistence,max_awaiting_persistence:lastPrivacyCoverage.max_awaiting_persistence,
-    compact_persistence_bytes:lastPrivacyCoverage.compact_persistence_bytes,io_threads:lastPrivacyCoverage.io_threads,phases:lastPrivacyCoverage.phases,
+    compact_persistence_bytes:lastPrivacyCoverage.compact_persistence_bytes,io_threads:lastPrivacyCoverage.io_threads,phases:privacyTimingDisplay(lastPrivacyCoverage.phases),
     policy_sha256: lastPrivacyCoverage.policy_sha256, membership_sha256: lastPrivacyCoverage.membership_sha256
   }}));
   if (failures.length) {
