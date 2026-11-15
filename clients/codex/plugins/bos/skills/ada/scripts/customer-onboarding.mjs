@@ -61,7 +61,7 @@ export async function createCustomerOnboarding({host}){
   const cap=await host.getOwnOnboardingCapabilities();if(cap.credentialKind!=="oauth"||cap.ownWork!==true)return Object.freeze({available:false,reason:"eligible_existing_oauth_host_required",descriptor:copy(admitted.descriptor),account:"not_evaluated"});
   const refresh=async()=>{await guard(true);const now=admitOnboardingDescriptor(await host.readOwnOnboardingContract(),audience);await guard(true);if(now.fingerprint!==admitted.fingerprint){clear();fail("contract_changed");}};
   const invoke=async(name,payload,onDispatch=()=>{})=>{
-    await refresh();const row=admitted.operations.get(name);if(!row.input(payload))fail("invalid_payload");
+    payload=copy(payload);await refresh();const row=admitted.operations.get(name);if(!row.input(payload))fail("invalid_payload");
     onDispatch();const reply=await host.invokeOwnOnboardingOperation({operationId:row.operation_id,payload:copy(payload),contractFingerprint:admitted.fingerprint});await guard(true);
     if(!exact(reply,["status","body"])||!Number.isSafeInteger(reply.status))fail("invalid_response");
     if(reply.status!==200){clear();if(!row.error(reply.body))fail("invalid_response");return{ok:false,code:reply.body.error.code};}
@@ -81,6 +81,7 @@ export async function createCustomerOnboarding({host}){
       if(presentations.size>=16)presentations.clear();const presentationRef=randomUUID();presentations.set(presentationRef,{action:canonical(row),ref:actionRef});return{presentation_ref:presentationRef,action_ref:actionRef,verb:row.verb,target:row.target,subject:copy(row.subject)};},
     async act(payload,confirmation){
       if(writing)fail("action_in_progress");writing=true;try {
+      payload=copy(payload);confirmation=copy(confirmation);
       await guard(true);if(!object(payload)||Object.keys(payload).length!==2||!uuid.test(payload.action_ref))fail("invalid_payload");const row=action(payload.action_ref);
       if(attempted.has(payload.action_ref))return{ok:false,code:"action_state_required",action_ref:payload.action_ref};
       const key=row.verb==="observe"?"value":["propose","amend"].includes(row.verb)?"statement":"decision";

@@ -112,6 +112,18 @@ test("immutable published host closure installs atomically, verifies modes and p
   assert(immutable.files.some(row=>row.path.endsWith("customer-onboarding-host.mjs")));
   assert(immutable.files.some(row=>row.path.endsWith("ada/scripts/customer-onboarding.mjs")));
   await assert.rejects(recordNotificationHook({root,observation:observation(true)}),NotificationHostError);
+  await recordNotificationHook({root,observation:{...observation(true),prompt:own.hook_definition_plan.prompt}});
+  const ownChild=spawn(process.execPath,[join(destination,"source/host-runtime/bos-journey-notifications/muse-companion-cli.mjs"),
+    "onboarding-monitor","--root",root,"--credential-file",credential],{stdio:["pipe","pipe","pipe"]});
+  let ownOut="",ownErr="";ownChild.stdout.on("data",data=>{ownOut+=data;});ownChild.stderr.on("data",data=>{ownErr+=data;});
+  const ownDone=new Promise(resolve=>ownChild.on("close",resolve));
+  ownChild.stdin.end(JSON.stringify({protectedResource:"https://127.0.0.1:9/mcp/apps/bos/platform",taskIntent:"Inspect synthetic own onboarding",lifetimeMs:30000,intentConfirmed:true}));
+  for(let count=0;count<200&&!ownOut.includes('"started":true');count++)await delay(10);
+  assert(ownOut.includes('"started":true'),ownErr);
+  assert.equal((await callCompanion(join(root,"run","control.json"),"onboarding-read",{payload:{}})).available,false);
+  assert.equal((await callCompanion(join(root,"run","control.json"),"poll")).pending,false);
+  await callCompanion(join(root,"run","control.json"),"retire");assert.equal(await ownDone,0,ownErr);
+  assert(!ownOut.includes("synthetic-existing-key"));
   const vendor=join(destination,"source/host-runtime/bos-journey-notifications/vendor/ws.bundle.mjs");
   const vendorBytes=await readFile(vendor);await writeFile(vendor,"changed vendor");
   await assert.rejects(verifyNotificationHost(destination),NotificationHostError);await writeFile(vendor,vendorBytes);

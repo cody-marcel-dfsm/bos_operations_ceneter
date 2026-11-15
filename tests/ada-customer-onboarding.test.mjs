@@ -68,3 +68,9 @@ test("failed reread invalidates confirmation; concurrent action cannot double di
   const g=await fixture();await g.client.read({});const shown=await g.client.present(ref(1));g.setFault(true);await assert.rejects(g.client.read({}));g.setFault(false);
   await assert.rejects(g.client.act({action_ref:ref(1),decision:"confirm"},{presentation_ref:shown.presentation_ref,confirmed:true}));
 });
+test("caller mutations after action entry cannot change explicitly confirmed decision bytes",async()=>{
+  const f=await fixture();await f.client.read({});const shown=await f.client.present(ref(1));
+  const payload={action_ref:ref(1),decision:"confirm"},confirmation={presentation_ref:shown.presentation_ref,confirmed:true};
+  const pending=f.client.act(payload,confirmation);payload.decision="revoke";confirmation.confirmed=false;
+  assert.equal((await pending).ok,true);assert.deepEqual(f.requests.at(-1).payload,{action_ref:ref(1),decision:"confirm"});
+});

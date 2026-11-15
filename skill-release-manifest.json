@@ -3,7 +3,7 @@
   "release": "0.0.218",
   "skills": {
     "ada": {
-      "version": "1.0.4",
+      "version": "1.0.5",
       "requires": {
         "bos-app-discovery": "1.0.13",
         "bos-mcp-client": "1.0.12",
@@ -12,7 +12,7 @@
       "path": "source/platform/ada",
       "files": {
         "SKILL.md": {
-          "sha256": "a7ca14d3e486138c4fdb999bb418f24573bc6adf03236dac55458805d0ebbf65",
+          "sha256": "4470955831c8a0057b170904c7a45056ee71a7c4a5f45a4bc9ab4fd33ff2f320",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -44,7 +44,7 @@
           "mode": 420
         },
         "scripts/customer-onboarding.mjs": {
-          "sha256": "b4bcbf76f1c56c6f4b5333691c92d10b46888b404cd9bb8df80461cb20cd8dda",
+          "sha256": "3c60759012ec20fb220ed43ad7f3234b06a2f9207f3d8c816ac2829d2dd31d80",
           "mode": 420
         },
         "scripts/journey-view.mjs": {
@@ -57,7 +57,7 @@
         }
       },
       "effective": {
-        "bos": "30236ea90f34215887d6c75459ae627bbf4dd56924f471ddc921b13ed58cafb5"
+        "bos": "ca360e7030540d9cf0a7943827a249c4bd9904a58ffeb0729b26cff8bb0e87cb"
       }
     },
     "agent-call-operations": {
