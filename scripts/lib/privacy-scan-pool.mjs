@@ -2,8 +2,8 @@ import {Worker} from "node:worker_threads";
 import {createHash} from "node:crypto";
 
 const digest=value=>createHash("sha256").update(value).digest("hex");
-export async function createPrivacyScanPool({policySha256,ruleHashes,count=4,WorkerClass=Worker}) {
-  if(!/^[0-9a-f]{64}$/u.test(policySha256)||!Number.isSafeInteger(count)||count<1||count>4)throw Error("Bounded current privacy worker policy required");
+export async function createPrivacyScanPool({policySha256,ruleHashes,count=8,WorkerClass=Worker}) {
+  if(!/^[0-9a-f]{64}$/u.test(policySha256)||!Number.isSafeInteger(count)||count<1||count>8)throw Error("Bounded current privacy worker policy required");
   const slots=[];let stopped=false,sequence=0;
   const rejectAll=error=>{stopped=true;for(const slot of slots){slot.rejectReady?.(error);slot.job?.reject(error);slot.job=null;}};
   try {

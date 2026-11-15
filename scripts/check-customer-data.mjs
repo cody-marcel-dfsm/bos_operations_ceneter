@@ -555,14 +555,14 @@ async function scanPrivacyCandidates(candidates, {describeOnly = false, assessTr
   const partition = assessTransitionFrom ? await privacyCoveragePartition({root, directory, candidates: currentCandidates,
     policy, contextFor, previousPolicy: assessTransitionFrom}) : null;
   const selected = partition ? partition.files.filter(row => !row.original).map(row => join(root, row.path)) : currentCandidates;
-  const pool = selected.length >= 32 ? await createPrivacyScanPool({policySha256: privacyPolicyDigest(policy), ruleHashes: policy.sources, count: 4}) : null;
+  const pool = selected.length >= 32 ? await createPrivacyScanPool({policySha256: privacyPolicyDigest(policy), ruleHashes: policy.sources, count: 8}) : null;
   let result;
   try {
     const config = {blockedDigests, approvedBinaryDigests, githubIdentities, archiveExecutable: policy.executables[1].path};
     const scan = (path, body, context) => pool && body.length <= 8 * 1024 * 1024 ? pool.run(path, body, context) : scanPrivacyFile(path, body, context, config);
     result = await privacyFileCoverage({root, directory, candidates: selected, policy,
       source: {commit, tree, command: [process.execPath, ...process.execArgv, ...process.argv.slice(1)]}, scan,
-      contextFor, concurrency: pool ? 4 : 1});
+      contextFor, concurrency: pool ? 8 : 1});
   } finally {await pool?.close();}
   lastPrivacyCoverage = result.report;
   if (partition) {

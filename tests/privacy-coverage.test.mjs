@@ -183,7 +183,7 @@ test("production privacy CLI preserves full source/Vault membership and consumes
   const entry = "const m=await import('./scripts/check-customer-data.mjs');const findings=await m.privacyFailures();console.log(JSON.stringify({findings,report:m.lastPrivacyCoverage}));";
   const invoke = async () => JSON.parse((await exec(process.execPath, ["--input-type=module", "-e", entry], {cwd: f.root})).stdout);
   const cold = await invoke(); assert.deepEqual(cold.findings, []); assert.ok(cold.report.scanned >= 9);
-  assert.equal(cold.report.concurrency,4);assert.equal(cold.report.bridged,0);
+  assert.equal(cold.report.concurrency,8);assert.equal(cold.report.bridged,0);
   const warm = await invoke(); assert.equal(warm.report.scanned, 0); assert.equal(warm.report.reused, cold.report.scanned);
   const artifact = join(f.root, "Vault/tmp/new.log"); await writeFile(artifact, "synthetic private validation artifact");
   const added = await invoke(); assert.equal(added.report.scanned, 1); assert.equal(added.report.files.length, cold.report.files.length + 1);
@@ -267,7 +267,7 @@ test("bounded independent file observations preserve sorted merge, exact snapsho
   assert.deepEqual(result.findings,["synthetic recorded failure"]);assert.equal(result.report.bytes,3*Buffer.byteLength("synthetic safe bytes"));
   assert.equal(result.report.scanned,3);assert.equal(result.report.bridged,0);
   const warm=await f.run({concurrency:4});assert.equal(warm.report.reused,3);assert.equal(warm.report.scanned,0);assert.equal(warm.report.outcome,"FAILED");
-  await assert.rejects(f.run({concurrency:5}),/Bounded/);
+  await assert.rejects(f.run({concurrency:9}),/Bounded/);
 });
 
 async function workerConfiguration(){
@@ -282,14 +282,15 @@ async function workerConfiguration(){
 }
 
 test("real bounded worker scans equal direct policy for Unicode, escaped JSON, binary and archives",async t=>{
-  const options=await workerConfiguration(),pool=await createPrivacyScanPool({...options,count:4});t.after(()=>pool.close());
+  const options=await workerConfiguration(),pool=await createPrivacyScanPool({...options,count:8});t.after(()=>pool.close());
   const address=["someone","production-domain.invalidated"].join("@");
   const values=[{name:"safe.md",body:Buffer.from("synthetic Unicode \u03bb")},
     {name:"escaped.json",body:Buffer.from(JSON.stringify({value:address}))},
     {name:"opaque.bin",body:Buffer.from([0,255,1])},
     {name:"archive.zip",body:createDeterministicZip([{path:"safe.txt",content:Buffer.from("synthetic safe bytes"),mode:0o644}])}];
-  const results=await Promise.all(values.map(value=>pool.run(join(projectRoot,"Vault/tmp",value.name),value.body,{})));
-  for(let index=0;index<values.length;index++)assert.deepEqual(results[index],await scanPrivacyFile(join(projectRoot,"Vault/tmp",values[index].name),values[index].body,{},options.config));
+  const inputs=[...values,...values];
+  const results=await Promise.all(inputs.map(value=>pool.run(join(projectRoot,"Vault/tmp",value.name),value.body,{})));
+  for(let index=0;index<inputs.length;index++)assert.deepEqual(results[index],await scanPrivacyFile(join(projectRoot,"Vault/tmp",inputs[index].name),inputs[index].body,{},options.config));
   assert(results[1].some(row=>row.includes("non-synthetic email")));assert(results[2].some(row=>row.includes("unreviewed binary")));
   await assert.rejects(pool.run("too-large.bin",Buffer.alloc(8*1024*1024+1),{}),/bound/);
 });
@@ -311,5 +312,5 @@ test("worker source/rule mismatch and tampered input/context reply fail before o
     const pool=await createPrivacyScanPool({...options,count:1,WorkerClass:TamperedWorker});
     try{await assert.rejects(pool.run("sample.txt",Buffer.from("synthetic bytes"),{}),/identity mismatch/);}finally{await pool.close();}
   }
-  await assert.rejects(createPrivacyScanPool({...options,count:5}),/Bounded/);
+  await assert.rejects(createPrivacyScanPool({...options,count:9}),/Bounded/);
 });

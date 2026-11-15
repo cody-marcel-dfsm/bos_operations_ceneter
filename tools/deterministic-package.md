@@ -169,9 +169,15 @@ normal SSH route requires no GitHub CLI credential or model approval.
 
 The bounded `/7` cold-scan repair additionally admits exactly
 `scripts/lib/privacy-coverage.mjs`, `scripts/lib/privacy-scan-pool.mjs`,
-`scripts/lib/privacy-scan-worker.mjs` and `tests/privacy-coverage.test.mjs`. Four
+`scripts/lib/privacy-scan-worker.mjs` and `tests/privacy-coverage.test.mjs`. Eight
 fixed evaluation workers independently bind the same source/policy/rule identity;
 only two input file reads are buffered, with eight-MiB worker bodies and bounded
 worker heaps. Oversized inputs retain the complete direct scanner. The parent
 alone signs atomic per-file content/context observations and sorts merged results.
 No file, phrase, archive, customer rule or transition guard is omitted.
+
+The measured four-worker cold category exceeded the lifecycle SLA. The fixed
+CPU worker bound is eight on this ten-CPU/64-GiB validation host, retaining two
+concurrent input reads, eight-MiB per-worker input bounds, and independent
+384-MiB old/32-MiB young generation limits. No old-policy result is adopted
+for this changed policy; full cold timing and the original breach are retained.

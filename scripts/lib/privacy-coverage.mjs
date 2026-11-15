@@ -172,7 +172,7 @@ export async function privacyTransitionProof({root, directory, partition, valida
 // Every candidate remains in the current scope. Only matching original results
 // are reused; both successful and failing observations retain their outcome.
 export async function privacyFileCoverage({root, directory, candidates, policy, contextFor, scan, source = {}, concurrency = 1}) {
-  if (!Number.isSafeInteger(concurrency) || concurrency < 1 || concurrency > 4) throw new Error("Bounded privacy concurrency required");
+  if (!Number.isSafeInteger(concurrency) || concurrency < 1 || concurrency > 8) throw new Error("Bounded privacy concurrency required");
   root = resolve(root); directory = resolve(directory);
   const key = await coverageIssuer(root, directory);
   const {provenance} = policy;
