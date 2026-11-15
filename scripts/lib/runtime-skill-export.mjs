@@ -101,7 +101,9 @@ export const exportRuntimeSkill = createRuntimeSkillExporter({
     // Existing exporter enforces exact origin/main ancestry and native Oracle
     // receipt or exact-source deterministic release-branch CI provenance.
     const remote = execFileSync("git", ["remote", "get-url", "origin"], {cwd: root, encoding: "utf8"}).trim();
-    if (![runtimeRepository, "git@github.com:cody-marcel-dfsm/bos_operations_ceneter.git"].includes(remote)) throw new Error("Untrusted publication remote");
+    const owner = new URL(runtimeRepository);
+    const sshRemote = ["git", owner.host].join("@") + ":" + owner.pathname.slice(1);
+    if (![runtimeRepository, sshRemote].includes(remote)) throw new Error("Untrusted publication remote");
     readPublishedProductEntries(pin.commit, "bos");
     return {method: "published_main_native_provenance", source: pin.commit};
   }
