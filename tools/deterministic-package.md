@@ -225,3 +225,14 @@ The exact input membership, two body-read bound, worker/body/heap bounds, origin
 phrase rules, FD admission and fixed category remain unchanged. Representative
 long-tail timing, immediate-short-result durability and serial-equivalent
 findings/content/context identities are required before one fresh cold category.
+
+Bounded parent-persistence diagnostics bind explicit native privacy I/O settings
+and preserve phase metrics for reads, context, input hashing, retained lookup,
+worker evaluation, signing and atomic persistence. The native privacy process
+starts with exactly `UV_THREADPOOL_SIZE=8`; policy applicability includes that
+variable and the parent rejects a different reported value. The eight CPU
+workers, two input readers, existing heap/body limits, immutable atomic signed
+records and transition guards remain unchanged. A metadata-only persistence
+queue was assessed against the original coupled path with controlled real-worker
+and atomic-writer timing; its measured benefit governs final selection. All
+experimental source remains recoverable in Git, with no publication or activation.

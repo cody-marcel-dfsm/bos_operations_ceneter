@@ -50,7 +50,7 @@ class PackageGateTests(unittest.TestCase):
     def validate(self):
         return d.validate(self.root, self.base, '2020-01-01T00:00:00Z')
 
-    def scheduled_execution(self, *, bad_ready=False, bad_report=False, failed=False, mutate=False):
+    def scheduled_execution(self, *, bad_ready=False, bad_report=False, failed=False, mutate=False, io_threads=8):
         before=d.native.identity(self.root); ready=threading.Event(); peers=threading.Event()
         lock=threading.Lock(); calls=[]; active=0; peak=0; peer_count=0
         def execute(root, command, channel=None):
@@ -65,7 +65,7 @@ class PackageGateTests(unittest.TestCase):
                 os.write(fd,(json.dumps(row)+'\n').encode());os.close(fd)
                 if not bad_ready: peers.wait(2)
                 output=json.dumps({'privacy_coverage':{'source_commit':before['source'],'source_tree':before['tree'],
-                    'files':2 if bad_report else 1,'policy_sha256':'a'*64}}).encode()
+                    'files':2 if bad_report else 1,'policy_sha256':'a'*64,'io_threads':io_threads}}).encode()
             else:
                 if command in self.fixed_commands[5:]:
                     self.assertTrue(ready.is_set())
@@ -114,6 +114,13 @@ class PackageGateTests(unittest.TestCase):
 
     def test_parallel_snapshot_result_mismatch_retains_all_outputs_and_rejects(self):
         execute,snapshot,calls,peak=self.scheduled_execution(bad_report=True)
+        with patch.object(d,'CHECKS',self.fixed_commands),patch.object(d,'execute_check',side_effect=execute),patch.object(d,'await_privacy_snapshot',side_effect=snapshot):
+            with self.assertRaisesRegex(ValueError,'check failed'):self.validate()
+        record=json.loads(next(d.directory(self.root).glob('*.failure.json')).read_bytes())
+        self.assertEqual(len(record['runs']),8);self.assertEqual(record['runs'][4]['exit_code'],'SNAPSHOT_RESULT_MISMATCH')
+
+    def test_parallel_wrong_privacy_io_configuration_rejects_all_outputs(self):
+        execute,snapshot,calls,peak=self.scheduled_execution(io_threads=4)
         with patch.object(d,'CHECKS',self.fixed_commands),patch.object(d,'execute_check',side_effect=execute),patch.object(d,'await_privacy_snapshot',side_effect=snapshot):
             with self.assertRaisesRegex(ValueError,'check failed'):self.validate()
         record=json.loads(next(d.directory(self.root).glob('*.failure.json')).read_bytes())

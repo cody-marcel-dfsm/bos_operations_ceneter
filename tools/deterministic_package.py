@@ -355,7 +355,7 @@ def execute_check(root, command, ready=None):
             output, code = result.stdout + b'\n' + result.stderr, result.returncode
         else:
             fd, token = ready
-            environment = dict(os.environ, BOC_PRIVACY_READY_FD=str(fd), BOC_PRIVACY_READY_TOKEN=token)
+            environment = dict(os.environ, BOC_PRIVACY_READY_FD=str(fd), BOC_PRIVACY_READY_TOKEN=token, UV_THREADPOOL_SIZE="8")
             try:
                 process = subprocess.Popen(command, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                            env=environment, pass_fds=(fd,))
@@ -434,7 +434,7 @@ def run_category(root, commands, before):
                  if line.startswith(b'{"privacy_coverage":')]
     except (ValueError, KeyError):
         reports=[]
-    if len(reports)!=1 or not isinstance(reports[0],dict) or any(reports[0].get(key)!=snapshot[value] for key,value in
+    if len(reports)!=1 or not isinstance(reports[0],dict) or reports[0].get("io_threads")!=8 or any(reports[0].get(key)!=snapshot[value] for key,value in
             [('source_commit','source'),('source_tree','tree'),('files','files'),('policy_sha256','policy_sha256')]):
         runs[4]['exit_code']='SNAPSHOT_RESULT_MISMATCH'
     return runs

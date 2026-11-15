@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {copyFile, mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile} from "node:fs/promises";
+import {copyFile, mkdir, mkdtemp, readdir, readFile, rm, rename, symlink, writeFile} from "node:fs/promises";
 import {execFile,spawn} from "node:child_process";
 import {promisify} from "node:util";
 import {createHash, createHmac} from "node:crypto";
@@ -346,6 +346,63 @@ test("largest-first representative tail timing retains exact serial findings and
   assert(after.report.max_input_reads<=2);assert.equal(after.report.scanned,6);assert.equal(after.report.bridged,0);
   t.diagnostic(JSON.stringify({kind:"bounded-representative-tail-timing",files:6,total_weight:13,workers:2,canonical_fifo_ms:beforeMs,largest_first_ms:afterMs,
     canonical_fifo_ideal_ticks:10,largest_first_ideal_ticks:8,findings_equal:true,input_context_hashes_equal:true,ordered_write_buffer:false}));
+});
+
+test("privacy policy binds the explicit native I/O thread configuration",async()=>{
+  const original=process.env.UV_THREADPOOL_SIZE;
+  try{process.env.UV_THREADPOOL_SIZE="4";const before=await privacyPolicyIdentity([]);
+    process.env.UV_THREADPOOL_SIZE="8";const after=await privacyPolicyIdentity([]);
+    assert.notEqual(privacyPolicyDigest(before),privacyPolicyDigest(after));
+    assert.notEqual(before.environment.UV_THREADPOOL_SIZE,after.environment.UV_THREADPOOL_SIZE);
+  }finally{if(original===undefined)delete process.env.UV_THREADPOOL_SIZE;else process.env.UV_THREADPOOL_SIZE=original;}
+});
+
+test("bounded parent persistence applies backpressure and drains every write before a command result",async t=>{
+  const f=await fixture(t),paths=Array.from({length:10},(_,n)=>join(f.root,n+".txt"));
+  for(const path of paths)await writeFile(path,"synthetic safe input");
+  let release;globalThis.__privacyWriteGate=new Promise(resolve=>release=resolve);let scans=0;
+  const source=await readFile(new URL("../scripts/lib/privacy-coverage.mjs",import.meta.url),"utf8");
+  const heldSource=source.replace("await handle.sync();","if(path.includes('/records/')||path.includes('/by-input/'))await globalThis.__privacyWriteGate; await handle.sync();");
+  assert.notEqual(source,heldSource);const module=await import("data:text/javascript;base64,"+Buffer.from(heldSource).toString("base64"));
+  let finished=false;const pending=module.privacyFileCoverage({root:f.root,directory:f.directory,candidates:paths,policy:{rules:"synthetic-bounded-queue"},concurrency:2,
+    scan:async()=>{scans++;return[];}}).then(value=>{finished=true;return value;});
+  try{
+    for(let n=0;n<200&&scans<4;n++)await new Promise(resolve=>setTimeout(resolve,5));
+    await new Promise(resolve=>setTimeout(resolve,20));assert.equal(scans,4);assert.equal(finished,false);
+    assert.equal((await readdir(join(f.directory,"runs"))).length,0);
+  }finally{release();}
+  const result=await pending;delete globalThis.__privacyWriteGate;
+  assert.equal(result.report.scanned,10);assert.equal(result.report.max_active_persistence,2);assert.equal(result.report.max_awaiting_persistence,2);
+  assert(result.report.max_input_reads<=2);assert.equal(result.report.phases.persistence.calls,10);
+  assert.equal((await readdir(join(f.directory,"records"))).length,10);
+  assert.equal((await f.run({candidates:paths,policy:{rules:"synthetic-bounded-queue"}})).report.reused,10);
+});
+
+test("queued pointer custody failure retains immutable records and never emits a partial pass",async t=>{
+  const f=await fixture(t),outside=join(f.root,"outside");await mkdir(outside);let poison;
+  await assert.rejects(f.run({concurrency:2,scan:async()=>{
+    poison??=(async()=>{await rename(join(f.directory,"by-input"),join(f.directory,"original-input"));await symlink(outside,join(f.directory,"by-input"));})();
+    await poison;return[];
+  }}),/owned private directory/u);
+  assert.deepEqual(await readdir(outside),[]);assert.equal((await readdir(join(f.directory,"runs"))).length,0);
+  const originals=await Promise.all((await readdir(join(f.directory,"records"))).map(async name=>({name,bytes:await readFile(join(f.directory,"records",name))})));
+  assert.equal(originals.length,3);await rm(join(f.directory,"by-input"));await rename(join(f.directory,"original-input"),join(f.directory,"by-input"));
+  const repaired=await f.run({concurrency:2});assert.equal(repaired.report.scanned,3);assert.equal(repaired.report.outcome,"PASSED");
+  for(const row of originals)assert.deepEqual(await readFile(join(f.directory,"records",row.name)),row.bytes);
+});
+
+test("queued parent records retain large findings and exact coupled input/context semantics",async t=>{
+  const f=await fixture(t),source=await readFile(new URL("../scripts/lib/privacy-coverage.mjs",import.meta.url),"utf8");
+  const referenceSource=source.replace("await persist(ordinal,path,async()=>{","await (async()=>{").replace("},Buffer.byteLength(raw)>64*1024);","})();");
+  assert.notEqual(referenceSource,source);const reference=await import("data:text/javascript;base64,"+Buffer.from(referenceSource).toString("base64"));
+  const finding="synthetic finding "+"x".repeat(70000),scan=async path=>path.endsWith("b.txt")?[finding]:[],contextFor=async path=>({exact:path.slice(-5)}),policy={rules:"exact-coupled-equivalence"};
+  const prior=await reference.privacyFileCoverage({root:f.root,directory:join(f.root,".git/oracle/prior"),candidates:f.paths,policy,scan,contextFor,concurrency:2});
+  const result=await f.run({policy,scan,contextFor,concurrency:2});assert.deepEqual(result.findings,prior.findings);
+  assert.deepEqual(result.report.files.map(({path,sha256,mode,outcome})=>({path,sha256,mode,outcome})),prior.report.files.map(({path,sha256,mode,outcome})=>({path,sha256,mode,outcome})));
+  const inputs=async directory=>(await Promise.all((await readdir(join(directory,"records"))).map(async name=>JSON.parse(await readFile(join(directory,"records",name))).input)))
+    .map(({path,sha256,mode,policy_sha256,context_sha256})=>({path,sha256,mode,policy_sha256,context_sha256})).sort((a,b)=>a.path.localeCompare(b.path));
+  assert.deepEqual(await inputs(f.directory),await inputs(join(f.root,".git/oracle/prior")));
+  assert.equal(result.report.outcome,"FAILED");assert(result.report.max_active_persistence<=2);assert(result.report.max_awaiting_persistence<=2);
 });
 
 async function workerConfiguration(){

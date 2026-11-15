@@ -77,7 +77,7 @@ export async function privacyPolicyIdentity(files, context = {}) {
   const environment = {};
   // Info-ZIP reads these options even when the archive argv is fixed. Locale
   // settings also affect its listing/decoding behavior and remain functional.
-  const environmentNames = new Set(["NODE_OPTIONS", "NODE_ENV", "LANG", "LC_ALL", "LC_CTYPE", "LC_MESSAGES", "TZ",
+  const environmentNames = new Set(["UV_THREADPOOL_SIZE", "NODE_OPTIONS", "NODE_ENV", "LANG", "LC_ALL", "LC_CTYPE", "LC_MESSAGES", "TZ",
     "UNZIP", "UNZIPOPT", "ZIPINFO", "ZIPINFOOPT", ...Object.keys(process.env).filter(name => name.startsWith("LC_"))]);
   for (const name of [...environmentNames].sort())
     environment[name] = process.env[name] === undefined ? null : hash(process.env[name]);
@@ -194,7 +194,34 @@ export async function privacyFileCoverage({root, directory, candidates, policy, 
   // Scheduling hints contain metadata only. Actual immutable bytes, mode and
   // context are captured independently below; size never grants coverage.
   const dispatch = new Array(paths.length); let metadataPosition = 0;
-  const failures = [];
+  const failures = [], persistence = new Set();
+  let maxPersistence = 0, awaitingPersistence = 0, maxAwaitingPersistence = 0;
+  const phases = {};
+  const elapsed = (name, path, began) => {
+    const duration = performance.now()-began;
+    const row = phases[name] ??= {calls:0,milliseconds:0,slowest_ms:0,path_sha256:null};
+    row.calls++; row.milliseconds+=duration;
+    if (duration>row.slowest_ms) {row.slowest_ms=duration;row.path_sha256=hash(path);}
+  };
+  const persist = async (ordinal, path, operation, wait) => {
+    const began=performance.now();
+    if(persistence.size>=concurrency){
+      awaitingPersistence++;maxAwaitingPersistence=Math.max(maxAwaitingPersistence,awaitingPersistence);
+      try{while(persistence.size>=concurrency)await Promise.race(persistence);}
+      finally{awaitingPersistence--;}
+    }
+    elapsed("persistence_wait",path,began);
+    let pending;
+    pending=Promise.resolve().then(async()=>{const started=performance.now();
+      try{await operation();}catch(error){failures.push({ordinal,error});}
+      finally{elapsed("persistence",path,started);}
+    }).finally(()=>persistence.delete(pending));
+    persistence.add(pending);maxPersistence=Math.max(maxPersistence,persistence.size);
+    // Large findings retain the original evaluator backpressure. Only bounded
+    // compact metadata is allowed to advance ahead of durable persistence.
+    if(wait)await pending;
+  };
+  const metadataStarted=performance.now();
   await Promise.all(Array.from({length: Math.min(2, paths.length)}, async () => {
     while (metadataPosition < paths.length) {
       const ordinal = metadataPosition++;
@@ -202,6 +229,7 @@ export async function privacyFileCoverage({root, directory, candidates, policy, 
       catch (error) { failures.push({ordinal, error: new Error("Required privacy input became unavailable: " + relative(root, paths[ordinal]), {cause: error})}); }
     }
   }));
+  elapsed("metadata", "captured-membership", metadataStarted);
   const rejectFailures = () => {
     if (failures.length) {
       const errors = failures.sort((a,b) => a.ordinal-b.ordinal).map(row => row.error);
@@ -212,6 +240,7 @@ export async function privacyFileCoverage({root, directory, candidates, policy, 
   dispatch.sort((a,b) => b.size-a.size || a.ordinal-b.ordinal);
   const observe = async (path, ordinal) => {
     let body, mode;
+    const readStarted=performance.now();
     try {
       await readSlot(async () => {
         const handle = await open(path, "r");
@@ -219,12 +248,18 @@ export async function privacyFileCoverage({root, directory, candidates, policy, 
         finally { await handle.close(); }
       });
     } catch (error) { throw new Error("Required privacy input became unavailable: " + relative(root, path), {cause: error}); }
+    elapsed("read",path,readStarted);
+    const contextStarted=performance.now();
     const context = contextFor ? await contextFor(path) : {};
+    elapsed("context",path,contextStarted);
+    const hashStarted=performance.now();
     const bodyBytes = body.length; bytes += bodyBytes;
     const input = {path: relative(root, path), sha256: hash(body), mode,
       policy_sha256: policyHash, context_sha256: hash(encode(context)), issuer};
     const identity = hash(encode(input));
     const index = join(directory, "by-input", identity + ".json");
+    elapsed("hash",path,hashStarted);
+    const lookupStarted=performance.now();
     let result, retained;
     try {
       result = (await retainedResult(directory, key, input)).findings; reused++;
@@ -241,16 +276,24 @@ export async function privacyFileCoverage({root, directory, candidates, policy, 
         }
       } catch (error) { if (error.code !== "ENOENT") invalidated++; }
     }
+    elapsed("lookup",path,lookupStarted);
     if (result === undefined) {
+      const scanStarted=performance.now();
       const pending = scan(path, body, context); body = undefined;
       result = await pending; scanned++; scannedBytes += bodyBytes;
+      elapsed("worker",path,scanStarted);
       if (!Array.isArray(result) || result.some(item => typeof item !== "string")) throw new Error("Privacy scan returned no result");
+      const signStarted=performance.now();
       const payload = {kind: "boc-privacy-file-result-v1", input, source, findings: result};
       const record = {...payload, signature: sign(key, payload)};
       const raw = encode(record), name = hash(raw) + "-" + randomUUID() + ".json";
-      await writeRecord(join(directory, "records", name), raw, true);
       const pointer = {identity, record: name, sha256: hash(raw)};
-      await writeRecord(index, encode({...pointer, signature: sign(key, pointer)}));
+      const pointerRaw=encode({...pointer, signature: sign(key, pointer)});
+      elapsed("signing",path,signStarted);
+      await persist(ordinal,path,async()=>{
+        await writeRecord(join(directory,"records",name),raw,true);
+        await writeRecord(index,pointerRaw);
+      },Buffer.byteLength(raw)>64*1024);
     }
     manifest[ordinal] = {path: input.path, identity, sha256: input.sha256, mode: input.mode,
       outcome: result.length ? "FAILED" : "PASSED", ...(retained ? {retained} : {})};
@@ -262,10 +305,12 @@ export async function privacyFileCoverage({root, directory, candidates, policy, 
       try {await observe(paths[ordinal], ordinal);} catch (error) {failures.push({ordinal, error});}
     }
   }));
+  await Promise.all(persistence);
   rejectFailures();
   const findings = fileFindings.flat();
   const payload = {kind: "boc-privacy-command-coverage-v1", source, policy_sha256: policyHash,
-    membership_sha256: hash(encode(manifest)), files: manifest, reused, scanned, invalidated, bridged, bytes, scanned_bytes: scannedBytes, concurrency, max_input_reads: maxInputReads,
+    membership_sha256: hash(encode(manifest)), files: manifest, reused, scanned, invalidated, bridged, bytes, scanned_bytes: scannedBytes, concurrency, max_input_reads: maxInputReads, max_active_persistence:maxPersistence, max_awaiting_persistence:maxAwaitingPersistence,
+    compact_persistence_bytes:64*1024, io_threads:Number(process.env.UV_THREADPOOL_SIZE??4), phases,
     outcome: findings.length ? "FAILED" : "PASSED"};
   await writeRecord(join(directory, "runs", randomUUID() + ".json"), encode({...payload, signature: sign(key, payload)}), true);
   return {findings: [...new Set(findings)].sort(), report: payload};
