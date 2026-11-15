@@ -120,3 +120,16 @@ lifetime remain in force. A completed connection budget retains accepted pending
 work for the current native worker until retirement; no auto-restarting daemon
 is installed. Source tests, including a synthetic TLS loopback, establish no real
 Muse hook, service login, external socket, native wake or customer-path acceptance.
+
+## Identity-only onboarding mode
+
+The disabled `onboarding` installer mode adds fixed metadata discovery and closed
+read/action/state bridge operations. `onboarding-monitor` uses the existing
+protected API-key file solely for authenticated metadata at the configured exact
+platform audience; it reports own-work unavailable. It sends no context/session
+selector and starts no login. The separate source-owned OAuth factory accepts
+only an actual existing host connection with identity-only HTTPS support and
+current identity-generation checks. Account authorization remains server-owned.
+Current ChatGPT/Muse API-key custody supplies no eligible own-work OAuth port.
+No installation, hook enablement, live account action or native UAT follows from
+source tests. Existing journey and item-discussion modes retain their behavior.

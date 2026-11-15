@@ -2,6 +2,7 @@
 import {lstat} from "node:fs/promises";
 import {resolve, join} from "node:path";
 import {fileURLToPath} from "node:url";
+import {createCustomerOnboardingMetadataHost} from "./customer-onboarding-host.mjs";
 import {createNotificationHost} from "./notification-host.mjs";
 import {createFeedbackDiscussionHost} from "./feedback-discussion-host.mjs";
 import {createCompanionBridge, callCompanion, acquireCompanionLease} from "./muse-companion-host.mjs";
@@ -50,20 +51,21 @@ export async function main(args = process.argv.slice(2), input = process.stdin) 
     if (!["--root", "--control", "--credential-file", "--ticket"].includes(rest[index]) || !rest[index + 1] || Object.hasOwn(options, rest[index])) fail();
     options[rest[index]] = rest[index + 1];
   }
-  if (operation === "monitor" || operation === "discussion-monitor") {
+  if (operation === "monitor" || operation === "discussion-monitor" || operation === "onboarding-monitor") {
     if (!exact(options, ["--root", "--credential-file"])) fail();
     const root = resolve(options["--root"]), runtime = join(root, "run");
+    const onboarding=operation==="onboarding-monitor";
     const feedback=operation==="discussion-monitor";
-    const assertSourceCurrent = await installedSourceGuard(root,feedback?"feedback":"journey");
+    const assertSourceCurrent = await installedSourceGuard(root,onboarding?"onboarding":feedback?"feedback":"journey");
     await privateDirectory(runtime);
     const releaseLease = await acquireCompanionLease(runtime);
     let host, bridge, active = true;
     try {
       const value = await volatileInput(input);
-      const fields=feedback?["origin","contextHandle","discovery","itemRef","taskIntent","lifetimeMs","intentConfirmed"]:
+      const fields=onboarding?["protectedResource","taskIntent","lifetimeMs","intentConfirmed"]:feedback?["origin","contextHandle","discovery","itemRef","taskIntent","lifetimeMs","intentConfirmed"]:
         ["origin", "contextHandle", "sourceContract", "identities", "taskIntent", "lifetimeMs", "intentConfirmed"];
       if (!exact(value, fields) || value.intentConfirmed !== true) fail();
-      host = await (feedback?createFeedbackDiscussionHost:createNotificationHost)({...value,...(feedback?{enabled:true}:{}), root: runtime, credentialPath: resolve(options["--credential-file"]),
+      host = await (onboarding?createCustomerOnboardingMetadataHost:feedback?createFeedbackDiscussionHost:createNotificationHost)({...value,...(feedback||onboarding?{enabled:true}:{}), root: runtime, credentialPath: resolve(options["--credential-file"]),
         assertCurrent: async () => active, assertSourceCurrent,
         // The hook requests admission. A worker's later explicit state handoff ACK
         // supplies acceptance; a requested/silent wake never reports accepted.
@@ -79,7 +81,7 @@ export async function main(args = process.argv.slice(2), input = process.stdin) 
     }
     return;
   }
-  if (!["hook-payload", "worker-read", "worker-ack", "worker-comment", "retire"].includes(operation) || !options["--control"]) fail();
+  if (!["hook-payload", "worker-read", "worker-ack", "worker-comment", "onboarding-discover", "onboarding-read", "onboarding-present", "onboarding-action", "onboarding-state", "retire"].includes(operation) || !options["--control"]) fail();
   if (operation === "worker-ack" ? !exact(options, ["--control", "--ticket"]) : !exact(options, ["--control"])) fail();
   const path = resolve(options["--control"]);
   if (operation === "hook-payload") {
@@ -88,7 +90,8 @@ export async function main(args = process.argv.slice(2), input = process.stdin) 
       console.log(JSON.stringify(result.pending === true ? result.binding : null));
     } catch { console.log("null"); }
   } else {
-    const result = await callCompanion(path, operation === "worker-read" ? "read" : operation === "worker-ack" ? "ack" : operation === "worker-comment" ? "comment" : "retire",
+    const own=operation.startsWith("onboarding-");
+    const result = own?await callCompanion(path,operation,operation==="onboarding-discover"?{}:await volatileInput(input)):await callCompanion(path, operation === "worker-read" ? "read" : operation === "worker-ack" ? "ack" : operation === "worker-comment" ? "comment" : "retire",
       operation === "worker-ack" ? {ticket: options["--ticket"], accepted: true} : operation === "worker-comment" ? {comment:await volatileInput(input)} : {});
     console.log(JSON.stringify(result));
   }

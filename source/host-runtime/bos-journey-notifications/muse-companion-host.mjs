@@ -39,6 +39,13 @@ export async function createCompanionBridge({root, host}) {
         (exact(request.comment,["body"]) || exact(request.comment,["body","parent_comment_id"]))) {
       return host.submitComment(request.comment);
     }
+    if(host.mode==="onboarding") {
+      if(exact(request,["operation","binding"])&&request.operation==="onboarding-discover")return host.discover();
+      if(exact(request,["operation","binding","payload"])&&request.operation==="onboarding-read")return host.readOwn(request.payload);
+      if(exact(request,["operation","binding","action_ref"])&&request.operation==="onboarding-present")return host.presentOwn(request.action_ref);
+      if(exact(request,["operation","binding","payload","confirmation"])&&request.operation==="onboarding-action")return host.actOwn(request.payload,request.confirmation);
+      if(exact(request,["operation","binding","action_ref"])&&request.operation==="onboarding-state")return host.stateOwn(request.action_ref);
+    }
     fail();
   };
   const server = createServer(socket => {

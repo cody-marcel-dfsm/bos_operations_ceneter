@@ -2,7 +2,7 @@
 name: ada
 description: Guide a customer through creating, reviewing, using, or improving their own customized agent with Ada. Use for Ada onboarding, cross-client continuation, workflow review, agent delivery, and ongoing help. Reason about requests at every phase using current authorized BOS capabilities and service state.
 metadata:
-  version: "1.0.3"
+  version: "1.0.4"
   requires: "{\"bos-app-discovery\":\"1.0.13\",\"bos-mcp-client\":\"1.0.12\",\"bos-workflow-orchestrator\":\"1.0.12\"}"
 ---
 
@@ -28,3 +28,6 @@ For a conversational runtime that needs the shared core, use the producer-owned
 [runtime export](references/runtime-export.md). A preview, source hash or copied
 prompt establishes no publication admission. The runtime adapter remains
 responsible for verified identity, current discovery and execution safeguards.
+
+For identity-only own onboarding, read [current-account onboarding](references/customer-onboarding.md).
+Its source helper requires an actual supported authenticated HTTPS host port.

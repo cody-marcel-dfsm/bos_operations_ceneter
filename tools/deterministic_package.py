@@ -27,7 +27,7 @@ except ImportError:
     import deterministic_source as native
 
 KIND = 'boc-deterministic-package/1'
-PROFILE = 'feedback-discovery-and-release-tool/7'
+PROFILE = 'feedback-discovery-and-release-tool/8'
 _OUTPUT_LOCK = threading.Lock()
 WS_LOCK_RECORD = {
     'version': '8.23.0', 'resolved': 'https://registry.npmjs.org/ws/-/ws-8.23.0.tgz',
@@ -50,7 +50,8 @@ TESTS = [
     'tests/ada-client.test.mjs', 'tests/ada-journey-view.test.mjs',
     'tests/runtime-skill-export.test.mjs', 'tests/feedback-item-discussion.test.mjs',
     'tests/notification-host.test.mjs', 'tests/notification-host-installer.test.mjs',
-    'tests/document-cache.test.mjs',
+    'tests/document-cache.test.mjs', 'tests/ada-customer-onboarding.test.mjs',
+    'tests/customer-onboarding-host.test.mjs',
     'tests/feedback-socket-host.test.mjs',
     'tests/customer-data-privacy.test.mjs', 'tests/privacy-coverage.test.mjs',
 ]
@@ -83,6 +84,11 @@ CUSTOMER_INITIALIZATION = {
 # turn safeguards. Exact files only; existing auth/transport is unchanged.
 ADA_CLIENT = {
     'source/platform/ada/SKILL.md',
+    'source/platform/ada/scripts/customer-onboarding.mjs',
+    'source/platform/ada/references/customer-onboarding.md',
+    'source/host-runtime/bos-journey-notifications/customer-onboarding-host.mjs',
+    'tests/ada-customer-onboarding.test.mjs', 'tests/customer-onboarding-host.test.mjs',
+    'tests/helpers/synthetic-onboarding.mjs',
     'source/platform/ada/agents/openai.yaml',
     'source/platform/ada/references/turn-safeguards.md',
     'source/platform/ada/scripts/turn-safeguards.mjs',

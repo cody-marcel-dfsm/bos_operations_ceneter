@@ -15,11 +15,11 @@ import {notificationFixture} from "./helpers/synthetic-notifications.mjs";
 const project = fileURLToPath(new URL("..", import.meta.url));
 const git = (root, ...args) => execFileSync("git", ["-C", root, "-c", "user.name=Synthetic installer", "-c", "user.email=installer@example.invalid", ...args], {encoding: "utf8", stdio: ["ignore", "pipe", "pipe"]}).trim();
 test("immutable published host closure installs atomically, verifies modes and preserves native lifecycle custody", async t => {
-  const temporary = await realpath(await mkdtemp(join(await realpath("/tmp"), "bni-"))); t.after(() => rm(temporary, {recursive: true, force: true}));
-  const source = join(temporary, "source"), root = join(temporary, "installed"); await mkdir(source, {mode: 0o700});
+  const temporary = await realpath(await mkdtemp(join(await realpath("Vault/tmp"), "n"))); t.after(() => rm(temporary, {recursive: true, force: true}));
+  const source = join(temporary, "source"), root = temporary; await mkdir(source, {mode: 0o700});
   for (const name of ["source/host-runtime/bos-journey-notifications", "source/host-runtime/bos-shared-cache",
     "source/platform/bos-workflow-orchestrator/scripts", "source/platform/bos-app-discovery/scripts",
-    "source/platform/bos-external-dependency-adapter/scripts", "source/platform/submit-feedback/scripts"]) {
+    "source/platform/bos-external-dependency-adapter/scripts", "source/platform/submit-feedback/scripts", "source/platform/ada/scripts"]) {
     await mkdir(join(source, name, ".."), {recursive: true});
     await cp(join(project, name), join(source, name), {recursive: true});
   }
@@ -105,6 +105,13 @@ test("immutable published host closure installs atomically, verifies modes and p
     "discussion-monitor","--root",root,"--credential-file",credential],{stdio:["pipe","pipe","pipe"]});
   const disabledDone=new Promise(resolve=>disabled.on("close",resolve));disabled.stdin.end("{}");
   assert.equal(await disabledDone,1);
+  const own=await installNotificationHost({sourceRoot:source,root,revision,mode:"onboarding"});
+  assert.equal(own.hook_definition_plan.initial_state,"disabled");
+  assert.match(own.hook_definition_plan.prompt,/metadata-only/u);
+  assert.equal(JSON.parse(await readFile(join(root,"active.json"))).hook,null);
+  assert(immutable.files.some(row=>row.path.endsWith("customer-onboarding-host.mjs")));
+  assert(immutable.files.some(row=>row.path.endsWith("ada/scripts/customer-onboarding.mjs")));
+  await assert.rejects(recordNotificationHook({root,observation:observation(true)}),NotificationHostError);
   const vendor=join(destination,"source/host-runtime/bos-journey-notifications/vendor/ws.bundle.mjs");
   const vendorBytes=await readFile(vendor);await writeFile(vendor,"changed vendor");
   await assert.rejects(verifyNotificationHost(destination),NotificationHostError);await writeFile(vendor,vendorBytes);

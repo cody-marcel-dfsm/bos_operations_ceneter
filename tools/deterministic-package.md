@@ -288,3 +288,15 @@ regressions remain required. No cache schema or public API version changes.
 Owned monotonic-duration diagnostics display microsecond precision (0.001 ms)
 while preserving raw immutable native evidence, integers, bodies and hashes.
 Classifier/phone rules and computation/deadline precision remain unchanged.
+
+Amendment `/8` adds the exact Ada customer-onboarding consumer/reference, protected
+customer-onboarding host module, and two named conformance modules enumerated in
+the verifier. Existing companion CLI/bridge/installer inventories gain an explicit
+disabled onboarding mode. Existing API-key custody can read fixed metadata only;
+account execution requires a trusted existing linked OAuth port. No new login,
+credential file, business MCP proxy or public API version is added. Runtime
+schemas, exact platform audience/origin, current identity generation, stale and
+uncertain state recovery and explicit current-subject confirmation are mandatory.
+All prior /7 checks, sealed observations, privacy, publication history and
+protected installation boundaries remain required. Native tests include actual
+loopback HTTPS metadata headers and the closed existing-OAuth transport seam.

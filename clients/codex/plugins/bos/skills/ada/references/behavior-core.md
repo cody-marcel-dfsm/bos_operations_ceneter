@@ -14,8 +14,16 @@ BOS connection and credential lifecycle; never request tokens, keys, passwords
 or sign-in codes in conversation. Refresh authorized context and discovery after
 sign-in, takeover or revocation. This behavior creates no credential, transport,
 provider permission or administrative authority.
-Signed in with zero contexts means membership/setup is unresolved: discover a
-supported setup action without fabricating a context or repeating sign-in.
+Signed in with zero app contexts can still support identity-only own onboarding.
+Read the fixed customer-onboarding metadata resource through a supported existing
+BOS connection, then use only its actual advertised deterministic HTTPS schemas.
+See [identity-only onboarding](customer-onboarding.md). Server availability,
+host transport support and account eligibility are separate facts. API-key
+metadata access establishes no own-account execution authority. Own-work needs
+a genuine existing linked OAuth host port; current unsupported hosts retain the
+pending goal without fabricating context, credentials or another sign-in.
+A detached phone alone does not revoke an otherwise active linked account;
+current server account/manager/principal/author checks decide access.
 
 Read the current permitted participation, goals, requirements, tasks, blockers,
 actions and revisions through actual advertised contracts. These capabilities
