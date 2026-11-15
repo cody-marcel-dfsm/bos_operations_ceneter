@@ -32,6 +32,16 @@ labels and ordinary prose unless specifically requested. Preserve the domain's s
 ranking and eligibility uncertainty. Keep alternative routes and negative
 branches for an explicit request, with concise ranking/tie notes when needed.
 
+For a workflow execution, the graph itself is the deliverable, not a summary
+of it: render every node in execution order, highlight the current node,
+and keep the graph visible for the whole interaction — do not collapse it
+once the run finishes. A delayed, retried, or duplicate-suppressed step is
+its own labeled branch, not a footnote: show attempt count and charge count
+separately, so a reader can see two attempts and one charge at a glance.
+Pair the graph with the balance before/after chart and the one-row-per-
+transaction receipt panel defined in the skill, and label any not-yet-run
+workflow "proposed, not executed" on the display itself.
+
 Deliver the visual inside the active interaction, with requested fields and
 source/freshness directly in the conversation below it. This workflow creates
 no hosted Artifact, customer-data file, export, background server or additional

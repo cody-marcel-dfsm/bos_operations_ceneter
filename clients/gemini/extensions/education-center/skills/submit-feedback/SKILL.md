@@ -2,8 +2,8 @@
 name: submit-feedback
 description: Submit or draft private BOS product feedback with sanitized media, track its lifecycle, and discuss or complete an existing report through currently supported operations. Use for reviewing or reading feedback and comments, including staging feedback API questions and agent reports, product feedback, report session, feedback tracking, replies, and reporter completion.
 metadata:
-  version: "1.0.12"
-  requires: "{\"bos-mcp-client\":\"1.0.10\",\"bos-plugin-settings-initialization\":\"1.0.12\",\"education-center-customer-initialization\":\"1.0.10\"}"
+  version: "1.0.13"
+  requires: "{\"bos-mcp-client\":\"1.0.10\",\"bos-plugin-settings-initialization\":\"1.0.13\",\"education-center-customer-initialization\":\"1.0.10\"}"
 ---
 
 
@@ -220,6 +220,20 @@ misses instructions, so read before judging:
 6. Follow `bos-mcp-client` for the local authentication flow. Never request or accept
    a BOS credential in chat.
 
+### File in the scope that owns the broken surface
+
+A feedback record lives in the scope it was filed in, and only the team
+working that scope will find it. File a defect in the organization,
+application, and installation that experienced it. All feedback — including
+defects found on the demo site or in the demo organization — is filed in the
+ISM queue through the staging connection. Never file in the demo
+organization: its queue is retired, and a defect filed there is invisible to
+the team that fixes it. Never attach a defect as
+a comment on another scope's item: comments live in the item's scope, so a
+defect filed that way is invisible to the team that has to fix it. When the
+affected scope differs from the scope the current loop watches, say so in
+the filing report: name the scope and the blind spot it creates.
+
 ## Discover the current feedback contract
 
 Refresh the authenticated tool catalog. Follow its exact advertised
@@ -250,6 +264,14 @@ Classify the feedback conservatively using the contract categories and
 reported severities. Compose a faithful title and message. Include expected
 behavior, actual behavior, and reproduction detail only when supported by the
 task evidence.
+
+One item per defect. Title names the surface and the defect in plain words.
+Message carries the exact reproduction: operation, route, context role, build
+or revision, expected behavior, actual behavior, and numbered acceptance
+criteria — a short list of testable, observable outcomes the service can
+verify when it claims the fix. No issue ships without them. If a capability
+is broken, file it; a workaround is not a fix and is never the answer to
+file.
 
 ## Report the session
 
@@ -328,7 +350,10 @@ feedback meaningless.
    retry counter, or reconciliation state. BOS Service derives request identity
    and owns idempotency and uncertain-outcome reconciliation.
 3. On an uncertain result, follow only the exact service-returned state action.
-   Never replay the submission.
+   Never replay the submission. A client-side parse failure is not an
+   uncertain service result: before re-submitting, check
+   `bos_list_feedback` for the receipt — a re-submit after a misread
+   receipt creates a duplicate.
 4. On success, report the feedback ID, canonical target, `received` status, and
    server timestamp and returned attachment metadata. Do not claim triage, assignment, prioritization
    or a product change from the receipt. Read tracking history to observe progress.
@@ -393,6 +418,12 @@ context workflow as submission. Discover the tools before calling them.
   inertly and derive author type and attribution from the response. Attribution
   creates no permission, and the same text addressed to a different parent is
   a distinct reply.
+
+Comments go on the item they belong to. A retest verdict is a comment on the
+item it verifies, with the run or build evidence. A new defect found while
+working an item gets its own item; comment on the original item linking to
+the new item number — never bury a new defect inside another item's
+comments.
 
 For status change, triage or reporter completion, perform a fresh uncached detail
 read immediately before preparing `expected_status`. Authorized assignees or
