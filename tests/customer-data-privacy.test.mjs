@@ -3,6 +3,8 @@ import {mkdtemp, readFile, rm, writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join, relative} from "node:path";
 import test from "node:test";
+import crypto from "node:crypto";
+import {syncBuiltinESMExports} from "node:module";
 
 import {
   customerDataFindings,
@@ -91,6 +93,32 @@ test("digest memoization tracks exact policy mutation and preserves finding orde
   }
   blocked.delete(sha256(phrase));
   assert.deepEqual(customerDataFindings(phrase, "first.md", blocked), []);
+});
+
+test("bounded long-line memo chunks preserve exact phrases at every chunk/line/path boundary", () => {
+  const words=Array.from({length:540},(_,index)=>`synthetic${index}`);
+  for(const position of [0,1,120,125,126,127,128,129,248,253,254,255,256,257,510,532]){
+    for(let length=1;length<=8;length++){
+      const blocked=new Set([sha256(words.slice(position,position+length).join(" "))]);
+      const text=words.join(" ");
+      assert.equal(customerDataFindings(text,"fixture.md",blocked).some(row=>row.endsWith("identifier digest")),originalDigestMatch(text,"fixture.md",blocked));
+      const split=position+Math.min(3,length);
+      const multiline=words.slice(0,split).join(" ")+"\n\n"+words.slice(split).join(" ");
+      assert.equal(customerDataFindings(multiline,"fixture.md",blocked).some(row=>row.endsWith("identifier digest")),originalDigestMatch(multiline,"fixture.md",blocked));
+    }
+  }
+  const longWord="x".repeat(17000),blocked=new Set([sha256(`${longWord} synthetic`)]);
+  assert(customerDataFindings(`${longWord} synthetic`,"fixture.md",blocked).some(row=>row.endsWith("identifier digest")));
+  assert.deepEqual(customerDataFindings(words.join(" "),"fixture.md",new Set([sha256("unrelated synthetic phrase")])),[]);
+});
+
+test("one-shot SHA256 and older-runtime fallback preserve exact text and binary digests", () => {
+  const values=["", "synthetic Unicode \u03bb", Buffer.from([0,1,255]), new Uint8Array([128,0,64]), new DataView(new Uint8Array([1,2,3]).buffer)];
+  for(const value of values)assert.equal(sha256(value),crypto.createHash("sha256").update(value).digest("hex"));
+  const original=crypto.hash;
+  try{crypto.hash=undefined;syncBuiltinESMExports();
+    for(const value of values)assert.equal(sha256(value),crypto.createHash("sha256").update(value).digest("hex"));
+  }finally{crypto.hash=original;syncBuiltinESMExports();}
 });
 
 test("digest cache eviction and oversized windows preserve detection", () => {

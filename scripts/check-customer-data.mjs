@@ -2,6 +2,7 @@
 
 import {execFile} from "node:child_process";
 import {createHash} from "node:crypto";
+import * as nodeCrypto from "node:crypto";
 import {mkdtemp, readFile, readdir, rm, stat, writeFile} from "node:fs/promises";
 import {extname, join, relative, resolve} from "node:path";
 import {tmpdir} from "node:os";
@@ -45,9 +46,12 @@ function blockedWordWindow(words, matcher) {
   const cached = matcher.windows.get(key);
   if (cached !== undefined) return cached;
   let found = false;
-  for (let size = 1; size <= 8 && !found; size += 1) {
-    for (let index = 0; index + size <= words.length; index += 1) {
-      if (matcher.digests.has(sha256(words.slice(index, index + size).join(" ")))) {
+  for (let index = 0; index < words.length && !found; index += 1) {
+    let phrase = "";
+    for (let size = 1; size <= 8 && index + size <= words.length; size += 1) {
+      // Identical normalized windows without allocating an array per digest.
+      phrase = size === 1 ? words[index] : phrase + " " + words[index + size - 1];
+      if (matcher.digests.has(sha256(phrase))) {
         found = true;
         break;
       }
@@ -72,11 +76,15 @@ function hasBlockedDigest(text, path, blockedDigests) {
   for (const line of `${path} ${text}`.split("\n")) {
     const words = normalizeSensitiveText(line).split(" ").filter(Boolean);
     if (!words.length) continue;
-    const window = previous.concat(words);
-    if (blockedWordWindow(window, matcher)) return true;
-    // Every one-to-eight-word phrase crossing any number of short/empty lines
-    // is included in the next exact window. The path/body boundary is identical.
-    previous = window.slice(-7);
+    // Bounded overlapping chunks make long repeated log/source lines eligible
+    // for the existing exact-result memo, whose character/memory limits remain
+    // unchanged. Seven trailing words preserve every one-to-eight-word phrase
+    // across chunks, short/empty lines and the path/body boundary.
+    for (let offset = 0; offset < words.length; offset += 128) {
+      const window = previous.concat(words.slice(offset, offset + 128));
+      if (blockedWordWindow(window, matcher)) return true;
+      previous = window.slice(-7);
+    }
   }
   return false;
 }
@@ -204,7 +212,8 @@ export function normalizeSensitiveText(value) {
 }
 
 export function sha256(value) {
-  return createHash("sha256").update(value).digest("hex");
+  return typeof nodeCrypto.hash === "function" ? nodeCrypto.hash("sha256", value, "hex") :
+    createHash("sha256").update(value).digest("hex");
 }
 
 export function isWatcherProcessMetadata(path, body) {

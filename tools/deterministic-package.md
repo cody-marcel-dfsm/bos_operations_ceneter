@@ -97,6 +97,18 @@ no domain/email allowlist or archive exclusion is introduced. The fixed category
 adds the complete customer-data privacy and privacy-coverage modules. Its changed
 policy identity receives a fresh complete scan, with zero old-policy bridge/reuse.
 Existing signed transition authorization machinery is unchanged.
+The owner-directed fresh-scan performance repair chunks normalized words into
+bounded 128-word memo entries with seven-word overlap. Every one-to-eight-word
+digest window, path/line boundary and all input bytes remain covered; existing
+memory bounds and failure rules remain. The complete privacy suite compares
+chunk boundaries against the original matcher. Its new policy digest receives
+fresh full coverage without adopting old-policy passes or forged transitions.
+SHA-256 uses Node's equivalent one-shot primitive when available, retaining the
+original streaming fallback on earlier supported runtimes. Digest bytes and
+all input/result identities remain identical; no phrase or file is skipped.
+Each normalized phrase is extended directly instead of allocating a sliced
+array for every digest; enumeration order changes only for an internal boolean
+match and preserves the exact complete one-to-eight-word set and findings.
 
 The version 7 profile preserves existing unpublished history when integrating the
 published main line. A two-parent merge must have exactly one parent that is an
