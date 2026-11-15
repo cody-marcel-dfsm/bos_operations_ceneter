@@ -47,7 +47,15 @@ All earlier fixed tests, publication, privacy and exact-source custody remain.
 This amendment verifies package source; live Ada operations, provider effects,
 voice/SMS adapters and native host acceptance require independent runtime evidence.
 
-The version 3 profile preserves existing unpublished history when integrating the
+Amendment `/4` (owner-directed graphical co-design, 2026-11-14) adds exactly
+`source/platform/ada/scripts/journey-view.mjs`, its
+`references/journey-view.md`, and `tests/ada-journey-view.test.mjs`. The fixed
+category adds closed client-presentation model validation, deterministic inert
+Mermaid/text rendering, bounded stdin CLI, injection/currentness/evidence tests
+and five-host consumer parity. This grants no network, credential, execution,
+service contract or delivery authority. All earlier checks remain required.
+
+The version 4 profile preserves existing unpublished history when integrating the
 published main line. A two-parent merge must have exactly one parent that is an
 ancestor of the exact publication base; its result is classified against that
 trusted parent. Every unpublished nonmerge edge is still inspected, including

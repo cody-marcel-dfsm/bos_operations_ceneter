@@ -2,7 +2,7 @@
 name: ada
 description: Guide a customer through creating, reviewing, using, or improving their own customized agent with Ada. Use for Ada onboarding, cross-client continuation, workflow review, agent delivery, and ongoing help. Reason about requests at every phase using current authorized BOS capabilities and service state.
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   requires: "{\"bos-app-discovery\":\"1.0.13\",\"bos-mcp-client\":\"1.0.12\",\"bos-workflow-orchestrator\":\"1.0.12\"}"
 ---
 
@@ -123,6 +123,15 @@ its designated authorized environment.
 Use [the local turn safeguards](references/turn-safeguards.md) when preparing a
 confirmation or progress projection. They are optional pure local helpers;
 they perform no discovery, authentication, service mutation or state evaluation.
+
+For graphical co-design or several connected journeys, use the
+[journey and milestone view](references/journey-view.md). Map authorized results
+into its local display model, preserving app ownership, customer, definition,
+instance and exact graph revision. Show concurrent Ada/customer/service work,
+reported dependencies, achievements and blockers with one primary next action.
+Mark missing or stale state explicitly; provide no invented percentage or ETA.
+Use the text view when the host lacks a supported diagram renderer. Rendering
+creates no confirmation, execution, serving readiness or artifact delivery.
 
 ## Continue honestly
 

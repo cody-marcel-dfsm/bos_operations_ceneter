@@ -23,7 +23,7 @@ except ImportError:
     import deterministic_source as native
 
 KIND = 'boc-deterministic-package/1'
-PROFILE = 'feedback-discovery-and-release-tool/3'
+PROFILE = 'feedback-discovery-and-release-tool/4'
 TESTS = [
     'tests/bos-foundation-connection.test.mjs', 'tests/bos-logout.test.mjs',
     'tests/context-selection.test.mjs', 'tests/product-mcp-contract.test.mjs',
@@ -35,7 +35,7 @@ TESTS = [
     'tests/journey-package-parity.test.mjs', 'tests/muse-package.test.mjs',
     'tests/bos-customer-profile.test.mjs', 'tests/plugin-console.test.mjs',
     'tests/plugin-settings.test.mjs', 'tests/publication-safety.test.mjs',
-    'tests/ada-client.test.mjs',
+    'tests/ada-client.test.mjs', 'tests/ada-journey-view.test.mjs',
 ]
 CHECKS = [
     ['npm', 'run', 'build:packages'], ['git', 'diff', '--exit-code', 'HEAD', '--'],
@@ -69,6 +69,9 @@ ADA_CLIENT = {
     'source/platform/ada/references/turn-safeguards.md',
     'source/platform/ada/scripts/turn-safeguards.mjs',
     'tests/ada-client.test.mjs',
+    'source/platform/ada/scripts/journey-view.mjs',
+    'source/platform/ada/references/journey-view.md',
+    'tests/ada-journey-view.test.mjs',
 }
 # Profile /2 amendment: owner-approved repairs of tests that went stale when
 # CI moved to this deterministic gate (aa66d553, 6d75ed26, 2dbc43b4).
