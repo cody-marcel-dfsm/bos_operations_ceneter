@@ -55,7 +55,18 @@ Mermaid/text rendering, bounded stdin CLI, injection/currentness/evidence tests
 and five-host consumer parity. This grants no network, credential, execution,
 service contract or delivery authority. All earlier checks remain required.
 
-The version 4 profile preserves existing unpublished history when integrating the
+Amendment `/5` (owner-directed generic Ada runtime artifact, 2026-11-14) adds
+exactly `source/platform/ada/references/behavior-core.md`,
+`references/runtime-export.md`, `runtime-export.json` within that skill,
+`scripts/lib/runtime-skill-export.mjs`, `scripts/export-runtime-skill.mjs`, and
+`tests/runtime-skill-export.test.mjs`. Ada's host wrapper references its shared
+host-neutral core. The fixed category adds exact dependency/file integrity,
+closed entry-role inventory, explicit preview separation, production native
+publication admission, tamper and five-host parity checks. Existing publication
+ancestry/CI/history gates remain authoritative. No consumer source writer,
+network API, credential change or source-only publication exemption is added.
+
+The version 5 profile preserves existing unpublished history when integrating the
 published main line. A two-parent merge must have exactly one parent that is an
 ancestor of the exact publication base; its result is classified against that
 trusted parent. Every unpublished nonmerge edge is still inspected, including

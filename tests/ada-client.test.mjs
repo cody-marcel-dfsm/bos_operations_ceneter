@@ -99,7 +99,8 @@ test("BOS production selection and all supported generated consumers ship the sa
   const product = JSON.parse(await readFile(join(root, "products/bos/product.json"), "utf8"));
   const skills = await resolveProductSkills(product);
   assert(skills.some(skill => skill.name === "ada"));
-  const relativeFiles = ["SKILL.md", "agents/openai.yaml", "references/turn-safeguards.md", "scripts/turn-safeguards.mjs"];
+  const relativeFiles = ["SKILL.md", "agents/openai.yaml", "references/turn-safeguards.md", "scripts/turn-safeguards.mjs",
+    "references/behavior-core.md", "references/runtime-export.md", "runtime-export.json"];
   for (const consumer of consumers) {
     const base = join(root, "clients", consumer, "bos/skills/ada");
     for (const file of relativeFiles) {

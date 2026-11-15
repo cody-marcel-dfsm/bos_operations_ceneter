@@ -355,6 +355,7 @@ class PackageGateTests(unittest.TestCase):
         self.assertTrue(d.ADA_CLIENT <= set(paths))
         self.assertIn('tests/ada-client.test.mjs', d.TESTS)
         self.assertIn('tests/ada-journey-view.test.mjs', d.TESTS)
+        self.assertIn('tests/runtime-skill-export.test.mjs', d.TESTS)
 
     def test_unknown_ada_source_is_rejected(self):
         path = self.root / 'source/platform/ada/scripts/credentials.mjs'

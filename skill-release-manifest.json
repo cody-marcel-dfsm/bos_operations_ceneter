@@ -3,7 +3,7 @@
   "release": "0.0.218",
   "skills": {
     "ada": {
-      "version": "1.0.2",
+      "version": "1.0.3",
       "requires": {
         "bos-app-discovery": "1.0.13",
         "bos-mcp-client": "1.0.12",
@@ -12,19 +12,31 @@
       "path": "source/platform/ada",
       "files": {
         "SKILL.md": {
-          "sha256": "c7ea68cae91c064ccc68ed13954f9d6cca8fc90de486cda9ea347aa0936efeaa",
+          "sha256": "1a5566479c221c80e9ed2bc6ed87fb982cbcedbdbea4c987dca7e9716abdaccb",
           "mode": 420
         },
         "agents/openai.yaml": {
           "sha256": "f3f005d99028e6fbdd5fe3788f22a4002c76177d8f27c31235d3ee85735d8085",
           "mode": 420
         },
+        "references/behavior-core.md": {
+          "sha256": "c21a89a3a5fd99733526eea0d33ede337ed606ef2dac851787e5b1ca0409ee37",
+          "mode": 420
+        },
         "references/journey-view.md": {
           "sha256": "96e8ca7bf1d8fadf346cdd685c61beb6614763519aeb42894c90ef394a373667",
           "mode": 420
         },
+        "references/runtime-export.md": {
+          "sha256": "c9c3df2dc5220033b4e2e952f44550059b704b3a35e7d9cd76275b38b835eec7",
+          "mode": 420
+        },
         "references/turn-safeguards.md": {
           "sha256": "2f580b35be46e426ab5c239d202caf9b6cdad59e13c4f29e449b0d5eb3fc58f4",
+          "mode": 420
+        },
+        "runtime-export.json": {
+          "sha256": "f2bed3a798e47cebe5fb343c8585e5f91f8da510beec0377c74eea5c47068524",
           "mode": 420
         },
         "scripts/journey-view.mjs": {
@@ -37,7 +49,7 @@
         }
       },
       "effective": {
-        "bos": "2c419dcc3487593cce2fe0735976874bf1c5039c5c08b8236a035a9527cec38e"
+        "bos": "d5c2efd3c696719855806da08941ff6951f1e1e81bc577f482da7bc666599ae2"
       }
     },
     "agent-call-operations": {
