@@ -166,3 +166,12 @@ Remote CI is its own execution observation and supplies no original-task SLA pro
 Publication does not establish installation or native client acceptance.
 An optional PR-based route remains available through `merge --pr NUMBER`; the
 normal SSH route requires no GitHub CLI credential or model approval.
+
+The bounded `/7` cold-scan repair additionally admits exactly
+`scripts/lib/privacy-coverage.mjs`, `scripts/lib/privacy-scan-pool.mjs`,
+`scripts/lib/privacy-scan-worker.mjs` and `tests/privacy-coverage.test.mjs`. Four
+fixed evaluation workers independently bind the same source/policy/rule identity;
+only two input file reads are buffered, with eight-MiB worker bodies and bounded
+worker heaps. Oversized inputs retain the complete direct scanner. The parent
+alone signs atomic per-file content/context observations and sorts merged results.
+No file, phrase, archive, customer rule or transition guard is omitted.

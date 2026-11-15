@@ -3,10 +3,10 @@
 import {execFile} from "node:child_process";
 import {createHash} from "node:crypto";
 import * as nodeCrypto from "node:crypto";
-import {mkdtemp, readFile, readdir, rm, stat, writeFile} from "node:fs/promises";
+import {mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile} from "node:fs/promises";
 import {extname, join, relative, resolve} from "node:path";
-import {tmpdir} from "node:os";
 import {promisify} from "node:util";
+import {createPrivacyScanPool} from "./lib/privacy-scan-pool.mjs";
 import {privacyFileCoverage, privacyPolicyIdentity, privacyPolicyDigest, privacyCoveragePartition, privacyTransitionProof} from "./lib/privacy-coverage.mjs";
 
 const execFileAsync = promisify(execFile);
@@ -436,7 +436,9 @@ async function scanZip(path, bytes, blockedDigests, approvedBinaryDigests, execu
   const findings = [];
   const readerEnvironment = {...process.env};
   for (const name of ["UNZIP", "UNZIPOPT", "ZIPINFO", "ZIPINFOOPT"]) delete readerEnvironment[name];
-  const directory = await mkdtemp(join(tmpdir(), "boc-privacy-archive-"));
+  const scratch = join(root, "Vault", "tmp", "privacy-archives");
+  await mkdir(scratch, {recursive: true, mode: 0o700});
+  const directory = await mkdtemp(join(scratch, "archive-"));
   const snapshot = join(directory, "snapshot.zip");
   try {
   await writeFile(snapshot, bytes, {flag: "wx", mode: 0o600});
@@ -497,29 +499,8 @@ export async function privacyTransitionAssessment(previousPolicy) {
   return scanPrivacyCandidates(await privacyCandidates(), {assessTransitionFrom: previousPolicy});
 }
 
-async function scanPrivacyCandidates(candidates, {describeOnly = false, assessTransitionFrom = null} = {}) {
-  const names = [digestPath, approvedBinaryPath, join(root, "privacy", "owned-github-pr-identities.json"),
-    join(root, "privacy", "owned-native-probe-identities.json")];
-  const rules = await Promise.all(names.map(async path => ({path, body: await readFile(path)})));
-  const blockedDigests = new Set(rules[0].body.toString("utf8").split(/\s+/u).filter(Boolean));
-  const approvedBinaryDigests = new Set(rules[1].body.toString("utf8").split(/\s+/u).filter(Boolean));
-  const githubIdentities = JSON.parse(rules[2].body), nativeProbeIdentities = JSON.parse(rules[3].body);
-  const policy = await privacyPolicyIdentity([{path: new URL(import.meta.url).pathname,
-    body: await readFile(new URL(import.meta.url))}, ...rules], {
-      functions: [customerDataFindings, isExactPublicLegalNotice, normalizeSensitiveText, hasBlockedDigest, blockedWordWindow, digestMatcher,
-        allowedSyntheticDomain, allowedFictionalPhone, sha256, scanPrivacyCandidates,
-        isCpuProfileTextArtifact, cpuProfilePrivacyText, isProposedTextArtifact, isOperationalTextArtifact,
-        verifiedNativeProbeMetadataText, verifiedSyntheticSourceFixtureText, ownNativeProbeIdentity,
-        ownSourceFixtureIdentity, isWatcherProcessMetadata, operationalPrivacyText, verifiedGithubMetadataText,
-        scanZip].map(value => value.toString()),
-      textExtensions: [...textExtensions], operationalTextExtensions: [...operationalTextExtensions],
-      patterns: [emailPattern, formattedNanpPattern, compactNanpPattern, terminalSgrPattern].map(String)
-    });
-  const source = await execFileAsync("git", ["rev-parse", "HEAD", "HEAD^{tree}"], {cwd: root,
-    env: {...process.env, GIT_OPTIONAL_LOCKS: "0"}});
-  const [commit, tree] = source.stdout.trim().split("\n");
-  const scan = async (path, body, context) => {
-    if (path.endsWith(".zip")) return scanZip(path, body, blockedDigests, approvedBinaryDigests, policy.executables[1].path);
+export async function scanPrivacyFile(path, body, context, {blockedDigests, approvedBinaryDigests, githubIdentities, archiveExecutable}) {
+    if (path.endsWith(".zip")) return scanZip(path, body, blockedDigests, approvedBinaryDigests, archiveExecutable);
     const label = relative(root, path);
     if (operationalTextExtensions.has(extname(path).toLowerCase())) {
       if (!isOperationalTextArtifact(path, body))
@@ -541,8 +522,31 @@ async function scanPrivacyCandidates(candidates, {describeOnly = false, assessTr
     const nativeText = verifiedNativeProbeMetadataText(body.toString("utf8"), context.nativeProbe);
     const sourceText = verifiedSyntheticSourceFixtureText(nativeText, context.sourceFixture);
     return customerDataFindings(verifiedGithubMetadataText(sourceText, githubIdentities), label, blockedDigests);
-  };
-  policy.context.scan = scan.toString();
+}
+
+async function scanPrivacyCandidates(candidates, {describeOnly = false, assessTransitionFrom = null} = {}) {
+  const names = [digestPath, approvedBinaryPath, join(root, "privacy", "owned-github-pr-identities.json"),
+    join(root, "privacy", "owned-native-probe-identities.json")];
+  const rules = await Promise.all(names.map(async path => ({path, body: await readFile(path)})));
+  const blockedDigests = new Set(rules[0].body.toString("utf8").split(/\s+/u).filter(Boolean));
+  const approvedBinaryDigests = new Set(rules[1].body.toString("utf8").split(/\s+/u).filter(Boolean));
+  const githubIdentities = JSON.parse(rules[2].body), nativeProbeIdentities = JSON.parse(rules[3].body);
+  const policy = await privacyPolicyIdentity([{path: new URL(import.meta.url).pathname,
+    body: await readFile(new URL(import.meta.url))},
+    ...await Promise.all(["./lib/privacy-scan-pool.mjs", "./lib/privacy-scan-worker.mjs"].map(async name => {const path = new URL(name, import.meta.url).pathname; return {path, body: await readFile(path)};})), ...rules], {
+      functions: [customerDataFindings, isExactPublicLegalNotice, normalizeSensitiveText, hasBlockedDigest, blockedWordWindow, digestMatcher,
+        allowedSyntheticDomain, allowedFictionalPhone, sha256, scanPrivacyCandidates,
+        isCpuProfileTextArtifact, cpuProfilePrivacyText, isProposedTextArtifact, isOperationalTextArtifact,
+        verifiedNativeProbeMetadataText, verifiedSyntheticSourceFixtureText, ownNativeProbeIdentity,
+        ownSourceFixtureIdentity, isWatcherProcessMetadata, operationalPrivacyText, verifiedGithubMetadataText,
+        scanZip, scanPrivacyFile].map(value => value.toString()),
+      textExtensions: [...textExtensions], operationalTextExtensions: [...operationalTextExtensions],
+      patterns: [emailPattern, formattedNanpPattern, compactNanpPattern, terminalSgrPattern].map(String)
+    });
+  const source = await execFileAsync("git", ["rev-parse", "HEAD", "HEAD^{tree}"], {cwd: root,
+    env: {...process.env, GIT_OPTIONAL_LOCKS: "0"}});
+  const [commit, tree] = source.stdout.trim().split("\n");
+  policy.context.scan = scanPrivacyFile.toString();
   if (describeOnly) return {kind: "boc-privacy-policy-description-v1", policy_sha256: privacyPolicyDigest(policy)};
   const directory = join(root, ".git", "oracle", "privacy-coverage");
   const currentCandidates = [...candidates].filter(path => !path.includes(`${join(root, "Vault", "index")}/`));
@@ -551,9 +555,15 @@ async function scanPrivacyCandidates(candidates, {describeOnly = false, assessTr
   const partition = assessTransitionFrom ? await privacyCoveragePartition({root, directory, candidates: currentCandidates,
     policy, contextFor, previousPolicy: assessTransitionFrom}) : null;
   const selected = partition ? partition.files.filter(row => !row.original).map(row => join(root, row.path)) : currentCandidates;
-  const result = await privacyFileCoverage({root, directory, candidates: selected, policy,
-    source: {commit, tree, command: [process.execPath, ...process.execArgv, ...process.argv.slice(1)]}, scan,
-    contextFor});
+  const pool = selected.length >= 32 ? await createPrivacyScanPool({policySha256: privacyPolicyDigest(policy), ruleHashes: policy.sources, count: 4}) : null;
+  let result;
+  try {
+    const config = {blockedDigests, approvedBinaryDigests, githubIdentities, archiveExecutable: policy.executables[1].path};
+    const scan = (path, body, context) => pool && body.length <= 8 * 1024 * 1024 ? pool.run(path, body, context) : scanPrivacyFile(path, body, context, config);
+    result = await privacyFileCoverage({root, directory, candidates: selected, policy,
+      source: {commit, tree, command: [process.execPath, ...process.execArgv, ...process.argv.slice(1)]}, scan,
+      contextFor, concurrency: pool ? 4 : 1});
+  } finally {await pool?.close();}
   lastPrivacyCoverage = result.report;
   if (partition) {
     if (result.report.files.some(row => partition.files.find(item => item.path === row.path)?.sha256 !== row.sha256))
@@ -568,7 +578,7 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
   console.log(JSON.stringify({privacy_coverage: {
     source_commit: lastPrivacyCoverage.source.commit, source_tree: lastPrivacyCoverage.source.tree,
     files: lastPrivacyCoverage.files.length, reused: lastPrivacyCoverage.reused,
-    scanned: lastPrivacyCoverage.scanned, invalidated: lastPrivacyCoverage.invalidated, bridged: lastPrivacyCoverage.bridged,
+    scanned: lastPrivacyCoverage.scanned, bytes: lastPrivacyCoverage.bytes, scanned_bytes: lastPrivacyCoverage.scanned_bytes, concurrency: lastPrivacyCoverage.concurrency, max_input_reads: lastPrivacyCoverage.max_input_reads, invalidated: lastPrivacyCoverage.invalidated, bridged: lastPrivacyCoverage.bridged,
     policy_sha256: lastPrivacyCoverage.policy_sha256, membership_sha256: lastPrivacyCoverage.membership_sha256
   }}));
   if (failures.length) {

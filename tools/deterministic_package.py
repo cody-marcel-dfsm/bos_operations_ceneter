@@ -108,6 +108,8 @@ ADA_CLIENT = {
     'tests/notification-host-installer.test.mjs',
     'tests/feedback-socket-host.test.mjs',
     'scripts/check-customer-data.mjs', 'tests/customer-data-privacy.test.mjs',
+    'scripts/lib/privacy-coverage.mjs', 'scripts/lib/privacy-scan-pool.mjs',
+    'scripts/lib/privacy-scan-worker.mjs', 'tests/privacy-coverage.test.mjs',
 }
 # Profile /2 amendment: owner-approved repairs of tests that went stale when
 # CI moved to this deterministic gate (aa66d553, 6d75ed26, 2dbc43b4).

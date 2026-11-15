@@ -2,15 +2,19 @@ import assert from "node:assert/strict";
 import {copyFile, mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile} from "node:fs/promises";
 import {execFile} from "node:child_process";
 import {promisify} from "node:util";
-import {createHmac} from "node:crypto";
-import {tmpdir} from "node:os";
+import {createHash, createHmac} from "node:crypto";
+import {EventEmitter} from "node:events";
 import {join} from "node:path";
 import test from "node:test";
 import {privacyFileCoverage, privacyPolicyIdentity, privacyPolicyDigest, privacyCoveragePartition, privacyTransitionProof} from "../scripts/lib/privacy-coverage.mjs";
+import {createPrivacyScanPool} from "../scripts/lib/privacy-scan-pool.mjs";
+import {privacyPolicyPreview, scanPrivacyFile, root as projectRoot} from "../scripts/check-customer-data.mjs";
+import {createDeterministicZip} from "../scripts/lib/deterministic-zip.mjs";
 const exec = promisify(execFile);
 
 async function fixture(t) {
-  const root = await mkdtemp(join(tmpdir(), "boc-privacy-coverage-"));
+  await mkdir(join(projectRoot,"Vault/tmp"),{recursive:true});
+  const root = await mkdtemp(join(projectRoot,"Vault/tmp/pc-"));
   t.after(() => rm(root, {recursive: true, force: true}));
   const directory = join(root, ".git", "oracle", "privacy-coverage");
   const paths = [join(root, "a.txt"), join(root, "b.txt"), join(root, "c.txt")];
@@ -89,7 +93,7 @@ test("corrupt cached passes cannot conceal an original failure and linked metada
   const result = await f.run(); assert.equal(result.report.invalidated, 1); assert.equal(result.report.scanned, 1);
   assert.equal(result.report.outcome, "FAILED");
   await rm(join(f.directory, "by-input"), {recursive: true});
-  const outside = await mkdtemp(join(tmpdir(), "boc-privacy-outside-"));
+  const outside = await mkdtemp(join(projectRoot,"Vault/tmp/po-"));
   t.after(() => rm(outside, {recursive: true, force: true}));
   await symlink(outside, join(f.directory, "by-input"));
   await assert.rejects(f.run(), /owned private directory/u); assert.deepEqual(await readdir(outside), []);
@@ -141,6 +145,7 @@ test("fresh ZIP inspection rejects unsafe content despite inherited UNZIPOPT and
   const f = await fixture(t);
   for (const directory of ["scripts/lib", "privacy"]) await mkdir(join(f.root, directory), {recursive: true});
   for (const name of ["scripts/check-customer-data.mjs", "scripts/lib/privacy-coverage.mjs",
+    "scripts/lib/privacy-scan-pool.mjs", "scripts/lib/privacy-scan-worker.mjs",
     "privacy/customer-identifiers.sha256", "privacy/approved-binary-assets.sha256",
     "privacy/owned-github-pr-identities.json", "privacy/owned-native-probe-identities.json"])
     await copyFile(new URL("../" + name, import.meta.url), join(f.root, name));
@@ -165,23 +170,31 @@ test("fresh ZIP inspection rejects unsafe content despite inherited UNZIPOPT and
 
 test("production privacy CLI preserves full source/Vault membership and consumes prior exact-file results", async t => {
   const f = await fixture(t);
-  for (const directory of ["scripts/lib", "privacy", "Vault/tmp"]) await mkdir(join(f.root, directory), {recursive: true});
+  for (const directory of ["scripts/lib", "privacy", "source", "Vault/tmp"]) await mkdir(join(f.root, directory), {recursive: true});
   for (const name of ["scripts/check-customer-data.mjs", "scripts/lib/privacy-coverage.mjs",
+    "scripts/lib/privacy-scan-pool.mjs", "scripts/lib/privacy-scan-worker.mjs",
     "privacy/customer-identifiers.sha256", "privacy/approved-binary-assets.sha256",
     "privacy/owned-github-pr-identities.json", "privacy/owned-native-probe-identities.json"])
     await copyFile(new URL("../" + name, import.meta.url), join(f.root, name));
+  for(let index=0;index<40;index++)await writeFile(join(f.root,"source",`synthetic-${index}.txt`),"synthetic worker input");
   for (const args of [["init", "-q"], ["config", "user.name", "Synthetic Privacy"],
-    ["config", "user.email", "fixture@example.invalid"], ["add", "scripts", "privacy"], ["commit", "-qm", "baseline"]])
+    ["config", "user.email", "fixture@example.invalid"], ["add", "scripts", "privacy", "source"], ["commit", "-qm", "baseline"]])
     await exec("git", args, {cwd: f.root});
   const entry = "const m=await import('./scripts/check-customer-data.mjs');const findings=await m.privacyFailures();console.log(JSON.stringify({findings,report:m.lastPrivacyCoverage}));";
   const invoke = async () => JSON.parse((await exec(process.execPath, ["--input-type=module", "-e", entry], {cwd: f.root})).stdout);
   const cold = await invoke(); assert.deepEqual(cold.findings, []); assert.ok(cold.report.scanned >= 9);
+  assert.equal(cold.report.concurrency,4);assert.equal(cold.report.bridged,0);
   const warm = await invoke(); assert.equal(warm.report.scanned, 0); assert.equal(warm.report.reused, cold.report.scanned);
   const artifact = join(f.root, "Vault/tmp/new.log"); await writeFile(artifact, "synthetic private validation artifact");
   const added = await invoke(); assert.equal(added.report.scanned, 1); assert.equal(added.report.files.length, cold.report.files.length + 1);
   await rm(artifact); const removed = await invoke();
   assert.equal(removed.report.scanned, 0); assert.equal(removed.report.files.length, cold.report.files.length);
   assert.notEqual(removed.report.membership_sha256, added.report.membership_sha256);
+  const large=join(f.root,"Vault/tmp/large.txt"),address=["someone","production-domain.invalidated"].join("@");
+  await writeFile(large,"x".repeat(8*1024*1024)+"\n"+address);
+  const fullFallback=await invoke();assert(fullFallback.findings.some(row=>row.includes("large.txt: non-synthetic email")));
+  assert(fullFallback.report.scanned_bytes>8*1024*1024);assert.equal(fullFallback.report.scanned,1);
+  await rm(large);assert.equal((await invoke()).report.outcome,"PASSED");
 });
 
 test("reviewed archive-only transition retains exact original non-archive passes and executes archive members", async t => {
@@ -240,4 +253,63 @@ test("forged/stale transition facts, changed original proof and original failure
     if (variant === "failure") assert.equal(result.report.outcome, "FAILED");
     else assert.ok(result.report.invalidated > 0);
   }
+});
+
+test("bounded independent file observations preserve sorted merge, exact snapshots and atomic reuse", async t => {
+  const f=await fixture(t);let active=0,peak=0;
+  const result=await f.run({concurrency:4,candidates:[...f.paths].reverse(),scan:async(path,body)=>{
+    active++;peak=Math.max(peak,active);const snapshot=body.toString("utf8");
+    await new Promise(resolve=>setTimeout(resolve,path.endsWith("a.txt")?30:5));
+    active--;assert.equal(snapshot,"synthetic safe bytes");return path.endsWith("b.txt")?["synthetic recorded failure"]:[];
+  }});
+  assert(peak>1&&peak<=4);assert.deepEqual(result.report.files.map(row=>row.path),["a.txt","b.txt","c.txt"]);
+  assert(result.report.max_input_reads<=2);
+  assert.deepEqual(result.findings,["synthetic recorded failure"]);assert.equal(result.report.bytes,3*Buffer.byteLength("synthetic safe bytes"));
+  assert.equal(result.report.scanned,3);assert.equal(result.report.bridged,0);
+  const warm=await f.run({concurrency:4});assert.equal(warm.report.reused,3);assert.equal(warm.report.scanned,0);assert.equal(warm.report.outcome,"FAILED");
+  await assert.rejects(f.run({concurrency:5}),/Bounded/);
+});
+
+async function workerConfiguration(){
+  const ruleHashes={},bodies=[];
+  for(const name of ["privacy/customer-identifiers.sha256","privacy/approved-binary-assets.sha256","privacy/owned-github-pr-identities.json"]){
+    const path=join(projectRoot,name),body=await readFile(path);ruleHashes[path]=createHash("sha256").update(body).digest("hex");bodies.push(body);
+  }
+  const policy=await privacyPolicyPreview();
+  return{policySha256:policy.policy_sha256,ruleHashes,config:{blockedDigests:new Set(bodies[0].toString().split(/\s+/).filter(Boolean)),
+    approvedBinaryDigests:new Set(bodies[1].toString().split(/\s+/).filter(Boolean)),githubIdentities:JSON.parse(bodies[2]),
+    archiveExecutable:(await privacyPolicyIdentity([])).executables[1].path}};
+}
+
+test("real bounded worker scans equal direct policy for Unicode, escaped JSON, binary and archives",async t=>{
+  const options=await workerConfiguration(),pool=await createPrivacyScanPool({...options,count:4});t.after(()=>pool.close());
+  const address=["someone","production-domain.invalidated"].join("@");
+  const values=[{name:"safe.md",body:Buffer.from("synthetic Unicode \u03bb")},
+    {name:"escaped.json",body:Buffer.from(JSON.stringify({value:address}))},
+    {name:"opaque.bin",body:Buffer.from([0,255,1])},
+    {name:"archive.zip",body:createDeterministicZip([{path:"safe.txt",content:Buffer.from("synthetic safe bytes"),mode:0o644}])}];
+  const results=await Promise.all(values.map(value=>pool.run(join(projectRoot,"Vault/tmp",value.name),value.body,{})));
+  for(let index=0;index<values.length;index++)assert.deepEqual(results[index],await scanPrivacyFile(join(projectRoot,"Vault/tmp",values[index].name),values[index].body,{},options.config));
+  assert(results[1].some(row=>row.includes("non-synthetic email")));assert(results[2].some(row=>row.includes("unreviewed binary")));
+  await assert.rejects(pool.run("too-large.bin",Buffer.alloc(8*1024*1024+1),{}),/bound/);
+});
+
+test("worker source/rule mismatch and tampered input/context reply fail before observation signing",async t=>{
+  const options=await workerConfiguration();
+  await assert.rejects(createPrivacyScanPool({...options,policySha256:"0".repeat(64),count:1}),/identity|policy|failed/iu);
+  const ruleHashes={...options.ruleHashes};ruleHashes[Object.keys(ruleHashes)[0]]="0".repeat(64);
+  await assert.rejects(createPrivacyScanPool({...options,ruleHashes,count:1}),/identity|policy|failed/iu);
+  for(const altered of ["path","body","context"]){
+    class TamperedWorker extends EventEmitter{
+      constructor(_url,options){super();assert.deepEqual(options.execArgv,[]);assert.equal(options.resourceLimits.maxOldGenerationSizeMb,384);this.policy=options.workerData.policySha256;queueMicrotask(()=>this.emit("message",{type:"ready",policySha256:this.policy}));}
+      postMessage(request){const hash=value=>createHash("sha256").update(value).digest("hex");
+        queueMicrotask(()=>this.emit("message",{type:"result",id:request.id,policySha256:this.policy,
+          pathSha256:altered==="path"?"0".repeat(64):hash(request.path),sha256:altered==="body"?"0".repeat(64):hash(Buffer.from(request.body)),
+          contextSha256:altered==="context"?"0".repeat(64):hash(JSON.stringify(request.context)),findings:[]}));}
+      async terminate(){return 0;}
+    }
+    const pool=await createPrivacyScanPool({...options,count:1,WorkerClass:TamperedWorker});
+    try{await assert.rejects(pool.run("sample.txt",Buffer.from("synthetic bytes"),{}),/identity mismatch/);}finally{await pool.close();}
+  }
+  await assert.rejects(createPrivacyScanPool({...options,count:5}),/Bounded/);
 });
