@@ -6,6 +6,7 @@ import test from "node:test";
 
 import {
   customerDataFindings,
+  isExactPublicLegalNotice,
   isProposedTextArtifact,
   isOperationalTextArtifact,
   operationalPrivacyText,
@@ -26,6 +27,25 @@ import {createDeterministicZip} from "../scripts/lib/deterministic-zip.mjs";
 // Production native witnesses use *.stdout.log/*.stderr.log; child sessions
 // use JSONL and retained test/probe output also uses these base suffixes.
 const operationalSuffixes = [".tap", ".ndjson", ".stderr", ".stdout", ".json", ".jsonl", ".log", ".stdout.log", ".stderr.log", ".tap.log"];
+
+test("exact immutable public legal notice keeps attribution while changed/copy/customer content remains rejected", async () => {
+  const path="source/host-runtime/bos-journey-notifications/vendor/WS-LICENSE.txt";
+  const text=await readFile(join(root,path),"utf8");
+  assert.equal(isExactPublicLegalNotice(text,path),true);
+  assert.deepEqual(customerDataFindings(text,path,new Set()),[]);
+  for(const otherPath of ["copied-license.txt",join(root,path),"source/../"+path,"artifact.zip!"+path]){
+    assert.equal(isExactPublicLegalNotice(text,otherPath),false);
+    assert(customerDataFindings(text,otherPath,new Set()).some(row=>row.endsWith("non-synthetic email address")));
+  }
+  const privateEmail=["someone","production-domain.invalidated"].join("@");
+  for(const changed of [text+"\n",text+privateEmail,text.replace("2011","2012"),text.replace("MIT","changed")+"customer content"]){
+    assert.equal(isExactPublicLegalNotice(changed,path),false);
+    assert(customerDataFindings(changed,path,new Set()).some(row=>row.endsWith("non-synthetic email address")));
+  }
+  assert(customerDataFindings(text,path,new Set([sha256("permission")])).some(row=>row.endsWith("identifier digest")));
+  const phone=["202","867","5309"].join("-");
+  assert(customerDataFindings(text+phone,path,new Set()).some(row=>row.endsWith("non-fictional phone number")));
+});
 
 function originalDigestMatch(text, path, blocked) {
   const words = normalizeSensitiveText(`${path} ${text}`).split(" ").filter(Boolean);

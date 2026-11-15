@@ -227,8 +227,9 @@ function allowedFictionalPhone(exchange, subscriber) {
 
 export function customerDataFindings(text, path, blockedDigests) {
   const findings = [];
+  const publicNotice = isExactPublicLegalNotice(text, path);
   for (const match of text.matchAll(emailPattern)) {
-    if (!allowedSyntheticDomain(match[1])) {
+    if (!publicNotice && !allowedSyntheticDomain(match[1])) {
       findings.push(`${path}: non-synthetic email address`);
     }
   }
@@ -241,6 +242,15 @@ export function customerDataFindings(text, path, blockedDigests) {
   }
   if (hasBlockedDigest(text, path, blockedDigests)) findings.push(`${path}: prohibited customer identifier digest`);
   return [...new Set(findings)];
+}
+
+// Public third-party copyright attribution is classified only at this exact
+// source path and immutable byte identity. Customer digest/phone checks above
+// still apply, and every changed byte or copied path retains normal email checks.
+// Provenance: https://github.com/websockets/ws/blob/8.23.0/LICENSE
+export function isExactPublicLegalNotice(text, path) {
+  return path === "source/host-runtime/bos-journey-notifications/vendor/WS-LICENSE.txt" &&
+    sha256(text) === "2b29dcfe0d6471f7e8c92c5fb38c9f93edee10330937055440192f1832b1ecef";
 }
 
 // Exact provider identity verified through the existing native GitHub client.
@@ -487,7 +497,7 @@ async function scanPrivacyCandidates(candidates, {describeOnly = false, assessTr
   const githubIdentities = JSON.parse(rules[2].body), nativeProbeIdentities = JSON.parse(rules[3].body);
   const policy = await privacyPolicyIdentity([{path: new URL(import.meta.url).pathname,
     body: await readFile(new URL(import.meta.url))}, ...rules], {
-      functions: [customerDataFindings, normalizeSensitiveText, hasBlockedDigest, blockedWordWindow, digestMatcher,
+      functions: [customerDataFindings, isExactPublicLegalNotice, normalizeSensitiveText, hasBlockedDigest, blockedWordWindow, digestMatcher,
         allowedSyntheticDomain, allowedFictionalPhone, sha256, scanPrivacyCandidates,
         isCpuProfileTextArtifact, cpuProfilePrivacyText, isProposedTextArtifact, isOperationalTextArtifact,
         verifiedNativeProbeMetadataText, verifiedSyntheticSourceFixtureText, ownNativeProbeIdentity,

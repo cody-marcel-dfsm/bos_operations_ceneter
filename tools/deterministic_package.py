@@ -46,6 +46,7 @@ TESTS = [
     'tests/runtime-skill-export.test.mjs', 'tests/feedback-item-discussion.test.mjs',
     'tests/notification-host.test.mjs', 'tests/notification-host-installer.test.mjs',
     'tests/feedback-socket-host.test.mjs',
+    'tests/customer-data-privacy.test.mjs', 'tests/privacy-coverage.test.mjs',
 ]
 CHECKS = [
     ['node', 'scripts/build-feedback-socket-runtime.mjs', '--check'],
@@ -106,6 +107,7 @@ ADA_CLIENT = {
     'scripts/install-notification-host.mjs',
     'tests/notification-host-installer.test.mjs',
     'tests/feedback-socket-host.test.mjs',
+    'scripts/check-customer-data.mjs', 'tests/customer-data-privacy.test.mjs',
 }
 # Profile /2 amendment: owner-approved repairs of tests that went stale when
 # CI moved to this deterministic gate (aa66d553, 6d75ed26, 2dbc43b4).

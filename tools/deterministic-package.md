@@ -89,6 +89,14 @@ category adds vendor regeneration parity, existing notification host/installer
 regressions and new header/item/scope/queue/retirement/socket acceptance. All
 prior checks remain. No installed host change, enabled hook, live connection,
 credential trust change or publication exemption follows from source validation.
+The exact upstream ws MIT notice is classified as public legal attribution only
+at its canonical vendor source path with SHA-256
+`2b29dcfe0d6471f7e8c92c5fb38c9f93edee10330937055440192f1832b1ecef`.
+Altered bytes, copied paths and all customer digest/phone checks remain enforced;
+no domain/email allowlist or archive exclusion is introduced. The fixed category
+adds the complete customer-data privacy and privacy-coverage modules. Its changed
+policy identity receives a fresh complete scan, with zero old-policy bridge/reuse.
+Existing signed transition authorization machinery is unchanged.
 
 The version 7 profile preserves existing unpublished history when integrating the
 published main line. A two-parent merge must have exactly one parent that is an
