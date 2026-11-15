@@ -336,7 +336,25 @@ def read_receipt(root):
         output = path.read_bytes()
         if native.digest(output) != row['output_sha256'] or not complete(row['command'], output, row['exit_code']):
             raise ValueError('Original command output changed or is incomplete')
+        if row['command']==['node','scripts/check-customer-data.mjs']:privacy_report(output)
     return dict(value, sha256=checksum)
+
+
+def privacy_report(output):
+    try:
+        reports=[json.loads(line)['privacy_coverage'] for line in output.splitlines()
+                 if line.startswith(b'{"privacy_coverage":')]
+    except (ValueError, KeyError):
+        reports=[]
+    if len(reports)!=1 or not isinstance(reports[0],dict):
+        raise ValueError('Native privacy report missing or malformed')
+    report=reports[0]
+    if (type(report.get('io_threads')) is not int or report['io_threads']!=8 or
+            type(report.get('compact_persistence_bytes')) is not int or report['compact_persistence_bytes']!=65536 or
+            any(type(report.get(key)) is not int or not 0<=report[key]<=8
+                for key in ('max_active_persistence','max_awaiting_persistence'))):
+        raise ValueError('Native privacy I/O or persistence bounds changed')
+    return report
 
 
 def scheduling(commands):
@@ -430,13 +448,12 @@ def run_category(root, commands, before):
         runs.extend([privacy.result(), *(future.result() for future in others)])
     privacy_output=(directory(root)/(runs[4]['output_sha256']+'.log')).read_bytes()
     try:
-        reports=[json.loads(line)['privacy_coverage'] for line in privacy_output.splitlines()
-                 if line.startswith(b'{"privacy_coverage":')]
-    except (ValueError, KeyError):
-        reports=[]
-    if len(reports)!=1 or not isinstance(reports[0],dict) or reports[0].get("io_threads")!=8 or any(reports[0].get(key)!=snapshot[value] for key,value in
-            [('source_commit','source'),('source_tree','tree'),('files','files'),('policy_sha256','policy_sha256')]):
-        runs[4]['exit_code']='SNAPSHOT_RESULT_MISMATCH'
+        report=privacy_report(privacy_output)
+        matches=all(report.get(key)==snapshot[value] for key,value in
+                    [('source_commit','source'),('source_tree','tree'),('files','files'),('policy_sha256','policy_sha256')])
+    except ValueError:
+        matches=False
+    if not matches:runs[4]['exit_code']='SNAPSHOT_RESULT_MISMATCH'
     return runs
 
 

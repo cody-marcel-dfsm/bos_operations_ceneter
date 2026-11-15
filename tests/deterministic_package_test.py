@@ -50,7 +50,7 @@ class PackageGateTests(unittest.TestCase):
     def validate(self):
         return d.validate(self.root, self.base, '2020-01-01T00:00:00Z')
 
-    def scheduled_execution(self, *, bad_ready=False, bad_report=False, failed=False, mutate=False, io_threads=8):
+    def scheduled_execution(self, *, bad_ready=False, bad_report=False, failed=False, mutate=False, io_threads=8, writers=1):
         before=d.native.identity(self.root); ready=threading.Event(); peers=threading.Event()
         lock=threading.Lock(); calls=[]; active=0; peak=0; peer_count=0
         def execute(root, command, channel=None):
@@ -65,7 +65,7 @@ class PackageGateTests(unittest.TestCase):
                 os.write(fd,(json.dumps(row)+'\n').encode());os.close(fd)
                 if not bad_ready: peers.wait(2)
                 output=json.dumps({'privacy_coverage':{'source_commit':before['source'],'source_tree':before['tree'],
-                    'files':2 if bad_report else 1,'policy_sha256':'a'*64,'io_threads':io_threads}}).encode()
+                    'files':2 if bad_report else 1,'policy_sha256':'a'*64,'io_threads':io_threads,'max_active_persistence':writers,'max_awaiting_persistence':1,'compact_persistence_bytes':65536}}).encode()
             else:
                 if command in self.fixed_commands[5:]:
                     self.assertTrue(ready.is_set())
@@ -125,6 +125,21 @@ class PackageGateTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'check failed'):self.validate()
         record=json.loads(next(d.directory(self.root).glob('*.failure.json')).read_bytes())
         self.assertEqual(len(record['runs']),8);self.assertEqual(record['runs'][4]['exit_code'],'SNAPSHOT_RESULT_MISMATCH')
+
+    def test_parallel_overbound_persistence_report_prevents_receipt(self):
+        execute,snapshot,calls,peak=self.scheduled_execution(writers=9)
+        with patch.object(d,'CHECKS',self.fixed_commands),patch.object(d,'execute_check',side_effect=execute),patch.object(d,'await_privacy_snapshot',side_effect=snapshot):
+            with self.assertRaisesRegex(ValueError,'check failed'):self.validate()
+        record=json.loads(next(d.directory(self.root).glob('*.failure.json')).read_bytes())
+        self.assertEqual(len(record['runs']),8);self.assertEqual(record['runs'][4]['exit_code'],'SNAPSHOT_RESULT_MISMATCH')
+
+    def test_report_bounds_require_exact_integer_configuration_and_bounded_waiting(self):
+        original={'io_threads':8,'compact_persistence_bytes':65536,'max_active_persistence':8,'max_awaiting_persistence':8}
+        self.assertEqual(d.privacy_report(json.dumps({'privacy_coverage':original}).encode()),original)
+        for key in original:
+            for value in [None,True,-1,8.0,9 if 'persistence' in key and key!='compact_persistence_bytes' else 0]:
+                changed=dict(original,**{key:value})
+                with self.assertRaises(ValueError):d.privacy_report(json.dumps({'privacy_coverage':changed}).encode())
 
     def test_snapshot_channel_rejects_missing_oversized_and_stale_identity(self):
         before=d.native.identity(self.root); token='b'*64

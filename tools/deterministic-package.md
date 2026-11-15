@@ -246,3 +246,19 @@ samples measured 1.233 seconds at four threads and 1.024–1.083 seconds at eigh
 for 128 real worker/atomic-write observations. Phase durations are cumulative
 and may overlap across files; the complete cold category remains the wall-time
 acceptance. Effective I/O configuration is policy-bound and report-validated.
+
+Calibrated mixed-input measurements replace the earlier tiny-file-only queue
+assessment. At a worker/persistence ratio close to the full cold corpus, identical
+input hashes and fresh worker pools measured 705–735 ms coupled versus 627–655 ms
+with bounded parent persistence. The final parent queue therefore admits the
+next evaluation after compact verified result metadata is enqueued: at most
+eight active writers and eight waiting evaluator results, with no retained input
+body. Findings above 64 KiB retain evaluator backpressure. Parent-only signing,
+both original fsync/atomic write awaits, independent immutable per-input records,
+canonical output/error order and all transition guards remain. Every pending
+write settles before aggregate output; any failed write prevents PASS. Native
+issuance and receipt verification reject missing, mistyped or overbound writer,
+waiting, compact-metadata and I/O reports. Held-writer, pointer-custody failure,
+unchanged orphan records, exact retry, large findings and input/context
+comparisons remain required. Original weak/strong measurements and SLA breaches
+are retained; one fresh-policy cold category decides the final wall-time result.
