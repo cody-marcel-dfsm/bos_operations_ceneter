@@ -2,8 +2,8 @@
 name: submit-feedback
 description: Submit or draft private BOS product feedback with sanitized media, track its lifecycle, and discuss or complete an existing report through currently supported operations. Use for reviewing or reading feedback and comments, including staging feedback API questions and agent reports, product feedback, report session, feedback tracking, replies, and reporter completion.
 metadata:
-  version: "1.0.14"
-  requires: "{\"bos-mcp-client\":\"1.0.12\"}"
+  version: "1.0.15"
+  requires: "{\"bos-mcp-client\":\"1.0.12\",\"bos-workflow-orchestrator\":\"1.0.12\"}"
 ---
 
 # Submit Feedback
@@ -323,3 +323,13 @@ fresh current state and applicable user authorization for the changed effect.
 Feedback has no push subscription. Poll only when requested, within the user's chosen
 interval and duration. Keep reports, discussion, identities and screenshots
 private; public code patches never imply permission to publish an issue.
+
+## Item discussion streams
+
+For an explicitly requested two-way item discussion, read
+[the closed discussion facade](references/item-discussion.md). Use it only when
+current discovery advertises the exact discussion capability and the trusted
+host supplies authenticated item sockets and protected atomic storage. An
+unsupported host retains existing item reads/comments; it establishes no live
+subscription or autonomous Muse wake. Public skills receive no credentials,
+context selectors, arbitrary socket URL or shell WebSocket path.

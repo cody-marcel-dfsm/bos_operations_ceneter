@@ -66,7 +66,18 @@ publication admission, tamper and five-host parity checks. Existing publication
 ancestry/CI/history gates remain authoritative. No consumer source writer,
 network API, credential change or source-only publication exemption is added.
 
-The version 5 profile preserves existing unpublished history when integrating the
+Amendment `/6` (owner-directed item discussion facade, 2026-11-14) adds exactly
+`source/platform/submit-feedback/scripts/item-discussion.mjs`, its
+`references/item-discussion.md`, and `tests/feedback-item-discussion.test.mjs`.
+The fixed category includes dynamic current-schema checks, false-by-default
+trusted-host capability, item/scope isolation, atomic cursor/queue and explicit
+consumer ACK, bounded replay/reconnect, gap recovery and committed comment ACK.
+The existing feedback skill links the facade; its exact runtime dependency and
+transitive skill pins remain validated. No socket implementation, credential
+access, arbitrary URL dispatch, host companion extension, native wake or release
+exemption is added. All earlier fixed categories remain required.
+
+The version 6 profile preserves existing unpublished history when integrating the
 published main line. A two-parent merge must have exactly one parent that is an
 ancestor of the exact publication base; its result is classified against that
 trusted parent. Every unpublished nonmerge edge is still inspected, including

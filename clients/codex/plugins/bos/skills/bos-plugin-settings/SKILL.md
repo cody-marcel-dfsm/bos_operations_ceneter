@@ -2,8 +2,8 @@
 name: bos-plugin-settings
 description: Read and change typed BOS plugin settings through native client controls or conversation, using authority-scoped cache, confirmed server mutations, bounded recovery, and feedback-ready failures.
 metadata:
-  version: "1.0.14"
-  requires: "{\"bos-mcp-client\":\"1.0.12\",\"bos-plugin-console\":\"1.0.14\",\"bos-plugin-settings-initialization\":\"1.0.14\",\"submit-feedback\":\"1.0.14\"}"
+  version: "1.0.15"
+  requires: "{\"bos-mcp-client\":\"1.0.12\",\"bos-plugin-console\":\"1.0.15\",\"bos-plugin-settings-initialization\":\"1.0.15\",\"submit-feedback\":\"1.0.15\"}"
 ---
 
 
